@@ -3637,6 +3637,7 @@
     "learning-resources-fetch-error": "शिक्षण संसाधने आणण्यात त्रुटी",
     "leave-team-error": "टीम सोडताना त्रुटी!",
     "leave-team-success": "टीम यशस्वीरित्या सोडली!",
+    "move-entity-error": "\"{{entity}}\" हलवताना त्रुटी आली.",
     "no-application-schema-found": "{{appName}} साठी अनुप्रयोग स्कीमा सापडले नाही",
     "no-owned-entities": "तुम्ही अद्याप काहीही मालकीचे नाही.",
     "no-query-available": "कोणतीही क्वेरी उपलब्ध नाही.",

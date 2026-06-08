@@ -3637,6 +3637,7 @@
     "learning-resources-fetch-error": "Error fetching learning resources",
     "leave-team-error": "Error while leaving the team!",
     "leave-team-success": "Left the team successfully!",
+    "move-entity-error": "Error while moving \"{{entity}}\".",
     "no-application-schema-found": "No application schema found for {{appName}}",
     "no-owned-entities": "You have not owned anything yet.",
     "no-query-available": "No query available.",

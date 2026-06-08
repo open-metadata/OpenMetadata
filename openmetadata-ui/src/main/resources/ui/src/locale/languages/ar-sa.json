@@ -3637,6 +3637,7 @@
     "learning-resources-fetch-error": "خطأ في جلب الموارد التعليمية",
     "leave-team-error": "خطأ أثناء مغادرة الفريق!",
     "leave-team-success": "تم مغادرة الفريق بنجاح!",
+    "move-entity-error": "خطأ أثناء نقل \"{{entity}}\".",
     "no-application-schema-found": "لم يتم العثور على مخطط تطبيق لـ {{appName}}",
     "no-owned-entities": "لم تمتلك أي شيء بعد.",
     "no-query-available": "لا يوجد استعلام متاح.",

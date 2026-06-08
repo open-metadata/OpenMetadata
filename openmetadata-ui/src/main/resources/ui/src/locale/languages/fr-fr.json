@@ -3637,6 +3637,7 @@
     "learning-resources-fetch-error": "Erreur lors de la récupération des ressources d'apprentissage",
     "leave-team-error": "Une erreur est survenue lorsque vous avez quitté l'équipe !",
     "leave-team-success": "Vous avez quitté l'équipe avec succès !",
+    "move-entity-error": "Erreur lors du déplacement de \"{{entity}}\".",
     "no-application-schema-found": "Aucun schéma d'application trouvé pour {{appName}}",
     "no-owned-entities": "Vous n'êtes actuellement propriétaire d'aucun actif.",
     "no-query-available": "Aucune requête disponible",

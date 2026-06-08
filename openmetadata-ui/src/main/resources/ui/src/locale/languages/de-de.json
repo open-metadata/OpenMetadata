@@ -3637,6 +3637,7 @@
     "learning-resources-fetch-error": "Fehler beim Abrufen der Lernressourcen",
     "leave-team-error": "Fehler beim Verlassen des Teams!",
     "leave-team-success": "Team erfolgreich verlassen!",
+    "move-entity-error": "Fehler beim Verschieben von \"{{entity}}\".",
     "no-application-schema-found": "Kein Anwendungsschema gefunden für {{appName}}",
     "no-owned-entities": "Sie besitzen noch nichts.",
     "no-query-available": "Keine Abfrage verfügbar.",

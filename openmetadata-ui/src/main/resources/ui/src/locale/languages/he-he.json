@@ -3637,6 +3637,7 @@
     "learning-resources-fetch-error": "שגיאה בטעינת משאבי למידה",
     "leave-team-error": "שגיאה במהלך יציאה מהקבוצה!",
     "leave-team-success": "יציאה מהקבוצה בהצלחה!",
+    "move-entity-error": "שגיאה בעת העברת \"{{entity}}\".",
     "no-application-schema-found": "לא נמצאה סכמת יישום עבור {{appName}}",
     "no-owned-entities": "אין לך פריטים שבבעלותך עד כה.",
     "no-query-available": "אין שאילתות זמינות.",

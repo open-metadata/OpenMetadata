@@ -310,7 +310,7 @@ const ContextCenterDocumentsPage: FC = () => {
       }
       if (failedCount > 0) {
         showErrorToast(
-          t('server.delete-entity-error', {
+          t('server.move-entity-error', {
             entity: t('label.document-plural'),
           })
         );

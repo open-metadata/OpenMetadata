@@ -3637,6 +3637,7 @@
     "learning-resources-fetch-error": "Öğrenme kaynakları alınırken hata oluştu",
     "leave-team-error": "Takımdan ayrılırken hata oluştu!",
     "leave-team-success": "Takımdan başarıyla ayrıldınız!",
+    "move-entity-error": "\"{{entity}}\" taşınırken hata oluştu.",
     "no-application-schema-found": "{{appName}} için uygulama şeması bulunamadı",
     "no-owned-entities": "Henüz hiçbir şeye sahip değilsiniz.",
     "no-query-available": "Kullanılabilir sorgu yok.",

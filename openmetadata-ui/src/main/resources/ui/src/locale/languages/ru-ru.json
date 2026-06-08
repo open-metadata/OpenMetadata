@@ -3637,6 +3637,7 @@
     "learning-resources-fetch-error": "Ошибка при получении учебных ресурсов",
     "leave-team-error": "Ошибка при выходе из команды!",
     "leave-team-success": "Вы покинули команду!",
+    "move-entity-error": "Ошибка при перемещении \"{{entity}}\".",
     "no-application-schema-found": "Схема приложения не найдена для {{appName}}",
     "no-owned-entities": "Вы еще ничем не владеете.",
     "no-query-available": "Нет доступных запросов.",

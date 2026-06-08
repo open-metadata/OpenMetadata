@@ -3637,6 +3637,7 @@
     "learning-resources-fetch-error": "学習リソースの取得エラー",
     "leave-team-error": "チームからの退会中にエラーが発生しました！",
     "leave-team-success": "チームから正常に退会しました！",
+    "move-entity-error": "\"{{entity}}\"の移動中にエラーが発生しました。",
     "no-application-schema-found": "{{appName}}のアプリケーションスキーマが見つかりません",
     "no-owned-entities": "まだ所有しているエンティティはありません。",
     "no-query-available": "利用可能なクエリがありません。",

@@ -3637,6 +3637,7 @@
     "learning-resources-fetch-error": "Shiver me timbers! Error fetchin' the treasures",
     "leave-team-error": "خطا در ترک تیم!",
     "leave-team-success": "با موفقیت از تیم خارج شدید!",
+    "move-entity-error": "Error al mover \"{{entity}}\".",
     "no-application-schema-found": "هیچ طرح برنامه‌ای برای {{appName}} یافت نشد",
     "no-owned-entities": "شما هنوز هیچ چیزی را مالک نشده‌اید.",
     "no-query-available": "هیچ پرس‌و‌جویی در دسترس نیست.",

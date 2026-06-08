@@ -3637,6 +3637,7 @@
     "learning-resources-fetch-error": "Erro ao obter recursos de aprendizagem",
     "leave-team-error": "Erro ao sair da equipa!",
     "leave-team-success": "Saiu da equipa com sucesso!",
+    "move-entity-error": "Erro ao mover \"{{entity}}\".",
     "no-application-schema-found": "Nenhum esquema de aplicação encontrado para {{appName}}",
     "no-owned-entities": "Você ainda não possui nada.",
     "no-query-available": "Nenhuma consulta disponível.",

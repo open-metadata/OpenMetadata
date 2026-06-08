@@ -3637,6 +3637,7 @@
     "learning-resources-fetch-error": "取得學習資源時發生錯誤",
     "leave-team-error": "離開團隊時發生錯誤！",
     "leave-team-success": "成功離開團隊！",
+    "move-entity-error": "移動「{{entity}}」時發生錯誤。",
     "no-application-schema-found": "找不到 {{appName}} 的應用程式結構",
     "no-owned-entities": "您尚未擁有任何東西。",
     "no-query-available": "沒有可用的查詢。",

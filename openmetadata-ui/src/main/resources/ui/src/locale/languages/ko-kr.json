@@ -3637,6 +3637,7 @@
     "learning-resources-fetch-error": "학습 리소스를 가져오는 중 오류 발생",
     "leave-team-error": "팀 탈퇴 중 오류가 발생했습니다!",
     "leave-team-success": "팀을 성공적으로 탈퇴했습니다!",
+    "move-entity-error": "\"{{entity}}\" 이동 중 오류가 발생했습니다.",
     "no-application-schema-found": "{{appName}}에 대한 애플리케이션 스키마를 찾을 수 없습니다.",
     "no-owned-entities": "아직 소유한 항목이 없습니다.",
     "no-query-available": "사용 가능한 쿼리가 없습니다.",

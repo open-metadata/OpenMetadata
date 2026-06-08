@@ -3637,6 +3637,7 @@
     "learning-resources-fetch-error": "Fout bij ophalen leermiddelen",
     "leave-team-error": "Fout bij het verlaten van het team!",
     "leave-team-success": "Team succesvol verlaten!",
+    "move-entity-error": "Fout bij het verplaatsen van \"{{entity}}\".",
     "no-application-schema-found": "Geen applicatieschema gevonden voor {{appName}}",
     "no-owned-entities": "Je bent nog geen eigenaar van assets.",
     "no-query-available": "Geen query beschikbaar.",

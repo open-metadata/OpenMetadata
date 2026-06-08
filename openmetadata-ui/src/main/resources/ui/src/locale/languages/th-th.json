@@ -3637,6 +3637,7 @@
     "learning-resources-fetch-error": "เกิดข้อผิดพลาดในการดึงทรัพยากรการเรียนรู้",
     "leave-team-error": "เกิดข้อผิดพลาดขณะออกจากทีม!",
     "leave-team-success": "ออกจากทีมสำเร็จ!",
+    "move-entity-error": "เกิดข้อผิดพลาดขณะย้าย \"{{entity}}\"",
     "no-application-schema-found": "ไม่พบสคีมาแอปพลิเคชันสำหรับ {{appName}}",
     "no-owned-entities": "คุณยังไม่มีเอนทิตีใด ๆ",
     "no-query-available": "ไม่มีคำสั่งที่สามารถใช้งานได้",
