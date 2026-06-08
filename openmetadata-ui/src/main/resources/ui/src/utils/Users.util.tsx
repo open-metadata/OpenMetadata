@@ -11,23 +11,21 @@
  *  limitations under the License.
  */
 
+export {
+  getEmptyTextFromUserProfileItem,
+  getUserCreationErrorMessage,
+  getUserOnlineStatus,
+  isMaskedEmail,
+} from './UsersPureUtils';
+
 import { Popover, Skeleton, Space, Tag, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
-import moment from 'moment';
 import { Link } from 'react-router-dom';
 import { ReactComponent as BotIcon } from '../assets/svg/bot.svg';
 import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
-import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
-import {
-  ERROR_MESSAGE,
-  NO_DATA_PLACEHOLDER,
-  TEXT_GREY_MUTED,
-} from '../constants/constants';
-import { MASKED_EMAIL } from '../constants/User.constants';
+import { TEXT_GREY_MUTED } from '../constants/constants';
 import { EntityReference, User } from '../generated/entity/teams/user';
-import { getIsErrorMatch } from './APIUtils';
 import { getEntityName } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 import { LIST_CAP } from './PermissionsUtils';
@@ -180,83 +178,3 @@ export const commonUserDetailColumns = (
     },
   },
 ];
-
-export const isMaskedEmail = (email: string) => {
-  return email === MASKED_EMAIL;
-};
-
-export const getUserCreationErrorMessage = ({
-  error,
-  entity,
-  entityLowercase,
-  entityName,
-}: {
-  error?: AxiosError;
-  entity: string;
-  entityLowercase?: string;
-  entityName?: string;
-}) => {
-  if (error) {
-    if (getIsErrorMatch(error, ERROR_MESSAGE.alreadyExist)) {
-      return t('server.email-already-exist', {
-        entity: entityLowercase ?? '',
-        name: entityName ?? '',
-      });
-    }
-
-    if (error.response?.status === HTTP_STATUS_CODE.LIMIT_REACHED) {
-      return t('server.entity-limit-reached', { entity });
-    }
-  }
-
-  return t('server.create-entity-error', { entity });
-};
-
-export const getEmptyTextFromUserProfileItem = (item: string) => {
-  const messages = {
-    roles: t('message.no-roles-assigned'),
-    teams: t('message.no-teams-assigned'),
-    inheritedRoles: t('message.no-inherited-roles-found'),
-    personas: t('message.no-persona-assigned'),
-  };
-
-  return messages[item as keyof typeof messages] || NO_DATA_PLACEHOLDER;
-};
-
-export const getUserOnlineStatus = (userData: User, includeTooltip = false) => {
-  // Don't show online status for bots or if userData is not provided
-  if (!userData || userData.isBot) {
-    return null;
-  }
-
-  // Use lastActivityTime if available, otherwise fall back to lastLoginTime
-  const activityTime = userData.lastActivityTime || userData.lastLoginTime;
-
-  if (!activityTime) {
-    return null;
-  }
-
-  const lastActivityMoment = moment(activityTime);
-  const now = moment();
-  const diffMinutes = now.diff(lastActivityMoment, 'minutes');
-
-  if (diffMinutes <= 5) {
-    return {
-      status: 'success' as const,
-      text: t('label.online-now'),
-      ...(includeTooltip && {
-        tooltip: t('label.last-activity-n-minutes-ago', { count: diffMinutes }),
-      }),
-    };
-  } else if (diffMinutes <= 60) {
-    return {
-      status: 'success' as const,
-      text: t('label.active-recently'),
-      ...(includeTooltip && {
-        tooltip: t('label.last-activity-n-minutes-ago', { count: diffMinutes }),
-      }),
-    };
-  }
-
-  return null;
-};

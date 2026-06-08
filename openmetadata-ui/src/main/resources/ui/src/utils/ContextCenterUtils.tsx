@@ -12,39 +12,23 @@
  */
 
 import { File06 } from '@untitledui/icons';
-import { AxiosError } from 'axios';
-import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { isNull, isUndefined } from 'lodash';
 import { ReactComponent as DOCIcon } from '../assets/svg/ic-doc.svg';
 import { ReactComponent as ImageIcon } from '../assets/svg/ic-image.svg';
 import { ReactComponent as PDFIcon } from '../assets/svg/ic-pdf.svg';
 import { ReactComponent as XLSIcon } from '../assets/svg/ic-xls.svg';
-import { ArticleCardItem } from '../components/ContextCenter/ArticleCard/ArticleCard.interface';
-import { DocFile } from '../components/ContextCenter/DocumentsView/DocumentsView.interface';
-import { UploadedDocumentItem } from '../components/ContextCenter/UploadedDocumentCard/UploadedDocumentCard.interface';
-import { CREATE_PAGE_HASH } from '../constants/constants';
-import { EntityType } from '../enums/entity.enum';
-import { AssetType } from '../generated/attachments/asset';
-import { ContextFile } from '../generated/entity/data/contextFile';
-import { ListParams } from '../interface/API.interface';
-import {
-  CreateKnowledgePage,
-  PageType,
-  QuickLink,
-} from '../interface/knowledge-center.interface';
-import { downloadDriveFile, listAssetsByFqn } from '../rest/assetAPI';
-import { postKnowledgePage } from '../rest/knowledgeCenterAPI';
-import contextCenterClassBase from './ContextCenterClassBase';
-import EntityLink from './EntityLink';
-import { getEntityName } from './EntityUtils';
-import { showErrorToast } from './ToastUtils';
 
-export const CONTEXT_CENTER_DOCUMENTS_FQN = 'contextCenter.documents';
-
-export const CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK = EntityLink.getEntityLink(
-  EntityType.KNOWLEDGE_PAGE,
-  CONTEXT_CENTER_DOCUMENTS_FQN
-);
+export {
+  assetToDocumentItem,
+  contextFileToDocumentItem,
+  contextFileToUploadedDocumentItem,
+  CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK,
+  CONTEXT_CENTER_DOCUMENTS_FQN,
+  createArticleKnowledgePage,
+  fetchContextCenterDocuments,
+  formatBytes,
+  handleAssetDownload,
+  knowledgePageToArticleItem,
+} from './ContextCenterPureUtils';
 
 export const getFileTypeIcon = (fileType: string) => {
   const commonProps = {
