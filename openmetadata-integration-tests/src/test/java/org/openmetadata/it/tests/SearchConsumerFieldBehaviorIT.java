@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -37,14 +36,12 @@ import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Transport
  * reported as a broken <em>feature</em> in a specific language (e.g. "Domain filter is broken in
  * [jp]"), which is what an operator can act on — not "index is missing a mapping".
  *
- * <p>This is the search-side coverage the suite lacked for non-English languages — without the need
- * to run the whole integration-test suite once per language. The container is built with the
- * language-analysis plugins ({@link SearchTestImages}), so en, ru and jp index with their
- * <em>real</em> analyzers (jp uses {@code kuromoji_tokenizer}); creating the real jp mapping here
- * therefore also catches analyzer drift (fields referencing analyzers the mapping never defined).
- * zh uses the third-party {@code analysis-ik} plugin, which is not installed, so zh alone has its
- * analysis stripped and is validated structurally — the consumer fields are {@code keyword}/{@code
- * nested} and analyzer-independent, so every assertion still holds.
+ * <p>This is the search-side coverage the suite lacked for non-English languages — without running
+ * the whole integration-test suite once per language. The container is built with the
+ * language-analysis plugins ({@link SearchTestImages}), so every language indexes with its
+ * <em>real</em> analyzers (jp uses {@code kuromoji_tokenizer} via analysis-kuromoji, zh uses {@code
+ * ik_max_word}/{@code ik_smart} via analysis-ik). Creating the real mappings here therefore also
+ * catches analyzer drift — e.g. fields referencing analyzers the mapping never defined.
  *
  * <p>It would have caught the {@code jp/topic} mapping dropping top-level {@code domains} (the
  * domain-filter assertion returns zero hits for {@code jp}) and the jp analyzer references that made
@@ -97,16 +94,10 @@ class SearchConsumerFieldBehaviorIT {
     mapper = new ObjectMapper();
 
     for (String language : LANGUAGES) {
-      boolean stripAnalysis = needsAnalysisStrip(language);
-      createIndex(
-          topicIndex(language),
-          "/elasticsearch/" + language + "/topic_index_mapping.json",
-          stripAnalysis);
+      createIndex(topicIndex(language), "/elasticsearch/" + language + "/topic_index_mapping.json");
       indexDocument(topicIndex(language), TOPIC_ID, topicDocument());
       createIndex(
-          testCaseIndex(language),
-          "/elasticsearch/" + language + "/test_case_index_mapping.json",
-          stripAnalysis);
+          testCaseIndex(language), "/elasticsearch/" + language + "/test_case_index_mapping.json");
       indexDocument(testCaseIndex(language), TEST_CASE_ID, testCaseDocument());
     }
   }
@@ -181,16 +172,16 @@ class SearchConsumerFieldBehaviorIT {
   }
 
   @Test
-  void japaneseAnalysisPluginIsInstalled() throws Exception {
+  void analysisPluginsInstalled() throws Exception {
     try (var response =
         openSearchClient
             .generic()
             .execute(Requests.builder().method("GET").endpoint("/_cat/plugins").build())) {
       String plugins = response.getBody().map(b -> b.bodyAsString()).orElse("");
       assertTrue(
-          plugins.contains("analysis-kuromoji"),
-          "The integration-test OpenSearch image must ship analysis-kuromoji so jp mappings index "
-              + "with their real kuromoji analyzer instead of a stripped fallback. Installed: "
+          plugins.contains("analysis-kuromoji") && plugins.contains("analysis-ik"),
+          "The integration-test OpenSearch image must ship analysis-kuromoji (jp) and analysis-ik "
+              + "(zh) so jp/zh mappings index with their real analyzers. Installed: "
               + plugins);
     }
   }
@@ -263,17 +254,13 @@ class SearchConsumerFieldBehaviorIT {
     }
   }
 
-  private void createIndex(String index, String mappingResource, boolean stripAnalysis)
-      throws Exception {
+  private void createIndex(String index, String mappingResource) throws Exception {
     String rawMapping;
     try (InputStream in = getClass().getResourceAsStream(mappingResource)) {
       assertNotNull(in, "Mapping resource not found on classpath: " + mappingResource);
       rawMapping = new String(in.readAllBytes(), StandardCharsets.UTF_8);
     }
     String enriched = OsUtils.enrichIndexMappingForOpenSearch(rawMapping);
-    if (stripAnalysis) {
-      enriched = stripLanguageAnalysis(enriched);
-    }
     try (var response =
         openSearchClient
             .generic()
@@ -386,45 +373,5 @@ class SearchConsumerFieldBehaviorIT {
 
   private String testCaseIndex(String language) {
     return "behavior_testcase_" + language;
-  }
-
-  /**
-   * Languages whose analyzers are available in the IT image keep their real analysis (en/ru are
-   * built-in, jp uses the installed {@code analysis-kuromoji}). Only zh — which needs the
-   * uninstalled third-party {@code analysis-ik} — has its analysis stripped, so its index is still
-   * creatable for structural validation. The consumer fields asserted here are {@code keyword}/{@code
-   * nested} and analyzer-independent, so stripping zh does not weaken any assertion.
-   */
-  private boolean needsAnalysisStrip(String language) {
-    return "zh".equals(language);
-  }
-
-  /**
-   * Remove every analysis setting and field-level {@code analyzer}/{@code search_analyzer}/{@code
-   * normalizer} reference so an index is creatable without its language-analysis plugin (used only
-   * for zh). What remains is the real field structure, so structural drift — e.g. a language mapping
-   * dropping a top-level field — is still caught.
-   */
-  private String stripLanguageAnalysis(String mappingJson) throws Exception {
-    JsonNode root = mapper.readTree(mappingJson);
-    if (root.path("settings") instanceof ObjectNode settings) {
-      settings.remove("analysis");
-      if (settings.path("index") instanceof ObjectNode indexSettings) {
-        indexSettings.remove("analysis");
-      }
-    }
-    stripAnalysisReferences(root.path("mappings"));
-    return mapper.writeValueAsString(root);
-  }
-
-  private void stripAnalysisReferences(JsonNode node) {
-    if (node instanceof ObjectNode object) {
-      object.remove("analyzer");
-      object.remove("search_analyzer");
-      object.remove("normalizer");
-      object.forEach(this::stripAnalysisReferences);
-    } else if (node.isArray()) {
-      node.forEach(this::stripAnalysisReferences);
-    }
   }
 }
