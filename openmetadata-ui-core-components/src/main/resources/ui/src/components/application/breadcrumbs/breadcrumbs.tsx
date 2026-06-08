@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Dropdown } from '@/components/base/dropdown/dropdown';
+import { cx, sortCx } from '@/utils/cx';
 import { ChevronRight, DotsHorizontal } from '@untitledui/icons';
 import type { FC, Key, ReactNode } from 'react';
 import {
@@ -18,8 +20,6 @@ import {
   Button as AriaButton,
   Link as AriaLink,
 } from 'react-aria-components';
-import { Dropdown } from '@/components/base/dropdown/dropdown';
-import { cx, sortCx } from '@/utils/cx';
 
 export type BreadcrumbsType = 'text' | 'button-white' | 'button-gray';
 
@@ -32,6 +32,8 @@ export interface BreadcrumbItemType {
   id: Key;
   /** The text shown for the crumb. */
   label: ReactNode;
+  /** Accessible label for icon-only crumbs. */
+  ariaLabel?: string;
   /** Navigation target. Omit on the current (last) page. */
   href?: string;
   /** Optional leading icon, e.g. a home icon on the first crumb. */
@@ -254,6 +256,7 @@ export const Breadcrumbs = ({
                 />
               ) : !isCurrent && (item.href || onAction) ? (
                 <AriaLink
+                  aria-label={item.ariaLabel}
                   className={cx(linkClassName, styles[type].link, padding)}
                   href={onAction ? undefined : item.href}
                   onPress={() => onAction?.(item.id)}>

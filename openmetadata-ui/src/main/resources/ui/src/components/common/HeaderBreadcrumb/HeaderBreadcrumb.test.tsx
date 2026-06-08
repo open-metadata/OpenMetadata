@@ -46,7 +46,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         <nav className={className} data-testid="breadcrumbs">
           {items.map((item) => (
             <span data-testid={`crumb-${item.id}`} key={item.id}>
-              {String(item.label)}
+              {item.label}
             </span>
           ))}
         </nav>
@@ -101,7 +101,8 @@ describe('Breadcrumb', () => {
     const homeItem = capturedItems[0];
 
     expect(homeItem.id).toBe('__breadcrumb_home__');
-    expect(homeItem.label).toBe('');
+    expect(homeItem.label).toBeNull();
+    expect(homeItem.ariaLabel).toBe('label.home');
 
     const { HomeLine } = jest.requireActual('@untitledui/icons');
 

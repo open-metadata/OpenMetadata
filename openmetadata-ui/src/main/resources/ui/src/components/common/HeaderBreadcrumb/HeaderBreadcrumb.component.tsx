@@ -17,6 +17,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { HomeLine } from '@untitledui/icons';
 import { FC, Key, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { HeaderBreadcrumbProps } from './HeaderBreadcrumb.interface';
@@ -32,6 +33,7 @@ const HeaderBreadcrumb: FC<HeaderBreadcrumbProps> = ({
   className,
 }) => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const allItems: BreadcrumbItemType[] = useMemo(() => {
     const numbered = items.map((item, index) => ({
@@ -46,13 +48,14 @@ const HeaderBreadcrumb: FC<HeaderBreadcrumbProps> = ({
     return [
       {
         id: HOME_CRUMB_ID,
-        label: '',
+        label: null,
+        ariaLabel: t('label.home'),
         icon: HomeLine,
         href: ROUTES.HOME,
       },
       ...numbered,
     ];
-  }, [items, showHome]);
+  }, [items, showHome, t]);
 
   const handleAction = useCallback(
     (id: Key) => {
