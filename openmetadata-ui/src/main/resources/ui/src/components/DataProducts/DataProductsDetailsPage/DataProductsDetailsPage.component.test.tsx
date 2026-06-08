@@ -163,7 +163,7 @@ describe('DataProductsDetailsPage — Request Data Access button', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('does not render for an admin even when the feature flag is on', () => {
+  it('renders and is enabled for an admin when the feature flag is on', () => {
     enableRequestDataAccess();
     (useApplicationStore as unknown as jest.Mock).mockReturnValue({
       currentUser: { id: 'admin-1', name: 'admin', isAdmin: true },
@@ -171,9 +171,7 @@ describe('DataProductsDetailsPage — Request Data Access button', () => {
 
     render(<DataProductsDetailsPage {...defaultProps} />);
 
-    expect(
-      screen.queryByTestId('request-data-access-button')
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('request-data-access-button')).toBeEnabled();
   });
 
   it('does not render for the entity owner', () => {

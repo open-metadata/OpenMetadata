@@ -896,7 +896,6 @@ const DataProductsDetailsPage = ({
             <div className="tw:flex tw:gap-3 tw:justify-end tw:items-center tw:pb-1">
               {!isVersionsView &&
                 !isOwner &&
-                !currentUser?.isAdmin &&
                 canCreateTask &&
                 dataProductClassBase.getShowRequestDataAccess() && (
                   <CoreTooltip

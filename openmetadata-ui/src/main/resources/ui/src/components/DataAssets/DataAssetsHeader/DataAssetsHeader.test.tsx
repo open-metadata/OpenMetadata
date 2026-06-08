@@ -992,7 +992,7 @@ describe('DataAssetsHeader component', () => {
       });
     });
 
-    it('should not render when user is admin even with canCreateTask permission', async () => {
+    it('should render when user is admin with canCreateTask permission', async () => {
       const { useApplicationStore } = jest.requireMock(
         '../../../hooks/useApplicationStore'
       );
@@ -1004,8 +1004,8 @@ describe('DataAssetsHeader component', () => {
 
       await waitFor(() => {
         expect(
-          screen.queryByTestId('request-data-access-button')
-        ).not.toBeInTheDocument();
+          screen.getByTestId('request-data-access-button')
+        ).toBeInTheDocument();
       });
 
       (useApplicationStore as jest.Mock).mockReturnValue({

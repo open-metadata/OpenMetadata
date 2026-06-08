@@ -611,7 +611,6 @@ export const DataAssetsHeader = ({
       entityType !== EntityType.TABLE ||
       deleted ||
       isOwner ||
-      currentUser?.isAdmin ||
       !canCreateTask
     ) {
       return null;
