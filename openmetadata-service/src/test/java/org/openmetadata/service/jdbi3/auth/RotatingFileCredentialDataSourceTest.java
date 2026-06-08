@@ -14,9 +14,10 @@ import java.sql.Driver;
 import java.sql.DriverManager;
 import java.sql.DriverPropertyInfo;
 import java.sql.SQLException;
+import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Logger;
 import org.junit.jupiter.api.AfterEach;
@@ -28,6 +29,10 @@ import org.openmetadata.service.jdbi3.auth.FileCredentialAuthStrategy.RotatingFi
 class RotatingFileCredentialDataSourceTest {
 
   private static final String URL = "jdbc:stub:db";
+  // Postgres SQLStates: 28xxx = invalid authorization (expired token); 08xxx = connection failure.
+  private static final String AUTH_FAILURE = "28000";
+  private static final String CONNECTION_FAILURE = "08006";
+
   private StubDriver driver;
 
   @BeforeEach
@@ -55,21 +60,37 @@ class RotatingFileCredentialDataSourceTest {
   void rereadsAndRetriesOnceWhenTheTokenWasStale(@TempDir Path dir) throws Exception {
     Path file = dir.resolve("token");
     writeQuietly(file, "stale-token");
-    driver.reject.add("stale-token");
+    driver.rejectWith("stale-token", AUTH_FAILURE);
     // The external rotator writes the fresh token around the time the stale one is rejected.
     driver.onConnect = () -> writeQuietly(file, "fresh-token");
 
     assertNotNull(newDataSource(file).getConnection());
     assertEquals("fresh-token", driver.lastPassword.get());
+    assertEquals(2, driver.connectCount.get());
   }
 
   @Test
   void propagatesFailureWhenTheRetryAlsoFails(@TempDir Path dir) throws Exception {
     Path file = dir.resolve("token");
     writeQuietly(file, "bad-token");
-    driver.reject.add("bad-token");
+    driver.rejectWith("bad-token", AUTH_FAILURE);
 
     assertThrows(SQLException.class, () -> newDataSource(file).getConnection());
+    assertEquals(2, driver.connectCount.get());
+  }
+
+  @Test
+  void doesNotReReadOrRetryOnNonAuthFailure(@TempDir Path dir) throws Exception {
+    Path file = dir.resolve("token");
+    writeQuietly(file, "token-1");
+    driver.rejectWith("token-1", CONNECTION_FAILURE);
+
+    SQLException thrown =
+        assertThrows(SQLException.class, () -> newDataSource(file).getConnection());
+    // The original connection failure is propagated as-is, not wrapped as an auth error...
+    assertEquals(CONNECTION_FAILURE, thrown.getSQLState());
+    // ...and there is no re-read or second connect attempt.
+    assertEquals(1, driver.connectCount.get());
   }
 
   private RotatingFileCredentialDataSource newDataSource(Path file) {
@@ -85,12 +106,17 @@ class RotatingFileCredentialDataSourceTest {
     }
   }
 
-  /** Minimal JDBC driver that records the credentials it receives and can reject given passwords. */
+  /** Minimal JDBC driver that records credentials and can reject passwords with a given SQLState. */
   private static final class StubDriver implements Driver {
     private final AtomicReference<String> lastPassword = new AtomicReference<>();
     private final AtomicReference<String> lastUser = new AtomicReference<>();
-    private final Set<String> reject = ConcurrentHashMap.newKeySet();
+    private final Map<String, String> rejectSqlState = new ConcurrentHashMap<>();
+    private final AtomicInteger connectCount = new AtomicInteger();
     private volatile Runnable onConnect;
+
+    void rejectWith(String password, String sqlState) {
+      rejectSqlState.put(password, sqlState);
+    }
 
     @Override
     public Connection connect(String url, Properties info) throws SQLException {
@@ -100,11 +126,13 @@ class RotatingFileCredentialDataSourceTest {
       if (onConnect != null) {
         onConnect.run();
       }
+      connectCount.incrementAndGet();
       lastUser.set(info.getProperty("user"));
       String password = info.getProperty("password");
       lastPassword.set(password);
-      if (reject.contains(password)) {
-        throw new SQLException("FATAL: The access token has expired");
+      String sqlState = rejectSqlState.get(password);
+      if (sqlState != null) {
+        throw new SQLException("rejected: " + password, sqlState);
       }
       return mock(Connection.class);
     }

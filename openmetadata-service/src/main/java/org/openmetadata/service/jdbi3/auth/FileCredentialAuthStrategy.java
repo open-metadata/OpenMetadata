@@ -68,8 +68,11 @@ final class FileCredentialAuthStrategy implements DatabaseAuthStrategy {
       Connection connection;
       try {
         connection = connect();
-      } catch (SQLException | RuntimeException first) {
-        // The credential may have just rotated; force a re-read and retry once.
+      } catch (SQLException first) {
+        if (!isAuthFailure(first)) {
+          throw first; // non-auth failure: don't re-read the credential or retry
+        }
+        // An auth failure may mean the credential just rotated; re-read and retry once.
         provider.invalidate();
         connection = retryConnect(first);
       }
@@ -85,15 +88,24 @@ final class FileCredentialAuthStrategy implements DatabaseAuthStrategy {
       return DriverManager.getConnection(jdbcUrl, props);
     }
 
-    private Connection retryConnect(Exception first) throws SQLException {
+    private Connection retryConnect(SQLException first) throws SQLException {
       Connection connection;
       try {
         connection = connect();
-      } catch (SQLException | RuntimeException retryFailure) {
-        LOG.error("File-based credential DB connection failed: {}", retryFailure.getMessage());
-        throw new SQLException("Failed to authenticate with file-based DB credential", first);
+      } catch (SQLException retryFailure) {
+        LOG.error(
+            "File-based credential DB connection failed after re-read: {}",
+            retryFailure.getMessage());
+        throw new SQLException(
+            "Failed to authenticate with file-based DB credential after token re-read", first);
       }
       return connection;
+    }
+
+    // Postgres returns SQLState class 28 (invalid authorization) for an expired/invalid token.
+    private static boolean isAuthFailure(SQLException e) {
+      String sqlState = e.getSQLState();
+      return sqlState != null && sqlState.startsWith("28");
     }
 
     @Override
