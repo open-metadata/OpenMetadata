@@ -25,6 +25,31 @@ import { UseSsoTestLoginResult } from './SsoTestLogin.interface';
 
 const DEFAULT_SCOPE = 'openid email profile';
 
+// E2E seam: a real IdP popup cannot run in headless CI, so Playwright injects an
+// id_token under this global key. It is NEVER set during normal app usage, so the
+// real isolated popup flow below always runs in production.
+export const E2E_INJECTED_ID_TOKEN_KEY = '__OM_E2E_SSO_TEST_ID_TOKEN__';
+
+const acquireIdToken = async (
+  candidate: AuthenticationConfigurationWithScope
+): Promise<string | undefined> => {
+  const injectedToken = (
+    globalThis as unknown as Record<string, string | undefined>
+  )[E2E_INJECTED_ID_TOKEN_KEY];
+  if (injectedToken) {
+    return injectedToken;
+  }
+
+  globalThis.localStorage.setItem(
+    SSO_TEST_LOGIN_CANDIDATE_KEY,
+    JSON.stringify(candidate)
+  );
+  const userManager = new UserManager(getCandidateUserManagerConfig(candidate));
+  const user = await userManager.signinPopup();
+
+  return user?.id_token;
+};
+
 /**
  * Drives the interactive SSO "Test Login" for public-client OIDC providers. The
  * admin completes a real sign-in in an isolated popup; the resulting id_token is
@@ -55,17 +80,8 @@ export const useSsoTestLogin = (): UseSsoTestLoginResult => {
         scope: DEFAULT_SCOPE,
       } as AuthenticationConfigurationWithScope;
 
-      globalThis.localStorage.setItem(
-        SSO_TEST_LOGIN_CANDIDATE_KEY,
-        JSON.stringify(candidate)
-      );
-      const userManager = new UserManager(
-        getCandidateUserManagerConfig(candidate)
-      );
-
       try {
-        const user = await userManager.signinPopup();
-        const idToken = user?.id_token;
+        const idToken = await acquireIdToken(candidate);
         if (!idToken) {
           setError(t('message.sso-test-login-no-token'));
 

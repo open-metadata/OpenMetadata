@@ -17,6 +17,14 @@ import { test } from '../fixtures/pages';
 
 const { expect } = test;
 
+const VALIDATE_TOKEN_URL = '**/system/security/test-login/validate-token';
+
+// Mirrors E2E_INJECTED_ID_TOKEN_KEY in
+// src/components/SettingsSso/SsoTestLogin/useSsoTestLogin.ts. Injecting a token
+// here lets the success/failure round-trip be exercised without a real IdP popup
+// (which cannot run headlessly); the backend response is mocked separately.
+const E2E_ID_TOKEN_KEY = '__OM_E2E_SSO_TEST_ID_TOKEN__';
+
 // OIDC providers whose public-client login can be exercised end-to-end in the
 // browser, so the interactive "Test Login" action is offered for them.
 const OIDC_PROVIDERS = [
@@ -35,14 +43,14 @@ const switchToPublicClient = async (page: Page) => {
   }
 };
 
+const injectTestIdToken = (page: Page) =>
+  page.evaluate((key) => {
+    (window as unknown as Record<string, string>)[key] = 'e2e-fake-id-token';
+  }, E2E_ID_TOKEN_KEY);
+
 test.describe('SSO Test Login', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
-    // Prevent a real IdP popup from opening during the test. With no popup the
-    // round-trip cannot complete, but the button/modal wiring is still asserted.
-    await page.addInitScript(() => {
-      window.open = () => null;
-    });
     await enableSSOEditMode(page);
   });
 
@@ -89,14 +97,71 @@ test.describe('SSO Test Login', () => {
     ).not.toBeVisible();
   });
 
-  test('should open the Test Login modal when triggered', async ({ page }) => {
+  test('should show the resolved identity when the test login succeeds', async ({
+    page,
+  }) => {
+    await page.route(VALIDATE_TOKEN_URL, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          status: 'success',
+          resolvedPrincipal: 'alice',
+          resolvedEmail: 'alice@example.com',
+          mappedRoles: ['DataConsumer'],
+          mappedTeams: ['Engineering'],
+          domainCheck: {
+            enforced: true,
+            principalDomain: 'example.com',
+            resolvedDomain: 'example.com',
+            passed: true,
+          },
+        }),
+      })
+    );
+
     await selectSSOProvider(page, 'google');
     await switchToPublicClient(page);
+    await injectTestIdToken(page);
 
+    const validateResponse = page.waitForResponse(VALIDATE_TOKEN_URL);
     await page.getByTestId('test-login-sso-configuration').click();
+    await validateResponse;
 
-    // The modal opens immediately (before the popup round-trip resolves).
-    await expect(page.getByRole('dialog')).toBeVisible();
-    await expect(page.getByRole('dialog')).toContainText(/test login/i);
+    const dialog = page.getByRole('dialog');
+
+    await expect(dialog.getByTestId('sso-test-login-details')).toBeVisible();
+    await expect(dialog).toContainText('alice@example.com');
+    await expect(dialog).toContainText('DataConsumer');
+    await expect(dialog).toContainText('Engineering');
+  });
+
+  test('should show the failure reason when the configuration would reject the login', async ({
+    page,
+  }) => {
+    await page.route(VALIDATE_TOKEN_URL, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          status: 'failed',
+          errors: [
+            'The resolved identity does not satisfy the configured principal-domain rules.',
+          ],
+        }),
+      })
+    );
+
+    await selectSSOProvider(page, 'google');
+    await switchToPublicClient(page);
+    await injectTestIdToken(page);
+
+    const validateResponse = page.waitForResponse(VALIDATE_TOKEN_URL);
+    await page.getByTestId('test-login-sso-configuration').click();
+    await validateResponse;
+
+    await expect(page.getByRole('dialog')).toContainText(
+      /principal-domain rules/i
+    );
   });
 });
