@@ -85,6 +85,7 @@ const SampleDataTableComponent = withSuspenseFallback(
       import('../components/Database/SampleDataTable/SampleDataTable.component')
   )
 );
+
 export const getContainerDetailPageTabs = ({
   isDataModelEmpty,
   decodedContainerName,

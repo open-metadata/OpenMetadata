@@ -274,7 +274,7 @@ describe('SpreadsheetDetailsUtils', () => {
   });
 
   describe('getSpreadsheetWidgetsFromKey', () => {
-    it('should return WorkflowsTable for worksheets widget', () => {
+    it('should return WorkflowsTable for worksheets widget', async () => {
       const widgetConfig: WidgetConfig = {
         h: 8,
         i: DetailPageWidgetKeys.WORKSHEETS,
@@ -288,7 +288,9 @@ describe('SpreadsheetDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('workflows-table')).toBeInTheDocument();
+      expect(
+        await screen.findByTestId('workflows-table')
+      ).toBeInTheDocument();
     });
 
     it('should return WorkflowsTable for widget key starting with worksheets', () => {

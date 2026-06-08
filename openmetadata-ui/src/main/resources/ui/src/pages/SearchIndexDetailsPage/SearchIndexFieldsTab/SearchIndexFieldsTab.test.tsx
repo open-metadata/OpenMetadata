@@ -51,9 +51,11 @@ jest.mock('../../../hooks/useFqn', () => ({
 }));
 
 describe('SearchIndexFieldsTab component', () => {
-  it('SearchIndexFieldsTab should be visible', () => {
+  it('SearchIndexFieldsTab should be visible', async () => {
     render(<SearchIndexFieldsTab />);
 
-    expect(screen.getByText('SearchIndexFieldsTable')).toBeInTheDocument();
+    expect(
+      await screen.findByText('SearchIndexFieldsTable')
+    ).toBeInTheDocument();
   });
 });

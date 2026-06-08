@@ -11,24 +11,25 @@
  *  limitations under the License.
  */
 
-import { ComponentType, forwardRef, Suspense } from 'react';
-import Loader from '../common/Loader/Loader';
+import { ComponentType, Suspense } from 'react';
 
+/**
+ * Test mock for withSuspenseFallback.
+ * Keeps Suspense so React.lazy resolves via act() microtask flushing,
+ * but uses null fallback so no loader appears during resolution.
+ */
 export function withSuspenseFallback<T extends object>(
   Component: ComponentType<T>
 ) {
-  return forwardRef<unknown, T>(function DefaultFallback(props, ref) {
+  return function DefaultFallback(
+    props: T & JSX.IntrinsicAttributes & { children?: React.ReactNode }
+  ) {
     return (
-      <Suspense
-        fallback={
-          <div className="ant-layout-content flex-center">
-            <Loader />
-          </div>
-        }>
-        <Component {...(props as T)} ref={ref} />
+      <Suspense fallback={null}>
+        <Component {...props} />
       </Suspense>
     );
-  });
+  };
 }
 
 export default withSuspenseFallback;
