@@ -12,7 +12,7 @@
  */
 
 import { capitalize, uniqBy, uniqueId } from 'lodash';
-import { Layout } from 'react-grid-layout';
+import type { Layout } from 'react-grid-layout';
 import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
 import type { Document } from '../generated/entity/docStore/document';
 import type { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';

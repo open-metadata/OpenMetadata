@@ -12,15 +12,15 @@
  */
 
 import { isEmpty, omit } from 'lodash';
-import { EntityTags } from 'Models';
+import type { EntityTags } from 'Models';
 import { TabSpecificField } from '../enums/entity.enum';
-import {
+import type {
   Column,
   Container,
   ContainerDataModel as ContainerDataModelType,
 } from '../generated/entity/data/container';
-import { EntityReference } from '../generated/type/entityReference';
-import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
+import type { EntityReference } from '../generated/type/entityReference';
+import { LabelType, State, type TagLabel } from '../generated/type/tagLabel';
 
 // eslint-disable-next-line max-len
 export const ContainerFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNERS},${TabSpecificField.FOLLOWERS},${TabSpecificField.DATAMODEL}, ${TabSpecificField.DOMAINS},${TabSpecificField.DATA_PRODUCTS}`;

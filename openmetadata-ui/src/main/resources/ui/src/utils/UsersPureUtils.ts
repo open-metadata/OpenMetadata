@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
+import type { AxiosError } from 'axios';
 import moment from 'moment';
 import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
 import { ERROR_MESSAGE, NO_DATA_PLACEHOLDER } from '../constants/constants';

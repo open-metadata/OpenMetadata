@@ -13,7 +13,7 @@
 import { CSMode } from '../../enums/codemirror.enum';
 import {
   Language,
-  Metric,
+  type Metric,
   MetricGranularity,
 } from '../../generated/entity/data/metric';
 

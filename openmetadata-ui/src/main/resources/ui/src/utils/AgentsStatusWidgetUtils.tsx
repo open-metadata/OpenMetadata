@@ -36,8 +36,8 @@ import { ReactComponent as ProfilerIcon } from '../assets/svg/ic-stack-search.sv
 
 import { Skeleton, Typography } from 'antd';
 import { isEmpty, isUndefined, reduce } from 'lodash';
-import { AgentsInfo } from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget.interface';
-import {
+import type { AgentsInfo } from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget.interface';
+import type {
   AgentsLiveInfo,
   CollateAgentLiveInfo,
 } from '../components/ServiceInsights/ServiceInsightsTab.interface';
@@ -48,15 +48,15 @@ import {
   COLLATE_DOCUMENTATION_APP_NAME,
 } from '../constants/Applications.constant';
 import { AgentStatus } from '../enums/ServiceInsights.enum';
-import { App } from '../generated/entity/applications/app';
-import { AppRunRecord } from '../generated/entity/applications/appRunRecord';
+import type { App } from '../generated/entity/applications/app';
+import type { AppRunRecord } from '../generated/entity/applications/appRunRecord';
 import {
-  IngestionPipeline,
+  type IngestionPipeline,
   PipelineType,
   ProviderType,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
-  WorkflowInstance,
+  type WorkflowInstance,
   WorkflowStatus,
 } from '../generated/governance/workflows/workflowInstance';
 import { t } from './i18next/LocalUtil';

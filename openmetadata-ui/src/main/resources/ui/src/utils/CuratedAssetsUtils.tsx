@@ -13,7 +13,7 @@
 
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Alert } from 'antd';
-import { Bucket } from 'Models';
+import type { Bucket } from 'Models';
 import { useTranslation } from 'react-i18next';
 import '../components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsModal/curated-assets-modal.less';
 import { CURATED_ASSETS_LIST } from '../constants/AdvancedSearch.constants';

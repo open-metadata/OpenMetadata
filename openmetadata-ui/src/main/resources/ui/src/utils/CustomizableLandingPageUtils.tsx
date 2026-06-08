@@ -27,7 +27,7 @@ export {
 
 import Icon from '@ant-design/icons';
 import { isUndefined } from 'lodash';
-import { DOMAttributes, Suspense } from 'react';
+import { Suspense, type DOMAttributes } from 'react';
 import { ReactComponent as ArrowRightIcon } from '../assets/svg/arrow-right.svg';
 import EmptyWidgetPlaceholderV1 from '../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholderV1';
 import WidgetWrapper from '../components/MyData/Widgets/Common/WidgetWrapper/WidgetWrapper';
