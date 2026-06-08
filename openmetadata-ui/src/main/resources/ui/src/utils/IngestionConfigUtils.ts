@@ -43,7 +43,7 @@ import {
   getSettingPath,
   getSettingsPathWithFqn,
 } from './RouterUtils';
-import { getDayCron } from './SchedularUtils';
+import { getDayCron } from './CronExpressionUtils';
 import { getFilteredSchema } from './ServiceConnectionUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import {
