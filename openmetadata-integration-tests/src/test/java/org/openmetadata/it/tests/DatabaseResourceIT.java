@@ -604,7 +604,7 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
 
   @Override
   protected Database getEntityIncludeDeleted(String id) {
-    return SdkClients.adminClient().databases().get(id, "owners,tags,databaseSchemas", "deleted");
+    return SdkClients.adminClient().databases().get(id, "owners,tags", "deleted");
   }
 
   @Override
@@ -1816,5 +1816,39 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
       assertNotNull(service.getId(), "Service reference must have an id");
       assertNotNull(service.getType(), "Service reference must have a type");
     }
+  }
+
+  /**
+   * Regression: databases with many schemas previously OOMed the server because `fields=*`
+   * eagerly materialized the entire databaseSchemas list. The list is now served only by
+   * `GET /v1/databaseSchemas?database={fqn}` with pagination; the parent's `databaseSchemas[]`
+   * must remain null/empty and `schemaCount` exposes the size.
+   */
+  @Test
+  void testGetDatabaseWithWildcardFieldsDoesNotMaterializeSchemas(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create()
+            .name("no_schemas_inline_db")
+            .in(service.getFullyQualifiedName())
+            .execute();
+    for (int i = 0; i < 3; i++) {
+      CreateDatabaseSchema schemaRequest = new CreateDatabaseSchema();
+      schemaRequest.setName(ns.prefix("schema_oom_reg_" + i));
+      schemaRequest.setDatabase(database.getFullyQualifiedName());
+      client.databaseSchemas().create(schemaRequest);
+    }
+
+    Database wildcardFetch = getEntityByNameWithFields(database.getFullyQualifiedName(), "*");
+    assertTrue(
+        wildcardFetch.getDatabaseSchemas() == null || wildcardFetch.getDatabaseSchemas().isEmpty(),
+        "fields=* must NOT populate databaseSchemas[] on the parent database");
+
+    Database explicitFetch =
+        getEntityByNameWithFields(database.getFullyQualifiedName(), "databaseSchemas");
+    assertTrue(
+        explicitFetch.getDatabaseSchemas() == null || explicitFetch.getDatabaseSchemas().isEmpty(),
+        "Even explicit fields=databaseSchemas must NOT materialize the embedded list");
   }
 }

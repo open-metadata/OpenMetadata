@@ -64,6 +64,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getDirectoryCondition(tableName));
     conditions.add(getSpreadsheetCondition(tableName));
     conditions.add(getFileTypeCondition(tableName));
+    conditions.add(getChartDashboardCondition());
     conditions.add(getAssignee());
     conditions.add(getCreatedByCondition());
     conditions.add(getAboutEntityCondition());
@@ -608,6 +609,28 @@ public class ListFilter extends Filter<ListFilter> {
   public String getParentCondition(String tableName) {
     String parentFqn = queryParams.get("parent");
     return parentFqn == null ? "" : getFqnPrefixCondition(tableName, parentFqn, "parent");
+  }
+
+  /**
+   * Filter charts by the FQN of a dashboard they are linked to via the dashboard→chart
+   * HAS relationship. Used by {@code GET /v1/charts?dashboard={fqn}} so callers can
+   * paginate the charts on a dashboard without materialising the embedded list on the
+   * dashboard entity. Resolves the dashboard via {@code dashboard_entity.fqnHash} subquery
+   * — keeps the filter FQN-based (no need for callers to look up dashboard ids first).
+   */
+  public String getChartDashboardCondition() {
+    String dashboardFqn = queryParams.get("dashboard");
+    if (dashboardFqn == null || dashboardFqn.isBlank()) {
+      return "";
+    }
+    queryParams.put(
+        "chartDashboardFqnHash",
+        org.openmetadata.service.util.FullyQualifiedName.buildHash(dashboardFqn));
+    return String.format(
+        "id IN (SELECT toId FROM entity_relationship WHERE fromEntity='%s' "
+            + "AND toEntity='%s' AND relation=%d "
+            + "AND fromId IN (SELECT id FROM dashboard_entity WHERE fqnHash = :chartDashboardFqnHash))",
+        Entity.DASHBOARD, Entity.CHART, Relationship.HAS.ordinal());
   }
 
   public String getDirectoryCondition(String tableName) {

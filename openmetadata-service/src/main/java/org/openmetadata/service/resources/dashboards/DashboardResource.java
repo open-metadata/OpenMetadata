@@ -77,15 +77,13 @@ import org.openmetadata.service.security.Authorizer;
 public class DashboardResource extends EntityResource<Dashboard, DashboardRepository> {
   public static final String COLLECTION_PATH = "/v1/dashboards/";
   protected static final String FIELDS =
-      "owners,charts,followers,tags,usageSummary,extension,dataModels,domains,dataProducts,sourceHash";
+      "owners,followers,tags,usageSummary,extension,domains,dataProducts,sourceHash";
   private final DashboardMapper mapper = new DashboardMapper();
 
   @Override
   public Dashboard addHref(UriInfo uriInfo, Dashboard dashboard) {
     super.addHref(uriInfo, dashboard);
     Entity.withHref(uriInfo, dashboard.getService());
-    Entity.withHref(uriInfo, dashboard.getCharts());
-    Entity.withHref(uriInfo, dashboard.getDataModels());
     return dashboard;
   }
 
@@ -95,7 +93,6 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("charts,dataModels", MetadataOperation.VIEW_BASIC);
     addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
     return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_LINEAGE);
   }

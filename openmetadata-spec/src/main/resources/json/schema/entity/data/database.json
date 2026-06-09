@@ -88,8 +88,9 @@
       "default": null
     },
     "databaseSchemas": {
-      "description": "References to schemas in the database.",
-      "$ref": "../../type/entityReferenceList.json"
+      "description": "Deprecated. Use `GET /v1/databaseSchemas?database={fqn}` to list schemas under this database with pagination. This field is no longer populated by the API and will be removed in a future release.",
+      "$ref": "../../type/entityReferenceList.json",
+      "deprecated": true
     },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",

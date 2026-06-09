@@ -994,4 +994,38 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
         foundLookerChart.getService().getFullyQualifiedName(),
         "Chart created under Looker should retain Looker as its service after bulk list");
   }
+
+  /**
+   * Regression: charts previously materialized the full dashboards list (reverse many-to-many)
+   * on `fields=*` expansion. Now stripped entirely; `dashboardCount` exposes the size.
+   */
+  @Test
+  void testGetChartWithWildcardFieldsExcludesDashboards(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
+
+    CreateChart createChart = new CreateChart();
+    createChart.setName(ns.prefix("chart_dashboards_reg"));
+    createChart.setService(service.getFullyQualifiedName());
+    Chart chart = client.charts().create(createChart);
+
+    // Link the chart to two dashboards
+    for (int i = 0; i < 2; i++) {
+      CreateDashboard dashRequest = new CreateDashboard();
+      dashRequest.setName(ns.prefix("dash_for_chart_reg_" + i));
+      dashRequest.setService(service.getFullyQualifiedName());
+      dashRequest.setCharts(java.util.List.of(chart.getFullyQualifiedName()));
+      client.dashboards().create(dashRequest);
+    }
+
+    Chart wildcardFetch = client.charts().get(chart.getId().toString(), "*");
+    assertTrue(
+        wildcardFetch.getDashboards() == null || wildcardFetch.getDashboards().isEmpty(),
+        "fields=* must NOT populate dashboards[] on the parent chart");
+
+    Chart explicitFetch = client.charts().get(chart.getId().toString(), "dashboards");
+    assertTrue(
+        explicitFetch.getDashboards() == null || explicitFetch.getDashboards().isEmpty(),
+        "Even explicit fields=dashboards must NOT materialize dashboards[] anymore");
+  }
 }

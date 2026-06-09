@@ -22,7 +22,9 @@ export interface Dashboard {
      */
     changeDescription?: ChangeDescription;
     /**
-     * All the charts included in this Dashboard.
+     * Deprecated. Use `GET /v1/charts?dashboard={fqn}` to list charts on this dashboard with
+     * pagination. This field is no longer populated by the API and will be removed in a future
+     * release.
      */
     charts?:        EntityReference[];
     dashboardType?: DashboardType;
@@ -31,7 +33,9 @@ export interface Dashboard {
      */
     dataContract?: EntityReference;
     /**
-     * List of data models used by this dashboard or the charts contained on it.
+     * Deprecated. Use the dashboardDataModels list endpoint filtered by the dashboard's
+     * service. This field is no longer populated by the API and will be removed in a future
+     * release.
      */
     dataModels?: EntityReference[];
     /**
@@ -428,7 +432,9 @@ export interface FieldChange {
 }
 
 /**
- * All the charts included in this Dashboard.
+ * Deprecated. Use `GET /v1/charts?dashboard={fqn}` to list charts on this dashboard with
+ * pagination. This field is no longer populated by the API and will be removed in a future
+ * release.
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For

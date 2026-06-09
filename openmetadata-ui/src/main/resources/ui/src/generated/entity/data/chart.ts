@@ -21,7 +21,9 @@ export interface Chart {
     changeDescription?: ChangeDescription;
     chartType?:         ChartType;
     /**
-     * All the dashboards containing this chart.
+     * Deprecated. Use the dashboards list endpoint filtered by chart (when supported) to
+     * enumerate dashboards containing this chart. This field is no longer populated by the API
+     * and will be removed in a future release.
      */
     dashboards?: EntityReference[];
     /**
@@ -440,7 +442,9 @@ export enum ChartType {
 }
 
 /**
- * All the dashboards containing this chart.
+ * Deprecated. Use the dashboards list endpoint filtered by chart (when supported) to
+ * enumerate dashboards containing this chart. This field is no longer populated by the API
+ * and will be removed in a future release.
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For

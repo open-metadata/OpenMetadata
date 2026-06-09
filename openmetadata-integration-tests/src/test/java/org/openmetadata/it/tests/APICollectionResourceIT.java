@@ -445,4 +445,47 @@ public class APICollectionResourceIT extends BaseEntityIT<APICollection, CreateA
         .withService(service.getFullyQualifiedName())
         .withEndpointURL(URI.create("https://localhost:8585/api/v1/invalid"));
   }
+
+  /**
+   * Regression: API collections previously materialized the full apiEndpoints list on
+   * `fields=*` expansion. Now that field is excluded from `*` (load only when explicitly
+   * requested) and `endpointCount` exposes the size.
+   */
+  @Test
+  void testGetCollectionWithWildcardFieldsExcludesEndpoints(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ApiService service = APIServiceTestFactory.createRest(ns);
+    APICollection collection =
+        client
+            .apiCollections()
+            .create(
+                new CreateAPICollection()
+                    .withName(ns.prefix("collection_oom_reg"))
+                    .withService(service.getFullyQualifiedName())
+                    .withEndpointURL(
+                        URI.create("https://localhost:8585/api/v1/collection_oom_reg")));
+
+    for (int i = 0; i < 3; i++) {
+      String safeId = java.util.UUID.randomUUID().toString().substring(0, 8);
+      client
+          .apiEndpoints()
+          .create(
+              new org.openmetadata.schema.api.data.CreateAPIEndpoint()
+                  .withName(ns.prefix("endpoint_oom_reg_" + i))
+                  .withApiCollection(collection.getFullyQualifiedName())
+                  .withEndpointURL(URI.create("https://localhost:8585/api/v1/ep_" + safeId))
+                  .withRequestMethod(org.openmetadata.schema.type.APIRequestMethod.GET));
+    }
+
+    APICollection wildcardFetch = client.apiCollections().get(collection.getId().toString(), "*");
+    assertTrue(
+        wildcardFetch.getApiEndpoints() == null || wildcardFetch.getApiEndpoints().isEmpty(),
+        "fields=* must NOT populate apiEndpoints[] on the parent collection");
+
+    APICollection explicitFetch =
+        client.apiCollections().get(collection.getId().toString(), "apiEndpoints");
+    assertTrue(
+        explicitFetch.getApiEndpoints() == null || explicitFetch.getApiEndpoints().isEmpty(),
+        "Even explicit fields=apiEndpoints must NOT materialize apiEndpoints[] anymore");
+  }
 }

@@ -92,6 +92,20 @@ public abstract class ServiceEntityRepository<
     }
   }
 
+  /**
+   * Every concrete service type (database, dashboard, pipeline, messaging, mlmodel, storage,
+   * search, api, metadata, drive, etc.) inherits this: the {@code pipelines} field — the
+   * ingestion pipelines associated with the service — is excluded from {@code fields=*}
+   * expansion. Typically bounded (a handful of pipelines per service) but follows the same
+   * lazy-loading pattern as larger child collections, and a wildcard GET shouldn't trigger
+   * a relationship lookup. Callers that need the list continue to use explicit
+   * {@code fields=pipelines}.
+   */
+  @Override
+  protected java.util.Set<String> childCollectionFields() {
+    return java.util.Set.of("pipelines");
+  }
+
   @Override
   public void setFieldsInBulk(EntityUtil.Fields fields, List<T> entities) {
     if (nullOrEmpty(entities)) {

@@ -7721,16 +7721,43 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final Fields getFields(String fields) {
     if ("*".equals(fields)) {
-      return new Fields(allowedFields, String.join(",", allowedFields));
+      return new Fields(allowedFields, String.join(",", expandableFields()));
     }
     return new Fields(allowedFields, fields);
   }
 
   public final Fields getOnlySupportedFields(String fields) {
     if ("*".equals(fields)) {
-      return new Fields(allowedFields, String.join(",", allowedFields), true);
+      return new Fields(allowedFields, String.join(",", expandableFields()), true);
     }
     return new Fields(allowedFields, fields, true);
+  }
+
+  /**
+   * Fields that `fields=*` is allowed to expand to. Child-collection field names returned
+   * by {@link #childCollectionFields()} are excluded so that requesting `*` on a parent
+   * entity never materializes its (potentially huge) child entity list. Callers that need
+   * a child collection must request it explicitly via the child's own resource (e.g.
+   * `GET /v1/tables?databaseSchema={fqn}`).
+   */
+  private java.util.Set<String> expandableFields() {
+    Set<String> childFields = childCollectionFields();
+    if (childFields == null || childFields.isEmpty()) {
+      return allowedFields;
+    }
+    return allowedFields.stream()
+        .filter(f -> !childFields.contains(f))
+        .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+  }
+
+  /**
+   * Repositories override to declare fields that represent unbounded child-entity collections
+   * (e.g. {@code tables} on {@code DatabaseSchema}, {@code apiEndpoints} on
+   * {@code APICollection}). These are excluded from `fields=*` expansion to prevent OOMs on
+   * parents with very large child counts. Returns an empty set by default.
+   */
+  protected Set<String> childCollectionFields() {
+    return java.util.Collections.emptySet();
   }
 
   protected final Fields getFields(Set<String> fields) {

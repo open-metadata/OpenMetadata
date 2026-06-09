@@ -136,8 +136,9 @@
       "$ref": "../../type/entityReference.json"
     },
     "children": {
-      "description": "References to child containers residing under this entity.",
-      "$ref": "../../type/entityReferenceList.json"
+      "description": "Deprecated. Use `GET /v1/containers?parent={fqn}` to list child containers with pagination. This field is no longer populated by the API and will be removed in a future release.",
+      "$ref": "../../type/entityReferenceList.json",
+      "deprecated": true
     },
     "dataModel": {
       "description": "References to the container's data model, if data is structured, or null otherwise",

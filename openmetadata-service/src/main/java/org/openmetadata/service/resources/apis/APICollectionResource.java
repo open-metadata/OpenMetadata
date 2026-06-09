@@ -76,7 +76,7 @@ import org.openmetadata.service.security.Authorizer;
 public class APICollectionResource extends EntityResource<APICollection, APICollectionRepository> {
   public static final String COLLECTION_PATH = "/v1/apiCollections/";
   private final APICollectionMapper mapper = new APICollectionMapper();
-  static final String FIELDS = "owners,apiEndpoints,tags,extension,domains,sourceHash";
+  static final String FIELDS = "owners,tags,extension,domains,sourceHash";
 
   @Override
   public APICollection addHref(UriInfo uriInfo, APICollection apiCollection) {
@@ -87,7 +87,6 @@ public class APICollectionResource extends EntityResource<APICollection, APIColl
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("apiEndpoints", MetadataOperation.VIEW_BASIC);
     return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
   }
 

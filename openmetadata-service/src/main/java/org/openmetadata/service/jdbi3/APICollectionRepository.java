@@ -67,6 +67,11 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
   }
 
   @Override
+  protected java.util.Set<String> childCollectionFields() {
+    return java.util.Set.of("apiEndpoints");
+  }
+
+  @Override
   public void storeEntity(APICollection apiCollection, boolean update) {
     store(apiCollection, update);
   }
@@ -107,16 +112,6 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
     bulkInsertRelationships(relationships);
   }
 
-  private List<EntityReference> getAPIEndpoints(APICollection apiCollection) {
-    return apiCollection == null
-        ? null
-        : findTo(
-            apiCollection.getId(),
-            Entity.API_COLLECTION,
-            Relationship.CONTAINS,
-            Entity.API_ENDPOINT);
-  }
-
   @Override
   protected EntityReference getParentReference(APICollection entity) {
     return entity.getService();
@@ -136,10 +131,8 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
     if (apiCollection.getService() == null) {
       apiCollection.setService(getContainer(apiCollection.getId()));
     }
-    apiCollection.setApiEndpoints(
-        fields.contains("apiEndpoints")
-            ? getAPIEndpoints(apiCollection)
-            : apiCollection.getApiEndpoints());
+    // API endpoints are never materialised here — use GET /v1/apiEndpoints?apiCollection={fqn}.
+    apiCollection.setApiEndpoints(null);
   }
 
   @Override
@@ -220,8 +213,7 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
   }
 
   public void clearFields(APICollection apiCollection, Fields fields) {
-    apiCollection.setApiEndpoints(
-        fields.contains("apiEndpoints") ? apiCollection.getApiEndpoints() : null);
+    apiCollection.setApiEndpoints(null);
   }
 
   @Override

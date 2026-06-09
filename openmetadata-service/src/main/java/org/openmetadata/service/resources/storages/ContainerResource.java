@@ -132,6 +132,12 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
           @QueryParam("root")
           @DefaultValue("false")
           Boolean root,
+      @Parameter(
+              description =
+                  "Filter Containers by parent container FQN. Returns containers whose FQN is a descendant of the given parent (used to list children of a container without materialising them on the parent entity).",
+              schema = @Schema(type = "string"))
+          @QueryParam("parent")
+          String parent,
       @Parameter(description = "Limit the number containers returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(value = 0, message = "must be greater than or equal to 0")
@@ -157,6 +163,9 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
     ListFilter filter = new ListFilter(include).addQueryParam("service", service);
     if (root != null) {
       filter.addQueryParam("root", root.toString());
+    }
+    if (parent != null && !parent.isBlank()) {
+      filter.addQueryParam("parent", parent);
     }
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);

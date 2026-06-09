@@ -16,7 +16,6 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,7 +55,6 @@ public class ChartRepository extends EntityRepository<Chart> {
     supportsSearch = true;
 
     // Register bulk field fetchers for efficient database operations
-    fieldFetchers.put("dashboards", this::fetchAndSetDashboards);
     // NOTE: "service" field is NOT registered here because:
     // - For bulk operations: fetchAndSetDefaultService() in setFieldsInBulk handles it correctly
     // - For single entity: setFields() already sets service via getContainer()
@@ -80,6 +78,11 @@ public class ChartRepository extends EntityRepository<Chart> {
   @Override
   protected List<String> getFieldsStrippedFromStorageJson() {
     return List.of("service", "dashboards");
+  }
+
+  @Override
+  protected java.util.Set<String> childCollectionFields() {
+    return java.util.Set.of("dashboards");
   }
 
   @Override
@@ -144,13 +147,9 @@ public class ChartRepository extends EntityRepository<Chart> {
   @Override
   public void setFields(Chart chart, Fields fields, RelationIncludes relationIncludes) {
     chart.withService(getContainer(chart.getId()));
-    // Use Include.ALL for dashboards to match legacy behavior - dashboard-chart relationship
-    // should show all associated dashboards regardless of delete status to maintain referential
-    // integrity
-    chart.setDashboards(
-        fields.contains("dashboards")
-            ? getRelatedEntities(chart, Entity.DASHBOARD, Include.ALL)
-            : null);
+    // Dashboards-containing-this-chart is never materialised here — use the dashboards
+    // listing endpoint filtered by chart (or GET /v1/charts?dashboard={fqn} for the reverse).
+    chart.setDashboards(null);
   }
 
   @Override
@@ -161,14 +160,6 @@ public class ChartRepository extends EntityRepository<Chart> {
     for (Chart entity : entities) {
       clearFieldsInternal(entity, fields);
     }
-  }
-
-  // Individual field fetchers registered in constructor
-  private void fetchAndSetDashboards(List<Chart> charts, Fields fields) {
-    if (!fields.contains("dashboards") || charts == null || charts.isEmpty()) {
-      return;
-    }
-    setFieldFromMap(true, charts, batchFetchDashboards(charts), Chart::setDashboards);
   }
 
   @Override
@@ -200,13 +191,6 @@ public class ChartRepository extends EntityRepository<Chart> {
       return null;
     }
     return Entity.getEntity(entity.getService(), fields, Include.ALL);
-  }
-
-  private List<EntityReference> getRelatedEntities(
-      Chart chart, String entityType, Include include) {
-    return chart == null
-        ? Collections.emptyList()
-        : findFrom(chart.getId(), Entity.CHART, Relationship.HAS, entityType, include);
   }
 
   public class ChartUpdater extends ColumnEntityUpdater {
@@ -263,52 +247,6 @@ public class ChartRepository extends EntityRepository<Chart> {
       recordListChange(
           field, oriEntities, updEntities, added, deleted, EntityUtil.entityReferenceMatch);
     }
-  }
-
-  private Map<UUID, List<EntityReference>> batchFetchDashboards(List<Chart> charts) {
-    var dashboardsMap = new HashMap<UUID, List<EntityReference>>();
-    if (charts == null || charts.isEmpty()) {
-      return dashboardsMap;
-    }
-
-    // Initialize empty lists for all charts
-    charts.forEach(chart -> dashboardsMap.put(chart.getId(), new ArrayList<>()));
-
-    // Single batch query to get all dashboards for all charts
-    // Use Include.ALL to get all relationships including those for soft-deleted entities
-    var records =
-        daoCollection
-            .relationshipDAO()
-            .findFromBatch(entityListToStrings(charts), Relationship.HAS.ordinal(), Include.ALL);
-
-    // Collect all unique dashboard IDs first
-    var dashboardIds =
-        records.stream()
-            .filter(rec -> Entity.DASHBOARD.equals(rec.getFromEntity()))
-            .map(rec -> UUID.fromString(rec.getFromId()))
-            .distinct()
-            .toList();
-
-    // Batch fetch all dashboard entity references
-    var dashboardRefs =
-        Entity.getEntityReferencesByIds(Entity.DASHBOARD, dashboardIds, Include.ALL);
-    var dashboardRefMap =
-        dashboardRefs.stream().collect(Collectors.toMap(EntityReference::getId, ref -> ref));
-
-    // Group dashboards by chart ID
-    records.forEach(
-        record -> {
-          if (Entity.DASHBOARD.equals(record.getFromEntity())) {
-            var chartId = UUID.fromString(record.getToId());
-            var dashboardId = UUID.fromString(record.getFromId());
-            var dashboardRef = dashboardRefMap.get(dashboardId);
-            if (dashboardRef != null) {
-              dashboardsMap.get(chartId).add(dashboardRef);
-            }
-          }
-        });
-
-    return dashboardsMap;
   }
 
   private void fetchAndSetDefaultService(List<Chart> charts) {

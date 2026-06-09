@@ -1132,4 +1132,39 @@ public class DashboardResourceIT extends BaseEntityIT<Dashboard, CreateDashboard
     request.setName(ns.prefix("invalid_dashboard"));
     return request;
   }
+
+  /**
+   * Regression: dashboards previously materialized the full charts and dataModels lists when
+   * requested. The fields are now removed entirely — callers must paginate via
+   * {@code GET /v1/charts?dashboard={fqn}} and the dashboardDataModels listing instead.
+   */
+  @Test
+  void testGetDashboardDoesNotMaterializeChartsOrDataModels(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
+
+    CreateChart createChart = new CreateChart();
+    createChart.setName(ns.prefix("chart_for_oom_reg"));
+    createChart.setService(service.getFullyQualifiedName());
+    Chart chart = client.charts().create(createChart);
+
+    CreateDashboard request = new CreateDashboard();
+    request.setName(ns.prefix("dashboard_oom_reg"));
+    request.setService(service.getFullyQualifiedName());
+    request.setCharts(List.of(chart.getFullyQualifiedName()));
+    Dashboard dashboard = client.dashboards().create(request);
+
+    Dashboard wildcardFetch = client.dashboards().get(dashboard.getId().toString(), "*");
+    assertTrue(
+        wildcardFetch.getCharts() == null || wildcardFetch.getCharts().isEmpty(),
+        "fields=* must NOT populate charts[] on the parent dashboard");
+    assertTrue(
+        wildcardFetch.getDataModels() == null || wildcardFetch.getDataModels().isEmpty(),
+        "fields=* must NOT populate dataModels[] on the parent dashboard");
+
+    Dashboard explicitFetch = client.dashboards().get(dashboard.getId().toString(), "charts");
+    assertTrue(
+        explicitFetch.getCharts() == null || explicitFetch.getCharts().isEmpty(),
+        "Even explicit fields=charts must NOT materialize charts[] anymore");
+  }
 }

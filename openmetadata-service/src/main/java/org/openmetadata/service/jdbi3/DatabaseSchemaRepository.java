@@ -110,6 +110,11 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   @Override
+  protected Set<String> childCollectionFields() {
+    return Set.of("tables");
+  }
+
+  @Override
   public void storeEntity(DatabaseSchema schema, boolean update) {
     store(schema, update);
   }
@@ -156,16 +161,12 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     bulkInsertRelationships(relationships);
   }
 
-  private List<EntityReference> getTables(DatabaseSchema schema) {
-    return schema == null
-        ? Collections.emptyList()
-        : findTo(schema.getId(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS, TABLE);
-  }
-
   @Override
   public void setFields(DatabaseSchema schema, Fields fields, RelationIncludes relationIncludes) {
     setDefaultFields(schema);
-    schema.setTables(fields.contains("tables") ? getTables(schema) : null);
+    // Tables under a schema are listed via GET /v1/tables?databaseSchema={fqn}. Never
+    // materialised on the parent — this was the source of an OOM on a schema with 36k tables.
+    schema.setTables(null);
     schema.setDatabaseSchemaProfilerConfig(
         fields.contains(DATABASE_SCHEMA_PROFILER_CONFIG)
             ? getDatabaseSchemaProfilerConfig(schema)
@@ -177,7 +178,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   public void clearFields(DatabaseSchema schema, Fields fields) {
-    schema.setTables(fields.contains("tables") ? schema.getTables() : null);
+    schema.setTables(null);
     schema.setDatabaseSchemaProfilerConfig(
         fields.contains(DATABASE_SCHEMA_PROFILER_CONFIG)
             ? schema.getDatabaseSchemaProfilerConfig()
@@ -224,10 +225,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     // Fetch common fields like owners, tags, domain, etc.
     fetchAndSetFields(entities, fields);
 
-    // Set other fields if requested
-    if (fields.contains("tables")) {
-      fetchAndSetTables(entities);
-    }
+    // Tables under a schema are never materialised here — use GET /v1/tables?databaseSchema={fqn}.
+    entities.forEach(entity -> entity.setTables(null));
 
     if (fields.contains(DATABASE_SCHEMA_PROFILER_CONFIG)) {
       fetchAndSetDatabaseSchemaProfilerConfigs(entities);
@@ -408,59 +407,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         });
 
     return databaseMap;
-  }
-
-  private void fetchAndSetTables(List<DatabaseSchema> schemas) {
-    if (schemas == null || schemas.isEmpty()) {
-      return;
-    }
-
-    // Get all schema IDs
-    List<String> schemaIds =
-        schemas.stream().map(schema -> schema.getId().toString()).distinct().toList();
-
-    // Bulk fetch all table relationships
-    List<CollectionDAO.EntityRelationshipObject> tableRelations =
-        daoCollection
-            .relationshipDAO()
-            .findToBatch(schemaIds, Relationship.CONTAINS.ordinal(), Entity.DATABASE_SCHEMA, TABLE);
-
-    // Group table IDs by schema
-    Map<UUID, List<UUID>> schemaToTableIds = new HashMap<>();
-    for (CollectionDAO.EntityRelationshipObject relation : tableRelations) {
-      UUID schemaId = UUID.fromString(relation.getFromId());
-      UUID tableId = UUID.fromString(relation.getToId());
-      schemaToTableIds.computeIfAbsent(schemaId, k -> new ArrayList<>()).add(tableId);
-    }
-
-    // Get all unique table IDs
-    List<UUID> allTableIds =
-        schemaToTableIds.values().stream().flatMap(List::stream).distinct().toList();
-
-    // Bulk fetch all table references
-    Map<UUID, EntityReference> tableReferences = new HashMap<>();
-    if (!allTableIds.isEmpty()) {
-      List<EntityReference> tableRefs =
-          Entity.getEntityReferencesByIds(TABLE, allTableIds, Include.ALL);
-      for (EntityReference ref : tableRefs) {
-        tableReferences.put(ref.getId(), ref);
-      }
-    }
-
-    // Set tables on each schema
-    for (DatabaseSchema schema : schemas) {
-      List<UUID> tableIds = schemaToTableIds.get(schema.getId());
-      if (tableIds != null) {
-        List<EntityReference> tables =
-            tableIds.stream()
-                .map(tableReferences::get)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-        schema.setTables(tables);
-      } else {
-        schema.setTables(Collections.emptyList());
-      }
-    }
   }
 
   private void fetchAndSetDatabaseSchemaProfilerConfigs(List<DatabaseSchema> schemas) {

@@ -42,7 +42,7 @@ const EntityLineageTab = lazy(() =>
 );
 
 // eslint-disable-next-line max-len
-export const defaultFields = `${TabSpecificField.DOMAINS},${TabSpecificField.OWNERS}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.CHARTS},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`;
+export const defaultFields = `${TabSpecificField.DOMAINS},${TabSpecificField.OWNERS},${TabSpecificField.FOLLOWERS},${TabSpecificField.TAGS},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`;
 
 export const fetchCharts = async (
   charts: Dashboard['charts'],

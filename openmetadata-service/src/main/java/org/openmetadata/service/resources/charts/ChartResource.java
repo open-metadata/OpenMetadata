@@ -77,7 +77,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   public static final String COLLECTION_PATH = "/v1/charts/";
   private final ChartMapper mapper = new ChartMapper();
   static final String FIELDS =
-      "owners,followers,tags,domains,dataProducts,sourceHash,dashboards,extension";
+      "owners,followers,tags,domains,dataProducts,sourceHash,dashboardCount,extension";
 
   @Override
   public Chart addHref(UriInfo uriInfo, Chart chart) {
@@ -130,6 +130,12 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
               schema = @Schema(type = "string", example = "superset"))
           @QueryParam("service")
           String serviceParam,
+      @Parameter(
+              description =
+                  "Filter charts by the FQN of a dashboard they are linked to. Use this to paginate the charts on a dashboard without materialising the embedded list on the parent dashboard entity.",
+              schema = @Schema(type = "string"))
+          @QueryParam("dashboard")
+          String dashboardParam,
       @Parameter(description = "Limit the number charts returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
@@ -153,6 +159,9 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
+    if (dashboardParam != null && !dashboardParam.isBlank()) {
+      filter.addQueryParam("dashboard", dashboardParam);
+    }
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }

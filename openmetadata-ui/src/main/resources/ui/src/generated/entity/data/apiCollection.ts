@@ -16,7 +16,9 @@
  */
 export interface APICollection {
     /**
-     * All the APIs included in this API Collection.
+     * Deprecated. Use `GET /v1/apiEndpoints?apiCollection={fqn}` to list endpoints under this
+     * collection with pagination. This field is no longer populated by the API and will be
+     * removed in a future release.
      */
     apiEndpoints?:  EntityReference[];
     certification?: AssetCertification;
@@ -131,7 +133,9 @@ export interface APICollection {
 }
 
 /**
- * All the APIs included in this API Collection.
+ * Deprecated. Use `GET /v1/apiEndpoints?apiCollection={fqn}` to list endpoints under this
+ * collection with pagination. This field is no longer populated by the API and will be
+ * removed in a future release.
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For

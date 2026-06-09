@@ -82,12 +82,11 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   public static final String COLLECTION_PATH = "/v1/databases/";
   private final DatabaseMapper mapper = new DatabaseMapper();
   static final String FIELDS =
-      "owners,databaseSchemas,usageSummary,location,tags,certification,extension,domains,sourceHash,followers";
+      "owners,usageSummary,location,tags,certification,extension,domains,sourceHash,followers";
 
   @Override
   public Database addHref(UriInfo uriInfo, Database db) {
     super.addHref(uriInfo, db);
-    Entity.withHref(uriInfo, db.getDatabaseSchemas());
     Entity.withHref(uriInfo, db.getLocation());
     Entity.withHref(uriInfo, db.getService());
     return db;
@@ -95,7 +94,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("databaseSchemas,location", MetadataOperation.VIEW_BASIC);
+    addViewOperation("location", MetadataOperation.VIEW_BASIC);
     addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
     return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
   }

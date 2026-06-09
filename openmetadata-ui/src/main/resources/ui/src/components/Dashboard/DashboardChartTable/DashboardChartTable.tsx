@@ -34,7 +34,9 @@ import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { useTableFilters } from '../../../hooks/useTableFilters';
 import { ChartType } from '../../../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import { updateChart } from '../../../rest/chartAPI';
-import { fetchCharts } from '../../../utils/DashboardDetailsUtils';
+import { getChartsByDashboard } from '../../../rest/chartsAPI';
+import { TabSpecificField } from '../../../enums/entity.enum';
+import { Include } from '../../../generated/type/include';
 import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getChartDetailsPath } from '../../../utils/RouterUtils';
@@ -65,7 +67,6 @@ export const DashboardChartTable = ({
   const { onThreadLinkSelect } = useGenericContext<Dashboard>();
 
   const { data: dashboardDetails } = useGenericContext<Dashboard>();
-  const { charts: listChartIds } = dashboardDetails ?? {};
 
   const [chartsPermissionsArray, setChartsPermissionsArray] = useState<
     Array<ChartsPermissions>
@@ -126,12 +127,20 @@ export const DashboardChartTable = ({
   }, [charts]);
 
   const initializeCharts = useCallback(async () => {
+    if (!dashboardDetails?.fullyQualifiedName) {
+      return;
+    }
     try {
-      const res = await fetchCharts(
-        listChartIds,
-        chartFilters.showDeletedCharts
+      // Charts are no longer embedded on the dashboard entity — fetch via the dedicated
+      // listing endpoint filtered by dashboard FQN. The full chart objects (incl. tags)
+      // are returned in one paginated call instead of N individual lookups.
+      const res = await getChartsByDashboard(
+        dashboardDetails.fullyQualifiedName,
+        TabSpecificField.TAGS,
+        undefined,
+        chartFilters.showDeletedCharts ? Include.Deleted : Include.NonDeleted
       );
-      setCharts(res);
+      setCharts((res.data as unknown as ChartType[]) ?? []);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -140,7 +149,7 @@ export const DashboardChartTable = ({
         })
       );
     }
-  }, [listChartIds, chartFilters.showDeletedCharts]);
+  }, [dashboardDetails?.fullyQualifiedName, chartFilters.showDeletedCharts]);
 
   const handleUpdateChart = (chart: ChartType, index: number) => {
     setEditChart({ chart, index });
@@ -401,13 +410,14 @@ export const DashboardChartTable = ({
 
   useEffect(() => {
     if (isCustomizationPage) {
-      setCharts(listChartIds as unknown as ChartType[]);
+      // Customization-page preview renders an empty table; no charts to fetch.
+      setCharts([]);
 
       return;
     }
 
     initializeCharts();
-  }, [listChartIds, isCustomizationPage, initializeCharts]);
+  }, [isCustomizationPage, initializeCharts]);
 
   useEffect(() => {
     const newShowDeletedValue =

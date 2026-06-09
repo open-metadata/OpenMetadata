@@ -68,9 +68,12 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         DASHBOARD_UPDATE_FIELDS);
     supportsSearch = true;
 
-    fieldFetchers.put("charts", this::fetchAndSetCharts);
-    fieldFetchers.put("dataModels", this::fetchAndSetDataModels);
     fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
+  }
+
+  @Override
+  protected java.util.Set<String> childCollectionFields() {
+    return java.util.Set.of("charts", "dataModels");
   }
 
   @Override
@@ -98,11 +101,13 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     ChartDescriptionAndTagTaskWorkflow(ThreadContext threadContext) {
       super(threadContext);
       EntityLink entityLink = threadContext.getAbout();
-      Dashboard dashboard =
-          Entity.getEntity(DASHBOARD, threadContext.getAboutEntity().getId(), "charts", ALL);
+      UUID dashboardId = threadContext.getAboutEntity().getId();
       String chartName = threadContext.getAbout().getArrayFieldName();
+      DashboardRepository repo = (DashboardRepository) Entity.getEntityRepository(DASHBOARD);
+      List<EntityReference> charts =
+          repo.findTo(dashboardId, DASHBOARD, Relationship.HAS, Entity.CHART);
       EntityReference chartReference =
-          dashboard.getCharts().stream()
+          charts.stream()
               .filter(c -> c.getName().equals(chartName))
               .findFirst()
               .orElseThrow(
@@ -125,17 +130,10 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   @Override
   public void setFields(Dashboard dashboard, Fields fields, RelationIncludes relationIncludes) {
     dashboard.setService(getContainer(dashboard.getId()));
-    dashboard.setCharts(
-        fields.contains("charts")
-            ? getRelatedEntities(dashboard, Entity.CHART, relationIncludes.getIncludeFor("charts"))
-            : null);
-    dashboard.setDataModels(
-        fields.contains("dataModels")
-            ? getRelatedEntities(
-                dashboard,
-                Entity.DASHBOARD_DATA_MODEL,
-                relationIncludes.getIncludeFor("dataModels"))
-            : null);
+    // Charts and dataModels are never materialised here. Use the paginated child resource
+    // endpoints: GET /v1/charts?dashboard={fqn} and the dataModel list endpoint.
+    dashboard.setCharts(null);
+    dashboard.setDataModels(null);
     if (dashboard.getUsageSummary() == null) {
       dashboard.withUsageSummary(
           fields.contains("usageSummary")
@@ -162,31 +160,16 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       return;
     }
 
-    if (fields.contains("charts")) {
-      fetchAndSetCharts(dashboards, fields);
-    }
-
-    if (fields.contains("dataModels")) {
-      fetchAndSetDataModels(dashboards, fields);
-    }
+    // Charts and dataModels are never materialised on the parent — use paginated child endpoints.
+    dashboards.forEach(
+        d -> {
+          d.setCharts(null);
+          d.setDataModels(null);
+        });
 
     if (fields.contains("usageSummary")) {
       fetchAndSetUsageSummaries(dashboards, fields);
     }
-  }
-
-  private void fetchAndSetCharts(List<Dashboard> dashboards, Fields fields) {
-    if (!fields.contains("charts") || dashboards == null || dashboards.isEmpty()) {
-      return;
-    }
-    setFieldFromMap(true, dashboards, batchFetchCharts(dashboards), Dashboard::setCharts);
-  }
-
-  private void fetchAndSetDataModels(List<Dashboard> dashboards, Fields fields) {
-    if (!fields.contains("dataModels") || dashboards == null || dashboards.isEmpty()) {
-      return;
-    }
-    setFieldFromMap(true, dashboards, batchFetchDataModels(dashboards), Dashboard::setDataModels);
   }
 
   private void fetchAndSetUsageSummaries(List<Dashboard> dashboards, Fields fields) {
@@ -203,8 +186,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   @Override
   public void clearFields(Dashboard dashboard, Fields fields) {
-    dashboard.setCharts(fields.contains("charts") ? dashboard.getCharts() : null);
-    dashboard.setDataModels(fields.contains("dataModels") ? dashboard.getDataModels() : null);
+    dashboard.setCharts(null);
+    dashboard.setDataModels(null);
     dashboard.withUsageSummary(
         fields.contains("usageSummary") ? dashboard.getUsageSummary() : null);
   }
@@ -497,88 +480,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       return null;
     }
     return Entity.getEntity(entity.getService(), fields, Include.ALL);
-  }
-
-  private List<EntityReference> getRelatedEntities(
-      Dashboard dashboard, String entityType, Include include) {
-    return dashboard == null
-        ? Collections.emptyList()
-        : findTo(dashboard.getId(), Entity.DASHBOARD, Relationship.HAS, entityType, include);
-  }
-
-  private Map<UUID, List<EntityReference>> batchFetchCharts(List<Dashboard> dashboards) {
-    Map<UUID, List<EntityReference>> chartsMap = new HashMap<>();
-    if (dashboards == null || dashboards.isEmpty()) {
-      return chartsMap;
-    }
-
-    // Initialize empty lists for all dashboards
-    for (Dashboard dashboard : dashboards) {
-      chartsMap.put(dashboard.getId(), new ArrayList<>());
-    }
-
-    // Single batch query to get all charts for all dashboards
-    List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
-            .relationshipDAO()
-            .findToBatch(entityListToStrings(dashboards), Relationship.HAS.ordinal(), Entity.CHART);
-
-    Set<UUID> chartIds = new HashSet<>();
-    for (CollectionDAO.EntityRelationshipObject record : records) {
-      chartIds.add(UUID.fromString(record.getToId()));
-    }
-    Map<UUID, EntityReference> chartRefs =
-        batchFetchReferencesById(Entity.CHART, chartIds, NON_DELETED);
-
-    // Group charts by dashboard ID
-    for (CollectionDAO.EntityRelationshipObject record : records) {
-      UUID dashboardId = UUID.fromString(record.getFromId());
-      EntityReference chartRef = chartRefs.get(UUID.fromString(record.getToId()));
-      if (chartRef != null) {
-        chartsMap.get(dashboardId).add(chartRef);
-      }
-    }
-
-    return chartsMap;
-  }
-
-  private Map<UUID, List<EntityReference>> batchFetchDataModels(List<Dashboard> dashboards) {
-    Map<UUID, List<EntityReference>> dataModelsMap = new HashMap<>();
-    if (dashboards == null || dashboards.isEmpty()) {
-      return dataModelsMap;
-    }
-
-    // Initialize empty lists for all dashboards
-    for (Dashboard dashboard : dashboards) {
-      dataModelsMap.put(dashboard.getId(), new ArrayList<>());
-    }
-
-    // Single batch query to get all data models for all dashboards
-    List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
-            .relationshipDAO()
-            .findToBatch(
-                entityListToStrings(dashboards),
-                Relationship.HAS.ordinal(),
-                Entity.DASHBOARD_DATA_MODEL);
-
-    Set<UUID> dataModelIds = new HashSet<>();
-    for (CollectionDAO.EntityRelationshipObject record : records) {
-      dataModelIds.add(UUID.fromString(record.getToId()));
-    }
-    Map<UUID, EntityReference> dataModelRefs =
-        batchFetchReferencesById(Entity.DASHBOARD_DATA_MODEL, dataModelIds, NON_DELETED);
-
-    // Group data models by dashboard ID
-    for (CollectionDAO.EntityRelationshipObject record : records) {
-      UUID dashboardId = UUID.fromString(record.getFromId());
-      EntityReference dataModelRef = dataModelRefs.get(UUID.fromString(record.getToId()));
-      if (dataModelRef != null) {
-        dataModelsMap.get(dashboardId).add(dataModelRef);
-      }
-    }
-
-    return dataModelsMap;
   }
 
   private void fetchAndSetDefaultService(List<Dashboard> dashboards, boolean includeDetails) {

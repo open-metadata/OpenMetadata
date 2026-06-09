@@ -130,7 +130,6 @@ public class TeamRepository extends EntityRepository<Team> {
     this.quoteFqn = true;
     supportsSearch = true;
 
-    this.fieldFetchers.put("users", this::fetchAndSetUsers);
     this.fieldFetchers.put("defaultRoles", this::fetchAndSetDefaultRoles);
     this.fieldFetchers.put("defaultPersona", this::fetchAndSetDefaultPersona);
     this.fieldFetchers.put("parents", this::fetchAndSetParents);
@@ -144,9 +143,23 @@ public class TeamRepository extends EntityRepository<Team> {
     }
   }
 
+  /**
+   * Users on a team can grow unbounded (organizations with thousands of members). The
+   * embedded {@code users[]} list is no longer materialised on the Team entity — use
+   * {@code GET /v1/users?team={fqn}} with pagination. Internal write paths fetch the current
+   * members directly via {@link #findTo(UUID, String, Relationship, String)} so they don't
+   * depend on the embedded list either. The pre-existing {@code userCount} field continues
+   * to expose the membership size for badges.
+   */
+  @Override
+  protected java.util.Set<String> childCollectionFields() {
+    return java.util.Set.of("users");
+  }
+
   @Override
   public void setFields(Team team, Fields fields, RelationIncludes relationIncludes) {
-    team.setUsers(fields.contains("users") ? getUsers(team) : team.getUsers());
+    // Users on the team are never materialised here — use GET /v1/users?team={fqn}.
+    team.setUsers(null);
     team.setOwns(fields.contains("owns") ? getOwns(team) : team.getOwns());
     team.setDefaultRoles(
         fields.contains(DEFAULT_ROLES) ? getDefaultRoles(team) : team.getDefaultRoles());
@@ -166,7 +179,7 @@ public class TeamRepository extends EntityRepository<Team> {
   @Override
   public void clearFields(Team team, Fields fields) {
     team.setProfile(fields.contains("profile") ? team.getProfile() : null);
-    team.setUsers(fields.contains("users") ? team.getUsers() : null);
+    team.setUsers(null);
     team.setOwns(fields.contains("owns") ? team.getOwns() : null);
     team.setDefaultRoles(fields.contains(DEFAULT_ROLES) ? team.getDefaultRoles() : null);
     team.setInheritedRoles(fields.contains(DEFAULT_ROLES) ? team.getInheritedRoles() : null);
@@ -178,33 +191,6 @@ public class TeamRepository extends EntityRepository<Team> {
     }
     if (!fields.contains("userCount")) {
       team.setUserCount(0);
-    }
-  }
-
-  private void fetchAndSetUsers(List<Team> teams, Fields fields) {
-    if (!fields.contains("users") || teams == null || teams.isEmpty()) {
-      return;
-    }
-
-    List<String> teamIds = teams.stream().map(Team::getId).map(UUID::toString).distinct().toList();
-
-    List<CollectionDAO.EntityRelationshipObject> userRecords =
-        daoCollection
-            .relationshipDAO()
-            .findToBatch(teamIds, Relationship.HAS.ordinal(), TEAM, Entity.USER);
-
-    Map<UUID, List<EntityReference>> teamToUsers = new HashMap<>();
-    for (CollectionDAO.EntityRelationshipObject record : userRecords) {
-      UUID teamId = UUID.fromString(record.getFromId());
-      EntityReference userRef =
-          Entity.getEntityReferenceById(
-              Entity.USER, UUID.fromString(record.getToId()), Include.ALL);
-      teamToUsers.computeIfAbsent(teamId, k -> new ArrayList<>()).add(userRef);
-    }
-
-    for (Team team : teams) {
-      List<EntityReference> userRefs = teamToUsers.get(team.getId());
-      team.setUsers(userRefs != null ? userRefs : new ArrayList<>());
     }
   }
 
@@ -747,8 +733,13 @@ public class TeamRepository extends EntityRepository<Team> {
         .collect(Collectors.toList());
   }
 
-  private List<EntityReference> getUsers(Team team) {
-    return findTo(team.getId(), TEAM, Relationship.HAS, Entity.USER);
+  /**
+   * Fetch the current list of users on a team via the team→user HAS relationship. Internal
+   * call sites (updateTeamUsers, change-tracking) use this instead of {@code team.getUsers()}
+   * because the embedded list is no longer materialised on the Team entity.
+   */
+  List<EntityReference> listCurrentTeamUsers(UUID teamId) {
+    return findTo(teamId, TEAM, Relationship.HAS, Entity.USER);
   }
 
   private List<EntityRelationshipRecord> getUsersRelationshipRecords(UUID teamId) {
@@ -971,13 +962,15 @@ public class TeamRepository extends EntityRepository<Team> {
       throw new IllegalArgumentException("Users list cannot be null");
     }
 
-    Team team = Entity.getEntity(Entity.TEAM, teamId, USERS_FIELD, Include.NON_DELETED);
+    Team team = Entity.getEntity(Entity.TEAM, teamId, "", Include.NON_DELETED);
     if (!team.getTeamType().equals(CreateTeam.TeamType.GROUP)) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.invalidTeamUpdateUsers(team.getTeamType()));
     }
 
-    List<EntityReference> currentUsers = team.getUsers();
+    // users[] is no longer materialised on the Team entity. Fetch the current members
+    // directly via the team→user HAS relationship.
+    List<EntityReference> currentUsers = listCurrentTeamUsers(teamId);
 
     Set<UUID> oldUserIds =
         currentUsers.stream().map(EntityReference::getId).collect(Collectors.toSet());
@@ -1322,7 +1315,9 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     private void updateUsers(Team origTeam, Team updatedTeam) {
-      List<EntityReference> origUsers = listOrEmpty(origTeam.getUsers());
+      // origTeam.getUsers() is no longer populated by setFields — fetch the current members
+      // directly via the team→user HAS relationship so we can diff against the request body.
+      List<EntityReference> origUsers = listCurrentTeamUsers(origTeam.getId());
       List<EntityReference> updatedUsers = listOrEmpty(updatedTeam.getUsers());
       updateToRelationships(
           "users",
