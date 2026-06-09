@@ -170,6 +170,11 @@ public class ElasticQueryBuilder implements OMQueryBuilder {
     return this;
   }
 
+  public ElasticQueryBuilder prefixQuery(String field, String value) {
+    this.query = Query.of(q -> q.prefix(p -> p.field(field).value(value)));
+    return this;
+  }
+
   public ElasticQueryBuilder nestedQuery(String path, OMQueryBuilder innerQuery) {
     Query inner = ((ElasticQueryBuilder) innerQuery).build();
     this.query = Query.of(q -> q.nested(n -> n.path(path).query(inner).ignoreUnmapped(true)));
