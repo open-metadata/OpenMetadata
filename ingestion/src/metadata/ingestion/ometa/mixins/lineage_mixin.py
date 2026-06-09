@@ -18,7 +18,7 @@ import functools
 import json
 import traceback
 from copy import deepcopy
-from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union, cast  # noqa: UP035
+from typing import Any, Dict, Generic, Optional, Sequence, Type, TypeVar, Union, cast  # noqa: UP035
 
 from pydantic import BaseModel
 
@@ -180,8 +180,8 @@ class OMetaLineageMixin(Generic[T]):
 
     def _merge_column_lineage(
         self,
-        original: List[Dict[str, Any] | ColumnLineage] | None,  # noqa: UP006
-        updated: List[Dict[str, Any] | ColumnLineage] | None,  # noqa: UP006
+        original: Sequence[Dict[str, Any] | ColumnLineage] | None,  # noqa: UP006
+        updated: Sequence[Dict[str, Any] | ColumnLineage] | None,  # noqa: UP006
     ) -> list[dict[str, Any]]:
         flat_original_result = set()
         flat_updated_result = set()
