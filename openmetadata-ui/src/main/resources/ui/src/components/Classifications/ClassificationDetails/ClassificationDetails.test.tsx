@@ -648,4 +648,54 @@ describe('ClassificationDetails', () => {
     expect(screen.getByTestId('header')).toBeInTheDocument();
     expect(screen.getByTestId('tags-table')).toBeInTheDocument();
   });
+
+  it('should fetch tags with usageCount field included', async () => {
+    render(
+      <MemoryRouter>
+        <ClassificationDetails {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(mockGetTags).toHaveBeenCalled());
+
+    expect(mockGetTags).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fields: expect.stringContaining('usageCount'),
+      })
+    );
+  });
+
+  it('should show usageCount in the table when tags have asset counts', async () => {
+    const tagsWithUsage: Tag[] = [
+      {
+        id: 'tag-3',
+        name: 'Tag3',
+        displayName: 'Tag Three',
+        description: 'Third tag',
+        fullyQualifiedName: 'TestClassification.Tag3',
+        provider: ProviderType.User,
+        usageCount: 5,
+      },
+    ];
+    mockGetTags.mockResolvedValueOnce({
+      data: tagsWithUsage,
+      paging: { total: 1 },
+    });
+
+    render(
+      <MemoryRouter>
+        <ClassificationDetails {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('tag-row-Tag3')).toBeInTheDocument()
+    );
+
+    expect(mockGetTags).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fields: expect.stringContaining('usageCount'),
+      })
+    );
+  });
 });

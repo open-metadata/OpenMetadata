@@ -11,16 +11,49 @@
  *  limitations under the License.
  */
 
+import React from 'react';
+import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { EntityField } from '../constants/Feeds.constants';
 import { ProviderType } from '../generated/entity/bot';
 import { Classification } from '../generated/entity/classification/classification';
+import { Tag } from '../generated/entity/classification/tag';
 import { ChangeDescription } from '../generated/entity/type';
-import { getClassificationInfo } from './ClassificationUtils';
+import { getClassificationInfo, getCommonColumns } from './ClassificationUtils';
 import { getEntityVersionByField } from './EntityVersionUtils';
 
-// Mock dependencies
 jest.mock('./EntityVersionUtils', () => ({
   getEntityVersionByField: jest.fn(),
+}));
+
+jest.mock('./i18next/LocalUtil', () => ({
+  t: (key: string) => key,
+}));
+
+jest.mock('./TableColumn.util', () => ({
+  descriptionTableObject: jest.fn(() => [
+    { key: 'description', dataIndex: 'description' },
+  ]),
+}));
+
+jest.mock('./IconUtils', () => ({
+  renderIcon: jest.fn(() => null),
+}));
+
+jest.mock('./RouterUtils', () => ({
+  getClassificationTagPath: jest.fn((fqn: string) => `/tags/${fqn}`),
+  getExplorePath: jest.fn(() => '/explore'),
+}));
+
+jest.mock('./TagsUtils', () => ({
+  getDeleteIcon: jest.fn(() => null),
+}));
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Toggle: jest.fn(() => null),
+  Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  TooltipTrigger: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
 }));
 
 const mockGetEntityVersionByField =
@@ -369,6 +402,92 @@ describe('ClassificationUtils', () => {
         expect(mockGetEntityVersionByField).not.toHaveBeenCalled();
         expect(result.name).toBe('TestClassification');
       });
+    });
+  });
+
+  describe('getCommonColumns', () => {
+    const mockTag: Tag = {
+      id: 'tag-1',
+      name: 'TestTag',
+      description: 'Test tag description',
+      fullyQualifiedName: 'TestClassification.TestTag',
+      provider: ProviderType.User,
+    };
+
+    it('should include usageCount column', () => {
+      const columns = getCommonColumns();
+      const keys = columns.map((col) => (col as { key?: string }).key);
+
+      expect(keys).toContain('usageCount');
+    });
+
+    it('usageCount column should have correct configuration', () => {
+      const columns = getCommonColumns();
+      const usageCountCol = columns.find(
+        (col) => (col as { key?: string }).key === 'usageCount'
+      );
+
+      expect(usageCountCol).toMatchObject({
+        dataIndex: 'usageCount',
+        key: 'usageCount',
+        width: 100,
+        align: 'center',
+      });
+    });
+
+    it('usageCount render should display the count when provided', () => {
+      const columns = getCommonColumns();
+      const usageCountCol = columns.find(
+        (col) => (col as { key?: string }).key === 'usageCount'
+      ) as {
+        render?: (
+          val: number,
+          record: Tag,
+          index: number
+        ) => React.ReactElement;
+      };
+
+      const element = usageCountCol.render?.(42, mockTag, 0);
+
+      expect(element?.props.children).toBe(42);
+    });
+
+    it('usageCount render should display 0 when usageCount is 0', () => {
+      const columns = getCommonColumns();
+      const usageCountCol = columns.find(
+        (col) => (col as { key?: string }).key === 'usageCount'
+      ) as {
+        render?: (
+          val: number,
+          record: Tag,
+          index: number
+        ) => React.ReactElement;
+      };
+
+      const element = usageCountCol.render?.(0, mockTag, 0);
+
+      expect(element?.props.children).toBe(0);
+    });
+
+    it('usageCount render should display placeholder when usageCount is undefined', () => {
+      const columns = getCommonColumns();
+      const usageCountCol = columns.find(
+        (col) => (col as { key?: string }).key === 'usageCount'
+      ) as {
+        render?: (
+          val: number,
+          record: Tag,
+          index: number
+        ) => React.ReactElement;
+      };
+
+      const element = usageCountCol.render?.(
+        undefined as unknown as number,
+        mockTag,
+        0
+      );
+
+      expect(element?.props.children).toBe(NO_DATA_PLACEHOLDER);
     });
   });
 });

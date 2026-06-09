@@ -757,38 +757,50 @@ public class TagRepository extends EntityRepository<Tag> {
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 
+  record UsageCountQuery(String template, Map<String, Object> bindings) {}
+
+  // Package-private for testing
+  UsageCountQuery buildUsageCountQuery(List<String> tagFQNs) {
+    var sb = new StringBuilder();
+    Map<String, Object> bindings = new HashMap<>();
+    bindings.put("source", TagSource.CLASSIFICATION.ordinal());
+
+    for (int i = 0; i < tagFQNs.size(); i++) {
+      if (i > 0) {
+        sb.append(" UNION ALL ");
+      }
+      sb.append(
+          """
+          SELECT :tagFQN_%d as tagFQN,
+          COUNT(DISTINCT targetFQNHash) as count
+          FROM tag_usage
+          WHERE source = :source
+          AND (tagFQNHash = :hash_%d OR tagFQNHash LIKE CONCAT(:hash_%d, '.%%'))
+          """
+              .formatted(i, i, i));
+      bindings.put("tagFQN_" + i, tagFQNs.get(i));
+      bindings.put("hash_" + i, FullyQualifiedName.buildHash(tagFQNs.get(i)));
+    }
+    return new UsageCountQuery(sb.toString(), Collections.unmodifiableMap(bindings));
+  }
+
   private Map<String, Integer> batchFetchUsageCounts(List<Tag> tags) {
     if (tags == null || tags.isEmpty()) {
       return Map.of();
     }
 
-    // Build and execute a single query for all tags
     var tagFQNs = tags.stream().map(Tag::getFullyQualifiedName).toList();
 
-    // Build UNION query that gets counts for all tags in one go
-    var queryBuilder = new StringBuilder();
-    tagFQNs.forEach(
-        tagFQN -> {
-          if (!queryBuilder.isEmpty()) {
-            queryBuilder.append(" UNION ALL ");
-          }
-          var escapedFQN = tagFQN.replace("'", "''");
-          queryBuilder.append(
-              """
-          SELECT '%s' as tagFQN,
-          COUNT(DISTINCT targetFQNHash) as count
-          FROM tag_usage
-          WHERE source = %d
-          AND (tagFQNHash = MD5('%s') OR tagFQNHash LIKE CONCAT(MD5('%s'), '.%%'))
-          """
-                  .formatted(
-                      escapedFQN, TagSource.CLASSIFICATION.ordinal(), escapedFQN, escapedFQN));
-        });
-
     try {
+      var usageCountQuery = buildUsageCountQuery(tagFQNs);
       var results =
           Entity.getJdbi()
-              .withHandle(handle -> handle.createQuery(queryBuilder.toString()).mapToMap().list());
+              .withHandle(
+                  handle -> {
+                    var query = handle.createQuery(usageCountQuery.template());
+                    usageCountQuery.bindings().forEach((k, v) -> query.bind(k, v.toString()));
+                    return query.mapToMap().list();
+                  });
 
       return results.stream()
           .filter(row -> row.get("tagFQN") != null)
@@ -801,7 +813,6 @@ public class TagRepository extends EntityRepository<Tag> {
                   }));
     } catch (Exception e) {
       LOG.error("Error batch fetching usage counts", e);
-      // Fall back to individual queries
       return daoCollection
           .tagUsageDAO()
           .getTagCountsBulk(TagSource.CLASSIFICATION.ordinal(), tagFQNs);

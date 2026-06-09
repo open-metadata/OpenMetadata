@@ -116,7 +116,17 @@ export const getCommonColumns = (options?: {
         <Typography.Text>{text || NO_DATA_PLACEHOLDER}</Typography.Text>
       ),
     },
-    ...descriptionTableObject<Tag>({ width: 300 })
+    ...descriptionTableObject<Tag>({ width: 300 }),
+    {
+      title: t('label.asset-plural'),
+      dataIndex: 'usageCount',
+      key: 'usageCount',
+      width: 100,
+      align: 'center',
+      render: (usageCount: number) => (
+        <Typography.Text>{usageCount ?? NO_DATA_PLACEHOLDER}</Typography.Text>
+      ),
+    }
   );
 
   return columns;
