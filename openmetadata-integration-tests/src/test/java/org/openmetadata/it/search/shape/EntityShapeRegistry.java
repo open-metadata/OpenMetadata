@@ -20,11 +20,23 @@ import org.openmetadata.it.search.shape.mutations.FollowersCountMutation;
 import org.openmetadata.it.search.shape.mutations.KeywordIgnoreAboveMutation;
 import org.openmetadata.it.search.shape.mutations.OwnersCountMutation;
 import org.openmetadata.it.search.shape.mutations.TagsCountMutation;
+import org.openmetadata.it.search.shape.profiles.ApiCollectionShapeProfile;
+import org.openmetadata.it.search.shape.profiles.ApiEndpointShapeProfile;
+import org.openmetadata.it.search.shape.profiles.ChartShapeProfile;
 import org.openmetadata.it.search.shape.profiles.ContainerShapeProfile;
+import org.openmetadata.it.search.shape.profiles.DashboardDataModelShapeProfile;
 import org.openmetadata.it.search.shape.profiles.DashboardShapeProfile;
+import org.openmetadata.it.search.shape.profiles.DataProductShapeProfile;
+import org.openmetadata.it.search.shape.profiles.DatabaseSchemaShapeProfile;
+import org.openmetadata.it.search.shape.profiles.DatabaseShapeProfile;
+import org.openmetadata.it.search.shape.profiles.DomainShapeProfile;
+import org.openmetadata.it.search.shape.profiles.GlossaryShapeProfile;
 import org.openmetadata.it.search.shape.profiles.GlossaryTermShapeProfile;
 import org.openmetadata.it.search.shape.profiles.MetricShapeProfile;
+import org.openmetadata.it.search.shape.profiles.MlModelShapeProfile;
+import org.openmetadata.it.search.shape.profiles.PipelineShapeProfile;
 import org.openmetadata.it.search.shape.profiles.QueryShapeProfile;
+import org.openmetadata.it.search.shape.profiles.SearchIndexShapeProfile;
 import org.openmetadata.it.search.shape.profiles.StoredProcedureShapeProfile;
 import org.openmetadata.it.search.shape.profiles.TableShapeProfile;
 import org.openmetadata.it.search.shape.profiles.TopicShapeProfile;
@@ -39,7 +51,19 @@ public final class EntityShapeRegistry {
           new GlossaryTermShapeProfile(),
           new QueryShapeProfile(),
           new StoredProcedureShapeProfile(),
-          new MetricShapeProfile());
+          new MetricShapeProfile(),
+          new DashboardDataModelShapeProfile(),
+          new PipelineShapeProfile(),
+          new MlModelShapeProfile(),
+          new SearchIndexShapeProfile(),
+          new ApiEndpointShapeProfile(),
+          new DatabaseShapeProfile(),
+          new DatabaseSchemaShapeProfile(),
+          new ChartShapeProfile(),
+          new DataProductShapeProfile(),
+          new DomainShapeProfile(),
+          new GlossaryShapeProfile(),
+          new ApiCollectionShapeProfile());
 
   private final List<ShapeMutation> sharedMutations =
       List.of(
