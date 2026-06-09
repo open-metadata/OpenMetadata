@@ -10,7 +10,7 @@ OpenMetadata connects technical metadata, data quality signals, lineage, column-
 
 **AI does not need another raw database connector. AI needs context.**
 
-![OpenMetadata: The Open Context Layer for AI](docs/assets/open-context-layer-hero.svg)
+![OpenMetadata: The Open Context Layer for AI](docs/assets/open-context-layer-hero.png)
 
 OpenMetadata provides that context:
 
@@ -70,7 +70,7 @@ OpenMetadata collects and connects the context AI needs to reason safely over en
 
 ## How OpenMetadata Works
 
-![How OpenMetadata Works](docs/assets/open-context-layer-architecture.svg)
+![How OpenMetadata Works](docs/assets/open-context-layer-architecture.png)
 
 OpenMetadata is built around an open, schema-first metadata graph.
 
@@ -83,7 +83,7 @@ OpenMetadata is built around an open, schema-first metadata graph.
 
 ## Context Graph and Semantics
 
-![OpenMetadata Context Graph](docs/assets/open-context-layer-graph.svg)
+![OpenMetadata Context Graph](docs/assets/open-context-layer-graph.png)
 
 The OpenMetadata graph does not only store data assets. It stores the relationships between assets, columns, owners, teams, policies, quality tests, lineage, classifications, glossary terms, metrics, domains, and data products.
 
