@@ -26,7 +26,6 @@ from metadata.generated.schema.entity.data.container import (
     Container,
     ContainerDataModel,
 )
-from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     Column,
     ColumnName,
@@ -278,7 +277,7 @@ class TestBuildTableEdge:
         assert edge.edge.lineageDetails.columnsLineage is None
 
 
-class TestYieldCatalogTableLineage:
+class TestYieldTableLineage:
     def test_emits_resolved_edges(self, lineage_source):
         lineage_source.source_config.queryLogDuration = 1
         source_table = _make_table("source", "local_unitycatalog.cat.schema.source")
@@ -288,7 +287,7 @@ class TestYieldCatalogTableLineage:
         rows = [LineageRow("cat.schema.source", "cat.schema.target", None)]
         with patch.object(lineage_source, "_iter_date_windows", return_value=[("s", "e")]):
             _mock_query_rows(lineage_source, rows)
-            results = list(lineage_source._yield_catalog_table_lineage("cat"))
+            results = list(lineage_source._yield_table_lineage())
 
         assert len(results) == 1
         assert isinstance(results[0].right, AddLineageRequest)
@@ -299,7 +298,7 @@ class TestYieldCatalogTableLineage:
         rows = [LineageRow("cat.schema.source", "cat.schema.target", None)]
         with patch.object(lineage_source, "_iter_date_windows", return_value=[("s", "e")]):
             _mock_query_rows(lineage_source, rows)
-            results = list(lineage_source._yield_catalog_table_lineage("cat"))
+            results = list(lineage_source._yield_table_lineage())
 
         assert results == []
 
@@ -310,7 +309,7 @@ class TestYieldCatalogTableLineage:
             patch.object(lineage_source, "_build_table_edge", side_effect=Exception("boom")),
         ):
             _mock_query_rows(lineage_source, rows)
-            results = list(lineage_source._yield_catalog_table_lineage("cat"))
+            results = list(lineage_source._yield_table_lineage())
 
         assert len(results) == 1
         assert results[0].left is not None
@@ -324,19 +323,19 @@ class TestYieldCatalogTableLineage:
         lineage_source.engine.connect.return_value.__exit__ = Mock(return_value=False)
 
         with patch.object(lineage_source, "_iter_date_windows", return_value=[("s", "e")]):
-            results = list(lineage_source._yield_catalog_table_lineage("cat"))
+            results = list(lineage_source._yield_table_lineage())
 
         assert results == []
 
-    def test_query_scoped_to_catalog_and_window(self, lineage_source):
+    def test_query_scoped_to_window(self, lineage_source):
         with patch.object(lineage_source, "_iter_date_windows", return_value=[("2026-01-01", "2026-01-02")]):
             mock_conn = _mock_query_rows(lineage_source, [])
-            list(lineage_source._yield_catalog_table_lineage("my_catalog"))
+            list(lineage_source._yield_table_lineage())
 
         executed = str(mock_conn.execution_options.return_value.execute.call_args.args[0])
-        assert "= 'my_catalog'" in executed
         assert "2026-01-01" in executed
         assert "2026-01-02" in executed
+        assert "split_part" not in executed
 
 
 class TestExternalLocationLineage:
@@ -357,7 +356,7 @@ class TestExternalLocationLineage:
         lineage_source.metadata.es_search_container_by_path.return_value = [container_entity]
         _mock_query_rows(lineage_source, rows)
 
-        results = list(lineage_source._yield_catalog_external_lineage("cat"))
+        results = list(lineage_source._yield_external_lineage())
 
         assert len(results) == 1
         assert results[0].right.edge.fromEntity.id == container_entity.id
@@ -376,7 +375,7 @@ class TestExternalLocationLineage:
         lineage_source.metadata.get_by_name.return_value = None
         _mock_query_rows(lineage_source, rows)
 
-        results = list(lineage_source._yield_catalog_external_lineage("cat"))
+        results = list(lineage_source._yield_external_lineage())
 
         assert results == []
         lineage_source.metadata.es_search_container_by_path.assert_not_called()
@@ -412,47 +411,46 @@ class TestExternalLocationLineage:
         lineage_source.engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
         lineage_source.engine.connect.return_value.__exit__ = Mock(return_value=False)
 
-        results = list(lineage_source._yield_catalog_external_lineage("cat"))
+        results = list(lineage_source._yield_external_lineage())
 
         assert results == []
 
 
+class TestIsFilteredTable:
+    def test_filters_by_database(self, lineage_source):
+        with patch(
+            "metadata.ingestion.source.database.unitycatalog.lineage.filter_by_database",
+            return_value=True,
+        ):
+            assert lineage_source._is_filtered_table("system.schema.tbl") is True
+
+    def test_not_filtered_when_all_patterns_pass(self, lineage_source):
+        assert lineage_source._is_filtered_table("cat.schema.tbl") is False
+
+    def test_malformed_name_not_filtered(self, lineage_source):
+        assert lineage_source._is_filtered_table("not_a_fqn") is False
+
+
 class TestIter:
-    def _make_database(self, name="cat"):
-        return Database(
-            id=uuid4(),
-            name=EntityName(root=name),
-            fullyQualifiedName=FullyQualifiedEntityName(root=f"local_unitycatalog.{name}"),
-            service=EntityReference(id=uuid4(), type="databaseService"),
-        )
-
-    def test_processes_each_unfiltered_catalog(self, lineage_source):
-        lineage_source.metadata.list_all_entities.return_value = [
-            self._make_database("CatOne"),
-            self._make_database("CatTwo"),
-        ]
-
+    def test_chains_table_then_external_lineage(self, lineage_source):
         with (
-            patch.object(lineage_source, "_yield_catalog_table_lineage", return_value=[]) as mock_table,
-            patch.object(lineage_source, "_yield_catalog_external_lineage", return_value=[]) as mock_external,
+            patch.object(lineage_source, "_yield_table_lineage", return_value=["t1", "t2"]) as mock_table,
+            patch.object(lineage_source, "_yield_external_lineage", return_value=["e1"]) as mock_external,
+        ):
+            results = list(lineage_source._iter())
+
+        mock_table.assert_called_once_with()
+        mock_external.assert_called_once_with()
+        assert results == ["t1", "t2", "e1"]
+
+    def test_does_not_enumerate_catalogs(self, lineage_source):
+        with (
+            patch.object(lineage_source, "_yield_table_lineage", return_value=[]),
+            patch.object(lineage_source, "_yield_external_lineage", return_value=[]),
         ):
             list(lineage_source._iter())
 
-        assert [c.args[0] for c in mock_table.call_args_list] == ["catone", "cattwo"]
-        assert [c.args[0] for c in mock_external.call_args_list] == ["catone", "cattwo"]
-
-    def test_filters_catalog(self, lineage_source):
-        lineage_source.metadata.list_all_entities.return_value = [self._make_database("skipme")]
-        lineage_source.status = MagicMock()
-
-        with (
-            patch("metadata.ingestion.source.database.unitycatalog.lineage.filter_by_database", return_value=True),
-            patch.object(lineage_source, "_yield_catalog_table_lineage") as mock_table,
-        ):
-            list(lineage_source._iter())
-
-        mock_table.assert_not_called()
-        lineage_source.status.filter.assert_called_once()
+        lineage_source.metadata.list_all_entities.assert_not_called()
 
 
 class TestContainerColumnLineage:

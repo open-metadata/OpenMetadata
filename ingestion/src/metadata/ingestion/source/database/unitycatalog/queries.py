@@ -74,7 +74,6 @@ UNITY_CATALOG_LINEAGE = textwrap.dedent(
             AND target_table_full_name IS NOT NULL
             AND source_column_name IS NOT NULL
             AND target_column_name IS NOT NULL
-            AND lower(split_part(target_table_full_name, '.', 1)) = '{catalog}'
         GROUP BY source_table_full_name, target_table_full_name
     ),
     table_edges AS (
@@ -86,7 +85,6 @@ UNITY_CATALOG_LINEAGE = textwrap.dedent(
             AND event_time < to_timestamp('{end_time}')
             AND source_table_full_name IS NOT NULL
             AND target_table_full_name IS NOT NULL
-            AND lower(split_part(target_table_full_name, '.', 1)) = '{catalog}'
     )
     SELECT
         t.source_table_full_name AS source_table_full_name,
@@ -109,7 +107,6 @@ UNITY_CATALOG_EXTERNAL_TABLES = textwrap.dedent(
     FROM system.information_schema.tables
     WHERE table_type = 'EXTERNAL'
         AND storage_path IS NOT NULL
-        AND lower(table_catalog) = '{catalog}'
     """
 )
 

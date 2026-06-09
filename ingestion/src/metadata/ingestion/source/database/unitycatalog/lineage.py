@@ -22,7 +22,6 @@ from sqlalchemy import text
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.container import ContainerDataModel
-from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
     UnityCatalogConnection,
@@ -69,7 +68,7 @@ class UnitycatalogLineageSource(Source):
     """
     Lineage Unity Catalog Source.
 
-    Lineage edges are streamed one catalog and one day-window at a time from
+    Lineage edges are streamed one day-window at a time from
     `system.access.table_lineage` / `column_lineage` (the Databricks analogue
     of Snowflake's ACCESS_HISTORY). Column pairs are aggregated server-side per
     edge, and each endpoint is resolved to an OpenMetadata table through a
@@ -148,7 +147,7 @@ class UnitycatalogLineageSource(Source):
         cache_key = databricks_table_fqn.lower()
         if cache_key in self._table_cache:
             return self._table_cache[cache_key]
-        entity = self._fetch_table_entity(databricks_table_fqn)
+        entity = self._fetch_table_entity(cache_key)
         self._table_cache[cache_key] = entity
         return entity
 
@@ -174,13 +173,20 @@ class UnitycatalogLineageSource(Source):
         is_filtered = False
         parts = databricks_table_fqn.split(".")
         if len(parts) == 3:
-            _, schema_name, table_name = parts
-            is_filtered = filter_by_schema(
-                self.source_config.schemaFilterPattern,  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
-                schema_name,
-            ) or filter_by_table(
-                self.source_config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
-                table_name,
+            catalog_name, schema_name, table_name = parts
+            is_filtered = (
+                filter_by_database(
+                    self.source_config.databaseFilterPattern,  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
+                    catalog_name,
+                )
+                or filter_by_schema(
+                    self.source_config.schemaFilterPattern,  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
+                    schema_name,
+                )
+                or filter_by_table(
+                    self.source_config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
+                    table_name,
+                )
             )
         return is_filtered
 
@@ -249,15 +255,13 @@ class UnitycatalogLineageSource(Source):
                 )
         return edge
 
-    def _fetch_lineage_rows(self, catalog_name: str, window_start: datetime, window_end: datetime) -> Iterable:
+    def _fetch_lineage_rows(self, window_start: datetime, window_end: datetime) -> Iterable:
         """
-        Run the combined lineage query for one catalog and one [start, end)
-        window, streaming rows so the driver does not buffer the whole result
-        set. A failure on one window is logged and swallowed so the remaining
-        windows still run.
+        Run the combined lineage query for one [start, end) window, streaming
+        rows so the driver does not buffer the whole result set. A failure on one
+        window is logged and swallowed so the remaining windows still run.
         """
         sql_statement = UNITY_CATALOG_LINEAGE.format(
-            catalog=catalog_name,
             start_time=window_start,
             end_time=window_end,
         )
@@ -266,22 +270,20 @@ class UnitycatalogLineageSource(Source):
                 rows = conn.execution_options(stream_results=True, max_row_buffer=1000).execute(text(sql_statement))
                 yield from rows
         except Exception as exc:
-            logger.warning(
-                f"Failed to fetch lineage for catalog [{catalog_name}] window {window_start} - {window_end}: {exc}"
-            )
+            logger.warning(f"Failed to fetch lineage for window {window_start} - {window_end}: {exc}")
             logger.debug(traceback.format_exc())
 
-    def _yield_catalog_table_lineage(self, catalog_name: str) -> Iterable[Either[AddLineageRequest]]:
+    def _yield_table_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         """
-        Stream table/column lineage for one catalog, one day-window at a time,
-        emitting one request per resolved edge. Per-row failures surface as
-        Either(left) instead of being swallowed.
+        Stream table/column lineage one day-window at a time, emitting one
+        request per resolved edge. Per-row failures surface as Either(left)
+        instead of being swallowed.
         """
         emitted = 0
         skipped = 0
         failed = 0
         for window_start, window_end in self._iter_date_windows():
-            for row in self._fetch_lineage_rows(catalog_name, window_start, window_end):
+            for row in self._fetch_lineage_rows(window_start, window_end):
                 try:
                     edge = self._build_table_edge(row)
                 except Exception as exc:
@@ -303,7 +305,7 @@ class UnitycatalogLineageSource(Source):
                 emitted += 1
                 yield Either(right=edge)  # pyright: ignore[reportCallIssue]
         logger.info(
-            f"Table lineage for catalog [{catalog_name}]: emitted {emitted} edges, "
+            f"Table lineage: emitted {emitted} edges, "
             f"skipped {skipped} (filtered or unresolved tables), failed {failed} (row errors)"
         )
 
@@ -387,17 +389,18 @@ class UnitycatalogLineageSource(Source):
                 )
             )
 
-    def _yield_catalog_external_lineage(self, catalog_name: str) -> Iterable[Either[AddLineageRequest]]:
+    def _yield_external_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         """
-        Stream external tables for one catalog and create container lineage for
-        each, resolving the table through the shared bounded LRU. External-table
-        storage paths are a current snapshot, not an event stream, so this is a
-        single per-catalog scan rather than a windowed one.
+        Stream external tables and create container lineage for each, resolving
+        the table through the shared bounded LRU. External-table storage paths
+        are a current snapshot, not an event stream, so this is a single scan
+        rather than a windowed one. Catalogs excluded by the database filter are
+        dropped per row via `_is_filtered_table`.
         """
         try:
             with self.engine.connect() as conn:
                 rows = conn.execution_options(stream_results=True, max_row_buffer=1000).execute(
-                    text(UNITY_CATALOG_EXTERNAL_TABLES.format(catalog=catalog_name))
+                    text(UNITY_CATALOG_EXTERNAL_TABLES)
                 )
                 for row in rows:
                     databricks_table_fqn = f"{row.table_catalog}.{row.table_schema}.{row.table_name}".lower()
@@ -407,26 +410,19 @@ class UnitycatalogLineageSource(Source):
                     if table_entity:
                         yield from self._process_external_location_lineage(table_entity, row.storage_path)
         except Exception as exc:
-            logger.warning(f"Failed to fetch external table locations for catalog [{catalog_name}]: {exc}")
+            logger.warning(f"Failed to fetch external table locations: {exc}")
             logger.debug(traceback.format_exc())
 
     def _iter(self, *_, **__) -> Iterable[Either[AddLineageRequest]]:
         """
-        Stream table/column and external-location lineage one catalog at a time.
-        Catalogs are scoped at the SQL layer and resolved edges share a single
-        bounded table-resolution cache across the whole run.
+        Stream table/column and external-location lineage across the whole
+        metastore. The system-table scans are no longer scoped per catalog;
+        catalogs excluded by `databaseFilterPattern` are dropped per edge during
+        resolution, and resolved edges share a single bounded table-resolution
+        cache across the whole run.
         """
-        for database in self.metadata.list_all_entities(entity=Database, params={"service": self.config.serviceName}):
-            if filter_by_database(self.source_config.databaseFilterPattern, database.name.root):  # pyright: ignore[reportAttributeAccessIssue]
-                self.status.filter(
-                    database.fullyQualifiedName.root,
-                    "Catalog Filtered Out",
-                )
-                continue
-
-            catalog_name = database.name.root.lower()
-            yield from self._yield_catalog_table_lineage(catalog_name)
-            yield from self._yield_catalog_external_lineage(catalog_name)
+        yield from self._yield_table_lineage()
+        yield from self._yield_external_lineage()
 
     def test_connection(self) -> None:
         test_connection_common(self.metadata, self.connection_obj, self.service_connection)
