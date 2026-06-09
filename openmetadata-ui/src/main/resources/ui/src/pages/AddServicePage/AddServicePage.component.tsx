@@ -18,8 +18,6 @@ import { LoadingState } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { getSettingPath } from '../../utils/RouterUtils';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
 import ServiceFlowStepper from '../../components/Settings/Services/AddService/ServiceFlowStepper/ServiceFlowStepper';
@@ -28,6 +26,7 @@ import SelectServiceType from '../../components/Settings/Services/AddService/Ste
 import ConnectionConfigForm from '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm';
 import FiltersConfigForm from '../../components/Settings/Services/ServiceConfig/FiltersConfigForm';
 import { AUTO_PILOT_APP_NAME } from '../../constants/Applications.constant';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
   EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
   SERVICE_DEFAULT_ERROR_MAP,
@@ -44,6 +43,7 @@ import { getServiceLogo } from '../../utils/EntityDisplayUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { handleEntityCreationError } from '../../utils/formUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
+import { getSettingPath } from '../../utils/RouterUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
   getAddServiceEntityBreadcrumb,

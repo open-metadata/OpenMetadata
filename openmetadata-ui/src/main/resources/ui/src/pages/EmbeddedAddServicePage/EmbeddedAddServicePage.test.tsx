@@ -17,7 +17,6 @@ import { triggerOnDemandApp } from '../../rest/applicationAPI';
 import { getServiceByFQN, postService } from '../../rest/serviceAPI';
 import { getServiceLogo } from '../../utils/EntityDisplayUtils';
 import * as serviceUtilClassBaseModule from '../../utils/ServiceUtilClassBase';
-import { getAddServiceEntityBreadcrumb } from '../../utils/ServiceUtils';
 import EmbeddedAddServicePage from './EmbeddedAddServicePage.component';
 
 const mockParam = {
@@ -63,11 +62,6 @@ jest.mock('../../components/common/ServiceDocPanel/ServiceDocPanel', () =>
     .mockImplementation(({ activeField }) => (
       <div data-testid="service-doc-panel">ServiceDocPanel:{activeField}</div>
     ))
-);
-
-jest.mock(
-  '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
-  () => jest.fn().mockImplementation(() => <div>TitleBreadcrumb</div>)
 );
 
 jest.mock(
@@ -234,7 +228,7 @@ describe('EmbeddedAddServicePage', () => {
     );
     expect(getServiceLogo).toHaveBeenCalledWith(
       'mysql',
-      'add-service-page-title-logo'
+      'tw:size-10 tw:max-w-10 tw:max-h-10 tw:object-contain'
     );
   });
 
@@ -284,7 +278,7 @@ describe('EmbeddedAddServicePage', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/service/details/path');
   });
 
-  it('resets the selected connector from the embedded header change action', async () => {
+  it('resets the selected connector from the breadcrumb action', async () => {
     await act(async () => {
       render(<EmbeddedAddServicePage {...mockProps} />, {
         wrapper: MemoryRouter,
@@ -300,7 +294,7 @@ describe('EmbeddedAddServicePage', () => {
     );
 
     await act(async () => {
-      fireEvent.click(screen.getByText('label.change'));
+      fireEvent.click(screen.getByText('label.add-new-entity'));
     });
 
     expect(screen.getByTestId('header')).toHaveTextContent(
@@ -497,23 +491,6 @@ describe('EmbeddedAddServicePage', () => {
     });
 
     expect(screen.getByText('Save Connection')).toBeInTheDocument();
-  });
-
-  it('uses embedded breadcrumb URL with /askCollate prefix', async () => {
-    (getAddServiceEntityBreadcrumb as jest.Mock).mockReturnValue([
-      { name: 'Services', url: '/settings/services/databaseServices' },
-      { name: 'Add Service', url: '' },
-    ]);
-
-    await act(async () => {
-      render(<EmbeddedAddServicePage {...mockProps} />, {
-        wrapper: MemoryRouter,
-      });
-    });
-
-    expect(getAddServiceEntityBreadcrumb).toHaveBeenCalledWith(
-      'databaseServices'
-    );
   });
 
   it('calls getExtraInfo on mount', async () => {

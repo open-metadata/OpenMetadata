@@ -11,16 +11,15 @@
  *  limitations under the License.
  */
 
-import { ChevronLeft } from '@untitledui/icons';
+import { Breadcrumbs, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
-import { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
-import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import ServiceFlowStepper from '../../components/Settings/Services/AddService/ServiceFlowStepper/ServiceFlowStepper';
 import ServiceNameCard from '../../components/Settings/Services/AddService/ServiceNameCard/ServiceNameCard';
 import SelectServiceType from '../../components/Settings/Services/AddService/Steps/SelectServiceType';
@@ -90,38 +89,48 @@ const EmbeddedAddServicePage = () => {
     serviceName: serviceConfig.name,
   });
 
-  const slashedBreadcrumb = useMemo(() => {
-    const crumbs = getAddServiceEntityBreadcrumb(serviceCategory);
-
-    return [
-      {
-        ...crumbs[0],
-        url: `/askCollate/connections/settings/services/${serviceCategory}`,
+  const handleConnectorChangeClick = useCallback(() => {
+    resetNameValidation();
+    setActiveField('');
+    setActiveServiceStep(1);
+    setServiceConfig({
+      name: '',
+      description: '',
+      serviceType: '',
+      connection: {
+        config: {} as ConfigData,
       },
-      ...crumbs.slice(1),
-    ];
-  }, [serviceCategory]);
+    });
+  }, [resetNameValidation]);
+
+  const slashedBreadcrumb = useMemo(
+    () => getAddServiceEntityBreadcrumb(serviceCategory),
+    [serviceCategory]
+  );
 
   const serviceBreadcrumb = useMemo(
     () =>
       serviceConfig.serviceType
         ? [
             {
-              name: t('label.add-new-entity', {
+              label: t('label.add-new-entity', {
                 entity: t('label.service'),
               }),
-              url: connectionsRouterClassBase.getAddServicePath(
-                serviceCategory
-              ),
+              id: 'add-service',
             },
             {
-              name: serviceConfig.serviceType,
-              url: '',
-              activeTitle: true,
+              label: serviceConfig.serviceType,
+              id: serviceConfig.serviceType,
             },
           ]
         : slashedBreadcrumb,
-    [serviceCategory, serviceConfig.serviceType, slashedBreadcrumb, t]
+    [
+      handleConnectorChangeClick,
+      serviceCategory,
+      serviceConfig.serviceType,
+      slashedBreadcrumb,
+      t,
+    ]
   );
 
   const translatedSteps = useMemo(
@@ -156,19 +165,7 @@ const EmbeddedAddServicePage = () => {
   };
 
   const handleConnectionDetailsBackClick = () => setActiveServiceStep(1);
-  const handleConnectorChangeClick = () => {
-    resetNameValidation();
-    setActiveField('');
-    setActiveServiceStep(1);
-    setServiceConfig({
-      name: '',
-      description: '',
-      serviceType: '',
-      connection: {
-        config: {} as ConfigData,
-      },
-    });
-  };
+
   const handleConfigUpdate = async (newConfigData: ConfigData) => {
     const serviceName = serviceConfig.name.trim();
 
@@ -198,7 +195,6 @@ const EmbeddedAddServicePage = () => {
 
     setServiceConfig((prev) => ({
       ...prev,
-      name: serviceName,
       ...data,
     }));
     setActiveServiceStep(3);
@@ -287,43 +283,57 @@ const EmbeddedAddServicePage = () => {
     [activeServiceStep, serviceConfig.serviceType]
   );
 
+  const handleBreadcrumbAction = useCallback(
+    (id: React.Key) => {
+      if (id === 'add-service') {
+        handleConnectorChangeClick();
+      } else if (id === 'category') {
+        navigate(
+          `/askCollate/connections/settings/services/${serviceCategory}`
+        );
+      }
+    },
+    [handleConnectorChangeClick, navigate, serviceCategory]
+  );
+
   const firstPanelChildren = (
     <>
-      <TitleBreadcrumb
-        className="service-flow-breadcrumb"
-        titleLinks={serviceBreadcrumb}
+      <Breadcrumbs
+        items={serviceBreadcrumb}
+        onAction={handleBreadcrumbAction}
       />
-      <div className="add-service-page-header">
+      <div className="tw:mt-[22px]">
         <div data-testid="add-new-service-container">
           {serviceConfig.serviceType ? (
-            <div className="add-service-page-title-row">
+            <div className="tw:flex tw:items-center tw:gap-3 tw:pb-0">
               {getServiceLogo(
                 serviceConfig.serviceType || '',
-                'add-service-page-title-logo'
+                'tw:size-10 tw:max-w-10 tw:max-h-10 tw:object-contain'
               )}
-              <h1 className="add-service-page-title" data-testid="header">
+              <Typography
+                className="tw:m-0"
+                data-testid="header"
+                size="text-xl"
+                weight="semibold">
                 {`${serviceConfig.serviceType} ${t('label.service')}`}
-              </h1>
-              <button
-                className="add-service-page-change-button"
-                type="button"
-                onClick={handleConnectorChangeClick}>
-                <ChevronLeft size={14} />
-                {t('label.change')}
-              </button>
+              </Typography>
             </div>
           ) : (
-            <h1 className="add-service-page-title" data-testid="header">
+            <Typography
+              className="tw:m-0"
+              data-testid="header"
+              size="text-xl"
+              weight="semibold">
               {t('label.add-new-entity', { entity: t('label.service') })}
-            </h1>
+            </Typography>
           )}
 
           <ServiceFlowStepper
             activeStep={activeServiceStep}
-            className="add-service-page-stepper"
+            className="tw:mt-6"
             steps={translatedSteps}
           />
-          <div className="add-service-page-step-body">
+          <div className="tw:mt-[30px]">
             {activeServiceStep === 1 && (
               <SelectServiceType
                 handleServiceTypeClick={handleServiceTypeClick}
@@ -354,7 +364,11 @@ const EmbeddedAddServicePage = () => {
                   requireTestConnection
                   cancelText={t('label.back')}
                   data={serviceConfig as ServicesType}
-                  isSubmitDisabled={Boolean(nameError) || isServiceNameChecking}
+                  isSubmitDisabled={
+                    !serviceConfig.name.trim() ||
+                    Boolean(nameError) ||
+                    isServiceNameChecking
+                  }
                   okText={t('label.next-what-to-ingest')}
                   serviceCategory={serviceCategory}
                   serviceType={serviceConfig.serviceType}
