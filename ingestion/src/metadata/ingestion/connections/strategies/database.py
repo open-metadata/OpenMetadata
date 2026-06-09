@@ -43,7 +43,11 @@ ConnectionConfig = TypeVar("ConnectionConfig", bound="BaseModel")
 
 
 class BasicAuthStrategy(ClientStrategy[ConnectionConfig, "Engine"]):
-    """Builds an engine from username/password (URL-based) auth."""
+    """Builds an engine from the connection URL via the common builders.
+
+    Covers basic username/password auth and serves as the default for any
+    authType that needs no special engine handling.
+    """
 
     def build(self) -> Engine:
         return create_generic_db_connection(
