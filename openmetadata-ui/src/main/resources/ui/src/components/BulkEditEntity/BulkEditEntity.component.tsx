@@ -345,7 +345,7 @@ const BulkEditEntity = ({
     ].map((column) => {
       const baseCellClass = column.cellClass;
       const baseRenderCell = column.renderCell;
-      const columnKey = column.key.replace('*', '');
+      const columnKey = column.key.replaceAll('*', '');
       const columnWidth = BULK_EDIT_COLUMN_WIDTHS[columnKey];
       const isNameColumn = columnKey === 'name';
       const shouldLockNameColumn =

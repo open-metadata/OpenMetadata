@@ -63,6 +63,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVFormat.Builder;
@@ -325,7 +326,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
     String path =
         String.format(
-            ".*json/data/%s/%sCsvDocumentation.json$", effectiveEntityType, effectiveEntityType);
+            ".*json/data/%s/%sCsvDocumentation\\.json$",
+            Pattern.quote(effectiveEntityType), Pattern.quote(effectiveEntityType));
     try {
       List<String> jsonDataFiles = EntityUtil.getJsonDataResources(path);
       if (jsonDataFiles.isEmpty()) {
