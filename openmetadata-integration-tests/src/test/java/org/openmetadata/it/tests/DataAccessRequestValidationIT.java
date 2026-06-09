@@ -61,7 +61,8 @@ import org.openmetadata.sdk.exceptions.InvalidRequestException;
  * <p>Also covers the one-active-request-per-entity rule enforced in {@link
  * org.openmetadata.service.jdbi3.TaskRepository}: a user cannot submit a second active Data Access
  * Request for an entity they already have an active request for, while a different user requesting
- * the same entity, or the same user requesting a different entity, remains allowed.
+ * the same entity, the same user requesting a different entity, or the same user re-requesting an
+ * entity whose prior request has reached a terminal status, all remain allowed.
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
@@ -333,6 +334,21 @@ public class DataAccessRequestValidationIT {
             ns, "table", secondTable.getFullyQualifiedName(), dataAccessPayload("FullAccess"));
 
     assertNotNull(firstRequest.getId());
+    assertNotNull(secondRequest.getId());
+  }
+
+  @Test
+  void testDarAfterPreviousRequestTerminal_allowed(TestNamespace ns) {
+    Table table = createTableOnSnowflakeService(ns, baseSnowflakeConnection());
+
+    Task firstRequest =
+        createDataAccessRequest(
+            ns, "table", table.getFullyQualifiedName(), dataAccessPayload("FullAccess"));
+    SdkClients.adminClient().tasks().close(firstRequest.getId().toString());
+
+    Task secondRequest =
+        createDataAccessRequest(
+            ns, "table", table.getFullyQualifiedName(), dataAccessPayload("FullAccess"));
     assertNotNull(secondRequest.getId());
   }
 
