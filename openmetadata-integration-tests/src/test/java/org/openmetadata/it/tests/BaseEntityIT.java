@@ -5012,6 +5012,49 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   }
 
   /**
+   * Test: A bot whose policy does NOT deny {@code EditOwners} (the ingestion bot - {@code
+   * IngestionBotPolicy}/{@code DefaultBotPolicy} carry only a {@code DisplayName-Deny}) CAN reassign
+   * owners through a single-entity PUT even when an owner already exists.
+   *
+   * <p>Regression guard for the over-broad guard that reverted owners on <em>any</em> bot PUT once
+   * an owner was set, which silently broke ingestion ownership re-sync. {@code
+   * EntityRepository#updateOwners} now keys on the same policy-aware {@code updatingBotDeniedOperation
+   * (EDIT_OWNERS)} check as {@code updateDisplayName}, so a policy-allowed bot updates owners while a
+   * denied bot (or {@code overrideMetadata=false} with a field-deny) still preserves them.
+   */
+  @Test
+  void test_singleEntityPut_bot_updatesOwnersWhenPolicyAllows(TestNamespace ns) {
+    if (!supportsBulkAPI || !supportsOwners) return;
+    if (!hasField("setOwners", List.class)) return;
+
+    K request = createRequest(ns.prefix("put_ownallow_"), ns);
+    T created = createEntity(request);
+    String fqn = created.getFullyQualifiedName();
+
+    SharedEntities shared = SharedEntities.get();
+    T entity = getEntityByNameWithFields(fqn, "owners");
+    entity.setOwners(List.of(shared.USER1_REF));
+    patchEntity(entity.getId().toString(), entity);
+
+    invoke(request, "setOwners", List.class, List.of(shared.USER2_REF));
+    HttpResponse<String> response = putAs(request, BulkApi.botToken());
+    assertTrue(
+        response.statusCode() == 200 || response.statusCode() == 201,
+        "Bot single-entity PUT should be authorized via EDIT_ALL: "
+            + response.statusCode()
+            + " "
+            + response.body());
+
+    T result = getEntityByNameWithFields(fqn, "owners");
+    assertNotNull(result.getOwners(), "owners present after bot update: " + fqn);
+    assertFalse(result.getOwners().isEmpty(), "owners not cleared: " + fqn);
+    assertEquals(
+        shared.USER2.getId(),
+        result.getOwners().get(0).getId(),
+        "Bot allowed EditOwners (ingestion bot, no Owner-Deny) must update owners via PUT: " + fqn);
+  }
+
+  /**
    * Test: A bot bulk-update merges new tags with existing user-added tags (PUT semantics).
    *
    * <p>Legacy connector behavior with {@code overrideMetadata=true} permitted REPLACE operations

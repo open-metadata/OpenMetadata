@@ -67,11 +67,9 @@ function PipelineActionsDropdown({
   } = useMemo(() => ingestion, [ingestion]);
 
   const { editPermission, deletePermission } = useMemo(() => {
-    const pipelinePermission = ingestionPipelinePermissions?.[name];
-
     return {
-      editPermission: pipelinePermission?.[Operation.EditAll],
-      deletePermission: pipelinePermission?.[Operation.Delete],
+      editPermission: ingestionPipelinePermissions?.[Operation.EditAll],
+      deletePermission: ingestionPipelinePermissions?.[Operation.Delete],
     };
   }, [ingestionPipelinePermissions, name]);
 

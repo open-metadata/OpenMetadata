@@ -10,6 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+export { getTabLabelFromId } from './CustomizePagePureUtils';
+
 import { TabsProps } from 'antd';
 import { get, noop, uniqueId } from 'lodash';
 import { EntityUnion } from '../../components/Explore/ExplorePage.interface';
@@ -147,12 +150,6 @@ export const getGlossaryDefaultTabs = () => {
       editable: false,
     },
   ];
-};
-
-export const getTabLabelFromId = (tab: EntityTabs): string => {
-  const labelKey = TAB_LABEL_MAP[tab];
-
-  return labelKey ? i18n.t(labelKey) : tab;
 };
 
 export const getDefaultTabs = (pageType?: string): Tab[] => {

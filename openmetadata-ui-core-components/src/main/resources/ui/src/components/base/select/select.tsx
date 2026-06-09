@@ -42,7 +42,7 @@ interface SelectProps
     SelectCommonProps {
   items?: SelectItemType[];
   popoverClassName?: string;
-  placeholderIcon?: FC | ReactNode;
+  icon?: FC | ReactNode;
   children: ReactNode | ((item: SelectItemType) => ReactNode);
 }
 
@@ -54,7 +54,7 @@ interface SelectValueProps {
   isDisabled: boolean;
   placeholder?: string;
   ref?: Ref<HTMLButtonElement>;
-  placeholderIcon?: FC | ReactNode;
+  icon?: FC | ReactNode;
 }
 
 export const sizes = {
@@ -69,7 +69,7 @@ const SelectValue = ({
   size,
   fontSize,
   placeholder,
-  placeholderIcon,
+  icon,
   ref,
 }: SelectValueProps) => {
   return (
@@ -91,7 +91,7 @@ const SelectValue = ({
           sizes[size].root
         )}>
         {(state) => {
-          const Icon = state.selectedItem?.icon || placeholderIcon;
+          const Icon = state.selectedItem?.icon || icon;
 
           return (
             <>
@@ -162,7 +162,7 @@ export const SelectContext = createContext<{
 
 const Select = ({
   placeholder = 'Select',
-  placeholderIcon,
+  icon,
   size = 'sm',
   fontSize = 'sm',
   children,
@@ -194,7 +194,7 @@ const Select = ({
             <SelectValue
               {...state}
               {...{ size, fontSize, placeholder }}
-              placeholderIcon={placeholderIcon}
+              icon={icon}
             />
 
             <Popover className={rest.popoverClassName} size={size}>
