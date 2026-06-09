@@ -14,6 +14,7 @@ Mixin class containing PATCH specific methods
 To be used by OpenMetadata class
 """
 
+import hashlib
 import json
 import traceback
 from copy import deepcopy
@@ -74,6 +75,24 @@ MAX_OPTIMISTIC_LOCK_RETRIES = 3
 def _is_precondition_failed(exc: Exception) -> bool:
     """True if `exc` is a 412 Precondition Failed raised by a stale If-Match."""
     return isinstance(exc, APIError) and (getattr(exc, "status_code", None) == 412 or getattr(exc, "code", None) == 412)
+
+
+def _entity_etag(entity: BaseModel) -> Optional[str]:  # noqa: UP045
+    """Strong ETag the server derives for an entity, for optimistic-concurrency writes.
+
+    Mirrors the server's ``EntityETag.generateETag``: SHA-256 of ``"<version>-<updatedAt>"``,
+    first 16 hex chars, quoted. Computing it from the already-fetched instance lets the column
+    patch helpers send ``If-Match`` without a second GET, and ties the precondition to the exact
+    instance the patch is built from. Returns ``None`` when version/updatedAt are absent so the
+    caller falls back to a non-conditional write. (Jetty strips any inbound ``--gzip`` suffix from
+    ``If-Match``, so the bare value matches the server's stored ETag.)
+    """
+    version = getattr(entity, "version", None)
+    updated_at = getattr(entity, "updatedAt", None)
+    if version is None or updated_at is None:
+        return None
+    raw = f"{model_str(version)}-{model_str(updated_at)}"
+    return '"' + hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16] + '"'
 
 
 def _summarize_patch(patch: Any) -> str:
@@ -526,12 +545,8 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
         entity_type = type(entity)
         entity_label = entity.fullyQualifiedName.root if entity.fullyQualifiedName else entity_type.__name__
-        suffix = self.get_suffix(entity_type)  # pyright: ignore[reportAttributeAccessIssue]
         last_error: Optional[APIError] = None  # noqa: UP045
         for attempt in range(MAX_OPTIMISTIC_LOCK_RETRIES):
-            # Read the ETag before the instance so any change in between also forces a
-            # 412 retry rather than patching stale columns under a shifted array index.
-            if_match = self.client.get_etag(f"{suffix}/{model_str(entity.id)}")
             instance = self._fetch_entity_if_exists(
                 entity=entity_type, entity_id=entity.id, fields=adapter.patch_fields
             )
@@ -542,21 +557,28 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             if destination is None:
                 return None
 
+            # Derive If-Match from the just-fetched instance so a concurrent modification is
+            # rejected (412) and retried, instead of silently overwriting a shifted column array.
             try:
                 patched_entity = self.patch(
-                    entity=entity_type, source=entity, destination=destination, if_match=if_match
+                    entity=entity_type,
+                    source=entity,
+                    destination=destination,
+                    if_match=_entity_etag(instance),
                 )
             except APIError as exc:
-                if _is_precondition_failed(exc) and attempt < MAX_OPTIMISTIC_LOCK_RETRIES - 1:
+                if _is_precondition_failed(exc):
                     last_error = exc
-                    logger.info(
-                        "Concurrent modification while patching column tags on [%s]; "
-                        "refetching and retrying (attempt %d/%d)",
-                        entity_label,
-                        attempt + 1,
-                        MAX_OPTIMISTIC_LOCK_RETRIES,
-                    )
-                    continue
+                    if attempt < MAX_OPTIMISTIC_LOCK_RETRIES - 1:
+                        logger.info(
+                            "Concurrent modification while patching column tags on [%s]; "
+                            "refetching and retrying (attempt %d/%d)",
+                            entity_label,
+                            attempt + 1,
+                            MAX_OPTIMISTIC_LOCK_RETRIES,
+                        )
+                        continue
+                    break  # retries exhausted -> warn and return None below
                 raise
             else:
                 if patched_entity is None:
@@ -634,10 +656,8 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             return None
 
         table_label = table.fullyQualifiedName.root if table.fullyQualifiedName else Table.__name__
-        suffix = self.get_suffix(Table)  # pyright: ignore[reportAttributeAccessIssue]
         last_error: Optional[APIError] = None  # noqa: UP045
         for attempt in range(MAX_OPTIMISTIC_LOCK_RETRIES):
-            if_match = self.client.get_etag(f"{suffix}/{model_str(table.id)}")
             instance: Optional[Table] = self._fetch_entity_if_exists(  # noqa: UP045
                 entity=Table, entity_id=table.id
             )
@@ -650,19 +670,25 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             destination = table.model_copy(deep=True)
             update_column_description(destination.columns, column_descriptions, force)
 
+            # Derive If-Match from the just-fetched instance so a concurrent modification is
+            # rejected (412) and retried, instead of silently overwriting it.
             try:
-                patched_entity = self.patch(entity=Table, source=table, destination=destination, if_match=if_match)
+                patched_entity = self.patch(
+                    entity=Table, source=table, destination=destination, if_match=_entity_etag(instance)
+                )
             except APIError as exc:
-                if _is_precondition_failed(exc) and attempt < MAX_OPTIMISTIC_LOCK_RETRIES - 1:
+                if _is_precondition_failed(exc):
                     last_error = exc
-                    logger.info(
-                        "Concurrent modification while patching column descriptions on [%s]; "
-                        "refetching and retrying (attempt %d/%d)",
-                        table_label,
-                        attempt + 1,
-                        MAX_OPTIMISTIC_LOCK_RETRIES,
-                    )
-                    continue
+                    if attempt < MAX_OPTIMISTIC_LOCK_RETRIES - 1:
+                        logger.info(
+                            "Concurrent modification while patching column descriptions on [%s]; "
+                            "refetching and retrying (attempt %d/%d)",
+                            table_label,
+                            attempt + 1,
+                            MAX_OPTIMISTIC_LOCK_RETRIES,
+                        )
+                        continue
+                    break  # retries exhausted -> warn and return None below
                 raise
             else:
                 if patched_entity is None:
