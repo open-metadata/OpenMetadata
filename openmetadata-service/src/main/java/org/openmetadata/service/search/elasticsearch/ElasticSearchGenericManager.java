@@ -30,7 +30,9 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.search.GenericClient;
 import org.openmetadata.service.search.SearchClusterMetrics;
+import org.openmetadata.service.search.SearchFieldLimits;
 import org.openmetadata.service.search.SearchHealthStatus;
+import org.openmetadata.service.search.SearchIndexSettings;
 
 @Slf4j
 public class ElasticSearchGenericManager implements GenericClient {
@@ -117,6 +119,8 @@ public class ElasticSearchGenericManager implements GenericClient {
       return;
     }
     try {
+      String hardenedContent =
+          SearchIndexSettings.harden(mappingContent, SearchFieldLimits.active());
       client
           .indices()
           .putIndexTemplate(
@@ -124,7 +128,7 @@ public class ElasticSearchGenericManager implements GenericClient {
                   p.name(templateName)
                       .indexPatterns(List.of(indexPattern))
                       .priority(100L)
-                      .template(t -> t.withJson(new StringReader(mappingContent))));
+                      .template(t -> t.withJson(new StringReader(hardenedContent))));
       LOG.debug("Successfully created/updated index template: {}", templateName);
     } catch (ElasticsearchException e) {
       LOG.error("Failed to create/update index template: {}", templateName, e);

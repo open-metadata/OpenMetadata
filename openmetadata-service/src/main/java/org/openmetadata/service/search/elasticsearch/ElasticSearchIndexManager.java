@@ -28,6 +28,8 @@ import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.search.IndexManagementClient;
+import org.openmetadata.service.search.SearchFieldLimits;
+import org.openmetadata.service.search.SearchIndexSettings;
 
 /**
  * ElasticSearch implementation of index management operations.
@@ -86,13 +88,15 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
     }
     try {
       String indexName = indexMapping.getIndexName(clusterAlias);
+      String hardenedContent =
+          SearchIndexSettings.harden(indexMappingContent, SearchFieldLimits.active());
 
       PutMappingRequest request =
           PutMappingRequest.of(
               builder -> {
                 builder.index(indexName);
-                if (indexMappingContent != null) {
-                  builder.withJson(new StringReader(indexMappingContent));
+                if (hardenedContent != null) {
+                  builder.withJson(new StringReader(hardenedContent));
                 }
                 return builder;
               });
@@ -147,12 +151,14 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
 
   private void createIndexInternal(String indexName, String indexMappingContent)
       throws IOException {
+    String contentWithLimits =
+        SearchIndexSettings.harden(indexMappingContent, SearchFieldLimits.active());
     CreateIndexRequest request =
         CreateIndexRequest.of(
             builder -> {
               builder.index(indexName);
-              if (indexMappingContent != null) {
-                builder.withJson(new StringReader(indexMappingContent));
+              if (contentWithLimits != null) {
+                builder.withJson(new StringReader(contentWithLimits));
               }
               return builder;
             });

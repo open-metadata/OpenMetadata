@@ -465,7 +465,8 @@
         }
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
       },
       "tags": {
         "properties": {
