@@ -997,7 +997,9 @@ public class IngestionPipelineResource
                     ingestionPipeline.getIngestionRunner()));
     if (useStreamableLogs) {
       // Get logs using the repository's log storage picking up the last runId
-      String runId = ingestionPipeline.getPipelineStatuses().getRunId();
+      PipelineStatus latestStatus =
+          IngestionPipelineRepository.latestPipelineStatus(ingestionPipeline);
+      String runId = latestStatus == null ? null : latestStatus.getRunId();
       if (!CommonUtil.nullOrEmpty(runId)) {
         Map<String, Object> lastIngestionLogsMap =
             repository.getLogs(
@@ -1075,7 +1077,9 @@ public class IngestionPipelineResource
 
               if (useStreamableLogs) {
                 // Get logs using the repository's log storage picking up the last runId
-                String runId = ingestionPipeline.getPipelineStatuses().getRunId();
+                PipelineStatus latestStatus =
+                    IngestionPipelineRepository.latestPipelineStatus(ingestionPipeline);
+                String runId = latestStatus == null ? null : latestStatus.getRunId();
                 if (CommonUtil.nullOrEmpty(runId)) {
                   throw new PipelineServiceClientException(
                       "No runId found for the last ingestion pipeline run");
