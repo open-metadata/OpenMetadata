@@ -14,7 +14,7 @@ import { Dropdown, Typography } from 'antd';
 import { Link } from 'react-router-dom';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { EntityReference } from '../../../generated/entity/type';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDomainPath } from '../../../utils/RouterUtils';
 
 interface DomainDisplayProps {

@@ -68,6 +68,8 @@ This directory contains UI resources and the developer handbook for the OpenMeta
 Quick links
 - Developer handbook: [DEVELOPER_HANDBOOK.md](./DEVELOPER_HANDBOOK.md)
   - Purpose: folder/file conventions, styling (LESS), MUI + @untitledui/icons usage, testing rules, and more.
+- Form utilities: [docs/formutils.md](./docs/formutils.md)
+  - Purpose: building forms with the `react-hook-form` + `react-aria` stack (`getField`/`FieldProp`/`HookForm`/`FormFields`), validation, composition, escape hatches, and the drawer caller pattern.
 
 Getting started (for a new developer)
 1. Open this folder in your editor.
