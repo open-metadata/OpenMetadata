@@ -27,7 +27,10 @@ import static org.openmetadata.service.Entity.WORKSHEET;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
@@ -57,6 +60,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
+  private static final String WORKSHEETS_FIELD = "worksheets";
+
   public SpreadsheetRepository() {
     super(
         SpreadsheetResource.COLLECTION_PATH,
@@ -174,7 +179,8 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
   public void clearFields(Spreadsheet spreadsheet, EntityUtil.Fields fields) {
     spreadsheet.withUsageSummary(
         fields.contains("usageSummary") ? spreadsheet.getUsageSummary() : null);
-    spreadsheet.withWorksheets(fields.contains("worksheets") ? spreadsheet.getWorksheets() : null);
+    spreadsheet.withWorksheets(
+        fields.contains(WORKSHEETS_FIELD) ? spreadsheet.getWorksheets() : null);
   }
 
   @Override
@@ -182,13 +188,46 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
       Spreadsheet spreadsheet, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     spreadsheet.withService(getContainer(spreadsheet.getId()));
     spreadsheet.withDirectory(getDirectory(spreadsheet));
-    if (fields.contains("worksheets")) {
-      LOG.info("setFields: Getting worksheets for spreadsheet {}", spreadsheet.getId());
-      List<EntityReference> worksheets = getWorksheets(spreadsheet);
-      LOG.info("setFields: Found {} worksheets", worksheets.size());
-      spreadsheet.withWorksheets(worksheets);
-    } else {
-      spreadsheet.withWorksheets(null);
+    spreadsheet.withWorksheets(
+        fields.contains(WORKSHEETS_FIELD) ? getWorksheets(spreadsheet) : null);
+  }
+
+  @Override
+  public void setFieldsInBulk(EntityUtil.Fields fields, List<Spreadsheet> entities) {
+    if (nullOrEmpty(entities)) {
+      return;
+    }
+    fetchAndSetService(entities);
+    fetchAndSetDirectory(entities);
+    fetchAndSetWorksheets(entities, fields);
+    fetchAndSetFields(entities, fields);
+    setInheritedFields(entities, fields);
+    for (Spreadsheet entity : entities) {
+      clearFieldsInternal(entity, fields);
+    }
+  }
+
+  private void fetchAndSetService(List<Spreadsheet> spreadsheets) {
+    Map<UUID, EntityReference> serviceMap =
+        batchFetchContainers(spreadsheets, Entity.DRIVE_SERVICE, Include.NON_DELETED);
+    spreadsheets.forEach(
+        spreadsheet -> spreadsheet.withService(serviceMap.get(spreadsheet.getId())));
+  }
+
+  private void fetchAndSetDirectory(List<Spreadsheet> spreadsheets) {
+    Map<UUID, EntityReference> directoryMap =
+        batchFetchContainers(spreadsheets, DIRECTORY, Include.NON_DELETED);
+    spreadsheets.forEach(
+        spreadsheet -> spreadsheet.withDirectory(directoryMap.get(spreadsheet.getId())));
+  }
+
+  private void fetchAndSetWorksheets(List<Spreadsheet> spreadsheets, EntityUtil.Fields fields) {
+    boolean wantsWorksheets = fields.contains(WORKSHEETS_FIELD);
+    Map<UUID, List<EntityReference>> worksheetsMap =
+        wantsWorksheets ? batchFetchWorksheets(spreadsheets) : Map.of();
+    for (Spreadsheet spreadsheet : spreadsheets) {
+      spreadsheet.withWorksheets(
+          wantsWorksheets ? worksheetsMap.getOrDefault(spreadsheet.getId(), List.of()) : null);
     }
   }
 
@@ -197,23 +236,40 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
   }
 
   private List<EntityReference> getWorksheets(Spreadsheet spreadsheet) {
-    // Based on the logs, the relationship is stored with worksheet as "from" and spreadsheet as
-    // "to"
-    // So we need to use findTo to find worksheets that point to this spreadsheet
-    List<CollectionDAO.EntityRelationshipRecord> records =
-        Entity.getCollectionDAO()
-            .relationshipDAO()
-            .findTo(spreadsheet.getId(), SPREADSHEET, Relationship.CONTAINS.ordinal(), WORKSHEET);
+    return findTo(spreadsheet.getId(), SPREADSHEET, Relationship.CONTAINS, WORKSHEET);
+  }
 
-    List<EntityReference> worksheets = new ArrayList<>();
-    for (CollectionDAO.EntityRelationshipRecord record : records) {
-      EntityReference ref =
-          Entity.getEntityReferenceById(WORKSHEET, record.getId(), Include.NON_DELETED);
+  private Map<UUID, List<EntityReference>> batchFetchWorksheets(List<Spreadsheet> spreadsheets) {
+    Map<UUID, List<EntityReference>> worksheetsMap = new HashMap<>();
+    for (Spreadsheet spreadsheet : spreadsheets) {
+      worksheetsMap.put(spreadsheet.getId(), new ArrayList<>());
+    }
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(
+                entityListToStrings(spreadsheets),
+                SPREADSHEET,
+                WORKSHEET,
+                Relationship.CONTAINS.ordinal(),
+                Include.NON_DELETED);
+    Map<UUID, EntityReference> worksheetRefs = batchFetchWorksheetRefs(records);
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID spreadsheetId = UUID.fromString(record.getFromId());
+      EntityReference ref = worksheetRefs.get(UUID.fromString(record.getToId()));
       if (ref != null) {
-        worksheets.add(ref);
+        worksheetsMap.get(spreadsheetId).add(ref);
       }
     }
-    return worksheets;
+    return worksheetsMap;
+  }
+
+  private Map<UUID, EntityReference> batchFetchWorksheetRefs(
+      List<CollectionDAO.EntityRelationshipObject> records) {
+    List<UUID> worksheetIds =
+        records.stream().map(record -> UUID.fromString(record.getToId())).distinct().toList();
+    return Entity.getEntityReferencesByIds(WORKSHEET, worksheetIds, Include.NON_DELETED).stream()
+        .collect(Collectors.toMap(EntityReference::getId, ref -> ref, (left, right) -> left));
   }
 
   @Override

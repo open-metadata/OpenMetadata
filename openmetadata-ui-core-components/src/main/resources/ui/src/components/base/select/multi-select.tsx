@@ -48,7 +48,7 @@ interface ComboBoxValueProps
   isDisabled?: boolean;
   placeholder?: string;
   shortcutClassName?: string;
-  placeholderIcon?: IconComponentType | null;
+  icon?: IconComponentType | null;
   onFocus?: FocusEventHandler;
   onPointerEnter?: PointerEventHandler;
 }
@@ -80,7 +80,7 @@ interface MultiSelectProps
   popoverClassName?: string;
   shortcutClassName?: string;
   selectedItems: ListData<SelectItemType>;
-  placeholderIcon?: IconComponentType | null;
+  icon?: IconComponentType | null;
   children: AriaListBoxProps<SelectItemType>['children'];
   onItemCleared?: (key: Key) => void;
   onItemInserted?: (key: Key) => void;
@@ -232,7 +232,7 @@ export const MultiSelectTagsValue = ({
   shortcut,
   placeholder,
   shortcutClassName,
-  placeholderIcon: Icon = SearchLg,
+  icon: Icon = SearchLg,
   // Omit this prop to avoid invalid HTML attribute warning
   isDisabled: _isDisabled,
   ...otherProps

@@ -44,6 +44,23 @@ export const visitUserListPage = async (page: Page) => {
   await fetchUsers;
 };
 
+export const searchUserByEmail = async (
+  page: Page,
+  email: string,
+  userName: string
+) => {
+  await waitForAllLoadersToDisappear(page);
+
+  const searchResponse = page.waitForResponse(
+    '/api/v1/search/query?q=*&index=*&from=0&size=*'
+  );
+  await page.getByTestId('searchbar').fill(email);
+  await searchResponse;
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(page.getByTestId(userName)).toBeVisible();
+};
+
 export const performUserLogin = async (browser: Browser, user: UserClass) => {
   const context = await browser.newContext({
     storageState: {
