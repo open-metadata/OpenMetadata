@@ -27,3 +27,6 @@ class MysqlLineageSource(MysqlQueryParserSource, LineageSource):
             OR LOWER(CONVERT({sql_column} USING utf8mb4)) LIKE '%%merge%%'
         )
     """
+
+    def format_query(self, query: bytes) -> str:
+        return query.decode(errors="ignore").replace("\\n", "\n")
