@@ -14,5 +14,5 @@ ServiceSpec = DefaultDatabaseSpec(
     metadata_source_class=SinglestoreSource,
     profiler_class=SingleStoreProfilerInterface,
     lineage_source_class=SinglestoreLineageSource,
-    connection_class=SingleStoreConnection,
+    connection_class=SingleStoreConnection,  # pyright: ignore[reportArgumentType]
 )

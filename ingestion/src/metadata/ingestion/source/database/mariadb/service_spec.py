@@ -10,5 +10,5 @@ ServiceSpec = DefaultDatabaseSpec(
     metadata_source_class=MariadbSource,
     lineage_source_class=MariadbLineageSource,
     profiler_class=MariaDBProfilerInterface,
-    connection_class=MariaDBConnection,
+    connection_class=MariaDBConnection,  # pyright: ignore[reportArgumentType]
 )
