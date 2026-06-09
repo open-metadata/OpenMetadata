@@ -12,6 +12,7 @@
  */
 package org.openmetadata.it.search.shape.mutations;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import org.openmetadata.it.search.shape.FieldProbe;
 import org.openmetadata.it.search.shape.Outcome;
@@ -40,18 +41,22 @@ public final class KeywordIgnoreAboveMutation implements ShapeMutation {
 
   @Override
   public EntityInterface apply(final EntityInterface entity, final Rung rung) {
-    entity.setDisplayName("d".repeat(rung.magnitude()));
+    entity.setDisplayName(value(rung));
     return entity;
   }
 
   @Override
   public FieldProbe probe(final Rung rung) {
-    final String value = "d".repeat(rung.magnitude());
+    final String value = value(rung);
     return (httpSearch, indexName) -> {
       final String body = "{\"query\":{\"term\":{\"displayName.keyword\":\"" + value + "\"}}}";
-      final var response = httpSearch.post("/" + indexName + "/_search", body);
+      final JsonNode response = httpSearch.post("/" + indexName + "/_search", body);
       return response.path("hits").path("total").path("value").asLong(0) > 0;
     };
+  }
+
+  private static String value(final Rung rung) {
+    return "d".repeat(rung.magnitude());
   }
 
   @Override
