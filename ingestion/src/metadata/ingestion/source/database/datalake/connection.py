@@ -70,12 +70,6 @@ class DatalakeConnection(BaseConnection[DatalakeConnectionConfig, DatalakeBaseCl
             msg = f"Config not implemented for type {type(connection.configSource)}: {connection.configSource}"
             raise NotImplementedError(msg)
 
-    def get_connection_dict(self) -> dict:
-        """
-        Return the connection dictionary for this service.
-        """
-        raise NotImplementedError("get_connection_dict is not implemented for Datalake")
-
     def test_connection(
         self,
         metadata: OpenMetadata,
