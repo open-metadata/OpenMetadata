@@ -512,7 +512,9 @@ test.describe('Knowledge Center', () => {
 
       // Get the first element content before scrolling
       const firstElementBeforeScroll = page
-        .locator('[data-testid="knowledge-pages-hierarchy"] .ant-tree-treenode')
+        .locator(
+          '[data-testid="knowledge-pages-hierarchy-container"] [role="row"]'
+        )
         .first();
       const paginationResponse = page.waitForResponse(
         (response) =>
@@ -525,12 +527,12 @@ test.describe('Knowledge Center', () => {
       );
 
       const scrollHeight = await page
-        .locator(
-          '[data-testid="knowledge-pages-hierarchy"] .ant-tree-list-holder > div'
-        )
+        .locator('[data-testid="knowledge-pages-hierarchy-container"]')
         .evaluate((element) => element.scrollHeight);
 
-      await page.locator('[data-testid="knowledge-pages-hierarchy"]').hover();
+      await page
+        .locator('[data-testid="knowledge-pages-hierarchy-container"]')
+        .hover();
       await page.mouse.wheel(0, scrollHeight);
       await paginationResponse;
 
@@ -539,7 +541,9 @@ test.describe('Knowledge Center', () => {
 
       // Get the first element content after scrolling
       const firstElementAfterScroll = await page
-        .locator('[data-testid="knowledge-pages-hierarchy"] .ant-tree-treenode')
+        .locator(
+          '[data-testid="knowledge-pages-hierarchy-container"] [role="row"]'
+        )
         .first()
         .textContent();
 

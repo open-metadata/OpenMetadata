@@ -420,7 +420,12 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
         response = fallbackTranslation.value;
       }
 
-      setMarkdownContent(response);
+      setMarkdownContent(
+        response.replaceAll(
+          'OpenMetadata',
+          process.env.BRAND_NAME ?? 'OpenMetadata'
+        )
+      );
     } catch {
       setMarkdownContent('');
     } finally {
