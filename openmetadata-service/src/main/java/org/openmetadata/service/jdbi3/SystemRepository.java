@@ -823,19 +823,13 @@ public class SystemRepository {
     SearchRepository searchRepository = Entity.getSearchRepository();
     if (searchRepository.getSearchClient().isClientAvailable()) {
       if (validateDataInsights()) {
-        List<String> missingIndexes = findMissingIndexes(searchRepository);
-        List<String> orphanIndexes = findOrphanIndexes(searchRepository);
-        boolean clusterHealthy = isSearchClusterHealthy(searchRepository);
-        String message =
-            buildSearchHealthMessage(
-                applicationConfig.getElasticSearchConfiguration().getHost(),
-                missingIndexes,
-                orphanIndexes,
-                clusterHealthy);
         return new StepValidation()
             .withDescription(ValidationStepDescription.SEARCH.key)
-            .withPassed(missingIndexes.isEmpty())
-            .withMessage(message);
+            .withPassed(Boolean.TRUE)
+            .withMessage(
+                String.format(
+                    "Connected to %s",
+                    applicationConfig.getElasticSearchConfiguration().getHost()));
       } else {
         return new StepValidation()
             .withDescription(ValidationStepDescription.SEARCH.key)
@@ -852,6 +846,17 @@ public class SystemRepository {
   }
 
   public record ReindexStatus(List<String> stalePending, int untrackedCount) {}
+
+  public record SearchReindexStatus(
+      List<String> stalePending,
+      int untrackedCount,
+      List<String> missingIndexes,
+      List<String> orphanIndexes,
+      boolean clusterHealthy) {
+    boolean reindexNeeded() {
+      return !stalePending.isEmpty() || !missingIndexes.isEmpty();
+    }
+  }
 
   static ReindexStatus classifyReindexStatus(
       Map<String, MappingDriftState> drift, Set<String> existingIndexes) {
@@ -870,25 +875,62 @@ public class SystemRepository {
     return new ReindexStatus(stalePending, untrackedCount);
   }
 
-  static String buildReindexStatusMessage(ReindexStatus status) {
-    String message;
-    if (status.stalePending().isEmpty()) {
-      message = "All deployed indexes were built from the current code mappings.";
-      if (status.untrackedCount() > 0) {
-        message +=
-            String.format(
-                " %d index(es) are not yet version-tracked; run a reindex to enable drift "
-                    + "detection.",
-                status.untrackedCount());
-      }
+  static String buildReindexStatusMessage(SearchReindexStatus status) {
+    StringBuilder message = new StringBuilder();
+    appendReindexState(message, status);
+    appendOrphanState(message, status.orphanIndexes());
+    appendClusterState(message, status.clusterHealthy());
+    return message.toString();
+  }
+
+  private static void appendReindexState(StringBuilder message, SearchReindexStatus status) {
+    if (status.reindexNeeded()) {
+      appendReindexNeeded(message, status);
     } else {
-      message =
-          String.format(
-              "WARNING: %d deployed index(es) were built from an older code mapping and need a "
-                  + "reindex: %s",
-              status.stalePending().size(), status.stalePending());
+      appendUpToDate(message, status.untrackedCount());
     }
-    return message;
+  }
+
+  private static void appendReindexNeeded(StringBuilder message, SearchReindexStatus status) {
+    message.append("A reindex is required.");
+    if (!status.stalePending().isEmpty()) {
+      message.append(
+          String.format(
+              " %d index(es) built from an older code mapping: %s.",
+              status.stalePending().size(), status.stalePending()));
+    }
+    if (!status.missingIndexes().isEmpty()) {
+      message.append(
+          String.format(
+              " %d expected index(es) missing: %s.",
+              status.missingIndexes().size(), status.missingIndexes()));
+    }
+  }
+
+  private static void appendUpToDate(StringBuilder message, int untrackedCount) {
+    message.append("All deployed indexes were built from the current code mappings.");
+    if (untrackedCount > 0) {
+      message.append(
+          String.format(
+              " %d index(es) are not yet version-tracked; run a reindex to enable drift detection.",
+              untrackedCount));
+    }
+  }
+
+  private static void appendOrphanState(StringBuilder message, List<String> orphanIndexes) {
+    if (orphanIndexes.isEmpty()) {
+      message.append(" No orphan indexes.");
+    } else {
+      message.append(
+          String.format(
+              " %d orphan index(es) with no alias (safe to clean): %s.",
+              orphanIndexes.size(), orphanIndexes));
+    }
+  }
+
+  private static void appendClusterState(StringBuilder message, boolean clusterHealthy) {
+    message.append(
+        clusterHealthy ? " Cluster healthy." : " WARNING: search cluster health is degraded.");
   }
 
   @VisibleForTesting
@@ -918,29 +960,6 @@ public class SystemRepository {
     return healthy;
   }
 
-  static String buildSearchHealthMessage(
-      String host,
-      List<String> missingIndexes,
-      List<String> orphanIndexes,
-      boolean clusterHealthy) {
-    StringBuilder message = new StringBuilder(String.format("Connected to %s", host));
-    if (!clusterHealthy) {
-      message.append(". WARNING: search cluster health is degraded");
-    }
-    if (!missingIndexes.isEmpty()) {
-      message.append(
-          String.format(
-              ". WARNING: %d missing index(es): %s", missingIndexes.size(), missingIndexes));
-    }
-    if (!orphanIndexes.isEmpty()) {
-      message.append(
-          String.format(
-              ". WARNING: %d orphan index(es) with no alias (safe to clean): %s",
-              orphanIndexes.size(), orphanIndexes));
-    }
-    return message.toString();
-  }
-
   @VisibleForTesting
   List<String> findMissingIndexes(SearchRepository searchRepository) {
     List<String> missing = new ArrayList<>();
@@ -967,10 +986,9 @@ public class SystemRepository {
     SearchRepository searchRepository = Entity.getSearchRepository();
     StepValidation result;
     if (searchRepository.getSearchClient().isClientAvailable()) {
-      ReindexStatus status = computeReindexStatus(searchRepository);
+      SearchReindexStatus status = computeSearchReindexStatus(searchRepository);
       result =
-          step.withPassed(status.stalePending().isEmpty())
-              .withMessage(buildReindexStatusMessage(status));
+          step.withPassed(!status.reindexNeeded()).withMessage(buildReindexStatusMessage(status));
     } else {
       result =
           step.withPassed(Boolean.TRUE).withMessage("Skipped: search instance is not reachable.");
@@ -978,17 +996,31 @@ public class SystemRepository {
     return result;
   }
 
-  private ReindexStatus computeReindexStatus(SearchRepository searchRepository) {
+  private SearchReindexStatus computeSearchReindexStatus(SearchRepository searchRepository) {
+    List<String> missingIndexes = findMissingIndexes(searchRepository);
+    List<String> orphanIndexes = findOrphanIndexes(searchRepository);
+    boolean clusterHealthy = isSearchClusterHealthy(searchRepository);
+    ReindexStatus drift = computeMappingDrift(searchRepository, missingIndexes);
+    return new SearchReindexStatus(
+        drift.stalePending(),
+        drift.untrackedCount(),
+        missingIndexes,
+        orphanIndexes,
+        clusterHealthy);
+  }
+
+  private ReindexStatus computeMappingDrift(
+      SearchRepository searchRepository, List<String> missingIndexes) {
     ReindexStatus status = new ReindexStatus(new ArrayList<>(), 0);
     try {
       String version = System.getProperty("project.version", "1.8.0-SNAPSHOT");
       IndexMappingVersionTracker tracker =
           new IndexMappingVersionTracker(Entity.getCollectionDAO(), version, "system");
       Set<String> existingIndexes = new HashSet<>(searchRepository.getEntityIndexMap().keySet());
-      existingIndexes.removeAll(findMissingIndexes(searchRepository));
+      existingIndexes.removeAll(missingIndexes);
       status = classifyReindexStatus(tracker.computeDrift(), existingIndexes);
     } catch (Exception e) {
-      LOG.warn("Failed to compute search reindex status: {}", e.getMessage());
+      LOG.warn("Failed to compute search mapping drift: {}", e.getMessage());
     }
     return status;
   }

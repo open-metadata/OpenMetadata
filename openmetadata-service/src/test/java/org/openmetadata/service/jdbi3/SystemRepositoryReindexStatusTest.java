@@ -13,7 +13,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -21,6 +20,7 @@ import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.jdbi3.SystemRepository.ReindexStatus;
+import org.openmetadata.service.jdbi3.SystemRepository.SearchReindexStatus;
 import org.openmetadata.service.search.IndexMappingVersionTracker.MappingDriftState;
 
 class SystemRepositoryReindexStatusTest {
@@ -58,23 +58,6 @@ class SystemRepositoryReindexStatusTest {
   }
 
   @Test
-  void messageListsStalePendingEntities() {
-    ReindexStatus status = new ReindexStatus(List.of("dashboard", "table"), 0);
-    String message = SystemRepository.buildReindexStatusMessage(status);
-    assertTrue(message.contains("dashboard"));
-    assertTrue(message.contains("table"));
-    assertTrue(message.toLowerCase().contains("reindex"));
-  }
-
-  @Test
-  void cleanMessageMentionsUntrackedNote() {
-    ReindexStatus status = new ReindexStatus(List.of(), 3);
-    String message = SystemRepository.buildReindexStatusMessage(status);
-    assertTrue(message.contains("3"));
-    assertTrue(message.toLowerCase().contains("version-tracked"));
-  }
-
-  @Test
   void stalePendingIsReturnedInSortedOrder() {
     Map<String, MappingDriftState> drift =
         Map.of(
@@ -87,28 +70,33 @@ class SystemRepositoryReindexStatusTest {
   }
 
   @Test
-  void searchHealthMessageHasNoWarningsWhenClean() {
-    String message =
-        SystemRepository.buildSearchHealthMessage("es:9200", List.of(), List.of(), true);
-    assertTrue(message.contains("es:9200"));
-    assertFalse(message.contains("WARNING"));
+  void reindexMessageCleanStateMentionsNoOrphansAndHealthyCluster() {
+    SearchReindexStatus status = new SearchReindexStatus(List.of(), 0, List.of(), List.of(), true);
+    String message = SystemRepository.buildReindexStatusMessage(status);
+    assertTrue(message.contains("All deployed indexes were built from the current code mappings."));
+    assertTrue(message.toLowerCase().contains("no orphan indexes"));
+    assertTrue(message.toLowerCase().contains("cluster healthy"));
   }
 
   @Test
-  void searchHealthMessageReportsOrphanIndexes() {
-    String message =
-        SystemRepository.buildSearchHealthMessage(
-            "es:9200", List.of(), List.of("table_search_index_rebuild_123"), true);
-    assertTrue(message.toLowerCase().contains("orphan"));
-    assertTrue(message.contains("table_search_index_rebuild_123"));
-  }
-
-  @Test
-  void searchHealthMessageReportsMissingAndUnhealthyCluster() {
-    String message =
-        SystemRepository.buildSearchHealthMessage("es:9200", List.of("glossary"), List.of(), false);
-    assertTrue(message.contains("missing"));
+  void reindexMessageReportsStaleMissingOrphanAndDegradedCluster() {
+    SearchReindexStatus status =
+        new SearchReindexStatus(
+            List.of("dashboard"), 0, List.of("glossary"), List.of("topic_rebuild_1"), false);
+    String message = SystemRepository.buildReindexStatusMessage(status);
+    assertTrue(message.contains("reindex is required"));
+    assertTrue(message.contains("dashboard"));
     assertTrue(message.contains("glossary"));
-    assertTrue(message.toLowerCase().contains("cluster health"));
+    assertTrue(message.contains("topic_rebuild_1"));
+    assertTrue(message.toLowerCase().contains("orphan"));
+    assertTrue(message.toLowerCase().contains("degraded"));
+  }
+
+  @Test
+  void reindexMessageMentionsUntrackedNoteWhenClean() {
+    SearchReindexStatus status = new SearchReindexStatus(List.of(), 3, List.of(), List.of(), true);
+    String message = SystemRepository.buildReindexStatusMessage(status);
+    assertTrue(message.contains("3"));
+    assertTrue(message.toLowerCase().contains("version-tracked"));
   }
 }
