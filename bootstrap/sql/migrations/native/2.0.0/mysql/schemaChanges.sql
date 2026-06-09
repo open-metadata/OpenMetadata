@@ -377,3 +377,13 @@ CREATE TABLE IF NOT EXISTS `user_session` (
   KEY `user_session_idle_expiry` (`status`,`idleExpiresAt`),
   KEY `user_session_prune` (`status`,`updatedAt`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Per-entity `name` index for entity tables first created in 2.0.0, so the
+-- distributed reindex's `... ORDER BY name, id LIMIT 1 OFFSET :n` cursor query
+-- (EntityRepository.getCursorAtOffset) runs index-only instead of a filesort that
+-- can exhaust sort memory (ER_OUT_OF_SORTMEMORY) on large tables. Added here rather
+-- than in 1.13.1 because these tables are created above, in this same 2.0.0 migration.
+CREATE INDEX task_entity_name_index ON task_entity (name);
+CREATE INDEX announcement_entity_name_index ON announcement_entity (name);
+CREATE INDEX drive_folder_name_index ON drive_folder (name);
+CREATE INDEX asset_entity_name_index ON asset_entity (name);
