@@ -24,7 +24,6 @@ from metadata.generated.schema.api.data.createDashboard import CreateDashboardRe
 from metadata.generated.schema.api.data.createDashboardDataModel import (
     CreateDashboardDataModelRequest,
 )
-from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDashboardService import (
     CreateDashboardServiceRequest,
@@ -32,7 +31,6 @@ from metadata.generated.schema.api.services.createDashboardService import (
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
-from metadata.generated.schema.entity.data.metric import Metric
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
@@ -86,7 +84,6 @@ LINEAGE_MAP = {
     Table: "table",
     DashboardDataModel: "dashboardDataModel",
     Chart: "chart",
-    Metric: "metric",
 }
 
 
@@ -173,16 +170,6 @@ class DashboardServiceTopology(ServiceTopology):
                 nullable=True,
                 store_all_in_context=True,
                 clear_context=True,
-            ),
-            NodeStage(
-                type_=Metric,
-                context="metrics",
-                processor="yield_metric",
-                consumer=["dashboard_service"],
-                nullable=True,
-                store_all_in_context=True,
-                clear_context=True,
-                use_cache=True,
             ),
             NodeStage(
                 type_=Dashboard,
@@ -300,12 +287,6 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Method to fetch DataModel linked to Dashboard
         """
-
-    def yield_metric(self, _) -> Iterable[Either[CreateMetricRequest]]:
-        """
-        Method to fetch Metrics linked to Dashboard service assets.
-        """
-        return []
 
     def yield_bulk_datamodel(self, _) -> Iterable[Either[CreateDashboardDataModelRequest]]:
         """
@@ -539,8 +520,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     @staticmethod
     def _get_add_lineage_request(
-        to_entity: Union[Dashboard, DashboardDataModel, Chart, Metric],  # noqa: UP007
-        from_entity: Union[Table, DashboardDataModel, Dashboard, Metric],  # noqa: UP007
+        to_entity: Union[Dashboard, DashboardDataModel, Chart],  # noqa: UP007
+        from_entity: Union[Table, DashboardDataModel, Dashboard],  # noqa: UP007
         column_lineage: List[ColumnLineage] = None,  # noqa: RUF013, UP006
         sql: Optional[str] = None,  # noqa: UP045
     ) -> Optional[Either[AddLineageRequest]]:  # noqa: UP045

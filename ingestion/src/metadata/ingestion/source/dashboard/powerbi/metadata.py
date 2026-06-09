@@ -10,7 +10,6 @@
 #  limitations under the License.
 """PowerBI source module"""
 
-import hashlib
 import re
 import traceback
 from copy import deepcopy
@@ -25,24 +24,12 @@ from metadata.generated.schema.api.data.createDashboard import CreateDashboardRe
 from metadata.generated.schema.api.data.createDashboardDataModel import (
     CreateDashboardDataModelRequest,
 )
-from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart, ChartType
 from metadata.generated.schema.entity.data.dashboard import Dashboard, DashboardType
 from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel,
     DataModelType,
-)
-from metadata.generated.schema.entity.data.metric import (
-    Language as MetricExpressionLanguage,
-)
-from metadata.generated.schema.entity.data.metric import (
-    Metric,
-    MetricExpression,
-    MetricSource,
-    MetricSourceSyncStatus,
-    MetricSourceType,
-    MetricType,
 )
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
@@ -61,7 +48,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.basic import (
-    EntityLink,
     EntityName,
     FullyQualifiedEntityName,
     Markdown,
@@ -101,7 +87,6 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     Group,
     PowerBIDashboard,
     PowerBiMeasureModel,
-    PowerBiMeasures,
     PowerBIReport,
     PowerBiTable,
     ReportPage,
@@ -158,8 +143,6 @@ class PowerbiSource(DashboardServiceSource):
         self.pagination_entity_per_page = min(100, self.service_connection.pagination_entity_per_page)
         self.datamodel_file_mappings = []
         self.state = WorkspaceState()
-        self.emitted_metric_source_ids: set[str] = set()
-        self.emitted_metric_lineage_source_ids: set[str] = set()
 
     def close(self):
         self.metadata.close()
@@ -783,129 +766,6 @@ class PowerbiSource(DashboardServiceSource):
                         stackTrace=traceback.format_exc(),
                     )
                 )
-
-    def yield_metric(self, dashboard_details: Group) -> Iterable[Either[CreateMetricRequest]]:
-        """
-        Convert PowerBI DAX measures into OpenMetadata Metrics.
-        """
-        if not self.source_config.includeDataModels:
-            return
-        try:
-            datasets = self._filtered_datamodels()
-        except Exception as exc:
-            yield Either(
-                left=StackTraceError(
-                    name="metrics",
-                    error=f"Error fetching PowerBI data models for metrics: {exc}",
-                    stackTrace=traceback.format_exc(),
-                )
-            )
-            return
-
-        for dataset in datasets:
-            if not isinstance(dataset, Dataset):
-                continue
-            for table in dataset.tables or []:
-                if not table.name:
-                    continue
-                for measure in table.measures or []:
-                    if not measure.name or not measure.expression:
-                        continue
-                    try:
-                        metric_request = self._build_metric_request(dataset, table, measure)
-                        if metric_request is None:
-                            continue
-                        yield Either(right=metric_request)  # pyright: ignore[reportCallIssue]
-                    except Exception as exc:
-                        yield Either(
-                            left=StackTraceError(
-                                name=measure.name,
-                                error=f"Error creating metric from PowerBI measure [{measure.name}]: {exc}",
-                                stackTrace=traceback.format_exc(),
-                            )
-                        )
-
-    def _build_metric_request(
-        self,
-        dataset: Dataset,
-        table: PowerBiTable,
-        measure: PowerBiMeasures,
-    ) -> CreateMetricRequest | None:
-        source_id = self._build_metric_source_id(dataset, table, measure.name)
-        if source_id in self.emitted_metric_source_ids:
-            return None
-        self.emitted_metric_source_ids.add(source_id)
-
-        metric_name = self._build_metric_name(source_id)
-        existing_metric = self.metadata.get_by_name(entity=Metric, fqn=metric_name)
-        if (
-            existing_metric
-            and existing_metric.metricSource
-            and existing_metric.metricSource.sourceType == MetricSourceType.POWERBI
-            and existing_metric.metricSource.syncEnabled is False
-        ):
-            logger.debug(
-                "Skipping PowerBI metric sync because sync is disabled: %s",
-                metric_name,
-            )
-            return None
-
-        expression = str(measure.expression)
-        datamodel_fqn = fqn.build(
-            self.metadata,
-            entity_type=DashboardDataModel,
-            service_name=self.context.get().dashboard_service,  # pyright: ignore[reportAttributeAccessIssue]
-            data_model_name=dataset.id,
-        )
-        source_url = self._get_dataset_url(
-            workspace_id=self.context.get().workspace.id,  # pyright: ignore[reportAttributeAccessIssue]
-            dataset_id=dataset.id,
-        )
-        source_entity_link = self._build_measure_entity_link(
-            datamodel_fqn=datamodel_fqn,
-            table_name=table.name,
-            measure_name=measure.name,
-        )
-
-        return CreateMetricRequest(
-            name=EntityName(metric_name),
-            displayName=measure.name,
-            description=Markdown(measure.description) if measure.description else None,
-            metricType=MetricType.OTHER,
-            metricExpression=MetricExpression(
-                language=MetricExpressionLanguage.DAX,
-                code=expression,
-            ),
-            metricSource=MetricSource(
-                sourceType=MetricSourceType.POWERBI,
-                sourceEntityLink=EntityLink(source_entity_link),
-                sourceId=source_id,
-                sourceName=measure.name,
-                sourceUrl=SourceUrl(source_url) if source_url else None,
-                sourceHash=hashlib.sha256(expression.encode("utf-8")).hexdigest(),
-                syncEnabled=True,
-                syncStatus=MetricSourceSyncStatus.SYNCED,
-            ),
-        )
-
-    @staticmethod
-    def _build_metric_source_id(dataset: Dataset, table: PowerBiTable, measure_name: str) -> str:
-        return f"powerbi:{dataset.id}:{table.name}:{measure_name}"
-
-    @staticmethod
-    def _build_metric_name(source_id: str) -> str:
-        metric_name = re.sub(r"[^A-Za-z0-9_.-]+", "_", source_id)
-        return metric_name[:256]
-
-    @staticmethod
-    def _build_measure_entity_link(
-        datamodel_fqn: str,
-        table_name: str,
-        measure_name: str,
-    ) -> str:
-        table_column = truncate_column_name(table_name)
-        measure_column = truncate_column_name(measure_name)
-        return f"<#E::dashboardDataModel::{datamodel_fqn}::columns::{table_column}.{measure_column}>"
 
     def create_report_dashboard_lineage(
         self,
@@ -1864,41 +1724,6 @@ class PowerbiSource(DashboardServiceSource):
             column_lineage_builder=self._create_dataset_upstream_dataset_column_lineage,
         )
 
-    def create_datamodel_metric_lineage(
-        self,
-        datamodel: Dataset,
-        datamodel_entity: DashboardDataModel,
-    ) -> Iterable[Either[AddLineageRequest]]:
-        """
-        Create lineage from the PowerBI dataset/datamodel to Metrics created from DAX measures.
-        """
-        for table in datamodel.tables or []:
-            if not table.name:
-                continue
-            for measure in table.measures or []:
-                if not measure.name or not measure.expression:
-                    continue
-                source_id = self._build_metric_source_id(datamodel, table, measure.name)
-                if source_id in self.emitted_metric_lineage_source_ids:
-                    continue
-                self.emitted_metric_lineage_source_ids.add(source_id)
-
-                metric_name = self._build_metric_name(source_id)
-                metric_entity = self.metadata.get_by_name(entity=Metric, fqn=metric_name)
-                if not metric_entity:
-                    logger.debug(
-                        "Metric entity not found for PowerBI measure lineage: %s",
-                        metric_name,
-                    )
-                    continue
-                lineage_request = self._get_add_lineage_request(
-                    to_entity=metric_entity,
-                    from_entity=datamodel_entity,
-                    sql=str(measure.expression),
-                )
-                if lineage_request:
-                    yield lineage_request
-
     def _parse_dataflow_m_document(self, dataflow_export: DataflowExportResponse) -> List[dict]:  # noqa: UP006
         """
         Parse Power Query M expressions from the dataflow export document
@@ -2305,7 +2130,6 @@ class PowerbiSource(DashboardServiceSource):
                                 db_service_prefix=db_service_prefix,
                                 datamodel_entity=datamodel_entity,
                             )
-                        yield from self.create_datamodel_metric_lineage(datamodel, datamodel_entity)
                     elif isinstance(datamodel, Dataflow):
                         # 5. dataflow-db_table lineage via M document parsing
                         dataflow_export = self.state.get_dataflow_export(datamodel.id)
