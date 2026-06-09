@@ -23,6 +23,19 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Typography: ({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   ),
+  Button: ({
+    children,
+    onClick,
+    'data-testid': dataTestId,
+  }: {
+    children?: React.ReactNode;
+    onClick?: () => void;
+    'data-testid'?: string;
+  }) => (
+    <button data-testid={dataTestId} onClick={onClick}>
+      {children}
+    </button>
+  ),
   ButtonUtility: ({
     isDisabled,
     onClick,

@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  ButtonUtility,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Announcement02, ChevronLeft, ChevronRight } from '@untitledui/icons';
 import classNames from 'classnames';
 import { useState } from 'react';
@@ -98,12 +102,13 @@ const AnnouncementsWidgetV3Body = ({
         </div>
 
         {onViewAll && (
-          <button
-            className="tw:cursor-pointer tw:border-none tw:bg-transparent tw:text-xs tw:font-medium tw:text-fg-brand-primary"
+          <Button
+            color="tertiary"
             data-testid="view-all-btn"
+            size="sm"
             onClick={onViewAll}>
             {t('label.view-all')}
-          </button>
+          </Button>
         )}
       </div>
 
