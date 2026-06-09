@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.elasticsearch.core.SearchRequest;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import jakarta.json.stream.JsonGenerator;
+import java.io.IOException;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -83,7 +84,7 @@ class ElasticSearchLineChartAggregatorTest {
     assertEquals(SERVICE_NAME, serviceAgg.path("terms").path("include").asText());
   }
 
-  private SearchRequest prepare(DataInsightCustomChart chart) {
+  private SearchRequest prepare(DataInsightCustomChart chart) throws IOException {
     return aggregator.prepareSearchRequest(
         chart, 0L, END_TIME, new ArrayList<>(), new HashMap<>(), true);
   }
