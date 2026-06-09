@@ -383,7 +383,6 @@ const DataProductsDetailsPage = ({
     [dataProduct.votes, currentUser?.id]
   );
 
-
   const handleVoteChange = useCallback(
     async (data: VotingDataProps) => {
       await onUpdateVote?.(data, dataProduct.id);
