@@ -74,6 +74,16 @@ const ContextCenterDocumentsPage: FC = () => {
   const [previewFile, setPreviewFile] = useState<DocFile | undefined>();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
+  const previewFileUrl = useMemo(() => {
+    if (!previewFile) {
+      return '';
+    }
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('document', previewFile.id);
+
+    return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+  }, [previewFile, searchParams]);
+
   const { hasCreatePermission, hasDeletePermission } = useMemo(
     () => ({
       hasCreatePermission: permissions.Create,
@@ -153,18 +163,18 @@ const ContextCenterDocumentsPage: FC = () => {
   }, [fetchPermission]);
 
   useEffect(() => {
-    const documentName = searchParams.get('document');
-    if (!documentName || isDocumentsLoading || previewFile) {
+    const documentId = searchParams.get('document');
+    if (!documentId || isDocumentsLoading || previewFile) {
       return;
     }
-    const match = allDocuments.find((d) => d.name === documentName);
+    const match = allDocuments.find((d) => d.id === documentId);
     if (match) {
       setPreviewFile(match);
     } else {
       showErrorToast(
         `${t('message.no-entity-available-with-name', {
           entity: t('label.document'),
-        })} "${documentName}"`
+        })} "${documentId}"`
       );
       setSearchParams((prev) => {
         prev.delete('document');
@@ -228,8 +238,8 @@ const ContextCenterDocumentsPage: FC = () => {
     (file: DocFile | undefined) => {
       setPreviewFile(file);
       setSearchParams((prev) => {
-        if (file?.name) {
-          prev.set('document', file.name);
+        if (file?.id) {
+          prev.set('document', file.id);
         } else {
           prev.delete('document');
         }
@@ -438,9 +448,7 @@ const ContextCenterDocumentsPage: FC = () => {
             {previewFile && (
               <DocumentPreviewPanel
                 file={previewFile}
-                url={`${window.location.origin}${
-                  window.location.pathname
-                }?document=${encodeURIComponent(previewFile.name)}`}
+                url={previewFileUrl}
                 onClose={() => handlePreview(undefined)}
               />
             )}

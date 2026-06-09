@@ -115,10 +115,25 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         onAction?: (key: string) => void;
       }) => <div data-onaction={String(onAction)}>{children}</div>
     ),
-    Item: jest.fn(({ id, label }: { id: string; label: string }) => (
-      <button data-testid={`dropdown-item-${id}`}>{label}</button>
-    )),
+    Item: jest.fn(
+      ({
+        id,
+        label,
+        children,
+        'data-testid': testId,
+      }: {
+        id?: string;
+        label?: string;
+        children?: React.ReactNode | (() => React.ReactNode);
+        'data-testid'?: string;
+      }) => (
+        <button data-testid={testId ?? `dropdown-item-${id}`}>
+          {label ?? (typeof children === 'function' ? children() : children)}
+        </button>
+      )
+    ),
   },
+  Dot: jest.fn(() => <span>·</span>),
   Checkbox: jest.fn(
     ({
       onChange,
