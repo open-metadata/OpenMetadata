@@ -13,18 +13,18 @@
 
 import {
   AntdConfig,
-  AsyncFetchListValuesResult,
-  BasicConfig,
-  Field,
-  Fields,
-  ListItem,
-  ListValues,
-  SelectFieldSettings,
+  type AsyncFetchListValuesResult,
+  type BasicConfig,
+  type Field,
+  type Fields,
+  type ListItem,
+  type ListValues,
+  type SelectFieldSettings,
 } from '@react-awesome-query-builder/antd';
 import { debounce, isEmpty, sortBy, toLower } from 'lodash';
 import {
-  CustomPropertyEnumConfig,
   SearchOutputType,
+  type CustomPropertyEnumConfig,
 } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import {
   CP_TYPE_WITHOUT_KEYWORD_FIELD,
@@ -42,9 +42,9 @@ import {
   SuggestionField,
 } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { Config } from '../generated/api/data/createCustomProperty';
+import type { Config } from '../generated/api/data/createCustomProperty';
 import { EntityStatus } from '../generated/entity/data/searchIndex';
-import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
+import type { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
 import {
   getCustomPropertyAdvanceSearchEnumOptions,
@@ -52,7 +52,7 @@ import {
 } from './AdvancedSearchUtils';
 import { getCustomPropertyMomentFormat } from './CustomProperty.utils';
 import { buildTermQuery } from './elasticsearchQueryBuilder';
-import { getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
 import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 import { parseBucketsData } from './SearchUtils';

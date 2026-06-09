@@ -29,7 +29,7 @@ import {
   PipelineType,
 } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getLoadingStatus } from '../../../../../../utils/EntityDisplayUtils';
-import { getEntityName } from '../../../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
   getEditIngestionPath,
   getTestSuiteIngestionPath,
@@ -67,11 +67,9 @@ function PipelineActionsDropdown({
   } = useMemo(() => ingestion, [ingestion]);
 
   const { editPermission, deletePermission } = useMemo(() => {
-    const pipelinePermission = ingestionPipelinePermissions?.[name];
-
     return {
-      editPermission: pipelinePermission?.[Operation.EditAll],
-      deletePermission: pipelinePermission?.[Operation.Delete],
+      editPermission: ingestionPipelinePermissions?.[Operation.EditAll],
+      deletePermission: ingestionPipelinePermissions?.[Operation.Delete],
     };
   }, [ingestionPipelinePermissions, name]);
 

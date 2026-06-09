@@ -52,10 +52,6 @@ UNITY_CATALOG_SQL_STATEMENT = textwrap.dedent(
     """
 )
 
-UNITY_CATALOG_SQL_STATEMENT_TEST = """
- SELECT statement_text from  system.query.history LIMIT 1
-"""
-
 UNITY_CATALOG_GET_TABLE_DDL = "SHOW CREATE TABLE `{database}`.`{schema}`.`{table}`"
 
 UNITY_CATALOG_LINEAGE = textwrap.dedent(
