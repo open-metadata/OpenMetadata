@@ -1,4 +1,4 @@
--- Placeholder for 1.12.11 Postgres schema changes
+-- Placeholder for 1.13.1 MySQL schema changes
 -- No DDL changes required; this version only carries a data migration
 -- (re-derive unparseable pipeline task FQNs persisted before double-quote escaping was supported).
 -- Repaired task FQNs are reflected in the search index after the standard post-upgrade reindex.

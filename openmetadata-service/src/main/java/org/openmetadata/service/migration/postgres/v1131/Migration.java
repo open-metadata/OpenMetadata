@@ -1,6 +1,6 @@
-package org.openmetadata.service.migration.postgres.v11211;
+package org.openmetadata.service.migration.postgres.v1131;
 
-import static org.openmetadata.service.migration.utils.v11211.MigrationUtil.repairPipelineTaskFqns;
+import static org.openmetadata.service.migration.utils.v1131.MigrationUtil.repairPipelineTaskFqns;
 
 import lombok.SneakyThrows;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
