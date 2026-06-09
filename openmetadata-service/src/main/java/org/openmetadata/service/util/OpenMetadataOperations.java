@@ -27,6 +27,7 @@ import io.dropwizard.jersey.validation.Validators;
 import jakarta.validation.Validator;
 import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -1871,7 +1872,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     // Update mapping versions after successful reindexing
     if (result == 0 && shouldUpdateVersions && versionTracker != null) {
       try {
-        versionTracker.updateMappingVersions();
+        persistReindexedMappingVersions(versionTracker, entities);
         LOG.info(
             "✅ Smart reindexing: Updated mapping versions in database for future change detection");
       } catch (Exception e) {
@@ -1890,6 +1891,15 @@ public class OpenMetadataOperations implements Callable<Integer> {
       version = System.getProperty("project.version", DEFAULT_VERSION);
     }
     return version;
+  }
+
+  private void persistReindexedMappingVersions(
+      IndexMappingVersionTracker versionTracker, Set<String> reindexedEntities) throws IOException {
+    if (reindexedEntities.contains(SearchIndexEntityTypes.ALL)) {
+      versionTracker.updateMappingVersions();
+    } else {
+      versionTracker.updateMappingVersions(reindexedEntities);
+    }
   }
 
   enum SmartReindexAction {

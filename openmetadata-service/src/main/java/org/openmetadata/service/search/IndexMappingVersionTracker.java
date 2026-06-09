@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.VersionUtils;
@@ -90,22 +91,38 @@ public class IndexMappingVersionTracker {
   }
 
   public void updateMappingVersions() throws IOException {
-    Map<String, MappingEntry> currentMappings = computeCurrentMappings();
+    persistMappingVersions(computeCurrentMappings());
+  }
+
+  /**
+   * Persists the version/hash only for the entities that were actually reindexed. Stamping every
+   * entity (as the no-arg overload does) would mask entities that still need a reindex when only a
+   * subset was run - on a later major/minor upgrade those skipped entities would wrongly look
+   * up-to-date and never be recreated.
+   */
+  public void updateMappingVersions(Set<String> reindexedEntities) throws IOException {
+    Map<String, MappingEntry> reindexedMappings = new HashMap<>();
+    for (Map.Entry<String, MappingEntry> entry : computeCurrentMappings().entrySet()) {
+      if (reindexedEntities.contains(entry.getKey())) {
+        reindexedMappings.put(entry.getKey(), entry.getValue());
+      }
+    }
+    persistMappingVersions(reindexedMappings);
+  }
+
+  private void persistMappingVersions(Map<String, MappingEntry> mappings) {
     long updatedAt = System.currentTimeMillis();
-
-    for (Map.Entry<String, MappingEntry> entry : currentMappings.entrySet()) {
-      String entityType = entry.getKey();
+    for (Map.Entry<String, MappingEntry> entry : mappings.entrySet()) {
       MappingEntry mappingEntry = entry.getValue();
-
       indexMappingVersionDAO.upsertIndexMappingVersion(
-          entityType,
+          entry.getKey(),
           mappingEntry.hash(),
           JsonUtils.pojoToJson(mappingEntry.json()),
           version,
           updatedAt,
           updatedBy);
     }
-    LOG.info("Updated index mapping versions for {} entities", currentMappings.size());
+    LOG.info("Updated index mapping versions for {} entities", mappings.size());
   }
 
   private Map<String, String> getStoredMappingHashes() {

@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -115,6 +116,28 @@ class IndexMappingVersionTrackerTest {
               eq("tester"));
       assertFalse(hashCaptor.getValue().isBlank());
       assertTrue(jsonCaptor.getValue().contains("\"en\""));
+    }
+  }
+
+  @Test
+  void updateMappingVersionsForSubsetPersistsOnlyReindexedEntities() throws IOException {
+    Map<String, IndexMapping> mappings =
+        buildMappingsFromPairs(
+            "table", "/elasticsearch/%s/table_index_mapping.json",
+            "glossaryTerm", "/elasticsearch/%s/glossary_term_index_mapping.json");
+    try (var loaderMock = mockStatic(IndexMappingLoader.class)) {
+      loaderMock.when(IndexMappingLoader::getInstance).thenReturn(indexMappingLoader);
+      when(indexMappingLoader.getIndexMapping()).thenReturn(mappings);
+
+      new IndexMappingVersionTracker(collectionDAO, "1.13.0", "tester")
+          .updateMappingVersions(Set.of("table"));
+
+      verify(indexMappingVersionDAO)
+          .upsertIndexMappingVersion(
+              eq("table"), anyString(), anyString(), eq("1.13.0"), anyLong(), eq("tester"));
+      verify(indexMappingVersionDAO, never())
+          .upsertIndexMappingVersion(
+              eq("glossaryTerm"), anyString(), anyString(), anyString(), anyLong(), anyString());
     }
   }
 
