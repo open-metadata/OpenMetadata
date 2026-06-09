@@ -13,10 +13,12 @@
 Source connection handler
 """
 
-from typing import Optional
+from typing import Any, Dict, Optional, cast  # noqa: UP035
 
 from sqlalchemy.engine import Engine
+from sqlalchemy.event import listen
 
+from metadata.clients.aws_client import RdsIamAuthTokenManager
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -28,6 +30,9 @@ from metadata.generated.schema.entity.services.connections.database.common.basic
 )
 from metadata.generated.schema.entity.services.connections.database.common.gcpCloudSqlConfig import (
     GcpCloudsqlConfigurationSource,
+)
+from metadata.generated.schema.entity.services.connections.database.common.iamAuthConfig import (
+    IamAuthConfigurationSource,
 )
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection as MySQLConnectionConfig,
@@ -72,11 +77,62 @@ class MySQLConnection(BaseConnection[MySQLConnectionConfig, Engine]):
         if isinstance(connection.authType, GcpCloudsqlConfigurationSource):
             return self._get_cloudsql_engine(connection)
 
+        if isinstance(connection.authType, IamAuthConfigurationSource):
+            return self._get_iam_engine(connection)
+
         return create_generic_db_connection(
             connection=connection,
             get_connection_url_fn=get_connection_url_common,
             get_connection_args_fn=get_connection_args_common,
         )
+
+    def _get_iam_engine(self, connection: MySQLConnectionConfig) -> Engine:
+        """Build an engine that refreshes the RDS IAM token per connection.
+
+        RDS IAM tokens expire after ~15 minutes. Rather than baking a single token
+        into the connection URL (which would go stale for connections opened later
+        in a long ingestion), a ``do_connect`` listener injects a freshly minted
+        token on every new connection.
+        """
+        auth_type = cast("IamAuthConfigurationSource", connection.authType)
+        if auth_type.awsConfig is None:
+            raise ValueError("awsConfig is required for MySQL RDS IAM authentication")
+
+        host, port = connection.hostPort.split(":")
+        token_manager = RdsIamAuthTokenManager(
+            host=host,
+            port=port,
+            username=connection.username,
+            aws_config=auth_type.awsConfig,
+        )
+        engine = create_generic_db_connection(
+            connection=connection,
+            get_connection_url_fn=self._build_iam_url,
+            get_connection_args_fn=get_connection_args_common,
+        )
+
+        def inject_iam_token(_dialect, _conn_rec, _cargs, cparams: Dict[str, Any]):  # noqa: UP006
+            cparams["password"] = token_manager.get_token()
+            # RDS IAM auth requires TLS. A truthy ssl dict makes PyMySQL treat SSL
+            # as required (an empty dict only yields PREFERRED, which can silently
+            # fall back to plaintext). check_hostname also verifies the RDS cert.
+            # Any explicitly provided ssl config is preserved.
+            if "ssl" not in cparams:
+                cparams["ssl"] = {"check_hostname": True}
+
+        listen(engine, "do_connect", inject_iam_token)
+        return engine
+
+    @staticmethod
+    def _build_iam_url(connection: MySQLConnectionConfig) -> str:
+        """Build the connection URL exactly like ``get_connection_url_common`` but
+        without a password/token: the ``do_connect`` listener injects a fresh RDS
+        IAM token per connection. Reusing the common helper with the IAM auth
+        neutralized keeps databaseSchema and connectionOptions handling in sync.
+        """
+        url_connection = connection.model_copy()
+        url_connection.authType = BasicAuth(password="")  # type: ignore
+        return get_connection_url_common(url_connection)
 
     def _get_cloudsql_engine(self, connection: MySQLConnectionConfig) -> Engine:
         try:
@@ -120,12 +176,6 @@ class MySQLConnection(BaseConnection[MySQLConnectionConfig, Engine]):
     def __del__(self):
         if hasattr(self, "_cloud_sql_connector"):
             self._cloud_sql_connector.close()
-
-    def get_connection_dict(self) -> dict:
-        """
-        Return the connection dictionary for this service.
-        """
-        raise NotImplementedError("get_connection_dict is not implemented for MySQL")
 
     def test_connection(
         self,

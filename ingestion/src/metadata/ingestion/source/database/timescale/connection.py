@@ -23,21 +23,14 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.database.common.azureConfig import (
     AzureConfigurationSource,
 )
-from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
-    BasicAuth,
-)
 from metadata.generated.schema.entity.services.connections.database.timescaleConnection import (
     TimescaleConnection as TimescaleConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
-from metadata.ingestion.connections.builders import (
-    create_generic_db_connection,
-    get_connection_args_common,
-    get_connection_url_common,
-)
 from metadata.ingestion.connections.connection import BaseConnection
+from metadata.ingestion.connections.strategies import AzureAdStrategy, BasicAuthStrategy
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.postgres.queries import (
@@ -49,7 +42,6 @@ from metadata.ingestion.source.database.postgres.utils import (
     get_postgres_time_column_name,
 )
 from metadata.utils.constants import THREE_MIN
-from metadata.utils.credentials import get_azure_access_token
 
 
 class TimescaleConnection(BaseConnection[TimescaleConnectionConfig, Engine]):
@@ -58,22 +50,11 @@ class TimescaleConnection(BaseConnection[TimescaleConnectionConfig, Engine]):
         Return the SQLAlchemy Engine for TimescaleDB.
         TimescaleDB is a PostgreSQL extension, so we use the same connection logic.
         """
-        connection = self.service_connection
-
-        if isinstance(connection.authType, AzureConfigurationSource):
-            access_token = get_azure_access_token(connection.authType)
-            connection.authType = BasicAuth(password=access_token)
-        return create_generic_db_connection(
-            connection=connection,
-            get_connection_url_fn=get_connection_url_common,
-            get_connection_args_fn=get_connection_args_common,
-        )
-
-    def get_connection_dict(self) -> dict:
-        """
-        Return the connection dictionary for this service.
-        """
-        raise NotImplementedError("get_connection_dict is not implemented for TimescaleDB")
+        match self.service_connection.authType:
+            case AzureConfigurationSource() as azure_auth:
+                return AzureAdStrategy(self.service_connection, azure_auth).build()
+            case _:
+                return BasicAuthStrategy(self.service_connection).build()
 
     def test_connection(
         self,
