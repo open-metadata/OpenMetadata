@@ -120,7 +120,7 @@ class TagAnalyzer:
     def _normalize_recognizer_language(
         self, recognizer_obj: EntityRecognizer, effective_language: str
     ) -> EntityRecognizer:
-        """Clone recognizer with 'any' language replaced by effective_language.
+        """Normalize recognizer with 'any' language replaced by effective_language.
 
         Presidio's RecognizerRegistry uses strict equality on supported_language,
         so 'any' will not match specific language codes like 'en'. This method
