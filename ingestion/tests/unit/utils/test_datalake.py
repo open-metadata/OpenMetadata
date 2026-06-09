@@ -849,6 +849,63 @@ class TestIcebergDeltaLakeMetadataParsing(TestCase):
         # This test ensures we don't break existing JSON Schema parsing
         self.assertIsNotNone(columns)
 
+    def test_read_json_object_propagates_raw_data_for_iceberg(self):
+        from metadata.readers.dataframe.json import JSONDataFrameReader
+
+        content = json.dumps(
+            {
+                "format-version": 1,
+                "schema": {"fields": [{"id": 1, "name": "customer_id", "required": False, "type": "string"}]},
+            }
+        )
+        _gen, raw = JSONDataFrameReader._read_json_object(content.encode("utf-8"))
+        self.assertEqual(raw, content)
+
+    def test_read_json_object_returns_none_for_plain_object(self):
+        from metadata.readers.dataframe.json import JSONDataFrameReader
+
+        content = json.dumps({"a": 1, "b": 2})
+        _gen, raw = JSONDataFrameReader._read_json_object(content.encode("utf-8"))
+        self.assertIsNone(raw)
+
+    def test_read_json_object_propagates_raw_data_for_json_schema(self):
+        from metadata.readers.dataframe.json import JSONDataFrameReader
+
+        content = json.dumps({"$schema": "http://json-schema.org/draft-07/schema#", "type": "object"})
+        _gen, raw = JSONDataFrameReader._read_json_object(content.encode("utf-8"))
+        self.assertEqual(raw, content)
+
+    def test_is_json_lines_returns_false_for_minified_iceberg(self):
+        """Single-line (minified) Iceberg metadata.json must NOT be treated as JSON Lines,
+        otherwise it bypasses _read_json_object and raw_data is never set."""
+        import io
+
+        from metadata.readers.dataframe.json import JSONDataFrameReader
+
+        minified = json.dumps(
+            {
+                "format-version": 1,
+                "schema": {"fields": [{"id": 1, "name": "customer_id", "required": False, "type": "string"}]},
+            }
+        )
+        self.assertFalse(JSONDataFrameReader._is_json_lines(io.BytesIO(minified.encode("utf-8"))))
+
+    def test_is_json_lines_returns_false_for_minified_json_schema(self):
+        import io
+
+        from metadata.readers.dataframe.json import JSONDataFrameReader
+
+        minified = json.dumps({"$schema": "http://json-schema.org/draft-07/schema#", "type": "object"})
+        self.assertFalse(JSONDataFrameReader._is_json_lines(io.BytesIO(minified.encode("utf-8"))))
+
+    def test_is_json_lines_returns_true_for_real_jsonl(self):
+        import io
+
+        from metadata.readers.dataframe.json import JSONDataFrameReader
+
+        jsonl = b'{"a": 1, "b": 2}\n{"a": 3, "b": 4}\n'
+        self.assertTrue(JSONDataFrameReader._is_json_lines(io.BytesIO(jsonl)))
+
 
 class TestFetchColTypesWithParsedObjects:
     """fetch_col_types must correctly type object-dtype columns whose values are already
