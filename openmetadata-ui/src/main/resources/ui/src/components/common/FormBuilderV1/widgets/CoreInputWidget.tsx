@@ -83,6 +83,7 @@ const CoreInputWidget = ({
         label={getWidgetLabel({ hideLabel, label })}
         placeholder={placeholder}
         tooltip={tooltip}
+        tooltipClassName="tw:h-4"
         type={inputType}
         value={value ?? ''}
         onBlur={() => onBlur(id, value)}
