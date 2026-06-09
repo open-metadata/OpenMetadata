@@ -1232,7 +1232,8 @@ public class LineageResource {
         securityContext,
         new OperationContext(LINEAGE_FIELD, MetadataOperation.EDIT_LINEAGE),
         new LineageResourceContext());
-    dao.deleteLineageBySource(entityId, entityType, lineageSource);
+    dao.deleteLineageBySource(
+        entityId, entityType, lineageSource, securityContext.getUserPrincipal().getName());
     return Response.status(Status.OK).build();
   }
 
@@ -1268,7 +1269,8 @@ public class LineageResource {
           @PathParam("lineageSource")
           String lineageSource) {
     authorizeLineageReference(securityContext, entityType, entityFQN);
-    dao.deleteLineageBySourceByFQN(entityType, entityFQN, lineageSource);
+    dao.deleteLineageBySourceByFQN(
+        entityType, entityFQN, lineageSource, securityContext.getUserPrincipal().getName());
     return Response.status(Status.OK).build();
   }
 

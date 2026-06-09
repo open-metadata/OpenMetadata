@@ -1120,31 +1120,31 @@ public class LineageRepository {
   }
 
   @Transaction
-  public void deleteLineageBySource(UUID toId, String toEntity, String source) {
+  public void deleteLineageBySource(UUID toId, String toEntity, String source, String deletedBy) {
     List<CollectionDAO.EntityRelationshipObject> relations;
     if (source.equals(LineageDetails.Source.PIPELINE_LINEAGE.value())
         || source.equals(LineageDetails.Source.OPEN_LINEAGE.value())) {
       relations =
           dao.relationshipDAO()
               .findLineageBySourcePipeline(toId, toEntity, source, Relationship.UPSTREAM.ordinal());
-      // Finally, delete lineage relationship
       dao.relationshipDAO()
           .deleteLineageBySourcePipeline(toId, source, Relationship.UPSTREAM.ordinal());
     } else {
       relations =
           dao.relationshipDAO()
               .findLineageBySource(toId, toEntity, source, Relationship.UPSTREAM.ordinal());
-      // Finally, delete lineage relationship
       dao.relationshipDAO()
           .deleteLineageBySource(toId, toEntity, source, Relationship.UPSTREAM.ordinal());
     }
     deleteLineageFromSearch(relations);
+    emitDeletedLineageEvents(relations, deletedBy);
   }
 
   @Transaction
-  public void deleteLineageBySourceByFQN(String toEntity, String toFQN, String source) {
+  public void deleteLineageBySourceByFQN(
+      String toEntity, String toFQN, String source, String deletedBy) {
     EntityReference to = Entity.getEntityReferenceByName(toEntity, toFQN, Include.ALL);
-    deleteLineageBySource(to.getId(), to.getType(), source);
+    deleteLineageBySource(to.getId(), to.getType(), source, deletedBy);
   }
 
   @Transaction
@@ -1347,6 +1347,16 @@ public class LineageRepository {
           resolveRefForCacheInvalidation(obj.getFromEntity(), obj.getFromId()),
           resolveRefForCacheInvalidation(obj.getToEntity(), obj.getToId()),
           lineageDetails);
+    }
+  }
+
+  private void emitDeletedLineageEvents(
+      List<CollectionDAO.EntityRelationshipObject> relations, String deletedBy) {
+    for (CollectionDAO.EntityRelationshipObject obj : relations) {
+      LineageDetails lineageDetails = JsonUtils.readValue(obj.getJson(), LineageDetails.class);
+      EntityReference from = resolveRefForCacheInvalidation(obj.getFromEntity(), obj.getFromId());
+      EntityReference to = resolveRefForCacheInvalidation(obj.getToEntity(), obj.getToId());
+      emitLineageChangeEvent(EventType.ENTITY_LINEAGE_DELETED, from, to, lineageDetails, deletedBy);
     }
   }
 
