@@ -15,6 +15,7 @@ package org.openmetadata.service;
 
 import static org.openmetadata.service.util.jdbi.JdbiUtils.createAndSetupJDBI;
 
+import com.fasterxml.jackson.databind.SerializationFeature;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.core.Application;
@@ -82,6 +83,7 @@ import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
@@ -774,6 +776,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             org.openmetadata.service.events.AuditExcludeFilterFactory.class,
             SwitchableEventLayoutFactory.class,
             SwitchableAccessLayoutFactory.class);
+    bootstrap
+        .getObjectMapper()
+        .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+        .setDateFormat(JsonUtils.DATE_TIME_FORMAT);
 
     bootstrap.addBundle(
         new SwaggerBundle<>() {
