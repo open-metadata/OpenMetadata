@@ -171,7 +171,7 @@ class UnitycatalogLineageSource(Source):
 
     def _is_filtered_table(self, databricks_table_fqn: str) -> bool:
         is_filtered = False
-        parts = databricks_table_fqn.split(".")
+        parts = databricks_table_fqn.lower().split(".")
         if len(parts) == 3:
             catalog_name, schema_name, table_name = parts
             is_filtered = (
@@ -277,13 +277,21 @@ class UnitycatalogLineageSource(Source):
         """
         Stream table/column lineage one day-window at a time, emitting one
         request per resolved edge. Per-row failures surface as Either(left)
-        instead of being swallowed.
+        instead of being swallowed. Edges dropped by `databaseFilterPattern` and
+        edges whose tables are absent from OpenMetadata are counted separately so
+        the summary distinguishes intentional filtering from missing metadata.
         """
         emitted = 0
-        skipped = 0
+        filtered = 0
+        unresolved = 0
         failed = 0
         for window_start, window_end in self._iter_date_windows():
             for row in self._fetch_lineage_rows(window_start, window_end):
+                if self._is_filtered_table(row.source_table_full_name) or self._is_filtered_table(
+                    row.target_table_full_name
+                ):
+                    filtered += 1
+                    continue
                 try:
                     edge = self._build_table_edge(row)
                 except Exception as exc:
@@ -300,13 +308,13 @@ class UnitycatalogLineageSource(Source):
                     )
                     continue
                 if edge is None:
-                    skipped += 1
+                    unresolved += 1
                     continue
                 emitted += 1
                 yield Either(right=edge)  # pyright: ignore[reportCallIssue]
         logger.info(
-            f"Table lineage: emitted {emitted} edges, "
-            f"skipped {skipped} (filtered or unresolved tables), failed {failed} (row errors)"
+            f"Table lineage: emitted {emitted} edges, filtered {filtered} (databaseFilterPattern), "
+            f"unresolved {unresolved} (tables not in OpenMetadata), failed {failed} (row errors)"
         )
 
     def _get_data_model_column_fqn(self, data_model_entity: ContainerDataModel, column: str) -> Optional[str]:  # noqa: UP045

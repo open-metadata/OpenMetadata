@@ -430,6 +430,16 @@ class TestIsFilteredTable:
     def test_malformed_name_not_filtered(self, lineage_source):
         assert lineage_source._is_filtered_table("not_a_fqn") is False
 
+    def test_normalizes_case_before_filtering(self, lineage_source):
+        seen = []
+        with patch(
+            "metadata.ingestion.source.database.unitycatalog.lineage.filter_by_schema",
+            side_effect=lambda _pattern, name: seen.append(name) or False,
+        ):
+            lineage_source._is_filtered_table("CAT.MySchema.MyTable")
+
+        assert seen == ["myschema"]
+
 
 class TestIter:
     def test_chains_table_then_external_lineage(self, lineage_source):
