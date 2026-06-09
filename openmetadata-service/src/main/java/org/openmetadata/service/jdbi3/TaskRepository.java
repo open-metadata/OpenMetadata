@@ -1115,6 +1115,15 @@ public class TaskRepository extends EntityRepository<Task> {
     return hydrateStoredTask(JsonUtils.readValue(json, Task.class));
   }
 
+  /**
+   * Reads the task straight from the database (bypassing the entity cache) so callers observe the
+   * latest committed state rather than a possibly-stale cached snapshot. Returns null if the task
+   * does not exist.
+   */
+  public Task findCommittedTask(UUID taskId) {
+    return dao.findEntityById(taskId, Include.ALL);
+  }
+
   public List<Task> listNonTerminalTasksByEntityAndCategory(
       String entityFqn, TaskCategory category) {
     List<String> statuses =

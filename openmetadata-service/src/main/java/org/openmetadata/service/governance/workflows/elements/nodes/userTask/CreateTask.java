@@ -682,11 +682,12 @@ public class CreateTask implements TaskListener {
 
   private void dispatchPriorInstanceTermination(
       String mainWorkflowName, UUID priorTaskId, UUID priorInstanceId) {
-    // Run on the shared async executor in its own transaction, so terminating the superseded
-    // Flowable process can never poison the current task-creation transaction. The async path first
-    // re-reads the prior task and only deletes the process once the cancellation has actually
-    // committed: if the task-creation transaction rolled back, the prior task is still open, so we
-    // leave its process intact rather than orphaning a still-open approval.
+    // Run on the shared async executor in its own transaction so deleting the superseded Flowable
+    // process can never poison the current task-creation transaction. Flowable runs as a standalone
+    // engine with its own JDBC connection, so closeTask() above already committed in a separate OM
+    // transaction before this dispatch. The worker reads the prior task straight from the database
+    // (not the entity cache) to observe that committed status, and only terminates the process when
+    // the task is actually terminal — so a still-live approval is never orphaned.
     CompletableFuture.runAsync(
             () -> terminateSupersededInstance(mainWorkflowName, priorTaskId, priorInstanceId),
             AsyncService.getInstance().getExecutorService())
@@ -703,16 +704,16 @@ public class CreateTask implements TaskListener {
   private void terminateSupersededInstance(
       String mainWorkflowName, UUID priorTaskId, UUID priorInstanceId) {
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    Task prior = taskRepository.find(priorTaskId, Include.ALL);
-    if (isTerminalTaskStatus(prior.getStatus())) {
+    Task prior = taskRepository.findCommittedTask(priorTaskId);
+    if (prior != null && isTerminalTaskStatus(prior.getStatus())) {
       WorkflowHandler.getInstance()
           .terminateWorkflowInstance(priorInstanceId, mainWorkflowName, SUPERSEDED_BY_NEWER_RUN);
     } else {
       LOG.debug(
-          "[CreateTask] Prior approval task '{}' is no longer cancelled (status={}); "
-              + "leaving its workflow process intact",
+          "[CreateTask] Prior approval task '{}' is not terminal (status={}); leaving its workflow "
+              + "process intact",
           priorTaskId,
-          prior.getStatus());
+          prior == null ? null : prior.getStatus());
     }
   }
 
