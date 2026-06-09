@@ -381,7 +381,8 @@ public interface SearchClient
         edgeData.put('sqlQueryKey', sqlKey);
         edgeData.remove('sqlQuery');
       } else {
-        edgeData = params.lineageData;
+        edgeData = new HashMap();
+        edgeData.putAll(params.lineageData);
       }
       // Replace or add the edge, capturing the old sqlQueryKey for cleanup.
       def oldSqlQueryKey = null;
