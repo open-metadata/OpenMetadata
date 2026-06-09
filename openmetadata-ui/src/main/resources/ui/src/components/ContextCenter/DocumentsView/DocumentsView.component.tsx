@@ -34,14 +34,16 @@ import {
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import React, { FC, useState } from 'react';
+import React, { FC, useMemo, useState } from 'react';
 import { SubmenuTrigger } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { moveFileToFolder } from '../../../rest/assetAPI';
+import { formatBytes } from '../../../utils/ContextCenterUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import {
   DocumentsViewProps,
@@ -100,12 +102,12 @@ const FileActions: FC<FileActionsProps> = ({
   const { t } = useTranslation();
   const [isMoving, setIsMoving] = useState(false);
 
-  const availableFolders = folders.filter((f) => f.id !== file.folderId);
+  const availableFolders = useMemo(() => folders.filter((folder) => folder.id !== file.folder?.id), [folders, file]);
 
   const handleMoveToFolder = async (folderId: string) => {
     try {
       setIsMoving(true);
-      await moveFileToFolder(file.driveFileId ?? file.id, folderId);
+      await moveFileToFolder(file.id, folderId);
       onFileMoved?.(file, folderId);
       showSuccessToast(
         t('message.entity-moved-successfully', { entity: t('label.document') })
@@ -346,12 +348,22 @@ const FileRow: FC<FileRowProps> = ({
 }) => {
   const { t } = useTranslation();
 
+
+    const {folderName, fileName, formattedFileSize, relativeTime} = useMemo(()=> {
+ return {
+  folderName: getEntityName(file.folder),
+  fileName: getEntityName(file),
+  formattedFileSize: formatBytes(file.fileSize),
+  relativeTime: getShortRelativeTime(file.updatedAt)
+ }
+  },[file])
+
+
   return (
     <Box
       align="center"
-      className={`tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:cursor-pointer tw:transition-colors tw:duration-100 ${
-        isActive ? 'tw:bg-blue-50' : 'tw:bg-primary hover:tw:bg-gray-25'
-      }`}
+      className={`tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:cursor-pointer tw:transition-colors tw:duration-100 ${isActive ? 'tw:bg-blue-50' : 'tw:bg-primary hover:tw:bg-gray-25'
+        }`}
       data-testid={`document-row-${file.id}`}
       gap={4}
       role="button"
@@ -363,7 +375,7 @@ const FileRow: FC<FileRowProps> = ({
         }
       }}>
       <Checkbox
-        aria-label={file.name}
+        aria-label={fileName}
         isSelected={isSelected}
         onChange={() => onSelectFile?.(file.id)}
         onClick={(e) => (e as React.MouseEvent).stopPropagation()}
@@ -382,14 +394,14 @@ const FileRow: FC<FileRowProps> = ({
           data-testid="document-name"
           size="text-sm"
           weight="medium">
-          {file.name}
+          {fileName}
         </Typography>
         <Box align="center" gap={2}>
           <Typography
             className="tw:text-gray-500"
             data-testid="document-size"
             size="text-xs">
-            {file.sizeLabel}
+            {formattedFileSize}
           </Typography>
           {file.updatedBy && (
             <>
@@ -409,18 +421,18 @@ const FileRow: FC<FileRowProps> = ({
                 className="tw:text-gray-500"
                 data-testid="document-updated-at"
                 size="text-xs">
-                {getShortRelativeTime(file.updatedAt)}
+                {relativeTime}
               </Typography>
             </>
           )}
-          {file.folderName && (
+          {folderName && (
             <>
               <Dot className="tw:text-gray-500" size="micro" />
               <Typography
                 className="tw:text-gray-500"
                 data-testid="document-folder-name"
                 size="text-xs">
-                {file.folderName}
+                {folderName}
               </Typography>
             </>
           )}

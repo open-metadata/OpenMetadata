@@ -19,9 +19,11 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Link04, XClose } from '@untitledui/icons';
-import { FC } from 'react';
+import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatBytes } from '../../../utils/ContextCenterUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import {
   DocumentPreviewPanelProps,
@@ -45,6 +47,15 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
   onClose,
 }) => {
   const { t } = useTranslation();
+
+
+  const { folderName, fileName, formattedFileSize } = useMemo(() => {
+    return {
+      folderName: getEntityName(file.folder),
+      fileName: getEntityName(file),
+      formattedFileSize: formatBytes(file.fileSize)
+    }
+  }, [file])
 
   return (
     <Box
@@ -73,7 +84,7 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
             data-testid="preview-file-name"
             size="text-sm"
             weight="semibold">
-            {file.name}
+            {fileName}
           </Typography>
         </Box>
         <Box align="center" gap={2}>
@@ -109,10 +120,10 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
               {t('label.status')}
             </Typography>
           </div>
-          {file.folderName && (
-            <MetaRow label={t('label.folder')} value={file.folderName} />
+          {folderName && (
+            <MetaRow label={t('label.folder')} value={folderName} />
           )}
-          <MetaRow label={t('label.size')} value={file.sizeLabel} />
+          <MetaRow label={t('label.size')} value={formattedFileSize} />
           {file.updatedBy && (
             <MetaRow label={t('label.updated-by')} value={file.updatedBy} />
           )}

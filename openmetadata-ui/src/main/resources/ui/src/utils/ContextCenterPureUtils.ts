@@ -17,8 +17,6 @@ import { isNull, isUndefined } from 'lodash';
 import { PagingResponse } from 'Models';
 import { ListParams } from 'src/interface/API.interface';
 import type { ArticleCardItem } from '../components/ContextCenter/ArticleCard/ArticleCard.interface';
-import type { DocFile } from '../components/ContextCenter/DocumentsView/DocumentsView.interface';
-import type { UploadedDocumentItem } from '../components/ContextCenter/UploadedDocumentCard/UploadedDocumentCard.interface';
 import { CREATE_PAGE_HASH } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import type { Asset } from '../generated/attachments/asset';
@@ -56,44 +54,6 @@ export const formatBytes = (bytes?: number): string => {
 
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
-
-export const assetToDocumentItem = (
-  asset: ContextFile
-): UploadedDocumentItem => ({
-  fileExtension: asset.fileExtension ?? '',
-  id: asset.id,
-  name: getEntityName(asset) ?? '',
-  sizeLabel: formatBytes(asset.fileSize),
-  status: 'processed',
-  updatedBy: asset.updatedBy ?? '',
-  updatedAt: asset.updatedAt ?? 0,
-});
-
-export const contextFileToDocumentItem = (file: ContextFile): DocFile => ({
-  driveFileId: file.id,
-  folderId: file.folder?.id,
-  folderFqn: file.folder?.fullyQualifiedName,
-  folderName: getEntityName(file.folder),
-  id: file.assetId ?? file.id,
-  name: file.displayName ?? file.name,
-  sizeLabel: formatBytes(file.fileSize),
-  fileExtension: file.fileExtension ?? '',
-  updatedAt: file.updatedAt,
-  updatedBy: file.updatedBy,
-});
-
-export const contextFileToUploadedDocumentItem = (
-  file: ContextFile
-): UploadedDocumentItem => ({
-  driveFileId: file.id,
-  id: file.assetId ?? file.id,
-  name: file.displayName ?? file.name,
-  sizeLabel: formatBytes(file.fileSize),
-  status: 'processed',
-  updatedAt: file.updatedAt ?? 0,
-  updatedBy: file.updatedBy ?? '',
-  fileExtension: file.fileExtension ?? '',
-});
 
 export const knowledgePageToArticleItem = (
   data: {
@@ -163,16 +123,16 @@ export const createArticleKnowledgePage = async (
   }
 };
 
-export const handleAssetDownload = async (file: DocFile) => {
+export const handleAssetDownload = async (file: ContextFile) => {
   let url: string | undefined;
   let element: HTMLAnchorElement | undefined;
 
   try {
-    const blob = await downloadDriveFile(file.driveFileId ?? file.id);
+    const blob = await downloadDriveFile(file.id);
     url = URL.createObjectURL(blob);
     element = document.createElement('a');
     element.href = url;
-    element.download = file.name;
+    element.download = file.displayName ?? file.name;
     document.body.appendChild(element);
     element.click();
   } catch (err) {
