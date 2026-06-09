@@ -1169,6 +1169,13 @@ export interface Connection {
      */
     hostport?: string;
     /**
+     * Number of days of lineage scanned per query against the Unity Catalog system tables. The
+     * configured lineage lookback window is split into chunks of this size and streamed one
+     * chunk at a time so each scan stays bounded. Larger values issue fewer queries (faster);
+     * smaller values keep each scan smaller.
+     */
+    lineageQueryChunkSize?: number;
+    /**
      * Enable dataflow for ingestion
      */
     dataflows?: boolean;
