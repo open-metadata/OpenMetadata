@@ -7,6 +7,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.mcp.util.McpParams;
+import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.limits.Limits;
@@ -23,8 +25,6 @@ public class SemanticSearchTool implements McpTool {
   private static final int DEFAULT_K = 100;
   private static final int MAX_K = 10_000;
   private static final double DEFAULT_THRESHOLD = 0.0;
-  private static final int DESCRIPTION_MAX_LENGTH = 500;
-  private static final int DESCRIPTION_TRUNCATE_LENGTH = 450;
 
   @Override
   public Map<String, Object> execute(
@@ -47,16 +47,16 @@ public class SemanticSearchTool implements McpTool {
       return errorResponse("Vector search service is not initialized");
     }
 
-    int size = parseIntParam(params, "size", DEFAULT_SIZE);
+    int size = McpParams.getInt(params, "size", DEFAULT_SIZE);
     size = Math.min(Math.max(size, 1), MAX_SIZE);
 
-    int from = parseIntParam(params, "from", 0);
+    int from = McpParams.getInt(params, "from", 0);
     from = Math.max(from, 0);
 
-    int k = parseIntParam(params, "k", DEFAULT_K);
+    int k = McpParams.getInt(params, "k", DEFAULT_K);
     k = Math.min(Math.max(k, 1), MAX_K);
 
-    double threshold = parseDoubleParam(params, "threshold", DEFAULT_THRESHOLD);
+    double threshold = McpParams.getDouble(params, "threshold", DEFAULT_THRESHOLD);
     threshold = Math.min(Math.max(threshold, 0.0), 1.0);
 
     Map<String, List<String>> filters = parseFilters(params);
@@ -67,7 +67,7 @@ public class SemanticSearchTool implements McpTool {
       return buildResponse(query, response, size);
     } catch (Exception e) {
       LOG.error("Semantic search failed: {}", e.getMessage(), e);
-      return errorResponse("Semantic search failed: " + e.getMessage());
+      return errorResponse("Semantic search failed: " + McpResponseTrim.safeMessage(e));
     }
   }
 
@@ -144,11 +144,9 @@ public class SemanticSearchTool implements McpTool {
 
     if (hit.containsKey("description")) {
       Object descObj = hit.get("description");
-      if (descObj instanceof String desc && desc.length() > DESCRIPTION_MAX_LENGTH) {
-        cleaned.put("description", desc.substring(0, DESCRIPTION_TRUNCATE_LENGTH) + "...");
-      } else {
-        cleaned.put("description", descObj);
-      }
+      cleaned.put(
+          "description",
+          descObj instanceof String desc ? McpResponseTrim.truncateDescription(desc) : descObj);
     }
 
     return cleaned;
@@ -198,42 +196,6 @@ public class SemanticSearchTool implements McpTool {
     }
 
     return Collections.emptyMap();
-  }
-
-  private int parseIntParam(Map<String, Object> params, String key, int defaultValue) {
-    if (!params.containsKey(key)) {
-      return defaultValue;
-    }
-    Object val = params.get(key);
-    if (val instanceof Number number) {
-      return number.intValue();
-    }
-    if (val instanceof String string) {
-      try {
-        return Integer.parseInt(string);
-      } catch (NumberFormatException e) {
-        return defaultValue;
-      }
-    }
-    return defaultValue;
-  }
-
-  private double parseDoubleParam(Map<String, Object> params, String key, double defaultValue) {
-    if (!params.containsKey(key)) {
-      return defaultValue;
-    }
-    Object val = params.get(key);
-    if (val instanceof Number number) {
-      return number.doubleValue();
-    }
-    if (val instanceof String string) {
-      try {
-        return Double.parseDouble(string);
-      } catch (NumberFormatException e) {
-        return defaultValue;
-      }
-    }
-    return defaultValue;
   }
 
   private Map<String, Object> errorResponse(String message) {

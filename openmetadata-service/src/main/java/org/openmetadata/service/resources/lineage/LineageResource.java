@@ -101,6 +101,12 @@ public class LineageResource {
     this.hydrator = new LineageHydrator(authorizer);
   }
 
+  private static void validateTemporalBounds(Long startTime, Long endTime) {
+    if (startTime != null && endTime != null && startTime > endTime) {
+      throw new IllegalArgumentException("startTime must be less than or equal to endTime");
+    }
+  }
+
   @GET
   @Valid
   @Path("/{entity}/{id}")
@@ -245,8 +251,19 @@ public class LineageResource {
                   "When true, preserves all nodes in the path to filtered results. When false, only returns nodes matching the filter. Default is true.")
           @QueryParam("preserve_paths")
           @DefaultValue("true")
-          Boolean preservePaths)
+          Boolean preservePaths,
+      @Parameter(
+              description =
+                  "Filter lineage edges by observed time window (epoch millis). Inclusive lower bound; matched via range overlap on edge createdAt/updatedAt.")
+          @QueryParam("startTime")
+          Long startTime,
+      @Parameter(
+              description =
+                  "Filter lineage edges by observed time window (epoch millis). Inclusive upper bound; matched via range overlap on edge createdAt/updatedAt.")
+          @QueryParam("endTime")
+          Long endTime)
       throws IOException {
+    validateTemporalBounds(startTime, endTime);
     return Entity.getSearchRepository()
         .searchLineage(
             new SearchLineageRequest()
@@ -260,7 +277,9 @@ public class LineageResource {
                 .withLayerSize(size)
                 .withIncludeSourceFields(getRequiredLineageFields(includeSourceFields))
                 .withColumnFilter(columnFilter)
-                .withPreservePaths(preservePaths));
+                .withPreservePaths(preservePaths)
+                .withStartTime(startTime)
+                .withEndTime(endTime));
   }
 
   @GET
@@ -353,8 +372,19 @@ public class LineageResource {
                   "When true, preserves all nodes in the path to filtered results. When false, only returns nodes matching the filter. Default is true.")
           @QueryParam("preserve_paths")
           @DefaultValue("true")
-          Boolean preservePaths)
+          Boolean preservePaths,
+      @Parameter(
+              description =
+                  "Filter lineage edges by observed time window (epoch millis). Inclusive lower bound; matched via range overlap on edge createdAt/updatedAt.")
+          @QueryParam("startTime")
+          Long startTime,
+      @Parameter(
+              description =
+                  "Filter lineage edges by observed time window (epoch millis). Inclusive upper bound; matched via range overlap on edge createdAt/updatedAt.")
+          @QueryParam("endTime")
+          Long endTime)
       throws IOException {
+    validateTemporalBounds(startTime, endTime);
     return Entity.getSearchRepository()
         .searchLineageWithDirection(
             new SearchLineageRequest()
@@ -369,7 +399,9 @@ public class LineageResource {
                 .withLayerSize(size)
                 .withIncludeSourceFields(getRequiredLineageFields(includeSourceFields))
                 .withColumnFilter(columnFilter)
-                .withPreservePaths(preservePaths));
+                .withPreservePaths(preservePaths)
+                .withStartTime(startTime)
+                .withEndTime(endTime));
   }
 
   @GET
@@ -470,7 +502,18 @@ public class LineageResource {
       @Parameter(description = "Filter documents by deleted param. By default deleted is false")
           @QueryParam("includeDeleted")
           boolean deleted,
-      @Parameter(description = "entity type") @QueryParam("type") String entityType) {
+      @Parameter(description = "entity type") @QueryParam("type") String entityType,
+      @Parameter(
+              description =
+                  "Filter lineage edges by observed time window (epoch millis). Inclusive lower bound; matched via range overlap on edge createdAt/updatedAt.")
+          @QueryParam("startTime")
+          Long startTime,
+      @Parameter(
+              description =
+                  "Filter lineage edges by observed time window (epoch millis). Inclusive upper bound; matched via range overlap on edge createdAt/updatedAt.")
+          @QueryParam("endTime")
+          Long endTime) {
+    validateTemporalBounds(startTime, endTime);
     String jobId = UUID.randomUUID().toString();
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
     executorService.submit(
@@ -478,7 +521,14 @@ public class LineageResource {
           try {
             String csvData =
                 dao.exportCsvAsync(
-                    fqn, upstreamDepth, downstreamDepth, queryFilter, entityType, deleted);
+                    fqn,
+                    upstreamDepth,
+                    downstreamDepth,
+                    queryFilter,
+                    entityType,
+                    deleted,
+                    startTime,
+                    endTime);
             WebsocketNotificationHandler.sendCsvExportCompleteNotification(
                 jobId, securityContext, csvData);
           } catch (Exception e) {
@@ -524,11 +574,29 @@ public class LineageResource {
           @QueryParam("includeDeleted")
           @DefaultValue("false")
           boolean deleted,
-      @Parameter(description = "entity type") @QueryParam("type") String entityType)
+      @Parameter(description = "entity type") @QueryParam("type") String entityType,
+      @Parameter(
+              description =
+                  "Filter lineage edges by observed time window (epoch millis). Inclusive lower bound; matched via range overlap on edge createdAt/updatedAt.")
+          @QueryParam("startTime")
+          Long startTime,
+      @Parameter(
+              description =
+                  "Filter lineage edges by observed time window (epoch millis). Inclusive upper bound; matched via range overlap on edge createdAt/updatedAt.")
+          @QueryParam("endTime")
+          Long endTime)
       throws IOException {
+    validateTemporalBounds(startTime, endTime);
     return Entity.getSearchRepository()
         .getLineagePaginationInfo(
-            fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
+            fqn,
+            upstreamDepth,
+            downstreamDepth,
+            queryFilter,
+            deleted,
+            entityType,
+            startTime,
+            endTime);
   }
 
   @GET
@@ -591,7 +659,18 @@ public class LineageResource {
       @Parameter(description = "Source Fields to Include", schema = @Schema(type = "string"))
           @QueryParam("fields")
           @DefaultValue("*")
-          String includeSourceFields) {
+          String includeSourceFields,
+      @Parameter(
+              description =
+                  "Filter lineage edges by observed time window (epoch millis). Inclusive lower bound; matched via range overlap on edge createdAt/updatedAt.")
+          @QueryParam("startTime")
+          Long startTime,
+      @Parameter(
+              description =
+                  "Filter lineage edges by observed time window (epoch millis). Inclusive upper bound; matched via range overlap on edge createdAt/updatedAt.")
+          @QueryParam("endTime")
+          Long endTime) {
+    validateTemporalBounds(startTime, endTime);
     String jobId = UUID.randomUUID().toString();
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
     executorService.submit(
@@ -608,7 +687,9 @@ public class LineageResource {
                     queryFilter,
                     deleted,
                     entityType,
-                    includeSourceFields);
+                    includeSourceFields,
+                    startTime,
+                    endTime);
             WebsocketNotificationHandler.sendCsvExportCompleteNotification(
                 jobId, securityContext, csvData);
           } catch (Exception e) {
@@ -700,8 +781,19 @@ public class LineageResource {
                   "When true, includes pagination totals and depth counts in the entity-count response.")
           @QueryParam("include_pagination_info")
           @DefaultValue("false")
-          Boolean includePaginationInfo)
+          Boolean includePaginationInfo,
+      @Parameter(
+              description =
+                  "Filter lineage edges by observed time window (epoch millis). Inclusive lower bound; matched via range overlap on edge createdAt/updatedAt.")
+          @QueryParam("startTime")
+          Long startTime,
+      @Parameter(
+              description =
+                  "Filter lineage edges by observed time window (epoch millis). Inclusive upper bound; matched via range overlap on edge createdAt/updatedAt.")
+          @QueryParam("endTime")
+          Long endTime)
       throws IOException {
+    validateTemporalBounds(startTime, endTime);
     if (nullOrEmpty(direction)) {
       throw new IllegalArgumentException("Lineage Direction is required.");
     }
@@ -722,7 +814,9 @@ public class LineageResource {
                 .withIncludeSourceFields(getRequiredLineageFields(includeSourceFields))
                 .withColumnFilter(columnFilter)
                 .withPreservePaths(preservePaths)
-                .withIncludePaginationInfo(includePaginationInfo));
+                .withIncludePaginationInfo(includePaginationInfo)
+                .withStartTime(startTime)
+                .withEndTime(endTime));
   }
 
   @PUT
@@ -907,7 +1001,9 @@ public class LineageResource {
         new OperationContext(toEntity, MetadataOperation.EDIT_LINEAGE),
         new ResourceContext<>(toEntity, UUID.fromString(toId), null));
 
-    boolean deleted = dao.deleteLineage(fromEntity, fromId, toEntity, toId);
+    boolean deleted =
+        dao.deleteLineage(
+            fromEntity, fromId, toEntity, toId, securityContext.getUserPrincipal().getName());
     if (!deleted) {
       return Response.status(NOT_FOUND)
           .entity(new ErrorMessage(NOT_FOUND.getStatusCode(), "Lineage edge not found"))
@@ -954,7 +1050,9 @@ public class LineageResource {
         securityContext,
         new OperationContext(LINEAGE_FIELD, MetadataOperation.EDIT_LINEAGE),
         new LineageResourceContext());
-    boolean deleted = dao.deleteLineageByFQN(fromEntity, fromFQN, toEntity, toFQN);
+    boolean deleted =
+        dao.deleteLineageByFQN(
+            fromEntity, fromFQN, toEntity, toFQN, securityContext.getUserPrincipal().getName());
     if (!deleted) {
       return Response.status(NOT_FOUND)
           .entity(new ErrorMessage(NOT_FOUND.getStatusCode(), "Lineage edge not found"))

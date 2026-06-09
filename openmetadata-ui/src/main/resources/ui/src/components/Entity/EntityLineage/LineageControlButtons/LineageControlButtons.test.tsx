@@ -252,7 +252,7 @@ describe('LineageControlButtons', () => {
       fireEvent.click(screen.getByTestId('fit-screen'));
       fireEvent.click(screen.getByText('label.refocused-to-selected'));
 
-      expect(mockSetCenter).toHaveBeenCalledWith(15, 38, {
+      expect(mockSetCenter).toHaveBeenCalledWith(10, 38, {
         duration: 800,
         zoom: 0.65,
       });
@@ -293,7 +293,7 @@ describe('LineageControlButtons', () => {
       fireEvent.click(screen.getByTestId('fit-screen'));
       fireEvent.click(screen.getByText('label.refocused-to-home'));
 
-      expect(mockSetCenter).toHaveBeenCalledWith(25, 38, {
+      expect(mockSetCenter).toHaveBeenCalledWith(15, 38, {
         duration: 800,
         zoom: 0.65,
       });

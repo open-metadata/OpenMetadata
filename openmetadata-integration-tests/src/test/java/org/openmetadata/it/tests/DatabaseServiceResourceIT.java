@@ -29,6 +29,7 @@ import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
@@ -36,6 +37,11 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.services.connections.database.ConnectionArguments;
 import org.openmetadata.schema.services.connections.database.ConnectionOptions;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
@@ -329,6 +335,41 @@ public class DatabaseServiceResourceIT
     ListResponse<DatabaseService> response = listEntities(params);
     assertNotNull(response);
     assertTrue(response.getData().size() >= 3);
+  }
+
+  @Test
+  void list_databaseServiceWithPipelinesField_populatesPipelines(TestNamespace ns) {
+    DatabaseService service =
+        createEntity(createMinimalRequest(ns).withName(ns.prefix("svc_pipe")));
+
+    CreateIngestionPipeline pipelineRequest =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("ingestion_pipe"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(
+                new SourceConfig()
+                    .withConfig(new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true)))
+            .withAirflowConfig(new AirflowConfig());
+    IngestionPipeline pipeline =
+        SdkClients.adminClient().ingestionPipelines().create(pipelineRequest);
+
+    ListParams params = new ListParams();
+    params.setLimit(1000);
+    params.setFields("pipelines");
+    ListResponse<DatabaseService> response = listEntities(params);
+
+    DatabaseService listed =
+        response.getData().stream()
+            .filter(s -> s.getId().equals(service.getId()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(listed, "Created service should be present in list response");
+    assertNotNull(
+        listed.getPipelines(), "fields=pipelines must populate pipelines on the list endpoint");
+    assertTrue(
+        listed.getPipelines().stream().anyMatch(p -> p.getId().equals(pipeline.getId())),
+        "List response should include the ingestion pipeline for the service");
   }
 
   @Test
