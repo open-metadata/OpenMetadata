@@ -20,7 +20,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration.SearchType;
 
 public final class DescriptionSizeMutation implements ShapeMutation {
-  private static final int REJECT_AT_CHARS = 12_000_000;
 
   @Override
   public String dimension() {
@@ -45,6 +44,6 @@ public final class DescriptionSizeMutation implements ShapeMutation {
 
   @Override
   public Outcome expected(final Rung rung, final SearchType engine) {
-    return rung.magnitude() >= REJECT_AT_CHARS ? Outcome.REJECT_SIZE : Outcome.OK;
+    return Outcome.OK;
   }
 }

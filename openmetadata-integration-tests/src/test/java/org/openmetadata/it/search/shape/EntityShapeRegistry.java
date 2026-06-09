@@ -20,9 +20,10 @@ import org.openmetadata.it.search.shape.mutations.FollowersCountMutation;
 import org.openmetadata.it.search.shape.mutations.KeywordIgnoreAboveMutation;
 import org.openmetadata.it.search.shape.mutations.OwnersCountMutation;
 import org.openmetadata.it.search.shape.mutations.TagsCountMutation;
+import org.openmetadata.it.search.shape.profiles.TableShapeProfile;
 
 public final class EntityShapeRegistry {
-  private final List<EntityShapeProfile> profiles = List.of();
+  private final List<EntityShapeProfile> profiles = List.of(new TableShapeProfile());
 
   private final List<ShapeMutation> sharedMutations =
       List.of(
