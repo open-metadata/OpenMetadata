@@ -46,6 +46,7 @@ import org.openmetadata.schema.services.connections.database.PolicyAgentConfig;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityType;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 
 /**
@@ -56,6 +57,11 @@ import org.openmetadata.sdk.exceptions.InvalidRequestException;
  * allowed), connectors that enabled the policy agent with specific support flags (each accessType
  * checked against the matching flag), and Data Product targets (ColumnLevel always rejected
  * because the request can span multiple backing services).
+ *
+ * <p>Also covers the one-active-request-per-entity rule enforced in {@link
+ * org.openmetadata.service.jdbi3.TaskRepository}: a user cannot submit a second active Data Access
+ * Request for an entity they already have an active request for, while a different user requesting
+ * the same entity, or the same user requesting a different entity, remains allowed.
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
@@ -120,6 +126,15 @@ public class DataAccessRequestValidationIT {
 
   private static Task createDataAccessRequest(
       TestNamespace ns, String entityType, String entityFqn, Map<String, Object> payload) {
+    return createDataAccessRequest(SdkClients.adminClient(), ns, entityType, entityFqn, payload);
+  }
+
+  private static Task createDataAccessRequest(
+      OpenMetadataClient client,
+      TestNamespace ns,
+      String entityType,
+      String entityFqn,
+      Map<String, Object> payload) {
     CreateTask request =
         new CreateTask()
             .withName(ns.prefix("dar_" + entityType + "_" + UUID.randomUUID()))
@@ -127,7 +142,7 @@ public class DataAccessRequestValidationIT {
             .withType(TaskEntityType.DataAccessRequest)
             .withAbout(entityLink(entityType, entityFqn))
             .withPayload(payload);
-    return SdkClients.adminClient().tasks().create(request);
+    return client.tasks().create(request);
   }
 
   @Test
@@ -257,6 +272,68 @@ public class DataAccessRequestValidationIT {
 
     assertNotNull(fullAccessTask.getId());
     assertNotNull(maskedTask.getId());
+  }
+
+  @Test
+  void testDuplicateActiveDarBySameUser_rejected(TestNamespace ns) {
+    Table table = createTableOnSnowflakeService(ns, baseSnowflakeConnection());
+
+    Task firstRequest =
+        createDataAccessRequest(
+            ns, "table", table.getFullyQualifiedName(), dataAccessPayload("FullAccess"));
+    assertNotNull(firstRequest.getId());
+
+    InvalidRequestException rejection =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                createDataAccessRequest(
+                    ns, "table", table.getFullyQualifiedName(), dataAccessPayload("Masked")));
+    assertTrue(
+        rejection.getMessage().contains("active data access request"),
+        () -> "Unexpected rejection message: " + rejection.getMessage());
+    assertTrue(
+        rejection.getMessage().contains(firstRequest.getTaskId()),
+        () -> "Rejection should reference existing task: " + rejection.getMessage());
+  }
+
+  @Test
+  void testDuplicateDarByDifferentUsers_allowed(TestNamespace ns) {
+    Table table = createTableOnSnowflakeService(ns, baseSnowflakeConnection());
+
+    Task user1Request =
+        createDataAccessRequest(
+            SdkClients.user1Client(),
+            ns,
+            "table",
+            table.getFullyQualifiedName(),
+            dataAccessPayload("FullAccess"));
+    Task user2Request =
+        createDataAccessRequest(
+            SdkClients.user2Client(),
+            ns,
+            "table",
+            table.getFullyQualifiedName(),
+            dataAccessPayload("FullAccess"));
+
+    assertNotNull(user1Request.getId());
+    assertNotNull(user2Request.getId());
+  }
+
+  @Test
+  void testActiveDarBySameUserOnDifferentEntities_allowed(TestNamespace ns) {
+    Table firstTable = createTableOnSnowflakeService(ns, baseSnowflakeConnection());
+    Table secondTable = createTableOnSnowflakeService(ns, baseSnowflakeConnection());
+
+    Task firstRequest =
+        createDataAccessRequest(
+            ns, "table", firstTable.getFullyQualifiedName(), dataAccessPayload("FullAccess"));
+    Task secondRequest =
+        createDataAccessRequest(
+            ns, "table", secondTable.getFullyQualifiedName(), dataAccessPayload("FullAccess"));
+
+    assertNotNull(firstRequest.getId());
+    assertNotNull(secondRequest.getId());
   }
 
   @Test

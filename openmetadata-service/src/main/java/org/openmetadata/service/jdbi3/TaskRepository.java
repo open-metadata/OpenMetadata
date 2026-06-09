@@ -98,6 +98,17 @@ public class TaskRepository extends EntityRepository<Task> {
   public static final List<TaskEntityStatus> OPEN_TASK_STATUSES =
       List.of(TaskEntityStatus.Open, TaskEntityStatus.InProgress, TaskEntityStatus.Pending);
 
+  private static final String EXPIRED_STATUS = "Expired";
+
+  /**
+   * Terminal statuses for a Data Access Request: once a request reaches one of these the user is
+   * free to file a new request for the same entity. Every other status counts as "active". {@code
+   * Expired} is a forthcoming status that is not yet part of {@link TaskEntityStatus}, so it is kept
+   * as a string literal until the enum is extended.
+   */
+  private static final List<String> DATA_ACCESS_REQUEST_TERMINAL_STATUSES =
+      List.of(TaskEntityStatus.Rejected.value(), TaskEntityStatus.Revoked.value(), EXPIRED_STATUS);
+
   public TaskRepository() {
     super(
         COLLECTION_PATH,
@@ -317,6 +328,10 @@ public class TaskRepository extends EntityRepository<Task> {
     TaskFieldValidator.validatePayloadAgainstFormSchema(task);
     TaskFieldValidator.validateDataAccessCapabilities(task);
 
+    if (!update) {
+      validateNoDuplicateActiveDataAccessRequest(task);
+    }
+
     // Compute aboutFqnHash for efficient querying by target entity FQN
     computeAboutFqnHash(task);
 
@@ -339,6 +354,46 @@ public class TaskRepository extends EntityRepository<Task> {
     }
     String fqnHash = FullyQualifiedName.buildHash(about.getFullyQualifiedName());
     task.setAboutFqnHash(fqnHash);
+  }
+
+  /**
+   * Enforce the business rule that a user may have only one active Data Access Request per target
+   * entity. A request is "active" in every status except the terminal ones
+   * ({@link #DATA_ACCESS_REQUEST_TERMINAL_STATUSES}); creation is rejected when the same creator
+   * already has an active request for the same entity, regardless of the entry point used to submit
+   * it.
+   */
+  private void validateNoDuplicateActiveDataAccessRequest(Task task) {
+    if (isDuplicateDataAccessRequestCheckable(task)) {
+      String entityFqn = task.getAbout().getFullyQualifiedName();
+      Task existing = findActiveDataAccessRequestByCreator(entityFqn, task.getCreatedBy().getId());
+      if (existing != null) {
+        throw new IllegalArgumentException(
+            String.format(
+                "An active data access request (%s) already exists for '%s'. "
+                    + "Resolve or cancel the existing request before submitting another.",
+                existing.getTaskId(), entityFqn));
+      }
+    }
+  }
+
+  private boolean isDuplicateDataAccessRequestCheckable(Task task) {
+    return task.getType() == TaskEntityType.DataAccessRequest
+        && task.getAbout() != null
+        && !nullOrEmpty(task.getAbout().getFullyQualifiedName())
+        && task.getCreatedBy() != null
+        && task.getCreatedBy().getId() != null;
+  }
+
+  private Task findActiveDataAccessRequestByCreator(String entityFqn, UUID createdById) {
+    String json =
+        ((CollectionDAO.TaskDAO) dao)
+            .findActiveByAboutTypeAndCreator(
+                entityFqn,
+                TaskEntityType.DataAccessRequest.value(),
+                createdById.toString(),
+                DATA_ACCESS_REQUEST_TERMINAL_STATUSES);
+    return json == null ? null : JsonUtils.readValue(json, Task.class);
   }
 
   /**
