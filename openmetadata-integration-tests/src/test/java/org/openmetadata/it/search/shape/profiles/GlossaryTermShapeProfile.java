@@ -13,9 +13,7 @@
 package org.openmetadata.it.search.shape.profiles;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.openmetadata.it.search.shape.EntityCases;
 import org.openmetadata.it.search.shape.EntityShapeProfile;
@@ -50,12 +48,6 @@ public final class GlossaryTermShapeProfile implements EntityShapeProfile {
     return new EntityCases(entityType(), this::minimal, ctx)
         .add("synonyms.count", Rung.of("1k", 1_000), this::synonyms, e -> Outcome.OK)
         .add("synonyms.count", Rung.of("100k", 100_000), this::synonyms, e -> Outcome.OK)
-        .add("customProperties.breadth", Rung.of("100", 100), this::customProps, e -> Outcome.OK)
-        .add(
-            "customProperties.breadth",
-            Rung.of("2k", 2_000),
-            this::customProps,
-            e -> Outcome.REJECT_FIELDS)
         .build();
   }
 
@@ -67,14 +59,5 @@ public final class GlossaryTermShapeProfile implements EntityShapeProfile {
     }
     term.setSynonyms(synonyms);
     return term;
-  }
-
-  private EntityInterface customProps(final EntityInterface entity, final Rung rung) {
-    final Map<String, Object> props = new LinkedHashMap<>();
-    for (int i = 0; i < rung.magnitude(); i++) {
-      props.put("prop_" + i, "value_" + i);
-    }
-    entity.setExtension(props);
-    return entity;
   }
 }

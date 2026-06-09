@@ -43,6 +43,34 @@ public final class SearchClient {
             .build());
   }
 
+  public JsonNode put(final String path, final String jsonBody) {
+    return execute(
+        HttpRequest.newBuilder(base.resolve(path))
+            .header("Content-Type", "application/json")
+            .PUT(HttpRequest.BodyPublishers.ofString(jsonBody))
+            .build());
+  }
+
+  public void delete(final String path) {
+    try {
+      final HttpResponse<String> response =
+          http.send(
+              HttpRequest.newBuilder(base.resolve(path)).DELETE().build(),
+              HttpResponse.BodyHandlers.ofString());
+      final int status = response.statusCode();
+      final boolean success = (status >= 200 && status < 300) || status == 404;
+      if (!success) {
+        throw new SearchClientException(
+            "HTTP " + status + " from DELETE " + path + ": " + response.body());
+      }
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new SearchClientException("DELETE " + path + " interrupted", e);
+    } catch (final IOException e) {
+      throw new SearchClientException("DELETE " + path + " failed", e);
+    }
+  }
+
   public boolean exists(final String path) {
     try {
       final HttpResponse<Void> response =

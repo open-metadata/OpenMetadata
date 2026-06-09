@@ -60,7 +60,7 @@ public final class KeywordIgnoreAboveMutation implements ShapeMutation {
   }
 
   @Override
-  public Outcome expected(final Rung rung, final SearchType engine) {
+  public Outcome expected(final Rung rung, final SearchType engine, final String entityType) {
     return Outcome.DEGRADED_UNSEARCHABLE;
   }
 }

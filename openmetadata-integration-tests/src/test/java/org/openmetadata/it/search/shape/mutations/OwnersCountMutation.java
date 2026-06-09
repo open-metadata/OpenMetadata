@@ -56,7 +56,7 @@ public final class OwnersCountMutation implements ShapeMutation {
   }
 
   @Override
-  public Outcome expected(final Rung rung, final SearchType engine) {
+  public Outcome expected(final Rung rung, final SearchType engine, final String entityType) {
     return rung.magnitude() > NESTED_LIMIT ? Outcome.REJECT_NESTED : Outcome.OK;
   }
 }

@@ -15,14 +15,25 @@ package org.openmetadata.it.search.shape.mutations;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.openmetadata.it.search.shape.Outcome;
 import org.openmetadata.it.search.shape.Rung;
 import org.openmetadata.it.search.shape.ShapeMutation;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration.SearchType;
+import org.openmetadata.service.Entity;
 
 public final class CustomPropertiesBreadthMutation implements ShapeMutation {
+  private static final int FIELD_LIMIT_RUNG = 2_000;
+
+  /**
+   * Entity types whose index mapping inflates the dynamic field count past the per-index
+   * total-fields limit once a wide bag of custom properties is added, so the doc is rejected.
+   * Empirically (per-case shadow-index discovery) only {@code glossaryTerm} crosses the limit at
+   * {@code 2k}; every other entity absorbs the same breadth and indexes {@code OK}.
+   */
+  private static final Set<String> REJECTS_AT_FIELD_LIMIT = Set.of(Entity.GLOSSARY_TERM);
+
   @Override
   public String dimension() {
     return "customProperties.breadth";
@@ -30,7 +41,7 @@ public final class CustomPropertiesBreadthMutation implements ShapeMutation {
 
   @Override
   public boolean appliesTo(final EntityInterface entity) {
-    return !(entity instanceof GlossaryTerm);
+    return true;
   }
 
   @Override
@@ -49,7 +60,13 @@ public final class CustomPropertiesBreadthMutation implements ShapeMutation {
   }
 
   @Override
-  public Outcome expected(final Rung rung, final SearchType engine) {
-    return Outcome.OK;
+  public Outcome expected(final Rung rung, final SearchType engine, final String entityType) {
+    final Outcome outcome;
+    if (rung.magnitude() >= FIELD_LIMIT_RUNG && REJECTS_AT_FIELD_LIMIT.contains(entityType)) {
+      outcome = Outcome.REJECT_FIELDS;
+    } else {
+      outcome = Outcome.OK;
+    }
+    return outcome;
   }
 }

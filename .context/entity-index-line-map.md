@@ -81,11 +81,11 @@
 | glossaryTerm | owners.count | 12k | REJECT_NESTED | REJECT_NESTED |
 | glossaryTerm | followers.count | 100 | OK | OK |
 | glossaryTerm | followers.count | 50k | OK | OK |
+| glossaryTerm | customProperties.breadth | 100 | OK | OK |
+| glossaryTerm | customProperties.breadth | 2k | REJECT_FIELDS | REJECT_FIELDS |
 | glossaryTerm | keyword.overIgnoreAbove | 300chars | DEGRADED_UNSEARCHABLE | DEGRADED_UNSEARCHABLE |
 | glossaryTerm | synonyms.count | 1k | OK | OK |
 | glossaryTerm | synonyms.count | 100k | OK | OK |
-| glossaryTerm | customProperties.breadth | 100 | OK | OK |
-| glossaryTerm | customProperties.breadth | 2k | REJECT_FIELDS | REJECT_FIELDS |
 | query | description.size | 1KB | OK | OK |
 | query | description.size | 1MB | OK | OK |
 | query | description.size | 16MB | OK | OK |

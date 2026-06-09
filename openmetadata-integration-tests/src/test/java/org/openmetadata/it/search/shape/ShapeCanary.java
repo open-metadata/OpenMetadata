@@ -24,30 +24,29 @@ public final class ShapeCanary {
 
   private final SearchRepository searchRepository;
   private final SearchClient httpSearch;
+  private final ShadowIndex shadowIndex;
 
   public ShapeCanary(final SearchRepository searchRepository, final SearchClient httpSearch) {
     this.searchRepository = searchRepository;
     this.httpSearch = httpSearch;
+    this.shadowIndex = new ShadowIndex(searchRepository, httpSearch);
   }
 
   public Outcome index(
       final String entityType, final EntityInterface entity, final FieldProbe probe) {
-    final String indexName =
-        searchRepository
-            .getIndexMapping(entityType)
-            .getIndexName(searchRepository.getClusterAlias());
     final String docId = entity.getId().toString();
+    final String freshIndex = shadowIndex.create(entityType);
     Outcome outcome;
     try {
       final SearchIndex index =
           searchRepository.getSearchIndexFactory().buildIndex(entityType, entity);
       final String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
-      searchRepository.getSearchClient().createEntity(indexName, docId, doc);
-      outcome = verify(indexName, docId, probe);
+      searchRepository.getSearchClient().createEntity(freshIndex, docId, doc);
+      outcome = verify(freshIndex, docId, probe);
     } catch (final Exception e) {
       outcome = ShapeClassifier.classifyError(e.getMessage());
     } finally {
-      cleanup(indexName, docId);
+      shadowIndex.drop(freshIndex);
     }
     return outcome;
   }
@@ -63,13 +62,5 @@ public final class ShapeCanary {
       outcome = Outcome.DEGRADED_UNSEARCHABLE;
     }
     return outcome;
-  }
-
-  private void cleanup(final String indexName, final String docId) {
-    try {
-      searchRepository.getSearchClient().deleteEntity(indexName, docId);
-    } catch (final Exception ignored) {
-      // best-effort: a rejected doc never indexed, so there is nothing to delete
-    }
   }
 }

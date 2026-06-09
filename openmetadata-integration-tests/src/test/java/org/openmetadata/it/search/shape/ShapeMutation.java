@@ -25,7 +25,7 @@ public interface ShapeMutation {
 
   EntityInterface apply(EntityInterface entity, Rung rung);
 
-  Outcome expected(Rung rung, SearchType engine);
+  Outcome expected(Rung rung, SearchType engine, String entityType);
 
   default FieldProbe probe(Rung rung) {
     return null;

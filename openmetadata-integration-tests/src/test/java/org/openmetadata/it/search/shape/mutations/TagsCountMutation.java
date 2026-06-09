@@ -54,7 +54,7 @@ public final class TagsCountMutation implements ShapeMutation {
   }
 
   @Override
-  public Outcome expected(final Rung rung, final SearchType engine) {
+  public Outcome expected(final Rung rung, final SearchType engine, final String entityType) {
     return Outcome.OK;
   }
 }

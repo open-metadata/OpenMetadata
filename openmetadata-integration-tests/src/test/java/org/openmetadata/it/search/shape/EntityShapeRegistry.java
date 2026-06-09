@@ -80,7 +80,7 @@ public final class EntityShapeRegistry {
               rung,
               () -> mutation.apply(profile.minimal(ctx), rung),
               mutation.probe(rung),
-              engine -> mutation.expected(rung, engine)));
+              engine -> mutation.expected(rung, engine, profile.entityType())));
     }
   }
 }
