@@ -81,7 +81,9 @@ const ContextCenterDocumentsPage: FC = () => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('document', previewFile.id);
 
-    return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+    return `${window.location.origin}${
+      window.location.pathname
+    }?${params.toString()}`;
   }, [previewFile, searchParams]);
 
   const { hasCreatePermission, hasDeletePermission } = useMemo(
