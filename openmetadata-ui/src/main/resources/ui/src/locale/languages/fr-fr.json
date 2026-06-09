@@ -3427,6 +3427,7 @@
     "sso-new-config-save-warning": "L'enregistrement d'une nouvelle configuration SSO vous déconnectera et vous redirigera vers la page de connexion. Testez d'abord votre configuration pour éviter d'être verrouillé.",
     "sso-provider-not-supported": "Le fournisseur SSO {{provider}} n'est pas pris en charge.",
     "sso-test-login-description": "Connectez-vous à votre fournisseur d'identité avec ces paramètres non enregistrés. Cela s'exécute dans une fenêtre séparée et ne modifie jamais votre session actuelle.",
+    "sso-test-login-error": "La connexion n'a pas pu être validée en raison d'une erreur serveur. Veuillez réessayer.",
     "sso-test-login-failed": "La connexion a abouti, mais cette configuration refuserait l'accès.",
     "sso-test-login-no-token": "Aucun jeton n'a été renvoyé par le fournisseur d'identité.",
     "sso-test-login-popup-failed": "La connexion de test a été annulée ou n'a pas pu aboutir. Veuillez réessayer.",

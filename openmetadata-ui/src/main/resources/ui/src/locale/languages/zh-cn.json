@@ -3427,6 +3427,7 @@
     "sso-new-config-save-warning": "保存新的 SSO 配置将使您退出登录并跳转到登录页面。请先测试您的配置，以免被锁定。",
     "sso-provider-not-supported": "不支持 SSO 提供程序{{provider}}",
     "sso-test-login-description": "使用这些未保存的设置登录您的身份提供商。此操作在单独的窗口中运行，绝不会更改您当前的会话。",
+    "sso-test-login-error": "由于服务器错误，无法验证登录。请重试。",
     "sso-test-login-failed": "登录已完成，但此配置会拒绝该登录。",
     "sso-test-login-no-token": "身份提供商未返回任何令牌。",
     "sso-test-login-popup-failed": "测试登录已取消或无法完成。请重试。",

@@ -82,21 +82,36 @@ export const useSsoTestLogin = (): UseSsoTestLoginResult => {
       } as AuthenticationConfigurationWithScope;
 
       try {
-        const idToken = await acquireIdToken(candidate);
+        let idToken: string | undefined;
+        try {
+          idToken = await acquireIdToken(candidate);
+        } catch {
+          // Failure obtaining the token in the popup (cancelled / blocked).
+          setError(t('message.sso-test-login-popup-failed'));
+
+          return;
+        } finally {
+          globalThis.localStorage.removeItem(SSO_TEST_LOGIN_CANDIDATE_KEY);
+        }
+
         if (!idToken) {
           setError(t('message.sso-test-login-no-token'));
 
           return;
         }
-        const response = await testLoginValidateToken({
-          securityConfiguration,
-          idToken,
-        });
-        setResult(response.data);
-      } catch {
-        setError(t('message.sso-test-login-popup-failed'));
+
+        try {
+          const response = await testLoginValidateToken({
+            securityConfiguration,
+            idToken,
+          });
+          setResult(response.data);
+        } catch {
+          // The popup succeeded but the admin-only backend call failed
+          // (server error / network) — distinct from a cancelled sign-in.
+          setError(t('message.sso-test-login-error'));
+        }
       } finally {
-        globalThis.localStorage.removeItem(SSO_TEST_LOGIN_CANDIDATE_KEY);
         setIsTesting(false);
       }
     },

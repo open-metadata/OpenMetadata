@@ -58,10 +58,13 @@ const SsoTestLoginModal = ({
             {result.mappedTeams?.join(', ')}
           </Typography.Paragraph>
         )}
-        {result.domainCheck && (
+        {result.domainCheck?.enforced && (
           <Typography.Paragraph className="m-b-0">
             <strong>{t('label.domain')}:</strong>{' '}
-            {result.domainCheck.passed ? t('label.success') : t('label.failed')}
+            {result.domainCheck.resolvedDomain}{' '}
+            {result.domainCheck.passed
+              ? `(${t('label.success')})`
+              : `(${t('label.failed')})`}
           </Typography.Paragraph>
         )}
       </div>

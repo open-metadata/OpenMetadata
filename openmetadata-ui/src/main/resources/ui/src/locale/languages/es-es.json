@@ -3427,6 +3427,7 @@
     "sso-new-config-save-warning": "Al guardar una nueva configuración de SSO se cerrará su sesión y se le redirigirá a la página de inicio de sesión. Pruebe primero su configuración para evitar quedar bloqueado.",
     "sso-provider-not-supported": "No se admite el proveedor SSO {{provider}}.",
     "sso-test-login-description": "Inicie sesión con su proveedor de identidad usando estos ajustes sin guardar. Se ejecuta en una ventana aparte y nunca cambia su sesión actual.",
+    "sso-test-login-error": "No se pudo validar el inicio de sesión debido a un error del servidor. Inténtelo de nuevo.",
     "sso-test-login-failed": "El inicio de sesión se completó, pero esta configuración rechazaría el acceso.",
     "sso-test-login-no-token": "El proveedor de identidad no devolvió ningún token.",
     "sso-test-login-popup-failed": "El inicio de sesión de prueba se canceló o no se pudo completar. Inténtelo de nuevo.",

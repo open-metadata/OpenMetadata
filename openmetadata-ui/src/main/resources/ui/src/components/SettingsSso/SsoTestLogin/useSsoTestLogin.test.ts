@@ -112,7 +112,7 @@ describe('useSsoTestLogin', () => {
     ).toBeNull();
   });
 
-  it('should surface an error when the popup is cancelled and not call the backend', async () => {
+  it('should surface a popup error when the sign-in is cancelled and not call the backend', async () => {
     mockUserManager.mockImplementation(() => ({
       signinPopup: jest.fn().mockRejectedValue(new Error('popup closed')),
     }));
@@ -125,5 +125,20 @@ describe('useSsoTestLogin', () => {
 
     expect(result.current.error).toBe('message.sso-test-login-popup-failed');
     expect(mockTestLoginValidateToken).not.toHaveBeenCalled();
+  });
+
+  it('should surface a distinct error when the backend validation call fails', async () => {
+    mockUserManager.mockImplementation(() => ({
+      signinPopup: jest.fn().mockResolvedValue({ id_token: 'id-token-123' }),
+    }));
+    mockTestLoginValidateToken.mockRejectedValue(new Error('500'));
+
+    const { result } = renderHook(() => useSsoTestLogin());
+
+    await act(async () => {
+      await result.current.runTestLogin(securityConfiguration);
+    });
+
+    expect(result.current.error).toBe('message.sso-test-login-error');
   });
 });

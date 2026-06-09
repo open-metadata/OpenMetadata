@@ -38,7 +38,7 @@
       "enum": ["success", "failed"]
     },
     "stage": {
-      "description": "Furthest stage reached before a failure (TOKEN_VALIDATED, CLAIMS_EXTRACTED, IDENTITY_RESOLVED, DOMAIN_CHECKED, ROLES_MAPPED).",
+      "description": "Furthest stage reached: TOKEN_VALIDATED (token failed validation), CLAIMS_EXTRACTED (identity could not be resolved from claims), or DOMAIN_CHECKED (identity resolved and domain rules applied).",
       "type": "string"
     },
     "resolvedPrincipal": {

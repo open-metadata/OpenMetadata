@@ -3427,6 +3427,7 @@
     "sso-new-config-save-warning": "新しいSSO設定を保存すると、サインアウトしてログインページにリダイレクトされます。ロックアウトを避けるため、先に設定をテストしてください。",
     "sso-provider-not-supported": "SSOプロバイダー{{provider}}はサポートされていません。",
     "sso-test-login-description": "これらの未保存の設定でIDプロバイダーにサインインします。別のウィンドウで実行され、現在のセッションは変更されません。",
+    "sso-test-login-error": "サーバーエラーのため、サインインを検証できませんでした。もう一度お試しください。",
     "sso-test-login-failed": "サインインは完了しましたが、この設定ではログインが拒否されます。",
     "sso-test-login-no-token": "IDプロバイダーからトークンが返されませんでした。",
     "sso-test-login-popup-failed": "テストサインインがキャンセルされたか、完了できませんでした。もう一度お試しください。",

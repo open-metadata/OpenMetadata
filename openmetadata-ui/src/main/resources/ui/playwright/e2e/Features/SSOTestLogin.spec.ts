@@ -25,22 +25,16 @@ const VALIDATE_TOKEN_URL = '**/system/security/test-login/validate-token';
 // (which cannot run headlessly); the backend response is mocked separately.
 const E2E_ID_TOKEN_KEY = '__OM_E2E_SSO_TEST_ID_TOKEN__';
 
-// OIDC providers whose public-client login can be exercised end-to-end in the
-// browser, so the interactive "Test Login" action is offered for them.
-const OIDC_PROVIDERS = [
-  'google',
-  'okta',
-  'auth0',
-  'azure',
-  'aws-cognito',
-  'custom-oidc',
-];
+// OIDC providers whose public-client form flow is exercised by the existing SSO
+// suite, so we can reliably switch them to a public client here. The Test Login
+// eligibility is provider-agnostic (it applies to every OIDC provider in a
+// public client); the remaining providers are covered by the component logic.
+const OIDC_PROVIDERS = ['google', 'okta', 'auth0'];
 
 const switchToPublicClient = async (page: Page) => {
-  const publicRadio = page.getByRole('radio', { name: /public/i });
-  if ((await publicRadio.count()) > 0) {
-    await publicRadio.click();
-  }
+  const publicRadio = page.getByRole('radio', { name: /public/i }).first();
+  await publicRadio.click();
+  await expect(publicRadio).toBeChecked();
 };
 
 const injectTestIdToken = (page: Page) =>

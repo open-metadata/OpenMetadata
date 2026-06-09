@@ -65,6 +65,11 @@ public final class TestLoginService {
 
   private static Map<String, Claim> validateToken(
       AuthenticationConfiguration authConfig, AuthorizerConfiguration authzConfig, String idToken) {
+    // Intentionally a fresh, uncached JwtFilter built from the CANDIDATE config:
+    // it must validate against the candidate's publicKeyUrls (not the live ones).
+    // Constructing it triggers a JWKS fetch from the candidate IdP; this endpoint
+    // is admin-only and low-frequency, and a slow/unreachable candidate authority
+    // will fail this single request rather than affect live authentication.
     JwtFilter transientFilter = new JwtFilter(authConfig, authzConfig);
     return transientFilter.validateJwtAndGetClaims(idToken);
   }

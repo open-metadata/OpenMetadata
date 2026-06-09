@@ -3427,6 +3427,7 @@
     "sso-new-config-save-warning": "Als u een nieuwe SSO-configuratie opslaat, wordt u afgemeld en doorgestuurd naar de aanmeldpagina. Test eerst uw configuratie om te voorkomen dat u buitengesloten raakt.",
     "sso-provider-not-supported": "SSO-provider {{provider}} wordt niet ondersteund.",
     "sso-test-login-description": "Meld u aan bij uw identiteitsprovider met deze niet-opgeslagen instellingen. Dit gebeurt in een apart venster en wijzigt nooit uw huidige sessie.",
+    "sso-test-login-error": "De aanmelding kon niet worden gevalideerd door een serverfout. Probeer het opnieuw.",
     "sso-test-login-failed": "De aanmelding is voltooid, maar deze configuratie zou de aanmelding weigeren.",
     "sso-test-login-no-token": "De identiteitsprovider heeft geen token geretourneerd.",
     "sso-test-login-popup-failed": "De testaanmelding is geannuleerd of kon niet worden voltooid. Probeer het opnieuw.",

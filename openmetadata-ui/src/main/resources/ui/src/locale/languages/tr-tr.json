@@ -3427,6 +3427,7 @@
     "sso-new-config-save-warning": "Yeni bir SSO yapılandırmasını kaydetmek oturumunuzu kapatır ve sizi oturum açma sayfasına yönlendirir. Kilitlenmemek için önce yapılandırmanızı test edin.",
     "sso-provider-not-supported": "SSO Sağlayıcısı {{provider}} desteklenmiyor.",
     "sso-test-login-description": "Bu kaydedilmemiş ayarları kullanarak kimlik sağlayıcınızda oturum açın. Bu işlem ayrı bir pencerede çalışır ve mevcut oturumunuzu asla değiştirmez.",
+    "sso-test-login-error": "Sunucu hatası nedeniyle oturum açma doğrulanamadı. Lütfen tekrar deneyin.",
     "sso-test-login-failed": "Oturum açma tamamlandı, ancak bu yapılandırma girişi reddederdi.",
     "sso-test-login-no-token": "Kimlik sağlayıcıdan herhangi bir belirteç döndürülmedi.",
     "sso-test-login-popup-failed": "Test oturum açma iptal edildi veya tamamlanamadı. Lütfen tekrar deneyin.",

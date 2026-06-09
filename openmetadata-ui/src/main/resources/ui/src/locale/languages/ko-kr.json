@@ -3427,6 +3427,7 @@
     "sso-new-config-save-warning": "새 SSO 구성을 저장하면 로그아웃되어 로그인 페이지로 이동합니다. 잠기는 것을 방지하려면 먼저 구성을 테스트하세요.",
     "sso-provider-not-supported": "SSO 제공자 {{provider}}는 지원되지 않습니다.",
     "sso-test-login-description": "저장되지 않은 설정으로 ID 공급자에 로그인합니다. 별도의 창에서 실행되며 현재 세션을 변경하지 않습니다.",
+    "sso-test-login-error": "서버 오류로 인해 로그인을 확인할 수 없습니다. 다시 시도하세요.",
     "sso-test-login-failed": "로그인은 완료되었지만 이 구성에서는 로그인이 거부됩니다.",
     "sso-test-login-no-token": "ID 공급자에서 토큰이 반환되지 않았습니다.",
     "sso-test-login-popup-failed": "테스트 로그인이 취소되었거나 완료할 수 없습니다. 다시 시도하세요.",
