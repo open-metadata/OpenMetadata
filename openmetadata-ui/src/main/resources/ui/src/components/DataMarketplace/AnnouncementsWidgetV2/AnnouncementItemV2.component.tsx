@@ -20,13 +20,11 @@ import AnnouncementCardV1Content from '../../MyData/Widgets/AnnouncementsWidgetV
 interface AnnouncementItemV2Props {
   announcement: AnnouncementEntity;
   onClick: () => void;
-  hideEntityName?: boolean;
 }
 
 const AnnouncementItemV2 = ({
   announcement,
   onClick,
-  hideEntityName = false,
 }: AnnouncementItemV2Props) => {
   const {
     columnName,
@@ -84,7 +82,6 @@ const AnnouncementItemV2 = ({
         entityName={entityName}
         entityType={entityType}
         fieldOperation={fieldOperation}
-        hideEntityName={hideEntityName}
         timestamp={timestamp}
         title={title}
         userName={userName}
