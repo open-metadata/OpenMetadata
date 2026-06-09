@@ -1004,12 +1004,21 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     Task task1 = SdkClients.adminClient().tasks().create(request1);
     SdkClients.adminClient().tasks().create(request2);
 
-    ListResponse<Task> user1Tasks = SdkClients.user1Client().tasks().listAssigned();
-
-    assertNotNull(user1Tasks);
-    assertTrue(
-        user1Tasks.getData().stream().anyMatch(t -> t.getId().equals(task1.getId())),
-        "User1's assigned tasks should include task1");
+    // listAssigned defaults to limit=10. Under heavy concurrent load (multiple tests sharing
+    // USER1) the just-created task may not appear in the first page, so request a wider page
+    // explicitly. Awaitility rides out any write-visibility race on top.
+    Awaitility.await("User1's assigned tasks include task1")
+        .atMost(Duration.ofSeconds(15))
+        .pollInterval(Duration.ofMillis(500))
+        .untilAsserted(
+            () -> {
+              ListResponse<Task> user1Tasks =
+                  SdkClients.user1Client().tasks().listAssigned(null, null, null, null, 1000);
+              assertNotNull(user1Tasks);
+              assertTrue(
+                  user1Tasks.getData().stream().anyMatch(t -> t.getId().equals(task1.getId())),
+                  "User1's assigned tasks should include task1");
+            });
   }
 
   @Test
@@ -1053,26 +1062,39 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
     SdkClients.user1Client().tasks().close(closedTask.getId().toString());
 
-    ListResponse<Task> openTasks =
-        SdkClients.user1Client().tasks().listAssigned(TaskEntityStatus.Open);
-    ListResponse<Task> cancelledTasks =
-        SdkClients.user1Client().tasks().listAssigned(TaskEntityStatus.Cancelled);
+    // Wider page + Awaitility — see testAssignedEndpointReturnsUserTasks for rationale.
+    Awaitility.await("status-filtered listAssigned reflects both tasks")
+        .atMost(Duration.ofSeconds(15))
+        .pollInterval(Duration.ofMillis(500))
+        .untilAsserted(
+            () -> {
+              ListResponse<Task> openTasks =
+                  SdkClients.user1Client()
+                      .tasks()
+                      .listAssigned(TaskEntityStatus.Open, null, null, null, 1000);
+              ListResponse<Task> cancelledTasks =
+                  SdkClients.user1Client()
+                      .tasks()
+                      .listAssigned(TaskEntityStatus.Cancelled, null, null, null, 1000);
 
-    assertNotNull(openTasks);
-    assertTrue(
-        openTasks.getData().stream().anyMatch(t -> t.getId().equals(openTask.getId())),
-        "Open assigned tasks should include open task");
-    assertFalse(
-        openTasks.getData().stream().anyMatch(t -> t.getId().equals(closedTask.getId())),
-        "Open assigned tasks should not include cancelled task");
+              assertNotNull(openTasks);
+              assertTrue(
+                  openTasks.getData().stream().anyMatch(t -> t.getId().equals(openTask.getId())),
+                  "Open assigned tasks should include open task");
+              assertFalse(
+                  openTasks.getData().stream().anyMatch(t -> t.getId().equals(closedTask.getId())),
+                  "Open assigned tasks should not include cancelled task");
 
-    assertNotNull(cancelledTasks);
-    assertTrue(
-        cancelledTasks.getData().stream().anyMatch(t -> t.getId().equals(closedTask.getId())),
-        "Cancelled assigned tasks should include cancelled task");
-    assertFalse(
-        cancelledTasks.getData().stream().anyMatch(t -> t.getId().equals(openTask.getId())),
-        "Cancelled assigned tasks should not include open task");
+              assertNotNull(cancelledTasks);
+              assertTrue(
+                  cancelledTasks.getData().stream()
+                      .anyMatch(t -> t.getId().equals(closedTask.getId())),
+                  "Cancelled assigned tasks should include cancelled task");
+              assertFalse(
+                  cancelledTasks.getData().stream()
+                      .anyMatch(t -> t.getId().equals(openTask.getId())),
+                  "Cancelled assigned tasks should not include open task");
+            });
   }
 
   @Test

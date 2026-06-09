@@ -54,20 +54,17 @@ public class OpenSearchLineChartAggregator implements OpenSearchDynamicChartAggr
       String metricName = metric.getName() == null ? "metric_" + ++i : metric.getName();
       Map<String, Aggregation> metricAggregations = new HashMap<>();
 
+      final String finalIncludeTerms =
+          CommonUtil.nullOrEmpty(lineChart.getIncludeXAxisFiled())
+              ? null
+              : lineChart.getIncludeXAxisFiled();
+      final String finalExcludeTerms =
+          CommonUtil.nullOrEmpty(lineChart.getExcludeXAxisField())
+              ? null
+              : lineChart.getExcludeXAxisField();
+
       if (lineChart.getxAxisField() != null
           && !lineChart.getxAxisField().equals(DataInsightSystemChartRepository.TIMESTAMP_FIELD)) {
-        String includeTerms = null;
-        String excludeTerms = null;
-        if (!CommonUtil.nullOrEmpty(lineChart.getIncludeXAxisFiled())) {
-          includeTerms = lineChart.getIncludeXAxisFiled();
-        }
-        if (!CommonUtil.nullOrEmpty(lineChart.getExcludeXAxisField())) {
-          excludeTerms = lineChart.getExcludeXAxisField();
-        }
-
-        final String finalIncludeTerms = includeTerms;
-        final String finalExcludeTerms = excludeTerms;
-
         Aggregation termsAgg =
             Aggregation.of(
                 a -> {
@@ -132,7 +129,19 @@ public class OpenSearchLineChartAggregator implements OpenSearchDynamicChartAggr
           metricAggregations.put(
               metricName,
               Aggregation.of(
-                  a -> a.terms(t -> t.field(fieldName).size(size)).aggregations(subAggregations)));
+                  a ->
+                      a.terms(
+                              t -> {
+                                var builder = t.field(fieldName).size(size);
+                                if (finalIncludeTerms != null) {
+                                  builder = builder.include(inc -> inc.regexp(finalIncludeTerms));
+                                }
+                                if (finalExcludeTerms != null) {
+                                  builder = builder.exclude(exc -> exc.regexp(finalExcludeTerms));
+                                }
+                                return builder;
+                              })
+                          .aggregations(subAggregations)));
         } else if (currentAgg._kind().name().equals("DateHistogram")) {
           final String fieldName = currentAgg.dateHistogram().field();
           final CalendarInterval interval = currentAgg.dateHistogram().calendarInterval();

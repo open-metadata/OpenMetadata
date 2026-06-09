@@ -23,7 +23,6 @@ import type {
   TreeLoadMoreItemProps as AriaTreeLoadMoreItemProps,
   TreeProps as AriaTreeProps,
   Key,
-  Selection,
   TreeItemContentRenderProps,
 } from 'react-aria-components';
 import {
@@ -34,9 +33,21 @@ import {
   TreeItemContent as AriaTreeItemContent,
   TreeLoadMoreItem as AriaTreeLoadMoreItem,
   TreeSection as AriaTreeSection,
+  useDragAndDrop,
 } from 'react-aria-components';
 
-export type { Key, Selection };
+export type { Key, Selection } from 'react-aria-components';
+
+// ---- TreeItemMoveEvent --------------------------------------------------
+
+export interface TreeItemMoveEvent {
+  /** The key of the item being dragged. */
+  sourceKey: Key;
+  /** The key of the target item. */
+  targetKey: Key;
+  /** Drop position relative to the target item. */
+  dropPosition: 'before' | 'after' | 'on';
+}
 
 // ---- Tree ---------------------------------------------------------------
 
@@ -46,20 +57,64 @@ export interface TreeProps<T extends object>
   className?: string;
   /** The contents of the tree. */
   children?: ReactNode | ((item: T) => ReactNode);
+  /**
+   * When provided, enables drag-and-drop reordering. Called whenever an item
+   * is dropped onto or around another item. The Tree wires `useDragAndDrop`
+   * internally — consumers don't need to import it from react-aria-components.
+   *
+   * When `onItemMove` is set it takes precedence over a manually passed
+   * `dragAndDropHooks` prop.
+   */
+  onItemMove?: (event: TreeItemMoveEvent) => void;
+  /**
+   * Called when an item is dropped onto the root of the tree (empty space,
+   * outside any existing item). Use this to move the dragged item to the
+   * top level. Receives the source key of the dragged item.
+   * Only active when `onItemMove` is also provided.
+   */
+  onItemRootDrop?: (sourceKey: Key) => void;
 }
 
 const TreeRoot = <T extends object>({
   className,
   children,
+  onItemMove,
+  onItemRootDrop,
   ...props
 }: TreeProps<T>) => {
+  const { dragAndDropHooks: internalHooks } = useDragAndDrop({
+    getItems: onItemMove
+      ? (keys) => Array.from(keys).map((key) => ({ 'text/plain': String(key) }))
+      : (undefined as never),
+    onMove: onItemMove
+      ? (e) => {
+          const sourceKey = Array.from(e.keys)[0];
+          onItemMove({
+            sourceKey,
+            targetKey: e.target.key,
+            dropPosition: e.target.dropPosition,
+          });
+        }
+      : undefined,
+    onRootDrop: onItemRootDrop
+      ? async (e) => {
+          const item = e.items.find((i) => i.kind === 'text');
+          const sourceKey = await item?.getText('text/plain');
+          if (sourceKey) {
+            onItemRootDrop(sourceKey);
+          }
+        }
+      : undefined,
+  });
+
   return (
     <AriaTree
       {...props}
       className={cx(
-        'tw:outline-none tw:w-full tw:flex tw:flex-col tw:gap-0.5',
+        'tw:outline-hidden tw:w-full tw:flex tw:flex-col tw:gap-0.5',
         className
-      )}>
+      )}
+      dragAndDropHooks={onItemMove ? internalHooks : props.dragAndDropHooks}>
       {children as AriaTreeProps<T>['children']}
     </AriaTree>
   );
@@ -85,15 +140,51 @@ const TreeItemComponent = <T extends object>({
       {...props}
       className={(state) =>
         cx(
-          'tw:group/tree-item tw:outline-none tw:rounded-md',
+          'tw:group/tree-item tw:outline-hidden tw:rounded-md',
           'tw:cursor-pointer tw:select-none',
           state.isDisabled && 'tw:opacity-50 tw:cursor-not-allowed',
           state.isFocusVisible && 'tw:ring-2 tw:ring-inset tw:ring-brand-300',
+          'data-[dragging]:tw:opacity-50 data-[dragging]:tw:ring-2 data-[dragging]:tw:ring-inset data-[dragging]:tw:ring-brand-300',
+          'data-[drop-target]:tw:bg-brand-primary_alt data-[drop-target]:tw:ring-2 data-[drop-target]:tw:ring-inset data-[drop-target]:tw:ring-brand-300',
           typeof className === 'function' ? className(state) : className
         )
       }>
       {children}
     </AriaTreeItem>
+  );
+};
+
+// ---- TreeExpandButton ---------------------------------------------------
+
+export interface TreeExpandButtonProps
+  extends Omit<ComponentPropsWithRef<typeof AriaButton>, 'className'> {
+  /** Additional CSS class name. */
+  className?: string;
+}
+
+/**
+ * An accessible expand/collapse button for use inside `Tree.ItemContent`.
+ * Render with slot="chevron" so React Aria's Tree handles keyboard & ARIA.
+ */
+const TreeExpandButton = ({ className, ...props }: TreeExpandButtonProps) => {
+  return (
+    <AriaButton
+      {...props}
+      className={(state) =>
+        cx(
+          'tw:flex tw:items-center tw:justify-center tw:w-4 tw:h-4 tw:shrink-0',
+          'tw:rounded tw:outline-hidden tw:text-fg-quaternary',
+          'tw:transition-transform tw:duration-200 tw:ease-in-out tw:cursor-pointer',
+          state.isFocusVisible && 'tw:ring-2 tw:ring-brand-300',
+          className
+        )
+      }
+      slot="chevron">
+      <ChevronRight
+        aria-hidden="true"
+        className="tw:w-3.5 tw:h-3.5 tw:group-data-expanded/tree-item:rotate-90 tw:transition-transform tw:duration-200"
+      />
+    </AriaButton>
   );
 };
 
@@ -117,10 +208,24 @@ export interface TreeItemContentProps {
   /** Additional CSS class name applied to the icon. */
   iconClassName?: string;
   /**
-   * When `true`, an animated expand/collapse chevron is rendered automatically.
+   * When `true`, an animated expand/collapse chevron button is rendered.
    * Set to `false` to render your own expand indicator. Defaults to `true`.
    */
   showExpandIcon?: boolean;
+  /**
+   * Override whether the item has child items. When provided, this value
+   * is used instead of React Aria's internal `hasChildItems` — useful for
+   * lazy-loaded trees where children aren't in the DOM yet but the node is
+   * known to have children (e.g. from a `childrenCount` field).
+   * When `undefined`, falls back to React Aria's `hasChildItems`.
+   */
+  hasChildItems?: boolean;
+  /**
+   * When `true`, draws a vertical guide line for nested items (level >= 2).
+   * Rendered as an absolutely-positioned `<span>` using Tailwind classes.
+   * Defaults to `false`.
+   */
+  showGuideLines?: boolean;
 }
 
 const TreeItemContentComponent = ({
@@ -129,28 +234,36 @@ const TreeItemContentComponent = ({
   icon: Icon,
   iconClassName,
   showExpandIcon = true,
+  showGuideLines = false,
+  hasChildItems: hasChildItemsProp,
 }: TreeItemContentProps) => {
   return (
     <AriaTreeItemContent>
       {(renderProps: TreeItemContentRenderProps) => {
-        const { isExpanded, hasChildItems, level } = renderProps;
+        const { hasChildItems: hasChildItemsFromAria, level } = renderProps;
+        const hasChildItems = hasChildItemsProp ?? hasChildItemsFromAria;
 
         return (
           <div
             className={cx(
-              'tw:flex tw:items-center tw:gap-1 tw:py-1.5 tw:pr-2',
+              'tw:relative tw:flex tw:items-center tw:gap-3 tw:py-1.5 tw:pr-1.5',
               'tw:rounded-md tw:text-sm tw:font-medium tw:text-secondary',
-              'hover:tw:bg-primary_hover',
-              'tw:group-data-selected/tree-item:bg-brand-primary_alt tw:group-data-selected/tree-item:text-brand-secondary',
+              'tw:hover:bg-primary_hover',
+              'tw:group-selected/tree-item:bg-brand-primary_alt tw:group-selected/tree-item:text-brand-secondary',
               className
             )}
-            style={{ paddingLeft: `${(level - 1) * 16 + 8}px` }}>
-            {showExpandIcon && (
-              <ChevronRight
+            style={{ marginLeft: `${(level - 1) * 16 + 2}px` }}>
+            {showGuideLines && level >= 2 && (
+              <span
                 aria-hidden="true"
+                className="tw:absolute tw:top-0 tw:bottom-0 tw:w-px tw:bg-gray-blue-100 tw:pointer-events-none"
+                style={{ left: '-10px' }}
+              />
+            )}
+            {showExpandIcon && (
+              <TreeExpandButton
                 className={cx(
-                  'tw:w-4 tw:h-4 tw:shrink-0 tw:text-fg-quaternary tw:transition-transform tw:duration-200 tw:ease-in-out',
-                  hasChildItems ? isExpanded && 'tw:rotate-90' : 'tw:invisible'
+                  !hasChildItems && 'tw:invisible tw:pointer-events-none'
                 )}
               />
             )}
@@ -241,46 +354,22 @@ const TreeHeaderComponent = ({ className, children }: TreeHeaderProps) => {
   );
 };
 
-// ---- TreeExpandButton ---------------------------------------------------
-
-export interface TreeExpandButtonProps
-  extends Omit<ComponentPropsWithRef<typeof AriaButton>, 'className'> {
-  /** Additional CSS class name. */
-  className?: string;
-}
-
-/**
- * An accessible expand/collapse button for use inside `Tree.ItemContent`.
- * Render with slot="chevron" so React Aria's Tree handles keyboard & ARIA.
- */
-const TreeExpandButton = ({ className, ...props }: TreeExpandButtonProps) => {
-  return (
-    <AriaButton
-      {...props}
-      className={(state) =>
-        cx(
-          'tw:flex tw:items-center tw:justify-center tw:w-4 tw:h-4 tw:shrink-0',
-          'tw:rounded tw:outline-none tw:text-fg-quaternary',
-          'tw:transition-transform tw:duration-200 tw:ease-in-out',
-          state.isFocusVisible && 'tw:ring-2 tw:ring-brand-300',
-          className
-        )
-      }
-      slot="chevron">
-      <ChevronRight
-        aria-hidden="true"
-        className="tw:w-4 tw:h-4 tw:group-data-expanded/tree-item:rotate-90 tw:transition-transform tw:duration-200"
-      />
-    </AriaButton>
-  );
-};
-
 // ---- Compound export ----------------------------------------------------
 
 /**
  * Tree renders a hierarchical list of items with keyboard navigation,
- * selection, and expand/collapse support. Built on React Aria's Tree
- * primitives for full accessibility.
+ * selection, expand/collapse, and optional drag-and-drop support.
+ * Built on React Aria's Tree primitives for full accessibility.
+ *
+ * Pass `onItemMove` to enable drag-and-drop without importing useDragAndDrop:
+ * ```tsx
+ * <Tree onItemMove={({ sourceKey, targetKey, dropPosition }) => { ... }}>
+ * ```
+ *
+ * Pass `showGuideLines` on `Tree.ItemContent` to render vertical indent lines:
+ * ```tsx
+ * <Tree.ItemContent showGuideLines>...</Tree.ItemContent>
+ * ```
  *
  * @example
  * ```tsx

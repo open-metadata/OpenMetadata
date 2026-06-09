@@ -54,7 +54,7 @@ import {
   updateTopicVotes,
 } from '../../rest/topicsAPI';
 import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,

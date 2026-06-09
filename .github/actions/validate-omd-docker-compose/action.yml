@@ -139,6 +139,10 @@ runs:
         TIMEOUT=180
         ELAPSED=0
         INTERVAL=10
+        INGESTION_HEALTH_ENDPOINTS=(
+          "http://localhost:8080/api/v2/monitor/health"
+          "http://localhost:8080/health"
+        )
 
         while [ $ELAPSED -lt $TIMEOUT ]; do
           echo "Checking ingestion health (${ELAPSED}s/${TIMEOUT}s)..."
@@ -147,13 +151,16 @@ runs:
           echo "Ingestion container status: $INGESTION_STATUS"
 
           if [ "$INGESTION_STATUS" = "running" ]; then
-            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health 2>/dev/null || echo "000")
-            echo "Ingestion health endpoint response: $RESPONSE"
+            for ENDPOINT in "${INGESTION_HEALTH_ENDPOINTS[@]}"; do
+              RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$ENDPOINT" 2>/dev/null || true)
+              RESPONSE=${RESPONSE:-000}
+              echo "Ingestion health endpoint ${ENDPOINT} response: $RESPONSE"
 
-            if [ "$RESPONSE" = "200" ]; then
-              echo "Ingestion service is healthy and responding!"
-              break
-            fi
+              if [ "$RESPONSE" = "200" ]; then
+                echo "Ingestion service is healthy and responding at ${ENDPOINT}!"
+                break 2
+              fi
+            done
           fi
 
           sleep $INTERVAL
@@ -170,12 +177,22 @@ runs:
       shell: bash
       run: |
         echo "Testing ingestion endpoint..."
-        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health)
-        if [ "$RESPONSE" != "200" ]; then
-          echo "ingestion health check failed with status code: $RESPONSE"
-          exit 1
-        fi
-        echo "ingestion is responding correctly (HTTP $RESPONSE)"
+        INGESTION_HEALTH_ENDPOINTS=(
+          "http://localhost:8080/api/v2/monitor/health"
+          "http://localhost:8080/health"
+        )
+
+        for ENDPOINT in "${INGESTION_HEALTH_ENDPOINTS[@]}"; do
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$ENDPOINT" 2>/dev/null || true)
+          RESPONSE=${RESPONSE:-000}
+          if [ "$RESPONSE" = "200" ]; then
+            echo "ingestion is responding correctly at ${ENDPOINT} (HTTP $RESPONSE)"
+            exit 0
+          fi
+          echo "ingestion health check for ${ENDPOINT} returned status code: $RESPONSE"
+        done
+
+        exit 1
 
     - name: Display service status
       shell: bash

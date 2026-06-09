@@ -16,23 +16,18 @@ generate the _run based on their topology.
 import math
 import time
 import traceback
-from collections import defaultdict
 from functools import singledispatchmethod
 from time import perf_counter
-from typing import Any, Generic, Iterable, List, Optional, Type, TypeVar  # noqa: UP035
-
-from pydantic import BaseModel
+from typing import Any, Generic, Iterable, List, Optional, TypeVar, cast  # noqa: UP035
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
 from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.custom_properties import OMetaCustomProperties
+from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest
 from metadata.ingestion.models.patch_request import PatchRequest
@@ -75,12 +70,6 @@ class TopologyRunnerMixin(Generic[C]):
     context: TopologyContextManager
     metadata: OpenMetadata
 
-    # The cache will have the shape {`child_stage.type_`: {`name`: `hash`}}
-    cache = defaultdict(dict)  # noqa: RUF012
-
-    # The deleted will have the shape {`child_stage.type_`: {`name`: `hash`}}
-    # and will keep track of entities which were deleted and are being restored
-    deleted = defaultdict(dict)  # noqa: RUF012
     queue = Queue()
 
     def _get_entity_type_for_node(self, node: TopologyNode) -> Optional[str]:  # noqa: UP045
@@ -189,7 +178,7 @@ class TopologyRunnerMixin(Generic[C]):
                 progress_tracker.add_to_total(entity_type_name, 1)
 
             for stage in node.stages:
-                yield from self._process_stage(stage=stage, node_entity=node_entity, child_nodes=child_nodes)
+                yield from self._process_stage(stage=stage, node_entity=node_entity)
 
             # Once we are done processing all the stages,
             for stage in node.stages:
@@ -262,7 +251,7 @@ class TopologyRunnerMixin(Generic[C]):
 
             # For each stage, we get all the stage results and one by one yield them by adding them to the Queue.
             for stage in node.stages:
-                for stage_result in self._process_stage(stage=stage, node_entity=node_entity, child_nodes=child_nodes):
+                for stage_result in self._process_stage(stage=stage, node_entity=node_entity):
                     self.queue.put(stage_result)
 
             # After all the stages are done, we clear the context if needed.
@@ -298,14 +287,14 @@ class TopologyRunnerMixin(Generic[C]):
             logger.debug(traceback.format_exc())
             logger.error(f"Error running stage processor: {exc}")
 
-    def _process_stage(self, stage: NodeStage, node_entity: Any, child_nodes: List[TopologyNode]) -> Iterable[Entity]:  # noqa: UP006
+    def _process_stage(self, stage: NodeStage, node_entity: Any) -> Iterable[Entity]:
         """
         For each entity produced in the Node Producer, iterate over all the Node's Stages and
         yield the assets to pass down the workflow.
 
-        For each node_entity processed, we will cache - if needed - its children.
-        E.g., when processing DB Schemas, we will store its tables to compare the fingerprint
-        and decide if we need to PUT or PATCH at the sink.
+        Each produced entity is yielded straight to the sink. Change detection (skip unchanged
+        entities by comparing ``sourceHash``) is handled server-side by the bulk endpoint, so the
+        connector no longer pre-fetches existing entities to build a local cache.
         """
         logger.debug(f"Processing stage: {stage}")
         operation_metrics = OperationMetricsState()
@@ -318,9 +307,6 @@ class TopologyRunnerMixin(Generic[C]):
             except ValueError as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Unexpected value error when processing stage: [{stage}]: {err}")
-
-        if stage.cache_entities:
-            self._init_cache_dict(stage=stage, child_nodes=child_nodes)
 
         # Track STAGE time - processing and sinking entities
         stage_time_ms = (perf_counter() - stage_start) * 1000
@@ -351,46 +337,6 @@ class TopologyRunnerMixin(Generic[C]):
                             stackTrace=traceback.format_exc(),
                         )
                     )
-
-    def _init_cache_dict(self, stage: NodeStage, child_nodes: List[TopologyNode]) -> None:  # noqa: UP006
-        """
-        Method to call the API to fill the entities cache.
-
-        The cache will be part of the context
-        """
-        for child_node in child_nodes or []:
-            for child_stage in child_node.stages or []:
-                if child_stage.use_cache:
-                    entity_fqn = self.context.get().fqn_from_stage(
-                        stage=stage,
-                        entity_name=self.context.get().__dict__[stage.context],
-                    )
-
-                    self.get_fqn_source_hash_dict(
-                        parent_type=stage.type_,
-                        child_type=child_stage.type_,
-                        entity_fqn=entity_fqn,
-                    )
-
-    def get_fqn_source_hash_dict(self, parent_type: Type[Entity], child_type: Type[Entity], entity_fqn: str) -> None:  # noqa: UP006
-        """
-        Get all the entities and store them as fqn:sourceHash in a dict
-        """
-        if parent_type in (Database, DatabaseSchema):
-            if child_type == StoredProcedure:
-                params = {"databaseSchema": entity_fqn}
-            else:
-                params = {"database": entity_fqn}
-        else:
-            params = {"service": entity_fqn}
-        entities_list = self.metadata.list_all_entities(
-            entity=child_type, params=params, fields=["sourceHash"], include="all"
-        )
-        for entity in entities_list:
-            if entity.sourceHash:
-                self.cache[child_type][model_str(entity.fullyQualifiedName)] = entity.sourceHash
-            if entity.deleted:
-                self.deleted[child_type][model_str(entity.fullyQualifiedName)] = entity.sourceHash
 
     def _iter(self) -> Iterable[Either]:
         """
@@ -426,77 +372,36 @@ class TopologyRunnerMixin(Generic[C]):
         Handle the process of yielding the request and validating
         that everything was properly updated.
 
-        The default implementation is based on a get_by_name validation
+        Every produced entity is stamped with its ``sourceHash`` and yielded straight to the
+        sink. The server's bulk endpoint owns change detection: it compares the incoming
+        ``sourceHash`` against the stored one and skips unchanged entities, so the connector no
+        longer fetches existing entities or builds patch requests here.
+
+        The only entity we still fetch is a non-overwritable one (a service): when ``overwrite``
+        is False and the entity already exists we return it as-is instead of writing.
         """
         entity = None
         entity_name = model_str(right.name)
         entity_fqn = self.context.get().fqn_from_stage(stage=stage, entity_name=entity_name)
 
         # If we don't want to write data in OM, we'll return what we fetch from the API.
-        # This will be applicable for service entities since we do not want to overwrite the data
-        same_fingerprint = False
+        # This is applicable for service entities since we do not want to overwrite the data.
         if not stage.overwrite and not self._is_force_overwrite_enabled():
             entity = self.metadata.get_by_name(
                 entity=stage.type_,
                 fqn=entity_fqn,
                 fields=["*"],
             )
-            if entity:
-                same_fingerprint = True
 
-        create_entity_request_hash = None
-
-        if hasattr(entity_request.right, "sourceHash"):
-            create_entity_request_hash = generate_source_hash(
-                create_request=entity_request.right,
+        # Stamp the source hash so the server-side bulk endpoint can skip unchanged entities.
+        if entity_request.right is not None and hasattr(entity_request.right, "sourceHash"):
+            entity_request.right.sourceHash = generate_source_hash(
+                create_request=cast("BaseModel", entity_request.right),
             )
-            entity_request.right.sourceHash = create_entity_request_hash
 
-        if entity is None and stage.use_cache:
-            # check if we find the entity in the entities list
-            entity_source_hash = self.cache[stage.type_].get(entity_fqn)
-            is_deleted = entity_fqn in self.deleted[stage.type_]
-
-            # if the entity was deleted, restore it first
-            if is_deleted:
-                entity = self.metadata.get_by_name(entity=stage.type_, fqn=entity_fqn, fields=["*"], include="all")
-                if entity:
-                    logger.debug(f"Restoring deleted {str(stage.type_.__name__)} '{entity_fqn}'")  # noqa: RUF010
-                    restored_entity = self.metadata.restore(entity=stage.type_, entity_id=entity.id)
-                    if restored_entity:
-                        self.deleted[stage.type_].pop(entity_fqn, None)
-                        # after restore, check if we need to patch for changes
-                        if entity_source_hash != create_entity_request_hash or self.source_config.overrideMetadata:
-                            patch_entity = self.create_patch_request(
-                                original_entity=restored_entity,
-                                create_request=entity_request.right,
-                            )
-                            entity_request.right = patch_entity
-                        else:
-                            # entity restored with same hash, skip update
-                            same_fingerprint = True
-                    else:
-                        logger.warning(f"Failed to restore deleted {str(stage.type_.__name__)} '{entity_fqn}'")  # noqa: RUF010
-            # if the source hash is not present or different from new hash, update the entity
-            # if overrideMetadata is true, we will always update the entity
-            elif entity_source_hash != create_entity_request_hash or self.source_config.overrideMetadata:
-                # the entity has changed, get the entity from server and make a patch request
-                entity = self.metadata.get_by_name(entity=stage.type_, fqn=entity_fqn, fields=["*"])
-
-                # we return the entity for a patch update
-                if entity:
-                    patch_entity = self.create_patch_request(
-                        original_entity=entity, create_request=entity_request.right
-                    )
-                    entity_request.right = patch_entity
-            else:
-                # nothing has changed on the source skip the API call
-                logger.debug(f"No changes detected for {str(stage.type_.__name__)} '{entity_fqn}'")  # noqa: RUF010
-                same_fingerprint = True
-
-        if not same_fingerprint:
-            # We store the generated source hash and yield the request
-
+        # When the entity is not already present (or is overwritable) we yield the request to
+        # the sink. The server decides create vs update vs skip from the sourceHash.
+        if entity is None:
             yield entity_request
 
         # We have ack the sink waiting for a response, but got nothing back
