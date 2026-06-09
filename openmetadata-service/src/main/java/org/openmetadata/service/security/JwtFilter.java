@@ -379,6 +379,7 @@ public class JwtFilter implements ContainerRequestFilter {
         || !session.getUsername().equalsIgnoreCase(userName)) {
       throw AuthenticationException.getInvalidTokenException("Invalid session.");
     }
+    sessionService.recordSessionAccess(session);
   }
 
   public CatalogSecurityContext getCatalogSecurityContext(String token) {
