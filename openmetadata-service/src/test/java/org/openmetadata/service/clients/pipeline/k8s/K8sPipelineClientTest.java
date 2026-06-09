@@ -1689,8 +1689,7 @@ class K8sPipelineClientTest {
 
   @Test
   void testSeccompProfileRuntimeDefaultIsAppliedToIngestionJob() throws Exception {
-    K8sPipelineClient seccompClient =
-        createClientWithSeccompProfile("RuntimeDefault", null);
+    K8sPipelineClient seccompClient = createClientWithSeccompProfile("RuntimeDefault", null);
 
     IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
     when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
@@ -1764,8 +1763,7 @@ class K8sPipelineClientTest {
 
   @Test
   void testSeccompProfileAppliedToAutomationAndApplicationJobs() throws Exception {
-    K8sPipelineClient seccompClient =
-        createClientWithSeccompProfile("RuntimeDefault", null);
+    K8sPipelineClient seccompClient = createClientWithSeccompProfile("RuntimeDefault", null);
 
     when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
     when(createJobRequest.execute()).thenReturn(new V1Job());
@@ -1775,11 +1773,9 @@ class K8sPipelineClientTest {
     verify(batchApi).createNamespacedJob(eq(NAMESPACE), automationCaptor.capture());
     V1PodSpec automationPod = automationCaptor.getValue().getSpec().getTemplate().getSpec();
     assertNotNull(
-        automationPod.getSecurityContext(),
-        "Automation job pod must have a securityContext");
+        automationPod.getSecurityContext(), "Automation job pod must have a securityContext");
     assertEquals(
-        "RuntimeDefault",
-        automationPod.getSecurityContext().getSeccompProfile().getType());
+        "RuntimeDefault", automationPod.getSecurityContext().getSeccompProfile().getType());
     assertEquals(
         "RuntimeDefault",
         automationPod.getContainers().get(0).getSecurityContext().getSeccompProfile().getType());
@@ -1793,11 +1789,9 @@ class K8sPipelineClientTest {
     verify(batchApi).createNamespacedJob(eq(NAMESPACE), applicationCaptor.capture());
     V1PodSpec applicationPod = applicationCaptor.getValue().getSpec().getTemplate().getSpec();
     assertNotNull(
-        applicationPod.getSecurityContext(),
-        "Application job pod must have a securityContext");
+        applicationPod.getSecurityContext(), "Application job pod must have a securityContext");
     assertEquals(
-        "RuntimeDefault",
-        applicationPod.getSecurityContext().getSeccompProfile().getType());
+        "RuntimeDefault", applicationPod.getSecurityContext().getSeccompProfile().getType());
     assertEquals(
         "RuntimeDefault",
         applicationPod.getContainers().get(0).getSecurityContext().getSeccompProfile().getType());

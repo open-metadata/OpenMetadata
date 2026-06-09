@@ -207,11 +207,9 @@ public class K8sPipelineClientConfig {
               seccompProfileType));
     }
     if ("Localhost".equals(seccompProfileType) && seccompLocalhostProfile == null) {
-      errors.add(
-          "seccompLocalhostProfile must be set when seccompProfileType is 'Localhost'");
+      errors.add("seccompLocalhostProfile must be set when seccompProfileType is 'Localhost'");
     } else if (!"Localhost".equals(seccompProfileType) && seccompLocalhostProfile != null) {
-      errors.add(
-          "seccompLocalhostProfile may only be set when seccompProfileType is 'Localhost'");
+      errors.add("seccompLocalhostProfile may only be set when seccompProfileType is 'Localhost'");
     }
 
     if (!errors.isEmpty()) {
