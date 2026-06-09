@@ -44,9 +44,11 @@ import { moveFileToFolder } from '../../../rest/assetAPI';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import {
-  DocFile,
   DocumentsViewProps,
-  FolderOption,
+  FileActionsProps,
+  FileRowProps,
+  FolderPickerMenuProps,
+  ListHeaderProps
 } from './DocumentsView.interface';
 
 /* ---------------------------------------------------------------
@@ -54,10 +56,6 @@ import {
    Used both as a submenu inside FileActions and as a standalone
    dropdown from the bulk Move button in ListHeader.
 --------------------------------------------------------------- */
-interface FolderPickerMenuProps {
-  folders: FolderOption[];
-  onPick: (folderId: string) => void;
-}
 
 const FolderPickerMenu: FC<FolderPickerMenuProps> = ({ folders, onPick }) => {
   const { t } = useTranslation();
@@ -90,14 +88,6 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({ folders, onPick }) => {
 /* ---------------------------------------------------------------
    Per-row actions dropdown (Share / Move to Folder / Delete)
 --------------------------------------------------------------- */
-interface FileActionsProps {
-  canDelete?: boolean;
-  file: DocFile;
-  folders?: FolderOption[];
-  onShareFile?: (file: DocFile) => void;
-  onDeleteFile?: (file: DocFile) => void;
-  onFileMoved?: (file: DocFile, targetFolderId: string) => void;
-}
 
 const FileActions: FC<FileActionsProps> = ({
   canDelete,
@@ -241,15 +231,6 @@ const FileRowSkeleton: FC = () => (
 /* ---------------------------------------------------------------
    List header — normal count view OR bulk-action bar
 --------------------------------------------------------------- */
-interface ListHeaderProps {
-  count: number;
-  folders?: FolderOption[];
-  selectedCount: number;
-  onClear?: () => void;
-  onBulkDelete?: () => void;
-  onBulkMove?: (folderId: string) => void;
-  onBulkDownload?: () => void;
-}
 
 const ListHeader: FC<ListHeaderProps> = ({
   count,
@@ -350,20 +331,6 @@ const ListHeader: FC<ListHeaderProps> = ({
 /* ---------------------------------------------------------------
    Single file row
 --------------------------------------------------------------- */
-interface FileRowProps {
-  canDelete?: boolean;
-  file: DocFile;
-  folders?: FolderOption[];
-  isActive?: boolean;
-  isSelected?: boolean;
-  onDownload?: (file: DocFile) => void;
-  onShareFile?: (file: DocFile) => void;
-  onDeleteFile?: (file: DocFile) => void;
-  onFileMoved?: (file: DocFile, targetFolderId: string) => void;
-  onPreview?: (file: DocFile) => void;
-  onSelectFile?: (fileId: string) => void;
-}
-
 const FileRow: FC<FileRowProps> = ({
   canDelete,
   file,
@@ -380,11 +347,13 @@ const FileRow: FC<FileRowProps> = ({
   const { t } = useTranslation();
 
   return (
-    <div
-      className={`tw:flex tw:items-center tw:gap-4 tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:cursor-pointer tw:transition-colors tw:duration-100 ${
+    <Box
+      align='center'
+      className={`tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:cursor-pointer tw:transition-colors tw:duration-100 ${
         isActive ? 'tw:bg-blue-50' : 'tw:bg-primary hover:tw:bg-gray-25'
       }`}
       data-testid={`document-row-${file.id}`}
+      gap={4}
       role="button"
       tabIndex={0}
       onClick={() => onPreview?.(file)}
@@ -487,7 +456,7 @@ const FileRow: FC<FileRowProps> = ({
           onShareFile={onShareFile}
         />
       </div>
-    </div>
+    </Box>
   );
 };
 
