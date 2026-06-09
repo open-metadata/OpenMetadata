@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.mcp.util.McpParams;
+import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
@@ -36,13 +38,10 @@ public class RootCauseAnalysisTool implements McpTool {
 
   private static final int DEFAULT_DEPTH = 3;
   private static final int MAX_DEPTH = 10;
-  // Slimming budgets mirror GetLineageTool so RCA's lineage-derived payload stays within
+  // Slimming budgets come from McpResponseTrim so RCA's lineage-derived payload stays within
   // LLM/MCP context limits. The backend (searchDataQualityLineage / searchLineageWithDirection)
   // is shared with the UI LineageResource and is never touched — we only transform the
   // in-memory result before returning it to the MCP client.
-  private static final int SQL_MAX_LENGTH = 500;
-  private static final int TEXT_MAX_LENGTH = 500;
-  private static final int MAX_RESPONSE_CHARS = 100_000;
   private static final String RELATIONSHIP_SQL = "sql";
 
   @Override
@@ -52,12 +51,12 @@ public class RootCauseAnalysisTool implements McpTool {
       Map<String, Object> parameters) {
     String fqn = (String) parameters.get("fqn");
     String entityType = (String) parameters.getOrDefault("entityType", "table");
-    int upstreamDepth = clampDepth(parseIntParam(parameters.get("upstreamDepth"), DEFAULT_DEPTH));
+    int upstreamDepth = clampDepth(McpParams.getInt(parameters, "upstreamDepth", DEFAULT_DEPTH));
     int downstreamDepth =
-        clampDepth(parseIntParam(parameters.get("downstreamDepth"), DEFAULT_DEPTH));
+        clampDepth(McpParams.getInt(parameters, "downstreamDepth", DEFAULT_DEPTH));
     String queryFilter = (String) parameters.get("queryFilter");
-    boolean includeDeleted = parseBooleanParam(parameters.get("includeDeleted"), false);
-    boolean includeColumns = parseBooleanParam(parameters.get("includeColumnLineage"), false);
+    boolean includeDeleted = McpParams.getBoolean(parameters, "includeDeleted", false);
+    boolean includeColumns = McpParams.getBoolean(parameters, "includeColumnLineage", false);
 
     if (fqn == null || fqn.trim().isEmpty()) {
       throw new IllegalArgumentException("Parameter 'fqn' is required and cannot be empty");
@@ -81,11 +80,12 @@ public class RootCauseAnalysisTool implements McpTool {
       return analyze(request);
     } catch (IOException e) {
       LOG.error("IOException during root cause analysis for entity: {}", fqn, e);
-      throw new RuntimeException("Failed to perform root cause analysis: " + e.getMessage(), e);
+      throw new RuntimeException(
+          "Failed to perform root cause analysis: " + McpResponseTrim.safeMessage(e), e);
     } catch (Exception e) {
       LOG.error("Unexpected error during root cause analysis for entity: {}", fqn, e);
       throw new RuntimeException(
-          "Unexpected error during root cause analysis: " + e.getMessage(), e);
+          "Unexpected error during root cause analysis: " + McpResponseTrim.safeMessage(e), e);
     }
   }
 
@@ -172,7 +172,8 @@ public class RootCauseAnalysisTool implements McpTool {
       addDownstreamEdges(downstreamAnalysis, downstreamResult, request.includeColumns());
     } catch (Exception e) {
       LOG.warn("Failed to perform downstream impact analysis for entity: {}", request.fqn(), e);
-      downstreamAnalysis.put("error", "Failed to analyze downstream impact: " + e.getMessage());
+      downstreamAnalysis.put(
+          "error", "Failed to analyze downstream impact: " + McpResponseTrim.safeMessage(e));
     }
     return downstreamAnalysis;
   }
@@ -315,14 +316,14 @@ public class RootCauseAnalysisTool implements McpTool {
 
   private static void applyDescription(Map<String, Object> slim, Object description) {
     if (description instanceof String text && !text.isEmpty()) {
-      slim.put("description", truncate(text, TEXT_MAX_LENGTH));
+      slim.put("description", McpResponseTrim.truncate(text, McpResponseTrim.TEXT_MAX_LENGTH));
     }
   }
 
   private static void applySqlQuery(Map<String, Object> slim, Object sqlQuery) {
     if (sqlQuery instanceof String sql && !sql.isEmpty()) {
-      slim.put("sqlQuery", truncate(sql, SQL_MAX_LENGTH));
-      if (sql.length() > SQL_MAX_LENGTH) {
+      slim.put("sqlQuery", McpResponseTrim.truncate(sql, McpResponseTrim.SQL_MAX_LENGTH));
+      if (sql.length() > McpResponseTrim.SQL_MAX_LENGTH) {
         slim.put("sqlTruncated", Boolean.TRUE);
       }
     }
@@ -330,19 +331,15 @@ public class RootCauseAnalysisTool implements McpTool {
 
   private static void truncateDescriptionInPlace(Map<String, Object> map) {
     Object description = map.get("description");
-    if (description instanceof String text && text.length() > TEXT_MAX_LENGTH) {
-      map.put("description", truncate(text, TEXT_MAX_LENGTH));
+    if (description instanceof String text && text.length() > McpResponseTrim.TEXT_MAX_LENGTH) {
+      map.put("description", McpResponseTrim.truncate(text, McpResponseTrim.TEXT_MAX_LENGTH));
     }
-  }
-
-  private static String truncate(String value, int maxLength) {
-    return value.length() > maxLength ? value.substring(0, maxLength) + "..." : value;
   }
 
   @VisibleForTesting
   static Map<String, Object> enforceSizeBudget(Map<String, Object> result) {
     Map<String, Object> output = result;
-    if (JsonUtils.pojoToJson(result).length() > MAX_RESPONSE_CHARS) {
+    if (McpResponseTrim.serializedLength(result) > McpResponseTrim.MAX_RESPONSE_CHARS) {
       output = oversizedHint(result);
     }
     return output;
@@ -415,36 +412,6 @@ public class RootCauseAnalysisTool implements McpTool {
     if (value != null) {
       map.put(key, value);
     }
-  }
-
-  private static int parseIntParam(Object value, int defaultValue) {
-    if (value == null) {
-      return defaultValue;
-    }
-    if (value instanceof Number number) {
-      return number.intValue();
-    }
-    if (value instanceof String string) {
-      try {
-        return Integer.parseInt(string);
-      } catch (NumberFormatException e) {
-        return defaultValue;
-      }
-    }
-    return defaultValue;
-  }
-
-  private static boolean parseBooleanParam(Object value, boolean defaultValue) {
-    if (value == null) {
-      return defaultValue;
-    }
-    if (value instanceof Boolean bool) {
-      return bool;
-    }
-    if (value instanceof String string) {
-      return "true".equalsIgnoreCase(string);
-    }
-    return defaultValue;
   }
 
   @Override
