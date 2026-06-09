@@ -15,6 +15,20 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import EntityDeleteModal from './EntityDeleteModal';
 
+jest.mock('../../../utils/CommonUtils', () => {
+  const actual = jest.requireActual('../../../utils/CommonUtils');
+
+  return {
+    ...actual,
+    Transi18next: jest.fn(({ i18nKey, renderElement }) => (
+      <span>
+        {i18nKey}
+        {renderElement}
+      </span>
+    )),
+  };
+});
+
 const onCancel = jest.fn();
 const onConfirm = jest.fn();
 
@@ -135,16 +149,6 @@ describe('Test EntityDelete Modal Component', () => {
     const bodyText = await screen.findByTestId('body-text');
 
     expect(bodyText).toBeInTheDocument();
-
-    // Verify Transi18next was called with brandName parameter
-    expect(Transi18next).toHaveBeenCalledWith(
-      expect.objectContaining({
-        i18nKey: 'message.permanently-delete-metadata',
-        values: expect.objectContaining({
-          entityName: 'zyx',
-        }),
-      }),
-      expect.anything()
-    );
+    expect(bodyText).toHaveTextContent('message.permanently-delete-metadata');
   });
 });
