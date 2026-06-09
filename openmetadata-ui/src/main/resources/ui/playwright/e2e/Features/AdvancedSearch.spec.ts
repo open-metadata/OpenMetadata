@@ -1059,7 +1059,6 @@ test.describe(
     test('Column Tags == tag1 returns table1 and hides table2', async ({
       page,
     }) => {
-
       await test.step('Open advanced search dialog', async () => {
         await showAdvancedSearchDialog(page);
       });
@@ -1083,7 +1082,9 @@ test.describe(
       await test.step('Filter chip reflects the applied column tag', async () => {
         await expect(
           page.getByTestId('advance-search-filter-container')
-        ).toContainText(columnTag1.responseData.fullyQualifiedName.toLowerCase());
+        ).toContainText(
+          columnTag1.responseData.fullyQualifiedName.toLowerCase()
+        );
       });
 
       await test.step('table1 (tagged with tag1) is visible', async () => {
@@ -1108,7 +1109,6 @@ test.describe(
     test('Column Tags == tag2 returns table2 and hides table1', async ({
       page,
     }) => {
-
       await test.step('Open advanced search dialog', async () => {
         await showAdvancedSearchDialog(page);
       });
@@ -1132,7 +1132,9 @@ test.describe(
       await test.step('Filter chip reflects the applied column tag', async () => {
         await expect(
           page.getByTestId('advance-search-filter-container')
-        ).toContainText(columnTag2.responseData.fullyQualifiedName.toLowerCase());
+        ).toContainText(
+          columnTag2.responseData.fullyQualifiedName.toLowerCase()
+        );
       });
 
       await test.step('table2 (tagged with tag2) is visible', async () => {
@@ -1157,7 +1159,6 @@ test.describe(
     test('Column Tags != tag1 excludes table1 from results', async ({
       page,
     }) => {
-
       await test.step('Open advanced search dialog', async () => {
         await showAdvancedSearchDialog(page);
       });
@@ -1199,7 +1200,6 @@ test.describe(
     });
 
     test('Column Tags Contains tag1 name returns table1', async ({ page }) => {
-
       await test.step('Open advanced search dialog', async () => {
         await showAdvancedSearchDialog(page);
       });
@@ -1234,7 +1234,6 @@ test.describe(
     test('Column Tags Not contains tag1 name excludes table1', async ({
       page,
     }) => {
-
       await test.step('Open advanced search dialog', async () => {
         await showAdvancedSearchDialog(page);
       });
@@ -1278,7 +1277,6 @@ test.describe(
     test('Column Tags Any in [tag1, tag2] returns both tables', async ({
       page,
     }) => {
-
       await test.step('Open advanced search dialog', async () => {
         await showAdvancedSearchDialog(page);
       });
@@ -1311,7 +1309,6 @@ test.describe(
     });
 
     test('Column Tags Not in [tag1] excludes table1', async ({ page }) => {
-
       await test.step('Open advanced search dialog', async () => {
         await showAdvancedSearchDialog(page);
       });
@@ -1355,7 +1352,6 @@ test.describe(
     test('Column Tags Is not null returns table with a column tag', async ({
       page,
     }) => {
-
       await test.step('Open advanced search dialog', async () => {
         await showAdvancedSearchDialog(page);
       });
@@ -1398,7 +1394,6 @@ test.describe(
     test('Column Tags Is null excludes tables that have column tags', async ({
       page,
     }) => {
-
       await test.step('Open advanced search dialog', async () => {
         await showAdvancedSearchDialog(page);
       });

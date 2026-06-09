@@ -336,7 +336,7 @@ class JSONLogicSearchClassBase {
             operators: this.defaultSelectOperators,
             fieldSettings: {
               asyncFetch: this.searchAutocomplete({
-                searchIndex: SearchIndex.TAG,
+                searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY_TERM],
                 fieldName: 'fullyQualifiedName',
                 fieldLabel: 'name',
               }),
