@@ -761,51 +761,10 @@ public class TagRepository extends EntityRepository<Tag> {
     if (tags == null || tags.isEmpty()) {
       return Map.of();
     }
-
-    // Build and execute a single query for all tags
-    var tagFQNs = tags.stream().map(Tag::getFullyQualifiedName).toList();
-
-    // Build UNION query that gets counts for all tags in one go
-    var queryBuilder = new StringBuilder();
-    tagFQNs.forEach(
-        tagFQN -> {
-          if (!queryBuilder.isEmpty()) {
-            queryBuilder.append(" UNION ALL ");
-          }
-          var escapedFQN = tagFQN.replace("'", "''");
-          queryBuilder.append(
-              """
-          SELECT '%s' as tagFQN,
-          COUNT(DISTINCT targetFQNHash) as count
-          FROM tag_usage
-          WHERE source = %d
-          AND (tagFQNHash = MD5('%s') OR tagFQNHash LIKE CONCAT(MD5('%s'), '.%%'))
-          """
-                  .formatted(
-                      escapedFQN, TagSource.CLASSIFICATION.ordinal(), escapedFQN, escapedFQN));
-        });
-
-    try {
-      var results =
-          Entity.getJdbi()
-              .withHandle(handle -> handle.createQuery(queryBuilder.toString()).mapToMap().list());
-
-      return results.stream()
-          .filter(row -> row.get("tagFQN") != null)
-          .collect(
-              Collectors.toMap(
-                  row -> (String) row.get("tagFQN"),
-                  row -> {
-                    var count = (Number) row.get("count");
-                    return count != null ? count.intValue() : 0;
-                  }));
-    } catch (Exception e) {
-      LOG.error("Error batch fetching usage counts", e);
-      // Fall back to individual queries
-      return daoCollection
-          .tagUsageDAO()
-          .getTagCountsBulk(TagSource.CLASSIFICATION.ordinal(), tagFQNs);
-    }
+    List<String> tagFQNs = tags.stream().map(Tag::getFullyQualifiedName).toList();
+    return daoCollection
+        .tagUsageDAO()
+        .getTagCountsBulk(TagSource.CLASSIFICATION.ordinal(), tagFQNs);
   }
 
   @Override
