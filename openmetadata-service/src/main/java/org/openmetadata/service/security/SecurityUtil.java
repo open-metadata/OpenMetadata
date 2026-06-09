@@ -320,6 +320,7 @@ public final class SecurityUtil {
       List<String> jwtPrincipalClaimsMapping) {
     return listOrEmpty(jwtPrincipalClaimsMapping).stream()
         .map(s -> s.split(":"))
+        .filter(parts -> parts.length == 2)
         .collect(Collectors.toMap(s -> s[0], s -> s[1]));
   }
 

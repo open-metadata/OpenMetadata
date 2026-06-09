@@ -81,11 +81,11 @@ public final class TestLoginService {
       AuthenticationConfiguration authConfig,
       AuthorizerConfiguration authzConfig,
       Map<String, Claim> claims) {
-    Map<String, String> mapping =
-        SecurityUtil.buildPrincipalClaimsMapping(authConfig.getJwtPrincipalClaimsMapping());
-    List<String> order = listOrEmpty(authConfig.getJwtPrincipalClaims());
     TestLoginResult result;
     try {
+      Map<String, String> mapping =
+          SecurityUtil.buildPrincipalClaimsMapping(authConfig.getJwtPrincipalClaimsMapping());
+      List<String> order = listOrEmpty(authConfig.getJwtPrincipalClaims());
       String principal = SecurityUtil.findUserNameFromClaims(mapping, order, claims);
       String email =
           SecurityUtil.findEmailFromClaims(

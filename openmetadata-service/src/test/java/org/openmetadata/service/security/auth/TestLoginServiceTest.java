@@ -167,6 +167,21 @@ class TestLoginServiceTest {
   }
 
   @Test
+  void skipsMalformedClaimsMappingEntryWithoutThrowing() {
+    TestLoginResult result =
+        TestLoginService.resolveIdentityFromClaims(
+            authConfig(
+                List.of("email"),
+                List.of("username:preferred_username", "email:email", "garbage-no-colon"),
+                null),
+            authzConfig("corp.com", false, false),
+            claims(Map.of("preferred_username", "Bob@corp.com", "email", "bob@corp.com")));
+
+    assertEquals(TestLoginResult.Status.SUCCESS, result.getStatus());
+    assertEquals("bob", result.getResolvedPrincipal());
+  }
+
+  @Test
   void failsWhenNoConfiguredClaimIsPresent() {
     TestLoginResult result =
         TestLoginService.resolveIdentityFromClaims(
