@@ -3432,7 +3432,7 @@
     "size-evolution-description": "Размер эволюции объектов в организации.",
     "smart-sampling-hint": "Оптимизирует ресурсы в зависимости от объёма данных",
     "soft-delete-message-for-entity": "Мягкое удаление деактивирует объект «{{entity}}». Обнаружение объекта, чтение или запись его данных отключатся.",
-    "soft-delete-message-for-n-entities": "Soft deleting will deactivate these {{count}} {{entity}}. This will disable any discovery, read or write operations on them.",
+    "soft-delete-message-for-n-entities": "Мягкое удаление деактивирует {{count}} {{entity}}. Это отключит все операции обнаружения, чтения или записи для них.",
     "something-went-wrong": "Что-то пошло не так",
     "source-aligned-domain-type-description": "Домены, более близкие к онлайн-сервисам и транзакционным базам данных, которые включают события и транзакционные данные.",
     "special-character-not-allowed": "Спецсимволы недопустимы",

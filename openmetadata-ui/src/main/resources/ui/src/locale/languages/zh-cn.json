@@ -3432,7 +3432,7 @@
     "size-evolution-description": "组织中资产规模的变化",
     "smart-sampling-hint": "根据数据大小优化资源",
     "soft-delete-message-for-entity": "软删除将停用{{entity}}, 这将禁用{{entity}}上的任何发现、读取或写入操作",
-    "soft-delete-message-for-n-entities": "Soft deleting will deactivate these {{count}} {{entity}}. This will disable any discovery, read or write operations on them.",
+    "soft-delete-message-for-n-entities": "软删除将停用这 {{count}} 个{{entity}}。这将禁止对其进行任何发现、读取或写入操作。",
     "something-went-wrong": "出现了一些问题",
     "source-aligned-domain-type-description": "更接近在线服务和事务数据库的域, 包括事件和事务数据",
     "special-character-not-allowed": "不允许使用特殊字符",

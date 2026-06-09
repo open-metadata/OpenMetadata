@@ -3432,7 +3432,7 @@
     "size-evolution-description": "Größenentwicklung der Assets in der Organisation.",
     "smart-sampling-hint": "Optimiert Ressourcen basierend auf der Datengröße",
     "soft-delete-message-for-entity": "Durch das Soft-Löschen wird {{entity}} deaktiviert. Dadurch werden alle Entdeckungs-, Lese- oder Schreibvorgänge auf {{entity}} deaktiviert.",
-    "soft-delete-message-for-n-entities": "Soft deleting will deactivate these {{count}} {{entity}}. This will disable any discovery, read or write operations on them.",
+    "soft-delete-message-for-n-entities": "Das vorläufige Löschen deaktiviert diese {{count}} {{entity}}. Dadurch werden alle Erkennungs-, Lese- oder Schreibvorgänge für sie deaktiviert.",
     "something-went-wrong": "Etwas ist schiefgelaufen",
     "source-aligned-domain-type-description": "Domänen, die näher an Onlinediensten und Transaktionsdatenbanken liegen, die Ereignisse und Transaktionsdaten enthalten.",
     "special-character-not-allowed": "Sonderzeichen sind nicht erlaubt.",

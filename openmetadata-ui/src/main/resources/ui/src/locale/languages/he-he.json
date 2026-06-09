@@ -3432,7 +3432,7 @@
     "size-evolution-description": "אבולוציה של גודל הנכסים בארגון.",
     "smart-sampling-hint": "מייעל משאבים בהתאם לגודל הנתונים",
     "soft-delete-message-for-entity": "מחיקה רכה תשבית את {{entity}}. הפעולה תשבית כל קריאה או כתיבת הפעולות על {{entity}}.",
-    "soft-delete-message-for-n-entities": "Soft deleting will deactivate these {{count}} {{entity}}. This will disable any discovery, read or write operations on them.",
+    "soft-delete-message-for-n-entities": "מחיקה רכה תשבית את {{count}} {{entity}} אלה. פעולה זו תשבית כל פעולות גילוי, קריאה או כתיבה עליהם.",
     "something-went-wrong": "משהו השתבש",
     "source-aligned-domain-type-description": "תחומים הקרובים יותר לשירותים מקוונים ולמסדי נתונים עסקיים הכוללים ארועים ונתוני עסקאות.",
     "special-character-not-allowed": "אסור להשתמש בתווים מיוחדים.",

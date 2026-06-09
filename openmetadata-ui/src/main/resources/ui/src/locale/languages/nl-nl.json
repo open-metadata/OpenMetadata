@@ -3432,7 +3432,7 @@
     "size-evolution-description": "Ontwikkeling assethoeveelheid in de organisatie.",
     "smart-sampling-hint": "Optimaliseert resources op basis van gegevensgrootte",
     "soft-delete-message-for-entity": "Zacht verwijderen zal de {{entity}} deactiveren. Hierdoor worden alle ontdekkings-, lees- of schrijfoperaties op {{entity}} uitgeschakeld.",
-    "soft-delete-message-for-n-entities": "Soft deleting will deactivate these {{count}} {{entity}}. This will disable any discovery, read or write operations on them.",
+    "soft-delete-message-for-n-entities": "Zacht verwijderen deactiveert deze {{count}} {{entity}}. Dit schakelt alle ontdekkings-, lees- of schrijfbewerkingen op hen uit.",
     "something-went-wrong": "Er is iets misgegaan",
     "source-aligned-domain-type-description": "Domeinen dichter bij online services en transactionele databases die evenementen en transactionele data bevatten.",
     "special-character-not-allowed": "Speciale tekens zijn niet toegestaan.",

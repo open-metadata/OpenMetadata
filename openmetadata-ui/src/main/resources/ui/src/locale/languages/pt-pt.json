@@ -3432,7 +3432,7 @@
     "size-evolution-description": "Evolução do tamanho dos ativos na organização.",
     "smart-sampling-hint": "Otimiza os recursos com base no tamanho dos dados",
     "soft-delete-message-for-entity": "A exclusão suave desativará o {{entity}}. Isso desabilitará qualquer operação de descoberta, leitura ou gravação no {{entity}}.",
-    "soft-delete-message-for-n-entities": "Soft deleting will deactivate these {{count}} {{entity}}. This will disable any discovery, read or write operations on them.",
+    "soft-delete-message-for-n-entities": "A eliminação suave irá desativar estes {{count}} {{entity}}. Isto irá desativar quaisquer operações de descoberta, leitura ou escrita sobre eles.",
     "something-went-wrong": "Algo deu errado",
     "source-aligned-domain-type-description": "Domínios mais próximos de serviços online e bancos de dados transacionais que inclúen eventos e dados transacionais.",
     "special-character-not-allowed": "Caracteres especiais não são permitidos.",
