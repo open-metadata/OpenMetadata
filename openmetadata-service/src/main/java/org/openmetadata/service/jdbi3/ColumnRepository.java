@@ -25,8 +25,10 @@ import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +49,7 @@ import org.openmetadata.schema.api.data.ColumnOccurrence;
 import org.openmetadata.schema.api.data.ColumnUpdate;
 import org.openmetadata.schema.api.data.ColumnUpdatePreview;
 import org.openmetadata.schema.api.data.GroupedColumnsResponse;
+import org.openmetadata.schema.api.data.MetadataStatus;
 import org.openmetadata.schema.api.data.UpdateColumn;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.Table;
@@ -79,6 +82,9 @@ import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class ColumnRepository {
+  private static final String FILTERED_CURSOR_PREFIX = "filteredOffset:";
+  private static final int FILTERED_SCAN_BATCH_SIZE = 1000;
+
   private final Authorizer authorizer;
   private final ColumnAggregator columnAggregator;
 
@@ -94,34 +100,195 @@ public class ColumnRepository {
     }
   }
 
+  ColumnRepository(Authorizer authorizer, ColumnAggregator columnAggregator) {
+    this.authorizer = authorizer;
+    this.columnAggregator = columnAggregator;
+  }
+
+  /**
+   * Returns paginated column grid with optional post-aggregation filtering.
+   *
+   * <p><b>IMPORTANT: Cursor Handling</b>
+   * - When filters are applied (metadataStatus, hasConflicts, hasMissingMetadata), a custom
+   *   cursor format is used: `filteredOffset:<offset>`
+   * - When no filters are applied, the aggregator's native cursor format is used
+   * - <b>CURSOR MISMATCH WARNING</b>: If the client switches between filtered and non-filtered
+   *   states while holding a cursor from the other state, the cursor will be invalid and
+   *   pagination will reset to page 1. Clients should discard cursors when filter parameters
+   *   change.
+   *
+   * <p><b>Totals Consistency</b>
+   * - `totalUniqueColumns` and `totalOccurrences` are computed from the complete filtered
+   *   result set and remain stable across pages within a single filtered request.
+   * - These values may differ if filters are applied between requests.
+   *
+   * @param securityContext Security context of the request
+   * @param request Column aggregation request with optional filter parameters
+   * @return Paginated response with filtered columns and cursor for next page
+   */
   public ColumnGridResponse getColumnGridPaginated(
       SecurityContext securityContext, ColumnAggregator.ColumnAggregationRequest request)
       throws IOException {
+    if (requiresPostAggregationFiltering(request)) {
+      return getFilteredColumnGridPage(request);
+    }
+
     ColumnGridResponse response = columnAggregator.aggregateColumns(request);
 
-    if (Boolean.TRUE.equals(request.getHasConflicts())) {
-      response.setColumns(
-          response.getColumns().stream()
-              .filter(ColumnGridItem::getHasVariations)
-              .collect(Collectors.toList()));
+    return response;
+  }
+
+  private boolean requiresPostAggregationFiltering(
+      ColumnAggregator.ColumnAggregationRequest request) {
+    return Boolean.TRUE.equals(request.getHasConflicts())
+        || Boolean.TRUE.equals(request.getHasMissingMetadata())
+        || !isBlank(request.getMetadataStatus());
+  }
+
+  private ColumnGridResponse getFilteredColumnGridPage(
+      ColumnAggregator.ColumnAggregationRequest request) throws IOException {
+    int pageSize = Math.max(request.getSize(), 1);
+    String cursor = request.getCursor();
+    int offset = decodeFilteredCursorOffset(cursor);
+
+    // For first page (no cursor), we need to scan and build the complete filtered list
+    // For subsequent pages, we rebuild to ensure accuracy of totals
+    // (totals must be stable across pages)
+    List<ColumnGridItem> allFilteredItems = new ArrayList<>();
+    int totalOccurrences = 0;
+    String scanCursor = null;
+    ColumnAggregator.ColumnAggregationRequest scanRequest = createScanRequest(request, pageSize);
+
+    do {
+      scanRequest.setCursor(scanCursor);
+      ColumnGridResponse scanResponse = columnAggregator.aggregateColumns(scanRequest);
+      List<ColumnGridItem> matchingItems =
+          applyPostAggregationFilters(scanResponse.getColumns(), request);
+      allFilteredItems.addAll(matchingItems);
+      totalOccurrences +=
+          matchingItems.stream().mapToInt(ColumnGridItem::getTotalOccurrences).sum();
+      scanCursor = scanResponse.getCursor();
+    } while (scanCursor != null);
+
+    // Calculate pagination
+    int totalUniqueColumns = allFilteredItems.size();
+    int safeOffset = Math.min(Math.max(offset, 0), totalUniqueColumns);
+    int end = Math.min(safeOffset + pageSize, totalUniqueColumns);
+
+    if (safeOffset >= totalUniqueColumns && safeOffset > 0) {
+      LOG.warn(
+          "Page offset {} exceeds total filtered items {}. Returning empty page.",
+          safeOffset,
+          totalUniqueColumns);
     }
 
-    if (Boolean.TRUE.equals(request.getHasMissingMetadata())) {
-      response.setColumns(
-          response.getColumns().stream()
-              .filter(this::hasMissingMetadata)
-              .collect(Collectors.toList()));
-    }
+    // Build response
+    ColumnGridResponse response = new ColumnGridResponse();
+    response.setColumns(new ArrayList<>(allFilteredItems.subList(safeOffset, end)));
+    response.setTotalUniqueColumns(totalUniqueColumns);
+    response.setTotalOccurrences(totalOccurrences);
 
-    // Filter by INCONSISTENT status (requires post-aggregation filtering)
-    if ("INCONSISTENT".equalsIgnoreCase(request.getMetadataStatus())) {
-      response.setColumns(
-          response.getColumns().stream()
-              .filter(ColumnGridItem::getHasVariations)
-              .collect(Collectors.toList()));
+    // Set cursor for next page if more data exists
+    if (end < totalUniqueColumns) {
+      response.setCursor(encodeFilteredCursorOffset(end));
     }
 
     return response;
+  }
+
+  private ColumnAggregator.ColumnAggregationRequest createScanRequest(
+      ColumnAggregator.ColumnAggregationRequest request, int pageSize) {
+    ColumnAggregator.ColumnAggregationRequest scanRequest =
+        new ColumnAggregator.ColumnAggregationRequest();
+    scanRequest.setSize(Math.min(Math.max(pageSize, FILTERED_SCAN_BATCH_SIZE), 10000));
+    scanRequest.setCursor(null);
+    scanRequest.setColumnNamePattern(request.getColumnNamePattern());
+    scanRequest.setEntityTypes(request.getEntityTypes());
+    scanRequest.setServiceName(request.getServiceName());
+    scanRequest.setServiceTypes(request.getServiceTypes());
+    scanRequest.setDatabaseName(request.getDatabaseName());
+    scanRequest.setSchemaName(request.getSchemaName());
+    scanRequest.setDomainId(request.getDomainId());
+    scanRequest.setHasConflicts(false);
+    scanRequest.setHasMissingMetadata(false);
+    scanRequest.setMetadataStatus(null);
+    scanRequest.setTags(request.getTags());
+    scanRequest.setGlossaryTerms(request.getGlossaryTerms());
+
+    return scanRequest;
+  }
+
+  private List<ColumnGridItem> applyPostAggregationFilters(
+      List<ColumnGridItem> items, ColumnAggregator.ColumnAggregationRequest request) {
+    return items.stream()
+        .filter(item -> matchesAllPostAggregationFilters(item, request))
+        .collect(Collectors.toList());
+  }
+
+  private boolean matchesAllPostAggregationFilters(
+      ColumnGridItem item, ColumnAggregator.ColumnAggregationRequest request) {
+    if (Boolean.TRUE.equals(request.getHasConflicts())
+        && !Boolean.TRUE.equals(item.getHasVariations())) {
+      return false;
+    }
+
+    if (Boolean.TRUE.equals(request.getHasMissingMetadata()) && !hasMissingMetadata(item)) {
+      return false;
+    }
+
+    return matchesMetadataStatus(item, request.getMetadataStatus());
+  }
+
+  private boolean matchesMetadataStatus(ColumnGridItem item, String requestedStatus) {
+    if (isBlank(requestedStatus)) {
+      return true;
+    }
+
+    if (MetadataStatus.INCONSISTENT.value().equalsIgnoreCase(requestedStatus)) {
+      return Boolean.TRUE.equals(item.getHasVariations());
+    }
+
+    return item.getMetadataStatus() != null
+        && item.getMetadataStatus().value().equalsIgnoreCase(requestedStatus);
+  }
+
+  private int decodeFilteredCursorOffset(String cursor) {
+    if (isBlank(cursor)) {
+      return 0;
+    }
+
+    try {
+      String decoded = new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8);
+      if (!decoded.startsWith(FILTERED_CURSOR_PREFIX)) {
+        LOG.warn(
+            "Invalid cursor format for filtered query. Expected format '{}...', got '{}'. "
+                + "Cursor mismatch may occur when switching between filtered/non-filtered requests.",
+            FILTERED_CURSOR_PREFIX,
+            decoded);
+        return 0;
+      }
+
+      return Math.max(Integer.parseInt(decoded.substring(FILTERED_CURSOR_PREFIX.length())), 0);
+    } catch (NumberFormatException e) {
+      LOG.error(
+          "Failed to parse filtered cursor offset. Cursor: {}. Resetting to page 1. "
+              + "This indicates a cursor format mismatch.",
+          cursor,
+          e);
+      return 0;
+    } catch (IllegalArgumentException e) {
+      LOG.error("Failed to decode cursor from Base64. Cursor: {}. Resetting to page 1.", cursor, e);
+      return 0;
+    }
+  }
+
+  private String encodeFilteredCursorOffset(int offset) {
+    String payload = FILTERED_CURSOR_PREFIX + offset;
+    return Base64.getUrlEncoder().encodeToString(payload.getBytes(StandardCharsets.UTF_8));
+  }
+
+  private boolean isBlank(String value) {
+    return value == null || value.isBlank();
   }
 
   private boolean hasMissingMetadata(ColumnGridItem item) {
