@@ -50,7 +50,6 @@ import {
 } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-import '../AddServicePage/add-service-page.less';
 import { ServiceConfig } from '../AddServicePage/AddServicePage.interface';
 import { useServiceNameValidation } from '../AddServicePage/useServiceNameValidation';
 
