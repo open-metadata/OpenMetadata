@@ -226,96 +226,113 @@ class UnitycatalogLineageSource(Source):
     def _build_table_edge(self, row: Any) -> Optional[AddLineageRequest]:  # noqa: UP045
         """
         Resolve both endpoints of a streamed lineage row to OpenMetadata tables
-        and build the lineage request with column lineage attached. Returns None
-        when either side is filtered out or not present in OpenMetadata.
+        and build the lineage request with column lineage attached. Callers drop
+        filtered rows first, so a None return means one of the endpoints is not
+        present in OpenMetadata.
         """
         edge = None
         source_fqn = row.source_table_full_name
         target_fqn = row.target_table_full_name
-        if not (self._is_filtered_table(source_fqn) or self._is_filtered_table(target_fqn)):
-            from_entity = self._resolve_table(source_fqn)
-            to_entity = self._resolve_table(target_fqn)
-            if from_entity and to_entity:
-                column_lineage = self._build_column_lineage(from_entity, to_entity, row.column_pairs)
-                edge = AddLineageRequest(
-                    edge=EntitiesEdge(
-                        fromEntity=EntityReference(id=from_entity.id, type="table"),  # pyright: ignore[reportCallIssue]
-                        toEntity=EntityReference(id=to_entity.id, type="table"),  # pyright: ignore[reportCallIssue]
-                        lineageDetails=LineageDetails(  # pyright: ignore[reportCallIssue]
-                            columnsLineage=column_lineage or None,
-                            source=LineageSource.QueryLineage,
-                        ),
-                    )
+        from_entity = self._resolve_table(source_fqn)
+        to_entity = self._resolve_table(target_fqn)
+        if from_entity and to_entity:
+            column_lineage = self._build_column_lineage(from_entity, to_entity, row.column_pairs)
+            edge = AddLineageRequest(
+                edge=EntitiesEdge(
+                    fromEntity=EntityReference(id=from_entity.id, type="table"),  # pyright: ignore[reportCallIssue]
+                    toEntity=EntityReference(id=to_entity.id, type="table"),  # pyright: ignore[reportCallIssue]
+                    lineageDetails=LineageDetails(  # pyright: ignore[reportCallIssue]
+                        columnsLineage=column_lineage or None,
+                        source=LineageSource.QueryLineage,
+                    ),
                 )
-            else:
-                logger.debug(
-                    f"Skipping edge, table not found in OpenMetadata: "
-                    f"{source_fqn} (found={from_entity is not None}) -> "
-                    f"{target_fqn} (found={to_entity is not None})"
-                )
+            )
+        else:
+            logger.debug(
+                f"Skipping edge, table not found in OpenMetadata: "
+                f"{source_fqn} (found={from_entity is not None}) -> "
+                f"{target_fqn} (found={to_entity is not None})"
+            )
         return edge
 
     def _fetch_lineage_rows(self, window_start: datetime, window_end: datetime) -> Iterable:
         """
         Run the combined lineage query for one [start, end) window, streaming
-        rows so the driver does not buffer the whole result set. A failure on one
-        window is logged and swallowed so the remaining windows still run.
+        rows so the driver does not buffer the whole result set. Exceptions
+        propagate to the caller, which surfaces them in workflow status.
         """
         sql_statement = UNITY_CATALOG_LINEAGE.format(
             start_time=window_start,
             end_time=window_end,
         )
-        try:
-            with self.engine.connect() as conn:
-                rows = conn.execution_options(stream_results=True, max_row_buffer=1000).execute(text(sql_statement))
-                yield from rows
-        except Exception as exc:
-            logger.warning(f"Failed to fetch lineage for window {window_start} - {window_end}: {exc}")
-            logger.debug(traceback.format_exc())
+        with self.engine.connect() as conn:
+            rows = conn.execution_options(stream_results=True, max_row_buffer=1000).execute(text(sql_statement))
+            yield from rows
 
     def _yield_table_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         """
         Stream table/column lineage one day-window at a time, emitting one
-        request per resolved edge. Per-row failures surface as Either(left)
-        instead of being swallowed. Edges dropped by `databaseFilterPattern` and
-        edges whose tables are absent from OpenMetadata are counted separately so
-        the summary distinguishes intentional filtering from missing metadata.
+        request per resolved edge. Per-row and per-window failures both surface
+        as Either(left) instead of being swallowed. Edges dropped by
+        `databaseFilterPattern` and edges whose tables are absent from
+        OpenMetadata are counted separately so the summary distinguishes
+        intentional filtering from missing metadata.
         """
-        emitted = 0
-        filtered = 0
-        unresolved = 0
-        failed = 0
+        stats = {"emitted": 0, "filtered": 0, "unresolved": 0, "failed": 0}
         for window_start, window_end in self._iter_date_windows():
-            for row in self._fetch_lineage_rows(window_start, window_end):
-                if self._is_filtered_table(row.source_table_full_name) or self._is_filtered_table(
-                    row.target_table_full_name
-                ):
-                    filtered += 1
-                    continue
-                try:
-                    edge = self._build_table_edge(row)
-                except Exception as exc:
-                    failed += 1
-                    yield Either(  # pyright: ignore[reportCallIssue]
-                        left=StackTraceError(
-                            name=row.target_table_full_name,
-                            error=(
-                                f"Error processing lineage {row.source_table_full_name} -> "
-                                f"{row.target_table_full_name}: {exc}"
-                            ),
-                            stackTrace=traceback.format_exc(),
-                        )
-                    )
-                    continue
-                if edge is None:
-                    unresolved += 1
-                    continue
-                emitted += 1
-                yield Either(right=edge)  # pyright: ignore[reportCallIssue]
+            yield from self._yield_window_lineage(window_start, window_end, stats)
         logger.info(
-            f"Table lineage: emitted {emitted} edges, filtered {filtered} (databaseFilterPattern), "
-            f"unresolved {unresolved} (tables not in OpenMetadata), failed {failed} (row errors)"
+            f"Table lineage: emitted {stats['emitted']} edges, filtered {stats['filtered']} "
+            f"(databaseFilterPattern), unresolved {stats['unresolved']} (tables not in OpenMetadata), "
+            f"failed {stats['failed']} (row/window errors)"
         )
+
+    def _yield_window_lineage(
+        self, window_start: datetime, window_end: datetime, stats: dict
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Process one [start, end) window. A failure fetching the window (e.g. a
+        permissions error on the system tables that would recur for every
+        window) is surfaced as an Either(left) so it appears in workflow status
+        rather than silently producing zero edges.
+        """
+        try:
+            for row in self._fetch_lineage_rows(window_start, window_end):
+                yield from self._yield_row_lineage(row, stats)
+        except Exception as exc:
+            stats["failed"] += 1
+            yield Either(  # pyright: ignore[reportCallIssue]
+                left=StackTraceError(
+                    name=f"table-lineage-window:{window_start}/{window_end}",
+                    error=f"Failed to fetch lineage for window {window_start} - {window_end}: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
+    def _yield_row_lineage(self, row: Any, stats: dict) -> Iterable[Either[AddLineageRequest]]:
+        if self._is_filtered_table(row.source_table_full_name) or self._is_filtered_table(row.target_table_full_name):
+            stats["filtered"] += 1
+        else:
+            try:
+                edge = self._build_table_edge(row)
+            except Exception as exc:
+                stats["failed"] += 1
+                yield Either(  # pyright: ignore[reportCallIssue]
+                    left=StackTraceError(
+                        name=row.target_table_full_name,
+                        error=(
+                            f"Error processing lineage {row.source_table_full_name} -> "
+                            f"{row.target_table_full_name}: {exc}"
+                        ),
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+            else:
+                if edge is None:
+                    stats["unresolved"] += 1
+                else:
+                    stats["emitted"] += 1
+                    yield Either(right=edge)  # pyright: ignore[reportCallIssue]
 
     def _get_data_model_column_fqn(self, data_model_entity: ContainerDataModel, column: str) -> Optional[str]:  # noqa: UP045
         if not data_model_entity:
@@ -418,8 +435,13 @@ class UnitycatalogLineageSource(Source):
                     if table_entity:
                         yield from self._process_external_location_lineage(table_entity, row.storage_path)
         except Exception as exc:
-            logger.warning(f"Failed to fetch external table locations: {exc}")
-            logger.debug(traceback.format_exc())
+            yield Either(  # pyright: ignore[reportCallIssue]
+                left=StackTraceError(
+                    name="external-table-lineage",
+                    error=f"Failed to fetch external table locations: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def _iter(self, *_, **__) -> Iterable[Either[AddLineageRequest]]:
         """

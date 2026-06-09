@@ -246,16 +246,6 @@ class TestBuildTableEdge:
 
         assert lineage_source._build_table_edge(row) is None
 
-    def test_returns_none_when_table_filtered(self, lineage_source):
-        lineage_source.source_config.tableFilterPattern = MagicMock()
-        with patch(
-            "metadata.ingestion.source.database.unitycatalog.lineage.filter_by_table",
-            return_value=True,
-        ):
-            row = LineageRow("cat.schema.source", "cat.schema.target", None)
-            assert lineage_source._build_table_edge(row) is None
-        lineage_source.metadata.get_by_name.assert_not_called()
-
     def test_self_loop_column_dropped(self, lineage_source):
         source_table = _make_table(
             "tbl",
@@ -310,7 +300,7 @@ class TestYieldTableLineage:
         assert results[0].right is None
         assert "boom" in results[0].left.error
 
-    def test_query_failure_is_swallowed(self, lineage_source):
+    def test_window_failure_yields_left(self, lineage_source):
         mock_conn = MagicMock()
         mock_conn.execution_options.return_value.execute.side_effect = Exception("Access denied")
         lineage_source.engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
@@ -319,7 +309,24 @@ class TestYieldTableLineage:
         with patch.object(lineage_source, "_iter_date_windows", return_value=[("s", "e")]):
             results = list(lineage_source._yield_table_lineage())
 
+        assert len(results) == 1
+        assert results[0].right is None
+        assert "Access denied" in results[0].left.error
+
+    def test_filtered_rows_skipped_without_resolution(self, lineage_source):
+        rows = [LineageRow("cat.schema.source", "cat.schema.target", None)]
+        with (
+            patch.object(lineage_source, "_iter_date_windows", return_value=[("s", "e")]),
+            patch(
+                "metadata.ingestion.source.database.unitycatalog.lineage.filter_by_table",
+                return_value=True,
+            ),
+        ):
+            _mock_query_rows(lineage_source, rows)
+            results = list(lineage_source._yield_table_lineage())
+
         assert results == []
+        lineage_source.metadata.get_by_name.assert_not_called()
 
     def test_query_scoped_to_window(self, lineage_source):
         with patch.object(lineage_source, "_iter_date_windows", return_value=[("2026-01-01", "2026-01-02")]):
@@ -399,7 +406,7 @@ class TestExternalLocationLineage:
         assert results[0].left is not None
         assert "Search unavailable" in results[0].left.error
 
-    def test_external_query_failure_is_swallowed(self, lineage_source):
+    def test_external_scan_failure_yields_left(self, lineage_source):
         mock_conn = MagicMock()
         mock_conn.execution_options.return_value.execute.side_effect = Exception("Access denied")
         lineage_source.engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
@@ -407,7 +414,9 @@ class TestExternalLocationLineage:
 
         results = list(lineage_source._yield_external_lineage())
 
-        assert results == []
+        assert len(results) == 1
+        assert results[0].right is None
+        assert "Access denied" in results[0].left.error
 
 
 class TestIsFilteredTable:
