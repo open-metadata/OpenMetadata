@@ -261,27 +261,17 @@ class KubernetesSecretsManagerTest {
   }
 
   @Test
-  void testEmptySecretValueShouldBeStoredAsNullString() throws ApiException {
-    ArgumentCaptor<V1Secret> secretCaptor = ArgumentCaptor.forClass(V1Secret.class);
-    when(mockApiClient.readNamespacedSecret(anyString(), eq(NAMESPACE))).thenReturn(readRequest);
-    when(readRequest.execute()).thenThrow(new ApiException(404, "Not Found"));
+  void testEmptySecretValueShouldDeleteSecret() throws ApiException {
+    when(mockApiClient.deleteNamespacedSecret("openmetadata-database-myservice-field", NAMESPACE))
+        .thenReturn(deleteRequest);
+    when(deleteRequest.execute()).thenReturn(new V1Status());
 
-    when(mockApiClient.createNamespacedSecret(eq(NAMESPACE), any(V1Secret.class)))
-        .thenReturn(createRequest);
-    when(createRequest.execute()).thenReturn(new V1Secret());
+    String result = secretsManager.storeValue("field", "", SECRET_ID, true);
 
-    secretsManager.storeValue("field", "", SECRET_ID, true);
-
-    verify(mockApiClient).createNamespacedSecret(eq(NAMESPACE), secretCaptor.capture());
-    verify(createRequest).execute();
-
-    V1Secret createdSecret = secretCaptor.getValue();
-    Map<String, byte[]> data = createdSecret.getData();
-    assert data != null;
-    assertEquals(
-        ExternalSecretsManager.NULL_SECRET_STRING,
-        new String(data.get("value"), StandardCharsets.UTF_8),
-        "Empty string should be stored as 'null' to prevent secrets manager rejection");
+    assertNull(result);
+    verify(mockApiClient)
+        .deleteNamespacedSecret("openmetadata-database-myservice-field", NAMESPACE);
+    verify(deleteRequest).execute();
   }
 
   @Test

@@ -465,9 +465,11 @@ public abstract class SecretsManager {
                     // set new value
                     ReflectionUtil.setValueInMethod(
                         toEncryptObject,
-                        Fernet.isTokenized(newFieldValue)
-                            ? newFieldValue
-                            : store ? fernet.encrypt(newFieldValue) : newFieldValue,
+                        isNull(newFieldValue)
+                            ? null
+                            : Fernet.isTokenized(newFieldValue)
+                                ? newFieldValue
+                                : store ? fernet.encrypt(newFieldValue) : newFieldValue,
                         toSet);
                   }
                 });

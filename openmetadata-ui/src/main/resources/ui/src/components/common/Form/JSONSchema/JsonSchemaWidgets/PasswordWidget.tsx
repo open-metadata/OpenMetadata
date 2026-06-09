@@ -10,9 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { CloseCircleOutlined } from '@ant-design/icons';
 import { WidgetProps } from '@rjsf/utils';
-import { Col, Input, Radio, RadioChangeEvent, Row, Typography } from 'antd';
-import { FC, useCallback, useMemo, useState } from 'react';
+import {
+  Button,
+  Col,
+  Input,
+  Radio,
+  RadioChangeEvent,
+  Row,
+  Space,
+  Typography,
+} from 'antd';
+import { FC, useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ALL_ASTERISKS_REGEX } from '../../../../../constants/regex.constants';
 import { CertificationInputType } from '../../../../../enums/PasswordWidget.enum';
@@ -21,6 +31,15 @@ import './password-widget.less';
 
 const PasswordWidget: FC<WidgetProps> = (props) => {
   const { t } = useTranslation();
+
+  const isMaskedValue = useMemo(
+    () => ALL_ASTERISKS_REGEX.test(props.value),
+    [props.value]
+  );
+
+  const wasOriginallyMasked = useRef(isMaskedValue);
+
+  const [isEditing, setIsEditing] = useState(!isMaskedValue);
   const [inputType, setInputType] = useState<CertificationInputType>(
     props.schema.uiFieldType === 'fileOrInput'
       ? CertificationInputType.FILE_UPLOAD
@@ -31,12 +50,28 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
   const isInputTypeFileOrInput = props.schema.uiFieldType === 'fileOrInput';
 
   const passwordWidgetValue = useMemo(() => {
-    if (ALL_ASTERISKS_REGEX.test(props.value)) {
-      return undefined; // Do not show the password if it is masked
-    } else {
-      return props.value;
+    if (isMaskedValue) {
+      return undefined;
     }
-  }, [props.value]);
+
+    return props.value;
+  }, [props.value, isMaskedValue]);
+
+  const handleRemove = useCallback(() => {
+    props.onChange('');
+    setIsEditing(true);
+  }, [props.onChange]);
+
+  const handleUpdate = useCallback(() => {
+    setIsEditing(true);
+  }, []);
+
+  const originalValue = useRef(props.value);
+
+  const handleCancelEdit = useCallback(() => {
+    setIsEditing(false);
+    props.onChange(originalValue.current);
+  }, [props.onChange]);
 
   const getPasswordInput = useCallback(
     (disabled?: boolean) => (
@@ -56,7 +91,58 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
         onFocus={() => props.onFocus(props.id, props.value)}
       />
     ),
-    [props]
+    [props, passwordWidgetValue]
+  );
+
+  const getSavedPasswordIndicator = useCallback(
+    () => (
+      <Space className="password-saved-indicator" direction="vertical" size={4}>
+        <Space size={8}>
+          <Typography.Text className="password-saved-text" type="secondary">
+            {t('message.password-saved')}
+          </Typography.Text>
+        </Space>
+        <Space size={8}>
+          <Button
+            data-testid={`password-update-btn-${props.id}`}
+            size="small"
+            type="link"
+            onClick={handleUpdate}>
+            {t('label.update')}
+          </Button>
+          {!props.required && (
+            <Button
+              danger
+              data-testid={`password-remove-btn-${props.id}`}
+              icon={<CloseCircleOutlined />}
+              size="small"
+              type="link"
+              onClick={handleRemove}>
+              {t('label.remove')}
+            </Button>
+          )}
+        </Space>
+      </Space>
+    ),
+    [props.id, props.required, handleUpdate, handleRemove, t]
+  );
+
+  const getEditingPasswordInput = useCallback(
+    (disabled?: boolean) => (
+      <Space direction="vertical" size={4} style={{ width: '100%' }}>
+        {getPasswordInput(disabled)}
+        {wasOriginallyMasked.current && (
+          <Button
+            data-testid={`password-cancel-edit-btn-${props.id}`}
+            size="small"
+            type="link"
+            onClick={handleCancelEdit}>
+            {t('label.cancel')}
+          </Button>
+        )}
+      </Space>
+    ),
+    [getPasswordInput, props.id, handleCancelEdit, t]
   );
 
   const onRadioChange = (e: RadioChangeEvent) => {
@@ -93,9 +179,11 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
               data-testid={`radio-${CertificationInputType.FILE_PATH}`}
               value={CertificationInputType.FILE_PATH}>
               <Typography.Text>{t('label.enter-file-content')}</Typography.Text>
-              {getPasswordInput(
-                inputType === CertificationInputType.FILE_UPLOAD
-              )}
+              {wasOriginallyMasked.current && !isEditing
+                ? getSavedPasswordIndicator()
+                : getEditingPasswordInput(
+                    inputType === CertificationInputType.FILE_UPLOAD
+                  )}
             </Radio>
           </Col>
         </Row>
@@ -103,7 +191,11 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
     );
   }
 
-  return getPasswordInput();
+  if (wasOriginallyMasked.current && !isEditing) {
+    return getSavedPasswordIndicator();
+  }
+
+  return getEditingPasswordInput();
 };
 
 export default PasswordWidget;

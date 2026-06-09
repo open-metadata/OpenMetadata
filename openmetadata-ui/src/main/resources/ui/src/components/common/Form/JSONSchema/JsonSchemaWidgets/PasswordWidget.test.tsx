@@ -39,6 +39,15 @@ const mockProps: WidgetProps = {
   ...MOCK_PASSWORD_WIDGET,
 };
 
+const mockPropsUnmasked: WidgetProps = {
+  onFocus: mockOnFocus,
+  onBlur: mockOnBlur,
+  onChange: mockOnChange,
+  registry: {} as Registry,
+  ...MOCK_PASSWORD_WIDGET,
+  value: 'my-plain-password',
+};
+
 const mockProps2: WidgetProps = {
   onFocus: mockOnFocus,
   onBlur: mockOnBlur,
@@ -48,20 +57,74 @@ const mockProps2: WidgetProps = {
 };
 
 describe('Test PasswordWidget Component', () => {
-  it('Should render select component', async () => {
+  it('Should show saved indicator when value is masked', async () => {
     render(<PasswordWidget {...mockProps} />);
 
-    const passwordInput = screen.getByTestId(
-      'password-input-widget-root/password'
-    );
-    const FileUploadWidget = screen.queryByText('FileUploadWidget');
-
-    expect(passwordInput).toBeInTheDocument();
-    expect(FileUploadWidget).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId('password-update-btn-root/password')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('password-input-widget-root/password')
+    ).not.toBeInTheDocument();
   });
 
-  it('Should be disabled', async () => {
+  it('Should show remove button when field is not required and value is masked', async () => {
+    render(<PasswordWidget {...mockProps} required={false} />);
+
+    expect(
+      screen.getByTestId('password-remove-btn-root/password')
+    ).toBeInTheDocument();
+  });
+
+  it('Should not show remove button when field is required', async () => {
+    render(<PasswordWidget {...mockProps} required />);
+
+    expect(
+      screen.queryByTestId('password-remove-btn-root/password')
+    ).not.toBeInTheDocument();
+  });
+
+  it('Should show password input after clicking Update', async () => {
+    render(<PasswordWidget {...mockProps} />);
+
+    fireEvent.click(screen.getByTestId('password-update-btn-root/password'));
+
+    expect(
+      screen.getByTestId('password-input-widget-root/password')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('password-cancel-edit-btn-root/password')
+    ).toBeInTheDocument();
+  });
+
+  it('Should return to saved indicator after clicking Cancel', async () => {
+    render(<PasswordWidget {...mockProps} />);
+
+    fireEvent.click(screen.getByTestId('password-update-btn-root/password'));
+    fireEvent.click(
+      screen.getByTestId('password-cancel-edit-btn-root/password')
+    );
+
+    expect(
+      screen.getByTestId('password-update-btn-root/password')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('password-input-widget-root/password')
+    ).not.toBeInTheDocument();
+  });
+
+  it('Should call onChange with empty string when Remove is clicked', async () => {
+    render(<PasswordWidget {...mockProps} required={false} />);
+
+    fireEvent.click(screen.getByTestId('password-remove-btn-root/password'));
+
+    expect(mockOnChange).toHaveBeenCalledWith('');
+  });
+
+  it('Should be disabled after clicking Update and field is disabled', async () => {
     render(<PasswordWidget {...mockProps} disabled />);
+
+    fireEvent.click(screen.getByTestId('password-update-btn-root/password'));
 
     const passwordInput = screen.getByTestId(
       'password-input-widget-root/password'
@@ -70,62 +133,56 @@ describe('Test PasswordWidget Component', () => {
     expect(passwordInput).toBeDisabled();
   });
 
-  it('Should call onFocus', async () => {
-    render(<PasswordWidget {...mockProps} />);
+  it('Should render password input directly when value is not masked', async () => {
+    render(<PasswordWidget {...mockPropsUnmasked} />);
 
     const passwordInput = screen.getByTestId(
       'password-input-widget-root/password'
     );
 
+    expect(passwordInput).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('password-update-btn-root/password')
+    ).not.toBeInTheDocument();
+  });
+
+  it('Should call onChange after clicking Update and typing', async () => {
+    render(<PasswordWidget {...mockProps} />);
+
+    fireEvent.click(screen.getByTestId('password-update-btn-root/password'));
+
+    const passwordInput = screen.getByTestId(
+      'password-input-widget-root/password'
+    );
+    fireEvent.change(passwordInput, { target: { value: 'newpassword' } });
+
+    expect(mockOnChange).toHaveBeenCalledWith('newpassword');
+  });
+
+  it('Should call onFocus after clicking Update', async () => {
+    render(<PasswordWidget {...mockProps} />);
+
+    fireEvent.click(screen.getByTestId('password-update-btn-root/password'));
+
+    const passwordInput = screen.getByTestId(
+      'password-input-widget-root/password'
+    );
     fireEvent.focus(passwordInput);
 
     expect(mockOnFocus).toHaveBeenCalled();
   });
 
-  it('Should call onBlur', async () => {
+  it('Should call onBlur after clicking Update', async () => {
     render(<PasswordWidget {...mockProps} />);
+
+    fireEvent.click(screen.getByTestId('password-update-btn-root/password'));
 
     const passwordInput = screen.getByTestId(
       'password-input-widget-root/password'
     );
-
     fireEvent.blur(passwordInput);
 
     expect(mockOnBlur).toHaveBeenCalled();
-  });
-
-  it('Should call onChange', async () => {
-    render(<PasswordWidget {...mockProps} />);
-
-    const passwordInput = screen.getByTestId(
-      'password-input-widget-root/password'
-    );
-
-    fireEvent.change(passwordInput, { target: { value: 'password' } });
-
-    expect(mockOnChange).toHaveBeenCalledWith('password');
-  });
-
-  it('Should call onChange with asterisk', async () => {
-    render(<PasswordWidget {...mockProps} />);
-
-    const passwordInput = screen.getByTestId(
-      'password-input-widget-root/password'
-    );
-
-    fireEvent.change(passwordInput, { target: { value: '*******' } });
-
-    expect(mockOnChange).toHaveBeenCalledWith('*******');
-  });
-
-  it('Should not show password if the value is masked', async () => {
-    render(<PasswordWidget {...mockProps} />);
-
-    const passwordInput = screen.getByTestId(
-      'password-input-widget-root/password'
-    );
-
-    expect(passwordInput).toHaveValue('');
   });
 
   it('Should render FileWidget and password input if uiFieldType is fileOrInput', async () => {
@@ -139,17 +196,12 @@ describe('Test PasswordWidget Component', () => {
     expect(fileUploadWidget).toBeInTheDocument();
     expect(passwordInput).toBeInTheDocument();
 
-    // Check if the password input is disabled
     expect(passwordInput).toBeDisabled();
 
-    // Click on the Enter file content radio button
     const enterFileContentRadioButton = screen.getByTestId('radio-file-path');
     fireEvent.click(enterFileContentRadioButton);
 
-    // Check if the password input is enabled
     expect(passwordInput).toBeEnabled();
-
-    // Check if the file upload widget is disabled
     expect(fileUploadWidget).toBeDisabled();
   });
 

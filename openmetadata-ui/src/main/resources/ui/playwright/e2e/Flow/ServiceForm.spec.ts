@@ -553,6 +553,70 @@ test.describe(
           page.locator(String.raw`#root\/schemaRegistryTopicSuffixName`)
         ).toHaveValue('');
       });
+
+      test('should clear optional saslPassword via remove button and persist the empty value', async ({
+        page,
+      }) => {
+        await visitServiceDetailsPage(
+          page,
+          {
+            name: kafkaService.entity.name,
+            type: SERVICE_TYPE.Messaging,
+          },
+          false,
+          false
+        );
+
+        await page.getByRole('tab', { name: 'Connection' }).click();
+        await page.getByTestId('edit-connection-button').click();
+        await waitForAllLoadersToDisappear(page);
+
+        const removePasswordButton = page.getByTestId(
+          'password-remove-btn-root/saslPassword'
+        );
+
+        await expect(removePasswordButton).toBeVisible();
+        await removePasswordButton.click();
+
+        const passwordInput = page.getByTestId(
+          'password-input-widget-root/saslPassword'
+        );
+
+        await expect(passwordInput).toBeVisible();
+        await expect(passwordInput).toHaveValue('');
+
+        const patchResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/services/messagingServices') &&
+            response.request().method() === 'PATCH'
+        );
+
+        await page.getByTestId('submit-btn').click();
+        await page.getByTestId('submit-btn').click();
+
+        const patch = await patchResponse;
+        const patchBody = patch.request().postDataJSON() as Array<{
+          op: string;
+          path: string;
+          value?: unknown;
+        }>;
+
+        const passwordOp = patchBody.find(
+          (op) => op.path === '/connection/config/saslPassword'
+        );
+
+        expect(passwordOp).toBeDefined();
+        expect(passwordOp?.value).toBe('');
+
+        await waitForAllLoadersToDisappear(page);
+
+        await page.getByTestId('edit-connection-button').click();
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(
+          page.getByTestId('password-input-widget-root/saslPassword')
+        ).toHaveValue('');
+      });
     });
   }
 );

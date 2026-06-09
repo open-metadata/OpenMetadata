@@ -3297,6 +3297,7 @@
     "passed-x-checks": "{{count}}개 검사 통과",
     "password-error-message": "비밀번호는 최소 8자에서 최대 56자 길이여야 하며, 최소 하나의 대문자(A-Z), 하나의 소문자(a-z), 하나의 숫자, 그리고 하나의 특수 문자(!, %, @, # 등)를 포함해야 합니다",
     "password-pattern-error": "비밀번호는 최소 8자에서 최대 56자 길이여야 하며, 하나의 특수 문자, 하나의 대문자, 하나의 소문자를 포함해야 합니다",
+    "password-saved": "비밀번호가 저장되었습니다. 업데이트하거나 삭제하려면 새 값을 입력하세요.",
     "path-of-the-dbt-files-stored": "dbt 파일이 저장된 폴더의 경로",
     "permanently-delete-ingestion-pipeline": "이 <0>{{entityName}}</0>을(를) 영구적으로 삭제하면 파이프라인 구성이 손실되며 복구할 수 없습니다.",
     "permanently-delete-metadata": "이 <0>{{entityName}}</0>을(를) 영구적으로 삭제하면 {{brandName}}에서 해당 메타데이터가 제거되며 복구할 수 없습니다.",

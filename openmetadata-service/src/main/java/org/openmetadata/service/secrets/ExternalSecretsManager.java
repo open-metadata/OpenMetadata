@@ -33,6 +33,15 @@ public abstract class ExternalSecretsManager extends SecretsManager {
   @Override
   protected String storeValue(String fieldName, String value, String secretId, boolean store) {
     String fieldSecretId = buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT));
+    if (Objects.isNull(value) || value.isEmpty()) {
+      if (store) {
+        try {
+          deleteSecretInternal(fieldSecretId);
+        } catch (Exception e) {
+        }
+      }
+      return null;
+    }
     // check if value does not start with 'config:' only String can have password annotation
     if (Boolean.FALSE.equals(isSecret(value))) {
       if (store) {
