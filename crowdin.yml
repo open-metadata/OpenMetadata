@@ -1,0 +1,46 @@
+# Crowdin configuration for OpenMetadata UI translations (TEMPLATE — opt-in).
+#
+# Crowdin reads the i18next JSON locale files directly, so no PO conversion is
+# needed and ICU placeholders ({{x}}) / <0>…</0> tags are protected by the
+# i18next file type. en-us.json is the source of truth; every other
+# <lang>-<country>.json is a translation target. Weblate can consume the same
+# files via its "i18next v4" format if you prefer self-hosting.
+#
+# This file has NO effect until a maintainer connects the repo to a Crowdin
+# project and runs the Crowdin CLI/GitHub action.
+# Docs: https://crowdin.github.io/crowdin-cli/configuration
+#       https://developer.crowdin.com/language-codes/  (verify the keys below)
+
+preserve_hierarchy: true
+
+files:
+  - source: /openmetadata-ui/src/main/resources/ui/src/locale/languages/en-us.json
+    translation: /openmetadata-ui/src/main/resources/ui/src/locale/languages/%locale_with_underscore%.json
+    type: i18next_json
+    # Crowdin's %locale_with_underscore% emits a full locale id (e.g. `sv_SE`),
+    # not a short code. languages_mapping keys are Crowdin language ids; the
+    # value replaces the placeholder so files match the repo's lowercase,
+    # hyphenated names (e.g. `sv-se.json`). One entry per shipped locale. A few
+    # repo codes are non-standard (he-he, pr-pr) — verify against Crowdin's
+    # language list before enabling.
+    languages_mapping:
+      locale_with_underscore:
+        ar-SA: ar-sa
+        de-DE: de-de
+        es-ES: es-es
+        fr-FR: fr-fr
+        gl-ES: gl-es
+        he: he-he
+        ja-JP: ja-jp
+        ko-KR: ko-kr
+        mr-IN: mr-in
+        nl-NL: nl-nl
+        pt-BR: pt-br
+        pt-PT: pt-pt
+        ru-RU: ru-ru
+        sv-SE: sv-se
+        th-TH: th-th
+        tr-TR: tr-tr
+        zh-CN: zh-cn
+        zh-TW: zh-tw
+        fa-IR: pr-pr # repo ships Persian under the non-standard `pr-pr`
