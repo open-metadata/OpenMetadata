@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { Typography } from 'antd';
 import classNames from 'classnames';
 import { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
@@ -64,14 +64,11 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
           )}
           data-testid="owner-link"
           to={ownerPath}>
-          <Typography
-            ellipsis
-            as="p"
+          <Typography.Text
             data-testid={getEntityName(owner)}
-            size="text-xs"
-            weight="medium">
+            ellipsis={{ tooltip: true }}>
             {ownerDisplayName ?? displayName}
-          </Typography>
+          </Typography.Text>
         </Link>
       </div>
     );

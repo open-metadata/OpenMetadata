@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
 import Icon from '@ant-design/icons';
+import { Typography } from 'antd';
 import classNames from 'classnames';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -70,24 +70,21 @@ export const NoOwnerFound: React.FC<NoOwnerFoundProps> = ({
             </div>
           )}
           {showLabel && (
-            <Typography
-              as="p"
+            <Typography.Text
               className={classNames(
                 isCompactView
                   ? 'text-xs no-owner'
                   : ' no-owner-heading font-medium text-sm',
                 className
               )}
-              data-testid="owner-link"
-              size={isCompactView ? 'text-xs' : 'text-sm'}
-              weight={isCompactView ? 'regular' : 'medium'}>
+              data-testid="owner-link">
               {placeHolder ??
                 (!isCompactView
                   ? t('label.owner-plural')
                   : t('label.no-entity', {
                       entity: t('label.owner-plural'),
                     }))}
-            </Typography>
+            </Typography.Text>
           )}
           {onUpdate && (
             <UserTeamSelectableList
