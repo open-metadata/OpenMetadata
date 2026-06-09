@@ -720,6 +720,18 @@ class SourceConnectionTest(TestCase):
 
         assert expected_url == get_connection_url(druid_conn_obj)
 
+    def test_druid_https_url(self):
+        from metadata.ingestion.source.database.druid.connection import (
+            get_connection_url,
+        )
+
+        expected_url = "druid+https://localhost:8082/druid/v2/sql"
+        druid_conn_obj = DruidConnection(
+            scheme=DruidScheme.druid_https, hostPort="localhost:8082"
+        )
+
+        assert expected_url == get_connection_url(druid_conn_obj)
+
     def test_pinotdb_url(self):
         from metadata.ingestion.source.database.pinotdb.connection import (
             get_connection_url,

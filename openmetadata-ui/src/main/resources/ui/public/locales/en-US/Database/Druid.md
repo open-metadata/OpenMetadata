@@ -11,7 +11,7 @@ You can find further information on the Druid connector in the <a href="https://
 $$section
 ### Scheme $(id="scheme")
 
-SQLAlchemy driver scheme options.
+SQLAlchemy driver scheme options. Use `druid` for HTTP or `druid+https` for HTTPS connections.
 $$
 
 $$section
