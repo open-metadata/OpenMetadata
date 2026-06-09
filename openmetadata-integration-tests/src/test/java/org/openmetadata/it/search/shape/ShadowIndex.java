@@ -70,6 +70,7 @@ public final class ShadowIndex {
     try {
       httpSearch.delete("/" + freshIndex);
     } catch (final Exception e) {
+      // Best-effort cleanup on a finally path: never let a drop failure mask the case outcome.
       LOG.warn("Failed to drop shadow index {}", freshIndex, e);
     }
   }

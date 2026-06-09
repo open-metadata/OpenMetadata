@@ -27,7 +27,6 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.service.Entity;
 
 public final class TableShapeProfile implements EntityShapeProfile {
-  private static final int FIELD_LIMIT = 1_000;
 
   @Override
   public String entityType() {

@@ -44,6 +44,9 @@ public final class ShapeCanary {
       searchRepository.getSearchClient().createEntity(freshIndex, docId, doc);
       outcome = verify(freshIndex, docId, probe);
     } catch (final Exception e) {
+      // Intentional broad catch: this is the canary's error-capture seam. The engine rejects
+      // oversized / over-field-count docs with varied exception types; the classifier triages
+      // the rejection by message into the corresponding Outcome.
       outcome = ShapeClassifier.classifyError(e.getMessage());
     } finally {
       shadowIndex.drop(freshIndex);
