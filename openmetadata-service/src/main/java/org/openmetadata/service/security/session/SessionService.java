@@ -31,6 +31,7 @@ public class SessionService implements Managed {
   private static final int SESSION_LIMIT_RETRIES = 3;
   private static final int SESSION_LIMIT_MAX_ITERATIONS = 20;
   private static final int SESSION_LIMIT_LOOKUP_MULTIPLIER = 4;
+  private static final long SESSION_ACCESS_UPDATE_INTERVAL_MILLIS = TimeUnit.MINUTES.toMillis(5);
 
   private volatile AuthenticationConfiguration authConfig;
   private final SessionStore repository;
@@ -264,6 +265,27 @@ public class SessionService implements Managed {
     return Optional.of(userSession);
   }
 
+  /**
+   * Resolves a {@code PENDING} session directly by its id, independent of the {@code OM_SESSION}
+   * cookie. The SAML callback uses this because the pending-session id arrives in the SAML {@code
+   * RelayState} (POST body) — the cross-site IdP POST drops a {@code SameSite=Lax} cookie. Returns
+   * empty for malformed ids and for unknown, non-pending, or expired sessions.
+   */
+  public Optional<UserSession> getPendingSessionById(String sessionId) {
+    Optional<UserSession> result = Optional.empty();
+    if (SessionCookieUtil.isValidSessionId(sessionId)) {
+      UserSession userSession = getSessionById(sessionId).orElse(null);
+      if (userSession != null) {
+        if (userSession.getStatus() == SessionStatus.PENDING && !userSession.isExpired(now())) {
+          result = Optional.of(userSession);
+        } else {
+          expireIfNecessary(userSession);
+        }
+      }
+    }
+    return result;
+  }
+
   public Optional<UserSession> getActiveSession(
       jakarta.servlet.http.HttpServletRequest request,
       jakarta.servlet.http.HttpServletResponse response) {
@@ -469,6 +491,44 @@ public class SessionService implements Managed {
 
   public Optional<UserSession> getFreshSessionById(String sessionId) {
     return reloadSession(sessionId);
+  }
+
+  public Optional<UserSession> recordSessionAccess(UserSession session) {
+    if (session == null) {
+      return Optional.empty();
+    }
+
+    long now = now();
+    if (session.getStatus() != SessionStatus.ACTIVE || session.isExpired(now)) {
+      expireIfNecessary(session);
+      return Optional.empty();
+    }
+    if (!shouldRecordSessionAccess(session, now)) {
+      return Optional.of(session);
+    }
+
+    long expectedVersion = safeVersion(session);
+    UserSession accessed =
+        session.toBuilder()
+            .lastAccessedAt(now)
+            .updatedAt(now)
+            .idleExpiresAt(refreshedIdleExpiresAt(now, session))
+            .version(expectedVersion + 1)
+            .build();
+    if (repository.updateIfVersion(accessed, expectedVersion)) {
+      cache.put(accessed.getId(), accessed);
+      return Optional.of(accessed);
+    }
+    return reloadSession(session.getId());
+  }
+
+  private boolean shouldRecordSessionAccess(UserSession session, long now) {
+    Long lastAccessedAt = session.getLastAccessedAt();
+    if (lastAccessedAt == null || now - lastAccessedAt >= SESSION_ACCESS_UPDATE_INTERVAL_MILLIS) {
+      return true;
+    }
+    Long idleExpiresAt = session.getIdleExpiresAt();
+    return idleExpiresAt != null && idleExpiresAt - now <= SESSION_ACCESS_UPDATE_INTERVAL_MILLIS;
   }
 
   public String decryptProviderRefreshToken(UserSession session) {

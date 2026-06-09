@@ -53,6 +53,7 @@ export interface UseWorkflowModeReturn {
   mode: WorkflowMode;
   isViewMode: boolean;
   isEditMode: boolean;
+  isNoOp: boolean;
   enterEditMode: () => void;
   enterViewMode: () => void;
   toggleMode: () => void;
@@ -155,6 +156,7 @@ export const useWorkflowMode = (
       mode: internalMode,
       isViewMode,
       isEditMode,
+      isNoOp: isNoOpTrigger,
 
       canEdit: isEditMode && !isNoOpTrigger,
       canSave: isEditMode && !isNoOpTrigger,
