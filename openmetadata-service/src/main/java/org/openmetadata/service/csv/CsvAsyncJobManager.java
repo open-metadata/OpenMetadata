@@ -29,7 +29,7 @@ public final class CsvAsyncJobManager {
   private static final int DEFAULT_LOG_LIMIT = 100;
   private static final CsvAsyncJobManager INSTANCE = new CsvAsyncJobManager();
 
-  private JobDAO dao;
+  private volatile JobDAO dao;
 
   private CsvAsyncJobManager() {}
 

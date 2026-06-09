@@ -332,6 +332,7 @@ public interface EntityDAO<T extends EntityInterface> {
               + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) AS name, "
               + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')) AS displayName, "
               + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) AS fqn, "
+              + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.description')) AS description, "
               + "deleted "
               + "FROM <table> WHERE <nameHashColumn> IN (<names>) <cond>",
       connectionType = MYSQL)
@@ -341,6 +342,7 @@ public interface EntityDAO<T extends EntityInterface> {
               + "json->>'name' AS name, "
               + "json->>'displayName' AS displayName, "
               + "json->>'fullyQualifiedName' AS fqn, "
+              + "json->>'description' AS description, "
               + "deleted "
               + "FROM <table> WHERE <nameHashColumn> IN (<names>) <cond>",
       connectionType = POSTGRES)
@@ -364,6 +366,7 @@ public interface EntityDAO<T extends EntityInterface> {
               + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) AS name, "
               + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')) AS displayName, "
               + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) AS fqn, "
+              + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.description')) AS description, "
               + "FALSE AS deleted "
               + "FROM <table> WHERE <nameHashColumn> IN (<names>)",
       connectionType = MYSQL)
@@ -373,6 +376,7 @@ public interface EntityDAO<T extends EntityInterface> {
               + "json->>'name' AS name, "
               + "json->>'displayName' AS displayName, "
               + "json->>'fullyQualifiedName' AS fqn, "
+              + "json->>'description' AS description, "
               + "FALSE AS deleted "
               + "FROM <table> WHERE <nameHashColumn> IN (<names>)",
       connectionType = POSTGRES)
@@ -388,6 +392,7 @@ public interface EntityDAO<T extends EntityInterface> {
               + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) AS name, "
               + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')) AS displayName, "
               + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) AS fqn, "
+              + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.description')) AS description, "
               + "deleted "
               + "FROM <table> WHERE id IN (<ids>) <cond>",
       connectionType = MYSQL)
@@ -397,6 +402,7 @@ public interface EntityDAO<T extends EntityInterface> {
               + "json->>'name' AS name, "
               + "json->>'displayName' AS displayName, "
               + "json->>'fullyQualifiedName' AS fqn, "
+              + "json->>'description' AS description, "
               + "deleted "
               + "FROM <table> WHERE id IN (<ids>) <cond>",
       connectionType = POSTGRES)
@@ -412,6 +418,7 @@ public interface EntityDAO<T extends EntityInterface> {
               + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) AS name, "
               + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')) AS displayName, "
               + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) AS fqn, "
+              + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.description')) AS description, "
               + "FALSE AS deleted "
               + "FROM <table> WHERE id IN (<ids>)",
       connectionType = MYSQL)
@@ -421,6 +428,7 @@ public interface EntityDAO<T extends EntityInterface> {
               + "json->>'name' AS name, "
               + "json->>'displayName' AS displayName, "
               + "json->>'fullyQualifiedName' AS fqn, "
+              + "json->>'description' AS description, "
               + "FALSE AS deleted "
               + "FROM <table> WHERE id IN (<ids>)",
       connectionType = POSTGRES)
@@ -491,14 +499,16 @@ public interface EntityDAO<T extends EntityInterface> {
     return findReferencesByIds(getTableName(), ids, getCondition(include));
   }
 
-  record EntityReferenceRow(UUID id, String name, String displayName, String fqn, boolean deleted) {
+  record EntityReferenceRow(
+      UUID id, String name, String displayName, String fqn, String description, boolean deleted) {
     public EntityReference toEntityReference(String entityType) {
       return new EntityReference()
           .withId(id)
           .withType(entityType)
           .withName(name)
-          .withDisplayName(displayName)
+          .withDisplayName(displayName == null || displayName.isEmpty() ? name : displayName)
           .withFullyQualifiedName(fqn)
+          .withDescription(description)
           .withDeleted(deleted);
     }
   }
@@ -511,6 +521,7 @@ public interface EntityDAO<T extends EntityInterface> {
           rs.getString("name"),
           rs.getString("displayName"),
           rs.getString("fqn"),
+          rs.getString("description"),
           rs.getBoolean("deleted"));
     }
   }
