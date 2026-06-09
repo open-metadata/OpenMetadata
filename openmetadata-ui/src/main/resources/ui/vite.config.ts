@@ -25,7 +25,7 @@ import tsconfigPaths from 'vite-tsconfig-paths';
  * Vite plugin: capture hashed asset filenames at bundle time and inject
  * <link rel="preload"> tags into index.html so the browser discovers the
  * Inter variable font and the landing-page hero SVG before the JS bundle
- * executes.  Running with `enforce: 'post'` ensures this transform runs
+ * executes.  `transformIndexHtml: { order: 'post' }` ensures this hook runs
  * after the existing `html-transform` plugin (which adds `${basePath}`
  * prefixes), so we write `${basePath}` directly into the href and let the
  * Java backend replace it at runtime — exactly the same mechanism used for
