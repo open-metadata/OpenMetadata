@@ -116,9 +116,3 @@ class BaseConnection(ABC, Generic[S, C]):
 
     def __exit__(self, *exc_info: object) -> None:
         self.close()
-
-    @abstractmethod
-    def get_connection_dict(self) -> dict:
-        """
-        Return the connection dictionary for this service.
-        """

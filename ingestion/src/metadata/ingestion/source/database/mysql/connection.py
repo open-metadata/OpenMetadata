@@ -317,12 +317,6 @@ class MySQLConnection(BaseConnection[MySQLConnectionConfig, Engine]):
             case _:
                 return _BasicStrategy(self.service_connection)
 
-    def get_connection_dict(self) -> dict:
-        """
-        Return the connection dictionary for this service.
-        """
-        raise NotImplementedError("get_connection_dict is not implemented for MySQL")
-
     def _test_queries_statement(self) -> str:
         if self.service_connection.useSlowLogs:
             template, default_table = MYSQL_TEST_GET_QUERIES_SLOW_LOGS, "mysql.slow_log"
