@@ -71,6 +71,8 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.bundles.searchIndex.OrphanedIndexCleaner;
+import org.openmetadata.service.events.scheduled.ServicesStatusJobHandler;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.fernet.Fernet;
@@ -82,6 +84,7 @@ import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.IndexMappingVersionTracker;
 import org.openmetadata.service.search.IndexMappingVersionTracker.MappingDriftState;
+import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -821,14 +824,14 @@ public class SystemRepository {
     if (searchRepository.getSearchClient().isClientAvailable()) {
       if (validateDataInsights()) {
         List<String> missingIndexes = findMissingIndexes(searchRepository);
+        List<String> orphanIndexes = findOrphanIndexes(searchRepository);
+        boolean clusterHealthy = isSearchClusterHealthy(searchRepository);
         String message =
-            String.format(
-                "Connected to %s", applicationConfig.getElasticSearchConfiguration().getHost());
-        if (!missingIndexes.isEmpty()) {
-          message +=
-              String.format(
-                  ". WARNING: %d missing indexes: %s", missingIndexes.size(), missingIndexes);
-        }
+            buildSearchHealthMessage(
+                applicationConfig.getElasticSearchConfiguration().getHost(),
+                missingIndexes,
+                orphanIndexes,
+                clusterHealthy);
         return new StepValidation()
             .withDescription(ValidationStepDescription.SEARCH.key)
             .withPassed(missingIndexes.isEmpty())
@@ -886,6 +889,56 @@ public class SystemRepository {
               status.stalePending().size(), status.stalePending());
     }
     return message;
+  }
+
+  @VisibleForTesting
+  List<String> findOrphanIndexes(SearchRepository searchRepository) {
+    List<String> orphans = new ArrayList<>();
+    try {
+      OrphanedIndexCleaner cleaner = new OrphanedIndexCleaner();
+      for (OrphanedIndexCleaner.OrphanedIndex orphan :
+          cleaner.findOrphanedRebuildIndices(searchRepository.getSearchClient())) {
+        orphans.add(orphan.indexName());
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to check for orphan indexes: {}", e.getMessage());
+    }
+    return orphans;
+  }
+
+  private boolean isSearchClusterHealthy(SearchRepository searchRepository) {
+    boolean healthy = true;
+    try {
+      SearchHealthStatus status = searchRepository.getSearchClient().getSearchHealthStatus();
+      healthy =
+          status != null && ServicesStatusJobHandler.HEALTHY_STATUS.equals(status.getStatus());
+    } catch (Exception e) {
+      LOG.warn("Failed to check search cluster health: {}", e.getMessage());
+    }
+    return healthy;
+  }
+
+  static String buildSearchHealthMessage(
+      String host,
+      List<String> missingIndexes,
+      List<String> orphanIndexes,
+      boolean clusterHealthy) {
+    StringBuilder message = new StringBuilder(String.format("Connected to %s", host));
+    if (!clusterHealthy) {
+      message.append(". WARNING: search cluster health is degraded");
+    }
+    if (!missingIndexes.isEmpty()) {
+      message.append(
+          String.format(
+              ". WARNING: %d missing index(es): %s", missingIndexes.size(), missingIndexes));
+    }
+    if (!orphanIndexes.isEmpty()) {
+      message.append(
+          String.format(
+              ". WARNING: %d orphan index(es) with no alias (safe to clean): %s",
+              orphanIndexes.size(), orphanIndexes));
+    }
+    return message.toString();
   }
 
   @VisibleForTesting

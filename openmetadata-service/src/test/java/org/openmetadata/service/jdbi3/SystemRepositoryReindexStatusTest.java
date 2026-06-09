@@ -13,6 +13,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -83,5 +84,31 @@ class SystemRepositoryReindexStatusTest {
     ReindexStatus status =
         SystemRepository.classifyReindexStatus(drift, Set.of("topic", "chart", "dashboard"));
     assertEquals(List.of("chart", "dashboard", "topic"), status.stalePending());
+  }
+
+  @Test
+  void searchHealthMessageHasNoWarningsWhenClean() {
+    String message =
+        SystemRepository.buildSearchHealthMessage("es:9200", List.of(), List.of(), true);
+    assertTrue(message.contains("es:9200"));
+    assertFalse(message.contains("WARNING"));
+  }
+
+  @Test
+  void searchHealthMessageReportsOrphanIndexes() {
+    String message =
+        SystemRepository.buildSearchHealthMessage(
+            "es:9200", List.of(), List.of("table_search_index_rebuild_123"), true);
+    assertTrue(message.toLowerCase().contains("orphan"));
+    assertTrue(message.contains("table_search_index_rebuild_123"));
+  }
+
+  @Test
+  void searchHealthMessageReportsMissingAndUnhealthyCluster() {
+    String message =
+        SystemRepository.buildSearchHealthMessage("es:9200", List.of("glossary"), List.of(), false);
+    assertTrue(message.contains("missing"));
+    assertTrue(message.contains("glossary"));
+    assertTrue(message.toLowerCase().contains("cluster health"));
   }
 }
