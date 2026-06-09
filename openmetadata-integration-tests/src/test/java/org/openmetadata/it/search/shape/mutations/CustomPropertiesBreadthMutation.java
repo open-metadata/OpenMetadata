@@ -19,6 +19,7 @@ import org.openmetadata.it.search.shape.Outcome;
 import org.openmetadata.it.search.shape.Rung;
 import org.openmetadata.it.search.shape.ShapeMutation;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration.SearchType;
 
 public final class CustomPropertiesBreadthMutation implements ShapeMutation {
@@ -29,7 +30,7 @@ public final class CustomPropertiesBreadthMutation implements ShapeMutation {
 
   @Override
   public boolean appliesTo(final EntityInterface entity) {
-    return true;
+    return !(entity instanceof GlossaryTerm);
   }
 
   @Override

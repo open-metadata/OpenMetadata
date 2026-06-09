@@ -20,10 +20,24 @@ import org.openmetadata.it.search.shape.mutations.FollowersCountMutation;
 import org.openmetadata.it.search.shape.mutations.KeywordIgnoreAboveMutation;
 import org.openmetadata.it.search.shape.mutations.OwnersCountMutation;
 import org.openmetadata.it.search.shape.mutations.TagsCountMutation;
+import org.openmetadata.it.search.shape.profiles.ContainerShapeProfile;
+import org.openmetadata.it.search.shape.profiles.DashboardShapeProfile;
+import org.openmetadata.it.search.shape.profiles.GlossaryTermShapeProfile;
+import org.openmetadata.it.search.shape.profiles.QueryShapeProfile;
+import org.openmetadata.it.search.shape.profiles.StoredProcedureShapeProfile;
 import org.openmetadata.it.search.shape.profiles.TableShapeProfile;
+import org.openmetadata.it.search.shape.profiles.TopicShapeProfile;
 
 public final class EntityShapeRegistry {
-  private final List<EntityShapeProfile> profiles = List.of(new TableShapeProfile());
+  private final List<EntityShapeProfile> profiles =
+      List.of(
+          new TableShapeProfile(),
+          new ContainerShapeProfile(),
+          new DashboardShapeProfile(),
+          new TopicShapeProfile(),
+          new GlossaryTermShapeProfile(),
+          new QueryShapeProfile(),
+          new StoredProcedureShapeProfile());
 
   private final List<ShapeMutation> sharedMutations =
       List.of(
