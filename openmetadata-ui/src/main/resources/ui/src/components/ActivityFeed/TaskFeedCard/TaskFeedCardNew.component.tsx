@@ -51,9 +51,9 @@ import {
   resolveTask as resolveTaskAPI,
   TaskResolutionType,
 } from '../../../rest/tasksAPI';
-import { getNameFromFQN } from '../../../utils/CommonUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
-import { getErrorText } from '../../../utils/StringsUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getNameFromFQN } from '../../../utils/FqnUtils';
+import { getErrorText } from '../../../utils/StringUtils';
 import {
   getTaskDetailPath,
   isDescriptionTask,

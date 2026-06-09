@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getKnowledgePageName } from '../../../utils/KnowledgePageUtils';
 
 interface ArticleVersionHeaderProps {
   knowledgePage?: KnowledgePage;
@@ -33,7 +33,7 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
     {
       name: '',
       icon: <Home02 size={14} />,
-      url: '/',
+      url: contextCenterClassBase.getHomePath(),
       activeTitle: true,
     },
     {
@@ -46,7 +46,7 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
     },
     {
       activeTitle: true,
-      name: getEntityName(knowledgePage) || t('label.untitled'),
+      name: getKnowledgePageName(knowledgePage),
       url: '',
     },
   ];
@@ -95,13 +95,14 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
             <File06
               className="tw:text-gray-500"
               height={40}
+              strokeWidth={1.2}
               style={{ verticalAlign: 'middle', flexShrink: 0 }}
               width={40}
             />
           </div>
 
           <Typography as="h3">
-            {getEntityName(knowledgePage) || t('label.untitled')}
+            {getKnowledgePageName(knowledgePage, t)}
           </Typography>
         </div>
       </Card>

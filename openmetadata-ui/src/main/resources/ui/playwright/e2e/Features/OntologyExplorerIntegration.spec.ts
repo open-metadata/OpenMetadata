@@ -18,6 +18,7 @@ import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { getAuthContext, getToken, uuid } from '../../utils/common';
 import {
   addTermRelation,
+  applyMultiGlossaryFilter,
   applyRelationTypeFilter,
   clickDataModeAssetBadge,
   createApiContext,
@@ -254,10 +255,11 @@ test.describe('Ontology Explorer - Cross Glossary Edges', () => {
     await navigateToOntologyExplorer(page);
     await waitForGraphLoaded(page);
 
-    await page.getByTestId('search-dropdown-Glossary').click();
-    await page.getByTestId(crossGlossary1.responseData.id).click();
-    await page.getByTestId(crossGlossary2.responseData.id).click();
-    await page.getByTestId('update-btn').click();
+    await applyMultiGlossaryFilter(
+      page,
+      crossGlossary1.responseData.id,
+      crossGlossary2.responseData.id
+    );
     await waitForGraphLoaded(page);
 
     await page.getByTestId('view-mode-select').click();
@@ -276,10 +278,11 @@ test.describe('Ontology Explorer - Cross Glossary Edges', () => {
     await navigateToOntologyExplorer(page);
     await waitForGraphLoaded(page);
 
-    await page.getByTestId('search-dropdown-Glossary').click();
-    await page.getByTestId(crossGlossary1.responseData.id).click();
-    await page.getByTestId(crossGlossary2.responseData.id).click();
-    await page.getByTestId('update-btn').click();
+    await applyMultiGlossaryFilter(
+      page,
+      crossGlossary1.responseData.id,
+      crossGlossary2.responseData.id
+    );
     await waitForGraphLoaded(page);
 
     // In overview mode crossTerm3 should be visible (has a same-glossary edge).

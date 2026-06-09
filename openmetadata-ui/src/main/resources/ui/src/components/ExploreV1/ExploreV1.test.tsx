@@ -28,6 +28,7 @@ import {
   MOCK_EXPLORE_TAB_ITEMS,
 } from '../Explore/Explore.mock';
 import { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
+import ExploreTree from '../Explore/ExploreTree/ExploreTree';
 import ExploreV1 from './ExploreV1.component';
 
 jest.mock('@openmetadata/ui-core-components', () => {
@@ -520,6 +521,28 @@ describe('ExploreV1', () => {
 
     resolveCountRequest({ hits: { total: { value: 100 } } });
     await waitFor(() => expect(exportButton).toBeEnabled());
+  });
+
+  it('passes updated onFieldValueSelect to ExploreTree when onChangeAdvancedSearchQuickFilters prop changes', () => {
+    const callbackV1 = jest.fn();
+    const callbackV2 = jest.fn();
+    const ExploreTreeMock = ExploreTree as jest.Mock;
+
+    const { rerender } = render(
+      <ExploreV1 {...props} onChangeAdvancedSearchQuickFilters={callbackV1} />,
+      { wrapper: Wrapper }
+    );
+
+    rerender(
+      <ExploreV1 {...props} onChangeAdvancedSearchQuickFilters={callbackV2} />
+    );
+
+    const lastCallProps =
+      ExploreTreeMock.mock.calls[ExploreTreeMock.mock.calls.length - 1][0];
+    lastCallProps.onFieldValueSelect([]);
+
+    expect(callbackV2).toHaveBeenCalledTimes(1);
+    expect(callbackV1).not.toHaveBeenCalled();
   });
 
   it('disables export and shows alert when all matching assets exceed export limit', async () => {

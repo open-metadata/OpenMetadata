@@ -17,6 +17,7 @@ import {
   ButtonUtility,
   Card,
   Dot,
+  Dropdown,
   Skeleton,
   Tabs,
   Tooltip,
@@ -24,19 +25,21 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  Copy06,
   DotsVertical,
   File06,
   Globe01,
   Home02,
   MessageChatSquare,
-  Share07,
   ThumbsDown,
   ThumbsUp,
+  Trash01,
   UploadCloud01,
   User03,
 } from '@untitledui/icons';
+import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, toString, uniqBy } from 'lodash';
-import { FC, useMemo, useState } from 'react';
+import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditorIcon } from '../../../assets/svg/ic-editor.svg';
@@ -44,10 +47,8 @@ import { ReactComponent as SidebarCollapsible } from '../../../assets/svg/ic-sid
 import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
 import { ReactComponent as StarIcon } from '../../../assets/svg/ic-star.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
-import { DeleteType } from '../../../components/common/DeleteWidget/DeleteWidget.interface';
-import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
+import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import Loader from '../../../components/common/Loader/Loader';
-import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
@@ -63,11 +64,15 @@ import {
   ContentChangeState,
   RecentlyViewedQuickLinks,
 } from '../../../interface/knowledge-center.interface';
+import { deleteKnowledgePage } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import deleteWidgetClassBase from '../../../utils/DeleteWidget/DeleteWidgetClassBase';
 import EntityLink from '../../../utils/EntityLink';
-import { getEntityName } from '../../../utils/EntityUtils';
-import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
+import {
+  getKnowledgePageName,
+  updateKnowledgeCenterRecentViewed,
+} from '../../../utils/KnowledgePageUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { ArticleDetailHeaderProps } from './ArticleDetailHeader.interface';
 
 const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
@@ -82,7 +87,6 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   onToggleRightPanel,
   onVoteChange,
   onFollowChange,
-  onToggleDelete,
   onSave,
   onSetThreadLink,
   fetchKnowledgePageHierarchy,
@@ -107,7 +111,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       {
         name: '',
         icon: <Home02 size={14} />,
-        url: '/',
+        url: contextCenterClassBase.getHomePath(),
         activeTitle: true,
       },
       {
@@ -120,7 +124,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       },
       {
         activeTitle: true,
-        name: getEntityName(knowledgePage) || t('label.untitled'),
+        name: getKnowledgePageName(knowledgePage, t),
         url: '',
       },
     ],
@@ -151,59 +155,42 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   );
 
   const editors = useMemo(() => {
-    const list = uniqBy(
-      [...(knowledgePage?.editors ?? []), { name: knowledgePage?.updatedBy }],
-      'name'
-    );
-
-    return list.slice(0, 5);
+    return uniqBy(knowledgePage?.editors ?? [], 'name').slice(0, 5);
   }, [knowledgePage]);
 
-  const { deleteOptions, owners, firstDomain, extraDomains, entityType } =
-    useMemo(() => {
-      const domains = knowledgePage?.domains ?? [];
-      const owners = knowledgePage?.owners ?? [];
-      const firstDomain = domains[0];
-      const extraDomains = domains.slice(1);
+  const { owners, firstDomain, extraDomains } = useMemo(() => {
+    const domains = knowledgePage?.domains ?? [];
+    const owners = knowledgePage?.owners ?? [];
 
-      const entityName = getEntityName(knowledgePage);
-      const entityType = t('label.article');
+    return {
+      owners,
+      firstDomain: domains[0],
+      extraDomains: domains.slice(1),
+    };
+  }, [knowledgePage]);
 
-      const deleteOptions = [
-        {
-          description: deleteWidgetClassBase.getDeleteMessage(
-            entityName,
-            entityType
-          ),
-          isAllowed: true,
-          title: `${t(
-            'label.permanently-delete'
-          )} ${entityType} "${entityName}"`,
-          type: DeleteType.HARD_DELETE,
-        },
-      ];
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-      return {
-        deleteOptions,
-        owners,
-        firstDomain,
-        extraDomains,
-        domains,
-        entityType,
-      };
-    }, [knowledgePage]);
-
-  const afterDeleteAction = async (isSoftDelete?: boolean) => {
-    updateKnowledgeCenterRecentViewed(
-      recentlyViewed.filter((page) => page.id !== knowledgePage?.id)
-    );
-    await fetchKnowledgePageHierarchy?.(true);
-    if (isSoftDelete) {
-      onToggleDelete();
-    } else {
-      navigate(contextCenterClassBase.getArticlesListPath());
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!knowledgePage?.id) {
+      return;
     }
-  };
+    setIsDeleting(true);
+    try {
+      await deleteKnowledgePage(knowledgePage.id);
+      updateKnowledgeCenterRecentViewed(
+        recentlyViewed.filter((page) => page.id !== knowledgePage.id)
+      );
+      await fetchKnowledgePageHierarchy?.(true);
+      setIsDeleteModalOpen(false);
+      navigate(contextCenterClassBase.getArticlesListPath());
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [knowledgePage, recentlyViewed, fetchKnowledgePageHierarchy]);
 
   const handleVersionClick = () => {
     navigate(contextCenterClassBase.getArticleVersionPath(fqn, version));
@@ -211,7 +198,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
 
   const handleShare = async () => {
     await onCopyToClipBoard();
-    setCopyTooltip(t('message.copy-to-clipboard'));
+    setCopyTooltip(t('message.link-copy-to-clipboard'));
     setTimeout(() => setCopyTooltip(''), 2000);
   };
 
@@ -348,6 +335,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               <File06
                 className="tw:text-gray-500"
                 height={40}
+                strokeWidth={1.2}
                 style={{ verticalAlign: 'middle', flexShrink: 0 }}
                 width={40}
               />
@@ -357,7 +345,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               {/* Article name with icon */}
               <div className="tw:flex tw:items-center tw:gap-2 tw:flex-wrap">
                 <Typography ellipsis as="h3" className="tw:truncate">
-                  {getEntityName(knowledgePage) || t('label.untitled')}
+                  {getKnowledgePageName(knowledgePage, t)}
                 </Typography>
                 {entityStatusBadge}
               </div>
@@ -366,10 +354,14 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               <div className="tw:flex tw:items-center tw:gap-3 tw:flex-wrap tw:text-sm">
                 {/* Domain */}
                 <div className="tw:flex tw:items-center tw:gap-1.5">
-                  <Globe01
-                    className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-fg-disabled"
-                    size={16}
-                  />
+                  <Tooltip title={t('label.domain')}>
+                    <TooltipTrigger className="tw:leading-0">
+                      <Globe01
+                        className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-fg-disabled"
+                        size={16}
+                      />
+                    </TooltipTrigger>
+                  </Tooltip>
                   <Typography
                     className={
                       firstDomain ? 'tw:text-primary-900' : 'tw:text-gray-400'
@@ -392,28 +384,24 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
 
                 {/* Owners */}
                 <div className="tw:flex tw:items-center tw:gap-1.5">
-                  <User03
-                    className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-fg-disabled"
-                    size={16}
-                  />
+                  <Tooltip title={t('label.owner-plural')}>
+                    <TooltipTrigger className="tw:leading-0">
+                      <User03
+                        className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-fg-disabled"
+                        size={16}
+                      />
+                    </TooltipTrigger>
+                  </Tooltip>
+
                   {owners.length > 0 ? (
-                    <div className="tw:flex tw:items-center tw:gap-1">
-                      {owners.slice(0, 2).map((owner) => (
-                        <UserPopOverCard
-                          className="tw:m-0"
-                          key={owner.id}
-                          profileWidth={20}
-                          userName={owner.name ?? ''}
-                        />
-                      ))}
-                      {owners.length > 2 && (
-                        <Typography
-                          className="tw:inline-flex tw:items-center tw:rounded-full tw:bg-gray-100 tw:px-1.5 tw:py-0.5 tw:text-gray-600"
-                          size="text-xs"
-                          weight="medium">
-                          +{owners.length - 2}
-                        </Typography>
-                      )}
+                    <div className="article-detail-owner-label">
+                      <OwnerLabel
+                        hasPermission={false}
+                        isCompactView={false}
+                        multiple={{ user: true, team: true }}
+                        owners={owners}
+                        showLabel={false}
+                      />
                     </div>
                   ) : (
                     <Typography
@@ -430,19 +418,23 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                   <>
                     <Dot className="tw:text-gray-400" size="xs" />
                     <div className="tw:flex tw:items-center tw:gap-1.5">
-                      <EditorIcon
-                        className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-fg-disabled"
-                        height={16}
-                        width={16}
-                      />
-                      <div className="tw:flex tw:items-center tw:gap-0.5">
-                        {editors.map((user) => (
-                          <UserPopOverCard
-                            key={user.name}
-                            profileWidth={20}
-                            userName={user.name ?? ''}
+                      <Tooltip title={t('label.editor')}>
+                        <TooltipTrigger className="tw:leading-0">
+                          <EditorIcon
+                            className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-fg-disabled"
+                            height={16}
+                            width={16}
                           />
-                        ))}
+                        </TooltipTrigger>
+                      </Tooltip>
+                      <div className="article-detail-owner-label tw:flex tw:items-center tw:gap-0.5">
+                        <OwnerLabel
+                          hasPermission={false}
+                          isCompactView={false}
+                          multiple={{ user: true, team: true }}
+                          owners={editors}
+                          showLabel={false}
+                        />
                       </div>
                     </div>
                   </>
@@ -558,48 +550,75 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
 
             <Tooltip
               isOpen={isEmpty(copyTooltip) ? undefined : true}
-              title={isEmpty(copyTooltip) ? t('label.share') : copyTooltip}>
+              title={
+                isEmpty(copyTooltip)
+                  ? t('label.copy-item', { item: t('label.url') })
+                  : copyTooltip
+              }>
               <TooltipTrigger>
                 <ButtonUtility
                   color="secondary"
-                  icon={<Share07 height={20} width={20} />}
+                  data-testid="share-btn"
+                  icon={<Copy06 height={20} width={20} />}
                   onClick={handleShare}
                 />
               </TooltipTrigger>
             </Tooltip>
 
             {permissions?.Delete && (
-              <ManageButton
-                isRecursiveDelete
-                afterDeleteAction={afterDeleteAction}
-                allowSoftDelete={false}
-                canDelete={permissions?.Delete}
-                deleteButtonDescription={t(
-                  'message.delete-entity-type-action-description',
-                  { entityType }
-                )}
-                deleteOptions={deleteOptions}
-                deleted={knowledgePage?.deleted}
-                entityFQN={knowledgePage?.fullyQualifiedName}
-                entityId={knowledgePage?.id}
-                entityName={knowledgePage?.displayName ?? t('label.untitled')}
-                entityType={EntityType.KNOWLEDGE_CENTER}
-                successMessage={t('server.entity-deleted-successfully', {
-                  entity: entityType,
-                })}
-                trigger={(onClick) => (
-                  <ButtonUtility
-                    data-testid="manage-button"
-                    icon={DotsVertical}
-                    size="sm"
-                    tooltip={t('label.manage-entity', {
-                      entity: t('label.article'),
-                    })}
-                    onClick={onClick}
-                  />
-                )}
-              />
+              <Dropdown.Root>
+                <Tooltip
+                  title={t('label.manage-entity', {
+                    entity: t('label.article'),
+                  })}>
+                  <TooltipTrigger>
+                    <ButtonUtility
+                      data-testid="manage-button"
+                      icon={DotsVertical}
+                      size="sm"
+                      tooltip={t('label.manage-entity', {
+                        entity: t('label.article'),
+                      })}
+                    />
+                  </TooltipTrigger>
+                </Tooltip>
+                <Dropdown.Popover className="tw:w-30">
+                  <Dropdown.Menu
+                    onAction={(key) => {
+                      if (key === 'delete') {
+                        setIsDeleteModalOpen(true);
+                      }
+                    }}>
+                    <Dropdown.Item data-testid="delete-btn" id="delete">
+                      <div className="tw:flex tw:items-center tw:gap-2">
+                        <Trash01
+                          aria-hidden="true"
+                          className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-600"
+                        />
+                        <Typography
+                          ellipsis
+                          className="tw:grow tw:text-error-600"
+                          size="text-sm"
+                          weight="medium">
+                          {t('label.delete')}
+                        </Typography>
+                      </div>
+                    </Dropdown.Item>
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown.Root>
             )}
+
+            <DeleteModal
+              entityTitle={getKnowledgePageName(knowledgePage, t)}
+              isDeleting={isDeleting}
+              message={t('message.soft-delete-message-for-entity', {
+                entity: getKnowledgePageName(knowledgePage, t),
+              })}
+              open={isDeleteModalOpen}
+              onCancel={() => setIsDeleteModalOpen(false)}
+              onDelete={handleDeleteConfirm}
+            />
           </div>
         </div>
 
@@ -609,7 +628,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             className="tw:w-auto"
             selectedKey={activeTab}
             onSelectionChange={(key) => onTabChange?.(String(key))}>
-            <Tabs.List type="underline">
+            <Tabs.List className="tw:gap-6" type="underline">
               {tabs?.map((tab) => (
                 <Tabs.Item id={String(tab.key)} key={String(tab.key)}>
                   <TabsLabel
@@ -634,6 +653,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 <ButtonUtility
                   className="tw:relative tw:bottom-2.5"
                   color="tertiary"
+                  data-testid="right-panel-toggle-btn"
                   icon={
                     <SidebarCollapsible
                       className={isRightPanelOpen ? undefined : 'tw:rotate-180'}

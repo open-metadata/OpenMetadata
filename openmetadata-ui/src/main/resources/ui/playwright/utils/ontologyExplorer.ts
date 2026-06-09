@@ -21,7 +21,16 @@ import { sidebarClick } from '../utils/sidebar';
 export async function applyGlossaryFilter(page: Page, glossaryId: string) {
   await page.getByTestId('search-dropdown-Glossary').click();
   await page.getByTestId(glossaryId).click();
+  const termsResponse = page
+    .waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/glossaryTerms') &&
+        response.status() === 200,
+      { timeout: 30000 }
+    )
+    .catch(() => null);
   await page.getByTestId('update-btn').click();
+  await termsResponse;
 }
 
 export async function navigateToOntologyExplorer(page: Page) {
@@ -80,13 +89,26 @@ export interface RenderedEdge {
   inverseRelationType?: string;
 }
 
-export async function readGraphEdges(page: Page): Promise<RenderedEdge[]> {
+export async function readGraphEdges(
+  page: Page,
+  minCount = 1
+): Promise<RenderedEdge[]> {
   await page.waitForFunction(
-    () => {
+    (min) => {
       const el = document.querySelector<HTMLElement>('.ontology-g6-container');
+      const raw = el?.dataset.edges;
+      if (typeof raw !== 'string') {
+        return false;
+      }
+      try {
+        const count = (JSON.parse(raw) as unknown[]).length;
 
-      return typeof el?.dataset.edges === 'string';
+        return min === 0 ? true : count >= min;
+      } catch {
+        return false;
+      }
     },
+    minCount,
     { timeout: 20000 }
   );
 
@@ -134,32 +156,32 @@ export async function addTermRelation(
   toTerm: GlossaryTerm,
   relationType: string
 ) {
+  const toTermRef = {
+    id: toTerm.responseData.id,
+    type: 'glossaryTerm',
+    name: toTerm.responseData.name,
+    displayName: toTerm.responseData.displayName,
+    fullyQualifiedName: toTerm.responseData.fullyQualifiedName,
+  };
   const termRes = await apiContext.get(
     `/api/v1/glossaryTerms/${fromTerm.responseData.id}?fields=relatedTerms`
   );
   const termData = await termRes.json();
-  const existingRelations: Array<Record<string, unknown>> =
-    termData.relatedTerms ?? [];
+  const hasExisting =
+    Array.isArray(termData.relatedTerms) && termData.relatedTerms.length > 0;
+  const patchOp = hasExisting
+    ? {
+        op: 'add',
+        path: '/relatedTerms/-',
+        value: { relationType, term: toTermRef },
+      }
+    : {
+        op: 'add',
+        path: '/relatedTerms',
+        value: [{ relationType, term: toTermRef }],
+      };
 
-  await fromTerm.patch(apiContext, [
-    {
-      op: 'add',
-      path: '/relatedTerms',
-      value: [
-        ...existingRelations,
-        {
-          relationType,
-          term: {
-            id: toTerm.responseData.id,
-            type: 'glossaryTerm',
-            name: toTerm.responseData.name,
-            displayName: toTerm.responseData.displayName,
-            fullyQualifiedName: toTerm.responseData.fullyQualifiedName,
-          },
-        },
-      ],
-    },
-  ]);
+  await fromTerm.patch(apiContext, [patchOp]);
 }
 
 export async function navigateAndFilterByGlossary(
@@ -211,12 +233,29 @@ export type CardinalityLabels = {
 };
 
 export async function readCardinalityMap(
-  page: Page
+  page: Page,
+  waitForKeys: string | string[] = []
 ): Promise<Record<string, CardinalityLabels>> {
+  const keys = Array.isArray(waitForKeys) ? waitForKeys : [waitForKeys];
+
   await page.waitForFunction(
-    () =>
-      typeof document.querySelector<HTMLElement>('.ontology-g6-container')
-        ?.dataset.cardinalityMap === 'string',
+    (requiredKeys) => {
+      const el = document.querySelector<HTMLElement>('.ontology-g6-container');
+      const raw = el?.dataset.cardinalityMap;
+      if (typeof raw !== 'string') {
+        return false;
+      }
+      try {
+        const parsed = JSON.parse(raw) as Record<string, unknown>;
+
+        return requiredKeys.length === 0
+          ? Object.keys(parsed).length > 0
+          : requiredKeys.every((k) => k in parsed);
+      } catch {
+        return false;
+      }
+    },
+    keys,
     { timeout: 20000 }
   );
 
@@ -374,5 +413,70 @@ export async function waitForMoreNodesThan(
     },
     count,
     { timeout: 30000 }
+  );
+}
+export async function applyMultiGlossaryFilter(
+  page: Page,
+  ...glossaryIds: string[]
+): Promise<void> {
+  await page.getByTestId('search-dropdown-Glossary').click();
+  for (const id of glossaryIds) {
+    await page.getByTestId(id).click();
+  }
+  const termsResponse = page
+    .waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/glossaryTerms') &&
+        response.status() === 200,
+      { timeout: 30000 }
+    )
+    .catch(() => null);
+  await page.getByTestId('update-btn').click();
+  await termsResponse;
+}
+
+export async function waitForNodePresent(
+  page: Page,
+  termId: string
+): Promise<void> {
+  await page.waitForFunction(
+    (id) => {
+      const el = document.querySelector<HTMLElement>('.ontology-g6-container');
+      const raw = el?.dataset.nodePositions;
+      if (!raw) {
+        return false;
+      }
+      try {
+        return id in JSON.parse(raw);
+      } catch {
+        return false;
+      }
+    },
+    termId,
+    { timeout: 20000 }
+  );
+}
+
+export async function waitForNodeAbsent(
+  page: Page,
+  termId: string
+): Promise<void> {
+  await page.waitForFunction(
+    (id) => {
+      const el = document.querySelector<HTMLElement>('.ontology-g6-container');
+      const raw = el?.dataset.nodePositions;
+      if (!raw) {
+        return false;
+      }
+      try {
+        const positions = JSON.parse(raw);
+
+        return !(id in positions) && Object.keys(positions).length > 0;
+      } catch {
+        return false;
+      }
+    },
+    termId,
+    { timeout: 20000 }
   );
 }

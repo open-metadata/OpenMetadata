@@ -43,8 +43,6 @@ import {
   SERVICE_TYPES,
 } from '../../../constants/Services.constant';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
@@ -69,7 +67,6 @@ import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerAncestors } from '../../../rest/storageAPI';
-import { hasEditAccess } from '../../../utils/CommonUtils';
 import {
   getDataAssetsHeaderInfo,
   isDataAssetsWithServiceField,
@@ -81,6 +78,7 @@ import {
   getEntityFeedLink,
   getEntityName,
   getEntityVoteStatus,
+  hasEditAccess,
 } from '../../../utils/EntityUtils';
 import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
@@ -140,6 +138,7 @@ export const DataAssetsHeader = ({
   badge,
   isDqAlertSupported = false,
   isCustomizedView = false,
+  canCreateTask = false,
   disableRunAgentsButton = true,
   afterTriggerAction,
   isAutoPilotWorkflowStatusLoading = false,
@@ -150,7 +149,6 @@ export const DataAssetsHeader = ({
     serviceCategory: ServiceCategory;
   }>();
   const { currentUser } = useApplicationStore();
-  const { getResourcePermission } = usePermissionProvider();
   const { selectedUserSuggestions } = useSuggestionsContext();
   const USER_ID = currentUser?.id ?? '';
   const { t } = useTranslation();
@@ -169,7 +167,6 @@ export const DataAssetsHeader = ({
   const { entityRules } = useEntityRules(entityType);
   const [dataContract, setDataContract] = useState<DataContract>();
   const [isRequestDataAccessOpen, setIsRequestDataAccessOpen] = useState(false);
-  const [canCreateTask, setCanCreateTask] = useState(false);
   const {
     isDarDisabled,
     isDarAwaitingGrant,
@@ -179,12 +176,6 @@ export const DataAssetsHeader = ({
     entityFqn: dataAsset.fullyQualifiedName,
     enabled: entityType === EntityType.TABLE,
   });
-
-  useEffect(() => {
-    getResourcePermission(ResourceEntity.TASK)
-      .then((perm) => setCanCreateTask(Boolean(perm.Create)))
-      .catch(() => setCanCreateTask(false));
-  }, [getResourcePermission]);
 
   const fetchDataContract = async (entityId: string) => {
     try {
@@ -620,7 +611,7 @@ export const DataAssetsHeader = ({
       entityType !== EntityType.TABLE ||
       deleted ||
       isOwner ||
-      !canCreateTask
+      (!canCreateTask && !currentUser?.isAdmin)
     ) {
       return null;
     }
@@ -651,6 +642,7 @@ export const DataAssetsHeader = ({
     isDarAwaitingGrant,
     isDarGranted,
     canCreateTask,
+    currentUser,
     t,
   ]);
 

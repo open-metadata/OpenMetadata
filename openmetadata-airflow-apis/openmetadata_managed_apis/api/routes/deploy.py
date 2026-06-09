@@ -15,7 +15,7 @@ Deploy the DAG and scan it with the scheduler
 import traceback
 from typing import Callable  # noqa: UP035
 
-from flask import Blueprint, Response, request
+from flask import Blueprint, Response, jsonify, make_response, request
 from pydantic import ValidationError
 
 from metadata.ingestion.api.parser import parse_ingestion_pipeline_config_gracefully
@@ -70,9 +70,9 @@ def get_fn(blueprint: Blueprint) -> Callable:
             ingestion_pipeline = parse_ingestion_pipeline_config_gracefully(json_request)
 
             deployer = DagDeployer(ingestion_pipeline)
-            response = deployer.deploy()
+            result = deployer.deploy()
 
-            return response  # noqa: RET504, TRY300
+            return make_response(jsonify(result.get_json()), result.status_code)
 
         except ValidationError as err:
             logger.debug(traceback.format_exc())

@@ -73,6 +73,7 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.search.vector.TestSuiteBodyTextContributor;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.DeleteEntityResponse;
@@ -136,6 +137,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         UPDATE_FIELDS);
     quoteFqn = false;
     supportsSearch = true;
+    TestSuiteBodyTextContributor.INSTANCE.register();
     EntityLifecycleEventDispatcher.getInstance()
         .registerHandler(new TestSuitePipelineStatusHandler());
     fieldFetchers.put(SUMMARY_FIELD, this::fetchAndSetTestCaseResultSummary);
@@ -700,7 +702,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       updater.update();
       changeType = ENTITY_SOFT_DELETED;
     } else {
-      cleanup(updated);
+      cleanup(updatedBy, updated);
       changeType = ENTITY_DELETED;
     }
     LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());
@@ -803,28 +805,33 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   public void onTestSuiteExecutionComplete(IngestionPipeline pipeline) {
     try {
-      TestSuite testSuite =
-          Entity.getEntity(
-              pipeline.getService().getType(),
-              pipeline.getService().getId(),
-              "*",
-              Include.NON_DELETED);
+      var latestStatus = IngestionPipelineRepository.latestPipelineStatus(pipeline);
+      if (latestStatus == null) {
+        LOG.warn(
+            "Pipeline {} completed but has no pipeline statuses; skipping test suite update",
+            pipeline.getFullyQualifiedName());
+      } else {
+        TestSuite testSuite =
+            Entity.getEntity(
+                pipeline.getService().getType(),
+                pipeline.getService().getId(),
+                "*",
+                Include.NON_DELETED);
+        PipelineStatusType state = latestStatus.getPipelineState();
 
-      PipelineStatusType state = pipeline.getPipelineStatuses().getPipelineState();
+        Double previousVersion = persistSuiteUpdate(testSuite, pipeline.getUpdatedBy());
+        createTestSuiteCompletionChangeEvent(testSuite, previousVersion);
 
-      Double previousVersion = persistSuiteUpdate(testSuite, pipeline.getUpdatedBy());
-      createTestSuiteCompletionChangeEvent(testSuite, previousVersion);
+        LOG.info("Pipeline {} completed with status {}", pipeline.getFullyQualifiedName(), state);
 
-      LOG.info("Pipeline {} completed with status {}", pipeline.getFullyQualifiedName(), state);
+        if (testSuite.getDataContract() != null) {
+          DataContractRepository dataContractRepository =
+              (DataContractRepository) Entity.getEntityRepository(Entity.DATA_CONTRACT);
+          dataContractRepository.updateContractDQResults(testSuite.getDataContract(), testSuite);
+        }
 
-      if (testSuite.getDataContract() != null) {
-        DataContractRepository dataContractRepository =
-            (DataContractRepository) Entity.getEntityRepository(Entity.DATA_CONTRACT);
-        dataContractRepository.updateContractDQResults(testSuite.getDataContract(), testSuite);
+        updateRelatedSuites(testSuite, pipeline.getUpdatedBy());
       }
-
-      updateRelatedSuites(testSuite, pipeline.getUpdatedBy());
-
     } catch (Exception e) {
       LOG.error(
           "Failed to process test suite completion for pipeline {}: {}",
@@ -932,10 +939,11 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
       Optional.of(pipeline)
           .filter(p -> p.getPipelineType() == PipelineType.TEST_SUITE)
-          .filter(p -> p.getPipelineStatuses() != null)
+          .filter(p -> !nullOrEmpty(p.getPipelineStatuses()))
           .filter(
               p -> {
-                PipelineStatusType state = p.getPipelineStatuses().getPipelineState();
+                PipelineStatusType state =
+                    IngestionPipelineRepository.latestPipelineStatus(p).getPipelineState();
                 return state == PipelineStatusType.SUCCESS
                     || state == PipelineStatusType.FAILED
                     || state == PipelineStatusType.PARTIAL_SUCCESS;

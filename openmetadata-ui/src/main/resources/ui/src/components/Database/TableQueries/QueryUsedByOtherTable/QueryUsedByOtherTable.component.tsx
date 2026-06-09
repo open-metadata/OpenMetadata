@@ -24,7 +24,8 @@ import { QUERY_USED_BY_TABLE_VIEW_CAP } from '../../../../constants/Query.consta
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { searchQuery } from '../../../../rest/searchAPI';
-import { getEntityLabel, getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getEntityLabel } from '../../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';
 import Loader from '../../../common/Loader/Loader';

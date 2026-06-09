@@ -12,14 +12,14 @@
  */
 import { render, screen } from '@testing-library/react';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { getRecentlyViewedData } from '../../../../utils/CommonUtils';
+import { getRecentlyViewedData } from '../../../../utils/RecentActivityUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import CustomiseLandingPageHeader from './CustomiseLandingPageHeader';
 
 jest.mock('../../../../hooks/useApplicationStore');
 jest.mock('../../../../utils/ServiceUtilClassBase');
-jest.mock('../../../../utils/CommonUtils', () => ({
-  ...jest.requireActual('../../../../utils/CommonUtils'),
+jest.mock('../../../../utils/RecentActivityUtils', () => ({
+  ...jest.requireActual('../../../../utils/RecentActivityUtils'),
   getRecentlyViewedData: jest.fn(),
 }));
 

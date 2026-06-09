@@ -66,6 +66,7 @@ const mockDocuments: UploadedDocumentItem[] = [
   {
     id: 'd1',
     name: 'Report.pdf',
+    fileExtension: 'pdf',
     fileType: 'pdf',
     sizeLabel: '1 MB',
     status: 'processed',
@@ -75,6 +76,7 @@ const mockDocuments: UploadedDocumentItem[] = [
   {
     id: 'd2',
     name: 'Sheet.xls',
+    fileExtension: 'xls',
     fileType: 'xls',
     sizeLabel: '200 KB',
     status: 'analyzing',

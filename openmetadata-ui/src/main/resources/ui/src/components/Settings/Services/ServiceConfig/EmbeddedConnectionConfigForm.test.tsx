@@ -16,10 +16,9 @@ import { act, forwardRef } from 'react';
 import { LOADING_STATE } from '../../../../enums/common.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { MOCK_ATHENA_SERVICE } from '../../../../mocks/Service.mock';
-import { getPipelineServiceHostIp } from '../../../../rest/ingestionPipelineAPI';
 import * as LocalUtils from '../../../../utils/i18next/LocalUtil';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
-import { getConnectionSchemas } from '../../../../utils/ServiceConnectionUtils';
+import { loadConnectionSchema } from '../../../../utils/ServiceConnectionUtils';
 import EmbeddedConnectionConfigForm from './EmbeddedConnectionConfigForm';
 
 const formData = {
@@ -31,31 +30,33 @@ const formData = {
 };
 
 jest.mock('../../../../utils/DatabaseServiceUtils', () => ({
-  getDatabaseConfig: jest.fn().mockReturnValue({ schema: MOCK_ATHENA_SERVICE }),
+  getDatabaseConfig: jest
+    .fn()
+    .mockResolvedValue({ schema: MOCK_ATHENA_SERVICE }),
 }));
 
 jest.mock('../../../../utils/DashboardServiceUtils', () => ({
-  getDashboardConfig: jest.fn().mockReturnValue({ schema: {} }),
+  getDashboardConfig: jest.fn().mockResolvedValue({ schema: {} }),
 }));
 
 jest.mock('../../../../utils/MessagingServiceUtils', () => ({
-  getMessagingConfig: jest.fn().mockReturnValue({ schema: {} }),
+  getMessagingConfig: jest.fn().mockResolvedValue({ schema: {} }),
 }));
 
 jest.mock('../../../../utils/MetadataServiceUtils', () => ({
-  getMetadataConfig: jest.fn().mockReturnValue({ schema: {} }),
+  getMetadataConfig: jest.fn().mockResolvedValue({ schema: {} }),
 }));
 
 jest.mock('../../../../utils/MlmodelServiceUtils', () => ({
-  getMlmodelConfig: jest.fn().mockReturnValue({ schema: {} }),
+  getMlmodelConfig: jest.fn().mockResolvedValue({ schema: {} }),
 }));
 
 jest.mock('../../../../utils/PipelineServiceUtils', () => ({
-  getPipelineConfig: jest.fn().mockReturnValue({ schema: {} }),
+  getPipelineConfig: jest.fn().mockResolvedValue({ schema: {} }),
 }));
 
 jest.mock('../../../../utils/SearchServiceUtils', () => ({
-  getSearchServiceConfig: jest.fn().mockReturnValue({ schema: {} }),
+  getSearchServiceConfig: jest.fn().mockResolvedValue({ schema: {} }),
 }));
 
 jest.mock('../../../../utils/JSONSchemaFormUtils', () => ({
@@ -63,10 +64,11 @@ jest.mock('../../../../utils/JSONSchemaFormUtils', () => ({
 }));
 
 jest.mock('../../../../utils/ServiceConnectionUtils', () => ({
-  getConnectionSchemas: jest.fn().mockReturnValue({
-    connSch: { schema: { name: 'test' }, uiSchema: {} },
-    validConfig: {},
-  }),
+  buildValidConfig: jest.fn().mockReturnValue({}),
+  loadConnectionSchema: jest
+    .fn()
+    .mockResolvedValue({ schema: { name: 'test' }, uiSchema: {} }),
+  EMPTY_CONNECTION_SCHEMA: { schema: {}, uiSchema: {} },
   getFilteredSchema: jest.fn().mockReturnValue({}),
   getUISchemaWithNestedDefaultFilterFieldsHidden: jest.fn().mockReturnValue({}),
 }));
@@ -78,11 +80,6 @@ jest.mock('../../../common/AirflowMessageBanner/AirflowMessageBanner', () =>
       <div data-testid="airflowMessageBanner">AirflowMessageBanner</div>
     )
 );
-
-jest.mock('../../../../utils/BrandData/BrandClassBase', () => ({
-  __esModule: true,
-  default: { getPageTitle: jest.fn().mockReturnValue('OpenMetadata') },
-}));
 
 jest.mock('../../../common/FormBuilderV1/FormBuilderV1', () =>
   forwardRef(
@@ -165,15 +162,17 @@ describe('EmbeddedConnectionConfigForm', () => {
   });
 
   it('does not show no-config message when schema has content', async () => {
-    render(<EmbeddedConnectionConfigForm {...mockProps} />);
+    await act(async () => {
+      render(<EmbeddedConnectionConfigForm {...mockProps} />);
+    });
 
     expect(screen.queryByTestId('no-config-available')).not.toBeInTheDocument();
   });
 
   it('shows no-config message when schema is empty', async () => {
-    (getConnectionSchemas as jest.Mock).mockReturnValueOnce({
-      connSch: { schema: {}, uiSchema: {} },
-      validConfig: {},
+    (loadConnectionSchema as jest.Mock).mockResolvedValueOnce({
+      schema: {},
+      uiSchema: {},
     });
 
     await act(async () => {
@@ -197,21 +196,16 @@ describe('EmbeddedConnectionConfigForm', () => {
     const mockFormatted = { ...formData };
     (formatFormDataForSubmit as jest.Mock).mockReturnValue(mockFormatted);
 
-    render(<EmbeddedConnectionConfigForm {...mockProps} />);
+    await act(async () => {
+      render(<EmbeddedConnectionConfigForm {...mockProps} />);
+    });
+    const submitButton = await screen.findByTestId('submit-button');
 
-    fireEvent.click(await screen.findByTestId('submit-button'));
+    fireEvent.click(submitButton);
 
     expect(formatFormDataForSubmit).toHaveBeenCalledWith(formData);
-    expect(mockOnSave).toHaveBeenCalled();
-  });
-
-  it('does not show IP alert when host IP fetch fails', async () => {
-    (getPipelineServiceHostIp as jest.Mock).mockRejectedValue(new Error());
-
-    render(<EmbeddedConnectionConfigForm {...mockProps} />);
-
-    await act(async () => {
-      expect(screen.queryByTestId('ip-address')).not.toBeInTheDocument();
+    expect(mockOnSave).toHaveBeenCalledWith({
+      formData: mockFormatted,
     });
   });
 });

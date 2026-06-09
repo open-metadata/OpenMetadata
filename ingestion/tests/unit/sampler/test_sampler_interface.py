@@ -78,9 +78,7 @@ class TestGenerateSampleData:
         )
         sampler.fetch_sample_data.return_value = sample_table_data
 
-        sampler.generate_sample_data = SamplerInterface.generate_sample_data.__wrapped__.__get__(
-            sampler, SamplerInterface
-        )
+        sampler.generate_sample_data = SamplerInterface.generate_sample_data.__get__(sampler, SamplerInterface)
         sampler._truncate_cell = SamplerInterface._truncate_cell
 
         return sampler

@@ -18,7 +18,7 @@ import { useMemo } from 'react';
 import { MAX_RESULT_HITS } from '../../constants/explore.constants';
 import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
-import { pluralize } from '../../utils/CommonUtils';
+import { pluralize } from '../../utils/StringUtils';
 import ErrorPlaceHolderES from '../common/ErrorWithPlaceholder/ErrorPlaceHolderES';
 import Loader from '../common/Loader/Loader';
 import ExploreSearchCard from '../ExploreV1/ExploreSearchCard/ExploreSearchCard';

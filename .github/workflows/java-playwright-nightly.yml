@@ -16,24 +16,68 @@
 # The schedule trigger is intentionally disabled while the suite stabilises;
 # run on demand via workflow_dispatch (pick the branch to test as the ref).
 # Re-add `schedule: - cron: '0 2 * * *'` once the suite is green on main.
+#
+# Topology:
+#   - build-image: builds the openmetadata-dist tarball and bakes the local
+#     openmetadata-server:jpw-snapshot image (BuildKit + GHA layer cache), saves it
+#     to a workflow artifact, and primes the Maven cache for downstream jobs.
+#   - ui-it-nightly (x2): matrix over [opensearch, elasticsearch]. Both download the
+#     pre-built image artifact, restore the Maven cache, then run `mvn verify -P ui-it`
+#     with OM_TEST_IMAGE pointing at the pre-loaded tag so ContainerizedServer skips
+#     its own build.
+#   - search-it-nightly: server-global destructive search ITs (tests/search/*IT.java) via
+#     `mvn verify -P search-it`. They run on the embedded bootstrap (testcontainers), not the
+#     baked image, so this job is independent of build-image and runs them serially.
 
-name: UI Integration Tests (Nightly)
+name: JavaUIIT Integration Tests (Nightly)
 
 on:
   workflow_dispatch:
+    inputs:
+      includeSsoBootstrap:
+        description: 'Also run @Tag("sso-bootstrap") UIITs (slower; second OM lifecycle)'
+        required: false
+        type: boolean
+        default: false
+      simpleReindexTables:
+        description: 'SimpleReindexTriggerUIIT table cohort size'
+        required: false
+        type: string
+        default: '5000'
+      simpleReindexTopics:
+        description: 'SimpleReindexTriggerUIIT topic cohort size'
+        required: false
+        type: string
+        default: '1500'
+      simpleReindexDashboards:
+        description: 'SimpleReindexTriggerUIIT dashboard cohort size'
+        required: false
+        type: string
+        default: '1500'
+      simpleReindexPipelines:
+        description: 'SimpleReindexTriggerUIIT pipeline cohort size'
+        required: false
+        type: string
+        default: '2000'
+      searchAvailableTables:
+        description: 'SearchAvailableDuringReindexUIIT table cohort size'
+        required: false
+        type: string
+        default: '5000'
 
 permissions:
   contents: read
   checks: write
 
+env:
+  SERVER_IMAGE_TAG: openmetadata-server:jpw-snapshot
+
 jobs:
-  ui-it-nightly:
+  build-image:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
-    strategy:
-      fail-fast: false
-      matrix:
-        searchEngine: [opensearch, elasticsearch]
+    timeout-minutes: 30
+    outputs:
+      ref-sha: ${{ steps.checkout.outputs.commit }}
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -47,6 +91,7 @@ jobs:
           swap-storage: true
 
       - name: Checkout
+        id: checkout
         uses: actions/checkout@v4
         with:
           # Cron always runs against main. workflow_dispatch honours the ref the
@@ -71,7 +116,97 @@ jobs:
       - name: Install Ubuntu dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y jq
+          sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+          libevent-dev jq
+          sudo make install_antlr_cli
+
+      - name: Build dependencies for integration-tests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn -DskipTests clean install -pl :openmetadata-integration-tests -am
+
+      - name: Build openmetadata-dist tarball
+        # ContainerizedServer.buildLocalImageContainer needs
+        # openmetadata-dist/target/openmetadata-*.tar.gz to bake the local image.
+        # Dist is NOT a transitive dep of integration-tests, so the previous step
+        # doesn't produce it — build it explicitly here.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn -DskipTests install -pl :openmetadata-dist -am
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build openmetadata-server image (with GHA layer cache)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/development/Dockerfile
+          tags: ${{ env.SERVER_IMAGE_TAG }}
+          load: true
+          # Shared scope across matrix entries so the cache primed by this build
+          # is reused by everything that runs this workflow on the same SHA (or
+          # later runs whose Dockerfile + dist tarball haven't changed).
+          cache-from: type=gha,scope=jpw-server-image
+          cache-to: type=gha,scope=jpw-server-image,mode=max
+
+      - name: Export server image as artifact
+        run: |
+          docker save "${SERVER_IMAGE_TAG}" -o /tmp/jpw-server-image.tar
+          ls -lh /tmp/jpw-server-image.tar
+
+      - name: Upload server image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jpw-server-image-${{ github.run_id }}
+          path: /tmp/jpw-server-image.tar
+          retention-days: 1
+
+  ui-it-nightly:
+    needs: build-image
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        searchEngine: [opensearch, elasticsearch]
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: true
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.ref || 'main' }}
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Install Ubuntu dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+          libevent-dev jq
+          sudo make install_antlr_cli
 
       - name: Add /etc/hosts entry for mock OIDC server
         # The SSO test infrastructure (MockOidcServer) needs `om-mock-idp` to resolve to
@@ -81,9 +216,21 @@ jobs:
         run: echo "127.0.0.1 om-mock-idp" | sudo tee -a /etc/hosts
 
       - name: Build dependencies for integration-tests
+        # Maven cache primed by build-image makes this a fast restore-only invocation.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn -DskipTests clean install -pl :openmetadata-integration-tests -am
+        run: mvn -DskipTests install -pl :openmetadata-integration-tests -am
+
+      - name: Download server image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: jpw-server-image-${{ github.run_id }}
+          path: /tmp
+
+      - name: Load server image into local Docker
+        run: |
+          docker load -i /tmp/jpw-server-image.tar
+          docker image ls "${SERVER_IMAGE_TAG}"
 
       - name: Install Playwright browsers
         run: |
@@ -100,16 +247,33 @@ jobs:
       - name: Run UI integration tests (${{ matrix.searchEngine }})
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # OM_TEST_IMAGE makes ContainerizedServer skip its in-test `docker build`
+          # and reuse the image artifact loaded above. Cuts ~10-90s per launch.
+          OM_TEST_IMAGE: ${{ env.SERVER_IMAGE_TAG }}
           # UiSessionExtension reads PW_VIDEO and records every test's BrowserContext
           # to target/playwright-videos when true. Kept off locally; on in CI for triage.
           PW_VIDEO: 'true'
         run: |
+          # Nightly bumps the per-test cohort sizes up to the historical stress numbers.
+          # PR runs use the smaller defaults baked into each test so `mvn verify` is fast.
+          # Sizes are workflow_dispatch inputs (defaults below) so they're tunable per run.
+          STRESS_PROPS="-Djpw.simpleReindex.tables=${{ github.event.inputs.simpleReindexTables || '5000' }} \
+            -Djpw.simpleReindex.topics=${{ github.event.inputs.simpleReindexTopics || '1500' }} \
+            -Djpw.simpleReindex.dashboards=${{ github.event.inputs.simpleReindexDashboards || '1500' }} \
+            -Djpw.simpleReindex.pipelines=${{ github.event.inputs.simpleReindexPipelines || '2000' }} \
+            -Djpw.searchAvailable.tables=${{ github.event.inputs.searchAvailableTables || '5000' }}"
+          # Opt-in for SSO bootstrap UIITs (second OM lifecycle); default off.
+          if [ "${{ github.event.inputs.includeSsoBootstrap }}" = "true" ]; then
+            SSO_PROPS="-Dui.it.excludedGroups="
+          else
+            SSO_PROPS=""
+          fi
           if [ "${{ matrix.searchEngine }}" = "elasticsearch" ]; then
-            mvn verify -P ui-it -pl :openmetadata-integration-tests \
+            mvn verify -P ui-it -pl :openmetadata-integration-tests $STRESS_PROPS $SSO_PROPS \
               -DsearchType=elasticsearch \
               -DsearchImage=docker.elastic.co/elasticsearch/elasticsearch:9.3.0
           else
-            mvn verify -P ui-it -pl :openmetadata-integration-tests
+            mvn verify -P ui-it -pl :openmetadata-integration-tests $STRESS_PROPS $SSO_PROPS
           fi
 
       - name: Upload Playwright traces
@@ -145,17 +309,103 @@ jobs:
         uses: scacap/action-surefire-report@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          fail_on_test_failures: true
+          # mvn verify already fails the job on test failures. This step just
+          # publishes the check run with per-test details; it shouldn't itself
+          # gate the job conclusion (otherwise a flake here breaks Slack).
+          fail_on_test_failures: false
           report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'
 
       - name: Slack notification
-        if: ${{ always() }}
-        uses: slackapi/slack-github-action@v1.23.0
+        if: ${{ always() && env.SLACK_JAVA_PLAYWRIGHT_URL != '' }}
+        uses: slackapi/slack-github-action@v2.0.0
         with:
+          webhook: ${{ env.SLACK_JAVA_PLAYWRIGHT_URL }}
+          webhook-type: incoming-webhook
           payload: |
-            {
-              "text": "${{ job.status == 'success' && ':white_check_mark:' || ':fire:' }} Java Playwright Nightly (${{ matrix.searchEngine }}): ${{ job.status }}\nRef: ${{ github.ref_name }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            }
+            text: "${{ job.status == 'success' && ':white_check_mark:' || ':fire:' }} Java Playwright Nightly (${{ matrix.searchEngine }}): ${{ job.status }}\nRef: ${{ github.ref_name }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+          SLACK_JAVA_PLAYWRIGHT_URL: ${{ secrets.SLACK_JAVA_PLAYWRIGHT_URL }}
+
+  search-it-nightly:
+    # Server-global destructive search ITs (tests/search/*IT.java): full reindex with
+    # recreateIndex, alias swaps, and ES container pause. They mutate cluster-wide state, so
+    # the default PR profiles exclude them; here the `search-it` Maven profile runs them
+    # serially on their own embedded-bootstrap server (testcontainers). That bootstrap is
+    # independent of the baked image, so this job does not need build-image.
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: true
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.ref || 'main' }}
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Install Ubuntu dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+          libevent-dev jq
+          sudo make install_antlr_cli
+
+      - name: Build dependencies for integration-tests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn -DskipTests install -pl :openmetadata-integration-tests -am
+
+      - name: Run isolated search ITs (postgres + opensearch)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn verify -P search-it -pl :openmetadata-integration-tests -DdatabaseType=postgres -DsearchType=opensearch
+
+      - name: Upload Failsafe Reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: failsafe-reports-search-it-${{ github.run_id }}
+          path: openmetadata-integration-tests/target/failsafe-reports
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Publish Test Report
+        if: ${{ always() }}
+        uses: scacap/action-surefire-report@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_test_failures: false
+          report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'
+
+      - name: Slack notification
+        if: ${{ always() && env.SLACK_JAVA_PLAYWRIGHT_URL != '' }}
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          webhook: ${{ env.SLACK_JAVA_PLAYWRIGHT_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            text: "${{ job.status == 'success' && ':white_check_mark:' || ':fire:' }} Java Search ITs Nightly: ${{ job.status }}\nRef: ${{ github.ref_name }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        env:
+          SLACK_JAVA_PLAYWRIGHT_URL: ${{ secrets.SLACK_JAVA_PLAYWRIGHT_URL }}

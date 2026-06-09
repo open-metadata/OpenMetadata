@@ -44,6 +44,15 @@ public class TopicIndex implements DataAssetIndex {
     return topic.getServiceType();
   }
 
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new java.util.HashSet<>(DataAssetIndex.super.getRequiredReindexFields());
+    // TopicRepository.bulkPopulateEntityFieldTags only fires when fields.contains("messageSchema");
+    // without it nested schema-field tags are not hydrated and _source.tags loses the merge.
+    fields.add("messageSchema");
+    return java.util.Collections.unmodifiableSet(fields);
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     if (topic.getMessageSchema() != null
         && topic.getMessageSchema().getSchemaFields() != null
@@ -100,7 +109,7 @@ public class TopicIndex implements DataAssetIndex {
     fields.put(ES_MESSAGE_SCHEMA_FIELD, 7.0f);
     fields.put("messageSchema.schemaFields.name.keyword", 5.0f);
     fields.put("messageSchema.schemaFields.description", 1.0f);
-    fields.put("messageSchema.schemaFields.children.name", 7.0f);
+    fields.put("fieldNamesFuzzy", 7.0f);
     return fields;
   }
 }

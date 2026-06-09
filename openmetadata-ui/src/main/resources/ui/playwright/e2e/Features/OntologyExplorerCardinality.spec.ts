@@ -30,31 +30,50 @@ import {
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
+// Unique suffix per worker/repeat so parallel runs don't share relation type names.
+const RUN_ID = Math.random().toString(36).slice(2, 8);
 const CUSTOM_RELATION_NAMES = {
-  ONE_TO_ONE: 'pw-cardinality-oto',
-  ONE_TO_MANY: 'pw-cardinality-otm',
-  MANY_TO_ONE: 'pw-cardinality-mto',
-  MANY_TO_MANY: 'pw-cardinality-mtm',
-  CUSTOM_1_M: 'pw-cardinality-custom',
+  ONE_TO_ONE: `pw-c-oto-${RUN_ID}`,
+  ONE_TO_MANY: `pw-c-otm-${RUN_ID}`,
+  MANY_TO_ONE: `pw-c-mto-${RUN_ID}`,
+  MANY_TO_MANY: `pw-c-mtm-${RUN_ID}`,
+  CUSTOM_1_M: `pw-c-cus-${RUN_ID}`,
 } as const;
 
+// Each relation type gets its own isolated source-target pair so no single
+// term accumulates multiple cardinality-constrained relations, which would
+// trigger backend re-validation failures on the second PATCH.
 const glossary = new Glossary();
-const termA = new GlossaryTerm(glossary);
-const termB = new GlossaryTerm(glossary);
-const termC = new GlossaryTerm(glossary);
-const termD = new GlossaryTerm(glossary);
-const termE = new GlossaryTerm(glossary);
+const otoSrc = new GlossaryTerm(glossary);
+const otoDst = new GlossaryTerm(glossary);
+const otmSrc = new GlossaryTerm(glossary);
+const otmDst = new GlossaryTerm(glossary);
+const mtoSrc = new GlossaryTerm(glossary);
+const mtoDst = new GlossaryTerm(glossary);
+const mtmSrc = new GlossaryTerm(glossary);
+const mtmDst = new GlossaryTerm(glossary);
+const cusSrc = new GlossaryTerm(glossary);
+const cusDst = new GlossaryTerm(glossary);
+const relSrc = new GlossaryTerm(glossary);
+const relDst = new GlossaryTerm(glossary);
 
 test.describe('Ontology Explorer - Cardinality Labels', () => {
   test.beforeAll(async ({ browser }) => {
     const { page, apiContext } = await createApiContext(browser);
 
     await glossary.create(apiContext);
-    await termA.create(apiContext);
-    await termB.create(apiContext);
-    await termC.create(apiContext);
-    await termD.create(apiContext);
-    await termE.create(apiContext);
+    await otoSrc.create(apiContext);
+    await otoDst.create(apiContext);
+    await otmSrc.create(apiContext);
+    await otmDst.create(apiContext);
+    await mtoSrc.create(apiContext);
+    await mtoDst.create(apiContext);
+    await mtmSrc.create(apiContext);
+    await mtmDst.create(apiContext);
+    await cusSrc.create(apiContext);
+    await cusDst.create(apiContext);
+    await relSrc.create(apiContext);
+    await relDst.create(apiContext);
 
     await addRelationTypeWithCardinality(apiContext, {
       name: CUSTOM_RELATION_NAMES.ONE_TO_ONE,
@@ -86,28 +105,35 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
 
     await addTermRelation(
       apiContext,
-      termA,
-      termB,
+      otoSrc,
+      otoDst,
       CUSTOM_RELATION_NAMES.ONE_TO_ONE
     );
     await addTermRelation(
       apiContext,
-      termA,
-      termC,
+      otmSrc,
+      otmDst,
       CUSTOM_RELATION_NAMES.ONE_TO_MANY
     );
     await addTermRelation(
       apiContext,
-      termA,
-      termD,
+      mtoSrc,
+      mtoDst,
       CUSTOM_RELATION_NAMES.MANY_TO_ONE
     );
     await addTermRelation(
       apiContext,
-      termA,
-      termE,
+      mtmSrc,
+      mtmDst,
       CUSTOM_RELATION_NAMES.MANY_TO_MANY
     );
+    await addTermRelation(
+      apiContext,
+      cusSrc,
+      cusDst,
+      CUSTOM_RELATION_NAMES.CUSTOM_1_M
+    );
+    await addTermRelation(apiContext, relSrc, relDst, 'relatedTo');
 
     await disposeApiContext(page, apiContext);
   });
@@ -117,11 +143,18 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
 
     await deleteEntities(
       apiContext,
-      termA,
-      termB,
-      termC,
-      termD,
-      termE,
+      otoSrc,
+      otoDst,
+      otmSrc,
+      otmDst,
+      mtoSrc,
+      mtoDst,
+      mtmSrc,
+      mtmDst,
+      cusSrc,
+      cusDst,
+      relSrc,
+      relDst,
       glossary
     );
 
@@ -144,7 +177,10 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
     test('ONE_TO_ONE relation type should have label "1" on both ends', async ({
       page,
     }) => {
-      const cardinalityMap = await readCardinalityMap(page);
+      const cardinalityMap = await readCardinalityMap(
+        page,
+        CUSTOM_RELATION_NAMES.ONE_TO_ONE
+      );
 
       expect(cardinalityMap[CUSTOM_RELATION_NAMES.ONE_TO_ONE]).toEqual({
         startLabelText: '1',
@@ -155,7 +191,10 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
     test('ONE_TO_MANY relation type should have "1" at source and "M" at target', async ({
       page,
     }) => {
-      const cardinalityMap = await readCardinalityMap(page);
+      const cardinalityMap = await readCardinalityMap(
+        page,
+        CUSTOM_RELATION_NAMES.ONE_TO_MANY
+      );
 
       expect(cardinalityMap[CUSTOM_RELATION_NAMES.ONE_TO_MANY]).toEqual({
         startLabelText: '1',
@@ -166,7 +205,10 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
     test('MANY_TO_ONE relation type should have "M" at source and "1" at target', async ({
       page,
     }) => {
-      const cardinalityMap = await readCardinalityMap(page);
+      const cardinalityMap = await readCardinalityMap(
+        page,
+        CUSTOM_RELATION_NAMES.MANY_TO_ONE
+      );
 
       expect(cardinalityMap[CUSTOM_RELATION_NAMES.MANY_TO_ONE]).toEqual({
         startLabelText: 'M',
@@ -177,7 +219,10 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
     test('MANY_TO_MANY relation type should have label "M" on both ends', async ({
       page,
     }) => {
-      const cardinalityMap = await readCardinalityMap(page);
+      const cardinalityMap = await readCardinalityMap(
+        page,
+        CUSTOM_RELATION_NAMES.MANY_TO_MANY
+      );
 
       expect(cardinalityMap[CUSTOM_RELATION_NAMES.MANY_TO_MANY]).toEqual({
         startLabelText: 'M',
@@ -188,7 +233,10 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
     test('CUSTOM relation type with sourceMax=1 and no targetMax should produce "1" → "M"', async ({
       page,
     }) => {
-      const cardinalityMap = await readCardinalityMap(page);
+      const cardinalityMap = await readCardinalityMap(
+        page,
+        CUSTOM_RELATION_NAMES.CUSTOM_1_M
+      );
 
       expect(cardinalityMap[CUSTOM_RELATION_NAMES.CUSTOM_1_M]).toEqual({
         startLabelText: '1',
@@ -199,7 +247,7 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
     test('built-in relation type shows M:M cardinality in the cardinality map', async ({
       page,
     }) => {
-      const cardinalityMap = await readCardinalityMap(page);
+      const cardinalityMap = await readCardinalityMap(page, 'relatedTo');
 
       expect(cardinalityMap['relatedTo']).toEqual({
         startLabelText: 'M',
@@ -212,7 +260,8 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
     test('edges for cardinality-typed relations appear in the graph edge data', async ({
       page,
     }) => {
-      const edges = await readGraphEdges(page);
+      // Wait for at least 5 edges so all custom-cardinality types are present.
+      const edges = await readGraphEdges(page, 5);
       const relationTypes = new Set(edges.map((e) => e.relationType));
 
       expect(

@@ -11,7 +11,21 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import React from 'react';
 import CreateMemoryModal from './CreateMemoryModal.component';
+
+jest.mock('react-markdown', () => ({
+  __esModule: true,
+  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+jest.mock(
+  '../../../components/common/MarkdownEditor/markdownComponents',
+  () => ({
+    getCustomMarkdownComponents: jest.fn(() => ({})),
+    preprocessMarkdownText: jest.fn((text: string) => text),
+  })
+);
 
 jest.mock('../../../rest/contextMemoryAPI', () => ({
   createContextMemory: jest.fn(),
@@ -67,6 +81,9 @@ jest.mock('antd', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Alert: jest.fn(({ title }: { title: string }) => (
+    <div role="alert">{title}</div>
+  )),
   Badge: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),
@@ -154,6 +171,12 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       />
     )
   ),
+  Tooltip: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  )),
+  TooltipTrigger: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  )),
   Typography: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),

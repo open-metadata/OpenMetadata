@@ -13,7 +13,6 @@
 
 import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { ContainerSearchSource } from 'interface/search.interface';
 import { isEmpty, isString } from 'lodash';
 import Qs from 'qs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -50,6 +49,7 @@ import {
 } from '../../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { SearchIndex } from '../../enums/search.enum';
+import { ContainerSearchSource } from '../../interface/search.interface';
 import { searchQuery } from '../../rest/searchAPI';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
 import searchClassBase from '../../utils/SearchClassBase';
@@ -58,7 +58,7 @@ import {
   getGroupLabel,
   getSuggestionElement,
 } from '../../utils/SearchUtils';
-import { escapeESReservedCharacters } from '../../utils/StringsUtils';
+import { escapeESReservedCharacters } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
 import './suggestions.less';

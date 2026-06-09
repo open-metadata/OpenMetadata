@@ -15,6 +15,7 @@ import { Operation } from 'fast-json-patch';
 import {
   DATA_CONSUMER_RULES,
   DATA_STEWARD_RULES,
+  SYSTEM_POLICY_NAMES,
 } from '../../constant/permission';
 import { generateRandomUsername, uuid } from '../../utils/common';
 import { PolicyClass, PolicyRulesType } from '../access-control/PoliciesClass';
@@ -167,6 +168,7 @@ export class UserClass {
     await dataConsumerPolicy.create(apiContext, DATA_CONSUMER_RULES);
     await dataConsumerRoles.create(apiContext, [
       dataConsumerPolicy.responseData.name,
+      SYSTEM_POLICY_NAMES.taskAuthorPolicy,
     ]);
     const dataConsumerTeam = new TeamClass({
       name: `PW%data_consumer_team-${id}`,

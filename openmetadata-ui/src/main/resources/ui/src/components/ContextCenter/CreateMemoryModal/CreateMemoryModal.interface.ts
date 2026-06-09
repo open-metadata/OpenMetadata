@@ -10,14 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { MemoryItem } from '../MemoriesView/MemoriesView.interface';
+import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 
 export interface CreateMemoryModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreated: () => void;
-  memoryToEdit?: MemoryItem;
+  memoryToEdit?: ContextMemory;
   onUpdated?: () => void;
   onDeleted?: () => void;
+  onEditMemory?: (memory: ContextMemory) => void;
   viewOnly?: boolean;
+  canDelete?: boolean;
+  currentUserName?: string;
 }

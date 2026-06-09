@@ -23,8 +23,8 @@ sqlalchemy = pytest.importorskip("sqlalchemy")
 
 # Imports must follow `importorskip` so the module is skipped cleanly
 # in environments without SQLAlchemy.
-from metadata.ingestion.diagnostics.db_introspect import DbIntrospector  # noqa: E402
-from metadata.ingestion.diagnostics.registry import OperationRegistry  # noqa: E402
+from metadata.ingestion.diagnostics.collectors.operation_registry import OperationRegistry  # noqa: E402
+from metadata.ingestion.diagnostics.seams.db_introspect import DbIntrospector  # noqa: E402
 
 
 @pytest.fixture()

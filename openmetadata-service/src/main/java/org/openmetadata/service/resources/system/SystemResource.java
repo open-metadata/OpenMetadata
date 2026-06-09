@@ -1175,6 +1175,23 @@ public class SystemResource {
       return;
     }
 
+    // System-defined relation types are part of the seeded contract and must never be deleted,
+    // even when no glossary term currently references them. The "in-use" check below is not
+    // enough on its own — a settings update submitted before any term uses the type would
+    // otherwise silently strip it from the cached settings.
+    List<String> removedSystemDefinedTypes =
+        currentConfig.getRelationTypes().stream()
+            .filter(rt -> !newRelationTypeNames.contains(rt.getName()))
+            .filter(rt -> Boolean.TRUE.equals(rt.getIsSystemDefined()))
+            .map(GlossaryTermRelationType::getName)
+            .toList();
+
+    if (!removedSystemDefinedTypes.isEmpty()) {
+      throw new SystemSettingsException(
+          "Cannot delete system-defined relation types: "
+              + String.join(", ", removedSystemDefinedTypes));
+    }
+
     GlossaryTermRepository glossaryTermRepository =
         (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
     Map<String, Integer> usageCounts = glossaryTermRepository.getRelationTypeUsageCounts();

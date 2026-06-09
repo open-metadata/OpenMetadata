@@ -47,7 +47,7 @@ import {
   getListKpiResult,
   getListKPIs,
 } from '../../../../rest/KpiAPI';
-import { CustomTooltip } from '../../../../utils/DataInsightUtils';
+import { CustomTooltip } from '../../../../utils/DataInsightChartUtils';
 import {
   customFormatDateTime,
   getCurrentMillis,

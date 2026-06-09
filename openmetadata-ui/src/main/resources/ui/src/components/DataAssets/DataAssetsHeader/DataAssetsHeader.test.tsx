@@ -103,6 +103,7 @@ jest.mock('../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockImplementation(() => 'name'),
   getEntityFeedLink: jest.fn().mockImplementation(() => 'entityFeedLink'),
   getEntityVoteStatus: jest.fn().mockImplementation(() => 'unVoted'),
+  hasEditAccess: jest.fn().mockReturnValue(false),
 }));
 
 jest.mock('../../../utils/DataAssetsHeader.utils', () => ({
@@ -250,9 +251,8 @@ jest.mock('../../../hooks/useEntityRules', () => ({
 
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
-    getResourcePermission: jest
-      .fn()
-      .mockResolvedValue({ Create: true, Delete: false, EditAll: false }),
+    getEntityPermissionByFqn: jest.fn().mockResolvedValue({}),
+    permissions: { task: { Create: true, Delete: false, EditAll: false } },
   })),
 }));
 
@@ -710,6 +710,7 @@ describe('DataAssetsHeader component', () => {
         columns: [],
       } as unknown as Table,
       permissions: { ...DEFAULT_ENTITY_PERMISSION, ViewAll: true },
+      canCreateTask: true,
     };
 
     const mockListDataAccessRequests = listDataAccessRequests as jest.Mock;
@@ -740,6 +741,9 @@ describe('DataAssetsHeader component', () => {
     });
 
     it('should not render when user is an owner', async () => {
+      const { hasEditAccess } = jest.requireMock('../../../utils/EntityUtils');
+      (hasEditAccess as jest.Mock).mockReturnValue(true);
+
       render(
         <DataAssetsHeader
           {...tableProps}
@@ -753,12 +757,16 @@ describe('DataAssetsHeader component', () => {
       expect(
         screen.queryByTestId('request-data-access-button')
       ).not.toBeInTheDocument();
+
+      (hasEditAccess as jest.Mock).mockReturnValue(false);
     });
 
     it('should not render when user belongs to an owner team', async () => {
       const { useApplicationStore } = jest.requireMock(
         '../../../hooks/useApplicationStore'
       );
+      const { hasEditAccess } = jest.requireMock('../../../utils/EntityUtils');
+      (hasEditAccess as jest.Mock).mockReturnValue(true);
       (useApplicationStore as jest.Mock).mockReturnValue({
         currentUser: {
           id: 'user-2',
@@ -781,6 +789,7 @@ describe('DataAssetsHeader component', () => {
         screen.queryByTestId('request-data-access-button')
       ).not.toBeInTheDocument();
 
+      (hasEditAccess as jest.Mock).mockReturnValue(false);
       (useApplicationStore as jest.Mock).mockReturnValue({
         currentUser: { id: 'user-1', name: 'test.user' },
       });
@@ -956,66 +965,36 @@ describe('DataAssetsHeader component', () => {
     });
 
     it('should not render when user has no canCreateTask permission (no policy)', async () => {
-      const { usePermissionProvider } = jest.requireMock(
-        '../../../context/PermissionProvider/PermissionProvider'
-      );
-      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-        getResourcePermission: jest
-          .fn()
-          .mockResolvedValue({ Create: false, Delete: false, EditAll: false }),
-      }));
+      render(<DataAssetsHeader {...tableProps} canCreateTask={false} />);
 
-      render(<DataAssetsHeader {...tableProps} />);
-
-      await waitFor(() => {
-        expect(
-          screen.queryByTestId('request-data-access-button')
-        ).not.toBeInTheDocument();
-      });
-
-      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-        getResourcePermission: jest
-          .fn()
-          .mockResolvedValue({ Create: true, Delete: false, EditAll: false }),
-      }));
+      expect(
+        screen.queryByTestId('request-data-access-button')
+      ).not.toBeInTheDocument();
     });
 
-    it('should not render when user is admin but has no canCreateTask permission', async () => {
+    it('should render when user is admin even without canCreateTask permission', async () => {
       const { useApplicationStore } = jest.requireMock(
         '../../../hooks/useApplicationStore'
-      );
-      const { usePermissionProvider } = jest.requireMock(
-        '../../../context/PermissionProvider/PermissionProvider'
       );
 
       (useApplicationStore as jest.Mock).mockReturnValue({
         currentUser: { id: 'user-1', name: 'test.user', isAdmin: true },
       });
-      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-        getResourcePermission: jest
-          .fn()
-          .mockResolvedValue({ Create: false, Delete: false, EditAll: false }),
-      }));
 
-      render(<DataAssetsHeader {...tableProps} />);
+      render(<DataAssetsHeader {...tableProps} canCreateTask={false} />);
 
       await waitFor(() => {
         expect(
-          screen.queryByTestId('request-data-access-button')
-        ).not.toBeInTheDocument();
+          screen.getByTestId('request-data-access-button')
+        ).toBeInTheDocument();
       });
 
       (useApplicationStore as jest.Mock).mockReturnValue({
         currentUser: { id: 'user-1', name: 'test.user' },
       });
-      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-        getResourcePermission: jest
-          .fn()
-          .mockResolvedValue({ Create: true, Delete: false, EditAll: false }),
-      }));
     });
 
-    it('should render when user is admin with canCreateTask permission and is not owner', async () => {
+    it('should render when user is admin with canCreateTask permission', async () => {
       const { useApplicationStore } = jest.requireMock(
         '../../../hooks/useApplicationStore'
       );
@@ -1036,13 +1015,15 @@ describe('DataAssetsHeader component', () => {
       });
     });
 
-    it('should not render when user is admin with canCreateTask permission but is the owner', async () => {
+    it('should not render when user is admin and is also the owner', async () => {
       const { useApplicationStore } = jest.requireMock(
         '../../../hooks/useApplicationStore'
       );
+      const { hasEditAccess } = jest.requireMock('../../../utils/EntityUtils');
       (useApplicationStore as jest.Mock).mockReturnValue({
         currentUser: { id: 'user-1', name: 'test.user', isAdmin: true },
       });
+      (hasEditAccess as jest.Mock).mockReturnValue(true);
 
       render(
         <DataAssetsHeader
@@ -1060,6 +1041,17 @@ describe('DataAssetsHeader component', () => {
 
       (useApplicationStore as jest.Mock).mockReturnValue({
         currentUser: { id: 'user-1', name: 'test.user' },
+      });
+      (hasEditAccess as jest.Mock).mockReturnValue(false);
+    });
+
+    it('should render for non-admin user with canCreateTask permission who is not owner', async () => {
+      render(<DataAssetsHeader {...tableProps} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('request-data-access-button')
+        ).toBeInTheDocument();
       });
     });
   });

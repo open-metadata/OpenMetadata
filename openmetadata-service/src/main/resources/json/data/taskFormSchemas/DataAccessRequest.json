@@ -17,7 +17,7 @@
       },
       "columns": {
         "type": "array",
-        "title": "Select Columns",
+        "title": "Selected Columns",
         "items": {
           "type": "string"
         },

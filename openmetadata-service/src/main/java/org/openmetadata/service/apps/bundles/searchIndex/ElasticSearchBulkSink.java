@@ -203,7 +203,6 @@ public class ElasticSearchBulkSink implements BulkSink {
       throw new IllegalArgumentException("Entity type is required in context data");
     }
 
-    Boolean recreateIndex = (Boolean) contextData.getOrDefault("recreateIndex", false);
     ReindexContext reindexContext =
         contextData.containsKey(RECREATE_CONTEXT)
             ? (ReindexContext) contextData.get(RECREATE_CONTEXT)
@@ -264,9 +263,7 @@ public class ElasticSearchBulkSink implements BulkSink {
                 .map(
                     entity ->
                         CompletableFuture.runAsync(
-                            () ->
-                                addEntity(
-                                    entity, indexName, recreateIndex, tracker, docBuildContexts),
+                            () -> addEntity(entity, indexName, tracker, docBuildContexts),
                             DOC_BUILD_EXECUTOR))
                 .toList();
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
@@ -276,8 +273,7 @@ public class ElasticSearchBulkSink implements BulkSink {
           for (EntityInterface entity : entityInterfaces) {
             CompletableFuture<Void> future =
                 CompletableFuture.runAsync(
-                        () -> indexTableColumns(entity, recreateIndex, reindexContext),
-                        DOC_BUILD_EXECUTOR)
+                        () -> indexTableColumns(entity, reindexContext), DOC_BUILD_EXECUTOR)
                     .exceptionally(
                         ex -> {
                           LOG.error("Failed to index columns for table {}", entity.getName(), ex);
@@ -323,7 +319,6 @@ public class ElasticSearchBulkSink implements BulkSink {
   private void addEntity(
       EntityInterface entity,
       String indexName,
-      boolean recreateIndex,
       StageStatsTracker tracker,
       Map<UUID, DocBuildContext> docBuildContexts) {
     try {
@@ -369,29 +364,14 @@ public class ElasticSearchBulkSink implements BulkSink {
       }
 
       final String indexableJson = json;
-      BulkOperation operation;
-      if (recreateIndex) {
-        operation =
-            BulkOperation.of(
-                op ->
-                    op.index(
-                        idx ->
-                            idx.index(indexName)
-                                .id(docId)
-                                .document(EsUtils.toJsonData(indexableJson))));
-      } else {
-        operation =
-            BulkOperation.of(
-                op ->
-                    op.update(
-                        upd ->
-                            upd.index(indexName)
-                                .id(docId)
-                                .action(
-                                    a ->
-                                        a.doc(EsUtils.toJsonData(indexableJson))
-                                            .docAsUpsert(true))));
-      }
+      BulkOperation operation =
+          BulkOperation.of(
+              op ->
+                  op.index(
+                      idx ->
+                          idx.index(indexName)
+                              .id(docId)
+                              .document(EsUtils.toJsonData(indexableJson))));
       if (tracker != null) {
         tracker.incrementPendingSink();
       }
@@ -536,8 +516,7 @@ public class ElasticSearchBulkSink implements BulkSink {
     }
   }
 
-  private void indexTableColumns(
-      EntityInterface entity, boolean recreateIndex, ReindexContext reindexContext) {
+  private void indexTableColumns(EntityInterface entity, ReindexContext reindexContext) {
     if (!(entity instanceof Table table)) {
       return;
     }
@@ -565,26 +544,14 @@ public class ElasticSearchBulkSink implements BulkSink {
         String json = JsonUtils.pojoToJson(searchIndexDoc);
         String docId = searchIndexDoc.get("id").toString();
 
-        BulkOperation operation;
-        if (recreateIndex) {
-          operation =
-              BulkOperation.of(
-                  op ->
-                      op.index(
-                          idx ->
-                              idx.index(columnIndexName)
-                                  .id(docId)
-                                  .document(EsUtils.toJsonData(json))));
-        } else {
-          operation =
-              BulkOperation.of(
-                  op ->
-                      op.update(
-                          upd ->
-                              upd.index(columnIndexName)
-                                  .id(docId)
-                                  .action(a -> a.doc(EsUtils.toJsonData(json)).docAsUpsert(true))));
-        }
+        BulkOperation operation =
+            BulkOperation.of(
+                op ->
+                    op.index(
+                        idx ->
+                            idx.index(columnIndexName)
+                                .id(docId)
+                                .document(EsUtils.toJsonData(json))));
         long estimatedSize =
             (long) json.getBytes(StandardCharsets.UTF_8).length + BULK_OPERATION_METADATA_OVERHEAD;
         columnBulkProcessor.add(operation, docId, Entity.TABLE_COLUMN, null, estimatedSize);

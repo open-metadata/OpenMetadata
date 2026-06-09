@@ -613,6 +613,21 @@
       "extension": {
         "type": "flattened"
       },
+      "fingerprint": {
+        "type": "keyword"
+      },
+      "textToEmbed": {
+        "type": "text"
+      },
+      "chunkIndex": {
+        "type": "integer"
+      },
+      "chunkCount": {
+        "type": "integer"
+      },
+      "parentId": {
+        "type": "keyword"
+      },
       "suggest": {
         "type": "completion",
         "contexts": [

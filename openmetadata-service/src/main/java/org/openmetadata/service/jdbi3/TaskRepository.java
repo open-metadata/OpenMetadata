@@ -315,6 +315,7 @@ public class TaskRepository extends EntityRepository<Task> {
     TaskFieldValidator.validateAssignees(task.getAssignees());
     TaskFieldValidator.validateReviewers(task.getReviewers());
     TaskFieldValidator.validatePayloadAgainstFormSchema(task);
+    TaskFieldValidator.validateDataAccessCapabilities(task);
 
     // Compute aboutFqnHash for efficient querying by target entity FQN
     computeAboutFqnHash(task);

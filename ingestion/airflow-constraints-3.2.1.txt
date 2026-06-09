@@ -41,10 +41,10 @@ Flask-SQLAlchemy==3.1.1
 Flask-Session==0.8.0
 Flask-WTF==1.2.2
 Flask==3.1.3
-GitPython==3.1.46
+GitPython==3.1.50
 JayDeBeApi==1.2.3
 Jinja2==3.1.6
-Mako==1.3.11
+Mako==1.3.12
 Markdown==3.10.2
 MarkupSafe==3.0.3
 PyAthena==3.30.1
@@ -129,7 +129,7 @@ apache-airflow-providers-dingding==3.9.4
 apache-airflow-providers-discord==3.12.2
 apache-airflow-providers-docker==4.5.5
 apache-airflow-providers-edge3==3.4.0
-apache-airflow-providers-elasticsearch==6.5.2
+apache-airflow-providers-elasticsearch==6.5.3
 apache-airflow-providers-exasol==4.10.2
 apache-airflow-providers-fab==3.6.1
 apache-airflow-providers-facebook==3.9.4
@@ -154,10 +154,11 @@ apache-airflow-providers-mongo==5.3.5
 apache-airflow-providers-mysql==6.5.2
 apache-airflow-providers-neo4j==3.11.5
 apache-airflow-providers-odbc==4.12.2
-apache-airflow-providers-openai==1.7.4
+# apache-airflow-providers-openai removed: not used by OpenMetadata (no imports, no extras opt-in).
+# Pulled in litellm/openai/tiktoken transitively, surfacing CVEs we have no execution path for.
 apache-airflow-providers-openfaas==3.9.4
 apache-airflow-providers-openlineage==2.14.0
-apache-airflow-providers-opensearch==1.9.0
+apache-airflow-providers-opensearch==1.9.1
 apache-airflow-providers-opsgenie==5.10.3
 apache-airflow-providers-oracle==4.5.3
 apache-airflow-providers-pagerduty==5.2.5
@@ -175,7 +176,7 @@ apache-airflow-providers-sendgrid==4.2.2
 apache-airflow-providers-sftp==5.7.3
 apache-airflow-providers-singularity==3.9.3
 apache-airflow-providers-slack==9.10.0
-apache-airflow-providers-smtp==2.4.5
+apache-airflow-providers-smtp==3.0.0
 apache-airflow-providers-snowflake==6.12.1
 apache-airflow-providers-sqlite==4.3.2
 apache-airflow-providers-ssh==5.0.0
@@ -198,7 +199,7 @@ asn1crypto==1.5.1
 asttokens==3.0.1
 async-timeout==4.0.3
 asyncpg==0.31.0
-asyncssh==2.22.0
+asyncssh==2.23.0
 atlasclient==1.0.0
 atlassian-python-api==4.0.7
 attrs==26.1.0
@@ -400,7 +401,7 @@ hvac==2.4.0
 hyperframe==6.1.0
 ibm-cloud-sdk-core==3.24.4
 ibmcloudant==0.11.5
-idna==3.11
+idna==3.15
 ijson==3.4.0.post0
 immutabledict==4.3.1
 importlib_metadata==8.7.1
@@ -439,11 +440,11 @@ lazy-object-proxy==1.12.0
 libcst==1.8.6
 limits==5.8.0
 linkify-it-py==2.1.0
-litellm==1.82.6
+# litellm removed: only pulled in by unused apache-airflow-providers-openai chain (CVE-2026-35030).
 lockfile==0.12.2
 logfire-api==4.32.1
 looker_sdk==26.6.1
-lxml==6.0.2
+lxml==6.1.0
 lz4==4.4.5
 markdown-it-py==4.0.0
 marshmallow-sqlalchemy==1.5.0
@@ -459,7 +460,7 @@ microsoft-kiota-authentication-azure==1.10.1
 microsoft-kiota-http==1.10.1
 microsoft-kiota-serialization-json==1.10.1
 microsoft-kiota-serialization-text==1.10.1
-mistune==3.2.0
+mistune==3.2.1
 mmh3==5.2.1
 more-itertools==11.0.2
 msal-extensions==1.3.1
@@ -552,9 +553,9 @@ pybreaker==1.4.1
 pycountry==26.2.16
 pycparser==3.0
 pycryptodome==3.23.0
-pydantic-ai-slim==1.84.0
+pydantic-ai-slim==1.99.0
 pydantic-extra-types==2.11.1
-pydantic-graph==1.84.0
+pydantic-graph==1.99.0
 pydantic-settings==2.13.1
 pydantic==2.13.1
 pydantic_core==2.46.1
@@ -582,7 +583,7 @@ python-http-client==3.3.7
 python-jenkins==1.8.3
 python-keycloak==7.1.1
 python-ldap==3.4.5
-python-multipart==0.0.26
+python-multipart==0.0.27
 python-slugify==8.0.4
 python-telegram-bot==22.7
 python3-saml==1.16.0
@@ -594,7 +595,7 @@ qdrant-client==1.17.1
 ray==2.55.0
 reactivex==4.1.0
 redis==6.4.0
-redshift_connector==2.1.13
+redshift_connector==2.1.14
 referencing==0.37.0
 regex==2026.4.4
 requests-file==3.0.1
@@ -678,9 +679,9 @@ tzlocal==5.3.1
 uc-micro-py==2.0.0
 universal_pathlib==0.3.10
 uritemplate==4.2.0
-urllib3==2.6.3
+urllib3==2.7.0
 uuid6==2025.0.1
-uv==0.11.7
+uv==0.11.15
 uvicorn==0.44.0
 uvloop==0.22.1
 validators==0.35.0

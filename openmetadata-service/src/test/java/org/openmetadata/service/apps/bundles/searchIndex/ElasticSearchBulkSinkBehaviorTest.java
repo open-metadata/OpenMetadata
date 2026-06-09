@@ -121,12 +121,9 @@ class ElasticSearchBulkSinkBehaviorTest {
       invokePrivate(
           sink,
           "addEntity",
-          new Class<?>[] {
-            EntityInterface.class, String.class, boolean.class, StageStatsTracker.class, Map.class
-          },
+          new Class<?>[] {EntityInterface.class, String.class, StageStatsTracker.class, Map.class},
           entity,
           "table_index",
-          false,
           tracker,
           Collections.emptyMap());
 
@@ -162,12 +159,9 @@ class ElasticSearchBulkSinkBehaviorTest {
       invokePrivate(
           sink,
           "addEntity",
-          new Class<?>[] {
-            EntityInterface.class, String.class, boolean.class, StageStatsTracker.class, Map.class
-          },
+          new Class<?>[] {EntityInterface.class, String.class, StageStatsTracker.class, Map.class},
           entity,
           "table_index",
-          true,
           tracker,
           Collections.emptyMap());
 
@@ -335,12 +329,9 @@ class ElasticSearchBulkSinkBehaviorTest {
       invokePrivate(
           sink,
           "addEntity",
-          new Class<?>[] {
-            EntityInterface.class, String.class, boolean.class, StageStatsTracker.class, Map.class
-          },
+          new Class<?>[] {EntityInterface.class, String.class, StageStatsTracker.class, Map.class},
           entity,
           "table_index",
-          false,
           null,
           docBuildContexts);
 
@@ -368,12 +359,9 @@ class ElasticSearchBulkSinkBehaviorTest {
       invokePrivate(
           sink,
           "addEntity",
-          new Class<?>[] {
-            EntityInterface.class, String.class, boolean.class, StageStatsTracker.class, Map.class
-          },
+          new Class<?>[] {EntityInterface.class, String.class, StageStatsTracker.class, Map.class},
           entity,
           "table_index",
-          false,
           null,
           Collections.emptyMap());
 

@@ -130,7 +130,6 @@ class OpenSearchBulkSinkBehaviorTest {
           new Class<?>[] {
             EntityInterface.class,
             String.class,
-            boolean.class,
             ReindexContext.class,
             StageStatsTracker.class,
             boolean.class,
@@ -139,7 +138,6 @@ class OpenSearchBulkSinkBehaviorTest {
           },
           entity,
           "table_index",
-          false,
           null,
           tracker,
           false,
@@ -181,7 +179,6 @@ class OpenSearchBulkSinkBehaviorTest {
           new Class<?>[] {
             EntityInterface.class,
             String.class,
-            boolean.class,
             ReindexContext.class,
             StageStatsTracker.class,
             boolean.class,
@@ -190,7 +187,6 @@ class OpenSearchBulkSinkBehaviorTest {
           },
           entity,
           "table_index",
-          true,
           null,
           tracker,
           false,
@@ -368,7 +364,6 @@ class OpenSearchBulkSinkBehaviorTest {
           new Class<?>[] {
             EntityInterface.class,
             String.class,
-            boolean.class,
             ReindexContext.class,
             StageStatsTracker.class,
             boolean.class,
@@ -377,7 +372,6 @@ class OpenSearchBulkSinkBehaviorTest {
           },
           entity,
           "table_index",
-          false,
           null,
           null,
           false,
@@ -467,7 +461,6 @@ class OpenSearchBulkSinkBehaviorTest {
           new Class<?>[] {
             EntityInterface.class,
             String.class,
-            boolean.class,
             ReindexContext.class,
             StageStatsTracker.class,
             boolean.class,
@@ -476,7 +469,6 @@ class OpenSearchBulkSinkBehaviorTest {
           },
           entity,
           "table_index",
-          false,
           null,
           null,
           false,

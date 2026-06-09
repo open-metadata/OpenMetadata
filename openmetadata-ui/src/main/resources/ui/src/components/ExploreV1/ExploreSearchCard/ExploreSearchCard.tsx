@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isObject, isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
-import { forwardRef, useMemo } from 'react';
+import { forwardRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ScoreIcon } from '../../../assets/svg/score.svg';
@@ -31,12 +32,16 @@ import { EntityReference } from '../../../generated/entity/type';
 import { TagLabel } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
 import { TableColumnSearchSource } from '../../../interface/search.interface';
+import { prefetchDashboard } from '../../../rest/queries/dashboardQuery';
+import { prefetchPipeline } from '../../../rest/queries/pipelineQuery';
+import { prefetchTable } from '../../../rest/queries/tableQuery';
+import { prefetchTopic } from '../../../rest/queries/topicQuery';
 import {
   getEntityName,
   highlightEntityNameAndDescription,
 } from '../../../utils/EntityUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
-import { stringToHTML } from '../../../utils/StringsUtils';
+import { stringToHTML } from '../../../utils/StringUtils';
 import { getUsagePercentile } from '../../../utils/TableUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
@@ -78,12 +83,45 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     const { t } = useTranslation();
     const { tab } = useRequiredParams<{ tab: string }>();
     const { isTourOpen } = useTourProvider();
+    const queryClient = useQueryClient();
 
     const source = useMemo(() => {
       return highlight
         ? highlightEntityNameAndDescription(_source, highlight)
         : _source;
     }, [_source, highlight]);
+
+    // Hover/focus on an entity card warms the React Query cache so the click that follows
+    // hits an already-populated slot. Dispatched on entityType because each detail page reads
+    // a slot keyed on its own {@code ['<type>', fqn, fields]} convention; entity types that
+    // haven't migrated to useQuery yet fall through as no-ops. {@code prefetchQuery} is
+    // idempotent within the configured {@code staleTime}, so repeated hovers don't re-fire.
+    const handlePrefetch = useCallback(() => {
+      const fqn = source.fullyQualifiedName;
+      if (!fqn) {
+        return;
+      }
+      switch (source.entityType) {
+        case EntityType.TABLE:
+          prefetchTable(queryClient, fqn);
+
+          break;
+        case EntityType.DASHBOARD:
+          prefetchDashboard(queryClient, fqn);
+
+          break;
+        case EntityType.PIPELINE:
+          prefetchPipeline(queryClient, fqn);
+
+          break;
+        case EntityType.TOPIC:
+          prefetchTopic(queryClient, fqn);
+
+          break;
+        default:
+          break;
+      }
+    }, [queryClient, source.entityType, source.fullyQualifiedName]);
 
     const otherDetails = useMemo(() => {
       if (source?.entityType === EntityType.TABLE_COLUMN) {
@@ -341,7 +379,9 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                     source,
                     openEntityInNewPage
                   )}
-                  to={isObject(entityLink) ? entityLink.pathname : entityLink}>
+                  to={isObject(entityLink) ? entityLink.pathname : entityLink}
+                  onFocus={handlePrefetch}
+                  onMouseEnter={handlePrefetch}>
                   <Typography.Text
                     className="text-lg font-medium text-link-color break-word whitespace-normal"
                     data-testid="entity-header-display-name">
