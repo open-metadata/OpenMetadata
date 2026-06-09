@@ -634,7 +634,7 @@ public class CreateTask implements TaskListener {
     return existingAssignees;
   }
 
-  static boolean isTerminalTaskStatus(TaskEntityStatus status) {
+  public static boolean isTerminalTaskStatus(TaskEntityStatus status) {
     return status != null
         && status != TaskEntityStatus.Open
         && status != TaskEntityStatus.InProgress

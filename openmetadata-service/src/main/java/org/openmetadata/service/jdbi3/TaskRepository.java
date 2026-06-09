@@ -58,6 +58,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.handlers.IncidentTcrsSyncHandler;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.elements.nodes.userTask.CreateTask;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.AuthRequest;
@@ -98,16 +99,18 @@ public class TaskRepository extends EntityRepository<Task> {
   public static final List<TaskEntityStatus> OPEN_TASK_STATUSES =
       List.of(TaskEntityStatus.Open, TaskEntityStatus.InProgress, TaskEntityStatus.Pending);
 
-  private static final String EXPIRED_STATUS = "Expired";
-
   /**
-   * Terminal statuses for a Data Access Request: once a request reaches one of these the user is
-   * free to file a new request for the same entity. Every other status counts as "active". {@code
-   * Expired} is a forthcoming status that is not yet part of {@link TaskEntityStatus}, so it is kept
-   * as a string literal until the enum is extended.
+   * Statuses in which a task is still "active" (non-terminal). Derived from the canonical workflow
+   * definition in {@link CreateTask#isTerminalTaskStatus} so the duplicate Data Access Request check
+   * can never drift from it: any status the workflow treats as terminal (Rejected, Revoked,
+   * Completed, Cancelled, Failed, and any future status such as Expired) frees the user to file a
+   * new request for the same entity.
    */
-  private static final List<String> DATA_ACCESS_REQUEST_TERMINAL_STATUSES =
-      List.of(TaskEntityStatus.Rejected.value(), TaskEntityStatus.Revoked.value(), EXPIRED_STATUS);
+  private static final List<String> ACTIVE_TASK_STATUS_VALUES =
+      Arrays.stream(TaskEntityStatus.values())
+          .filter(status -> !CreateTask.isTerminalTaskStatus(status))
+          .map(TaskEntityStatus::value)
+          .toList();
 
   public TaskRepository() {
     super(
@@ -358,10 +361,9 @@ public class TaskRepository extends EntityRepository<Task> {
 
   /**
    * Enforce the business rule that a user may have only one active Data Access Request per target
-   * entity. A request is "active" in every status except the terminal ones
-   * ({@link #DATA_ACCESS_REQUEST_TERMINAL_STATUSES}); creation is rejected when the same creator
-   * already has an active request for the same entity, regardless of the entry point used to submit
-   * it.
+   * entity. A request is "active" while it is non-terminal
+   * ({@link #ACTIVE_TASK_STATUS_VALUES}); creation is rejected when the same creator already has an
+   * active request for the same entity, regardless of the entry point used to submit it.
    */
   private void validateNoDuplicateActiveDataAccessRequest(Task task) {
     if (isDuplicateDataAccessRequestCheckable(task)) {
@@ -392,7 +394,7 @@ public class TaskRepository extends EntityRepository<Task> {
                 entityFqn,
                 TaskEntityType.DataAccessRequest.value(),
                 createdById.toString(),
-                DATA_ACCESS_REQUEST_TERMINAL_STATUSES);
+                ACTIVE_TASK_STATUS_VALUES);
     return json == null ? null : JsonUtils.readValue(json, Task.class);
   }
 
