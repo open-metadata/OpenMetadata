@@ -200,6 +200,21 @@ class CreateTaskTest {
     assertFalse(CreateTask.isTerminalTaskStatus(null));
   }
 
+  @Test
+  void testTaskRepositoryActiveStatusesMatchTerminalPredicate() {
+    List<TaskEntityStatus> expected =
+        java.util.Arrays.stream(TaskEntityStatus.values())
+            .filter(s -> !CreateTask.isTerminalTaskStatus(s))
+            .toList();
+    assertEquals(
+        expected,
+        TaskRepository.ACTIVE_TASK_STATUSES,
+        () ->
+            "TaskRepository.ACTIVE_TASK_STATUSES drifted from CreateTask.isTerminalTaskStatus. "
+                + "Add the new non-terminal status to ACTIVE_TASK_STATUSES so the duplicate-DAR "
+                + "guard keeps treating it as active.");
+  }
+
   // ---- resolveEffectiveDueDate ----
 
   @Test

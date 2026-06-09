@@ -105,7 +105,7 @@ public class TaskRepository extends EntityRepository<Task> {
    * stay in sync with the canonical {@code CreateTask.isTerminalTaskStatus} predicate and the
    * {@code active} status group in {@link ListFilter}.
    */
-  private static final List<TaskEntityStatus> ACTIVE_TASK_STATUSES =
+  public static final List<TaskEntityStatus> ACTIVE_TASK_STATUSES =
       List.of(
           TaskEntityStatus.Open,
           TaskEntityStatus.InProgress,
