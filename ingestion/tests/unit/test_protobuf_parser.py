@@ -23,7 +23,8 @@ from metadata.utils.messaging_utils import merge_and_clean_protobuf_schema
 
 
 @pytest.fixture(scope="class")
-def protobuf_base_path(worker_id):
+def protobuf_base_path(request):
+    worker_id = getattr(request.config, "workerinput", {}).get("workerid", "master")
     worker_suffix = f"_{worker_id}" if worker_id != "master" else ""
     return f"/tmp/protobuf_openmetadata{worker_suffix}"
 
@@ -74,8 +75,27 @@ def parsed_schema(protobuf_parser):
     return protobuf_parser.parse_protobuf_schema()
 
 
+def test_descriptor_fallback_when_message_name_differs():
+    schema = """
+    syntax = "proto3";
+
+    message MyLoanRecord {
+        int32 amount = 1;
+    }
+    """
+
+    parser = ProtobufParser(
+        ProtobufParserConfig(schema_name="loans", schema_text=schema, base_file_path="/tmp/test_proto")
+    )
+
+    result = parser.parse_protobuf_schema()
+
+    assert result is not None
+    assert result[0].name.root == "MyLoanRecord"
+
+
 @pytest.mark.usefixtures("parsed_schema")
-class ProtobufParserTests:
+class TestProtobufParser:
     """
     Check methods from protobuf_parser.py
     """
