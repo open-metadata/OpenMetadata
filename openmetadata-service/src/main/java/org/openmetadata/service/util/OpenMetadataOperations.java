@@ -79,6 +79,7 @@ import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.VersionUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
@@ -88,6 +89,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfigHolder;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
+import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes;
 import org.openmetadata.service.apps.bundles.searchIndex.SlackWebApiClient;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
@@ -159,6 +161,10 @@ import picocli.CommandLine.Option;
         "Creates or Migrates Database/Search Indexes. ReIndex the existing data into Elastic Search "
             + "or OpenSearch. Re-Deploys the service pipelines.")
 public class OpenMetadataOperations implements Callable<Integer> {
+
+  private static final String CATALOG_VERSION_RESOURCE = "/catalog/VERSION";
+  private static final String UNKNOWN_VERSION = "unknown";
+  private static final String DEFAULT_VERSION = "1.8.0-SNAPSHOT";
 
   private OpenMetadataApplicationConfig config;
   private Jdbi jdbi;
@@ -1797,70 +1803,18 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     if (!force) {
       try {
-        String version = System.getProperty("project.version", "1.8.0-SNAPSHOT");
-        versionTracker = new IndexMappingVersionTracker(collectionDAO, version, "system");
+        versionTracker =
+            new IndexMappingVersionTracker(collectionDAO, getCurrentServerVersion(), "system");
+        boolean upgradeRequiresFullReindex = versionTracker.requiresFullReindexForVersionUpgrade();
+        List<String> changedMappings =
+            upgradeRequiresFullReindex ? List.of() : versionTracker.getChangedMappings();
 
-        List<String> changedMappings = versionTracker.getChangedMappings();
-
-        if (changedMappings.isEmpty()) {
-          LOG.info("✅ Smart reindexing: No index mapping changes detected, skipping reindex");
-          shouldReindex = false;
-
-          // Send Slack notification if configured
-          if (slackBotToken != null
-              && !slackBotToken.isEmpty()
-              && slackChannel != null
-              && !slackChannel.isEmpty()) {
-            try {
-              String instanceUrl = getInstanceUrlFromSettings();
-              SlackWebApiClient slackClient =
-                  new SlackWebApiClient(slackBotToken, slackChannel, instanceUrl);
-              slackClient.sendNoChangesNotification();
-            } catch (Exception e) {
-              LOG.warn("Failed to send Slack notification for no changes", e);
-            }
-          }
-        } else {
-          shouldUpdateVersions = true;
-
-          // If 'all' entities were requested, only reindex changed ones
-          if (entities.contains("all")) {
-            entities = new HashSet<>(changedMappings);
-          } else {
-            // If specific entities were requested, check if any have changed mappings
-            Set<String> requestedAndChanged = new HashSet<>(entities);
-            requestedAndChanged.retainAll(changedMappings);
-            if (requestedAndChanged.isEmpty()) {
-              LOG.info(
-                  "✅ Smart reindexing: None of the requested entities have mapping changes, skipping reindex");
-              shouldReindex = false;
-              shouldUpdateVersions = false;
-
-              // Send Slack notification if configured
-              if (slackBotToken != null
-                  && !slackBotToken.isEmpty()
-                  && slackChannel != null
-                  && !slackChannel.isEmpty()) {
-                try {
-                  String instanceUrl = getInstanceUrlFromSettings();
-                  SlackWebApiClient slackClient =
-                      new SlackWebApiClient(slackBotToken, slackChannel, instanceUrl);
-                  slackClient.sendNoChangesNotification();
-                } catch (Exception e) {
-                  LOG.warn("Failed to send Slack notification for no changes", e);
-                }
-              }
-            } else {
-              entities = requestedAndChanged;
-            }
-          }
-
-          // Initialize progress monitor for entities that will be reindexed
-          if (shouldReindex) {
-            progressMonitor = new ReindexingProgressMonitor(entities.stream().sorted().toList());
-            progressMonitor.printInitialSummary();
-          }
-        }
+        SmartReindexPlan plan =
+            planSmartReindex(entities, upgradeRequiresFullReindex, changedMappings);
+        entities = plan.entities();
+        shouldReindex = plan.shouldReindex();
+        shouldUpdateVersions = plan.updateVersions();
+        progressMonitor = reportSmartReindexPlan(plan, slackBotToken, slackChannel);
       } catch (Exception e) {
         LOG.warn("⚠️  Smart reindexing unavailable: {}", e.getMessage());
         LOG.info("🔄 Falling back to standard reindexing for all requested entities");
@@ -1869,13 +1823,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     // Initialize progress monitor for force mode as well to get clean output
     if (progressMonitor == null && force) {
-      progressMonitor = new ReindexingProgressMonitor(entities.stream().sorted().toList());
-      LOG.info("");
-      LOG.info("🔄 Force Reindexing");
-      LOG.info("═".repeat(80));
-      LOG.info("🎯 Entities to reindex: {}", String.join(", ", entities));
-      LOG.info("⏳ Reindexing in progress...");
-      LOG.info("");
+      progressMonitor = startFullReindex("Force Reindexing", entities);
     }
 
     // If no mapping changes were detected, we should not proceed with reindexing
@@ -1933,6 +1881,113 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
 
     return result;
+  }
+
+  private String getCurrentServerVersion() {
+    String version =
+        VersionUtils.getOpenMetadataServerVersion(CATALOG_VERSION_RESOURCE).getVersion();
+    if (nullOrEmpty(version) || UNKNOWN_VERSION.equals(version)) {
+      version = System.getProperty("project.version", DEFAULT_VERSION);
+    }
+    return version;
+  }
+
+  enum SmartReindexAction {
+    SKIP_NO_MAPPING_CHANGES,
+    SKIP_NO_REQUESTED_CHANGES,
+    REINDEX_CHANGED,
+    REINDEX_ALL_FOR_UPGRADE
+  }
+
+  record SmartReindexPlan(SmartReindexAction action, Set<String> entities, boolean updateVersions) {
+    boolean shouldReindex() {
+      return action == SmartReindexAction.REINDEX_CHANGED
+          || action == SmartReindexAction.REINDEX_ALL_FOR_UPGRADE;
+    }
+  }
+
+  static SmartReindexPlan planSmartReindex(
+      Set<String> requestedEntities,
+      boolean upgradeRequiresFullReindex,
+      List<String> changedMappings) {
+    SmartReindexPlan plan;
+    if (upgradeRequiresFullReindex) {
+      plan =
+          new SmartReindexPlan(SmartReindexAction.REINDEX_ALL_FOR_UPGRADE, requestedEntities, true);
+    } else if (changedMappings.isEmpty()) {
+      plan =
+          new SmartReindexPlan(
+              SmartReindexAction.SKIP_NO_MAPPING_CHANGES, requestedEntities, false);
+    } else {
+      Set<String> resolvedEntities = resolveChangedEntities(requestedEntities, changedMappings);
+      boolean hasEntitiesToReindex = !resolvedEntities.isEmpty();
+      SmartReindexAction action =
+          hasEntitiesToReindex
+              ? SmartReindexAction.REINDEX_CHANGED
+              : SmartReindexAction.SKIP_NO_REQUESTED_CHANGES;
+      plan = new SmartReindexPlan(action, resolvedEntities, hasEntitiesToReindex);
+    }
+    return plan;
+  }
+
+  static Set<String> resolveChangedEntities(
+      Set<String> requestedEntities, List<String> changedMappings) {
+    Set<String> resolvedEntities;
+    if (requestedEntities.contains(SearchIndexEntityTypes.ALL)) {
+      resolvedEntities = new HashSet<>(changedMappings);
+    } else {
+      resolvedEntities = new HashSet<>(requestedEntities);
+      resolvedEntities.retainAll(changedMappings);
+    }
+    return resolvedEntities;
+  }
+
+  private ReindexingProgressMonitor reportSmartReindexPlan(
+      SmartReindexPlan plan, String slackBotToken, String slackChannel) {
+    ReindexingProgressMonitor progressMonitor = null;
+    switch (plan.action()) {
+      case REINDEX_ALL_FOR_UPGRADE -> progressMonitor =
+          startFullReindex("Major/Minor Version Upgrade Reindexing", plan.entities());
+      case REINDEX_CHANGED -> {
+        progressMonitor = new ReindexingProgressMonitor(plan.entities().stream().sorted().toList());
+        progressMonitor.printInitialSummary();
+      }
+      case SKIP_NO_MAPPING_CHANGES -> {
+        LOG.info("✅ Smart reindexing: No index mapping changes detected, skipping reindex");
+        sendNoChangesSlackNotification(slackBotToken, slackChannel);
+      }
+      case SKIP_NO_REQUESTED_CHANGES -> {
+        LOG.info(
+            "✅ Smart reindexing: None of the requested entities have mapping changes, skipping reindex");
+        sendNoChangesSlackNotification(slackBotToken, slackChannel);
+      }
+    }
+    return progressMonitor;
+  }
+
+  private ReindexingProgressMonitor startFullReindex(String title, Set<String> entities) {
+    ReindexingProgressMonitor progressMonitor =
+        new ReindexingProgressMonitor(entities.stream().sorted().toList());
+    LOG.info("");
+    LOG.info("🔄 {}", title);
+    LOG.info("═".repeat(80));
+    LOG.info("🎯 Entities to reindex: {}", String.join(", ", entities));
+    LOG.info("⏳ Reindexing in progress...");
+    LOG.info("");
+    return progressMonitor;
+  }
+
+  private void sendNoChangesSlackNotification(String slackBotToken, String slackChannel) {
+    if (!nullOrEmpty(slackBotToken) && !nullOrEmpty(slackChannel)) {
+      try {
+        String instanceUrl = getInstanceUrlFromSettings();
+        SlackWebApiClient slackClient =
+            new SlackWebApiClient(slackBotToken, slackChannel, instanceUrl);
+        slackClient.sendNoChangesNotification();
+      } catch (Exception e) {
+        LOG.warn("Failed to send Slack notification for no changes", e);
+      }
+    }
   }
 
   @Command(

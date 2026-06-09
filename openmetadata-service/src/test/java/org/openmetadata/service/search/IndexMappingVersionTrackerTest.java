@@ -416,6 +416,90 @@ class IndexMappingVersionTrackerTest {
     }
   }
 
+  // --- Version-upgrade detection tests (smart vs full reindex) ---
+
+  @Test
+  void patchUpgradeDoesNotRequireFullReindex() {
+    when(indexMappingVersionDAO.getDistinctMappingVersions()).thenReturn(List.of("1.12.8"));
+
+    assertFalse(
+        new IndexMappingVersionTracker(collectionDAO, "1.12.9", "tester")
+            .requiresFullReindexForVersionUpgrade());
+  }
+
+  @Test
+  void minorUpgradeRequiresFullReindex() {
+    when(indexMappingVersionDAO.getDistinctMappingVersions()).thenReturn(List.of("1.12.8"));
+
+    assertTrue(
+        new IndexMappingVersionTracker(collectionDAO, "1.13.0", "tester")
+            .requiresFullReindexForVersionUpgrade());
+  }
+
+  @Test
+  void minorUpgradeWithNonZeroPatchRequiresFullReindex() {
+    when(indexMappingVersionDAO.getDistinctMappingVersions()).thenReturn(List.of("1.12.8"));
+
+    assertTrue(
+        new IndexMappingVersionTracker(collectionDAO, "1.13.1", "tester")
+            .requiresFullReindexForVersionUpgrade());
+  }
+
+  @Test
+  void majorUpgradeRequiresFullReindex() {
+    when(indexMappingVersionDAO.getDistinctMappingVersions()).thenReturn(List.of("1.12.8"));
+
+    assertTrue(
+        new IndexMappingVersionTracker(collectionDAO, "2.0.0", "tester")
+            .requiresFullReindexForVersionUpgrade());
+  }
+
+  @Test
+  void sameVersionDoesNotRequireFullReindex() {
+    when(indexMappingVersionDAO.getDistinctMappingVersions()).thenReturn(List.of("1.12.8"));
+
+    assertFalse(
+        new IndexMappingVersionTracker(collectionDAO, "1.12.8", "tester")
+            .requiresFullReindexForVersionUpgrade());
+  }
+
+  @Test
+  void freshInstallWithNoStoredVersionsDoesNotRequireFullReindex() {
+    when(indexMappingVersionDAO.getDistinctMappingVersions()).thenReturn(List.of());
+
+    assertFalse(
+        new IndexMappingVersionTracker(collectionDAO, "1.13.0", "tester")
+            .requiresFullReindexForVersionUpgrade());
+  }
+
+  @Test
+  void snapshotQualifierIsIgnoredForPatchUpgrade() {
+    when(indexMappingVersionDAO.getDistinctMappingVersions()).thenReturn(List.of("1.13.0"));
+
+    assertFalse(
+        new IndexMappingVersionTracker(collectionDAO, "1.13.5-SNAPSHOT", "tester")
+            .requiresFullReindexForVersionUpgrade());
+  }
+
+  @Test
+  void snapshotQualifierStillDetectsMinorUpgrade() {
+    when(indexMappingVersionDAO.getDistinctMappingVersions()).thenReturn(List.of("1.12.0"));
+
+    assertTrue(
+        new IndexMappingVersionTracker(collectionDAO, "1.13.0-SNAPSHOT", "tester")
+            .requiresFullReindexForVersionUpgrade());
+  }
+
+  @Test
+  void anyStoredVersionCrossingMajorMinorTriggersFullReindex() {
+    when(indexMappingVersionDAO.getDistinctMappingVersions())
+        .thenReturn(List.of("1.13.0", "1.12.8"));
+
+    assertTrue(
+        new IndexMappingVersionTracker(collectionDAO, "1.13.0", "tester")
+            .requiresFullReindexForVersionUpgrade());
+  }
+
   private static Set<String> diff(Set<String> expected, Set<String> actual) {
     Set<String> missing = new TreeSet<>(expected);
     missing.removeAll(actual);
