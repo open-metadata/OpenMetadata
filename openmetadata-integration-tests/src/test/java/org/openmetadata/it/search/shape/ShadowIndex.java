@@ -33,7 +33,17 @@ import org.slf4j.LoggerFactory;
  */
 public final class ShadowIndex {
   private static final Logger LOG = LoggerFactory.getLogger(ShadowIndex.class);
+
+  // mirrors the value in *_index_mapping.json
   private static final int DEFAULT_MAX_NGRAM_DIFF = 17;
+
+  private static final String SHADOW_SUFFIX = "_sc_";
+  private static final String SETTINGS = "settings";
+  private static final String INDEX = "index";
+  private static final String MAPPINGS = "mappings";
+  private static final String ANALYSIS = "analysis";
+  private static final String MAX_NGRAM_DIFF = "max_ngram_diff";
+  private static final String NUMBER_OF_REPLICAS = "number_of_replicas";
 
   private final SearchRepository searchRepository;
   private final SearchClient httpSearch;
@@ -49,7 +59,7 @@ public final class ShadowIndex {
             .getIndexMapping(entityType)
             .getIndexName(searchRepository.getClusterAlias());
     final String freshIndex =
-        (realIndex + "_sc_" + UUID.randomUUID().toString().substring(0, 8))
+        (realIndex + SHADOW_SUFFIX + UUID.randomUUID().toString().substring(0, 8))
             .toLowerCase(Locale.ROOT);
     final JsonNode source = innerSource(httpSearch.get("/" + realIndex), realIndex);
     httpSearch.put("/" + freshIndex, JsonUtils.pojoToJson(buildCreateBody(source)));
@@ -75,20 +85,20 @@ public final class ShadowIndex {
   }
 
   private ObjectNode buildCreateBody(final JsonNode source) {
-    final JsonNode srcSettingsIndex = source.path("settings").path("index");
+    final JsonNode srcSettingsIndex = source.path(SETTINGS).path(INDEX);
     final ObjectNode indexSettings = JsonUtils.getObjectNode();
     indexSettings.put(
-        "max_ngram_diff", srcSettingsIndex.path("max_ngram_diff").asInt(DEFAULT_MAX_NGRAM_DIFF));
-    indexSettings.put("number_of_replicas", 0);
-    if (srcSettingsIndex.has("analysis")) {
-      indexSettings.set("analysis", srcSettingsIndex.get("analysis"));
+        MAX_NGRAM_DIFF, srcSettingsIndex.path(MAX_NGRAM_DIFF).asInt(DEFAULT_MAX_NGRAM_DIFF));
+    indexSettings.put(NUMBER_OF_REPLICAS, 0);
+    if (srcSettingsIndex.has(ANALYSIS)) {
+      indexSettings.set(ANALYSIS, srcSettingsIndex.get(ANALYSIS));
     }
     final ObjectNode settings = JsonUtils.getObjectNode();
-    settings.set("index", indexSettings);
+    settings.set(INDEX, indexSettings);
 
     final ObjectNode body = JsonUtils.getObjectNode();
-    body.set("settings", settings);
-    body.set("mappings", source.get("mappings"));
+    body.set(SETTINGS, settings);
+    body.set(MAPPINGS, source.get(MAPPINGS));
     return body;
   }
 }

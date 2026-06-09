@@ -1,5 +1,12 @@
 # Entity Index Line-Map (generated)
 
+> Observed on Elasticsearch 9.3 (self-hosted testcontainer). Outcomes are engine-agnostic for
+> self-hosted ES / self-hosted OpenSearch (same defaults: total_fields=1000, nested_objects=10000,
+> 100 MB http content limit, ignore_above per mapping). The OpenSearch column is PREDICTED from the
+> same functions, not independently observed — run with `-DsearchType=opensearch` to validate it.
+> Note: AWS-managed OpenSearch's 10 MB http.max_content_length would additionally reject the >= 16 MB
+> description / very large docs that pass here under the self-hosted 100 MB default.
+
 | Entity | Dimension | Rung | Elasticsearch | OpenSearch |
 |--------|-----------|------|---------------|------------|
 | table | description.size | 1KB | OK | OK |
@@ -118,3 +125,17 @@
 | storedProcedure | keyword.overIgnoreAbove | 300chars | DEGRADED_UNSEARCHABLE | DEGRADED_UNSEARCHABLE |
 | storedProcedure | code.size | 1MB | OK | OK |
 | storedProcedure | code.size | 16MB | OK | OK |
+| metric | description.size | 1KB | OK | OK |
+| metric | description.size | 1MB | OK | OK |
+| metric | description.size | 16MB | OK | OK |
+| metric | tags.count | 10 | OK | OK |
+| metric | tags.count | 1k | OK | OK |
+| metric | tags.count | 50k | OK | OK |
+| metric | owners.count | 50 | OK | OK |
+| metric | owners.count | 9k | OK | OK |
+| metric | owners.count | 12k | REJECT_NESTED | REJECT_NESTED |
+| metric | followers.count | 100 | OK | OK |
+| metric | followers.count | 50k | OK | OK |
+| metric | customProperties.breadth | 100 | OK | OK |
+| metric | customProperties.breadth | 2k | REJECT_FIELDS | REJECT_FIELDS |
+| metric | keyword.overIgnoreAbove | 300chars | DEGRADED_UNSEARCHABLE | DEGRADED_UNSEARCHABLE |

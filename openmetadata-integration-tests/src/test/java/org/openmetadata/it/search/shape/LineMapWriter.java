@@ -24,6 +24,18 @@ public final class LineMapWriter {
   public static String render() {
     final StringBuilder sb = new StringBuilder();
     sb.append("# Entity Index Line-Map (generated)\n\n");
+    sb.append(
+        "> Observed on Elasticsearch 9.3 (self-hosted testcontainer). Outcomes are engine-agnostic for\n");
+    sb.append(
+        "> self-hosted ES / self-hosted OpenSearch (same defaults: total_fields=1000, nested_objects=10000,\n");
+    sb.append(
+        "> 100 MB http content limit, ignore_above per mapping). The OpenSearch column is PREDICTED from the\n");
+    sb.append(
+        "> same functions, not independently observed — run with `-DsearchType=opensearch` to validate it.\n");
+    sb.append(
+        "> Note: AWS-managed OpenSearch's 10 MB http.max_content_length would additionally reject the >= 16 MB\n");
+    sb.append(
+        "> description / very large docs that pass here under the self-hosted 100 MB default.\n\n");
     sb.append("| Entity | Dimension | Rung | Elasticsearch | OpenSearch |\n");
     sb.append("|--------|-----------|------|---------------|------------|\n");
     sb.append(

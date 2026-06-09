@@ -27,12 +27,24 @@ public final class CustomPropertiesBreadthMutation implements ShapeMutation {
   private static final int FIELD_LIMIT_RUNG = 2_000;
 
   /**
-   * Entity types whose index mapping inflates the dynamic field count past the per-index
-   * total-fields limit once a wide bag of custom properties is added, so the doc is rejected.
-   * Empirically (per-case shadow-index discovery) only {@code glossaryTerm} crosses the limit at
-   * {@code 2k}; every other entity absorbs the same breadth and indexes {@code OK}.
+   * Entity types whose index mapping lets a wide bag of custom properties inflate the dynamic field
+   * count past the per-index total-fields limit, so the doc is rejected. The other entities stay
+   * {@code OK} for one of two distinct reasons, not a single shared "absorb":
+   *
+   * <ul>
+   *   <li>Entities with a {@code flattened} extension mapping (table/container/dashboard/topic/
+   *       storedProcedure) collapse every custom-property key into a single field, so breadth never
+   *       grows the field count.
+   *   <li>Entities with no {@code extension} property in their schema (e.g. query) never carry the
+   *       props onto the document at all, so there is nothing to map.
+   * </ul>
+   *
+   * <p>{@code glossaryTerm} and {@code metric} are the failures: each has an {@code extension} schema
+   * property (so the props are carried) but a non-{@code flattened} mapping, so each key becomes its
+   * own dynamic field and {@code 2k} keys cross the total-fields limit.
    */
-  private static final Set<String> REJECTS_AT_FIELD_LIMIT = Set.of(Entity.GLOSSARY_TERM);
+  private static final Set<String> REJECTS_AT_FIELD_LIMIT =
+      Set.of(Entity.GLOSSARY_TERM, Entity.METRIC);
 
   @Override
   public String dimension() {
