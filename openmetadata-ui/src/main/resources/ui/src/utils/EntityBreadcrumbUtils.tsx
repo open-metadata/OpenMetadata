@@ -11,16 +11,39 @@
  *  limitations under the License.
  */
 
+// Re-export all for backward compatibility
+export { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
 export {
   getBreadCrumbForAPICollection,
   getBreadCrumbForAPIEndpoint,
   getBreadcrumbForChart,
   getBreadcrumbForEntitiesWithServiceOnly,
   getBreadcrumbForEntityWithParent,
-  getBreadCrumbForKpi,
   getBreadcrumbForTable,
+} from './EntityDataBreadcrumbUtils';
+export {
+  getBreadcrumbForApplication,
+  getBreadcrumbForBot,
+  getBreadcrumbForClassification,
+  getBreadcrumbForDataProduct,
+  getBreadcrumbForDomain,
+  getBreadcrumbForEventSubscription,
+  getBreadcrumbForGlossaryOrTerm,
+  getBreadcrumbForKnowledgePage,
+  getBreadCrumbForKpi,
+  getBreadcrumbForMetric,
+  getBreadcrumbForPersona,
+  getBreadcrumbForPolicy,
+  getBreadcrumbForRole,
+  getBreadcrumbForTag,
+  getBreadcrumbForTeam,
   getBreadcrumbForTestCase,
   getBreadcrumbForTestSuite,
-  getEntityBreadcrumbs,
-  getEntityLinkFromType,
-} from './EntityBreadcrumbPureUtils';
+} from './EntityGovernanceBreadcrumbUtils';
+export { getEntityLinkFromType } from './EntityLinkUtils';
+export {
+  getBreadcrumbForDatabase,
+  getBreadcrumbForDatabaseSchema,
+  getBreadcrumbForDatabaseService,
+  getServiceCategoryBreadcrumb,
+} from './EntityServiceBreadcrumbUtils';
