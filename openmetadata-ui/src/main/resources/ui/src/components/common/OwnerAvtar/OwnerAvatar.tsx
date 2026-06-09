@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from '@openmetadata/ui-core-components';
 import Icon from '@ant-design/icons';
-import { Typography } from 'antd';
 import React from 'react';
 import { ReactComponent as AssigneesIcon } from '../../../assets/svg/ic-assignees.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
@@ -48,9 +48,9 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
               component={AssigneesIcon}
               data-testid={!isCompactView && getEntityName(owner)}
             />
-            <Typography.Text className="text-sm" ellipsis={{ tooltip: true }}>
+            <Typography ellipsis as="p" size="text-sm">
               {displayName}
-            </Typography.Text>
+            </Typography>
           </div>
         ) : (
           <div
@@ -86,9 +86,9 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
         style={{ fontSize: isCompactView ? '16px' : `${avatarSize}px` }}
       />
       {!isCompactView && (
-        <Typography.Text className="text-sm" ellipsis={{ tooltip: true }}>
+        <Typography ellipsis as="p" size="text-sm">
           {displayName}
-        </Typography.Text>
+        </Typography>
       )}
     </div>
   ) : (
