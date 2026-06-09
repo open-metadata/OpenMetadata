@@ -76,11 +76,11 @@ def test_auto_select_skips_connector_supplied_system_schemas():
         conn.exec_driver_sql("CREATE TABLE userschema.t1 (id INTEGER)")
     # 'main' is flagged as a system schema, so the probe falls through to it.
     summary = list_tables(eng, None, frozenset({"main"})).summary
-    assert summary == ("1 tables in schema 'userschema', auto-selected because no databaseSchema was configured")
+    assert summary == ("1 table in schema 'userschema', auto-selected because no databaseSchema was configured")
 
 
 def test_list_schemas_summarizes_count(engine):
-    assert list_schemas(engine).summary == "1 schemas enumerated"
+    assert list_schemas(engine).summary == "1 schema enumerated"
 
 
 def test_run_sql_failure_carries_the_attempted_command(engine):

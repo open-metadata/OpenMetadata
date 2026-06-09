@@ -163,17 +163,23 @@ def _resolve_schema(
     return None, False
 
 
+def _count(n: int, noun: str) -> str:
+    """``3 tables`` / ``1 table`` - pluralize the noun to match the count."""
+    return f"{n} {noun if n == 1 else noun + 's'}"
+
+
 def _enumerated(kind: str, count: int, schema: str | None, auto_selected: bool) -> str:
+    counted = _count(count, kind)
     if schema is None:
-        return f"{count} {kind} enumerated"
+        return f"{counted} enumerated"
     if auto_selected:
-        return f"{count} {kind} in schema '{schema}', auto-selected because no databaseSchema was configured"
-    return f"{count} {kind} in schema '{schema}'"
+        return f"{counted} in schema '{schema}', auto-selected because no databaseSchema was configured"
+    return f"{counted} in schema '{schema}'"
 
 
 def list_schemas(client: Engine) -> Evidence:
     names, command = _reflect(client, lambda: inspect(client).get_schema_names())
-    return Evidence(summary=f"{len(names)} schemas enumerated", command=command)
+    return Evidence(summary=f"{_count(len(names), 'schema')} enumerated", command=command)
 
 
 def list_tables(client: Engine, schema: str | None, system_schemas: frozenset[str] = frozenset()) -> Evidence:
@@ -181,7 +187,7 @@ def list_tables(client: Engine, schema: str | None, system_schemas: frozenset[st
     target, auto_selected = _resolve_schema(inspector, schema, system_schemas)
     names, command = _reflect(client, lambda: inspector.get_table_names(target))
     return Evidence(
-        summary=_enumerated("tables", len(names), target, auto_selected),
+        summary=_enumerated("table", len(names), target, auto_selected),
         command=command,
     )
 
@@ -191,6 +197,6 @@ def list_views(client: Engine, schema: str | None, system_schemas: frozenset[str
     target, auto_selected = _resolve_schema(inspector, schema, system_schemas)
     names, command = _reflect(client, lambda: inspector.get_view_names(target))
     return Evidence(
-        summary=_enumerated("views", len(names), target, auto_selected),
+        summary=_enumerated("view", len(names), target, auto_selected),
         command=command,
     )
