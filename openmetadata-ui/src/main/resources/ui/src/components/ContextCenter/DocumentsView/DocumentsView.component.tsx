@@ -62,9 +62,9 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({ folders, onPick }) => {
 
   if (folders.length === 0) {
     return (
-      <div className="tw:px-3 tw:py-2 tw:text-sm tw:text-gray-400">
+      <Typography as="p" className="tw:px-3 tw:py-2 tw:text-gray-400">
         {t('label.no-entity', { entity: t('label.folder-plural') })}
-      </div>
+      </Typography>
     );
   }
 
