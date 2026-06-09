@@ -15,7 +15,6 @@ package org.openmetadata.it.search.shape.profiles;
 import java.util.List;
 import org.openmetadata.it.search.shape.EntityCases;
 import org.openmetadata.it.search.shape.EntityShapeProfile;
-import org.openmetadata.it.search.shape.Outcome;
 import org.openmetadata.it.search.shape.PlannedCase;
 import org.openmetadata.it.search.shape.Rung;
 import org.openmetadata.it.search.shape.ShapeContext;
@@ -42,8 +41,8 @@ public final class QueryShapeProfile implements EntityShapeProfile {
   @Override
   public List<PlannedCase> entitySpecificCases(final ShapeContext ctx) {
     return new EntityCases(entityType(), this::minimal, ctx)
-        .add("queryText.size", Rung.of("1MB", 1_000_000), this::queryText, e -> Outcome.OK)
-        .add("queryText.size", Rung.of("16MB", 16_000_000), this::queryText, e -> Outcome.OK)
+        .add("queryText.size", Rung.of("1MB", 1_000_000), this::queryText)
+        .add("queryText.size", Rung.of("16MB", 16_000_000), this::queryText)
         .build();
   }
 

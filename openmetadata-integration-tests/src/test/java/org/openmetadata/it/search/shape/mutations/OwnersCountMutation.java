@@ -15,15 +15,12 @@ package org.openmetadata.it.search.shape.mutations;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import org.openmetadata.it.search.shape.Outcome;
 import org.openmetadata.it.search.shape.Rung;
 import org.openmetadata.it.search.shape.ShapeMutation;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration.SearchType;
 import org.openmetadata.schema.type.EntityReference;
 
 public final class OwnersCountMutation implements ShapeMutation {
-  private static final int NESTED_LIMIT = 10_000;
 
   @Override
   public String dimension() {
@@ -53,10 +50,5 @@ public final class OwnersCountMutation implements ShapeMutation {
     }
     entity.setOwners(owners);
     return entity;
-  }
-
-  @Override
-  public Outcome expected(final Rung rung, final SearchType engine, final String entityType) {
-    return rung.magnitude() > NESTED_LIMIT ? Outcome.REJECT_NESTED : Outcome.OK;
   }
 }

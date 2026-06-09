@@ -16,7 +16,6 @@ import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.it.search.shape.EntityCases;
 import org.openmetadata.it.search.shape.EntityShapeProfile;
-import org.openmetadata.it.search.shape.Outcome;
 import org.openmetadata.it.search.shape.PlannedCase;
 import org.openmetadata.it.search.shape.Rung;
 import org.openmetadata.it.search.shape.ShapeContext;
@@ -46,12 +45,12 @@ public final class TableShapeProfile implements EntityShapeProfile {
   public List<PlannedCase> entitySpecificCases(final ShapeContext ctx) {
     final EntityCases cases =
         new EntityCases(entityType(), this::minimal, ctx)
-            .add("columns.count", Rung.of("100", 100), this::flatColumns, e -> Outcome.OK)
-            .add("columns.count", Rung.of("1k", 1_000), this::flatColumns, e -> Outcome.OK)
-            .add("columns.count", Rung.of("10k", 10_000), this::flatColumns, e -> Outcome.OK)
-            .add("columns.count", Rung.of("100k", 100_000), this::flatColumns, e -> Outcome.OK)
-            .add("column.depth", Rung.of("20", 20), this::nestedColumns, e -> Outcome.OK)
-            .add("column.depth", Rung.of("25", 25), this::nestedColumns, e -> Outcome.OK);
+            .add("columns.count", Rung.of("100", 100), this::flatColumns)
+            .add("columns.count", Rung.of("1k", 1_000), this::flatColumns)
+            .add("columns.count", Rung.of("10k", 10_000), this::flatColumns)
+            .add("columns.count", Rung.of("100k", 100_000), this::flatColumns)
+            .add("column.depth", Rung.of("20", 20), this::nestedColumns)
+            .add("column.depth", Rung.of("25", 25), this::nestedColumns);
     return cases.build();
   }
 

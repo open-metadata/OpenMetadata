@@ -17,7 +17,6 @@ import java.util.List;
 import java.util.UUID;
 import org.openmetadata.it.search.shape.EntityCases;
 import org.openmetadata.it.search.shape.EntityShapeProfile;
-import org.openmetadata.it.search.shape.Outcome;
 import org.openmetadata.it.search.shape.PlannedCase;
 import org.openmetadata.it.search.shape.Rung;
 import org.openmetadata.it.search.shape.ShapeContext;
@@ -46,8 +45,8 @@ public final class GlossaryTermShapeProfile implements EntityShapeProfile {
   @Override
   public List<PlannedCase> entitySpecificCases(final ShapeContext ctx) {
     return new EntityCases(entityType(), this::minimal, ctx)
-        .add("synonyms.count", Rung.of("1k", 1_000), this::synonyms, e -> Outcome.OK)
-        .add("synonyms.count", Rung.of("100k", 100_000), this::synonyms, e -> Outcome.OK)
+        .add("synonyms.count", Rung.of("1k", 1_000), this::synonyms)
+        .add("synonyms.count", Rung.of("100k", 100_000), this::synonyms)
         .build();
   }
 

@@ -12,18 +12,15 @@
  */
 package org.openmetadata.it.search.shape;
 
-import java.util.function.Function;
 import java.util.function.Supplier;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration.SearchType;
 
 public record PlannedCase(
     String entityType,
     String dimension,
     Rung rung,
     Supplier<EntityInterface> entity,
-    FieldProbe probe,
-    Function<SearchType, Outcome> expected) {
+    FieldProbe probe) {
 
   public String label() {
     return entityType + "/" + dimension + "/" + rung.label();

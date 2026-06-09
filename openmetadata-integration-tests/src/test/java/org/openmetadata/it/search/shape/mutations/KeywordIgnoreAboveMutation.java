@@ -15,11 +15,9 @@ package org.openmetadata.it.search.shape.mutations;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import org.openmetadata.it.search.shape.FieldProbe;
-import org.openmetadata.it.search.shape.Outcome;
 import org.openmetadata.it.search.shape.Rung;
 import org.openmetadata.it.search.shape.ShapeMutation;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration.SearchType;
 
 public final class KeywordIgnoreAboveMutation implements ShapeMutation {
   private static final int OVER_IGNORE_ABOVE = 300;
@@ -57,10 +55,5 @@ public final class KeywordIgnoreAboveMutation implements ShapeMutation {
 
   private static String value(final Rung rung) {
     return "d".repeat(rung.magnitude());
-  }
-
-  @Override
-  public Outcome expected(final Rung rung, final SearchType engine, final String entityType) {
-    return Outcome.DEGRADED_UNSEARCHABLE;
   }
 }

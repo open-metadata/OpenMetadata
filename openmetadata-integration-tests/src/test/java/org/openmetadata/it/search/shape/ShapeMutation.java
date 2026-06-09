@@ -14,7 +14,6 @@ package org.openmetadata.it.search.shape;
 
 import java.util.List;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration.SearchType;
 
 public interface ShapeMutation {
   String dimension();
@@ -24,8 +23,6 @@ public interface ShapeMutation {
   List<Rung> ladder();
 
   EntityInterface apply(EntityInterface entity, Rung rung);
-
-  Outcome expected(Rung rung, SearchType engine, String entityType);
 
   default FieldProbe probe(Rung rung) {
     return null;

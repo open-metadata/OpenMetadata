@@ -17,7 +17,6 @@ import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration.SearchType;
 
 public final class EntityCases {
   private final String entityType;
@@ -37,16 +36,10 @@ public final class EntityCases {
   public EntityCases add(
       final String dimension,
       final Rung rung,
-      final BiFunction<EntityInterface, Rung, EntityInterface> apply,
-      final Function<SearchType, Outcome> expected) {
+      final BiFunction<EntityInterface, Rung, EntityInterface> apply) {
     cases.add(
         new PlannedCase(
-            entityType,
-            dimension,
-            rung,
-            () -> apply.apply(minimal.apply(ctx), rung),
-            null,
-            expected));
+            entityType, dimension, rung, () -> apply.apply(minimal.apply(ctx), rung), null));
     return this;
   }
 

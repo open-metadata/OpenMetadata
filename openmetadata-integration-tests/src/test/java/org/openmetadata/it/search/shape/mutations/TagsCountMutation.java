@@ -14,11 +14,9 @@ package org.openmetadata.it.search.shape.mutations;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.openmetadata.it.search.shape.Outcome;
 import org.openmetadata.it.search.shape.Rung;
 import org.openmetadata.it.search.shape.ShapeMutation;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration.SearchType;
 import org.openmetadata.schema.type.TagLabel;
 
 public final class TagsCountMutation implements ShapeMutation {
@@ -51,10 +49,5 @@ public final class TagsCountMutation implements ShapeMutation {
     }
     entity.setTags(tags);
     return entity;
-  }
-
-  @Override
-  public Outcome expected(final Rung rung, final SearchType engine, final String entityType) {
-    return Outcome.OK;
   }
 }

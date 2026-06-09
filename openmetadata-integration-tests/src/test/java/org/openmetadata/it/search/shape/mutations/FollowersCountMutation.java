@@ -15,11 +15,9 @@ package org.openmetadata.it.search.shape.mutations;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import org.openmetadata.it.search.shape.Outcome;
 import org.openmetadata.it.search.shape.Rung;
 import org.openmetadata.it.search.shape.ShapeMutation;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration.SearchType;
 import org.openmetadata.schema.type.EntityReference;
 
 public final class FollowersCountMutation implements ShapeMutation {
@@ -46,10 +44,5 @@ public final class FollowersCountMutation implements ShapeMutation {
     }
     entity.setFollowers(followers);
     return entity;
-  }
-
-  @Override
-  public Outcome expected(final Rung rung, final SearchType engine, final String entityType) {
-    return Outcome.OK;
   }
 }

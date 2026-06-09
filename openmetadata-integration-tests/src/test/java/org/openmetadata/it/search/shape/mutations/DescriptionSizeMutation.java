@@ -13,11 +13,9 @@
 package org.openmetadata.it.search.shape.mutations;
 
 import java.util.List;
-import org.openmetadata.it.search.shape.Outcome;
 import org.openmetadata.it.search.shape.Rung;
 import org.openmetadata.it.search.shape.ShapeMutation;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration.SearchType;
 
 public final class DescriptionSizeMutation implements ShapeMutation {
 
@@ -40,10 +38,5 @@ public final class DescriptionSizeMutation implements ShapeMutation {
   public EntityInterface apply(final EntityInterface entity, final Rung rung) {
     entity.setDescription("x".repeat(rung.magnitude()));
     return entity;
-  }
-
-  @Override
-  public Outcome expected(final Rung rung, final SearchType engine, final String entityType) {
-    return Outcome.OK;
   }
 }

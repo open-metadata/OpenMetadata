@@ -17,7 +17,6 @@ import java.util.List;
 import java.util.UUID;
 import org.openmetadata.it.search.shape.EntityCases;
 import org.openmetadata.it.search.shape.EntityShapeProfile;
-import org.openmetadata.it.search.shape.Outcome;
 import org.openmetadata.it.search.shape.PlannedCase;
 import org.openmetadata.it.search.shape.Rung;
 import org.openmetadata.it.search.shape.ShapeContext;
@@ -44,8 +43,8 @@ public final class DashboardShapeProfile implements EntityShapeProfile {
   @Override
   public List<PlannedCase> entitySpecificCases(final ShapeContext ctx) {
     return new EntityCases(entityType(), this::minimal, ctx)
-        .add("charts.count", Rung.of("1k", 1_000), this::charts, e -> Outcome.OK)
-        .add("charts.count", Rung.of("50k", 50_000), this::charts, e -> Outcome.OK)
+        .add("charts.count", Rung.of("1k", 1_000), this::charts)
+        .add("charts.count", Rung.of("50k", 50_000), this::charts)
         .build();
   }
 

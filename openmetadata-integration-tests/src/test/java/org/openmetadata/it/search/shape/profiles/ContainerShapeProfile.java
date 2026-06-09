@@ -16,7 +16,6 @@ import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.it.search.shape.EntityCases;
 import org.openmetadata.it.search.shape.EntityShapeProfile;
-import org.openmetadata.it.search.shape.Outcome;
 import org.openmetadata.it.search.shape.PlannedCase;
 import org.openmetadata.it.search.shape.Rung;
 import org.openmetadata.it.search.shape.ShapeContext;
@@ -45,13 +44,8 @@ public final class ContainerShapeProfile implements EntityShapeProfile {
   @Override
   public List<PlannedCase> entitySpecificCases(final ShapeContext ctx) {
     return new EntityCases(entityType(), this::minimal, ctx)
-        .add(
-            "dataModelColumns.count", Rung.of("1k", 1_000), this::dataModelColumns, e -> Outcome.OK)
-        .add(
-            "dataModelColumns.count",
-            Rung.of("50k", 50_000),
-            this::dataModelColumns,
-            e -> Outcome.OK)
+        .add("dataModelColumns.count", Rung.of("1k", 1_000), this::dataModelColumns)
+        .add("dataModelColumns.count", Rung.of("50k", 50_000), this::dataModelColumns)
         .build();
   }
 
