@@ -28,6 +28,7 @@ from metadata.generated.schema.entity.services.connections.database.unityCatalog
 from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.source.database.unitycatalog import connection as uc_connection
 from metadata.ingestion.source.database.unitycatalog.connection import (
+    VIEW_LISTING_SCAN_LIMIT,
     get_catalogs,
     get_schemas,
     get_sqlalchemy_connection,
@@ -186,7 +187,25 @@ class TestGetViews:
 
         get_views(client, table_obj)
 
-        client.tables.list.assert_called_once_with(catalog_name="main", schema_name="bronze")
+        client.tables.list.assert_called_once_with(
+            catalog_name="main",
+            schema_name="bronze",
+            max_results=VIEW_LISTING_SCAN_LIMIT,
+            omit_columns=True,
+            omit_properties=True,
+        )
+
+    def test_scan_is_capped_when_schema_has_no_views(self):
+        tables = [_named_mock(f"t{i}", table_type=TableType.MANAGED) for i in range(VIEW_LISTING_SCAN_LIMIT + 50)]
+        scanned = iter(tables)
+        client = _workspace_client()
+        client.tables.list.return_value = scanned
+        table_obj = DatabricksTable(catalog_name="main", schema_name="bronze")
+
+        get_views(client, table_obj)
+
+        remaining = list(scanned)
+        assert len(remaining) == 50
 
     def test_raises_when_catalog_and_schema_unresolved(self):
         client = _workspace_client()
