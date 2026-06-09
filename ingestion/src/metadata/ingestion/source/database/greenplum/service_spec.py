@@ -6,5 +6,5 @@ from metadata.utils.service_spec.default import DefaultDatabaseSpec
 ServiceSpec = DefaultDatabaseSpec(
     metadata_source_class=GreenplumSource,
     lineage_source_class=GreenplumLineageSource,
-    connection_class=GreenplumConnection,
+    connection_class=GreenplumConnection,  # pyright: ignore[reportArgumentType]
 )

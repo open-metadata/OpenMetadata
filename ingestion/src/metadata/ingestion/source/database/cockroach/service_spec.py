@@ -3,6 +3,6 @@ from metadata.ingestion.source.database.cockroach.metadata import CockroachSourc
 from metadata.utils.service_spec.default import DefaultDatabaseSpec
 
 ServiceSpec = DefaultDatabaseSpec(
-    metadata_source_class=CockroachSource,
-    connection_class=CockroachConnection,
+    metadata_source_class=CockroachSource,  # pyright: ignore[reportArgumentType]
+    connection_class=CockroachConnection,  # pyright: ignore[reportArgumentType]
 )
