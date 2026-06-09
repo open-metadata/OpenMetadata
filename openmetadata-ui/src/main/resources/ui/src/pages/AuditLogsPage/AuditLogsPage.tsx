@@ -19,15 +19,17 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { XClose } from '@untitledui/icons';
 import { defaultColors } from '@openmetadata/ui-core-components';
+import { XClose } from '@untitledui/icons';
 import { Button, Modal, Progress, Space } from 'antd';
 import { AxiosError } from 'axios';
 import dayjs from 'dayjs';
 import { DateTime } from 'luxon';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as ExportIcon } from '../../assets/svg/ic-download.svg';
 import { AuditLogFilters, AuditLogList } from '../../components/AuditLog';
+import '../../components/common/atoms/filters/FilterSelection.less';
 import { useBreadcrumbs } from '../../components/common/atoms/navigation/useBreadcrumbs';
 import { useSearch } from '../../components/common/atoms/navigation/useSearch';
 import Banner from '../../components/common/Banner/Banner';
@@ -42,6 +44,7 @@ import {
   PAGE_SIZE_MEDIUM,
   SOCKET_EVENTS,
 } from '../../constants/constants';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { CursorType } from '../../enums/pagination.enum';
@@ -54,11 +57,8 @@ import {
   AuditLogListResponse,
 } from '../../types/auditLogs.interface';
 import { buildParamsFromFilters } from '../../utils/AuditLogUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
-import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { ReactComponent as ExportIcon } from '../../assets/svg/ic-download.svg';
-import '../../components/common/atoms/filters/FilterSelection.less';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './AuditLogsPage.less';
 
 const INITIAL_PAGING: Paging = {
@@ -150,13 +150,10 @@ const AuditLogsPage = () => {
     [fetchAuditLogs, paging]
   );
 
-  const handlePageSizeChange = useCallback(
-    (size: number) => {
-      setPageSize(size);
-      setCurrentPage(1);
-    },
-    []
-  );
+  const handlePageSizeChange = useCallback((size: number) => {
+    setPageSize(size);
+    setCurrentPage(1);
+  }, []);
 
   const handleFiltersChange = useCallback(
     (filters: AuditLogActiveFilter[], params: Partial<AuditLogListParams>) => {
@@ -334,7 +331,8 @@ const AuditLogsPage = () => {
     <PageLayoutV1
       fullHeight
       mainContainerClassName="audit-logs-page-layout"
-      pageTitle={t('label.audit-log-plural')}>
+      pageTitle={t('label.audit-log-plural')}
+    >
       <Box
         data-testid="audit-logs-page"
         sx={{
@@ -343,7 +341,8 @@ const AuditLogsPage = () => {
           height: '100%',
           minHeight: 0,
           overflow: 'hidden',
-        }}>
+        }}
+      >
         <Box sx={{ flexShrink: 0, marginBottom: theme.spacing(2) }}>
           {breadcrumbs}
         </Box>
@@ -363,20 +362,23 @@ const AuditLogsPage = () => {
 
             borderRadius: 1,
             border: `1px solid ${defaultColors.blueGray[100]}`,
-          }}>
+          }}
+        >
           <Box
             sx={{
               display: 'flex',
               flexDirection: 'column',
               gap: theme.spacing(2 / 3),
-            }}>
+            }}
+          >
             <Typography
               sx={{
                 color: theme.palette.grey[900],
                 fontSize: theme.typography.body1.fontSize,
                 fontWeight: 600,
                 lineHeight: theme.typography.body1.lineHeight,
-              }}>
+              }}
+            >
               {t(PAGE_HEADERS.AUDIT_LOGS.header)}
             </Typography>
             <Typography
@@ -385,7 +387,8 @@ const AuditLogsPage = () => {
                 fontSize: theme.typography.body2.fontSize,
                 fontWeight: 400,
                 lineHeight: theme.typography.body2.lineHeight,
-              }}>
+              }}
+            >
               {t(PAGE_HEADERS.AUDIT_LOGS.subHeader)}
             </Typography>
           </Box>
@@ -398,7 +401,8 @@ const AuditLogsPage = () => {
               gap: theme.spacing(2),
             }}
             type="primary"
-            onClick={() => setIsExportModalOpen(true)}>
+            onClick={() => setIsExportModalOpen(true)}
+          >
             {t('label.export')}
           </Button>
         </Box>
@@ -414,13 +418,15 @@ const AuditLogsPage = () => {
             overflow: 'hidden',
             borderRadius: '12px',
             border: `1px solid ${defaultColors.blueGray[100]}`,
-          }}>
+          }}
+        >
           {/* Filters */}
           <Box sx={{ flexShrink: 0, p: 3 }}>
             <Stack alignItems="center" direction="row" spacing={2}>
               <Box
                 data-testid="audit-log-search-container"
-                sx={{ flexShrink: 0 }}>
+                sx={{ flexShrink: 0 }}
+              >
                 {searchComponent}
               </Box>
               <AuditLogFilters
@@ -434,25 +440,29 @@ const AuditLogsPage = () => {
                 className="filter-selection-container"
                 data-testid="filter-selection-container"
                 sx={{
-                  mt: 2
-                }}>
+                  mt: 2,
+                }}
+              >
                 <Box className="filter-selection-chips-wrapper">
                   {activeFilters.map((filter) => (
                     <Box
                       className="filter-selection-chip"
                       data-testid={`filter-chip-${filter.category}`}
-                      key={filter.category}>
+                      key={filter.category}
+                    >
                       <Box
                         className="filter-selection-chip-content"
-                        component="span">
+                        component="span"
+                      >
                         <span className="filter-selection-label">
                           {filter.categoryLabel}:{' '}
                         </span>
                         <span
                           className="filter-selection-value"
-                          title={filter.value.label}>
+                          title={filter.value.label}
+                        >
                           {filter.category === 'time' &&
-                            filter.value.key === 'customRange'
+                          filter.value.key === 'customRange'
                             ? t('label.custom-range')
                             : filter.value.label}
                         </span>
@@ -462,9 +472,8 @@ const AuditLogsPage = () => {
                         className="filter-selection-remove-btn"
                         component="button"
                         data-testid={`remove-filter-${filter.category}`}
-                        onClick={() =>
-                          handleRemoveFilter(filter.category)
-                        }>
+                        onClick={() => handleRemoveFilter(filter.category)}
+                      >
                         <XClose size={14} />
                       </Box>
                     </Box>
@@ -474,7 +483,8 @@ const AuditLogsPage = () => {
                   className="filter-selection-clear-all"
                   data-testid="clear-filters"
                   variant="text"
-                  onClick={handleClearFilters}>
+                  onClick={handleClearFilters}
+                >
                   {t('label.clear-entity', {
                     entity: t('label.all-lowercase'),
                   })}
@@ -498,12 +508,17 @@ const AuditLogsPage = () => {
                 justifyContent: 'center',
                 boxShadow:
                   '0 -13px 16px -4px rgba(10, 13, 18, 0.04), 0 -4px 6px -2px rgba(10, 13, 18, 0.03)',
-              }}>
+              }}
+            >
               <NextPrevious
                 currentPage={currentPage}
                 isLoading={isLoading}
                 pageSize={pageSize}
-                pageSizeOptions={[PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE]}
+                pageSizeOptions={[
+                  PAGE_SIZE_BASE,
+                  PAGE_SIZE_MEDIUM,
+                  PAGE_SIZE_LARGE,
+                ]}
                 paging={paging}
                 pagingHandler={handlePaging}
                 onShowSizeChange={handlePageSizeChange}
@@ -530,7 +545,8 @@ const AuditLogsPage = () => {
           entity: t('label.audit-log-plural'),
         })}
         onCancel={handleExportModalClose}
-        onOk={handleExport}>
+        onOk={handleExport}
+      >
         <Space className="w-full" direction="vertical" size={16}>
           <Typography color="text.secondary">
             {t('message.export-audit-logs-description')}
@@ -547,9 +563,7 @@ const AuditLogsPage = () => {
               className="w-full"
               data-testid="export-date-range-picker"
               disabled={isExporting}
-              disabledDate={(current) =>
-                current > DateTime.now().endOf('day')
-              }
+              disabledDate={(current) => current > DateTime.now().endOf('day')}
               value={exportDateRange}
               onChange={(dates) => {
                 if (dates && dates[0] && dates[1]) {
@@ -566,8 +580,8 @@ const AuditLogsPage = () => {
                 percent={
                   exportJob.total && exportJob.total > 0
                     ? Math.round(
-                      ((exportJob.progress ?? 0) / exportJob.total) * 100
-                    )
+                        ((exportJob.progress ?? 0) / exportJob.total) * 100
+                      )
                     : 0
                 }
                 size="small"
@@ -575,7 +589,8 @@ const AuditLogsPage = () => {
               />
               <Typography
                 color="text.secondary"
-                sx={{ display: 'block', mt: 1 }}>
+                sx={{ display: 'block', mt: 1 }}
+              >
                 {exportJob.message ?? t('message.exporting')}
               </Typography>
             </div>

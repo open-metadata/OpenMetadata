@@ -180,6 +180,15 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+jest.mock('../../../../utils/CommonUtils', () => {
+  const actual = jest.requireActual('../../../../utils/CommonUtils');
+
+  return {
+    ...actual,
+    Transi18next: jest.fn(({ i18nKey }) => <span>{i18nKey}</span>),
+  };
+});
+
 jest.mock(
   '../../../../context/AirflowStatusProvider/AirflowStatusProvider',
   () => ({

@@ -46,10 +46,7 @@ export const buildParamsFromFilters = (
     switch (filter.category) {
       case 'time': {
         const timeValue = filter.value as TimeFilterValue;
-        if (
-          timeValue.startTs !== undefined &&
-          timeValue.endTs !== undefined
-        ) {
+        if (timeValue.startTs !== undefined && timeValue.endTs !== undefined) {
           params.startTs = timeValue.startTs;
           params.endTs = timeValue.endTs;
         }

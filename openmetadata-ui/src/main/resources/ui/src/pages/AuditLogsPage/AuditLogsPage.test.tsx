@@ -83,8 +83,6 @@ jest.mock('../../components/PageHeader/PageHeader.component', () =>
   jest.fn().mockReturnValue(<div data-testid="page-header">Page Header</div>)
 );
 
-
-
 jest.mock('../../components/common/NextPrevious/NextPrevious', () =>
   jest
     .fn()
@@ -95,14 +93,16 @@ jest.mock('../../components/common/NextPrevious/NextPrevious', () =>
             data-testid="next-page"
             onClick={() =>
               pagingHandler({ cursorType: 'after', currentPage: 2 })
-            }>
+            }
+          >
             Next
           </button>
           <button
             data-testid="prev-page"
             onClick={() =>
               pagingHandler({ cursorType: 'before', currentPage: 1 })
-            }>
+            }
+          >
             Previous
           </button>
           {onShowSizeChange && (
@@ -113,12 +113,11 @@ jest.mock('../../components/common/NextPrevious/NextPrevious', () =>
                 // In a real Antd dropdown, this would be a separate click
                 // Here we just render the options if needed, but for simplicity
                 // we can just have buttons for each option to click directly in test
-              }}>
+              }}
+            >
               {pageSize} / label.page
               {pageSizeOptions?.map((size: number) => (
-                <button
-                  key={size}
-                  onClick={() => onShowSizeChange(size)}>
+                <button key={size} onClick={() => onShowSizeChange(size)}>
                   {size} / label.page
                 </button>
               ))}
@@ -152,7 +151,8 @@ jest.mock('../../components/AuditLog', () => ({
             ],
             { entityType: 'table' }
           )
-        }>
+        }
+      >
         Apply Filter
       </button>
     </div>
@@ -839,7 +839,9 @@ describe('AuditLogsPage', () => {
 
       await waitFor(() => {
         // Just verify the main header is present
-        expect(screen.getByTestId('audit-logs-page-header')).toBeInTheDocument();
+        expect(
+          screen.getByTestId('audit-logs-page-header')
+        ).toBeInTheDocument();
       });
     });
 
@@ -874,7 +876,9 @@ describe('AuditLogsPage', () => {
       });
 
       // Check default page size (25)
-      const pageSizeDropdown = screen.getByTestId('page-size-selection-dropdown');
+      const pageSizeDropdown = screen.getByTestId(
+        'page-size-selection-dropdown'
+      );
 
       expect(pageSizeDropdown).toHaveTextContent('25 / label.page');
 
@@ -884,9 +888,11 @@ describe('AuditLogsPage', () => {
 
       // Verify getAuditLogs called with new limit
       await waitFor(() => {
-        expect(mockGetAuditLogs).toHaveBeenCalledWith(expect.objectContaining({
-          limit: 50
-        }));
+        expect(mockGetAuditLogs).toHaveBeenCalledWith(
+          expect.objectContaining({
+            limit: 50,
+          })
+        );
       });
     });
   });
@@ -919,8 +925,6 @@ describe('AuditLogsPage', () => {
       });
     });
   });
-
-
 
   describe('Security - XSS Prevention', () => {
     it('handles audit log entries with XSS payloads in data', async () => {
