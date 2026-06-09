@@ -11,13 +11,15 @@
  *  limitations under the License.
  */
 
-
 export {
-  assetToDocumentItem, CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK,
-  CONTEXT_CENTER_DOCUMENTS_FQN, contextFileToDocumentItem,
-  contextFileToUploadedDocumentItem, createArticleKnowledgePage,
+  assetToDocumentItem,
+  contextFileToDocumentItem,
+  contextFileToUploadedDocumentItem,
+  CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK,
+  CONTEXT_CENTER_DOCUMENTS_FQN,
+  createArticleKnowledgePage,
   fetchContextCenterDocuments,
   formatBytes,
   handleAssetDownload,
-  knowledgePageToArticleItem
+  knowledgePageToArticleItem,
 } from './ContextCenterPureUtils';

@@ -157,7 +157,7 @@ const FileActions: FC<FileActionsProps> = ({
               icon={Pin02}
               isDisabled={isMoving || availableFolders.length === 0}>
               {() => (
-                <Box align='center' justify='between'>
+                <Box align="center" justify="between">
                   <Typography ellipsis className="tw:grow tw:text-secondary">
                     {t('label.move-to-folder')}
                   </Typography>
@@ -169,7 +169,10 @@ const FileActions: FC<FileActionsProps> = ({
                 </Box>
               )}
             </Dropdown.Item>
-            <Dropdown.Popover className="tw:w-52" offset={-6} placement="right top">
+            <Dropdown.Popover
+              className="tw:w-52"
+              offset={-6}
+              placement="right top">
               <FolderPickerMenu
                 folders={availableFolders}
                 onPick={handleMoveToFolder}
@@ -421,7 +424,7 @@ const FileRow: FC<FileRowProps> = ({
           </Typography>
           {file.updatedBy && (
             <>
-              <Dot className='tw:text-gray-500' size='micro' /> 
+              <Dot className="tw:text-gray-500" size="micro" />
               <Typography
                 className="tw:text-gray-500"
                 data-testid="document-updated-by"
@@ -432,7 +435,7 @@ const FileRow: FC<FileRowProps> = ({
           )}
           {file.updatedAt && (
             <>
-              <Dot className='tw:text-gray-500' size='micro' /> 
+              <Dot className="tw:text-gray-500" size="micro" />
               <Typography
                 className="tw:text-gray-500"
                 data-testid="document-updated-at"
@@ -443,7 +446,7 @@ const FileRow: FC<FileRowProps> = ({
           )}
           {file.folderName && (
             <>
-              <Dot className='tw:text-gray-500' size='micro' /> 
+              <Dot className="tw:text-gray-500" size="micro" />
               <Typography
                 className="tw:text-gray-500"
                 data-testid="document-folder-name"

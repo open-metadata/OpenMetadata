@@ -29,10 +29,7 @@ import type {
   QuickLink,
 } from '../interface/knowledge-center.interface';
 import { PageType } from '../interface/knowledge-center.interface';
-import {
-  downloadDriveFile,
-  listAssetsByFqn
-} from '../rest/assetAPI';
+import { downloadDriveFile, listAssetsByFqn } from '../rest/assetAPI';
 import { postKnowledgePage } from '../rest/knowledgeCenterAPI';
 import contextCenterClassBase from './ContextCenterClassBase';
 import EntityLink from './EntityLink';

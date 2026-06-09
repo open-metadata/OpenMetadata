@@ -16,8 +16,8 @@ import { Home02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
+import { useSearchParams } from 'react-router-dom';
 import AlertBar from '../../../components/AlertBar/AlertBar';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import '../../../components/common/ResizablePanels/resizable-panels.less';
@@ -172,7 +172,14 @@ const ContextCenterDocumentsPage: FC = () => {
         return prev;
       });
     }
-  }, [allDocuments, isDocumentsLoading, previewFile, searchParams, t, setSearchParams]);
+  }, [
+    allDocuments,
+    isDocumentsLoading,
+    previewFile,
+    searchParams,
+    t,
+    setSearchParams,
+  ]);
 
   const handleDeleteFile = useCallback((file: DocFile) => {
     setFileToDelete(file);
@@ -431,7 +438,9 @@ const ContextCenterDocumentsPage: FC = () => {
             {previewFile && (
               <DocumentPreviewPanel
                 file={previewFile}
-                url={`${window.location.origin}${window.location.pathname}?document=${encodeURIComponent(previewFile.name)}`}
+                url={`${window.location.origin}${
+                  window.location.pathname
+                }?document=${encodeURIComponent(previewFile.name)}`}
                 onClose={() => handlePreview(undefined)}
               />
             )}

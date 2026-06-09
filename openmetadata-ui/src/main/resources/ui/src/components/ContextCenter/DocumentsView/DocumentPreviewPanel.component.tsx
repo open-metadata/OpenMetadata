@@ -16,7 +16,7 @@ import {
   ButtonUtility,
   Card,
   FileIcon,
-  Typography
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Link04, XClose } from '@untitledui/icons';
 import { FC } from 'react';
