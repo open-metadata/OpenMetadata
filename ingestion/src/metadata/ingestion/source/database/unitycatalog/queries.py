@@ -56,12 +56,14 @@ UNITY_CATALOG_TABLE_LINEAGE = textwrap.dedent(
     """
     SELECT
         source_table_full_name,
-        target_table_full_name
+        target_table_full_name,
+        source_path,
+        target_path
     FROM system.access.table_lineage
     WHERE event_time >= current_date() - INTERVAL {query_log_duration} DAYS
-        AND source_table_full_name IS NOT NULL
-        AND target_table_full_name IS NOT NULL
-    GROUP BY source_table_full_name, target_table_full_name
+        AND (source_table_full_name IS NOT NULL OR source_path IS NOT NULL)
+        AND (target_table_full_name IS NOT NULL OR target_path IS NOT NULL)
+    GROUP BY source_table_full_name, target_table_full_name, source_path, target_path
     """
 )
 
@@ -71,18 +73,22 @@ UNITY_CATALOG_COLUMN_LINEAGE = textwrap.dedent(
         source_table_full_name,
         source_column_name,
         target_table_full_name,
-        target_column_name
+        target_column_name,
+        source_path,
+        target_path
     FROM system.access.column_lineage
     WHERE event_time >= current_date() - INTERVAL {query_log_duration} DAYS
-        AND source_table_full_name IS NOT NULL
-        AND target_table_full_name IS NOT NULL
+        AND (source_table_full_name IS NOT NULL OR source_path IS NOT NULL)
+        AND (target_table_full_name IS NOT NULL OR target_path IS NOT NULL)
         AND source_column_name IS NOT NULL
         AND target_column_name IS NOT NULL
     GROUP BY
         source_table_full_name,
         source_column_name,
         target_table_full_name,
-        target_column_name
+        target_column_name,
+        source_path,
+        target_path
     """
 )
 

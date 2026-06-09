@@ -91,40 +91,50 @@ DATABRICKS_GET_COLUMN_TAGS = textwrap.dedent(
 
 DATABRICKS_DDL = "SHOW CREATE TABLE `{table_name}`"
 
-DATABRICKS_GET_TABLE_LINEAGE = """
-SELECT
-    entity_id,
-    source_table_full_name,
-    target_table_full_name
-FROM system.access.table_lineage
-WHERE entity_type IN ('JOB', 'PIPELINE')
-    AND event_time >= current_date() - INTERVAL {lookback_days} DAYS
-    AND source_table_full_name IS NOT NULL
-    AND target_table_full_name IS NOT NULL
-GROUP BY entity_id, source_table_full_name, target_table_full_name
-"""
+DATABRICKS_GET_TABLE_LINEAGE = textwrap.dedent(
+    """
+    SELECT
+        entity_id,
+        source_table_full_name,
+        target_table_full_name,
+        source_path,
+        target_path
+    FROM system.access.table_lineage
+    WHERE entity_type IN ('JOB', 'PIPELINE')
+        AND event_time >= current_date() - INTERVAL {lookback_days} DAYS
+        AND source_table_full_name IS NOT NULL
+        AND target_table_full_name IS NOT NULL
+    GROUP BY entity_id, source_table_full_name, target_table_full_name, source_path, target_path
+    """
+)
 
-DATABRICKS_GET_COLUMN_LINEAGE = """
-SELECT
-    entity_id,
-    source_table_full_name,
-    source_column_name,
-    target_table_full_name,
-    target_column_name
-FROM system.access.column_lineage
-WHERE entity_type IN ('JOB', 'PIPELINE')
-    AND event_time >= current_date() - INTERVAL {lookback_days} DAYS
-    AND source_table_full_name IS NOT NULL
-    AND target_table_full_name IS NOT NULL
-    AND source_column_name IS NOT NULL
-    AND target_column_name IS NOT NULL
-GROUP BY
-    entity_id,
-    source_table_full_name,
-    source_column_name,
-    target_table_full_name,
-    target_column_name
-"""
+DATABRICKS_GET_COLUMN_LINEAGE = textwrap.dedent(
+    """
+    SELECT
+        entity_id,
+        source_table_full_name,
+        source_column_name,
+        target_table_full_name,
+        target_column_name,
+        source_path,
+        target_path
+    FROM system.access.column_lineage
+    WHERE entity_type IN ('JOB', 'PIPELINE')
+        AND event_time >= current_date() - INTERVAL {lookback_days} DAYS
+        AND source_table_full_name IS NOT NULL
+        AND target_table_full_name IS NOT NULL
+        AND source_column_name IS NOT NULL
+        AND target_column_name IS NOT NULL
+    GROUP BY
+        entity_id,
+        source_table_full_name,
+        source_column_name,
+        target_table_full_name,
+        target_column_name,
+        source_path,
+        target_path
+    """
+)
 
 # Test connection queries
 TEST_VIEW_DEFINITIONS = textwrap.dedent(

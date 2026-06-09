@@ -406,12 +406,22 @@ class DatabricksClient:
         table_lineage = self.run_lineage_query(DATABRICKS_GET_TABLE_LINEAGE.format(lookback_days=lookback_days))
         for row in table_lineage or []:
             try:
-                self.entity_table_lineage[row.entity_id].append(
-                    {
-                        "source_table_full_name": row.source_table_full_name,
-                        "target_table_full_name": row.target_table_full_name,
-                    }
-                )
+                source_table_full_name = row.source_table_full_name
+                target_table_full_name = row.target_table_full_name
+                if not (source_table_full_name and target_table_full_name):
+                    continue
+
+                lineage: dict[str, str] = {
+                    "source_table_full_name": str(source_table_full_name),
+                    "target_table_full_name": str(target_table_full_name),
+                }
+                source_path = getattr(row, "source_path", None)
+                target_path = getattr(row, "target_path", None)
+                if source_path:
+                    lineage["source_path"] = str(source_path)
+                if target_path:
+                    lineage["target_path"] = str(target_path)
+                self.entity_table_lineage[row.entity_id].append(lineage)
             except Exception as exc:  # noqa: F841
                 logger.debug(f"Error parsing row: {row} due to {traceback.format_exc()}")
                 continue
