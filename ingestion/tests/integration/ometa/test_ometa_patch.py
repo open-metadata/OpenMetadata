@@ -473,6 +473,27 @@ class TestOMetaPatch:
             "column tag must persist after the optimistic-lock retry"
         )
 
+    def test_patch_column_falls_back_when_etag_unusable(self, metadata, patch_table):
+        """If the client-derived If-Match can never match the server (e.g. a future
+        client/server ETag-format drift), the column patch must fall back to a
+        non-conditional last-write-wins write rather than silently dropping the change
+        after exhausting retries. We force the mismatch by stubbing the ETag helper to a
+        value the server will always reject."""
+        with mock.patch(
+            "metadata.ingestion.ometa.mixins.patch_mixin._entity_etag",
+            return_value='"unusable-etag"',
+        ):
+            updated = metadata.patch_column_description(
+                table=patch_table,
+                description="fallback-persisted description",
+                column_fqn=patch_table.fullyQualifiedName.root + ".another",
+                force=True,
+            )
+
+        assert updated is not None, "patch must persist via the last-write-wins fallback"
+        updated_col = find_column_in_table(column_name="another", table=updated)
+        assert updated_col.description.root == "fallback-persisted description"
+
     def test_patch_owner(
         self,
         metadata,

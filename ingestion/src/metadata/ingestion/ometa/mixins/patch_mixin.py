@@ -546,6 +546,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         entity_type = type(entity)
         entity_label = entity.fullyQualifiedName.root if entity.fullyQualifiedName else entity_type.__name__
         last_error: Optional[APIError] = None  # noqa: UP045
+        last_rejected_etag: Optional[str] = None  # noqa: UP045
         for attempt in range(MAX_OPTIMISTIC_LOCK_RETRIES):
             instance = self._fetch_entity_if_exists(
                 entity=entity_type, entity_id=entity.id, fields=adapter.patch_fields
@@ -559,16 +560,28 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
             # Derive If-Match from the just-fetched instance so a concurrent modification is
             # rejected (412) and retried, instead of silently overwriting a shifted column array.
+            # If the SAME (unchanged) instance was already rejected, the conditional header is
+            # unusable (e.g. client/server ETag-format drift) and would loop to a silent drop;
+            # fall back to a non-conditional write so the change is not lost (last-write-wins).
+            instance_etag = _entity_etag(instance)
+            falling_back = instance_etag is not None and instance_etag == last_rejected_etag
+            if falling_back:
+                logger.warning(
+                    "If-Match was rejected for an unchanged [%s] (client/server ETag mismatch); "
+                    "writing without optimistic locking so the column tag change is not dropped.",
+                    entity_label,
+                )
             try:
                 patched_entity = self.patch(
                     entity=entity_type,
                     source=entity,
                     destination=destination,
-                    if_match=_entity_etag(instance),
+                    if_match=None if falling_back else instance_etag,
                 )
             except APIError as exc:
                 if _is_precondition_failed(exc):
                     last_error = exc
+                    last_rejected_etag = instance_etag
                     if attempt < MAX_OPTIMISTIC_LOCK_RETRIES - 1:
                         logger.info(
                             "Concurrent modification while patching column tags on [%s]; "
@@ -589,7 +602,8 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                 return cast("T | None", patched_entity)
 
         logger.warning(
-            "Column tag patch for [%s] abandoned after %d optimistic-lock retries: %s",
+            "Column tag change for [%s] was NOT persisted after %d optimistic-lock retries "
+            "(persistent concurrent modification); last error: %s",
             entity_label,
             MAX_OPTIMISTIC_LOCK_RETRIES,
             last_error,
@@ -657,6 +671,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
         table_label = table.fullyQualifiedName.root if table.fullyQualifiedName else Table.__name__
         last_error: Optional[APIError] = None  # noqa: UP045
+        last_rejected_etag: Optional[str] = None  # noqa: UP045
         for attempt in range(MAX_OPTIMISTIC_LOCK_RETRIES):
             instance: Optional[Table] = self._fetch_entity_if_exists(  # noqa: UP045
                 entity=Table, entity_id=table.id
@@ -671,14 +686,29 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             update_column_description(destination.columns, column_descriptions, force)
 
             # Derive If-Match from the just-fetched instance so a concurrent modification is
-            # rejected (412) and retried, instead of silently overwriting it.
+            # rejected (412) and retried, instead of silently overwriting it. If the SAME
+            # (unchanged) instance was already rejected, the conditional header is unusable
+            # (e.g. client/server ETag-format drift) and would loop to a silent drop; fall back
+            # to a non-conditional write so the change is not lost (last-write-wins).
+            instance_etag = _entity_etag(instance)
+            falling_back = instance_etag is not None and instance_etag == last_rejected_etag
+            if falling_back:
+                logger.warning(
+                    "If-Match was rejected for an unchanged [%s] (client/server ETag mismatch); "
+                    "writing without optimistic locking so the column description change is not dropped.",
+                    table_label,
+                )
             try:
                 patched_entity = self.patch(
-                    entity=Table, source=table, destination=destination, if_match=_entity_etag(instance)
+                    entity=Table,
+                    source=table,
+                    destination=destination,
+                    if_match=None if falling_back else instance_etag,
                 )
             except APIError as exc:
                 if _is_precondition_failed(exc):
                     last_error = exc
+                    last_rejected_etag = instance_etag
                     if attempt < MAX_OPTIMISTIC_LOCK_RETRIES - 1:
                         logger.info(
                             "Concurrent modification while patching column descriptions on [%s]; "
@@ -699,7 +729,8 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                 return cast("T | None", patched_entity)
 
         logger.warning(
-            "Column description patch for [%s] abandoned after %d optimistic-lock retries: %s",
+            "Column description change for [%s] was NOT persisted after %d optimistic-lock retries "
+            "(persistent concurrent modification); last error: %s",
             table_label,
             MAX_OPTIMISTIC_LOCK_RETRIES,
             last_error,
