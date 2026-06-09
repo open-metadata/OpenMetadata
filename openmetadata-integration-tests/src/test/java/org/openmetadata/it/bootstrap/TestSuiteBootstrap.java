@@ -42,6 +42,7 @@ import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.junit.platform.launcher.LauncherSession;
 import org.junit.platform.launcher.LauncherSessionListener;
+import org.openmetadata.it.server.SearchTestImages;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.Parameters;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
@@ -350,7 +351,8 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       LOG.info("Starting OpenSearch container with image: {}", image);
 
       org.opensearch.testcontainers.OpensearchContainer<?> opensearch =
-          new org.opensearch.testcontainers.OpensearchContainer<>(image);
+          new org.opensearch.testcontainers.OpensearchContainer<>(
+              SearchTestImages.openSearchWithAnalysisPlugins(image));
       opensearch.withEnv("discovery.type", "single-node");
       opensearch.withEnv("DISABLE_SECURITY_PLUGIN", "true");
       opensearch.withEnv("DISABLE_INSTALL_DEMO_CONFIG", "true");
