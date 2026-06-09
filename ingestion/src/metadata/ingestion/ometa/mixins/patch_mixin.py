@@ -17,7 +17,7 @@ To be used by OpenMetadata class
 import json
 import traceback
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, Type, TypeVar, Union  # noqa: UP035
+from typing import Any, Dict, List, Optional, Type, TypeVar, Union, cast  # noqa: UP035
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -526,7 +526,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
         entity_type = type(entity)
         entity_label = entity.fullyQualifiedName.root if entity.fullyQualifiedName else entity_type.__name__
-        suffix = self.get_suffix(entity_type)
+        suffix = self.get_suffix(entity_type)  # pyright: ignore[reportAttributeAccessIssue]
         last_error: Optional[APIError] = None  # noqa: UP045
         for attempt in range(MAX_OPTIMISTIC_LOCK_RETRIES):
             # Read the ETag before the instance so any change in between also forces a
@@ -564,7 +564,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                         "Empty PATCH result. Either everything is up to date or the column names are not in [%s]",
                         entity_label,
                     )
-                return patched_entity
+                return cast("T | None", patched_entity)
 
         logger.warning(
             "Column tag patch for [%s] abandoned after %d optimistic-lock retries: %s",
@@ -633,7 +633,8 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         if not column_descriptions:
             return None
 
-        suffix = self.get_suffix(Table)
+        table_label = table.fullyQualifiedName.root if table.fullyQualifiedName else Table.__name__
+        suffix = self.get_suffix(Table)  # pyright: ignore[reportAttributeAccessIssue]
         last_error: Optional[APIError] = None  # noqa: UP045
         for attempt in range(MAX_OPTIMISTIC_LOCK_RETRIES):
             if_match = self.client.get_etag(f"{suffix}/{model_str(table.id)}")
@@ -657,7 +658,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                     logger.info(
                         "Concurrent modification while patching column descriptions on [%s]; "
                         "refetching and retrying (attempt %d/%d)",
-                        table.fullyQualifiedName.root,
+                        table_label,
                         attempt + 1,
                         MAX_OPTIMISTIC_LOCK_RETRIES,
                     )
@@ -667,13 +668,13 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                 if patched_entity is None:
                     logger.debug(
                         f"Empty PATCH result. Either everything is up to date or "
-                        f"columns are not matching for [{table.fullyQualifiedName.root}]"
+                        f"columns are not matching for [{table_label}]"
                     )
-                return patched_entity
+                return cast("T | None", patched_entity)
 
         logger.warning(
             "Column description patch for [%s] abandoned after %d optimistic-lock retries: %s",
-            table.fullyQualifiedName.root,
+            table_label,
             MAX_OPTIMISTIC_LOCK_RETRIES,
             last_error,
         )
