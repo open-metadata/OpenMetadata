@@ -14,6 +14,7 @@ package org.openmetadata.it.search.shape;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.Iterator;
 import java.util.Locale;
 import java.util.UUID;
 import org.openmetadata.it.search.SearchClient;
@@ -42,6 +43,7 @@ public final class ShadowIndex {
   private static final String INDEX = "index";
   private static final String MAPPINGS = "mappings";
   private static final String ANALYSIS = "analysis";
+  private static final String MAPPING = "mapping";
   private static final String MAX_NGRAM_DIFF = "max_ngram_diff";
   private static final String NUMBER_OF_REPLICAS = "number_of_replicas";
 
@@ -80,7 +82,11 @@ public final class ShadowIndex {
     if (response.has(realIndex)) {
       inner = response.get(realIndex);
     } else {
-      inner = response.elements().next();
+      final Iterator<JsonNode> elements = response.elements();
+      if (!elements.hasNext()) {
+        throw new IllegalStateException("Empty mapping response for index " + realIndex);
+      }
+      inner = elements.next();
     }
     return inner;
   }
@@ -93,6 +99,12 @@ public final class ShadowIndex {
     indexSettings.put(NUMBER_OF_REPLICAS, 0);
     if (srcSettingsIndex.has(ANALYSIS)) {
       indexSettings.set(ANALYSIS, srcSettingsIndex.get(ANALYSIS));
+    }
+    // Carry over any index.mapping.* limit overrides (total_fields/nested_objects/depth) so the
+    // shadow index enforces exactly the real index's limits — otherwise an entity that raised a
+    // limit would falsely report REJECT_FIELDS against the default.
+    if (srcSettingsIndex.has(MAPPING)) {
+      indexSettings.set(MAPPING, srcSettingsIndex.get(MAPPING));
     }
     final ObjectNode settings = JsonUtils.getObjectNode();
     settings.set(INDEX, indexSettings);
