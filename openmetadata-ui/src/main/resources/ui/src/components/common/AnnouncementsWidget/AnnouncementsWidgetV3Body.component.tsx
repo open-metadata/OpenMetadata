@@ -11,25 +11,17 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Announcement02 } from '@untitledui/icons';
+import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
+import { Announcement02, ChevronLeft, ChevronRight } from '@untitledui/icons';
 import classNames from 'classnames';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AnnouncementEntity } from '../../../rest/announcementsAPI';
 import Loader from '../Loader/Loader';
 import AnnouncementItemV3 from './AnnouncementItemV3.component';
+import { AnnouncementsWidgetV3BodyProps } from './AnnouncementsWidgetV3Body.interface';
 
 const CARD_CLASSNAME =
   'tw:rounded-[10px] tw:border tw:border-gray-blue-100 tw:bg-linear-to-b tw:from-[#f2f8fb] tw:to-white tw:px-4 tw:py-3.5';
-
-interface AnnouncementsWidgetV3BodyProps {
-  announcements: AnnouncementEntity[];
-  onItemClick: (announcement: AnnouncementEntity) => void;
-  onViewAll?: () => void;
-  loading?: boolean;
-  testId?: string;
-  className?: string;
-}
 
 const AnnouncementsWidgetV3Body = ({
   announcements,
@@ -40,6 +32,7 @@ const AnnouncementsWidgetV3Body = ({
   className,
 }: AnnouncementsWidgetV3BodyProps) => {
   const { t } = useTranslation();
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   if (loading) {
     return (
@@ -55,6 +48,10 @@ const AnnouncementsWidgetV3Body = ({
     return null;
   }
 
+  const total = announcements.length;
+  const index = Math.min(currentIndex, total - 1);
+  const current = announcements[index];
+
   return (
     <div className={classNames(CARD_CLASSNAME, className)} data-testid={testId}>
       <div className="tw:mb-3 tw:flex tw:items-center tw:justify-between">
@@ -67,15 +64,37 @@ const AnnouncementsWidgetV3Body = ({
             weight="semibold">
             {t('label.announcement-plural')}
           </Typography>
-          <span className="tw:flex tw:items-center tw:rounded-md tw:border tw:border-gray-blue-200 tw:bg-gray-blue-50 tw:px-2 tw:py-0.5">
-            <Typography
-              as="span"
-              className="tw:text-gray-blue-700"
-              size="text-xs"
-              weight="medium">
-              {announcements.length}
-            </Typography>
-          </span>
+          {total > 1 && (
+            <div className="tw:flex tw:items-center tw:gap-px">
+              <ButtonUtility
+                className="tw:p-1 tw:pr-0"
+                color="tertiary"
+                data-testid="announcement-prev-btn"
+                icon={ChevronLeft}
+                isDisabled={index === 0}
+                size="xs"
+                tooltip={t('label.previous')}
+                onClick={() => setCurrentIndex(Math.max(0, index - 1))}
+              />
+              <Typography
+                as="span"
+                className="tw:text-text-primary"
+                size="text-xs"
+                weight="medium">
+                {`${index + 1}/${total}`}
+              </Typography>
+              <ButtonUtility
+                className="tw:p-1 tw:pl-0"
+                color="tertiary"
+                data-testid="announcement-next-btn"
+                icon={ChevronRight}
+                isDisabled={index === total - 1}
+                size="xs"
+                tooltip={t('label.next')}
+                onClick={() => setCurrentIndex(Math.min(total - 1, index + 1))}
+              />
+            </div>
+          )}
         </div>
 
         {onViewAll && (
@@ -88,15 +107,10 @@ const AnnouncementsWidgetV3Body = ({
         )}
       </div>
 
-      <div className="tw:flex tw:flex-col tw:gap-3">
-        {announcements.map((announcement) => (
-          <AnnouncementItemV3
-            announcement={announcement}
-            key={announcement.id}
-            onClick={() => onItemClick(announcement)}
-          />
-        ))}
-      </div>
+      <AnnouncementItemV3
+        announcement={current}
+        onClick={() => onItemClick(current)}
+      />
     </div>
   );
 };

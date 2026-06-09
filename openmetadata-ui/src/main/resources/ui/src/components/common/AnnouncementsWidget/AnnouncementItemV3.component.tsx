@@ -16,18 +16,13 @@ import { ArrowRight } from '@untitledui/icons';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
-import { AnnouncementEntity } from '../../../rest/announcementsAPI';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getUserPath } from '../../../utils/RouterUtils';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
-
-interface AnnouncementItemV3Props {
-  announcement: AnnouncementEntity;
-  onClick: () => void;
-}
+import { AnnouncementItemV3Props } from './AnnouncementItemV3.interface';
 
 const AnnouncementItemV3 = ({
   announcement,
@@ -63,7 +58,7 @@ const AnnouncementItemV3 = ({
       <div className="tw:flex tw:items-center tw:gap-[9px]">
         <span className="tw:h-[35px] tw:w-1 tw:shrink-0 tw:rounded-[1px] tw:bg-utility-blue-dark-500" />
 
-        <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1.5">
+        <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-[5px]">
           <Typography
             ellipsis
             as="span"

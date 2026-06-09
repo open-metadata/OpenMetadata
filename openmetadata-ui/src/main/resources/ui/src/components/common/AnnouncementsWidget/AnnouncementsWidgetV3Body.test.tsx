@@ -23,6 +23,24 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Typography: ({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   ),
+  ButtonUtility: ({
+    isDisabled,
+    onClick,
+    tooltip,
+    'data-testid': dataTestId,
+  }: {
+    isDisabled?: boolean;
+    onClick?: () => void;
+    tooltip?: string;
+    'data-testid'?: string;
+  }) => (
+    <button
+      aria-label={tooltip}
+      data-testid={dataTestId}
+      disabled={isDisabled}
+      onClick={onClick}
+    />
+  ),
 }));
 
 jest.mock('../Loader/Loader', () => ({
@@ -62,7 +80,7 @@ const mockAnnouncements: AnnouncementEntity[] = Array.from(
 );
 
 describe('AnnouncementsWidgetV3Body', () => {
-  it('renders the header label and total announcement count', () => {
+  it('renders the header label and the current/total counter', () => {
     render(
       <AnnouncementsWidgetV3Body
         announcements={mockAnnouncements}
@@ -71,10 +89,10 @@ describe('AnnouncementsWidgetV3Body', () => {
     );
 
     expect(screen.getByText('label.announcement-plural')).toBeInTheDocument();
-    expect(screen.getByText('3')).toBeInTheDocument();
+    expect(screen.getByText('1/3')).toBeInTheDocument();
   });
 
-  it('renders every active announcement as a row', () => {
+  it('renders only the current announcement, not the whole list', () => {
     render(
       <AnnouncementsWidgetV3Body
         announcements={mockAnnouncements}
@@ -82,10 +100,67 @@ describe('AnnouncementsWidgetV3Body', () => {
       />
     );
 
-    expect(screen.getAllByTestId('mock-announcement-item')).toHaveLength(3);
+    expect(screen.getAllByTestId('mock-announcement-item')).toHaveLength(1);
+    expect(screen.getByText('Announcement 0')).toBeInTheDocument();
   });
 
-  it('calls onItemClick with the clicked announcement', () => {
+  it('disables the previous chevron on the first announcement', () => {
+    render(
+      <AnnouncementsWidgetV3Body
+        announcements={mockAnnouncements}
+        onItemClick={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('announcement-prev-btn')).toBeDisabled();
+    expect(screen.getByTestId('announcement-next-btn')).not.toBeDisabled();
+  });
+
+  it('pages forward and backward through the announcements', () => {
+    render(
+      <AnnouncementsWidgetV3Body
+        announcements={mockAnnouncements}
+        onItemClick={jest.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('announcement-next-btn'));
+
+    expect(screen.getByText('Announcement 1')).toBeInTheDocument();
+    expect(screen.getByText('2/3')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('announcement-next-btn'));
+
+    expect(screen.getByText('Announcement 2')).toBeInTheDocument();
+    expect(screen.getByText('3/3')).toBeInTheDocument();
+    expect(screen.getByTestId('announcement-next-btn')).toBeDisabled();
+    expect(screen.getByTestId('announcement-prev-btn')).not.toBeDisabled();
+
+    fireEvent.click(screen.getByTestId('announcement-prev-btn'));
+
+    expect(screen.getByText('Announcement 1')).toBeInTheDocument();
+    expect(screen.getByText('2/3')).toBeInTheDocument();
+  });
+
+  it('hides the counter when there is only one announcement', () => {
+    render(
+      <AnnouncementsWidgetV3Body
+        announcements={mockAnnouncements.slice(0, 1)}
+        onItemClick={jest.fn()}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('announcement-prev-btn')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('announcement-next-btn')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('1/1')).not.toBeInTheDocument();
+    expect(screen.getByText('Announcement 0')).toBeInTheDocument();
+  });
+
+  it('calls onItemClick with the current announcement', () => {
     const onItemClick = jest.fn();
     render(
       <AnnouncementsWidgetV3Body
@@ -125,7 +200,7 @@ describe('AnnouncementsWidgetV3Body', () => {
     expect(screen.queryByTestId('view-all-btn')).not.toBeInTheDocument();
   });
 
-  it('renders only the loader while loading, suppressing the header and rows', () => {
+  it('renders only the loader while loading, suppressing the header and item', () => {
     render(
       <AnnouncementsWidgetV3Body
         loading
