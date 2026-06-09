@@ -382,21 +382,5 @@ CREATE TABLE IF NOT EXISTS `user_session` (
 -- filter entity_usage on (entityType, usageDate). The only existing index is
 -- UNIQUE (id, usageDate), which is unusable for that predicate, so every run full-scans
 -- the table once per subquery. A composite (entityType, usageDate) index turns the
--- percentile subqueries into range scans. MySQL has no `ADD KEY IF NOT EXISTS`, so guard
--- via information_schema.
-SET @ddl = (
-  SELECT IF(
-    EXISTS (
-      SELECT 1
-      FROM information_schema.statistics
-      WHERE table_schema = DATABASE()
-        AND table_name = 'entity_usage'
-        AND index_name = 'idx_entity_usage_entitytype_usagedate'
-    ),
-    'SELECT 1',
-    'ALTER TABLE entity_usage ADD KEY idx_entity_usage_entitytype_usagedate (entityType, usageDate)'
-  )
-);
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+-- percentile subqueries into range scans.
+CREATE INDEX idx_entity_usage_entitytype_usagedate ON entity_usage (entityType, usageDate);
