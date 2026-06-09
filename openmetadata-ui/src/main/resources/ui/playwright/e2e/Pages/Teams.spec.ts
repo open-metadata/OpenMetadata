@@ -434,9 +434,22 @@ test.describe('Teams Page', () => {
       .getByText(publicTeam.displayName)
       .click();
 
-    const updateUserResponse = page.waitForResponse('/api/v1/users/*');
+    const patchUserResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users/') &&
+        !response.url().includes('/api/v1/users/name/') &&
+        response.request().method() === 'PATCH' &&
+        response.status() === 200
+    );
+    const userResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users/name/') &&
+        response.request().method() === 'GET' &&
+        response.status() === 200
+    );
     await page.getByTestId('teams-edit-save-btn').click();
-    await updateUserResponse;
+    await patchUserResponse;
+    await userResponse;
 
     await expect(
       page.getByTestId('profile-teams-edit-popover')
