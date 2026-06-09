@@ -172,7 +172,9 @@ const CrumbLabel = ({
   const Icon = item.icon;
 
   return (
-    <span className={cx('tw:flex tw:items-center', sizes[size].gap)}>
+    <span
+      className={cx('tw:flex tw:items-center', sizes[size].gap)}
+      data-testid="breadcrumb-link">
       {Icon && <Icon className={cx('tw:shrink-0', sizes[size].icon)} />}
       {item.label}
     </span>
