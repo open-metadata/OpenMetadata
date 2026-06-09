@@ -36,13 +36,13 @@ const HeaderBreadcrumb: FC<HeaderBreadcrumbProps> = ({
   const { t } = useTranslation();
 
   const allItems: BreadcrumbItemType[] = useMemo(() => {
-    const numbered = items.map((item, index) => ({
+    const breadcrumbItems = items.map((item, index) => ({
       ...item,
       id: String(index),
     }));
 
     if (!showHome) {
-      return numbered;
+      return breadcrumbItems;
     }
 
     return [
@@ -53,7 +53,7 @@ const HeaderBreadcrumb: FC<HeaderBreadcrumbProps> = ({
         icon: HomeLine,
         href: ROUTES.HOME,
       },
-      ...numbered,
+      ...breadcrumbItems,
     ];
   }, [items, showHome, t]);
 
