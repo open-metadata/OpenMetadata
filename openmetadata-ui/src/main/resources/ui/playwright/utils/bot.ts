@@ -120,7 +120,9 @@ export const createBot = async (page: Page) => {
 
   await expect(page.getByTestId('revoke-button')).toContainText('Revoke token');
 
-  await expect(page.getByTestId('center-panel')).toContainText();
+  await expect(page.getByTestId('center-panel')).toContainText(
+    BOT_DETAILS.JWTToken
+  );
 
   await expect(page.getByTestId('token-expiry')).toBeVisible();
 
