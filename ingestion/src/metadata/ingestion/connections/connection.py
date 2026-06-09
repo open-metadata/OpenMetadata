@@ -72,9 +72,3 @@ class BaseConnection(ABC, Generic[S, C]):
         """
         Test the connection to the service.
         """
-
-    @abstractmethod
-    def get_connection_dict(self) -> dict:
-        """
-        Return the connection dictionary for this service.
-        """
