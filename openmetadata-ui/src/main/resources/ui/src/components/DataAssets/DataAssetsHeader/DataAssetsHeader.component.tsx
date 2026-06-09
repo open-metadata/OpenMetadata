@@ -95,7 +95,7 @@ import { getDarButtonTooltip } from '../../../utils/TasksUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Certification from '../../Certification/Certification.component';
-import AnnouncementsWidgetV2Body from '../../common/AnnouncementsWidget/AnnouncementsWidgetV2Body.component';
+import AnnouncementsWidgetV3Body from '../../common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -1112,12 +1112,12 @@ export const DataAssetsHeader = ({
       </div>
 
       {activeAnnouncements.length > 0 && (
-        <AnnouncementsWidgetV2Body
-          hideEntityName
+        <AnnouncementsWidgetV3Body
           announcements={activeAnnouncements}
           className="tw:mt-3"
           testId="entity-header-announcements"
           onItemClick={handleOpenAnnouncementDrawer}
+          onViewAll={handleOpenAnnouncementDrawer}
         />
       )}
 
