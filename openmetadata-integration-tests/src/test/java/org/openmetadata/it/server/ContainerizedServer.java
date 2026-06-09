@@ -224,8 +224,7 @@ public final class ContainerizedServer implements AutoCloseable {
   }
 
   private static OpensearchContainer<?> newOpenSearch(final Network network) {
-    return new OpensearchContainer<>(
-            SearchTestImages.openSearchWithAnalysisPlugins("opensearchproject/opensearch:3.4.0"))
+    return new OpensearchContainer<>("opensearchproject/opensearch:3.4.0")
         .withNetwork(network)
         .withNetworkAliases(SEARCH_ALIAS)
         .withEnv("discovery.type", "single-node")

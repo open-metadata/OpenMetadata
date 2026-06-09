@@ -20,11 +20,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
@@ -38,7 +41,10 @@ import org.openmetadata.service.search.SearchConsumerFields.ConsumerField;
  */
 class SearchConsumerFieldContractTest {
 
-  private static final List<String> LANGUAGES = List.of("en", "jp", "ru", "zh");
+  private static final List<String> LANGUAGES =
+      Arrays.stream(IndexMappingLanguage.values())
+          .map(language -> language.toString().toLowerCase(Locale.ROOT))
+          .toList();
   private static Map<String, JsonNode> allMappings;
 
   @BeforeAll

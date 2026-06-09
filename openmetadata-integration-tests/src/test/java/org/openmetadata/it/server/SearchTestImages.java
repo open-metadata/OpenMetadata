@@ -4,18 +4,20 @@ import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Builds the OpenSearch test image with the language-analysis plugins baked in, so the integration
- * tests can exercise every non-English mapping language: {@code analysis-kuromoji} for Japanese and
- * {@code analysis-ik} ({@code ik_max_word}/{@code ik_smart}) for Chinese.
+ * Builds the OpenSearch test image with the language-analysis plugins baked in, so the
+ * multi-language search IT can exercise every non-English mapping language: {@code analysis-kuromoji}
+ * for Japanese and {@code analysis-ik} ({@code ik_max_word}/{@code ik_smart}) for Chinese.
  *
- * <p>The plugins are installed unconditionally: a run that only uses the English mappings never
- * references them, while a run configured for {@code jp}/{@code zh} can create indexes whose text
- * fields use those analyzers. This is what lets the search IT suite catch per-language
- * mapping/analyzer drift — the jp mappings referencing undefined analyzers went unnoticed precisely
- * because CI only ever ran English on a vanilla image.
+ * <p>Only {@code SearchConsumerFieldBehaviorIT} uses this image — it is the one suite that creates
+ * {@code jp}/{@code zh} indexes whose text fields reference those analyzers, which is what lets it
+ * catch per-language mapping/analyzer drift (the jp mappings referencing undefined analyzers went
+ * unnoticed because CI only ever ran English on a vanilla image). The rest of the IT suite is pinned
+ * to the English mappings, so it stays on the vanilla base image with no plugin-download dependency.
  *
  * <p>{@code analysis-ik} is third-party and ships only as a version-matched release URL; the URL is
- * derived from the base image tag so it always matches the OpenSearch version being tested.
+ * derived from the base image tag so it always matches the OpenSearch version being tested. Because
+ * the image build downloads the plugin from {@code release.infinilabs.com}, scoping it to this single
+ * suite keeps that network dependency off the critical path of every other OpenSearch IT.
  */
 public final class SearchTestImages {
 
