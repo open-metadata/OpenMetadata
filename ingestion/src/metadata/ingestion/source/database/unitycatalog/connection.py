@@ -72,6 +72,7 @@ suppress_user_agent_entry_deprecation_log()
 
 INTERNAL_CATALOG = "__databricks_internal"
 VIEW_TABLE_TYPES = {TableType.VIEW, TableType.MATERIALIZED_VIEW}
+VIEW_LISTING_SCAN_LIMIT = 100
 
 
 def _require_resolved_catalog_and_schema(table_obj: DatabricksTable) -> tuple[str, str]:
@@ -136,10 +137,22 @@ def get_tables(connection: WorkspaceClient, table_obj: DatabricksTable) -> None:
 def get_views(connection: WorkspaceClient, table_obj: DatabricksTable) -> None:
     """
     Validate that views can be listed from the resolved catalog and schema.
+
+    Scan at most VIEW_LISTING_SCAN_LIMIT objects: the goal is to confirm the listing
+    call works and exposes view types, not to enumerate every object. A schema with no
+    views would otherwise force a full paginated scan that could trip the overall
+    test-connection timeout on large schemas.
     """
     catalog_name, schema_name = _require_resolved_catalog_and_schema(table_obj)
-    for table in connection.tables.list(catalog_name=catalog_name, schema_name=schema_name):
-        if table.table_type in VIEW_TABLE_TYPES:
+    listed_tables = connection.tables.list(
+        catalog_name=catalog_name,
+        schema_name=schema_name,
+        max_results=VIEW_LISTING_SCAN_LIMIT,
+        omit_columns=True,
+        omit_properties=True,
+    )
+    for scanned, table in enumerate(listed_tables, start=1):
+        if table.table_type in VIEW_TABLE_TYPES or scanned >= VIEW_LISTING_SCAN_LIMIT:
             break
 
 
