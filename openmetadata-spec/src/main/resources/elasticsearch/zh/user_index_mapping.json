@@ -41,6 +41,7 @@
     }
   },
   "mappings": {
+    "dynamic": false,
     "properties": {
       "changeDescription": {
         "enabled": false

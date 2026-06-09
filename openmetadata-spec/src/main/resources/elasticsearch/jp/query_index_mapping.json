@@ -51,6 +51,7 @@
     }
   },
   "mappings": {
+    "dynamic": false,
     "properties": {
       "deleted": {
         "type": "boolean"
