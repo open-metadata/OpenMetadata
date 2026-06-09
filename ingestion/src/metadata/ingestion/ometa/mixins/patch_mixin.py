@@ -45,7 +45,7 @@ from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.models import Entity
 from metadata.ingestion.models.patch_request import build_patch
 from metadata.ingestion.models.table_metadata import ColumnDescription, ColumnTag
-from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.client import REST, APIError
 from metadata.ingestion.ometa.mixins.patch_mixin_utils import (
     OMetaPatchMixinBase,
     PatchField,
@@ -63,6 +63,17 @@ logger = ometa_logger()
 T = TypeVar("T", bound=BaseModel)
 
 OWNER_TYPES: List[str] = ["user", "team"]  # noqa: UP006
+
+# Bounded retries for optimistic-concurrency (If-Match) column patches. On HTTP
+# 412 the entity changed under us, so we refetch and rebuild against fresh state
+# instead of silently overwriting a concurrent edit (the wrong-column-tag hazard
+# when columns are added/removed/reordered between read and write).
+MAX_OPTIMISTIC_LOCK_RETRIES = 3
+
+
+def _is_precondition_failed(exc: Exception) -> bool:
+    """True if `exc` is a 412 Precondition Failed raised by a stale If-Match."""
+    return isinstance(exc, APIError) and (getattr(exc, "status_code", None) == 412 or getattr(exc, "code", None) == 412)
 
 
 def _summarize_patch(patch: Any) -> str:
@@ -163,6 +174,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         array_entity_fields: Optional[List] = None,  # noqa: UP006, UP045
         override_metadata: Optional[bool] = False,  # noqa: UP045
         skip_on_failure: Optional[bool] = True,  # noqa: UP045
+        if_match: Optional[str] = None,  # noqa: UP045
     ) -> Optional[T]:  # noqa: UP045
         """
         Given an Entity type and Source entity and Destination entity,
@@ -183,6 +195,10 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             override_metadata: Whether to override existing metadata fields. Set to True
                 to force updates of protected fields across various entity types.
             skip_on_failure: Whether to skip the patch operation on failure (default: True)
+            if_match: Optional ETag for optimistic-concurrency control. When set, it is
+                sent as the ``If-Match`` header so the server rejects the write with HTTP
+                412 if the entity changed since the ETag was read, instead of silently
+                overwriting the concurrent edit.
 
         Returns
             Updated Entity
@@ -205,10 +221,15 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             res = self.client.patch(
                 path=f"{self.get_suffix(entity)}/{model_str(source.id)}",
                 data=str(patch),
+                headers={"If-Match": if_match} if if_match else None,
             )
             return entity(**res)
 
         except Exception as exc:
+            # A stale If-Match (HTTP 412) must always surface so optimistic-lock
+            # callers can refetch and retry — never swallow it via skip_on_failure.
+            if if_match and _is_precondition_failed(exc):
+                raise
             logger.debug(traceback.format_exc())
             patch_summary = _summarize_patch(patch)
             entity_name = get_log_name(source)
@@ -504,24 +525,54 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             return None
 
         entity_type = type(entity)
-        instance = self._fetch_entity_if_exists(entity=entity_type, entity_id=entity.id, fields=adapter.patch_fields)
-
-        if not instance:
-            return None
-
-        destination = self._prepare_destination_for_column_tags(entity, instance, column_tags, operation, adapter)
-
-        if destination is None:
-            return None
-
-        patched_entity = self.patch(entity=entity_type, source=entity, destination=destination)
-        if patched_entity is None:
-            logger.debug(
-                "Empty PATCH result. Either everything is up to date or the column names are not in [%s]",
-                entity.fullyQualifiedName.root if entity.fullyQualifiedName else type(entity).__name__,
+        entity_label = entity.fullyQualifiedName.root if entity.fullyQualifiedName else entity_type.__name__
+        suffix = self.get_suffix(entity_type)
+        last_error: Optional[APIError] = None  # noqa: UP045
+        for attempt in range(MAX_OPTIMISTIC_LOCK_RETRIES):
+            # Read the ETag before the instance so any change in between also forces a
+            # 412 retry rather than patching stale columns under a shifted array index.
+            if_match = self.client.get_etag(f"{suffix}/{model_str(entity.id)}")
+            instance = self._fetch_entity_if_exists(
+                entity=entity_type, entity_id=entity.id, fields=adapter.patch_fields
             )
+            if not instance:
+                return None
 
-        return patched_entity
+            destination = self._prepare_destination_for_column_tags(entity, instance, column_tags, operation, adapter)
+            if destination is None:
+                return None
+
+            try:
+                patched_entity = self.patch(
+                    entity=entity_type, source=entity, destination=destination, if_match=if_match
+                )
+            except APIError as exc:
+                if _is_precondition_failed(exc) and attempt < MAX_OPTIMISTIC_LOCK_RETRIES - 1:
+                    last_error = exc
+                    logger.info(
+                        "Concurrent modification while patching column tags on [%s]; "
+                        "refetching and retrying (attempt %d/%d)",
+                        entity_label,
+                        attempt + 1,
+                        MAX_OPTIMISTIC_LOCK_RETRIES,
+                    )
+                    continue
+                raise
+            else:
+                if patched_entity is None:
+                    logger.debug(
+                        "Empty PATCH result. Either everything is up to date or the column names are not in [%s]",
+                        entity_label,
+                    )
+                return patched_entity
+
+        logger.warning(
+            "Column tag patch for [%s] abandoned after %d optimistic-lock retries: %s",
+            entity_label,
+            MAX_OPTIMISTIC_LOCK_RETRIES,
+            last_error,
+        )
+        return None
 
     @deprecated(message="Use metadata.patch_column_tags instead", release="1.3.1")
     def patch_column_tag(
@@ -579,25 +630,54 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         Returns
             Updated Entity
         """
-        instance: Optional[Table] = self._fetch_entity_if_exists(entity=Table, entity_id=table.id)  # noqa: UP045
-
-        if not instance or not column_descriptions:
+        if not column_descriptions:
             return None
 
-        # Make sure we run the patch against the last updated data from the API
-        table.columns = instance.columns
-
-        destination = table.model_copy(deep=True)
-        update_column_description(destination.columns, column_descriptions, force)
-
-        patched_entity = self.patch(entity=Table, source=table, destination=destination)
-        if patched_entity is None:
-            logger.debug(
-                f"Empty PATCH result. Either everything is up to date or "
-                f"columns are not matching for [{table.fullyQualifiedName.root}]"
+        suffix = self.get_suffix(Table)
+        last_error: Optional[APIError] = None  # noqa: UP045
+        for attempt in range(MAX_OPTIMISTIC_LOCK_RETRIES):
+            if_match = self.client.get_etag(f"{suffix}/{model_str(table.id)}")
+            instance: Optional[Table] = self._fetch_entity_if_exists(  # noqa: UP045
+                entity=Table, entity_id=table.id
             )
+            if not instance:
+                return None
 
-        return patched_entity
+            # Make sure we run the patch against the last updated data from the API
+            table.columns = instance.columns
+
+            destination = table.model_copy(deep=True)
+            update_column_description(destination.columns, column_descriptions, force)
+
+            try:
+                patched_entity = self.patch(entity=Table, source=table, destination=destination, if_match=if_match)
+            except APIError as exc:
+                if _is_precondition_failed(exc) and attempt < MAX_OPTIMISTIC_LOCK_RETRIES - 1:
+                    last_error = exc
+                    logger.info(
+                        "Concurrent modification while patching column descriptions on [%s]; "
+                        "refetching and retrying (attempt %d/%d)",
+                        table.fullyQualifiedName.root,
+                        attempt + 1,
+                        MAX_OPTIMISTIC_LOCK_RETRIES,
+                    )
+                    continue
+                raise
+            else:
+                if patched_entity is None:
+                    logger.debug(
+                        f"Empty PATCH result. Either everything is up to date or "
+                        f"columns are not matching for [{table.fullyQualifiedName.root}]"
+                    )
+                return patched_entity
+
+        logger.warning(
+            "Column description patch for [%s] abandoned after %d optimistic-lock retries: %s",
+            table.fullyQualifiedName.root,
+            MAX_OPTIMISTIC_LOCK_RETRIES,
+            last_error,
+        )
+        return None
 
     def patch_automation_workflow_response(
         self,

@@ -185,6 +185,7 @@ class REST:
         headers: Optional[dict] = None,  # noqa: UP045
         timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
         retries: Optional[int] = None,  # noqa: UP045
+        return_response: bool = False,
     ):
         # pylint: disable=too-many-locals
         if path in self._limits_reached:
@@ -266,7 +267,7 @@ class REST:
         with http_cm, op_cm:
             while retry >= 0:
                 try:
-                    return self._one_request(method, url, opts, retry)
+                    return self._one_request(method, url, opts, retry, return_response=return_response)
                 except LimitsException as exc:
                     logger.error(f"Feature limit exceeded for {url}")
                     self._limits_reached.add(path)
@@ -286,12 +287,13 @@ class REST:
                         traceback.format_exc()
             return None
 
-    def _one_request(self, method: str, url: URL, opts: dict, retry: int):
+    def _one_request(self, method: str, url: URL, opts: dict, retry: int, return_response: bool = False):
         """
         Perform one request, possibly raising RetryException in the case
         the response is 429. Otherwise, if error text contain "code" string,
         then it decodes to json object and returns APIError.
-        Returns the body json in the 200 status.
+        Returns the body json in the 200 status, or the raw response when
+        ``return_response`` is set (used to read headers such as ETag).
         """
         retry_codes = self._retry_codes
         limit_codes = self._limit_codes
@@ -299,6 +301,9 @@ class REST:
         try:
             resp = self._session.request(method, url, **opts)
             resp.raise_for_status()
+
+            if return_response:
+                return resp
 
             if resp.text != "":
                 try:
@@ -451,23 +456,39 @@ class REST:
         """
         return self._request("PUT", path, data, json=json, headers=headers)
 
-    def patch(self, path, data=None):
+    def patch(self, path, data=None, headers=None):
         """
         PATCH method
 
         Parameters:
             path (str):
             data ():
+            headers (dict): Optional extra headers (e.g. ``If-Match`` for
+                optimistic-concurrency-safe writes) merged on top of the
+                JSON Patch content type.
 
         Returns:
             Response
         """
+        request_headers = {"Content-type": "application/json-patch+json"}
+        if headers:
+            request_headers.update(headers)
         return self._request(
             method="PATCH",
             path=path,
             data=data,
-            headers={"Content-type": "application/json-patch+json"},
+            headers=request_headers,
         )
+
+    def get_etag(self, path) -> Optional[str]:  # noqa: UP045
+        """Return the current ETag header for an entity GET.
+
+        Used to drive optimistic-concurrency (``If-Match``) writes so a
+        concurrent modification is rejected with HTTP 412 instead of silently
+        overwriting it. Returns ``None`` if the server emitted no ETag.
+        """
+        resp = self._request("GET", path, return_response=True)
+        return resp.headers.get("ETag") if resp is not None else None
 
     def delete(self, path, data=None, headers=None):
         """

@@ -439,6 +439,40 @@ class TestOMetaPatch:
         assert updated_again_col.tags[0].tagFQN.root == "PII.Sensitive"
         assert updated_again_col.tags[1].tagFQN.root == "Tier.Tier2"
 
+    def test_patch_column_tags_retries_on_concurrent_modification(self, metadata, patch_table):
+        """A concurrent modification between the SDK's read and its If-Match write must be
+        retried (refetch + reapply), not silently lost. This exercises the optimistic-
+        concurrency path on column-tag patching that guards a tag from landing on the wrong
+        column when columns are changed by another writer between read and write."""
+        column_fqn = patch_table.fullyQualifiedName.root + ".another"
+        table_path = f"/tables/{patch_table.id.root}"
+        original_patch = metadata.patch
+        state = {"injected": False}
+
+        def patch_with_concurrent_writer(*args, **kwargs):
+            # On the first attempt, another writer bumps the entity so the staged
+            # If-Match goes stale and the server returns 412, triggering a retry.
+            if not state["injected"]:
+                state["injected"] = True
+                metadata.client.patch(
+                    path=table_path,
+                    data='[{"op": "add", "path": "/description", "value": "concurrent writer"}]',
+                )
+            return original_patch(*args, **kwargs)
+
+        with mock.patch.object(metadata, "patch", side_effect=patch_with_concurrent_writer):
+            updated: Table = metadata.patch_column_tags(
+                entity=patch_table,
+                column_tags=[ColumnTag(column_fqn=column_fqn, tag_label=PII_TAG_LABEL)],
+            )
+
+        assert state["injected"], "the concurrent writer should have run"
+        assert updated is not None, "patch must converge after retrying the stale write"
+        updated_col = find_column_in_table(column_name="another", table=updated)
+        assert any(tag.tagFQN.root == "PII.Sensitive" for tag in (updated_col.tags or [])), (
+            "column tag must persist after the optimistic-lock retry"
+        )
+
     def test_patch_owner(
         self,
         metadata,
