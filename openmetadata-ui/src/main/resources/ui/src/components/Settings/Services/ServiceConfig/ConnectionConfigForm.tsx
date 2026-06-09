@@ -55,7 +55,6 @@ import AirflowMessageBanner from '../../../common/AirflowMessageBanner/AirflowMe
 import AuthSelectField from '../../../common/Form/JSONSchema/JSONSchemaFields/AuthSelectField/AuthSelectField';
 import BooleanFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
 import ConnectionObjectFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/ConnectionObjectFieldTemplate';
-import WorkflowArrayFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate';
 import FormBuilderV1 from '../../../common/FormBuilderV1/FormBuilderV1';
 import InlineAlert from '../../../common/InlineAlert/InlineAlert';
 import Loader from '../../../common/Loader/Loader';
@@ -155,7 +154,6 @@ const ConnectionConfigForm = ({
 
   const customFields: RegistryFieldsType = {
     BooleanField: BooleanFieldTemplate,
-    ArrayField: WorkflowArrayFieldTemplate,
     authSelect: AuthSelectField,
   };
 

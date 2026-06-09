@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { Breadcrumbs, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
@@ -20,7 +20,6 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
-import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import ServiceFlowStepper from '../../components/Settings/Services/AddService/ServiceFlowStepper/ServiceFlowStepper';
 import ServiceNameCard from '../../components/Settings/Services/AddService/ServiceNameCard/ServiceNameCard';
 import SelectServiceType from '../../components/Settings/Services/AddService/Steps/SelectServiceType';
@@ -51,7 +50,6 @@ import {
 } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-import './add-service-page.less';
 import { ServiceConfig } from './AddServicePage.interface';
 import { useServiceNameValidation } from './useServiceNameValidation';
 
@@ -99,7 +97,7 @@ const AddServicePage = () => {
       description: '',
       serviceType: '',
       connection: {
-        config: {} as ConfigData,
+        config: {},
       },
     });
   }, [resetNameValidation]);
@@ -114,18 +112,18 @@ const AddServicePage = () => {
       serviceConfig.serviceType
         ? [
             {
-              name: t('label.add-new-entity', {
+              label: t('label.add-new-entity', {
                 entity: t('label.service'),
               }),
-              url: connectionsRouterClassBase.getAddServicePath(
+              id: 'add-service',
+              href: connectionsRouterClassBase.getAddServicePath(
                 serviceCategory
               ),
-              onClick: handleConnectorChangeClick,
             },
             {
-              name: serviceConfig.serviceType,
-              url: '',
-              activeTitle: true,
+              label: serviceConfig.serviceType,
+              id: serviceConfig.serviceType,
+              href: '',
             },
           ]
         : slashedBreadcrumb,
@@ -154,7 +152,7 @@ const AddServicePage = () => {
       description: '',
       serviceType: type,
       connection: {
-        config: {} as ConfigData,
+        config: {},
       },
     });
     setActiveServiceStep(2);
@@ -199,7 +197,6 @@ const AddServicePage = () => {
 
     setServiceConfig((prev) => ({
       ...prev,
-      name: serviceName,
       ...data,
     }));
     setActiveServiceStep(3);
@@ -290,9 +287,13 @@ const AddServicePage = () => {
 
   const firstPanelChildren = (
     <>
-      <TitleBreadcrumb
-        className="service-flow-breadcrumb"
-        titleLinks={serviceBreadcrumb}
+      <Breadcrumbs
+        items={serviceBreadcrumb}
+        onAction={(id) => {
+          if (id === 'add-service') {
+            handleConnectorChangeClick();
+          }
+        }}
       />
       <div className="tw:mt-[22px]">
         <div data-testid="add-new-service-container">
