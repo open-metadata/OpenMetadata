@@ -57,6 +57,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.handlers.IncidentTcrsSyncHandler;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -1121,7 +1122,11 @@ public class TaskRepository extends EntityRepository<Task> {
    * does not exist.
    */
   public Task findCommittedTask(UUID taskId) {
-    return dao.findEntityById(taskId, Include.ALL);
+    try {
+      return dao.findEntityById(taskId, Include.ALL);
+    } catch (EntityNotFoundException e) {
+      return null;
+    }
   }
 
   public List<Task> listNonTerminalTasksByEntityAndCategory(

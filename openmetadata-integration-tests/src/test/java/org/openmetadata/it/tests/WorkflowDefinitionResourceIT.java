@@ -10422,7 +10422,6 @@ public class WorkflowDefinitionResourceIT {
     final DatabaseService dbService;
     final Database database;
     final DatabaseSchema schema;
-    final Domain financeDomain;
     final WorkflowDefinition workflow;
 
     SupersedeFixtures(
@@ -10430,13 +10429,11 @@ public class WorkflowDefinitionResourceIT {
         DatabaseService dbService,
         Database database,
         DatabaseSchema schema,
-        Domain financeDomain,
         WorkflowDefinition workflow) {
       this.owner = owner;
       this.dbService = dbService;
       this.database = database;
       this.schema = schema;
-      this.financeDomain = financeDomain;
       this.workflow = workflow;
     }
   }
@@ -10484,15 +10481,6 @@ public class WorkflowDefinitionResourceIT {
                     .withDatabase(database.getFullyQualifiedName())
                     .withOwners(List.of(owner.getEntityReference())));
 
-    Domain financeDomain =
-        client
-            .domains()
-            .create(
-                new CreateDomain()
-                    .withName(ns.prefix(label + "-Finance"))
-                    .withDescription("Finance domain for supersede testing")
-                    .withDomainType(CreateDomain.DomainType.CONSUMER_ALIGNED));
-
     String workflowName = "SupersedeApprovalWorkflow_" + label + "_" + suffix;
     CreateWorkflowDefinition workflowRequest =
         MAPPER.readValue(tagApprovalWorkflowJson(workflowName), CreateWorkflowDefinition.class);
@@ -10500,7 +10488,7 @@ public class WorkflowDefinitionResourceIT {
     trackWorkflow(workflowName, workflow.getId().toString());
     waitForWorkflowDeployment(client, workflowName);
 
-    return new SupersedeFixtures(owner, dbService, database, schema, financeDomain, workflow);
+    return new SupersedeFixtures(owner, dbService, database, schema, workflow);
   }
 
   private String tagApprovalWorkflowJson(String workflowName) {
@@ -10637,7 +10625,6 @@ public class WorkflowDefinitionResourceIT {
       client.databaseSchemas().delete(fx.schema.getId().toString());
       client.databases().delete(fx.database.getId().toString());
       client.databaseServices().delete(fx.dbService.getId().toString());
-      client.domains().delete(fx.financeDomain.getId().toString());
       client.users().delete(fx.owner.getId().toString());
     } catch (Exception e) {
       LOG.warn("Cleanup error: {}", e.getMessage());
