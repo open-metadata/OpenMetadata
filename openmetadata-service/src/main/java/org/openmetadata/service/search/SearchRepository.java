@@ -3254,7 +3254,18 @@ public class SearchRepository {
 
   public Response searchDataQualityLineage(
       String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException {
-    return searchClient.searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted);
+    return searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted, null);
+  }
+
+  public Response searchDataQualityLineage(
+      String fqn,
+      int upstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      SubjectContext subjectContext)
+      throws IOException {
+    return searchClient.searchDataQualityLineage(
+        fqn, upstreamDepth, queryFilter, deleted, subjectContext);
   }
 
   public Response searchSchemaEntityRelationship(

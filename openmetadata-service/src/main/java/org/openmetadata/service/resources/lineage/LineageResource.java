@@ -446,7 +446,8 @@ public class LineageResource {
       throws IOException {
 
     return Entity.getSearchRepository()
-        .searchDataQualityLineage(fqn, upstreamDepth + 1, queryFilter, deleted);
+        .searchDataQualityLineage(
+            fqn, upstreamDepth + 1, queryFilter, deleted, getSubjectContext(securityContext));
   }
 
   @GET

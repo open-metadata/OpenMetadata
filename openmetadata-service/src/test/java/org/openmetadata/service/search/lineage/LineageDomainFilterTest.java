@@ -21,8 +21,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -134,6 +136,44 @@ class LineageDomainFilterTest {
 
     assertTrue(result.getNodes().isEmpty(), "foreign root yields nothing reachable");
     assertTrue(result.getUpstreamEdges().isEmpty());
+  }
+
+  @Test
+  @DisplayName("pruneDataQualityLineage drops foreign nodes and edges touching them")
+  void testPruneDataQualityLineage() {
+    Set<Map<String, Object>> nodes =
+        new HashSet<>(List.of(dqNode("A", "D1"), dqNode("B", "D2"), dqNode("C")));
+    Set<EsLineageData> edges =
+        new HashSet<>(List.of(edge("e1", "A", "B").getValue(), edge("e2", "B", "C").getValue()));
+
+    LineageDomainFilter.pruneDataQualityLineage(nodes, edges, restricted);
+
+    Set<String> fqns = new HashSet<>();
+    nodes.forEach(n -> fqns.add(n.get("fullyQualifiedName").toString()));
+    assertTrue(fqns.contains("A"), "own-domain node kept");
+    assertTrue(fqns.contains("C"), "domainless node kept");
+    assertFalse(fqns.contains("B"), "foreign-domain node removed");
+    assertTrue(edges.isEmpty(), "edges touching the foreign node removed");
+  }
+
+  @Test
+  @DisplayName("pruneDataQualityLineage is a no-op for admins")
+  void testPruneDataQualityLineageNoOpForAdmin() {
+    SubjectContext admin = mock(SubjectContext.class);
+    when(admin.isAdmin()).thenReturn(true);
+    Set<Map<String, Object>> nodes = new HashSet<>(List.of(dqNode("A", "D1"), dqNode("B", "D2")));
+    Set<EsLineageData> edges = new HashSet<>(List.of(edge("e1", "A", "B").getValue()));
+
+    LineageDomainFilter.pruneDataQualityLineage(nodes, edges, admin);
+
+    assertEquals(2, nodes.size(), "admin sees all nodes");
+    assertEquals(1, edges.size());
+  }
+
+  private static Map<String, Object> dqNode(String fqn, String... domainFqns) {
+    Map<String, Object> entity = new HashMap<>(node(fqn, domainFqns).getValue().getEntity());
+    entity.put("fullyQualifiedName", fqn);
+    return entity;
   }
 
   private static SearchLineageResult lineage(

@@ -2689,7 +2689,7 @@ class SearchRepositoryBehaviorTest {
     when(searchClient.searchLineageByEntityCount(entityCountRequest)).thenReturn(lineageResult);
     when(searchClient.searchEntityRelationship("svc.db.orders", 1, 2, "{}", false))
         .thenReturn(response);
-    when(searchClient.searchDataQualityLineage("svc.db.orders", 1, "{}", false))
+    when(searchClient.searchDataQualityLineage("svc.db.orders", 1, "{}", false, null))
         .thenReturn(response);
     when(searchClient.searchSchemaEntityRelationship("svc.db.orders", 1, 2, "{}", false))
         .thenReturn(response);

@@ -80,9 +80,38 @@ public final class LineageDomainFilter {
     return visible;
   }
 
+  /**
+   * Visibility-only prune for the data-quality lineage response, which is assembled as a Set of node
+   * documents plus a Set of edges rather than a single rooted {@link SearchLineageResult}. Removes
+   * nodes outside the user's accessible domains and any edge touching a removed node, closing the
+   * same cross-domain leak as {@link #prune} for that endpoint.
+   */
+  public static void pruneDataQualityLineage(
+      Set<Map<String, Object>> nodes, Set<EsLineageData> edges, SubjectContext subjectContext) {
+    if (shouldApply(subjectContext) && !nullOrEmpty(nodes)) {
+      Set<String> visible = new HashSet<>();
+      for (Map<String, Object> node : nodes) {
+        Object fqn = node.get(FQN_FIELD);
+        if (fqn != null && subjectContext.hasDomains(domainsOf(node))) {
+          visible.add(fqn.toString());
+        }
+      }
+      nodes.removeIf(node -> !isNodeVisible(node, visible));
+      edges.removeIf(edge -> !edgeKept(edge, visible));
+    }
+  }
+
+  private static boolean isNodeVisible(Map<String, Object> node, Set<String> visible) {
+    Object fqn = node.get(FQN_FIELD);
+    return fqn != null && visible.contains(fqn.toString());
+  }
+
   private static List<EntityReference> nodeDomains(NodeInformation node) {
+    return domainsOf(node == null ? null : node.getEntity());
+  }
+
+  private static List<EntityReference> domainsOf(Map<String, Object> entity) {
     List<EntityReference> domainRefs = new ArrayList<>();
-    Map<String, Object> entity = node == null ? null : node.getEntity();
     Object domains = entity == null ? null : entity.get(DOMAINS_FIELD);
     if (domains instanceof List<?> domainList) {
       for (Object domain : domainList) {
