@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.security;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.JwtFilter.BOT_CLAIM;
 import static org.openmetadata.service.security.JwtFilter.EMAIL_CLAIM_KEY;
@@ -39,6 +40,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
@@ -307,6 +309,18 @@ public final class SecurityUtil {
 
     // No suitable display name found
     return null;
+  }
+
+  /**
+   * Builds the principal-claims mapping (logical name -> claim name) from the configured
+   * "name:claim" entries. Shared by {@link JwtFilter} and the SSO Test Login dry-run so both resolve
+   * identities with identical semantics.
+   */
+  public static Map<String, String> buildPrincipalClaimsMapping(
+      List<String> jwtPrincipalClaimsMapping) {
+    return listOrEmpty(jwtPrincipalClaimsMapping).stream()
+        .map(s -> s.split(":"))
+        .collect(Collectors.toMap(s -> s[0], s -> s[1]));
   }
 
   public static void validatePrincipalClaimsMapping(Map<String, String> mapping) {

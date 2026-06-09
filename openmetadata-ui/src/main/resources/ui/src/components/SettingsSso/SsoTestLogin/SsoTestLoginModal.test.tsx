@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import { Status } from '../../../generated/system/testLoginResult';
 import SsoTestLoginModal from './SsoTestLoginModal';
 
 jest.mock('react-i18next', () => ({
@@ -43,7 +44,7 @@ describe('SsoTestLoginModal', () => {
         open
         isTesting={false}
         result={{
-          status: 'success',
+          status: Status.Success,
           resolvedPrincipal: 'alice',
           resolvedEmail: 'alice@example.com',
           mappedRoles: ['DataConsumer'],
@@ -63,7 +64,7 @@ describe('SsoTestLoginModal', () => {
       <SsoTestLoginModal
         open
         isTesting={false}
-        result={{ status: 'failed', errors: ['domain rejected'] }}
+        result={{ status: Status.Failed, errors: ['domain rejected'] }}
         onClose={jest.fn()}
       />
     );

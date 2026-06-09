@@ -73,15 +73,15 @@ export const useSsoTestLogin = (): UseSsoTestLoginResult => {
       setResult(undefined);
       setError(undefined);
 
-      const authConfig = securityConfiguration.authenticationConfiguration;
-      const candidate = {
-        authority: authConfig.authority,
-        clientId: authConfig.clientId,
-        callbackUrl: authConfig.callbackUrl,
-        scope: DEFAULT_SCOPE,
-      } as AuthenticationConfigurationWithScope;
-
       try {
+        const authConfig = securityConfiguration.authenticationConfiguration;
+        const candidate = {
+          authority: authConfig.authority,
+          clientId: authConfig.clientId,
+          callbackUrl: authConfig.callbackUrl,
+          scope: DEFAULT_SCOPE,
+        } as AuthenticationConfigurationWithScope;
+
         let idToken: string | undefined;
         try {
           idToken = await acquireIdToken(candidate);

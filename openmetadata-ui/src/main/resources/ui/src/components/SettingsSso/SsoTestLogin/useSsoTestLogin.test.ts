@@ -13,6 +13,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { AxiosResponse } from 'axios';
 import { UserManager } from 'oidc-client';
+import { Status } from '../../../generated/system/testLoginResult';
 import {
   SecurityConfiguration,
   TestLoginResult,
@@ -74,7 +75,7 @@ describe('useSsoTestLogin', () => {
       signinPopup: jest.fn().mockResolvedValue({ id_token: 'id-token-123' }),
     }));
     mockTestLoginValidateToken.mockResolvedValue(
-      asResponse({ status: 'success', resolvedEmail: 'alice@example.com' })
+      asResponse({ status: Status.Success, resolvedEmail: 'alice@example.com' })
     );
 
     const { result } = renderHook(() => useSsoTestLogin());
@@ -88,7 +89,9 @@ describe('useSsoTestLogin', () => {
       idToken: 'id-token-123',
     });
 
-    await waitFor(() => expect(result.current.result?.status).toBe('success'));
+    await waitFor(() =>
+      expect(result.current.result?.status).toBe(Status.Success)
+    );
   });
 
   it('should never write the application token storage (session isolation)', async () => {
@@ -96,7 +99,7 @@ describe('useSsoTestLogin', () => {
       signinPopup: jest.fn().mockResolvedValue({ id_token: 'id-token-123' }),
     }));
     mockTestLoginValidateToken.mockResolvedValue(
-      asResponse({ status: 'success' })
+      asResponse({ status: Status.Success })
     );
 
     const { result } = renderHook(() => useSsoTestLogin());

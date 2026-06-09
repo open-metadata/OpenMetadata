@@ -17,6 +17,7 @@ import {
   AuthorizerConfiguration,
 } from '../constants/SSO.constant';
 import { FieldError } from '../generated/system/securityValidationResponse';
+import { TestLoginResult } from '../generated/system/testLoginResult';
 import APIClient from './index';
 
 export interface SecurityConfiguration {
@@ -29,23 +30,9 @@ export interface SecurityValidationResponse {
   errors?: FieldError[];
 }
 
-export interface TestLoginDomainCheck {
-  enforced?: boolean;
-  principalDomain?: string;
-  resolvedDomain?: string;
-  passed?: boolean;
-}
-
-export interface TestLoginResult {
-  status: 'success' | 'failed';
-  stage?: string;
-  resolvedPrincipal?: string;
-  resolvedEmail?: string;
-  mappedRoles?: string[];
-  mappedTeams?: string[];
-  domainCheck?: TestLoginDomainCheck;
-  errors?: string[];
-}
+// Re-export the generated TestLoginResult so the schema stays the single source
+// of truth (the backend produces it from the same JSON schema).
+export type { TestLoginResult };
 
 export interface TestLoginTokenRequest {
   securityConfiguration: SecurityConfiguration;

@@ -28,9 +28,10 @@ if (!container) {
 // NEVER mount the app, so the test can't touch the admin's real session. A real
 // login on the same callback URL is not diverted (see isSsoTestLoginPopup).
 if (isSsoTestLoginPopup()) {
-  import('./components/SettingsSso/SsoTestLogin/ssoTestCallbackBootstrap').then(
-    (module) => module.runSsoTestCallback()
-  );
+  import('./components/SettingsSso/SsoTestLogin/ssoTestCallbackBootstrap')
+    .then((module) => module.runSsoTestCallback())
+    // If the chunk fails to load, close the popup so the opener doesn't hang.
+    .catch(() => globalThis.close());
 } else {
   const root = createRoot(container);
 

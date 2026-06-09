@@ -14,6 +14,7 @@ import { Modal, Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Status } from '../../../generated/system/testLoginResult';
 import InlineAlert from '../../common/InlineAlert/InlineAlert';
 import Loader from '../../common/Loader/Loader';
 import { SsoTestLoginModalProps } from './SsoTestLogin.interface';
@@ -94,7 +95,7 @@ const SsoTestLoginModal = ({
         />
       );
     } else if (result) {
-      const isSuccess = result.status === 'success';
+      const isSuccess = result.status === Status.Success;
       const description = isSuccess
         ? t('message.sso-test-login-success', {
             email: result.resolvedEmail ?? '',

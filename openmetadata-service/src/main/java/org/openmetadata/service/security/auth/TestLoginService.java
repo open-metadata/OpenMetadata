@@ -19,7 +19,6 @@ import static org.openmetadata.service.security.jwt.JWTTokenGenerator.ROLES_CLAI
 import com.auth0.jwt.interfaces.Claim;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
@@ -82,7 +81,8 @@ public final class TestLoginService {
       AuthenticationConfiguration authConfig,
       AuthorizerConfiguration authzConfig,
       Map<String, Claim> claims) {
-    Map<String, String> mapping = buildClaimsMapping(authConfig.getJwtPrincipalClaimsMapping());
+    Map<String, String> mapping =
+        SecurityUtil.buildPrincipalClaimsMapping(authConfig.getJwtPrincipalClaimsMapping());
     List<String> order = listOrEmpty(authConfig.getJwtPrincipalClaims());
     TestLoginResult result;
     try {
@@ -165,13 +165,6 @@ public final class TestLoginService {
       }
     }
     return roles;
-  }
-
-  private static Map<String, String> buildClaimsMapping(List<String> rawMapping) {
-    return listOrEmpty(rawMapping).stream()
-        .map(s -> s.split(":"))
-        .filter(parts -> parts.length == 2)
-        .collect(Collectors.toMap(parts -> parts[0], parts -> parts[1]));
   }
 
   private static String domainOf(String email) {
