@@ -1699,7 +1699,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @GET
   @Path("/export")
-  @Produces(MediaType.TEXT_PLAIN)
+  @Produces({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "exportUsers",
@@ -1710,7 +1710,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
             description = "Exported csv with user information",
             content =
                 @Content(
-                    mediaType = "application/json",
+                    mediaType = "text/plain; charset=UTF-8",
                     schema = @Schema(implementation = String.class)))
       })
   public String exportUsersCsv(
@@ -1727,11 +1727,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @PUT
   @Path("/import")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
-      operationId = "importTeams",
-      summary = "Import from CSV to create, and update teams.",
+      operationId = "importUsers",
+      summary = "Import from CSV to create, and update users.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1764,11 +1764,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @PUT
   @Path("/importAsync")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
-      operationId = "importTeamsAsync",
-      summary = "Import from CSV to create, and update teams asynchronously.",
+      operationId = "importUsersAsync",
+      summary = "Import from CSV to create, and update users asynchronously.",
       responses = {
         @ApiResponse(
             responseCode = "200",

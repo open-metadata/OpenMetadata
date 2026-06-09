@@ -307,7 +307,7 @@ export const importDatabaseInCSVFormat = async (
   dryRun = true
 ) => {
   const configOptions = {
-    headers: { 'Content-type': 'text/plain' },
+    headers: { 'Content-type': 'text/plain; charset=UTF-8' },
   };
   const res = await APIClient.put(
     `/databases/name/${getEncodedFqn(name)}/import?dryRun=${dryRun}`,
@@ -340,7 +340,7 @@ export const importDatabaseSchemaInCSVFormat = async (
   dryRun = true
 ) => {
   const configOptions = {
-    headers: { 'Content-type': 'text/plain' },
+    headers: { 'Content-type': 'text/plain; charset=UTF-8' },
   };
   const res = await APIClient.put(
     `/databaseSchemas/name/${getEncodedFqn(name)}/import?dryRun=${dryRun}`,

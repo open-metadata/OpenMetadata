@@ -29,6 +29,10 @@ jest.mock('../ToastUtils', () => ({
 }));
 
 describe('ExportUtils', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   describe('downloadFile', () => {
     const mockLink = {
       href: '',
@@ -36,6 +40,9 @@ describe('ExportUtils', () => {
       style: { visibility: '' },
       click: jest.fn(),
     };
+    const originalBlob = global.Blob;
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    const originalRevokeObjectURL = global.URL.revokeObjectURL;
     let mockCreateObjectURL: jest.Mock;
     let mockRevokeObjectURL: jest.Mock;
 
@@ -57,7 +64,9 @@ describe('ExportUtils', () => {
     });
 
     afterEach(() => {
-      jest.restoreAllMocks();
+      global.Blob = originalBlob;
+      global.URL.createObjectURL = originalCreateObjectURL;
+      global.URL.revokeObjectURL = originalRevokeObjectURL;
     });
 
     it('creates an anchor element and triggers a click', () => {
@@ -92,15 +101,39 @@ describe('ExportUtils', () => {
       expect(mockRevokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
     });
 
-    it('uses the provided mimeType when creating the Blob', () => {
+    it('normalizes CSV mimeType and prepends BOM when creating the Blob', () => {
       const mockBlob = {};
       const MockBlob = jest.fn().mockReturnValue(mockBlob);
       global.Blob = MockBlob as unknown as typeof Blob;
 
       downloadFile('content', 'file.csv', 'text/csv;charset=utf-8;');
 
+      expect(MockBlob).toHaveBeenCalledWith(['\uFEFFcontent'], {
+        type: 'text/csv; charset=utf-8',
+      });
+    });
+
+    it('does not prepend a duplicate BOM when content already has one', () => {
+      const mockBlob = {};
+      const MockBlob = jest.fn().mockReturnValue(mockBlob);
+      global.Blob = MockBlob as unknown as typeof Blob;
+
+      downloadFile('\uFEFFcontent', 'file.csv', 'text/csv;charset=utf-8;');
+
+      expect(MockBlob).toHaveBeenCalledWith(['\uFEFFcontent'], {
+        type: 'text/csv; charset=utf-8',
+      });
+    });
+
+    it('does not prepend BOM for non-csv files', () => {
+      const mockBlob = {};
+      const MockBlob = jest.fn().mockReturnValue(mockBlob);
+      global.Blob = MockBlob as unknown as typeof Blob;
+
+      downloadFile('content', 'file.txt');
+
       expect(MockBlob).toHaveBeenCalledWith(['content'], {
-        type: 'text/csv;charset=utf-8;',
+        type: 'text/plain',
       });
     });
   });
@@ -119,10 +152,6 @@ describe('ExportUtils', () => {
           setAttribute: mockSetAttribute,
           click: mockClick,
         } as unknown as HTMLAnchorElement);
-    });
-
-    afterEach(() => {
-      mockCreateElement.mockRestore();
     });
 
     it('should create and trigger download with correct attributes', () => {

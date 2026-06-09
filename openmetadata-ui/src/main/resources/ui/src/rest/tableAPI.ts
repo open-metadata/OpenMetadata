@@ -265,7 +265,7 @@ export const importTableInCSVFormat = async (
   dryRun = true
 ) => {
   const configOptions = {
-    headers: { 'Content-type': 'text/plain' },
+    headers: { 'Content-type': 'text/plain; charset=UTF-8' },
   };
   const res = await APIClient.put(
     `/tables/name/${getEncodedFqn(name)}/import?dryRun=${dryRun}`,

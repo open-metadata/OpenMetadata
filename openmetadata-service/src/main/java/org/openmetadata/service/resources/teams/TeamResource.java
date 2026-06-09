@@ -719,15 +719,15 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
 
   @GET
   @Path("/name/{name}/exportAsync")
-  @Produces(MediaType.TEXT_PLAIN)
+  @Produces(MediaType.APPLICATION_JSON)
   @Valid
   @Operation(
       operationId = "exportTeams",
       summary = "Export teams in CSV format",
       responses = {
         @ApiResponse(
-            responseCode = "200",
-            description = "Exported csv with teams information",
+            responseCode = "202",
+            description = "Export initiated successfully",
             content =
                 @Content(
                     mediaType = "application/json",
@@ -740,7 +740,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
 
   @GET
   @Path("/name/{name}/export")
-  @Produces(MediaType.TEXT_PLAIN)
+  @Produces({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "exportTeams",
@@ -751,7 +751,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
             description = "Exported csv with teams information",
             content =
                 @Content(
-                    mediaType = "application/json",
+                    mediaType = "text/plain; charset=UTF-8",
                     schema = @Schema(implementation = String.class)))
       })
   public String exportCsv(@Context SecurityContext securityContext, @PathParam("name") String name)
@@ -761,7 +761,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
 
   @PUT
   @Path("/name/{name}/import")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "importTeams",
@@ -854,7 +854,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
 
   @PUT
   @Path("/name/{name}/importAsync")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Produces(MediaType.APPLICATION_JSON)
   @Valid
   @Operation(

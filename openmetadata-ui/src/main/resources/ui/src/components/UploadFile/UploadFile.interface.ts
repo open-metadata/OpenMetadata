@@ -21,5 +21,5 @@ export interface UploadFileProps {
     file: RcFile,
     FileList: RcFile[]
   ) => BeforeUploadValueType | Promise<BeforeUploadValueType>;
-  onCSVUploaded: (event: ProgressEvent<FileReader>) => void;
+  onCSVUploaded: (event: ProgressEvent<FileReader>) => void | Promise<void>;
 }

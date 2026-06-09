@@ -53,6 +53,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.CsvImportProgressCallback;
+import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
@@ -930,11 +931,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                             jobId, securityContext, exported, total, message);
 
                 String csvData =
-                    repository.exportToCsv(
-                        name,
-                        securityContext.getUserPrincipal().getName(),
-                        recursive,
-                        progressCallback);
+                    CsvUtil.withUtf8Bom(
+                        repository.exportToCsv(
+                            name,
+                            securityContext.getUserPrincipal().getName(),
+                            recursive,
+                            progressCallback));
                 WebsocketNotificationHandler.sendCsvExportCompleteNotification(
                     jobId, securityContext, csvData);
               } catch (Exception e) {
@@ -1117,7 +1119,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return repository.exportToCsv(name, securityContext.getUserPrincipal().getName(), recursive);
+    return CsvUtil.withUtf8Bom(
+        repository.exportToCsv(name, securityContext.getUserPrincipal().getName(), recursive));
   }
 
   protected CsvImportResult importCsvInternal(
@@ -1157,18 +1160,19 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    String normalizedCsv = CsvUtil.stripUtf8Bom(csv);
     CsvImportResult result =
         nullOrEmpty(versioningEntityType)
             ? repository.importFromCsv(
                 name,
-                csv,
+                normalizedCsv,
                 dryRun,
                 securityContext.getUserPrincipal().getName(),
                 recursive,
                 progressCallback)
             : repository.importFromCsv(
                 name,
-                csv,
+                normalizedCsv,
                 dryRun,
                 securityContext.getUserPrincipal().getName(),
                 recursive,

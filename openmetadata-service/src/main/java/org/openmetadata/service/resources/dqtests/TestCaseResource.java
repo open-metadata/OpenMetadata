@@ -1252,7 +1252,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
 
   @GET
   @Path("/name/{name}/export")
-  @Produces(MediaType.TEXT_PLAIN)
+  @Produces({"text/csv; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "exportTestCases",
@@ -1267,7 +1267,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             responseCode = "200",
             description = "Exported CSV with test cases",
             content =
-                @Content(mediaType = "text/plain", schema = @Schema(implementation = String.class)))
+                @Content(
+                    mediaType = "text/csv; charset=UTF-8",
+                    schema = @Schema(implementation = String.class)))
       })
   public String exportCsv(
       @Context SecurityContext securityContext,
@@ -1315,7 +1317,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
 
   @PUT
   @Path("/name/{name}/import")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Produces(MediaType.APPLICATION_JSON)
   @Valid
   @Operation(
@@ -1360,7 +1362,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
 
   @PUT
   @Path("/name/{name}/importAsync")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Produces(MediaType.APPLICATION_JSON)
   @Valid
   @Operation(
