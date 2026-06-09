@@ -956,6 +956,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   protected void postDelete(TestCase testCase, boolean hardDelete) {
     super.postDelete(testCase, hardDelete);
     updateTestSuite(testCase);
+    if (hardDelete) {
+      // Delete test case results and resolution statuses
+      Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESULT)
+          .delete(testCase.getFullyQualifiedName());
+      Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS)
+          .delete(testCase.getFullyQualifiedName());
+    }
   }
 
   @Override
