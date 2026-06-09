@@ -400,6 +400,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["spacy"],
         VERSIONS["presidio-analyzer"],
     },
+    "sap-bw4hana": {"hdbcli"},
     "sap-hana": {"hdbcli", "sqlalchemy-hana"},
     "sas": {},
     "singlestore": {VERSIONS["pymysql"]},

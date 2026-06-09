@@ -1,0 +1,94 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/sapBw4HanaConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SapBw4HanaConnection",
+  "description": "SAP BW/4HANA Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.SapBw4HanaConnection",
+  "definitions": {
+    "sapBw4HanaType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["SapBw4Hana"],
+      "default": "SapBw4Hana"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/sapBw4HanaType",
+      "default": "SapBw4Hana"
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host and Port",
+      "description": "Host and port of the SAP HANA instance underlying BW/4HANA, e.g. hana-host:30015.",
+      "type": "string"
+    },
+    "username": {
+      "title": "Username",
+      "description": "HANA database username with access to BW metadata tables.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password for the HANA database user.",
+      "type": "string",
+      "format": "password"
+    },
+    "abapSchema": {
+      "title": "ABAP Schema",
+      "description": "Schema name in HANA where BW/4HANA ABAP metadata tables reside (e.g. SAPABAP1).",
+      "type": "string",
+      "default": "SAPABAP1"
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Optional display name for the database in OpenMetadata. Defaults to the systemId if not provided.",
+      "type": "string"
+    },
+    "paginationLimit": {
+      "title": "Pagination Limit",
+      "description": "Number of rows fetched per page when querying BW metadata tables.",
+      "type": "integer",
+      "default": 100
+    },
+    "verifySSL": {
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
+      "default": "no-ssl"
+    },
+    "sslConfig": {
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude InfoAreas that match the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude InfoProviders (ADSOs, CompositeProviders) that match the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that match the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort", "username", "password"]
+}
