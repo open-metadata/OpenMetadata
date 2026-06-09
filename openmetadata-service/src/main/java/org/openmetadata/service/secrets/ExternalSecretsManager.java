@@ -15,6 +15,7 @@ package org.openmetadata.service.secrets;
 
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
@@ -90,7 +91,8 @@ public abstract class ExternalSecretsManager extends SecretsManager {
   private static String optionalParameter(SecretsConfig secretsConfig, String key) {
     String value = null;
     if (secretsConfig != null && secretsConfig.parameters() != null) {
-      Object raw = secretsConfig.parameters().getAdditionalProperties().get(key);
+      Map<String, Object> properties = secretsConfig.parameters().getAdditionalProperties();
+      Object raw = properties != null ? properties.get(key) : null;
       if (raw != null) {
         value = raw.toString();
       }

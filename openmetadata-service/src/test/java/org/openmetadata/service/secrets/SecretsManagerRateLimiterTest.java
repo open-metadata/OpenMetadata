@@ -68,6 +68,8 @@ class SecretsManagerRateLimiterTest {
 
     assertTrue(
         elapsedMillis >= 250,
-        "Three acquires at 5/sec should be paced to at least ~400ms, took " + elapsedMillis + "ms");
+        "Three acquires at 5/sec should be paced to at least 250ms (~400ms in theory), took "
+            + elapsedMillis
+            + "ms");
   }
 }
