@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Locator } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { EntityStatus } from '../../../src/generated/entity/data/searchIndex';
 import { COMMON_TIER_TAG } from '../../constant/common';
 import { DOMAIN_TAGS } from '../../constant/config';

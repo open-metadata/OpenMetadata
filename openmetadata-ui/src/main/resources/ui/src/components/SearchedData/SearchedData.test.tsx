@@ -19,9 +19,9 @@ import {
   queryByTestId,
   render,
 } from '@testing-library/react';
-import { MAX_RESULT_HITS } from '../../constants/explore.constants';
 import { PropsWithChildren } from 'react';
 import { MemoryRouter } from 'react-router';
+import { MAX_RESULT_HITS } from '../../constants/explore.constants';
 import { TAG_CONSTANT } from '../../constants/Tag.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import SearchedData from './SearchedData';
@@ -242,11 +242,7 @@ describe('Test SearchedData Component', () => {
 
   it('Should not show result count when showResultCount is false', () => {
     const { container } = render(
-      <SearchedData
-        {...MOCK_PROPS}
-        isFilterSelected
-        showResultCount={false}
-      />,
+      <SearchedData {...MOCK_PROPS} isFilterSelected showResultCount={false} />,
       { wrapper: TestWrapper }
     );
 

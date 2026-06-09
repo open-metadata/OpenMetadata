@@ -18,6 +18,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import { SearchIndex } from '../../enums/search.enum';
 import {
   exportSearchResultsCsvStream,
@@ -31,7 +32,6 @@ import { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
 import ExploreTree from '../Explore/ExploreTree/ExploreTree';
 import SearchedData from '../SearchedData/SearchedData';
 import ExploreV1 from './ExploreV1.component';
-import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 
 jest.mock('@openmetadata/ui-core-components', () => {
   const Button = ({
@@ -576,7 +576,9 @@ describe('ExploreV1', () => {
 
     const lastCall = (SearchedData as jest.Mock).mock.calls.at(-1)?.[0];
 
-    expect(lastCall).toEqual(expect.objectContaining({ showResultCount: true }));
+    expect(lastCall).toEqual(
+      expect.objectContaining({ showResultCount: true })
+    );
   });
 
   it('passes showResultCount=false to SearchedData when no filters are active', () => {
@@ -587,10 +589,9 @@ describe('ExploreV1', () => {
       onResetAllFilters: jest.fn(),
     });
 
-    render(
-      <ExploreV1 {...props} quickFilters={undefined} />,
-      { wrapper: Wrapper }
-    );
+    render(<ExploreV1 {...props} quickFilters={undefined} />, {
+      wrapper: Wrapper,
+    });
 
     const lastCall = (SearchedData as jest.Mock).mock.calls.at(-1)?.[0];
 
@@ -603,17 +604,20 @@ describe('ExploreV1', () => {
     (useAdvanceSearch as jest.Mock).mockImplementation(() => ({
       toggleModal: jest.fn(),
       sqlQuery: '',
-      queryFilter: { query: { bool: { must: [{ term: { 'owner.name': 'alice' } }] } } },
+      queryFilter: {
+        query: { bool: { must: [{ term: { 'owner.name': 'alice' } }] } },
+      },
       onResetAllFilters: jest.fn(),
     }));
 
-    render(
-      <ExploreV1 {...props} quickFilters={undefined} />,
-      { wrapper: Wrapper }
-    );
+    render(<ExploreV1 {...props} quickFilters={undefined} />, {
+      wrapper: Wrapper,
+    });
 
     const lastCall = (SearchedData as jest.Mock).mock.calls.at(-1)?.[0];
 
-    expect(lastCall).toEqual(expect.objectContaining({ showResultCount: true }));
+    expect(lastCall).toEqual(
+      expect.objectContaining({ showResultCount: true })
+    );
   });
 });

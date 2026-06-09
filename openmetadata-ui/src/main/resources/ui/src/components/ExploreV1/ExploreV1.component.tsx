@@ -646,25 +646,14 @@ const ExploreV1: React.FC<ExploreProps> = ({
             <Box className="tw:h-full" colGap={3}>
               <Card className="h-full tw:flex-1 explore-main-card">
                 {!loading && !isElasticSearchIssue ? (
-                  // <SearchedData
-                  //   isFilterSelected
-                  //   showResultCount={hasActiveFilters}
-                  //   data={searchResults?.hits.hits ?? []}
-                  //   filter={parsedSearch}
-                  //   handleSummaryPanelDisplay={handleSummaryPanelDisplay}
-                  //   isSummaryPanelVisible={showSummaryPanel}
-                  //   selectedEntityId={entityDetails?.id || ''}
-                  //   totalValue={searchResults?.hits.total.value ?? 0}
-                  //   onPaginationChange={onChangePage}
-                  // />
                   <SearchedData
-                    isFilterSelected={hasActiveFilters}
-                    showResultCount={hasActiveFilters}
                     data={searchResults?.hits.hits ?? []}
                     filter={parsedSearch}
                     handleSummaryPanelDisplay={handleSummaryPanelDisplay}
+                    isFilterSelected={hasActiveFilters}
                     isSummaryPanelVisible={showSummaryPanel}
                     selectedEntityId={entityDetails?.id || ''}
+                    showResultCount={hasActiveFilters}
                     totalValue={searchResults?.hits.total.value ?? 0}
                     onPaginationChange={onChangePage}
                   />
