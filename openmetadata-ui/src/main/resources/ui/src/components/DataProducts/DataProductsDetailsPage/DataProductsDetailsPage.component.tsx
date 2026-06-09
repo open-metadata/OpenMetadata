@@ -91,7 +91,6 @@ import {
   getEntityFeedLink,
   getEntityName,
   getEntityVoteStatus,
-  hasEditAccess,
 } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { downloadFile } from '../../../utils/Export/ExportUtils';
@@ -384,15 +383,6 @@ const DataProductsDetailsPage = ({
     [dataProduct.votes, currentUser?.id]
   );
 
-  const isOwner = useMemo(
-    () =>
-      Boolean(
-        currentUser &&
-          dataProduct.owners?.length &&
-          hasEditAccess(dataProduct.owners, currentUser)
-      ),
-    [dataProduct.owners, currentUser]
-  );
 
   const handleVoteChange = useCallback(
     async (data: VotingDataProps) => {
@@ -895,8 +885,7 @@ const DataProductsDetailsPage = ({
           <div>
             <div className="tw:flex tw:gap-3 tw:justify-end tw:items-center tw:pb-1">
               {!isVersionsView &&
-                !isOwner &&
-                (canCreateTask || currentUser?.isAdmin) &&
+                canCreateTask &&
                 dataProductClassBase.getShowRequestDataAccess() && (
                   <CoreTooltip
                     isDisabled={!isDarDisabled}

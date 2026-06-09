@@ -78,7 +78,6 @@ import {
   getEntityFeedLink,
   getEntityName,
   getEntityVoteStatus,
-  hasEditAccess,
 } from '../../../utils/EntityUtils';
 import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
@@ -594,24 +593,12 @@ export const DataAssetsHeader = ({
     permissions.Trigger,
   ]);
 
-  const isOwner = useMemo(
-    () =>
-      Boolean(
-        currentUser &&
-          dataAsset.owners?.length &&
-          hasEditAccess(dataAsset.owners, currentUser)
-      ),
-    [dataAsset.owners, currentUser]
-  );
-
   const requestDataAccessButton = useMemo(() => {
     if (
       !tableClassBase.getShowRequestDataAccess() ||
-      SERVICE_TYPES.includes(entityType) ||
       entityType !== EntityType.TABLE ||
       deleted ||
-      isOwner ||
-      (!canCreateTask && !currentUser?.isAdmin)
+      !canCreateTask
     ) {
       return null;
     }
@@ -637,7 +624,6 @@ export const DataAssetsHeader = ({
   }, [
     entityType,
     deleted,
-    isOwner,
     isDarDisabled,
     isDarAwaitingGrant,
     isDarGranted,
