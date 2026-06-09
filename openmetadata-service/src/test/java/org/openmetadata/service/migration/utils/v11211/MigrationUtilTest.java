@@ -33,6 +33,9 @@ class MigrationUtilTest {
   private static final String CORRUPT_TASK_FQN = "svc.pipeA.a\\\"b";
   private static final String REPAIRED_TASK_FQN = "svc.pipeA.\"a\"\"b\"";
 
+  // Mirrors MigrationUtil.PAGE_SIZE (private); the repair loop pages the table in chunks of this.
+  private static final int PAGE_SIZE = 1000;
+
   private CollectionDAO collectionDAO;
   private CollectionDAO.PipelineDAO pipelineDAO;
 
@@ -120,6 +123,25 @@ class MigrationUtilTest {
     assertDoesNotThrow(() -> MigrationUtil.repairPipelineTaskFqns(collectionDAO));
 
     verify(pipelineDAO, never()).update(any());
+  }
+
+  @Test
+  void scansEveryPageAdvancingOffsetUntilAnEmptyPage() {
+    String firstPage = pipelineJson("svc.pipeA", task(CORRUPT_TASK_NAME, CORRUPT_TASK_FQN));
+    String secondPage = pipelineJson("svc.pipeZ", task(CORRUPT_TASK_NAME, CORRUPT_TASK_FQN));
+    when(pipelineDAO.listAfterWithOffset(PAGE_SIZE, 0)).thenReturn(List.of(firstPage));
+    when(pipelineDAO.listAfterWithOffset(PAGE_SIZE, PAGE_SIZE)).thenReturn(List.of(secondPage));
+    when(pipelineDAO.listAfterWithOffset(PAGE_SIZE, 2 * PAGE_SIZE)).thenReturn(List.of());
+
+    MigrationUtil.repairPipelineTaskFqns(collectionDAO);
+
+    ArgumentCaptor<Pipeline> captor = ArgumentCaptor.forClass(Pipeline.class);
+    verify(pipelineDAO, times(2)).update(captor.capture());
+    assertEquals(
+        List.of("svc.pipeA", "svc.pipeZ"),
+        captor.getAllValues().stream().map(Pipeline::getFullyQualifiedName).toList());
+    verify(pipelineDAO).listAfterWithOffset(PAGE_SIZE, PAGE_SIZE);
+    verify(pipelineDAO).listAfterWithOffset(PAGE_SIZE, 2 * PAGE_SIZE);
   }
 
   private void givenPipelinePage(String... jsons) {
