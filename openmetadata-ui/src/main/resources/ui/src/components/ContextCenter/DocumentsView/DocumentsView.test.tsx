@@ -56,10 +56,16 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     ({
       children,
       className,
+      'data-testid': testId,
     }: {
       children: React.ReactNode;
       className?: string;
-    }) => <div className={className}>{children}</div>
+      'data-testid'?: string;
+    }) => (
+      <div className={className} data-testid={testId}>
+        {children}
+      </div>
+    )
   ),
   Button: jest.fn(
     ({
