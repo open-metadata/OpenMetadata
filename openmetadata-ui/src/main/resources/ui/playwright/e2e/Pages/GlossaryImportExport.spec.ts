@@ -42,6 +42,7 @@ import { selectActiveGlossary } from '../../utils/glossary';
 import {
   createGlossaryTermRowDetails,
   fillGlossaryRowDetails,
+  startCsvPreviewAndWaitForGrid,
   validateImportStatus,
 } from '../../utils/importUtils';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
@@ -162,9 +163,7 @@ test.describe('Glossary Bulk Import Export', () => {
         'downloads/' + glossary1.data.displayName + '.csv'
       );
 
-      await page.getByTestId('upload-file-widget').waitFor({
-        state: 'hidden',
-      });
+      await startCsvPreviewAndWaitForGrid(page);
 
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
@@ -315,11 +314,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
           buffer: Buffer.from(await initialCsvFile.arrayBuffer()),
         });
 
-        await page.getByTestId('upload-file-widget').waitFor({
-          state: 'hidden',
-        });
-
-        await expect(page.locator('.rdg-header-row')).toBeVisible();
+        await startCsvPreviewAndWaitForGrid(page);
 
         await page.getByRole('button', { name: 'Next' }).click();
 
@@ -376,11 +371,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
           buffer: Buffer.from(await circularCsvFile.arrayBuffer()),
         });
 
-        await page.getByTestId('upload-file-widget').waitFor({
-          state: 'hidden',
-        });
-
-        await expect(page.locator('.rdg-header-row')).toBeVisible();
+        await startCsvPreviewAndWaitForGrid(page);
 
         await page.getByRole('button', { name: 'Next' }).click();
 
@@ -444,11 +435,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
           buffer: Buffer.from(await csvFile.arrayBuffer()),
         });
 
-        await page.getByTestId('upload-file-widget').waitFor({
-          state: 'hidden',
-        });
-
-        await expect(page.locator('.rdg-header-row')).toBeVisible();
+        await startCsvPreviewAndWaitForGrid(page);
 
         await page.getByRole('button', { name: 'Next' }).click();
 
@@ -503,11 +490,7 @@ ${parentRefGlossary.data.name}.NonExistentParent,childTerm,childTerm,<p>Child wi
           buffer: Buffer.from(await csvFile.arrayBuffer()),
         });
 
-        await page.getByTestId('upload-file-widget').waitFor({
-          state: 'hidden',
-        });
-
-        await expect(page.locator('.rdg-header-row')).toBeVisible();
+        await startCsvPreviewAndWaitForGrid(page);
 
         await page.getByRole('button', { name: 'Next' }).click();
 
@@ -567,11 +550,7 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
           buffer: Buffer.from(await csvFile.arrayBuffer()),
         });
 
-        await page.getByTestId('upload-file-widget').waitFor({
-          state: 'hidden',
-        });
-
-        await expect(page.locator('.rdg-header-row')).toBeVisible();
+        await startCsvPreviewAndWaitForGrid(page);
 
         await page.getByRole('button', { name: 'Next' }).click();
 
@@ -780,11 +759,7 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
           buffer: Buffer.from(csvContent),
         });
 
-        await page
-          .getByTestId('upload-file-widget')
-          .waitFor({ state: 'hidden' });
-
-        await expect(page.locator('.rdg-header-row')).toBeVisible();
+        await startCsvPreviewAndWaitForGrid(page);
         await page.getByRole('button', { name: 'Next' }).click();
 
         const loader = page.locator(
@@ -918,11 +893,7 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
           buffer: Buffer.from(csvContent),
         });
 
-        await page
-          .getByTestId('upload-file-widget')
-          .waitFor({ state: 'hidden' });
-
-        await expect(page.locator('.rdg-header-row')).toBeVisible();
+        await startCsvPreviewAndWaitForGrid(page);
         await page.getByRole('button', { name: 'Next' }).click();
 
         const loader = page.locator(
