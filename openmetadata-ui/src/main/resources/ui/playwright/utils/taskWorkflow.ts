@@ -626,7 +626,7 @@ export const addCommentToTask = async (page: Page, comment: string) => {
     }
   }
 
-  await expect(editor).toBeVisible({ timeout: 5000 });
+  await expect(editor).toBeVisible();
   logTaskDebug('addCommentToTask:editorVisible');
   await editor.click({ force: true });
   await editor.type(comment);
