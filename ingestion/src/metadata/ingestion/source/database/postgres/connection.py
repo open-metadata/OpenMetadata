@@ -58,12 +58,6 @@ class PostgresConnection(BaseConnection[PostgresConnectionConfig, Engine]):
             case _:
                 return BasicAuthStrategy(self.service_connection).build()
 
-    def get_connection_dict(self) -> dict:
-        """
-        Return the connection dictionary for this service.
-        """
-        raise NotImplementedError("get_connection_dict is not implemented for PostgreSQL")
-
     def test_connection(
         self,
         metadata: OpenMetadata,

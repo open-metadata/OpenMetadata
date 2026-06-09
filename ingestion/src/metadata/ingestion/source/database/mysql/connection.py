@@ -177,12 +177,6 @@ class MySQLConnection(BaseConnection[MySQLConnectionConfig, Engine]):
         if hasattr(self, "_cloud_sql_connector"):
             self._cloud_sql_connector.close()
 
-    def get_connection_dict(self) -> dict:
-        """
-        Return the connection dictionary for this service.
-        """
-        raise NotImplementedError("get_connection_dict is not implemented for MySQL")
-
     def test_connection(
         self,
         metadata: OpenMetadata,
