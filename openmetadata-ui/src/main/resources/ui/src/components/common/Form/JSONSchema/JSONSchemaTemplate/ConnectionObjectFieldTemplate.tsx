@@ -22,6 +22,7 @@ import { isEmpty } from 'lodash';
 import {
   Children,
   cloneElement,
+  createElement,
   FocusEvent,
   FunctionComponent,
   isValidElement,
@@ -33,6 +34,7 @@ import { useTranslation } from 'react-i18next';
 import { ADVANCED_PROPERTIES } from '../../../../../constants/ServiceType.constant';
 import { Transi18next } from '../../../../../utils/i18next/LocalUtil';
 import { getMissingSchemaRequiredFieldsCountForSelectedBranch } from '../../../../../utils/ServiceConnectionUtils';
+import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import { CoreObjectFieldTemplate } from '../../../FormBuilderV1/templates/CoreObjectFieldTemplate';
 import './connection-object-field-template.less';
 import { ObjectFieldTemplate } from './ObjectFieldTemplate';
@@ -658,6 +660,12 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
   } else if (isEmpty(schema.properties)) {
     rendered = <ObjectFieldTemplate {...props} />;
   } else {
+    const {
+      properties: sectionProperties,
+      additionalField: AdditionalField,
+      additionalFieldContent,
+    } = serviceUtilClassBase.getProperties(properties);
+
     const requiredKeys = (schema.required ?? []) as string[];
     const schemaProperties = (schema.properties ?? {}) as Record<
       string,
@@ -682,23 +690,25 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
       );
     };
     const wideNames = new Set(
-      properties.filter((p) => isWide(p.name)).map((p) => p.name)
+      sectionProperties.filter((p) => isWide(p.name)).map((p) => p.name)
     );
 
-    const authProperties = properties.filter((p) => isAuth(p.name));
-    const advancedProperties = properties.filter((p) => isAdvanced(p.name));
-    const explicitConnectionProperties = properties.filter(
+    const authProperties = sectionProperties.filter((p) => isAuth(p.name));
+    const advancedProperties = sectionProperties.filter((p) =>
+      isAdvanced(p.name)
+    );
+    const explicitConnectionProperties = sectionProperties.filter(
       (p) =>
         !isAuth(p.name) && !isAdvanced(p.name) && requiredKeys.includes(p.name)
     );
-    const optionalConnectionProperties = properties.filter(
+    const optionalConnectionProperties = sectionProperties.filter(
       (p) =>
         !isAuth(p.name) &&
         !isAdvanced(p.name) &&
         !requiredKeys.includes(p.name) &&
         OPTIONAL_CONNECTION_PROPERTIES.has(p.name)
     );
-    const fallbackConnectionProperties = properties.filter(
+    const fallbackConnectionProperties = sectionProperties.filter(
       (p) =>
         !isAuth(p.name) &&
         !isAdvanced(p.name) &&
@@ -711,7 +721,7 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
     const connectionPropertyNames = new Set(
       connectionProperties.map((property) => property.name)
     );
-    const scopeProperties = properties.filter(
+    const scopeProperties = sectionProperties.filter(
       (p) =>
         !isAuth(p.name) &&
         !isAdvanced(p.name) &&
@@ -873,6 +883,8 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
       <div
         className="connection-grouped-form tw:flex tw:flex-col tw:gap-3 tw:text-primary"
         data-testid="connection-grouped-form">
+        {AdditionalField &&
+          createElement(AdditionalField, { data: additionalFieldContent })}
         <HiddenFields properties={hiddenUnsectionedProperties} />
         {sections.map((section) => (
           <SectionCard key={section.key} section={section} />
