@@ -76,6 +76,13 @@ public class WorkflowHandler {
   @Getter private static volatile boolean initialized = false;
   private final boolean isMigrationContext;
 
+  private static final String CONNECTION_VALIDATION_QUERY = "SELECT 1";
+
+  // Validate any pooled connection idle longer than this before reuse. Kept below Flowable's
+  // 60s reset-expired-jobs interval so the periodic async-executor threads always re-validate,
+  // while connections in active sub-second use skip the check and pay no overhead.
+  private static final int CONNECTION_PING_NOT_USED_FOR_MILLIS = 30000;
+
   private WorkflowHandler(OpenMetadataApplicationConfig config, boolean isMigrationContext) {
     this.isMigrationContext = isMigrationContext;
     StandaloneProcessEngineConfiguration processEngineConfiguration =
@@ -179,6 +186,7 @@ public class WorkflowHandler {
       processEngineConfiguration.setJdbcPassword(
           currentProcessEngineConfiguration.getJdbcPassword());
       processEngineConfiguration.setJdbcDriver(currentProcessEngineConfiguration.getJdbcDriver());
+      configureConnectionPoolHealthChecks(processEngineConfiguration);
     }
     processEngineConfiguration.setDatabaseType(currentProcessEngineConfiguration.getDatabaseType());
     processEngineConfiguration.setDatabaseSchemaUpdate(
@@ -237,6 +245,25 @@ public class WorkflowHandler {
         .getSqlSessionFactory()
         .getConfiguration()
         .addMapper(SqlMapper.class);
+  }
+
+  /**
+   * Enable connection-pool health checks on the runtime engine's MyBatis pool.
+   *
+   * <p>Unlike the application's HikariCP pool, the Flowable runtime engine builds its own MyBatis
+   * {@code PooledDataSource} from the raw JDBC settings and does not validate pooled connections.
+   * When the database drops a connection out from under the pool — an Aurora/RDS failover, a
+   * maintenance restart, or an idle-connection reaper, all of which surface as {@code
+   * PSQLException: terminating connection due to administrator command} — the async executor's
+   * polling threads (e.g. {@code ResetExpiredJobsRunnable}) keep borrowing the dead connection and
+   * failing until the pool happens to recycle it. Pool ping runs a lightweight validation query on
+   * any connection idle past the threshold and transparently replaces it before handing it out.
+   */
+  private static void configureConnectionPoolHealthChecks(
+      StandaloneProcessEngineConfiguration processEngineConfiguration) {
+    processEngineConfiguration.setJdbcPingEnabled(true);
+    processEngineConfiguration.setJdbcPingQuery(CONNECTION_VALIDATION_QUERY);
+    processEngineConfiguration.setJdbcPingConnectionNotUsedFor(CONNECTION_PING_NOT_USED_FOR_MILLIS);
   }
 
   public static void initialize(OpenMetadataApplicationConfig config) {
