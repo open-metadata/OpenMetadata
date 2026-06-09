@@ -91,7 +91,6 @@ import {
   getEntityFeedLink,
   getEntityName,
   getEntityVoteStatus,
-  hasEditAccess,
 } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { downloadFile } from '../../../utils/Export/ExportUtils';
@@ -382,16 +381,6 @@ const DataProductsDetailsPage = ({
   const voteStatus = useMemo(
     () => getEntityVoteStatus(currentUser?.id ?? '', dataProduct.votes),
     [dataProduct.votes, currentUser?.id]
-  );
-
-  const isOwner = useMemo(
-    () =>
-      Boolean(
-        currentUser &&
-          dataProduct.owners?.length &&
-          hasEditAccess(dataProduct.owners, currentUser)
-      ),
-    [dataProduct.owners, currentUser]
   );
 
   const handleVoteChange = useCallback(
@@ -895,8 +884,6 @@ const DataProductsDetailsPage = ({
           <div>
             <div className="tw:flex tw:gap-3 tw:justify-end tw:items-center tw:pb-1">
               {!isVersionsView &&
-                !isOwner &&
-                !currentUser?.isAdmin &&
                 canCreateTask &&
                 dataProductClassBase.getShowRequestDataAccess() && (
                   <CoreTooltip
