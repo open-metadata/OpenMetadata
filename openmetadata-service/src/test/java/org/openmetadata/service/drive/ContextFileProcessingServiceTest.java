@@ -7,9 +7,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.same;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -41,13 +41,14 @@ import org.openmetadata.service.jdbi3.ContextFileContentRepository;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
 
 @ExtendWith(MockitoExtension.class)
-class ContextFileExtractionServiceTest {
+class ContextFileProcessingServiceTest {
 
   @Mock private ContextFileRepository repository;
   @Mock private ContextFileContentRepository contentRepository;
   @Mock private AssetRepository assetRepository;
   @Mock private AssetService assetService;
   @Mock private ContextFileTextExtractor textExtractor;
+  @Mock private ContextMemoryExtractor memoryExtractor;
 
   @Captor private ArgumentCaptor<ContextFile> updatedFileCaptor;
   @Captor private ArgumentCaptor<ContextFileContent> updatedContentCaptor;
@@ -121,6 +122,29 @@ class ContextFileExtractionServiceTest {
   }
 
   @Test
+  void processWithLlmEnabledRunsExtractionThenProcessed() throws Exception {
+    when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream("Quarterly results".getBytes())));
+    when(textExtractor.extract(any(InputStream.class), same(file)))
+        .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
+    when(memoryExtractor.extract(same(file))).thenReturn(2);
+
+    service(Runnable::run, () -> assetService, true).process(fileId, contentId);
+
+    verify(repository, times(3))
+        .update(isNull(), same(file), updatedFileCaptor.capture(), anyString());
+    List<ContextFile> fileUpdates = updatedFileCaptor.getAllValues();
+    assertEquals(ProcessingStatus.Analyzing, fileUpdates.get(0).getProcessingStatus());
+    assertEquals(ProcessingStatus.ExtractingContext, fileUpdates.get(1).getProcessingStatus());
+    assertEquals(ProcessingStatus.Processed, fileUpdates.get(2).getProcessingStatus());
+
+    verify(repository).deleteExtractedMemories(same(file), eq(false));
+    verify(memoryExtractor).extract(same(file));
+  }
+
+  @Test
   void processMarksFailureWhenObjectStorageIsUnavailable() {
     service(Runnable::run, () -> null).process(fileId, contentId);
 
@@ -145,7 +169,7 @@ class ContextFileExtractionServiceTest {
 
     service(rejectingExecutor, () -> assetService).submit(fileId, contentId);
 
-    verifyImmediateFailureWith("Text extraction queue is full. Please retry later.");
+    verifyImmediateFailureWith("Processing queue is full. Please retry later.");
     verify(assetService, never()).read(any());
   }
 
@@ -208,9 +232,20 @@ class ContextFileExtractionServiceTest {
     assertNull(contentUpdate.getExtractedText());
   }
 
-  private ContextFileExtractionService service(
+  private ContextFileProcessingService service(
       Executor executor, Supplier<AssetService> assetServiceSupplier) {
-    return new ContextFileExtractionService(
-        repository, assetServiceSupplier, executor, textExtractor);
+    return service(executor, assetServiceSupplier, false);
+  }
+
+  private ContextFileProcessingService service(
+      Executor executor, Supplier<AssetService> assetServiceSupplier, boolean llmEnabled) {
+    return new ContextFileProcessingService(
+        repository,
+        assetServiceSupplier,
+        executor,
+        textExtractor,
+        Runnable::run,
+        () -> memoryExtractor,
+        () -> llmEnabled);
   }
 }

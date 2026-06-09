@@ -19,40 +19,69 @@ import org.openmetadata.schema.entity.data.ContextFileContent;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
+import org.openmetadata.service.jdbi3.ContextMemoryRepository;
+import org.openmetadata.service.llm.LLMClientHolder;
 
+/**
+ * Orchestrates asynchronous processing of an uploaded {@link ContextFile}: text extraction
+ * (Analyzing) followed by LLM knowledge-pill extraction (ExtractingContext), ending at Processed.
+ * The two stages run on separate pools — text extraction is CPU-bound, the LLM step is
+ * network-bound and seconds-long, so mixing them would starve the text pool.
+ */
 @Slf4j
-public class ContextFileExtractionService {
+public class ContextFileProcessingService {
   private final ContextFileRepository repository;
   private final Supplier<AssetService> assetServiceSupplier;
   private final Executor executor;
   private final ContextFileTextExtractor textExtractor;
+  private final Executor llmExecutor;
+  private final Supplier<ContextMemoryExtractor> memoryExtractorSupplier;
+  private final Supplier<Boolean> llmEnabledSupplier;
 
-  public ContextFileExtractionService(ContextFileRepository repository) {
+  public ContextFileProcessingService(ContextFileRepository repository) {
     this(
         repository,
         AssetServiceFactory::getService,
         DEFAULT_EXECUTOR,
-        new ContextFileTextExtractor());
+        new ContextFileTextExtractor(),
+        LLM_EXECUTOR,
+        ContextFileProcessingService::buildDefaultExtractor,
+        LLMClientHolder::isEnabled);
+  }
+
+  ContextFileProcessingService(
+      ContextFileRepository repository,
+      Supplier<AssetService> assetServiceSupplier,
+      Executor executor,
+      ContextFileTextExtractor textExtractor,
+      Executor llmExecutor,
+      Supplier<ContextMemoryExtractor> memoryExtractorSupplier,
+      Supplier<Boolean> llmEnabledSupplier) {
+    this.repository = repository;
+    this.assetServiceSupplier = assetServiceSupplier;
+    this.executor = executor;
+    this.textExtractor = textExtractor;
+    this.llmExecutor = llmExecutor;
+    this.memoryExtractorSupplier = memoryExtractorSupplier;
+    this.llmEnabledSupplier = llmEnabledSupplier;
   }
 
   /**
-   * Single shared thread pool for text extraction. Kept separate from
-   * {@code AsyncService.getExecutorService()} because {@link #process(UUID, UUID)}
-   * blocks on {@code AssetService.read(...).join()} for S3/Azure reads, which are
-   * themselves scheduled on AsyncService — sharing the pool would starve those read
-   * tasks (and potentially deadlock) once every thread is busy running extractions.
-   *
-   * <p>Held {@code static final} so every production {@link ContextFileExtractionService}
-   * instance reuses one pool — tests that instantiate the service repeatedly no longer
-   * leak a new pool each construction. Threads are daemons, so the pool never blocks
-   * JVM shutdown; explicit lifecycle management isn't required.
+   * CPU-bound text-extraction pool (see the class comment for why it is kept off AsyncService).
+   * Bounded queue + AbortPolicy so an overloaded server rejects new work instead of accumulating an
+   * unbounded backlog; the rejection is turned into a Failed status by {@link #submit}.
    */
-  private static final Executor DEFAULT_EXECUTOR = createDefaultExtractionExecutor();
+  private static final Executor DEFAULT_EXECUTOR =
+      createBoundedExecutor("context-file-extraction-");
 
-  private static Executor createDefaultExtractionExecutor() {
+  /** Separate network-bound pool for LLM completion so slow calls never starve text extraction. */
+  private static final Executor LLM_EXECUTOR = createBoundedExecutor("context-memory-extraction-");
+
+  private static Executor createBoundedExecutor(String threadPrefix) {
     int threads = Math.max(2, Runtime.getRuntime().availableProcessors() / 2);
     ThreadFactory threadFactory =
         new ThreadFactory() {
@@ -60,15 +89,11 @@ public class ContextFileExtractionService {
 
           @Override
           public Thread newThread(Runnable r) {
-            Thread t = new Thread(r, "context-file-extraction-" + counter.incrementAndGet());
+            Thread t = new Thread(r, threadPrefix + counter.incrementAndGet());
             t.setDaemon(true);
             return t;
           }
         };
-    // Bounded queue + AbortPolicy so an overloaded server rejects new extractions
-    // rather than accumulating an unbounded backlog on the heap. The RejectedExecutionException
-    // handling in submit(...) below turns the rejection into a Failed processing status
-    // on the content, so callers see a clear "retry later" signal instead of silent buildup.
     int queueCapacity = Math.max(64, threads * 8);
     return new ThreadPoolExecutor(
         threads,
@@ -80,33 +105,34 @@ public class ContextFileExtractionService {
         new ThreadPoolExecutor.AbortPolicy());
   }
 
-  ContextFileExtractionService(
-      ContextFileRepository repository,
-      Supplier<AssetService> assetServiceSupplier,
-      Executor executor,
-      ContextFileTextExtractor textExtractor) {
-    this.repository = repository;
-    this.assetServiceSupplier = assetServiceSupplier;
-    this.executor = executor;
-    this.textExtractor = textExtractor;
+  private static ContextMemoryExtractor buildDefaultExtractor() {
+    return new ContextMemoryExtractor(
+        (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY),
+        LLMClientHolder.get());
   }
 
   public void submit(UUID fileId, UUID contentId) {
     try {
       executor.execute(() -> process(fileId, contentId));
     } catch (RejectedExecutionException e) {
-      LOG.warn(
-          "Skipping text extraction for file {} because the async executor rejected it", fileId, e);
-      applyFailure(fileId, contentId, "Text extraction queue is full. Please retry later.");
+      LOG.warn("Skipping processing for file {} because the async executor rejected it", fileId, e);
+      applyFailure(fileId, contentId, "Processing queue is full. Please retry later.");
     }
   }
 
   void process(UUID fileId, UUID contentId) {
     ContextFile file = getFile(fileId);
-    if (file == null || !contentId.toString().equals(file.getHeadContentId())) {
-      return;
+    if (file != null && contentId.toString().equals(file.getHeadContentId())) {
+      markAnalyzing(fileId, contentId);
+      ProcessingStatus textStatus = extractText(fileId, contentId);
+      if (textStatus == ProcessingStatus.Processed
+          && Boolean.TRUE.equals(llmEnabledSupplier.get())) {
+        llmExecutor.execute(() -> runMemoryExtraction(fileId, contentId));
+      }
     }
+  }
 
+  private void markAnalyzing(UUID fileId, UUID contentId) {
     updateFile(
         fileId,
         current -> {
@@ -120,11 +146,6 @@ public class ContextFileExtractionService {
     updateContent(
         contentId,
         current -> {
-          // Re-read the file inside the content updater so we don't mark an
-          // older content "Analyzing" when headContentId changed concurrently.
-          // Without this guard, a no-op updateFile above would still be followed
-          // by a status update on the now-stale content, leaving it stuck once
-          // the later head-check early-returns.
           ContextFile currentHead = getFile(fileId);
           if (currentHead == null || !contentId.toString().equals(currentHead.getHeadContentId())) {
             return null;
@@ -134,31 +155,34 @@ public class ContextFileExtractionService {
           updated.setProcessingError(null);
           return updated;
         });
+  }
 
+  private ProcessingStatus extractText(UUID fileId, UUID contentId) {
     try {
       ContextFile currentFile = getFile(fileId);
       ContextFileContent currentContent = getContent(contentId);
       if (currentFile == null
           || currentContent == null
           || !contentId.toString().equals(currentFile.getHeadContentId())) {
-        return;
+        return null;
       }
 
       AssetService assetService = assetServiceSupplier.get();
       if (assetService == null) {
         applyFailure(fileId, contentId, "Object storage is not configured for text extraction");
-        return;
+        return ProcessingStatus.Failed;
       }
 
       Asset asset = repository.getAssetRepository().getById(currentContent.getAssetId());
       try (InputStream inputStream = assetService.read(asset).join()) {
         if (inputStream == null) {
           applyFailure(fileId, contentId, "Unable to read file content from object storage");
-          return;
+          return ProcessingStatus.Failed;
         }
         ContextFileTextExtractor.ExtractionResult result =
             textExtractor.extract(inputStream, currentFile);
-        applyResult(fileId, contentId, result);
+        applyTextResult(fileId, contentId, result);
+        return result.processingStatus();
       }
     } catch (Throwable t) {
       if (t instanceof VirtualMachineError vmError) {
@@ -166,6 +190,22 @@ public class ContextFileExtractionService {
       }
       LOG.error("Failed to extract text for file {} content {}", fileId, contentId, t);
       applyFailure(fileId, contentId, describeFailure(t));
+      return ProcessingStatus.Failed;
+    }
+  }
+
+  private void runMemoryExtraction(UUID fileId, UUID contentId) {
+    ContextFile file = getFile(fileId);
+    if (file == null || !contentId.toString().equals(file.getHeadContentId())) {
+      return;
+    }
+    try {
+      repository.deleteExtractedMemories(file, false);
+      memoryExtractorSupplier.get().extract(file);
+      setFileStatus(fileId, contentId, ProcessingStatus.Processed);
+    } catch (Exception e) {
+      LOG.error("Knowledge pill extraction failed for file {}", fileId, e);
+      setFileStatus(fileId, contentId, ProcessingStatus.Failed);
     }
   }
 
@@ -173,7 +213,7 @@ public class ContextFileExtractionService {
     return t.getMessage() == null || t.getMessage().isBlank() ? t.toString() : t.getMessage();
   }
 
-  private void applyResult(
+  private void applyTextResult(
       UUID fileId, UUID contentId, ContextFileTextExtractor.ExtractionResult result) {
     updateContent(
         contentId,
@@ -185,6 +225,7 @@ public class ContextFileExtractionService {
           return updated;
         });
 
+    ProcessingStatus fileStatus = fileStatusAfterText(result.processingStatus());
     updateFile(
         fileId,
         current -> {
@@ -192,9 +233,30 @@ public class ContextFileExtractionService {
             return null;
           }
           ContextFile updated = JsonUtils.deepCopy(current, ContextFile.class);
-          updated.setProcessingStatus(result.processingStatus());
+          updated.setProcessingStatus(fileStatus);
           updated.setExtractedText(result.indexedText());
           updated.setPageCount(result.pageCount());
+          return updated;
+        });
+  }
+
+  private ProcessingStatus fileStatusAfterText(ProcessingStatus textStatus) {
+    ProcessingStatus result = textStatus;
+    if (textStatus == ProcessingStatus.Processed && Boolean.TRUE.equals(llmEnabledSupplier.get())) {
+      result = ProcessingStatus.ExtractingContext;
+    }
+    return result;
+  }
+
+  private void setFileStatus(UUID fileId, UUID contentId, ProcessingStatus status) {
+    updateFile(
+        fileId,
+        current -> {
+          if (!contentId.toString().equals(current.getHeadContentId())) {
+            return null;
+          }
+          ContextFile updated = JsonUtils.deepCopy(current, ContextFile.class);
+          updated.setProcessingStatus(status);
           return updated;
         });
   }

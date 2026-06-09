@@ -29,10 +29,11 @@
       "javaType": "org.openmetadata.schema.entity.data.ProcessingStatus",
       "description": "Processing state of the file after upload.",
       "type": "string",
-      "enum": ["Uploaded", "Analyzing", "Processed", "Failed", "Unsupported"],
+      "enum": ["Uploaded", "Analyzing", "ExtractingContext", "Processed", "Failed", "Unsupported"],
       "javaEnums": [
         { "name": "Uploaded" },
         { "name": "Analyzing" },
+        { "name": "ExtractingContext" },
         { "name": "Processed" },
         { "name": "Failed" },
         { "name": "Unsupported" }
@@ -111,6 +112,11 @@
     "pageCount": {
       "description": "Number of pages (PDF) or sheets (spreadsheet).",
       "type": "integer"
+    },
+    "memoryCount": {
+      "description": "Number of knowledge pills (context memories) extracted from this file.",
+      "type": "integer",
+      "default": 0
     },
     "sourceType": {
       "description": "How this file was added.",

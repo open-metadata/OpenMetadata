@@ -598,6 +598,35 @@ elasticsearch:
     djl:
       embeddingModel: ${DJL_EMBEDDING_MODEL:-"ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2"}
 
+# Generic platform-wide LLM chat/completion configuration. Used by Context Center knowledge-pill
+# extraction (and reusable by other features). The file content of uploaded documents is sent to
+# the configured provider when enabled. Disabled by default.
+llmConfiguration:
+  enabled: ${LLM_ENABLED:-false}
+  provider: ${LLM_PROVIDER:-noop}  # noop | openai | azureOpenAI | bedrock | google | anthropic
+  maxConcurrentRequests: ${LLM_MAX_CONCURRENT_REQUESTS:-5}
+  openai:
+    apiKey: ${LLM_OPENAI_API_KEY:-""}
+    modelId: ${LLM_OPENAI_MODEL_ID:-"gpt-4o-mini"}
+    endpoint: ${LLM_OPENAI_ENDPOINT:-""}          # Set with deploymentName for Azure OpenAI
+    deploymentName: ${LLM_OPENAI_DEPLOYMENT:-""}
+    apiVersion: ${LLM_OPENAI_API_VERSION:-"2024-02-01"}
+    maxTokens: ${LLM_OPENAI_MAX_TOKENS:-4096}
+  bedrock:
+    awsConfig:
+      region: ${LLM_BEDROCK_REGION:-""}
+    modelId: ${LLM_BEDROCK_MODEL_ID:-"anthropic.claude-3-5-sonnet-20240620-v1:0"}
+    maxTokens: ${LLM_BEDROCK_MAX_TOKENS:-4096}
+  google:
+    apiKey: ${LLM_GOOGLE_API_KEY:-""}
+    modelId: ${LLM_GOOGLE_MODEL_ID:-"gemini-2.5-flash"}
+    maxTokens: ${LLM_GOOGLE_MAX_TOKENS:-4096}
+  anthropic:
+    apiKey: ${LLM_ANTHROPIC_API_KEY:-""}
+    modelId: ${LLM_ANTHROPIC_MODEL_ID:-"claude-3-5-sonnet-20240620"}
+    baseUrl: ${LLM_ANTHROPIC_BASE_URL:-"https://api.anthropic.com"}
+    maxTokens: ${LLM_ANTHROPIC_MAX_TOKENS:-4096}
+
 eventMonitoringConfiguration:
   eventMonitor: ${EVENT_MONITOR:-prometheus}  # Possible values are "prometheus", "cloudwatch"
   batchSize: ${EVENT_MONITOR_BATCH_SIZE:-10}

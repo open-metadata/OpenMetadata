@@ -120,6 +120,7 @@ import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.jobs.JobHandlerRegistry;
 import org.openmetadata.service.limits.DefaultLimits;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.llm.LLMClientHolder;
 import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
 import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
 import org.openmetadata.service.migration.MigrationValidationClient;
@@ -258,6 +259,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Initialize the IndexMapping class
     IndexMappingLoader.init(catalogConfig.getElasticSearchConfiguration());
+
+    // Initialize the shared LLM completion client from llmConfiguration
+    LLMClientHolder.initialize(catalogConfig.getLlmConfiguration());
 
     // init for dataSourceFactory
     DatasourceConfig.initialize(catalogConfig.getDataSourceFactory().getDriverClass());
