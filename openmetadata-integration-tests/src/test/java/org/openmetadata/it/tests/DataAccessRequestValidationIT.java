@@ -116,11 +116,12 @@ public class DataAccessRequestValidationIT {
                       .withDescription("Domain for DAR validation")
                       .withDomainType(DomainType.AGGREGATE));
     }
+    String uniqueId = UUID.randomUUID().toString().substring(0, 8);
     return SdkClients.adminClient()
         .dataProducts()
         .create(
             new CreateDataProduct()
-                .withName(ns.prefix("dar_dataproduct"))
+                .withName(ns.prefix("dar_dataproduct_" + uniqueId))
                 .withDescription("DataProduct for DAR validation")
                 .withDomains(List.of(domain.getFullyQualifiedName())));
   }
@@ -148,17 +149,22 @@ public class DataAccessRequestValidationIT {
 
   @Test
   void testDarOnTableWithUnconfiguredPolicyAgent_allowsAllAccessTypes(TestNamespace ns) {
-    Table table = createTableOnSnowflakeService(ns, baseSnowflakeConnection());
+    Table fullAccessTable = createTableOnSnowflakeService(ns, baseSnowflakeConnection());
+    Table maskedTable = createTableOnSnowflakeService(ns, baseSnowflakeConnection());
+    Table columnLevelTable = createTableOnSnowflakeService(ns, baseSnowflakeConnection());
 
     Task fullAccessTask =
         createDataAccessRequest(
-            ns, "table", table.getFullyQualifiedName(), dataAccessPayload("FullAccess"));
+            ns, "table", fullAccessTable.getFullyQualifiedName(), dataAccessPayload("FullAccess"));
     Task maskedTask =
         createDataAccessRequest(
-            ns, "table", table.getFullyQualifiedName(), dataAccessPayload("Masked"));
+            ns, "table", maskedTable.getFullyQualifiedName(), dataAccessPayload("Masked"));
     Task columnLevelTask =
         createDataAccessRequest(
-            ns, "table", table.getFullyQualifiedName(), dataAccessPayload("ColumnLevel"));
+            ns,
+            "table",
+            columnLevelTable.getFullyQualifiedName(),
+            dataAccessPayload("ColumnLevel"));
 
     assertNotNull(fullAccessTask.getId());
     assertNotNull(maskedTask.getId());
@@ -175,16 +181,18 @@ public class DataAccessRequestValidationIT {
                     .withSupportsFullAccess(true)
                     .withSupportsMaskedAccess(true)
                     .withSupportsColumnAccess(false));
-    Table table = createTableOnSnowflakeService(ns, connection);
+    Table fullAccessTable = createTableOnSnowflakeService(ns, connection);
+    Table maskedTable = createTableOnSnowflakeService(ns, connection);
+    Table columnLevelTable = createTableOnSnowflakeService(ns, connection);
 
     Task fullAccessTask =
         createDataAccessRequest(
-            ns, "table", table.getFullyQualifiedName(), dataAccessPayload("FullAccess"));
+            ns, "table", fullAccessTable.getFullyQualifiedName(), dataAccessPayload("FullAccess"));
     assertNotNull(fullAccessTask.getId());
 
     Task maskedTask =
         createDataAccessRequest(
-            ns, "table", table.getFullyQualifiedName(), dataAccessPayload("Masked"));
+            ns, "table", maskedTable.getFullyQualifiedName(), dataAccessPayload("Masked"));
     assertNotNull(maskedTask.getId());
 
     InvalidRequestException rejection =
@@ -192,7 +200,10 @@ public class DataAccessRequestValidationIT {
             InvalidRequestException.class,
             () ->
                 createDataAccessRequest(
-                    ns, "table", table.getFullyQualifiedName(), dataAccessPayload("ColumnLevel")));
+                    ns,
+                    "table",
+                    columnLevelTable.getFullyQualifiedName(),
+                    dataAccessPayload("ColumnLevel")));
     assertTrue(
         rejection.getMessage().contains("Column-level access is not supported"),
         () -> "Unexpected rejection message: " + rejection.getMessage());
@@ -259,17 +270,18 @@ public class DataAccessRequestValidationIT {
 
   @Test
   void testDarOnDataProduct_allowsFullAccessAndMasked(TestNamespace ns) {
-    DataProduct dataProduct = createDataProductWithDomain(ns);
+    DataProduct fullAccessProduct = createDataProductWithDomain(ns);
+    DataProduct maskedProduct = createDataProductWithDomain(ns);
 
     Task fullAccessTask =
         createDataAccessRequest(
             ns,
             "dataProduct",
-            dataProduct.getFullyQualifiedName(),
+            fullAccessProduct.getFullyQualifiedName(),
             dataAccessPayload("FullAccess"));
     Task maskedTask =
         createDataAccessRequest(
-            ns, "dataProduct", dataProduct.getFullyQualifiedName(), dataAccessPayload("Masked"));
+            ns, "dataProduct", maskedProduct.getFullyQualifiedName(), dataAccessPayload("Masked"));
 
     assertNotNull(fullAccessTask.getId());
     assertNotNull(maskedTask.getId());

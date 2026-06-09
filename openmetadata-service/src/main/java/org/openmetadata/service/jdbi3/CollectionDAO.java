@@ -4471,7 +4471,7 @@ public interface CollectionDAO {
             + "WHERE aboutFqnHash = :aboutFqnHash AND type = :type AND createdById = :createdById "
             + "AND status IN (<activeStatuses>) "
             + "AND (deleted = false OR deleted IS NULL) "
-            + "LIMIT 1")
+            + "ORDER BY createdAt DESC LIMIT 1")
     String findActiveByAboutTypeAndCreator(
         @BindFQN("aboutFqnHash") String aboutFqn,
         @Bind("type") String type,
