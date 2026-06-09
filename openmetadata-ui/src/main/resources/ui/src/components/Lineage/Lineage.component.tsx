@@ -39,13 +39,13 @@ import {
   nodeTypes,
   onNodeContextMenu,
 } from '../../utils/EntityLineageUtils';
-import Loader from '../common/Loader/Loader';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
 import LineageControlButtons from '../Entity/EntityLineage/LineageControlButtons/LineageControlButtons';
 import LineageLayers from '../Entity/EntityLineage/LineageLayers/LineageLayers';
 import { SourceType } from '../SearchedData/SearchedData.interface';
 import { CanvasLayerWrapper } from './Edges/CanvasLayerWrapper/CanvasLayerWrapper';
 import { LineageProps } from './Lineage.interface';
+import LineageSkeleton from './LineageSkeleton.component';
 
 const Lineage = ({
   deleted,
@@ -54,6 +54,7 @@ const Lineage = ({
   isPlatformLineage,
   hasEditAccess,
   platformHeader,
+  showControls = true,
 }: LineageProps) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [showMiniMap, setShowMiniMap] = useState(true);
@@ -149,7 +150,7 @@ const Lineage = ({
       title={
         isPlatformLineage ? (
           platformHeader
-        ) : (
+        ) : showControls ? (
           <div
             className={classNames('lineage-header', {
               'lineage-header-edit-mode': isEditMode,
@@ -159,7 +160,7 @@ const Lineage = ({
               hasEditAccess={hasEditAccess}
             />
           </div>
-        )
+        ) : undefined
       }>
       {
         <div
@@ -231,9 +232,7 @@ const Lineage = ({
               </ReactFlow>
             </ReactFlowProvider>
           ) : (
-            <div className="loading-card">
-              <Loader />
-            </div>
+            <LineageSkeleton />
           )}
         </div>
       }

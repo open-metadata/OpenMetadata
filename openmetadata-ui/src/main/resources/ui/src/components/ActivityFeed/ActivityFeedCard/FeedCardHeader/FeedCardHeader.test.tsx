@@ -45,7 +45,7 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   getRelativeTime: jest.fn().mockImplementation((date) => date),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('username'),
 }));
 
