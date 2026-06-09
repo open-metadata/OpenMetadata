@@ -29,7 +29,7 @@ import { TagClass } from '../support/tag/TagClass';
 import {
   clickOutside,
   descriptionBox,
-  getEntityTypeSearchIndexMapping,
+  getEntityTypeMapping,
   readElementInListWithScroll,
   redirectToHomePage,
   toastNotification,
@@ -2276,9 +2276,7 @@ export const checkExploreSearchFilter = async (
 ) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
   if (entity?.type && searchEntityType) {
-    const entityTypeId = (
-      getEntityTypeSearchIndexMapping(entity.type) ?? entity.type
-    )
+    const entityTypeId = (getEntityTypeMapping(entity.type) ?? entity.type)
       .toLocaleLowerCase()
       .replaceAll(' ', '');
     const entitySearchResponse = page.waitForResponse(
