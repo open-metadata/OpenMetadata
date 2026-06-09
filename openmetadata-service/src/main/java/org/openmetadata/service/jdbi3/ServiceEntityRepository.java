@@ -265,6 +265,14 @@ public abstract class ServiceEntityRepository<
       UUID updatedAgentId =
           updated.getIngestionRunner() != null ? updated.getIngestionRunner().getId() : null;
       if (!Objects.equals(originalAgentId, updatedAgentId)) {
+        if (originalAgentId != null) {
+          deleteRelationship(
+              updated.getId(),
+              entityType,
+              originalAgentId,
+              original.getIngestionRunner().getType(),
+              Relationship.USES);
+        }
         addIngestionRunnerRelationship(updated);
         recordChange("ingestionRunner", originalAgentId, updatedAgentId, true);
       }
