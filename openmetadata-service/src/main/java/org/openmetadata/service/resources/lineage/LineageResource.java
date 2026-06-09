@@ -17,6 +17,7 @@ import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.search.SearchUtils.getRequiredLineageFields;
 import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
+import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import io.dropwizard.jersey.PATCH;
@@ -75,6 +76,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.CSVExportMessage;
 import org.openmetadata.service.util.CSVExportResponse;
@@ -126,6 +128,7 @@ public class LineageResource {
       })
   public EntityLineage get(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @Parameter(
               description = "Entity type for which lineage is requested",
               required = true,
@@ -150,7 +153,9 @@ public class LineageResource {
           @Max(3)
           @QueryParam("downstreamDepth")
           int downStreamDepth) {
-    return addHref(uriInfo, dao.get(entity, id, upstreamDepth, downStreamDepth));
+    return addHref(
+        uriInfo,
+        dao.get(entity, id, upstreamDepth, downStreamDepth, getSubjectContext(securityContext)));
   }
 
   @GET
@@ -172,6 +177,7 @@ public class LineageResource {
       })
   public EntityLineage getByName(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @Parameter(
               description = "Entity type for which lineage is requested",
               required = true,
@@ -196,7 +202,10 @@ public class LineageResource {
           @Max(3)
           @QueryParam("downstreamDepth")
           int downStreamDepth) {
-    return addHref(uriInfo, dao.getByName(entity, fqn, upstreamDepth, downStreamDepth));
+    return addHref(
+        uriInfo,
+        dao.getByName(
+            entity, fqn, upstreamDepth, downStreamDepth, getSubjectContext(securityContext)));
   }
 
   @GET
@@ -279,7 +288,8 @@ public class LineageResource {
                 .withColumnFilter(columnFilter)
                 .withPreservePaths(preservePaths)
                 .withStartTime(startTime)
-                .withEndTime(endTime));
+                .withEndTime(endTime),
+            getSubjectContext(securityContext));
   }
 
   @GET
@@ -314,7 +324,8 @@ public class LineageResource {
           @QueryParam("includeDeleted")
           boolean deleted)
       throws IOException {
-    return Entity.getSearchRepository().searchPlatformLineage(view, queryFilter, deleted);
+    return Entity.getSearchRepository()
+        .searchPlatformLineage(view, queryFilter, deleted, getSubjectContext(securityContext));
   }
 
   @GET
@@ -401,7 +412,8 @@ public class LineageResource {
                 .withColumnFilter(columnFilter)
                 .withPreservePaths(preservePaths)
                 .withStartTime(startTime)
-                .withEndTime(endTime));
+                .withEndTime(endTime),
+            getSubjectContext(securityContext));
   }
 
   @GET
@@ -469,7 +481,14 @@ public class LineageResource {
           boolean deleted,
       @Parameter(description = "entity type") @QueryParam("type") String entityType)
       throws IOException {
-    return dao.exportCsv(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
+    return dao.exportCsv(
+        fqn,
+        upstreamDepth,
+        downstreamDepth,
+        queryFilter,
+        deleted,
+        entityType,
+        getSubjectContext(securityContext));
   }
 
   @GET
@@ -515,6 +534,7 @@ public class LineageResource {
           Long endTime) {
     validateTemporalBounds(startTime, endTime);
     String jobId = UUID.randomUUID().toString();
+    SubjectContext subjectContext = getSubjectContext(securityContext);
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
     executorService.submit(
         () -> {
@@ -528,7 +548,8 @@ public class LineageResource {
                     entityType,
                     deleted,
                     startTime,
-                    endTime);
+                    endTime,
+                    subjectContext);
             WebsocketNotificationHandler.sendCsvExportCompleteNotification(
                 jobId, securityContext, csvData);
           } catch (Exception e) {
@@ -672,6 +693,7 @@ public class LineageResource {
           Long endTime) {
     validateTemporalBounds(startTime, endTime);
     String jobId = UUID.randomUUID().toString();
+    SubjectContext subjectContext = getSubjectContext(securityContext);
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
     executorService.submit(
         () -> {
@@ -689,7 +711,8 @@ public class LineageResource {
                     entityType,
                     includeSourceFields,
                     startTime,
-                    endTime);
+                    endTime,
+                    subjectContext);
             WebsocketNotificationHandler.sendCsvExportCompleteNotification(
                 jobId, securityContext, csvData);
           } catch (Exception e) {
@@ -816,7 +839,8 @@ public class LineageResource {
                 .withPreservePaths(preservePaths)
                 .withIncludePaginationInfo(includePaginationInfo)
                 .withStartTime(startTime)
-                .withEndTime(endTime));
+                .withEndTime(endTime),
+            getSubjectContext(securityContext));
   }
 
   @PUT
