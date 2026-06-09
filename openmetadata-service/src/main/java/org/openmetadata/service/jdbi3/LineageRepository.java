@@ -1136,8 +1136,7 @@ public class LineageRepository {
       dao.relationshipDAO()
           .deleteLineageBySource(toId, toEntity, source, Relationship.UPSTREAM.ordinal());
     }
-    deleteLineageFromSearch(relations);
-    emitDeletedLineageEvents(relations, deletedBy);
+    processDeletedRelations(relations, deletedBy);
   }
 
   @Transaction
@@ -1340,22 +1339,13 @@ public class LineageRepository {
     }
   }
 
-  private void deleteLineageFromSearch(List<CollectionDAO.EntityRelationshipObject> relations) {
-    for (CollectionDAO.EntityRelationshipObject obj : relations) {
-      LineageDetails lineageDetails = JsonUtils.readValue(obj.getJson(), LineageDetails.class);
-      deleteLineageFromSearch(
-          resolveRefForCacheInvalidation(obj.getFromEntity(), obj.getFromId()),
-          resolveRefForCacheInvalidation(obj.getToEntity(), obj.getToId()),
-          lineageDetails);
-    }
-  }
-
-  private void emitDeletedLineageEvents(
+  private void processDeletedRelations(
       List<CollectionDAO.EntityRelationshipObject> relations, String deletedBy) {
     for (CollectionDAO.EntityRelationshipObject obj : relations) {
       LineageDetails lineageDetails = JsonUtils.readValue(obj.getJson(), LineageDetails.class);
       EntityReference from = resolveRefForCacheInvalidation(obj.getFromEntity(), obj.getFromId());
       EntityReference to = resolveRefForCacheInvalidation(obj.getToEntity(), obj.getToId());
+      deleteLineageFromSearch(from, to, lineageDetails);
       emitLineageChangeEvent(EventType.ENTITY_LINEAGE_DELETED, from, to, lineageDetails, deletedBy);
     }
   }
