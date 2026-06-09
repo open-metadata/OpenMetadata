@@ -628,7 +628,6 @@ export const DataAssetsHeader = ({
     isDarAwaitingGrant,
     isDarGranted,
     canCreateTask,
-    currentUser,
     t,
   ]);
 
