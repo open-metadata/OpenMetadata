@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect } from '@playwright/test';
+import { expect, Locator } from '@playwright/test';
 import { EntityStatus } from '../../../src/generated/entity/data/searchIndex';
 import { COMMON_TIER_TAG } from '../../constant/common';
 import { DOMAIN_TAGS } from '../../constant/config';
@@ -968,6 +968,69 @@ test.describe(
         });
 
         await page.getByTestId('clear-filters').click();
+      });
+    });
+  }
+);
+
+test.describe(
+  'Explore Search Count Visibility',
+  { tag: ['@explore-search-count'] },
+  () => {
+    test.beforeEach(async ({ page }) => {
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.EXPLORE);
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    test('Verify count shows with Advanced Search filter', async ({ page }) => {
+      await test.step('Open Advanced Search', async () => {
+        await showAdvancedSearchDialog(page);
+      });
+
+      await test.step('Apply Description Contains filter', async () => {
+        await fillRule(page, {
+          condition: 'Contains',
+          field: { id: 'Description', name: 'description' },
+          searchCriteria: 'test',
+          index: 1,
+        });
+
+        const searchRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+
+        await page.getByTestId('apply-btn').click();
+
+        await searchRes;
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Verify count is visible', async () => {
+        await expect(page.getByTestId('search-results-count')).toBeVisible();
+      });
+
+      await test.step('Clear filters and verify count disappears', async () => {
+        await page.getByTestId('clear-filters').click();
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(
+          page.getByTestId('search-results-count')
+        ).not.toBeVisible();
+      });
+    });
+
+    test('Verify browse mode has no count', async ({ page }) => {
+      await test.step('Verify no search and no filters are applied', async () => {
+        await expect(
+          page.getByTestId('advance-search-filter-container')
+        ).not.toBeVisible();
+      });
+
+      await test.step('Verify count is not visible', async () => {
+        await expect(
+          page.getByTestId('search-results-count')
+        ).not.toBeVisible();
       });
     });
   }

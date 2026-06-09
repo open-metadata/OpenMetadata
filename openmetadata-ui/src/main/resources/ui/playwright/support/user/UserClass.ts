@@ -230,12 +230,12 @@ export class UserClass {
     userName = this.data.email,
     password = this.data.password
   ) {
-    await page.goto('/');
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
     try {
       await page.waitForURL('**/signin', { timeout: 5000 });
     } catch {
       await page.context().clearCookies();
-      await page.goto('/signin');
+      await page.goto('/signin', { waitUntil: 'domcontentloaded' });
       await page.waitForURL('**/signin');
     }
     await page.waitForLoadState('domcontentloaded');
