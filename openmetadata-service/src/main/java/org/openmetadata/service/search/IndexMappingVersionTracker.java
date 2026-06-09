@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.VersionUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.exception.IndexMappingHashException;
@@ -23,6 +24,9 @@ import org.openmetadata.service.jdbi3.IndexMappingVersionDAO;
 
 @Slf4j
 public class IndexMappingVersionTracker {
+  public static final String SYSTEM_UPDATED_BY = "system";
+  private static final String VERSION_RESOURCE_PATH = "/catalog/VERSION";
+
   private final IndexMappingVersionDAO indexMappingVersionDAO;
   private final String updatedBy;
   private final String version;
@@ -33,6 +37,14 @@ public class IndexMappingVersionTracker {
     this.indexMappingVersionDAO = daoCollection.indexMappingVersionDAO();
     this.version = version;
     this.updatedBy = updatedBy;
+  }
+
+  public static IndexMappingVersionTracker create(CollectionDAO daoCollection) {
+    return new IndexMappingVersionTracker(daoCollection, currentServerVersion(), SYSTEM_UPDATED_BY);
+  }
+
+  private static String currentServerVersion() {
+    return VersionUtils.getOpenMetadataServerVersion(VERSION_RESOURCE_PATH).getVersion();
   }
 
   public enum MappingDriftState {

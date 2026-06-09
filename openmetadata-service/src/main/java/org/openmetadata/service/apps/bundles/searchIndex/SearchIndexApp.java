@@ -79,9 +79,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
               ? searchRepository.getEntityIndexMap().keySet()
               : targeted;
       try {
-        String version = System.getProperty("project.version", "1.8.0-SNAPSHOT");
-        new IndexMappingVersionTracker(collectionDAO, version, "system")
-            .updateMappingVersions(toStamp);
+        IndexMappingVersionTracker.create(collectionDAO).updateMappingVersions(toStamp);
       } catch (Exception e) {
         LOG.warn("Failed to stamp index mapping versions after reindex", e);
       }

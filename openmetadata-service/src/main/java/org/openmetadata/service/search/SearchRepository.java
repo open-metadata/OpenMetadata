@@ -344,8 +344,7 @@ public class SearchRepository {
   protected void stampRecreatedMappings(List<String> entityTypes) {
     if (!nullOrEmpty(entityTypes)) {
       try {
-        String version = System.getProperty("project.version", "1.8.0-SNAPSHOT");
-        new IndexMappingVersionTracker(Entity.getCollectionDAO(), version, "system")
+        IndexMappingVersionTracker.create(Entity.getCollectionDAO())
             .updateMappingVersions(entityTypes);
       } catch (Exception e) {
         LOG.warn("Failed to stamp index mapping versions after createIndexes: {}", e.getMessage());

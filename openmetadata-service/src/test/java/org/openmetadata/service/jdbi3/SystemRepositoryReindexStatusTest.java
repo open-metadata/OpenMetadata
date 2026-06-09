@@ -13,15 +13,20 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.jdbi3.SystemRepository.ReindexStatus;
 import org.openmetadata.service.jdbi3.SystemRepository.SearchReindexStatus;
 import org.openmetadata.service.search.IndexMappingVersionTracker.MappingDriftState;
+import org.openmetadata.service.search.SearchRepository;
 
 class SystemRepositoryReindexStatusTest {
 
@@ -71,7 +76,8 @@ class SystemRepositoryReindexStatusTest {
 
   @Test
   void reindexMessageCleanStateMentionsNoOrphansAndHealthyCluster() {
-    SearchReindexStatus status = new SearchReindexStatus(List.of(), 0, List.of(), List.of(), true);
+    SearchReindexStatus status =
+        new SearchReindexStatus(List.of(), 0, List.of(), List.of(), true, true);
     String message = SystemRepository.buildReindexStatusMessage(status);
     assertTrue(message.contains("All deployed indexes were built from the current code mappings."));
     assertTrue(message.toLowerCase().contains("no orphan indexes"));
@@ -82,7 +88,7 @@ class SystemRepositoryReindexStatusTest {
   void reindexMessageReportsStaleMissingOrphanAndDegradedCluster() {
     SearchReindexStatus status =
         new SearchReindexStatus(
-            List.of("dashboard"), 0, List.of("glossary"), List.of("topic_rebuild_1"), false);
+            List.of("dashboard"), 0, List.of("glossary"), List.of("topic_rebuild_1"), false, true);
     String message = SystemRepository.buildReindexStatusMessage(status);
     assertTrue(message.contains("reindex is required"));
     assertTrue(message.contains("dashboard"));
@@ -94,9 +100,47 @@ class SystemRepositoryReindexStatusTest {
 
   @Test
   void reindexMessageMentionsUntrackedNoteWhenClean() {
-    SearchReindexStatus status = new SearchReindexStatus(List.of(), 3, List.of(), List.of(), true);
+    SearchReindexStatus status =
+        new SearchReindexStatus(List.of(), 3, List.of(), List.of(), true, true);
     String message = SystemRepository.buildReindexStatusMessage(status);
     assertTrue(message.contains("3"));
     assertTrue(message.toLowerCase().contains("version-tracked"));
+  }
+
+  @Test
+  void driftComputeFailureIsNotReportedAsUpToDate() {
+    SearchReindexStatus status =
+        new SearchReindexStatus(List.of(), 0, List.of(), List.of(), true, false);
+    String message = SystemRepository.buildReindexStatusMessage(status);
+    assertTrue(message.toLowerCase().contains("could not determine reindex status"));
+    assertFalse(
+        message.contains("All deployed indexes were built from the current code mappings."));
+  }
+
+  @Test
+  void vectorEmbeddingIsExcludedFromDriftWhenSemanticSearchDisabled() {
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    IndexMapping mapping = mock(IndexMapping.class);
+    when(searchRepository.getEntityIndexMap())
+        .thenReturn(Map.of("table", mapping, "vectorEmbedding", mapping));
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(false);
+
+    Set<String> existing = SystemRepository.existingTrackedIndexes(searchRepository, List.of());
+
+    assertTrue(existing.contains("table"));
+    assertFalse(existing.contains("vectorEmbedding"));
+  }
+
+  @Test
+  void vectorEmbeddingIsKeptInDriftWhenSemanticSearchEnabled() {
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    IndexMapping mapping = mock(IndexMapping.class);
+    when(searchRepository.getEntityIndexMap())
+        .thenReturn(Map.of("table", mapping, "vectorEmbedding", mapping));
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+
+    Set<String> existing = SystemRepository.existingTrackedIndexes(searchRepository, List.of());
+
+    assertTrue(existing.contains("vectorEmbedding"));
   }
 }

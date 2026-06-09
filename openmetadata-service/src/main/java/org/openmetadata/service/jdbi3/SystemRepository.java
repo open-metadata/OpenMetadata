@@ -852,7 +852,8 @@ public class SystemRepository {
       int untrackedCount,
       List<String> missingIndexes,
       List<String> orphanIndexes,
-      boolean clusterHealthy) {
+      boolean clusterHealthy,
+      boolean driftComputed) {
     boolean reindexNeeded() {
       return !stalePending.isEmpty() || !missingIndexes.isEmpty();
     }
@@ -886,6 +887,9 @@ public class SystemRepository {
   private static void appendReindexState(StringBuilder message, SearchReindexStatus status) {
     if (status.reindexNeeded()) {
       appendReindexNeeded(message, status);
+    } else if (!status.driftComputed()) {
+      message.append(
+          "Could not determine reindex status: drift computation failed (see server logs).");
     } else {
       appendUpToDate(message, status.untrackedCount());
     }
@@ -987,8 +991,8 @@ public class SystemRepository {
     StepValidation result;
     if (searchRepository.getSearchClient().isClientAvailable()) {
       SearchReindexStatus status = computeSearchReindexStatus(searchRepository);
-      result =
-          step.withPassed(!status.reindexNeeded()).withMessage(buildReindexStatusMessage(status));
+      boolean healthy = status.driftComputed() && !status.reindexNeeded();
+      result = step.withPassed(healthy).withMessage(buildReindexStatusMessage(status));
     } else {
       result =
           step.withPassed(Boolean.TRUE).withMessage("Skipped: search instance is not reachable.");
@@ -1000,29 +1004,43 @@ public class SystemRepository {
     List<String> missingIndexes = findMissingIndexes(searchRepository);
     List<String> orphanIndexes = findOrphanIndexes(searchRepository);
     boolean clusterHealthy = isSearchClusterHealthy(searchRepository);
-    ReindexStatus drift = computeMappingDrift(searchRepository, missingIndexes);
+    DriftResult drift = computeMappingDrift(searchRepository, missingIndexes);
     return new SearchReindexStatus(
-        drift.stalePending(),
-        drift.untrackedCount(),
+        drift.status().stalePending(),
+        drift.status().untrackedCount(),
         missingIndexes,
         orphanIndexes,
-        clusterHealthy);
+        clusterHealthy,
+        drift.computed());
   }
 
-  private ReindexStatus computeMappingDrift(
+  private record DriftResult(ReindexStatus status, boolean computed) {}
+
+  private DriftResult computeMappingDrift(
       SearchRepository searchRepository, List<String> missingIndexes) {
     ReindexStatus status = new ReindexStatus(new ArrayList<>(), 0);
+    boolean computed = false;
     try {
-      String version = System.getProperty("project.version", "1.8.0-SNAPSHOT");
       IndexMappingVersionTracker tracker =
-          new IndexMappingVersionTracker(Entity.getCollectionDAO(), version, "system");
-      Set<String> existingIndexes = new HashSet<>(searchRepository.getEntityIndexMap().keySet());
-      existingIndexes.removeAll(missingIndexes);
+          IndexMappingVersionTracker.create(Entity.getCollectionDAO());
+      Set<String> existingIndexes = existingTrackedIndexes(searchRepository, missingIndexes);
       status = classifyReindexStatus(tracker.computeDrift(), existingIndexes);
+      computed = true;
     } catch (Exception e) {
       LOG.warn("Failed to compute search mapping drift: {}", e.getMessage());
     }
-    return status;
+    return new DriftResult(status, computed);
+  }
+
+  @VisibleForTesting
+  static Set<String> existingTrackedIndexes(
+      SearchRepository searchRepository, List<String> missingIndexes) {
+    Set<String> existingIndexes = new HashSet<>(searchRepository.getEntityIndexMap().keySet());
+    existingIndexes.removeAll(missingIndexes);
+    if (!searchRepository.isVectorEmbeddingEnabled()) {
+      existingIndexes.remove(VECTOR_EMBEDDING_INDEX_KEY);
+    }
+    return existingIndexes;
   }
 
   private boolean validateDataInsights() {

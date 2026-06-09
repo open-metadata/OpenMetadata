@@ -1795,8 +1795,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     if (!force) {
       try {
-        String version = System.getProperty("project.version", "1.8.0-SNAPSHOT");
-        versionTracker = new IndexMappingVersionTracker(collectionDAO, version, "system");
+        versionTracker = IndexMappingVersionTracker.create(collectionDAO);
 
         List<String> changedMappings = versionTracker.getChangedMappings();
 
