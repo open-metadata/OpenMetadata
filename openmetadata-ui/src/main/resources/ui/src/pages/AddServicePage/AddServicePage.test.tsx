@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import type { TitleLink } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
@@ -285,7 +286,7 @@ describe('AddServicePage', () => {
     );
     expect(getServiceLogo).toHaveBeenCalledWith(
       'mysql',
-      'add-service-page-title-logo'
+      'tw:size-10 tw:max-w-10 tw:max-h-10 tw:object-contain'
     );
   });
 
@@ -423,7 +424,7 @@ describe('AddServicePage', () => {
     );
     expect(screen.queryByText('Save Filters')).not.toBeInTheDocument();
     expect(
-      serviceUtilClassBaseModule.getServiceConfigData
+      serviceUtilClassBaseModule.default.getServiceConfigData
     ).not.toHaveBeenCalled();
   });
 

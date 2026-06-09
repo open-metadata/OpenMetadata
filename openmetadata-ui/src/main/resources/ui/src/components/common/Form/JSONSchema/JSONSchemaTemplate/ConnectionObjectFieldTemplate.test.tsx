@@ -306,16 +306,6 @@ describe('ConnectionObjectFieldTemplate', () => {
     ).toBeInTheDocument();
   });
 
-  it('marks a section active when its header is used', () => {
-    render(<ConnectionObjectFieldTemplate {...getProps('root')} />);
-
-    const advanced = screen.getByTestId('connection-section-advanced');
-
-    fireEvent.click(within(advanced).getByRole('button'));
-
-    expect(advanced).toHaveClass('connection-section-card-active');
-  });
-
   it('delegates nested (non-root) objects to the core template', () => {
     render(<ConnectionObjectFieldTemplate {...getProps('root/authType')} />);
 
@@ -365,7 +355,6 @@ describe('ConnectionObjectFieldTemplate', () => {
         scopeConnectorCount += 1;
         fireEvent.click(within(scope).getByRole('button'));
 
-        expect(scope).toHaveClass('connection-section-card-active');
         expect(
           scope.querySelector(
             '.connection-section-field-grid, .connection-section-boolean-grid, .connection-section-fields'

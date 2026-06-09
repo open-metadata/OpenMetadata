@@ -28,6 +28,7 @@ import {
 import {
   buildPatternFromState,
   cleanSchemaTitle,
+  conditionKey,
   getSectionIcon,
   parseRegexPattern,
   pluralizeFallback,
@@ -37,6 +38,7 @@ import { FilterSectionCard } from './FilterSectionCard';
 
 type FilterPatternFieldUiOptions = {
   defaultOpen?: boolean;
+  hasExistingData?: boolean;
   systemExcludes?: string[];
 };
 
@@ -90,32 +92,46 @@ export function FilterPatternField({
   const uiOptions = (uiSchema?.['ui:options'] ??
     {}) as FilterPatternFieldUiOptions;
 
-  const section = useMemo(() => {
-    const systemExcludes = (uiOptions.systemExcludes ?? []).map(
-      parseRegexPattern
-    );
-
-    return buildFilterSection(
-      name,
-      schema.title,
-      schema.description,
-      systemExcludes,
-      t
-    );
-  }, [name, schema.title, schema.description, uiOptions.systemExcludes, t]);
-
-  const [filter, setFilter] = useState<FilterSectionState>(() =>
-    buildInitialState(formData)
+  const systemExcludes = useMemo(
+    () => (uiOptions.systemExcludes ?? []).map(parseRegexPattern),
+    [uiOptions.systemExcludes]
   );
+
+  const section = useMemo(
+    () =>
+      buildFilterSection(
+        name,
+        schema.title,
+        schema.description,
+        systemExcludes,
+        t
+      ),
+    [name, schema.title, schema.description, systemExcludes, t]
+  );
+
+  const [filter, setFilter] = useState<FilterSectionState>(() => {
+    const initialState = buildInitialState(formData);
+    if (!uiOptions.hasExistingData && systemExcludes.length > 0) {
+      const existingKeys = new Set(initialState.excludes.map(conditionKey));
+      const newSystemExcludes = systemExcludes.filter(
+        (sys) => !existingKeys.has(conditionKey(sys))
+      );
+      if (newSystemExcludes.length > 0) {
+        return {
+          ...initialState,
+          excludes: [...initialState.excludes, ...newSystemExcludes],
+        };
+      }
+    }
+
+    return initialState;
+  });
 
   const [isOpen, setIsOpen] = useState(uiOptions.defaultOpen ?? false);
 
   const handleFilterChange = (newFilter: FilterSectionState) => {
     setFilter(newFilter);
-    const pattern = buildPatternFromState(newFilter);
-    const isEmpty =
-      pattern.includes.length === 0 && pattern.excludes.length === 0;
-    onChange(isEmpty ? undefined : pattern);
+    onChange(buildPatternFromState(newFilter));
   };
 
   return (

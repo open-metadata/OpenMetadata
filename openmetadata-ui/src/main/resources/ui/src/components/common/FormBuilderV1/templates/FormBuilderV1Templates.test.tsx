@@ -92,11 +92,15 @@ jest.mock('@openmetadata/ui-core-components', () => {
         children,
         isDisabled,
         onClick,
+        iconLeading: _iconLeading,
+        iconTrailing: _iconTrailing,
         ...props
       }: {
         children: React.ReactNode;
         isDisabled?: boolean;
         onClick?: () => void;
+        iconLeading?: React.ReactNode;
+        iconTrailing?: React.ReactNode;
       }) => (
         <button
           disabled={isDisabled}

@@ -61,10 +61,56 @@ jest.mock('react-aria-components', () => ({
   ),
 }));
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  Box: jest.fn(({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  )),
+jest.mock('@openmetadata/ui-core-components', () => {
+  const { useState } = jest.requireActual('react') as typeof import('react');
+
+  function MockPasswordInput({
+    allowUpload,
+    hint,
+    isRequired,
+    label,
+  }: {
+    allowUpload?: boolean;
+    hint?: string;
+    isRequired?: boolean;
+    label?: string;
+  }) {
+    const [showPassword, setShowPassword] = useState(false);
+    const [showUpload, setShowUpload] = useState(Boolean(allowUpload));
+
+    if (showUpload) {
+      return (
+        <div>
+          <input data-testid="file-input" type="file" />
+          <button type="button" onClick={() => setShowUpload(false)}>
+            select-radio
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        {label && (
+          <label>
+            {label}
+            {isRequired ? '*' : ''}
+          </label>
+        )}
+        {hint && <span>{hint}</span>}
+        <button
+          type="button"
+          onClick={() => setShowPassword(!showPassword)}>
+          {showPassword ? <span>eye-off-icon</span> : <span>eye-icon</span>}
+        </button>
+      </div>
+    );
+  }
+
+  return {
+    Box: jest.fn(({ children }: { children: React.ReactNode }) => (
+      <div>{children}</div>
+    )),
   Button: jest.fn(
     ({
       children,
@@ -315,7 +361,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </div>
     )
   ),
-}));
+  PasswordInput: jest.fn(MockPasswordInput),
+  };
+});
 
 describe('FormBuilderV1 widgets', () => {
   const widgetBaseProps = {

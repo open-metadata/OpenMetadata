@@ -88,6 +88,7 @@ const ServiceNameCard = ({
         </div>
       ) : (
         <Button
+          excludeFromTabOrder
           className="tw:mt-3"
           color="link-color"
           data-testid="add-description-button"

@@ -575,7 +575,7 @@ const SectionCard = ({ section }: { section: SectionConfig }) => {
       className={classNames(
         'connection-section-card',
         `connection-section-card-${section.key}`,
-        section.key !== 'advanced' ? 'tw:p-6' : ''
+        section.key === 'advanced' ? '' : 'tw:p-6'
       )}
       color={active ? 'brandOutlined' : 'default'}
       data-testid={`connection-section-${section.key}`}

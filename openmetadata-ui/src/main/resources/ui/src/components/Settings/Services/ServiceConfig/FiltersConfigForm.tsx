@@ -141,21 +141,18 @@ function FiltersConfigForm({
         'ui:field': 'FilterPatternField',
         'ui:options': {
           defaultOpen: index < 2,
+          hasExistingData: (fieldName as string) in initialFilterFormData,
           systemExcludes,
         },
       };
     });
 
     return uiSchema;
-  }, [filterEntries, serviceType]);
+  }, [filterEntries, initialFilterFormData, serviceType]);
 
   const filterDataRef = useRef<Record<string, FilterPatternConfig | undefined>>(
     initialFilterFormData
   );
-
-  useEffect(() => {
-    filterDataRef.current = initialFilterFormData;
-  }, [initialFilterFormData]);
 
   const handleFilterFormChange = useCallback((e: IChangeEvent) => {
     if (e.formData !== undefined) {

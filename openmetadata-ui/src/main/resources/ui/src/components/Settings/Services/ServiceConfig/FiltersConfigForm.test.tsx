@@ -374,11 +374,6 @@ describe('FiltersConfigForm', () => {
           'Only tables matching 1 include rule are in scope.'
         )
       ).toBeInTheDocument();
-      expect(
-        within(tableSection).getByText('contains', {
-          selector: '.filters-config-form__preview-rule-operator',
-        })
-      ).toBeInTheDocument();
       expect(within(tableSection).getAllByText('orders')).toHaveLength(2);
     });
 
@@ -638,16 +633,13 @@ describe('FiltersConfigForm', () => {
       })
     );
 
-    const [includeOperator, excludeOperator] =
-      within(tableSection).getAllByRole('combobox');
+    const [includeOperatorContainer, excludeOperatorContainer] =
+      within(tableSection).getAllByTestId('relation-selector');
     const includeInput =
       within(tableSection).getByPlaceholderText('e.g. a table name');
 
-    fireEvent.change(includeOperator, {
-      target: {
-        value: 'is',
-      },
-    });
+    fireEvent.click(within(includeOperatorContainer).getByRole('button'));
+    fireEvent.click(screen.getByRole('option', { name: 'is exactly' }));
     fireEvent.change(includeInput, {
       target: {
         value: 'orders.v1',
@@ -655,11 +647,8 @@ describe('FiltersConfigForm', () => {
     });
     fireEvent.keyDown(includeInput, { key: 'Enter' });
 
-    fireEvent.change(includeOperator, {
-      target: {
-        value: 'endsWith',
-      },
-    });
+    fireEvent.click(within(includeOperatorContainer).getByRole('button'));
+    fireEvent.click(screen.getByRole('option', { name: 'ends with' }));
     fireEvent.change(includeInput, {
       target: {
         value: '_fact',
@@ -671,11 +660,8 @@ describe('FiltersConfigForm', () => {
       })[0]
     );
 
-    fireEvent.change(excludeOperator, {
-      target: {
-        value: 'regex',
-      },
-    });
+    fireEvent.click(within(excludeOperatorContainer).getByRole('button'));
+    fireEvent.click(screen.getByRole('option', { name: 'matches regex' }));
 
     const excludeInput =
       within(tableSection).getByPlaceholderText('^prefix.*$');

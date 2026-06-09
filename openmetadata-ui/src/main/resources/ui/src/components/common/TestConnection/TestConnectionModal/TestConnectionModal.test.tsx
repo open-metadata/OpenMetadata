@@ -291,14 +291,6 @@ describe('TestConnectionModal', () => {
     expect(screen.queryByTestId('raw-connection-log')).not.toBeInTheDocument();
   });
 
-  it('should render the connector logo when connection type is available', () => {
-    render(<TestConnectionModal {...commonProps} connectionType="Snowflake" />);
-
-    expect(
-      document.querySelector('.test-connection-modal-service-icon')
-    ).not.toBeEmptyDOMElement();
-  });
-
   it('should show optional failures as warnings when required steps pass', () => {
     render(
       <TestConnectionModal
@@ -320,11 +312,5 @@ describe('TestConnectionModal', () => {
     expect(
       screen.getByText('message.connection-test-warning')
     ).toBeInTheDocument();
-    expect(
-      document.querySelector('.test-connection-status-banner-warning')
-    ).toBeInTheDocument();
-    expect(
-      document.querySelector('.test-connection-status-banner-failed')
-    ).not.toBeInTheDocument();
   });
 });

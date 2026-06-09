@@ -190,6 +190,8 @@ export interface ButtonProps
   onPressChange?: AriaButtonProps['onPressChange'];
   /** Handler called when a press is released over the target */
   onPressUp?: AriaButtonProps['onPressUp'];
+  /** Whether to exclude the button from the sequential tab order */
+  excludeFromTabOrder?: AriaButtonProps['excludeFromTabOrder'];
 }
 
 /**

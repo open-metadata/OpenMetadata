@@ -352,7 +352,7 @@ describe('ConnectionConfigForm schema rendering', () => {
     expect(field).toHaveClass('connection-section-wide-property');
     expect(
       field.querySelector(
-        ':scope > .core-one-of-field > .core-one-of-field-select'
+        ':scope > .core-one-of-field .core-one-of-field-select'
       )
     ).toBeInTheDocument();
     expect(
