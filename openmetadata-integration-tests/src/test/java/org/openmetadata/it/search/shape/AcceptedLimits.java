@@ -6,7 +6,7 @@ import java.util.Optional;
 /**
  * Opt-in list of search-index shapes whose non-OK outcome is consciously accepted. A case listed
  * here is tolerated (the canary stays green and logs the reason); ANY case NOT listed must index
- * and be queryable (Outcome.OK) or {@link org.openmetadata.it.tests.EntityShapeSweepIT} fails red.
+ * and be queryable (Outcome.OK) or {@link org.openmetadata.it.tests.EntityShapeIT} fails red.
  *
  * <p>Add an entry to accept a limit (e.g. "1M columns may fail"); remove it (or fix the root cause)
  * to make the case red again. Granularity is per (entityType, dimension, rung).

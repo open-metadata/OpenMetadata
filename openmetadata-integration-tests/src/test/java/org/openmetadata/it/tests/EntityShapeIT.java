@@ -36,8 +36,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Execution(ExecutionMode.SAME_THREAD)
-class EntityShapeSweepIT {
-  private static final Logger LOG = LoggerFactory.getLogger(EntityShapeSweepIT.class);
+class EntityShapeIT {
+  private static final Logger LOG = LoggerFactory.getLogger(EntityShapeIT.class);
 
   private static ShapeCanary canary;
 

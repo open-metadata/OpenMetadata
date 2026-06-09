@@ -32,7 +32,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 
 @Execution(ExecutionMode.SAME_THREAD)
-class EntityShapeSpikeIT {
+class EntityShapeBaselineIT {
 
   private static ShapeCanary canary;
 
@@ -48,8 +48,8 @@ class EntityShapeSpikeIT {
     final Table table =
         new Table()
             .withId(UUID.randomUUID())
-            .withName("shapeSpike")
-            .withFullyQualifiedName("shapeSpikeSvc.db.schema." + UUID.randomUUID())
+            .withName("shapeBaseline")
+            .withFullyQualifiedName("shapeBaselineSvc.db.schema." + UUID.randomUUID())
             .withColumns(List.of(new Column().withName("c0").withDataType(ColumnDataType.STRING)));
 
     final Outcome outcome = canary.index(Entity.TABLE, table, null);
