@@ -27,7 +27,6 @@ export const LANGUAGE_TO_CODEMIRROR_MODE: Record<Language, CSMode> = {
   [Language.Python]: CSMode.PYTHON,
   [Language.JavaScript]: CSMode.JAVASCRIPT,
   [Language.Java]: CSMode.CLIKE,
-  // CodeMirror has no DAX/External grammar — fall back to SQL highlighting.
-  [Language.Dax]: CSMode.SQL,
+  // CodeMirror has no External grammar. Fall back to SQL highlighting.
   [Language.External]: CSMode.SQL,
 };
