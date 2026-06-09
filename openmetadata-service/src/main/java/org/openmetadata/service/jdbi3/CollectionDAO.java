@@ -8649,6 +8649,56 @@ public interface CollectionDAO {
       return TestDefinition.class;
     }
 
+    record SqlConditionPair(StringBuilder mysql, StringBuilder psql, ListFilter filter) {}
+
+    default void applyJsonArrayFilter(
+        SqlConditionPair conditions,
+        String queryParamName,
+        String jsonFieldName) {
+      String paramValue = conditions.filter().getQueryParam(queryParamName);
+      if (paramValue != null) {
+        conditions.filter().queryParams.put(queryParamName + "Exact", paramValue);
+
+        String mysqlBaseCondition =
+            String.format(
+                "JSON_CONTAINS(json_extract(json, '$.%s'), JSON_ARRAY(:%sExact))",
+                jsonFieldName, queryParamName);
+        String psqlBaseCondition =
+            String.format(
+                "jsonb_exists(json::jsonb -> '%s', :%sExact)", jsonFieldName, queryParamName);
+
+        conditions.mysql().append(String.format("AND %s ", mysqlBaseCondition));
+        conditions.psql().append(String.format("AND %s ", psqlBaseCondition));
+      }
+    }
+
+    default void applyJsonArrayFilterWithEmpty(
+        SqlConditionPair conditions,
+        String queryParamName,
+        String jsonFieldName) {
+      String paramValue = conditions.filter().getQueryParam(queryParamName);
+      if (paramValue != null) {
+        conditions.filter().queryParams.put(queryParamName + "Exact", paramValue);
+
+        String mysqlBaseCondition =
+            String.format(
+                "JSON_CONTAINS(json_extract(json, '$.%s'), JSON_ARRAY(:%sExact))",
+                jsonFieldName, queryParamName);
+        String psqlBaseCondition =
+            String.format(
+                "jsonb_exists(json::jsonb -> '%s', :%sExact)", jsonFieldName, queryParamName);
+
+        conditions.mysql().append(
+            String.format(
+                "AND (json_extract(json, '$.%s') = JSON_ARRAY() OR json_extract(json, '$.%s') IS NULL OR %s) ",
+                jsonFieldName, jsonFieldName, mysqlBaseCondition));
+        conditions.psql().append(
+            String.format(
+                "AND (json->>'%s' = '[]' OR json->>'%s' IS NULL OR %s) ",
+                jsonFieldName, jsonFieldName, psqlBaseCondition));
+      }
+    }
+
     @Override
     default List<String> listBefore(
         ListFilter filter, int limit, String beforeName, String beforeId) {
@@ -8673,35 +8723,18 @@ public interface CollectionDAO {
       mysqlCondition.append(String.format("%s ", condition));
       psqlCondition.append(String.format("%s ", condition));
 
-      if (testPlatform != null) {
-        filter.queryParams.put("testPlatformLike", String.format("%%%s%%", testPlatform));
-        mysqlCondition.append("AND json_extract(json, '$.testPlatforms') LIKE :testPlatformLike ");
-        psqlCondition.append("AND json->>'testPlatforms' LIKE :testPlatformLike ");
-      }
+      SqlConditionPair conditions = new SqlConditionPair(mysqlCondition, psqlCondition, filter);
+
+      applyJsonArrayFilter(conditions, "testPlatform", "testPlatforms");
 
       if (entityType != null) {
         mysqlCondition.append("AND entityType=:entityType ");
         psqlCondition.append("AND entityType=:entityType ");
       }
 
-      if (supportedDataType != null) {
-        filter.queryParams.put("supportedDataTypeLike", String.format("%%%s%%", supportedDataType));
-        mysqlCondition.append(
-            "AND json_extract(json, '$.supportedDataTypes') LIKE :supportedDataTypeLike ");
-        psqlCondition.append("AND json->>'supportedDataTypes' LIKE :supportedDataTypeLike ");
-      }
+      applyJsonArrayFilterWithEmpty(conditions, "supportedDataType", "supportedDataTypes");
 
-      if (supportedService != null) {
-        filter.queryParams.put("supportedServiceLike", String.format("%%%s%%", supportedService));
-        mysqlCondition.append(
-            "AND (json_extract(json, '$.supportedServices') = JSON_ARRAY() "
-                + "OR json_extract(json, '$.supportedServices') IS NULL "
-                + "OR json_extract(json, '$.supportedServices') LIKE :supportedServiceLike) ");
-        psqlCondition.append(
-            "AND (json->>'supportedServices' = '[]' "
-                + "OR json->>'supportedServices' IS NULL "
-                + "OR json->>'supportedServices' LIKE :supportedServiceLike) ");
-      }
+      applyJsonArrayFilterWithEmpty(conditions, "supportedService", "supportedServices");
 
       if (enabled != null) {
         String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
@@ -8742,35 +8775,18 @@ public interface CollectionDAO {
       mysqlCondition.append(String.format("%s ", condition));
       psqlCondition.append(String.format("%s ", condition));
 
-      if (testPlatform != null) {
-        filter.queryParams.put("testPlatformLike", String.format("%%%s%%", testPlatform));
-        mysqlCondition.append("AND json_extract(json, '$.testPlatforms') LIKE :testPlatformLike ");
-        psqlCondition.append("AND json->>'testPlatforms' LIKE :testPlatformLike ");
-      }
+      SqlConditionPair conditions = new SqlConditionPair(mysqlCondition, psqlCondition, filter);
+
+      applyJsonArrayFilter(conditions, "testPlatform", "testPlatforms");
 
       if (entityType != null) {
         mysqlCondition.append("AND entityType = :entityType ");
         psqlCondition.append("AND entityType = :entityType ");
       }
 
-      if (supportedDataType != null) {
-        filter.queryParams.put("supportedDataTypeLike", String.format("%%%s%%", supportedDataType));
-        mysqlCondition.append(
-            "AND json_extract(json, '$.supportedDataTypes') LIKE :supportedDataTypeLike ");
-        psqlCondition.append("AND json->>'supportedDataTypes' LIKE :supportedDataTypeLike ");
-      }
+      applyJsonArrayFilterWithEmpty(conditions, "supportedDataType", "supportedDataTypes");
 
-      if (supportedService != null) {
-        filter.queryParams.put("supportedServiceLike", String.format("%%%s%%", supportedService));
-        mysqlCondition.append(
-            "AND (json_extract(json, '$.supportedServices') = JSON_ARRAY() "
-                + "OR json_extract(json, '$.supportedServices') IS NULL "
-                + "OR json_extract(json, '$.supportedServices') LIKE :supportedServiceLike) ");
-        psqlCondition.append(
-            "AND (json->>'supportedServices' = '[]' "
-                + "OR json->>'supportedServices' IS NULL "
-                + "OR json->>'supportedServices' LIKE :supportedServiceLike) ");
-      }
+      applyJsonArrayFilterWithEmpty(conditions, "supportedService", "supportedServices");
 
       if (enabled != null) {
         String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
@@ -8811,35 +8827,18 @@ public interface CollectionDAO {
       mysqlCondition.append(String.format("%s ", condition));
       psqlCondition.append(String.format("%s ", condition));
 
-      if (testPlatform != null) {
-        filter.queryParams.put("testPlatformLike", String.format("%%%s%%", testPlatform));
-        mysqlCondition.append("AND json_extract(json, '$.testPlatforms') LIKE :testPlatformLike ");
-        psqlCondition.append("AND json->>'testPlatforms' LIKE :testPlatformLike ");
-      }
+      SqlConditionPair conditions = new SqlConditionPair(mysqlCondition, psqlCondition, filter);
+
+      applyJsonArrayFilter(conditions, "testPlatform", "testPlatforms");
 
       if (entityType != null) {
         mysqlCondition.append("AND entityType=:entityType ");
         psqlCondition.append("AND entityType=:entityType ");
       }
 
-      if (supportedDataType != null) {
-        filter.queryParams.put("supportedDataTypeLike", String.format("%%%s%%", supportedDataType));
-        mysqlCondition.append(
-            "AND json_extract(json, '$.supportedDataTypes') LIKE :supportedDataTypeLike ");
-        psqlCondition.append("AND json->>'supportedDataTypes' LIKE :supportedDataTypeLike ");
-      }
+      applyJsonArrayFilterWithEmpty(conditions, "supportedDataType", "supportedDataTypes");
 
-      if (supportedService != null) {
-        filter.queryParams.put("supportedServiceLike", String.format("%%%s%%", supportedService));
-        mysqlCondition.append(
-            "AND (json_extract(json, '$.supportedServices') = JSON_ARRAY() "
-                + "OR json_extract(json, '$.supportedServices') IS NULL "
-                + "OR json_extract(json, '$.supportedServices') LIKE :supportedServiceLike) ");
-        psqlCondition.append(
-            "AND (json->>'supportedServices' = '[]' "
-                + "OR json->>'supportedServices' IS NULL "
-                + "OR json->>'supportedServices' LIKE :supportedServiceLike) ");
-      }
+      applyJsonArrayFilterWithEmpty(conditions, "supportedService", "supportedServices");
 
       if (enabled != null) {
         String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
