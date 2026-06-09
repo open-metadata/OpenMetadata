@@ -1322,13 +1322,8 @@ public class IngestionPipelineResource
     decryptOrNullify(securityContext, ingestionPipeline, true);
     ServiceEntityInterface service =
         Entity.getEntity(ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED);
-    // Flag the ingestion pipeline with streamable logs only if configured and enabled for use
-    if (repository.isS3LogStorageEnabled()
-        && repository.getLogStorageConfiguration().getEnabled()) {
-      ingestionPipeline.setEnableStreamableLogs(true);
-    }
     PipelineServiceClientResponse status =
-        pipelineServiceClient.deployPipeline(ingestionPipeline, service);
+        repository.deployIngestionPipeline(ingestionPipeline, service);
     if (status.getCode() == 200) {
       createOrUpdate(uriInfo, securityContext, ingestionPipeline);
     }
