@@ -23,7 +23,10 @@ import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
-import { DocumentPreviewPanelProps, MetaRowProps } from './DocumentsView.interface';
+import {
+  DocumentPreviewPanelProps,
+  MetaRowProps,
+} from './DocumentsView.interface';
 
 const MetaRow: FC<MetaRowProps> = ({ label, value }) => (
   <Box align="center" className="tw:py-1.5" justify="between">
@@ -35,7 +38,6 @@ const MetaRow: FC<MetaRowProps> = ({ label, value }) => (
     </Typography>
   </Box>
 );
-
 
 const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
   file,

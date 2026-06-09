@@ -48,7 +48,7 @@ import {
   FileActionsProps,
   FileRowProps,
   FolderPickerMenuProps,
-  ListHeaderProps
+  ListHeaderProps,
 } from './DocumentsView.interface';
 
 /* ---------------------------------------------------------------
@@ -348,7 +348,7 @@ const FileRow: FC<FileRowProps> = ({
 
   return (
     <Box
-      align='center'
+      align="center"
       className={`tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:cursor-pointer tw:transition-colors tw:duration-100 ${
         isActive ? 'tw:bg-blue-50' : 'tw:bg-primary hover:tw:bg-gray-25'
       }`}
