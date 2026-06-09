@@ -308,6 +308,7 @@ public class SearchRepository {
     RecreateIndexHandler recreateIndexHandler = this.createReindexHandler();
     ReindexContext context = recreateIndexHandler.reCreateIndexes(entityIndexMap.keySet());
     if (context != null) {
+      List<String> recreated = new ArrayList<>();
       for (String entityType : context.getEntities()) {
         try {
           String originalIndex = context.getOriginalIndex(entityType).orElse(null);
@@ -331,10 +332,23 @@ public class SearchRepository {
                   .parentAliases(parentAliases)
                   .build();
           recreateIndexHandler.finalizeReindex(entityReindexContext, true);
-
+          recreated.add(entityType);
         } catch (Exception ex) {
           LOG.error("Failed to recreate index for entity {}", entityType, ex);
         }
+      }
+      stampRecreatedMappings(recreated);
+    }
+  }
+
+  protected void stampRecreatedMappings(List<String> entityTypes) {
+    if (!nullOrEmpty(entityTypes)) {
+      try {
+        String version = System.getProperty("project.version", "1.8.0-SNAPSHOT");
+        new IndexMappingVersionTracker(Entity.getCollectionDAO(), version, "system")
+            .updateMappingVersions(entityTypes);
+      } catch (Exception e) {
+        LOG.warn("Failed to stamp index mapping versions after createIndexes: {}", e.getMessage());
       }
     }
   }

@@ -416,6 +416,76 @@ class IndexMappingVersionTrackerTest {
     }
   }
 
+  @Test
+  void computeDriftClassifiesCurrentStaleAndUntracked() throws IOException {
+    Map<String, IndexMapping> mappings =
+        buildMappingsFromPairs(
+            "table", "/elasticsearch/%s/table_index_mapping.json",
+            "glossaryTerm", "/elasticsearch/%s/glossary_term_index_mapping.json",
+            "domain", "/elasticsearch/%s/domain_index_mapping.json");
+    try (var loaderMock = mockStatic(IndexMappingLoader.class)) {
+      loaderMock.when(IndexMappingLoader::getInstance).thenReturn(indexMappingLoader);
+      when(indexMappingLoader.getIndexMapping()).thenReturn(mappings);
+
+      IndexMappingVersionTracker tracker =
+          new IndexMappingVersionTracker(collectionDAO, "1.2.3", "tester");
+
+      // Stamp all, capture table's real hash to mark it CURRENT.
+      tracker.updateMappingVersions();
+      verify(indexMappingVersionDAO, times(3))
+          .upsertIndexMappingVersion(
+              entityTypeCaptor.capture(),
+              hashCaptor.capture(),
+              anyString(),
+              anyString(),
+              anyLong(),
+              anyString());
+      Map<String, String> realHashes = new HashMap<>();
+      for (int i = 0; i < entityTypeCaptor.getAllValues().size(); i++) {
+        realHashes.put(entityTypeCaptor.getAllValues().get(i), hashCaptor.getAllValues().get(i));
+      }
+
+      // table = current hash, glossaryTerm = stale hash, domain = not stored (untracked).
+      when(indexMappingVersionDAO.getAllMappingVersions())
+          .thenReturn(
+              List.of(
+                  new IndexMappingVersionDAO.IndexMappingVersion("table", realHashes.get("table")),
+                  new IndexMappingVersionDAO.IndexMappingVersion("glossaryTerm", "stale-hash")));
+
+      Map<String, IndexMappingVersionTracker.MappingDriftState> drift = tracker.computeDrift();
+
+      assertEquals(IndexMappingVersionTracker.MappingDriftState.CURRENT, drift.get("table"));
+      assertEquals(IndexMappingVersionTracker.MappingDriftState.STALE, drift.get("glossaryTerm"));
+      assertEquals(IndexMappingVersionTracker.MappingDriftState.UNTRACKED, drift.get("domain"));
+    }
+  }
+
+  @Test
+  void updateMappingVersionsForSubsetStampsOnlyGivenEntities() throws IOException {
+    Map<String, IndexMapping> mappings =
+        buildMappingsFromPairs(
+            "table", "/elasticsearch/%s/table_index_mapping.json",
+            "glossaryTerm", "/elasticsearch/%s/glossary_term_index_mapping.json",
+            "domain", "/elasticsearch/%s/domain_index_mapping.json");
+    try (var loaderMock = mockStatic(IndexMappingLoader.class)) {
+      loaderMock.when(IndexMappingLoader::getInstance).thenReturn(indexMappingLoader);
+      when(indexMappingLoader.getIndexMapping()).thenReturn(mappings);
+
+      new IndexMappingVersionTracker(collectionDAO, "1.2.3", "tester")
+          .updateMappingVersions(List.of("table", "domain"));
+
+      verify(indexMappingVersionDAO, times(2))
+          .upsertIndexMappingVersion(
+              entityTypeCaptor.capture(),
+              anyString(),
+              anyString(),
+              eq("1.2.3"),
+              anyLong(),
+              eq("tester"));
+      assertEquals(Set.of("domain", "table"), new TreeSet<>(entityTypeCaptor.getAllValues()));
+    }
+  }
+
   private static Set<String> diff(Set<String> expected, Set<String> actual) {
     Set<String> missing = new TreeSet<>(expected);
     missing.removeAll(actual);

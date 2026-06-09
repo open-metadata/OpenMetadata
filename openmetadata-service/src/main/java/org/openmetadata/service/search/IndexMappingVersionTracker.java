@@ -7,9 +7,12 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
@@ -30,6 +33,12 @@ public class IndexMappingVersionTracker {
     this.indexMappingVersionDAO = daoCollection.indexMappingVersionDAO();
     this.version = version;
     this.updatedBy = updatedBy;
+  }
+
+  public enum MappingDriftState {
+    CURRENT,
+    STALE,
+    UNTRACKED
   }
 
   public List<String> getChangedMappings() throws IOException {
@@ -57,23 +66,58 @@ public class IndexMappingVersionTracker {
     return changedMappings;
   }
 
-  public void updateMappingVersions() throws IOException {
+  public Map<String, MappingDriftState> computeDrift() throws IOException {
+    Map<String, String> storedHashes = getStoredMappingHashes();
     Map<String, MappingEntry> currentMappings = computeCurrentMappings();
-    long updatedAt = System.currentTimeMillis();
-
+    Map<String, MappingDriftState> drift = new HashMap<>();
     for (Map.Entry<String, MappingEntry> entry : currentMappings.entrySet()) {
-      String entityType = entry.getKey();
-      MappingEntry mappingEntry = entry.getValue();
+      String storedHash = storedHashes.get(entry.getKey());
+      drift.put(entry.getKey(), classifyState(storedHash, entry.getValue().hash()));
+    }
+    return Collections.unmodifiableMap(drift);
+  }
 
+  private MappingDriftState classifyState(String storedHash, String currentHash) {
+    MappingDriftState state;
+    if (storedHash == null) {
+      state = MappingDriftState.UNTRACKED;
+    } else if (Objects.equals(storedHash, currentHash)) {
+      state = MappingDriftState.CURRENT;
+    } else {
+      state = MappingDriftState.STALE;
+    }
+    return state;
+  }
+
+  public void updateMappingVersions() throws IOException {
+    stamp(computeCurrentMappings());
+  }
+
+  public void updateMappingVersions(Collection<String> entityTypes) throws IOException {
+    Map<String, MappingEntry> currentMappings = computeCurrentMappings();
+    Map<String, MappingEntry> subset = new HashMap<>();
+    for (String entityType : entityTypes) {
+      MappingEntry mappingEntry = currentMappings.get(entityType);
+      if (mappingEntry != null) {
+        subset.put(entityType, mappingEntry);
+      }
+    }
+    stamp(subset);
+  }
+
+  private void stamp(Map<String, MappingEntry> mappings) {
+    long updatedAt = System.currentTimeMillis();
+    for (Map.Entry<String, MappingEntry> entry : mappings.entrySet()) {
+      MappingEntry mappingEntry = entry.getValue();
       indexMappingVersionDAO.upsertIndexMappingVersion(
-          entityType,
+          entry.getKey(),
           mappingEntry.hash(),
           JsonUtils.pojoToJson(mappingEntry.json()),
           version,
           updatedAt,
           updatedBy);
     }
-    LOG.info("Updated index mapping versions for {} entities", currentMappings.size());
+    LOG.info("Updated index mapping versions for {} entities", mappings.size());
   }
 
   private Map<String, String> getStoredMappingHashes() {
