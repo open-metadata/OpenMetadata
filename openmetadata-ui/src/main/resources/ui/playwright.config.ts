@@ -112,6 +112,7 @@ export default defineConfig({
         '**/SystemCertificationTags.spec.ts',
         '**/SearchRBAC.spec.ts',
         '**/SSOLogin.spec.ts',
+        '**/DomainIsolation/**',
       ],
     },
     // Only register the h2 project when explicitly opted in. Always-on registration would force
@@ -193,6 +194,17 @@ export default defineConfig({
       dependencies: ['DataAssetRulesDisabled'],
       use: { ...devices['Desktop Chrome'] },
       teardown: 'entity-data-teardown',
+    },
+    // Domain isolation E2E suite (issue #24180). Runs in its own shard because several specs
+    // toggle the global `enableAccessControl` search setting; serial execution (workers: 1)
+    // prevents cross-file races on that shared setting.
+    {
+      name: 'DomainIsolation',
+      testMatch: '**/DomainIsolation/**',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup'],
+      fullyParallel: false,
+      workers: 1,
     },
     // System Certification Tags tests modify global shared state (system tags like Gold, Silver, Bronze)
     // They must run in isolation after the main chromium project to avoid flakiness
