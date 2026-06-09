@@ -230,6 +230,12 @@ export interface PipelineServiceClientConfiguration {
      */
     ldapConfiguration?: LDAPConfiguration;
     /**
+     * Maximum number of active authenticated sessions allowed per user. When the limit is
+     * exceeded, the least recently used active sessions are revoked. If unset, OpenMetadata
+     * uses the default of 5.
+     */
+    maxActiveSessionsPerUser?: number;
+    /**
      * Oidc Configuration for Confidential Client Type
      */
     oidcConfiguration?: OidcClientConfig;
@@ -250,6 +256,12 @@ export interface PipelineServiceClientConfiguration {
      * Saml Configuration that is applicable only when the provider is Saml
      */
     samlConfiguration?: SamlSSOClientConfig;
+    /**
+     * Validity for the authenticated session across all auth providers. Minimum is 3600
+     * seconds. If unset, OpenMetadata falls back to the legacy OIDC-specific sessionExpiry when
+     * present, then to the default 604800-second expiry.
+     */
+    sessionExpiry?: number;
     /**
      * Token Validation Algorithm to use.
      */
@@ -1106,6 +1118,12 @@ export interface AuthenticationConfiguration {
      */
     ldapConfiguration?: LDAPConfiguration;
     /**
+     * Maximum number of active authenticated sessions allowed per user. When the limit is
+     * exceeded, the least recently used active sessions are revoked. If unset, OpenMetadata
+     * uses the default of 5.
+     */
+    maxActiveSessionsPerUser?: number;
+    /**
      * Oidc Configuration for Confidential Client Type
      */
     oidcConfiguration?: OidcClientConfig;
@@ -1126,6 +1144,12 @@ export interface AuthenticationConfiguration {
      * Saml Configuration that is applicable only when the provider is Saml
      */
     samlConfiguration?: SamlSSOClientConfig;
+    /**
+     * Validity for the authenticated session across all auth providers. Minimum is 3600
+     * seconds. If unset, OpenMetadata falls back to the legacy OIDC-specific sessionExpiry when
+     * present, then to the default 604800-second expiry.
+     */
+    sessionExpiry?: number;
     /**
      * Token Validation Algorithm to use.
      */

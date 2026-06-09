@@ -258,6 +258,19 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await expect(
         page.getByRole('cell', { name: displayName }).first()
       ).toBeVisible();
+
+      // Search by email should surface the same user
+      const emailSearchResponse = page.waitForResponse(
+        '/api/v1/search/query?q=*&index=user&from=0&size=*'
+      );
+      await page.getByTestId('searchbar').fill(testUser.data.email);
+      await emailSearchResponse;
+
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.getByRole('cell', { name: displayName }).first()
+      ).toBeVisible();
     });
   });
 });

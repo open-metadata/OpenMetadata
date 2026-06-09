@@ -14,6 +14,18 @@ on:
   schedule:
     - cron: "0 0 */2 * *"
   workflow_dispatch:
+    inputs:
+      SEND_SLACK_NOTIFICATION:
+        description: "Post results to Slack (uncheck for test runs)"
+        type: boolean
+        required: false
+        default: true
+
+env:
+  # Manual runs may opt out of Slack; schedule (where inputs are unset) always sends.
+  # Explicit empty-check, since `||` would treat the string 'false' inconsistently when the
+  # input is typed `boolean` — only an empty string should fall back to 'true'.
+  SEND_SLACK_NOTIFICATION: ${{ github.event.inputs.SEND_SLACK_NOTIFICATION == '' && 'true' || github.event.inputs.SEND_SLACK_NOTIFICATION }}
 
 jobs:
   vulnerability-scan:
@@ -351,6 +363,7 @@ jobs:
 
       - name: Send Slack — header
         id: send-header
+        if: env.SEND_SLACK_NOTIFICATION == 'true'
         uses: slackapi/slack-github-action@v1.27.1
         with:
           channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
@@ -405,7 +418,7 @@ jobs:
           PY
 
       - name: Send Slack — thread reply
-        if: always() && steps.send-header.outputs.ts != '' && steps.build-thread.outcome == 'success'
+        if: always() && env.SEND_SLACK_NOTIFICATION == 'true' && steps.send-header.outputs.ts != '' && steps.build-thread.outcome == 'success'
         uses: slackapi/slack-github-action@v1.27.1
         with:
           channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}

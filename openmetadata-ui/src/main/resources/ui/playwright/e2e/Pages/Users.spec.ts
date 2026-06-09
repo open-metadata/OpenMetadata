@@ -55,6 +55,7 @@ import {
   restoreUser,
   restoreUserProfilePage,
   revokeToken,
+  searchUserByEmail,
   settingPageOperationPermissionCheck,
   softDeleteUser,
   softDeleteUserProfilePage,
@@ -205,6 +206,14 @@ test.describe('User with Admin Roles', () => {
 
     await visitUserListPage(adminPage);
 
+    await test.step('User is searchable by email', async () => {
+      await searchUserByEmail(
+        adminPage,
+        updatedUserDetails.email,
+        updatedUserDetails.name
+      );
+    });
+
     await test.step("User shouldn't be allowed to create User with same Email", async () => {
       await checkForUserExistError(adminPage, {
         name: updatedUserDetails.name,
@@ -218,6 +227,16 @@ test.describe('User with Admin Roles', () => {
       updatedUserDetails.name,
       updatedUserDetails.name,
       false
+    );
+  });
+
+  test('Admin is searchable by email', async ({ adminPage }) => {
+    await redirectToHomePage(adminPage);
+    await settingClick(adminPage, GlobalSettingOptions.ADMINS);
+    await searchUserByEmail(
+      adminPage,
+      adminUser.data.email,
+      adminUser.responseData.name
     );
   });
 

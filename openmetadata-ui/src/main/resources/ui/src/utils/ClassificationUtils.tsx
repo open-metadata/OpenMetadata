@@ -23,41 +23,20 @@ import { ReactComponent as IconDisableTag } from '../assets/svg/disable-tag.svg'
 import { ReactComponent as EditIcon } from '../assets/svg/edit-new.svg';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
-import { EntityField } from '../constants/Feeds.constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
-import { ProviderType } from '../generated/entity/bot';
-import { Classification } from '../generated/entity/classification/classification';
 import { Tag } from '../generated/entity/classification/tag';
-import { ChangeDescription } from '../generated/entity/type';
 import { DeleteTagsType } from '../pages/TagsPage/TagsPage.interface';
-import { getEntityVersionByField } from './EntityVersionUtils';
+import { getDeleteButtonData } from './ClassificationPureUtils';
 import { t } from './i18next/LocalUtil';
 import { renderIcon } from './IconUtils';
 import { getClassificationTagPath } from './RouterUtils';
 import { descriptionTableObject } from './TableColumn.util';
 import { getDeleteIcon } from './TagsUtils';
 
-export const getDeleteButtonData = (
-  record: Tag,
-  isClassificationDisabled: boolean,
-  classificationPermissions: OperationPermission
-) => {
-  let disabledDeleteMessage: string = t('message.no-permission-for-action');
-  const disableDeleteButton =
-    record.provider === ProviderType.System ||
-    !classificationPermissions.EditAll ||
-    isClassificationDisabled;
-
-  if (isClassificationDisabled) {
-    disabledDeleteMessage = t(
-      'message.disabled-classification-actions-message'
-    );
-  } else if (record.provider === ProviderType.System) {
-    disabledDeleteMessage = t('message.system-tag-delete-disable-message');
-  }
-
-  return { disableDeleteButton, disabledDeleteMessage };
-};
+export {
+  getClassificationInfo,
+  getDeleteButtonData,
+} from './ClassificationPureUtils';
 
 export const getCommonColumns = (options?: {
   handleToggleDisable?: (tag: Tag) => void;
@@ -271,38 +250,3 @@ export const getClassificationExtraDropdownContent = (
       ]
     : []),
 ];
-
-export const getClassificationInfo = (
-  currentClassification?: Classification,
-  isVersionView = false
-) => {
-  return {
-    currentVersion: currentClassification?.version ?? '0.1',
-    isClassificationDisabled: currentClassification?.disabled ?? false,
-    isClassificationDeleted: currentClassification?.deleted ?? false,
-    isTier: currentClassification?.name === 'Tier',
-    isSystemClassification:
-      currentClassification?.provider === ProviderType.System,
-    name: isVersionView
-      ? getEntityVersionByField(
-          currentClassification?.changeDescription ?? ({} as ChangeDescription),
-          EntityField.NAME,
-          currentClassification?.name
-        )
-      : currentClassification?.name,
-    displayName: isVersionView
-      ? getEntityVersionByField(
-          currentClassification?.changeDescription ?? ({} as ChangeDescription),
-          EntityField.DISPLAYNAME,
-          currentClassification?.displayName
-        )
-      : currentClassification?.displayName,
-    description: isVersionView
-      ? getEntityVersionByField(
-          currentClassification?.changeDescription ?? ({} as ChangeDescription),
-          EntityField.DESCRIPTION,
-          currentClassification?.description
-        )
-      : currentClassification?.description,
-  };
-};
