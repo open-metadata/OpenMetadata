@@ -169,7 +169,10 @@ const DocumentFolderView = ({
                       <div className="custom-group tw:flex tw:flex-1 tw:items-center tw:gap-2 tw:min-w-0">
                         <button
                           className="tw:flex tw:flex-1 tw:items-center tw:gap-2 tw:min-w-0 tw:text-left tw:bg-transparent tw:border-none tw:cursor-pointer tw:p-0"
-                          onClick={() => handleFolderItemSelect(folder.id)}>
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleFolderItemSelect(folder.id);
+                          }}>
                           <FolderIcon
                             className="tw:shrink-0 tw:text-gray-500"
                             height={16}

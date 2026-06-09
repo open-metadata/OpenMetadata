@@ -13,17 +13,15 @@
 
 import {
   Box,
-  Button,
   ButtonUtility,
   Card,
   FileIcon,
-  Typography,
+  Typography
 } from '@openmetadata/ui-core-components';
-import { ArrowNarrowRight, Link04, XClose } from '@untitledui/icons';
+import { Link04, XClose } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
-import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import { DocFile } from './DocumentsView.interface';
 
@@ -45,11 +43,13 @@ const MetaRow: FC<MetaRowProps> = ({ label, value }) => (
 
 interface DocumentPreviewPanelProps {
   file: DocFile;
+  url: string;
   onClose: () => void;
 }
 
 const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
   file,
+  url,
   onClose,
 }) => {
   const { t } = useTranslation();
@@ -85,7 +85,7 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
           </Typography>
         </Box>
         <Box align="center" gap={2}>
-          <CopyLinkButton url="">
+          <CopyLinkButton url={url}>
             <Link04
               aria-hidden="true"
               className="tw:-rotate-45"
@@ -130,32 +130,6 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
               value={getShortRelativeTime(file.updatedAt)}
             />
           )}
-        </Card>
-        <Card className="tw:p-4">
-          <div className="tw:mb-1.5">
-            <Typography
-              className="tw:text-gray-500 tw:uppercase"
-              size="text-xs"
-              weight="semibold">
-              {t('label.used-by-ai')}
-            </Typography>
-          </div>
-          <Box className="tw:mt-1.5" direction="col" gap={2}>
-            <Typography className="tw:text-gray-700" size="text-sm">
-              <Transi18next
-                i18nKey="message.cited-times-across-agents"
-                renderElement={<b />}
-                values={{ count: 0 }}
-              />
-            </Typography>
-            <Button
-              color="link-color"
-              iconTrailing={<ArrowNarrowRight size={13} strokeWidth={2} />}
-              size="xs"
-              type="text">
-              {t('label.view-citations')}
-            </Button>
-          </Box>
         </Card>
       </Box>
     </Box>

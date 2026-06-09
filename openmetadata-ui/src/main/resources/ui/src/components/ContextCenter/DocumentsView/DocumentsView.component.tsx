@@ -17,6 +17,7 @@ import {
   ButtonUtility,
   Card,
   Checkbox,
+  Dot,
   Dropdown,
   FileIcon,
   Skeleton,
@@ -34,12 +35,7 @@ import {
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, { FC, useState } from 'react';
-import {
-  Menu as AriaMenu,
-  MenuItem as AriaMenuItem,
-  Popover as AriaPopover,
-  SubmenuTrigger,
-} from 'react-aria-components';
+import { SubmenuTrigger } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -75,41 +71,19 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({ folders, onPick }) => {
   }
 
   return (
-    <AriaMenu className="tw:max-h-48 tw:overflow-y-auto tw:outline-hidden tw:select-none">
+    <Dropdown.Menu
+      className="tw:max-h-48 tw:overflow-y-auto"
+      onAction={(key) => onPick(key as string)}>
       {folders.map((folder) => (
-        <AriaMenuItem
-          className={(state) =>
-            `tw:group tw:block tw:cursor-pointer tw:px-1.5 tw:py-px tw:outline-hidden${
-              state.isDisabled ? ' tw:cursor-not-allowed' : ''
-            }`
-          }
+        <Dropdown.Item
           data-testid={`move-to-folder-${folder.id}`}
+          icon={FolderIcon}
           id={folder.id}
           key={folder.id}
-          textValue={folder.name}
-          onAction={() => onPick(folder.id)}>
-          {() => (
-            <Box
-              align="center"
-              className={
-                'tw:rounded-md tw:px-2.5 tw:py-2 ' +
-                'tw:transition tw:duration-100 tw:ease-linear tw:group-hover:bg-primary_hover'
-              }
-              gap={2}>
-              <FolderIcon
-                aria-hidden="true"
-                className="tw:text-gray-500 tw:shrink-0"
-                height={16}
-                width={16}
-              />
-              <Typography ellipsis size="text-sm" weight="medium">
-                {folder.name}
-              </Typography>
-            </Box>
-          )}
-        </AriaMenuItem>
+          label={folder.name}
+        />
       ))}
-    </AriaMenu>
+    </Dropdown.Menu>
   );
 };
 
@@ -178,48 +152,29 @@ const FileActions: FC<FileActionsProps> = ({
           />
 
           <SubmenuTrigger>
-            <AriaMenuItem
-              className={(state) =>
-                `tw:group tw:block tw:cursor-pointer tw:px-1.5 tw:py-px tw:outline-hidden${
-                  state.isDisabled ? ' tw:cursor-not-allowed tw:opacity-50' : ''
-                }`
-              }
+            <Dropdown.Item
               data-testid="move-btn"
+              icon={Pin02}
               isDisabled={isMoving || availableFolders.length === 0}>
               {() => (
-                <Box
-                  align="center"
-                  className={
-                    'tw:relative tw:rounded-md tw:px-2.5 tw:py-2 tw:outline-focus-ring ' +
-                    'tw:transition tw:duration-100 tw:ease-linear tw:group-hover:bg-primary_hover'
-                  }
-                  gap={2}>
-                  <Pin02
-                    aria-hidden="true"
-                    className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-fg-quaternary"
-                  />
-                  <Typography className="tw:text-secondary" size="text-sm">
+                <Box align='center' justify='between'>
+                  <Typography ellipsis className="tw:grow tw:text-secondary">
                     {t('label.move-to-folder')}
                   </Typography>
                   <ChevronRight
                     aria-hidden="true"
-                    className="tw:ml-auto tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+                    className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+                    strokeWidth={2}
                   />
                 </Box>
               )}
-            </AriaMenuItem>
-            <AriaPopover
-              className={
-                'tw:z-50 tw:w-52 tw:rounded-lg tw:bg-primary ' +
-                'tw:py-1 tw:shadow-lg tw:ring-1 tw:ring-secondary_alt'
-              }
-              offset={4}
-              placement="right top">
+            </Dropdown.Item>
+            <Dropdown.Popover className="tw:w-52" offset={-6} placement="right top">
               <FolderPickerMenu
                 folders={availableFolders}
                 onPick={handleMoveToFolder}
               />
-            </AriaPopover>
+            </Dropdown.Popover>
           </SubmenuTrigger>
 
           {canDelete && (
@@ -457,7 +412,7 @@ const FileRow: FC<FileRowProps> = ({
           weight="medium">
           {file.name}
         </Typography>
-        <Box align="center" gap={1}>
+        <Box align="center" gap={2}>
           <Typography
             className="tw:text-gray-500"
             data-testid="document-size"
@@ -466,9 +421,7 @@ const FileRow: FC<FileRowProps> = ({
           </Typography>
           {file.updatedBy && (
             <>
-              <span className="tw:text-gray-500 tw:leading-none tw:select-none">
-                &middot;
-              </span>
+              <Dot className='tw:text-gray-500' size='micro' /> 
               <Typography
                 className="tw:text-gray-500"
                 data-testid="document-updated-by"
@@ -479,9 +432,7 @@ const FileRow: FC<FileRowProps> = ({
           )}
           {file.updatedAt && (
             <>
-              <span className="tw:text-gray-500 tw:leading-none tw:select-none">
-                &middot;
-              </span>
+              <Dot className='tw:text-gray-500' size='micro' /> 
               <Typography
                 className="tw:text-gray-500"
                 data-testid="document-updated-at"
@@ -492,9 +443,7 @@ const FileRow: FC<FileRowProps> = ({
           )}
           {file.folderName && (
             <>
-              <span className="tw:text-gray-500 tw:leading-none tw:select-none">
-                &middot;
-              </span>
+              <Dot className='tw:text-gray-500' size='micro' /> 
               <Typography
                 className="tw:text-gray-500"
                 data-testid="document-folder-name"

@@ -16,6 +16,7 @@ import { Home02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
 import AlertBar from '../../../components/AlertBar/AlertBar';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
@@ -56,6 +57,7 @@ const ContextCenterDocumentsPage: FC = () => {
   const { t } = useTranslation();
   const { alert } = useAlertStore();
   const { getResourcePermission } = usePermissionProvider();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [allDocuments, setAllDocuments] = useState<DocFile[]>([]);
   const [isDocumentsLoading, setIsDocumentsLoading] = useState(true);
   const [documentSearchQuery, setDocumentSearchQuery] = useState('');
@@ -150,6 +152,28 @@ const ContextCenterDocumentsPage: FC = () => {
     fetchPermission();
   }, [fetchPermission]);
 
+  useEffect(() => {
+    const documentName = searchParams.get('document');
+    if (!documentName || isDocumentsLoading || previewFile) {
+      return;
+    }
+    const match = allDocuments.find((d) => d.name === documentName);
+    if (match) {
+      setPreviewFile(match);
+    } else {
+      showErrorToast(
+        `${t('message.no-entity-available-with-name', {
+          entity: t('label.document'),
+        })} "${documentName}"`
+      );
+      setSearchParams((prev) => {
+        prev.delete('document');
+
+        return prev;
+      });
+    }
+  }, [allDocuments, isDocumentsLoading, previewFile, searchParams, t, setSearchParams]);
+
   const handleDeleteFile = useCallback((file: DocFile) => {
     setFileToDelete(file);
   }, []);
@@ -193,9 +217,21 @@ const ContextCenterDocumentsPage: FC = () => {
     []
   );
 
-  const handlePreview = useCallback((file: DocFile | undefined) => {
-    setPreviewFile(file);
-  }, []);
+  const handlePreview = useCallback(
+    (file: DocFile | undefined) => {
+      setPreviewFile(file);
+      setSearchParams((prev) => {
+        if (file?.name) {
+          prev.set('document', file.name);
+        } else {
+          prev.delete('document');
+        }
+
+        return prev;
+      });
+    },
+    [setSearchParams]
+  );
 
   const handleSelectFile = useCallback((fileId: string) => {
     setSelectedIds((prev) => {
@@ -395,6 +431,7 @@ const ContextCenterDocumentsPage: FC = () => {
             {previewFile && (
               <DocumentPreviewPanel
                 file={previewFile}
+                url={`${window.location.origin}${window.location.pathname}?document=${encodeURIComponent(previewFile.name)}`}
                 onClose={() => handlePreview(undefined)}
               />
             )}
@@ -428,13 +465,17 @@ const ContextCenterDocumentsPage: FC = () => {
       )}
 
       <DeleteModal
-        entityTitle={`${selectedIds.size} ${t(
-          'label.document-plural'
+        entityTitle={`${selectedIds.size} ${(selectedIds.size === 1
+          ? t('label.document')
+          : t('label.document-plural')
         ).toLowerCase()}`}
         isDeleting={isBulkDeleting}
-        message={t('message.are-you-sure-you-want-to-delete-these-entities', {
+        message={t('message.soft-delete-message-for-n-entities', {
           count: selectedIds.size,
-          entity: t('label.document').toLowerCase(),
+          entity: (selectedIds.size === 1
+            ? t('label.document')
+            : t('label.document-plural')
+          ).toLowerCase(),
         })}
         open={isBulkDeleteModalOpen}
         onCancel={() => setIsBulkDeleteModalOpen(false)}
