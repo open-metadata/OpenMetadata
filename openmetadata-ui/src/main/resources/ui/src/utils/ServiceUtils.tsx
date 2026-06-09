@@ -177,7 +177,7 @@ export const getAddServiceEntityBreadcrumb = (
       label: startCase(serviceCategory),
       href: getSettingPath(
         GlobalSettingsMenuCategory.SERVICES,
-        getServiceRouteFromServiceType(serviceCategory as ServiceTypes)
+        getServiceRouteFromServiceType(serviceCategory)
       ),
       id: 'category',
     },

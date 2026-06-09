@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
+import { Breadcrumbs, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
@@ -23,9 +23,7 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
-import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import IngestionStepper from '../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
+import ServiceFlowStepper from '../../components/Settings/Services/AddService/ServiceFlowStepper/ServiceFlowStepper';
 import ConnectionConfigForm from '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm';
 import FiltersConfigForm from '../../components/Settings/Services/ServiceConfig/FiltersConfigForm';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
@@ -37,7 +35,6 @@ import { TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { useFqn } from '../../hooks/useFqn';
-import { SearchSourceAlias } from '../../interface/search.interface';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
 import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
@@ -56,6 +53,8 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 
+type BreadcrumbItem = { label: string; id: string; href: string };
+
 function EditConnectionFormPage() {
   const { serviceCategory } = useRequiredParams<{
     serviceCategory: ServiceCategory;
@@ -73,9 +72,9 @@ function EditConnectionFormPage() {
   const [isLoading, setIsLoading] = useState(!isOpenMetadataService);
   const [isError, setIsError] = useState(isOpenMetadataService);
   const [serviceDetails, setServiceDetails] = useState<ServicesType>();
-  const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
-    TitleBreadcrumbProps['titleLinks']
-  >([]);
+  const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<BreadcrumbItem[]>(
+    []
+  );
   const [activeField, setActiveField] = useState<string>('');
   const [serviceConfig, setServiceConfig] = useState<ServicesType>();
 
@@ -159,28 +158,25 @@ function EditConnectionFormPage() {
       setServiceDetails(response);
       setSlashedBreadcrumb([
         {
-          name: startCase(serviceCategory),
-          url: getSettingPath(
+          label: startCase(serviceCategory),
+          id: 'service-category',
+          href: getSettingPath(
             GlobalSettingsMenuCategory.SERVICES,
             getServiceRouteFromServiceType(serviceCategory as ServiceTypes)
           ),
         },
         {
-          name: getEntityName(response),
-          imgSrc: serviceUtilClassBase.getServiceTypeLogo(
-            response as SearchSourceAlias
-          ),
-          url: getPathByServiceFQN(
+          label: getEntityName(response),
+          id: 'service-name',
+          href: getPathByServiceFQN(
             serviceCategory as ServiceCategory,
             serviceFQN
           ),
         },
         {
-          name: t('label.edit-entity', {
-            entity: t('label.connection'),
-          }),
-          url: '',
-          activeTitle: true,
+          label: t('label.edit-entity', { entity: t('label.connection') }),
+          id: 'edit-connection',
+          href: '',
         },
       ]);
     } catch (err) {
@@ -229,66 +225,78 @@ function EditConnectionFormPage() {
       </ErrorPlaceHolder>
     );
   }
+
   const firstPanelChildren = (
     <>
-      <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
-      <div className="m-t-md">
-        <Space className="p-b-xs">
-          {getServiceLogo(serviceDetails?.serviceType ?? '', 'h-6')}{' '}
-          <Typography className="text-base" data-testid="header">
+      <Breadcrumbs items={slashedBreadcrumb} />
+      <div className="tw:mt-[22px]">
+        <div className="tw:flex tw:items-center tw:gap-3 tw:pb-0">
+          {getServiceLogo(
+            serviceDetails?.serviceType ?? '',
+            'tw:size-10 tw:max-w-10 tw:max-h-10 tw:object-contain'
+          )}
+          <Typography
+            className="tw:m-0"
+            data-testid="header"
+            size="text-xl"
+            weight="semibold">
             {t('message.edit-service-entity-connection', {
               entity: serviceFQN,
             })}
           </Typography>
-        </Space>
-        <IngestionStepper
+        </div>
+
+        <ServiceFlowStepper
           activeStep={activeServiceStep}
+          className="tw:mt-6"
           steps={translatedSteps}
         />
 
-        {activeServiceStep === 1 && (
-          <ConnectionConfigForm
-            cancelText={t('label.back')}
-            data={serviceDetails}
-            okText={t('label.next')}
-            serviceCategory={serviceCategory as ServiceCategory}
-            serviceType={serviceDetails?.serviceType ?? ''}
-            status={saveServiceState}
-            onCancel={onCancel}
-            onFocus={handleFieldFocus}
-            onSave={async (e) => {
-              e.formData && handleConfigSave(e.formData);
-            }}
-          />
-        )}
+        <div className="tw:mt-[30px]">
+          {activeServiceStep === 1 && (
+            <ConnectionConfigForm
+              cancelText={t('label.back')}
+              data={serviceDetails}
+              okText={t('label.next')}
+              serviceCategory={serviceCategory as ServiceCategory}
+              serviceType={serviceDetails?.serviceType ?? ''}
+              status={saveServiceState}
+              onCancel={onCancel}
+              onFocus={handleFieldFocus}
+              onSave={async (e) => {
+                e.formData && handleConfigSave(e.formData);
+              }}
+            />
+          )}
 
-        {activeServiceStep === 2 && (
-          <FiltersConfigForm
-            cancelText={t('label.back')}
-            data={serviceDetails}
-            serviceCategory={serviceCategory as ServiceCategory}
-            serviceType={serviceDetails?.serviceType ?? ''}
-            status={saveServiceState}
-            onCancel={handleFiltersInputBackClick}
-            onFocus={handleFieldFocus}
-            onSave={async (e) => {
-              e.formData && handleFiltersSave(e.formData);
-            }}
-          />
-        )}
+          {activeServiceStep === 2 && (
+            <FiltersConfigForm
+              cancelText={t('label.back')}
+              data={serviceDetails}
+              serviceCategory={serviceCategory as ServiceCategory}
+              serviceType={serviceDetails?.serviceType ?? ''}
+              status={saveServiceState}
+              onCancel={handleFiltersInputBackClick}
+              onFocus={handleFieldFocus}
+              onSave={async (e) => {
+                e.formData && handleFiltersSave(e.formData);
+              }}
+            />
+          )}
+        </div>
       </div>
     </>
   );
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="edit-connection-page content-height-with-resizable-panel"
       firstPanel={{
         children: firstPanelChildren,
         minWidth: 700,
         flex: 0.7,
         className: 'content-resizable-panel-container',
-        cardClassName: 'steps-form-container',
+        cardClassName: 'add-service-page-card max-width-lg m-x-auto',
         allowScroll: true,
       }}
       hideSecondPanel={!serviceDetails?.serviceType}
@@ -296,6 +304,7 @@ function EditConnectionFormPage() {
       secondPanel={{
         children: (
           <ServiceDocPanel
+            focusedMode
             activeField={activeField}
             serviceName={serviceDetails?.serviceType ?? ''}
             serviceType={getServiceType(serviceCategory as ServiceCategory)}

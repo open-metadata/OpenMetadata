@@ -367,14 +367,16 @@ export function FilterSectionCard({
                   )}
                   color="secondary"
                   data-testid={`${section.fieldName}-exclude-system-filters`}
+                  iconLeading={
+                    hasSystemExcludesEnabled ? (
+                      <CheckCircle size={13} />
+                    ) : (
+                      <Plus size={13} />
+                    )
+                  }
                   size="sm"
                   type="button"
                   onPress={toggleSystemExcludes}>
-                  {hasSystemExcludesEnabled ? (
-                    <CheckCircle size={13} />
-                  ) : (
-                    <Plus size={13} />
-                  )}
                   {t('label.exclude-system-entity', {
                     entity: section.label.toLowerCase(),
                   })}

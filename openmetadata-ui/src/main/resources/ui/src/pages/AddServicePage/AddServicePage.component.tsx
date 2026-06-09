@@ -15,9 +15,11 @@ import { Breadcrumbs, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { GlobalSettingsMenuCategory } from 'src/constants/GlobalSettings.constants';
+import { getSettingPath } from 'src/utils/RouterUtils';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
 import ServiceFlowStepper from '../../components/Settings/Services/AddService/ServiceFlowStepper/ServiceFlowStepper';
@@ -46,6 +48,7 @@ import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
   getAddServiceEntityBreadcrumb,
   getEntityTypeFromServiceCategory,
+  getServiceRouteFromServiceType,
   getServiceType,
 } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -116,14 +119,10 @@ const AddServicePage = () => {
                 entity: t('label.service'),
               }),
               id: 'add-service',
-              href: connectionsRouterClassBase.getAddServicePath(
-                serviceCategory
-              ),
             },
             {
               label: serviceConfig.serviceType,
               id: serviceConfig.serviceType,
-              href: '',
             },
           ]
         : slashedBreadcrumb,
@@ -285,15 +284,27 @@ const AddServicePage = () => {
     [activeServiceStep, serviceConfig.serviceType]
   );
 
+  const handleBreadcrumbAction = useCallback(
+    (id: React.Key) => {
+      if (id === 'add-service') {
+        handleConnectorChangeClick();
+      } else if (id === 'category') {
+        navigate(
+          getSettingPath(
+            GlobalSettingsMenuCategory.SERVICES,
+            getServiceRouteFromServiceType(serviceCategory)
+          )
+        );
+      }
+    },
+    [handleConnectorChangeClick, navigate, serviceCategory]
+  );
+
   const firstPanelChildren = (
     <>
       <Breadcrumbs
         items={serviceBreadcrumb}
-        onAction={(id) => {
-          if (id === 'add-service') {
-            handleConnectorChangeClick();
-          }
-        }}
+        onAction={handleBreadcrumbAction}
       />
       <div className="tw:mt-[22px]">
         <div data-testid="add-new-service-container">
