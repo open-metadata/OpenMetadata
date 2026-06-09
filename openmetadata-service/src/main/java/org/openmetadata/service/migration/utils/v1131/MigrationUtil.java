@@ -35,7 +35,7 @@ public class MigrationUtil {
 
   private MigrationUtil() {}
 
-  public static void repairPipelineTaskFqns(CollectionDAO collectionDAO) {
+  public static RepairSummary repairPipelineTaskFqns(CollectionDAO collectionDAO) {
     CollectionDAO.PipelineDAO pipelineDAO = collectionDAO.pipelineDAO();
     List<String> failedPipelineIds = new ArrayList<>();
     int scanned = 0;
@@ -55,7 +55,10 @@ public class MigrationUtil {
       offset += PAGE_SIZE;
       page = pipelineDAO.listAfterWithOffset(PAGE_SIZE, offset);
     }
-    logSummary(scanned, repairedPipelines, repairedTasks, failedPipelines, failedPipelineIds);
+    RepairSummary summary =
+        new RepairSummary(scanned, repairedPipelines, repairedTasks, failedPipelines);
+    logSummary(summary, failedPipelineIds);
+    return summary;
   }
 
   private static PipelineRepair repairPipeline(
@@ -72,6 +75,8 @@ public class MigrationUtil {
       }
     } catch (Exception e) {
       failed = true;
+      // Persistence failed: nothing was written, so this row must not count as repaired.
+      taskCount = 0;
       recordFailure(failedPipelineIds, pipelineId, e);
     }
     return new PipelineRepair(taskCount, failed);
@@ -98,27 +103,25 @@ public class MigrationUtil {
     }
   }
 
-  private static void logSummary(
-      int scanned,
-      int repairedPipelines,
-      int repairedTasks,
-      int failedPipelines,
-      List<String> failedPipelineIds) {
+  private static void logSummary(RepairSummary summary, List<String> failedPipelineIds) {
     LOG.info(
         "Pipeline task FQN repair complete: scanned {} pipelines, re-derived {} task FQNs across {} pipelines. "
             + "Repaired FQNs are reflected in search after the standard post-upgrade reindex.",
-        scanned,
-        repairedTasks,
-        repairedPipelines);
-    if (failedPipelines > 0) {
+        summary.scanned(),
+        summary.repairedTasks(),
+        summary.repairedPipelines());
+    if (summary.failedPipelines() > 0) {
       LOG.warn(
           "Pipeline task FQN repair could not fix {} pipeline(s); they retain unparseable task FQNs "
               + "and need manual remediation. First {} id(s): {}",
-          failedPipelines,
+          summary.failedPipelines(),
           MAX_REPORTED_FAILURES,
           failedPipelineIds);
     }
   }
 
   private record PipelineRepair(int taskCount, boolean failed) {}
+
+  public record RepairSummary(
+      int scanned, int repairedPipelines, int repairedTasks, int failedPipelines) {}
 }

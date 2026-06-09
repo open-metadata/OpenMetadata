@@ -12,7 +12,3 @@ CREATE TABLE IF NOT EXISTS intake_form_entity (
   UNIQUE KEY fqnHash (fqnHash),
   UNIQUE KEY intake_form_entity_type_unique (entityType)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- This version also carries a data migration (see Java migration mysql/v1131/Migration):
--- re-derive unparseable pipeline task FQNs persisted before double-quote escaping was supported.
--- Repaired task FQNs are reflected in the search index after the standard post-upgrade reindex.

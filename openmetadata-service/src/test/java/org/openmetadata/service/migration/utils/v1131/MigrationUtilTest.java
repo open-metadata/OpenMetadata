@@ -106,6 +106,19 @@ class MigrationUtilTest {
   }
 
   @Test
+  void doesNotCountFailedPersistAsRepaired() {
+    givenPipelinePage(pipelineJson("svc.pipeA", task(CORRUPT_TASK_NAME, CORRUPT_TASK_FQN)));
+    doThrow(new RuntimeException("db unavailable")).when(pipelineDAO).update(any());
+
+    MigrationUtil.RepairSummary summary = MigrationUtil.repairPipelineTaskFqns(collectionDAO);
+
+    assertEquals(1, summary.scanned());
+    assertEquals(0, summary.repairedPipelines());
+    assertEquals(0, summary.repairedTasks());
+    assertEquals(1, summary.failedPipelines());
+  }
+
+  @Test
   void skipsPipelineWithNoTasks() {
     Pipeline pipeline =
         new Pipeline().withId(UUID.randomUUID()).withName("p").withFullyQualifiedName("svc.pipeA");

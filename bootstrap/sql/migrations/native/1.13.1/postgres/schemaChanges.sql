@@ -12,7 +12,3 @@ CREATE TABLE IF NOT EXISTS intake_form_entity (
   UNIQUE (fqnHash),
   UNIQUE (entityType)
 );
-
--- This version also carries a data migration (see Java migration postgres/v1131/Migration):
--- re-derive unparseable pipeline task FQNs persisted before double-quote escaping was supported.
--- Repaired task FQNs are reflected in the search index after the standard post-upgrade reindex.
