@@ -16,7 +16,7 @@ import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.EntityLoadSpec;
 import org.openmetadata.it.factories.EntityLoadSpec.EntityKind;
-import org.openmetadata.it.factories.EntityLoader;
+import org.openmetadata.it.factories.SeedData;
 import org.openmetadata.it.search.IndexAliasInspector;
 import org.openmetadata.it.search.ReindexHelpers;
 import org.openmetadata.it.search.SearchAssertions;
@@ -69,9 +69,10 @@ class UnsafeReindexConfigIT {
 
   @Test
   void aggressiveBulkSinkConfigDoesNotTakeDownTheServer(final TestNamespace ns) {
-    EntityLoader.load(
+    SeedData.provision(
         EntityLoadSpec.builder().parallelWorkers(8).count(EntityKind.TABLE, SEED_TABLES).build(),
-        ns);
+        ns,
+        server);
 
     final Map<String, Object> aggressiveConfig =
         Map.of(

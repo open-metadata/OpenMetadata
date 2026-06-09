@@ -14,7 +14,7 @@ import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.EntityLoadSpec;
 import org.openmetadata.it.factories.EntityLoadSpec.EntityKind;
-import org.openmetadata.it.factories.EntityLoader;
+import org.openmetadata.it.factories.SeedData;
 import org.openmetadata.it.search.CpuSampler;
 import org.openmetadata.it.search.HealthProbe;
 import org.openmetadata.it.search.ReindexHelpers;
@@ -58,13 +58,14 @@ class ReindexCpuHeadroomIT {
   @Test
   void jettyStaysResponsiveAndCpuStaysUnderCeilingDuringReindex(final TestNamespace ns)
       throws Exception {
-    EntityLoader.load(
+    SeedData.provision(
         EntityLoadSpec.builder()
             .count(EntityKind.TABLE, SEED_TABLES)
             .columnsPerTable(COLUMNS_PER_TABLE)
             .parallelWorkers(LOAD_WORKERS)
             .build(),
-        ns);
+        ns,
+        server);
 
     final CpuSampler cpu = new CpuSampler();
     final HealthProbe probe = new HealthProbe(server, PROBE_QPS);

@@ -1220,7 +1220,53 @@
                   <systemPropertyVariables>
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
-                    <excludedGroups>scale</excludedGroups>
+                    <!-- seed = StaticDatasetSeedIT, the one-time static-data loader. It matches the
+                         glob above but must NOT run as part of a normal search-it pass (it would
+                         create the full bulk cohort). Run it explicitly via the seed-it profile. -->
+                    <excludedGroups>scale,seed</excludedGroups>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <!-- One-time loader for the static dataset the scale/search suites reuse when run with
+         -Djpw.data.mode=static (or ensure). Runs only StaticDatasetSeedIT (@Tag("seed")), which
+         creates a bulk cohort and deliberately leaves it on the cluster (no namespace cleanup).
+         Invoke once against the external cluster, then run the suites in static/ensure mode:
+         `mvn verify -P seed-it -Dskip.embedded.bootstrap=true -Djpw.scale.tables=100000`. -->
+    <profile>
+      <id>seed-it</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>${maven.failsafe.version}</version>
+            <executions>
+              <execution>
+                <id>seed-dataset</id>
+                <goals>
+                  <goal>integration-test</goal>
+                  <goal>verify</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/tests/search/StaticDatasetSeedIT.java</include>
+                  </includes>
+                  <systemPropertyVariables>
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                    <includedGroups>seed</includedGroups>
                   </systemPropertyVariables>
                   <trimStackTrace>false</trimStackTrace>
                   <reportFormat>plain</reportFormat>
