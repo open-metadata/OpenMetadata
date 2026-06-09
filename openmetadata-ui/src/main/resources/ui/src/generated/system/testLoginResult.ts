@@ -38,8 +38,9 @@ export interface TestLoginResult {
      */
     resolvedPrincipal?: string;
     /**
-     * Furthest stage reached before a failure (TOKEN_VALIDATED, CLAIMS_EXTRACTED,
-     * IDENTITY_RESOLVED, DOMAIN_CHECKED, ROLES_MAPPED).
+     * Furthest stage reached: TOKEN_VALIDATED (token failed validation), CLAIMS_EXTRACTED
+     * (identity could not be resolved from claims), or DOMAIN_CHECKED (identity resolved and
+     * domain rules applied).
      */
     stage?: string;
     /**
