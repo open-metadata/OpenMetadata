@@ -58,7 +58,7 @@ const AnnouncementItemV3 = ({
       <div className="tw:flex tw:items-center tw:gap-[9px]">
         <span className="tw:h-[35px] tw:w-1 tw:shrink-0 tw:rounded-[1px] tw:bg-utility-blue-dark-500" />
 
-        <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-[5px]">
+        <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-[4px]">
           <Typography
             ellipsis
             as="span"
