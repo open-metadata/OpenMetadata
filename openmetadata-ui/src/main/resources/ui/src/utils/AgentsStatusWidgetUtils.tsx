@@ -125,7 +125,7 @@ export const getFormattedAgentsList = (
     isCollateAgent: false,
     label: getAgentLabelFromType(agent.pipelineType),
     status: getAgentStatusLabelFromStatus(
-      agent.pipelineStatuses?.pipelineState
+      agent.pipelineStatuses?.[0]?.pipelineState
     ),
   }));
 

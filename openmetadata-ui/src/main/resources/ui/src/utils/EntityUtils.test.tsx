@@ -50,7 +50,7 @@ import {
   getServiceDetailsPath,
   getSettingPath,
 } from './RouterUtils';
-import { getServiceRouteFromServiceType } from './ServiceUtils';
+import { getServiceRouteFromServiceType } from './ServicePureUtils';
 
 jest.mock('../constants/constants', () => ({
   DEFAULT_DOMAIN_VALUE: 'All Domains',
@@ -66,7 +66,7 @@ jest.mock('./RouterUtils', () => ({
   getEntityDetailsPath: jest.fn(),
 }));
 
-jest.mock('./ServiceUtils', () => ({
+jest.mock('./ServicePureUtils', () => ({
   getServiceRouteFromServiceType: jest.fn(),
 }));
 

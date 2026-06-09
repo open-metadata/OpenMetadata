@@ -5097,6 +5097,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
         .getLatestExtensionBatch(fqnHashes, extension);
   }
 
+  public final Map<String, List<String>> getLatestExtensionsFromTimeSeriesBatch(
+      List<String> fqnHashes, String extension, int limit) {
+    return daoCollection
+        .entityExtensionTimeSeriesDao()
+        .getLatestExtensionsBatch(fqnHashes, extension, limit);
+  }
+
   public final List<String> getResultsFromAndToTimestamps(
       String fullyQualifiedName, String extension, Long startTs, Long endTs) {
     return getResultsFromAndToTimestamps(

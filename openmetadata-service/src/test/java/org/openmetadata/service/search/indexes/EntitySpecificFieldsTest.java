@@ -194,6 +194,15 @@ class EntitySpecificFieldsTest {
   }
 
   @Test
+  void testUserIndex_getFieldsIncludesEmail() {
+    Map<String, Float> fields = UserIndex.getFields();
+    assertTrue(fields.containsKey("email"));
+    assertTrue(fields.containsKey("email.keyword"));
+    assertEquals(5.0f, fields.get("email"));
+    assertEquals(10.0f, fields.get("email.keyword"));
+  }
+
+  @Test
   void testTeamIndex_setsIsBotFalse() {
     Team team = new Team().withId(UUID.randomUUID()).withName("data-team");
 
