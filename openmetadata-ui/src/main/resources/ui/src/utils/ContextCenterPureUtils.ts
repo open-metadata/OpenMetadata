@@ -14,6 +14,8 @@
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isNull, isUndefined } from 'lodash';
+import { PagingResponse } from 'Models';
+import { ListParams } from 'src/interface/API.interface';
 import type { ArticleCardItem } from '../components/ContextCenter/ArticleCard/ArticleCard.interface';
 import type { DocFile } from '../components/ContextCenter/DocumentsView/DocumentsView.interface';
 import type { UploadedDocumentItem } from '../components/ContextCenter/UploadedDocumentCard/UploadedDocumentCard.interface';
@@ -27,11 +29,7 @@ import type {
   QuickLink,
 } from '../interface/knowledge-center.interface';
 import { PageType } from '../interface/knowledge-center.interface';
-import {
-  downloadDriveFile,
-  listAssetsByFqn,
-  type ListAssetsByFqnParams,
-} from '../rest/assetAPI';
+import { downloadDriveFile, listAssetsByFqn } from '../rest/assetAPI';
 import { postKnowledgePage } from '../rest/knowledgeCenterAPI';
 import contextCenterClassBase from './ContextCenterClassBase';
 import EntityLink from './EntityLink';
@@ -75,6 +73,7 @@ export const contextFileToDocumentItem = (file: ContextFile): DocFile => ({
   driveFileId: file.id,
   folderId: file.folder?.id,
   folderFqn: file.folder?.fullyQualifiedName,
+  folderName: getEntityName(file.folder),
   id: file.assetId ?? file.id,
   name: file.displayName ?? file.name,
   sizeLabel: formatBytes(file.fileSize),
@@ -125,8 +124,8 @@ export const knowledgePageToArticleItem = (
 });
 
 export const fetchContextCenterDocuments = async (
-  params?: ListAssetsByFqnParams
-): Promise<Asset[]> => {
+  params?: ListParams
+): Promise<PagingResponse<Asset[]>> => {
   return listAssetsByFqn(
     CONTEXT_CENTER_DOCUMENTS_FQN,
     AssetType.External,
