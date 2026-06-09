@@ -36,6 +36,12 @@
       "type": "integer",
       "default": 10
     },
+    "orderBy": {
+      "description": "Ordering mode for terms aggregation buckets. 'key' (default) sorts alphabetically by term value and preserves existing behavior for all callers. 'relevance' ranks buckets so that exact matches against the typed literal in fieldValue surface first, followed by prefix matches, then substring matches. Relevance ordering activates only when fieldValue is a wildcard-wrapped literal of the form '.*<literal>.*' (the convention used by the OpenMetadata UI autocomplete dropdowns); otherwise the request silently falls back to 'key' ordering.",
+      "type": "string",
+      "enum": ["key", "relevance"],
+      "default": "key"
+    },
     "sourceFields": {
       "description": "List of fields to include from _source in the response (outside of top_hits).",
       "type": "array",

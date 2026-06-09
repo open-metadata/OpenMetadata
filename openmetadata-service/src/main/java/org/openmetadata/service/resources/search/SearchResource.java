@@ -734,7 +734,17 @@ public class SearchResource {
       @DefaultValue("false") @QueryParam("deleted") boolean deleted,
       @Parameter(description = "Free-text search query to scope aggregation results")
           @QueryParam("queryText")
-          String queryText)
+          String queryText,
+      @Parameter(
+              description =
+                  "Bucket ordering mode. 'key' (default) sorts alphabetically. "
+                      + "'relevance' ranks buckets by closeness to the typed literal "
+                      + "in `value` (exact > prefix > substring). Relevance ordering "
+                      + "activates only when `value` is wildcard-wrapped as .*<literal>.*; "
+                      + "otherwise falls back to 'key'.")
+          @DefaultValue("key")
+          @QueryParam("orderBy")
+          String orderBy)
       throws IOException {
 
     AggregationRequest aggregationRequest =
@@ -746,7 +756,8 @@ public class SearchResource {
             .withFieldValue(value)
             .withSourceFields(SearchUtils.sourceFields(sourceFieldsParam))
             .withDeleted(deleted)
-            .withQueryText(queryText);
+            .withQueryText(queryText)
+            .withOrderBy(AggregationRequest.OrderBy.fromValue(orderBy));
 
     return searchRepository.aggregate(aggregationRequest);
   }

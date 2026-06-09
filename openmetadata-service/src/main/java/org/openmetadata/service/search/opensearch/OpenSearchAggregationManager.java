@@ -13,6 +13,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -62,6 +64,34 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
     this.isClientAvailable = client != null;
     this.rbacConditionEvaluator = rbacConditionEvaluator;
     mapper = new ObjectMapper();
+  }
+
+  private static final Pattern WRAPPED_LITERAL = Pattern.compile("^\\.\\*(.+)\\.\\*$");
+
+  private static Optional<String> extractLiteralForRelevance(String includeValue) {
+    if (includeValue == null || includeValue.isEmpty() || ".*".equals(includeValue)) {
+      return Optional.empty();
+    }
+    Matcher m = WRAPPED_LITERAL.matcher(includeValue);
+    if (!m.matches()) {
+      return Optional.empty();
+    }
+    String inner = m.group(1);
+    for (int i = 0; i < inner.length(); i++) {
+      char c = inner.charAt(i);
+      if (c == '.' || c == '*' || c == '\\' || c == '[' || c == ']' || c == '(' || c == ')'
+          || c == '|' || c == '?' || c == '+' || c == '^' || c == '$' || c == '{' || c == '}') {
+        return Optional.empty();
+      }
+    }
+    return Optional.of(inner);
+  }
+
+  private static Query buildRelevanceScoringClause(String field, String literal) {
+    Query exact =
+        Query.of(q -> q.term(t -> t.field(field).value(FieldValue.of(literal)).boost(100f)));
+    Query prefix = Query.of(q -> q.prefix(p -> p.field(field).value(literal).boost(10f)));
+    return Query.of(q -> q.bool(b -> b.should(exact).should(prefix)));
   }
 
   private String praseJsonQuery(String jsonQuery) throws JsonProcessingException {
@@ -138,10 +168,6 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
         }
       }
 
-      if (query != null) {
-        searchRequestBuilder.query(query);
-      }
-
       String aggregationField =
           SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(request.getFieldName());
       if (aggregationField == null || aggregationField.isBlank()) {
@@ -151,46 +177,61 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
       int bucketSize = request.getSize();
       String includeValue = request.getFieldValue().toLowerCase();
 
+      boolean wantsRelevance = AggregationRequest.OrderBy.RELEVANCE.equals(request.getOrderBy());
+      Optional<String> relevanceLiteral =
+          wantsRelevance ? extractLiteralForRelevance(includeValue) : Optional.empty();
+
+      if (relevanceLiteral.isPresent()) {
+        Query scoringClause = buildRelevanceScoringClause(aggregationField, relevanceLiteral.get());
+        if (query != null) {
+          final Query existing = query;
+          query = Query.of(q -> q.bool(b -> b.must(existing).should(scoringClause)));
+        } else {
+          query = Query.of(q -> q.bool(b -> b.should(scoringClause)));
+        }
+      }
+
+      if (query != null) {
+        searchRequestBuilder.query(query);
+      }
+
       Map<String, Aggregation> aggregations = new HashMap<>();
 
-      Aggregation termsAgg;
+      Map<String, SortOrder> termsOrder =
+          relevanceLiteral.isPresent()
+              ? Collections.singletonMap("max_score", SortOrder.Desc)
+              : Collections.singletonMap("_key", SortOrder.Asc);
 
+      Map<String, Aggregation> subAggs = new HashMap<>();
       if (request.getSourceFields() != null && !request.getSourceFields().isEmpty()) {
         List<String> topHitFields = request.getSourceFields();
         int topHitSize = request.getTopHits() != null ? request.getTopHits().getSize() : 10;
-
-        termsAgg =
+        subAggs.put(
+            "top",
             Aggregation.of(
-                a ->
-                    a.terms(
-                            t ->
-                                t.field(aggregationField)
-                                    .size(bucketSize)
-                                    .order(Collections.singletonMap("_key", SortOrder.Asc))
-                                    .include(tb -> tb.regexp(includeValue)))
-                        .aggregations(
-                            "top",
-                            Aggregation.of(
-                                th ->
-                                    th.topHits(
-                                        topHit ->
-                                            topHit
-                                                .size(topHitSize)
-                                                .source(
-                                                    s ->
-                                                        s.filter(
-                                                            f -> f.includes(topHitFields)))))));
-      } else {
-        termsAgg =
-            Aggregation.of(
-                a ->
-                    a.terms(
-                        t ->
-                            t.field(aggregationField)
-                                .size(bucketSize)
-                                .order(Collections.singletonMap("_key", SortOrder.Asc))
-                                .include(tb -> tb.regexp(includeValue))));
+                th ->
+                    th.topHits(
+                        topHit ->
+                            topHit
+                                .size(topHitSize)
+                                .source(s -> s.filter(f -> f.includes(topHitFields))))));
       }
+      if (relevanceLiteral.isPresent()) {
+        subAggs.put(
+            "max_score",
+            Aggregation.of(a -> a.max(mx -> mx.script(s -> s.inline(i -> i.source("_score"))))));
+      }
+
+      Aggregation termsAgg =
+          Aggregation.of(
+              a ->
+                  a.terms(
+                          t ->
+                              t.field(aggregationField)
+                                  .size(bucketSize)
+                                  .order(termsOrder)
+                                  .include(tb -> tb.regexp(includeValue)))
+                      .aggregations(subAggs));
 
       aggregations.put(aggregationField, termsAgg);
 
