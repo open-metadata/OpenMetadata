@@ -32,3 +32,18 @@ def test_basic_auth_builds_expected_url():
         engine.url.render_as_string(hide_password=False)
         == "vertica+vertica_python://openmetadata_user:openmetadata_password@localhost:5433/openmetadata_db"
     )
+
+
+def test_special_characters_in_credentials_are_escaped():
+    connection = VerticaConnectionConfig(
+        username="openmetadata_user@444",
+        password="openmetadata_password@123",
+        hostPort="localhost:5433",
+        database="openmetadata_db",
+        scheme=VerticaScheme.vertica_vertica_python,
+    )
+    engine = VerticaConnection(connection).client
+    assert (
+        engine.url.render_as_string(hide_password=False)
+        == "vertica+vertica_python://openmetadata_user%40444:openmetadata_password%40123@localhost:5433/openmetadata_db"
+    )
