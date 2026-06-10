@@ -4482,6 +4482,17 @@ public interface CollectionDAO {
         @Bind("category") String category,
         @Bind("status") String status);
 
+    @SqlQuery(
+        "SELECT json FROM task_entity "
+            + "WHERE aboutFqnHash = :aboutFqnHash AND category = :category "
+            + "AND status IN (<statuses>) "
+            + "AND (deleted = false OR deleted IS NULL) "
+            + "ORDER BY createdAt DESC")
+    List<String> listByAboutAndCategoryAndStatuses(
+        @BindFQN("aboutFqnHash") String aboutFqn,
+        @Bind("category") String category,
+        @BindList("statuses") List<String> statuses);
+
     @SqlUpdate(
         "DELETE FROM task_entity " + "WHERE createdById = :createdById AND category = :category")
     void deleteByCreatorAndCategory(
