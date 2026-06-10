@@ -172,6 +172,10 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   protected boolean supportsNameLengthValidation = true;
   protected boolean supportsBulkAPI = false; // Override in subclasses that support bulk API
   protected boolean supportsSearchIndex = true; // Override in subclasses that don't support search
+  // Set true in subclasses whose list endpoint accepts `?sortBy=updatedAt&sortOrder=desc` and
+  // routes to EntityRepository.listFromSearchWithOffset. Used by the follower-regression test
+  // below — see Fixes #28473.
+  protected boolean supportsSearchBackedSortedList = false;
   protected boolean supportsVersionHistory =
       true; // Override in subclasses that don't support version history
   protected boolean supportsGetByVersion =
@@ -1712,6 +1716,67 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
         Exception.class,
         () -> addFollower(entityId, nonExistentUserId),
         "Adding non-existent user as follower should fail");
+  }
+
+  /**
+   * Regression for #28473: listing entities through the search-backed sorted path
+   * (EntityRepository.listFromSearchWithOffset) used to 400 with a Jackson
+   * EntityReference-from-String deserialization error as soon as any returned entity had
+   * a follower. The search index stores `followers` as a flat List<String> of UUIDs
+   * (SearchIndexUtils.parseFollowers) while every entity schema types the field as
+   * List<EntityReference>. The base path now strips relationship-shaped fields before
+   * deserialization and repopulates them via setFieldsInBulk.
+   */
+  @Test
+  void list_searchBackedSortedWithFollowers_200(TestNamespace ns) {
+    if (!supportsFollowers || !hasFollowerMethods() || !supportsSearchBackedSortedList) return;
+
+    K createRequest = createMinimalRequest(ns);
+    T entity = createEntity(createRequest);
+    addFollower(entity.getId(), testUser1().getId());
+
+    awaitEntityIndexed(entity.getId());
+
+    String path = getResourcePath() + "?sortBy=updatedAt&sortOrder=desc&limit=1000";
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Awaitility.await("Sorted list call surfaces the followed entity")
+        .pollInterval(Duration.ofMillis(250))
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              String body = client.getHttpClient().executeForString(HttpMethod.GET, path, null);
+              JsonNode root = MAPPER.readTree(body);
+              assertTrue(root.has("data"), "Response should have data field");
+              JsonNode data = root.get("data");
+              boolean found = false;
+              for (JsonNode node : data) {
+                if (entity.getId().toString().equals(node.path("id").asText())) {
+                  found = true;
+                  break;
+                }
+              }
+              assertTrue(found, "Followed entity should appear in the sorted list");
+            });
+  }
+
+  /**
+   * Wait until the given entity id is queryable in the search index. Uses the generic
+   * `v1/search/get/<index>/doc/<id>` endpoint so subclasses don't need to override.
+   */
+  protected void awaitEntityIndexed(UUID id) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String docPath = "/v1/search/get/" + getSearchIndex() + "/doc/" + id;
+    Awaitility.await("Entity " + id + " indexed in " + getSearchIndex())
+        .pollDelay(Duration.ZERO)
+        .pollInterval(Duration.ofMillis(200))
+        .atMost(Duration.ofSeconds(60))
+        .untilAsserted(
+            () -> {
+              // executeForString throws on non-2xx; reaching the assignment means 200.
+              String body = client.getHttpClient().executeForString(HttpMethod.GET, docPath, null);
+              assertNotNull(body, "Indexed doc body should not be null");
+            });
   }
 
   // ===================================================================
@@ -4944,6 +5009,49 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
         botDisplayName,
         result.getDisplayName(),
         "Bot allowed EditDisplayName (SCIM-like) must update displayName via PUT: " + fqn);
+  }
+
+  /**
+   * Test: A bot whose policy does NOT deny {@code EditOwners} (the ingestion bot - {@code
+   * IngestionBotPolicy}/{@code DefaultBotPolicy} carry only a {@code DisplayName-Deny}) CAN reassign
+   * owners through a single-entity PUT even when an owner already exists.
+   *
+   * <p>Regression guard for the over-broad guard that reverted owners on <em>any</em> bot PUT once
+   * an owner was set, which silently broke ingestion ownership re-sync. {@code
+   * EntityRepository#updateOwners} now keys on the same policy-aware {@code updatingBotDeniedOperation
+   * (EDIT_OWNERS)} check as {@code updateDisplayName}, so a policy-allowed bot updates owners while a
+   * denied bot (or {@code overrideMetadata=false} with a field-deny) still preserves them.
+   */
+  @Test
+  void test_singleEntityPut_bot_updatesOwnersWhenPolicyAllows(TestNamespace ns) {
+    if (!supportsBulkAPI || !supportsOwners) return;
+    if (!hasField("setOwners", List.class)) return;
+
+    K request = createRequest(ns.prefix("put_ownallow_"), ns);
+    T created = createEntity(request);
+    String fqn = created.getFullyQualifiedName();
+
+    SharedEntities shared = SharedEntities.get();
+    T entity = getEntityByNameWithFields(fqn, "owners");
+    entity.setOwners(List.of(shared.USER1_REF));
+    patchEntity(entity.getId().toString(), entity);
+
+    invoke(request, "setOwners", List.class, List.of(shared.USER2_REF));
+    HttpResponse<String> response = putAs(request, BulkApi.botToken());
+    assertTrue(
+        response.statusCode() == 200 || response.statusCode() == 201,
+        "Bot single-entity PUT should be authorized via EDIT_ALL: "
+            + response.statusCode()
+            + " "
+            + response.body());
+
+    T result = getEntityByNameWithFields(fqn, "owners");
+    assertNotNull(result.getOwners(), "owners present after bot update: " + fqn);
+    assertFalse(result.getOwners().isEmpty(), "owners not cleared: " + fqn);
+    assertEquals(
+        shared.USER2.getId(),
+        result.getOwners().get(0).getId(),
+        "Bot allowed EditOwners (ingestion bot, no Owner-Deny) must update owners via PUT: " + fqn);
   }
 
   /**

@@ -20,6 +20,7 @@ import io.modelcontextprotocol.spec.McpSchema;
 import java.security.Principal;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.AuthorizationException;
@@ -185,6 +186,29 @@ class DefaultToolContextTest {
   void notFoundStillBucketsAsValidationCategory() {
     assertThat(DefaultToolContext.classifyException(new RuntimeException("Entity not found: x")))
         .isEqualTo(McpToolCallUsage.ErrorCategory.VALIDATION);
+  }
+
+  @Test
+  void serializeWithinBudgetPassesSmallResultThrough() {
+    Map<String, Object> result = Map.of("fqn", "svc.db.orders", "status", "success");
+
+    String serialized = DefaultToolContext.serializeWithinBudget(result, "root_cause_analysis");
+
+    assertThat(serialized).contains("svc.db.orders").doesNotContain("truncated");
+  }
+
+  @Test
+  void serializeWithinBudgetReplacesOversizedResultWithEnvelope() {
+    Map<String, Object> result =
+        Map.of("blob", "z".repeat(McpResponseTrim.MAX_RESPONSE_CHARS + 1), "tool", "ignored");
+
+    String serialized = DefaultToolContext.serializeWithinBudget(result, "get_entity_details");
+
+    assertThat(serialized)
+        .contains("\"truncated\":true")
+        .contains("\"tool\":\"get_entity_details\"")
+        .contains("\"maxResponseChars\":" + McpResponseTrim.MAX_RESPONSE_CHARS)
+        .doesNotContain("zzzz");
   }
 
   private static DefaultToolContext.CallToolOutcome invokeWithToolName(String toolName) {

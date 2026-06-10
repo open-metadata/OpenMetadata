@@ -997,7 +997,9 @@ public class IngestionPipelineResource
                     ingestionPipeline.getIngestionRunner()));
     if (useStreamableLogs) {
       // Get logs using the repository's log storage picking up the last runId
-      String runId = ingestionPipeline.getPipelineStatuses().getRunId();
+      PipelineStatus latestStatus =
+          IngestionPipelineRepository.latestPipelineStatus(ingestionPipeline);
+      String runId = latestStatus == null ? null : latestStatus.getRunId();
       if (!CommonUtil.nullOrEmpty(runId)) {
         Map<String, Object> lastIngestionLogsMap =
             repository.getLogs(
@@ -1075,7 +1077,9 @@ public class IngestionPipelineResource
 
               if (useStreamableLogs) {
                 // Get logs using the repository's log storage picking up the last runId
-                String runId = ingestionPipeline.getPipelineStatuses().getRunId();
+                PipelineStatus latestStatus =
+                    IngestionPipelineRepository.latestPipelineStatus(ingestionPipeline);
+                String runId = latestStatus == null ? null : latestStatus.getRunId();
                 if (CommonUtil.nullOrEmpty(runId)) {
                   throw new PipelineServiceClientException(
                       "No runId found for the last ingestion pipeline run");
@@ -1322,13 +1326,8 @@ public class IngestionPipelineResource
     decryptOrNullify(securityContext, ingestionPipeline, true);
     ServiceEntityInterface service =
         Entity.getEntity(ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED);
-    // Flag the ingestion pipeline with streamable logs only if configured and enabled for use
-    if (repository.isS3LogStorageEnabled()
-        && repository.getLogStorageConfiguration().getEnabled()) {
-      ingestionPipeline.setEnableStreamableLogs(true);
-    }
     PipelineServiceClientResponse status =
-        pipelineServiceClient.deployPipeline(ingestionPipeline, service);
+        repository.deployIngestionPipeline(ingestionPipeline, service);
     if (status.getCode() == 200) {
       createOrUpdate(uriInfo, securityContext, ingestionPipeline);
     }

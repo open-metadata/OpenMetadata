@@ -14,6 +14,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingMetrics;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 
 /**
  * Default implementation of RecreateHandler that provides zero-downtime index recreation.
@@ -87,10 +88,10 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     String entityType = context.getEntityType();
     String canonicalIndex = context.getCanonicalIndex();
     String stagedIndex = context.getStagedIndex();
-    Set<String> aliasesFromMapping = context.getExistingAliases();
 
     SearchRepository searchRepository = Entity.getSearchRepository();
     SearchClient searchClient = searchRepository.getSearchClient();
+    IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
 
     if (canonicalIndex == null || stagedIndex == null) {
       LOG.error(
@@ -144,15 +145,14 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       //                         is strictly worse than the writes going back to the canonical
       //                         alias target. Operators need to retry the reindex either way.
       try {
-        // The alias set was derived from indexMapping.json at recreate time via
-        // getAliasesFromMapping; finalize just attaches that captured set. Nothing is read from the
-        // live cluster, so the set is deterministic and matches the distributed promotion path.
-        Set<String> aliasesToAttach = new HashSet<>();
-        if (aliasesFromMapping != null) {
-          aliasesFromMapping.stream()
-              .filter(alias -> alias != null && !alias.isBlank())
-              .forEach(aliasesToAttach::add);
-        }
+        // Re-derive aliases from indexMapping.json rather than trusting
+        // context.getExistingAliases(). A participant server rebuilds the context
+        // from only the staged-index mapping (ReindexContext.fromStagedIndexMapping),
+        // leaving its alias set empty; trusting it would abort promotion and drop the
+        // parent aliases (all/table/dataAsset). Deriving from the mapping matches
+        // promoteEntityIndex.
+        Set<String> aliasesToAttach =
+            getAliasesFromMapping(indexMapping, searchRepository.getClusterAlias());
 
         if (aliasesToAttach.isEmpty()) {
           abortPromotionWithoutAliases(entityType, stagedIndex);
@@ -200,6 +200,8 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         if (metrics != null) {
           metrics.recordPromotionSuccess(entityType);
         }
+
+        stampPromoted(entityType);
 
         for (String oldIndex : oldIndicesToDelete) {
           try {
@@ -381,6 +383,8 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         promoteMetrics.recordPromotionSuccess(entityType);
       }
 
+      stampPromoted(entityType);
+
       for (String oldIndex : oldIndicesToDelete) {
         try {
           if (searchClient.indexExists(oldIndex)) {
@@ -401,6 +405,26 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       }
     } finally {
       searchRepository.unregisterStagedIndex(entityType, stagedIndex);
+    }
+  }
+
+  /**
+   * Records the current mapping version/hash for a freshly-promoted entity so reindex-drift
+   * detection sees the live index as up to date. Stamps on every successful promotion - including
+   * the "partial data > no data" path where {@code reindexSuccess} was false - because drift
+   * tracks mapping-schema currency (the staged index was built from the current
+   * {@code indexMapping.json}), not content completeness. An incomplete reindex surfaces in the
+   * reindex job stats/failures, not in mapping drift. Best-effort: a stamping failure must not
+   * fail a promotion that already succeeded.
+   */
+  private void stampPromoted(String entityType) {
+    CollectionDAO collectionDAO = Entity.getCollectionDAO();
+    if (collectionDAO != null) {
+      try {
+        IndexMappingVersionTracker.create(collectionDAO).updateMappingVersion(entityType);
+      } catch (Exception e) {
+        LOG.warn("Failed to stamp index mapping version for entity '{}'", entityType, e);
+      }
     }
   }
 

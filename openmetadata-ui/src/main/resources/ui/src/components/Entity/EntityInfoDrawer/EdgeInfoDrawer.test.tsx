@@ -56,6 +56,13 @@ jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('username'),
 }));
 
+jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
+  ...jest.requireActual('../../../utils/date-time/DateTimeUtils'),
+  getRelativeTime: jest.fn((timestamp?: number) =>
+    timestamp ? '2 days ago' : ''
+  ),
+}));
+
 jest.mock('../../common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
@@ -257,5 +264,53 @@ describe('EdgeInfoDrawer Component', () => {
     });
 
     expect(props?.componentType).toBe('');
+  });
+
+  it('should format edge audit values from non-empty user and time parts', async () => {
+    render(
+      <EdgeInfoDrawer
+        {...mockEdgeInfoDrawer}
+        edge={
+          {
+            ...mockEdgeInfoDrawer.edge,
+            data: {
+              ...mockEdgeInfoDrawer.edge.data,
+              edge: {
+                ...mockEdgeInfoDrawer.edge.data?.edge,
+                createdBy: 'alice',
+                updatedAt: 1717000000000,
+              },
+            },
+          } as Edge
+        }
+      />
+    );
+
+    let props:
+      | {
+          entityInfoV1?: Array<{
+            name: string;
+            value?: unknown;
+          }>;
+        }
+      | undefined;
+
+    await waitFor(() => {
+      const overviewSectionCalls = (OverviewSection as jest.Mock).mock.calls;
+      const lastCall = overviewSectionCalls[overviewSectionCalls.length - 1];
+      props = lastCall?.[0];
+
+      expect(props?.entityInfoV1).toBeDefined();
+    });
+
+    const createdByInfo = props?.entityInfoV1?.find(
+      (item) => item.name === 'label.created-by'
+    );
+    const updatedByInfo = props?.entityInfoV1?.find(
+      (item) => item.name === 'label.updated-by'
+    );
+
+    expect(createdByInfo?.value).toBe('alice');
+    expect(updatedByInfo?.value).toBe('2 days ago');
   });
 });

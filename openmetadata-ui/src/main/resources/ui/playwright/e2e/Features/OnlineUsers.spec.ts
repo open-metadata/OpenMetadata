@@ -226,6 +226,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     browser,
     page,
   }) => {
+    test.slow(); // Mark this test as slow since it involves multiple logins and navigation
     await test.step('Visit Explore Page as New User', async () => {
       const userPage = await browser.newPage();
       await testUser.login(userPage);
@@ -252,6 +253,19 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       );
       await page.getByTestId('searchbar').fill(displayName);
       await searchResponse;
+
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.getByRole('cell', { name: displayName }).first()
+      ).toBeVisible();
+
+      // Search by email should surface the same user
+      const emailSearchResponse = page.waitForResponse(
+        '/api/v1/search/query?q=*&index=user&from=0&size=*'
+      );
+      await page.getByTestId('searchbar').fill(testUser.data.email);
+      await emailSearchResponse;
 
       await waitForAllLoadersToDisappear(page);
 

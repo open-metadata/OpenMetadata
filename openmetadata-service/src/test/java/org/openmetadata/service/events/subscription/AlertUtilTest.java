@@ -3,11 +3,18 @@ package org.openmetadata.service.events.subscription;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.events.ArgumentsInput;
+import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -15,6 +22,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.security.policyevaluator.CompiledRule;
 
 class AlertUtilTest {
 
@@ -236,7 +244,47 @@ class AlertUtilTest {
     assertFalse(AlertUtil.shouldTriggerAlert(event, config));
   }
 
+  // ---- evaluateAlertConditions: compile-once cache --------------------------
+
+  @Test
+  void evaluateAlertConditionsCompilesEachConditionOnce() {
+    // Unique condition isolates this test from the shared static cache.
+    EventFilterRule rule = includeRule("matchAnySource({'src-" + UUID.randomUUID() + "'})");
+    ChangeEvent event = entityChangeEvent("table");
+
+    try (MockedStatic<CompiledRule> compiledRule =
+        mockStatic(CompiledRule.class, CALLS_REAL_METHODS)) {
+      AlertUtil.evaluateAlertConditions(event, List.of(rule));
+      AlertUtil.evaluateAlertConditions(event, List.of(rule));
+      AlertUtil.evaluateAlertConditions(event, List.of(rule));
+
+      compiledRule.verify(() -> CompiledRule.parseExpression(anyString()), times(1));
+    }
+  }
+
+  @Test
+  void evaluateAlertConditionsReusesCompiledExpressionPerEvent() {
+    EventFilterRule rule = includeRule("matchAnyEventType({'entityUpdated'})");
+
+    ChangeEvent updated = entityChangeEvent("table"); // ENTITY_UPDATED
+    assertTrue(AlertUtil.evaluateAlertConditions(updated, List.of(rule)));
+
+    ChangeEvent created =
+        new ChangeEvent()
+            .withId(UUID.randomUUID())
+            .withEventType(EventType.ENTITY_CREATED)
+            .withEntityType("table");
+    assertFalse(AlertUtil.evaluateAlertConditions(created, List.of(rule)));
+  }
+
   // ---- helpers ---------------------------------------------------------------
+
+  private static EventFilterRule includeRule(String condition) {
+    return new EventFilterRule()
+        .withName("rule")
+        .withEffect(ArgumentsInput.Effect.INCLUDE)
+        .withCondition(condition);
+  }
 
   private static ChangeEvent entityChangeEvent(String entityType) {
     return new ChangeEvent()
