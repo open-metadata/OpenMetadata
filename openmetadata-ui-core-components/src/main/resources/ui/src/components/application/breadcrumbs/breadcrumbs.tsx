@@ -55,8 +55,6 @@ export interface BreadcrumbsProps extends HTMLAttributes<HTMLElement> {
    * visible. Omit to always render every crumb.
    */
   maxItems?: number;
-  /** Test identifier for the root navigation element. */
-  'data-testid'?: string;
   /**
    * Called with the item id when a non-current crumb is activated. When
    * provided, native `href` navigation is suppressed so the callback alone
@@ -225,7 +223,6 @@ export const Breadcrumbs = ({
   className,
   onAction,
   'aria-label': ariaLabel = 'Breadcrumb',
-  'data-testid': dataTestId = 'breadcrumb',
   ...props
 }: BreadcrumbsProps) => {
   const displayItems = collapseItems(items, maxItems);
@@ -240,7 +237,6 @@ export const Breadcrumbs = ({
         sizes[size].text,
         className
       )}
-      data-testid={dataTestId}
       items={displayItems}
       {...props}>
       {(item) => (

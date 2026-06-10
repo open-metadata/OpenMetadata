@@ -70,6 +70,7 @@ const HeaderBreadcrumb: FC<HeaderBreadcrumbProps> = ({
   return (
     <Breadcrumbs
       className={className}
+      data-testid="breadcrumb"
       divider={divider}
       items={allItems}
       size={size}
