@@ -47,7 +47,7 @@ const SingleCredentialNote = ({ method }: { method: string }) => {
         <Transi18next
           i18nKey="message.auth-single-credential-stored"
           renderElement={
-            <strong className="tw:font-semibold tw:text-secondary" />
+            <strong className="tw:font-medium tw:text-secondary" />
           }
           values={{ method }}
         />
@@ -150,7 +150,7 @@ const ReqBadge = ({
   return (
     <span
       className={classNames(
-        'tw:rounded-full tw:border tw:px-2 tw:py-0.5 tw:text-xs tw:font-semibold tw:leading-4',
+        'tw:rounded-full tw:border tw:px-2 tw:py-0.5 tw:text-xs tw:font-medium tw:leading-4',
         toneClass
       )}>
       {children}
@@ -178,7 +178,7 @@ const SectionHeader = ({
   onFocus?: () => void;
 }) => (
   <button
-    className="connection-section-header tw:flex tw:w-full tw:items-center tw:gap-2.5 tw:border-0 tw:bg-transparent tw:p-0 tw:text-left"
+    className="connection-section-header tw:flex tw:w-full tw:gap-2.5 tw:border-0 tw:bg-transparent tw:p-0 tw:text-left"
     type="button"
     onClick={() => {
       onFocus?.();
@@ -187,13 +187,13 @@ const SectionHeader = ({
       }
     }}>
     {index != null && (
-      <span className="tw:grid tw:size-5 tw:flex-shrink-0 tw:place-items-center tw:rounded-full tw:bg-utility-brand-50 tw:text-xs tw:font-semibold tw:text-utility-brand-700">
+      <span className="tw:grid tw:size-5 tw:flex-shrink-0 tw:place-items-center tw:rounded-full tw:bg-utility-brand-50 tw:text-xs tw:font-medium tw:text-utility-brand-700 tw:mt-1">
         {index}
       </span>
     )}
     <span className="tw:flex-1">
       <span className="tw:flex tw:items-center tw:gap-2">
-        <span className="connection-section-header-title tw:text-sm tw:font-semibold tw:leading-5 tw:text-primary">
+        <span className="connection-section-header-title tw:text-sm tw:font-medium tw:leading-5 tw:text-primary">
           {title}
         </span>
         {badge}
@@ -526,7 +526,7 @@ const AuthTabs = ({
               className={classNames(
                 'tw:flex tw:h-7 tw:items-center tw:justify-center tw:gap-2 tw:rounded-[7px] tw:border tw:px-3 tw:text-xs tw:transition-colors',
                 isActive
-                  ? 'tw:border-primary tw:bg-primary tw:font-semibold tw:text-primary tw:shadow-xs'
+                  ? 'tw:border-primary tw:bg-primary tw:font-medium tw:text-primary tw:shadow-xs'
                   : 'tw:border-transparent tw:font-medium tw:text-tertiary'
               )}
               data-testid={`auth-tab-${tab.id}`}
@@ -575,9 +575,8 @@ const SectionCard = ({ section }: { section: SectionConfig }) => {
   return (
     <Card
       className={classNames(
-        'connection-section-card',
-        `connection-section-card-${section.key}`,
-        section.key === 'advanced' ? '' : 'tw:p-6'
+        'connection-section-card tw:p-6',
+        `connection-section-card-${section.key}`
       )}
       color={active ? 'brandOutlined' : 'default'}
       data-testid={`connection-section-${section.key}`}

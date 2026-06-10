@@ -46,7 +46,7 @@ const ServiceNameCard = ({
     <div
       className="tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:p-4 tw:shadow-xs"
       data-testid="service-name-card">
-      <div className="tw:text-sm tw:font-semibold tw:leading-5 tw:text-primary">
+      <div className="tw:text-sm tw:font-medium tw:leading-5 tw:text-primary">
         {t('label.name-this-service')}
       </div>
       <div className="tw:mt-0.5 tw:text-xs tw:leading-[18px] tw:text-tertiary">
@@ -70,7 +70,7 @@ const ServiceNameCard = ({
       {showDescription ? (
         <div className="tw:mt-4">
           <label
-            className="tw:mb-1.5 tw:block tw:font-medium tw:leading-[17px] tw:text-secondary"
+            className="tw:mb-2 tw:block tw:font-medium tw:leading-[17px] tw:text-secondary"
             htmlFor="service-description">
             {t('label.description')}
           </label>
@@ -87,15 +87,14 @@ const ServiceNameCard = ({
           className="tw:mt-3"
           color="link-color"
           data-testid="add-description-button"
+          iconLeading={<Plus size={15} />}
           size="sm"
           type="button"
           onPress={() => {
             onFocus?.('serviceDescription');
             setShowDescription(true);
           }}>
-          <Plus size={15} />
           {t('label.add-a-description')}
-          <span className="tw:text-tertiary">({t('label.optional')})</span>
         </Button>
       )}
     </div>

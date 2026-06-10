@@ -262,7 +262,7 @@ const CoreOneOfField = (props: FieldProps) => {
         <div className="core-one-of-field-tabs tw:flex tw:flex-col tw:gap-1">
           {!hideLabel && fieldLabel && (
             <span
-              className="core-one-of-field-tabs-label tw:text-sm tw:font-semibold tw:text-secondary"
+              className="core-one-of-field-tabs-label tw:text-sm tw:font-medium tw:text-secondary"
               id={`${idSchema.$id}__title`}>
               {fieldLabel}
             </span>
@@ -283,7 +283,7 @@ const CoreOneOfField = (props: FieldProps) => {
                   className={classNames(
                     'tw:flex tw:min-h-10 tw:items-center tw:justify-center tw:rounded-[7px] tw:border tw:px-3 tw:py-2 tw:text-center tw:text-sm tw:leading-5 tw:transition-colors',
                     isSelected
-                      ? 'tw:border-primary tw:bg-primary tw:font-semibold tw:text-primary tw:shadow-xs'
+                      ? 'tw:border-primary tw:bg-primary tw:font-medium tw:text-primary tw:shadow-xs'
                       : 'tw:border-transparent tw:font-medium tw:text-tertiary'
                   )}
                   data-selected={isSelected}

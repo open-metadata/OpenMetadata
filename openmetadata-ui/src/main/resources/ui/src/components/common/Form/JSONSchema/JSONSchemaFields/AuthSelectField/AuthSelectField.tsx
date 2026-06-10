@@ -207,7 +207,7 @@ const AuthSelectField = (props: FieldProps) => {
             className="tw:text-secondary"
             id={`${idSchema.$id}__title`}
             size="text-sm"
-            weight="semibold">
+            weight="medium">
             {fieldLabel}
           </Typography>
           {required && (

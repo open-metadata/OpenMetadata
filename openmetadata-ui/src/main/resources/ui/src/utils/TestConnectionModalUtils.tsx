@@ -290,7 +290,7 @@ export function ConnectionStepRow(props: Readonly<ConnectionStepRowProps>) {
             <span className="tw:overflow-hidden tw:text-sm tw:font-medium tw:leading-5 tw:text-primary tw:text-ellipsis tw:whitespace-nowrap">
               {label}
             </span>
-            <span className="tw:inline-flex tw:h-6 tw:shrink-0 tw:items-center tw:rounded-full tw:bg-gray-100 tw:px-2 tw:text-xs tw:font-semibold tw:leading-4 tw:text-quaternary">
+            <span className="tw:inline-flex tw:h-6 tw:shrink-0 tw:items-center tw:rounded-full tw:bg-gray-100 tw:px-2 tw:text-xs tw:font-medium tw:leading-4 tw:text-quaternary">
               {step.name}
             </span>
             {step.mandatory && (
@@ -298,7 +298,7 @@ export function ConnectionStepRow(props: Readonly<ConnectionStepRowProps>) {
                 className={classNames(
                   'tw:inline-flex tw:h-[22px] tw:items-center tw:rounded-full tw:border',
                   'tw:border-utility-brand-200 tw:bg-utility-brand-50 tw:px-[7px]',
-                  'tw:text-xs tw:font-semibold tw:uppercase tw:leading-4 tw:text-utility-brand-700'
+                  'tw:text-xs tw:font-medium tw:uppercase tw:leading-4 tw:text-utility-brand-700'
                 )}>
                 {requiredLabel}
               </span>
@@ -363,7 +363,7 @@ export function ConnectionStatusBanner(
       <div>
         <div className="tw:flex tw:items-center tw:gap-2.5">
           {getConnectionStatusIcon(isWarning, isSuccessful)}
-          <span className="tw:text-sm tw:font-semibold tw:leading-5 tw:text-primary">
+          <span className="tw:text-sm tw:font-medium tw:leading-5 tw:text-primary">
             {getConnectionStatusText({
               isTestingConnection,
               isWarning,
@@ -387,7 +387,7 @@ export function ConnectionStatusBanner(
         <div className="tw:flex tw:items-center tw:gap-2">
           <ProgressBarBase className="tw:flex-1" value={progressPercent} />
           <span
-            className="tw:min-w-[40px] tw:font-semibold tw:text-secondary"
+            className="tw:min-w-[40px] tw:font-medium tw:text-secondary"
             data-testid="progress-bar-value">{`${progressPercent}%`}</span>
         </div>
       )}
@@ -426,7 +426,7 @@ export function ConnectionGateCard(
         type="button"
         onClick={onToggleGate}>
         <div className="tw:min-w-0">
-          <div className="tw:text-sm tw:font-semibold tw:leading-5 tw:text-primary">
+          <div className="tw:text-sm tw:font-medium tw:leading-5 tw:text-primary">
             {t('label.establish-connection')}
           </div>
           <div className="tw:mt-0.5 tw:leading-[18px] tw:text-secondary">
@@ -438,7 +438,7 @@ export function ConnectionGateCard(
             className={classNames(
               'tw:inline-flex tw:h-[22px] tw:items-center tw:rounded-full tw:border',
               'tw:border-utility-success-200 tw:bg-[#dcfae6] tw:px-2',
-              'tw:text-xs tw:font-semibold tw:uppercase tw:leading-4 tw:text-utility-success-700'
+              'tw:text-xs tw:font-medium tw:uppercase tw:leading-4 tw:text-utility-success-700'
             )}>
             {t('label.gate')}
           </span>

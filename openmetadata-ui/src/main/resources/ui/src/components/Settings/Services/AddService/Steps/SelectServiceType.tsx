@@ -13,13 +13,14 @@
 
 import {
   Badge,
+  Box,
   Input,
   Select,
   SelectItem,
+  Typography,
   type SelectItemType,
 } from '@openmetadata/ui-core-components';
 import { SearchLg } from '@untitledui/icons';
-import { Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -138,9 +139,9 @@ const SelectServiceType = ({
             <ErrorPlaceHolder
               className="border-none"
               type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-              <Typography.Paragraph>
+              <Typography>
                 {t('message.no-connectors-available-for-service')}
-              </Typography.Paragraph>
+              </Typography>
             </ErrorPlaceHolder>
           </div>
         )}
@@ -170,16 +171,18 @@ const SelectServiceType = ({
                   {getServiceLogo(type || '', 'tw:size-6 tw:object-contain')}
                 </div>
               </div>
-              <p className="tw:m-0 tw:w-full tw:break-words tw:text-center tw:text-xs tw:font-semibold tw:leading-4 tw:text-primary tw:whitespace-pre-wrap">
-                {getServiceName(type)}
+              <Box align="center" gap={2} justify="center">
+                <Typography size="text-xs" weight="semibold">
+                  {getServiceName(type)}
+                </Typography>
                 {BETA_SERVICES.includes(
                   type as DatabaseServiceType | PipelineServiceType
                 ) ? (
-                  <Badge color="brand" size="sm" type="pill-color">
+                  <Badge color="brand" size="xs" type="pill-color">
                     {t('label.beta')}
                   </Badge>
                 ) : null}
-              </p>
+              </Box>
             </button>
           ))}
         </div>

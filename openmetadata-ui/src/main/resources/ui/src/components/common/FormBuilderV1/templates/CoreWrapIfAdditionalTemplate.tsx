@@ -52,7 +52,7 @@ export const CoreWrapIfAdditionalTemplate: FunctionComponent<
             onChange={setKeyValue}
           />
         </div>
-        <span className="core-wrap-if-additional-separator tw:text-sm tw:font-semibold tw:leading-[38px] tw:text-tertiary">
+        <span className="core-wrap-if-additional-separator tw:text-sm tw:font-medium tw:leading-[38px] tw:text-tertiary">
           =
         </span>
         <div className="core-wrap-if-additional-value tw:min-w-0">

@@ -69,7 +69,7 @@ export const InputBase = ({
   trailingSlot,
   inputDataTestId,
   size = 'sm',
-  fontSize = 'md',
+  fontSize = 'sm',
   isInvalid,
   isDisabled,
   icon: Icon,
@@ -273,7 +273,7 @@ interface InputProps extends InputBaseProps, BaseProps {
 
 export const Input = ({
   size = 'sm',
-  fontSize = 'md',
+  fontSize = 'sm',
   placeholder,
   icon: Icon,
   label,

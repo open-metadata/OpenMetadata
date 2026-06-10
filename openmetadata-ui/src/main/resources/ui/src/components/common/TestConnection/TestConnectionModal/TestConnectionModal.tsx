@@ -199,7 +199,7 @@ const TestConnectionModal = ({
               {serviceLogo}
             </div>
             <div className="tw:min-w-0 tw:flex-1">
-              <div className="tw:text-lg tw:font-semibold tw:leading-[26px] tw:text-primary">
+              <div className="tw:text-lg tw:font-medium tw:leading-[26px] tw:text-primary">
                 {t('label.connection-status')}
               </div>
               <div className="tw:overflow-hidden tw:text-sm tw:leading-[18px] tw:text-quaternary tw:text-ellipsis tw:whitespace-nowrap">
@@ -230,7 +230,7 @@ const TestConnectionModal = ({
                 className="tw:flex tw:w-full tw:flex-col tw:items-center tw:justify-center tw:gap-4 tw:rounded-xl tw:border tw:border-primary tw:bg-primary tw:p-12 tw:text-center"
                 data-testid="test-connection-timeout-widget">
                 <IconTimeOut height={100} width={100} />
-                <div className="tw:text-base tw:font-semibold tw:leading-6 tw:text-primary">
+                <div className="tw:text-base tw:font-medium tw:leading-6 tw:text-primary">
                   {t('label.connection-timeout')}
                 </div>
                 <div className="tw:max-w-[520px] tw:text-sm tw:leading-5 tw:text-quaternary">

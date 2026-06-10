@@ -177,7 +177,7 @@ function FiltersConfigForm({
   return (
     <div className="tw:grid tw:gap-4" data-testid={FORM_TEST_ID}>
       <div>
-        <h2 className="tw:m-0 tw:text-lg tw:font-semibold tw:leading-7 tw:text-primary">
+        <h2 className="tw:m-0 tw:text-lg tw:font-medium tw:leading-7 tw:text-primary">
           {t('label.what-should-we-ingest')}
         </h2>
         <p className="tw:mt-1 tw:text-sm tw:font-normal tw:leading-5 tw:text-tertiary">
@@ -190,7 +190,7 @@ function FiltersConfigForm({
           <CheckCircle size={17} />
         </span>
         <div>
-          <div className="tw:font-semibold tw:leading-5 tw:text-primary">
+          <div className="tw:font-medium tw:leading-5 tw:text-primary">
             {t('message.connected-to-host', { host: connectionHost })}
           </div>
           <div className="tw:mt-px tw:text-xs tw:font-normal tw:leading-[18px] tw:text-tertiary">

@@ -53,7 +53,7 @@ function RulePreview({
     <div className="tw:rounded-xl tw:border tw:border-secondary tw:bg-secondary tw:p-3.5">
       <div className="tw:mb-2.5 tw:flex tw:items-center tw:gap-2">
         <Eye className="tw:text-utility-brand-600" size={15} />
-        <span className="tw:text-xs] tw:font-semibold tw:leading-[18px] tw:text-primary">
+        <span className="tw:text-xs] tw:font-medium tw:leading-[18px] tw:text-primary">
           {t('label.preview')}
         </span>
       </div>
@@ -68,7 +68,7 @@ function RulePreview({
       </p>
       {includeCount > 0 && (
         <div className="tw:mt-3 tw:grid tw:gap-1.5">
-          <span className="tw:text-xs tw:font-semibold tw:leading-[18px] tw:text-secondary">
+          <span className="tw:text-xs tw:font-medium tw:leading-[18px] tw:text-secondary">
             {t('label.include-entity', {
               entity: t(getRuleLabelKey(includeCount)),
             })}
@@ -87,7 +87,7 @@ function RulePreview({
       )}
       {excludeCount > 0 && (
         <div className="tw:mt-3 tw:grid tw:gap-1.5">
-          <span className="tw:text-xs tw:font-semibold tw:leading-[18px] tw:text-secondary">
+          <span className="tw:text-xs tw:font-medium tw:leading-[18px] tw:text-secondary">
             {t('label.exclude-entity', {
               entity: t(getRuleLabelKey(excludeCount)),
             })}
@@ -248,12 +248,12 @@ export function FilterSectionCard({
         <span className="tw:grid tw:size-[34px] tw:shrink-0 tw:place-items-center tw:rounded-[9px] tw:bg-utility-brand-50 tw:text-utility-brand-600">
           <Icon size={18} />
         </span>
-        <span className="tw:text-sm tw:font-semibold tw:leading-6 tw:text-primary">
+        <span className="tw:text-sm tw:font-medium tw:leading-6 tw:text-primary">
           {section.label}
         </span>
         <span
           className={classNames(
-            'tw:inline-flex tw:items-center tw:gap-[5px] tw:rounded-full tw:border tw:px-2.5 tw:py-0.5 tw:text-xs tw:font-semibold tw:leading-[18px]',
+            'tw:inline-flex tw:items-center tw:gap-[5px] tw:rounded-full tw:border tw:px-2.5 tw:py-0.5 tw:text-xs tw:font-medium tw:leading-[18px]',
             summary.tone === 'success'
               ? 'tw:border-utility-success-200 tw:bg-utility-success-50 tw:text-utility-success-700'
               : 'tw:border-utility-brand-200 tw:bg-utility-brand-50 tw:text-utility-brand-700'
@@ -273,7 +273,7 @@ export function FilterSectionCard({
       {isOpen && (
         <div className="tw:grid tw:gap-[18px] tw:border-t tw:border-secondary tw:p-[18px]">
           <div>
-            <div className="tw:mb-2 tw:text-xs tw:font-semibold tw:leading-[18px] tw:text-secondary">
+            <div className="tw:mb-2 tw:text-xs tw:font-medium tw:leading-[18px] tw:text-secondary">
               {t('label.what-to-scan')}
             </div>
             <div className="tw:grid tw:grid-cols-2 tw:gap-1 tw:rounded-[10px] tw:border tw:border-primary tw:bg-secondary tw:p-1">
@@ -281,7 +281,7 @@ export function FilterSectionCard({
                 className={classNames(
                   'tw:flex tw:min-h-10 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-[7px] tw:border tw:px-3 tw:py-2 tw:text-center tw:text-sm tw:leading-5 tw:transition-colors',
                   !filter.restrict
-                    ? 'tw:border-primary tw:bg-primary tw:font-semibold tw:text-primary tw:shadow-xs'
+                    ? 'tw:border-primary tw:bg-primary tw:font-medium tw:text-primary tw:shadow-xs'
                     : 'tw:border-transparent tw:font-medium tw:text-tertiary'
                 )}
                 data-testid={`${section.fieldName}-scan-all-button`}
@@ -297,7 +297,7 @@ export function FilterSectionCard({
                 className={classNames(
                   'tw:flex tw:min-h-10 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-[7px] tw:border tw:px-3 tw:py-2 tw:text-center tw:text-sm tw:leading-5 tw:transition-colors',
                   filter.restrict
-                    ? 'tw:border-primary tw:bg-primary tw:font-semibold tw:text-primary tw:shadow-xs'
+                    ? 'tw:border-primary tw:bg-primary tw:font-medium tw:text-primary tw:shadow-xs'
                     : 'tw:border-transparent tw:font-medium tw:text-tertiary'
                 )}
                 data-testid={`${section.fieldName}-only-specific-button`}
@@ -312,7 +312,7 @@ export function FilterSectionCard({
 
           {filter.restrict && (
             <div>
-              <div className="tw:mb-2 tw:text-xs tw:font-semibold tw:leading-[18px] tw:text-utility-brand-700">
+              <div className="tw:mb-2 tw:text-xs tw:font-medium tw:leading-[18px] tw:text-utility-brand-700">
                 {t('message.include-only-entities-where-name', {
                   entity: section.label.toLowerCase(),
                 })}
@@ -355,7 +355,7 @@ export function FilterSectionCard({
 
           <div className="tw:border-t tw:border-dashed tw:border-primary tw:pt-1">
             <div className="tw:my-3.5 tw:mb-2 tw:flex tw:items-center tw:gap-2.5">
-              <span className="tw:text-xs tw:font-semibold tw:leading-[18px] tw:text-utility-error-700">
+              <span className="tw:text-xs tw:font-medium tw:leading-[18px] tw:text-utility-error-700">
                 {t('label.always-exclude')}
               </span>
               {hasSystemExcludes && (

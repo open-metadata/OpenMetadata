@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Dropdown } from '@/components/base/dropdown/dropdown';
+import { cx, sortCx } from '@/utils/cx';
 import { ChevronRight, DotsHorizontal } from '@untitledui/icons';
 import type { FC, Key, ReactNode } from 'react';
 import {
@@ -18,8 +20,6 @@ import {
   Button as AriaButton,
   Link as AriaLink,
 } from 'react-aria-components';
-import { Dropdown } from '@/components/base/dropdown/dropdown';
-import { cx, sortCx } from '@/utils/cx';
 
 export type BreadcrumbsType = 'text' | 'button-white' | 'button-gray';
 
@@ -220,7 +220,7 @@ export const Breadcrumbs = ({
   items,
   type = 'text',
   divider = 'chevron',
-  size = 'sm',
+  size = 'xs',
   maxItems,
   className,
   onAction,

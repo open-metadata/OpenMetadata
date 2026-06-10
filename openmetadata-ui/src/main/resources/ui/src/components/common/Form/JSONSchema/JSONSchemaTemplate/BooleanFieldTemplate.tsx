@@ -31,7 +31,7 @@ const BooleanFieldTemplate = (props: FieldProps) => {
       />
       <div className="tw:min-w-0 tw:flex-1">
         <label
-          className="tw:block tw:cursor-pointer tw:font-semibold tw:leading-5 tw:text-primary"
+          className="tw:block tw:cursor-pointer tw:font-medium tw:leading-5 tw:text-primary"
           htmlFor={props.idSchema.$id}>
           {title}
         </label>

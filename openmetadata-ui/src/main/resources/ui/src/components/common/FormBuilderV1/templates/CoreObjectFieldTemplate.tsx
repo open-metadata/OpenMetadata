@@ -539,9 +539,9 @@ export const CoreObjectFieldTemplate: FunctionComponent<
           <div className="core-object-field-template-additional-header tw:flex tw:min-h-6 tw:items-center tw:justify-between tw:gap-4">
             <Typography
               as="label"
-              className="core-object-field-template-additional-label tw:text-sm tw:font-semibold tw:leading-[17px] tw:text-secondary"
+              className="core-object-field-template-additional-label tw:text-sm tw:font-medium tw:leading-[17px] tw:text-secondary"
               size="text-xs"
-              weight="semibold">
+              weight="medium">
               {t('label.additional-property-plural')}
             </Typography>
             {addButton}
@@ -633,7 +633,7 @@ export const CoreObjectFieldTemplate: FunctionComponent<
               className="core-object-field-template-title tw:text-primary"
               id={`${idSchema.$id}__title`}
               size="text-sm"
-              weight="semibold">
+              weight="medium">
               {title}
             </Typography>
             {shouldShowDescription && (

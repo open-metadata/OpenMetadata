@@ -722,7 +722,7 @@ const TestConnection: FC<TestConnectionProps> = ({
             <div className="tw:min-w-0" data-testid="messag-text">
               <div
                 className={classNames(
-                  'tw:text-sm tw:font-semibold tw:leading-6 tw:text-primary',
+                  'tw:text-sm tw:font-medium tw:leading-6 tw:text-primary',
                   {
                     'tw:text-base tw:font-bold tw:leading-6': isReadyToTestCard,
                   }
