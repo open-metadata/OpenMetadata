@@ -266,7 +266,7 @@ export const selectAssignee = async (page: Page, assigneeName: string) => {
       (response) =>
         response.request().method() === 'GET' &&
         response.url().includes('/api/v1/search/query') &&
-        response.url().includes('user_search_index'),
+        response.url().includes('user'),
       { timeout: 5000 }
     )
     .catch(() => null);
