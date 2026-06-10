@@ -43,6 +43,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { moveFileToFolder } from '../../../rest/assetAPI';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import DocumentStatusBadge from '../DocumentStatusBadge/DocumentStatusBadge.component';
 import {
   DocFile,
   DocumentsViewProps,
@@ -258,13 +259,16 @@ const FileRow: FC<FileRowProps> = ({
       />
 
       <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
-        <Typography
-          className="tw:truncate"
-          data-testid="document-name"
-          size="text-sm"
-          weight="medium">
-          {file.name}
-        </Typography>
+        <div className="tw:flex tw:items-center tw:gap-2">
+          <Typography
+            className="tw:truncate"
+            data-testid="document-name"
+            size="text-sm"
+            weight="medium">
+            {file.name}
+          </Typography>
+          <DocumentStatusBadge status={file.status} />
+        </div>
         <div className="tw:flex tw:items-center tw:gap-1">
           <Typography
             className="tw:text-gray-500"

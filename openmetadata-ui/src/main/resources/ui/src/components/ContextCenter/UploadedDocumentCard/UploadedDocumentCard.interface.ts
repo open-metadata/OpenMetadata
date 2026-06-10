@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-export type DocumentFileType = 'doc' | 'pdf' | 'xls' | 'image' | 'other';
+import { ProcessingStatus } from '../../../generated/entity/data/contextFile';
 
-export type DocumentProcessingStatus = 'processed' | 'analyzing' | 'failed';
+export type DocumentFileType = 'doc' | 'pdf' | 'xls' | 'image' | 'other';
 
 export interface UploadedDocumentItem {
   id: string;
@@ -21,7 +21,7 @@ export interface UploadedDocumentItem {
   name: string;
   fileExtension: string;
   sizeLabel: string;
-  status: DocumentProcessingStatus;
+  status?: ProcessingStatus;
   updatedBy: string;
   updatedAt: number;
 }

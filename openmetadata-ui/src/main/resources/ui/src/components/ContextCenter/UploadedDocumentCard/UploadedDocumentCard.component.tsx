@@ -22,6 +22,7 @@ import {
 import { Download01 } from '@untitledui/icons';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import DocumentStatusBadge from '../DocumentStatusBadge/DocumentStatusBadge.component';
 import { UploadedDocumentCardProps } from './UploadedDocumentCard.interface';
 
 const UploadedDocumentCard: FC<UploadedDocumentCardProps> = ({
@@ -30,7 +31,7 @@ const UploadedDocumentCard: FC<UploadedDocumentCardProps> = ({
   onDownload,
 }) => {
   const { t } = useTranslation();
-  const { name, fileExtension, sizeLabel } = document;
+  const { name, fileExtension, sizeLabel, status } = document;
 
   return (
     <Card
@@ -69,12 +70,15 @@ const UploadedDocumentCard: FC<UploadedDocumentCardProps> = ({
           {name}
         </Typography>
         <div className="tw:flex tw:items-center tw:justify-between">
-          <Typography
-            className="tw:text-gray-400"
-            data-testid="document-size"
-            size="text-xs">
-            {sizeLabel}
-          </Typography>
+          <div className="tw:flex tw:items-center tw:gap-1">
+            <Typography
+              className="tw:text-gray-400"
+              data-testid="document-size"
+              size="text-xs">
+              {sizeLabel}
+            </Typography>
+            <DocumentStatusBadge status={status} />
+          </div>
           {onDownload && (
             <Tooltip title={t('label.download')}>
               <TooltipTrigger>

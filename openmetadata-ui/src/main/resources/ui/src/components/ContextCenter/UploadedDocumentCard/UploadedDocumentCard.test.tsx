@@ -12,8 +12,15 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
+import { ProcessingStatus } from '../../../generated/entity/data/contextFile';
 import UploadedDocumentCard from './UploadedDocumentCard.component';
 import { UploadedDocumentItem } from './UploadedDocumentCard.interface';
+
+jest.mock('../DocumentStatusBadge/DocumentStatusBadge.component', () =>
+  jest.fn(({ status }: { status?: string }) =>
+    status ? <span data-testid="document-status-badge">{status}</span> : null
+  )
+);
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   ButtonUtility: jest.fn(({ onClick }: { onClick?: () => void }) => (
@@ -55,7 +62,7 @@ const mockDocument: UploadedDocumentItem = {
   name: 'MyReport.pdf',
   fileExtension: 'pdf',
   sizeLabel: '1.2 MB',
-  status: 'processed',
+  status: ProcessingStatus.Processed,
   updatedBy: 'alice',
   updatedAt: 1778756959299,
 };
@@ -117,5 +124,13 @@ describe('UploadedDocumentCard', () => {
     render(<UploadedDocumentCard document={mockDocument} />);
 
     expect(screen.getByTitle('MyReport.pdf')).toBeInTheDocument();
+  });
+
+  it('renders the processing status badge with the document status', () => {
+    render(<UploadedDocumentCard document={mockDocument} />);
+
+    expect(screen.getByTestId('document-status-badge')).toHaveTextContent(
+      ProcessingStatus.Processed
+    );
   });
 });

@@ -12,6 +12,7 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
+import { ProcessingStatus } from '../../../generated/entity/data/contextFile';
 import { UploadedDocumentItem } from '../UploadedDocumentCard/UploadedDocumentCard.interface';
 import UploadedDocumentsSection from './UploadedDocumentsSection.component';
 
@@ -69,7 +70,7 @@ const mockDocuments: UploadedDocumentItem[] = [
     fileExtension: 'pdf',
     fileType: 'pdf',
     sizeLabel: '1 MB',
-    status: 'processed',
+    status: ProcessingStatus.Processed,
     updatedBy: 'alice',
     updatedAt: 1778756959299,
   },
@@ -79,7 +80,7 @@ const mockDocuments: UploadedDocumentItem[] = [
     fileExtension: 'xls',
     fileType: 'xls',
     sizeLabel: '200 KB',
-    status: 'analyzing',
+    status: ProcessingStatus.Analyzing,
     updatedBy: 'alice',
     updatedAt: 1778756959299,
   },

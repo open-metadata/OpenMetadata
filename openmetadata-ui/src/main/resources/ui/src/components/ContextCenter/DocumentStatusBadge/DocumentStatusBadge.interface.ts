@@ -13,37 +13,6 @@
 
 import { ProcessingStatus } from '../../../generated/entity/data/contextFile';
 
-export interface DocFile {
-  id: string;
-  driveFileId?: string;
-  name: string;
-  fileExtension?: string;
-  sizeLabel: string;
+export interface DocumentStatusBadgeProps {
   status?: ProcessingStatus;
-  updatedBy?: string;
-  updatedAt?: number;
-  folderId?: string;
-  folderFqn?: string;
-}
-
-export interface DocFolder {
-  id: string;
-  name: string;
-  files: DocFile[];
-}
-
-export interface FolderOption {
-  id: string;
-  name: string;
-}
-
-export interface DocumentsViewProps {
-  canDelete?: boolean;
-  data: DocFile[];
-  folders?: FolderOption[];
-  isLoading: boolean;
-  onDownload?: (file: DocFile) => void;
-  onShareFile?: (file: DocFile) => void;
-  onDeleteFile?: (file: DocFile) => void;
-  onFileMoved?: (file: DocFile, targetFolderId: string) => void;
 }

@@ -88,6 +88,10 @@ export interface ContextFile {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * Number of knowledge pills (context memories) extracted from this file.
+     */
+    memoryCount?: number;
+    /**
      * Name of the file.
      */
     name: string;
@@ -286,6 +290,7 @@ export enum FileType {
  */
 export enum ProcessingStatus {
     Analyzing = "Analyzing",
+    ExtractingContext = "ExtractingContext",
     Failed = "Failed",
     Processed = "Processed",
     Unsupported = "Unsupported",
