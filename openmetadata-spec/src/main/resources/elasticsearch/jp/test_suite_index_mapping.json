@@ -1,6 +1,8 @@
 {
   "settings": {
-    "index": {},
+    "index": {
+      "max_ngram_diff": 1
+    },
     "analysis": {
       "normalizer": {
         "lowercase_normalizer": {
@@ -12,6 +14,13 @@
         }
       },
       "analyzer": {
+        "om_analyzer": {
+          "tokenizer": "letter",
+          "filter": [
+            "lowercase",
+            "om_stemmer"
+          ]
+        },
         "om_analyzer_jp": {
           "tokenizer": "kuromoji_tokenizer",
           "type": "custom",
@@ -67,9 +76,6 @@
           ]
         }
       }
-    },
-    "index": {
-      "max_ngram_diff": 1
     }
   },
   "mappings": {
@@ -251,7 +257,8 @@
                 "type": "text",
                 "analyzer": "om_analyzer"
               }
-            }
+            },
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"

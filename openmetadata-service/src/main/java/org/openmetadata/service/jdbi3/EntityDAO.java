@@ -821,6 +821,36 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("limit") int limit,
       @Bind("offset") int offset);
 
+  record CursorRow(String name, String id) {}
+
+  class CursorRowMapper implements RowMapper<CursorRow> {
+    @Override
+    public CursorRow map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new CursorRow(rs.getString("name"), rs.getString("id"));
+    }
+  }
+
+  /**
+   * Lightweight cursor lookup at an absolute offset. Selects ONLY {@code name}, {@code id} so the
+   * per-entity {@code (name)} index covers the query and {@code ORDER BY name, id} is served
+   * index-only ({@code EXPLAIN} shows "Using index") with no filesort. Selecting {@code json} is
+   * not covered by that index, so a cost-based optimizer may instead choose a filesort on the
+   * {@code ORDER BY name, id} key — the json-derived {@code name} generated column, whose sort
+   * rows can exhaust sort memory and throw {@code ER_OUT_OF_SORTMEMORY ("Out of sort memory,
+   * consider increasing server sort buffer size")} on large catalogs (the work scales with the
+   * OFFSET). Serving the cursor lookup index-only avoids that sort entirely and never materializes
+   * the {@code json} blob for the skipped rows. The {@code name}/{@code id} columns are generated
+   * from {@code json.$.name}/{@code json.$.id}, so the returned values are identical to
+   * {@code entity.getName()}/{@code entity.getId()}.
+   */
+  @SqlQuery("SELECT name, id FROM <table> <cond> ORDER BY name, id LIMIT 1 OFFSET :offset")
+  @RegisterRowMapper(CursorRowMapper.class)
+  CursorRow getCursorAtOffset(
+      @Define("table") String table,
+      @BindMap Map<String, ?> params,
+      @Define("cond") String cond,
+      @Bind("offset") int offset);
+
   @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE id = :id)")
   boolean exists(@Define("table") String table, @BindUUID("id") UUID id);
 
@@ -1093,6 +1123,11 @@ public interface EntityDAO<T extends EntityInterface> {
 
   default List<String> listAfter(ListFilter filter, int limit, int offset) {
     return listAfter(getTableName(), filter.getQueryParams(), filter.getCondition(), limit, offset);
+  }
+
+  default CursorRow getCursorAtOffset(ListFilter filter, int offset) {
+    return getCursorAtOffset(
+        getTableName(), filter.getQueryParams(), filter.getCondition(), offset);
   }
 
   default void exists(UUID id) {
