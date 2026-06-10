@@ -25,7 +25,6 @@ jest.mock('./GlossaryTermUtils', () => ({
     .mockReturnValue([{ key: 'mock-tab' }]),
 }));
 
-
 jest.mock(
   '../../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component',
   () => ({ __esModule: true, default: () => null })

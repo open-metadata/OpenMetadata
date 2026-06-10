@@ -44,7 +44,6 @@ jest.mock('../i18next/LocalUtil', () => ({
   default: { t: jest.fn((key: string) => key) },
 }));
 
-
 const mockProps = {
   domain: { fullyQualifiedName: 'Finance' },
   isVersionsView: false,
