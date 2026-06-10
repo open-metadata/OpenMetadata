@@ -21,7 +21,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.chat.CreateMcpConversation;
 import org.openmetadata.schema.api.chat.CreateMcpMessage;
@@ -38,6 +41,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.clients.llm.LlmClient;
 import org.openmetadata.service.clients.llm.LlmClientFactory;
+import org.openmetadata.service.clients.llm.LlmException;
 import org.openmetadata.service.clients.llm.LlmMessage;
 import org.openmetadata.service.clients.llm.LlmResponse;
 import org.openmetadata.service.clients.llm.LlmToolCall;
@@ -52,11 +56,35 @@ public class McpClientService implements AutoCloseable {
   private static final int MAX_TOOL_ITERATIONS = 10;
   private static final int LLM_CONTEXT_MESSAGE_LIMIT = 20;
   private static final int CONVERSATION_LOAD_LIMIT = 100;
+  private static final int TITLE_EXECUTOR_QUEUE_CAPACITY = 50;
+
+  private static final String TOOLS_UNAVAILABLE_MESSAGE =
+      "Tool execution is not available. The MCP Server is not installed or configured.";
+  private static final String TOOL_LIMIT_MESSAGE =
+      "I was unable to complete the request within the allowed tool call limit.";
+  private static final String TOOL_LIMIT_NOTICE =
+      "[Response truncated: reached the tool-call limit before completing.]";
+  private static final String ERROR_MESSAGE =
+      "Sorry, an error occurred while processing your request. Please try again.";
 
   private final McpConversationRepository conversationRepository;
   private final McpMessageRepository messageRepository;
   private final McpChatAppConfig config;
-  private volatile LlmClient llmClient;
+  private final LlmClient llmClient;
+  private final ExecutorService titleExecutor =
+      new ThreadPoolExecutor(
+          0,
+          2,
+          60L,
+          TimeUnit.SECONDS,
+          new LinkedBlockingQueue<>(TITLE_EXECUTOR_QUEUE_CAPACITY),
+          runnable -> {
+            Thread thread = new Thread(runnable, "mcp-title-gen");
+            thread.setDaemon(true);
+            return thread;
+          },
+          new ThreadPoolExecutor.DiscardPolicy());
+
   private volatile ToolExecutor toolExecutor;
   private volatile List<Map<String, Object>> toolDefinitions = Collections.emptyList();
   private volatile List<Map<String, Object>> lastToolDefinitionsSource;
@@ -65,11 +93,21 @@ public class McpClientService implements AutoCloseable {
     this.conversationRepository = new McpConversationRepository(dao.mcpConversationDAO());
     this.messageRepository = new McpMessageRepository(dao.mcpMessageDAO());
     this.config = config;
+    this.llmClient = createLlmClient(config);
+  }
+
+  private static LlmClient createLlmClient(McpChatAppConfig config) {
     boolean hasApiKey = config.getLlmApiKey() != null && !config.getLlmApiKey().isBlank();
     boolean hasAwsConfig = config.getAwsConfig() != null;
+    LlmClient client = null;
     if (hasApiKey || hasAwsConfig) {
-      this.llmClient = LlmClientFactory.create(config);
+      try {
+        client = LlmClientFactory.create(config);
+      } catch (IllegalArgumentException e) {
+        LOG.error("Failed to initialize LLM client; MCP chat will be disabled: {}", e.getMessage());
+      }
     }
+    return client;
   }
 
   public boolean isChatEnabled() {
@@ -78,11 +116,11 @@ public class McpClientService implements AutoCloseable {
 
   @Override
   public void close() {
-    LlmClient client = this.llmClient;
-    if (client != null) {
+    titleExecutor.shutdownNow();
+    if (llmClient != null) {
       try {
-        client.close();
-      } catch (Exception e) {
+        llmClient.close();
+      } catch (RuntimeException e) {
         LOG.warn("Failed to close LLM client", e);
       }
     }
@@ -98,161 +136,14 @@ public class McpClientService implements AutoCloseable {
 
   public record ChatResponse(UUID conversationId, McpMessage message) {}
 
+  private record ConversationContext(McpConversation conversation, boolean isNew) {}
+
+  private record ChatTurn(
+      String assistantText, List<ToolCall> toolCalls, TokenUsage tokens, boolean hitToolLimit) {}
+
   public ChatResponse chat(
       SecurityContext securityContext, UUID conversationId, String userMessage) {
-    if (llmClient == null) {
-      throw new IllegalStateException(
-          "LLM API key is not configured. Update the McpApplication configuration with a valid API key.");
-    }
-    User user = getSubjectContext(securityContext).user();
-    EntityReference userRef = user.getEntityReference();
-
-    McpConversation conversation;
-    boolean isNewConversation;
-    if (conversationId == null) {
-      conversation = conversationRepository.create(new CreateMcpConversation(), userRef);
-      isNewConversation = true;
-    } else {
-      conversation = getConversation(securityContext, conversationId);
-      isNewConversation = false;
-    }
-
-    int currentMessageCount = conversation.getMessageCount();
-
-    storeMessage(
-        conversation.getId(),
-        CreateMcpMessage.Sender.HUMAN,
-        List.of(
-            new MessageBlock()
-                .withType(ChatContentType.GENERIC)
-                .withTextMessage(
-                    new TextMessage()
-                        .withType(TextMessage.TextMessageType.MARKDOWN)
-                        .withMessage(userMessage))),
-        null,
-        currentMessageCount);
-    currentMessageCount++;
-
-    List<LlmMessage> llmMessages = buildLlmMessages(conversation.getId());
-
-    CatalogSecurityContext catalogSecurityContext =
-        new CatalogSecurityContext(
-            securityContext.getUserPrincipal(),
-            securityContext.isSecure() ? "https" : "http",
-            securityContext.getAuthenticationScheme(),
-            Collections.emptySet());
-
-    List<ToolCall> allToolCalls = new ArrayList<>();
-    int totalInputTokens = 0;
-    int totalOutputTokens = 0;
-    StringBuilder textCollector = new StringBuilder();
-    String assistantText = null;
-
-    try {
-      ToolExecutor executor = this.toolExecutor;
-      List<Map<String, Object>> tools = this.toolDefinitions;
-      for (int i = 0; i < MAX_TOOL_ITERATIONS; i++) {
-        LlmResponse response = llmClient.sendMessages(llmMessages, tools);
-        totalInputTokens += response.inputTokens();
-        totalOutputTokens += response.outputTokens();
-
-        if (response.content() != null && !response.content().isBlank()) {
-          if (!textCollector.isEmpty()) {
-            textCollector.append("\n\n");
-          }
-          textCollector.append(response.content());
-        }
-
-        if (!response.hasToolCalls()) {
-          break;
-        }
-
-        if (executor == null) {
-          if (textCollector.isEmpty()) {
-            textCollector.append(
-                "Tool execution is not available. The MCP Server is not installed or configured.");
-          }
-          break;
-        }
-
-        llmMessages.add(
-            LlmMessage.assistantWithToolCalls(response.content(), response.toolCalls()));
-
-        for (LlmToolCall toolCall : response.toolCalls()) {
-          String resultContent =
-              executor.executeTool(catalogSecurityContext, toolCall.name(), toolCall.arguments());
-
-          llmMessages.add(LlmMessage.toolResult(toolCall.id(), resultContent));
-
-          Map<String, Object> inputArgs = parseToolArguments(toolCall.arguments());
-          Object parsedResult = parseToolResult(resultContent);
-          allToolCalls.add(
-              new ToolCall()
-                  .withName(toolCall.name())
-                  .withInput(inputArgs)
-                  .withResult(parsedResult));
-        }
-      }
-
-      assistantText =
-          textCollector.isEmpty()
-              ? "I was unable to complete the request within the allowed tool call limit."
-              : textCollector.toString();
-    } catch (Exception e) {
-      LOG.error("LLM call failed for conversation {}", conversation.getId(), e);
-      assistantText = "Sorry, an error occurred while processing your request. Please try again.";
-    }
-
-    List<MessageBlock> contentBlocks = new ArrayList<>();
-    contentBlocks.add(
-        new MessageBlock()
-            .withType(ChatContentType.GENERIC)
-            .withTextMessage(
-                new TextMessage()
-                    .withType(TextMessage.TextMessageType.MARKDOWN)
-                    .withMessage(assistantText))
-            .withTools(allToolCalls));
-
-    TokenUsage tokenUsage =
-        new TokenUsage()
-            .withInputTokens(totalInputTokens)
-            .withOutputTokens(totalOutputTokens)
-            .withTotalTokens(totalInputTokens + totalOutputTokens);
-
-    McpMessage assistantMsg =
-        storeMessage(
-            conversation.getId(),
-            CreateMcpMessage.Sender.ASSISTANT,
-            contentBlocks,
-            tokenUsage,
-            currentMessageCount);
-    currentMessageCount++;
-
-    conversation.setMessageCount(currentMessageCount);
-    conversation.setUpdatedBy(userRef.getName());
-    if (isNewConversation && conversation.getTitle() == null) {
-      conversation.setTitle(truncateTitle(userMessage));
-      conversationRepository.update(conversation);
-      UUID convId = conversation.getId();
-      CompletableFuture.runAsync(
-              () -> {
-                String title = generateTitle(userMessage);
-                if (title != null) {
-                  McpConversation conv = conversationRepository.getById(convId);
-                  conv.setTitle(title);
-                  conversationRepository.update(conv);
-                }
-              })
-          .exceptionally(
-              ex -> {
-                LOG.warn("Failed to update conversation title for {}", convId, ex);
-                return null;
-              });
-    } else {
-      conversationRepository.update(conversation);
-    }
-
-    return new ChatResponse(conversation.getId(), assistantMsg);
+    return runChat(securityContext, conversationId, userMessage, ChatEventEmitter.NOOP);
   }
 
   public void chatStream(
@@ -260,177 +151,254 @@ public class McpClientService implements AutoCloseable {
       UUID conversationId,
       String userMessage,
       ChatEventEmitter emitter) {
-    if (llmClient == null) {
-      throw new IllegalStateException(
-          "LLM API key is not configured. Update the McpApplication configuration with a valid API key.");
-    }
-    User user = getSubjectContext(securityContext).user();
-    EntityReference userRef = user.getEntityReference();
+    runChat(securityContext, conversationId, userMessage, emitter);
+  }
 
-    McpConversation conversation;
-    boolean isNewConversation;
-    if (conversationId == null) {
-      conversation = conversationRepository.create(new CreateMcpConversation(), userRef);
-      isNewConversation = true;
-      emitter.emit(ChatEvent.conversationCreated(conversation.getId()));
-    } else {
-      conversation = getConversation(securityContext, conversationId);
-      isNewConversation = false;
-    }
+  private ChatResponse runChat(
+      SecurityContext securityContext,
+      UUID conversationId,
+      String userMessage,
+      ChatEventEmitter emitter) {
+    requireChatEnabled();
+    EntityReference userRef = getSubjectContext(securityContext).user().getEntityReference();
+    ConversationContext context =
+        openConversation(securityContext, conversationId, userRef, emitter);
+    McpConversation conversation = context.conversation();
+    int messageIndex =
+        storeUserMessage(conversation.getId(), userMessage, conversation.getMessageCount());
 
-    int currentMessageCount = conversation.getMessageCount();
-
-    storeMessage(
-        conversation.getId(),
-        CreateMcpMessage.Sender.HUMAN,
-        List.of(
-            new MessageBlock()
-                .withType(ChatContentType.GENERIC)
-                .withTextMessage(
-                    new TextMessage()
-                        .withType(TextMessage.TextMessageType.MARKDOWN)
-                        .withMessage(userMessage))),
-        null,
-        currentMessageCount);
-    currentMessageCount++;
-
-    List<LlmMessage> llmMessages = buildLlmMessages(conversation.getId());
-
-    CatalogSecurityContext catalogSecurityContext =
-        new CatalogSecurityContext(
-            securityContext.getUserPrincipal(),
-            securityContext.isSecure() ? "https" : "http",
-            securityContext.getAuthenticationScheme(),
-            Collections.emptySet());
-
-    List<ToolCall> allToolCalls = new ArrayList<>();
-    int totalInputTokens = 0;
-    int totalOutputTokens = 0;
-    StringBuilder textCollector = new StringBuilder();
-    String assistantText = null;
-
+    ChatResponse result;
     try {
-      ToolExecutor executor = this.toolExecutor;
-      List<Map<String, Object>> tools = this.toolDefinitions;
-      for (int i = 0; i < MAX_TOOL_ITERATIONS; i++) {
-        LlmResponse response =
-            llmClient.sendMessagesStreaming(
-                llmMessages, tools, chunk -> emitter.emit(ChatEvent.text(chunk)));
-        totalInputTokens += response.inputTokens();
-        totalOutputTokens += response.outputTokens();
-
-        if (response.content() != null && !response.content().isBlank()) {
-          if (!textCollector.isEmpty()) {
-            textCollector.append("\n\n");
-          }
-          textCollector.append(response.content());
-        }
-
-        if (!response.hasToolCalls()) {
-          break;
-        }
-
-        if (executor == null) {
-          if (textCollector.isEmpty()) {
-            textCollector.append(
-                "Tool execution is not available. The MCP Server is not installed or configured.");
-          }
-          break;
-        }
-
-        llmMessages.add(
-            LlmMessage.assistantWithToolCalls(response.content(), response.toolCalls()));
-
-        for (LlmToolCall toolCall : response.toolCalls()) {
-          Map<String, Object> inputArgs = parseToolArguments(toolCall.arguments());
-          emitter.emit(ChatEvent.toolCallStart(toolCall.name(), inputArgs));
-
-          String resultContent =
-              executor.executeTool(catalogSecurityContext, toolCall.name(), toolCall.arguments());
-
-          llmMessages.add(LlmMessage.toolResult(toolCall.id(), resultContent));
-
-          Object parsedResult = parseToolResult(resultContent);
-          emitter.emit(ChatEvent.toolCallEnd(toolCall.name(), parsedResult));
-
-          allToolCalls.add(
-              new ToolCall()
-                  .withName(toolCall.name())
-                  .withInput(inputArgs)
-                  .withResult(parsedResult));
-        }
-      }
-
-      assistantText =
-          textCollector.isEmpty()
-              ? "I was unable to complete the request within the allowed tool call limit."
-              : textCollector.toString();
-    } catch (Exception e) {
-      LOG.error("LLM call failed for conversation {}", conversation.getId(), e);
-      assistantText = "Sorry, an error occurred while processing your request. Please try again.";
-      emitter.emit(ChatEvent.error(assistantText));
+      ChatTurn turn = generateAssistantTurn(securityContext, conversation.getId(), emitter);
+      McpMessage assistantMessage = storeAssistantMessage(conversation.getId(), turn, messageIndex);
+      finalizeConversation(
+          conversation, userRef, userMessage, context.isNew(), messageIndex + 1, emitter);
+      emitter.emit(ChatEvent.messageComplete(assistantMessage));
+      emitter.emit(ChatEvent.done());
+      result = new ChatResponse(conversation.getId(), assistantMessage);
+    } catch (ClientDisconnectedException e) {
+      result = handleDisconnect(conversation, userRef, messageIndex);
     }
+    return result;
+  }
 
-    List<MessageBlock> contentBlocks = new ArrayList<>();
-    contentBlocks.add(
-        new MessageBlock()
-            .withType(ChatContentType.GENERIC)
-            .withTextMessage(
-                new TextMessage()
-                    .withType(TextMessage.TextMessageType.MARKDOWN)
-                    .withMessage(assistantText))
-            .withTools(allToolCalls));
+  private ConversationContext openConversation(
+      SecurityContext securityContext,
+      UUID conversationId,
+      EntityReference userRef,
+      ChatEventEmitter emitter) {
+    ConversationContext context;
+    if (conversationId == null) {
+      McpConversation created = conversationRepository.create(new CreateMcpConversation(), userRef);
+      emitter.emit(ChatEvent.conversationCreated(created.getId()));
+      context = new ConversationContext(created, true);
+    } else {
+      context = new ConversationContext(getConversation(securityContext, conversationId), false);
+    }
+    return context;
+  }
 
-    TokenUsage tokenUsage =
+  private ChatTurn generateAssistantTurn(
+      SecurityContext securityContext, UUID conversationId, ChatEventEmitter emitter) {
+    CatalogSecurityContext catalogContext = toCatalogSecurityContext(securityContext);
+    List<LlmMessage> llmMessages = buildLlmMessages(conversationId);
+    ChatTurn turn;
+    try {
+      turn = runToolLoop(llmMessages, catalogContext, emitter);
+    } catch (LlmException e) {
+      LOG.error("LLM call failed for conversation {}", conversationId, e);
+      emitter.emit(ChatEvent.error(ERROR_MESSAGE));
+      turn = new ChatTurn(ERROR_MESSAGE, new ArrayList<>(), emptyTokenUsage(), false);
+    }
+    return turn;
+  }
+
+  private ChatTurn runToolLoop(
+      List<LlmMessage> llmMessages,
+      CatalogSecurityContext catalogContext,
+      ChatEventEmitter emitter) {
+    ToolExecutor executor = this.toolExecutor;
+    List<Map<String, Object>> tools = this.toolDefinitions;
+    List<ToolCall> toolCalls = new ArrayList<>();
+    StringBuilder textCollector = new StringBuilder();
+    int inputTokens = 0;
+    int outputTokens = 0;
+    boolean completed = false;
+    int iteration = 0;
+    while (iteration < MAX_TOOL_ITERATIONS && !completed) {
+      LlmResponse response =
+          llmClient.sendMessagesStreaming(
+              llmMessages, tools, chunk -> emitter.emit(ChatEvent.text(chunk)));
+      inputTokens += response.inputTokens();
+      outputTokens += response.outputTokens();
+      appendContent(textCollector, response.content());
+      completed =
+          applyResponse(
+              response, executor, catalogContext, llmMessages, toolCalls, textCollector, emitter);
+      iteration++;
+    }
+    return buildTurn(textCollector, toolCalls, inputTokens, outputTokens, !completed);
+  }
+
+  private boolean applyResponse(
+      LlmResponse response,
+      ToolExecutor executor,
+      CatalogSecurityContext catalogContext,
+      List<LlmMessage> llmMessages,
+      List<ToolCall> toolCalls,
+      StringBuilder textCollector,
+      ChatEventEmitter emitter) {
+    boolean completed;
+    if (!response.hasToolCalls()) {
+      completed = true;
+    } else if (executor == null) {
+      appendToolsUnavailable(textCollector);
+      completed = true;
+    } else {
+      llmMessages.add(LlmMessage.assistantWithToolCalls(response.content(), response.toolCalls()));
+      executeToolCalls(
+          response.toolCalls(), executor, catalogContext, llmMessages, toolCalls, emitter);
+      completed = false;
+    }
+    return completed;
+  }
+
+  private void executeToolCalls(
+      List<LlmToolCall> toolCalls,
+      ToolExecutor executor,
+      CatalogSecurityContext catalogContext,
+      List<LlmMessage> llmMessages,
+      List<ToolCall> collectedCalls,
+      ChatEventEmitter emitter) {
+    for (LlmToolCall toolCall : toolCalls) {
+      Map<String, Object> inputArgs = parseToolArguments(toolCall.arguments());
+      emitter.emit(ChatEvent.toolCallStart(toolCall.name(), inputArgs));
+      String resultContent = executeToolSafely(executor, catalogContext, toolCall);
+      llmMessages.add(LlmMessage.toolResult(toolCall.id(), resultContent));
+      Object parsedResult = parseToolResult(resultContent);
+      emitter.emit(ChatEvent.toolCallEnd(toolCall.name(), parsedResult));
+      collectedCalls.add(
+          new ToolCall().withName(toolCall.name()).withInput(inputArgs).withResult(parsedResult));
+    }
+  }
+
+  private String executeToolSafely(
+      ToolExecutor executor, CatalogSecurityContext catalogContext, LlmToolCall toolCall) {
+    String result;
+    try {
+      result = executor.executeTool(catalogContext, toolCall.name(), toolCall.arguments());
+    } catch (RuntimeException e) {
+      LOG.warn("Tool '{}' execution failed", toolCall.name(), e);
+      result = "Tool execution failed: " + e.getMessage();
+    }
+    return result;
+  }
+
+  private ChatTurn buildTurn(
+      StringBuilder textCollector,
+      List<ToolCall> toolCalls,
+      int inputTokens,
+      int outputTokens,
+      boolean hitToolLimit) {
+    if (hitToolLimit) {
+      LOG.warn("MCP chat reached the tool-call iteration limit of {}", MAX_TOOL_ITERATIONS);
+    }
+    String assistantText = resolveAssistantText(textCollector, hitToolLimit);
+    TokenUsage tokens =
         new TokenUsage()
-            .withInputTokens(totalInputTokens)
-            .withOutputTokens(totalOutputTokens)
-            .withTotalTokens(totalInputTokens + totalOutputTokens);
+            .withInputTokens(inputTokens)
+            .withOutputTokens(outputTokens)
+            .withTotalTokens(inputTokens + outputTokens);
+    return new ChatTurn(assistantText, toolCalls, tokens, hitToolLimit);
+  }
 
-    McpMessage assistantMsg =
-        storeMessage(
-            conversation.getId(),
-            CreateMcpMessage.Sender.ASSISTANT,
-            contentBlocks,
-            tokenUsage,
-            currentMessageCount);
-    currentMessageCount++;
+  private String resolveAssistantText(StringBuilder textCollector, boolean hitToolLimit) {
+    String text;
+    if (textCollector.isEmpty()) {
+      text = hitToolLimit ? TOOL_LIMIT_MESSAGE : "";
+    } else if (hitToolLimit) {
+      text = textCollector + "\n\n" + TOOL_LIMIT_NOTICE;
+    } else {
+      text = textCollector.toString();
+    }
+    return text;
+  }
 
-    conversation.setMessageCount(currentMessageCount);
+  private void appendToolsUnavailable(StringBuilder textCollector) {
+    if (textCollector.isEmpty()) {
+      textCollector.append(TOOLS_UNAVAILABLE_MESSAGE);
+    }
+  }
+
+  private void appendContent(StringBuilder collector, String content) {
+    if (content != null && !content.isBlank()) {
+      if (!collector.isEmpty()) {
+        collector.append("\n\n");
+      }
+      collector.append(content);
+    }
+  }
+
+  private ChatResponse handleDisconnect(
+      McpConversation conversation, EntityReference userRef, int messageCount) {
+    LOG.info("Client disconnected during MCP chat for conversation {}", conversation.getId());
+    conversation.setMessageCount(messageCount);
     conversation.setUpdatedBy(userRef.getName());
-    if (isNewConversation && conversation.getTitle() == null) {
+    conversationRepository.update(conversation);
+    return null;
+  }
+
+  private int storeUserMessage(UUID conversationId, String userMessage, int messageIndex) {
+    storeMessage(
+        conversationId,
+        CreateMcpMessage.Sender.HUMAN,
+        List.of(textBlock(userMessage)),
+        null,
+        messageIndex);
+    return messageIndex + 1;
+  }
+
+  private McpMessage storeAssistantMessage(UUID conversationId, ChatTurn turn, int messageIndex) {
+    MessageBlock block = textBlock(turn.assistantText()).withTools(turn.toolCalls());
+    return storeMessage(
+        conversationId,
+        CreateMcpMessage.Sender.ASSISTANT,
+        List.of(block),
+        turn.tokens(),
+        messageIndex);
+  }
+
+  private MessageBlock textBlock(String message) {
+    return new MessageBlock()
+        .withType(ChatContentType.GENERIC)
+        .withTextMessage(
+            new TextMessage().withType(TextMessage.TextMessageType.MARKDOWN).withMessage(message));
+  }
+
+  private void finalizeConversation(
+      McpConversation conversation,
+      EntityReference userRef,
+      String userMessage,
+      boolean isNew,
+      int messageCount,
+      ChatEventEmitter emitter) {
+    conversation.setMessageCount(messageCount);
+    conversation.setUpdatedBy(userRef.getName());
+    boolean needsTitle = isNew && conversation.getTitle() == null;
+    if (needsTitle) {
       String quickTitle = truncateTitle(userMessage);
       conversation.setTitle(quickTitle);
       emitter.emit(ChatEvent.titleUpdated(quickTitle));
     }
     conversationRepository.update(conversation);
-
-    emitter.emit(ChatEvent.messageComplete(assistantMsg));
-    emitter.emit(ChatEvent.done());
-
-    if (isNewConversation) {
-      UUID convId = conversation.getId();
-      CompletableFuture.runAsync(
-              () -> {
-                String title = generateTitle(userMessage);
-                if (title != null) {
-                  McpConversation conv = conversationRepository.getById(convId);
-                  conv.setTitle(title);
-                  conversationRepository.update(conv);
-                }
-              })
-          .exceptionally(
-              ex -> {
-                LOG.warn("Failed to update conversation title for {}", convId, ex);
-                return null;
-              });
+    if (needsTitle) {
+      scheduleTitleGeneration(conversation.getId(), userMessage);
     }
   }
 
   public McpConversation createConversation(
       SecurityContext securityContext, CreateMcpConversation request) {
-    User user = getSubjectContext(securityContext).user();
-    EntityReference userRef = user.getEntityReference();
+    EntityReference userRef = getSubjectContext(securityContext).user().getEntityReference();
     return conversationRepository.create(
         request != null ? request : new CreateMcpConversation(), userRef);
   }
@@ -461,7 +429,7 @@ public class McpClientService implements AutoCloseable {
       SecurityContext securityContext, UUID conversationId) {
     McpConversation conversation = getConversation(securityContext, conversationId);
     List<McpMessage> messages =
-        messageRepository.listByConversation(conversationId, CONVERSATION_LOAD_LIMIT, 0);
+        messageRepository.listRecentByConversation(conversationId, CONVERSATION_LOAD_LIMIT);
     conversation.setMcpMessages(messages);
     return conversation;
   }
@@ -498,7 +466,7 @@ public class McpClientService implements AutoCloseable {
     llmMessages.add(LlmMessage.system(config.getSystemPrompt()));
 
     List<McpMessage> history =
-        messageRepository.listByConversation(conversationId, LLM_CONTEXT_MESSAGE_LIMIT, 0);
+        messageRepository.listRecentByConversation(conversationId, LLM_CONTEXT_MESSAGE_LIMIT);
 
     for (McpMessage msg : history) {
       boolean isHuman = msg.getSender() == CreateMcpMessage.Sender.HUMAN;
@@ -526,26 +494,27 @@ public class McpClientService implements AutoCloseable {
   }
 
   private String extractTextFromMessage(McpMessage message) {
-    if (message.getContent() == null || message.getContent().isEmpty()) {
-      return null;
-    }
-    for (MessageBlock block : message.getContent()) {
-      if (block.getTextMessage() != null && block.getTextMessage().getMessage() != null) {
-        return block.getTextMessage().getMessage();
+    String text = null;
+    if (message.getContent() != null) {
+      for (MessageBlock block : message.getContent()) {
+        if (text == null
+            && block.getTextMessage() != null
+            && block.getTextMessage().getMessage() != null) {
+          text = block.getTextMessage().getMessage();
+        }
       }
     }
-    return null;
+    return text;
   }
 
   private String extractToolSummaryFromMessage(McpMessage message) {
-    if (message.getContent() == null) {
-      return null;
-    }
     List<String> toolNames = new ArrayList<>();
-    for (MessageBlock block : message.getContent()) {
-      if (block.getTools() != null) {
-        for (ToolCall tc : block.getTools()) {
-          toolNames.add(tc.getName());
+    if (message.getContent() != null) {
+      for (MessageBlock block : message.getContent()) {
+        if (block.getTools() != null) {
+          for (ToolCall tc : block.getTools()) {
+            toolNames.add(tc.getName());
+          }
         }
       }
     }
@@ -554,26 +523,35 @@ public class McpClientService implements AutoCloseable {
 
   @SuppressWarnings("unchecked")
   private Map<String, Object> parseToolArguments(String arguments) {
-    if (arguments == null || arguments.isBlank()) {
-      return new HashMap<>();
+    Map<String, Object> parsed = new HashMap<>();
+    if (arguments != null && !arguments.isBlank()) {
+      try {
+        parsed = JsonUtils.readValue(arguments, Map.class);
+      } catch (RuntimeException e) {
+        LOG.warn("Failed to parse tool arguments: {}", arguments, e);
+      }
     }
-    try {
-      return JsonUtils.readValue(arguments, Map.class);
-    } catch (Exception e) {
-      LOG.warn("Failed to parse tool arguments: {}", arguments, e);
-      return new HashMap<>();
-    }
+    return parsed;
   }
 
   private Object parseToolResult(String resultContent) {
+    Object parsed;
     if (resultContent == null || resultContent.isBlank()) {
-      return Collections.emptyMap();
+      parsed = Collections.emptyMap();
+    } else {
+      parsed = readToolResultJson(resultContent);
     }
+    return parsed;
+  }
+
+  private Object readToolResultJson(String resultContent) {
+    Object parsed;
     try {
-      return JsonUtils.readValue(resultContent, Object.class);
-    } catch (Exception e) {
-      return resultContent;
+      parsed = JsonUtils.readValue(resultContent, Object.class);
+    } catch (RuntimeException e) {
+      parsed = resultContent;
     }
+    return parsed;
   }
 
   private void verifyOwnership(SecurityContext securityContext, McpConversation conversation) {
@@ -583,7 +561,44 @@ public class McpClientService implements AutoCloseable {
     }
   }
 
+  private CatalogSecurityContext toCatalogSecurityContext(SecurityContext securityContext) {
+    return new CatalogSecurityContext(
+        securityContext.getUserPrincipal(),
+        securityContext.isSecure() ? "https" : "http",
+        securityContext.getAuthenticationScheme(),
+        Collections.emptySet());
+  }
+
+  private void requireChatEnabled() {
+    if (llmClient == null) {
+      throw new IllegalStateException(
+          "LLM API key is not configured. Update the McpApplication configuration with a valid API key.");
+    }
+  }
+
+  private TokenUsage emptyTokenUsage() {
+    return new TokenUsage().withInputTokens(0).withOutputTokens(0).withTotalTokens(0);
+  }
+
+  private void scheduleTitleGeneration(UUID conversationId, String userMessage) {
+    titleExecutor.execute(() -> generateAndPersistTitle(conversationId, userMessage));
+  }
+
+  private void generateAndPersistTitle(UUID conversationId, String userMessage) {
+    try {
+      String title = generateTitle(userMessage);
+      if (title != null) {
+        McpConversation conversation = conversationRepository.getById(conversationId);
+        conversation.setTitle(title);
+        conversationRepository.update(conversation);
+      }
+    } catch (RuntimeException e) {
+      LOG.warn("Failed to update conversation title for {}", conversationId, e);
+    }
+  }
+
   private String generateTitle(String userMessage) {
+    String title;
     try {
       List<LlmMessage> titleMessages =
           List.of(
@@ -593,24 +608,30 @@ public class McpClientService implements AutoCloseable {
                       + " punctuation."),
               LlmMessage.user(userMessage));
       LlmResponse response = llmClient.sendMessages(titleMessages, null);
-      String title = response.content();
-      if (title != null) {
-        title = title.trim().replaceAll("^\"|\"$", "");
-        if (title.length() > 100) {
-          title = title.substring(0, 97) + "...";
-        }
-      }
-      return title;
-    } catch (Exception e) {
+      title = normalizeTitle(response.content());
+    } catch (LlmException e) {
       LOG.warn("Failed to generate conversation title", e);
-      return truncateTitle(userMessage);
+      title = truncateTitle(userMessage);
     }
+    return title;
+  }
+
+  private String normalizeTitle(String title) {
+    String normalized = title;
+    if (normalized != null) {
+      normalized = normalized.trim().replaceAll("^\"|\"$", "");
+      if (normalized.length() > 100) {
+        normalized = normalized.substring(0, 97) + "...";
+      }
+    }
+    return normalized;
   }
 
   private String truncateTitle(String message) {
-    if (message == null) {
-      return null;
+    String truncated = null;
+    if (message != null) {
+      truncated = message.length() > 100 ? message.substring(0, 97) + "..." : message;
     }
-    return message.length() > 100 ? message.substring(0, 97) + "..." : message;
+    return truncated;
   }
 }

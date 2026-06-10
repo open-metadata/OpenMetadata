@@ -15370,9 +15370,6 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     void insert(@Bind("json") String json);
 
-    @SqlQuery("SELECT json FROM mcp_message WHERE id = :id")
-    String getById(@BindUUID("id") UUID id);
-
     @SqlQuery(
         "SELECT json FROM mcp_message WHERE conversationId = :conversationId "
             + "ORDER BY messageIndex ASC LIMIT :limit OFFSET :offset")
@@ -15381,16 +15378,14 @@ public interface CollectionDAO {
         @Bind("limit") int limit,
         @Bind("offset") int offset);
 
+    @SqlQuery(
+        "SELECT json FROM mcp_message WHERE conversationId = :conversationId "
+            + "ORDER BY messageIndex DESC LIMIT :limit")
+    List<String> listRecentByConversation(
+        @BindUUID("conversationId") UUID conversationId, @Bind("limit") int limit);
+
     @SqlQuery("SELECT COUNT(*) FROM mcp_message WHERE conversationId = :conversationId")
     int countByConversation(@BindUUID("conversationId") UUID conversationId);
-
-    @ConnectionAwareSqlUpdate(
-        value = "UPDATE mcp_message SET json = :json WHERE id = :id",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value = "UPDATE mcp_message SET json = :json::jsonb WHERE id = :id",
-        connectionType = POSTGRES)
-    void updateContent(@BindUUID("id") UUID id, @Bind("json") String json);
 
     @SqlUpdate("DELETE FROM mcp_message WHERE id = :id")
     void delete(@BindUUID("id") UUID id);

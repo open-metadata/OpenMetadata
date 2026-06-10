@@ -12,14 +12,14 @@
  */
 package org.openmetadata.service.jdbi3;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.chat.CreateMcpMessage;
 import org.openmetadata.schema.entity.chat.McpMessage;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.exception.EntityNotFoundException;
 
 @Slf4j
 public class McpMessageRepository {
@@ -44,18 +44,16 @@ public class McpMessageRepository {
     return message;
   }
 
-  public McpMessage getById(UUID id) {
-    String json = dao.getById(id);
-    if (json == null) {
-      throw EntityNotFoundException.byMessage(
-          CatalogExceptionMessage.entityNotFound("McpMessage", id.toString()));
-    }
-    return JsonUtils.readValue(json, McpMessage.class);
-  }
-
   public List<McpMessage> listByConversation(UUID conversationId, int limit, int offset) {
     List<String> rows = dao.listByConversation(conversationId, limit, offset);
     return JsonUtils.readObjects(rows, McpMessage.class);
+  }
+
+  public List<McpMessage> listRecentByConversation(UUID conversationId, int limit) {
+    List<String> rows = dao.listRecentByConversation(conversationId, limit);
+    List<McpMessage> messages = new ArrayList<>(JsonUtils.readObjects(rows, McpMessage.class));
+    Collections.reverse(messages);
+    return messages;
   }
 
   public int countByConversation(UUID conversationId) {

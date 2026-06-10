@@ -24,6 +24,7 @@ import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.internal.McpChatAppConfig;
 import org.openmetadata.schema.security.credentials.AWSBaseConfig;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.util.AwsCredentialsUtil;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.regions.Region;
@@ -43,9 +44,13 @@ public class BedrockLlmClient implements LlmClient {
 
   public BedrockLlmClient(McpChatAppConfig config) {
     this.model = config.getLlmModel();
-    this.mapper = new ObjectMapper();
+    this.mapper = JsonUtils.getObjectMapper();
 
     AWSBaseConfig awsConfig = config.getAwsConfig();
+    if (awsConfig == null || awsConfig.getRegion() == null) {
+      throw new IllegalArgumentException(
+          "AWS configuration with a region is required for the Bedrock LLM provider.");
+    }
     BedrockRuntimeClientBuilder builder =
         BedrockRuntimeClient.builder()
             .credentialsProvider(AwsCredentialsUtil.buildCredentialsProvider(awsConfig))
@@ -65,7 +70,7 @@ public class BedrockLlmClient implements LlmClient {
     try {
       json = mapper.writeValueAsString(requestBody);
     } catch (IOException e) {
-      throw new RuntimeException("Failed to serialize Bedrock request", e);
+      throw new LlmException("Failed to serialize Bedrock request", e);
     }
 
     InvokeModelRequest request =
@@ -225,7 +230,7 @@ public class BedrockLlmClient implements LlmClient {
       String content = textContent.length() > 0 ? textContent.toString() : null;
       return new LlmResponse(content, toolCalls, inputTokens, outputTokens, stopReason);
     } catch (IOException e) {
-      throw new RuntimeException("Failed to parse Bedrock response", e);
+      throw new LlmException("Failed to parse Bedrock response", e);
     }
   }
 }

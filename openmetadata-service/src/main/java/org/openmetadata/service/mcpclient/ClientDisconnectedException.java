@@ -10,19 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.openmetadata.service.clients.llm;
+package org.openmetadata.service.mcpclient;
 
-import org.openmetadata.schema.entity.app.internal.McpChatAppConfig;
+import java.io.IOException;
 
-public final class LlmClientFactory {
-
-  private LlmClientFactory() {}
-
-  public static LlmClient create(McpChatAppConfig config) {
-    return switch (LlmProvider.fromValue(config.getLlmProvider())) {
-      case OPENAI -> new OpenAiLlmClient(config);
-      case ANTHROPIC -> new AnthropicLlmClient(config);
-      case BEDROCK -> new BedrockLlmClient(config);
-    };
+/**
+ * Raised when writing to the SSE output stream fails, indicating the client has disconnected. The
+ * chat loop uses this to stop issuing further (billable) LLM calls and to skip writes to the now
+ * broken stream.
+ */
+public class ClientDisconnectedException extends RuntimeException {
+  public ClientDisconnectedException(String message, IOException cause) {
+    super(message, cause);
   }
 }

@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.internal.McpChatAppConfig;
+import org.openmetadata.schema.utils.JsonUtils;
 
 @Slf4j
 public class OpenAiLlmClient implements LlmClient {
@@ -47,12 +48,15 @@ public class OpenAiLlmClient implements LlmClient {
 
   public OpenAiLlmClient(McpChatAppConfig config) {
     this.apiKey = config.getLlmApiKey();
+    if (apiKey == null || apiKey.isBlank()) {
+      throw new IllegalArgumentException("An API key is required for the OpenAI LLM provider.");
+    }
     this.model = config.getLlmModel();
     this.apiEndpoint =
         config.getLlmApiEndpoint() != null && !config.getLlmApiEndpoint().isBlank()
             ? config.getLlmApiEndpoint()
             : DEFAULT_ENDPOINT;
-    this.mapper = new ObjectMapper();
+    this.mapper = JsonUtils.getObjectMapper();
     this.httpClient = HttpClient.newBuilder().connectTimeout(TIMEOUT).build();
   }
 
@@ -75,16 +79,16 @@ public class OpenAiLlmClient implements LlmClient {
           httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
       if (response.statusCode() != 200) {
-        throw new RuntimeException(
+        throw new LlmException(
             "OpenAI API returned status " + response.statusCode() + ": " + response.body());
       }
 
       return parseResponse(response.body());
     } catch (IOException e) {
-      throw new RuntimeException("Failed to call OpenAI API", e);
+      throw new LlmException("Failed to call OpenAI API", e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new RuntimeException("OpenAI API call interrupted", e);
+      throw new LlmException("OpenAI API call interrupted", e);
     }
   }
 
@@ -159,17 +163,22 @@ public class OpenAiLlmClient implements LlmClient {
           httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
 
       if (response.statusCode() != 200) {
-        String errorBody = new String(response.body().readAllBytes(), StandardCharsets.UTF_8);
-        throw new RuntimeException(
-            "OpenAI API returned status " + response.statusCode() + ": " + errorBody);
+        throw new LlmException(
+            "OpenAI API returned status " + response.statusCode() + ": " + readErrorBody(response));
       }
 
       return parseStreamingResponse(response.body(), onTextChunk);
     } catch (IOException e) {
-      throw new RuntimeException("Failed to call OpenAI streaming API", e);
+      throw new LlmException("Failed to call OpenAI streaming API", e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new RuntimeException("OpenAI streaming API call interrupted", e);
+      throw new LlmException("OpenAI streaming API call interrupted", e);
+    }
+  }
+
+  private static String readErrorBody(HttpResponse<InputStream> response) throws IOException {
+    try (InputStream errorStream = response.body()) {
+      return new String(errorStream.readAllBytes(), StandardCharsets.UTF_8);
     }
   }
 

@@ -12,17 +12,26 @@
  */
 package org.openmetadata.service.clients.llm;
 
-import org.openmetadata.schema.entity.app.internal.McpChatAppConfig;
+import java.util.Locale;
 
-public final class LlmClientFactory {
+public enum LlmProvider {
+  OPENAI,
+  ANTHROPIC,
+  BEDROCK;
 
-  private LlmClientFactory() {}
-
-  public static LlmClient create(McpChatAppConfig config) {
-    return switch (LlmProvider.fromValue(config.getLlmProvider())) {
-      case OPENAI -> new OpenAiLlmClient(config);
-      case ANTHROPIC -> new AnthropicLlmClient(config);
-      case BEDROCK -> new BedrockLlmClient(config);
-    };
+  public static LlmProvider fromValue(String value) {
+    LlmProvider provider;
+    if (value == null || value.isBlank()) {
+      provider = OPENAI;
+    } else {
+      provider =
+          switch (value.toLowerCase(Locale.ROOT)) {
+            case "openai" -> OPENAI;
+            case "anthropic" -> ANTHROPIC;
+            case "bedrock" -> BEDROCK;
+            default -> throw new IllegalArgumentException("Unknown LLM provider: " + value);
+          };
+    }
+    return provider;
   }
 }

@@ -14,5 +14,7 @@ package org.openmetadata.service.mcpclient;
 
 @FunctionalInterface
 public interface ChatEventEmitter {
+  ChatEventEmitter NOOP = event -> {};
+
   void emit(ChatEvent event);
 }

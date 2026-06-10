@@ -21,7 +21,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -56,6 +57,7 @@ import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.bundles.mcp.McpChatApplication;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.mcpclient.ChatEvent;
+import org.openmetadata.service.mcpclient.ClientDisconnectedException;
 import org.openmetadata.service.mcpclient.McpClientService;
 import org.openmetadata.service.mcpclient.McpClientService.ChatResponse;
 import org.openmetadata.service.mcpclient.ToolExecutor;
@@ -70,6 +72,12 @@ import org.openmetadata.service.security.Authorizer;
 @Collection(name = "McpClient")
 public class McpClientResource {
 
+  /**
+   * JAX-RS instantiates this resource; we publish the singleton so the MCP server (started from a
+   * separate module) can hand it the tool executor. The executor is then relayed to the per-app
+   * {@link McpClientService} lazily in {@link #getService()}, decoupling tool-registration order
+   * from app-installation order.
+   */
   private static volatile McpClientResource instance;
 
   private volatile ToolRegistration toolRegistration;
@@ -85,7 +93,9 @@ public class McpClientResource {
   public static class ChatRequest {
     private UUID conversationId;
 
-    @NotNull private String message;
+    @NotBlank
+    @Size(max = 100000)
+    private String message;
   }
 
   public static class McpConversationList extends ResultList<McpConversation> {}
@@ -140,23 +150,32 @@ public class McpClientResource {
   public Response chatStream(@Context SecurityContext securityContext, @Valid ChatRequest request) {
     McpClientService service = getService();
     StreamingOutput streamingOutput =
-        output -> {
-          try {
-            service.chatStream(
-                securityContext,
-                request.getConversationId(),
-                request.getMessage(),
-                event -> writeSseEvent(output, event.event(), event.data()));
-          } catch (Exception e) {
-            writeSseEvent(output, "error", ChatEvent.error(e.getMessage()).data());
-            writeSseEvent(output, "done", ChatEvent.done().data());
-          }
-        };
+        output -> emitChatStream(service, securityContext, request, output);
     return Response.ok(streamingOutput)
         .type("text/event-stream")
         .header("Cache-Control", "no-cache")
         .header("X-Accel-Buffering", "no")
         .build();
+  }
+
+  private static void emitChatStream(
+      McpClientService service,
+      SecurityContext securityContext,
+      ChatRequest request,
+      OutputStream output) {
+    try {
+      service.chatStream(
+          securityContext,
+          request.getConversationId(),
+          request.getMessage(),
+          event -> writeSseEvent(output, event.event(), event.data()));
+    } catch (ClientDisconnectedException e) {
+      LOG.info("MCP chat stream ended: client disconnected");
+    } catch (RuntimeException e) {
+      LOG.error("MCP chat stream failed", e);
+      writeSseEventQuietly(output, "error", ChatEvent.error(e.getMessage()).data());
+      writeSseEventQuietly(output, "done", ChatEvent.done().data());
+    }
   }
 
   @POST
@@ -332,7 +351,15 @@ public class McpClientResource {
       output.write(frame.getBytes(StandardCharsets.UTF_8));
       output.flush();
     } catch (IOException e) {
-      throw new RuntimeException(e);
+      throw new ClientDisconnectedException("Failed to write SSE '" + event + "' event", e);
+    }
+  }
+
+  private static void writeSseEventQuietly(OutputStream output, String event, Object data) {
+    try {
+      writeSseEvent(output, event, data);
+    } catch (ClientDisconnectedException e) {
+      LOG.debug("Could not write final SSE '{}' event; client already disconnected", event, e);
     }
   }
 }

@@ -12,17 +12,12 @@
  */
 package org.openmetadata.service.clients.llm;
 
-import org.openmetadata.schema.entity.app.internal.McpChatAppConfig;
+public class LlmException extends RuntimeException {
+  public LlmException(String message) {
+    super(message);
+  }
 
-public final class LlmClientFactory {
-
-  private LlmClientFactory() {}
-
-  public static LlmClient create(McpChatAppConfig config) {
-    return switch (LlmProvider.fromValue(config.getLlmProvider())) {
-      case OPENAI -> new OpenAiLlmClient(config);
-      case ANTHROPIC -> new AnthropicLlmClient(config);
-      case BEDROCK -> new BedrockLlmClient(config);
-    };
+  public LlmException(String message, Throwable cause) {
+    super(message, cause);
   }
 }
