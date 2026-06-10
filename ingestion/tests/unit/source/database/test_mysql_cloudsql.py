@@ -25,6 +25,7 @@ from metadata.generated.schema.entity.services.connections.database.common.gcpCl
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
+from metadata.ingestion.source.database.mysql.connection import _CloudSqlStrategy
 
 _NAMESPACE_MODULES = (
     "google",
@@ -36,9 +37,9 @@ _NAMESPACE_MODULES = (
 
 @pytest.fixture(autouse=True)
 def mock_connector():
-    """Inject a fake google.cloud.sql.connectors module into sys.modules
-    so the lazy import inside _get_cloudsql_engine works without
-    installing cloud-sql-python-connector."""
+    """Inject a fake google.cloud.sql.connectors module into sys.modules so the
+    lazy import inside _CloudSqlStrategy.build works without installing
+    cloud-sql-python-connector."""
     connector_instance = MagicMock()
     connector_cls = MagicMock(return_value=connector_instance)
 
@@ -61,14 +62,6 @@ def mock_connector():
             sys.modules[key] = val
 
 
-def _make_mysql_connection(connection):
-    from metadata.ingestion.source.database.mysql.connection import MySQLConnection
-
-    mysql_conn = MySQLConnection.__new__(MySQLConnection)
-    mysql_conn.service_connection = connection
-    return mysql_conn
-
-
 class TestMySQLCloudSQLConnection:
     @patch("metadata.ingestion.source.database.mysql.connection.create_generic_db_connection")
     def test_cloudsql_password_auth(self, mock_create_conn, mock_connector):
@@ -83,8 +76,7 @@ class TestMySQLCloudSQLConnection:
             ),
         )
 
-        mysql_conn = _make_mysql_connection(connection)
-        mysql_conn._get_cloudsql_engine(connection)
+        _CloudSqlStrategy(connection).build()
 
         mock_create_conn.assert_called_once()
         call_kwargs = mock_create_conn.call_args
@@ -114,8 +106,7 @@ class TestMySQLCloudSQLConnection:
             ),
         )
 
-        mysql_conn = _make_mysql_connection(connection)
-        mysql_conn._get_cloudsql_engine(connection)
+        _CloudSqlStrategy(connection).build()
 
         creator_fn = mock_create_conn.call_args.kwargs["creator"]
         creator_fn()
@@ -134,8 +125,7 @@ class TestMySQLCloudSQLConnection:
             authType=GcpCloudsqlConfigurationSource(password="pw"),
         )
 
-        mysql_conn = _make_mysql_connection(connection)
-        mysql_conn._get_cloudsql_engine(connection)
+        _CloudSqlStrategy(connection).build()
 
         url_fn = mock_create_conn.call_args.kwargs["get_connection_url_fn"]
         assert url_fn(connection) == "mysql+pymysql://"
@@ -153,8 +143,7 @@ class TestMySQLCloudSQLConnection:
         )
         connection.authType.gcpConfig = gcp_config
 
-        mysql_conn = _make_mysql_connection(connection)
-        mysql_conn._get_cloudsql_engine(connection)
+        _CloudSqlStrategy(connection).build()
 
         mock_set_creds.assert_called_once_with(gcp_config)
 
@@ -169,8 +158,7 @@ class TestMySQLCloudSQLConnection:
             authType=GcpCloudsqlConfigurationSource(password="pw"),
         )
 
-        mysql_conn = _make_mysql_connection(connection)
-        mysql_conn._get_cloudsql_engine(connection)
+        _CloudSqlStrategy(connection).build()
 
         mock_set_creds.assert_not_called()
 
@@ -186,8 +174,7 @@ class TestMySQLCloudSQLConnection:
             authType=GcpCloudsqlConfigurationSource(password="pw"),
         )
 
-        mysql_conn = _make_mysql_connection(connection)
-        mysql_conn._get_cloudsql_engine(connection)
+        _CloudSqlStrategy(connection).build()
 
         creator_fn = mock_create_conn.call_args.kwargs["creator"]
         creator_fn()

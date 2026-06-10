@@ -325,7 +325,9 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
 
         const ingestionPipeline = await ingestionPipelineResponse.json();
 
-        return ingestionPipeline?.pipelineStatuses?.pipelineState ?? 'running';
+        return (
+          ingestionPipeline?.pipelineStatuses?.[0]?.pipelineState ?? 'running'
+        );
       },
       {
         // Custom expect message for reporting, optional.
