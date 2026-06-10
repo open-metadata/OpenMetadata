@@ -2277,14 +2277,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * The id is always unique, which helps to avoid pagination issues caused by duplicate names and have unique ordering.
    */
   public String getCursorValue(T entity) {
-    Map<String, String> cursorMap =
-        Map.of("name", entity.getName(), "id", String.valueOf(entity.getId()));
+    return getCursorValue(entity.getName(), String.valueOf(entity.getId()));
+  }
+
+  protected String getCursorValue(String name, String id) {
+    Map<String, String> cursorMap = Map.of("name", name, "id", id);
     return JsonUtils.pojoToJson(cursorMap);
   }
 
   public String getCursorAtOffset(ListFilter filter, int offset) {
-    List<String> jsons = dao.listAfter(filter, 1, offset);
-    if (jsons.isEmpty()) {
+    EntityDAO.CursorRow row = dao.getCursorAtOffset(filter, offset);
+    if (row == null) {
       LOG.debug(
           "getCursorAtOffset for {} at offset {} returned empty (filter condition={})",
           entityType,
@@ -2292,8 +2295,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           filter.getCondition(dao.getTableName()));
       return null;
     }
-    T entity = JsonUtils.readValue(jsons.get(0), entityClass);
-    return RestUtil.encodeCursor(getCursorValue(entity));
+    return RestUtil.encodeCursor(getCursorValue(row.name(), row.id()));
   }
 
   public final T getVersion(UUID id, String version) {
