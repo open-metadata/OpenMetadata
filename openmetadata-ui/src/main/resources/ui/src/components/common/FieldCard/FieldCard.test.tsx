@@ -39,8 +39,11 @@ jest.mock('../RichTextEditor/RichTextEditorPreviewerV1', () =>
 );
 
 // Spy on utils
-jest.mock('../../../utils/TableUtils', () => ({
+jest.mock('../../../utils/TablePureUtils', () => ({
   getDataTypeString: jest.fn((text: string) => `DT:${text}`),
+}));
+
+jest.mock('../../../utils/TableUtils', () => ({
   prepareConstraintIcon: jest.fn(() => (
     <span data-testid="constraint-icon">ICON</span>
   )),
@@ -50,7 +53,8 @@ jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn((entity) => entity?.displayName || entity?.name || ''),
 }));
 
-const { getDataTypeString, prepareConstraintIcon } = jest.requireMock(
+const { getDataTypeString } = jest.requireMock('../../../utils/TablePureUtils');
+const { prepareConstraintIcon } = jest.requireMock(
   '../../../utils/TableUtils'
 );
 

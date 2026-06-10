@@ -256,7 +256,7 @@ jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('testEntityName'),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntitySortUtils', () => ({
   getColumnSorter: jest.fn().mockImplementation(() => {
     return () => 1;
   }),

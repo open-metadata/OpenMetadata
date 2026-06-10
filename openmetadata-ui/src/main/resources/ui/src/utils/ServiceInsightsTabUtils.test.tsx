@@ -13,11 +13,11 @@
 
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { DataInsightCustomChartResult } from '../rest/DataInsightAPI';
+import { getFormattedTotalAssetsDataFromSocketData } from './ServiceInsightsTabUtils';
 import {
   filterDistributionChartItem,
-  getFormattedTotalAssetsDataFromSocketData,
   getPlatformInsightsChartDataFormattingMethod,
-} from './ServiceInsightsTabUtils';
+} from './ServiceInsightsTabPureUtils';
 
 describe('ServiceInsightsTabUtils', () => {
   describe('filterDistributionChartItem', () => {

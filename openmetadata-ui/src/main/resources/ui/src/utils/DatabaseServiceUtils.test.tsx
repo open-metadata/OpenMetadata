@@ -19,10 +19,8 @@ import customDatabaseConnection from '../jsons/connectionSchemas/connections/dat
 import mysqlConnection from '../jsons/connectionSchemas/connections/database/mysqlConnection.json';
 import postgresConnection from '../jsons/connectionSchemas/connections/database/postgresConnection.json';
 import snowflakeConnection from '../jsons/connectionSchemas/connections/database/snowflakeConnection.json';
-import {
-  ExtraDatabaseServiceDropdownOptions,
-  getDatabaseConfig,
-} from './DatabaseServiceUtils';
+import { ExtraDatabaseServiceDropdownOptions } from './DatabaseServiceUtils';
+import { getDatabaseConfig } from './DatabaseServicePureUtils';
 
 jest.mock(
   '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',

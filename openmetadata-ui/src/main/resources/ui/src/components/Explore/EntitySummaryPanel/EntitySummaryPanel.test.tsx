@@ -103,8 +103,10 @@ jest.mock('../../../utils/EntityPermissionUtils', () => {
   };
 });
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/DataAssetSummaryPanelUtils', () => ({
   getEntityOverview: jest.fn().mockImplementation(() => []),
+}));
+jest.mock('../../../utils/EntityPureUtils', () => ({
   DRAWER_NAVIGATION_OPTIONS: [],
 }));
 jest.mock('../../../utils/StringUtils', () => ({

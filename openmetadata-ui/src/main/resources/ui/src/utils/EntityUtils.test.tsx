@@ -16,20 +16,23 @@ import { DEFAULT_DOMAIN_VALUE } from '../constants/constants';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { TestSuite } from '../generated/tests/testCase';
+import { columnSorter, getColumnSorter } from './EntitySortUtils';
 import {
-  columnSorter,
   getBreadcrumbForTestSuite,
-  getColumnSorter,
-  getDomainDisplayName,
   getEntityBreadcrumbs,
   getEntityLinkFromType,
+} from './EntityBreadcrumbUtils';
+import { getDomainDisplayName } from './EntityNameUtils';
+import {
   hasCustomPropertiesTab,
   hasLineageTab,
   hasSchemaTab,
+} from './EntityPermissionUtils';
+import {
   highlightEntityNameAndDescription,
   highlightSearchArrayElement,
   highlightSearchText,
-} from './EntityUtils';
+} from './EntitySearchUtils';
 import {
   entityWithoutNameAndDescHighlight,
   highlightedEntityDescription,
