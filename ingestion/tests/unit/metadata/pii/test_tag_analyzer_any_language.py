@@ -16,6 +16,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from dirty_equals import Contains, HasAttributes, IsDict
+from presidio_analyzer import Pattern, PatternRecognizer
 
 from _openmetadata_testutils.factories.metadata.generated.schema.entity.classification.classification import (
     ClassificationFactory,
@@ -116,6 +117,31 @@ def _make_fr_tag(pii_classification):
     )
 
 
+def _make_any_language_tag(pii_classification):
+    """Tag with an any-language pattern recognizer (email regex)."""
+    pattern = PatternFactory.create(
+        name="any-email-pattern",
+        regex=r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",
+        score=0.8,
+    )
+    recognizer_config = PatternRecognizerFactory.create(
+        patterns=[pattern],
+        context=[],
+        supportedLanguage=ClassificationLanguage.any,
+    )
+    rec = RecognizerFactory.create(
+        name="any-email",
+        recognizerConfig=recognizer_config,
+        target=recognizer.Target.content,
+    )
+    return TagFactory.create(
+        tag_name="AnyEmail",
+        tag_classification=pii_classification,
+        autoClassificationEnabled=True,
+        recognizers=[rec],
+    )
+
+
 class TestGetRecognizersByAnyLanguage:
     def test_any_language_includes_all_recognizers(self, pii_classification, column, mock_nlp_engine):
         en_tag = _make_en_tag(pii_classification)
@@ -162,6 +188,28 @@ class TestGetRecognizersByAnyLanguage:
             column=column,
             nlp_engine=mock_nlp_engine,
             language=ClassificationLanguage.en,
+        )
+        recognizers = analyzer.get_recognizers_by(recognizer.Target.content)
+        assert len(recognizers) == 1
+
+    def test_en_agent_includes_any_language_recognizer(self, pii_classification, column, mock_nlp_engine):
+        tag = _make_any_language_tag(pii_classification)
+        analyzer = TagAnalyzer(
+            tag=tag,
+            column=column,
+            nlp_engine=mock_nlp_engine,
+            language=ClassificationLanguage.en,
+        )
+        recognizers = analyzer.get_recognizers_by(recognizer.Target.content)
+        assert len(recognizers) == 1
+
+    def test_fr_agent_includes_any_language_recognizer(self, pii_classification, column, mock_nlp_engine):
+        tag = _make_any_language_tag(pii_classification)
+        analyzer = TagAnalyzer(
+            tag=tag,
+            column=column,
+            nlp_engine=mock_nlp_engine,
+            language=ClassificationLanguage.fr,
         )
         recognizers = analyzer.get_recognizers_by(recognizer.Target.content)
         assert len(recognizers) == 1
@@ -226,6 +274,28 @@ class TestAnalyzeWithAnyLanguage:
         assert result.score == 0
         assert result.recognizer_results == []
 
+    def test_any_agent_with_any_recognizer_dispatches_to_en(self, pii_classification, column, mock_nlp_engine):
+        """Agent=any, Recognizer=any → _analyze_with must treat the 'any' group as 'en'."""
+        tag = _make_any_language_tag(pii_classification)
+        analyzer = TagAnalyzer(
+            tag=tag,
+            column=column,
+            nlp_engine=mock_nlp_engine,
+            language=ClassificationLanguage.any,
+        )
+
+        dispatched_languages = []
+        original_build = analyzer.build_analyzer_with
+
+        def tracking_build(recs, nlp_engine=None, effective_language=None):
+            dispatched_languages.append(effective_language)
+            return original_build(recs, nlp_engine=nlp_engine, effective_language=effective_language)
+
+        analyzer.build_analyzer_with = tracking_build
+        analyzer.analyze_content(["user@example.com"])
+
+        assert dispatched_languages == [ClassificationLanguage.en.value]
+
     def test_any_language_analyze_column_no_exception(self, pii_classification, column, mock_nlp_engine):
         en_pattern = PatternFactory.create(
             name="column-pattern",
@@ -258,6 +328,50 @@ class TestAnalyzeWithAnyLanguage:
         assert result is not None
 
 
+class TestNormalizeRecognizerLanguage:
+    """Unit tests for the _normalize_recognizer_language helper."""
+
+    def test_any_language_replaced_by_effective_language(self, pii_classification, column, mock_nlp_engine):
+        """A recognizer with supported_language='any' must be updated to the effective language."""
+        analyzer = TagAnalyzer(
+            tag=_make_any_language_tag(pii_classification),
+            column=column,
+            nlp_engine=mock_nlp_engine,
+            language=ClassificationLanguage.en,
+        )
+        rec = PatternRecognizer(
+            supported_entity="EMAIL",
+            supported_language="any",
+            patterns=[Pattern(name="p", regex=r"@", score=0.5)],
+        )
+        result = analyzer._normalize_recognizer_language(rec, "en")
+        assert result.supported_language == "en"
+
+    def test_specific_language_not_changed(self, pii_classification, column, mock_nlp_engine):
+        """A recognizer with an explicit language must not be overwritten."""
+        analyzer = TagAnalyzer(
+            tag=_make_en_tag(pii_classification),
+            column=column,
+            nlp_engine=mock_nlp_engine,
+            language=ClassificationLanguage.en,
+        )
+        rec = PatternRecognizer(
+            supported_entity="EMAIL",
+            supported_language="en",
+            patterns=[Pattern(name="p", regex=r"@", score=0.5)],
+        )
+        result = analyzer._normalize_recognizer_language(rec, "fr")
+        assert result.supported_language == "en"
+
+
+def _make_presidio_nlp_mock_for(language: str):
+    """NLP mock for a specific language that satisfies AnalyzerEngine without real spaCy models."""
+    nlp = MagicMock()
+    nlp.is_loaded.return_value = True
+    nlp.get_supported_languages.return_value = [language]
+    return nlp
+
+
 def _make_presidio_nlp_mock():
     """NLP mock that satisfies AnalyzerEngine without requiring real spaCy models.
 
@@ -265,10 +379,7 @@ def _make_presidio_nlp_mock():
     lightweight mock is sufficient to exercise the real Presidio registry/analysis
     path end-to-end.
     """
-    nlp = MagicMock()
-    nlp.is_loaded.return_value = True
-    nlp.get_supported_languages.return_value = ["en"]
-    return nlp
+    return _make_presidio_nlp_mock_for("en")
 
 
 class TestAnalyzeWithAnyLanguageRecognizerRealPresidia:
@@ -282,27 +393,7 @@ class TestAnalyzeWithAnyLanguageRecognizerRealPresidia:
 
     @pytest.fixture
     def any_language_email_tag(self, pii_classification):
-        email_pattern = PatternFactory.create(
-            name="any-email-pattern",
-            regex=r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",
-            score=0.8,
-        )
-        recognizer_config = PatternRecognizerFactory.create(
-            patterns=[email_pattern],
-            context=[],
-            supportedLanguage=ClassificationLanguage.any,
-        )
-        rec = RecognizerFactory.create(
-            name="any-email",
-            recognizerConfig=recognizer_config,
-            target=recognizer.Target.content,
-        )
-        return TagFactory.create(
-            tag_name="AnyEmail",
-            tag_classification=pii_classification,
-            autoClassificationEnabled=True,
-            recognizers=[rec],
-        )
+        return _make_any_language_tag(pii_classification)
 
     def test_any_language_recognizer_does_not_raise_with_specific_language_agent(self, any_language_email_tag, column):
         """When agent language is 'en' and recognizer is 'any', analyze_content must
@@ -340,3 +431,27 @@ class TestAnalyzeWithAnyLanguageRecognizerRealPresidia:
         )
         result = analyzer.analyze_content(["no-match-here", "also-not-an-email"])
         assert result.score == 0
+
+    def test_any_language_recognizer_with_fr_agent_does_not_raise(self, any_language_email_tag, column):
+        """Agent=fr, Recognizer=any: must not raise; 'any' normalized to 'fr' before Presidio sees it."""
+        nlp = _make_presidio_nlp_mock_for("fr")
+        analyzer = TagAnalyzer(
+            tag=any_language_email_tag,
+            column=column,
+            nlp_engine=nlp,
+            language=ClassificationLanguage.fr,
+        )
+        result = analyzer.analyze_content(["user@example.com", "not-an-email"])
+        assert result is not None
+
+    def test_any_language_recognizer_matches_content_with_fr_agent(self, any_language_email_tag, column):
+        """Agent=fr, Recognizer=any: pattern must still fire when data matches."""
+        nlp = _make_presidio_nlp_mock_for("fr")
+        analyzer = TagAnalyzer(
+            tag=any_language_email_tag,
+            column=column,
+            nlp_engine=nlp,
+            language=ClassificationLanguage.fr,
+        )
+        result = analyzer.analyze_content(["user@example.com"])
+        assert result.score > 0
