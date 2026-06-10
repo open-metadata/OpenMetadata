@@ -94,6 +94,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -144,10 +145,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
@@ -381,15 +384,30 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .get(new ImmutablePair<>(entityType, id), AtomicLong::new)
             .incrementAndGet();
       } catch (ExecutionException e) {
-        // AtomicLong::new cannot throw; the loader signature requires the catch.
+        // AtomicLong::new cannot throw; signature-mandated catch. Log so a future runtime
+        // surprise (e.g. interrupted thread during get()) isn't silently swallowed.
+        LOG.debug("Unexpected epoch-bump failure for type={} id={}", entityType, id, e);
       }
     }
     if (fqn != null) {
-      try {
-        WRITE_EPOCH_BY_NAME.get(cacheNameKey(entityType, fqn), AtomicLong::new).incrementAndGet();
-      } catch (ExecutionException e) {
-        // AtomicLong::new cannot throw.
+      // quoteFqn entity repositories (Glossary, Team, User, Classification, etc.) quote the FQN
+      // before the loader records its epoch (`fqn = quoteFqn ? quoteName(fqn) : fqn;` at the top
+      // of findByName). Writers pass the entity's stored FQN which may not be in the same form,
+      // so bump both raw and quoted variants — the loader's read will match one of them. Bumping
+      // a no-op variant is harmless (~50ns AtomicLong increment).
+      bumpNameEpoch(cacheNameKey(entityType, fqn), entityType, fqn);
+      String quoted = quoteName(fqn);
+      if (!quoted.equals(fqn)) {
+        bumpNameEpoch(cacheNameKey(entityType, quoted), entityType, quoted);
       }
+    }
+  }
+
+  private static void bumpNameEpoch(Pair<String, String> key, String entityType, String fqn) {
+    try {
+      WRITE_EPOCH_BY_NAME.get(key, AtomicLong::new).incrementAndGet();
+    } catch (ExecutionException e) {
+      LOG.debug("Unexpected epoch-bump failure for type={} fqn={}", entityType, fqn, e);
     }
   }
 
@@ -421,7 +439,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       Executors.newScheduledThreadPool(
           2,
           r -> {
-            Thread t = new Thread(r, "entity-cache-l1-repair");
+            // FQN java.lang.Thread because org.openmetadata.schema.entity.feed.Thread is also
+            // imported elsewhere in this file and the simple name resolves to it.
+            java.lang.Thread t = new java.lang.Thread(r, "entity-cache-l1-repair");
             t.setDaemon(true);
             return t;
           });
@@ -456,14 +476,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
               if (originalFqn != null && !originalFqn.equals(fqn)) {
                 CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, originalFqn));
               }
-            } catch (Exception e) {
+            } catch (RuntimeException e) {
+              // Guava L1 invalidate is pure local-map work and shouldn't throw, but defensively
+              // catch RuntimeException so a freak event-loop exception doesn't kill the daemon
+              // thread (the executor would survive — ScheduledThreadPoolExecutor logs and keeps
+              // going — but the next-scheduled task would still benefit from us not propagating).
               LOG.debug(
                   "Deferred L1 repair failed for type={} id={} fqn={}", entityType, id, fqn, e);
             }
           },
           L1_REPAIR_DELAY_MS,
           TimeUnit.MILLISECONDS);
-    } catch (Exception e) {
+    } catch (RejectedExecutionException e) {
       // Pool rejection (shutdown race, queue overflow) is non-fatal — Fix B epoch check still
       // catches the common case and the L1 TTL is the ultimate backstop.
       LOG.debug("Failed to schedule L1 repair type={} id={}", entityType, id, e);
@@ -482,7 +506,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         L1_REPAIR_EXECUTOR.shutdownNow();
       }
     } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
+      java.lang.Thread.currentThread().interrupt();
       L1_REPAIR_EXECUTOR.shutdownNow();
     }
   }
@@ -1658,6 +1682,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
       } else if (include == NON_DELETED
           && notFoundCache != null
+          && readEpochById(cacheKey) != 0L
           && notFoundCache.isMarkedNotFoundById(entityType, id)) {
         // L1 hit, but the negative-cache marker says this entity is deleted. The marker is
         // set post-commit by the delete path; if we reach here it means a concurrent
@@ -1666,10 +1691,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
         // invalidate() was called during the load — documented behavior). Without this check
         // the stale L1 entry shadows the marker until the L1 TTL expires (default 30 s), and
         // the writer's two invalidate passes are insufficient under load (see the comment in
-        // {@link #delete}'s post-commit invalidate block). Evict the poison and surface the
-        // deletion. Costs one Redis GET per NON_DELETED read on the L1-hit path; the earlier
-        // unconditional shape was reverted for that cost but the correctness gap it accepted
-        // now reliably fails the postgres-elasticsearch-redis CI variant.
+        // {@link #delete}'s post-commit invalidate block).
+        //
+        // Gated on a non-zero write-epoch so the common, uncontended case keeps the zero-Redis
+        // L1 fast path. {@link #bumpWriteEpoch} (called by every writer) is what makes the
+        // epoch non-zero, so the gate only opens for keys a writer has ever touched — exactly
+        // the population where the race can occur. The earlier unconditional shape was
+        // reverted precisely because it paid a Redis GET on EVERY L1 hit.
         CACHE_WITH_ID.invalidate(cacheKey);
         throw new EntityNotFoundException(entityNotFound(entityType, id));
       }
@@ -2298,10 +2326,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
       } else if (include == NON_DELETED
           && notFoundCache != null
+          && readEpochByName(cacheKey) != 0L
           && notFoundCache.isMarkedNotFoundByName(entityType, fqn)) {
         // L1 hit but marker is set — racing loader poisoned L1 after the delete's invalidate.
         // See find(UUID,…) for the full rationale; mirror it here so by-name reads honor the
-        // post-commit marker even when the L1 entry is from a pre-delete read race.
+        // post-commit marker even when the L1 entry is from a pre-delete read race. Gated on
+        // non-zero write-epoch so uncontended reads keep the zero-Redis fast path.
         CACHE_WITH_NAME.invalidate(cacheKey);
         throw new EntityNotFoundException(entityNotFound(entityType, fqn));
       }
