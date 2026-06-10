@@ -2,6 +2,7 @@ package org.openmetadata.service.search;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -27,6 +28,13 @@ public class IndexMappingVersionTracker {
   public static final String SYSTEM_UPDATED_BY = "system";
   private static final String VERSION_RESOURCE_PATH = "/catalog/VERSION";
 
+  // Server version and mappers are immutable for the process lifetime; resolve once instead of
+  // re-reading /catalog/VERSION and re-allocating an ObjectMapper on every per-entity stamp.
+  private static final String SERVER_VERSION = currentServerVersion();
+  private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final ObjectMapper CANONICAL_MAPPER =
+      new ObjectMapper().configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
+
   private final IndexMappingVersionDAO indexMappingVersionDAO;
   private final String updatedBy;
   private final String version;
@@ -40,7 +48,7 @@ public class IndexMappingVersionTracker {
   }
 
   public static IndexMappingVersionTracker create(CollectionDAO daoCollection) {
-    return new IndexMappingVersionTracker(daoCollection, currentServerVersion(), SYSTEM_UPDATED_BY);
+    return new IndexMappingVersionTracker(daoCollection, SERVER_VERSION, SYSTEM_UPDATED_BY);
   }
 
   private static String currentServerVersion() {
@@ -240,7 +248,6 @@ public class IndexMappingVersionTracker {
 
   private JsonNode loadMappingForEntity(String entityType, IndexMapping indexMapping) {
     try {
-      ObjectMapper mapper = new ObjectMapper();
       Map<String, JsonNode> allLanguageMappings = new HashMap<>();
       String[] languages = {"en", "jp", "ru", "zh"};
 
@@ -250,13 +257,13 @@ public class IndexMappingVersionTracker {
         try (var stream = getClass().getResourceAsStream(mappingPath)) {
           if (stream != null) {
             String mappingContent = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
-            allLanguageMappings.put(lang, mapper.readTree(mappingContent));
+            allLanguageMappings.put(lang, MAPPER.readTree(mappingContent));
           }
         }
       }
 
       if (!allLanguageMappings.isEmpty()) {
-        return mapper.valueToTree(allLanguageMappings);
+        return MAPPER.valueToTree(allLanguageMappings);
       }
     } catch (Exception e) {
       LOG.debug("Could not load mapping for entity: {}", entityType, e);
@@ -267,10 +274,7 @@ public class IndexMappingVersionTracker {
   private String computeHash(JsonNode mapping) throws IOException, IndexMappingHashException {
     try {
       MessageDigest digest = MessageDigest.getInstance("MD5");
-      ObjectMapper mapper = new ObjectMapper();
-      mapper.configure(
-          com.fasterxml.jackson.databind.SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
-      String canonicalJson = mapper.writeValueAsString(mapping);
+      String canonicalJson = CANONICAL_MAPPER.writeValueAsString(mapping);
       byte[] hash = digest.digest(canonicalJson.getBytes(StandardCharsets.UTF_8));
       return bytesToHex(hash);
     } catch (NoSuchAlgorithmException e) {

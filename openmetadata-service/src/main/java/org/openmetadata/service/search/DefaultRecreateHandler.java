@@ -410,8 +410,12 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
 
   /**
    * Records the current mapping version/hash for a freshly-promoted entity so reindex-drift
-   * detection sees the live index as up to date. Best-effort: a stamping failure must not fail a
-   * promotion that already succeeded.
+   * detection sees the live index as up to date. Stamps on every successful promotion - including
+   * the "partial data > no data" path where {@code reindexSuccess} was false - because drift
+   * tracks mapping-schema currency (the staged index was built from the current
+   * {@code indexMapping.json}), not content completeness. An incomplete reindex surfaces in the
+   * reindex job stats/failures, not in mapping drift. Best-effort: a stamping failure must not
+   * fail a promotion that already succeeded.
    */
   private void stampPromoted(String entityType) {
     CollectionDAO collectionDAO = Entity.getCollectionDAO();
