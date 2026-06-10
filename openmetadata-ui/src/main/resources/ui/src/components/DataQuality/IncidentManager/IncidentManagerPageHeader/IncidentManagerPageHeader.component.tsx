@@ -377,18 +377,6 @@ const IncidentManagerPageHeader = ({
 
   return (
     <Space wrap align="center" className="incident-manager-header w-full ">
-      <OwnerLabel
-        hasPermission={hasEditOwnerPermission}
-        isCompactView={false}
-        multiple={{
-          user: entityRules.canAddMultipleUserOwners,
-          team: entityRules.canAddMultipleTeamOwner,
-        }}
-        ownerDisplayName={ownerDisplayName}
-        owners={testCaseData?.owners ?? ownerRef}
-        onUpdate={onOwnerUpdate}
-      />
-      <Divider className="self-center m-x-sm" type="vertical" />
       <DomainLabel
         headerLayout
         showDashPlaceholder
@@ -400,6 +388,18 @@ const IncidentManagerPageHeader = ({
         multiple={false}
         textClassName="render-domain-lebel-style"
         onUpdate={handleDomainUpdate}
+      />
+      <Divider className="self-center m-x-sm" type="vertical" />
+      <OwnerLabel
+        hasPermission={hasEditOwnerPermission}
+        isCompactView={false}
+        multiple={{
+          user: entityRules.canAddMultipleUserOwners,
+          team: entityRules.canAddMultipleTeamOwner,
+        }}
+        ownerDisplayName={ownerDisplayName}
+        owners={testCaseData?.owners ?? ownerRef}
+        onUpdate={onOwnerUpdate}
       />
       {!isVersionPage && statusDetails}
       {tableFqn && (
