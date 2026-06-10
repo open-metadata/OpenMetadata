@@ -335,6 +335,13 @@ class LineageSource(QueryParserSource, ABC):
                         logger.debug(traceback.format_exc())
                         logger.warning(f"Error processing query_dict {query_dict}: {exc}")
                 logger.info(f"Processed {row_count} query log entries for lineage")
+                result_limit = getattr(self.source_config, "resultLimit", None)
+                if result_limit and row_count >= result_limit:
+                    logger.warning(
+                        f"Reached the configured resultLimit of {result_limit} query log entries; "
+                        f"if more queries exist they were truncated and lineage may be incomplete. "
+                        f"Consider increasing resultLimit."
+                    )
 
     def get_table_query(self) -> Iterator[TableQuery]:
         """
