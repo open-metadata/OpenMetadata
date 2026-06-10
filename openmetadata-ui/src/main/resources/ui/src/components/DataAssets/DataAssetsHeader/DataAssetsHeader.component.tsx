@@ -591,10 +591,7 @@ export const DataAssetsHeader = ({
         className="data-assets-header-container"
         data-testid="data-assets-header"
         gutter={[0, 20]}>
-        {tableClassBase.getRequestDataAccessBanner(
-          dataAsset.fullyQualifiedName ?? '',
-          entityType
-        )}
+        {tableClassBase.getRequestDataAccessBanner()}
         <Col
           className={classNames('d-flex flex-col gap-3 ', {
             'p-l-xs': isCustomizedView,
@@ -684,13 +681,7 @@ export const DataAssetsHeader = ({
                       </Typography.Link>
                     </Tooltip>
                   )}
-                  {tableClassBase.getRequestDataAccessButton(
-                    dataAsset.fullyQualifiedName ?? '',
-                    entityName,
-                    entityType,
-                    !!deleted,
-                    canCreateTask
-                  )}
+                  {tableClassBase.getRequestDataAccessButton()}
                   <ManageButton
                     isAsyncDelete
                     afterDeleteAction={afterDeleteAction}

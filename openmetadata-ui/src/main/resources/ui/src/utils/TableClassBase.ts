@@ -232,20 +232,11 @@ class TableClassBase {
     return false;
   }
 
-  public getRequestDataAccessBanner(
-    _entityFqn: string,
-    _entityType: string
-  ): ReactNode {
+  public getRequestDataAccessBanner(): ReactNode {
     return null;
   }
 
-  public getRequestDataAccessButton(
-    _entityFqn: string,
-    _entityName: string,
-    _entityType: string,
-    _deleted: boolean,
-    _canCreateTask: boolean
-  ): ReactNode {
+  public getRequestDataAccessButton(): ReactNode {
     return null;
   }
 
