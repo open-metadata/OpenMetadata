@@ -361,20 +361,13 @@ test.describe('Search Settings', () => {
         await saveResponse;
         await toastNotification(page, /Search Settings updated successfully/);
 
-        // Register the listener BEFORE moving the slider so the response is
-        // never missed regardless of how fast the preview fires.
-        const revertedPreviewPromise = page.waitForResponse((r) =>
-          r.url().includes('/api/v1/search/preview')
-        );
-
-        await setSliderValue(page, 'field-weight-slider', initialNgramBoost);
-
-        const revertedPreviewResponse = await revertedPreviewPromise;
-        expect(revertedPreviewResponse.status()).toBe(200);
-
-        const revertedBody = revertedPreviewResponse.request().postDataJSON();
-        const revertedNgramBoost =
-          revertedPreviewResponse
+        // Scope the predicate to the reverted boost value so a stale post-save
+        // preview response (boost=5) can never satisfy the promise.
+        const revertedPreviewPromise = page.waitForResponse((r) => {
+          if (!r.url().includes('/api/v1/search/preview')) {
+            return false;
+          }
+          const boost = r
             .request()
             .postDataJSON()
             ?.searchSettings?.assetTypeConfigurations?.find(
@@ -382,9 +375,15 @@ test.describe('Search Settings', () => {
             )
             ?.searchFields?.find(
               (f: { field: string }) => f.field === 'name.ngram'
-            )?.boost ?? 0;
+            )?.boost;
 
-        expect(revertedNgramBoost).toBe(initialNgramBoost);
+          return boost === initialNgramBoost;
+        });
+
+        await setSliderValue(page, 'field-weight-slider', initialNgramBoost);
+
+        const revertedPreviewResponse = await revertedPreviewPromise;
+        expect(revertedPreviewResponse.status()).toBe(200);
       });
 
       test('Preview config updates when restore defaults returns empty search fields', async ({
