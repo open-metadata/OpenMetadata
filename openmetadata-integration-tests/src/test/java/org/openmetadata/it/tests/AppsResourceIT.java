@@ -1381,7 +1381,7 @@ public class AppsResourceIT {
   }
 
   @Test
-  void test_externalAppScheduleSync_nullTimelineNullsOutPipelineInterval(TestNamespace ns)
+  void test_externalAppScheduleSync_nullScheduleNullsOutPipelineInterval(TestNamespace ns)
       throws Exception {
     HttpClient httpClient = SdkClients.adminClient().getHttpClient();
     String appName = ns.prefix("extSchedNullTL");
@@ -1403,21 +1403,20 @@ public class AppsResourceIT {
 
       App installedApp = Apps.getByName(appName);
       String appId = installedApp.getId().toString();
-      String removeTimelinePatch =
-          "[{\"op\":\"remove\",\"path\":\"/appSchedule/scheduleTimeline\"}]";
+      String removeSchedulePatch = "[{\"op\":\"remove\",\"path\":\"/appSchedule\"}]";
 
       httpClient.executeForString(
           HttpMethod.PATCH,
           "/v1/apps/" + appId,
-          removeTimelinePatch,
+          removeSchedulePatch,
           RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
 
       String pipelineFqn = "OpenMetadata." + appName;
-      IngestionPipeline pipelineAfterNullTimeline =
+      IngestionPipeline pipelineAfterNullSchedule =
           SdkClients.adminClient().ingestionPipelines().getByName(pipelineFqn);
       assertNull(
-          pipelineAfterNullTimeline.getAirflowConfig().getScheduleInterval(),
-          "Pipeline scheduleInterval should be null when scheduleTimeline is null, even if cronExpression remains");
+          pipelineAfterNullSchedule.getAirflowConfig().getScheduleInterval(),
+          "Pipeline scheduleInterval should be null when appSchedule is removed");
 
     } finally {
       try {
