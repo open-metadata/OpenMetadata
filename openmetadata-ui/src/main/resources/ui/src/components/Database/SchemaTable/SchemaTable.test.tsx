@@ -356,13 +356,21 @@ jest.mock('../../../utils/EntityUtilClassBase', () => ({
     .mockImplementation((fqn) => ({ entityFqn: fqn, columnFqn: '' })),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntitySortUtils', () => ({
   getColumnSorter: jest.fn(),
+}));
+jest.mock('../../../utils/EntityPureUtils', () => ({
   getEntityBulkEditPath: jest.fn(),
+}));
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation(({ displayName, name }) => displayName || name || ''),
+}));
+jest.mock('../../../utils/EntityColumnUtils', () => ({
   getFrequentlyJoinedColumns: jest.fn(),
+}));
+jest.mock('../../../utils/EntitySearchUtils', () => ({
   highlightSearchArrayElement: jest.fn(),
   highlightSearchText: jest.fn().mockImplementation((value) => value),
 }));
@@ -585,7 +593,7 @@ describe('Test EntityTable Component', () => {
     it('should have updateColumnInNestedStructure available in TableUtils', () => {
       const {
         updateColumnInNestedStructure,
-      } = require('../../../utils/TableUtils');
+      } = require('../../../utils/TablePureUtils');
 
       expect(updateColumnInNestedStructure).toBeDefined();
       expect(typeof updateColumnInNestedStructure).toBe('function');
