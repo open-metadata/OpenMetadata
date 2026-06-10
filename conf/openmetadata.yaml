@@ -390,9 +390,31 @@ database:
     mysqlSocketTimeout: ${DB_MYSQL_SOCKET_TIMEOUT:-30000000}  # Socket timeout in milliseconds (0 = infinite)
 
 objectStorage:
-  enabled: false
-  provider: NOOP
-  maxFileSize: 5242880
+  enabled: ${ASSET_UPLOADER_ENABLE:-true}
+  # options: "s3", "azure", or "inmemory" (local testing, non-persistent).
+  # For MinIO use provider "s3" and point s3.endpoint at the MinIO server.
+  provider: ${ASSET_UPLOADER_PROVIDER:-s3}
+  maxFileSize: ${ASSET_UPLOADER_MAX_FILE_SIZE:-5242880}
+  s3:
+    endpoint: ${ASSET_UPLOADER_S3_ENDPOINT:-""}
+    bucketName: ${ASSET_UPLOADER_S3_BUCKET_NAME:-"my-bucket"}
+    region: ${ASSET_UPLOADER_S3_REGION:-"us-east-2"}
+    accessKey: ${ASSET_UPLOADER_S3_ACCESS_KEY:-"minio"}
+    secretKey: ${ASSET_UPLOADER_S3_SECRET_KEY:-"minio123"}
+    useIamRole: ${ASSET_UPLOADER_S3_USE_IAM_ROLE:-false}
+    iamRoleArn: ${ASSET_UPLOADER_S3_IAM_ROLE_ARN:-""}
+    prefixPath: ${ASSET_UPLOADER_S3_PREFIX_PATH:-"default"}
+    sseAlgorithm: ${ASSET_UPLOADER_S3_SSE_ALGORITHM:-""} # Allowed values: "AES256" or "aws:kms"
+    kmsKeyId: ${ASSET_UPLOADER_S3_KMS_KEY_ID:-""} # Required only if sseAlgorithm is "aws:kms"
+  azure:
+    containerName: ${ASSET_UPLOADER_AZURE_CONTAINER_NAME:-"my-container"}
+    connectionString: ${ASSET_UPLOADER_AZURE_CONNECTION_STRING:-""}
+    useManagedIdentity: ${ASSET_UPLOADER_AZURE_USE_MANAGED_IDENTITY:-false}
+    clientId: ${ASSET_UPLOADER_AZURE_CLIENT_ID:-"clientId"}
+    tenantId: ${ASSET_UPLOADER_AZURE_TENANT_ID:-"tenantId"}
+    clientSecret: ${ASSET_UPLOADER_AZURE_CLIENT_SECRET:-"clientSecret"}
+    blobEndpoint: ${ASSET_UPLOADER_AZURE_BLOB_ENDPOINT:-""}
+    prefixPath: ${ASSET_UPLOADER_AZURE_PREFIX_PATH:-"assets/default"}
 
 migrationConfiguration:
   flywayPath: "./bootstrap/sql/migrations/flyway"
