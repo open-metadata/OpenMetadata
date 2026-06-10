@@ -183,5 +183,6 @@
     }
   },
   "additionalProperties": false,
+  "workflowTriggerFields": ["name", "displayName", "fullyQualifiedName", "description", "domains"],
   "required": ["id", "name", "email"]
 }

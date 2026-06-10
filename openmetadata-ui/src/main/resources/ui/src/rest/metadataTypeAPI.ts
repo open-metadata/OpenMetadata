@@ -64,6 +64,17 @@ export const getCustomPropertiesByEntityType = async (entityType: string) => {
   return response.data;
 };
 
+export const getWorkflowTriggerFieldsByEntityType = async (
+  entityType: string
+) => {
+  const path = `/metadata/types/fields/${getEncodedFqn(
+    entityType
+  )}/workflowTriggerFields`;
+  const response = await APIClient.get<string[]>(path);
+
+  return response.data;
+};
+
 export const addPropertyToEntity = async (
   entityTypeId: string,
   data: CustomProperty

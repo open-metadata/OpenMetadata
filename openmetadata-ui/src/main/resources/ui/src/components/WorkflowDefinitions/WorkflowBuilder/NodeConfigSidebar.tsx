@@ -25,14 +25,16 @@ import {
   WorkflowType,
 } from '../../../constants/WorkflowBuilder.constants';
 import { useWorkflowModeContext } from '../../../contexts/WorkflowModeContext';
-import { WorkflowTriggerFields } from '../../../generated/type/workflowTriggerFields';
 import {
   BackendNodeConfig,
   DataAssetFilter,
   NodeConfig,
   NodeConfigSidebarProps,
 } from '../../../interface/workflow-builder-components.interface';
-import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
+import {
+  getCustomPropertiesByEntityType,
+  getWorkflowTriggerFieldsByEntityType,
+} from '../../../rest/metadataTypeAPI';
 import {
   convertDisplayToBackendTriggerType,
   getInitialNodeConfig,
@@ -122,6 +124,7 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
 
   const effectiveConfig = localConfig || config;
 
+  const [triggerFields, setTriggerFields] = useState<string[]>([]);
   const [customPropertyFields, setCustomPropertyFields] = useState<string[]>(
     []
   );
@@ -129,24 +132,39 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
   useEffect(() => {
     const assets = effectiveConfig.dataAssets ?? [];
     if (assets.length === 0) {
+      setTriggerFields([]);
       setCustomPropertyFields([]);
 
       return;
     }
 
-    Promise.all(assets.map((asset) => getCustomPropertiesByEntityType(asset)))
+    Promise.all(
+      assets.map((asset) =>
+        Promise.all([
+          getWorkflowTriggerFieldsByEntityType(asset),
+          getCustomPropertiesByEntityType(asset),
+        ])
+      )
+    )
       .then((results) => {
-        const names = [
-          ...new Set(results.flat().map((p) => `extension.${p.name}`)),
-        ];
-        setCustomPropertyFields(names);
+        setTriggerFields([...new Set(results.flatMap(([fields]) => fields))]);
+        setCustomPropertyFields([
+          ...new Set(
+            results.flatMap(([, properties]) =>
+              properties.map((p) => `extension.${p.name}`)
+            )
+          ),
+        ]);
       })
-      .catch(() => setCustomPropertyFields([]));
+      .catch(() => {
+        setTriggerFields([]);
+        setCustomPropertyFields([]);
+      });
   }, [effectiveConfig.dataAssets]);
 
   const availableExcludeFields = useMemo(() => {
-    return [...Object.values(WorkflowTriggerFields), ...customPropertyFields];
-  }, [customPropertyFields]);
+    return [...triggerFields, ...customPropertyFields];
+  }, [triggerFields, customPropertyFields]);
 
   useEffect(() => {
     if (isStartNode(node)) {

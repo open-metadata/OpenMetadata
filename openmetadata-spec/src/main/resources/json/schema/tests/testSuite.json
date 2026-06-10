@@ -186,6 +186,7 @@
       "default": null
     }
   },
+  "workflowTriggerFields": ["name", "displayName", "fullyQualifiedName", "description", "owners", "reviewers", "tags", "domains", "dataContract"],
   "required": [
     "name"
   ],

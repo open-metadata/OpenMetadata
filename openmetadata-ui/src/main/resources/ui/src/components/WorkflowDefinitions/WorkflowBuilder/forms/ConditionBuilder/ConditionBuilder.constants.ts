@@ -29,7 +29,6 @@ const WORKFLOW_TRIGGER_FIELD_LABELS: Record<string, string> = {
   [WorkflowTriggerFields.Certification]: 'label.certification',
   [WorkflowTriggerFields.Children]: 'label.children',
   [WorkflowTriggerFields.DataProducts]: 'label.data-product-plural',
-  [WorkflowTriggerFields.Deleted]: 'label.deleted',
   [WorkflowTriggerFields.Description]: 'label.description',
   [WorkflowTriggerFields.DisplayName]: 'label.display-name',
   [WorkflowTriggerFields.Domains]: 'label.domain-plural',
@@ -64,22 +63,13 @@ const DROPDOWN_FIELDS: Partial<Record<string, FetchOptionsFn>> = {
   [WorkflowTriggerFields.Tags]: fetchTagOptions,
 };
 
-const BOOLEAN_OPTIONS: ConditionFieldDefinition['values'] = [
-  { value: 'true', label: 'label.true' },
-  { value: 'false', label: 'label.false' },
-];
-
 export const CONDITION_BUILDER_WORKFLOW_TRIGGER_FIELDS: ConditionFieldDefinition[] =
   Object.values(WorkflowTriggerFields).map((fieldValue) => {
     const fetchOptions = DROPDOWN_FIELDS[fieldValue];
     const isDropdown = Boolean(fetchOptions);
-    const isBoolean = fieldValue === WorkflowTriggerFields.Deleted;
-    let valueType: ConditionFieldDefinition['valueType'] = 'text';
-    if (isBoolean) {
-      valueType = 'boolean';
-    } else if (isDropdown) {
-      valueType = 'dropdown';
-    }
+    const valueType: ConditionFieldDefinition['valueType'] = isDropdown
+      ? 'dropdown'
+      : 'text';
 
     const supportsSearch =
       !fetchOptions || fieldValue !== WorkflowTriggerFields.Certification;
@@ -87,7 +77,7 @@ export const CONDITION_BUILDER_WORKFLOW_TRIGGER_FIELDS: ConditionFieldDefinition
     return {
       value: fieldValue,
       label: WORKFLOW_TRIGGER_FIELD_LABELS[fieldValue] ?? fieldValue,
-      values: isBoolean ? BOOLEAN_OPTIONS : [],
+      values: [],
       valueType,
       ...(fetchOptions && {
         fetchOptions,

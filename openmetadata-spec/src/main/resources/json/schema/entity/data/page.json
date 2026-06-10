@@ -141,6 +141,7 @@
       "default": null
     }
   },
+  "workflowTriggerFields": ["name", "displayName", "fullyQualifiedName", "description", "owners", "reviewers", "tags", "domains", "dataProducts", "parent", "children"],
   "required": ["name", "pageType", "page"],
   "additionalProperties": false
 }
