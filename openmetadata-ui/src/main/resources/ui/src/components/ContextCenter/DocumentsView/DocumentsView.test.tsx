@@ -52,6 +52,36 @@ jest.mock('react-aria-components', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Box: jest.fn(
+    ({
+      children,
+      className,
+      'data-testid': testId,
+    }: {
+      children: React.ReactNode;
+      className?: string;
+      'data-testid'?: string;
+    }) => (
+      <div className={className} data-testid={testId}>
+        {children}
+      </div>
+    )
+  ),
+  Button: jest.fn(
+    ({
+      children,
+      onClick,
+      'data-testid': testId,
+    }: {
+      children: React.ReactNode;
+      onClick?: () => void;
+      'data-testid'?: string;
+    }) => (
+      <button data-testid={testId} onClick={onClick}>
+        {children}
+      </button>
+    )
+  ),
   ButtonUtility: jest.fn(
     ({
       onClick,
@@ -91,10 +121,34 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         onAction?: (key: string) => void;
       }) => <div data-onaction={String(onAction)}>{children}</div>
     ),
-    Item: jest.fn(({ id, label }: { id: string; label: string }) => (
-      <button data-testid={`dropdown-item-${id}`}>{label}</button>
-    )),
+    Item: jest.fn(
+      ({
+        id,
+        label,
+        children,
+        'data-testid': testId,
+      }: {
+        id?: string;
+        label?: string;
+        children?: React.ReactNode | (() => React.ReactNode);
+        'data-testid'?: string;
+      }) => (
+        <button data-testid={testId ?? `dropdown-item-${id}`}>
+          {label ?? (typeof children === 'function' ? children() : children)}
+        </button>
+      )
+    ),
   },
+  Dot: jest.fn(() => <span>·</span>),
+  Checkbox: jest.fn(
+    ({
+      onChange,
+      'aria-label': ariaLabel,
+    }: {
+      onChange?: () => void;
+      'aria-label'?: string;
+    }) => <input aria-label={ariaLabel} type="checkbox" onChange={onChange} />
+  ),
   FileIcon: jest.fn(({ type }: { type: string }) => (
     <span data-testid={`file-icon-${type}`} />
   )),
@@ -115,7 +169,6 @@ const mockFiles: DocFile[] = [
     id: 'file-1',
     name: 'report.pdf',
     fileExtension: 'pdf',
-    fileType: 'pdf',
     sizeLabel: '2 MB',
     updatedBy: 'alice',
     updatedAt: 1778756959299,
@@ -124,7 +177,6 @@ const mockFiles: DocFile[] = [
     id: 'file-2',
     name: 'data.csv',
     fileExtension: 'csv',
-    fileType: 'csv',
     sizeLabel: '500 KB',
   },
 ];
