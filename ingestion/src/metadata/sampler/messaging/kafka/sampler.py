@@ -133,7 +133,7 @@ class KafkaSampler(MessagingSampler):
             while len(messages) < count and (time.time() - start_time) < FETCH_TIMEOUT_SECONDS:
                 msg = consumer.poll(timeout=5.0)
                 if msg is None:
-                    break
+                    continue
                 if msg.error():
                     logger.warning("Kafka consumer error: %s", msg.error())
                     break
