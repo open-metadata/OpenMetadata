@@ -122,24 +122,37 @@ setup('authenticate all users', async ({ browser }) => {
     // storageState session and causes 401 "Invalid session" on reused bearer tokens.
     // Raise it at runtime via the security-config PATCH endpoint as a temporary workaround.
     // https://github.com/open-metadata/openmetadata-collate/issues/4484
-    try {
-      await apiContext.patch('/api/v1/system/security/config', {
-        headers: { 'Content-Type': 'application/json-patch+json' },
-        data: [
-          {
-            op: 'add',
-            path: '/authenticationConfiguration/maxActiveSessionsPerUser',
-            value: 1000,
-          },
-        ],
-      });
-    } catch (error) {
-      // Non-fatal: builds without the field/endpoint should not break setup.
-      // eslint-disable-next-line no-console
-      console.log(
-        'collate#4484 workaround: failed to raise maxActiveSessionsPerUser',
-        error
+    const securityConfigResponse = await apiContext.get(
+      '/api/v1/system/security/config'
+    );
+    const existingMaxSessions = securityConfigResponse.ok()
+      ? (await securityConfigResponse.json())?.authenticationConfiguration
+          ?.maxActiveSessionsPerUser
+      : undefined;
+
+    if (existingMaxSessions !== 1000) {
+      const op =
+        existingMaxSessions === undefined || existingMaxSessions === null
+          ? 'add'
+          : 'replace';
+      const patchResponse = await apiContext.patch(
+        '/api/v1/system/security/config',
+        {
+          headers: { 'Content-Type': 'application/json-patch+json' },
+          data: [
+            {
+              op,
+              path: '/authenticationConfiguration/maxActiveSessionsPerUser',
+              value: 1000,
+            },
+          ],
+        }
       );
+      if (!patchResponse.ok()) {
+        throw new Error(
+          `collate#4484 workaround: failed to raise maxActiveSessionsPerUser - HTTP ${patchResponse.status()} ${await patchResponse.text()}`
+        );
+      }
     }
 
     // Create all users, Using allSettled to avoid failing the setup if one of the users fails to create
