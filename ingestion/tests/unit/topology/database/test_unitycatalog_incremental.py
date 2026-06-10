@@ -346,7 +346,7 @@ class TestUnityCatalogIncrementalSource:
         result = list(UnitycatalogSource.get_tables_name_and_type(source))
 
         assert result == [("t1", TableType.Regular), ("t2", TableType.Regular)]
-        source.client.tables.list.assert_called_once_with(catalog_name="cat", schema_name="schema1")
+        source.client.tables.list.assert_called_once_with(catalog_name="cat", schema_name="schema1", max_results=0)
         source._get_incremental_tables.assert_not_called()
 
     def test_mark_tables_as_deleted_incremental_uses_explicit_list(self):

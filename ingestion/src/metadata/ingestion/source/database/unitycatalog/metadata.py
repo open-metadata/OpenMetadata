@@ -375,10 +375,14 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         if self.incremental.enabled and self.incremental_table_processor:
             yield from self._get_incremental_tables(catalog_name, schema_name)
         else:
+            # max_results=0 makes the server paginate with its configured page
+            # size; leaving it unset returns every table of the schema in one
+            # response, which OOMs the pod on schemas with many wide tables.
             table_listing = partial(
                 self.client.tables.list,
                 catalog_name=catalog_name,
                 schema_name=schema_name,
+                max_results=0,
             )
             for table in self._iterate_listing(table_listing, f"tables in schema [{catalog_name}.{schema_name}]"):
                 yield from self._process_table(table, catalog_name, schema_name)
