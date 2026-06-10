@@ -81,10 +81,7 @@ import {
   getStoredProcedureDetailsPageTabs,
   STORED_PROCEDURE_DEFAULT_FIELDS,
 } from '../../utils/StoredProceduresUtils';
-import {
-  getTagsWithoutTier,
-  getTierTags,
-} from '../../utils/TablePureUtils';
+import { getTagsWithoutTier, getTierTags } from '../../utils/TablePureUtils';
 import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';

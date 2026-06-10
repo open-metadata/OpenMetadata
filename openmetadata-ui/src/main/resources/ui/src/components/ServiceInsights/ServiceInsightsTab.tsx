@@ -46,15 +46,15 @@ import {
   getCurrentMillis,
   getDayAgoStartGMTinMillis,
 } from '../../utils/date-time/DateTimeUtils';
-import { getEntityFeedLink } from '../../utils/EntityPureUtils';
 import { getEntityNameLabel } from '../../utils/EntityNameUtils';
-import { getFormattedTotalAssetsDataFromSocketData } from '../../utils/ServiceInsightsTabUtils';
+import { getEntityFeedLink } from '../../utils/EntityPureUtils';
 import {
   filterDistributionChartItem,
   getAssetsByServiceType,
   getChartsDataFromWidgetName,
   getPlatformInsightsChartDataFormattingMethod,
 } from '../../utils/ServiceInsightsTabPureUtils';
+import { getFormattedTotalAssetsDataFromSocketData } from '../../utils/ServiceInsightsTabUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
   getEntityTypeFromServiceCategory,

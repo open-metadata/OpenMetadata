@@ -73,9 +73,9 @@ import {
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { Suggestion, SuggestionType } from '../../../types/taskSuggestion';
 import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
-import { getEntityBulkEditPath } from '../../../utils/EntityPureUtils';
 import { getFrequentlyJoinedColumns } from '../../../utils/EntityColumnUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityBulkEditPath } from '../../../utils/EntityPureUtils';
 import {
   highlightSearchArrayElement,
   highlightSearchText,
@@ -84,6 +84,13 @@ import { getEntityColumnFQN } from '../../../utils/FeedUtils';
 import { stringToHTML } from '../../../utils/StringUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
+  findColumnByEntityLink,
+  getExpandAllKeysToDepth,
+  getHighlightedRowClassName,
+  pruneEmptyChildren,
+  updateColumnInNestedStructure,
+} from '../../../utils/TablePureUtils';
+import {
   getAllTags,
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
@@ -91,13 +98,6 @@ import {
   getTableExpandableConfig,
   prepareConstraintIcon,
 } from '../../../utils/TableUtils';
-import {
-  findColumnByEntityLink,
-  getExpandAllKeysToDepth,
-  getHighlightedRowClassName,
-  pruneEmptyChildren,
-  updateColumnInNestedStructure,
-} from '../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';

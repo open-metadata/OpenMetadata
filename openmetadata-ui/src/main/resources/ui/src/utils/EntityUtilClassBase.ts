@@ -82,7 +82,18 @@ import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDropdownOpti
 import { ExtraDatabaseServiceDropdownOptions } from './DatabaseServiceUtils';
 import { getEntityByFqnUtil } from './EntityByFqnUtils';
 import { EntityTypeName } from './EntityNameUtils';
-import { FormattedAPIServiceType, FormattedDashboardServiceType, FormattedDatabaseServiceType, FormattedDriveServiceType, FormattedMessagingServiceType, FormattedMetadataServiceType, FormattedMlModelServiceType, FormattedPipelineServiceType, FormattedSearchServiceType, FormattedStorageServiceType } from './EntityUtils.interface';
+import {
+  FormattedAPIServiceType,
+  FormattedDashboardServiceType,
+  FormattedDatabaseServiceType,
+  FormattedDriveServiceType,
+  FormattedMessagingServiceType,
+  FormattedMetadataServiceType,
+  FormattedMlModelServiceType,
+  FormattedPipelineServiceType,
+  FormattedSearchServiceType,
+  FormattedStorageServiceType,
+} from './EntityUtils.interface';
 import Fqn from './Fqn';
 import { getKnowledgePagePath } from './KnowledgePageUtils';
 import {

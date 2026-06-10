@@ -37,4 +37,3 @@ export const getQueryFilterForDatabase = (
   });
 
 export const DatabaseFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNERS}, ${TabSpecificField.DOMAINS},${TabSpecificField.DATA_PRODUCTS}`;
-

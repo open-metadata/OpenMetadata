@@ -78,9 +78,9 @@ import {
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { defaultFieldsWithColumns } from '../../utils/DatasetDetailsUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { mergeEntityStateUpdate } from '../../utils/EntityUpdateUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,

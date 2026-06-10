@@ -43,7 +43,6 @@ import { t } from './i18next/LocalUtil';
 import { jsonToCSV } from './StringUtils';
 import { showErrorToast } from './ToastUtils';
 
-
 export const MAX_LINEAGE_LENGTH = 20;
 
 export const onLoad = (reactFlowInstance: ReactFlowInstance) => {

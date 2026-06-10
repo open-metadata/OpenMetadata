@@ -27,12 +27,12 @@ import { EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/data/table';
 import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
+import { getEntityName } from '../EntityNameUtils';
+import { ENTITY_LINK_SEPARATOR } from '../EntityPureUtils';
 import {
   convertEntityReferencesToTagLabels,
   convertTagLabelsToEntityReferences,
 } from '../EntityReferenceUtils';
-import { ENTITY_LINK_SEPARATOR } from '../EntityPureUtils';
-import { getEntityName } from '../EntityNameUtils';
 
 export const getGlossaryTermWidgetFromKey = (widgetConfig: WidgetConfig) => {
   if (

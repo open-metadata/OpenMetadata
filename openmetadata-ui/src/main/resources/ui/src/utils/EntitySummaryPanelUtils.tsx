@@ -61,6 +61,7 @@ import type { Field, Topic } from '../generated/entity/data/topic';
 import type { DataProduct } from '../generated/entity/domains/dataProduct';
 import type { Domain } from '../generated/entity/domains/domain';
 import type { EntityReference } from '../generated/tests/testCase';
+import { getEntityName } from './EntityNameUtils';
 import {
   getHighlightOfListItem,
   getMapOfListHighlights,
@@ -69,7 +70,6 @@ import {
   type SummaryListItem,
 } from './EntitySummaryPanelPureUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
-import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
 import searchClassBase from './SearchClassBase';
 import { stringToHTML } from './StringUtils';

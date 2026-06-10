@@ -248,15 +248,19 @@ jest.mock('../../../constants/constants', () => ({
   getEntityDetailsPath: jest.fn(),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => {
-  return {
-    getEntityFeedLink: jest.fn(),
-    getEntityName: jest.fn().mockReturnValue('testEntityName'),
-    getColumnSorter: jest.fn().mockImplementation(() => {
-      return () => 1;
-    }),
-  };
-});
+jest.mock('../../../utils/EntityPureUtils', () => ({
+  getEntityFeedLink: jest.fn(),
+}));
+
+jest.mock('../../../utils/EntityNameUtils', () => ({
+  getEntityName: jest.fn().mockReturnValue('testEntityName'),
+}));
+
+jest.mock('../../../utils/EntityUtils', () => ({
+  getColumnSorter: jest.fn().mockImplementation(() => {
+    return () => 1;
+  }),
+}));
 
 jest.mock('../../../rest/pipelineAPI', () => ({
   restorePipeline: jest.fn().mockImplementation(() => Promise.resolve()),

@@ -90,9 +90,9 @@ import {
   TaskResolutionType,
 } from '../../../rest/tasksAPI';
 import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
-import { EntityStatusClass } from '../../../utils/EntityStatusUtils';
-import { getEntityBulkEditPath } from '../../../utils/EntityPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityBulkEditPath } from '../../../utils/EntityPureUtils';
+import { EntityStatusClass } from '../../../utils/EntityStatusUtils';
 import Fqn from '../../../utils/Fqn';
 import {
   buildTree,

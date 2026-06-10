@@ -30,8 +30,8 @@ import {
   getColumnFunctionValue,
   getLineageDetailsObject,
 } from '../../../utils/EntityLineageUtils';
-import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import Loader from '../../common/Loader/Loader';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';

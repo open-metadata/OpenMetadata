@@ -16,10 +16,7 @@ import { TagFilterOptions, TagsData } from 'Models';
 import React from 'react';
 import { TableTagsProps } from '../../components/Database/TableTags/TableTags.interface';
 import { TagLabel, TagSource } from '../../generated/type/tagLabel';
-import {
-  isCertificationTag,
-  isTierTag,
-} from '../TablePureUtils';
+import { isCertificationTag, isTierTag } from '../TablePureUtils';
 
 export const getFilterTags = (tags: TagLabel[]): TableTagsProps =>
   reduce(

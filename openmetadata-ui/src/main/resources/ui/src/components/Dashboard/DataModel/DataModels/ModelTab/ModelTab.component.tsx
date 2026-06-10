@@ -40,15 +40,15 @@ import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getColumnSorter } from '../../../../../utils/EntitySortUtils';
 import { columnFilterIcon } from '../../../../../utils/TableColumn.util';
 import {
-  getAllTags,
-  searchTagInData,
-} from '../../../../../utils/TableTags/TableTags.utils';
-import { getTableExpandableConfig } from '../../../../../utils/TableUtils';
-import {
   getHighlightedRowClassName,
   pruneEmptyChildren,
   updateColumnInNestedStructure,
 } from '../../../../../utils/TablePureUtils';
+import {
+  getAllTags,
+  searchTagInData,
+} from '../../../../../utils/TableTags/TableTags.utils';
+import { getTableExpandableConfig } from '../../../../../utils/TableUtils';
 import DisplayName from '../../../../common/DisplayName/DisplayName';
 import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';

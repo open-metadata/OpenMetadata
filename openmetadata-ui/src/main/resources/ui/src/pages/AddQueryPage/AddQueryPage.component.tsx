@@ -22,6 +22,7 @@ import ResizablePanels from '../../components/common/ResizablePanels/ResizablePa
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import SchemaEditor from '../../components/Database/SchemaEditor/SchemaEditor';
+import getEntityLabel from '../../components/Entity/EntityLabel/EntityLabel.component';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import {
   INITIAL_PAGING_VALUE,
@@ -43,7 +44,6 @@ import { postQuery } from '../../rest/queryAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { getCurrentMillis } from '../../utils/date-time/DateTimeUtils';
-import getEntityLabel from '../../components/Entity/EntityLabel/EntityLabel.component';
 import { getEntityBreadcrumbs } from '../../utils/EntityBreadcrumbPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getField } from '../../utils/formUtils';

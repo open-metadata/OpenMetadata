@@ -49,10 +49,7 @@ import {
 } from '../../../utils/EntityVersionUtils';
 import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
-import {
-  getTagsWithoutTier,
-  getTierTags,
-} from '../../../utils/TablePureUtils';
+import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import { createTagObject } from '../../../utils/TagsUtils';
 import CertificationWidget from '../../common/CertificationWidget/CertificationWidget';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';

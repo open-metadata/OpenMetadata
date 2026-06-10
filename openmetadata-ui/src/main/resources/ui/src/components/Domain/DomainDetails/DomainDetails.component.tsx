@@ -79,10 +79,10 @@ import {
   getQueryFilterForDomain,
   getQueryFilterToExcludeDomainTerms,
 } from '../../../utils/DomainUtils';
-import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
+import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,

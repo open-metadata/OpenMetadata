@@ -49,14 +49,14 @@ import {
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
+  getHighlightedRowClassName,
+  pruneEmptyChildren,
+} from '../../../utils/TablePureUtils';
+import {
   getAllTags,
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
-import {
-  getHighlightedRowClassName,
-  pruneEmptyChildren,
-} from '../../../utils/TablePureUtils';
 import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';

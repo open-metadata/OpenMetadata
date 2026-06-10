@@ -66,16 +66,16 @@ import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { makeData } from '../../../utils/SearchIndexUtils';
 import { stringToHTML } from '../../../utils/StringUtils';
 import {
-  getAllTags,
-  searchTagInData,
-} from '../../../utils/TableTags/TableTags.utils';
-import { getTableExpandableConfig } from '../../../utils/TableUtils';
-import {
   getHighlightedRowClassName,
   searchInFields,
   updateFieldDescription,
   updateFieldTags,
 } from '../../../utils/TablePureUtils';
+import {
+  getAllTags,
+  searchTagInData,
+} from '../../../utils/TableTags/TableTags.utils';
+import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import {
   SearchIndexCellRendered,
   SearchIndexFieldsTableProps,

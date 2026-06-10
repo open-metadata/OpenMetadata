@@ -60,8 +60,8 @@ import {
   getTableFieldsFromTableDetails,
   getUsageData,
 } from './DataAssetSummaryPanelPureUtils';
-import { DRAWER_NAVIGATION_OPTIONS } from './EntityPureUtils';
 import { getEntityName } from './EntityNameUtils';
+import { DRAWER_NAVIGATION_OPTIONS } from './EntityPureUtils';
 import { BasicEntityOverviewInfo } from './EntityUtils.interface';
 import { getPartialNameFromTableFQN } from './FqnUtils';
 import i18n from './i18next/LocalUtil';

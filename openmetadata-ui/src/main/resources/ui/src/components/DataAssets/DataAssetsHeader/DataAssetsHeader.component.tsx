@@ -73,9 +73,9 @@ import {
 } from '../../../utils/DataAssetsHeader.utils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import EntityLink from '../../../utils/EntityLink';
-import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';

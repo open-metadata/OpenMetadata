@@ -23,15 +23,15 @@ import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 import { Column } from '../../../generated/entity/data/table';
 import { getFrequentlyJoinedColumns } from '../../../utils/EntityColumnUtils';
 import { searchInColumns } from '../../../utils/EntitySearchUtils';
+import {
+  getAllRowKeysByKeyName,
+  makeData,
+} from '../../../utils/TablePureUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import {
   getTableExpandableConfig,
   prepareConstraintIcon,
 } from '../../../utils/TableUtils';
-import {
-  getAllRowKeysByKeyName,
-  makeData,
-} from '../../../utils/TablePureUtils';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';

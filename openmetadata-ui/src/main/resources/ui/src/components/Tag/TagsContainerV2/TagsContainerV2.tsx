@@ -29,8 +29,8 @@ import { LabelType } from '../../../generated/entity/data/table';
 import { State, TagSource } from '../../../generated/type/tagLabel';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
-import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import { getTierTags } from '../../../utils/TablePureUtils';
+import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { fetchGlossaryList, getTagPlaceholder } from '../../../utils/TagsUtils';
 import {

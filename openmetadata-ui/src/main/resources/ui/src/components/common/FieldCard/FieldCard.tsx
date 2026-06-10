@@ -19,8 +19,8 @@ import { ReactComponent as ClassificationIcon } from '../../../assets/svg/classi
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
 import { TagSource } from '../../../generated/tests/testCase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { prepareConstraintIcon } from '../../../utils/TableUtils';
 import { getDataTypeString } from '../../../utils/TablePureUtils';
+import { prepareConstraintIcon } from '../../../utils/TableUtils';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import { FieldCardProps } from './FieldCard.interface';
 import './FieldCard.less';

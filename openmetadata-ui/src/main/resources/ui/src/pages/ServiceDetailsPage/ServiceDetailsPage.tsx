@@ -130,10 +130,10 @@ import {
   getDayAgoStartGMTinMillis,
 } from '../../utils/date-time/DateTimeUtils';
 import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
-import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityFeedLink } from '../../utils/EntityPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import { getEntityFeedLink } from '../../utils/EntityPureUtils';
 import { getEntityReferenceFromEntity } from '../../utils/EntityReferenceUtils';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import {
   EXTENSION_POINTS,
   PluginEntityDetailsContext,

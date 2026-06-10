@@ -56,10 +56,10 @@ import {
 import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import { getBulkEditButton } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
-import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityBulkEditPath } from '../../utils/EntityPureUtils';
 import { highlightSearchText } from '../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../utils/EntitySortUtils';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,

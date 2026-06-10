@@ -27,8 +27,8 @@ import {
   formatDateTime,
   getRelativeTime,
 } from '../../../utils/date-time/DateTimeUtils';
-import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   entityDisplayName,
   getActivityEventHeaderText,

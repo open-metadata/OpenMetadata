@@ -11,10 +11,7 @@
  *  limitations under the License.
  */
 import { useEffect } from 'react';
-import {
-  findFieldByFQN,
-  getParentKeysToExpand,
-} from '../utils/TablePureUtils';
+import { findFieldByFQN, getParentKeysToExpand } from '../utils/TablePureUtils';
 
 interface UseFqnDeepLinkProps<T> {
   data: T[];

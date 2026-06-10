@@ -117,9 +117,9 @@ import {
   getTopicVersion,
   getTopicVersions,
 } from '../../rest/topicsAPI';
-import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityBreadcrumbs } from '../../utils/EntityBreadcrumbPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import entityVersionClassBase from '../../utils/EntityVersionClassBase';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';

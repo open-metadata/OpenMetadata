@@ -46,7 +46,7 @@ jest.mock('../../../utils/TableUtils', () => ({
   )),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn((entity) => entity?.displayName || entity?.name || ''),
 }));
 
@@ -54,7 +54,7 @@ const { getDataTypeString, prepareConstraintIcon } = jest.requireMock(
   '../../../utils/TableUtils'
 );
 
-const { getEntityName } = jest.requireMock('../../../utils/EntityUtils');
+const { getEntityName } = jest.requireMock('../../../utils/EntityNameUtils');
 
 const mockTags = [
   {

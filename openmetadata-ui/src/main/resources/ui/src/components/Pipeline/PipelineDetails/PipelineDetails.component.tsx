@@ -48,10 +48,7 @@ import {
 } from '../../../utils/PermissionsUtils';
 import pipelineClassBase from '../../../utils/PipelineClassBase';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import {
-  getTagsWithoutTier,
-  getTierTags,
-} from '../../../utils/TablePureUtils';
+import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
   createTagObject,
   updateCertificationTag,

@@ -40,6 +40,11 @@ import { TagLabel } from '../../../../generated/type/tagLabel';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { columnFilterIcon } from '../../../../utils/TableColumn.util';
 import {
+  pruneEmptyChildren,
+  updateFieldDescription,
+  updateFieldTags,
+} from '../../../../utils/TablePureUtils';
+import {
   getAllTags,
   searchTagInData,
 } from '../../../../utils/TableTags/TableTags.utils';
@@ -47,11 +52,6 @@ import {
   getTableExpandableConfig,
   prepareConstraintIcon,
 } from '../../../../utils/TableUtils';
-import {
-  pruneEmptyChildren,
-  updateFieldDescription,
-  updateFieldTags,
-} from '../../../../utils/TablePureUtils';
 import CopyLinkButton from '../../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';

@@ -55,10 +55,7 @@ import {
   getPrioritizedViewPermission,
 } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import {
-  getTagsWithoutTier,
-  getTierTags,
-} from '../../../utils/TablePureUtils';
+import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
   createTagObject,
   updateCertificationTag,
