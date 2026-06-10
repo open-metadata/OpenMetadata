@@ -11,54 +11,38 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { toLower } from 'lodash';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
-import { UserClass } from '../../support/user/UserClass';
-import { performAdminLogin } from '../../utils/admin';
 import { clickOutside, redirectToHomePage } from '../../utils/common';
 import {
   followEntity,
   validateFollowedEntityToWidget,
-  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
-
-const user = new UserClass();
-
-export const test = base.extend<{ adminPage: Page }>({
-  adminPage: async ({ browser }, use) => {
-    const adminPage = await browser.newPage();
-    await user.login(adminPage);
-    await use(adminPage);
-    await adminPage.close();
-  },
-});
+import {test} from './../../e2e/fixtures/pages';
 
 test.describe('Verify RTL Layout for landing page', () => {
   const table = EntityDataClass.table1;
 
-  test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    await user.create(apiContext);
-    await user.setAdminRole(apiContext);
-    await afterAction();
-  });
-
-  test.beforeEach(async ({ adminPage: page }) => {
+  test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
 
     await page.getByTestId('language-selector-button').click();
     await page
       .locator('.ant-dropdown:visible [data-menu-id*="-he-HE"]')
       .click();
-    await page.waitForLoadState('domcontentloaded');
-    await waitForAllLoadersToDisappear(page);
+
+    // After language change UI will reload the page hence need to validate load event with language change
+    await page.waitForEvent('load');
+    await expect(page.getByTestId('domain-selector')).toBeVisible();
+    // wait for translation to reflect in the UI
+    await expect(page.getByTestId('domain-selector')).toHaveText(
+      'כל הדומיינים',
+      { timeout: 30_000 }
+    );
   });
 
-  test('Verify DataAssets widget functionality', async ({
-    adminPage: page,
-  }) => {
+  test('Verify DataAssets widget functionality', async ({ page }) => {
     const serviceType = toLower(table.service.serviceType);
 
     await clickOutside(page);
@@ -85,12 +69,12 @@ test.describe('Verify RTL Layout for landing page', () => {
     ).toHaveClass(/ant-tree-node-selected/);
   });
 
-  test('Verify Following widget functionality', async ({ adminPage }) => {
-    await table.visitEntityPage(adminPage);
+  test('Verify Following widget functionality', async ({ page }) => {
+    await table.visitEntityPage(page);
 
     const entityName = table.entityResponseData?.['displayName'];
 
-    await followEntity(adminPage, table.endpoint, 'בטל מעקב');
-    await validateFollowedEntityToWidget(adminPage, entityName ?? '', true);
+    await followEntity(page, table.endpoint, 'בטל מעקב');
+    await validateFollowedEntityToWidget(page, entityName ?? '', true);
   });
 });
