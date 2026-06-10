@@ -925,7 +925,8 @@ public class SearchResource {
                         continue;
                       }
 
-                      String fields = String.join(",", ReindexingUtil.getSearchIndexFields(entityType));
+                      String fields =
+                          String.join(",", ReindexingUtil.getSearchIndexFields(entityType));
                       EntityInterface entity = Entity.getEntity(ref, fields, Include.ALL);
 
                       String indexName =
