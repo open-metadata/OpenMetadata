@@ -17,7 +17,7 @@ import {
 } from '../constant/KnowledgeCenter.constant';
 import { SidebarItem } from '../constant/sidebar';
 import { TopicClass } from '../support/entity/TopicClass';
-import { descriptionBox, redirectToHomePage } from './common';
+import { redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
@@ -219,28 +219,23 @@ export const createQuickLink = async (
     modal.getByRole('heading', { name: 'Add Quick Link' })
   ).toBeVisible();
 
-  await modal.locator('[data-testid="displayName"]').fill(data.displayName);
-  await modal.locator('[data-testid="url"]').fill(data.url);
-  await modal.locator(descriptionBox).fill(data.description);
+  await modal.locator('[data-testid="displayName"] input').fill(data.displayName);
+  await modal.locator('[data-testid="url"] input').fill(data.url);
+  await modal.locator('[data-testid="description"] textarea').fill(data.description);
 
-  await modal
-    .locator('[data-testid="asset-select-list"] > .ant-select-selector input')
-    .click();
-  await modal
-    .locator('[data-testid="asset-select-list"] > .ant-select-selector input')
-    .fill(dataAsset.entity.name);
+  const assetInput = modal.locator(
+    '[data-testid="related-entities-container"] input[role="combobox"]'
+  );
+
+  await assetInput.click();
+  await assetInput.fill(dataAsset.entity.name);
 
   await expect(
-    page.locator('.ant-select-item-option-content', {
-      hasText: dataAsset.entity.name,
-    })
+    page.getByRole('option', { name: dataAsset.entity.name })
   ).toBeVisible();
 
-  await page
-    .locator('.ant-select-item-option-content', {
-      hasText: dataAsset.entity.name,
-    })
-    .click();
+  await page.getByRole('option', { name: dataAsset.entity.name }).click();
+  await page.keyboard.press('Escape')
 
   await modal.getByRole('button', { name: 'Save' }).click();
 };
@@ -300,25 +295,34 @@ export const updateQuickLink = async (
   ).toBeVisible();
 
   await modal
-    .locator('[data-testid="displayName"]')
+    .locator('[data-testid="displayName"] input')
     .fill(knowledgePageQuickLink.updatedDisplayName);
   await modal
-    .locator('[data-testid="url"]')
+    .locator('[data-testid="url"] input')
     .fill(knowledgePageQuickLink.updatedUrl);
-  await modal.locator(descriptionBox).click();
-  await modal.locator(descriptionBox).press('ControlOrMeta+a');
-  await modal.locator(descriptionBox).press('Delete');
-  await modal
-    .locator(descriptionBox)
-    .pressSequentially(knowledgePageQuickLink.updatedDescription);
 
-  await modal.locator('[data-testid="tag-selector"] input').first().click();
-  await modal
-    .locator('[data-testid="tag-selector"] input')
-    .first()
-    .fill(knowledgePageQuickLink.tag);
-  await page.getByTestId(`tag-${knowledgePageQuickLink.tagFqn}`).click();
+  const descriptionTextarea = modal.locator(
+    '[data-testid="description"] textarea'
+  );
 
+  await descriptionTextarea.click();
+  await descriptionTextarea.press('ControlOrMeta+a');
+  await descriptionTextarea.fill(knowledgePageQuickLink.updatedDescription);
+
+  const tagInput = modal.locator(
+    '[data-testid="tags-container"] input[role="combobox"]'
+  );
+
+  await tagInput.click();
+  await tagInput.fill(knowledgePageQuickLink.tag);
+
+  await expect(
+    page.getByRole('option', { name: knowledgePageQuickLink.tag })
+  ).toBeVisible();
+
+  await page.getByRole('option', { name: knowledgePageQuickLink.tag }).click();
+  await page.keyboard.press('Escape')
+  
   await modal.getByRole('button', { name: 'Save' }).click();
 
   await readQuickLink(page, {

@@ -27,16 +27,17 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   ChevronRight,
+  Copy06,
   Download01,
   Pin02,
-  Share06,
-  Trash01,
+  Trash01
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { FC, useMemo, useState } from 'react';
 import { SubmenuTrigger } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import CopyLinkButton from 'src/components/CopyLinkButton/CopyLinkButton.component';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -97,7 +98,6 @@ const FileActions: FC<FileActionsProps> = ({
   folders = [],
   onDeleteFile,
   onFileMoved,
-  onShareFile,
 }) => {
   const { t } = useTranslation();
   const [isMoving, setIsMoving] = useState(false);
@@ -133,19 +133,10 @@ const FileActions: FC<FileActionsProps> = ({
       <Dropdown.Popover className="tw:w-46">
         <Dropdown.Menu
           onAction={(key) => {
-            if (key === 'share') {
-              onShareFile?.(file);
-            } else if (key === 'delete') {
+            if (key === 'delete') {
               onDeleteFile?.(file);
             }
           }}>
-          <Dropdown.Item
-            data-testid="share-btn"
-            icon={Share06}
-            id="share"
-            label={t('label.share-file')}
-          />
-
           <SubmenuTrigger>
             <Dropdown.Item
               data-testid="move-btn"
@@ -333,6 +324,7 @@ const ListHeader: FC<ListHeaderProps> = ({
 const FileRow: FC<FileRowProps> = ({
   canDelete,
   file,
+  url,
   folders,
   isActive,
   isSelected,
@@ -341,7 +333,6 @@ const FileRow: FC<FileRowProps> = ({
   onFileMoved,
   onPreview,
   onSelectFile,
-  onShareFile,
 }) => {
   const { t } = useTranslation();
 
@@ -456,13 +447,19 @@ const FileRow: FC<FileRowProps> = ({
             />
           </TooltipTrigger>
         </Tooltip>
+         <CopyLinkButton  className="tw:w-8 tw:h-8" url={url ?? ''}>
+            <Copy06
+              aria-hidden="true"
+              size={20}
+              strokeWidth={1.8}
+            />
+          </CopyLinkButton>
         <FileActions
           canDelete={canDelete}
           file={file}
           folders={folders}
           onDeleteFile={onDeleteFile}
           onFileMoved={onFileMoved}
-          onShareFile={onShareFile}
         />
       </div>
     </Box>
@@ -481,6 +478,7 @@ const DocumentViewLoading = () =>
 const DocumentsView: FC<DocumentsViewProps> = ({
   canDelete,
   data,
+  url,
   folders,
   isLoading,
   previewFileId,
@@ -493,7 +491,6 @@ const DocumentsView: FC<DocumentsViewProps> = ({
   onFileMoved,
   onPreview,
   onSelectFile,
-  onShareFile,
 }) => {
   const selectedCount = selectedIds?.size ?? 0;
 
@@ -541,12 +538,12 @@ const DocumentsView: FC<DocumentsViewProps> = ({
                   isActive={previewFileId === file.id}
                   isSelected={selectedIds?.has(file.id)}
                   key={file.id}
+                  url={url}
                   onDeleteFile={onDeleteFile}
                   onDownload={onDownload}
                   onFileMoved={onFileMoved}
                   onPreview={onPreview}
                   onSelectFile={onSelectFile}
-                  onShareFile={onShareFile}
                 />
               ))
             )}

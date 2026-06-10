@@ -431,6 +431,7 @@ const ContextCenterDocumentsPage: FC = () => {
               isLoading={isDocumentsLoading}
               previewFileId={previewFile?.id}
               selectedIds={selectedIds}
+              url={previewFileUrl}
               onBulkDelete={handleBulkDelete}
               onBulkDownload={handleBulkDownload}
               onBulkMove={handleBulkMove}
