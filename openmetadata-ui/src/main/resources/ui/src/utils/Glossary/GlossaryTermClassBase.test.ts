@@ -25,9 +25,6 @@ jest.mock('./GlossaryTermUtils', () => ({
     .mockReturnValue([{ key: 'mock-tab' }]),
 }));
 
-jest.mock('../../utils/CustomizePage/CustomizePageUtils', () => ({
-  getTabLabelFromId: jest.fn((tab: string) => tab),
-}));
 
 jest.mock(
   '../../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component',
