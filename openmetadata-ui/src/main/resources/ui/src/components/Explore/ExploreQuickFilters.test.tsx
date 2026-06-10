@@ -115,6 +115,7 @@ jest.mock('../SearchDropdown/SearchDropdown', () => ({
 }));
 
 jest.mock('../../utils/ExploreUtils', () => ({
+  ...jest.requireActual('../../utils/ExplorePureUtils'),
   getAggregationOptions: jest.fn(),
 }));
 

@@ -13,7 +13,7 @@
 
 import { Space } from 'antd';
 import { AxiosError } from 'axios';
-import { isEqual, uniqWith } from 'lodash';
+import { isEmpty, isEqual, uniqWith } from 'lodash';
 import Qs from 'qs';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
@@ -22,11 +22,16 @@ import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useSearchStore } from '../../hooks/useSearchStore';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import { getOptionsFromAggregationBucket } from '../../utils/AdvancedSearchUtils';
+import { getEntityNameLabel } from '../../utils/EntityNameUtils';
 import {
   getCombinedQueryFilterObject,
   getQuickFilterWithDeletedFlag,
 } from '../../utils/ExplorePage/ExplorePageUtils';
-import { getAggregationOptions } from '../../utils/ExploreUtils';
+import {
+  getAggregationOptions,
+  getCanonicalEntityType,
+  getExploreQueryFilterMust,
+} from '../../utils/ExploreUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
@@ -34,6 +39,19 @@ import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface
 import { useAdvanceSearch } from './AdvanceSearchProvider/AdvanceSearchProvider.component';
 import { ExploreSearchIndex } from './ExplorePage.interface';
 import { ExploreQuickFiltersProps } from './ExploreQuickFilters.interface';
+
+const ENTITY_TYPE_FILTER_KEYS: ReadonlySet<string> = new Set([
+  EntityFields.ENTITY_TYPE,
+  EntityFields.ENTITY_TYPE_KEYWORD,
+]);
+
+const formatEntityTypeLabel = (value: string): string =>
+  getEntityNameLabel(getCanonicalEntityType(value));
+
+const getOptionLabelFormatter = (
+  key: string
+): ((value: string) => string) | undefined =>
+  ENTITY_TYPE_FILTER_KEYS.has(key) ? formatEntityTypeLabel : undefined;
 
 const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   fields,
@@ -46,6 +64,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   showSelectedCounts = false,
   optionPageSize,
   additionalActions,
+  immediateApply = false,
+  helperText,
 }) => {
   const location = useCustomLocation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
@@ -57,7 +77,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     [fields]
   );
 
-  const { showDeleted, quickFilter, searchText } = useMemo(() => {
+  const { showDeleted, searchText } = useMemo(() => {
     const parsed = Qs.parse(
       location.search.startsWith('?')
         ? location.search.substring(1)
@@ -66,7 +86,6 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
 
     return {
       showDeleted: parsed.showDeleted === 'true',
-      quickFilter: parsed.quickFilter ?? '',
       searchText: (parsed.search as string) ?? '',
     };
   }, [location.search]);
@@ -77,15 +96,40 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     [index]
   );
 
-  const getAdvancedSearchQuickFilters = useCallback(() => {
-    return getQuickFilterWithDeletedFlag(quickFilter as string, showDeleted);
-  }, [quickFilter, showDeleted]);
+  const hasSelectedFieldValues = useMemo(
+    () => fields.some((field) => !isEmpty(field.value)),
+    [fields]
+  );
 
-  const updatedQuickFilters = getAdvancedSearchQuickFilters();
-  const combinedQueryFilter = getCombinedQueryFilterObject(
-    updatedQuickFilters as QueryFilterInterface,
-    queryFilter as unknown as QueryFilterInterface,
-    defaultQueryFilter as unknown as QueryFilterInterface
+  // Facet options exclude the facet's own field (but keep every other
+  // constraint): unselecting Column must reveal the other asset types still
+  // available in the current browse location, and selecting values must not
+  // shrink the list to just the selection.
+  const getFacetQueryFilter = useCallback(
+    (key: string) => {
+      const isEntityTypeKey = ENTITY_TYPE_FILTER_KEYS.has(key);
+      const otherFieldsMust = getExploreQueryFilterMust(
+        fields.filter(
+          (field) =>
+            !isEmpty(field.value) &&
+            field.key !== key &&
+            !(isEntityTypeKey && ENTITY_TYPE_FILTER_KEYS.has(field.key))
+        )
+      );
+      const otherFieldsFilter = isEmpty(otherFieldsMust)
+        ? ''
+        : JSON.stringify({ query: { bool: { must: otherFieldsMust } } });
+
+      return getCombinedQueryFilterObject(
+        getQuickFilterWithDeletedFlag(
+          otherFieldsFilter,
+          showDeleted
+        ) as QueryFilterInterface,
+        queryFilter as unknown as QueryFilterInterface,
+        defaultQueryFilter as unknown as QueryFilterInterface
+      );
+    },
+    [fields, showDeleted, queryFilter, defaultQueryFilter]
   );
 
   const fetchDefaultOptions = async (
@@ -106,13 +150,21 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     // Use field-specific searchKey if provided, otherwise use the key
     const searchKeyToUse = fieldSearchKey ?? key;
 
-    let buckets = aggregations?.[key]?.buckets;
+    // The page aggregations reflect the full current query — including this
+    // facet's own selection — so they are only reusable when nothing scopes
+    // the facet differently from the page.
+    const canUsePageAggregations =
+      !hasSelectedFieldValues && isEmpty(defaultQueryFilter);
+
+    let buckets = canUsePageAggregations
+      ? aggregations?.[key]?.buckets
+      : undefined;
     if (!buckets) {
       const res = await getAggregationOptions(
         searchIndexToUse,
         searchKeyToUse,
         '',
-        JSON.stringify(combinedQueryFilter),
+        JSON.stringify(getFacetQueryFilter(key)),
         independent,
         showDeleted,
         optionPageSize,
@@ -120,10 +172,16 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         searchText
       );
 
-      buckets = res.data.aggregations[`sterms#${searchKeyToUse}`].buckets;
+      buckets =
+        res.data.aggregations[`sterms#${searchKeyToUse}`]?.buckets ?? [];
     }
 
-    setOptions(uniqWith(getOptionsFromAggregationBucket(buckets), isEqual));
+    setOptions(
+      uniqWith(
+        getOptionsFromAggregationBucket(buckets, getOptionLabelFormatter(key)),
+        isEqual
+      )
+    );
   };
 
   const getInitialOptions = async (
@@ -183,7 +241,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         searchIndexToUse,
         searchKeyToUse,
         value,
-        JSON.stringify(combinedQueryFilter),
+        JSON.stringify(getFacetQueryFilter(key)),
         independent,
         showDeleted,
         undefined,
@@ -191,8 +249,17 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         searchText
       );
 
-      const buckets = res.data.aggregations[`sterms#${searchKeyToUse}`].buckets;
-      setOptions(uniqWith(getOptionsFromAggregationBucket(buckets), isEqual));
+      const buckets =
+        res.data.aggregations[`sterms#${searchKeyToUse}`]?.buckets ?? [];
+      setOptions(
+        uniqWith(
+          getOptionsFromAggregationBucket(
+            buckets,
+            getOptionLabelFormatter(key)
+          ),
+          isEqual
+        )
+      );
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -213,8 +280,10 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             highlight
             dropdownClassName={field.dropdownClassName}
             hasNullOption={hasNullOption}
+            helperText={helperText}
             hideCounts={field.hideCounts ?? false}
             hideSearchBar={field.hideSearchBar ?? false}
+            immediateApply={immediateApply}
             independent={independent}
             index={displayIndex as ExploreSearchIndex}
             isSuggestionsLoading={isOptionsLoading}

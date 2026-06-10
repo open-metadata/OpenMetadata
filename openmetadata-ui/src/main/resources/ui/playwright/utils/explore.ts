@@ -86,10 +86,16 @@ export const selectNullOption = async (
     await searchAndClickOnOption(page, filter, true);
   }
 
-  const queryRes = page.waitForResponse(querySearchURL);
-  await page.click('[data-testid="update-btn"]');
+  // Immediate-apply commits on selection (no Update button); legacy mode commits
+  // on the Update click. Only wait on the Update-triggered response in legacy
+  // mode, otherwise the query has already fired and we just let loaders settle.
+  const updateButton = page.getByTestId('update-btn');
+  if (await updateButton.isVisible().catch(() => false)) {
+    const queryRes = page.waitForResponse(querySearchURL);
+    await updateButton.click();
+    await queryRes;
+  }
   await waitForAllLoadersToDisappear(page);
-  await queryRes;
 
   const queryParams = page.url().split('?')[1];
   const queryParamsObj = new URLSearchParams(queryParams);
@@ -134,7 +140,16 @@ export const selectDataAssetFilter = async (
     .fill(filterValue.toLowerCase());
   await dataAssetDropdownRequest;
   await page.getByTestId(`${filterValue.toLowerCase()}-checkbox`).check();
-  await page.getByTestId('update-btn').click();
+
+  // Legacy mode commits + closes on Update; immediate-apply commits on check but
+  // leaves the dropdown open, so close it via its trigger to match the helper's
+  // post-condition (results interactable for callers).
+  const updateButton = page.getByTestId('update-btn');
+  if (await updateButton.isVisible().catch(() => false)) {
+    await updateButton.click();
+  } else {
+    await page.getByRole('button', { name: 'Data Assets' }).click();
+  }
 };
 
 export const validateBucketsForIndex = async (page: Page, index: string) => {
@@ -172,11 +187,11 @@ export const expandServiceInExploreTree = async (
     const serviceNameRes = page.waitForResponse(
       '/api/v1/search/query?q=&index=database&from=0&size=0*mysql*'
     );
+    // Tree rows carry count badges, so match by testid instead of exact text
     await page
-      .locator('div')
-      .filter({ hasText: /^mysql$/ })
-      .locator('svg')
-      .first()
+      .locator('.ant-tree-treenode')
+      .filter({ has: page.getByTestId('explore-tree-title-mysql') })
+      .locator('.ant-tree-switcher svg')
       .click();
     await serviceNameRes;
   }

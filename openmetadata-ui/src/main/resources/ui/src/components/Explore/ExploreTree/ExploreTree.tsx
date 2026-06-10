@@ -30,11 +30,15 @@ import { searchQuery } from '../../../rest/searchAPI';
 import { getCountBadge } from '../../../utils/EntityDisplayUtils';
 import { getPluralizeEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { getExploreAssetIcon } from '../../../utils/ExploreIconUtils';
 import {
+  findTreeNodeKeyByBrowsePath,
   getAggregations,
+  getDisabledExploreTreeKeys,
   getQuickFilterObject,
   getQuickFilterObjectForEntities,
   getSubLevelHierarchyKey,
+  parseBrowsePathFields,
   updateTreeData,
   updateTreeDataWithCounts,
 } from '../../../utils/ExploreUtils';
@@ -67,7 +71,10 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => {
           )}
         </Typography.Text>
       }>
-      <div className="d-flex justify-between">
+      <div
+        className={classNames('d-flex justify-between', {
+          'tw:opacity-50': node.disabled,
+        })}>
         <Typography.Text
           className={classNames({
             'm-l-xss': node.data?.isRoot,
@@ -85,8 +92,13 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => {
   );
 };
 
-const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
+const ExploreTree = ({
+  onFieldValueSelect,
+  onTreeSelect,
+  selectedEntityTypes = [],
+}: ExploreTreeProps) => {
   const hasFetchedRef = useRef(false); // Use a ref to track if we've already fetched, in dev mode as it will fetch twice
+  const hadBrowsePathRef = useRef(false);
   const { t } = useTranslation();
   const { tab } = useRequiredParams<UrlParams>();
   const initTreeData = searchClassBase.getExploreTree();
@@ -97,6 +109,8 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
   const defaultExpandedKeys = useMemo(() => {
     return searchClassBase.getExploreTreeKey(tab as ExplorePageTabs);
   }, [tab]);
+
+  const [expandedKeys, setExpandedKeys] = useState<Key[]>(defaultExpandedKeys);
 
   const [parsedSearch, searchQueryParam, defaultServiceType] = useMemo(() => {
     const parsedSearch = Qs.parse(
@@ -117,7 +131,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
   const onLoadData: TreeProps['loadData'] = useCallback(
     async (treeNode: Parameters<NonNullable<TreeProps['loadData']>>[0]) => {
       try {
-        if (treeNode.children) {
+        if (treeNode.children || (treeNode as ExploreTreeNode).disabled) {
           return;
         }
 
@@ -160,7 +174,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
         });
 
         const aggregations = getAggregations(res.aggregations);
-        const buckets = aggregations[bucketToFind].buckets.filter(
+        const buckets = (aggregations[bucketToFind]?.buckets ?? []).filter(
           (item) =>
             !searchClassBase
               .notIncludeAggregationExploreTree()
@@ -179,10 +193,11 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
           let logo = undefined;
           if (isEntityType) {
             const isColumn = bucket.key === EntityType.TABLE_COLUMN;
-            logo = searchClassBase.getEntityIcon(
-              bucket.key,
-              classNames('service-icon w-4 h-4', { 'text-grey-500': isColumn })
-            ) ?? <></>;
+            const iconClass = classNames('service-icon w-4 h-4', {
+              'text-grey-500': isColumn,
+            });
+            logo = getExploreAssetIcon(bucket.key, iconClass) ??
+              searchClassBase.getEntityIcon(bucket.key, iconClass) ?? <></>;
           } else if (isServiceType) {
             const serviceIcon = serviceUtilClassBase.getServiceLogo(bucket.key);
             logo = (
@@ -194,15 +209,14 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
             );
           } else if (bucketToFind === EntityFields.DATABASE_DISPLAY_NAME) {
             type = 'Database';
-            logo = searchClassBase.getEntityIcon(
-              'database',
-              'service-icon w-4 h-4'
-            ) ?? <></>;
+            logo = getExploreAssetIcon('database', 'service-icon w-4 h-4') ?? (
+              <></>
+            );
           } else if (
             bucketToFind === EntityFields.DATABASE_SCHEMA_DISPLAY_NAME
           ) {
             type = 'Database Schema';
-            logo = searchClassBase.getEntityIcon(
+            logo = getExploreAssetIcon(
               'databaseSchema',
               'service-icon w-4 h-4'
             ) ?? <></>;
@@ -224,7 +238,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
               <>{bucket.key}</>
             ),
             tooltip: formattedEntityType,
-            count: isEntityType ? bucket.doc_count : undefined,
+            count: bucket.doc_count,
             key: id,
             type,
             icon: logo,
@@ -268,27 +282,42 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
       const node = info.node as ExploreTreeNode;
       const filterField = node.data?.filterField;
       if (filterField) {
-        onFieldValueSelect(filterField);
+        if (node.isLeaf) {
+          // Entity-type leaves refine the Type filter; the levels above them
+          // are the browse location. Both travel together so the page can
+          // update browsePath and quickFilter in a single navigation.
+          onTreeSelect({
+            browseFields: filterField.slice(0, -1),
+            typeField: filterField[filterField.length - 1],
+          });
+        } else {
+          onTreeSelect({ browseFields: filterField });
+        }
       } else if (node.isLeaf) {
-        const filterField = [
+        onFieldValueSelect([
           getQuickFilterObject(
             EntityFields.ENTITY_TYPE,
             node.data?.entityType ?? ''
           ),
-        ];
-        onFieldValueSelect(filterField);
+        ]);
       } else if (node.data?.childEntities) {
-        onFieldValueSelect([
-          getQuickFilterObjectForEntities(
+        const categoryField = {
+          ...getQuickFilterObjectForEntities(
             EntityFields.ENTITY_TYPE,
             node.data?.childEntities as EntityType[]
           ),
-        ]);
+          // The chip for a category root reads "In <category>" — keep the
+          // human title, the key alone only says "entityType".
+          label: isString(node.title)
+            ? node.title
+            : EntityFields.ENTITY_TYPE.toString(),
+        };
+        onTreeSelect({ browseFields: [categoryField] });
       }
 
       setSelectedKeys([node.key]);
     },
-    [onFieldValueSelect]
+    [onFieldValueSelect, onTreeSelect]
   );
 
   const fetchEntityCounts = useCallback(async () => {
@@ -328,11 +357,49 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
   }, []);
 
   useEffect(() => {
-    // Tree works on the quickFilter, so we need to reset the selectedKeys when the quickFilter is empty
-    if (isEmpty(parsedSearch.quickFilter)) {
+    // Hierarchical selections live in browsePath, static leaves in quickFilter
+    // — only clear the highlight when neither is active.
+    if (isEmpty(parsedSearch.quickFilter) && isEmpty(parsedSearch.browsePath)) {
       setSelectedKeys([]);
     }
   }, [parsedSearch]);
+
+  useEffect(() => {
+    // Keep the highlight in sync with the browse-path chips: removing the
+    // Service chip moves the selection back up to the matching ancestor
+    // (e.g. the category root), and removing the last browse chip clears it.
+    const browseFields = parseBrowsePathFields(parsedSearch.browsePath);
+    if (!isEmpty(browseFields)) {
+      const matchedKey = findTreeNodeKeyByBrowsePath(treeData, browseFields);
+      setSelectedKeys(matchedKey ? [matchedKey] : []);
+      hadBrowsePathRef.current = true;
+    } else if (hadBrowsePathRef.current) {
+      hadBrowsePathRef.current = false;
+      setSelectedKeys([]);
+    }
+  }, [parsedSearch.browsePath, treeData]);
+
+  // Top-level categories that cannot hold the selected asset type are grayed
+  // out so the user can't browse into services that won't contain it.
+  const disabledRootKeys = useMemo(
+    () => getDisabledExploreTreeKeys(treeData, selectedEntityTypes),
+    [treeData, selectedEntityTypes]
+  );
+
+  const displayTreeData = useMemo(
+    () =>
+      treeData.map((node) =>
+        disabledRootKeys.has(node.key) ? { ...node, disabled: true } : node
+      ),
+    [treeData, disabledRootKeys]
+  );
+
+  // Disabled categories also collapse — an expanded Databases subtree makes
+  // no sense once the selected asset type rules the whole category out.
+  const visibleExpandedKeys = useMemo(
+    () => expandedKeys.filter((key) => !disabledRootKeys.has(String(key))),
+    [expandedKeys, disabledRootKeys]
+  );
 
   if (isLoading) {
     return <Loader />;
@@ -379,14 +446,15 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
       showIcon
       className="explore-tree"
       data-testid="explore-tree"
-      defaultExpandedKeys={defaultExpandedKeys}
+      expandedKeys={visibleExpandedKeys}
       loadData={onLoadData}
       selectedKeys={selectedKeys}
       switcherIcon={switcherIcon}
       titleRender={(node) => (
         <ExploreTreeTitle node={node as ExploreTreeNode} />
       )}
-      treeData={treeData as DataNode[]}
+      treeData={displayTreeData as DataNode[]}
+      onExpand={(keys) => setExpandedKeys(keys)}
       onSelect={onNodeSelect}
     />
   );

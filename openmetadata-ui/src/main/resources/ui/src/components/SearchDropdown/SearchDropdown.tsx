@@ -74,6 +74,8 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   triggerButtonSize = 'small',
   hideSearchBar = false,
   singleSelect = false,
+  immediateApply = false,
+  helperText,
   getPopupContainer,
 }) => {
   const tabsInfo = searchClassBase.getTabsInfo();
@@ -152,34 +154,70 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     highlight,
   ]);
 
+  // Handle dropdown close
+  const handleDropdownClose = () => {
+    setIsDropDownOpen(false);
+  };
+
+  // Build the onChange payload (prepending the null option when selected) and emit it
+  const emitChange = (
+    updatedOptions: SearchDropdownOption[],
+    isNullSelected: boolean
+  ) => {
+    if (isNullSelected) {
+      onChange(
+        [
+          { key: NULL_OPTION_KEY, label: nullLabelText },
+          ...(singleSelect ? [] : updatedOptions),
+        ],
+        searchKey
+      );
+    } else {
+      onChange(updatedOptions, searchKey);
+    }
+  };
+
   // handle menu item click
   const handleMenuItemClick: MenuItemProps['onClick'] = (info) => {
     const currentKey = info.key;
     const option = options.find((op) => op.key === currentKey);
+    let updatedValues: SearchDropdownOption[];
+    let updatedNullSelected = nullOptionSelected;
 
     if (singleSelect) {
       const isAlreadySelected = selectedOptions.some(
         (opt) => opt.key === currentKey
       );
-      const updatedValues = !isAlreadySelected && option ? [option] : [];
-      setSelectedOptions(updatedValues);
+      updatedValues = !isAlreadySelected && option ? [option] : [];
       if (!isAlreadySelected && option) {
+        updatedNullSelected = false;
         setNullOptionSelected(false);
       }
     } else {
       const isAlreadySelected = selectedOptions.some(
-        (option) => option.key === currentKey
+        (opt) => opt.key === currentKey
       );
-      const updatedValues = isAlreadySelected
-        ? selectedOptions.filter((option) => option.key !== currentKey)
+      updatedValues = isAlreadySelected
+        ? selectedOptions.filter((opt) => opt.key !== currentKey)
         : [...selectedOptions, ...(option ? [option] : [])];
-      setSelectedOptions(updatedValues);
+    }
+
+    setSelectedOptions(updatedValues);
+
+    if (immediateApply) {
+      emitChange(updatedValues, updatedNullSelected);
+      if (singleSelect) {
+        handleDropdownClose();
+      }
     }
   };
 
   // handle clear all
   const handleClear = () => {
     setSelectedOptions([]);
+    if (immediateApply) {
+      emitChange([], nullOptionSelected);
+    }
   };
 
   // handle search
@@ -190,39 +228,37 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
 
   const debouncedOnSearch = debounce(handleSearch, 500);
 
-  // Handle dropdown close
-  const handleDropdownClose = () => {
-    setIsDropDownOpen(false);
-  };
-
   // Handle null option change
   const handleNullOptionChange = (checked: boolean) => {
     setNullOptionSelected(checked);
+    let updatedValues = selectedOptions;
     if (singleSelect && checked) {
+      updatedValues = [];
       setSelectedOptions([]);
+    }
+    if (immediateApply) {
+      emitChange(updatedValues, checked);
     }
   };
 
   // Handle update button click
   const handleUpdate = () => {
-    // call on change with updated value
-    if (nullOptionSelected) {
-      onChange(
-        [
-          { key: NULL_OPTION_KEY, label: nullLabelText },
-          ...(singleSelect ? [] : selectedOptions),
-        ],
-        searchKey
-      );
-    } else {
-      onChange(selectedOptions, searchKey);
-    }
+    emitChange(selectedOptions, nullOptionSelected);
     handleDropdownClose();
   };
 
+  // In immediate-apply mode the QUERY bar owns clearing, and small option
+  // sets don't need a search box — matches the compact design menu.
   const showClearAllBtn = useMemo(
-    () => !singleSelect && selectedOptions.length > 1,
-    [singleSelect, selectedOptions]
+    () => !singleSelect && selectedOptions.length > 1 && !immediateApply,
+    [singleSelect, selectedOptions, immediateApply]
+  );
+
+  const effectiveHideSearchBar = useMemo(
+    () =>
+      hideSearchBar ||
+      (immediateApply && isEmpty(searchText) && options.length <= 8),
+    [hideSearchBar, immediateApply, searchText, options]
   );
 
   useEffect(() => {
@@ -275,10 +311,12 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     (menuNode: ReactNode) => (
       <Card
         bodyStyle={{ padding: 0 }}
-        className={classNames('custom-dropdown-render', dropdownClassName)}
+        className={classNames('custom-dropdown-render', dropdownClassName, {
+          'immediate-apply-dropdown': immediateApply,
+        })}
         data-testid="drop-down-menu">
         <Space className="w-full" direction="vertical" size={0}>
-          {!hideSearchBar && (
+          {!effectiveHideSearchBar && (
             <div className="p-t-sm p-x-sm">
               <Input
                 autoFocus
@@ -307,7 +345,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
               </Button>
             </>
           )}
-          {!hideSearchBar && (
+          {!effectiveHideSearchBar && (
             <Divider
               className={classNames(showClearAllBtn ? 'm-y-0' : 'm-t-xs m-b-0')}
             />
@@ -340,22 +378,34 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
           )}
 
           {getDropdownBody(menuNode)}
-          <Space className="p-sm p-t-xss">
-            <Button
-              className="update-btn"
-              data-testid="update-btn"
-              size="small"
-              onClick={handleUpdate}>
-              {t('label.update')}
-            </Button>
-            <Button
-              data-testid="close-btn"
-              size="small"
-              type="link"
-              onClick={handleDropdownClose}>
-              {t('label.close')}
-            </Button>
-          </Space>
+          {immediateApply ? (
+            helperText ? (
+              <div
+                className="p-x-sm p-y-xss search-dropdown-helper-text"
+                data-testid="search-dropdown-helper-text">
+                <Typography.Text className="text-xs" type="secondary">
+                  {helperText}
+                </Typography.Text>
+              </div>
+            ) : null
+          ) : (
+            <Space className="p-sm p-t-xss">
+              <Button
+                className="update-btn"
+                data-testid="update-btn"
+                size="small"
+                onClick={handleUpdate}>
+                {t('label.update')}
+              </Button>
+              <Button
+                data-testid="close-btn"
+                size="small"
+                type="link"
+                onClick={handleDropdownClose}>
+                {t('label.close')}
+              </Button>
+            </Space>
+          )}
         </Space>
       </Card>
     ),
@@ -374,6 +424,8 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       handleUpdate,
       handleDropdownClose,
       hideSearchBar,
+      immediateApply,
+      helperText,
     ]
   );
 
