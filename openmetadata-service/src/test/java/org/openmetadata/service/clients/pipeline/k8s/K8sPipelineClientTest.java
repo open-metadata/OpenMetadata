@@ -46,6 +46,7 @@ import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1PodList;
 import io.kubernetes.client.openapi.models.V1PodSpec;
+import io.kubernetes.client.openapi.models.V1SeccompProfile;
 import io.kubernetes.client.openapi.models.V1Secret;
 import io.kubernetes.client.openapi.models.V1Status;
 import java.lang.reflect.Field;
@@ -1684,6 +1685,141 @@ class K8sPipelineClientTest {
     assertTrue(
         configEnv.getValueFrom().getConfigMapKeyRef().getName().length() <= 63,
         "ConfigMap name should fit Kubernetes limits");
+  }
+
+  @Test
+  void testSeccompProfileRuntimeDefaultIsAppliedToIngestionJob() throws Exception {
+    K8sPipelineClient seccompClient = createClientWithSeccompProfile("RuntimeDefault", null);
+
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
+    when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
+    when(createJobRequest.execute()).thenReturn(new V1Job());
+
+    seccompClient.runPipeline(pipeline, testService);
+
+    ArgumentCaptor<V1Job> jobCaptor = ArgumentCaptor.forClass(V1Job.class);
+    verify(batchApi).createNamespacedJob(eq(NAMESPACE), jobCaptor.capture());
+
+    V1PodSpec podSpec = jobCaptor.getValue().getSpec().getTemplate().getSpec();
+    V1SeccompProfile podProfile = podSpec.getSecurityContext().getSeccompProfile();
+    assertNotNull(podProfile, "Pod-level seccompProfile should be set");
+    assertEquals("RuntimeDefault", podProfile.getType());
+    assertNull(podProfile.getLocalhostProfile());
+
+    V1SeccompProfile containerProfile =
+        podSpec.getContainers().get(0).getSecurityContext().getSeccompProfile();
+    assertNotNull(containerProfile, "Container-level seccompProfile should be set");
+    assertEquals("RuntimeDefault", containerProfile.getType());
+  }
+
+  @Test
+  void testSeccompProfileLocalhostIncludesLocalhostProfilePath() throws Exception {
+    K8sPipelineClient seccompClient =
+        createClientWithSeccompProfile("Localhost", "profiles/audit.json");
+
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
+    when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
+    when(createJobRequest.execute()).thenReturn(new V1Job());
+
+    seccompClient.runPipeline(pipeline, testService);
+
+    ArgumentCaptor<V1Job> jobCaptor = ArgumentCaptor.forClass(V1Job.class);
+    verify(batchApi).createNamespacedJob(eq(NAMESPACE), jobCaptor.capture());
+
+    V1SeccompProfile podProfile =
+        jobCaptor
+            .getValue()
+            .getSpec()
+            .getTemplate()
+            .getSpec()
+            .getSecurityContext()
+            .getSeccompProfile();
+    assertEquals("Localhost", podProfile.getType());
+    assertEquals("profiles/audit.json", podProfile.getLocalhostProfile());
+  }
+
+  @Test
+  void testSeccompProfileUnsetByDefault() throws Exception {
+    // The default client (no seccompProfileType configured) should not emit a seccompProfile.
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
+    when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
+    when(createJobRequest.execute()).thenReturn(new V1Job());
+
+    client.runPipeline(pipeline, testService);
+
+    ArgumentCaptor<V1Job> jobCaptor = ArgumentCaptor.forClass(V1Job.class);
+    verify(batchApi).createNamespacedJob(eq(NAMESPACE), jobCaptor.capture());
+
+    assertNull(
+        jobCaptor
+            .getValue()
+            .getSpec()
+            .getTemplate()
+            .getSpec()
+            .getSecurityContext()
+            .getSeccompProfile(),
+        "Default client should not set a seccompProfile");
+  }
+
+  @Test
+  void testSeccompProfileAppliedToAutomationAndApplicationJobs() throws Exception {
+    K8sPipelineClient seccompClient = createClientWithSeccompProfile("RuntimeDefault", null);
+
+    when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
+    when(createJobRequest.execute()).thenReturn(new V1Job());
+
+    seccompClient.runAutomationsWorkflow(createTestWorkflow("Nightly Cleanup"));
+    ArgumentCaptor<V1Job> automationCaptor = ArgumentCaptor.forClass(V1Job.class);
+    verify(batchApi).createNamespacedJob(eq(NAMESPACE), automationCaptor.capture());
+    V1PodSpec automationPod = automationCaptor.getValue().getSpec().getTemplate().getSpec();
+    assertNotNull(
+        automationPod.getSecurityContext(), "Automation job pod must have a securityContext");
+    assertEquals(
+        "RuntimeDefault", automationPod.getSecurityContext().getSeccompProfile().getType());
+    assertEquals(
+        "RuntimeDefault",
+        automationPod.getContainers().get(0).getSecurityContext().getSeccompProfile().getType());
+
+    reset(batchApi, createJobRequest);
+    when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
+    when(createJobRequest.execute()).thenReturn(new V1Job());
+
+    seccompClient.runApplicationFlow(createTestApplication("Query Runner"));
+    ArgumentCaptor<V1Job> applicationCaptor = ArgumentCaptor.forClass(V1Job.class);
+    verify(batchApi).createNamespacedJob(eq(NAMESPACE), applicationCaptor.capture());
+    V1PodSpec applicationPod = applicationCaptor.getValue().getSpec().getTemplate().getSpec();
+    assertNotNull(
+        applicationPod.getSecurityContext(), "Application job pod must have a securityContext");
+    assertEquals(
+        "RuntimeDefault", applicationPod.getSecurityContext().getSeccompProfile().getType());
+    assertEquals(
+        "RuntimeDefault",
+        applicationPod.getContainers().get(0).getSecurityContext().getSeccompProfile().getType());
+  }
+
+  private K8sPipelineClient createClientWithSeccompProfile(
+      String seccompProfileType, String seccompLocalhostProfile) {
+    Parameters params = new Parameters();
+    params.setAdditionalProperty("namespace", NAMESPACE);
+    params.setAdditionalProperty("inCluster", "false");
+    params.setAdditionalProperty("skipInit", "true");
+    params.setAdditionalProperty("ingestionImage", "openmetadata/ingestion:test");
+    params.setAdditionalProperty("serviceAccountName", "test-sa");
+    params.setAdditionalProperty("seccompProfileType", seccompProfileType);
+    if (seccompLocalhostProfile != null) {
+      params.setAdditionalProperty("seccompLocalhostProfile", seccompLocalhostProfile);
+    }
+
+    PipelineServiceClientConfiguration config = new PipelineServiceClientConfiguration();
+    config.setEnabled(true);
+    config.setMetadataApiEndpoint("http://localhost:8585/api");
+    config.setParameters(params);
+
+    K8sPipelineClient seccompClient = new K8sPipelineClient(config);
+    seccompClient.setBatchApi(batchApi);
+    seccompClient.setCoreApi(coreApi);
+    setField(seccompClient, "customObjectsApi", customObjectsApi);
+    return seccompClient;
   }
 
   private static Map<String, String> toEnvMap(List<V1EnvVar> envVars) {
