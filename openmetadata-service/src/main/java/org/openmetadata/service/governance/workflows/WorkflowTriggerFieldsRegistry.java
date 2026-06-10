@@ -28,9 +28,11 @@ import org.slf4j.LoggerFactory;
  */
 public final class WorkflowTriggerFieldsRegistry {
   private static final Logger LOG = LoggerFactory.getLogger(WorkflowTriggerFieldsRegistry.class);
-  // Canonical entity-schema roots. Scanning all of json/schema would risk basename collisions
-  // (e.g. entity/feed/domain.json vs entity/domains/domain.json), so we limit to where the
-  // workflow-target entity schemas live.
+  // Roots that contain the workflow-target entity schemas. Scanned broadly (rather than an explicit
+  // per-entity allowlist) so new entity types are picked up automatically. These roots still
+  // contain same-basename files (e.g. entity/feed/domain.json vs entity/domains/domain.json), so
+  // determinism on a basename clash is guaranteed by the keep-first + error guard in readSchema,
+  // not by this path selection.
   private static final String[] SCHEMA_PATHS = {
     "json/schema/entity", "json/schema/tests", "json/schema/dataInsight"
   };
