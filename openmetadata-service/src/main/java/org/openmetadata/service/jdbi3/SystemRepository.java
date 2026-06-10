@@ -17,12 +17,19 @@ import com.unboundid.util.ssl.SSLUtil;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonValue;
 import jakarta.ws.rs.core.Response;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -37,6 +44,7 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
+import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
@@ -68,6 +76,10 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.attachments.AssetService;
+import org.openmetadata.service.attachments.AssetServiceFactory;
+import org.openmetadata.service.attachments.NoOpAssetService;
+import org.openmetadata.service.config.ObjectStorageConfiguration;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.fernet.Fernet;
@@ -555,9 +567,133 @@ public class SystemRepository {
           "Semantic Search", getEmbeddingsValidation(applicationConfig));
     }
 
+    validation.setAdditionalProperty(
+        "Object Storage", getObjectStorageValidation(applicationConfig));
+
     addExtraValidations(applicationConfig, validation);
 
     return validation;
+  }
+
+  private static final String OBJECT_STORAGE_DESCRIPTION =
+      "Object storage holds uploaded file content (e.g. Context Center Drive)";
+  private static final int OBJECT_STORAGE_PROBE_TIMEOUT_SECONDS = 10;
+
+  @VisibleForTesting
+  StepValidation getObjectStorageValidation(OpenMetadataApplicationConfig applicationConfig) {
+    StepValidation result = new StepValidation().withDescription(OBJECT_STORAGE_DESCRIPTION);
+    ObjectStorageConfiguration storageConfig = applicationConfig.getObjectStorage();
+    if (storageConfig == null || !storageConfig.isEnabled()) {
+      result
+          .withMessage(
+              "Object storage is disabled (objectStorage.enabled=false or missing). Uploaded "
+                  + "file content is discarded and file processing fails. Configure "
+                  + "objectStorage with provider s3, azure, or inmemory.")
+          .withPassed(false);
+    } else {
+      result = validateActiveObjectStorage(result, storageConfig.getProvider());
+    }
+    return result;
+  }
+
+  private StepValidation validateActiveObjectStorage(StepValidation validation, String provider) {
+    StepValidation result;
+    try {
+      AssetService assetService = AssetServiceFactory.getService();
+      if (AssetServiceFactory.unwrap(assetService) instanceof NoOpAssetService) {
+        result =
+            validation
+                .withMessage(
+                    "Object storage provider is NOOP: uploaded file content is discarded and "
+                        + "file processing fails. Configure provider s3, azure, or inmemory.")
+                .withPassed(false);
+      } else {
+        result = probeObjectStorage(validation, assetService, provider);
+      }
+    } catch (IllegalStateException e) {
+      result =
+          validation
+              .withMessage("Object storage is not initialized: " + e.getMessage())
+              .withPassed(false);
+    }
+    return result;
+  }
+
+  /** Writes, reads back, and deletes a tiny probe object to prove the backend actually works. */
+  private StepValidation probeObjectStorage(
+      StepValidation validation, AssetService assetService, String provider) {
+    Asset probe = new Asset();
+    probe.setId("system-validation-" + UUID.randomUUID());
+    probe.setContentType("text/plain");
+    byte[] payload =
+        "OpenMetadata object storage validation probe".getBytes(StandardCharsets.UTF_8);
+    StepValidation result;
+    try {
+      assetService
+          .upload(probe, new ByteArrayInputStream(payload))
+          .get(OBJECT_STORAGE_PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+      byte[] readBack = readProbe(assetService, probe);
+      if (Arrays.equals(payload, readBack)) {
+        result =
+            validation
+                .withMessage(
+                    String.format(
+                        "Object storage (provider '%s') passed a write/read/delete probe",
+                        provider))
+                .withPassed(true);
+      } else {
+        result =
+            validation
+                .withMessage(
+                    String.format(
+                        "Object storage probe on provider '%s' read back different content than"
+                            + " was written",
+                        provider))
+                .withPassed(false);
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      result =
+          validation
+              .withMessage("Object storage probe was interrupted: " + e.getMessage())
+              .withPassed(false);
+    } catch (ExecutionException | TimeoutException | java.io.IOException e) {
+      result =
+          validation
+              .withMessage(
+                  String.format(
+                      "Object storage probe failed on provider '%s': %s", provider, e.getMessage()))
+              .withPassed(false);
+    } finally {
+      deleteProbeQuietly(assetService, probe);
+    }
+    return result;
+  }
+
+  private byte[] readProbe(AssetService assetService, Asset probe)
+      throws InterruptedException, ExecutionException, TimeoutException, java.io.IOException {
+    byte[] result = null;
+    try (InputStream stream =
+        assetService.read(probe).get(OBJECT_STORAGE_PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+      if (stream != null) {
+        result = stream.readAllBytes();
+      }
+    }
+    return result;
+  }
+
+  private void deleteProbeQuietly(AssetService assetService, Asset probe) {
+    try {
+      assetService.delete(probe).get(OBJECT_STORAGE_PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOG.warn("Cleanup of object storage validation probe {} was interrupted", probe.getId());
+    } catch (ExecutionException | TimeoutException e) {
+      LOG.warn(
+          "Failed to clean up object storage validation probe {}: {}",
+          probe.getId(),
+          e.getMessage());
+    }
   }
 
   public void addExtraValidations(
