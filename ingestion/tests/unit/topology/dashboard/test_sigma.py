@@ -324,19 +324,13 @@ class SigmaUnitTest(TestCase):
         Test query-based lineage when queries are available
         """
         # Setup mocks
-        self.sigma.client.get_workbook_queries = (
-            lambda *_: MOCK_WORKBOOK_QUERIES_RESPONSE
-        )
-        self.sigma.data_models = [
-            Elements(elementId="1a", name="chart1", columns=["col1"], vizualizationType="table")
-        ]
+        self.sigma.client.get_workbook_queries = lambda *_: MOCK_WORKBOOK_QUERIES_RESPONSE
+        self.sigma.data_models = [Elements(elementId="1a", name="chart1", columns=["col1"], vizualizationType="table")]
 
         # Mock metadata methods
         self.sigma._get_datamodel = MagicMock(return_value=MOCK_DATA_MODEL)
         self.sigma.metadata.get_by_name = MagicMock(return_value=MOCK_DATABASE_SERVICE)
-        self.sigma.metadata.search_in_any_service = MagicMock(
-            return_value=MOCK_TABLE_ENTITY
-        )
+        self.sigma.metadata.search_in_any_service = MagicMock(return_value=MOCK_TABLE_ENTITY)
 
         # Execute
         results = list(
@@ -355,9 +349,7 @@ class SigmaUnitTest(TestCase):
         # Setup mocks - no queries available
         self.sigma.client.get_workbook_queries = lambda *_: None
         self.sigma.client.get_lineage_details = lambda *_: [MOCK_NODE_DETAILS]
-        self.sigma.data_models = [
-            Elements(elementId="1a", name="chart1", columns=["col1"], vizualizationType="table")
-        ]
+        self.sigma.data_models = [Elements(elementId="1a", name="chart1", columns=["col1"], vizualizationType="table")]
 
         # Mock metadata methods
         self.sigma._get_datamodel = MagicMock(return_value=MOCK_DATA_MODEL)
@@ -381,9 +373,7 @@ class SigmaUnitTest(TestCase):
 
         self.sigma.client.get_workbook_queries = lambda *_: queries_response
         self.sigma.client.get_lineage_details = lambda *_: None
-        self.sigma.data_models = [
-            Elements(elementId="1a", name="chart1", columns=["col1"], vizualizationType="table")
-        ]
+        self.sigma.data_models = [Elements(elementId="1a", name="chart1", columns=["col1"], vizualizationType="table")]
 
         # Mock metadata methods
         self.sigma._get_datamodel = MagicMock(return_value=MOCK_DATA_MODEL)
@@ -405,15 +395,11 @@ class SigmaUnitTest(TestCase):
         non_viz_element = Elements(elementId="nv1", name="text_box", columns=[])
 
         # Test 1: query-based path
-        self.sigma.client.get_workbook_queries = (
-            lambda *_: MOCK_WORKBOOK_QUERIES_RESPONSE
-        )
+        self.sigma.client.get_workbook_queries = lambda *_: MOCK_WORKBOOK_QUERIES_RESPONSE
         self.sigma.data_models = [non_viz_element]
         self.sigma._get_datamodel = MagicMock()
 
-        results = list(
-            self.sigma.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS)
-        )
+        results = list(self.sigma.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS))
         # No lineage should be yielded and _get_datamodel should never be called
         self.assertEqual(results, [])
         self.sigma._get_datamodel.assert_not_called()
@@ -423,9 +409,7 @@ class SigmaUnitTest(TestCase):
         self.sigma.data_models = [non_viz_element]
         self.sigma._get_datamodel = MagicMock()
 
-        results = list(
-            self.sigma.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS)
-        )
+        results = list(self.sigma.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS))
         self.assertEqual(results, [])
         self.sigma._get_datamodel.assert_not_called()
 
@@ -441,9 +425,7 @@ class SigmaUnitTest(TestCase):
 
         self.sigma.client.get_chart_details = lambda *_: [viz_element, non_viz_element]
 
-        results = [
-            r.right for r in self.sigma.yield_datamodel(MOCK_DASHBOARD_DETAILS) if r.right
-        ]
+        results = [r.right for r in self.sigma.yield_datamodel(MOCK_DASHBOARD_DETAILS) if r.right]
         # Only the visualization element should produce a DataModel request
         self.assertEqual(len(results), 1)
         self.assertEqual(str(results[0].name.root), "viz1")

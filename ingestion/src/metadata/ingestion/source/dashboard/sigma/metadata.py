@@ -265,9 +265,7 @@ class SigmaSource(DashboardServiceSource):
                 if not data_model.vizualizationType:
                     continue
 
-                data_model_entity = self._get_datamodel(
-                    datamodel_id=data_model.elementId
-                )
+                data_model_entity = self._get_datamodel(datamodel_id=data_model.elementId)
                 if not data_model_entity:
                     continue
 
@@ -372,9 +370,7 @@ class SigmaSource(DashboardServiceSource):
                 if not data_model.vizualizationType:
                     continue
 
-                data_model_entity = self._get_datamodel(
-                    datamodel_id=data_model.elementId
-                )
+                data_model_entity = self._get_datamodel(datamodel_id=data_model.elementId)
                 if not data_model_entity:
                     continue
 
