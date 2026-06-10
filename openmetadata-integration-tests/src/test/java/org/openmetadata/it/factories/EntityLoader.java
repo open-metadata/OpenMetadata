@@ -1182,6 +1182,60 @@ public final class EntityLoader {
     return columns;
   }
 
+  /**
+   * Creates a single intentionally pathological "wide" table in one create call — a huge table
+   * description plus a very large column count, each column carrying a sizable description. Used by
+   * the static seed to stress single-document reindexing and {@code _source} size (the 413 /
+   * immense-term / field-limit paths). The create payload scales with
+   * {@code columnCount × columnDescriptionChars}, so a large count can exceed request/DB size limits
+   * — the seed runner gives the JVM extra heap and exposes the sizes as tunable properties.
+   */
+  public static Table loadWideTable(
+      final TestNamespace ns,
+      final int columnCount,
+      final int columnDescriptionChars,
+      final int tableDescriptionChars) {
+    final String schemaFqn = ensureTablesSchema(ns).getFullyQualifiedName();
+    final String name = ns.prefix("wide_table") + "_0";
+    LOG.info(
+        "Creating wide table '{}': {} columns (columnDesc={}c, tableDesc={}c)",
+        name,
+        columnCount,
+        columnDescriptionChars,
+        tableDescriptionChars);
+    final Table created =
+        Tables.create()
+            .name(name)
+            .withDescription(repeatedText(tableDescriptionChars))
+            .inSchema(schemaFqn)
+            .withColumns(buildDescribedColumns(columnCount, columnDescriptionChars))
+            .execute();
+    return created;
+  }
+
+  private static List<Column> buildDescribedColumns(final int n, final int descriptionChars) {
+    final String description = repeatedText(descriptionChars);
+    final List<Column> columns = new ArrayList<>(n);
+    for (int i = 0; i < n; i++) {
+      columns.add(
+          new Column()
+              .withName("col_" + i)
+              .withDataType(ColumnDataType.STRING)
+              .withDescription(description));
+    }
+    return columns;
+  }
+
+  private static String repeatedText(final int targetChars) {
+    final String unit = "lorem ipsum dolor sit amet ";
+    final StringBuilder text = new StringBuilder(targetChars + unit.length());
+    while (text.length() < targetChars) {
+      text.append(unit);
+    }
+    text.setLength(Math.max(0, targetChars));
+    return text.toString();
+  }
+
   private static List<SearchIndexField> defaultSearchIndexFields() {
     return List.of(
         new SearchIndexField().withName("id").withDataType(SearchIndexDataType.TEXT),

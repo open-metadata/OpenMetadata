@@ -1265,7 +1265,9 @@
                 <configuration>
                   <forkCount>1</forkCount>
                   <reuseForks>true</reuseForks>
-                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <!-- The wide-table seed builds ~1M Column objects and serializes the whole create
+                       payload in memory in one shot, so this fork needs more heap than the others. -->
+                  <argLine>-Xmx8192m -XX:+UseG1GC</argLine>
                   <includes>
                     <include>**/tests/search/StaticDatasetSeedIT.java</include>
                   </includes>

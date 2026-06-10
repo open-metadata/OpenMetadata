@@ -11,6 +11,7 @@ import org.openmetadata.it.server.ServerHandle;
 import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.sdk.fluent.Apps;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +41,16 @@ class StaticDatasetSeedIT {
   private static final int COLUMNS_PER_TABLE = Integer.getInteger("jpw.scale.columns", 5);
   private static final int LOAD_WORKERS = Integer.getInteger("jpw.scale.workers", 32);
 
+  // Single pathological "wide" table — huge table description + ~1M columns each with a sizable
+  // description — built in one create call to stress single-document reindex / _source size.
+  // All tunable: a smaller count is wise if the target cluster's request/DB size limits are low.
+  private static final int WIDE_TABLE_COLUMNS =
+      Integer.getInteger("jpw.seed.wideTable.columns", 1_000_000);
+  private static final int WIDE_COLUMN_DESC_CHARS =
+      Integer.getInteger("jpw.seed.wideTable.columnDescChars", 256);
+  private static final int WIDE_TABLE_DESC_CHARS =
+      Integer.getInteger("jpw.seed.wideTable.descChars", 100_000);
+
   @BeforeAll
   static void setup() {
     final ServerHandle server = OssTestServer.defaultHandle();
@@ -64,5 +75,18 @@ class StaticDatasetSeedIT {
         summary.totalEntities(),
         summary.totalColumns(),
         summary.totalDuration());
+  }
+
+  @Test
+  void seedWideTable() {
+    final TestNamespace ns = new TestNamespace("StaticDatasetSeed");
+    ns.setMethodId("seedWideTable");
+    final Table wide =
+        EntityLoader.loadWideTable(
+            ns, WIDE_TABLE_COLUMNS, WIDE_COLUMN_DESC_CHARS, WIDE_TABLE_DESC_CHARS);
+    LOG.info(
+        "StaticDatasetSeedIT wide table created: {} ({} columns)",
+        wide.getFullyQualifiedName(),
+        wide.getColumns() == null ? 0 : wide.getColumns().size());
   }
 }
