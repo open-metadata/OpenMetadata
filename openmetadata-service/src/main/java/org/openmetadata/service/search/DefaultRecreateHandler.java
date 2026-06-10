@@ -14,6 +14,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingMetrics;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 
 /**
  * Default implementation of RecreateHandler that provides zero-downtime index recreation.
@@ -200,6 +201,8 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
           metrics.recordPromotionSuccess(entityType);
         }
 
+        stampPromoted(entityType);
+
         for (String oldIndex : oldIndicesToDelete) {
           try {
             if (searchClient.indexExists(oldIndex)) {
@@ -380,6 +383,8 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         promoteMetrics.recordPromotionSuccess(entityType);
       }
 
+      stampPromoted(entityType);
+
       for (String oldIndex : oldIndicesToDelete) {
         try {
           if (searchClient.indexExists(oldIndex)) {
@@ -400,6 +405,22 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       }
     } finally {
       searchRepository.unregisterStagedIndex(entityType, stagedIndex);
+    }
+  }
+
+  /**
+   * Records the current mapping version/hash for a freshly-promoted entity so reindex-drift
+   * detection sees the live index as up to date. Best-effort: a stamping failure must not fail a
+   * promotion that already succeeded.
+   */
+  private void stampPromoted(String entityType) {
+    CollectionDAO collectionDAO = Entity.getCollectionDAO();
+    if (collectionDAO != null) {
+      try {
+        IndexMappingVersionTracker.create(collectionDAO).updateMappingVersion(entityType);
+      } catch (Exception e) {
+        LOG.warn("Failed to stamp index mapping version for entity '{}'", entityType, e);
+      }
     }
   }
 

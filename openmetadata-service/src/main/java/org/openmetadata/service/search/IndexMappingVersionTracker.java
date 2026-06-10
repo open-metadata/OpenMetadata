@@ -154,6 +154,21 @@ public class IndexMappingVersionTracker {
     persistMappingVersions(reindexedMappings);
   }
 
+  /**
+   * Stamps the version/hash for a single entity. Used by the index promotion path ({@code
+   * DefaultRecreateHandler}) so each entity is recorded the moment its staged index is promoted,
+   * instead of blanket-stamping at job end. Hashes only that entity's mapping to avoid rehashing
+   * every entity on every promotion.
+   */
+  public void updateMappingVersion(String entityType) throws IOException {
+    MappingEntry mappingEntry = computeMappingForEntity(entityType);
+    if (mappingEntry == null) {
+      LOG.warn("No index mapping found for entity '{}'; skipping version stamp", entityType);
+    } else {
+      persistMappingVersions(Map.of(entityType, mappingEntry));
+    }
+  }
+
   private void persistMappingVersions(Map<String, MappingEntry> mappings) {
     long updatedAt = System.currentTimeMillis();
     for (Map.Entry<String, MappingEntry> entry : mappings.entrySet()) {
@@ -190,20 +205,37 @@ public class IndexMappingVersionTracker {
     Map<String, IndexMapping> indexMappings = IndexMappingLoader.getInstance().getIndexMapping();
 
     for (Map.Entry<String, IndexMapping> entry : indexMappings.entrySet()) {
-      String entityType = entry.getKey();
-      JsonNode mapping = loadMappingForEntity(entityType, entry.getValue());
-      if (mapping != null) {
-        try {
-          String hash = computeHash(mapping);
-          mappings.put(entityType, new MappingEntry(hash, mapping));
-        } catch (IndexMappingHashException e) {
-          LOG.error("Failed to compute hash for entity type: {}", entityType, e);
-          throw new IOException("Failed to compute mapping hash for " + entityType, e);
-        }
+      MappingEntry mappingEntry = toMappingEntry(entry.getKey(), entry.getValue());
+      if (mappingEntry != null) {
+        mappings.put(entry.getKey(), mappingEntry);
       }
     }
 
     return mappings;
+  }
+
+  private MappingEntry computeMappingForEntity(String entityType) throws IOException {
+    IndexMapping indexMapping = IndexMappingLoader.getInstance().getIndexMapping().get(entityType);
+    MappingEntry result = null;
+    if (indexMapping != null) {
+      result = toMappingEntry(entityType, indexMapping);
+    }
+    return result;
+  }
+
+  private MappingEntry toMappingEntry(String entityType, IndexMapping indexMapping)
+      throws IOException {
+    JsonNode mapping = loadMappingForEntity(entityType, indexMapping);
+    MappingEntry result = null;
+    if (mapping != null) {
+      try {
+        result = new MappingEntry(computeHash(mapping), mapping);
+      } catch (IndexMappingHashException e) {
+        LOG.error("Failed to compute hash for entity type: {}", entityType, e);
+        throw new IOException("Failed to compute mapping hash for " + entityType, e);
+      }
+    }
+    return result;
   }
 
   private JsonNode loadMappingForEntity(String entityType, IndexMapping indexMapping) {

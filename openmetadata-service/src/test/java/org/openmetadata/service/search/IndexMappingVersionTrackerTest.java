@@ -509,6 +509,29 @@ class IndexMappingVersionTrackerTest {
     }
   }
 
+  @Test
+  void updateMappingVersionForSingleEntityStampsOnlyThatEntity() throws IOException {
+    Map<String, IndexMapping> mappings =
+        buildMappingsFromPairs(
+            "table", "/elasticsearch/%s/table_index_mapping.json",
+            "glossaryTerm", "/elasticsearch/%s/glossary_term_index_mapping.json",
+            "domain", "/elasticsearch/%s/domain_index_mapping.json");
+    try (var loaderMock = mockStatic(IndexMappingLoader.class)) {
+      loaderMock.when(IndexMappingLoader::getInstance).thenReturn(indexMappingLoader);
+      when(indexMappingLoader.getIndexMapping()).thenReturn(mappings);
+
+      new IndexMappingVersionTracker(collectionDAO, "1.2.3", "tester")
+          .updateMappingVersion("table");
+
+      verify(indexMappingVersionDAO, times(1))
+          .upsertIndexMappingVersion(
+              eq("table"), anyString(), anyString(), eq("1.2.3"), anyLong(), eq("tester"));
+      verify(indexMappingVersionDAO, never())
+          .upsertIndexMappingVersion(
+              eq("domain"), anyString(), anyString(), anyString(), anyLong(), anyString());
+    }
+  }
+
   // --- Version-upgrade detection tests (smart vs full reindex) ---
 
   @Test

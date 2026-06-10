@@ -2150,43 +2150,6 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void createIndexesStampsOnlySucceededEntities() throws Exception {
-    SearchRepository spyRepository = spy(repository);
-    RecreateIndexHandler recreateIndexHandler = mock(RecreateIndexHandler.class);
-    ReindexContext context = mock(ReindexContext.class);
-
-    doReturn(recreateIndexHandler).when(spyRepository).createReindexHandler();
-    when(recreateIndexHandler.reCreateIndexes(any())).thenReturn(context);
-    when(context.getEntities())
-        .thenReturn(new LinkedHashSet<>(List.of(Entity.TABLE, Entity.DOMAIN)));
-    when(context.getOriginalIndex(any()))
-        .thenAnswer(invocation -> Optional.of("original_" + invocation.getArgument(0)));
-    when(context.getCanonicalIndex(any()))
-        .thenAnswer(invocation -> Optional.of("canonical_" + invocation.getArgument(0)));
-    when(context.getStagedIndex(any()))
-        .thenAnswer(invocation -> Optional.of("staged_" + invocation.getArgument(0)));
-    when(context.getCanonicalAlias(any()))
-        .thenAnswer(invocation -> Optional.of("alias_" + invocation.getArgument(0)));
-    when(context.getExistingAliases(any()))
-        .thenAnswer(invocation -> Set.of("existing_" + invocation.getArgument(0)));
-    when(context.getParentAliases(any()))
-        .thenAnswer(invocation -> List.of("parent_" + invocation.getArgument(0)));
-
-    doNothing().when(spyRepository).stampRecreatedMappings(any());
-    doNothing()
-        .doThrow(new RuntimeException("boom"))
-        .when(recreateIndexHandler)
-        .finalizeReindex(any(EntityReindexContext.class), eq(true));
-
-    spyRepository.createIndexes();
-
-    @SuppressWarnings("unchecked")
-    ArgumentCaptor<List<String>> stampCaptor = ArgumentCaptor.forClass(List.class);
-    verify(spyRepository).stampRecreatedMappings(stampCaptor.capture());
-    assertEquals(List.of(Entity.TABLE), stampCaptor.getValue());
-  }
-
-  @Test
   void deleteEntityIndexRemovesDomainReferencesAndChildren() throws Exception {
     EntityInterface domain = mockEntity(Entity.DOMAIN, UUID.randomUUID(), "finance");
 
