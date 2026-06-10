@@ -110,7 +110,7 @@
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
     <openapiswagger.version>2.2.25</openapiswagger.version>
     <httpclient.version>4.5.14</httpclient.version>
-    <spring.version>6.2.18</spring.version>
+    <spring.version>6.2.19</spring.version>
     <log4j.version>2.25.4</log4j.version>
     <org.junit.jupiter.version>5.11.4</org.junit.jupiter.version>
     <org.junit.platform.version>1.11.4</org.junit.platform.version>
