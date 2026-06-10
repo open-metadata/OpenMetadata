@@ -33,7 +33,7 @@ export const styles = sortCx({
     xxs: {
       root: [
         'tw:gap-0.5 tw:rounded-md tw:px-1.5 tw:py-0.5 tw:text-xs tw:font-medium tw:before:rounded-[5px] tw:data-icon-only:p-1.5',
-        'tw:*:data-icon:size-2.5',
+        'tw:*:data-icon:size-3',
       ].join(' '),
       linkRoot: 'tw:gap-0.5',
     },
