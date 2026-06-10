@@ -123,4 +123,5 @@ export enum EntityReferenceFields {
   RELATED_TERMS = 'relatedTerms',
   SYNONYMS = 'synonyms',
   ENTITY_STATUS = 'entityStatus',
+  TEST_SUITE = 'testSuite.name',
 }

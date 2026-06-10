@@ -452,6 +452,20 @@ class JSONLogicSearchClassBase {
         },
       },
 
+      [EntityReferenceFields.TEST_SUITE]: {
+        label: t('label.test-suite'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: [...this.defaultSelectOperators],
+        fieldSettings: {
+          asyncFetch: advancedSearchClassBase.autocomplete({
+            searchIndex: SearchIndex.TEST_SUITE,
+            entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+          }),
+          useAsyncSearch: true,
+        },
+      },
+
       [EntityReferenceFields.REVIEWERS]: {
         label: t('label.reviewer-plural'),
         type: '!group',
