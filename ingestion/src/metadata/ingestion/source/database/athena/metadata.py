@@ -175,7 +175,10 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             try:
                 results = []
                 paginator = self.glue_client.get_paginator("get_tables")
-                for page in paginator.paginate(DatabaseName=schema_name):
+                paginate_params = {"DatabaseName": schema_name}
+                if self.service_connection.catalogId:
+                    paginate_params["CatalogId"] = self.service_connection.catalogId
+                for page in paginator.paginate(**paginate_params):
                     for table in page.get("TableList", []):
                         params = table.get("Parameters", {})
                         table_type = (
