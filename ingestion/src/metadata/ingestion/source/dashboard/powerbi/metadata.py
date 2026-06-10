@@ -421,7 +421,10 @@ class PowerbiSource(DashboardServiceSource):
         """
         Method to build the datamart url
         """
-        return f"{clean_uri(self.service_connection.hostPort)}/groups/{workspace_id}/datamarts/{datamart_id}"
+        return (
+            f"{clean_uri(self.service_connection.hostPort)}/groups/"
+            f"{workspace_id}/datamarts/{datamart_id}?experience=power-bi"
+        )
 
     def _get_chart_url(self, report_id: Optional[str], workspace_id: str, dashboard_id: str) -> str:  # noqa: UP045
         """

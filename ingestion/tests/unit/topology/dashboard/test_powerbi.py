@@ -2444,4 +2444,4 @@ class PowerBIUnitTest(TestCase):
         request = successful[0]
         assert request.dataModelType == DataModelType.PowerBIDatamart
         assert request.columns == []
-        assert request.sourceUrl.root.endswith("/groups/ws-1/datamarts/datamart_b")
+        assert request.sourceUrl.root.endswith("/groups/ws-1/datamarts/datamart_b?experience=power-bi")
