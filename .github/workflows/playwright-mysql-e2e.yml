@@ -105,7 +105,7 @@ jobs:
           ingestion_dependency: "all"
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
 

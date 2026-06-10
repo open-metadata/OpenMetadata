@@ -91,7 +91,7 @@ jobs:
           fetch-depth: 0
           filter: blob:none
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version-file: "${{ env.UI_WORKING_DIRECTORY }}/.nvmrc"
           cache: yarn
@@ -158,7 +158,7 @@ jobs:
           fetch-depth: 0
           filter: blob:none
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version-file: "${{ env.UI_WORKING_DIRECTORY }}/.nvmrc"
           cache: yarn
@@ -213,7 +213,7 @@ jobs:
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version-file: "${{ env.UI_WORKING_DIRECTORY }}/.nvmrc"
           cache: yarn
@@ -253,7 +253,7 @@ jobs:
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version-file: "${{ env.UI_WORKING_DIRECTORY }}/.nvmrc"
           cache: yarn
@@ -296,7 +296,7 @@ jobs:
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version-file: "${{ env.UI_WORKING_DIRECTORY }}/.nvmrc"
           cache: yarn
@@ -341,7 +341,7 @@ jobs:
           fetch-depth: 0
           filter: blob:none
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version-file: "${{ env.UI_WORKING_DIRECTORY }}/.nvmrc"
           cache: yarn
@@ -404,7 +404,7 @@ jobs:
           fetch-depth: 0
           filter: blob:none
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version-file: "${{ env.UI_WORKING_DIRECTORY }}/.nvmrc"
           cache: yarn
@@ -460,7 +460,7 @@ jobs:
           fetch-depth: 0
           filter: blob:none
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version-file: "${{ env.CORE_COMPONENTS_WORKING_DIRECTORY }}/.nvmrc"
           cache: yarn
