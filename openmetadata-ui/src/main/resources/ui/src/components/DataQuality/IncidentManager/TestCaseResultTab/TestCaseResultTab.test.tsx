@@ -99,8 +99,8 @@ jest.mock('./TestCaseResultTabClassBase', () => ({
   getAdditionalComponents: jest.fn().mockReturnValue([]),
   getAlertBanner: jest.fn().mockImplementation(() => mockBannerComponent),
 }));
-jest.mock('../../../common/EntityDescription/DescriptionV1', () => {
-  return jest.fn().mockImplementation(() => <div>DescriptionV1</div>);
+jest.mock('../../../common/EntityDescription/Description', () => {
+  return jest.fn().mockImplementation(() => <div>Description</div>);
 });
 jest.mock('../../../Database/SchemaEditor/SchemaEditor', () => {
   return jest.fn().mockImplementation(() => <div>SchemaEditor</div>);
@@ -177,7 +177,7 @@ describe('TestCaseResultTab', () => {
     expect(
       await screen.findByTestId('edit-parameter-icon')
     ).toBeInTheDocument();
-    expect(await screen.findByText('DescriptionV1')).toBeInTheDocument();
+    expect(await screen.findByText('Description')).toBeInTheDocument();
     expect(await screen.findByText('TestSummary')).toBeInTheDocument();
   });
 

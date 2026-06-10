@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { useMemo } from 'react';
-import DescriptionV1 from '../../../../components/common/EntityDescription/DescriptionV1';
+import Description from '../../../../components/common/EntityDescription/Description';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
@@ -144,7 +144,7 @@ const DocumentationTab = ({
         className:
           'domain-resizable-panel-container left-panel-documentation-tab',
         children: (
-          <DescriptionV1
+          <Description
             removeBlur
             wrapInCard
             description={description}

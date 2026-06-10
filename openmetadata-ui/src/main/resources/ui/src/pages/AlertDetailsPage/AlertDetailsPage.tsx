@@ -25,7 +25,7 @@ import AlertConfigDetails from '../../components/Alerts/AlertDetails/AlertConfig
 import AlertDiagnosticInfoTab from '../../components/Alerts/AlertDetails/AlertDiagnosticInfo/AlertDiagnosticInfoTab';
 import AlertRecentEventsTab from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
-import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
+import Description from '../../components/common/EntityDescription/Description';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
@@ -455,7 +455,7 @@ function AlertDetailsPage({
               className="alert-description"
               data-testid="alert-description"
               span={24}>
-              <DescriptionV1
+              <Description
                 description={alertDetails?.description}
                 entityType={EntityType.EVENT_SUBSCRIPTION}
                 hasEditAccess={editDescriptionPermission}

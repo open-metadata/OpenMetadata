@@ -187,26 +187,6 @@ test.describe('Long Description Visibility', () => {
     await verifyDescriptionRequiresScroll(descContainer, page);
   });
 
-  test('Domain description card collapse hides content and expand restores scrollability', async ({
-    page,
-  }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.DOMAIN);
-    await selectDomain(page, domain.responseData);
-
-    const descContainer = page.getByTestId('asset-description-container');
-    await expect(descContainer).toBeVisible();
-    await expect(descContainer).toHaveClass(/\bexpanded\b/);
-
-    await descContainer.getByTestId('expand-collapse-icon').click();
-    await expect(descContainer).not.toHaveClass(/\bexpanded\b/);
-
-    await descContainer.getByTestId('expand-collapse-icon').click();
-    await expect(descContainer).toHaveClass(/\bexpanded\b/);
-
-    await verifyDescriptionRequiresScroll(descContainer, page);
-  });
-
   // ── Data Product ──
 
   test('Data Product truncates long description and end of text is not visible before expand', async ({
@@ -249,24 +229,6 @@ test.describe('Long Description Visibility', () => {
     await expect(descContainer.getByTestId('read-more-button')).toBeVisible();
   });
 
-  test('Data Product description card collapse hides content and expand restores it', async ({
-    page,
-  }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-    await selectDataProduct(page, dataProductData);
-
-    const descContainer = page.getByTestId('asset-description-container');
-    await expect(descContainer).toBeVisible();
-    await expect(descContainer).toHaveClass(/\bexpanded\b/);
-
-    await descContainer.getByTestId('expand-collapse-icon').click();
-    await expect(descContainer).not.toHaveClass(/\bexpanded\b/);
-
-    await descContainer.getByTestId('expand-collapse-icon').click();
-    await expect(descContainer).toHaveClass(/\bexpanded\b/);
-  });
-
   // ── Glossary ──
 
   test('Glossary truncates long description and end of text is not visible before expand', async ({
@@ -305,22 +267,6 @@ test.describe('Long Description Visibility', () => {
     await expect(descContainer.getByTestId('read-more-button')).toBeVisible();
   });
 
-  test('Glossary description card collapse hides content and expand restores it', async ({
-    page,
-  }) => {
-    await visitGlossaryPage(page, glossary.responseData.displayName);
-
-    const descContainer = page.getByTestId('asset-description-container');
-    await expect(descContainer).toBeVisible();
-    await expect(descContainer).toHaveClass(/\bexpanded\b/);
-
-    await descContainer.getByTestId('expand-collapse-icon').click();
-    await expect(descContainer).not.toHaveClass(/\bexpanded\b/);
-
-    await descContainer.getByTestId('expand-collapse-icon').click();
-    await expect(descContainer).toHaveClass(/\bexpanded\b/);
-  });
-
   // ── Glossary Term ──
 
   test('Glossary Term truncates long description and end of text is not visible before expand', async ({
@@ -357,22 +303,6 @@ test.describe('Long Description Visibility', () => {
       descContainer.getByText(LONG_DESCRIPTION_END_TEXT)
     ).not.toBeVisible();
     await expect(descContainer.getByTestId('read-more-button')).toBeVisible();
-  });
-
-  test('Glossary Term description card collapse hides content and expand restores it', async ({
-    page,
-  }) => {
-    await glossaryTerm.visitPage(page);
-
-    const descContainer = page.getByTestId('asset-description-container');
-    await expect(descContainer).toBeVisible();
-    await expect(descContainer).toHaveClass(/\bexpanded\b/);
-
-    await descContainer.getByTestId('expand-collapse-icon').click();
-    await expect(descContainer).not.toHaveClass(/\bexpanded\b/);
-
-    await descContainer.getByTestId('expand-collapse-icon').click();
-    await expect(descContainer).toHaveClass(/\bexpanded\b/);
   });
 
   // ── Customized Table Detail Page ──

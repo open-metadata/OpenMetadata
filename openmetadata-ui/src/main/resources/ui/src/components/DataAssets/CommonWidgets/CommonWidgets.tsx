@@ -55,7 +55,7 @@ import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { createTagObject } from '../../../utils/TagsUtils';
 import CertificationWidget from '../../common/CertificationWidget/CertificationWidget';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
+import Description from '../../common/EntityDescription/Description';
 import TierWidget from '../../common/TierWidget/TierWidget';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { LeftPanelContainer } from '../../Customization/GenericTab/LeftPanelContainer';
@@ -348,7 +348,7 @@ export const CommonWidgets = ({
 
   const descriptionWidget = useMemo(() => {
     return (
-      <DescriptionV1
+      <Description
         showSuggestions
         wrapInCard
         description={description}

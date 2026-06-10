@@ -22,7 +22,7 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as CheckCircleOutlined } from '../../../assets/svg/complete.svg';
 import { ReactComponent as CloseCircleOutlined } from '../../../assets/svg/ic-close-circle.svg';
 import { ReactComponent as IconPersona } from '../../../assets/svg/ic-personas.svg';
-import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
+import Description from '../../../components/common/EntityDescription/Description';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import NoDataPlaceholder from '../../../components/common/ErrorWithPlaceholder/NoDataPlaceholder';
 import Loader from '../../../components/common/Loader/Loader';
@@ -356,7 +356,7 @@ export const PersonaDetailsPage = () => {
           </div>
         </Col>
         <Col span={24}>
-          <DescriptionV1
+          <Description
             description={personaDetails.description}
             entityName={personaDetails.name}
             entityType={EntityType.PERSONA}

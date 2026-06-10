@@ -391,7 +391,7 @@ jest.mock('../../components/Modals/EntityDeleteModal/EntityDeleteModal', () => {
   ));
 });
 
-jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
+jest.mock('../../components/common/EntityDescription/Description', () => {
   return jest.fn().mockReturnValue(<p>DescriptionComponent</p>);
 });
 

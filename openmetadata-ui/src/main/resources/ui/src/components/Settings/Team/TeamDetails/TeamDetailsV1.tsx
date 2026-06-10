@@ -82,7 +82,7 @@ import {
 import { getTermQuery } from '../../../../utils/SearchUtils';
 import { getDeleteMessagePostFix } from '../../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
-import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
+import Description from '../../../common/EntityDescription/Description';
 import ManageButton from '../../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
@@ -1027,7 +1027,7 @@ const TeamDetailsV1 = ({
           />
         </div>
         <div className="m-t-md">
-          <DescriptionV1
+          <Description
             wrapInCard
             description={currentTeam.description ?? ''}
             entityName={getEntityName(currentTeam)}

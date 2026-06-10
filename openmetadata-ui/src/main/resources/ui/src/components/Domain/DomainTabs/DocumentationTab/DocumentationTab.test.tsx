@@ -27,12 +27,12 @@ const defaultProps = {
   permissions: MOCK_PERMISSIONS,
 };
 
-const mockDescriptionV1 = jest
+const mockDescription = jest
   .fn()
-  .mockImplementation(() => <div>DescriptionV1</div>);
+  .mockImplementation(() => <div>Description</div>);
 jest.mock(
-  '../../../common/EntityDescription/DescriptionV1',
-  () => mockDescriptionV1
+  '../../../common/EntityDescription/Description',
+  () => mockDescription
 );
 
 jest.mock('../../../common/ProfilePicture/ProfilePicture', () =>
@@ -106,7 +106,7 @@ describe('DocumentationTab', () => {
     render(<DocumentationTab {...defaultProps} />, {
       wrapper: MemoryRouter,
     });
-    const description = screen.getByText('DescriptionV1');
+    const description = screen.getByText('Description');
 
     expect(description).toBeInTheDocument();
 
@@ -117,12 +117,12 @@ describe('DocumentationTab', () => {
     expect(screen.getByText('DomainTypeWidget')).toBeInTheDocument();
   });
 
-  it('should pass DOMAIN entityType to DescriptionV1 when type is DOMAIN', () => {
+  it('should pass DOMAIN entityType to Description when type is DOMAIN', () => {
     render(<DocumentationTab type={DocumentationEntity.DOMAIN} />, {
       wrapper: MemoryRouter,
     });
 
-    expect(mockDescriptionV1).toHaveBeenCalledWith(
+    expect(mockDescription).toHaveBeenCalledWith(
       expect.objectContaining({
         entityType: EntityType.DOMAIN,
       }),
@@ -130,12 +130,12 @@ describe('DocumentationTab', () => {
     );
   });
 
-  it('should pass DATA_PRODUCT entityType to DescriptionV1 when type is DATA_PRODUCT', () => {
+  it('should pass DATA_PRODUCT entityType to Description when type is DATA_PRODUCT', () => {
     render(<DocumentationTab type={DocumentationEntity.DATA_PRODUCT} />, {
       wrapper: MemoryRouter,
     });
 
-    expect(mockDescriptionV1).toHaveBeenCalledWith(
+    expect(mockDescription).toHaveBeenCalledWith(
       expect.objectContaining({
         entityType: EntityType.DATA_PRODUCT,
       }),
@@ -148,7 +148,7 @@ describe('DocumentationTab', () => {
       wrapper: MemoryRouter,
     });
 
-    expect(mockDescriptionV1).toHaveBeenCalledWith(
+    expect(mockDescription).toHaveBeenCalledWith(
       expect.objectContaining({
         entityType: EntityType.DOMAIN,
       }),
