@@ -12,7 +12,6 @@
  */
 import {
   Alert,
-  Breadcrumbs,
   Button,
   Tooltip,
   TooltipTrigger,
@@ -102,6 +101,7 @@ import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
+import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import TitleBreadcrumbSkeleton from '../../common/Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
@@ -720,22 +720,19 @@ export const DataAssetsHeader = ({
           )}>
           <div className="tw:min-w-0 tw:flex-1">
             <TitleBreadcrumbSkeleton loading={isBreadcrumbLoading}>
-              <div data-testid="breadcrumb">
-                <Breadcrumbs
-                  items={[
-                    ...breadcrumbs.map((link, index) => ({
-                      id: index,
-                      label: link.name,
-                      href:
-                        !isCustomizedView && link.url
-                          ? String(link.url)
-                          : undefined,
-                    })),
-                    { id: breadcrumbs.length, label: entityName },
-                  ]}
-                  size="sm"
-                />
-              </div>
+              <HeaderBreadcrumb
+                items={[
+                  ...breadcrumbs.map((link) => ({
+                    label: link.name,
+                    href:
+                      !isCustomizedView && link.url
+                        ? String(link.url)
+                        : undefined,
+                  })),
+                  { label: entityName },
+                ]}
+                size="sm"
+              />
             </TitleBreadcrumbSkeleton>
           </div>
           <div className="tw:flex tw:items-center tw:gap-4">
