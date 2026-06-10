@@ -89,7 +89,7 @@ jest.mock('../../hooks/currentUserStore/useCurrentUserStore', () => ({
 
 jest.mock('html-to-image', () => ({ toPng: jest.fn() }));
 
-jest.mock('../../utils/EntityBreadcrumbUtils', () => ({
+jest.mock('../../utils/EntityBreadcrumbPureUtils', () => ({
   getEntityBreadcrumbs: jest.fn(() => [
     { name: 'MyTable', url: '/table/MyTable', activeTitle: false },
   ]),
