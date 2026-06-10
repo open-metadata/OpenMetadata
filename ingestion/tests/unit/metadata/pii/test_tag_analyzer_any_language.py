@@ -274,28 +274,6 @@ class TestAnalyzeWithAnyLanguage:
         assert result.score == 0
         assert result.recognizer_results == []
 
-    def test_any_agent_with_any_recognizer_dispatches_to_en(self, pii_classification, column, mock_nlp_engine):
-        """Agent=any, Recognizer=any → _analyze_with must treat the 'any' group as 'en'."""
-        tag = _make_any_language_tag(pii_classification)
-        analyzer = TagAnalyzer(
-            tag=tag,
-            column=column,
-            nlp_engine=mock_nlp_engine,
-            language=ClassificationLanguage.any,
-        )
-
-        dispatched_languages = []
-        original_build = analyzer.build_analyzer_with
-
-        def tracking_build(recs, nlp_engine=None, effective_language=None):
-            dispatched_languages.append(effective_language)
-            return original_build(recs, nlp_engine=nlp_engine, effective_language=effective_language)
-
-        analyzer.build_analyzer_with = tracking_build
-        analyzer.analyze_content(["user@example.com"])
-
-        assert dispatched_languages == [ClassificationLanguage.en.value]
-
     def test_any_language_analyze_column_no_exception(self, pii_classification, column, mock_nlp_engine):
         en_pattern = PatternFactory.create(
             name="column-pattern",
@@ -452,6 +430,22 @@ class TestAnalyzeWithAnyLanguageRecognizerRealPresidia:
             column=column,
             nlp_engine=nlp,
             language=ClassificationLanguage.fr,
+        )
+        result = analyzer.analyze_content(["user@example.com"])
+        assert result.score > 0
+
+    def test_any_agent_with_any_recognizer_scores_on_match(self, any_language_email_tag, column):
+        """Agent=any, Recognizer=any: 'any' group must be dispatched as 'en', not 'any'.
+
+        If _analyze_with calls analyze(language='any') instead of 'en', Presidio raises
+        ValueError because the recognizer is normalized to supported_language='en' but
+        the registry finds no recognizer for 'any'.
+        """
+        analyzer = TagAnalyzer(
+            tag=any_language_email_tag,
+            column=column,
+            nlp_engine=MagicMock(),
+            language=ClassificationLanguage.any,
         )
         result = analyzer.analyze_content(["user@example.com"])
         assert result.score > 0
