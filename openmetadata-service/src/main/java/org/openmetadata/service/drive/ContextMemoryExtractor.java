@@ -30,6 +30,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Slf4j
 public class ContextMemoryExtractor {
   static final int MAX_PROMPT_CHARS = 60_000;
+  static final int MAX_CHUNKS = 8;
   static final String SYSTEM_PROMPT =
       "You extract reusable company knowledge from a document as a JSON array. Each element is an "
           + "object with keys: title, question, answer, summary, memoryType (one of Faq, Note, "
@@ -46,7 +47,20 @@ public class ContextMemoryExtractor {
   }
 
   public int extract(ContextFile file) {
-    List<KnowledgePill> pills = dedupe(callLlm(file.getExtractedText()));
+    return extract(file, file.getExtractedText());
+  }
+
+  /**
+   * Extracts pills from {@code text} (typically the content snapshot's canonical extracted text,
+   * which is longer than the file's indexed text). Long documents are processed in
+   * paragraph-aligned chunks, one LLM call per chunk, with pills deduplicated across chunks.
+   */
+  public int extract(ContextFile file, String text) {
+    List<KnowledgePill> collected = new ArrayList<>();
+    for (String chunk : chunkText(text, file)) {
+      collected.addAll(callLlm(chunk));
+    }
+    List<KnowledgePill> pills = dedupe(collected);
     EntityReference fileRef = file.getEntityReference();
     for (KnowledgePill pill : pills) {
       memoryRepository.create(null, toMemory(pill, fileRef));
@@ -55,11 +69,55 @@ public class ContextMemoryExtractor {
     return pills.size();
   }
 
+  private List<String> chunkText(String text, ContextFile file) {
+    List<String> chunks = new ArrayList<>();
+    if (text != null && !text.isBlank()) {
+      int position = 0;
+      while (position < text.length() && chunks.size() < MAX_CHUNKS) {
+        int end = chunkEnd(text, position);
+        chunks.add(text.substring(position, end));
+        position = end;
+      }
+      if (position < text.length()) {
+        LOG.warn(
+            "File {} text exceeds {} chunks of {} chars; skipping the remaining {} chars",
+            file.getId(),
+            MAX_CHUNKS,
+            MAX_PROMPT_CHARS,
+            text.length() - position);
+      }
+    }
+    return chunks;
+  }
+
+  /** Ends the chunk at the last paragraph (or line, or word) boundary inside the size budget. */
+  private int chunkEnd(String text, int start) {
+    int result = Math.min(start + MAX_PROMPT_CHARS, text.length());
+    if (result < text.length()) {
+      int boundary = lastBoundaryBefore(text, start, result);
+      if (boundary > start) {
+        result = boundary;
+      }
+    }
+    return result;
+  }
+
+  private int lastBoundaryBefore(String text, int start, int limit) {
+    int minAcceptable = start + MAX_PROMPT_CHARS / 2;
+    int boundary = text.lastIndexOf("\n\n", limit);
+    if (boundary <= minAcceptable) {
+      boundary = text.lastIndexOf('\n', limit);
+    }
+    if (boundary <= minAcceptable) {
+      boundary = text.lastIndexOf(' ', limit);
+    }
+    return boundary > minAcceptable ? boundary + 1 : -1;
+  }
+
   private List<KnowledgePill> callLlm(String text) {
     List<KnowledgePill> result = new ArrayList<>();
     if (text != null && !text.isBlank()) {
-      String prompt = text.length() > MAX_PROMPT_CHARS ? text.substring(0, MAX_PROMPT_CHARS) : text;
-      result = llmClient.completeStructured(SYSTEM_PROMPT, prompt, KnowledgePill.class);
+      result = llmClient.completeStructured(SYSTEM_PROMPT, text, KnowledgePill.class);
     }
     return result;
   }

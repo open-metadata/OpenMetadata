@@ -129,7 +129,8 @@ class ContextFileProcessingServiceTest {
                 new ByteArrayInputStream("Quarterly results".getBytes())));
     when(textExtractor.extract(any(InputStream.class), same(file)))
         .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
-    when(memoryExtractor.extract(same(file))).thenReturn(2);
+    content.setExtractedText("Quarterly results canonical");
+    when(memoryExtractor.extract(same(file), eq("Quarterly results canonical"))).thenReturn(2);
 
     service(Runnable::run, () -> assetService, true).process(fileId, contentId);
 
@@ -141,7 +142,7 @@ class ContextFileProcessingServiceTest {
     assertEquals(ProcessingStatus.Processed, fileUpdates.get(2).getProcessingStatus());
 
     verify(repository).deleteExtractedMemories(same(file), eq(false));
-    verify(memoryExtractor).extract(same(file));
+    verify(memoryExtractor).extract(same(file), eq("Quarterly results canonical"));
   }
 
   @Test

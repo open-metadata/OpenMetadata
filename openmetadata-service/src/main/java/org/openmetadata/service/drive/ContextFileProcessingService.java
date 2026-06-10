@@ -201,12 +201,25 @@ public class ContextFileProcessingService {
     }
     try {
       repository.deleteExtractedMemories(file, false);
-      memoryExtractorSupplier.get().extract(file);
+      memoryExtractorSupplier.get().extract(file, canonicalText(contentId, file));
       setFileStatus(fileId, contentId, ProcessingStatus.Processed);
     } catch (Exception e) {
       LOG.error("Knowledge pill extraction failed for file {}", fileId, e);
       setFileStatus(fileId, contentId, ProcessingStatus.Failed);
     }
+  }
+
+  /**
+   * Prefers the content snapshot's canonical extracted text (capped at 1M chars) over the file's
+   * indexed text (capped at 200K), so large documents lose less tail content to truncation.
+   */
+  private String canonicalText(UUID contentId, ContextFile file) {
+    String result = file.getExtractedText();
+    ContextFileContent content = getContent(contentId);
+    if (content != null && content.getExtractedText() != null) {
+      result = content.getExtractedText();
+    }
+    return result;
   }
 
   private String describeFailure(Throwable t) {

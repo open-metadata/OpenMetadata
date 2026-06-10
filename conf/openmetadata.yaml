@@ -602,8 +602,8 @@ elasticsearch:
 # extraction (and reusable by other features). The file content of uploaded documents is sent to
 # the configured provider when enabled. Disabled by default.
 llmConfiguration:
-  enabled: ${LLM_ENABLED:-false}
-  provider: ${LLM_PROVIDER:-noop}  # noop | openai | azureOpenAI | bedrock | google | anthropic
+  enabled: ${LLM_ENABLED:-true}
+  provider: ${LLM_PROVIDER:-bedrock}  # noop | openai | azureOpenAI | bedrock | google | anthropic
   maxConcurrentRequests: ${LLM_MAX_CONCURRENT_REQUESTS:-5}
   openai:
     apiKey: ${LLM_OPENAI_API_KEY:-""}
@@ -614,8 +614,12 @@ llmConfiguration:
     maxTokens: ${LLM_OPENAI_MAX_TOKENS:-4096}
   bedrock:
     awsConfig:
-      region: ${LLM_BEDROCK_REGION:-""}
-    modelId: ${LLM_BEDROCK_MODEL_ID:-"anthropic.claude-3-5-sonnet-20240620-v1:0"}
+      enabled: ${BEDROCK_AWS_IAM_AUTH_ENABLED:-true}
+      region: ${AWS_BEDROCK_REGION:-""}
+      accessKeyId: ${AWS_BEDROCK_ACCESS_KEY:-""}
+      secretAccessKey: ${AWS_BEDROCK_SECRET_KEY:-""}
+      sessionToken: ${AWS_BEDROCK_SESSION_TOKEN:-""}
+    modelId: ${LLM_BEDROCK_MODEL_ID:-"eu.anthropic.claude-haiku-4-5-20251001-v1:0"}
     maxTokens: ${LLM_BEDROCK_MAX_TOKENS:-4096}
   google:
     apiKey: ${LLM_GOOGLE_API_KEY:-""}

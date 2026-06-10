@@ -74,4 +74,39 @@ class ContextMemoryExtractorTest {
 
     assertEquals(0, created);
   }
+
+  @Test
+  void chunksLongTextIntoMultipleLlmCallsAndDedupesAcrossChunks() {
+    String paragraph = "Lorem ipsum dolor sit amet consectetur adipiscing elit. ".repeat(200);
+    String text = (paragraph + "\n\n").repeat(30); // ~340k chars => 6 chunks of 60k
+    ContextFile file =
+        new ContextFile().withId(UUID.randomUUID()).withName("report").withExtractedText(text);
+    when(llmClient.completeStructured(any(), any(), eq(KnowledgePill.class)))
+        .thenReturn(List.of(new KnowledgePill("T", "same question", "A", "S", "Faq")));
+
+    int created = new ContextMemoryExtractor(memoryRepository, llmClient).extract(file);
+
+    int expectedChunks =
+        Math.min(
+            ContextMemoryExtractor.MAX_CHUNKS,
+            (int) Math.ceil((double) text.length() / ContextMemoryExtractor.MAX_PROMPT_CHARS) + 1);
+    verify(llmClient, org.mockito.Mockito.atLeast(2))
+        .completeStructured(any(), any(), eq(KnowledgePill.class));
+    verify(llmClient, org.mockito.Mockito.atMost(expectedChunks))
+        .completeStructured(any(), any(), eq(KnowledgePill.class));
+    assertEquals(1, created, "identical pills from different chunks must dedupe to one");
+  }
+
+  @Test
+  void capsChunksForVeryLongText() {
+    String text = "word ".repeat(ContextMemoryExtractor.MAX_PROMPT_CHARS * 2); // 600k chars
+    ContextFile file =
+        new ContextFile().withId(UUID.randomUUID()).withName("report").withExtractedText(text);
+    when(llmClient.completeStructured(any(), any(), eq(KnowledgePill.class))).thenReturn(List.of());
+
+    new ContextMemoryExtractor(memoryRepository, llmClient).extract(file);
+
+    verify(llmClient, org.mockito.Mockito.times(ContextMemoryExtractor.MAX_CHUNKS))
+        .completeStructured(any(), any(), eq(KnowledgePill.class));
+  }
 }
