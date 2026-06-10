@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS task_entity (
     deleted boolean GENERATED ALWAYS AS (((json ->> 'deleted'::text))::boolean) STORED,
     aboutfqnhash character varying(256) GENERATED ALWAYS AS ((json ->> 'aboutFqnHash'::text)) STORED,
     createdbyid character varying(36) GENERATED ALWAYS AS ((json ->> 'createdById'::text)) STORED,
+    approvedbyid character varying(36) GENERATED ALWAYS AS ((json ->> 'approvedById'::text)) STORED,
     PRIMARY KEY (id),
     CONSTRAINT uk_task_fqn_hash UNIQUE (fqnhash)
 );
@@ -33,6 +34,19 @@ CREATE INDEX IF NOT EXISTS idx_task_about_fqn_hash ON task_entity (aboutfqnhash)
 CREATE INDEX IF NOT EXISTS idx_task_status_about ON task_entity (status, aboutfqnhash);
 CREATE INDEX IF NOT EXISTS idx_task_created_by_id ON task_entity (createdbyid);
 CREATE INDEX IF NOT EXISTS idx_task_created_by_category ON task_entity (createdbyid, category);
+
+-- For 2.0.0 environments that ran the CREATE TABLE above before the
+-- approvedbyid generated column was added inline, attach it now. CREATE TABLE
+-- IF NOT EXISTS is a no-op on those environments so the column would never
+-- appear otherwise. Postgres supports `ADD COLUMN IF NOT EXISTS` natively.
+-- The ALTER must run before idx_task_approved_by_id is created — otherwise
+-- existing-2.0.0 deployments would fail the CREATE INDEX with "column does
+-- not exist" before the ADD COLUMN ever runs.
+ALTER TABLE task_entity
+    ADD COLUMN IF NOT EXISTS approvedbyid character varying(36)
+        GENERATED ALWAYS AS ((json ->> 'approvedById'::text)) STORED;
+
+CREATE INDEX IF NOT EXISTS idx_task_approved_by_id ON task_entity (approvedbyid);
 
 CREATE TABLE IF NOT EXISTS new_task_sequence (
     id bigint NOT NULL DEFAULT 0
@@ -54,7 +68,8 @@ CREATE TABLE IF NOT EXISTS activity_stream (
     entityfqnhash character varying(768),
     about character varying(2048),
     aboutfqnhash character varying(768),
-    actorid character varying(36) NOT NULL,
+    -- Nullable for system events and hard-deleted users; actorname is the display fallback.
+    actorid character varying(36),
     actorname character varying(256),
     timestamp bigint NOT NULL,
     summary character varying(500),
@@ -277,3 +292,40 @@ CREATE INDEX IF NOT EXISTS idx_search_index_retry_queue_status
   ON search_index_retry_queue (status);
 CREATE INDEX IF NOT EXISTS idx_search_index_retry_queue_claimed_at
   ON search_index_retry_queue (claimedAt);
+
+-- ContextMemory entity - reusable Context Center memory.
+CREATE TABLE IF NOT EXISTS context_memory (
+  id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+  name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+  nameHash VARCHAR(256) NOT NULL,
+  json JSONB NOT NULL,
+  updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+  updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+  deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+
+  PRIMARY KEY (id),
+  UNIQUE (nameHash)
+);
+CREATE INDEX IF NOT EXISTS idx_context_memory_updated_at ON context_memory (updatedAt);
+
+-- Database-backed user session store for multi-pod session management (issue #21971).
+CREATE TABLE IF NOT EXISTS user_session (
+    id character varying(64) GENERATED ALWAYS AS ((json ->> 'id'::text)) STORED NOT NULL,
+    userid character varying(36) GENERATED ALWAYS AS ((json ->> 'userId'::text)) STORED,
+    status character varying(32) GENERATED ALWAYS AS ((json ->> 'status'::text)) STORED NOT NULL,
+    expiresat bigint GENERATED ALWAYS AS (((json ->> 'expiresAt'::text))::bigint) STORED NOT NULL,
+    idleexpiresat bigint GENERATED ALWAYS AS (((json ->> 'idleExpiresAt'::text))::bigint) STORED NOT NULL,
+    updatedat bigint GENERATED ALWAYS AS (((json ->> 'updatedAt'::text))::bigint) STORED NOT NULL,
+    sessiontype character varying(32) GENERATED ALWAYS AS ((json ->> 'type'::text)) STORED,
+    provider character varying(64) GENERATED ALWAYS AS ((json ->> 'provider'::text)) STORED,
+    version bigint GENERATED ALWAYS AS (((json ->> 'version'::text))::bigint) STORED,
+    lastaccessedat bigint GENERATED ALWAYS AS (((json ->> 'lastAccessedAt'::text))::bigint) STORED,
+    refreshleaseuntil bigint GENERATED ALWAYS AS (((json ->> 'refreshLeaseUntil'::text))::bigint) STORED,
+    json jsonb NOT NULL,
+    CONSTRAINT user_session_pkey PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS user_session_user_status_idx ON user_session USING btree (userid, status);
+CREATE INDEX IF NOT EXISTS user_session_expiry_idx ON user_session USING btree (status, expiresat);
+CREATE INDEX IF NOT EXISTS user_session_idle_expiry_idx ON user_session USING btree (status, idleexpiresat);
+CREATE INDEX IF NOT EXISTS user_session_prune_idx ON user_session USING btree (status, updatedat);

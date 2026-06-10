@@ -23,12 +23,18 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.RelationCardinality;
+import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.GlossaryTermRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.rdf.storage.RdfStorageFactory;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
@@ -38,6 +44,8 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 public class RdfRepository {
 
   private static final String KNOWLEDGE_GRAPH = "https://open-metadata.org/graph/knowledge";
+  static final int DEFAULT_BULK_ENTITY_BATCH_SIZE = 50;
+  static final int DEFAULT_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE = 25;
 
   // Fallback predicate URIs for clearAllGlossaryTermRelations when
   // GlossaryTermRelationSettings can't be loaded (e.g. DB blip during startup).
@@ -86,6 +94,18 @@ public class RdfRepository {
   private final JsonLdTranslator translator;
   private static RdfRepository INSTANCE;
 
+  /**
+   * Per-thread cache of (fullPredicateIRI → configured type name) used by
+   * {@link #extractPredicateName(String)} during a single graph-build pass.
+   * {@link #parseGlossaryTermGraphResults(org.apache.jena.query.ResultSet,
+   * boolean, java.util.UUID, int, int)} builds and clears the map; everything
+   * else sees an empty optional and short-circuits to the URI local-name
+   * fallback. Pre-fix the lookup walked the full configured-types list per
+   * edge — O(edges × relationTypes) with a regex+concat per iteration.
+   */
+  private static final ThreadLocal<java.util.Map<String, String>> predicateNameCache =
+      new ThreadLocal<>();
+
   private RdfRepository(RdfConfiguration config) {
     this.config = config;
     if (config.getEnabled() != null && config.getEnabled()) {
@@ -100,6 +120,26 @@ public class RdfRepository {
       this.translator = null;
       LOG.info("RDF Repository disabled");
     }
+  }
+
+  RdfRepository(
+      RdfConfiguration config, RdfStorageInterface storageService, JsonLdTranslator translator) {
+    this.config = config;
+    this.storageService = storageService;
+    this.translator = translator;
+  }
+
+  static int resolveBulkEntityBatchSize(RdfConfiguration config) {
+    return positiveInt(config.getBulkEntityBatchSize(), DEFAULT_BULK_ENTITY_BATCH_SIZE);
+  }
+
+  static int resolveBulkRelationshipSourceBatchSize(RdfConfiguration config) {
+    return positiveInt(
+        config.getBulkRelationshipSourceBatchSize(), DEFAULT_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE);
+  }
+
+  private static int positiveInt(Integer value, int defaultValue) {
+    return value != null && value > 0 ? value : defaultValue;
   }
 
   private void loadOntologies() {
@@ -208,6 +248,57 @@ public class RdfRepository {
     }
   }
 
+  /**
+   * Bulk variant of {@link #createOrUpdate(EntityInterface)} — translates every
+   * entity to RDF and forwards the batch to the storage layer. Used by the
+   * indexer batch path; production hot path (per-entity hooks) keeps calling
+   * {@link #createOrUpdate}.
+   *
+   * <p>From the caller's perspective: all-or-nothing — a single thrown
+   * exception means the caller should retry the whole batch (or fall back to
+   * per-entity {@link #createOrUpdate} for per-row error attribution). The
+   * indexer in {@code RdfBatchProcessor.processEntities} does the latter.
+   *
+   * <p>Implementation note: {@link
+   * org.openmetadata.service.rdf.storage.JenaFusekiStorage#bulkStoreEntities}
+   * runs each configured repository chunk as a SINGLE SPARQL UPDATE containing
+   * both the combined per-entity DELETE statements and an {@code INSERT DATA}
+   * block with the unioned N-Triples body. Fuseki executes multi-statement
+   * UPDATEs in one transaction, so each chunk is atomic at the storage side.
+   * The per-entity fallback in {@code RdfBatchProcessor.processEntities} keeps
+   * row-level failure attribution when a chunk fails.
+   */
+  public void bulkCreateOrUpdate(List<? extends EntityInterface> entities) {
+    if (!isEnabled() || entities == null || entities.isEmpty()) {
+      return;
+    }
+    List<RdfStorageInterface.EntityWriteRequest> requests = new ArrayList<>(entities.size());
+    for (EntityInterface entity : entities) {
+      String entityType = entity.getEntityReference().getType();
+      Model rdfModel = translator.toRdf(entity);
+      requests.add(
+          new RdfStorageInterface.EntityWriteRequest(entityType, entity.getId(), rdfModel));
+    }
+    try {
+      bulkStoreEntityRequests(requests);
+      LOG.debug("Bulk created/updated {} entities in RDF store", entities.size());
+    } catch (Exception e) {
+      LOG.error("Failed to bulk create/update {} entities in RDF", entities.size(), e);
+      throw new RuntimeException("Failed to bulk create/update entities in RDF", e);
+    }
+  }
+
+  void bulkStoreEntityRequests(List<RdfStorageInterface.EntityWriteRequest> requests) {
+    if (requests == null || requests.isEmpty()) {
+      return;
+    }
+    int chunkSize = resolveBulkEntityBatchSize(config);
+    for (int start = 0; start < requests.size(); start += chunkSize) {
+      int end = Math.min(start + chunkSize, requests.size());
+      storageService.bulkStoreEntities(requests.subList(start, end));
+    }
+  }
+
   public void delete(EntityReference entityReference) {
     if (!isEnabled()) {
       return;
@@ -239,46 +330,26 @@ public class RdfRepository {
       return;
     }
 
+    // Append the relationship triples directly with INSERT DATA. The previous
+    // implementation fetched the entity model, merged the new triple in, then
+    // round-tripped through storeEntity — but storeEntity performs a
+    // translator-scoped delete (rdf:type, rdfs:label, om:belongsToGlossary,
+    // and every literal) on the entity URI before loading the supplied model.
+    // Called with a relationship-only model that path wiped the source
+    // entity's identity, so subsequent SPARQL queries anchored on rdf:type or
+    // om:belongsToGlossary stopped finding the term. INSERT DATA is purely
+    // additive and matches the pattern used by addGlossaryTermRelation, which
+    // never had this bug.
     try {
       Model relationshipModel = createRelationshipModel(relationship);
-
-      String fromUri =
-          config.getBaseUri().toString()
-              + "entity/"
-              + relationship.getFromEntity()
-              + "/"
-              + relationship.getFromId();
-      String toUri =
-          config.getBaseUri().toString()
-              + "entity/"
-              + relationship.getToEntity()
-              + "/"
-              + relationship.getToId();
-
-      // Add to the entity's graph
-      Model fromEntityModel =
-          storageService.getEntity(relationship.getFromEntity(), relationship.getFromId());
-
-      if (fromEntityModel == null) {
-        // During initialization, relationships might be added before entities are created in RDF
-        // This is expected behavior, so we'll handle it gracefully without warnings
-        LOG.debug(
-            "Entity {} with ID {} not yet in RDF store, creating model for relationship",
-            relationship.getFromEntity(),
-            relationship.getFromId());
-        fromEntityModel = ModelFactory.createDefaultModel();
-
-        // Add basic entity information to make the model valid
-        Resource entityResource = fromEntityModel.createResource(fromUri);
-        entityResource.addProperty(
-            fromEntityModel.createProperty(config.getBaseUri() + "ontology/entityType"),
-            relationship.getFromEntity());
+      java.io.StringWriter writer = new java.io.StringWriter();
+      relationshipModel.write(writer, "N-TRIPLES");
+      String triples = writer.toString();
+      if (triples.isBlank()) {
+        return;
       }
-
-      fromEntityModel.add(relationshipModel);
-      storageService.storeEntity(
-          relationship.getFromEntity(), relationship.getFromId(), fromEntityModel);
-
+      String insertQuery = "INSERT DATA { GRAPH <" + KNOWLEDGE_GRAPH + "> { " + triples + " } }";
+      storageService.executeSparqlUpdate(insertQuery);
       LOG.debug("Added relationship {} to RDF store", relationship);
     } catch (Exception e) {
       LOG.error("Failed to add relationship to RDF", e);
@@ -359,8 +430,7 @@ public class RdfRepository {
 
   private static Set<String> computeRelationshipHookPredicates() {
     Set<String> predicates = new LinkedHashSet<>();
-    for (org.openmetadata.schema.type.Relationship rel :
-        org.openmetadata.schema.type.Relationship.values()) {
+    for (Relationship rel : Relationship.values()) {
       String value = rel.value();
       // Lineage is owned by addLineageWithDetails — its DELETE is scoped to
       // the lineageDetails sub-resource, not the relationship hook layer.
@@ -503,20 +573,81 @@ public class RdfRepository {
         tempModel.close();
       }
       if (reconcileSources != null) {
-        String base = config.getBaseUri().toString();
         Set<String> sourceUris = new LinkedHashSet<>();
         for (EntitySourceRef ref : reconcileSources) {
-          sourceUris.add(base + "entity/" + ref.entityType() + "/" + ref.entityId());
+          sourceUris.add(
+              storageService.buildEntityUri(ref.entityType(), ref.entityId().toString()));
         }
-        storageService.bulkStoreRelationships(relationshipDataList, sourceUris);
+        bulkStoreRelationshipData(relationshipDataList, sourceUris);
       } else {
-        storageService.bulkStoreRelationships(relationshipDataList);
+        Set<String> sourceUris = new LinkedHashSet<>();
+        for (RdfStorageInterface.RelationshipData relationshipData : relationshipDataList) {
+          sourceUris.add(
+              storageService.buildEntityUri(
+                  relationshipData.getFromType(), relationshipData.getFromId().toString()));
+        }
+        bulkStoreRelationshipData(relationshipDataList, sourceUris);
       }
       LOG.debug("Bulk added {} relationships to RDF store", relationships.size());
     } catch (Exception e) {
       LOG.error("Failed to bulk add relationships to RDF", e);
       throw new RuntimeException("Failed to bulk add relationships to RDF", e);
     }
+  }
+
+  void bulkStoreRelationshipData(
+      List<RdfStorageInterface.RelationshipData> relationships, Set<String> sourceUris) {
+    Set<String> effectiveSources = sourceUris != null ? sourceUris : Set.of();
+    if (relationships.isEmpty() && effectiveSources.isEmpty()) {
+      return;
+    }
+    if (effectiveSources.isEmpty()) {
+      storageService.bulkStoreRelationships(relationships, Set.of());
+      return;
+    }
+
+    Map<String, List<RdfStorageInterface.RelationshipData>> relationshipsBySource =
+        new LinkedHashMap<>();
+    List<RdfStorageInterface.RelationshipData> outsideSourceRelationships = new ArrayList<>();
+    for (RdfStorageInterface.RelationshipData relationship : relationships) {
+      String relationshipSourceUri =
+          storageService.buildEntityUri(
+              relationship.getFromType(), relationship.getFromId().toString());
+      if (effectiveSources.contains(relationshipSourceUri)) {
+        relationshipsBySource
+            .computeIfAbsent(relationshipSourceUri, ignored -> new ArrayList<>())
+            .add(relationship);
+      } else {
+        outsideSourceRelationships.add(relationship);
+      }
+    }
+
+    int chunkSize = resolveBulkRelationshipSourceBatchSize(config);
+    List<String> sourceChunk = new ArrayList<>(chunkSize);
+    for (String sourceUri : effectiveSources) {
+      sourceChunk.add(sourceUri);
+      if (sourceChunk.size() == chunkSize) {
+        bulkStoreRelationshipSourceChunk(sourceChunk, relationshipsBySource);
+        sourceChunk.clear();
+      }
+    }
+    if (!sourceChunk.isEmpty()) {
+      bulkStoreRelationshipSourceChunk(sourceChunk, relationshipsBySource);
+    }
+    if (!outsideSourceRelationships.isEmpty()) {
+      storageService.bulkStoreRelationships(outsideSourceRelationships, Set.of());
+    }
+  }
+
+  private void bulkStoreRelationshipSourceChunk(
+      List<String> sourceChunk,
+      Map<String, List<RdfStorageInterface.RelationshipData>> relationshipsBySource) {
+    Set<String> chunkSources = new LinkedHashSet<>(sourceChunk);
+    List<RdfStorageInterface.RelationshipData> chunkRelationships = new ArrayList<>();
+    for (String sourceUri : sourceChunk) {
+      chunkRelationships.addAll(relationshipsBySource.getOrDefault(sourceUri, List.of()));
+    }
+    storageService.bulkStoreRelationships(chunkRelationships, chunkSources);
   }
 
   /**
@@ -1204,19 +1335,58 @@ public class RdfRepository {
     queryBuilder.append("PREFIX skos: <http://www.w3.org/2004/02/skos/core#> ");
     queryBuilder.append("PREFIX prov: <http://www.w3.org/ns/prov#> ");
     queryBuilder.append(
-        "SELECT DISTINCT ?term1 ?term2 ?relationType ?term1Name ?term2Name ?term1FQN ?term2FQN ?term1DisplayName ?term2DisplayName ?glossary ");
+        "SELECT DISTINCT ?term1 ?term2 ?relationType ?term1Name ?term2Name ?term1FQN ?term2FQN ?term1DisplayName ?term2DisplayName ?glossary ?glossaryName ");
     queryBuilder.append("WHERE { ");
     queryBuilder.append("  GRAPH ?g { ");
     // Note: glossaryTerm entities are typed as skos:Concept (see RdfUtils.getRdfType)
     queryBuilder.append("    ?term1 a skos:Concept . ");
     // Filter to only include glossaryTerm URIs (not tags or other skos:Concept types)
     queryBuilder.append("    FILTER(CONTAINS(STR(?term1), '/glossaryTerm/')) ");
-    queryBuilder.append("    OPTIONAL { ?term1 om:name ?term1Name } ");
+    // `name` is mapped to rdfs:label in base.jsonld; om:name is never written.
+    // Read rdfs:label so terms without a displayName still surface a real label
+    // instead of falling back to the entity UUID at render time.
+    queryBuilder.append("    OPTIONAL { ?term1 rdfs:label ?term1Name } ");
     queryBuilder.append("    OPTIONAL { ?term1 skos:prefLabel ?term1DisplayName } ");
     queryBuilder.append("    OPTIONAL { ?term1 om:fullyQualifiedName ?term1FQN } ");
-    queryBuilder.append("    OPTIONAL { ?term1 om:belongsTo ?glossary } ");
+    // When glossaryId is supplied, require the membership triple so the row is
+    // dropped (not just filtered) for terms outside the requested glossary.
+    // The predicate is om:belongsToGlossary (see governance.jsonld @context for
+    // GlossaryTerm.glossary); the previous om:belongsTo predicate is never
+    // written, which made the downstream FILTER a no-op and leaked every
+    // glossary's terms.
+    if (glossaryId != null) {
+      String glossaryUri = config.getBaseUri().toString() + "entity/glossary/" + glossaryId;
+      queryBuilder.append("    ?term1 om:belongsToGlossary <").append(glossaryUri).append("> . ");
+      queryBuilder.append("    BIND(<").append(glossaryUri).append("> AS ?glossary) ");
+    } else {
+      queryBuilder.append("    OPTIONAL { ?term1 om:belongsToGlossary ?glossary } ");
+    }
+    // Resolve the glossary's human label so the UI can render a group container
+    // even when the parent Glossary entity is not in the caller's accessible
+    // glossary list (otherwise it falls back to the raw UUID). The `name`
+    // property is mapped to rdfs:label by base.jsonld; skos:prefLabel
+    // (displayName) is also tried so a user-friendly label wins when present.
+    queryBuilder.append("    OPTIONAL { ?glossary skos:prefLabel ?glossaryDisplayName } ");
+    queryBuilder.append("    OPTIONAL { ?glossary rdfs:label ?glossaryRdfsLabel } ");
+    queryBuilder.append(
+        "    BIND(COALESCE(?glossaryDisplayName, ?glossaryRdfsLabel) AS ?glossaryName) ");
 
-    // Build relation type filter
+    // Build relation type filter.
+    //
+    // The writer side (bulkAddGlossaryTermRelations / addGlossaryTermRelation)
+    // honours user-configured custom relation types from
+    // GlossaryTermRelationSettings — operators can define types like
+    // "Enrolls In" / "Enabled By" with their own RDF predicate URIs and the
+    // writer correctly emits those triples. But this read path was hardcoded
+    // to the built-in CURIE list (om:relatedTo, skos:broader, …) and silently
+    // dropped every custom-typed edge. Result: customer environments saw
+    // their relations in the Overview tab (DB) and in the global Ontology
+    // Explorer (DB-backed scope='global') but the term-page Relations Graph
+    // (RDF-backed scope='term') rendered the source node alone, exactly as
+    // image-v6 in the bug report.
+    //
+    // Mirror clearAllGlossaryTermRelations's settings-aware predicate
+    // assembly so reader and writer stay in sync.
     List<String> relationPredicates = new ArrayList<>();
     if (relationTypes != null && !relationTypes.isEmpty()) {
       for (String relType : relationTypes.split(",")) {
@@ -1247,6 +1417,57 @@ public class RdfRepository {
       // PROV-O predicates (for calculatedFrom, usedToCalculate)
       relationPredicates.add("prov:wasDerivedFrom");
       relationPredicates.add("prov:wasInfluencedBy");
+
+      // Append user-configured custom predicates as full IRIs. Built-ins
+      // already covered above as CURIEs; custom types use arbitrary URIs that
+      // may not share any of the declared prefixes, so we always inject the
+      // expanded form in angle brackets. Deduplication is handled by SPARQL
+      // (?relationType IN (a, b, a) is equivalent to IN (a, b)).
+      //
+      // expandPredicateCurie is idempotent for full http(s) IRIs (see its
+      // early-return branch at the `startsWith("http://") || startsWith("https://")`
+      // check), so passing rdfPredicate.toString() through is safe whether
+      // the configured value is already a full IRI (the realistic case for
+      // custom types) or a CURIE-shaped URI like `skos:broader` (rare but
+      // technically valid as a java.net.URI). Either way we end up with the
+      // same fully-expanded IRI the writer used when storing the triple.
+      //
+      // When rdfPredicate is null on a configured custom type (a real-world
+      // case observed on a customer instance — operators add the type name
+      // without filling in the URI), mirror the writer's
+      // getGlossaryTermRelationPredicate fallback: use
+      // `https://open-metadata.org/ontology/<name>`. Without this fallback,
+      // the writer would store triples at om:<name> but the reader filter
+      // would not include them, exactly the symptom we just fixed for
+      // explicit URIs.
+      try {
+        GlossaryTermRelationSettings settings =
+            SettingsCache.getSetting(
+                SettingsType.GLOSSARY_TERM_RELATION_SETTINGS, GlossaryTermRelationSettings.class);
+        if (settings != null && settings.getRelationTypes() != null) {
+          for (var configuredType : settings.getRelationTypes()) {
+            String fullUri =
+                resolveConfiguredTypeUri(
+                    configuredType.getRdfPredicate(), configuredType.getName());
+            if (fullUri == null) {
+              continue;
+            }
+            relationPredicates.add("<" + fullUri + ">");
+          }
+        }
+      } catch (RuntimeException e) {
+        // SettingsCache.getSetting wraps everything as EntityNotFoundException
+        // (a RuntimeException) on miss; catching Exception was wider than
+        // necessary and would swallow programmer-error throwables. Narrow to
+        // RuntimeException, which still covers the cache miss / cast failure
+        // cases while letting checked exceptions (none today, but defensive)
+        // propagate.
+        LOG.debug(
+            "Could not load GlossaryTermRelationSettings for graph query — "
+                + "custom-typed glossary relations will be filtered out of the response. "
+                + "Cause: {}",
+            e.getMessage());
+      }
     }
 
     queryBuilder.append("    OPTIONAL { ");
@@ -1254,7 +1475,7 @@ public class RdfRepository {
     // Note: glossaryTerm entities are typed as skos:Concept (see RdfUtils.getRdfType)
     queryBuilder.append("      ?term2 a skos:Concept . ");
     queryBuilder.append("      FILTER(CONTAINS(STR(?term2), '/glossaryTerm/')) ");
-    queryBuilder.append("      OPTIONAL { ?term2 om:name ?term2Name } ");
+    queryBuilder.append("      OPTIONAL { ?term2 rdfs:label ?term2Name } ");
     queryBuilder.append("      OPTIONAL { ?term2 skos:prefLabel ?term2DisplayName } ");
     queryBuilder.append("      OPTIONAL { ?term2 om:fullyQualifiedName ?term2FQN } ");
     queryBuilder.append("      FILTER(?relationType IN (");
@@ -1262,11 +1483,8 @@ public class RdfRepository {
     queryBuilder.append(")) ");
     queryBuilder.append("    } ");
 
-    // Filter by glossary if specified
-    if (glossaryId != null) {
-      String glossaryUri = config.getBaseUri().toString() + "entity/glossary/" + glossaryId;
-      queryBuilder.append("    FILTER(?glossary = <").append(glossaryUri).append(">) ");
-    }
+    // Glossary scoping is handled above by adding a required om:belongsToGlossary
+    // triple to ?term1 when glossaryId is non-null.
 
     queryBuilder.append("  } ");
     queryBuilder.append("} ");
@@ -1314,134 +1532,236 @@ public class RdfRepository {
     com.fasterxml.jackson.databind.node.ArrayNode edges =
         JsonUtils.getObjectMapper().createArrayNode();
 
-    Set<String> addedNodes = new HashSet<>();
-    Map<String, com.fasterxml.jackson.databind.node.ObjectNode> nodeMap = new HashMap<>();
-    Set<String> edgeKeys = new HashSet<>();
-    Set<String> termsWithRelations = new HashSet<>();
+    // Build the IRI → typeName lookup ONCE per request and stash on the
+    // current thread so extractPredicateName's per-edge call does an O(1)
+    // map.get instead of an O(relationTypes) scan with regex+concat per
+    // iteration. ThreadLocal scope is fine because this method is invoked
+    // synchronously from the SPARQL-results processing path; we always
+    // clear it on the way out.
+    predicateNameCache.set(buildPredicateUriToNameMap());
+    try {
 
-    com.fasterxml.jackson.databind.JsonNode resultsJson = JsonUtils.readTree(sparqlResults);
+      Set<String> addedNodes = new HashSet<>();
+      Map<String, com.fasterxml.jackson.databind.node.ObjectNode> nodeMap = new HashMap<>();
+      Set<String> edgeKeys = new HashSet<>();
+      Set<String> termsWithRelations = new HashSet<>();
 
-    if (resultsJson.has("results") && resultsJson.get("results").has("bindings")) {
-      for (com.fasterxml.jackson.databind.JsonNode binding :
-          resultsJson.get("results").get("bindings")) {
+      // When scoped to a specific glossary, resolve its display label from the
+      // DB once and use it as a fallback for `?glossaryName`. The SPARQL
+      // OPTIONAL binds nothing if the parent Glossary entity hasn't been (or
+      // has only partially been) projected to RDF — without this fallback the
+      // response would omit the `group` field and the UI hierarchy view would
+      // render the glossary UUID instead of its name.
+      String scopedGlossaryName = lookupGlossaryDisplayName(glossaryId);
 
-        String term1Uri = binding.has("term1") ? binding.get("term1").get("value").asText() : null;
-        String term2Uri =
-            binding.has("term2") && !binding.get("term2").isNull()
-                ? binding.get("term2").get("value").asText()
-                : null;
-        String relationTypeUri =
-            binding.has("relationType") && !binding.get("relationType").isNull()
-                ? binding.get("relationType").get("value").asText()
-                : null;
-        String term1Name =
-            binding.has("term1Name") && !binding.get("term1Name").isNull()
-                ? binding.get("term1Name").get("value").asText()
-                : null;
-        String term2Name =
-            binding.has("term2Name") && !binding.get("term2Name").isNull()
-                ? binding.get("term2Name").get("value").asText()
-                : null;
-        String term1DisplayName =
-            binding.has("term1DisplayName") && !binding.get("term1DisplayName").isNull()
-                ? binding.get("term1DisplayName").get("value").asText()
-                : null;
-        String term2DisplayName =
-            binding.has("term2DisplayName") && !binding.get("term2DisplayName").isNull()
-                ? binding.get("term2DisplayName").get("value").asText()
-                : null;
-        String term1FQN =
-            binding.has("term1FQN") && !binding.get("term1FQN").isNull()
-                ? binding.get("term1FQN").get("value").asText()
-                : null;
-        String term2FQN =
-            binding.has("term2FQN") && !binding.get("term2FQN").isNull()
-                ? binding.get("term2FQN").get("value").asText()
-                : null;
+      com.fasterxml.jackson.databind.JsonNode resultsJson = JsonUtils.readTree(sparqlResults);
 
-        // Use displayName if available, otherwise fall back to name
-        String term1Label = term1DisplayName != null ? term1DisplayName : term1Name;
-        String term2Label = term2DisplayName != null ? term2DisplayName : term2Name;
+      if (resultsJson.has("results") && resultsJson.get("results").has("bindings")) {
+        for (com.fasterxml.jackson.databind.JsonNode binding :
+            resultsJson.get("results").get("bindings")) {
 
-        if (term1Uri == null) continue;
+          String term1Uri =
+              binding.has("term1") ? binding.get("term1").get("value").asText() : null;
+          String term2Uri =
+              binding.has("term2") && !binding.get("term2").isNull()
+                  ? binding.get("term2").get("value").asText()
+                  : null;
+          String relationTypeUri =
+              binding.has("relationType") && !binding.get("relationType").isNull()
+                  ? binding.get("relationType").get("value").asText()
+                  : null;
+          String term1Name =
+              binding.has("term1Name") && !binding.get("term1Name").isNull()
+                  ? binding.get("term1Name").get("value").asText()
+                  : null;
+          String term2Name =
+              binding.has("term2Name") && !binding.get("term2Name").isNull()
+                  ? binding.get("term2Name").get("value").asText()
+                  : null;
+          String term1DisplayName =
+              binding.has("term1DisplayName") && !binding.get("term1DisplayName").isNull()
+                  ? binding.get("term1DisplayName").get("value").asText()
+                  : null;
+          String term2DisplayName =
+              binding.has("term2DisplayName") && !binding.get("term2DisplayName").isNull()
+                  ? binding.get("term2DisplayName").get("value").asText()
+                  : null;
+          String term1FQN =
+              binding.has("term1FQN") && !binding.get("term1FQN").isNull()
+                  ? binding.get("term1FQN").get("value").asText()
+                  : null;
+          String term2FQN =
+              binding.has("term2FQN") && !binding.get("term2FQN").isNull()
+                  ? binding.get("term2FQN").get("value").asText()
+                  : null;
+          String glossaryUri =
+              binding.has("glossary") && !binding.get("glossary").isNull()
+                  ? binding.get("glossary").get("value").asText()
+                  : null;
+          String glossaryName =
+              binding.has("glossaryName") && !binding.get("glossaryName").isNull()
+                  ? binding.get("glossaryName").get("value").asText()
+                  : null;
 
-        // Add term1 node
-        if (!addedNodes.contains(term1Uri) && addedNodes.size() < limit) {
-          com.fasterxml.jackson.databind.node.ObjectNode node =
-              createGlossaryTermNode(term1Uri, term1Label, term1FQN, term2Uri != null);
-          nodes.add(node);
-          nodeMap.put(term1Uri, node);
-          addedNodes.add(term1Uri);
-        }
+          // Treat blank as missing: skos:prefLabel is materialized as an empty
+          // literal when the term has no displayName, and an empty string here
+          // would otherwise win over the real rdfs:label name and render as a
+          // blank node label in the UI.
+          String term1Label = firstNonBlank(term1DisplayName, term1Name);
+          String term2Label = firstNonBlank(term2DisplayName, term2Name);
+          glossaryName = firstNonBlank(glossaryName, scopedGlossaryName);
 
-        // If there's a relation, add term2 and the edge
-        if (term2Uri != null && relationTypeUri != null) {
-          termsWithRelations.add(term1Uri);
-          termsWithRelations.add(term2Uri);
+          if (term1Uri == null) continue;
 
-          if (!addedNodes.contains(term2Uri) && addedNodes.size() < limit) {
+          // Add term1 node
+          if (!addedNodes.contains(term1Uri) && addedNodes.size() < limit) {
             com.fasterxml.jackson.databind.node.ObjectNode node =
-                createGlossaryTermNode(term2Uri, term2Label, term2FQN, true);
+                createGlossaryTermNode(
+                    term1Uri, term1Label, term1FQN, glossaryUri, glossaryName, term2Uri != null);
             nodes.add(node);
-            nodeMap.put(term2Uri, node);
-            addedNodes.add(term2Uri);
+            nodeMap.put(term1Uri, node);
+            addedNodes.add(term1Uri);
+          } else if (addedNodes.contains(term1Uri)) {
+            // The term may have been added earlier as a `term2` (edge target)
+            // by a row whose `term1` was a different term; that path doesn't
+            // populate glossaryId / group. Now that we have a row where this
+            // term is the primary, backfill the membership fields so the
+            // hierarchy view in the UI can resolve the group container label.
+            com.fasterxml.jackson.databind.node.ObjectNode existing = nodeMap.get(term1Uri);
+            if (existing != null) {
+              if (!existing.has("glossaryId") && glossaryUri != null) {
+                existing.put("glossaryId", extractEntityIdFromUri(glossaryUri));
+              }
+              if (!existing.has("group") && !isBlank(glossaryName)) {
+                existing.put("group", glossaryName);
+              }
+              // Also upgrade the label if we now have a real one (the term2
+              // path falls through to UUID when neither name nor displayName
+              // is present in that row).
+              String currentLabel = existing.path("label").asText(null);
+              String entityId = extractEntityIdFromUri(term1Uri);
+              if ((currentLabel == null || currentLabel.equals(entityId)) && !isBlank(term1Label)) {
+                existing.put("label", term1Label);
+              }
+            }
           }
 
-          // Add edge (avoid duplicates)
-          String edgeKey = term1Uri + "-" + relationTypeUri + "-" + term2Uri;
-          String reverseKey = term2Uri + "-" + relationTypeUri + "-" + term1Uri;
-          if (!edgeKeys.contains(edgeKey) && !edgeKeys.contains(reverseKey)) {
-            edgeKeys.add(edgeKey);
+          // If there's a relation, add term2 and the edge
+          if (term2Uri != null && relationTypeUri != null) {
+            termsWithRelations.add(term1Uri);
+            termsWithRelations.add(term2Uri);
 
-            String extractedRelationType = extractPredicateName(relationTypeUri);
-            String formattedLabel = formatGlossaryRelationType(relationTypeUri);
-            LOG.info(
-                "RDF Edge: {} -> {}, predicateUri={}, extractedType={}, label={}",
-                extractEntityIdFromUri(term1Uri),
-                extractEntityIdFromUri(term2Uri),
-                relationTypeUri,
-                extractedRelationType,
-                formattedLabel);
+            if (!addedNodes.contains(term2Uri) && addedNodes.size() < limit) {
+              // term2 may live in a different glossary; the SPARQL row only
+              // surfaces term1's glossary, so leave the membership fields empty
+              // for term2 rather than mis-attributing it.
+              com.fasterxml.jackson.databind.node.ObjectNode node =
+                  createGlossaryTermNode(term2Uri, term2Label, term2FQN, null, null, true);
+              nodes.add(node);
+              nodeMap.put(term2Uri, node);
+              addedNodes.add(term2Uri);
+            }
 
-            com.fasterxml.jackson.databind.node.ObjectNode edge =
-                JsonUtils.getObjectMapper().createObjectNode();
-            edge.put("from", extractEntityIdFromUri(term1Uri));
-            edge.put("to", extractEntityIdFromUri(term2Uri));
-            edge.put("label", formattedLabel);
-            edge.put("relationType", extractedRelationType);
-            edges.add(edge);
+            // Add edge (avoid duplicates)
+            String edgeKey = term1Uri + "-" + relationTypeUri + "-" + term2Uri;
+            String reverseKey = term2Uri + "-" + relationTypeUri + "-" + term1Uri;
+            if (!edgeKeys.contains(edgeKey) && !edgeKeys.contains(reverseKey)) {
+              edgeKeys.add(edgeKey);
+
+              String extractedRelationType = extractPredicateName(relationTypeUri);
+              String formattedLabel = formatGlossaryRelationType(relationTypeUri);
+              // DEBUG, not INFO: this fires once per edge in the parsed
+              // SPARQL result set. A typical graph response with hundreds
+              // of edges would emit hundreds of INFO log lines per request
+              // and dominate log-aggregation cost. The "RDF query returned
+              // {} nodes and {} edges" summary log further down covers the
+              // per-request signal at INFO level.
+              LOG.debug(
+                  "RDF Edge: {} -> {}, predicateUri={}, extractedType={}, label={}",
+                  extractEntityIdFromUri(term1Uri),
+                  extractEntityIdFromUri(term2Uri),
+                  relationTypeUri,
+                  extractedRelationType,
+                  formattedLabel);
+
+              com.fasterxml.jackson.databind.node.ObjectNode edge =
+                  JsonUtils.getObjectMapper().createObjectNode();
+              edge.put("from", extractEntityIdFromUri(term1Uri));
+              edge.put("to", extractEntityIdFromUri(term2Uri));
+              edge.put("label", formattedLabel);
+              edge.put("relationType", extractedRelationType);
+              edges.add(edge);
+            }
           }
         }
       }
-    }
 
-    // Mark isolated nodes
-    for (com.fasterxml.jackson.databind.node.ObjectNode node : nodeMap.values()) {
-      String nodeId = node.get("id").asText();
-      String nodeUri = config.getBaseUri().toString() + "entity/glossaryTerm/" + nodeId;
-      if (!termsWithRelations.contains(nodeUri)) {
-        node.put("type", "glossaryTermIsolated");
-        node.put("isolated", true);
+      // Mark isolated nodes
+      for (com.fasterxml.jackson.databind.node.ObjectNode node : nodeMap.values()) {
+        String nodeId = node.get("id").asText();
+        String nodeUri = config.getBaseUri().toString() + "entity/glossaryTerm/" + nodeId;
+        if (!termsWithRelations.contains(nodeUri)) {
+          node.put("type", "glossaryTermIsolated");
+          node.put("isolated", true);
+        }
       }
+
+      // If RDF didn't return enough results, fall back to database query
+      if (nodes.isEmpty()) {
+        LOG.info("RDF query returned no nodes, falling back to database");
+        return getGlossaryTermGraphFromDatabase(glossaryId, limit, offset, includeIsolated);
+      }
+      LOG.info("RDF query returned {} nodes and {} edges", nodes.size(), edges.size());
+
+      graphData.set("nodes", nodes);
+      graphData.set("edges", edges);
+      graphData.put("totalNodes", addedNodes.size());
+      graphData.put("totalEdges", edges.size());
+
+      return JsonUtils.pojoToJson(graphData);
+    } finally {
+      predicateNameCache.remove();
     }
+  }
 
-    // If RDF didn't return enough results, fall back to database query
-    if (nodes.isEmpty()) {
-      LOG.info("RDF query returned no nodes, falling back to database");
-      return getGlossaryTermGraphFromDatabase(glossaryId, limit, offset, includeIsolated);
+  /**
+   * Builds a single (configured rdfPredicate IRI → relation type name) map
+   * from GlossaryTermRelationSettings, mirroring the resolution that
+   * extractPredicateName needs per edge. Returns an empty map (NOT null) on
+   * cache miss so extractPredicateName's contract is simple: {@code map.get}
+   * either hits or falls through to the URI-local-name path.
+   */
+  private static java.util.Map<String, String> buildPredicateUriToNameMap() {
+    java.util.Map<String, String> map = new java.util.HashMap<>();
+    try {
+      GlossaryTermRelationSettings settings =
+          SettingsCache.getSetting(
+              SettingsType.GLOSSARY_TERM_RELATION_SETTINGS, GlossaryTermRelationSettings.class);
+      if (settings != null && settings.getRelationTypes() != null) {
+        for (var configuredType : settings.getRelationTypes()) {
+          String configuredUri =
+              resolveConfiguredTypeUri(configuredType.getRdfPredicate(), configuredType.getName());
+          if (configuredUri != null) {
+            map.putIfAbsent(configuredUri, configuredType.getName());
+          }
+        }
+      }
+    } catch (RuntimeException e) {
+      LOG.debug(
+          "Could not load GlossaryTermRelationSettings while building predicate-name "
+              + "cache; per-edge lookups will fall back to URI local-name. Cause: {}",
+          e.getMessage());
     }
-    LOG.info("RDF query returned {} nodes and {} edges", nodes.size(), edges.size());
-
-    graphData.set("nodes", nodes);
-    graphData.set("edges", edges);
-    graphData.put("totalNodes", addedNodes.size());
-    graphData.put("totalEdges", edges.size());
-
-    return JsonUtils.pojoToJson(graphData);
+    return map;
   }
 
   private com.fasterxml.jackson.databind.node.ObjectNode createGlossaryTermNode(
-      String termUri, String name, String fqn, boolean hasRelations) {
+      String termUri,
+      String name,
+      String fqn,
+      String glossaryUri,
+      String glossaryName,
+      boolean hasRelations) {
     com.fasterxml.jackson.databind.node.ObjectNode node =
         JsonUtils.getObjectMapper().createObjectNode();
 
@@ -1452,9 +1772,50 @@ public class RdfRepository {
     if (fqn != null) {
       node.put("fullyQualifiedName", fqn);
     }
+    if (glossaryUri != null) {
+      node.put("glossaryId", extractEntityIdFromUri(glossaryUri));
+    }
+    if (glossaryName != null) {
+      // Used by the UI as the hierarchy combo (group container) label so a
+      // glossary name is shown even when the caller cannot see the parent
+      // Glossary in the glossaries listing.
+      node.put("group", glossaryName);
+    }
     node.put("isolated", !hasRelations);
 
     return node;
+  }
+
+  private static boolean isBlank(String s) {
+    return s == null || s.isBlank();
+  }
+
+  private static String firstNonBlank(String a, String b) {
+    if (!isBlank(a)) return a;
+    if (!isBlank(b)) return b;
+    return null;
+  }
+
+  /**
+   * Resolve a glossary's user-facing label from the entity repository.
+   * Returns null if {@code glossaryId} is null, the entity is gone, or the
+   * lookup fails — callers should treat this as a best-effort fallback.
+   */
+  private String lookupGlossaryDisplayName(UUID glossaryId) {
+    if (glossaryId == null) {
+      return null;
+    }
+    try {
+      var glossaryRepo = Entity.getEntityRepository(Entity.GLOSSARY);
+      var glossary =
+          (Glossary)
+              glossaryRepo.get(
+                  null, glossaryId, glossaryRepo.getFields(""), Include.NON_DELETED, false);
+      return firstNonBlank(glossary.getDisplayName(), glossary.getName());
+    } catch (Exception e) {
+      LOG.debug("Could not resolve display name for glossary {}: {}", glossaryId, e.getMessage());
+      return null;
+    }
   }
 
   private String formatGlossaryRelationType(String relationUri) {
@@ -1521,27 +1882,41 @@ public class RdfRepository {
         JsonUtils.getObjectMapper().createArrayNode();
 
     try {
-      // Get glossary terms from database
-      var glossaryTermRepository = Entity.getEntityRepository("glossaryTerm");
-      var listFilter = new org.openmetadata.service.jdbi3.ListFilter(null);
-
+      // Reuse the exact code path the /v1/glossaryTerms?glossary=<id> listing
+      // takes: resolve the glossary's FQN, then drive listAfter with the
+      // `parent` filter. ListFilter.getParentCondition translates that into a
+      // fqnHash LIKE '<glossaryFqnHash>.%' predicate (see
+      // ListFilter.getFqnPrefixCondition) which is an indexed prefix scan
+      // scoped to that glossary — never the full table. The previous
+      // implementation called listAll() and filtered by glossary.id in a Java
+      // loop, which loaded every term in the deployment into memory.
+      var glossaryTermRepository =
+          (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
+      var listFilter = new ListFilter(null);
       if (glossaryId != null) {
-        listFilter.addQueryParam("glossary", glossaryId.toString());
+        var glossaryRepo = Entity.getEntityRepository(Entity.GLOSSARY);
+        var glossary =
+            (Glossary)
+                glossaryRepo.get(
+                    null, glossaryId, glossaryRepo.getFields(""), Include.NON_DELETED, false);
+        listFilter.addQueryParam("parent", glossary.getFullyQualifiedName());
       }
-
-      var terms =
+      List<GlossaryTerm> terms = new ArrayList<>();
+      var fetched =
           glossaryTermRepository.listAll(
               glossaryTermRepository.getFields("relatedTerms,parent,children"), listFilter);
+      for (var entity : fetched) {
+        terms.add((GlossaryTerm) entity);
+      }
 
       Set<String> addedNodes = new HashSet<>();
       Set<String> termsWithRelations = new HashSet<>();
       Set<String> edgeKeys = new HashSet<>();
       int count = 0;
 
-      for (var entity : terms) {
+      for (var term : terms) {
         if (count >= limit) break;
 
-        var term = (org.openmetadata.schema.entity.data.GlossaryTerm) entity;
         String termId = term.getId().toString();
 
         boolean hasRelations =
@@ -1702,7 +2077,35 @@ public class RdfRepository {
       }
     }
 
-    // Extract local name from URI
+    // Look up the configured relation type whose rdfPredicate matches this
+    // URI exactly. Customers can configure custom types with arbitrary
+    // predicate IRIs where the local name does NOT match the type name —
+    // e.g. operator-defined `enrolledIn` mapped to
+    // `https://acme.com/ns#enrolls`. Without this lookup the graph endpoint
+    // would surface `enrolls` as the relationType (the URI's local name)
+    // instead of `enrolledIn` (the user's chosen type name), and round-trip
+    // assertions like "the type I sent on POST /relations equals the type
+    // the graph returns" would fail.
+    //
+    // Uses a per-thread cached IRI→typeName map so a single graph response
+    // pays the settings-load + map-build cost ONCE, not once per edge.
+    // parseGlossaryTermGraphResults can iterate hundreds-to-thousands of
+    // edges; the previous implementation was O(edges × relationTypes) with
+    // a string-concat + regex pass per iteration. The cache is cleared at
+    // the top of parseGlossaryTermGraphResults so settings updates between
+    // requests take effect.
+    if (predicateUri != null) {
+      java.util.Map<String, String> map = predicateNameCache.get();
+      if (map != null) {
+        String name = map.get(predicateUri);
+        if (name != null) {
+          return name;
+        }
+      }
+    }
+
+    // Extract local name from URI as a final fallback (built-in om:* predicates
+    // that aren't in the hardcoded mapping above land here)
     if (predicateUri.contains("#")) {
       return predicateUri.substring(predicateUri.lastIndexOf('#') + 1);
     } else if (predicateUri.contains("/")) {
@@ -2628,10 +3031,23 @@ public class RdfRepository {
       String toUri = config.getBaseUri().toString() + "entity/glossaryTerm/" + toTermId;
       String predicateUri = getGlossaryTermRelationPredicateUri(relationType);
 
+      // Delete BOTH directions. The add path runs through
+      // EntityRepository.addRelationship which writes the reverse direction
+      // for bidirectional relationships, so a one-sided delete leaves a
+      // stale "<to> om:<predicate> <from>" triple — visible as a lingering
+      // edge in the relations graph after the user removed the relation.
       String sparqlUpdate =
           String.format(
-              "DELETE WHERE { GRAPH <%s> { <%s> <%s> <%s> } }",
-              KNOWLEDGE_GRAPH, fromUri, predicateUri, toUri);
+              "DELETE WHERE { GRAPH <%s> { <%s> <%s> <%s> } };"
+                  + "DELETE WHERE { GRAPH <%s> { <%s> <%s> <%s> } }",
+              KNOWLEDGE_GRAPH,
+              fromUri,
+              predicateUri,
+              toUri,
+              KNOWLEDGE_GRAPH,
+              toUri,
+              predicateUri,
+              fromUri);
 
       storageService.executeSparqlUpdate(sparqlUpdate);
       LOG.debug("Removed glossary term relation {} -> {} ({})", fromTermId, toTermId, relationType);
@@ -2849,6 +3265,26 @@ public class RdfRepository {
   //
   // Throw on null/empty rather than defaulting silently. The cleanup path
   // already guards on the caller side; if a future caller forgets, a
+  /**
+   * Resolve a {@code GlossaryTermRelationSettings.RelationType} to its full
+   * canonical predicate IRI string. Single source of truth for the
+   * settings-driven URI shape used by both the reader (graph query filter,
+   * predicate-name cache) and any future writer-side helper that needs the
+   * IRI as a String (not a Jena {@code Property}).
+   *
+   * <p>Returns {@code null} if neither {@code rdfPredicate} nor {@code name}
+   * is usable — callers must skip the type instead of fabricating a URI.
+   */
+  private static String resolveConfiguredTypeUri(java.net.URI rdfPredicate, String name) {
+    if (rdfPredicate != null) {
+      return expandPredicateCurie(rdfPredicate.toString());
+    }
+    if (name != null && !name.isBlank()) {
+      return "https://open-metadata.org/ontology/" + name;
+    }
+    return null;
+  }
+
   // misconfigured "rdfPredicate: null" entry would silently target relatedTo
   // and skip cleaning the real predicate — better to fail loudly.
   private static String expandPredicateCurie(String uri) {
@@ -2964,8 +3400,7 @@ public class RdfRepository {
     Property rdfsLabel = model.createProperty("http://www.w3.org/2000/01/rdf-schema#", "label");
 
     try {
-      org.openmetadata.schema.entity.data.Glossary glossary =
-          Entity.getEntity("glossary", glossaryId, "*", null);
+      Glossary glossary = Entity.getEntity("glossary", glossaryId, "*", null);
 
       String glossaryUri = config.getBaseUri().toString() + "glossary/" + glossaryId;
       Resource glossaryResource = model.createResource(glossaryUri);
@@ -2977,8 +3412,8 @@ public class RdfRepository {
         glossaryResource.addProperty(skosDefinition, glossary.getDescription());
       }
 
-      var glossaryTermRepository = Entity.getEntityRepository("glossaryTerm");
-      var listFilter = new org.openmetadata.service.jdbi3.ListFilter(null);
+      var glossaryTermRepository = Entity.getEntityRepository(Entity.GLOSSARY_TERM);
+      var listFilter = new ListFilter(null);
       listFilter.addQueryParam("glossary", glossaryId.toString());
 
       var terms =
@@ -2989,7 +3424,7 @@ public class RdfRepository {
       Map<UUID, Resource> termResources = new HashMap<>();
 
       for (var entity : terms) {
-        var term = (org.openmetadata.schema.entity.data.GlossaryTerm) entity;
+        var term = (GlossaryTerm) entity;
         String termUri = config.getBaseUri().toString() + "glossaryTerm/" + term.getId();
         Resource termResource = model.createResource(termUri);
 
@@ -3019,7 +3454,7 @@ public class RdfRepository {
 
       if (includeRelations) {
         for (var entity : terms) {
-          var term = (org.openmetadata.schema.entity.data.GlossaryTerm) entity;
+          var term = (GlossaryTerm) entity;
           Resource termResource = termResources.get(term.getId());
 
           if (term.getParent() != null && term.getParent().getId() != null) {
@@ -3207,6 +3642,23 @@ public class RdfRepository {
       LOG.error("Failed to clear RDF store", e);
       throw new RuntimeException("Failed to clear RDF store", e);
     }
+  }
+
+  /**
+   * Trigger a backend storage compaction to physically reclaim disk space after
+   * large deletes. See {@link
+   * org.openmetadata.service.rdf.storage.RdfStorageInterface#compactStorage()}
+   * for why this is necessary on TDB2: {@code CLEAR ALL} only marks triples as
+   * deleted in TDB2's free-list — the on-disk dataset never shrinks until the
+   * compaction admin endpoint is called explicitly. Failures are swallowed at
+   * the storage layer; this is a best-effort housekeeping call.
+   */
+  public void compactStorage() {
+    if (!isEnabled()) {
+      return;
+    }
+    LOG.info("Compacting RDF storage to reclaim disk space");
+    storageService.compactStorage();
   }
 
   /**

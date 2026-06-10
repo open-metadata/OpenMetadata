@@ -33,7 +33,7 @@ import {
   deleteTestCaseFailedSampleData,
   getTestCaseFailedSampleData,
 } from '../../../../rest/testAPI';
-import { getEntityDeleteMessage } from '../../../../utils/CommonUtils';
+import { getEntityDeleteMessage } from '../../../../utils/EntityDisplayUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { checkPermission } from '../../../../utils/PermissionsUtils';

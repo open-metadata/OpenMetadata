@@ -115,7 +115,7 @@ const KnowledgeCenterFilterPage = () => {
     return [
       {
         name: t('label.knowledge-center'),
-        url: ROUTES.KNOWLEDGE_CENTER,
+        url: ROUTES.CONTEXT_CENTER,
       },
       {
         name,

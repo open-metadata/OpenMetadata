@@ -399,6 +399,11 @@ export const addEntityFQNFilter = async ({
   // Ensure no dropdowns visible before searching
   await ensureNoDropdownVisible(page);
 
+  // Focus the combobox before filling — Ant Design Select with mode="multiple"
+  // renders the search input as readonly until it receives focus, which makes
+  // page.fill() fail with "element is not editable".
+  await page.click('[data-testid="fqn-list-select"] [role="combobox"]');
+
   // Search and select entity
   const getSearchResult = page.waitForResponse('/api/v1/search/query?q=*');
   await page.fill(

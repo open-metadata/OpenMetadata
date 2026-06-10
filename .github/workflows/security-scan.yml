@@ -14,6 +14,18 @@ on:
   schedule:
     - cron: "0 0 */2 * *"
   workflow_dispatch:
+    inputs:
+      SEND_SLACK_NOTIFICATION:
+        description: "Post results to Slack (uncheck for test runs)"
+        type: boolean
+        required: false
+        default: true
+
+env:
+  # Manual runs may opt out of Slack; schedule (where inputs are unset) always sends.
+  # Explicit empty-check, since `||` would treat the string 'false' inconsistently when the
+  # input is typed `boolean` — only an empty string should fall back to 'true'.
+  SEND_SLACK_NOTIFICATION: ${{ github.event.inputs.SEND_SLACK_NOTIFICATION == '' && 'true' || github.event.inputs.SEND_SLACK_NOTIFICATION }}
 
 jobs:
   vulnerability-scan:
@@ -61,6 +73,26 @@ jobs:
         with:
           name: retire-js-report
           path: openmetadata-ui/src/main/resources/ui/retire-report.json
+          retention-days: 30
+
+      - name: Generate Retire.js Slack summary
+        if: always()
+        run: |
+          mkdir -p retire-report
+          python3 scripts/retire_slack_summary.py \
+            openmetadata-ui/src/main/resources/ui/retire-report.json \
+            --counts-file retire-report/_retire_counts.json \
+            --slack-file retire-report/_retire_slack.txt \
+            > /dev/null
+
+      - name: Upload Retire.js Slack artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: retire-slack
+          path: |
+            retire-report/_retire_slack.txt
+            retire-report/_retire_counts.json
           retention-days: 30
 
       - name: Publish Retire.js Summary
@@ -191,14 +223,52 @@ jobs:
         continue-on-error: true
         run: |
           source env/bin/activate
-          make snyk-report
+          rm -rf security-report
+          mkdir -p security-report
+          # Run snyk subtargets directly; skip `export-snyk-pdf-report` which deletes JSONs after PDF conversion.
+          make snyk-ingestion-report || true
+          make snyk-ingestion-base-slim-report || true
+          make snyk-airflow-apis-report || true
+          make snyk-server-report || true
+          make snyk-ui-report || true
 
-      - name: Upload Snyk Report HTML files
-        if: steps.security-report.outcome == 'success'
+      - name: Publish Snyk Summary
+        id: snyk-summary
+        if: always() && steps.maven-build.outcome == 'success'
+        run: |
+          python3 scripts/snyk_summary.py security-report \
+            --counts-file security-report/_counts.json \
+            --slack-file security-report/_slack.txt \
+            >> $GITHUB_STEP_SUMMARY
+          # Expose counts as step output for downstream gating.
+          counts=$(cat security-report/_counts.json)
+          echo "counts=$counts" >> $GITHUB_OUTPUT
+          high=$(jq '.high + .critical' security-report/_counts.json)
+          echo "high_critical=$high" >> $GITHUB_OUTPUT
+
+      - name: Fail on high/critical Snyk findings
+        if: always() && steps.snyk-summary.outputs.high_critical != '' && steps.snyk-summary.outputs.high_critical != '0'
+        run: |
+          echo "::error::Snyk found ${{ steps.snyk-summary.outputs.high_critical }} high/critical vulnerabilities (see Job Summary)"
+          exit 1
+
+      - name: Generate Snyk HTML/PDF
+        if: always() && steps.maven-build.outcome == 'success'
+        run: |
+          # Back up JSONs because html_to_pdf.py deletes them after PDF conversion.
+          mkdir -p /tmp/snyk-json-backup
+          cp security-report/*.json /tmp/snyk-json-backup/ 2>/dev/null || true
+          make export-snyk-pdf-report || true
+          # Restore JSONs alongside generated PDFs/HTMLs.
+          cp /tmp/snyk-json-backup/*.json security-report/ 2>/dev/null || true
+
+      - name: Upload Snyk Reports
+        if: always() && steps.maven-build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: security-report
           path: security-report
+          retention-days: 30
 
       - name: Force failure
         if: steps.maven-build.outcome != 'success' || steps.security-report.outcome != 'success'
@@ -211,25 +281,147 @@ jobs:
     needs: [vulnerability-scan, security-scan]
     if: always()
     steps:
-      - name: Build notification message
-        id: build
-        run: |
-          retire="${{ needs.vulnerability-scan.result }}"
-          snyk="${{ needs.security-scan.result }}"
-          if [ "$retire" = "success" ]; then retire_icon="✅"; elif [ "$retire" = "cancelled" ]; then retire_icon="⚠️ (cancelled)"; else retire_icon="❌"; fi
-          if [ "$snyk" = "success" ]; then snyk_icon="✅"; elif [ "$snyk" = "cancelled" ]; then snyk_icon="⚠️ (cancelled)"; else snyk_icon="❌"; fi
-          if [ "$retire" = "success" ] && [ "$snyk" = "success" ]; then icon="🟢"; elif [ "$retire" = "cancelled" ] || [ "$snyk" = "cancelled" ]; then icon="⚠️"; else icon="🚨"; fi
-          echo "icon=$icon" >> $GITHUB_OUTPUT
-          echo "retire_icon=$retire_icon" >> $GITHUB_OUTPUT
-          echo "snyk_icon=$snyk_icon" >> $GITHUB_OUTPUT
+      - name: Download Snyk artifact
+        if: needs.security-scan.result != 'skipped'
+        uses: actions/download-artifact@v4
+        with:
+          name: security-report
+          path: security-report
+        continue-on-error: true
 
-      - name: Send Slack Notification
+      - name: Download Retire.js Slack artifact
+        if: needs.vulnerability-scan.result != 'skipped'
+        uses: actions/download-artifact@v4
+        with:
+          name: retire-slack
+          path: retire-report
+        continue-on-error: true
+
+      - name: Build Slack header payload
+        id: build-header
+        env:
+          RETIRE_RESULT: ${{ needs.vulnerability-scan.result }}
+          SNYK_RESULT: ${{ needs.security-scan.result }}
+          REF_NAME: ${{ github.ref_name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python3 - <<'PY' > header.json
+          import json, os, pathlib
+
+          retire = os.environ["RETIRE_RESULT"]
+          snyk = os.environ["SNYK_RESULT"]
+          ref_name = os.environ["REF_NAME"]
+          run_url = os.environ["RUN_URL"]
+
+          def status_icon(s):
+              return {"success": "✅", "cancelled": "⚠️ (cancelled)", "skipped": "⚠️ (skipped)"}.get(s, "❌")
+
+          def load_counts(path):
+              p = pathlib.Path(path)
+              if not p.exists():
+                  return None
+              try:
+                  return json.loads(p.read_text())
+              except Exception:
+                  return None
+
+          def totals_line(counts):
+              if not counts:
+                  return ""
+              return (
+                  f"\n🚨 {counts.get('critical', 0)} critical  ·  "
+                  f"🔴 {counts.get('high', 0)} high  ·  "
+                  f"🟠 {counts.get('medium', 0)} medium  ·  "
+                  f"🟡 {counts.get('low', 0)} low"
+              )
+
+          retire_counts = load_counts("retire-report/_retire_counts.json")
+          snyk_counts = load_counts("security-report/_counts.json")
+
+          if retire == "success" and snyk == "success":
+              overall = "🟢"
+          elif retire == "failure" or snyk == "failure":
+              overall = "🚨"
+          else:
+              overall = "⚠️"
+
+          header = (
+              f"{overall}  *Security scan* — *OpenMetadata Repo*\n"
+              f"_branch_ `{ref_name}`  ·  <{run_url}|Open run details>\n"
+              f"• Vulnerability scan (Retire.js): {status_icon(retire)}"
+              f"{totals_line(retire_counts)}\n"
+              f"• Security scan (Snyk): {status_icon(snyk)}"
+              f"{totals_line(snyk_counts)}"
+          )
+          fallback = f"{overall} Security scan — OpenMetadata Repo on {ref_name}. {run_url}"
+          payload = {
+              "text": fallback,
+              "blocks": [{"type": "section", "text": {"type": "mrkdwn", "text": header}}],
+          }
+          print(json.dumps(payload))
+          PY
+
+      - name: Send Slack — header
+        id: send-header
+        if: env.SEND_SLACK_NOTIFICATION == 'true'
         uses: slackapi/slack-github-action@v1.27.1
         with:
           channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
-          payload: |
-            {
-              "text": "${{ steps.build.outputs.icon }} Security scan for OpenMetadata Repo on branch `${{ github.ref_name }}` — Vulnerability scan: ${{ steps.build.outputs.retire_icon }} | Security scan: ${{ steps.build.outputs.snyk_icon }}. Check <https://github.com/open-metadata/OpenMetadata/actions/runs/${{ github.run_id }}|here>."
-            }
+          payload-file-path: header.json
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
+      - name: Build Slack thread payload
+        id: build-thread
+        if: always() && steps.send-header.outputs.ts != ''
+        env:
+          THREAD_TS: ${{ steps.send-header.outputs.ts }}
+        run: |
+          python3 - <<'PY' > thread.json
+          import json, os, pathlib
+
+          thread_ts = os.environ["THREAD_TS"]
+
+          def read_sections(path):
+              p = pathlib.Path(path)
+              if not p.exists():
+                  return []
+              text = p.read_text().strip()
+              return [s.strip() for s in text.split("\n\n") if s.strip()]
+
+          retire_sections = read_sections("retire-report/_retire_slack.txt")
+          snyk_sections = read_sections("security-report/_slack.txt")
+
+          blocks = []
+          MAX_TEXT = 2850
+
+          def push(section):
+              text = section if len(section) <= MAX_TEXT else section[:MAX_TEXT].rstrip() + "\n_…truncated, see Job Summary_"
+              blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": text}})
+
+          for section in retire_sections[:24]:
+              push(section)
+          if retire_sections and snyk_sections:
+              blocks.append({"type": "divider"})
+          for section in snyk_sections[:23]:
+              push(section)
+
+          if not blocks:
+              push("_No detailed scan output was produced._")
+
+          payload = {
+              "thread_ts": thread_ts,
+              "text": "Security scan details (thread reply)",
+              "blocks": blocks,
+          }
+          print(json.dumps(payload))
+          PY
+
+      - name: Send Slack — thread reply
+        if: always() && env.SEND_SLACK_NOTIFICATION == 'true' && steps.send-header.outputs.ts != '' && steps.build-thread.outcome == 'success'
+        uses: slackapi/slack-github-action@v1.27.1
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
+          payload-file-path: thread.json
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}

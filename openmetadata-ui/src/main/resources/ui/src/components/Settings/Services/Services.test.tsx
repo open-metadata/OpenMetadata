@@ -132,10 +132,6 @@ jest.mock(
   })
 );
 
-jest.mock('../../../utils/CommonUtils', () => ({
-  getServiceLogo: jest.fn().mockReturnValue('Pipeline Service'),
-}));
-
 const mockSearchService = jest.fn();
 jest.mock('../../../rest/serviceAPI', () => ({
   getServices: jest
@@ -144,8 +140,8 @@ jest.mock('../../../rest/serviceAPI', () => ({
   searchService: jest.fn().mockImplementation(() => mockSearchService()),
 }));
 
-jest.mock('../../../utils/StringsUtils', () => ({
-  ...jest.requireActual('../../../utils/StringsUtils'),
+jest.mock('../../../utils/StringUtils', () => ({
+  ...jest.requireActual('../../../utils/StringUtils'),
   stringToHTML: jest.fn((text) => text),
 }));
 

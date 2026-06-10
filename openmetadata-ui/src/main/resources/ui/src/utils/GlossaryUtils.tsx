@@ -15,14 +15,11 @@ import Icon from '@ant-design/icons';
 import { Tag, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import { ReactComponent as ExternalLinkIcon } from '../assets/svg/external-links.svg';
-import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import GlossaryTermTab from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
 import { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
-import { ModifiedGlossary } from '../components/Glossary/useGlossary.store';
-import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   ICON_DIMENSION,
   SUCCESS_COLOR,
@@ -31,207 +28,30 @@ import {
 } from '../constants/constants';
 import { GlossaryTermDetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../enums/entity.enum';
-import { Glossary } from '../generated/entity/data/glossary';
-import {
-  EntityStatus,
-  GlossaryTerm,
-  TermReference,
-} from '../generated/entity/data/glossaryTerm';
-import { Domain } from '../generated/entity/domains/domain';
-import { User } from '../generated/entity/teams/user';
+import { TermReference } from '../generated/entity/data/glossaryTerm';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import { Task } from '../rest/tasksAPI';
-import { calculatePercentageFromValue } from './CommonUtils';
 import { getEntityName } from './EntityUtils';
 import { VersionStatus } from './EntityVersionUtils.interface';
-import Fqn from './Fqn';
-import i18n from './i18next/LocalUtil';
-import { getGlossaryPath } from './RouterUtils';
 
-export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
-  const nodes: Record<string, GlossaryTerm> = {};
-
-  // Create nodes first
-  data.forEach((obj) => {
-    nodes[obj.fullyQualifiedName ?? ''] = {
-      ...obj,
-      children: obj.children?.length ? [] : undefined,
-    };
-  });
-
-  // Build the tree structure
-  const tree: GlossaryTerm[] = [];
-  data.forEach((obj) => {
-    const current = nodes[obj.fullyQualifiedName ?? ''];
-    const parent = nodes[obj.parent?.fullyQualifiedName ?? ''];
-
-    if (parent?.children) {
-      // converting glossaryTerm to EntityReference
-      parent.children.push({ ...current, type: 'glossaryTerm' });
-    } else {
-      tree.push(current);
-    }
-  });
-
-  return tree;
-};
-
-export const getQueryFilterToExcludeTerm = (fqn: string) => ({
-  query: {
-    bool: {
-      must: [
-        {
-          bool: {
-            must_not: [
-              {
-                term: {
-                  'tags.tagFQN': fqn,
-                },
-              },
-            ],
-          },
-        },
-        {
-          bool: {
-            must_not: [
-              {
-                term: {
-                  entityType: EntityType.GLOSSARY_TERM,
-                },
-              },
-              {
-                term: {
-                  entityType: EntityType.TAG,
-                },
-              },
-              {
-                term: {
-                  entityType: EntityType.DATA_PRODUCT,
-                },
-              },
-            ],
-          },
-        },
-      ],
-    },
-  },
-});
-
-export const getQueryFilterToIncludeApprovedTerm = () => {
-  return {
-    query: {
-      bool: {
-        must: [
-          {
-            term: {
-              entityStatus: EntityStatus.Approved,
-            },
-          },
-        ],
-      },
-    },
-  };
-};
-
-export const StatusClass = {
-  [EntityStatus.Approved]: StatusType.Success,
-  [EntityStatus.Draft]: StatusType.Pending,
-  [EntityStatus.Rejected]: StatusType.Failure,
-  [EntityStatus.Deprecated]: StatusType.Deprecated,
-  [EntityStatus.InReview]: StatusType.InReview,
-  [EntityStatus.Unprocessed]: StatusType.Unprocessed,
-};
-
-export const StatusFilters = Object.values(EntityStatus)
-  .filter((status) => status !== EntityStatus.Deprecated) // Deprecated not in use for this release
-  .map((status) => ({
-    text: status,
-    value: status,
-  }));
-
-export const getGlossaryBreadcrumbs = (fqn: string) => {
-  const arr = Fqn.split(fqn);
-  const dataFQN: Array<string> = [];
-  const breadcrumbList = [
-    {
-      name: 'Glossaries',
-      url: getGlossaryPath(''),
-      activeTitle: false,
-    },
-    ...arr.map((d) => {
-      dataFQN.push(d);
-
-      return {
-        name: d,
-        url: getGlossaryPath(dataFQN.join(FQN_SEPARATOR_CHAR)),
-        activeTitle: false,
-      };
-    }),
-  ];
-
-  return breadcrumbList;
-};
-
-export const updateGlossaryTermByFqn = (
-  glossaryTerms: ModifiedGlossary[],
-  fqn: string,
-  newValue: ModifiedGlossary
-): ModifiedGlossary[] => {
-  return glossaryTerms.map((term) => {
-    if (term.fullyQualifiedName === fqn) {
-      return newValue;
-    }
-    if (term.children) {
-      return {
-        ...term,
-        children: updateGlossaryTermByFqn(
-          term.children as ModifiedGlossary[],
-          fqn,
-          newValue
-        ),
-      };
-    }
-
-    return term;
-  }) as ModifiedGlossary[];
-};
-
-// This function finds and gives you the glossary term you're looking for.
-// You can then use this term or update its information in the Glossary or Term with it's reference created
-// Reference will only be created if withReference is true
-export const findItemByFqn = (
-  list: ModifiedGlossaryTerm[] | Domain[],
-  fullyQualifiedName: string,
-  withReference = true
-): GlossaryTerm | Glossary | ModifiedGlossary | Domain | null => {
-  for (const item of list) {
-    if (
-      (item.fullyQualifiedName ?? (item as ModifiedGlossaryTerm).value) ===
-      fullyQualifiedName
-    ) {
-      return withReference
-        ? item
-        : {
-            ...item,
-            fullyQualifiedName:
-              item.fullyQualifiedName ??
-              (item as ModifiedGlossaryTerm).data?.tagFQN,
-            ...((item as ModifiedGlossaryTerm).data ?? {}),
-          };
-    }
-    if (item.children) {
-      const found = findItemByFqn(
-        item.children as ModifiedGlossaryTerm[],
-        fullyQualifiedName
-      );
-      if (found) {
-        return found;
-      }
-    }
-  }
-
-  return null;
-};
+export {
+  buildTree,
+  filterTreeNodeOptions,
+  findAndUpdateNested,
+  findExpandableKeys,
+  findExpandableKeysForArray,
+  findItemByFqn,
+  getGlossaryBreadcrumbs,
+  getGlossaryEntityLink,
+  getQueryFilterToExcludeTerm,
+  getQueryFilterToIncludeApprovedTerm,
+  glossaryTermTableColumnsWidth,
+  permissionForApproveOrReject,
+  referenceURLValidator,
+  StatusClass,
+  StatusFilters,
+  updateGlossaryTermByFqn,
+  validateReferenceURL,
+} from './GlossaryPureUtils';
 
 export const convertGlossaryTermsToTreeOptions = (
   options: ModifiedGlossaryTerm[] = [],
@@ -272,100 +92,6 @@ export const convertGlossaryTermsToTreeOptions = (
   });
 
   return treeData;
-};
-
-/**
- * Finds the expandable keys in a glossary term.
- * @param glossaryTerm - The glossary term to search for expandable keys.
- * @returns An array of expandable keys found in the glossary term.
- */
-export const findExpandableKeys = (
-  glossaryTerm?: ModifiedGlossaryTerm
-): string[] => {
-  let expandableKeys: string[] = [];
-
-  if (!glossaryTerm) {
-    return expandableKeys;
-  }
-
-  if (glossaryTerm.children) {
-    glossaryTerm.children.forEach((child) => {
-      expandableKeys = expandableKeys.concat(
-        findExpandableKeys(child as ModifiedGlossaryTerm)
-      );
-    });
-    if (glossaryTerm.fullyQualifiedName) {
-      expandableKeys.push(glossaryTerm.fullyQualifiedName);
-    }
-  } else if (glossaryTerm.childrenCount) {
-    if (glossaryTerm.fullyQualifiedName) {
-      expandableKeys.push(glossaryTerm.fullyQualifiedName);
-    }
-  }
-
-  return expandableKeys;
-};
-
-/**
- * Finds the expandable keys for an array of glossary terms.
- *
- * @param glossaryTerms - An array of ModifiedGlossaryTerm objects.
- * @returns An array of expandable keys.
- */
-export const findExpandableKeysForArray = (
-  glossaryTerms: ModifiedGlossaryTerm[]
-): string[] => {
-  let expandableKeys: string[] = [];
-
-  glossaryTerms.forEach((glossaryTerm) => {
-    expandableKeys = expandableKeys.concat(findExpandableKeys(glossaryTerm));
-  });
-
-  return expandableKeys;
-};
-
-/**
- * Filter out the tree node options based on the filter options.
- *
- * @param options - An array of Glossary objects.
- * @param filterOptions - An array of FQN string to filter.
- * @returns An array of filtered Glossary
- */
-export const filterTreeNodeOptions = (
-  options: Glossary[],
-  filterOptions: string[]
-): Glossary[] => {
-  if (isEmpty(filterOptions)) {
-    return options;
-  }
-
-  const filterNodes = (
-    nodes: ModifiedGlossaryTerm[]
-  ): ModifiedGlossaryTerm[] => {
-    return nodes.reduce(
-      (acc: ModifiedGlossaryTerm[], node: ModifiedGlossaryTerm) => {
-        const isMatching = filterOptions.includes(
-          node.fullyQualifiedName ?? ''
-        );
-
-        const filteredChildren = !isUndefined(node.children)
-          ? filterNodes(node.children as unknown as ModifiedGlossaryTerm[])
-          : [];
-
-        if (!isMatching) {
-          acc.push({
-            ...node,
-            children: filteredChildren,
-          });
-        }
-
-        return acc;
-      },
-      []
-    );
-  };
-
-  return filterNodes(options as ModifiedGlossaryTerm[]);
 };
 
 export const renderReferenceElement = (
@@ -414,89 +140,6 @@ export const renderReferenceElement = (
   );
 };
 
-export const findAndUpdateNested = (
-  terms: ModifiedGlossary[],
-  newTerm: GlossaryTerm
-): ModifiedGlossary[] => {
-  // If new term has no parent, it's a top level term
-  // So just update 0 level terms no need to iterate over it
-  if (!newTerm.parent) {
-    return [...terms, newTerm as ModifiedGlossary];
-  }
-
-  // If parent is there means term is  created within a term
-  // So we need to find the parent term and update it's children
-  return terms.map((term) => {
-    if (term.fullyQualifiedName === newTerm.parent?.fullyQualifiedName) {
-      const children = [...(term.children || []), newTerm] as GlossaryTerm[];
-
-      return {
-        ...term,
-        children,
-        // Need to update childrenCount in case of 0 to update expand / collapse icon
-        childrenCount: children.length,
-      } as ModifiedGlossary;
-    } else if ('children' in term && term.children?.length) {
-      return {
-        ...term,
-        children: findAndUpdateNested(
-          term.children as ModifiedGlossary[],
-          newTerm
-        ),
-      } as ModifiedGlossary;
-    }
-
-    return term;
-  });
-};
-
-export const glossaryTermTableColumnsWidth = (
-  tableWidth: number,
-  havingCreatePermission: boolean
-) => {
-  return {
-    name: calculatePercentageFromValue(tableWidth, 30),
-    description: calculatePercentageFromValue(
-      tableWidth,
-      havingCreatePermission ? 21 : 33
-    ),
-    reviewers: calculatePercentageFromValue(tableWidth, 33),
-    synonyms: calculatePercentageFromValue(tableWidth, 33),
-    owners: calculatePercentageFromValue(tableWidth, 17),
-    status: calculatePercentageFromValue(tableWidth, 20),
-  };
-};
-
-export const getGlossaryEntityLink = (glossaryTermFQN: string) =>
-  `<#E::${EntityType.GLOSSARY_TERM}::${glossaryTermFQN}>`;
-
-export const permissionForApproveOrReject = (
-  record: ModifiedGlossaryTerm,
-  currentUser: User,
-  termTaskThreads: Record<string, Task[]>
-) => {
-  const entityLink = getGlossaryEntityLink(record.fullyQualifiedName ?? '');
-  const task = termTaskThreads[entityLink]?.[0];
-  const currentUserId = currentUser?.id;
-
-  const isReviewer = record.reviewers?.some(
-    (reviewer) => reviewer.id === currentUserId
-  );
-  const isTaskAssignee = task?.assignees?.some(
-    (assignee) => assignee.id === currentUserId
-  );
-  const hasTaskAssignees = Boolean(task?.assignees?.length);
-
-  const permission = hasTaskAssignees
-    ? Boolean(isTaskAssignee)
-    : Boolean(task && (isTaskAssignee || isReviewer));
-
-  return {
-    permission,
-    taskId: task?.id ?? '',
-  };
-};
-
 export const getGlossaryWidgetFromKey = (widget: WidgetConfig) => {
   if (widget.i.startsWith(GlossaryTermDetailPageWidgetKeys.TERMS_TABLE)) {
     return <GlossaryTermTab isGlossary />;
@@ -508,48 +151,5 @@ export const getGlossaryWidgetFromKey = (widget: WidgetConfig) => {
       entityType={EntityType.GLOSSARY}
       widgetConfig={widget}
     />
-  );
-};
-const processTerms = (termList: ModifiedGlossary[], keys: string[]) => {
-  termList.forEach((term) => {
-    if (
-      term.childrenCount &&
-      term.childrenCount > 0 &&
-      term.fullyQualifiedName
-    ) {
-      keys.push(term.fullyQualifiedName);
-      if (term.children && term.children.length > 0) {
-        processTerms(term.children as ModifiedGlossary[], keys as string[]);
-      }
-    }
-  });
-};
-
-export const getAllExpandableKeys = (terms: ModifiedGlossary[]): string[] => {
-  const keys: string[] = [];
-
-  processTerms(terms, keys);
-
-  return keys;
-};
-
-export const validateReferenceURL = (url: string): boolean => {
-  if (!url) {
-    return true;
-  }
-
-  return url.startsWith('http://') || url.startsWith('https://');
-};
-
-export const referenceURLValidator = (
-  _: unknown,
-  value: string
-): Promise<void> => {
-  if (validateReferenceURL(value)) {
-    return Promise.resolve();
-  }
-
-  return Promise.reject(
-    new Error(i18n.t('message.url-must-start-with-http-or-https'))
   );
 };

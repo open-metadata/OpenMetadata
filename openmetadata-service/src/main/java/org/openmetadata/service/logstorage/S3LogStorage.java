@@ -26,6 +26,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -38,6 +39,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -53,6 +55,7 @@ import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.async.AsyncRequestBody;
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3AsyncClientBuilder;
@@ -85,6 +88,7 @@ import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.ObjectIdentifier;
 import software.amazon.awssdk.services.s3.model.PutBucketLifecycleConfigurationRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.model.S3Object;
 import software.amazon.awssdk.services.s3.model.ServerSideEncryption;
 import software.amazon.awssdk.services.s3.model.StorageClass;
@@ -114,6 +118,8 @@ public class S3LogStorage implements LogStorageInterface {
   private static final int DEFAULT_EXPIRATION_DAYS = 30;
   private static final long MIN_MPU_PART_BYTES = 5L * 1024 * 1024;
   private static final int LOCK_STRIPE_COUNT = 256;
+  private static final Duration S3_API_CALL_TIMEOUT = Duration.ofSeconds(30);
+  private static final Duration S3_API_CALL_ATTEMPT_TIMEOUT = Duration.ofSeconds(10);
 
   private S3Client s3Client;
   private S3AsyncClient s3AsyncClient;
@@ -140,17 +146,17 @@ public class S3LogStorage implements LogStorageInterface {
   private final Map<String, StreamContext> activeStreams = new ConcurrentHashMap<>();
   // Per-stream coordination via a fixed-stripe lock keyed on `<fqn>/<runId>`. The stripe
   // count caps memory at LOCK_STRIPE_COUNT regardless of completed-run accumulation, and
-  // the same key always maps to the same lock instance — so we never need a remove path
+  // the same key always maps to the same lock instance - so we never need a remove path
   // (which would race acquire vs. remove and break mutual exclusion). False-contention
   // across stripes is bounded by max-concurrent-streams << stripe count.
   private final Striped<Lock> streamLocks = Striped.lock(LOCK_STRIPE_COUNT);
 
   // Lines accumulated since the last successful partial.txt PUT, per stream. Drained by the
-  // periodic / watermark-driven flush. Values are plain ArrayList — NOT independently
+  // periodic / watermark-driven flush. Values are plain ArrayList - NOT independently
   // thread-safe. MUST be accessed only while holding the corresponding per-stream lock.
   private final Map<String, List<String>> pendingFlush = new ConcurrentHashMap<>();
 
-  // Bytes pending in pendingFlush, per stream — drives the early-flush watermark. Entries are
+  // Bytes pending in pendingFlush, per stream - drives the early-flush watermark. Entries are
   // removed when the stream is finalized.
   private final Map<String, AtomicLong> pendingFlushBytes = new ConcurrentHashMap<>();
 
@@ -162,8 +168,12 @@ public class S3LogStorage implements LogStorageInterface {
   // Per-stream consecutive flush failure count for alerting. Incremented on each failed PUT and
   // reset on success. Entries are removed when the stream is finalized.
   private final Map<String, AtomicInteger> consecutiveFlushFailures = new ConcurrentHashMap<>();
+  private final Set<String> scheduledPartialFlushes = ConcurrentHashMap.newKeySet();
+  private Cache<String, Boolean> closedStreams;
 
-  private ScheduledExecutorService cleanupExecutor;
+  // Split so a stuck cleanup task cannot starve partial flush.
+  private ScheduledExecutorService partialFlushExecutor;
+  private ScheduledExecutorService abandonedCleanupExecutor;
 
   private final Cache<String, SimpleLogBuffer> recentLogsCache =
       Caffeine.newBuilder().maximumSize(200).expireAfterAccess(30, TimeUnit.MINUTES).build();
@@ -234,8 +244,16 @@ public class S3LogStorage implements LogStorageInterface {
               ? s3Config.getPendingFlushAlertAfterFailures()
               : DEFAULT_PENDING_FLUSH_ALERT_AFTER_FAILURES;
 
+      this.closedStreams =
+          Caffeine.newBuilder()
+              .maximumSize(10000)
+              .expireAfterWrite(Math.max(1, streamTimeoutMinutes), TimeUnit.MINUTES)
+              .build();
+
       S3ClientBuilder s3Builder =
-          S3Client.builder().region(Region.of(s3Config.getAwsConfig().getAwsRegion()));
+          S3Client.builder()
+              .region(Region.of(s3Config.getAwsConfig().getAwsRegion()))
+              .overrideConfiguration(s3ClientOverrideConfiguration());
 
       URI customEndpoint = s3Config.getAwsConfig().getEndPointURL();
       if (!nullOrEmpty(customEndpoint)) {
@@ -257,7 +275,8 @@ public class S3LogStorage implements LogStorageInterface {
       S3AsyncClientBuilder asyncBuilder =
           S3AsyncClient.builder()
               .region(Region.of(s3Config.getAwsConfig().getAwsRegion()))
-              .credentialsProvider(credentialsProvider);
+              .credentialsProvider(credentialsProvider)
+              .overrideConfiguration(s3ClientOverrideConfiguration());
 
       if (!nullOrEmpty(customEndpoint)) {
         asyncBuilder.endpointOverride(java.net.URI.create(customEndpoint.toString()));
@@ -275,23 +294,20 @@ public class S3LogStorage implements LogStorageInterface {
             "Error accessing S3 bucket: " + bucketName + ". Validate AWS configuration.", e);
       }
 
-      this.cleanupExecutor =
+      this.partialFlushExecutor =
+          Executors.newSingleThreadScheduledExecutor(namedDaemonFactory("s3-log-partial-flush"));
+      this.abandonedCleanupExecutor =
           Executors.newSingleThreadScheduledExecutor(
-              r -> {
-                Thread thread = new Thread(r);
-                thread.setName("s3-log-cleanup");
-                thread.setDaemon(true);
-                return thread;
-              });
+              namedDaemonFactory("s3-log-abandoned-cleanup"));
 
-      cleanupExecutor.scheduleWithFixedDelay(
-          this::cleanupAbandonedStreams,
+      abandonedCleanupExecutor.scheduleWithFixedDelay(
+          safeScheduledTask("cleanupAbandonedStreams", this::cleanupAbandonedStreams),
           cleanupIntervalMinutes,
           cleanupIntervalMinutes,
           TimeUnit.MINUTES);
 
-      cleanupExecutor.scheduleWithFixedDelay(
-          this::writePartialLogs,
+      partialFlushExecutor.scheduleWithFixedDelay(
+          safeScheduledTask("writePartialLogs", this::writePartialLogs),
           partialFlushIntervalMinutes,
           partialFlushIntervalMinutes,
           TimeUnit.MINUTES);
@@ -339,6 +355,23 @@ public class S3LogStorage implements LogStorageInterface {
     }
   }
 
+  private ClientOverrideConfiguration s3ClientOverrideConfiguration() {
+    return ClientOverrideConfiguration.builder()
+        .apiCallTimeout(S3_API_CALL_TIMEOUT)
+        .apiCallAttemptTimeout(S3_API_CALL_ATTEMPT_TIMEOUT)
+        .build();
+  }
+
+  private boolean isStreamClosed(String streamKey) {
+    return closedStreams != null && closedStreams.getIfPresent(streamKey) != null;
+  }
+
+  private void markStreamClosed(String streamKey) {
+    if (closedStreams != null) {
+      closedStreams.put(streamKey, Boolean.TRUE);
+    }
+  }
+
   @Override
   public void appendLogs(String pipelineFQN, UUID runId, String logContent) throws IOException {
     if (nullOrEmpty(logContent)) {
@@ -354,11 +387,16 @@ public class S3LogStorage implements LogStorageInterface {
     String streamKey = pipelineFQN + "/" + runId;
     Lock lock = acquireStreamLock(streamKey);
     try {
+      if (isStreamClosed(streamKey)) {
+        LOG.debug("Dropping late logs for already closed stream {}", streamKey);
+        return;
+      }
+
       // Update memory cache for real-time log viewing
       SimpleLogBuffer recentLogs = recentLogsCache.get(streamKey, k -> new SimpleLogBuffer(1000));
       recentLogs.append(logContent);
 
-      // Track the run as live (no multipart upload here — bytes flow through pendingFlush ->
+      // Track the run as live (no multipart upload here - bytes flow through pendingFlush ->
       // partial.txt).
       StreamContext ctx =
           activeStreams.computeIfAbsent(
@@ -382,9 +420,18 @@ public class S3LogStorage implements LogStorageInterface {
         }
         bytes.addAndGet(addedBytes);
         counter.addAndGet(lineCount);
-        if (bytes.get() >= earlyFlushWatermarkBytes) {
+        if (bytes.get() >= earlyFlushWatermarkBytes && scheduledPartialFlushes.add(streamKey)) {
           final String key = streamKey;
-          cleanupExecutor.execute(() -> writePartialLogsForStream(key));
+          partialFlushExecutor.execute(
+              safeScheduledTask(
+                  "writePartialLogsForStream",
+                  () -> {
+                    try {
+                      writePartialLogsForStream(key);
+                    } finally {
+                      scheduledPartialFlushes.remove(key);
+                    }
+                  }));
         }
       }
 
@@ -678,6 +725,9 @@ public class S3LogStorage implements LogStorageInterface {
     Lock lock = acquireStreamLock(streamKey);
     try {
       dropStreamState(streamKey);
+      if (closedStreams != null) {
+        closedStreams.invalidate(streamKey);
+      }
     } finally {
       releaseStreamLock(streamKey, lock);
     }
@@ -722,6 +772,9 @@ public class S3LogStorage implements LogStorageInterface {
 
     recentLogsCache.asMap().keySet().removeIf(streamKey -> streamKey.startsWith(streamKeyPrefix));
     activeListeners.keySet().removeIf(streamKey -> streamKey.startsWith(streamKeyPrefix));
+    if (closedStreams != null) {
+      closedStreams.asMap().keySet().removeIf(streamKey -> streamKey.startsWith(streamKeyPrefix));
+    }
 
     try {
       ListObjectsV2Request request =
@@ -780,21 +833,48 @@ public class S3LogStorage implements LogStorageInterface {
     return "s3";
   }
 
+  private static ThreadFactory namedDaemonFactory(String threadName) {
+    return r -> {
+      Thread t = new Thread(r);
+      t.setName(threadName);
+      t.setDaemon(true);
+      return t;
+    };
+  }
+
+  /** Swallow Throwables so a scheduled task that throws is not silently de-scheduled. */
+  private Runnable safeScheduledTask(String name, Runnable task) {
+    return () -> {
+      try {
+        task.run();
+      } catch (Throwable t) { // NOSONAR
+        LOG.error("Scheduled task {} threw - swallowing so the scheduler keeps running", name, t);
+      }
+    };
+  }
+
+  private void shutdownExecutor(ScheduledExecutorService executor, String name) {
+    if (executor == null) {
+      return;
+    }
+    executor.shutdown();
+    try {
+      if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
+        executor.shutdownNow();
+      }
+    } catch (InterruptedException e) {
+      LOG.debug("Interrupted while shutting down executor {}", name);
+      executor.shutdownNow();
+      Thread.currentThread().interrupt();
+    }
+  }
+
   @Override
   public void close() {
     activeStreams.clear();
 
-    if (cleanupExecutor != null) {
-      cleanupExecutor.shutdown();
-      try {
-        if (!cleanupExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
-          cleanupExecutor.shutdownNow();
-        }
-      } catch (InterruptedException e) {
-        cleanupExecutor.shutdownNow();
-        Thread.currentThread().interrupt();
-      }
-    }
+    shutdownExecutor(partialFlushExecutor, "s3-log-partial-flush");
+    shutdownExecutor(abandonedCleanupExecutor, "s3-log-abandoned-cleanup");
 
     if (s3Client != null) {
       s3Client.close();
@@ -896,6 +976,9 @@ public class S3LogStorage implements LogStorageInterface {
   }
 
   void cleanupAbandonedStreams() {
+    if (metrics != null) {
+      metrics.recordAbandonedCleanupHeartbeat();
+    }
     long now = System.currentTimeMillis();
     long timeoutMs = streamTimeoutMinutes * 60L * 1000L;
 
@@ -928,7 +1011,7 @@ public class S3LogStorage implements LogStorageInterface {
 
     Lock lock = acquireStreamLock(streamKey);
     try {
-      // Re-check expiration under the lock — appendLogs may have bumped lastAccessTime.
+      // Re-check expiration under the lock - appendLogs may have bumped lastAccessTime.
       StreamContext ctx = activeStreams.get(streamKey);
       long timeoutMs = streamTimeoutMinutes * 60L * 1000L;
       if (ctx == null || System.currentTimeMillis() - ctx.lastAccessTime <= timeoutMs) {
@@ -975,28 +1058,44 @@ public class S3LogStorage implements LogStorageInterface {
         // Best-effort.
       }
 
+      markStreamClosed(streamKey);
       dropStreamState(streamKey);
     } finally {
       releaseStreamLock(streamKey, lock);
     }
   }
 
-  /**
-   * Periodically write accumulated logs to partial files for active streams
-   * This allows reading complete logs even while ingestion is still running
-   */
+  /** Scheduled tick: flush each active stream's pendingFlush to partial.txt. */
   private void writePartialLogs() {
+    if (metrics != null) {
+      metrics.recordPartialFlushHeartbeat();
+    }
+    long totalBytes = 0;
+    long totalLines = 0;
     for (String streamKey : activeStreams.keySet()) {
       try {
         writePartialLogsForStream(streamKey);
       } catch (Exception e) {
         LOG.warn("Failed to write partial logs for stream: {}", streamKey, e);
       }
+      AtomicLong b = pendingFlushBytes.get(streamKey);
+      if (b != null) {
+        totalBytes += b.get();
+      }
+      List<String> q = pendingFlush.get(streamKey);
+      if (q != null) {
+        totalLines += q.size();
+      }
+    }
+    if (metrics != null) {
+      metrics.updatePendingStreamsCount(activeStreams.size());
+      metrics.updatePendingFlushBytes(totalBytes);
+      metrics.updatePendingFlushLines(totalLines);
     }
   }
 
   private void writePartialLogsForStream(String streamKey) {
-    // Parse the streamKey before acquiring the lock — these are pure local string ops
+    // Parse the streamKey before acquiring the lock - these are pure local string ops
     // that don't need protection and let us validate the key shape before any I/O.
     int lastSlashIndex = streamKey.lastIndexOf('/');
     if (lastSlashIndex == -1) {
@@ -1061,6 +1160,7 @@ public class S3LogStorage implements LogStorageInterface {
       }
       if (metrics != null) {
         metrics.recordS3Write();
+        metrics.recordPartialFlushSuccess();
       }
       consecutiveFlushFailures.computeIfAbsent(streamKey, k -> new AtomicInteger(0)).set(0);
       return true;
@@ -1082,7 +1182,7 @@ public class S3LogStorage implements LogStorageInterface {
 
   // Probes partial.txt via a single GetObject. For small files we read the body now and let
   // the caller PUT a merged body. For files >= MIN_MPU_PART_BYTES we abort the body stream and
-  // signal the caller to concatenate server-side via Multipart Upload + UploadPartCopy — this
+  // signal the caller to concatenate server-side via Multipart Upload + UploadPartCopy - this
   // avoids holding the full existing body in JVM heap and re-uploading it on every flush.
   private PartialProbe probeAndReadPartial(String partialKey) throws IOException {
     try {
@@ -1258,6 +1358,7 @@ public class S3LogStorage implements LogStorageInterface {
     }
     if (metrics != null) {
       metrics.recordS3Error();
+      metrics.recordFlushFailure();
     }
   }
 
@@ -1291,7 +1392,7 @@ public class S3LogStorage implements LogStorageInterface {
     try {
       // Final flush: drain remaining pendingFlush to partial.txt.
       if (!writePartialLogsForStreamLocked(streamKey, pipelineFQN, runId)) {
-        // Final flush failed — partial.txt may be stale; do not produce logs.txt.
+        // Final flush failed - partial.txt may be stale; do not produce logs.txt.
         // pendingFlush has been restored. Caller should retry.
         throw new IOException(
             "Failed to flush remaining logs to partial.txt for "
@@ -1305,6 +1406,7 @@ public class S3LogStorage implements LogStorageInterface {
       } catch (NoSuchKeyException e) {
         // Idempotent close: partial.txt already absent (likely a retry of a prior /close).
         LOG.debug("closeStream no-op for {}: partial.txt already absent", streamKey);
+        markStreamClosed(streamKey);
         dropStreamState(streamKey);
         return;
       } catch (Exception e) {
@@ -1338,6 +1440,7 @@ public class S3LogStorage implements LogStorageInterface {
         // Best-effort.
       }
 
+      markStreamClosed(streamKey);
       dropStreamState(streamKey);
     } finally {
       releaseStreamLock(streamKey, lock);
@@ -1347,6 +1450,13 @@ public class S3LogStorage implements LogStorageInterface {
   private void copyPartialToLogs(String pipelineFQN, UUID runId) {
     String partialKey = buildPartialS3Key(pipelineFQN, runId);
     String logsKey = buildS3Key(pipelineFQN, runId);
+    if (objectExists(logsKey)) {
+      LOG.warn(
+          "logs.txt already exists for {}/{}; deleting late partial.txt without overwriting logs.txt",
+          pipelineFQN,
+          runId);
+      return;
+    }
     CopyObjectRequest.Builder builder =
         CopyObjectRequest.builder()
             .sourceBucket(bucketName)
@@ -1360,12 +1470,28 @@ public class S3LogStorage implements LogStorageInterface {
     }
   }
 
+  private boolean objectExists(String key) {
+    try {
+      HeadObjectResponse response =
+          s3Client.headObject(HeadObjectRequest.builder().bucket(bucketName).key(key).build());
+      return response != null;
+    } catch (NoSuchKeyException e) {
+      return false;
+    } catch (S3Exception e) {
+      if (e.statusCode() == 404) {
+        return false;
+      }
+      throw e;
+    }
+  }
+
   private void dropStreamState(String streamKey) {
     activeStreams.remove(streamKey);
     pendingFlush.remove(streamKey);
     pendingFlushBytes.remove(streamKey);
     totalLinesAppended.remove(streamKey);
     consecutiveFlushFailures.remove(streamKey);
+    scheduledPartialFlushes.remove(streamKey);
     recentLogsCache.invalidate(streamKey);
     activeListeners.remove(streamKey);
   }
@@ -1551,7 +1677,7 @@ public class S3LogStorage implements LogStorageInterface {
       appendPendingFlushUnderLock(pipelineFQN, runId, allLines);
     } else {
       // No partial.txt yet (run hasn't had its first flush). Use pendingFlush as the
-      // canonical source — it holds the complete set of unflushed lines. recentLogsCache
+      // canonical source - it holds the complete set of unflushed lines. recentLogsCache
       // is for SSE live tail and may have evicted the oldest lines at its 1000-line cap.
       appendPendingFlushUnderLock(pipelineFQN, runId, allLines);
       if (allLines.isEmpty()) {

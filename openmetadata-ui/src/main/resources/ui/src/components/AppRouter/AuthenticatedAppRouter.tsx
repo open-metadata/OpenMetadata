@@ -309,24 +309,8 @@ const AddObservabilityPage = withSuspenseFallback(
   )
 );
 
-const KnowledgeCenterPage = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/KnowledgeCenterPage/KnowledgeCenterPage')
-  )
-);
-
-const KnowledgeCenterFilterPage = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import('../../pages/KnowledgeCenterFilterPage/KnowledgeCenterFilterPage')
-  )
-);
-
-const KnowledgePageVersionPage = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import('../../pages/KnowledgePageVersionPage/KnowledgePageVersionPage')
-  )
+const ContextCenterRouter = withSuspenseFallback(
+  React.lazy(() => import('./ContextCenterRouter/ContextCenterRouter'))
 );
 
 const MetricListPage = withSuspenseFallback(
@@ -868,21 +852,9 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         element={<Navigate to={ROUTES.MY_DATA} />}
         path={ROUTES.FORGOT_PASSWORD}
       />
-      {[
-        ROUTES.KNOWLEDGE_CENTER,
-        ROUTES.KNOWLEDGE_PAGE,
-        ROUTES.KNOWLEDGE_PAGE_WITH_TAB,
-        ROUTES.KNOWLEDGE_PAGE_WITH_SUB_TAB,
-      ].map((route) => (
-        <Route element={<KnowledgeCenterPage />} key={route} path={route} />
-      ))}
       <Route
-        element={<KnowledgePageVersionPage onPageChange={() => undefined} />}
-        path={ROUTES.KNOWLEDGE_PAGE_VERSION}
-      />
-      <Route
-        element={<KnowledgeCenterFilterPage />}
-        path={ROUTES.KNOWLEDGE_CENTER_FILTER}
+        element={<ContextCenterRouter />}
+        path={`${ROUTES.CONTEXT_CENTER}/*`}
       />
       <Route element={<Navigate to={ROUTES.NOT_FOUND} />} path="*" />
     </Routes>

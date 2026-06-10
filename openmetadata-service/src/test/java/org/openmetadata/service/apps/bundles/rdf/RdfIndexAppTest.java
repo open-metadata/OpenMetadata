@@ -656,14 +656,87 @@ class RdfIndexAppTest {
         testApp.execute(context);
       }
 
-      // CLEAR ALL wipes ontology/shapes graphs; clearRdfData() must reload them
-      // AFTER clearAll() so post-wipe SPARQL queries that rely on the ontology
-      // keep working. Use InOrder so this regression test still fails if a
-      // future change reorders the calls (a plain verify would pass either way).
-      InOrder clearThenReload = inOrder(mockRdfRepository);
-      clearThenReload.verify(mockRdfRepository).clearAll();
-      clearThenReload.verify(mockRdfRepository).reloadOntologies();
+      // Four-step recreate flow on TDB2:
+      //  1. clearAll()       — SPARQL CLEAR ALL (logical delete only)
+      //  2. compactStorage() — physically reclaim disk via /$/compact admin
+      //                        endpoint while the dataset is empty; MUST run
+      //                        before reloadOntologies so the ontology graph
+      //                        isn't copied through compaction needlessly.
+      //  3. reloadOntologies() — repopulate ontology/shapes graphs that
+      //                        CLEAR ALL wiped, so post-wipe inference /
+      //                        federated SPARQL queries keep working.
+      //  4. compactStorage() — final compaction at end of successful run to
+      //                        cap journal/free-list growth from the reindex
+      //                        churn itself. Fires on every successful run
+      //                        regardless of branch.
+      // Use InOrder so a future change reordering these calls fails this test.
+      InOrder recreateFlow = inOrder(mockRdfRepository);
+      recreateFlow.verify(mockRdfRepository).clearAll();
+      recreateFlow.verify(mockRdfRepository).compactStorage();
+      recreateFlow.verify(mockRdfRepository).reloadOntologies();
+      recreateFlow.verify(mockRdfRepository).compactStorage();
       assertEquals(EventPublisherJob.Status.COMPLETED, jobConfig.getStatus());
+    }
+
+    @Test
+    @DisplayName("Should still call compactStorage at end of incremental run (free-space hygiene)")
+    void testCompactStorageStillFiresOnIncrementalIndex() throws Exception {
+      TestableRdfIndexApp testApp = new TestableRdfIndexApp(collectionDAO, searchRepository);
+      testApp.appRunRecord = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
+
+      EventPublisherJob jobConfig = new EventPublisherJob();
+      jobConfig.setEntities(Set.of("table"));
+      jobConfig.setRecreateIndex(false);
+      jobConfig.setUseDistributedIndexing(true);
+      jobConfig.setStatus(EventPublisherJob.Status.STARTED);
+
+      var jobDataField = RdfIndexApp.class.getDeclaredField("jobData");
+      jobDataField.setAccessible(true);
+      jobDataField.set(testApp, jobConfig);
+
+      @SuppressWarnings("unchecked")
+      EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+      @SuppressWarnings("unchecked")
+      EntityDAO<EntityInterface> entityDAO = mock(EntityDAO.class);
+      lenient().when(repository.getDao()).thenReturn(entityDAO);
+      lenient().when(entityDAO.listTotalCount()).thenReturn(0);
+
+      JobExecutionContext context = mock(JobExecutionContext.class);
+      JobDetail jobDetail = mock(JobDetail.class);
+      JobDataMap jobDataMap = new JobDataMap();
+      when(context.getJobDetail()).thenReturn(jobDetail);
+      when(jobDetail.getJobDataMap()).thenReturn(jobDataMap);
+      when(jobDetail.getKey()).thenReturn(JobKey.jobKey("rdf-index-test"));
+
+      RdfIndexJob completedJob =
+          RdfIndexJob.builder().id(UUID.randomUUID()).status(IndexJobStatus.COMPLETED).build();
+
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+          var ignored =
+              mockConstruction(
+                  org.openmetadata.service.apps.bundles.rdf.distributed.DistributedRdfIndexExecutor
+                      .class,
+                  (mock, mockContext) -> {
+                    when(mock.createJob(anySet(), eq(jobConfig), anyString()))
+                        .thenReturn(completedJob);
+                    when(mock.getJobWithFreshStats()).thenReturn(completedJob);
+                  })) {
+        entityMock.when(() -> Entity.getEntityRepository(anyString())).thenReturn(repository);
+
+        testApp.execute(context);
+      }
+
+      // Incremental runs do NOT enter clearRdfData() — clearAll and the
+      // pre-reindex compactStorage live behind the recreateIndex=true branch.
+      verify(mockRdfRepository, never()).clearAll();
+      verify(mockRdfRepository, never()).reloadOntologies();
+      // …but the FINAL compactStorage call still fires on every successful
+      // run regardless of branch. Pre-this-PR, the incremental path's
+      // clearAllGlossaryTermRelations + re-add cycle leaked free space on
+      // every weekly run with no compaction ever — the customer's
+      // 50 GB-on-2k-entities case. End-of-run compaction caps growth at
+      // one run's worth of churn even if no recreate ever runs.
+      verify(mockRdfRepository).compactStorage();
     }
 
     @Test

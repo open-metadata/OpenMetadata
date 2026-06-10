@@ -74,6 +74,7 @@
         "InProgress",
         "Pending",
         "Approved",
+        "Granted",
         "Rejected",
         "Completed",
         "Cancelled",
@@ -85,6 +86,7 @@
         {"name": "InProgress"},
         {"name": "Pending"},
         {"name": "Approved"},
+        {"name": "Granted"},
         {"name": "Rejected"},
         {"name": "Completed"},
         {"name": "Cancelled"},
@@ -318,6 +320,18 @@
     "createdById": {
       "description": "UUID of the user who created this task. Stored in JSON for efficient querying via generated column index.",
       "type": "string"
+    },
+    "approvedBy": {
+      "description": "User who approved this task (set when an approval transition fires; distinct from resolution.resolvedBy which is set only on terminal transitions).",
+      "$ref": "../../type/entityReference.json"
+    },
+    "approvedById": {
+      "description": "UUID of the user who approved this task. Stored in JSON for efficient querying via generated column index.",
+      "type": "string"
+    },
+    "approvedAt": {
+      "description": "Timestamp when the task was approved.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
     },
     "assignees": {
       "description": "Users or teams assigned to complete this task.",

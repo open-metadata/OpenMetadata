@@ -11,22 +11,62 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import React from 'react';
+import { BrowserRouter } from 'react-router-dom';
 import {
   KnowledgePage,
   PageHierarchy,
   PageType,
   QuickLink,
-} from 'interface/knowledge-center.interface';
-import React from 'react';
-import { BrowserRouter } from 'react-router-dom';
+} from '../interface/knowledge-center.interface';
 import {
   extractKnowledgePageParentFQN,
   findPageAndParentInTreeData,
   findPageInTreeData,
+  getKnowledgePageName,
   getLink,
   getUpdatePageHierarchy,
   integrateNodesIntoHierarchy,
 } from './KnowledgePageUtils';
+
+describe('getKnowledgePageName', () => {
+  it('returns displayName when present', () => {
+    expect(
+      getKnowledgePageName({ name: 'my-page', displayName: 'My Page' })
+    ).toBe('My Page');
+  });
+
+  it('returns name when displayName is absent', () => {
+    expect(getKnowledgePageName({ name: 'my-page' })).toBe('my-page');
+  });
+
+  it('returns fallback via default t when both name and displayName are absent', () => {
+    expect(getKnowledgePageName({})).toBe('label.untitled');
+  });
+
+  it('returns fallback via custom tFn when both name and displayName are absent', () => {
+    const tFn = (key: string) => `translated:${key}`;
+
+    expect(getKnowledgePageName({}, tFn)).toBe('translated:label.untitled');
+  });
+
+  it('uses custom tFn fallback when knowledgePage is undefined', () => {
+    const tFn = (key: string) => `translated:${key}`;
+
+    expect(getKnowledgePageName(undefined, tFn)).toBe(
+      'translated:label.untitled'
+    );
+  });
+
+  it('prefers displayName over name even when tFn is provided', () => {
+    const tFn = jest.fn();
+
+    expect(
+      getKnowledgePageName({ name: 'my-page', displayName: 'My Page' }, tFn)
+    ).toBe('My Page');
+    expect(tFn).not.toHaveBeenCalled();
+  });
+});
 
 describe('KnowledgePageUtils', () => {
   it('findPageAndParentInTreeData should return the correct value', () => {
@@ -201,7 +241,10 @@ describe('KnowledgePageUtils', () => {
       );
 
       expect(link).toBeInTheDocument();
-      expect(link).toHaveAttribute('href', '/knowledge-center/knowledge.test');
+      expect(link).toHaveAttribute(
+        'href',
+        '/context-center/articles/knowledge.test'
+      );
       expect(link).not.toHaveAttribute('target', '_blank');
       expect(link.textContent).toContain('Test Knowledge Page');
     });
@@ -229,7 +272,7 @@ describe('KnowledgePageUtils', () => {
       );
 
       expect(link).toBeInTheDocument();
-      expect(link.textContent).toContain('label.untitled');
+      expect(link.textContent).toContain('Knowledge No Name');
     });
 
     it('should use fullyQualifiedName in test ID when displayName is not provided', () => {

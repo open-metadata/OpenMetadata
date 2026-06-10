@@ -15,6 +15,9 @@
     <junit.jupiter.version>${org.junit.jupiter.version}</junit.jupiter.version>
     <junit.platform.version>${org.junit.platform.version}</junit.platform.version>
     <dockerjava.version>3.4.2</dockerjava.version>
+    <!-- Tags excluded from the ui-it profile. Override on the CLI to include them, e.g.
+         -Dui.it.excludedGroups= to run every UIIT including @Tag("sso-bootstrap"). -->
+    <ui.it.excludedGroups>sso-bootstrap</ui.it.excludedGroups>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -169,6 +172,13 @@
       <version>4.4.0</version>
       <scope>test</scope>
     </dependency>
+    <!-- Playwright Java for UI integration tests (*UIIT.java) -->
+    <dependency>
+      <groupId>com.microsoft.playwright</groupId>
+      <artifactId>playwright</artifactId>
+      <version>1.49.0</version>
+      <scope>test</scope>
+    </dependency>
     <!--
       REST client dependencies for org.openmetadata.sdk.test.util.RestClient.
       openmetadata-sdk declares these as <optional>true</optional> so generic SDK
@@ -184,13 +194,11 @@
     <dependency>
       <groupId>org.glassfish.jersey.core</groupId>
       <artifactId>jersey-client</artifactId>
-      <version>3.1.11</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.glassfish.jersey.connectors</groupId>
       <artifactId>jersey-apache-connector</artifactId>
-      <version>3.1.11</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -211,17 +219,21 @@
       <version>1.1.7</version>
       <scope>test</scope>
     </dependency>
-    <!-- RDF support (Apache Jena) for RDF tests -->
+    <!-- RDF support (Apache Jena) for RDF tests. Version unified with
+         openmetadata-service via the root pom's <jena.version> property —
+         previously this module was on 5.0.0 while openmetadata-service was
+         on 4.10.0, which forced the production code to abstract over Jena 4
+         vs 5 API drift. -->
     <dependency>
       <groupId>org.apache.jena</groupId>
       <artifactId>jena-core</artifactId>
-      <version>5.0.0</version>
+      <version>${jena.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.jena</groupId>
       <artifactId>jena-arq</artifactId>
-      <version>5.0.0</version>
+      <version>${jena.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -241,7 +253,62 @@
       <version>2.3.0</version>
       <scope>test</scope>
     </dependency>
+    <!-- Required by DriveFileUploadIT (test fixture generation: PDF + XLSX). -->
+    <dependency>
+      <groupId>org.apache.pdfbox</groupId>
+      <artifactId>pdfbox</artifactId>
+      <version>2.0.31</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.poi</groupId>
+      <artifactId>poi</artifactId>
+      <version>5.4.1</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.poi</groupId>
+      <artifactId>poi-ooxml</artifactId>
+      <version>5.4.1</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>publish-test-harness</id>
+            <goals>
+              <goal>test-jar</goal>
+            </goals>
+            <configuration>
+              <includes>
+                <include>org/openmetadata/it/bootstrap/**</include>
+                <include>org/openmetadata/it/auth/**</include>
+                <include>org/openmetadata/it/util/**</include>
+                <include>org/openmetadata/it/factories/**</include>
+                <include>org/openmetadata/it/server/**</include>
+                <include>org/openmetadata/it/search/**</include>
+                <include>org/openmetadata/playwright/**</include>
+                <include>org/openmetadata/it/tests/BaseEntityIT*</include>
+                <include>private_key.der</include>
+                <include>public_key.der</include>
+                <include>openmetadata-secure-test.yaml</include>
+                <include>logback.xml</include>
+                <include>junit-platform.properties</include>
+                <include>testcontainers.properties</include>
+                <include>docker-java.properties</include>
+                <include>META-INF/services/**</include>
+              </includes>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
   <profiles>
     <!-- MySQL + Elasticsearch (default) -->
     <profile>
@@ -307,8 +374,11 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/*UIIT.java</exclude>
+                    <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -318,6 +388,7 @@
 
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
+                    <excludedGroups>scale</excludedGroups>
                   </systemPropertyVariables>
                   <trimStackTrace>false</trimStackTrace>
                   <reportFormat>plain</reportFormat>
@@ -398,9 +469,12 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/*UIIT.java</exclude>
+                    <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -492,9 +566,12 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/*UIIT.java</exclude>
+                    <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -584,8 +661,11 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/*UIIT.java</exclude>
+                    <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -675,9 +755,12 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/*UIIT.java</exclude>
+                    <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -766,8 +849,11 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/*UIIT.java</exclude>
+                    <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -873,9 +959,12 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/*UIIT.java</exclude>
+                    <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -935,7 +1024,7 @@
                   </includes>
                   <systemPropertyVariables>
                     <enableRdf>true</enableRdf>
-                    <rdfContainerImage>stain/jena-fuseki:latest</rdfContainerImage>
+                    <rdfContainerImage>secoresearch/fuseki:5.5.0</rdfContainerImage>
                     <databaseType>postgres</databaseType>
                     <databaseImage>postgres:15</databaseImage>
                     <searchType>elasticsearch</searchType>
@@ -968,12 +1057,15 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/*UIIT.java</exclude>
+                    <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <enableRdf>true</enableRdf>
-                    <rdfContainerImage>stain/jena-fuseki:latest</rdfContainerImage>
+                    <rdfContainerImage>secoresearch/fuseki:5.5.0</rdfContainerImage>
                     <databaseType>postgres</databaseType>
                     <databaseImage>postgres:15</databaseImage>
                     <searchType>elasticsearch</searchType>
@@ -993,6 +1085,147 @@
                 <goals>
                   <goal>verify</goal>
                 </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <!-- UI integration tests (*UIIT.java). Run with `mvn verify -P ui-it`. Boots the OM
+         Docker image via ContainerizedServer + Playwright; embedded TestSuiteBootstrap is
+         skipped. Per-method parallel; tests with global state opt out via @ResourceLock
+         or @Execution(SAME_THREAD). -->
+    <profile>
+      <id>ui-it</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>${maven.failsafe.version}</version>
+            <executions>
+              <execution>
+                <id>ui-scenario-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                  <goal>verify</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/*UIIT.java</include>
+                  </includes>
+                  <!-- SSO bootstrap UIITs spin up their own ContainerizedServer to verify
+                       SSO env wiring; that's a second OM lifecycle worth ~1-2 min and not
+                       useful on every run. Opt in with -DincludeSsoBootstrap=true. -->
+                  <excludedGroups>${ui.it.excludedGroups}</excludedGroups>
+                  <systemPropertyVariables>
+                    <skip.embedded.bootstrap>true</skip.embedded.bootstrap>
+                    <!-- Video recording on by default while the suite is young — captures
+                         each run to target/playwright-videos/ for triage. Disable per-run
+                         with -DPW_VIDEO=false. -->
+                    <PW_VIDEO>true</PW_VIDEO>
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
+                    <junit.jupiter.execution.parallel.mode.default>concurrent</junit.jupiter.execution.parallel.mode.default>
+                    <junit.jupiter.execution.parallel.mode.classes.default>same_thread</junit.jupiter.execution.parallel.mode.classes.default>
+                    <junit.jupiter.execution.parallel.config.strategy>dynamic</junit.jupiter.execution.parallel.config.strategy>
+                    <junit.jupiter.execution.parallel.config.dynamic.factor>0.5</junit.jupiter.execution.parallel.config.dynamic.factor>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <!-- Scale + benchmark tests (@Tag("scale")). Excluded from PR runs by the
+         default failsafe config; nightly runs invoke `mvn verify -P scale-it`. -->
+    <profile>
+      <id>scale-it</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>${maven.failsafe.version}</version>
+            <executions>
+              <execution>
+                <id>scale-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                  <goal>verify</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/tests/search/scale/*IT.java</include>
+                  </includes>
+                  <systemPropertyVariables>
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                    <includedGroups>scale</includedGroups>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <!-- Server-global destructive search ITs: full reindex/recreate, alias swaps, ES container
+         pause. They mutate cluster-wide state on the shared embedded server, so they must never
+         run alongside the parallel corpus or the other sequential tests (which is why the default
+         profiles exclude **/tests/search/*IT.java). Like scale-it, this profile runs them on their
+         own fork + server, serially, and is invoked on demand / nightly via
+         `mvn verify -P search-it` (pass -DsearchType= / -DdatabaseType= to choose the backend). -->
+    <profile>
+      <id>search-it</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>${maven.failsafe.version}</version>
+            <executions>
+              <execution>
+                <id>search-isolated-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                  <goal>verify</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/tests/search/*IT.java</include>
+                  </includes>
+                  <excludes>
+                    <exclude>**/tests/search/scale/**</exclude>
+                  </excludes>
+                  <systemPropertyVariables>
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                    <excludedGroups>scale</excludedGroups>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
               </execution>
             </executions>
           </plugin>

@@ -36,7 +36,7 @@ import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerAncestors } from '../../../rest/storageAPI';
-import { listTasks } from '../../../rest/tasksAPI';
+import { listDataAccessRequests } from '../../../rest/tasksAPI';
 import { ExtraInfoLink } from '../../../utils/DataAssetsHeader.utils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -103,6 +103,7 @@ jest.mock('../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockImplementation(() => 'name'),
   getEntityFeedLink: jest.fn().mockImplementation(() => 'entityFeedLink'),
   getEntityVoteStatus: jest.fn().mockImplementation(() => 'unVoted'),
+  hasEditAccess: jest.fn().mockReturnValue(false),
 }));
 
 jest.mock('../../../utils/DataAssetsHeader.utils', () => ({
@@ -199,7 +200,7 @@ jest.mock('../../../utils/TableClassBase', () => ({
 
 jest.mock('../../../rest/tasksAPI', () => ({
   ...jest.requireActual('../../../rest/tasksAPI'),
-  listTasks: jest.fn().mockResolvedValue({ data: [] }),
+  listDataAccessRequests: jest.fn().mockResolvedValue({ data: [] }),
 }));
 
 jest.mock('../../../utils/TasksUtils', () =>
@@ -245,6 +246,13 @@ jest.mock('../../../hooks/useEntityRules', () => ({
       canAddMultipleUserOwners: true,
       canAddMultipleTeamOwner: true,
     },
+  })),
+}));
+
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockImplementation(() => ({
+    getEntityPermissionByFqn: jest.fn().mockResolvedValue({}),
+    permissions: { task: { Create: true, Delete: false, EditAll: false } },
   })),
 }));
 
@@ -682,7 +690,7 @@ describe('DataAssetsHeader component', () => {
     expect(button).toBeEnabled();
   });
 
-  it('should not render the request data access button on OSS', () => {
+  it('should not render the request data access button when getShowRequestDataAccess is false', () => {
     render(<DataAssetsHeader {...mockProps} />);
 
     expect(
@@ -702,12 +710,13 @@ describe('DataAssetsHeader component', () => {
         columns: [],
       } as unknown as Table,
       permissions: { ...DEFAULT_ENTITY_PERMISSION, ViewAll: true },
+      canCreateTask: true,
     };
 
-    const mockListTasks = listTasks as jest.Mock;
+    const mockListDataAccessRequests = listDataAccessRequests as jest.Mock;
 
     beforeEach(() => {
-      mockListTasks.mockResolvedValue({ data: [] });
+      mockListDataAccessRequests.mockResolvedValue({ data: [] });
       const { getShowRequestDataAccess } = jest.requireMock(
         '../../../utils/TableClassBase'
       );
@@ -731,10 +740,42 @@ describe('DataAssetsHeader component', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('should not render when user is an owner', async () => {
+    it('should not render on OSS (getShowRequestDataAccess returns false)', () => {
+      const { getShowRequestDataAccess } = jest.requireMock(
+        '../../../utils/TableClassBase'
+      );
+      (getShowRequestDataAccess as jest.Mock).mockReturnValue(false);
+
+      render(<DataAssetsHeader {...tableProps} />);
+
+      expect(
+        screen.queryByTestId('request-data-access-button')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should render for owner with canCreateTask permission', async () => {
       render(
         <DataAssetsHeader
           {...tableProps}
+          dataAsset={{
+            ...tableProps.dataAsset,
+            owners: [{ id: 'user-1', type: 'user' }],
+          }}
+        />
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('request-data-access-button')
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('should not render for owner without canCreateTask permission', async () => {
+      render(
+        <DataAssetsHeader
+          {...tableProps}
+          canCreateTask={false}
           dataAsset={{
             ...tableProps.dataAsset,
             owners: [{ id: 'user-1', type: 'user' }],
@@ -747,39 +788,8 @@ describe('DataAssetsHeader component', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('should not render when user belongs to an owner team', async () => {
-      const { useApplicationStore } = jest.requireMock(
-        '../../../hooks/useApplicationStore'
-      );
-      (useApplicationStore as jest.Mock).mockReturnValue({
-        currentUser: {
-          id: 'user-2',
-          name: 'team.member',
-          teams: [{ id: 'team-1', type: 'team' }],
-        },
-      });
-
-      render(
-        <DataAssetsHeader
-          {...tableProps}
-          dataAsset={{
-            ...tableProps.dataAsset,
-            owners: [{ id: 'team-1', type: 'team' }],
-          }}
-        />
-      );
-
-      expect(
-        screen.queryByTestId('request-data-access-button')
-      ).not.toBeInTheDocument();
-
-      (useApplicationStore as jest.Mock).mockReturnValue({
-        currentUser: { id: 'user-1', name: 'test.user' },
-      });
-    });
-
     it('should render enabled button when no existing DAR task', async () => {
-      mockListTasks.mockResolvedValue({ data: [] });
+      mockListDataAccessRequests.mockResolvedValue({ data: [] });
 
       render(<DataAssetsHeader {...tableProps} />);
 
@@ -791,7 +801,7 @@ describe('DataAssetsHeader component', () => {
     });
 
     it('should disable button when a task is in review stage', async () => {
-      mockListTasks.mockResolvedValue({
+      mockListDataAccessRequests.mockResolvedValue({
         data: [
           {
             id: 'task-1',
@@ -810,7 +820,7 @@ describe('DataAssetsHeader component', () => {
     });
 
     it('should disable button when task is in approved stage and approval is still active', async () => {
-      mockListTasks.mockResolvedValue({
+      mockListDataAccessRequests.mockResolvedValue({
         data: [
           {
             id: 'task-2',
@@ -831,7 +841,7 @@ describe('DataAssetsHeader component', () => {
     });
 
     it('should enable button when task is in approved stage but approval has expired', async () => {
-      mockListTasks.mockResolvedValue({
+      mockListDataAccessRequests.mockResolvedValue({
         data: [
           {
             id: 'task-3',
@@ -856,7 +866,7 @@ describe('DataAssetsHeader component', () => {
     it('should use updatedAt (approval time) not createdAt for duration window', async () => {
       const approvedAt = Date.now() - 86_400_000 * 3;
 
-      mockListTasks.mockResolvedValue({
+      mockListDataAccessRequests.mockResolvedValue({
         data: [
           {
             id: 'task-dur',
@@ -877,7 +887,7 @@ describe('DataAssetsHeader component', () => {
     });
 
     it('should treat expirationDate 0 as expired (not as missing)', async () => {
-      mockListTasks.mockResolvedValue({
+      mockListDataAccessRequests.mockResolvedValue({
         data: [
           {
             id: 'task-zero-exp',
@@ -900,7 +910,7 @@ describe('DataAssetsHeader component', () => {
     });
 
     it('should disable when workflowStageDisplayName missing but workflowStageId is approved', async () => {
-      mockListTasks.mockResolvedValue({
+      mockListDataAccessRequests.mockResolvedValue({
         data: [
           {
             id: 'task-stageid',
@@ -920,7 +930,7 @@ describe('DataAssetsHeader component', () => {
       });
     });
 
-    it('should not call listTasks when currentUser has no name', async () => {
+    it('should not call listDataAccessRequests when currentUser has no name', async () => {
       const { useApplicationStore } = jest.requireMock(
         '../../../hooks/useApplicationStore'
       );
@@ -931,12 +941,12 @@ describe('DataAssetsHeader component', () => {
       render(<DataAssetsHeader {...tableProps} />);
 
       await waitFor(() => {
-        expect(mockListTasks).not.toHaveBeenCalled();
+        expect(mockListDataAccessRequests).not.toHaveBeenCalled();
       });
     });
 
-    it('should enable button when listTasks throws', async () => {
-      mockListTasks.mockRejectedValue(new Error('network error'));
+    it('should enable button when listDataAccessRequests throws', async () => {
+      mockListDataAccessRequests.mockRejectedValue(new Error('network error'));
 
       render(<DataAssetsHeader {...tableProps} />);
 
@@ -944,6 +954,32 @@ describe('DataAssetsHeader component', () => {
         expect(
           screen.getByTestId('request-data-access-button')
         ).not.toBeDisabled();
+      });
+    });
+
+    it('should not render when user has no canCreateTask permission (no policy)', async () => {
+      render(<DataAssetsHeader {...tableProps} canCreateTask={false} />);
+
+      expect(
+        screen.queryByTestId('request-data-access-button')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should not render when admin has no canCreateTask permission', () => {
+      render(<DataAssetsHeader {...tableProps} canCreateTask={false} />);
+
+      expect(
+        screen.queryByTestId('request-data-access-button')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should render for non-admin user with canCreateTask permission', async () => {
+      render(<DataAssetsHeader {...tableProps} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('request-data-access-button')
+        ).toBeInTheDocument();
       });
     });
   });

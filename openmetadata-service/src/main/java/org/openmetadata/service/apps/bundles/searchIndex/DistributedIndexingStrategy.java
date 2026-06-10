@@ -22,6 +22,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.DistributedSearchIndexExecutor;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.SearchIndexJob;
+import org.openmetadata.service.apps.bundles.searchIndex.promotion.RatioPromotionPolicy;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -283,15 +284,23 @@ public class DistributedIndexingStrategy {
     return ExecutionResult.Status.COMPLETED;
   }
 
+  /**
+   * A reindex is considered errored only when there are real failures ({@code failedRecords > 0}).
+   *
+   * <p>It deliberately does not treat {@code successRecords < totalRecords} as an error.
+   * {@code totalRecords} is a pre-count estimate ({@code getEntityTotal} runs {@code COUNT(*)}
+   * before reading), and the gap is made up of records that cannot be indexed but are not
+   * failures — chiefly stale-relationship warnings (e.g. a {@code testCaseResolutionStatus} whose
+   * parent test case was hard-deleted) and rows deleted between the count and the read. Escalating
+   * that benign gap marked clean jobs as {@code failed} with {@code failedRecords: 0}.
+   */
   private boolean hasIncompleteProcessing(Stats stats) {
     if (stats == null || stats.getJobStats() == null) {
       return false;
     }
     StepStats jobStats = stats.getJobStats();
     long failed = jobStats.getFailedRecords() != null ? jobStats.getFailedRecords() : 0;
-    long processed = jobStats.getSuccessRecords() != null ? jobStats.getSuccessRecords() : 0;
-    long total = jobStats.getTotalRecords() != null ? jobStats.getTotalRecords() : 0;
-    return failed > 0 || (total > 0 && processed < total);
+    return failed > 0;
   }
 
   private boolean finalizeAllEntityReindex(
@@ -302,7 +311,10 @@ public class DistributedIndexingStrategy {
       return finalSuccess;
     }
 
-    return new DistributedReindexFinalizer(indexPromotionHandler, stagedIndexContext)
+    double minRatio =
+        config != null ? config.minSuccessRatio() : RatioPromotionPolicy.DEFAULT_MIN_SUCCESS_RATIO;
+    return new DistributedReindexFinalizer(
+            indexPromotionHandler, stagedIndexContext, new RatioPromotionPolicy(minRatio))
         .finalizeRemainingEntities(getPromotedEntities(), getFinalEntityStats(), finalSuccess);
   }
 
@@ -352,12 +364,14 @@ public class DistributedIndexingStrategy {
   private SearchIndexJob.EntityTypeStats toEntityTypeStats(String entityType, StepStats stepStats) {
     long success = stepStats != null ? statValue(stepStats.getSuccessRecords()) : 0L;
     long failed = stepStats != null ? statValue(stepStats.getFailedRecords()) : 0L;
+    long warnings = stepStats != null ? statValue(stepStats.getWarningRecords()) : 0L;
     return SearchIndexJob.EntityTypeStats.builder()
         .entityType(entityType)
         .totalRecords(stepStats != null ? statValue(stepStats.getTotalRecords()) : 0L)
-        .processedRecords(success + failed)
+        .processedRecords(success + failed + warnings)
         .successRecords(success)
         .failedRecords(failed)
+        .warningRecords(warnings)
         .totalPartitions(0)
         .completedPartitions(0)
         .failedPartitions(0)
@@ -456,7 +470,9 @@ public class DistributedIndexingStrategy {
             .getDao()
             .listCount(new ListFilter(Include.ALL));
       } else {
-        ListFilter listFilter = new ListFilter(null);
+        // Include.ALL to match PartitionCalculator.getTimeSeriesEntityCount — the two counts
+        // must use identical filters or the job total and the partition plan drift apart.
+        ListFilter listFilter = new ListFilter(Include.ALL);
         EntityTimeSeriesRepository<?> repository;
 
         if (SearchIndexEntityTypes.isDataInsightEntity(correctedType)) {

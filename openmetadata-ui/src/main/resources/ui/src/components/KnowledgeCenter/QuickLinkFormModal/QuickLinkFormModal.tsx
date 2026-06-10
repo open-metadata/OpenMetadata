@@ -10,15 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, FormProps, Modal } from 'antd';
+import {
+  Button,
+  Dialog,
+  Modal,
+  ModalOverlay,
+} from '@openmetadata/ui-core-components';
+import { Form } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEqual, isNil, isUndefined } from 'lodash';
-
-import { FC, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DataAssetAsyncSelectList from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
+import { KNOWLEDGE_CENTER_CLASSIFICATION } from '../../../constants/constants';
 import { getKnowledgePageFields } from '../../../constants/KnowledgeCenter.constant';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityReference } from '../../../generated/entity/type';
@@ -34,11 +40,15 @@ import {
   patchKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { generateFormFields } from '../../../utils/formUtils';
+import {
+  generateFormFields,
+  getPopupContainer,
+} from '../../../utils/formUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import { getTagsWithoutTier } from '../../../utils/TableUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import tagClassBase from '../../../utils/TagClassBase';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 export interface QuickLinkFormModalFormData
   extends Pick<CreateKnowledgePage, 'description' | 'displayName'> {
@@ -68,101 +78,83 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
 
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const { classification, glossaries, initialValues } = useMemo(() => {
-    if (isUndefined(quickLink)) {
-      return { initialValues: {}, classification: [], glossaries: [] };
+  useEffect(() => {
+    if (isOpen) {
+      tagClassBase.setFilterClassification([]);
+    } else {
+      tagClassBase.setFilterClassification([KNOWLEDGE_CENTER_CLASSIFICATION]);
     }
 
-    const tagsWithoutTier = getTagsWithoutTier(quickLink.tags ?? []);
-
-    const { Classification: classification, Glossary: glossaries } =
-      getFilterTags(tagsWithoutTier);
-
-    return {
-      initialValues: {
-        displayName: quickLink?.displayName,
-        url: (quickLink.page as QuickLink)?.url,
-        description: quickLink?.description,
-        tags: classification,
-        glossaryTerms: glossaries,
-      },
-      classification,
-      glossaries,
+    return () => {
+      tagClassBase.setFilterClassification([KNOWLEDGE_CENTER_CLASSIFICATION]);
     };
-  }, [quickLink]);
+  }, [isOpen]);
 
-  const {
-    defaultDataAssetsValues,
-    initialDataAssetsOptions,
-    restRelatedDataAssets,
-  } = useMemo(() => {
-    if (isUndefined(quickLink)) {
-      return {
-        initialDataAssetsOptions: [],
-        defaultDataAssetsValues: [],
-        filteredRelatedDataAssets: [],
-        restRelatedDataAssets: [],
-      };
-    }
-
-    const relatedDataAssets = quickLink.relatedEntities ?? [];
-
-    const { filteredRelatedDataAssets, restRelatedDataAssets } =
-      relatedDataAssets.reduce(
-        (acc, item) => {
-          // filter out team and user as they are not data assets
-          if (!['team', 'user'].includes(item.type)) {
-            acc.filteredRelatedDataAssets.push(item);
-          } else {
-            acc.restRelatedDataAssets.push(item);
-          }
-
-          return acc;
-        },
-        {
-          filteredRelatedDataAssets: [] as EntityReference[],
-          restRelatedDataAssets: [] as EntityReference[],
-        }
-      );
-
-    const initialDataAssetsOptions: DataAssetOption[] =
-      filteredRelatedDataAssets.map((item) => {
+  const { initialValues, initialDataAssetsOptions, restRelatedDataAssets } =
+    useMemo(() => {
+      if (isUndefined(quickLink)) {
         return {
+          initialValues: {},
+          initialDataAssetsOptions: [],
+          restRelatedDataAssets: [],
+        };
+      }
+
+      const tagsWithoutTier = getTagsWithoutTier(quickLink.tags ?? []);
+      const { Classification: classification, Glossary: glossaries } =
+        getFilterTags(tagsWithoutTier);
+
+      const relatedDataAssets = quickLink.relatedEntities ?? [];
+      const { filteredRelatedDataAssets, restRelatedDataAssets } =
+        relatedDataAssets.reduce(
+          (acc, item) => {
+            if (!['team', 'user'].includes(item.type)) {
+              acc.filteredRelatedDataAssets.push(item);
+            } else {
+              acc.restRelatedDataAssets.push(item);
+            }
+
+            return acc;
+          },
+          {
+            filteredRelatedDataAssets: [] as EntityReference[],
+            restRelatedDataAssets: [] as EntityReference[],
+          }
+        );
+
+      const initialDataAssetsOptions: DataAssetOption[] =
+        filteredRelatedDataAssets.map((item) => ({
           displayName: getEntityName(item),
           reference: item,
           label: getEntityName(item),
           value: item.id,
-        };
-      });
+        }));
 
-    const defaultDataAssetsValues = filteredRelatedDataAssets.map(
-      (item) => item.id
-    );
-
-    return {
-      initialDataAssetsOptions,
-      defaultDataAssetsValues,
-      filteredRelatedDataAssets,
-      restRelatedDataAssets,
-    };
-  }, [quickLink]);
+      return {
+        initialValues: {
+          displayName: quickLink.displayName,
+          url: (quickLink.page as QuickLink)?.url,
+          description: quickLink.description,
+          tags: classification,
+          glossaryTerms: glossaries,
+          relatedEntities: filteredRelatedDataAssets.map((item) => item.id),
+        },
+        initialDataAssetsOptions,
+        restRelatedDataAssets,
+      };
+    }, [quickLink]);
 
   const handleQuickLinkUpdate = async (
     knowledgePage: KnowledgePage,
     formData: QuickLinkFormModalFormData
   ) => {
     const currentKnowledgePage = cloneDeep(knowledgePage);
-
     const tags = [...(formData.tags ?? []), ...(formData.glossaryTerms ?? [])];
-
     let existingTags = currentKnowledgePage.tags ?? [];
 
-    // derive the new tags
     const newTags = tags.filter(
       (tag) => !existingTags.find((t) => t.tagFQN === tag.tagFQN)
     );
-
-    // update the existing tags with the new tags
     existingTags = existingTags.filter((tag) =>
       tags.find((t) => t.tagFQN === tag.tagFQN)
     );
@@ -172,10 +164,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
       displayName: formData.displayName,
       description: formData.description,
       tags: [...existingTags, ...newTags],
-      page: {
-        ...currentKnowledgePage.page,
-        url: formData.url,
-      },
+      page: { ...currentKnowledgePage.page, url: formData.url },
       relatedEntities: formData?.relatedEntities,
     };
 
@@ -188,23 +177,24 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
     try {
       setIsUpdating(true);
       const patch = compare(currentKnowledgePage, updatedKnowledgePage);
-
       await patchKnowledgePage(currentKnowledgePage.id, patch);
       const response = await getKnowledgePageByFqn(
         currentKnowledgePage.fullyQualifiedName,
-        {
-          fields: getKnowledgePageFields(),
-        }
+        { fields: getKnowledgePageFields() }
       );
 
-      const updatedData = {
+      showSuccessToast(
+        t('message.entity-saved-successfully', {
+          entity: t('label.quick-link'),
+        })
+      );
+      onSave({
         displayName: response.displayName,
         description: response.description,
         tags: response.tags,
         url: (response.page as QuickLink)?.url,
         relatedEntities: response?.relatedEntities,
-      };
-      onSave(updatedData);
+      });
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -212,19 +202,22 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
     }
   };
 
-  const handleSubmit: FormProps<
-    Omit<QuickLinkFormModalFormData, 'relatedEntities'> & {
+  const handleCancel = () => {
+    form.resetFields();
+    onCancel();
+  };
+
+  const handleFormFinish = (
+    values: Omit<QuickLinkFormModalFormData, 'relatedEntities'> & {
       relatedEntities?: DataAssetOption[];
     }
-  >['onFinish'] = (values) => {
-    // filter out empty values
+  ) => {
     const relatedEntitiesData = values['relatedEntities']?.filter(
       (entity) => !isNil(entity)
     );
 
     const mappedRelatedDataAssets = relatedEntitiesData?.reduce((acc, item) => {
       let reference;
-
       if (typeof item === 'string') {
         const foundOption = initialDataAssetsOptions.find(
           (option) => option.reference.id === item
@@ -233,7 +226,6 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
       } else {
         reference = item.reference;
       }
-
       if (!isNil(reference)) {
         acc.push(reference);
       }
@@ -246,7 +238,10 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
       ...(mappedRelatedDataAssets ?? []),
     ];
 
-    const updatedValues = { ...values, relatedEntities };
+    const updatedValues: QuickLinkFormModalFormData = {
+      ...values,
+      relatedEntities,
+    };
 
     if (!isUndefined(quickLink)) {
       handleQuickLinkUpdate(quickLink, updatedValues);
@@ -258,9 +253,9 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
   const formFields: FieldProp[] = [
     {
       name: 'displayName',
-      id: 'root/displayName',
       required: false,
       label: t('label.display-name'),
+      id: 'root/displayName',
       type: FieldTypes.TEXT,
       props: {
         'data-testid': 'displayName',
@@ -270,14 +265,22 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
     },
     {
       name: 'url',
-      id: 'root/url',
       required: true,
       label: t('label.url-uppercase'),
+      id: 'root/url',
       type: FieldTypes.TEXT,
+      rules: [
+        {
+          required: true,
+          message: t('label.field-required', {
+            field: t('label.url-uppercase'),
+          }),
+        },
+      ],
       props: {
         'data-testid': 'url',
-        type: 'url',
         disabled: !permissions.EditAll,
+        type: 'url',
       },
       placeholder: t('label.url-uppercase'),
     },
@@ -289,7 +292,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
       type: FieldTypes.DESCRIPTION,
       props: {
         'data-testid': 'description',
-        initialValue: '',
+        initialValue: quickLink?.description ?? '',
         readonly: !(permissions.EditAll || permissions.EditDescription),
       },
     },
@@ -297,84 +300,99 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
       name: 'tags',
       required: false,
       label: t('label.tag-plural'),
-      id: 'root/tags',
+      id: 'tags',
       type: FieldTypes.TAG_SUGGESTION,
       props: {
         'data-testid': 'tags-container',
-        initialOptions: classification.map((tag) => ({
-          label: tag.tagFQN,
-          value: tag.tagFQN,
-          data: tag,
-        })),
-        disabled: !(permissions.EditAll || permissions.EditTags),
+        selectProps: {
+          getPopupContainer,
+          id: 'root/tags',
+          disabled: !(permissions.EditAll || permissions.EditTags),
+        },
+        newLook: true,
       },
     },
     {
       name: 'glossaryTerms',
       required: false,
-      label: t('label.glossary-term'),
-      id: 'root/glossaryTerms',
+      label: t('label.glossary-term-plural'),
+      id: 'glossaryTerms',
       type: FieldTypes.TAG_SUGGESTION,
       props: {
         'data-testid': 'glossaryTerms-container',
+        selectProps: {
+          getPopupContainer,
+          id: 'root/glossaryTerms',
+          disabled: !(permissions.EditAll || permissions.EditTags),
+        },
         open: false,
         hasNoActionButtons: true,
+        newLook: true,
         isTreeSelect: true,
         tagType: TagSource.Glossary,
         placeholder: t('label.select-field', {
-          field: t('label.glossary-term'),
+          field: t('label.glossary-term-plural'),
         }),
-        initialOptions: glossaries.map((glossary) => ({
-          label: glossary.tagFQN,
-          value: glossary.tagFQN,
-          data: glossary,
-        })),
-        disabled: !(permissions.EditAll || permissions.EditTags),
       },
     },
   ];
 
+  const title = isUndefined(quickLink)
+    ? t('label.add-entity', { entity: t('label.quick-link') })
+    : `${t('label.edit-entity', { entity: t('label.quick-link') })} ${
+        getEntityName(quickLink) || t('label.untitled')
+      }`;
+
   return (
-    <Modal
-      centered
-      cancelText={t('label.back')}
-      maskClosable={false}
-      okButtonProps={{
-        htmlType: 'submit',
-        id: 'quick-link-form',
-        form: 'quick-link-form',
-        loading: isUpdating,
-      }}
-      okText={t('label.save')}
-      open={isOpen}
-      title={
-        isUndefined(quickLink)
-          ? t('label.add-entity', { entity: t('label.quick-link') })
-          : `${t('label.edit-entity', { entity: t('label.quick-link') })} ${
-              quickLink.displayName ?? t('label.untitled')
-            }`
-      }
-      width={780}
-      onCancel={onCancel}>
-      <Form
-        data-testid="quick-link-form"
-        form={form}
-        id="quick-link-form"
-        initialValues={{
-          ...initialValues,
-          relatedEntities: defaultDataAssetsValues,
-        }}
-        layout="vertical"
-        onFinish={handleSubmit}>
-        {generateFormFields(formFields)}
-        <Form.Item label={t('label.data-asset-plural')} name="relatedEntities">
-          <DataAssetAsyncSelectList
-            initialOptions={initialDataAssetsOptions}
-            mode="multiple"
-            placeholder={t('label.data-asset-plural')}
-          />
-        </Form.Item>
-      </Form>
-    </Modal>
+    <ModalOverlay
+      isDismissable
+      isOpen={isOpen}
+      style={{ zIndex: 999 }}
+      onOpenChange={(open) => !open && handleCancel()}>
+      <Modal>
+        <Dialog
+          showCloseButton
+          className="quick-link-form-modal"
+          width={600}
+          onClose={handleCancel}>
+          <Dialog.Header title={title} />
+          <Dialog.Content className="tw:max-h-[60vh] tw:overflow-y-auto tw:overflow-x-visible">
+            <Form
+              className="new-form-style"
+              data-testid="quick-link-form"
+              form={form}
+              id="quick-link-form"
+              initialValues={initialValues}
+              layout="vertical"
+              onFinish={handleFormFinish}>
+              {generateFormFields(formFields)}
+
+              <Form.Item
+                label={t('label.data-asset-plural')}
+                name="relatedEntities">
+                <DataAssetAsyncSelectList
+                  getPopupContainer={getPopupContainer}
+                  initialOptions={initialDataAssetsOptions}
+                  mode="multiple"
+                  placeholder={t('label.data-asset-plural')}
+                />
+              </Form.Item>
+            </Form>
+          </Dialog.Content>
+
+          <Dialog.Footer className="quick-link-modal-footer">
+            <Button color="secondary" onClick={handleCancel}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              color="primary"
+              isLoading={isUpdating}
+              onClick={() => form.submit()}>
+              {t('label.save')}
+            </Button>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };

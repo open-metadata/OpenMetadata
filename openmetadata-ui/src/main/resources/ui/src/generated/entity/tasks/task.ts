@@ -26,6 +26,20 @@ export interface Task {
      */
     aboutFqnHash?: string;
     /**
+     * Timestamp when the task was approved.
+     */
+    approvedAt?: number;
+    /**
+     * User who approved this task (set when an approval transition fires; distinct from
+     * resolution.resolvedBy which is set only on terminal transitions).
+     */
+    approvedBy?: EntityReference;
+    /**
+     * UUID of the user who approved this task. Stored in JSON for efficient querying via
+     * generated column index.
+     */
+    approvedById?: string;
+    /**
      * Users or teams assigned to complete this task.
      */
     assignees?: EntityReference[];
@@ -167,6 +181,9 @@ export interface Task {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
+ * User who approved this task (set when an approval transition fires; distinct from
+ * resolution.resolvedBy which is set only on terminal transitions).
+ *
  * Users or teams assigned to complete this task.
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
@@ -285,6 +302,7 @@ export enum TaskStatus {
     Cancelled = "Cancelled",
     Completed = "Completed",
     Failed = "Failed",
+    Granted = "Granted",
     InProgress = "InProgress",
     Open = "Open",
     Pending = "Pending",

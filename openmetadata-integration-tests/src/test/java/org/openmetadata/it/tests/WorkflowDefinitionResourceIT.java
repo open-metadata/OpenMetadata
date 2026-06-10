@@ -5992,6 +5992,215 @@ public class WorkflowDefinitionResourceIT {
   }
 
   @Test
+  @Order(43)
+  void test_PortChangesOnDataProductTriggerWorkflow(TestNamespace ns) throws Exception {
+    LOG.info("Starting test_PortChangesOnDataProductTriggerWorkflow");
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    String suffix = String.valueOf(System.currentTimeMillis());
+
+    Domain domain;
+    try {
+      domain = client.domains().getByName("port_test_domain");
+    } catch (Exception e) {
+      domain =
+          client
+              .domains()
+              .create(
+                  new CreateDomain()
+                      .withName("port_test_domain")
+                      .withDescription("Domain for port trigger tests")
+                      .withDomainType(CreateDomain.DomainType.AGGREGATE));
+    }
+
+    CreateUser createReviewer =
+        new CreateUser()
+            .withName("port_rvwr_" + suffix)
+            .withEmail("port_rvwr_" + suffix + "@example.com")
+            .withDisplayName("Port Test Reviewer")
+            .withPassword("password123");
+    User reviewer = client.users().create(createReviewer);
+    EntityReference reviewerRef = reviewer.getEntityReference();
+    OpenMetadataClient reviewerClient =
+        SdkClients.createClient(reviewer.getName(), reviewer.getEmail(), new String[] {});
+
+    String portWorkflowName = "PortTriggerWf_" + suffix;
+
+    CreateDatabaseService createDbService =
+        new CreateDatabaseService()
+            .withName("port_dbs_" + suffix)
+            .withServiceType(CreateDatabaseService.DatabaseServiceType.Mysql)
+            .withConnection(
+                new org.openmetadata.schema.api.services.DatabaseConnection()
+                    .withConfig(new MysqlConnection()))
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DatabaseService dbService = client.databaseServices().create(createDbService);
+
+    CreateDatabase createDatabase =
+        new CreateDatabase()
+            .withName("port_db")
+            .withService(dbService.getFullyQualifiedName())
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    Database database = client.databases().create(createDatabase);
+
+    CreateDatabaseSchema createSchema =
+        new CreateDatabaseSchema()
+            .withName("port_sc")
+            .withDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema = client.databaseSchemas().create(createSchema);
+
+    CreateTable createTable =
+        new CreateTable()
+            .withName("port_in_table")
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column().withName("id").withDataType(ColumnDataType.INT),
+                    new Column().withName("name").withDataType(ColumnDataType.STRING)))
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    Table inputTable = client.tables().create(createTable);
+
+    CreateTable createTable2 =
+        new CreateTable()
+            .withName("port_out_table")
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column().withName("id").withDataType(ColumnDataType.INT),
+                    new Column().withName("value").withDataType(ColumnDataType.STRING)))
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    Table outputTable = client.tables().create(createTable2);
+    LOG.debug("Created tables: {}, {}", inputTable.getName(), outputTable.getName());
+
+    org.openmetadata.schema.api.domains.CreateDataProduct createDataProduct =
+        new org.openmetadata.schema.api.domains.CreateDataProduct()
+            .withName("port_dp_" + suffix)
+            .withDescription("Data product for port trigger test")
+            .withDomains(List.of(domain.getFullyQualifiedName()))
+            .withReviewers(List.of(reviewerRef));
+    org.openmetadata.schema.entity.domains.DataProduct dataProduct =
+        client.dataProducts().create(createDataProduct);
+    LOG.debug("Created data product: {}", dataProduct.getName());
+
+    org.openmetadata.schema.type.api.BulkAssets assetsBulk =
+        new org.openmetadata.schema.type.api.BulkAssets()
+            .withAssets(List.of(inputTable.getEntityReference(), outputTable.getEntityReference()));
+    client.dataProducts().bulkAddAssets(dataProduct.getFullyQualifiedName(), assetsBulk);
+
+    simulateWork(5000);
+
+    // Create workflow AFTER entity setup so it only catches port-change events
+    String portWorkflowJson =
+        String.format(
+            """
+                {
+                  "name": "%s",
+                  "displayName": "Port Trigger Workflow",
+                  "description": "Verifies inputPorts and outputPorts changes trigger workflow",
+                  "trigger": {
+                    "type": "eventBasedEntity",
+                    "config": {
+                      "entityTypes": ["dataProduct"],
+                      "events": ["Updated"],
+                      "include": ["inputPorts", "outputPorts"],
+                      "filter": {}
+                    },
+                    "output": ["relatedEntity", "updatedBy"]
+                  },
+                  "nodes": [
+                    {"type": "startEvent", "subType": "startEvent", "name": "Start", "displayName": "Start"},
+                    {"type": "endEvent",   "subType": "endEvent",   "name": "End",   "displayName": "End"},
+                    {
+                      "type": "userTask",
+                      "subType": "userApprovalTask",
+                      "name": "UserApproval",
+                      "displayName": "User Approval",
+                      "config": {
+                        "assignees": {"addReviewers": true, "addOwners": false, "candidates": []},
+                        "approvalThreshold": 1,
+                        "rejectionThreshold": 1
+                      },
+                      "input": ["relatedEntity"],
+                      "inputNamespaceMap": {"relatedEntity": "global"},
+                      "output": ["updatedBy"],
+                      "branches": ["true", "false"]
+                    }
+                  ],
+                  "edges": [
+                    {"from": "Start", "to": "UserApproval"},
+                    {"from": "UserApproval", "to": "End", "condition": "true"},
+                    {"from": "UserApproval", "to": "End", "condition": "false"}
+                  ],
+                  "config": {"storeStageStatus": true}
+                }
+                """,
+            portWorkflowName);
+
+    CreateWorkflowDefinition portWorkflow =
+        org.openmetadata.schema.utils.JsonUtils.readValue(
+            portWorkflowJson, CreateWorkflowDefinition.class);
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST, BASE_PATH, portWorkflow, RequestOptions.builder().build());
+    LOG.debug("Created port trigger workflow: {}", portWorkflowName);
+    waitForWorkflowDeployment(client, portWorkflowName);
+
+    org.openmetadata.schema.api.tasks.ResolveTask resolveApproved =
+        new org.openmetadata.schema.api.tasks.ResolveTask()
+            .withResolutionType(TaskResolutionType.Approved);
+
+    // inputPorts add — ChangeEvent fieldsAdded[inputPorts] must trigger the workflow
+    org.openmetadata.schema.type.api.BulkAssets inputPortAssets =
+        new org.openmetadata.schema.type.api.BulkAssets()
+            .withAssets(List.of(inputTable.getEntityReference()));
+    client.dataProducts().bulkAddInputPorts(dataProduct.getFullyQualifiedName(), inputPortAssets);
+    LOG.debug("Added inputTable as inputPort");
+    await()
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(
+            () ->
+                !listOpenApprovalTasks(reviewerClient, dataProduct.getFullyQualifiedName())
+                    .getData()
+                    .isEmpty());
+    Task inputPortTask =
+        listOpenApprovalTasks(reviewerClient, dataProduct.getFullyQualifiedName()).getData().get(0);
+    reviewerClient.tasks().resolve(inputPortTask.getId().toString(), resolveApproved);
+    LOG.info("inputPorts add triggered and resolved approval task");
+
+    // outputPorts add — outputTable is a data product asset, satisfying the prerequisite
+    // Using a different table so it doesn't conflict with inputTable already in inputPorts
+    org.openmetadata.schema.type.api.BulkAssets outputPortAssets =
+        new org.openmetadata.schema.type.api.BulkAssets()
+            .withAssets(List.of(outputTable.getEntityReference()));
+    client.dataProducts().bulkAddOutputPorts(dataProduct.getFullyQualifiedName(), outputPortAssets);
+    LOG.debug("Added outputTable as outputPort");
+    await()
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(
+            () ->
+                !listOpenApprovalTasks(reviewerClient, dataProduct.getFullyQualifiedName())
+                    .getData()
+                    .isEmpty());
+    Task outputPortTask =
+        listOpenApprovalTasks(reviewerClient, dataProduct.getFullyQualifiedName()).getData().get(0);
+    reviewerClient.tasks().resolve(outputPortTask.getId().toString(), resolveApproved);
+    LOG.info("outputPorts add triggered and resolved approval task");
+
+    try {
+      WorkflowDefinition wd = client.workflowDefinitions().getByName(portWorkflowName, null);
+      client.workflowDefinitions().delete(wd.getId());
+      LOG.debug("Deleted port trigger workflow");
+    } catch (Exception e) {
+      LOG.warn("Error deleting port trigger workflow: {}", e.getMessage());
+    }
+
+    LOG.info("test_PortChangesOnDataProductTriggerWorkflow completed successfully");
+  }
+
+  @Test
   @Order(38)
   void test_CreateWorkflowWithoutEntityTypes() {
     OpenMetadataClient client = SdkClients.adminClient();

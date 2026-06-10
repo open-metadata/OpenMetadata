@@ -74,6 +74,33 @@ def model_str(arg: Any) -> str:
     return str(arg)
 
 
+MAX_USER_AGENT_LENGTH = 256
+
+
+def sanitize_user_agent(
+    value: Optional[str],  # noqa: UP045
+    max_length: int = MAX_USER_AGENT_LENGTH,
+) -> Optional[str]:  # noqa: UP045
+    """
+    Produce a header-safe User-Agent string.
+
+    HTTP forbids CR/LF in header values (header injection) and underlying HTTP
+    libraries (``requests``, ``httpx``) raise ``InvalidHeader`` for control
+    characters. Because the workflow interpolates the user-supplied
+    ``serviceName`` into the agent, callers MUST sanitize before assigning to a
+    header. Returns ``None`` when nothing usable remains so the caller can fall
+    back to the default agent rather than sending a malformed one.
+    """
+    if value is None:
+        return None
+    sanitized = "".join(ch for ch in value if 0x20 <= ord(ch) <= 0x7E).strip()
+    if not sanitized:
+        return None
+    if len(sanitized) > max_length:
+        sanitized = sanitized[:max_length].rstrip()
+    return sanitized or None
+
+
 def quote(fqn: Union[FullyQualifiedEntityName, str]) -> str:  # noqa: UP007
     """
     Quote the FQN so that it's safe to pass to the API.

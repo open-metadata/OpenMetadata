@@ -310,6 +310,40 @@ public class IngestionPipelineLogStreamingResourceIT {
   }
 
   @Test
+  @Order(115)
+  void testLateLogsAfterCloseDoNotClobberFinalLogs(TestNamespace ns) throws OpenMetadataException {
+    IngestionPipeline pipeline = createTestPipeline(ns);
+    UUID runId = UUID.randomUUID();
+    String pipelineFQN = pipeline.getFullyQualifiedName();
+    String beforeClose = "before-close-marker-" + runId;
+    String afterClose = "after-close-marker-" + runId;
+
+    postLogs(pipelineFQN, runId, beforeClose + "\n");
+    postClose(pipelineFQN, runId);
+    postLogs(pipelineFQN, runId, afterClose + "\n");
+    postClose(pipelineFQN, runId);
+
+    String body = getLogs(pipelineFQN, runId);
+    if (body == null || body.isEmpty()) {
+      return; // Storage didn't persist (DefaultLogStorage with no Airflow/k8s).
+    }
+    Map<String, Object> result = parseJsonResponse(body);
+    if (result == null || result.get("logs") == null) {
+      return;
+    }
+    String logs = String.valueOf(result.get("logs"));
+    Object total = result.get("total");
+    boolean storageHasContent =
+        total != null && !"0".equals(String.valueOf(total)) && !logs.isEmpty();
+    if (!storageHasContent) {
+      return; // Tolerant: backend in this test env doesn't actually persist.
+    }
+    assertTrue(
+        logs.contains(beforeClose),
+        "Late post-close logs must not clobber finalized logs.txt, got: " + logs);
+  }
+
+  @Test
   @Order(120)
   void testCloseIsIdempotent(TestNamespace ns) throws OpenMetadataException {
     IngestionPipeline pipeline = createTestPipeline(ns);

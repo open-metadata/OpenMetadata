@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, debounce, isEqual, isNil, isUndefined } from 'lodash';
+import { EntityTags } from 'Models';
 import {
   FC,
   KeyboardEvent,
@@ -38,6 +38,7 @@ import { QueryVoteType } from '../../../components/Database/TableQueries/TableQu
 import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
 import {
   CREATE_PAGE_HASH,
+  KNOWLEDGE_CENTER_CLASSIFICATION,
   LONG_DELAY,
   SHORT_DELAY,
 } from '../../../constants/constants';
@@ -70,7 +71,6 @@ import {
   KnowledgePage,
   RecentlyViewedQuickLinks,
 } from '../../../interface/knowledge-center.interface';
-import { EntityTags } from '../../../Models';
 import { postThread } from '../../../rest/feedsAPI';
 import {
   followKnowledgePage,
@@ -79,15 +79,21 @@ import {
   unFollowKnowledgePage,
   updateKnowledgePageVote,
 } from '../../../rest/knowledgeCenterAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
 import {
   addToKnowledgeCenterRecentViewed,
-  getKnowledgePagePath,
+  getKnowledgePageName,
   updateKnowledgeCenterRecentViewed,
 } from '../../../utils/KnowledgePageUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getTagsWithoutTier } from '../../../utils/TableUtils';
+import tagClassBase from '../../../utils/TagClassBase';
 import { createTagObject } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -99,11 +105,15 @@ import KnowledgePageDetailSkeleton from './KnowledgePageDetailSkeleton';
 interface KnowledgePageDetailComponentProps {
   onPageChange: (page: Partial<KnowledgeCenterPageProps>) => void;
   fetchKnowledgePageHierarchy?: (forceRefresh?: boolean) => Promise<void>;
+  isRightPanelOpen?: boolean;
+  onToggleRightPanel?: () => void;
 }
 
 const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   onPageChange,
   fetchKnowledgePageHierarchy,
+  isRightPanelOpen = true,
+  onToggleRightPanel,
 }) => {
   const { t } = i18n;
   const { hash } = useCustomLocation();
@@ -524,9 +534,25 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     }
   };
 
+  const fetchTaskCounts = useCallback(() => {
+    if (knowledgePage?.fullyQualifiedName) {
+      fetchEntityTaskCountsInto(knowledgePage.fullyQualifiedName, setFeedCount);
+    }
+  }, [knowledgePage?.fullyQualifiedName]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (knowledgePage?.fullyQualifiedName) {
+      fetchEntityActivityCountInto(
+        EntityType.KNOWLEDGE_PAGE,
+        knowledgePage.fullyQualifiedName,
+        setFeedCount
+      );
+    }
+  }, [knowledgePage?.fullyQualifiedName]);
+
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      navigate(getKnowledgePagePath(fqn, activeKey));
+      navigate(contextCenterClassBase.getArticlePath(fqn, activeKey));
       setActiveTab(activeKey);
     }
   };
@@ -546,12 +572,14 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   const tabs = useMemo(() => {
     const items = [
       {
-        label: <div data-testid="overview">{String(t('label.content'))}</div>,
+        name: t('label.content'),
+        label: <div data-testid="overview">{t('label.content')}</div>,
         key: EntityTabs.OVERVIEW,
         children: (
           <>
             <TitleComponent
               autoFocus={hash.slice(1) === CREATE_PAGE_HASH}
+              placeholder={getKnowledgePageName(knowledgePage)}
               readOnly={!(permissions.EditAll || permissions.EditDisplayName)}
               ref={titleRef}
               value={displayName}
@@ -574,12 +602,13 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         ),
       },
       {
+        name: t('label.activity-feed-and-task-plural'),
         label: (
           <TabsLabel
             count={feedCount.totalCount}
             id={EntityTabs.ACTIVITY_FEED}
             isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-            name={String(t('label.activity-feed-and-task-plural'))}
+            name={t('label.activity-feed-and-task-plural')}
           />
         ),
         key: EntityTabs.ACTIVITY_FEED,
@@ -654,7 +683,8 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
   useEffect(() => {
     if (knowledgePage?.fullyQualifiedName) {
-      getEntityFeedCount();
+      fetchTaskCounts();
+      fetchActivityCount();
     }
   }, [knowledgePage?.fullyQualifiedName]);
 
@@ -685,9 +715,26 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     };
   }, [isContentUnsaved, location.pathname]);
 
+  const activeTabContent = useMemo(
+    () => tabs?.find((t) => t?.key === activeTab)?.children ?? null,
+    [tabs, activeTab]
+  );
+
+  useEffect(() => {
+    tagClassBase.setFilterClassification([]);
+
+    return () => {
+      tagClassBase.setFilterClassification([KNOWLEDGE_CENTER_CLASSIFICATION]);
+    };
+  }, []);
+
   const pageConfig = useMemo(() => {
     let rightPanel = null;
-    if (activeTab !== EntityTabs.ACTIVITY_FEED && knowledgePage) {
+    if (
+      isRightPanelOpen &&
+      activeTab !== EntityTabs.ACTIVITY_FEED &&
+      knowledgePage
+    ) {
       rightPanel = (
         <GenericProvider
           data={knowledgePage}
@@ -696,7 +743,6 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
           onUpdate={updatePage}>
           <KnowledgePageDetailRightPanel
             handleRelatedEntitiesUpdate={handleRelatedEntitiesUpdate}
-            isLoading={isLoading}
             knowledgePage={knowledgePage}
             permissions={permissions}
             tags={tags}
@@ -707,19 +753,35 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     }
 
     return {
-      data: knowledgePage,
-      header: <div className="m-b-box rounded-12">{getHeaderElement()}</div>,
-      rightPanel,
-      title: (knowledgePage?.displayName ?? '') || t('label.untitled'),
       activeTab,
+      data: knowledgePage,
+      feedCount: feedCount?.totalCount,
+      handlers: {
+        contentChangeState,
+        onFollowChange: handleFollowChange,
+        onSave: handleSave,
+        onSetThreadLink: setThreadLink,
+        onToggleDelete: handleToggleDelete,
+        onVoteChange: handleVoteChange,
+      },
+      header: <div className="m-b-box rounded-12">{getHeaderElement()}</div>,
+      isRightPanelOpen,
+      onTabChange: handleTabChange,
+      onToggleRightPanel,
+      rightPanel,
+      tabs,
+      title: getKnowledgePageName(knowledgePage, t),
     };
   }, [
     knowledgePage,
-    isLoading,
+    isRightPanelOpen,
+    onToggleRightPanel,
     permissions,
     contentChangeState,
     activeTab,
+    feedCount,
     tags,
+    tabs,
     getHeaderElement,
   ]);
 
@@ -749,12 +811,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
   return (
     <>
-      <Tabs
-        activeKey={activeTab}
-        className="entity-details-page-tabs"
-        items={tabs}
-        onChange={handleTabChange}
-      />
+      {activeTabContent}
       {threadLink ? (
         <ActivityThreadPanel
           createThread={createThread}

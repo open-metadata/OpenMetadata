@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Task } from '../generated/entity/tasks/task';
 import {
-  listTasks,
-  Task,
-  TaskCategory,
-  TaskEntityType,
+  DarWorkflowStage,
+  listDataAccessRequests,
+  TaskEntityStatus,
+  TaskStatusGroup,
 } from '../rest/tasksAPI';
 import { isDarApprovalActive } from '../utils/TasksUtils';
 import { useApplicationStore } from './useApplicationStore';
@@ -28,6 +29,8 @@ interface UseDataAccessRequestParams {
 
 interface UseDataAccessRequestResult {
   isDarDisabled: boolean;
+  isDarAwaitingGrant: boolean;
+  isDarGranted: boolean;
   refetch: () => void;
 }
 
@@ -47,11 +50,10 @@ export const useDataAccessRequest = ({
     }
 
     try {
-      const res = await listTasks({
-        aboutEntity: entityFqn,
-        category: TaskCategory.DataAccess,
-        type: TaskEntityType.DataAccessRequest,
-        createdBy: currentUser.name,
+      const res = await listDataAccessRequests({
+        dataset: entityFqn,
+        requestedBy: currentUser.fullyQualifiedName ?? currentUser.name,
+        statusGroup: TaskStatusGroup.Active,
         fields: 'about,resolution',
         limit: 10,
       });
@@ -80,33 +82,110 @@ export const useDataAccessRequest = ({
     };
   }, [fetchExistingDar, listenForEvents]);
 
-  const isDarDisabled = useMemo(() => {
-    return existingDarTasks.some((task) => {
-      const stage = (
-        task.workflowStageDisplayName ??
-        task.workflowStageId ??
-        ''
-      ).toLowerCase();
+  const isDarDisabled = useMemo(
+    () =>
+      existingDarTasks.some((task) => {
+        // Prefer the persisted status enum (Approved/Granted carry the workflow
+        // semantics directly); fall back to the workflow stage name for any task
+        // that pre-dates the explicit status setter and only has stage metadata.
+        const stage = (
+          task.workflowStageDisplayName ??
+          task.workflowStageId ??
+          ''
+        ).toLowerCase();
+        const isApproved =
+          task.status === TaskEntityStatus.Approved ||
+          stage === DarWorkflowStage.Approved;
+        const isGranted =
+          task.status === TaskEntityStatus.Granted ||
+          stage === DarWorkflowStage.Granted;
 
-      if (stage === 'review') {
+        if (isApproved || isGranted) {
+          const payload = task.payload as
+            | { duration?: string; expirationDate?: number }
+            | undefined;
+
+          return isDarApprovalActive(
+            task.approvedAt ?? task.updatedAt ?? task.createdAt,
+            payload?.duration,
+            payload?.expirationDate
+          );
+        }
+
+        // The fetch is scoped to statusGroup=active, so any remaining task here
+        // is Open/InProgress/Pending (or stage=review) — still in-flight, block
+        // a duplicate request.
         return true;
-      }
+      }),
+    [existingDarTasks]
+  );
 
-      if (stage === 'approved') {
+  const isDarAwaitingGrant = useMemo(
+    () =>
+      existingDarTasks.some((task) => {
+        const stage = (
+          task.workflowStageDisplayName ??
+          task.workflowStageId ??
+          ''
+        ).toLowerCase();
+        const isApproved =
+          task.status === TaskEntityStatus.Approved ||
+          (stage === DarWorkflowStage.Approved &&
+            task.status !== TaskEntityStatus.Granted);
+
+        if (!isApproved) {
+          return false;
+        }
+
+        // Mirror the isDarApprovalActive gate used by isDarDisabled. Without this an
+        // expired approval would still show the "awaiting grant" banner even though
+        // isDarDisabled returns false (button enabled), leaving a contradictory UX.
         const payload = task.payload as
           | { duration?: string; expirationDate?: number }
           | undefined;
 
         return isDarApprovalActive(
-          task.updatedAt ?? task.createdAt,
+          task.approvedAt ?? task.updatedAt ?? task.createdAt,
           payload?.duration,
           payload?.expirationDate
         );
-      }
+      }),
+    [existingDarTasks]
+  );
 
-      return false;
-    });
-  }, [existingDarTasks]);
+  const isDarGranted = useMemo(
+    () =>
+      existingDarTasks.some((task) => {
+        const stage = (
+          task.workflowStageDisplayName ??
+          task.workflowStageId ??
+          ''
+        ).toLowerCase();
+        const isGranted =
+          task.status === TaskEntityStatus.Granted ||
+          stage === DarWorkflowStage.Granted;
 
-  return { isDarDisabled, refetch: fetchExistingDar };
+        if (!isGranted) {
+          return false;
+        }
+
+        const payload = task.payload as
+          | { duration?: string; expirationDate?: number }
+          | undefined;
+
+        return isDarApprovalActive(
+          task.approvedAt ?? task.updatedAt ?? task.createdAt,
+          payload?.duration,
+          payload?.expirationDate
+        );
+      }),
+    [existingDarTasks]
+  );
+
+  return {
+    isDarDisabled,
+    isDarAwaitingGrant,
+    isDarGranted,
+    refetch: fetchExistingDar,
+  };
 };

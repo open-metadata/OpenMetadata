@@ -89,7 +89,7 @@ class SearchRepositoryBehaviorTest {
       IndexMapping.builder()
           .indexName("table_search_index")
           .alias("table")
-          .childAliases(List.of("column_search_index"))
+          .childAliases(List.of(Entity.TABLE_COLUMN))
           .indexMappingFile("/elasticsearch/%s/table_index_mapping.json")
           .build();
 
@@ -113,7 +113,7 @@ class SearchRepositoryBehaviorTest {
       IndexMapping.builder()
           .indexName("database_service_search_index")
           .alias("databaseService")
-          .childAliases(List.of("database_search_index"))
+          .childAliases(List.of(Entity.DATABASE))
           .indexMappingFile("/elasticsearch/%s/database_service_index_mapping.json")
           .build();
 
@@ -133,14 +133,29 @@ class SearchRepositoryBehaviorTest {
           .indexMappingFile("/elasticsearch/%s/test_suite_index_mapping.json")
           .build();
 
+  private static final IndexMapping TEST_CASE_MAPPING =
+      IndexMapping.builder()
+          .indexName("test_case_search_index")
+          .alias("testCase")
+          .childAliases(
+              List.of(
+                  Entity.TEST_CASE_RESOLUTION_STATUS, Entity.TEST_CASE_RESULT, Entity.TABLE_COLUMN))
+          .indexMappingFile("/elasticsearch/%s/test_case_index_mapping.json")
+          .build();
+
+  private static final List<String> MOCK_TIME_SERIES_ENTITY_TYPES =
+      List.of(Entity.TEST_CASE_RESOLUTION_STATUS, Entity.TEST_CASE_RESULT);
+
   private static final List<String> MOCK_ENTITY_TYPES =
       List.of(
           Entity.TABLE,
+          Entity.TABLE_COLUMN,
           Entity.GLOSSARY_TERM,
           Entity.TAG,
           Entity.PAGE,
           Entity.DOMAIN,
           Entity.DATABASE_SERVICE,
+          Entity.DATABASE,
           Entity.TEST_SUITE,
           Entity.GLOSSARY,
           Entity.CLASSIFICATION,
@@ -168,16 +183,19 @@ class SearchRepositoryBehaviorTest {
                 Map.entry(Entity.CLASSIFICATION, TABLE_MAPPING),
                 Map.entry(Entity.PAGE, PAGE_MAPPING),
                 Map.entry(Entity.TEST_SUITE, TEST_SUITE_MAPPING),
+                Map.entry(Entity.TEST_CASE, TEST_CASE_MAPPING),
                 Map.entry(Entity.QUERY, TABLE_MAPPING)),
             "cluster");
     Entity.setSearchRepository(repository);
     registerMockEntityRepositories();
+    registerMockTimeSeriesRepositories();
   }
 
   @AfterEach
   void tearDown() {
     Entity.setSearchRepository(null);
     clearMockEntityRepositories();
+    clearMockTimeSeriesRepositories();
   }
 
   @SuppressWarnings("unchecked")
@@ -192,6 +210,8 @@ class SearchRepositoryBehaviorTest {
         EntityRepository<?> mockRepo = mock(EntityRepository.class);
         doReturn(descriptors).when(mockRepo).getSearchPropagationDescriptors();
         repoMap.put(entityType, mockRepo);
+        org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry.register(
+            org.openmetadata.service.search.capability.EntityIndexCapability.forEntity(entityType));
       }
     } catch (Exception e) {
       throw new RuntimeException("Failed to register mock entity repositories", e);
@@ -205,8 +225,38 @@ class SearchRepositoryBehaviorTest {
       repoMapField.setAccessible(true);
       Map<String, Object> repoMap = (Map<String, Object>) repoMapField.get(null);
       MOCK_ENTITY_TYPES.forEach(repoMap::remove);
+      org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry.clear();
     } catch (Exception e) {
       throw new RuntimeException("Failed to clear mock entity repositories", e);
+    }
+  }
+
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  private void registerMockTimeSeriesRepositories() {
+    try {
+      Field tsMap = Entity.class.getDeclaredField("ENTITY_TS_REPOSITORY_MAP");
+      tsMap.setAccessible(true);
+      Map<String, Object> map = (Map<String, Object>) tsMap.get(null);
+      for (String entityType : MOCK_TIME_SERIES_ENTITY_TYPES) {
+        map.put(entityType, mock(org.openmetadata.service.jdbi3.EntityTimeSeriesRepository.class));
+        org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry.register(
+            org.openmetadata.service.search.capability.EntityIndexCapability.forTimeSeries(
+                entityType));
+      }
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to register mock time-series repositories", e);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private void clearMockTimeSeriesRepositories() {
+    try {
+      Field tsMap = Entity.class.getDeclaredField("ENTITY_TS_REPOSITORY_MAP");
+      tsMap.setAccessible(true);
+      Map<String, Object> map = (Map<String, Object>) tsMap.get(null);
+      MOCK_TIME_SERIES_ENTITY_TYPES.forEach(map::remove);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to clear mock time-series repositories", e);
     }
   }
 
@@ -247,6 +297,9 @@ class SearchRepositoryBehaviorTest {
               Entity.FIELD_DATA_PRODUCTS,
               PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST,
               null));
+      descriptors.add(
+          new PropagationDescriptor(
+              "certification", PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
     } else if (Entity.GLOSSARY_TERM.equals(entityType)) {
       descriptors.add(
           new PropagationDescriptor(
@@ -623,9 +676,7 @@ class SearchRepositoryBehaviorTest {
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
         .updateChildren(
-            eq(List.of("cluster_database_search_index")),
-            fieldCaptor.capture(),
-            updateCaptor.capture());
+            eq(List.of("cluster_database")), fieldCaptor.capture(), updateCaptor.capture());
     assertEquals("service.id", fieldCaptor.getValue().getLeft());
     assertEquals("service-id", fieldCaptor.getValue().getRight());
     assertEquals("New Service", updateCaptor.getValue().getRight().get(Entity.FIELD_DISPLAY_NAME));
@@ -850,6 +901,99 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void propagateCertificationTagsCascadesToTableChildrenOnAdd() throws IOException {
+    Table table = mock(Table.class);
+    UUID entityId = UUID.randomUUID();
+    when(table.getId()).thenReturn(entityId);
+    when(table.getEntityReference())
+        .thenReturn(new EntityReference().withId(entityId).withType(Entity.TABLE));
+    AssetCertification cert =
+        new AssetCertification()
+            .withTagLabel(
+                new TagLabel()
+                    .withName("Gold")
+                    .withDescription("Certified")
+                    .withTagFQN("Certification.Gold"));
+    when(table.getCertification()).thenReturn(cert);
+
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(),
+            List.of(
+                new FieldChange().withName("certification").withOldValue("{}").withNewValue("{}")),
+            List.of());
+
+    repository.propagateCertificationTags(Entity.TABLE, table, changeDescription);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
+        ArgumentCaptor.forClass(Pair.class);
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Pair<String, String>> matchCaptor = ArgumentCaptor.forClass(Pair.class);
+    verify(searchClient)
+        .updateChildren(
+            eq(List.of("cluster_tableColumn")), matchCaptor.capture(), updatesCaptor.capture());
+    assertEquals("table.id", matchCaptor.getValue().getLeft());
+    assertEquals(entityId.toString(), matchCaptor.getValue().getRight());
+    assertEquals(SearchClient.CASCADE_CERTIFICATION_SCRIPT, updatesCaptor.getValue().getLeft());
+    assertSame(cert, updatesCaptor.getValue().getRight().get("certification"));
+  }
+
+  @Test
+  void propagateCertificationTagsCascadesNullToTableChildrenOnRemove() throws IOException {
+    Table table = mock(Table.class);
+    UUID entityId = UUID.randomUUID();
+    when(table.getId()).thenReturn(entityId);
+    when(table.getEntityReference())
+        .thenReturn(new EntityReference().withId(entityId).withType(Entity.TABLE));
+    when(table.getCertification()).thenReturn(null);
+
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(),
+            List.of(),
+            List.of(new FieldChange().withName("certification").withOldValue("{}")));
+
+    repository.propagateCertificationTags(Entity.TABLE, table, changeDescription);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
+        ArgumentCaptor.forClass(Pair.class);
+    verify(searchClient)
+        .updateChildren(
+            eq(List.of("cluster_tableColumn")), any(Pair.class), updatesCaptor.capture());
+    assertEquals(SearchClient.CASCADE_CERTIFICATION_SCRIPT, updatesCaptor.getValue().getLeft());
+    assertNull(updatesCaptor.getValue().getRight().get("certification"));
+  }
+
+  @Test
+  void propagateCertificationTagsDoesNotCascadeForNonTableEntities() throws IOException {
+    // Pipelines carry a native certification but DQ dashboard cascade is
+    // scoped to Table — children of Pipeline aren't part of the test_case
+    // family. Verify we don't blast an updateByQuery against unrelated
+    // child indices.
+    Pipeline pipeline = mock(Pipeline.class);
+    UUID entityId = UUID.randomUUID();
+    when(pipeline.getId()).thenReturn(entityId);
+    when(pipeline.getEntityReference())
+        .thenReturn(new EntityReference().withId(entityId).withType(Entity.PIPELINE));
+    when(pipeline.getCertification())
+        .thenReturn(
+            new AssetCertification().withTagLabel(new TagLabel().withTagFQN("Certification.Gold")));
+
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(),
+            List.of(
+                new FieldChange().withName("certification").withOldValue("{}").withNewValue("{}")),
+            List.of());
+
+    repository.propagateCertificationTags(Entity.PIPELINE, pipeline, changeDescription);
+
+    verify(searchClient, never()).updateChildren(any(List.class), any(Pair.class), any(Pair.class));
+  }
+
+  @Test
   void propagateCertificationTagsUsesQuotedOldNameWhenTagHasNoParentFqn() {
     Tag tag = mock(Tag.class);
     when(tag.getClassification())
@@ -889,7 +1033,7 @@ class SearchRepositoryBehaviorTest {
         .softDeleteOrRestoreEntity(
             "cluster_table_search_index",
             entity.getId().toString(),
-            String.format(SearchClient.SOFT_DELETE_RESTORE_SCRIPT, true));
+            new org.openmetadata.service.search.scripts.SoftDeleteScript(true).painless());
 
     EntityInterface unsupported = mockEntity("unsupported", UUID.randomUUID(), "skip-me");
     spyRepository.deleteEntityIndex(unsupported);
@@ -920,7 +1064,7 @@ class SearchRepositoryBehaviorTest {
 
     verify(searchClient)
         .deleteEntityByFields(
-            List.of("cluster_database_search_index"),
+            List.of("cluster_database"),
             List.of(
                 new org.apache.commons.lang3.tuple.ImmutablePair<>(
                     "service.id", service.getId().toString())));
@@ -934,7 +1078,7 @@ class SearchRepositoryBehaviorTest {
 
     verify(searchClient)
         .deleteEntityByFields(
-            List.of("cluster_column_search_index"),
+            List.of("cluster_tableColumn"),
             List.of(
                 new org.apache.commons.lang3.tuple.ImmutablePair<>(
                     "table.id", table.getId().toString())));
@@ -971,7 +1115,8 @@ class SearchRepositoryBehaviorTest {
     assertTrue(updates.getLeft().contains("updatedDomains"));
     assertTrue(updates.getLeft().contains("updatedFollowers"));
     assertTrue(updates.getLeft().contains("ctx._source.service.displayName = params.displayName"));
-    assertTrue(updates.getLeft().contains("ctx._source.put('disabled', 'true')"));
+    assertTrue(updates.getLeft().contains("ctx._source.put('disabled', params.disabled);"));
+    assertEquals(true, updates.getRight().get(Entity.FIELD_DISABLED));
     assertEquals("Renamed Service", updates.getRight().get(Entity.FIELD_DISPLAY_NAME));
     assertTrue(
         ((List<EntityReference>) updates.getRight().get("updatedOwners"))
@@ -1022,6 +1167,38 @@ class SearchRepositoryBehaviorTest {
     assertTrue(updates.getLeft().contains("ctx._source.remove('disabled')"));
     assertEquals(List.of("suite1"), updates.getRight().get(Entity.FIELD_TEST_SUITES));
     assertEquals("Orders Table", updates.getRight().get(Entity.FIELD_DISPLAY_NAME));
+  }
+
+  @Test
+  void inheritedFieldChangesSimpleValueBindsValueAsParamAndTerminatesStatements() throws Exception {
+    EntityInterface tagEntity = mockEntity(Entity.TAG, UUID.randomUUID(), "PII.Sensitive");
+
+    String renamedTag = "O'Brien's Tag";
+    String certification = "Gold's";
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(),
+            List.of(
+                new FieldChange().withName("name").withNewValue(renamedTag),
+                new FieldChange().withName("certification").withNewValue(certification)),
+            List.of());
+
+    Pair<String, Map<String, Object>> updates =
+        invokeGetInheritedFieldChanges(changeDescription, tagEntity);
+
+    String script = updates.getLeft();
+
+    assertTrue(
+        script.contains("ctx._source.put('name', params.name);"),
+        "SIMPLE_VALUE must bind the value as a param and terminate the statement");
+    assertTrue(
+        script.contains("ctx._source.put('certification', params.certification);"),
+        "Each propagated SIMPLE_VALUE field must produce its own terminated statement");
+    assertFalse(
+        script.contains(renamedTag) || script.contains(certification),
+        "Raw values must not be inlined into the Painless source (would break compilation)");
+    assertEquals(renamedTag, updates.getRight().get("name"));
+    assertEquals(certification, updates.getRight().get("certification"));
   }
 
   @Test
@@ -1668,6 +1845,52 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void requiresPropagationReturnsTrueForTableCertificationUpdate() throws Exception {
+    // Regression for issue #28229: a cert-only PATCH on a Table must open the propagation gate
+    // so cascadeCertificationToChildren can push the new cert onto every denormalized child doc
+    // (test_case, test_case_result, test_case_resolution_status, test_suite, column).
+    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    assertTrue(
+        invokeRequiresPropagation(
+            changeDescription(
+                List.of(),
+                List.of(
+                    new FieldChange()
+                        .withName("certification")
+                        .withOldValue("{}")
+                        .withNewValue("{}")),
+                List.of()),
+            Entity.TABLE,
+            table));
+  }
+
+  @Test
+  void requiresPropagationReturnsTrueForTableCertificationAdded() throws Exception {
+    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    assertTrue(
+        invokeRequiresPropagation(
+            changeDescription(
+                List.of(new FieldChange().withName("certification").withNewValue("{}")),
+                List.of(),
+                List.of()),
+            Entity.TABLE,
+            table));
+  }
+
+  @Test
+  void requiresPropagationReturnsTrueForTableCertificationRemoved() throws Exception {
+    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    assertTrue(
+        invokeRequiresPropagation(
+            changeDescription(
+                List.of(),
+                List.of(),
+                List.of(new FieldChange().withName("certification").withOldValue("{}"))),
+            Entity.TABLE,
+            table));
+  }
+
+  @Test
   void requiresPropagationReturnsFalseForUpstreamEntityRelationshipNotInDescriptors()
       throws Exception {
     EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
@@ -2019,7 +2242,8 @@ class SearchRepositoryBehaviorTest {
   @Test
   void softDeleteOrRestoreEntityIndexPropagatesServiceDeletionToChildren() throws Exception {
     EntityInterface service = mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "service");
-    String scriptTxt = String.format(SearchClient.SOFT_DELETE_RESTORE_SCRIPT, true);
+    String scriptTxt =
+        new org.openmetadata.service.search.scripts.SoftDeleteScript(true).painless();
 
     repository.softDeleteOrRestoreEntityIndex(service, true);
 
@@ -2028,7 +2252,7 @@ class SearchRepositoryBehaviorTest {
             "cluster_database_service_search_index", service.getId().toString(), scriptTxt);
     verify(searchClient)
         .softDeleteOrRestoreChildren(
-            List.of("cluster_database_search_index"),
+            List.of("cluster_database"),
             scriptTxt,
             List.of(
                 new org.apache.commons.lang3.tuple.ImmutablePair<>(
@@ -2038,17 +2262,69 @@ class SearchRepositoryBehaviorTest {
   @Test
   void softDeleteOrRestoredChildrenUsesEntityTypeFieldForGenericEntities() throws IOException {
     EntityReference table = new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE);
-    String scriptTxt = String.format(SearchClient.SOFT_DELETE_RESTORE_SCRIPT, false);
+    String scriptTxt =
+        new org.openmetadata.service.search.scripts.SoftDeleteScript(false).painless();
 
     repository.softDeleteOrRestoredChildren(table, TABLE_MAPPING, false);
 
     verify(searchClient)
         .softDeleteOrRestoreChildren(
-            List.of("cluster_column_search_index"),
+            List.of("cluster_tableColumn"),
             scriptTxt,
             List.of(
                 new org.apache.commons.lang3.tuple.ImmutablePair<>(
                     "table.id", table.getId().toString())));
+  }
+
+  /**
+   * Regression for the Incident Manager Jackson error. The soft-delete script must NOT target
+   * {@code testCaseResolutionStatus} / {@code testCaseResult} — those are time-series indexes
+   * whose entity class declares no top-level {@code deleted} field. Non-time-series children on
+   * the same parent (here {@code tableColumn}) are still propagated.
+   */
+  @Test
+  @SuppressWarnings("unchecked")
+  void softDeleteOrRestoredChildrenSkipsTimeSeriesAliases() throws IOException {
+    EntityReference testCase =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.TEST_CASE);
+
+    repository.softDeleteOrRestoredChildren(testCase, TEST_CASE_MAPPING, true);
+
+    ArgumentCaptor<List<String>> aliasCaptor = ArgumentCaptor.forClass(List.class);
+    verify(searchClient)
+        .softDeleteOrRestoreChildren(aliasCaptor.capture(), any(String.class), any(List.class));
+    List<String> aliases = aliasCaptor.getValue();
+    assertFalse(
+        aliases.contains("cluster_" + Entity.TEST_CASE_RESOLUTION_STATUS),
+        "testCaseResolutionStatus has no `deleted` field; the soft-delete script must not target it");
+    assertFalse(
+        aliases.contains("cluster_" + Entity.TEST_CASE_RESULT),
+        "testCaseResult has no `deleted` field; the soft-delete script must not target it");
+    assertTrue(
+        aliases.contains("cluster_tableColumn"),
+        "non-time-series children must still receive the propagation script");
+  }
+
+  /**
+   * When every declared child alias is a time-series entity, propagation is a no-op — the
+   * search client must not be invoked at all rather than be invoked with an empty list.
+   */
+  @Test
+  void softDeleteOrRestoredChildrenIsNoOpWhenEveryChildIsTimeSeries() throws IOException {
+    IndexMapping timeSeriesOnly =
+        IndexMapping.builder()
+            .indexName("test_case_search_index")
+            .alias("testCase")
+            .childAliases(List.of(Entity.TEST_CASE_RESOLUTION_STATUS, Entity.TEST_CASE_RESULT))
+            .indexMappingFile("/elasticsearch/%s/test_case_index_mapping.json")
+            .build();
+    EntityReference testCase =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.TEST_CASE);
+
+    repository.softDeleteOrRestoredChildren(testCase, timeSeriesOnly, false);
+
+    verify(searchClient, never())
+        .softDeleteOrRestoreChildren(any(List.class), any(String.class), any(List.class));
   }
 
   @Test
@@ -2407,7 +2683,8 @@ class SearchRepositoryBehaviorTest {
     when(searchClient.searchLineage(lineageRequest)).thenReturn(lineageResult);
     when(searchClient.searchPlatformLineage("alias", "{}", false)).thenReturn(lineageResult);
     when(searchClient.searchLineageWithDirection(lineageRequest)).thenReturn(lineageResult);
-    when(searchClient.getLineagePaginationInfo("svc.db.orders", 1, 2, "{}", false, Entity.TABLE))
+    when(searchClient.getLineagePaginationInfo(
+            "svc.db.orders", 1, 2, "{}", false, Entity.TABLE, null, null))
         .thenReturn(paginationInfo);
     when(searchClient.searchLineageByEntityCount(entityCountRequest)).thenReturn(lineageResult);
     when(searchClient.searchEntityRelationship("svc.db.orders", 1, 2, "{}", false))
@@ -2555,6 +2832,7 @@ class SearchRepositoryBehaviorTest {
             Entity.CLASSIFICATION,
             Entity.PAGE,
             Entity.TEST_SUITE,
+            Entity.TEST_CASE,
             Entity.QUERY),
         repository.getSearchEntities());
     assertSame(highLevelClient, repository.getHighLevelClient());

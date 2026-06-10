@@ -248,6 +248,11 @@ public final class DatabaseSchemas {
     public DatabaseSchemaDeleter delete() {
       return new DatabaseSchemaDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<DatabaseSchema> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.databaseSchemas(), identifier);
+    }
   }
 
   // ==================== Deleter ====================

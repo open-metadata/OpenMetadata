@@ -14,7 +14,6 @@
 import {
   Card,
   Input,
-  SlideoutMenu,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -25,7 +24,6 @@ import { ErrorBoundary } from 'react-error-boundary';
 import { useTranslation } from 'react-i18next';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { useGenericContext } from '../Customization/GenericProvider/GenericProvider';
-import EntitySummaryPanel from '../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { buildOntologySlideoutEntityDetails } from './buildOntologySlideoutEntityDetails';
 import ExportGraphPanel from './ExportGraphPanel';
 import FilterToolbar from './FilterToolbar';
@@ -35,6 +33,7 @@ import {
   useOntologyExplorer,
 } from './hooks/useOntologyExplorer';
 import OntologyControlButtons from './OntologyControlButtons';
+import { OntologyEntityPanel } from './OntologyEntityPanel';
 import { withoutOntologyAutocompleteAll } from './OntologyExplorer.constants';
 import {
   ExplorationMode,
@@ -44,6 +43,7 @@ import OntologyGraph from './OntologyGraphG6';
 import { OntologyNodeRelationsContent } from './OntologyNodeRelationsContent';
 import {
   ASSET_NODE_TYPE,
+  ASSET_RELATION_TYPE,
   isDataAssetLikeNode,
   METRIC_NODE_TYPE,
 } from './utils/graphBuilders';
@@ -53,8 +53,6 @@ const ONTOLOGY_GRAPH_BACKDROP_CLASS =
 
 const ONTOLOGY_TOOLBAR_CARD_CLASS =
   'tw:z-1 tw:border tw:border-utility-gray-blue-100 tw:ring-0 tw:shadow-md';
-
-const ONTOLOGY_ENTITY_SUMMARY_SLIDEOUT_WIDTH = 576;
 
 interface GraphEmptyStateProps {
   readonly message: string;
@@ -131,6 +129,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     handleGraphNodeClick,
     handleGraphNodeDoubleClick,
     handleGraphPaneClick,
+    handleNodeDataUpdate,
   } = useOntologyExplorer({
     scope,
     entityId,
@@ -141,6 +140,11 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   });
 
   const [searchInput, setSearchInput] = useState(filters.searchQuery);
+  const lastSelectedNodeRef = useRef(selectedNode);
+  if (selectedNode) {
+    lastSelectedNodeRef.current = selectedNode;
+  }
+  const activeNode = selectedNode ?? lastSelectedNodeRef.current;
   const searchInputRef = useRef(searchInput);
   searchInputRef.current = searchInput;
 
@@ -298,6 +302,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             nodePositions={hierarchyBakedPositions}
             nodes={graphDataToShow.nodes}
             ref={graphRef}
+            relationTypes={relationTypes}
             selectedNodeId={
               explorationMode === 'data' && expandedTermIds.size > 1
                 ? null
@@ -370,7 +375,12 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             relationTypes={relationTypes}
             totalTermCount={totalTermCount}
             viewModeDisabled={explorationMode === 'data'}
-            onClearAll={() => setFilters(DEFAULT_FILTERS)}
+            onClearAll={() =>
+              setFilters((prev) => ({
+                ...DEFAULT_FILTERS,
+                viewMode: prev.viewMode,
+              }))
+            }
             onFiltersChange={handleFiltersChange}
             onLoadMore={handleLoadMore}
             onViewModeChange={handleViewModeChange}
@@ -464,49 +474,42 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             {renderGraphContent()}
           </div>
 
-          {selectedNode && (
-            <SlideoutMenu
-              isDismissable
-              isOpen
-              className="tw:z-2"
-              dialogClassName="tw:gap-0 tw:items-stretch tw:min-h-0 tw:overflow-hidden tw:p-0"
-              width={ONTOLOGY_ENTITY_SUMMARY_SLIDEOUT_WIDTH}
-              onOpenChange={(isOpen) => {
-                if (!isOpen) {
-                  setSelectedNode(null);
-                }
-              }}>
-              {({ close }) => (
-                <EntitySummaryPanel
-                  isSideDrawer
-                  entityDetails={buildOntologySlideoutEntityDetails(
-                    selectedNode
+          <OntologyEntityPanel
+            afterEntityUpdate={
+              selectedNode
+                ? (updatedData) =>
+                    handleNodeDataUpdate(selectedNode.id, updatedData)
+                : undefined
+            }
+            entityDetails={
+              activeNode
+                ? buildOntologySlideoutEntityDetails(activeNode)
+                : { details: {} as never }
+            }
+            isOpen={Boolean(selectedNode)}
+            key={selectedNode?.id}
+            ontologyRelationsSlot={
+              selectedNode && !isDataAssetLikeNode(selectedNode) ? (
+                <OntologyNodeRelationsContent
+                  edges={(filteredGraphData?.edges ?? []).filter(
+                    (e) => e.relationType !== ASSET_RELATION_TYPE
                   )}
-                  handleClosePanel={() => {
-                    setSelectedNode(null);
-                    close();
-                  }}
-                  key={selectedNode.id}
-                  ontologyExplorerRelationsSlot={
-                    isDataAssetLikeNode(selectedNode) ? undefined : (
-                      <OntologyNodeRelationsContent
-                        edges={filteredGraphData?.edges ?? []}
-                        node={selectedNode}
-                        nodes={filteredGraphData?.nodes ?? []}
-                        relationTypes={relationTypes}
-                      />
-                    )
-                  }
-                  panelPath={
-                    isDataAssetLikeNode(selectedNode)
-                      ? 'glossary-term-assets-tab'
-                      : 'ontology-explorer'
-                  }
-                  sideDrawerOverviewOnly={isDataAssetLikeNode(selectedNode)}
+                  node={selectedNode}
+                  nodes={filteredGraphData?.nodes ?? []}
+                  relationTypes={relationTypes}
                 />
-              )}
-            </SlideoutMenu>
-          )}
+              ) : undefined
+            }
+            panelPath={
+              selectedNode && isDataAssetLikeNode(selectedNode)
+                ? 'glossary-term-assets-tab'
+                : 'ontology-explorer'
+            }
+            sideDrawerOverviewOnly={
+              selectedNode ? isDataAssetLikeNode(selectedNode) : false
+            }
+            onClose={() => setSelectedNode(null)}
+          />
         </div>
       </div>
     </div>

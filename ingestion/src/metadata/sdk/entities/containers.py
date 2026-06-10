@@ -2,12 +2,13 @@
 Containers entity SDK with fluent API
 """
 
-from typing import List, Type  # noqa: UP035
+from typing import Any, List, Optional, Type, cast  # noqa: UP035
 
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.sdk.entities.base import BaseEntity, EntityList
+from metadata.sdk.types import UuidLike
 
 
 class Containers(BaseEntity[Container, CreateContainerRequest]):
@@ -17,6 +18,54 @@ class Containers(BaseEntity[Container, CreateContainerRequest]):
     def entity_type(cls) -> Type[Container]:  # noqa: UP006
         """Return the Container entity type"""
         return Container
+
+    @classmethod
+    def set_parent(
+        cls,
+        container_id: UuidLike,
+        parent: EntityReference,
+    ) -> Container:
+        """
+        Re-parent an existing container via PATCH (issue #24294).
+
+        The backend cascades the FQN change to every descendant container, nested
+        column FQN, tag-usage row, entity-link, policy condition, and search-index
+        document. The new ``parent`` must be a Container under the same
+        StorageService — cross-service moves are rejected with HTTP 400.
+        """
+        return cls._patch_parent(container_id, parent)
+
+    @classmethod
+    def clear_parent(cls, container_id: UuidLike) -> Container:
+        """
+        Promote the container to be a direct child of its StorageService by
+        clearing its ``parent`` field via PATCH.
+        """
+        return cls._patch_parent(container_id, None)
+
+    @classmethod
+    def _patch_parent(
+        cls,
+        container_id: UuidLike,
+        parent: Optional[EntityReference],  # noqa: UP045
+    ) -> Container:
+        client = cls._get_client()
+        current = client.get_by_id(
+            entity=Container,
+            entity_id=cls._stringify_identifier(container_id),
+            fields=["parent"],
+        )
+
+        working = getattr(current, "model_copy", None)
+        working = working(deep=True) if callable(working) else current
+        setattr(working, "parent", parent)  # noqa: B010
+
+        updated = cast(Any, client).patch(  # noqa: TC006
+            entity=Container,
+            source=current,
+            destination=working,
+        )
+        return cls._coerce_entity(updated)
 
     @classmethod
     def list_children(

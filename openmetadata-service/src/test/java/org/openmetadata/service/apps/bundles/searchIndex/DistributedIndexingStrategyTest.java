@@ -350,6 +350,90 @@ class DistributedIndexingStrategyTest {
   }
 
   @Test
+  void updateStatsFromDistributedJobReconcilesEntityTotalToPartitionPlan() throws Exception {
+    // Reproduces the count-discrepancy bug: getEntityTotal() pre-counted 11
+    // testCaseResolutionStatus
+    // rows, but PartitionCalculator planned partitions for only 9. All 9 indexed cleanly.
+    Stats stats = createBaseStats("testCaseResolutionStatus", 11);
+    SearchIndexJob distributedJob =
+        SearchIndexJob.builder()
+            .id(UUID.fromString("00000000-0000-0000-0000-000000000041"))
+            .totalRecords(9)
+            .successRecords(9)
+            .failedRecords(0)
+            .entityStats(
+                Map.of(
+                    "testCaseResolutionStatus",
+                    SearchIndexJob.EntityTypeStats.builder()
+                        .entityType("testCaseResolutionStatus")
+                        .totalRecords(9)
+                        .successRecords(9)
+                        .failedRecords(0)
+                        .build()))
+            .build();
+
+    invokePrivate(
+        "updateStatsFromDistributedJob",
+        new Class<?>[] {Stats.class, SearchIndexJob.class, StepStats.class},
+        stats,
+        distributedJob,
+        new StepStats().withSuccessRecords(9).withFailedRecords(0));
+
+    StepStats entity =
+        stats.getEntityStats().getAdditionalProperties().get("testCaseResolutionStatus");
+    assertEquals(
+        9,
+        entity.getTotalRecords(),
+        "entity total reconciled to the partition plan, not the stale getEntityTotal pre-count");
+    assertEquals(9, entity.getSuccessRecords());
+    assertEquals(
+        9,
+        stats.getJobStats().getTotalRecords(),
+        "job total no longer carries the phantom 2-record gap");
+    assertEquals(9, stats.getJobStats().getSuccessRecords());
+    assertEquals(0, stats.getJobStats().getFailedRecords());
+  }
+
+  @Test
+  void updateStatsFromDistributedJobPropagatesEntityWarnings() throws Exception {
+    Stats stats = createBaseStats("testCaseResolutionStatus", 11);
+    SearchIndexJob distributedJob =
+        SearchIndexJob.builder()
+            .id(UUID.fromString("00000000-0000-0000-0000-000000000042"))
+            .totalRecords(11)
+            .successRecords(9)
+            .failedRecords(0)
+            .entityStats(
+                Map.of(
+                    "testCaseResolutionStatus",
+                    SearchIndexJob.EntityTypeStats.builder()
+                        .entityType("testCaseResolutionStatus")
+                        .totalRecords(11)
+                        .successRecords(9)
+                        .failedRecords(0)
+                        .warningRecords(2)
+                        .build()))
+            .build();
+
+    invokePrivate(
+        "updateStatsFromDistributedJob",
+        new Class<?>[] {Stats.class, SearchIndexJob.class, StepStats.class},
+        stats,
+        distributedJob,
+        new StepStats().withSuccessRecords(9).withFailedRecords(0));
+
+    StepStats entity =
+        stats.getEntityStats().getAdditionalProperties().get("testCaseResolutionStatus");
+    assertEquals(
+        2, entity.getWarningRecords(), "stale-relationship warnings reach the entity stats");
+    assertEquals(9, entity.getSuccessRecords());
+    assertEquals(
+        11,
+        entity.getTotalRecords(),
+        "total = success + failed + warnings when warnings genuinely occur");
+  }
+
+  @Test
   void statusHelpersReportStoppedIncompleteAndCompleteJobs() throws Exception {
     Stats complete = createBaseStats("table", 10);
     complete.getJobStats().setTotalRecords(10);
@@ -362,17 +446,30 @@ class DistributedIndexingStrategyTest {
     assertFalse(
         (Boolean) invokePrivate("hasIncompleteProcessing", new Class<?>[] {Stats.class}, complete));
 
-    Stats incomplete = createBaseStats("table", 10);
-    incomplete.getJobStats().setTotalRecords(10);
-    incomplete.getJobStats().setSuccessRecords(9);
-    incomplete.getJobStats().setFailedRecords(0);
+    Stats warningGap = createBaseStats("table", 10);
+    warningGap.getJobStats().setTotalRecords(10);
+    warningGap.getJobStats().setSuccessRecords(9);
+    warningGap.getJobStats().setFailedRecords(0);
+
+    assertEquals(
+        ExecutionResult.Status.COMPLETED,
+        invokePrivate("determineStatus", new Class<?>[] {Stats.class}, warningGap),
+        "successRecords < totalRecords with zero failures is a warning/orphan gap, not an error");
+    assertFalse(
+        (Boolean)
+            invokePrivate("hasIncompleteProcessing", new Class<?>[] {Stats.class}, warningGap));
+
+    Stats withFailures = createBaseStats("table", 10);
+    withFailures.getJobStats().setTotalRecords(10);
+    withFailures.getJobStats().setSuccessRecords(8);
+    withFailures.getJobStats().setFailedRecords(2);
 
     assertEquals(
         ExecutionResult.Status.COMPLETED_WITH_ERRORS,
-        invokePrivate("determineStatus", new Class<?>[] {Stats.class}, incomplete));
+        invokePrivate("determineStatus", new Class<?>[] {Stats.class}, withFailures));
     assertTrue(
         (Boolean)
-            invokePrivate("hasIncompleteProcessing", new Class<?>[] {Stats.class}, incomplete));
+            invokePrivate("hasIncompleteProcessing", new Class<?>[] {Stats.class}, withFailures));
 
     strategy.stop();
     assertEquals(
@@ -414,7 +511,8 @@ class DistributedIndexingStrategyTest {
   }
 
   @Test
-  void finalizeAllEntityReindexSkipsPromotedEntitiesAndFailsMissingEntityStats() throws Exception {
+  void finalizeAllEntityReindexSkipsPromotedEntitiesAndPromotesMissingEntityStats()
+      throws Exception {
     DistributedSearchIndexExecutor executor = mock(DistributedSearchIndexExecutor.class);
     EntityCompletionTracker tracker = mock(EntityCompletionTracker.class);
     RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
@@ -478,7 +576,13 @@ class DistributedIndexingStrategyTest {
           contextCaptor.getAllValues().get(i).getEntityType(), successCaptor.getAllValues().get(i));
     }
 
-    assertEquals(Boolean.FALSE, outcomes.get("user"));
+    // 084c5c2205 flipped the contract: an entity with no stats recorded means the reader
+    // did zero work (source had 0 rows, or the entity is driven by a parallel pipeline like
+    // vectorEmbedding/RecreateWithEmbeddings). Such entities are now promoted as success so
+    // the staged index gets swapped in instead of the job rolling up to FAILED on something
+    // that had nothing to fail on. `dashboard` still fails because PromotionPolicy reports its
+    // 4/5 (ratio 0.80) below the 0.95 threshold.
+    assertEquals(Boolean.TRUE, outcomes.get("user"));
     assertEquals(Boolean.FALSE, outcomes.get("dashboard"));
   }
 

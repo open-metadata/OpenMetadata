@@ -68,7 +68,7 @@ jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
   getRelativeTime: jest.fn().mockReturnValue('getRelativeTime'),
 }));
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/FqnUtils', () => ({
   getNameFromFQN: jest.fn().mockReturnValue('formatDateTime'),
 }));
 

@@ -8,6 +8,8 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
+import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.util.AsyncService;
 
@@ -72,6 +74,15 @@ public class RdfUpdater {
     if (rdfRepository == null || !rdfRepository.isEnabled()) {
       return;
     }
+    if (isGlossaryTermRelatedTo(relationship)) {
+      // Glossary term ⇔ glossary term RELATED_TO is owned by the typed path
+      // (addGlossaryTermRelation), which writes the precise predicate —
+      // skos:exactMatch for synonym, skos:broader for broader, om:relatedTo
+      // for relatedTo, etc. The generic addRelationship would unconditionally
+      // write om:relatedTo on top of that, so every type change would leak a
+      // residual om:relatedTo triple that nothing later cleans up.
+      return;
+    }
     submitAsync(
         "addRelationship",
         () -> {
@@ -90,6 +101,11 @@ public class RdfUpdater {
     if (rdfRepository == null || !rdfRepository.isEnabled()) {
       return;
     }
+    if (isGlossaryTermRelatedTo(relationship)) {
+      // See addRelationship — the typed removal path
+      // (removeGlossaryTermRelation) owns these deletions.
+      return;
+    }
     submitAsync(
         "removeRelationship",
         () -> {
@@ -102,6 +118,12 @@ public class RdfUpdater {
             RequestLatencyContext.endRdfOperation(sample);
           }
         });
+  }
+
+  private static boolean isGlossaryTermRelatedTo(EntityRelationship relationship) {
+    return Entity.GLOSSARY_TERM.equals(relationship.getFromEntity())
+        && Entity.GLOSSARY_TERM.equals(relationship.getToEntity())
+        && relationship.getRelationshipType() == Relationship.RELATED_TO;
   }
 
   public static boolean isEnabled() {

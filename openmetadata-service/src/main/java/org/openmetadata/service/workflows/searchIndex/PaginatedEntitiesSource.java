@@ -180,8 +180,9 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
         // Update stats with real errors as failures and stale references as warnings
         updateStats(result.getData().size(), realErrors.size(), warningErrors.size());
 
-        // Update the result to only include real errors, but carry warnings count
+        // Update the result to only include real errors, but carry warnings
         result.setErrors(realErrors);
+        result.setWarnings(warningErrors);
         result.setWarningsCount(warningErrors.size());
         return result;
       }
@@ -249,15 +250,18 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
       int warningsCount = 0;
       if (!result.getErrors().isEmpty()) {
         List<EntityError> realErrors = new ArrayList<>();
+        List<EntityError> warningErrors = new ArrayList<>();
         for (EntityError error : result.getErrors()) {
           if (isStaleReferenceError(error)) {
-            warningsCount++;
+            warningErrors.add(error);
             LOG.debug("Skipping entity due to missing relationship: {}", error.getMessage());
           } else {
             realErrors.add(error);
           }
         }
+        warningsCount = warningErrors.size();
         result.setErrors(realErrors);
+        result.setWarnings(warningErrors);
         result.setWarningsCount(warningsCount);
       }
 
@@ -304,15 +308,18 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
       int warningsCount = 0;
       if (result.getErrors() != null && !result.getErrors().isEmpty()) {
         List<EntityError> realErrors = new ArrayList<>();
+        List<EntityError> warningErrors = new ArrayList<>();
         for (EntityError error : result.getErrors()) {
           if (isStaleReferenceError(error)) {
-            warningsCount++;
+            warningErrors.add(error);
             LOG.debug("Skipping entity due to missing relationship: {}", error.getMessage());
           } else {
             realErrors.add(error);
           }
         }
+        warningsCount = warningErrors.size();
         result.setErrors(realErrors);
+        result.setWarnings(warningErrors);
         result.setWarningsCount(warningsCount);
       }
 

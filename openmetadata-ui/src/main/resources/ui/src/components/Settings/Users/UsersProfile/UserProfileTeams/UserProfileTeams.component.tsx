@@ -22,7 +22,7 @@ import { ReactComponent as IconTeamsGrey } from '../../../../../assets/svg/teams
 import { EntityType } from '../../../../../enums/entity.enum';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { useAuth } from '../../../../../hooks/authHooks';
-import { getNonDeletedTeams } from '../../../../../utils/CommonUtils';
+import { getNonDeletedTeams } from '../../../../../utils/TeamUtils';
 import Chip from '../../../../common/Chip/Chip.component';
 import TeamsSelectableNew from '../../../Team/TeamsSelectable/TeamsSelectableNew';
 import { UserProfileTeamsProps } from './UserProfileTeams.interface';

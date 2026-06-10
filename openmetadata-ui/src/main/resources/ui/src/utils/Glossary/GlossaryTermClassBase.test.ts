@@ -139,10 +139,10 @@ describe('GlossaryTermClassBase', () => {
   });
 
   describe('getGlossaryTermDetailPageTabsIds', () => {
-    it('returns all 6 expected tab IDs', () => {
+    it('returns all 7 expected tab IDs', () => {
       const tabs = instance.getGlossaryTermDetailPageTabsIds();
 
-      expect(tabs).toHaveLength(6);
+      expect(tabs).toHaveLength(7);
     });
 
     it('includes OVERVIEW tab', () => {
@@ -179,6 +179,14 @@ describe('GlossaryTermClassBase', () => {
       ).toBeDefined();
     });
 
+    it('includes RELATIONS_GRAPH tab ID — regression guard for #25886', () => {
+      const tabs = instance.getGlossaryTermDetailPageTabsIds();
+
+      expect(
+        tabs.find((t) => t.id === EntityTabs.RELATIONS_GRAPH)
+      ).toBeDefined();
+    });
+
     it('all tabs have editable set to false', () => {
       const tabs = instance.getGlossaryTermDetailPageTabsIds();
 
@@ -204,6 +212,7 @@ describe('GlossaryTermClassBase', () => {
         EntityTabs.GLOSSARY_TERMS,
         EntityTabs.ASSETS,
         EntityTabs.ACTIVITY_FEED,
+        EntityTabs.RELATIONS_GRAPH,
         EntityTabs.CUSTOM_PROPERTIES,
         EntityTabs.DATA_OBSERVABILITY,
       ]);

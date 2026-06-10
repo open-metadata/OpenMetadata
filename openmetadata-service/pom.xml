@@ -13,7 +13,6 @@
 
   <properties>
     <dropwizard.swagger.version>4.0.5-1</dropwizard.swagger.version>
-    <awssdk.version>2.30.19</awssdk.version>
     <azure-identity.version>1.15.2</azure-identity.version>
     <azure-kv.version>4.10.7</azure-kv.version>
     <azure-identity-extensions.version>1.0.0</azure-identity-extensions.version>
@@ -169,6 +168,18 @@
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-assets</artifactId>
     </dependency>
+    <!--
+      HTTP/2 connector factories. Not used by default (see conf/openmetadata.yaml,
+      applicationConnectors). Operators who run Jetty without an HTTP/2-terminating
+      load balancer in front can flip the connector type to h2c to get multiplexed
+      chunk downloads on first paint. AWS ALB / CloudFront speak HTTP/2 to the
+      browser but use HTTP/1.1 to the origin, so this won't help that path; useful
+      mainly for direct-access deployments (Docker Compose, on-prem, local dev).
+    -->
+    <dependency>
+      <groupId>io.dropwizard</groupId>
+      <artifactId>dropwizard-http2</artifactId>
+    </dependency>
     <dependency>
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-core</artifactId>
@@ -190,6 +201,18 @@
     <dependency>
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-jdbi3</artifactId>
+    </dependency>
+    <!--
+      dropwizard-http2 registers `type: h2` (TLS) and `type: h2c` (cleartext) connector
+      factories via META-INF/services. Adding the dep is what makes those connector types
+      available in conf/openmetadata.yaml — without it, "type: h2c" fails at startup with
+      "unknown connector type". Both factories are backward-compatible with HTTP/1.1 clients
+      on the same port (cleartext via Upgrade, TLS via ALPN), so adopting them does not
+      break existing clients.
+    -->
+    <dependency>
+      <groupId>io.dropwizard</groupId>
+      <artifactId>dropwizard-http2</artifactId>
     </dependency>
     <dependency>
       <groupId>org.jdbi</groupId>
@@ -388,10 +411,15 @@
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>sts</artifactId>
     </dependency>
-    <!-- GHSA-rwm7-x88c-3g2p / CVE-2026-42577: exclude Linux native epoll binding (the only
-         vulnerable artifact is the .so JAR; bug is in netty 4.2.x, GHSA range overly broad).
-         Netty falls back to Java NIO; netty-transport-classes-epoll stays. Per-direct-dep so
-         future Azure SDK bumps aren't blocked by a pinned azure-core-http-netty version. -->
+    <!-- Exclude two Linux native bindings transitively pulled by reactor-netty-http
+         (via azure-core-http-netty):
+           1. netty-transport-native-epoll — GHSA-rwm7-x88c-3g2p / CVE-2026-42577. The .so JAR
+              is the only vulnerable artifact; bug is in netty 4.2.x, GHSA range overly broad.
+              Netty falls back to Java NIO; netty-transport-classes-epoll stays.
+           2. netty-tcnative-boringssl-static — bundled BoringSSL .so SEGVs on Alpine/musl/aarch64
+              inside init_have_lse_atomics during the CPU LSE atomics probe. Netty falls back
+              to JDK SSLEngine; Azure HTTPS continues to work.
+         Per-direct-dep so future Azure SDK bumps aren't blocked by a pinned azure-core-http-netty version. -->
     <dependency>
       <groupId>com.azure</groupId>
       <artifactId>azure-security-keyvault-secrets</artifactId>
@@ -400,6 +428,10 @@
         <exclusion>
           <groupId>io.netty</groupId>
           <artifactId>netty-transport-native-epoll</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>io.netty</groupId>
+          <artifactId>netty-tcnative-boringssl-static</artifactId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -412,6 +444,10 @@
           <groupId>io.netty</groupId>
           <artifactId>netty-transport-native-epoll</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>io.netty</groupId>
+          <artifactId>netty-tcnative-boringssl-static</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
     <dependency>
@@ -422,6 +458,10 @@
         <exclusion>
           <groupId>io.netty</groupId>
           <artifactId>netty-transport-native-epoll</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>io.netty</groupId>
+          <artifactId>netty-tcnative-boringssl-static</artifactId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -868,6 +908,29 @@
       <version>${resilience4j-ratelimiter.version}</version>
     </dependency>
     <dependency>
+      <groupId>org.junit.platform</groupId>
+      <artifactId>junit-platform-commons</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers</artifactId>
+      <version>1.21.4</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>1.21.4</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>localstack</artifactId>
+      <version>1.21.4</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>info.picocli</groupId>
       <artifactId>picocli</artifactId>
     </dependency>
@@ -972,12 +1035,31 @@
       <version>2.1.0</version>
     </dependency>
 
-    <!-- Apache Jena RDF Dependencies -->
+    <!-- Apache Jena RDF Dependencies (client side only). We talk to a REMOTE
+         Fuseki server, so we don't ship the embedded TDB1/TDB2 stores. Pulling
+         them in via `apache-jena-libs` causes static-init failures on Jena 5/6
+         (jena-tdb1's InitTDB → ReorderFixed → RDF.Alt fires while
+         org.apache.jena.vocabulary.RDF is still being class-initialized; the
+         result is an ExceptionInInitializerError on the first touch of any
+         Jena class). Listing only the jars we actually use sidesteps that and
+         keeps the wire surface explicit. Pinned to a single version across
+         the project: previously openmetadata-service was on 4.10.0 and
+         openmetadata-integration-tests on 5.0.0, leaving two classpaths that
+         disagreed on RDFConnection/QueryExecution API shape. -->
     <dependency>
       <groupId>org.apache.jena</groupId>
-      <artifactId>apache-jena-libs</artifactId>
-      <version>4.10.0</version>
-      <type>pom</type>
+      <artifactId>jena-core</artifactId>
+      <version>${jena.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.jena</groupId>
+      <artifactId>jena-arq</artifactId>
+      <version>${jena.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.jena</groupId>
+      <artifactId>jena-rdfconnection</artifactId>
+      <version>${jena.version}</version>
     </dependency>
     
     <!-- Apache Calcite for SQL parsing -->
@@ -992,10 +1074,17 @@
         </exclusion>
       </exclusions>
     </dependency>
+    <!-- titanium-json-ld must match what Jena's JSON-LD writer expects. Jena
+         5.6.0 calls into the new com.apicatalog.rdf.api.RdfConsumer API
+         introduced in titanium 1.5.0; pinning 1.4.0 here let the integration
+         test `GlossaryOntologyExportIT.testExportGlossaryAsJsonLd` blow up
+         with NoClassDefFoundError com/apicatalog/rdf/api/RdfConsumerException
+         on every Jena JSON-LD export. Jena 5.6.0's parent pom uses 1.7.0; we
+         match that. -->
     <dependency>
       <groupId>com.apicatalog</groupId>
       <artifactId>titanium-json-ld</artifactId>
-      <version>1.4.0</version>
+      <version>1.7.0</version>
     </dependency>
     <dependency>
       <groupId>org.glassfish</groupId>
@@ -1040,7 +1129,8 @@
       <artifactId>owasp-java-html-sanitizer</artifactId>
       <version>${owasp-html-sanitizer.version}</version>
     </dependency>
-    <!-- Context Center: object storage providers -->
+    <!-- Context Center: object storage providers. Exclusions match the azure-identity block
+         above — see that comment for the epoll + tcnative-boringssl-static rationale. -->
     <dependency>
       <groupId>com.azure</groupId>
       <artifactId>azure-storage-blob</artifactId>
@@ -1049,6 +1139,10 @@
         <exclusion>
           <groupId>io.netty</groupId>
           <artifactId>netty-transport-native-epoll</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>io.netty</groupId>
+          <artifactId>netty-tcnative-boringssl-static</artifactId>
         </exclusion>
       </exclusions>
     </dependency>

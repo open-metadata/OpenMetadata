@@ -34,6 +34,7 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   clickOutside,
+  descriptionBox,
   getApiContext,
   redirectToHomePage,
   uuid,
@@ -160,6 +161,25 @@ test.describe('Domains', () => {
 
   test.beforeEach('Visit home page', async ({ page }) => {
     await redirectToHomePage(page);
+  });
+
+  test('AddDomainForm description preserves typed whitespace', async ({
+    page,
+  }) => {
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    await waitForAllLoadersToDisappear(page);
+
+    await page.getByTestId('add-domain').click();
+    await page.getByTestId('add-domain-form').waitFor();
+
+    const description = page.locator(descriptionBox);
+    const typed = 'hello world ';
+
+    await description.click();
+    await description.pressSequentially(typed);
+
+    // eslint-disable-next-line playwright/prefer-web-first-assertions
+    expect(await description.textContent()).toBe(typed);
   });
 
   test('Create domains and add assets', async ({ page }) => {

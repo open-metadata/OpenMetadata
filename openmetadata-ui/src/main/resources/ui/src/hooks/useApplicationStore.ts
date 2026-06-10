@@ -43,6 +43,7 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   searchCriteria: '',
   inlineAlertDetails: undefined,
   applications: [],
+  applicationsLoaded: false,
   appPreferences: {},
   appVersion: undefined,
   rdfEnabled: false,
@@ -183,6 +184,9 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   },
   setApplicationsName: (applications: string[]) => {
     set({ applications: applications });
+  },
+  setApplicationsLoaded: (loaded: boolean) => {
+    set({ applicationsLoaded: loaded });
   },
   setAppVersion: (version: string) => {
     set({ appVersion: version });

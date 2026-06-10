@@ -2,7 +2,7 @@
   "tools": [
     {
       "name": "search_metadata",
-      "description": "Keyword-based search for data assets in OpenMetadata. Best when you know specific names, owners, tags, tiers, services, or column names. Use this for exact lookups (e.g., 'find table X', 'tables owned by team Y'), filtering by metadata properties, counting assets, and aggregations. Supports pagination and advanced OpenSearch DSL queries. Choose this over semantic_search when the query targets known identifiers or structured attributes. Results include 'fullyQualifiedName' and 'entityType' — pass these directly to get_entity_details for full entity information.",
+      "description": "Keyword-based search for data assets and data quality entities in OpenMetadata. Best when you know specific names, owners, tags, tiers, services, or column names. Use this for exact lookups (e.g., 'find table X', 'tables owned by team Y'), filtering by metadata properties, counting assets, and aggregations. Also searches data quality test cases and test suites when entityType is 'testCase' or 'testSuite' — these are NOT part of the default search scope, so always set entityType explicitly for data quality questions. Supports pagination and advanced OpenSearch DSL queries. Choose this over semantic_search when the query targets known identifiers or structured attributes. Results include 'fullyQualifiedName' and 'entityType' — pass these directly to get_entity_details for full entity information.",
       "parameters": {
         "description": "Use 'query' for keyword search or 'queryFilter' for advanced OpenSearch DSL. Best for exact matches and filtering by metadata properties.",
         "type": "object",
@@ -13,7 +13,7 @@
           },
           "entityType": {
             "type": "string",
-            "description": "Filter by entity type (auto-detected if not specified). Use singular form: table, dashboard, topic, pipeline, database, databaseService, glossary, glossaryTerm, mlmodel, container, chart, metric, user, team, domain, dataProduct."
+            "description": "Filter by entity type (auto-detected if not specified). Use singular form: table, dashboard, topic, pipeline, database, databaseService, glossary, glossaryTerm, mlmodel, container, chart, metric, user, team, domain, dataProduct. Data quality types: testCase (individual data quality tests, includes the tested asset's FQN in 'entityFQN' and latest status in 'testCaseStatus'), testSuite (collections of test cases). Data quality entities are only searched when explicitly set as entityType."
           },
           "queryFilter": {
             "type": "string",
@@ -26,7 +26,7 @@
           },
           "size": {
             "type": "integer",
-            "description": "Number of results to return. Default is 10, we can iteratively page through results by increasing 'from'. Maximum allowed is 50.",
+            "description": "Number of results to return. Default is 10. For broad or generic queries (e.g. 'show all tables'), keep size small (5-10), as results are summaries; use get_entity_details for full entity info. Only increase size when the query is specific enough that results will be narrow and focused. Maximum allowed is 50.",
             "default": 10
           },
           "includeDeleted": {
@@ -36,7 +36,7 @@
           },
           "fields": {
             "type": "string",
-            "description": "Comma-separated additional fields to include. Default returns: name, displayName, fullyQualifiedName, description, entityType, service, database, databaseSchema, serviceType, href, tags, owners, tier, tableType, columnNames.\n\nAdditional fields by entity type:\n- Table entities: columns, schemaDefinition, queries, upstreamLineage, entityRelationship\n- Topic entities: messageSchema, partitions, replicationFactor  \n- Dashboard entities: charts, dataModels, project\n- Pipeline entities: tasks, pipelineUrl, scheduleInterval\n- All entities: createdAt, updatedAt, changeDescription, extension, domain, dataProducts, lifeCycle, sourceHash\n\nExample: 'columns,queries' for table column details and sample queries."
+            "description": "Comma-separated additional fields to include. Default returns: name, displayName, fullyQualifiedName, description, entityType, service, database, databaseSchema, serviceType, href, tags, owners, tier, tableType, columnNames.\n\nAdditional fields by entity type:\n- Table entities: columns, schemaDefinition, queries, upstreamLineage, entityRelationship\n- Topic entities: messageSchema, partitions, replicationFactor  \n- Dashboard entities: charts, dataModels, project\n- Pipeline entities: tasks, pipelineUrl, scheduleInterval\n- TestCase entities: testCaseResult (full latest result; a slim status/timestamp/result version is returned by default), testDefinition, testSuite, testSuites, parameterValues, table\n- All entities: createdAt, updatedAt, changeDescription, extension, domain, dataProducts, lifeCycle, sourceHash\n\nExample: 'columns,queries' for table column details and sample queries."
           },
           "includeAggregations": {
             "type": "boolean",
@@ -73,7 +73,7 @@
           {
             "description": "Simple search with pagination",
             "query": "tables",
-            "size": 20,
+            "size": 10,
             "from": 0
           },
           {
@@ -95,6 +95,26 @@
           {
             "description": "Advanced - Aggregation query for counting",
             "queryFilter": "{\"size\": 0, \"query\": {\"bool\": {\"must\": [{\"term\": {\"entityType\": \"databaseService\"}}, {\"term\": {\"serviceType\": \"BigQuery\"}}]}}, \"aggs\": {\"total_count\": {\"value_count\": {\"field\": \"_id\"}}}}"
+          },
+          {
+            "description": "Data quality - Find test cases by name or description",
+            "query": "column values to be unique",
+            "entityType": "testCase"
+          },
+          {
+            "description": "Data quality - List test suites",
+            "query": "*",
+            "entityType": "testSuite"
+          },
+          {
+            "description": "Data quality - All test cases on a table and its columns (entityFQN is a lowercase keyword field; use lowercase prefix of the table FQN)",
+            "entityType": "testCase",
+            "queryFilter": "{\"bool\": {\"must\": [{\"prefix\": {\"entityFQN\": \"sample_data.ecommerce_db.shopify.dim_address\"}}]}}"
+          },
+          {
+            "description": "Data quality - Failed test cases (testCaseResult.testCaseStatus is a lowercase keyword field)",
+            "entityType": "testCase",
+            "queryFilter": "{\"bool\": {\"must\": [{\"term\": {\"testCaseResult.testCaseStatus\": \"failed\"}}]}}"
           }
         ]
       }
@@ -112,7 +132,7 @@
           },
           "filters": {
             "type": "object",
-            "description": "Optional filters to narrow results. Keys are field names and values are arrays of allowed values. Supported filter fields: 'entityType' (e.g., ['table', 'dashboard']), 'service' (e.g., ['BigQuery', 'Snowflake']), 'tags' (e.g., ['PII.Sensitive']). Example: {\"entityType\": [\"table\"], \"service\": [\"BigQuery\"]}.",
+            "description": "Optional filters to narrow results. Keys are field names and values are arrays of allowed values. Supported filter fields: 'entityType' (e.g., ['table', 'dashboard'], also data quality types ['testCase', 'testSuite']), 'service' (e.g., ['BigQuery', 'Snowflake']), 'tags' (e.g., ['PII.Sensitive']). Example: {\"entityType\": [\"table\"], \"service\": [\"BigQuery\"]}.",
             "additionalProperties": {
               "type": "array",
               "items": {
@@ -162,14 +182,14 @@
     },
     {
       "name": "get_entity_details",
-      "description": "Get detailed information about a specific entity by its fully qualified name. IMPORTANT: Use the 'fullyQualifiedName' and 'entityType' values directly from search_metadata or semantic_search results — do not construct the FQN manually. Response is optimized for LLM context by excluding verbose metadata fields.",
+      "description": "Get detailed information about a specific entity by its fully qualified name, including its custom properties (returned under the 'extension' field). IMPORTANT: Use the 'fullyQualifiedName' and 'entityType' values directly from search_metadata or semantic_search results — do not construct the FQN manually. Response is optimized for LLM context: verbose metadata fields are excluded, and per-column descriptions and raw schema/model SQL are truncated at 500 characters (marked with 'columnDescriptionsTruncated' / 'schemaDefinitionTruncated', or 'sqlTruncated' inside 'dataModel', when cut). The entity-level description is always returned in full.",
       "parameters": {
         "description": "Use 'fullyQualifiedName' and 'entityType' from search results directly.",
         "type": "object",
         "properties": {
           "entityType": {
             "type": "string",
-            "description": "Type of entity (e.g., table, dashboard, topic, pipeline). Use the 'entityType' value from search results."
+            "description": "Type of entity (e.g., table, dashboard, topic, pipeline, testCase, testSuite). Use the 'entityType' value from search results. For testSuite, the response includes a 'summary' field with total/passed/failed test counts."
           },
           "fqn": {
             "type": "string",
@@ -295,7 +315,7 @@
     },
     {
       "name": "get_entity_lineage",
-      "description": "Get detailed information about lineage (upstream/downstream dependencies) of a specific entity. Use this for root cause (upstream entities) or impact (downstream entities) analysis and explaining dependencies between entities.",
+      "description": "Get a compact lineage graph (upstream/downstream dependencies) of a specific entity. Use this for root cause (upstream entities) or impact (downstream entities) analysis and explaining dependencies between entities. By default the response is table-level and optimized for size: each edge carries the connected assets' names, FQNs, types and relationship info (pipeline or sql), with long SQL truncated. Set includeColumnLineage=true only when the user explicitly asks about column-level lineage.",
       "parameters": {
         "description": "Fqn is the fully qualified name of the entity. Entity type could be table, topic etc.",
         "type": "object",
@@ -317,6 +337,11 @@
             "type": "integer",
             "description": "Number of downstream hops to traverse. Default is 3, maximum is 10 to prevent excessive response size.",
             "default": 3
+          },
+          "includeColumnLineage": {
+            "type": "boolean",
+            "description": "Include column-level lineage mappings on each edge. Defaults to false to keep the response table-level and small. Set to true only when the user explicitly needs column-to-column lineage, as it can significantly increase response size on wide tables.",
+            "default": false
           }
         },
         "required": [
@@ -546,8 +571,219 @@
       }
     },
     {
+      "name": "create_classification",
+      "description": "Creates a new Classification in OpenMetadata. A Classification is a top-level container that groups related Tags (e.g. 'PII', 'Tier'). The 'name' becomes the root segment of every tag FQN under it. The 'mutuallyExclusive' flag is immutable once the classification exists: if you set it on an existing classification it is ignored and a '_warning' is returned. Owner and reviewer names must already exist in OpenMetadata. Any domain FQNs must already exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the classification. Becomes the root segment of tag FQNs (e.g. 'PII' -> 'PII.Sensitive'). Must be unique."
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the classification in Markdown format."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable display name for the classification."
+          },
+          "mutuallyExclusive": {
+            "type": "boolean",
+            "description": "If true, an entity can only carry one tag from this classification at a time. Immutable after creation; ignored on update (returns a '_warning')."
+          },
+          "owners": {
+            "type": "array",
+            "description": "OpenMetadata usernames or team names to set as owners. Each must already exist.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reviewers": {
+            "type": "array",
+            "description": "OpenMetadata usernames or team names to set as reviewers. Each must already exist.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "domains": {
+            "type": "array",
+            "description": "Fully qualified names of domains this classification belongs to. Each domain must already exist.",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["name", "description"]
+      }
+    },
+    {
+      "name": "create_tag",
+      "description": "Creates a new Tag inside a Classification in OpenMetadata. The tag FQN is 'Classification.TagName' (e.g. 'PII.Sensitive'). At least one of 'classification' or 'parent' MUST be provided. Provide 'classification' (the root classification name, which must already exist), and optionally 'parent' for a nested tag (the parent tag FQN, e.g. 'PII.PersonalData', which must already exist). If only 'parent' is given, the classification is derived from its root segment. If both are given, 'classification' must equal the root segment of 'parent'. Owner and reviewer names must already exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the tag (the leaf segment, e.g. 'Sensitive'). Must be unique within its parent."
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the tag in Markdown format."
+          },
+          "classification": {
+            "type": "string",
+            "description": "Name of the classification this tag belongs to (e.g. 'PII'). Must already exist. Optional if 'parent' is provided (derived from its root segment)."
+          },
+          "parent": {
+            "type": "string",
+            "description": "FQN of the parent tag for a nested tag (e.g. 'PII.PersonalData'). Must already exist. Omit for a top-level tag."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable display name for the tag."
+          },
+          "mutuallyExclusive": {
+            "type": "boolean",
+            "description": "If true, child tags under this tag are mutually exclusive on an entity."
+          },
+          "owners": {
+            "type": "array",
+            "description": "OpenMetadata usernames or team names to set as owners. Each must already exist.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reviewers": {
+            "type": "array",
+            "description": "OpenMetadata usernames or team names to set as reviewers. Each must already exist.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "domains": {
+            "type": "array",
+            "description": "Fully qualified names of domains this tag belongs to. Each domain must already exist.",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["name", "description"]
+      }
+    },
+    {
+      "name": "create_domain",
+      "description": "Creates a new Domain in OpenMetadata. A Domain is a top-level governance grouping of data assets. To create a child domain, set 'parent' to the FQN of an existing parent domain (it must already exist). 'domainType' must be one of Source-aligned, Consumer-aligned, or Aggregate; it defaults to 'Aggregate' if omitted. 'experts' are OpenMetadata login names that must already exist. Owner names must also already exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the domain. Becomes the root segment of the FQN for child domains. Must be unique."
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the domain in Markdown format."
+          },
+          "domainType": {
+            "type": "string",
+            "description": "Type of the domain. Defaults to 'Aggregate' if omitted.",
+            "enum": ["Source-aligned", "Consumer-aligned", "Aggregate"]
+          },
+          "parent": {
+            "type": "string",
+            "description": "FQN of an existing parent domain when creating a child domain. The parent must already exist. Omit for a top-level domain."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable display name for the domain."
+          },
+          "experts": {
+            "type": "array",
+            "description": "OpenMetadata login names of domain experts (e.g. 'john.doe'). Each must already exist.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "owners": {
+            "type": "array",
+            "description": "OpenMetadata usernames or team names to set as owners. Each must already exist.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "description": "Tag FQNs to apply to this domain (e.g. 'Tier.Tier1', 'PII.Sensitive').",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["name", "description"]
+      }
+    },
+    {
+      "name": "create_data_product",
+      "description": "Creates a new Data Product in OpenMetadata. A Data Product groups data assets that deliver business value and must belong to at least one Domain. Provide 'domains' as a list of existing domain FQNs (required, at least one; each must already exist). 'experts' are OpenMetadata login names that must already exist. Owner and reviewer names must also already exist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the data product. Must be unique."
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the data product in Markdown format."
+          },
+          "domains": {
+            "type": "array",
+            "description": "Fully qualified names of the domains this data product belongs to (e.g. 'Finance', 'Marketing'). Required, at least one; each domain must already exist.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "experts": {
+            "type": "array",
+            "description": "OpenMetadata login names of data product experts (e.g. 'john.doe'). Each must already exist.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable display name for the data product."
+          },
+          "owners": {
+            "type": "array",
+            "description": "OpenMetadata usernames or team names to set as owners. Each must already exist.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reviewers": {
+            "type": "array",
+            "description": "OpenMetadata usernames or team names to set as reviewers. Each must already exist.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "description": "Tag FQNs to apply to this data product (e.g. 'Tier.Tier1', 'PII.Sensitive').",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["name", "description", "domains"]
+      }
+    },
+    {
       "name": "root_cause_analysis",
-      "description": "Performs comprehensive root cause analysis via data quality lineage. First identifies upstream failures that may be causing issues for the specified asset. If failures are found, automatically analyzes downstream impact to show which assets may be affected. Returns both upstream root causes and downstream impact analysis. In the response 'status' indicates whether upstream failures were found. If 'status' is 'failed', the 'upstreamAnalysis' can be used to identify the nodes and edges leading to failures and downstreamAnalysis can tell what all nodes in downstream are impacted. If 'status' is 'success', it means no upstream failures were found, and downstream impact analysis was not performed.",
+      "description": "Performs comprehensive root cause analysis via data quality lineage. First identifies upstream failures that may be causing issues for the specified asset. If failures are found, automatically analyzes downstream impact to show which assets may be affected. Returns both upstream root causes and downstream impact analysis. In the response 'status' indicates whether upstream failures were found. If 'status' is 'failed', the 'upstreamAnalysis' can be used to identify the nodes and edges leading to failures and downstreamAnalysis can tell what all nodes in downstream are impacted. If 'status' is 'success', it means no upstream failures were found, and downstream impact analysis was not performed. Responses are compact and table-level by default: node and edge details are trimmed and SQL queries truncated to keep the payload within LLM context limits. Set 'includeColumnLineage' to true only when column-level lineage is needed.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -572,6 +808,11 @@
           "includeDeleted": {
             "type": "boolean",
             "description": "Whether to include deleted entities in the analysis. Default is false.",
+            "default": false
+          },
+          "includeColumnLineage": {
+            "type": "boolean",
+            "description": "Whether to include column-level lineage on upstream/downstream edges. Default is false (table-level only) to keep the response compact. Set to true only when column-to-column lineage is required.",
             "default": false
           },
           "entityType": {

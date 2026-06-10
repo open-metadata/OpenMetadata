@@ -12,6 +12,9 @@ import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsWithPreFetched;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.batchFetchDerivedTags;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
+import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getFlattenedEntityField;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -20,6 +23,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -42,6 +46,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -50,12 +55,14 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.AncestorsCache;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.ChildrenPageCache;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.storages.ContainerResource;
 import org.openmetadata.service.security.mask.PIIMasker;
+import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -65,10 +72,12 @@ import org.slf4j.LoggerFactory;
 
 public class ContainerRepository extends EntityRepository<Container> {
   private static final Logger LOG = LoggerFactory.getLogger(ContainerRepository.class);
-  private static final String CONTAINER_UPDATE_FIELDS = "dataModel";
-  private static final String CONTAINER_PATCH_FIELDS = "dataModel";
+  private static final String CONTAINER_UPDATE_FIELDS = "dataModel,parent";
+  private static final String CONTAINER_PATCH_FIELDS = "dataModel,parent";
   private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("dataModel.columns.description");
   public static final String CONTAINER_SAMPLE_DATA_EXTENSION = "container.sampleData";
+
+  private final FeedRepository feedRepository = Entity.getFeedRepository();
 
   public ContainerRepository() {
     super(
@@ -92,6 +101,11 @@ public class ContainerRepository extends EntityRepository<Container> {
   public void setFields(
       Container container, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     setDefaultFields(container);
+    // Conditional load: relationship lookup only when the caller explicitly asked for the
+    // parent field. PATCH still gets the live parent because `CONTAINER_PATCH_FIELDS`
+    // includes `parent`, so the JSON-Patch flow sees an existing `/parent` member. All
+    // other GETs that don't request `parent` keep the JSON-deserialised value (no extra
+    // round-trip).
     container.setParent(
         fields.contains(FIELD_PARENT) ? getContainerParent(container) : container.getParent());
     if (container.getDataModel() != null) {
@@ -353,8 +367,12 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   @Override
   public void setFullyQualifiedName(Container container) {
-    container.setParent(
-        container.getParent() != null ? container.getParent() : getContainerParent(container));
+    // Trust the in-memory parent — do not re-query the relationship table. The previous
+    // behavior (`parent != null ? parent : getContainerParent(...)`) silently restored the
+    // stored parent when a PATCH explicitly cleared `parent` (#24294), making
+    // "promote to top level" impossible. Create flow already populates parent from the request
+    // via ContainerMapper before this runs, so there's no legitimate caller relying on the
+    // implicit DB lookup here.
     if (container.getParent() != null) {
       container.setFullyQualifiedName(
           FullyQualifiedName.add(
@@ -432,9 +450,10 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   @Override
   public void restorePatchAttributes(Container original, Container updated) {
-    // Patch can't make changes to following fields. Ignore the changes
+    // Service can't change via PATCH; parent is patchable (see #24294 — same-service re-parent
+    // is validated in ContainerUpdater.validateParent).
     super.restorePatchAttributes(original, updated);
-    updated.withService(original.getService()).withParent(original.getParent());
+    updated.withService(original.getService());
   }
 
   // ----------------------------------------------------------------------------------------
@@ -999,6 +1018,177 @@ public class ContainerRepository extends EntityRepository<Container> {
     }
   }
 
+  /**
+   * Rewrite feed entity-links and field-relationships when a container's FQN changes (parent
+   * move).
+   *
+   * <p>{@code renamedDescendants} is the snapshot returned by
+   * {@link EntityRepository#invalidateCacheForRenameCascade} — it contains every descendant
+   * id paired with the OLD fqn at the time of capture. We rewrite each descendant's legacy
+   * thread {@code about} link with the corresponding NEW fqn so deep subtrees (grandchildren
+   * and beyond) do not keep stale entityLinks. Direct-children-only is insufficient: a
+   * three-level move would leave grandchild feed threads pointing at the old FQN and break
+   * activity-feed navigation.
+   */
+  private void updateEntityLinks(
+      String oldFqn,
+      String newFqn,
+      Container updated,
+      List<EntityDAO.EntityIdFqnPair> renamedDescendants) {
+    daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
+
+    EntityLink newAbout = new EntityLink(CONTAINER, newFqn);
+    feedRepository.updateLegacyThreadsAbout(newAbout.getLinkString(), updated.getId().toString());
+
+    if (renamedDescendants == null || renamedDescendants.isEmpty()) {
+      return;
+    }
+    // Each descendant's old FQN begins with `oldFqn + "."`; the new FQN is obtained by
+    // swapping the prefix. This matches the same prefix-substitution that
+    // ContainerDAO.updateFqn applies at the JSON / fqnHash level, so the entity-link rewrite
+    // stays consistent with the persisted FQN.
+    for (EntityDAO.EntityIdFqnPair descendant : renamedDescendants) {
+      if (descendant.fqn == null || !descendant.fqn.startsWith(oldFqn + ".")) {
+        continue;
+      }
+      String descendantNewFqn = newFqn + descendant.fqn.substring(oldFqn.length());
+      EntityLink descendantAbout = new EntityLink(CONTAINER, descendantNewFqn);
+      feedRepository.updateLegacyThreadsAbout(
+          descendantAbout.getLinkString(), descendant.id.toString());
+    }
+  }
+
+  /**
+   * Rewrite the search-index documents whose {@code fullyQualifiedName} starts with {@code
+   * oldFqn} so they reflect {@code newFqn}. Covers the moved container and every descendant in
+   * one indexed update-by-query.
+   */
+  private void updateAssetIndexes(String oldFqn, String newFqn) {
+    searchRepository.deferIfFlushScopeActive(
+        () ->
+            searchRepository
+                .getSearchClient()
+                .updateByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, "fullyQualifiedName"),
+        "containerUpdateAssetIndexes",
+        null,
+        newFqn,
+        CONTAINER);
+  }
+
+  /**
+   * Hard ceiling on how many descendant containers a single PATCH re-parent (#24294) is allowed
+   * to cascade through in one transaction. The whole rewrite — descendant FQNs in
+   * {@code storage_container_entity}, every tag_usage row, every cached entry across all OM
+   * instances, and the search-index update-by-query — runs inside one DB transaction holding
+   * row locks on the entire subtree. Past this threshold the operation is functionally a DoS
+   * on the cluster, so we reject it at the front door and ask the operator to split the move.
+   *
+   * <p>Operator override: the {@code openmetadata.container.maxReparentDescendants} system
+   * property at JVM startup. Tests must not use that property because it is JVM-global and
+   * other concurrent tests would observe the artificially low value; use
+   * {@link #setMaxReparentDescendantsForTest(int)} instead, which is wrapped in {@code
+   * try/finally} and serialized by {@code @ResourceLock} on the affected tests.
+   */
+  static final int DEFAULT_MAX_REPARENT_DESCENDANTS = 10_000;
+
+  private static final String MAX_REPARENT_DESCENDANTS_PROPERTY =
+      "openmetadata.container.maxReparentDescendants";
+
+  /**
+   * Test-only override resource lock identifier. Both the override accessor and IT methods that
+   * mutate it carry {@code @ResourceLock(MAX_REPARENT_DESCENDANTS_TEST_LOCK)} so the JUnit
+   * platform serializes any test that touches the override, even though the class-level
+   * {@code @Execution(ExecutionMode.CONCURRENT)} otherwise runs tests in parallel.
+   */
+  public static final String MAX_REPARENT_DESCENDANTS_TEST_LOCK =
+      "container.maxReparentDescendants.override";
+
+  private static volatile Integer maxReparentDescendantsTestOverride;
+
+  static int maxReparentDescendants() {
+    Integer override = maxReparentDescendantsTestOverride;
+    if (override != null) {
+      return override;
+    }
+    return Integer.getInteger(MAX_REPARENT_DESCENDANTS_PROPERTY, DEFAULT_MAX_REPARENT_DESCENDANTS);
+  }
+
+  /**
+   * Test-only setter that bypasses the JVM-global system property so concurrent tests can run
+   * with isolated thresholds when paired with {@code @ResourceLock}. Always call {@link
+   * #clearMaxReparentDescendantsForTest()} in a {@code finally} block.
+   *
+   * <p><b>Not for production use.</b> Public so integration tests in
+   * {@code org.openmetadata.it.tests} can reach it; pair with
+   * {@code @ResourceLock(ContainerRepository.MAX_REPARENT_DESCENDANTS_TEST_LOCK)} on every
+   * test that calls this.
+   */
+  public static void setMaxReparentDescendantsForTest(int max) {
+    maxReparentDescendantsTestOverride = max;
+  }
+
+  /** Test-only counterpart to {@link #setMaxReparentDescendantsForTest(int)}. */
+  public static void clearMaxReparentDescendantsForTest() {
+    maxReparentDescendantsTestOverride = null;
+  }
+
+  /**
+   * Pure size check. Extracted so it's unit-testable without a live DAO — the production
+   * caller in {@link ContainerUpdater#updateParent} runs the count query then passes the
+   * result here.
+   */
+  static void validateSubtreeSize(String containerFqn, int descendantCount, int maxAllowed) {
+    if (descendantCount > maxAllowed) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.containerSubtreeTooLarge(
+              containerFqn, descendantCount, maxAllowed));
+    }
+  }
+
+  /**
+   * Validate that the {@code updated} container's parent (if set) is in the same StorageService
+   * as the {@code original} and that it doesn't form a cycle. Extracted as a static helper so
+   * the validation logic is unit-testable without bootstrapping an {@link EntityUpdater}.
+   *
+   * <p>Returns silently — without firing the DB lookup — when the parent reference hasn't
+   * changed between {@code original} and {@code updated}. This is the common case for any
+   * non-re-parent PATCH/PUT (description edits, tag additions, etc.) and we don't want to add
+   * a round-trip to every container update.
+   *
+   * <p>Throws {@link IllegalArgumentException} when the parent points at a different service,
+   * at the container itself, or at a descendant of the container (FQN-prefix check). The
+   * {@link ContainerUpdater#validateAncestorChainCycle} caller adds a second-line ID-based
+   * traversal that doesn't depend on FQN state.
+   */
+  static void validateContainerParent(Container original, Container updated) {
+    EntityReference newParent = updated.getParent();
+    if (newParent == null) {
+      return;
+    }
+    UUID oldParentId = original.getParent() == null ? null : original.getParent().getId();
+    if (Objects.equals(oldParentId, newParent.getId())) {
+      // Parent hasn't changed — no need to resolve the reference or revalidate.
+      return;
+    }
+    Container resolvedParent =
+        Entity.getEntity(CONTAINER, newParent.getId(), "service", NON_DELETED);
+    UUID origServiceId = original.getService().getId();
+    UUID parentServiceId = resolvedParent.getService().getId();
+    if (!Objects.equals(origServiceId, parentServiceId)) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.invalidContainerParentService(
+              original.getFullyQualifiedName(),
+              original.getService().getFullyQualifiedName(),
+              resolvedParent.getService().getFullyQualifiedName()));
+    }
+    String origFqn = original.getFullyQualifiedName();
+    String parentFqn = resolvedParent.getFullyQualifiedName();
+    if (Objects.equals(parentFqn, origFqn) || FullyQualifiedName.isParent(parentFqn, origFqn)) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.invalidContainerMove(origFqn, parentFqn));
+    }
+  }
+
   /** Handles entity updated from PUT and POST operations */
   public class ContainerUpdater extends ColumnEntityUpdater {
     public ContainerUpdater(Container original, Container updated, Operation operation) {
@@ -1008,6 +1198,7 @@ public class ContainerRepository extends EntityRepository<Container> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      validateParent();
       compareAndUpdate("dataModel", () -> updateDataModel(original, updated));
       compareAndUpdate(
           "prefix", () -> recordChange("prefix", original.getPrefix(), updated.getPrefix()));
@@ -1066,6 +1257,154 @@ public class ContainerRepository extends EntityRepository<Container> {
                   false,
                   EntityUtil.objectMatch,
                   false));
+      compareAndUpdateAny(() -> updateParent(original, updated), FIELD_PARENT);
+    }
+
+    /**
+     * Reject parent updates that would move the container under a different StorageService,
+     * under itself, or under one of its descendants. Same-service-only is the user-confirmed
+     * scope for #24294; cross-service moves are explicitly out of scope.
+     *
+     * <p>Two-pass cycle check:
+     * <ol>
+     *   <li>{@link ContainerRepository#validateContainerParent} runs an O(1) FQN-prefix check
+     *       against the resolved parent (no chain walk; correct for in-transaction views).
+     *   <li>{@link #validateAncestorChainCycle} then walks the actual CONTAINS edges by ID,
+     *       bypassing any FQN-derived cache, so the check holds even if a descendant's stored
+     *       FQN is briefly stale relative to the relationship table.
+     * </ol>
+     */
+    void validateParent() {
+      validateContainerParent(original, updated);
+      EntityReference newParent = updated.getParent();
+      if (newParent == null) {
+        return;
+      }
+      UUID oldParentId = original.getParent() == null ? null : original.getParent().getId();
+      if (!Objects.equals(oldParentId, newParent.getId())) {
+        validateAncestorChainCycle(newParent.getId());
+      }
+    }
+
+    /**
+     * Walk the new parent's CONTAINS ancestor chain by ID and reject if we encounter
+     * {@code original.getId()} — i.e. the new parent is somewhere downstream of the container
+     * being moved. Cycle-safe via a visited set; bounded by the natural depth of the container
+     * hierarchy. Uses {@code relationshipDAO.findFrom} (direct DB) so a stale FQN on a
+     * descendant cannot bypass the check.
+     */
+    private void validateAncestorChainCycle(UUID newParentId) {
+      Set<UUID> visited = new HashSet<>();
+      visited.add(original.getId());
+      UUID current = newParentId;
+      while (current != null) {
+        if (!visited.add(current)) {
+          throw new IllegalArgumentException(
+              CatalogExceptionMessage.invalidContainerMove(
+                  original.getFullyQualifiedName(), updated.getParent().getFullyQualifiedName()));
+        }
+        List<CollectionDAO.EntityRelationshipRecord> parentRecords =
+            daoCollection
+                .relationshipDAO()
+                .findFrom(current, CONTAINER, Relationship.CONTAINS.ordinal(), CONTAINER);
+        if (parentRecords.isEmpty()) {
+          return;
+        }
+        current = parentRecords.get(0).getId();
+      }
+    }
+
+    /**
+     * Re-parent the container and cascade the FQN change to every descendant container,
+     * column FQN, tag-usage row, entity-link, policy condition, and search-index doc.
+     * Mirrors {@link GlossaryTermRepository}'s {@code updateNameAndParent} flow.
+     */
+    private void updateParent(Container original, Container updated) {
+      UUID oldParentId = original.getParent() == null ? null : original.getParent().getId();
+      UUID newParentId = updated.getParent() == null ? null : updated.getParent().getId();
+      if (Objects.equals(oldParentId, newParentId)) {
+        return;
+      }
+
+      String oldFqn = getOriginalFqn();
+      setFullyQualifiedName(updated);
+      String newFqn = updated.getFullyQualifiedName();
+      if (oldFqn.equals(newFqn)) {
+        return;
+      }
+
+      LOG.info("Container FQN changed from {} to {} (parent reassignment)", oldFqn, newFqn);
+
+      // #24294 — bail out BEFORE any cascade work if the subtree is large enough that the
+      // single-transaction rewrite would lock thousands of rows + reindex hundreds of thousands
+      // of search docs. Cheap indexed COUNT(*); short-circuits before any cache work runs.
+      int maxAllowed = maxReparentDescendants();
+      int descendantCount =
+          daoCollection
+              .containerDAO()
+              .countDescendantsByPrefix(FullyQualifiedName.buildHash(oldFqn) + ".%");
+      validateSubtreeSize(oldFqn, descendantCount, maxAllowed);
+
+      List<EntityDAO.EntityIdFqnPair> renamedContainers =
+          invalidateCacheForRenameCascade(CONTAINER, oldFqn);
+      invalidateCacheForTaggedEntitiesAndDescendants(CONTAINER, oldFqn);
+
+      daoCollection.containerDAO().updateFqn(oldFqn, newFqn);
+
+      daoCollection.tagUsageDAO().deleteTagsByTarget(oldFqn);
+      List<TagLabel> updatedTags = listOrEmpty(updated.getTags());
+      if (!updatedTags.isEmpty()) {
+        updatedTags = new ArrayList<>(updatedTags);
+        updatedTags.sort(compareTagLabel);
+        applyTags(updatedTags, newFqn);
+      }
+      daoCollection
+          .tagUsageDAO()
+          .renameByTargetFQNHash(TagSource.CLASSIFICATION.ordinal(), oldFqn, newFqn);
+      daoCollection
+          .tagUsageDAO()
+          .renameByTargetFQNHash(TagSource.GLOSSARY.ordinal(), oldFqn, newFqn);
+
+      updateEntityLinks(oldFqn, newFqn, updated, renamedContainers);
+
+      PolicyConditionUpdater.updateAllPolicyConditions(
+          condition ->
+              PolicyConditionUpdater.renamePrefixInCondition(
+                  condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
+
+      updateParentRelationship(original, updated);
+      recordChange(
+          FIELD_PARENT, original.getParent(), updated.getParent(), true, entityReferenceMatch);
+
+      updateAssetIndexes(oldFqn, newFqn);
+      finishInvalidateCacheForRenameCascade(CONTAINER, renamedContainers);
+    }
+
+    private void updateParentRelationship(Container orig, Container updated) {
+      deleteParentRelationship(orig);
+      addParentRelationship(updated);
+    }
+
+    private void deleteParentRelationship(Container container) {
+      if (container.getParent() != null) {
+        deleteRelationship(
+            container.getParent().getId(),
+            CONTAINER,
+            container.getId(),
+            CONTAINER,
+            Relationship.CONTAINS);
+      }
+    }
+
+    private void addParentRelationship(Container container) {
+      if (container.getParent() != null) {
+        addRelationship(
+            container.getParent().getId(),
+            container.getId(),
+            CONTAINER,
+            CONTAINER,
+            Relationship.CONTAINS);
+      }
     }
 
     private void updateDataModel(Container original, Container updated) {

@@ -1,7 +1,12 @@
 package org.openmetadata.it.knowledge;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import jakarta.ws.rs.core.Response;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import org.apache.http.client.HttpResponseException;
@@ -16,12 +21,15 @@ import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.services.domains.DataProductService;
 import org.openmetadata.sdk.services.domains.DomainService;
 import org.openmetadata.sdk.services.teams.TeamService;
+import org.openmetadata.sdk.services.teams.UserService;
 import org.openmetadata.sdk.test.util.RestClient;
 import org.openmetadata.sdk.test.util.SdkClients;
 import org.openmetadata.sdk.test.util.TestNamespace;
@@ -30,7 +38,7 @@ import org.openmetadata.sdk.test.util.TestNamespaceExtension;
 @ExtendWith(TestNamespaceExtension.class)
 public class KnowledgeCenterIT {
 
-  private static final String KC_PATH = "v1/knowledgeCenter";
+  private static final String KC_PATH = "v1/contextCenter/pages";
 
   private Page createPage(RestClient rest, CreatePage request) throws HttpResponseException {
     return rest.create(KC_PATH, request, Page.class);
@@ -233,5 +241,172 @@ public class KnowledgeCenterIT {
         false,
         anyDataProductInRelatedEntities,
         "No dataProducts should ever appear in relatedEntities");
+  }
+
+  // --- SortBy ---
+
+  private ResultList<Page> listPagesSorted(
+      RestClient rest, String sortBy, String sortOrder, int limit) {
+    String path = KC_PATH + "?sortBy=" + sortBy + "&sortOrder=" + sortOrder + "&limit=" + limit;
+    try (Response response = rest.rawGet(path)) {
+      assertEquals(200, response.getStatus(), "List call failed: " + response.getStatus());
+      String body = response.readEntity(String.class);
+      return JsonUtils.readValue(body, new TypeReference<ResultList<Page>>() {});
+    }
+  }
+
+  private static void awaitClockPast(long timestamp) {
+    await()
+        .pollInterval(Duration.ofMillis(2))
+        .atMost(Duration.ofSeconds(2))
+        .until(() -> System.currentTimeMillis() > timestamp);
+  }
+
+  private void awaitPageIndexed(RestClient rest, UUID id) {
+    await()
+        .pollDelay(Duration.ZERO)
+        .pollInterval(Duration.ofMillis(200))
+        .atMost(Duration.ofSeconds(60))
+        .untilAsserted(
+            () -> {
+              try (Response getResp =
+                  rest.rawGet("v1/search/get/knowledge_page_search_index/doc/" + id)) {
+                assertEquals(
+                    200,
+                    getResp.getStatus(),
+                    "Page " + id + " not yet indexed: " + getResp.readEntity(String.class));
+              }
+            });
+  }
+
+  @Test
+  void testListPagesSortByUpdatedAtDesc(TestNamespace ns) throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+    EntityReference orgRef = getOrganizationRef();
+
+    Page older = createPage(rest, buildCreateRequest(ns.prefix("sort-older"), orgRef));
+    awaitClockPast(older.getUpdatedAt());
+    Page middle = createPage(rest, buildCreateRequest(ns.prefix("sort-middle"), orgRef));
+    awaitClockPast(middle.getUpdatedAt());
+    Page newer = createPage(rest, buildCreateRequest(ns.prefix("sort-newer"), orgRef));
+
+    awaitPageIndexed(rest, older.getId());
+    awaitPageIndexed(rest, middle.getId());
+    awaitPageIndexed(rest, newer.getId());
+
+    List<UUID> ourIds = List.of(older.getId(), middle.getId(), newer.getId());
+    await()
+        .pollInterval(Duration.ofMillis(250))
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              ResultList<Page> result = listPagesSorted(rest, "updatedAt", "desc", 1000);
+              List<UUID> ordered =
+                  result.getData().stream().map(Page::getId).filter(ourIds::contains).toList();
+              assertEquals(
+                  List.of(newer.getId(), middle.getId(), older.getId()),
+                  ordered,
+                  "Expected newest-first ordering for our test pages");
+            });
+  }
+
+  @Test
+  void testListPagesSortByNameAsc(TestNamespace ns) throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+    EntityReference orgRef = getOrganizationRef();
+
+    Page zebra = createPage(rest, buildCreateRequest(ns.prefix("zzz-name"), orgRef));
+    Page apple = createPage(rest, buildCreateRequest(ns.prefix("aaa-name"), orgRef));
+
+    awaitPageIndexed(rest, zebra.getId());
+    awaitPageIndexed(rest, apple.getId());
+
+    List<UUID> ourIds = List.of(zebra.getId(), apple.getId());
+    await()
+        .pollInterval(Duration.ofMillis(250))
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              ResultList<Page> result = listPagesSorted(rest, "name", "asc", 1000);
+              List<UUID> ordered =
+                  result.getData().stream().map(Page::getId).filter(ourIds::contains).toList();
+              assertEquals(
+                  List.of(apple.getId(), zebra.getId()),
+                  ordered,
+                  "Expected ascending name ordering, apple before zebra");
+            });
+  }
+
+  @Test
+  void testListPagesSortByCreatedAtAliasesUpdatedAt(TestNamespace ns) throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+    EntityReference orgRef = getOrganizationRef();
+
+    Page first = createPage(rest, buildCreateRequest(ns.prefix("created-first"), orgRef));
+    awaitClockPast(first.getUpdatedAt());
+    Page second = createPage(rest, buildCreateRequest(ns.prefix("created-second"), orgRef));
+
+    awaitPageIndexed(rest, first.getId());
+    awaitPageIndexed(rest, second.getId());
+
+    List<UUID> ourIds = List.of(first.getId(), second.getId());
+    await()
+        .pollInterval(Duration.ofMillis(250))
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              ResultList<Page> result = listPagesSorted(rest, "createdAt", "desc", 1000);
+              List<UUID> ordered =
+                  result.getData().stream().map(Page::getId).filter(ourIds::contains).toList();
+              assertEquals(
+                  List.of(second.getId(), first.getId()),
+                  ordered,
+                  "createdAt sort should return newest first (currently aliased to updatedAt)");
+            });
+  }
+
+  @Test
+  void testListPagesSortByRejectsCursorCombo() {
+    RestClient rest = RestClient.admin();
+    try (Response response =
+        rest.rawGet(KC_PATH + "?sortBy=updatedAt&sortOrder=desc&after=anything")) {
+      assertEquals(
+          400,
+          response.getStatus(),
+          "sortBy combined with cursor should be 400, got " + response.getStatus());
+    }
+  }
+
+  // Regression: the search index stores `followers` as a flat UUID-string list (see
+  // SearchIndexUtils.parseFollowers), while the Page schema types it as
+  // List<EntityReference>. Without excluding the field from `_source`, listing pages
+  // through the sort-by-search path 400s on Jackson deserialization.
+  @Test
+  void testListPagesSortByDoesNotFailWhenPageHasFollowers(TestNamespace ns)
+      throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    UserService userSvc = new UserService(adminClient.getHttpClient());
+    User admin = userSvc.getByName("admin", null);
+    EntityReference orgRef = getOrganizationRef();
+
+    Page page = createPage(rest, buildCreateRequest(ns.prefix("followed-sort"), orgRef));
+    try (Response addResp =
+        rest.rawPut(KC_PATH + "/" + page.getId() + "/followers", admin.getId())) {
+      assertEquals(200, addResp.getStatus(), "Adding follower failed: " + addResp.getStatus());
+    }
+
+    awaitPageIndexed(rest, page.getId());
+
+    await()
+        .pollInterval(Duration.ofMillis(250))
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              ResultList<Page> result = listPagesSorted(rest, "updatedAt", "desc", 1000);
+              boolean found =
+                  result.getData().stream().anyMatch(p -> page.getId().equals(p.getId()));
+              assertTrue(found, "Followed page should appear in sorted list");
+            });
   }
 }

@@ -36,5 +36,10 @@ export enum SidebarItem {
   COLUMN_BULK_OPERATIONS = 'column-bulk-operations',
   MCP_CHAT = 'mcp-chat',
   KNOWLEDGE_CENTER = 'knowledge-center',
+  CONTEXT_CENTER = 'context-center',
   WORKFLOWS = 'workflows',
+  ARTICLES = 'articles',
+  DOCUMENTS = 'documents',
+  DASHBOARD = 'dashboard',
+  MEMORIES = 'memories',
 }

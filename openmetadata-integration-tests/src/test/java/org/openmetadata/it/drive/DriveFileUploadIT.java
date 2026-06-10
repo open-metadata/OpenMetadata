@@ -101,7 +101,7 @@ class DriveFileUploadIT {
 
     uploadTarget =
         multipartClient
-            .target(serverBaseUrl + "/api/v1/drive/files/upload")
+            .target(serverBaseUrl + "/api/v1/contextCenter/drive/files/upload")
             .property(ClientProperties.CONNECT_TIMEOUT, 30000)
             .property(ClientProperties.READ_TIMEOUT, 30000);
   }
@@ -219,7 +219,8 @@ class DriveFileUploadIT {
 
   private ContextFile fetchFile(UUID fileId) {
     try {
-      return RestClient.admin().getById("v1/drive/files", fileId, "", ContextFile.class);
+      return RestClient.admin()
+          .getById("v1/contextCenter/drive/files", fileId, "", ContextFile.class);
     } catch (Exception e) {
       throw new AssertionError("Failed to fetch uploaded file " + fileId, e);
     }
@@ -523,7 +524,7 @@ class DriveFileUploadIT {
     RestClient rest = RestClient.admin();
     Folder folder =
         rest.create(
-            "v1/drive/folders",
+            "v1/contextCenter/drive/folders",
             new CreateFolder().withName(ns.prefix("upload-target-folder")),
             Folder.class);
 
@@ -541,7 +542,8 @@ class DriveFileUploadIT {
     assertNotNull(file.getAssetId());
     assertNotNull(file.getHeadContentId());
 
-    ContextFile fetched = rest.getById("v1/drive/files", file.getId(), "folder", ContextFile.class);
+    ContextFile fetched =
+        rest.getById("v1/contextCenter/drive/files", file.getId(), "folder", ContextFile.class);
     assertNotNull(fetched.getFolder(), "File should be in folder");
     assertEquals(folder.getId(), fetched.getFolder().getId());
   }
@@ -622,7 +624,7 @@ class DriveFileUploadIT {
                       multipartClient
                           .target(
                               serverBaseUrl
-                                  + "/api/v1/drive/files/"
+                                  + "/api/v1/contextCenter/drive/files/"
                                   + file.getId()
                                   + "/download?redirect=false")
                           .request()
@@ -654,7 +656,10 @@ class DriveFileUploadIT {
               try (Response redirectResponse =
                       multipartClient
                           .target(
-                              serverBaseUrl + "/api/v1/drive/files/" + file.getId() + "/download")
+                              serverBaseUrl
+                                  + "/api/v1/contextCenter/drive/files/"
+                                  + file.getId()
+                                  + "/download")
                           .property(ClientProperties.FOLLOW_REDIRECTS, false)
                           .request()
                           .headers(adminAuthHeaders())
@@ -683,13 +688,13 @@ class DriveFileUploadIT {
     assertEquals(CREATED.getStatusCode(), uploadResponse.getStatus(), "Upload failed: " + body);
 
     ContextFile file = JsonUtils.readValue(body, ContextFile.class);
-    rest.delete("v1/drive/files", file.getId());
+    rest.delete("v1/contextCenter/drive/files", file.getId());
 
     try (Response downloadResponse =
             multipartClient
                 .target(
                     serverBaseUrl
-                        + "/api/v1/drive/files/"
+                        + "/api/v1/contextCenter/drive/files/"
                         + file.getId()
                         + "/download?include=all&redirect=false")
                 .request()
@@ -713,14 +718,19 @@ class DriveFileUploadIT {
     ContextFile file = JsonUtils.readValue(body, ContextFile.class);
     assertStoredInMinIO(file.getAssetId(), content);
 
-    rest.hardDelete("v1/drive/files", file.getId());
+    rest.hardDelete("v1/contextCenter/drive/files", file.getId());
 
+    // Hard delete is asynchronous: the server returns 200 immediately, then a background
+    // worker soft-deletes (if needed), removes search/relationship state, drops the row,
+    // and unlinks the object from MinIO. Under CI load this chain can take well over 10s,
+    // so poll with a generous ceiling rather than gambling on a tight window.
     await()
-        .atMost(Duration.ofSeconds(10))
+        .pollInterval(Duration.ofMillis(200))
+        .atMost(Duration.ofSeconds(30))
         .untilAsserted(
             () -> {
               try (Response deletedResponse =
-                  rest.rawGet("v1/drive/files/" + file.getId() + "?include=all")) {
+                  rest.rawGet("v1/contextCenter/drive/files/" + file.getId() + "?include=all")) {
                 assertEquals(404, deletedResponse.getStatus());
               }
             });

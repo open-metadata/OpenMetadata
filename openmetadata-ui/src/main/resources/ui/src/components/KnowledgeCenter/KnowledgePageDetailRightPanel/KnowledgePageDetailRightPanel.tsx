@@ -30,9 +30,7 @@ import { EntityTags } from '../../../Models';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RelatedDataAssets from '../RelatedDataAssets/RelatedDataAssets';
 import './knowledge-page.less';
-import KnowledgePageDetailRightPanelSkeleton from './KnowledgePageDetailRightPanelSkeleton';
 interface KnowledgePageDetailRightPanelProps {
-  isLoading: boolean;
   permissions: OperationPermission;
   tags: Array<EntityTags>;
   knowledgePage?: KnowledgePage;
@@ -43,7 +41,6 @@ interface KnowledgePageDetailRightPanelProps {
 }
 
 const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
-  isLoading,
   knowledgePage,
   permissions,
   tags,
@@ -97,17 +94,15 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
     return genericPermissions?.EditAll && !data?.deleted;
   }, [genericPermissions?.EditAll, data?.deleted]);
 
-  if (isLoading) {
-    return <KnowledgePageDetailRightPanelSkeleton />;
-  }
-
   return (
-    <div className="knowledge-page-right-panel">
+    <div
+      className="knowledge-page-right-panel"
+      data-testid="knowledge-page-right-panel">
       <Row gutter={[0, 24]}>
         <Col span={24}>
           <DomainLabelV2
             showDomainHeading
-            multiple={entityRules.canAddMultipleDomains}
+            multiple={entityRules?.canAddMultipleDomains}
             onUpdate={handleDomainSave}
           />
         </Col>
@@ -118,7 +113,7 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
               activeDomains={data?.domains ?? []}
               dataProducts={data?.dataProducts ?? []}
               hasPermission={hasDataProductsPermission}
-              multiple={entityRules.canAddMultipleDataProducts}
+              multiple={entityRules?.canAddMultipleDataProducts}
               onSave={handleDataProductsSave}
             />
           </div>

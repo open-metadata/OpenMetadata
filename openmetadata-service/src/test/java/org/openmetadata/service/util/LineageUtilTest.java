@@ -259,7 +259,7 @@ class LineageUtilTest {
       verify(searchClient)
           .updateChildren(
               eq(SearchClient.GLOBAL_SEARCH_ALIAS), fieldCaptor.capture(), updateCaptor.capture());
-      assertEquals("upstreamLineage.docUniqueId.keyword", fieldCaptor.getValue().getLeft());
+      assertEquals("upstreamLineage.docUniqueId", fieldCaptor.getValue().getLeft());
       assertEquals(
           dataProduct.getId() + "--->" + downstreamProduct.getId(),
           fieldCaptor.getValue().getRight());

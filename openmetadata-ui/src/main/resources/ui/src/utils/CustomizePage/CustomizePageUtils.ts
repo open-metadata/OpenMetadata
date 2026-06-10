@@ -10,6 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+export { getTabLabelFromId } from './CustomizePagePureUtils';
+
 import { TabsProps } from 'antd';
 import { get, noop, uniqueId } from 'lodash';
 import { EntityUnion } from '../../components/Explore/ExplorePage.interface';
@@ -88,11 +91,29 @@ export const getGlossaryTermDefaultTabs = () => {
       editable: false,
     },
     {
+      id: EntityTabs.RELATIONS_GRAPH,
+      name: EntityTabs.RELATIONS_GRAPH,
+      displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.RELATIONS_GRAPH]),
+      layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
+        EntityTabs.RELATIONS_GRAPH
+      ),
+      editable: false,
+    },
+    {
       id: EntityTabs.CUSTOM_PROPERTIES,
       name: EntityTabs.CUSTOM_PROPERTIES,
       displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.CUSTOM_PROPERTIES]),
       layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
         EntityTabs.CUSTOM_PROPERTIES
+      ),
+      editable: false,
+    },
+    {
+      id: EntityTabs.DATA_OBSERVABILITY,
+      name: EntityTabs.DATA_OBSERVABILITY,
+      displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.DATA_OBSERVABILITY]),
+      layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
+        EntityTabs.DATA_OBSERVABILITY
       ),
       editable: false,
     },
@@ -111,6 +132,15 @@ export const getGlossaryDefaultTabs = () => {
       editable: true,
     },
     {
+      id: EntityTabs.RELATIONS_GRAPH,
+      name: EntityTabs.RELATIONS_GRAPH,
+      displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.RELATIONS_GRAPH]),
+      layout: customizeGlossaryPageClassBase.getDefaultWidgetForTab(
+        EntityTabs.RELATIONS_GRAPH
+      ),
+      editable: false,
+    },
+    {
       displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.ACTIVITY_FEED]),
       name: EntityTabs.ACTIVITY_FEED,
       id: EntityTabs.ACTIVITY_FEED,
@@ -120,12 +150,6 @@ export const getGlossaryDefaultTabs = () => {
       editable: false,
     },
   ];
-};
-
-export const getTabLabelFromId = (tab: EntityTabs): string => {
-  const labelKey = TAB_LABEL_MAP[tab];
-
-  return labelKey ? i18n.t(labelKey) : tab;
 };
 
 export const getDefaultTabs = (pageType?: string): Tab[] => {

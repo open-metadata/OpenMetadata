@@ -41,9 +41,18 @@ from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificati
 from metadata.generated.schema.metadataIngestion.storageServiceAutoClassificationPipeline import (
     StorageServiceAutoClassificationPipeline,
 )
-from metadata.sampler.config import get_config_for_table
+from metadata.sampler.config import (
+    get_config_for_table,
+    get_exclude_columns,
+    get_include_columns,
+    get_profile_sample_config,
+    get_sample_data_count_config,
+    get_sample_query,
+)
 from metadata.sampler.config_utils import build_database_service_conn_config
 from metadata.sampler.models import SampleConfig
+from metadata.sampler.partition import get_partition_details
+from metadata.sampler.sampler_config import DatabaseSamplerConfig, StorageSamplerConfig
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -129,15 +138,31 @@ class TableAdapter(EntityAdapter[Table]):
         schema_entity, database_entity, _ = get_context_entities(entity=entity, metadata=metadata)
         if database_entity is None:
             return None
+        table_config = get_config_for_table(entity, profiler_config)
         return {
             "service_connection_config": build_database_service_conn_config(config, database_entity),
             "ometa_client": metadata,
             "entity": entity,
-            "schema_entity": schema_entity,
-            "database_entity": database_entity,
-            "table_config": get_config_for_table(entity, profiler_config),
-            "default_sample_config": SampleConfig(),
-            "default_sample_data_count": source_config.sampleDataCount,
+            "config": DatabaseSamplerConfig(
+                sample_config=get_profile_sample_config(
+                    entity=entity,
+                    schema_entity=schema_entity,
+                    database_entity=database_entity,
+                    entity_config=table_config,
+                    default_sample_config=SampleConfig(),
+                ),
+                sample_data_count=get_sample_data_count_config(
+                    entity=entity,
+                    schema_entity=schema_entity,
+                    database_entity=database_entity,
+                    entity_config=table_config,
+                    default_sample_data_count=source_config.sampleDataCount,
+                ),
+                include_columns=get_include_columns(entity, entity_config=table_config) or [],
+                exclude_columns=get_exclude_columns(entity, entity_config=table_config) or [],
+                partition_details=get_partition_details(entity=entity, entity_config=table_config),
+                sample_query=get_sample_query(entity=entity, entity_config=table_config),
+            ),
         }
 
 
@@ -168,11 +193,9 @@ class ContainerAdapter(EntityAdapter[Container]):
             "service_connection_config": deepcopy(config.source.serviceConnection.root.config),
             "ometa_client": metadata,
             "entity": entity,
-            "schema_entity": None,
-            "database_entity": None,
-            "table_config": None,
-            "default_sample_config": SampleConfig(),
-            "default_sample_data_count": source_config.sampleDataCount,
+            "config": StorageSamplerConfig(
+                sample_data_count=source_config.sampleDataCount,
+            ),
         }
 
 

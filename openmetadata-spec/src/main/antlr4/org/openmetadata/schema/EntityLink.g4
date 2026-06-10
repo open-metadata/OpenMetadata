@@ -102,6 +102,7 @@ ENTITY_TYPE
     | 'folder'
     | 'contextFile'
     | 'contextFileContent'
+    | 'contextMemory'
     | 'type'
     | 'aiApplication'
     | 'llmModel'
@@ -114,6 +115,7 @@ ENTITY_TYPE
     | 'mcpService'
     | 'mcpServer'
     | 'mcpExecution'
+    | 'intakeForm'
     ;
 
 ENTITY_FIELD

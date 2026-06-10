@@ -46,8 +46,8 @@ jest.mock('../../hooks/useFqn');
 jest.mock('../../utils/useRequiredParams');
 jest.mock('./useLineageTableState');
 jest.mock('../../rest/lineageAPI');
-jest.mock('../../utils/StringsUtils', () => ({
-  ...jest.requireActual('../../utils/StringsUtils'),
+jest.mock('../../utils/StringUtils', () => ({
+  ...jest.requireActual('../../utils/StringUtils'),
   stringToHTML: jest.fn((str: string) => str),
 }));
 jest.mock('../../hooks/useLineageStore');
@@ -74,10 +74,8 @@ jest.mock('react-router-dom', () => ({
   ),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
-  getPartialNameFromTableFQN: jest
-    .fn()
-    .mockImplementation((fqn: string) => fqn),
+jest.mock('../../utils/FqnUtils', () => ({
+  getPartialNameFromTableFQN: jest,
 }));
 
 jest.mock('../../utils/Fqn', () => ({

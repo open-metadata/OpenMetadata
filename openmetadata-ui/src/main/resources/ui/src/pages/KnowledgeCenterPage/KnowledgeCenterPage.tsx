@@ -258,6 +258,14 @@ const KnowledgeCenterPage = () => {
     fetchPermission();
   }, []);
 
+  const centerContent = useMemo(() => {
+    if (version) {
+      return renderVersionPage();
+    }
+
+    return renderDetailOrListPage();
+  }, [version, renderVersionPage, renderDetailOrListPage]);
+
   return (
     <PageLayoutV1 pageTitle={t('label.knowledge-center')}>
       {page.header}
@@ -277,7 +285,7 @@ const KnowledgeCenterPage = () => {
         leftSidebarTitle={leftSidebarTitle}
         pageTitle={page.title}
         rightSidebar={page.rightPanel}>
-        {version ? renderVersionPage() : renderDetailOrListPage()}
+        {centerContent}
       </KnowledgeCenterLayout>
       {addQuickLinkModalElement}
     </PageLayoutV1>

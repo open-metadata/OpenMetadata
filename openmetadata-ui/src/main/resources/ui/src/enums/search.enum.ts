@@ -57,5 +57,6 @@ export enum SearchIndex {
   SPREADSHEET = 'spreadsheet',
   WORKSHEET = 'worksheet',
   KNOWLEDGE_PAGE_INDEX = 'page',
+  DRIVE_FILE = 'contextFile',
   MARKETPLACE = 'marketplace',
 }

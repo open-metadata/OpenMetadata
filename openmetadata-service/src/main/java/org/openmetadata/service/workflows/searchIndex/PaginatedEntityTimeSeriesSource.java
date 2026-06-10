@@ -340,6 +340,7 @@ public class PaginatedEntityTimeSeriesSource
           entityType);
     }
     result.setErrors(realErrors);
+    result.setWarnings(warnings);
     result.setWarningsCount(warnings.size());
     return warnings.size();
   }

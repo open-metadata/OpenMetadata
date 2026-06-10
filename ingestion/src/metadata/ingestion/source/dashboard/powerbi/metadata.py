@@ -61,6 +61,7 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
@@ -1853,8 +1854,10 @@ class PowerbiSource(DashboardServiceSource):
         server: Optional[str],  # noqa: UP045
     ) -> Optional[List[dict]]:  # noqa: UP006, UP045
         """
-        Extract table references from a SQL query found in a dataflow M expression.
-        Uses LineageParser to parse the SQL and extract source tables.
+        Extract table references from a T-SQL query found in a dataflow M expression
+        sourced from the Power Query Sql.Database / Value.NativeQuery connector
+        (SQL Server / Azure SQL). Uses LineageParser with the TSQL dialect so
+        bracket-quoted identifiers like [Column Name] parse correctly.
         """
         try:
             # Clean PowerBI special characters
@@ -1869,7 +1872,7 @@ class PowerbiSource(DashboardServiceSource):
             try:
                 parser = LineageParser(
                     cleaned_sql,
-                    dialect=Dialect.ANSI,
+                    dialect=Dialect.TSQL,
                     timeout_seconds=30,
                     parser_type=self.get_query_parser_type(),
                 )
@@ -1878,7 +1881,7 @@ class PowerbiSource(DashboardServiceSource):
                 return None
 
             if not parser.source_tables:
-                logger.debug("No source tables found in dataflow SQL query")
+                logger.debug("No source tables found in Power Query M SQL")
                 return None
 
             lineage_tables = []
@@ -2149,6 +2152,17 @@ class PowerbiSource(DashboardServiceSource):
                         stackTrace=traceback.format_exc(),
                     )
                 )
+
+    def yield_dashboard_lineage(
+        self,
+        dashboard_details: Any,
+    ) -> Iterable[Either]:
+        """Flush the sink before lineage resolution so that target lookups in
+        super().yield_dashboard_lineage see this workspace's just-flushed entities.
+        """
+        ws_id = self.context.get().workspace.id  # pyright: ignore[reportAttributeAccessIssue]
+        yield Either(right=Barrier(reason=f"powerbi_ws:{ws_id}"))  # pyright: ignore[reportCallIssue]
+        yield from super().yield_dashboard_lineage(dashboard_details)
 
     def yield_datamodel_dashboard_lineage(
         self,

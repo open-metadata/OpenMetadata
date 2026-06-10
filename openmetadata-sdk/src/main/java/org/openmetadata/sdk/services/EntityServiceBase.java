@@ -421,21 +421,60 @@ public abstract class EntityServiceBase<T> {
   }
 
   /**
-   * Restore a soft-deleted entity (async)
+   * Restore a soft-deleted entity (client-side async wrapper).
+   *
+   * <p>Runs the synchronous restore call on the SDK's executor and returns a
+   * {@link CompletableFuture}. The server still does the work synchronously inside the request,
+   * so this still ties up an HTTP connection for the duration. For large hierarchies use
+   * {@link #restoreServerAsync(String)} instead, which returns a 202 with a job id.
    */
   public CompletableFuture<T> restoreAsync(UUID id) {
     return restoreAsync(id.toString());
   }
 
-  /**
-   * Restore a soft-deleted entity (async)
-   */
   public CompletableFuture<T> restoreAsync(String id) {
     org.openmetadata.schema.api.data.RestoreEntity restoreEntity =
         new org.openmetadata.schema.api.data.RestoreEntity();
     restoreEntity.setId(java.util.UUID.fromString(id));
     return httpClient.executeAsync(
         HttpMethod.PUT, basePath + "/restore", restoreEntity, getEntityClass());
+  }
+
+  /**
+   * Trigger a server-side async restore. Issues {@code PUT /restore?async=true} and returns
+   * the 202 Accepted response containing the job id. Used to avoid proxy / ALB idle timeouts
+   * on large hierarchies (issue #4003). The caller can await completion via the SDK's
+   * WebSocketListener on the {@code restoreEntityChannel} channel.
+   */
+  public org.openmetadata.sdk.models.AsyncJobResponse restoreServerAsync(UUID id)
+      throws OpenMetadataException {
+    return restoreServerAsync(id.toString());
+  }
+
+  public org.openmetadata.sdk.models.AsyncJobResponse restoreServerAsync(String id)
+      throws OpenMetadataException {
+    org.openmetadata.schema.api.data.RestoreEntity restoreEntity =
+        new org.openmetadata.schema.api.data.RestoreEntity();
+    restoreEntity.setId(java.util.UUID.fromString(id));
+    RequestOptions options = RequestOptions.builder().queryParam("async", "true").build();
+    org.openmetadata.sdk.models.AsyncJobResponse response =
+        httpClient.execute(
+            HttpMethod.PUT,
+            basePath + "/restore",
+            restoreEntity,
+            org.openmetadata.sdk.models.AsyncJobResponse.class,
+            options);
+    // Defensive check for older servers that don't honor ?async=true (or for any future
+    // case where the resource short-circuits with a 200 + entity payload). Jackson would
+    // otherwise silently deserialize the entity JSON into an AsyncJobResponse with all
+    // null fields and callers would treat a sync restore as a dispatched async job.
+    if (response == null || response.getJobId() == null || response.getJobId().isEmpty()) {
+      throw new OpenMetadataException(
+          "Server did not return an async job for "
+              + basePath
+              + "/restore. The server may be older than the async-restore release.");
+    }
+    return response;
   }
 
   /**
