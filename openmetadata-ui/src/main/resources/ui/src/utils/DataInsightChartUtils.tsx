@@ -33,7 +33,7 @@ import { BAR_CHART_MARGIN } from '../constants/DataInsight.constants';
 import { DataInsightChartTooltipProps } from '../interface/data-insight.interface';
 import { axisTickFormatter } from './ChartUtils';
 import { entityChartColor } from './ColorUtils';
-import { getEntryFormattedValue, getRandomHexColor } from './DataInsightUtils';
+import { getEntryFormattedValue, getRandomHexColor } from './DataInsightPureUtils';
 import { customFormatDateTime, formatDate } from './date-time/DateTimeUtils';
 
 export const renderLegend = (

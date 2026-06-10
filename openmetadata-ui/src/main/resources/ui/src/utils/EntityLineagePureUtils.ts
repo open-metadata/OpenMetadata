@@ -43,9 +43,6 @@ import { t } from './i18next/LocalUtil';
 import { jsonToCSV } from './StringUtils';
 import { showErrorToast } from './ToastUtils';
 
-export * from './EntityLineageEdgeUtils';
-export * from './EntityLineageLayoutUtils';
-export * from './EntityLineageNodeUtils';
 
 export const MAX_LINEAGE_LENGTH = 20;
 
