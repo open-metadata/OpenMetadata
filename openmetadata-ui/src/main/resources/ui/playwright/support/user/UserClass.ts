@@ -56,7 +56,9 @@ export class UserClass {
       data: this.data,
     });
 
-    if (!response.ok()) {
+    if (response.ok()) {
+      this.responseData = await response.json();
+    } else {
       const body = await response.text();
 
       if (
@@ -75,16 +77,12 @@ export class UserClass {
         }
 
         this.responseData = await existing.json();
-
-        return this.responseData;
+      } else {
+        throw new Error(
+          `UserClass.create() failed with status ${response.status()}: ${body}`
+        );
       }
-
-      throw new Error(
-        `UserClass.create() failed with status ${response.status()}: ${body}`
-      );
     }
-
-    this.responseData = await response.json();
     if (assignRole) {
       if (this.isAdmin) {
         const { entity } = await this.patch({
