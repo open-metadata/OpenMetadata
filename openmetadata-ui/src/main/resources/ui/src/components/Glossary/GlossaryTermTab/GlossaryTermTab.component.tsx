@@ -88,11 +88,9 @@ import {
   searchGlossaryTermsPaginated,
 } from '../../../rest/glossaryAPI';
 import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityBulkEditPath } from '../../../utils/EntityPureUtils';
 import { EntityStatusClass } from '../../../utils/EntityStatusUtils';
-import {
-  getEntityBulkEditPath,
-  getEntityName,
-} from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import {
   buildTree,

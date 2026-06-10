@@ -55,7 +55,7 @@ import {
   getListTestSuitesBySearch,
   ListTestSuitePramsBySearch,
 } from '../../../../rest/testAPI';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getPopupContainer } from '../../../../utils/formUtils';
 import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import {

@@ -34,7 +34,8 @@ import { patchPipelineDetails } from '../rest/pipelineAPI';
 import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
 import { patchContainerDetails } from '../rest/storageAPI';
 import { patchTopicDetails } from '../rest/topicsAPI';
-import { getColumnSorter, highlightSearchText } from './EntityUtils';
+import { highlightSearchText } from './EntitySearchUtils';
+import { getColumnSorter } from './EntitySortUtils';
 import { t } from './i18next/LocalUtil';
 import { getLinkForFqn } from './ServiceUtils';
 import { stringToHTML } from './StringUtils';
@@ -47,7 +48,7 @@ import {
   tagTableObject,
   tierTableObject,
 } from './TableColumn.util';
-import { getUsagePercentile } from './TableUtils';
+import { getUsagePercentile } from './TablePureUtils';
 
 export const getServiceMainTabColumns = (
   serviceCategory: ServiceTypes,

@@ -41,17 +41,15 @@ import {
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import commonWidgetClassBase from '../../../utils/CommonWidget/CommonWidgetClassBase';
-import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
 import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
-import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import { createTagObject } from '../../../utils/TagsUtils';
 import CertificationWidget from '../../common/CertificationWidget/CertificationWidget';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';

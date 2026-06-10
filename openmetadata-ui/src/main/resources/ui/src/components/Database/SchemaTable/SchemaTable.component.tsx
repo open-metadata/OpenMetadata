@@ -77,25 +77,27 @@ import {
 } from '../../../rest/tableAPI';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
+import { getFrequentlyJoinedColumns } from '../../../utils/EntityColumnUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityBulkEditPath } from '../../../utils/EntityPureUtils';
 import {
-  getEntityBulkEditPath,
-  getEntityName,
-  getFrequentlyJoinedColumns,
   highlightSearchArrayElement,
   highlightSearchText,
-} from '../../../utils/EntityUtils';
+} from '../../../utils/EntitySearchUtils';
 import { getEntityColumnFQN } from '../../../utils/FeedUtils';
 import { stringToHTML } from '../../../utils/StringUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
-import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import {
   findColumnByEntityLink,
   getExpandAllKeysToDepth,
   getHighlightedRowClassName,
-  getTableExpandableConfig,
-  prepareConstraintIcon,
   pruneEmptyChildren,
   updateColumnInNestedStructure,
+} from '../../../utils/TablePureUtils';
+import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
+import {
+  getTableExpandableConfig,
+  prepareConstraintIcon,
 } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';

@@ -40,7 +40,8 @@ import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
-import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import {
   columnFilterIcon,
   ownerTableObject,

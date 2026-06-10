@@ -52,8 +52,8 @@ import {
   getTotalResourceCount,
 } from '../../../../utils/CuratedAssetsUtils';
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../../../utils/EntityUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';

@@ -78,8 +78,8 @@ import {
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { getQueryFilterForDatabase } from '../../utils/Database/Database.util';
 import databaseClassBase from '../../utils/Database/DatabaseClassBase';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../utils/EntityUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
@@ -90,7 +90,7 @@ import {
   getExplorePath,
   getVersionPath,
 } from '../../utils/RouterUtils';
-import { getTierTags } from '../../utils/TableUtils';
+import { getTierTags } from '../../utils/TablePureUtils';
 import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';

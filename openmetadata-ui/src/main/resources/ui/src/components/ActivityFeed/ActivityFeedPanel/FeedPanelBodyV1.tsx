@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { FC, useCallback, useMemo } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { Post, ThreadType } from '../../../generated/entity/feed/thread';
-import { ENTITY_LINK_SEPARATOR } from '../../../utils/EntityUtils';
+import { ENTITY_LINK_SEPARATOR } from '../../../utils/EntityPureUtils';
 import { getEntityType } from '../../../utils/FeedUtils';
 import { TaskTabNew } from '../../Entity/Task/TaskTab/TaskTabNew.component';
 import ActivityFeedCardNew from '../ActivityFeedCardNew/ActivityFeedcardNew.component';

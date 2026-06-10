@@ -31,7 +31,7 @@ import {
   TableConstraint,
 } from '../../../../generated/entity/data/table';
 import { searchQuery } from '../../../../rest/searchAPI';
-import { getBreadcrumbsFromFqn } from '../../../../utils/EntityUtils';
+import { getBreadcrumbsFromFqn } from '../../../../utils/EntityPureUtils';
 import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
 import { getServiceNameQueryFilter } from '../../../../utils/ServiceUtils';
 import {
@@ -41,7 +41,7 @@ import {
 import {
   createTableConstraintObject,
   getColumnOptionsFromTableColumn,
-} from '../../../../utils/TableUtils';
+} from '../../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import './table-constraint.style.less';
 import {

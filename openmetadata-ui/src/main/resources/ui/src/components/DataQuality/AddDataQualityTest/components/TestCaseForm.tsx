@@ -58,10 +58,10 @@ import {
   replaceAllSpacialCharWith_,
 } from '../../../../utils/CommonUtils';
 import { getServiceTypeForTestDefinition } from '../../../../utils/DataQuality/DataQualityUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { isValidJSONString } from '../../../../utils/StringUtils';
-import { generateEntityLink } from '../../../../utils/TableUtils';
+import { generateEntityLink } from '../../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import {

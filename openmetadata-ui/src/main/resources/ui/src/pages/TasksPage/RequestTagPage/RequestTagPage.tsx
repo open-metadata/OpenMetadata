@@ -37,11 +37,11 @@ import { withPageLayout } from '../../../hoc/withPageLayout';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { postThread } from '../../../rest/feedsAPI';
-import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
-} from '../../../utils/EntityUtils';
+} from '../../../utils/EntityPureUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   fetchEntityDetail,
   fetchOptions,

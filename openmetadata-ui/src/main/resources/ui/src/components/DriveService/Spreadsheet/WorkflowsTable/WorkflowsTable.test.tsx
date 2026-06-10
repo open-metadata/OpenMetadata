@@ -22,7 +22,7 @@ import { useGenericContext } from '../../../Customization/GenericProvider/Generi
 import WorkflowsTable from './WorkflowsTable';
 
 jest.mock('../../../../utils/RouterUtils');
-jest.mock('../../../../utils/EntityUtils');
+jest.mock('../../../../utils/EntityNameUtils');
 jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn(() => <div data-testid="error-placeholder">No data available</div>)
 );

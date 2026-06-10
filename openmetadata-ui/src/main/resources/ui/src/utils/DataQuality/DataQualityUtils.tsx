@@ -65,7 +65,7 @@ import type { ListTestCaseParamsBySearch } from '../../rest/testAPI';
 import { getEntryFormattedValue } from '../DataInsightUtils';
 import { formatDate } from '../date-time/DateTimeUtils';
 import EntityLink from '../EntityLink';
-import { getColumnNameFromEntityLink } from '../EntityUtils';
+import { getColumnNameFromEntityLink } from '../EntityPureUtils';
 import { getEntityFQN } from '../FeedUtils';
 import { getDataQualityPagePath } from '../RouterUtils';
 import { generateEntityLink } from '../TableUtils';

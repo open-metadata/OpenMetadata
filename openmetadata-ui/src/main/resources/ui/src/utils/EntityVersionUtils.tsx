@@ -37,7 +37,7 @@ import {
   getRemovedDiffElement,
   getTextDiffElements,
 } from './EntityDiffUtils';
-import { getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
 import * as Pure from './EntityVersionUtilsPure';
 import { t } from './i18next/LocalUtil';
 import { isValidJSONString } from './StringUtils';

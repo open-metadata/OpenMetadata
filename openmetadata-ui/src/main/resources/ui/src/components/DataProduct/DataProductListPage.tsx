@@ -36,7 +36,7 @@ import { withPageLayout } from '../../hoc/withPageLayout';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { addDataProducts, patchDataProduct } from '../../rest/dataProductAPI';
 import { createEntityWithCoverImage } from '../../utils/CoverImageUploadUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
 import { getClassificationTags, getGlossaryTags } from '../../utils/TagsUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';

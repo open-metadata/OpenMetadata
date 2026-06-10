@@ -30,7 +30,7 @@ import { GlossaryTermDetailPageWidgetKeys } from '../enums/CustomizeDetailPage.e
 import { EntityType } from '../enums/entity.enum';
 import { TermReference } from '../generated/entity/data/glossaryTerm';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import { getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
 import { VersionStatus } from './EntityVersionUtils.interface';
 
 export {

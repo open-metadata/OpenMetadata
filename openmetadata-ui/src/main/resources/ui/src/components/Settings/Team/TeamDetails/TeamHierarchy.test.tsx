@@ -82,8 +82,8 @@ jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('entityName'),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
-  ...jest.requireActual('../../../../utils/EntityUtils'),
+jest.mock('../../../../utils/EntitySearchUtils', () => ({
+  ...jest.requireActual('../../../../utils/EntitySearchUtils'),
   highlightSearchText: jest.fn((text) => text),
 }));
 

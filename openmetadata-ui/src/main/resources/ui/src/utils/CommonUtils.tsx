@@ -47,7 +47,7 @@ import { useApplicationStore } from '../hooks/useApplicationStore';
 import { FeedCounts } from '../interface/feed.interface';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { getFeedCount } from '../rest/feedsAPI';
-import { getEntityFeedLink } from './EntityUtils';
+import { getEntityFeedLink } from './EntityPureUtils';
 import Fqn from './Fqn';
 import i18n, { t, Transi18next } from './i18next/LocalUtil';
 import serviceUtilClassBase from './ServiceUtilClassBase';

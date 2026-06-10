@@ -197,11 +197,17 @@ jest.mock('../../hooks/paging/usePaging', () => ({
   }),
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation((entity) => entity?.name ?? 'entityName'),
+}));
+
+jest.mock('../../utils/EntityPureUtils', () => ({
   getEntityFeedLink: jest.fn(),
+}));
+
+jest.mock('../../utils/EntitySortUtils', () => ({
   getColumnSorter: jest.fn(),
 }));
 

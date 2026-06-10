@@ -87,7 +87,7 @@ import { defaultFields as DatabaseSchemaFields } from './DatabaseSchemaDetailsUt
 import { defaultFields as DataModelFields } from './DataModelsUtils';
 import { defaultFields as TableFields } from './DatasetDetailsUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
-import { getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
 import { getEntityFQN, getEntityType } from './FeedUtils';
 import { getGlossaryBreadcrumbs } from './GlossaryUtils';
 import { t } from './i18next/LocalUtil';

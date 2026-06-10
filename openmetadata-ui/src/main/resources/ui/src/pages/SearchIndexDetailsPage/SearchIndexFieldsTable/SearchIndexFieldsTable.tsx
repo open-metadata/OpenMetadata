@@ -58,23 +58,23 @@ import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
-  getColumnSorter,
-  getEntityName,
   highlightSearchArrayElement,
   highlightSearchText,
-} from '../../../utils/EntityUtils';
+} from '../../../utils/EntitySearchUtils';
+import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { makeData } from '../../../utils/SearchIndexUtils';
 import { stringToHTML } from '../../../utils/StringUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
-import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import {
   getHighlightedRowClassName,
-  getTableExpandableConfig,
   searchInFields,
   updateFieldDescription,
   updateFieldTags,
-} from '../../../utils/TableUtils';
+} from '../../../utils/TablePureUtils';
+import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
+import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import {
   SearchIndexCellRendered,
   SearchIndexFieldsTableProps,

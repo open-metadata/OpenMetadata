@@ -51,7 +51,10 @@ import {
 } from '../../../../utils/EntityVersionUtils';
 import { VersionEntityTypes } from '../../../../utils/EntityVersionUtils.interface';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
-import { getTagsWithoutTier, getTierTags } from '../../../../utils/TableUtils';
+import {
+  getTagsWithoutTier,
+  getTierTags,
+} from '../../../../utils/TablePureUtils';
 import { createTagObject } from '../../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';

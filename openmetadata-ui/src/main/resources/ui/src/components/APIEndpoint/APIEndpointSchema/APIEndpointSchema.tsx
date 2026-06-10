@@ -42,18 +42,19 @@ import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
-import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
-import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import {
   fieldExistsByFQN,
   getAllRowKeysByKeyName,
   getHighlightedRowClassName,
-  getTableExpandableConfig,
   updateFieldDescription,
   updateFieldTags,
-} from '../../../utils/TableUtils';
+} from '../../../utils/TablePureUtils';
+import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
+import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';

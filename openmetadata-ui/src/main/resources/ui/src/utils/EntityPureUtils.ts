@@ -24,25 +24,6 @@ import EntityLink from './EntityLink';
 import Fqn from './Fqn';
 import { getEncodedFqn } from './StringUtils';
 
-export {
-  hasCustomPropertiesTab,
-  hasEditAccess,
-  hasLineageTab,
-  hasSchemaTab,
-} from './EntityPermissionUtils';
-export {
-  getEntityReferenceFromEntity,
-  getEntityReferenceListFromEntities,
-} from './EntityReferenceUtils';
-export {
-  highlightEntityNameAndDescription,
-  highlightSearchText,
-  searchInColumns,
-} from './EntitySearchUtils';
-export { columnSorter, getColumnSorter } from './EntitySortUtils';
-export { getEntityTags } from './EntityTagUtils';
-export { getEntityVoteStatus } from './EntityVoteUtils';
-
 export enum DRAWER_NAVIGATION_OPTIONS {
   explore = 'Explore',
   lineage = 'Lineage',

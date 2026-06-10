@@ -18,7 +18,7 @@ import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import EntityTasks from '../../../pages/TasksPage/EntityTasks/EntityTasks.component';
 import EntityLink from '../../../utils/EntityLink';
-import { getEntityFeedLink } from '../../../utils/EntityUtils';
+import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import DescriptionSourceBadge from '../../common/DescriptionSourceBadge/DescriptionSourceBadge';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';

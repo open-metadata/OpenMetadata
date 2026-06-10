@@ -46,12 +46,10 @@ import {
 } from '../../rest/apiEndpointsAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
+import { highlightSearchText } from '../../utils/EntitySearchUtils';
+import { getColumnSorter } from '../../utils/EntitySortUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import {
-  getColumnSorter,
-  getEntityName,
-  highlightSearchText,
-} from '../../utils/EntityUtils';
 import { stringToHTML } from '../../utils/StringUtils';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';

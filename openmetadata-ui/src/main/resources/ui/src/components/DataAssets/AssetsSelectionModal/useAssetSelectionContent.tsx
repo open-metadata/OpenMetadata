@@ -65,7 +65,7 @@ import {
 import { searchQuery } from '../../../rest/searchAPI';
 import { addAssetsToTags, getTagByFqn } from '../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
-import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import { getCombinedQueryFilterObject } from '../../../utils/ExplorePage/ExplorePageUtils';
 import {
   getAggregations,

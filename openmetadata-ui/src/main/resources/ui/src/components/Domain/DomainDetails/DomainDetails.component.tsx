@@ -77,12 +77,10 @@ import {
   getQueryFilterForDomain,
   getQueryFilterToExcludeDomainTerms,
 } from '../../../utils/DomainUtils';
-import {
-  getEntityFeedLink,
-  getEntityName,
-  getEntityVoteStatus,
-} from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import Fqn from '../../../utils/Fqn';
 import { showNotistackError } from '../../../utils/NotistackUtils';
 import {

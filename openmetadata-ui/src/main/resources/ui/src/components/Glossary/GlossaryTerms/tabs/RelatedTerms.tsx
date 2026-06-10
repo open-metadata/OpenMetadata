@@ -45,7 +45,7 @@ import {
   searchGlossaryTermsPaginated,
 } from '../../../../rest/glossaryAPI';
 import { getTextFromHtmlString } from '../../../../utils/BlockEditorUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,

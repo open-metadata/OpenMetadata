@@ -22,8 +22,11 @@ jest.mock('../../../rest/glossaryAPI', () => ({
   validateTagAddtionToGlossary: jest.fn().mockResolvedValue({}),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityBreadcrumbUtils', () => ({
   getEntityLinkFromType: jest.fn(),
+}));
+
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn(),
 }));
 

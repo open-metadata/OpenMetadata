@@ -104,8 +104,11 @@ jest.mock('../../../../utils/CommonUtils', () => ({
   getNameFromFQN: jest.fn().mockReturnValue('entityName'),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Admin User'),
+}));
+
+jest.mock('../../../../utils/EntityReferenceUtils', () => ({
   getEntityReferenceListFromEntities: jest.fn().mockReturnValue([]),
 }));
 

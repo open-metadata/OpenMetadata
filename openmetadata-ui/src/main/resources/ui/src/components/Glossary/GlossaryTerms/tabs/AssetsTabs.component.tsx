@@ -74,10 +74,8 @@ import { searchQuery } from '../../../../rest/searchAPI';
 import { getTagByFqn, removeAssetsFromTags } from '../../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchUtils';
 import { getEntityTypeString } from '../../../../utils/Assets/AssetsUtils';
-import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getEntityReferenceFromEntity } from '../../../../utils/EntityReferenceUtils';
 import { getCombinedQueryFilterObject } from '../../../../utils/ExplorePage/ExplorePageUtils';
 import {
   getAggregations,

@@ -54,7 +54,7 @@ import {
   getEpochMillisForPastDays,
   getStartOfDayInMillis,
 } from '../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDataQualityPagePath } from '../../../utils/RouterUtils';
 import DataAssetsCoveragePieChartWidget from '../ChartWidgets/DataAssetsCoveragePieChartWidget/DataAssetsCoveragePieChartWidget.component';
 import EntityHealthStatusPieChartWidget from '../ChartWidgets/EntityHealthStatusPieChartWidget/EntityHealthStatusPieChartWidget.component';

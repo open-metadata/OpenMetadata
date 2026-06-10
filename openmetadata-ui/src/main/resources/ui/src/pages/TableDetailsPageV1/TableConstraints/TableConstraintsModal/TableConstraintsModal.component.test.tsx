@@ -48,7 +48,7 @@ const mockConstraint: Table['tableConstraints'] = [
   },
 ];
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityPureUtils', () => ({
   getBreadcrumbsFromFqn: jest
     .fn()
     .mockImplementation(() => [

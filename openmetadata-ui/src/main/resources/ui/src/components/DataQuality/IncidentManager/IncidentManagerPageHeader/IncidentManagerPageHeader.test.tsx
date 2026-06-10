@@ -102,8 +102,10 @@ jest.mock('../../../../utils/CommonUtils', () => ({
   getNameFromFQN: jest.fn().mockReturnValue('getNameFromFQN'),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('getEntityName'),
+}));
+jest.mock('../../../../utils/EntityPureUtils', () => ({
   getColumnNameFromEntityLink: jest
     .fn()
     .mockReturnValue('getColumnNameFromEntityLink'),

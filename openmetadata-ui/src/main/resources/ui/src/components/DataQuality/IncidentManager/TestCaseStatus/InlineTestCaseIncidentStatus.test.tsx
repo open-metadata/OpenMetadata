@@ -27,8 +27,11 @@ import { postTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI'
 import { getUserAndTeamSearch } from '../../../../rest/miscAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn((entity) => entity?.displayName ?? entity?.name ?? ''),
+}));
+
+jest.mock('../../../../utils/EntityReferenceUtils', () => ({
   getEntityReferenceFromEntity: jest.fn((entity, type) => ({
     id: entity?.id,
     name: entity?.name,
