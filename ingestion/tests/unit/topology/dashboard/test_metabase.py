@@ -473,6 +473,54 @@ class MetabaseUnitTest(TestCase):
         chart_with_none_value = MetabaseChart(name="test_chart_none_value", id="105", dataset_query=None)
         self.assertIsNone(chart_with_none_value.dataset_query)
 
+    def test_strip_optional_blocks_single_variable(self):
+        query = "SELECT * FROM t WHERE 1=1 [[AND {{filter}}]]"
+        result = MetabaseSource._strip_optional_blocks(query)
+        assert result == "SELECT * FROM t WHERE 1=1 "
+
+    def test_strip_optional_blocks_multiple_variables(self):
+        query = (
+            "SELECT *\nFROM my_schema.my_table\nWHERE 1 = 1\n"
+            "  [[AND '{{filter_a}}']]\n"
+            "  [[AND '{{filter_b}}']]\n"
+            "  AND source != 'value'"
+        )
+        result = MetabaseSource._strip_optional_blocks(query)
+        assert "[[" not in result
+        assert "]]" not in result
+        assert "my_schema.my_table" in result
+        assert "source != 'value'" in result
+
+    def test_strip_optional_blocks_multiline(self):
+        query = (
+            "SELECT * FROM t WHERE 1=1\n"
+            "  [[ AND (\n"
+            "      ('{{x}}' = 'TRUE' AND col <= CURRENT_DATE())\n"
+            "  )]]\n"
+            "  AND active = 1"
+        )
+        result = MetabaseSource._strip_optional_blocks(query)
+        assert "[[" not in result
+        assert "]]" not in result
+        assert "active = 1" in result
+
+    def test_strip_optional_blocks_no_blocks(self):
+        query = "SELECT id, name FROM users WHERE active = 1"
+        assert MetabaseSource._strip_optional_blocks(query) == query
+
+    def test_dialect_from_engine_known(self):
+        from metadata.ingestion.lineage.models import Dialect
+
+        assert MetabaseSource._dialect_from_engine("postgres") == Dialect.POSTGRES
+        assert MetabaseSource._dialect_from_engine("bigquery") == Dialect.BIGQUERY
+        assert MetabaseSource._dialect_from_engine("snowflake") == Dialect.SNOWFLAKE
+        assert MetabaseSource._dialect_from_engine("starrocks") == Dialect.MYSQL
+        assert MetabaseSource._dialect_from_engine("MYSQL") == Dialect.MYSQL
+
+    def test_dialect_from_engine_unknown(self):
+        assert MetabaseSource._dialect_from_engine("some_unknown_engine") is None
+        assert MetabaseSource._dialect_from_engine(None) is None
+
         # Test 7: New Metabase format with stages array
         chart_with_stages = MetabaseChart(
             name="test_chart_stages",

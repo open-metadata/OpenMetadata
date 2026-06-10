@@ -182,6 +182,7 @@ class MetabaseDatabase(BaseModel):
     """
 
     details: Optional[MetabaseDatabaseDetails] = None  # noqa: UP045
+    engine: Optional[str] = None  # noqa: UP045
 
 
 class MetabaseTable(BaseModel):

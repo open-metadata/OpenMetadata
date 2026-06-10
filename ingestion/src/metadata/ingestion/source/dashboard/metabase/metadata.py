@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Metabase source module"""
 
+import re
 import traceback
 from typing import Any, Dict, Iterable, List, Optional  # noqa: UP035
 
@@ -66,6 +67,30 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+_METABASE_ENGINE_DIALECT: Dict[str, Dialect] = {  # noqa: UP006
+    "bigquery": Dialect.BIGQUERY,
+    "bigquery-cloud-sdk": Dialect.BIGQUERY,
+    "clickhouse": Dialect.CLICKHOUSE,
+    "databricks": Dialect.DATABRICKS,
+    "druid": Dialect.ANSI,
+    "h2": Dialect.ANSI,
+    "hive": Dialect.HIVE,
+    "mongo": Dialect.ANSI,
+    "mysql": Dialect.MYSQL,
+    "oracle": Dialect.ORACLE,
+    "postgres": Dialect.POSTGRES,
+    "redshift": Dialect.REDSHIFT,
+    "snowflake": Dialect.SNOWFLAKE,
+    "sparksql": Dialect.SPARKSQL,
+    "sqlite": Dialect.SQLITE,
+    "sqlserver": Dialect.TSQL,
+    "starrocks": Dialect.MYSQL,
+    "trino": Dialect.TRINO,
+    "vertica": Dialect.VERTICA,
+}
+
+_OPTIONAL_BLOCK_RE = re.compile(r"\[\[.*?\]\]", re.DOTALL)
+
 
 class MetabaseSource(DashboardServiceSource):
     """
@@ -94,6 +119,23 @@ class MetabaseSource(DashboardServiceSource):
         self.charts_dict: Dict[str] = {}  # noqa: UP006
         self.orphan_charts_id: List[str] = []  # noqa: UP006
         self._default_dashboard_added = False
+
+    @staticmethod
+    def _strip_optional_blocks(query: str) -> str:
+        """Remove Metabase [[...]] optional clause blocks from a query.
+
+        Metabase uses [[...]] to denote optional clauses that are only included
+        when the enclosed variable has a value. These brackets are not valid SQL
+        and must be removed before passing the query to any SQL parser.
+        """
+        return _OPTIONAL_BLOCK_RE.sub("", query)
+
+    @staticmethod
+    def _dialect_from_engine(engine: Optional[str]) -> Optional[Dialect]:  # noqa: UP045
+        """Map a Metabase database engine name to a sqllineage Dialect."""
+        if engine is None:
+            return None
+        return _METABASE_ENGINE_DIALECT.get(engine.lower())
 
     def prepare(self):
         self.collections = self.client.get_collections_list()
@@ -371,7 +413,7 @@ class MetabaseSource(DashboardServiceSource):
             and chart_details.dataset_query.native
             and chart_details.dataset_query.native.query
         ):
-            query = chart_details.dataset_query.native.query
+            query = self._strip_optional_blocks(chart_details.dataset_query.native.query)
 
         if query is None:
             return
@@ -380,9 +422,14 @@ class MetabaseSource(DashboardServiceSource):
 
         db_service = self._get_database_service(prefix_service_name)
 
+        if db_service:
+            dialect = ConnectionTypeDialectMapper.dialect_of(db_service.serviceType.value)
+        else:
+            dialect = self._dialect_from_engine(database.engine if database else None) or Dialect.ANSI
+
         lineage_parser = LineageParser(
             query,
-            (ConnectionTypeDialectMapper.dialect_of(db_service.serviceType.value) if db_service else Dialect.ANSI),
+            dialect,
             parser_type=self.get_query_parser_type(),
         )
         query_hash = lineage_parser.query_hash
