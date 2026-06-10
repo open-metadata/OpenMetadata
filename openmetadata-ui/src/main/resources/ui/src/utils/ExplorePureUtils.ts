@@ -409,11 +409,27 @@ export const isElasticsearchError = (error: unknown): boolean => {
   );
 };
 
+const isBrowsePathField = (
+  field: unknown
+): field is ExploreQuickFilterField => {
+  const record =
+    field && typeof field === 'object'
+      ? (field as Record<string, unknown>)
+      : undefined;
+
+  return (
+    typeof record?.key === 'string' &&
+    (record.value === undefined || Array.isArray(record.value))
+  );
+};
+
 /**
  * The browse location selected in the explore tree, kept in its own
  * `browsePath` URL param (ordered ExploreQuickFilterField[] — category,
  * serviceType, service, database, schema). It ANDs with the dropdown
  * `quickFilter`, so browsing never clears filters and vice versa.
+ * The param is untrusted URL input — malformed elements are dropped so
+ * crafted/legacy deep links degrade to an empty browse path.
  */
 export const parseBrowsePathFields = (
   browsePath?: unknown
@@ -421,9 +437,9 @@ export const parseBrowsePathFields = (
   let result: ExploreQuickFilterField[] = [];
   if (isString(browsePath) && !isEmpty(browsePath)) {
     try {
-      const parsed = JSON.parse(browsePath);
+      const parsed: unknown = JSON.parse(browsePath);
       if (Array.isArray(parsed)) {
-        result = parsed as ExploreQuickFilterField[];
+        result = parsed.filter(isBrowsePathField);
       }
     } catch {
       result = [];

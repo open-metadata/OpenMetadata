@@ -535,6 +535,7 @@ test('certification union shows assets certified with either level', async ({
       goldKey,
       goldCertification.responseData.name
     );
+    await page.keyboard.press('Escape');
 
     await searchAndExpectEntityVisible(page, tierOneTable);
     await searchAndExpectEntityVisible(page, tierTwoTopic);

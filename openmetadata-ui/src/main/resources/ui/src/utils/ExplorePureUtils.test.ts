@@ -167,6 +167,28 @@ describe('parseBrowsePathFields', () => {
       browseFields
     );
   });
+
+  it('drops malformed elements from a crafted browsePath param', () => {
+    expect(parseBrowsePathFields('[1,2,3]')).toEqual([]);
+    expect(parseBrowsePathFields('[{}]')).toEqual([]);
+    expect(parseBrowsePathFields('[null]')).toEqual([]);
+    expect(
+      parseBrowsePathFields('[{"key":"serviceType","value":"not-an-array"}]')
+    ).toEqual([]);
+  });
+
+  it('keeps well-formed fields while dropping garbage siblings', () => {
+    const valid = {
+      key: 'serviceType',
+      label: 'serviceType',
+      value: [{ key: 'Mysql', label: 'Mysql' }],
+    };
+    const noValue = { key: 'entityType' };
+
+    expect(
+      parseBrowsePathFields(JSON.stringify([valid, 42, {}, noValue]))
+    ).toEqual([valid, noValue]);
+  });
 });
 
 describe('getBrowsePathQueryFilter', () => {
