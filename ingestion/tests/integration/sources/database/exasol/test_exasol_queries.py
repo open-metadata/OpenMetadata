@@ -17,8 +17,6 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
 from metadata.ingestion.source.database.exasol.queries import (
-    EXASOL_GET_COLUMN_COMMENTS,
-    EXASOL_GET_TABLE_COMMENTS,
     EXASOL_SQL_STATEMENT,
     EXASOL_SYSTEM_METRICS_QUERY,
     EXASOL_TEST_GET_QUERIES,
@@ -139,51 +137,6 @@ class TestExasolQueries:
     def teardown_class(cls):
         cls.engine.dispose()
         subprocess.run(["docker", "kill", CONTAINER_NAME], check=True, encoding="utf-8")
-
-    def test_get_table_comments_query(self):
-        table_comment = "OpenMetadata Exasol query integration table"
-        with self.engine.begin() as connection:
-            connection.execute(text(f"COMMENT ON TABLE {SCHEMA_NAME}.{TABLE_NAME} IS '{table_comment}'"))
-
-        with self.engine.connect() as connection:
-            rows = connection.execute(text(EXASOL_GET_TABLE_COMMENTS)).mappings().all()
-
-        table_rows = [row for row in rows if row["schema"] == SCHEMA_NAME and row["table_name"] == TABLE_NAME]
-        assert table_rows == [
-            {
-                "schema": SCHEMA_NAME,
-                "table_name": TABLE_NAME,
-                "table_comment": table_comment,
-            }
-        ]
-
-    def test_get_column_comments_query(self):
-        column_comment = "OpenMetadata Exasol query integration column"
-        with self.engine.begin() as connection:
-            connection.execute(text(f"COMMENT ON COLUMN {SCHEMA_NAME}.{TABLE_NAME}.col_boolean IS '{column_comment}'"))
-
-        with self.engine.connect() as connection:
-            rows = (
-                connection.execute(
-                    text(EXASOL_GET_COLUMN_COMMENTS),
-                    {
-                        "schema": SCHEMA_NAME,
-                        "table_name": TABLE_NAME,
-                    },
-                )
-                .mappings()
-                .all()
-            )
-
-        column_rows = [row for row in rows if row["column_name"] == "COL_BOOLEAN"]
-        assert column_rows == [
-            {
-                "schema": SCHEMA_NAME,
-                "table_name": TABLE_NAME,
-                "column_name": "COL_BOOLEAN",
-                "comment": column_comment,
-            }
-        ]
 
     def test_connection_test_get_queries(self):
         query = EXASOL_TEST_GET_QUERIES

@@ -36,30 +36,6 @@ EXASOL_TEST_GET_QUERIES = textwrap.dedent(
     """
 )
 
-EXASOL_GET_TABLE_COMMENTS = textwrap.dedent(
-    """
-    SELECT
-      root_name AS "schema",
-      object_name AS "table_name",
-      object_comment AS "table_comment"
-    FROM EXA_ALL_OBJECTS
-    WHERE object_type IN ('TABLE', 'VIEW')
-"""
-)
-
-EXASOL_GET_COLUMN_COMMENTS = textwrap.dedent(
-    """
-    SELECT
-      column_schema AS "schema",
-      column_table AS "table_name",
-      column_name AS "column_name",
-      column_comment AS "comment"
-    FROM EXA_ALL_COLUMNS
-    WHERE column_schema = :schema
-      AND column_table = :table_name
-"""
-)
-
 EXASOL_SYSTEM_METRICS_QUERY = textwrap.dedent(
     """
     SELECT
