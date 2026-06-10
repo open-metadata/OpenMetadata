@@ -101,23 +101,60 @@ public class IndexMappingVersionTracker {
     return state;
   }
 
-  public void updateMappingVersions() throws IOException {
-    stamp(computeCurrentMappings());
+  /**
+   * Returns {@code true} when the indexes were last built at a different major/minor release than
+   * the version currently running. A patch-level bump (e.g. {@code 1.12.8 -> 1.12.9}) returns
+   * {@code false} so smart reindexing only touches changed mappings, whereas a major/minor bump
+   * (e.g. {@code 1.12.8 -> 1.13.0} or {@code 1.12.8 -> 2.0.0}) returns {@code true} so every index
+   * is recreated and fully reindexed. A fresh install with no stored versions returns
+   * {@code false} because every mapping is already reported as changed.
+   */
+  public boolean requiresFullReindexForVersionUpgrade() {
+    String previousVersion = findStoredVersionWithDifferentMajorMinor();
+    boolean requiresFullReindex = previousVersion != null;
+    if (requiresFullReindex) {
+      LOG.info(
+          "Index mapping version change {} -> {} crosses a major/minor release - full reindex required",
+          previousVersion,
+          version);
+    }
+    return requiresFullReindex;
   }
 
-  public void updateMappingVersions(Collection<String> entityTypes) throws IOException {
-    Map<String, MappingEntry> currentMappings = computeCurrentMappings();
-    Map<String, MappingEntry> subset = new HashMap<>();
-    for (String entityType : entityTypes) {
-      MappingEntry mappingEntry = currentMappings.get(entityType);
-      if (mappingEntry != null) {
-        subset.put(entityType, mappingEntry);
+  private String findStoredVersionWithDifferentMajorMinor() {
+    String currentMajorMinor = VersionUtils.getMajorMinorVersion(version);
+    String mismatchedVersion = null;
+    for (String storedVersion : indexMappingVersionDAO.getDistinctMappingVersions()) {
+      if (!currentMajorMinor.equals(VersionUtils.getMajorMinorVersion(storedVersion))) {
+        mismatchedVersion = storedVersion;
       }
     }
-    stamp(subset);
+    return mismatchedVersion;
   }
 
-  private void stamp(Map<String, MappingEntry> mappings) {
+  public void updateMappingVersions() throws IOException {
+    persistMappingVersions(computeCurrentMappings());
+  }
+
+  /**
+   * Persists the version/hash only for the entities that were actually reindexed. Stamping every
+   * entity (as the no-arg overload does) would mask entities that still need a reindex when only a
+   * subset was run - on a later major/minor upgrade those skipped entities would wrongly look
+   * up-to-date and never be recreated.
+   */
+  public void updateMappingVersions(Collection<String> reindexedEntities) throws IOException {
+    Map<String, MappingEntry> currentMappings = computeCurrentMappings();
+    Map<String, MappingEntry> reindexedMappings = new HashMap<>();
+    for (String entityType : reindexedEntities) {
+      MappingEntry mappingEntry = currentMappings.get(entityType);
+      if (mappingEntry != null) {
+        reindexedMappings.put(entityType, mappingEntry);
+      }
+    }
+    persistMappingVersions(reindexedMappings);
+  }
+
+  private void persistMappingVersions(Map<String, MappingEntry> mappings) {
     long updatedAt = System.currentTimeMillis();
     for (Map.Entry<String, MappingEntry> entry : mappings.entrySet()) {
       MappingEntry mappingEntry = entry.getValue();
