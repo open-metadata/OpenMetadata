@@ -57,25 +57,25 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
-  getColumnSorter,
-  getEntityName,
   highlightSearchArrayElement,
   highlightSearchText,
-} from '../../../utils/EntityUtils';
+} from '../../../utils/EntitySearchUtils';
+import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { makeData } from '../../../utils/SearchIndexUtils';
 import { stringToHTML } from '../../../utils/StringUtils';
+import {
+  getHighlightedRowClassName,
+  searchInFields,
+  updateFieldDescription,
+  updateFieldTags,
+} from '../../../utils/TablePureUtils';
 import {
   getAllTags,
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
-import {
-  getHighlightedRowClassName,
-  getTableExpandableConfig,
-  searchInFields,
-  updateFieldDescription,
-  updateFieldTags,
-} from '../../../utils/TableUtils';
+import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import {
   SearchIndexCellRendered,
   SearchIndexFieldsTableProps,

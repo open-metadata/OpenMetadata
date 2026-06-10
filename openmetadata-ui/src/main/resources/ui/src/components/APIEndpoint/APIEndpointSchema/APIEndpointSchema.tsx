@@ -49,21 +49,22 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
-import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
-import {
-  getAllTags,
-  searchTagInData,
-} from '../../../utils/TableTags/TableTags.utils';
 import {
   fieldExistsByFQN,
   getAllRowKeysByKeyName,
   getHighlightedRowClassName,
-  getTableExpandableConfig,
   updateFieldDescription,
   updateFieldTags,
-} from '../../../utils/TableUtils';
+} from '../../../utils/TablePureUtils';
+import {
+  getAllTags,
+  searchTagInData,
+} from '../../../utils/TableTags/TableTags.utils';
+import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';

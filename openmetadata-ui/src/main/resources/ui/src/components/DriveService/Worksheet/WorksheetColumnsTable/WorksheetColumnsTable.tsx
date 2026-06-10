@@ -37,8 +37,13 @@ import {
   Worksheet,
 } from '../../../../generated/entity/data/worksheet';
 import { TagLabel } from '../../../../generated/type/tagLabel';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { columnFilterIcon } from '../../../../utils/TableColumn.util';
+import {
+  pruneEmptyChildren,
+  updateFieldDescription,
+  updateFieldTags,
+} from '../../../../utils/TablePureUtils';
 import {
   getAllTags,
   searchTagInData,
@@ -46,9 +51,6 @@ import {
 import {
   getTableExpandableConfig,
   prepareConstraintIcon,
-  pruneEmptyChildren,
-  updateFieldDescription,
-  updateFieldTags,
 } from '../../../../utils/TableUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import CopyLinkButton from '../../../common/CopyLinkButton/CopyLinkButton';

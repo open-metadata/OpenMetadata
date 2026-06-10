@@ -46,7 +46,7 @@ import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import {
   extractColumnsFromData,
   findFieldByFQN,
-} from '../../../utils/TableUtils';
+} from '../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';

@@ -140,7 +140,7 @@ jest.mock('../../rest/tableAPI', () => ({
   }),
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('entityName'),
 }));
 

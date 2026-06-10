@@ -32,10 +32,8 @@ import {
   TaskEntityType,
   TaskResolutionType,
 } from '../../../rest/tasksAPI';
-import {
-  getEntityFeedLink,
-  getEntityReferenceListFromEntities,
-} from '../../../utils/EntityUtils';
+import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
+import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
 import { fetchOptions, generateOptions } from '../../../utils/TasksUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 

@@ -46,7 +46,7 @@ jest.mock(
     })
 );
 
-jest.mock('utils/EntityUtils', () => ({
+jest.mock('utils/EntityPureUtils', () => ({
   DRAWER_NAVIGATION_OPTIONS: {
     explore: 'Explore',
     lineage: 'Lineage',

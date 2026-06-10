@@ -38,14 +38,14 @@ import {
   getTableColumnsByFQN,
   searchTableColumnsByFQN,
 } from '../../../../../rest/tableAPI';
-import { getEntityName } from '../../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getTableFQNFromColumnFQN } from '../../../../../utils/FqnUtils';
 import {
   calculatePercentage,
   formatNumberWithComma,
 } from '../../../../../utils/NumberUtils';
 import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
-import { pruneEmptyChildren } from '../../../../../utils/TableUtils';
+import { pruneEmptyChildren } from '../../../../../utils/TablePureUtils';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import NextPrevious from '../../../../common/NextPrevious/NextPrevious';

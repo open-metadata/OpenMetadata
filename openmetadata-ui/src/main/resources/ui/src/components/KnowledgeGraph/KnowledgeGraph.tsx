@@ -67,7 +67,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { downloadEntityGraph, getEntityGraphData } from '../../rest/rdfAPI';
 import { EntityGraphExportFormat } from '../../rest/rdfAPI.interface';
-import { getEntityBreadcrumbs } from '../../utils/EntityUtils';
+import { getEntityBreadcrumbs } from '../../utils/EntityBreadcrumbPureUtils';
 import {
   applyInitialFocus,
   assignRadialPorts,

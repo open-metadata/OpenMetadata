@@ -36,21 +36,19 @@ import {
   searchDataModelColumnsByFQN,
   updateDataModelColumn,
 } from '../../../../../rest/dataModelsAPI';
-import {
-  getColumnSorter,
-  getEntityName,
-} from '../../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
+import { getColumnSorter } from '../../../../../utils/EntitySortUtils';
 import { columnFilterIcon } from '../../../../../utils/TableColumn.util';
+import {
+  getHighlightedRowClassName,
+  pruneEmptyChildren,
+  updateColumnInNestedStructure,
+} from '../../../../../utils/TablePureUtils';
 import {
   getAllTags,
   searchTagInData,
 } from '../../../../../utils/TableTags/TableTags.utils';
-import {
-  getHighlightedRowClassName,
-  getTableExpandableConfig,
-  pruneEmptyChildren,
-  updateColumnInNestedStructure,
-} from '../../../../../utils/TableUtils';
+import { getTableExpandableConfig } from '../../../../../utils/TableUtils';
 import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
 import DisplayName from '../../../../common/DisplayName/DisplayName';
 import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';

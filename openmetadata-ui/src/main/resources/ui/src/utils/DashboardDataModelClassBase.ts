@@ -28,7 +28,7 @@ import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel'
 import { Tab } from '../generated/system/ui/page';
 import { FeedCounts } from '../interface/feed.interface';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
+import { getTabLabelFromId } from './CustomizePage/CustomizePagePureUtils';
 import {
   getDashboardDataModelDetailPageTabs,
   getDashboardDataModelWidgetsFromKey,

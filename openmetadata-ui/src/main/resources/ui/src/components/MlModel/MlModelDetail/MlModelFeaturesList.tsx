@@ -28,7 +28,7 @@ import { MlFeature, Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { TagSource } from '../../../generated/type/schema';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { createTagObject } from '../../../utils/TagsUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';

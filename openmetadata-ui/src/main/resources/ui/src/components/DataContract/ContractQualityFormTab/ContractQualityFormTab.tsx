@@ -38,7 +38,7 @@ import {
   ListTestCaseParamsBySearch,
 } from '../../../rest/testAPI';
 import { ContractTestTypeLabelMap } from '../../../utils/DataContract/DataContractUtils';
-import { generateEntityLink } from '../../../utils/TableUtils';
+import { generateEntityLink } from '../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';

@@ -43,11 +43,8 @@ import { postQuery } from '../../rest/queryAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { getCurrentMillis } from '../../utils/date-time/DateTimeUtils';
-import {
-  getEntityBreadcrumbs,
-  getEntityLabel,
-  getEntityName,
-} from '../../utils/EntityUtils';
+import { getEntityBreadcrumbs } from '../../utils/EntityBreadcrumbPureUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { getField } from '../../utils/formUtils';
 import { getPartialNameFromFQN } from '../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../utils/RouterUtils';

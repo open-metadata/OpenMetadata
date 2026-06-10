@@ -128,6 +128,8 @@ import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+
 const FeedbackApprovalTask = withSuspenseFallback(
   lazy(() => import('../../../../pages/TasksPage/shared/FeedbackApprovalTask'))
 );
@@ -137,8 +139,6 @@ const TaskPayloadSchemaFields = withSuspenseFallback(
     () => import('../../../../pages/TasksPage/shared/TaskPayloadSchemaFields')
   )
 );
-
-import { getEntityName } from '../../../../utils/EntityUtils';
 import { getUserPath } from '../../../../utils/RouterUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
