@@ -96,6 +96,7 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
         'testCaseStatus',
         'testCaseType',
       ]),
+      dataProductFqns: params?.dataProductFqn ? [params.dataProductFqn] : undefined,
       ownerFqn: params?.owner ? JSON.parse(params.owner)?.name : undefined,
       tier: params?.tier ? [params.tier] : undefined,
       entityFQN: params?.tableFqn,
