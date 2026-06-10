@@ -94,6 +94,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -142,10 +143,14 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
@@ -343,6 +348,133 @@ public abstract class EntityRepository<T extends EntityInterface> {
       buildEntityIdCache(
           CacheConfiguration.DEFAULT_ENTITY_CACHE_MAX_SIZE_BYTES,
           CacheConfiguration.DEFAULT_ENTITY_CACHE_TTL_SECONDS);
+
+  // Per-entity write-epoch counters. Writers increment; loaders capture at start and re-check
+  // at end. Mismatch means a write raced the load — loader throws LoaderRaceException so Guava
+  // skips caching its stale return value. Bounded so memory tracks the L1 working set.
+  private static final Cache<Pair<String, UUID>, AtomicLong> WRITE_EPOCH_BY_ID =
+      CacheBuilder.newBuilder().maximumSize(200_000).expireAfterAccess(5, TimeUnit.MINUTES).build();
+
+  private static final Cache<Pair<String, String>, AtomicLong> WRITE_EPOCH_BY_NAME =
+      CacheBuilder.newBuilder().maximumSize(200_000).expireAfterAccess(5, TimeUnit.MINUTES).build();
+
+  private static long readEpochById(Pair<String, UUID> key) {
+    AtomicLong epoch = WRITE_EPOCH_BY_ID.getIfPresent(key);
+    return epoch == null ? 0L : epoch.get();
+  }
+
+  private static long readEpochByName(Pair<String, String> key) {
+    AtomicLong epoch = WRITE_EPOCH_BY_NAME.getIfPresent(key);
+    return epoch == null ? 0L : epoch.get();
+  }
+
+  private static void bumpWriteEpoch(String entityType, UUID id, String fqn) {
+    if (id != null) {
+      try {
+        WRITE_EPOCH_BY_ID
+            .get(new ImmutablePair<>(entityType, id), AtomicLong::new)
+            .incrementAndGet();
+      } catch (ExecutionException e) {
+        LOG.debug("Unexpected epoch-bump failure for type={} id={}", entityType, id, e);
+      }
+    }
+    if (fqn != null) {
+      // findByName quotes the input fqn for quoteFqn entities (Glossary, Team, User, ...) before
+      // the loader records its epoch; writers pass the stored fqn which may differ. Bump both
+      // forms so the loader's read matches one.
+      bumpNameEpoch(cacheNameKey(entityType, fqn), entityType, fqn);
+      String quoted = quoteName(fqn);
+      if (!quoted.equals(fqn)) {
+        bumpNameEpoch(cacheNameKey(entityType, quoted), entityType, quoted);
+      }
+    }
+  }
+
+  private static void bumpNameEpoch(Pair<String, String> key, String entityType, String fqn) {
+    try {
+      WRITE_EPOCH_BY_NAME.get(key, AtomicLong::new).incrementAndGet();
+    } catch (ExecutionException e) {
+      LOG.debug("Unexpected epoch-bump failure for type={} fqn={}", entityType, fqn, e);
+    }
+  }
+
+  static final class LoaderRaceException extends RuntimeException {
+    LoaderRaceException(String message) {
+      super(message);
+    }
+  }
+
+  // Deferred L1 re-eviction. Backstops the nanosecond race where a loader's put lands after the
+  // writer's inline invalidate. Daemon threads.
+  private static final ScheduledExecutorService L1_REPAIR_EXECUTOR =
+      Executors.newScheduledThreadPool(
+          2,
+          r -> {
+            // FQN: org.openmetadata.schema.entity.feed.Thread shadows the simple name here.
+            java.lang.Thread t = new java.lang.Thread(r, "entity-cache-l1-repair");
+            t.setDaemon(true);
+            return t;
+          });
+
+  private static final long L1_REPAIR_DELAY_MS = 500L;
+
+  // Coalescing guard. Without this, bulk writes can enqueue thousands of pending repair tasks
+  // per key (one per write). One pending task per key is sufficient to evict any racing loader's
+  // put — repeated bumps within the delay window collapse to a single eviction.
+  private static final java.util.Set<Object> PENDING_L1_REPAIRS =
+      java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+  private static void scheduleL1Repair(String entityType, UUID id, String fqn, String originalFqn) {
+    if (entityType == null || L1_REPAIR_EXECUTOR.isShutdown()) {
+      return;
+    }
+    // Include fqn so a rename within the delay window gets its own task instead of being
+    // coalesced into a prior task that only knows the old fqn.
+    Object coalesceKey =
+        List.of(entityType, id == null ? "" : id.toString(), fqn == null ? "" : fqn);
+    if (!PENDING_L1_REPAIRS.add(coalesceKey)) {
+      return;
+    }
+    try {
+      L1_REPAIR_EXECUTOR.schedule(
+          () -> {
+            // Clear at task start so a writer arriving during the invalidates re-schedules its
+            // own task and gets the full delay-window backstop.
+            PENDING_L1_REPAIRS.remove(coalesceKey);
+            try {
+              if (id != null) {
+                CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
+              }
+              if (fqn != null) {
+                CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
+              }
+              if (originalFqn != null && !originalFqn.equals(fqn)) {
+                CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, originalFqn));
+              }
+            } catch (RuntimeException e) {
+              LOG.debug(
+                  "Deferred L1 repair failed for type={} id={} fqn={}", entityType, id, fqn, e);
+            }
+          },
+          L1_REPAIR_DELAY_MS,
+          TimeUnit.MILLISECONDS);
+    } catch (RejectedExecutionException e) {
+      PENDING_L1_REPAIRS.remove(coalesceKey);
+      LOG.debug("Failed to schedule L1 repair type={} id={}", entityType, id, e);
+    }
+  }
+
+  public static void shutdownL1RepairExecutor() {
+    L1_REPAIR_EXECUTOR.shutdown();
+    try {
+      if (!L1_REPAIR_EXECUTOR.awaitTermination(2, TimeUnit.SECONDS)) {
+        L1_REPAIR_EXECUTOR.shutdownNow();
+      }
+    } catch (InterruptedException e) {
+      java.lang.Thread.currentThread().interrupt();
+      L1_REPAIR_EXECUTOR.shutdownNow();
+    }
+  }
 
   /**
    * Canonical {@link #CACHE_WITH_NAME} key. User FQNs are lowercased at the DB layer
@@ -1513,6 +1645,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
         try (var ignored = phase("cacheGet")) {
           cachedJson = CACHE_WITH_ID.get(cacheKey);
         }
+      } else if (include == NON_DELETED
+          && notFoundCache != null
+          && readEpochById(cacheKey) != 0L
+          && notFoundCache.isMarkedNotFoundById(entityType, id)) {
+        // Stale L1 from a racing loader after a delete — marker says gone, evict and 404.
+        // Epoch gate skips the Redis GET on keys no writer has touched.
+        CACHE_WITH_ID.invalidate(cacheKey);
+        throw new EntityNotFoundException(entityNotFound(entityType, id));
       }
       T entity;
       try (var ignored = phase("cacheCopy")) {
@@ -1543,6 +1683,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // the caller. We only populate the negative cache on EntityNotFoundException; other
       // causes are rethrown unchanged.
       Throwable cause = e.getCause();
+      if (cause instanceof LoaderRaceException) {
+        return find(id, include, false);
+      }
       if (cause instanceof EntityNotFoundException notFound) {
         if (include == NON_DELETED && notFoundCache != null) {
           notFoundCache.markNotFoundById(entityType, id);
@@ -2096,9 +2239,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (!fromCache) {
       // Explicit cache bypass — checking the negative cache before the DB still saves the
       // DB hit on a known-missing entity. (Same reasoning as find(UUID, …).)
+      String bypassCanonicalFqn = cacheNameKey(entityType, fqn).getRight();
       if (include == NON_DELETED
           && notFoundCache != null
-          && notFoundCache.isMarkedNotFoundByName(entityType, fqn)) {
+          && notFoundCache.isMarkedNotFoundByName(entityType, bypassCanonicalFqn)) {
         throw new EntityNotFoundException(entityNotFound(entityType, fqn));
       }
       CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
@@ -2108,7 +2252,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       if (entity == null) {
         if (include == NON_DELETED && notFoundCache != null) {
-          notFoundCache.markNotFoundByName(entityType, fqn);
+          notFoundCache.markNotFoundByName(entityType, bypassCanonicalFqn);
         }
         throw new EntityNotFoundException(entityNotFound(entityType, fqn));
       }
@@ -2122,16 +2266,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Hot path — L1 Guava first, NotFoundCache only on L1 miss. Same shape as find(UUID,…).
     try {
       Pair<String, String> cacheKey = cacheNameKey(entityType, fqn);
+      // cacheNameKey lowercases USER FQNs; use the canonical form on both marker reads and
+      // writes so mixed-case lookups observe markers set by canonical-form writes.
+      String canonicalFqn = cacheKey.getRight();
       String cachedJson = CACHE_WITH_NAME.getIfPresent(cacheKey);
       if (cachedJson == null) {
         if (include == NON_DELETED
             && notFoundCache != null
-            && notFoundCache.isMarkedNotFoundByName(entityType, fqn)) {
+            && notFoundCache.isMarkedNotFoundByName(entityType, canonicalFqn)) {
           throw new EntityNotFoundException(entityNotFound(entityType, fqn));
         }
         try (var ignored = phase("cacheGet")) {
           cachedJson = CACHE_WITH_NAME.get(cacheKey);
         }
+      } else if (include == NON_DELETED
+          && notFoundCache != null
+          && readEpochByName(cacheKey) != 0L
+          && notFoundCache.isMarkedNotFoundByName(entityType, canonicalFqn)) {
+        // Stale L1 from a racing loader after a delete — marker says gone, evict and 404.
+        CACHE_WITH_NAME.invalidate(cacheKey);
+        throw new EntityNotFoundException(entityNotFound(entityType, fqn));
       }
       T entity;
       try (var ignored = phase("cacheCopy")) {
@@ -2143,13 +2297,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       return entity;
     } catch (ExecutionException | UncheckedExecutionException e) {
-      // Only negative-cache when the cause is genuinely "entity doesn't exist". Transient
-      // failures (DB timeout, deserialization error) must not poison the cache for 30s and
-      // must not be masked as 404s — same reasoning as the find(UUID, …) path above.
       Throwable cause = e.getCause();
+      if (cause instanceof LoaderRaceException) {
+        return findByName(fqn, include, false);
+      }
       if (cause instanceof EntityNotFoundException notFound) {
         if (include == NON_DELETED && notFoundCache != null) {
-          notFoundCache.markNotFoundByName(entityType, fqn);
+          notFoundCache.markNotFoundByName(entityType, cacheNameKey(entityType, fqn).getRight());
         }
         throw notFound;
       }
@@ -2382,14 +2536,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * The id is always unique, which helps to avoid pagination issues caused by duplicate names and have unique ordering.
    */
   public String getCursorValue(T entity) {
-    Map<String, String> cursorMap =
-        Map.of("name", entity.getName(), "id", String.valueOf(entity.getId()));
+    return getCursorValue(entity.getName(), String.valueOf(entity.getId()));
+  }
+
+  protected String getCursorValue(String name, String id) {
+    Map<String, String> cursorMap = Map.of("name", name, "id", id);
     return JsonUtils.pojoToJson(cursorMap);
   }
 
   public String getCursorAtOffset(ListFilter filter, int offset) {
-    List<String> jsons = dao.listAfter(filter, 1, offset);
-    if (jsons.isEmpty()) {
+    EntityDAO.CursorRow row = dao.getCursorAtOffset(filter, offset);
+    if (row == null) {
       LOG.debug(
           "getCursorAtOffset for {} at offset {} returned empty (filter condition={})",
           entityType,
@@ -2397,8 +2554,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           filter.getCondition(dao.getTableName()));
       return null;
     }
-    T entity = JsonUtils.readValue(jsons.get(0), entityClass);
-    return RestUtil.encodeCursor(getCursorValue(entity));
+    return RestUtil.encodeCursor(getCursorValue(row.name(), row.id()));
   }
 
   public final T getVersion(UUID id, String version) {
@@ -3128,9 +3284,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (entityType == null || id == null) {
       return;
     }
-    // Guava L1 always cleared inline — it is a local map eviction, not a network round trip, and
-    // the rare uncached read path may have populated it even for UNCACHED_ENTITY_TYPES.
+    bumpWriteEpoch(entityType, id, fqn);
+    // Guava L1 always cleared inline — local map eviction, not a network round trip.
     CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
+    scheduleL1Repair(entityType, id, fqn, null);
     if (fqn != null) {
       CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
     }
@@ -4611,11 +4768,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   void invalidate(T entity) {
+    bumpWriteEpoch(entityType, entity.getId(), entity.getFullyQualifiedName());
     CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));
     CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, entity.getFullyQualifiedName()));
     RequestEntityCache.invalidate(entityType, entity.getId(), entity.getFullyQualifiedName());
-
-    // Also invalidate Redis cache
+    scheduleL1Repair(entityType, entity.getId(), entity.getFullyQualifiedName(), null);
     invalidateCache(entity);
   }
 
@@ -9849,6 +10006,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       UUID id = updated.getId();
       String fqn = updated.getFullyQualifiedName();
 
+      // Bump the write-epoch BEFORE invalidating so any in-flight loader sees the new epoch
+      // when it does its end-of-load check. Pair with the loader-side race guard in
+      // EntityLoaderWithId / EntityLoaderWithName. Cheap (per-entity AtomicLong increment).
+      bumpWriteEpoch(entityType, id, fqn);
+      if (originalFqn != null && !originalFqn.equals(fqn)) {
+        bumpWriteEpoch(entityType, null, originalFqn);
+      }
+
       // Evict the Guava L1 so future reads reload from Redis/DB.
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
       CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
@@ -9896,6 +10061,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // so the next GET on this instance can't race an in-flight async repopulate.
       EntityRepository.this.writeThroughCache(updated, true);
       RequestEntityCache.invalidate(entityType, id, fqn);
+
+      scheduleL1Repair(entityType, id, fqn, originalFqn);
 
       var pubsub = CacheBundle.getCacheInvalidationPubSub();
       if (pubsub != null) {
@@ -10230,6 +10397,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
   static class EntityLoaderWithName extends CacheLoader<Pair<String, String>, String> {
     @Override
     public @NonNull String load(@NotNull Pair<String, String> fqnPair) {
+      // Race guard — epoch mismatch means a writer ran during the load; throw so Guava skips
+      // caching the now-stale value and find() re-reads via the bypass path.
+      long startEpoch = readEpochByName(fqnPair);
+      String json = loadInternal(fqnPair);
+      if (readEpochByName(fqnPair) != startEpoch) {
+        throw new LoaderRaceException("Concurrent write during loadByName: " + fqnPair);
+      }
+      return json;
+    }
+
+    @NonNull
+    private String loadInternal(@NotNull Pair<String, String> fqnPair) {
       String entityType = fqnPair.getLeft();
       String fqn = fqnPair.getRight();
       EntityRepository<? extends EntityInterface> repository =
@@ -10320,6 +10499,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
   static class EntityLoaderWithId extends CacheLoader<Pair<String, UUID>, String> {
     @Override
     public @NonNull String load(@NotNull Pair<String, UUID> idPair) {
+      // See EntityLoaderWithName.load for the race-guard rationale.
+      long startEpoch = readEpochById(idPair);
+      String json = loadInternal(idPair);
+      if (readEpochById(idPair) != startEpoch) {
+        throw new LoaderRaceException("Concurrent write during loadById: " + idPair);
+      }
+      return json;
+    }
+
+    @NonNull
+    private String loadInternal(@NotNull Pair<String, UUID> idPair) {
       String entityType = idPair.getLeft();
       UUID id = idPair.getRight();
       EntityRepository<? extends EntityInterface> repository =
