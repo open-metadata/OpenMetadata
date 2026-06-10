@@ -13,8 +13,9 @@ Test athena source
 """
 
 import unittest
+from copy import deepcopy
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 from uuid import UUID
 
 from pydantic import AnyUrl
@@ -276,6 +277,14 @@ mock_athena_config = {
     },
 }
 
+S3_TABLES_CATALOG_ID = "s3tablescatalog/my-bucket"
+
+
+def _athena_config_with_catalog_id(catalog_id):
+    config = deepcopy(mock_athena_config)
+    config["source"]["serviceConnection"]["config"]["catalogId"] = catalog_id
+    return config
+
 
 class TestAthenaService(unittest.TestCase):
     @patch(
@@ -427,3 +436,81 @@ class TestAthenaUsageYieldTableQueries:
         assert len(results) == 1
         assert len(results[0].queries) == 1
         assert results[0].queries[0].endTime == SUBMISSION_DT.isoformat(" ", "seconds")
+
+
+def _make_source_with_glue(config, table_list):
+    """Build an AthenaSource from config and attach a Glue client whose
+    get_tables paginator yields a single page with the given TableList."""
+    workflow_config = OpenMetadataWorkflowConfig.model_validate(config)
+    with patch(
+        "metadata.ingestion.source.database.database_service.DatabaseServiceSource.test_connection",
+        return_value=False,
+    ):
+        source = AthenaSource.create(
+            config["source"],
+            workflow_config.workflowConfig.openMetadataServerConfig,
+        )
+    mock_paginator = MagicMock()
+    mock_paginator.paginate.return_value = [{"TableList": table_list}]
+    mock_glue_client = MagicMock()
+    mock_glue_client.get_paginator.return_value = mock_paginator
+    source.glue_client = mock_glue_client
+    return source, mock_paginator
+
+
+class TestQueryTableNamesAndTypesCatalogId:
+    """get_tables enumeration must target the configured catalogId.
+
+    Regression coverage for S3 Tables / cross-account Glue catalogs, where
+    omitting CatalogId queries the default catalog and returns 0 tables.
+    """
+
+    def test_catalog_id_passed_to_paginate_when_configured(self):
+        config = _athena_config_with_catalog_id(S3_TABLES_CATALOG_ID)
+        source, mock_paginator = _make_source_with_glue(config, [{"Name": MOCK_TABLE_NAME, "Parameters": {}}])
+
+        result = source.query_table_names_and_types(MOCK_DATABASE_SCHEMA.name.root)
+
+        assert result == EXPECTED_QUERY_TABLE_NAMES_TYPES
+        mock_paginator.paginate.assert_called_once_with(
+            DatabaseName=MOCK_DATABASE_SCHEMA.name.root,
+            CatalogId=S3_TABLES_CATALOG_ID,
+        )
+
+    def test_catalog_id_omitted_when_not_configured(self):
+        source, mock_paginator = _make_source_with_glue(
+            deepcopy(mock_athena_config), [{"Name": MOCK_TABLE_NAME, "Parameters": {}}]
+        )
+
+        result = source.query_table_names_and_types(MOCK_DATABASE_SCHEMA.name.root)
+
+        assert result == EXPECTED_QUERY_TABLE_NAMES_TYPES
+        mock_paginator.paginate.assert_called_once_with(DatabaseName=MOCK_DATABASE_SCHEMA.name.root)
+        assert "CatalogId" not in mock_paginator.paginate.call_args.kwargs
+
+    def test_empty_table_list_returns_empty_without_inspector_fallback(self):
+        """A successful Glue call with an empty TableList is returned as-is;
+        the inspector fallback only fires on exception or missing Glue client."""
+        config = _athena_config_with_catalog_id(S3_TABLES_CATALOG_ID)
+        source, _ = _make_source_with_glue(config, [])
+        mock_inspector = MagicMock()
+
+        with patch.object(type(source), "inspector", new_callable=PropertyMock, return_value=mock_inspector):
+            result = source.query_table_names_and_types(MOCK_DATABASE_SCHEMA.name.root)
+
+        assert result == []
+        mock_inspector.get_table_names.assert_not_called()
+
+    def test_falls_back_to_inspector_when_glue_call_raises(self):
+        config = _athena_config_with_catalog_id(S3_TABLES_CATALOG_ID)
+        source, mock_paginator = _make_source_with_glue(config, [])
+        mock_paginator.paginate.side_effect = Exception("AccessDenied")
+        mock_inspector = MagicMock()
+        mock_inspector.get_table_names.return_value = [MOCK_TABLE_NAME]
+
+        with patch.object(type(source), "inspector", new_callable=PropertyMock, return_value=mock_inspector):
+            result = source.query_table_names_and_types(MOCK_DATABASE_SCHEMA.name.root)
+
+        assert result == EXPECTED_QUERY_TABLE_NAMES_TYPES
+        mock_inspector.get_table_names.assert_called_once_with(MOCK_DATABASE_SCHEMA.name.root)
+
