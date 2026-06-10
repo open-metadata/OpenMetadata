@@ -120,38 +120,36 @@ setup('authenticate all users', async ({ browser }) => {
     // (the authenticationConfiguration settings row is seeded once and never reconciled),
     // so the per-user session cap stays at the default of 5. That evicts the long-lived
     // storageState session and causes 401 "Invalid session" on reused bearer tokens.
-    // Raise it at runtime via the security-config PATCH endpoint as a temporary workaround.
+    // Raise it at runtime via the security-config endpoint as a temporary workaround.
+    // Uses GET + PUT (not PATCH): PATCH /security/config runs a validator that rejects
+    // the basic-auth provider, whereas PUT persists + reloads without it. The unused
+    // oidc/ldap/saml blocks are nulled before the PUT because their empty stubs would
+    // otherwise fail bean validation (@NotNull fields) and GET masks their secrets,
+    // which PUT would then persist. Guarded to provider === 'basic'.
     // https://github.com/open-metadata/openmetadata-collate/issues/4484
     const securityConfigResponse = await apiContext.get(
       '/api/v1/system/security/config'
     );
-    const existingMaxSessions = securityConfigResponse.ok()
-      ? (await securityConfigResponse.json())?.authenticationConfiguration
-          ?.maxActiveSessionsPerUser
-      : undefined;
-
-    if (existingMaxSessions !== 1000) {
-      const op =
-        existingMaxSessions === undefined || existingMaxSessions === null
-          ? 'add'
-          : 'replace';
-      const patchResponse = await apiContext.patch(
-        '/api/v1/system/security/config',
-        {
-          headers: { 'Content-Type': 'application/json-patch+json' },
-          data: [
-            {
-              op,
-              path: '/authenticationConfiguration/maxActiveSessionsPerUser',
-              value: 1000,
-            },
-          ],
-        }
-      );
-      if (!patchResponse.ok()) {
-        throw new Error(
-          `collate#4484 workaround: failed to raise maxActiveSessionsPerUser - HTTP ${patchResponse.status()} ${await patchResponse.text()}`
+    if (securityConfigResponse.ok()) {
+      const securityConfig = await securityConfigResponse.json();
+      const authConfig = securityConfig?.authenticationConfiguration;
+      if (
+        authConfig?.provider === 'basic' &&
+        authConfig?.maxActiveSessionsPerUser !== 1000
+      ) {
+        authConfig.maxActiveSessionsPerUser = 1000;
+        authConfig.oidcConfiguration = null;
+        authConfig.ldapConfiguration = null;
+        authConfig.samlConfiguration = null;
+        const putResponse = await apiContext.put(
+          '/api/v1/system/security/config',
+          { data: securityConfig }
         );
+        if (!putResponse.ok()) {
+          throw new Error(
+            `collate#4484 workaround: failed to raise maxActiveSessionsPerUser - HTTP ${putResponse.status()} ${await putResponse.text()}`
+          );
+        }
       }
     }
 
