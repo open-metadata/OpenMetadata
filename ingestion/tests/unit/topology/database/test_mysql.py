@@ -17,6 +17,7 @@ from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.storedProcedure import Language
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
@@ -132,6 +133,7 @@ class MysqlUnitTest(TestCase):
                     "schema_name": "test_schema",
                     "definition": "BEGIN SELECT 1; END",
                     "routine_type": "PROCEDURE",
+                    "language": "SQL",
                     "description": "Test stored procedure",
                 }
             ),
@@ -141,6 +143,7 @@ class MysqlUnitTest(TestCase):
                     "schema_name": "test_schema",
                     "definition": "BEGIN RETURN 1; END",
                     "routine_type": "FUNCTION",
+                    "language": "SQL",
                     "description": "Test function",
                 }
             ),
@@ -150,6 +153,7 @@ class MysqlUnitTest(TestCase):
                     "schema_name": "test_schema",
                     "definition": "BEGIN RETURN 1; END",
                     "routine_type": "PROCEDURE",
+                    "language": "SQL",
                     "description": "Test exclude",
                 }
             ),
@@ -176,3 +180,23 @@ class MysqlUnitTest(TestCase):
         self.assertIsInstance(stored_procedures[0], MysqlRoutine)
         self.assertEqual(stored_procedures[0].name, "test_procedure")
         self.assertEqual(stored_procedures[0].routine_type, "PROCEDURE")
+
+    def _yield_language(self, language: str) -> Language:
+        routine = MysqlRoutine(
+            routine_name="proc",
+            schema_name="test_schema",
+            definition="BEGIN SELECT 1; END",
+            routine_type="PROCEDURE",
+            language=language,
+        )
+        request = next(self.mysql_source.yield_stored_procedure(routine)).right
+        return request.storedProcedureCode.language
+
+    def test_yield_stored_procedure_maps_db_reported_language(self):
+        """SQL and EXTERNAL routine bodies map to their respective languages"""
+        self.assertEqual(self._yield_language("SQL"), Language.SQL)
+        self.assertEqual(self._yield_language("EXTERNAL"), Language.External)
+
+    def test_yield_stored_procedure_unknown_language_defaults_to_sql(self):
+        """An unmapped routine body falls back to SQL rather than None"""
+        self.assertEqual(self._yield_language("UNKNOWN_LANG"), Language.SQL)
