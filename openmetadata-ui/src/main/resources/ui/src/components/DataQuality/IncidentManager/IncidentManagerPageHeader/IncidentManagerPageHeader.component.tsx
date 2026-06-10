@@ -40,10 +40,8 @@ import {
   updateTestCaseIncidentById,
 } from '../../../../rest/incidentManagerAPI';
 import { updateTestCaseById } from '../../../../rest/testAPI';
-import {
-  getColumnNameFromEntityLink,
-  getEntityName,
-} from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getCommonExtraInfoForVersionDetails } from '../../../../utils/EntityVersionUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';

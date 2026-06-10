@@ -23,7 +23,7 @@ import { EntityTabs } from '../../enums/entity.enum';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { Tab } from '../../generated/system/ui/uiCustomization';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
-import { getTabLabelFromId } from '../CustomizePage/CustomizePageUtils';
+import { getTabLabelFromId } from '../CustomizePage/CustomizePagePureUtils';
 import {
   DataProductDetailPageTabProps,
   getDataProductDetailTabs,

@@ -78,9 +78,9 @@ import {
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { defaultFieldsWithColumns } from '../../utils/DatasetDetailsUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { mergeEntityStateUpdate } from '../../utils/EntityUpdateUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../utils/EntityUtils';
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
@@ -100,7 +100,7 @@ import {
   getTagsWithoutTier,
   getTierTags,
   updateColumnInNestedStructure,
-} from '../../utils/TableUtils';
+} from '../../utils/TablePureUtils';
 import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';

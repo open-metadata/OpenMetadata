@@ -45,7 +45,7 @@ import { Operation } from '../generated/entity/policies/policy';
 import { PageType } from '../generated/system/ui/page';
 import { FeedCounts } from '../interface/feed.interface';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import { getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
 import { renderIcon } from './IconUtils';
 import {

@@ -19,7 +19,7 @@ import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { CustomMetric } from '../../../generated/entity/data/table';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import Loader from '../../common/Loader/Loader';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import { CustomMetricFormProps } from './CustomMetricForm.interface';
