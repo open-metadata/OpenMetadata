@@ -12,7 +12,6 @@
  */
 
 import { Box } from '@openmetadata/ui-core-components';
-import { Home02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -383,19 +382,11 @@ const ContextCenterDocumentsPage: FC = () => {
       <ContextCenterHeader
         breadcrumbs={[
           {
-            name: '',
-            icon: <Home02 size={14} />,
-            url: contextCenterClassBase.getHomePath(),
-            activeTitle: true,
+            label: t('label.context-center'),
+            href: contextCenterClassBase.getContextCenterPath(),
           },
           {
-            name: t('label.context-center'),
-            url: contextCenterClassBase.getContextCenterPath(),
-          },
-          {
-            activeTitle: true,
-            name: t('label.document-plural'),
-            url: '',
+            label: t('label.document-plural'),
           },
         ]}
         hasPermission={hasCreatePermission}
