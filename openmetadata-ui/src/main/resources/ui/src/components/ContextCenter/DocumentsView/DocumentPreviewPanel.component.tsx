@@ -48,14 +48,13 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
 }) => {
   const { t } = useTranslation();
 
-
   const { folderName, fileName, formattedFileSize } = useMemo(() => {
     return {
       folderName: getEntityName(file.folder),
       fileName: getEntityName(file),
-      formattedFileSize: formatBytes(file.fileSize)
-    }
-  }, [file])
+      formattedFileSize: formatBytes(file.fileSize),
+    };
+  }, [file]);
 
   return (
     <Box
@@ -71,14 +70,14 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
         className="tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:shrink-0"
         gap={3}
         justify="between">
-        <Box align="center" className='tw:max-w-[78%]' gap={2}>
+        <Box align="center" className="tw:max-w-[78%]" gap={2}>
           <FileIcon
             className="tw:size-6 tw:shrink-0"
             theme="light"
             type={file.fileExtension ?? ''}
             variant="default"
           />
-          <div className='tw:min-w-0'>
+          <div className="tw:min-w-0">
             <Typography
               ellipsis
               className="tw:flex-1"

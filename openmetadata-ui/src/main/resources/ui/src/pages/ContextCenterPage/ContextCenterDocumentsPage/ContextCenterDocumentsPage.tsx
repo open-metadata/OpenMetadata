@@ -223,10 +223,14 @@ const ContextCenterDocumentsPage: FC = () => {
       setAllDocuments((prev) =>
         prev.map((d) =>
           d.id === file.id
-            ? ({
+            ? {
                 ...d,
-                folder: { ...d.folder, id: targetFolderId, type: d.folder?.type ?? 'folder' },
-              })
+                folder: {
+                  ...d.folder,
+                  id: targetFolderId,
+                  type: d.folder?.type ?? 'folder',
+                },
+              }
             : d
         )
       );
@@ -321,9 +325,7 @@ const ContextCenterDocumentsPage: FC = () => {
       const filesToMove = allDocuments.filter((d) => selectedIds.has(d.id));
 
       const results = await Promise.allSettled(
-        filesToMove.map((f) =>
-          moveFileToFolder(f.id, targetFolderId)
-        )
+        filesToMove.map((f) => moveFileToFolder(f.id, targetFolderId))
       );
 
       const movedIds = new Set(
@@ -341,7 +343,11 @@ const ContextCenterDocumentsPage: FC = () => {
 
           return {
             ...d,
-            folder: { ...d.folder, id: targetFolderId, type: d.folder?.type ?? 'folder' },
+            folder: {
+              ...d.folder,
+              id: targetFolderId,
+              type: d.folder?.type ?? 'folder',
+            },
           };
         })
       );

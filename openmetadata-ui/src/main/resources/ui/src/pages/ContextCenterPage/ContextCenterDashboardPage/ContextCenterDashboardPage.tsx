@@ -242,9 +242,10 @@ const ContextCenterDashboardPage: FC = () => {
   const documentsRecentItems = useMemo(
     () =>
       documents.map((doc) => {
-        const metaParts = [doc.updatedBy, getRelativeTime(doc.updatedAt)].filter(
-          Boolean
-        );
+        const metaParts = [
+          doc.updatedBy,
+          getRelativeTime(doc.updatedAt),
+        ].filter(Boolean);
 
         return { title: getEntityName(doc), meta: metaParts.join(' · ') };
       }),

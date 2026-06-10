@@ -102,7 +102,10 @@ const FileActions: FC<FileActionsProps> = ({
   const { t } = useTranslation();
   const [isMoving, setIsMoving] = useState(false);
 
-  const availableFolders = useMemo(() => folders.filter((folder) => folder.id !== file.folder?.id), [folders, file]);
+  const availableFolders = useMemo(
+    () => folders.filter((folder) => folder.id !== file.folder?.id),
+    [folders, file]
+  );
 
   const handleMoveToFolder = async (folderId: string) => {
     try {
@@ -342,22 +345,22 @@ const FileRow: FC<FileRowProps> = ({
 }) => {
   const { t } = useTranslation();
 
-
-    const {folderName, fileName, formattedFileSize, relativeTime} = useMemo(()=> {
- return {
-  folderName: getEntityName(file.folder),
-  fileName: getEntityName(file),
-  formattedFileSize: formatBytes(file.fileSize),
-  relativeTime: getShortRelativeTime(file.updatedAt)
- }
-  },[file])
-
+  const { folderName, fileName, formattedFileSize, relativeTime } =
+    useMemo(() => {
+      return {
+        folderName: getEntityName(file.folder),
+        fileName: getEntityName(file),
+        formattedFileSize: formatBytes(file.fileSize),
+        relativeTime: getShortRelativeTime(file.updatedAt),
+      };
+    }, [file]);
 
   return (
     <Box
       align="center"
-      className={`tw:relative tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:cursor-pointer tw:transition-colors tw:duration-100 ${isActive ? 'tw:bg-blue-50' : 'tw:bg-primary hover:tw:bg-gray-25'
-        }`}
+      className={`tw:relative tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:cursor-pointer tw:transition-colors tw:duration-100 ${
+        isActive ? 'tw:bg-blue-50' : 'tw:bg-primary hover:tw:bg-gray-25'
+      }`}
       data-testid={`document-row-${file.id}`}
       gap={4}
       role="button"
@@ -510,7 +513,9 @@ const DocumentsView: FC<DocumentsViewProps> = ({
       )}
       data-testid="documents-view">
       {data.length > 0 || isLoading ? (
-        <Box className="tw:flex-1 tw:min-h-0 tw:overflow-hidden" direction="col">
+        <Box
+          className="tw:flex-1 tw:min-h-0 tw:overflow-hidden"
+          direction="col">
           {!isLoading && (
             <ListHeader
               count={data.length}
@@ -522,7 +527,9 @@ const DocumentsView: FC<DocumentsViewProps> = ({
               onClear={handleClear}
             />
           )}
-          <Box className="tw:flex-1 tw:overflow-y-auto tw:min-h-0" direction="col">
+          <Box
+            className="tw:flex-1 tw:overflow-y-auto tw:min-h-0"
+            direction="col">
             {isLoading ? (
               <DocumentViewLoading />
             ) : (
