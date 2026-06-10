@@ -226,6 +226,71 @@ describe('truncateBrowsePath', () => {
   });
 });
 
+describe('getBrowsePathQueryFilter — OR within a field, AND across fields', () => {
+  it('two tiers in one field become one must clause with two should terms (Tier1 OR Tier2)', () => {
+    const filter = getBrowsePathQueryFilter([
+      {
+        key: 'tier.tagFQN',
+        label: 'tier.tagFQN',
+        value: [
+          { key: 'Tier.Tier1', label: 'Tier.Tier1' },
+          { key: 'Tier.Tier2', label: 'Tier.Tier2' },
+        ],
+      },
+    ]);
+    const must = filter?.query?.bool?.must as Array<{
+      bool: { should: Array<{ term: Record<string, string> }> };
+    }>;
+
+    expect(must).toHaveLength(1);
+    expect(must[0].bool.should).toEqual([
+      { term: { 'tier.tagFQN': 'Tier.Tier1' } },
+      { term: { 'tier.tagFQN': 'Tier.Tier2' } },
+    ]);
+  });
+
+  it('values across two fields become two must clauses (tier AND tag)', () => {
+    const filter = getBrowsePathQueryFilter([
+      {
+        key: 'tier.tagFQN',
+        label: 'tier.tagFQN',
+        value: [
+          { key: 'Tier.Tier1', label: 'Tier.Tier1' },
+          { key: 'Tier.Tier2', label: 'Tier.Tier2' },
+        ],
+      },
+      {
+        key: 'tags.tagFQN',
+        label: 'tags.tagFQN',
+        value: [{ key: 'PII.Sensitive', label: 'PII.Sensitive' }],
+      },
+    ]);
+    const must = filter?.query?.bool?.must as Array<{
+      bool: { should: Array<{ term: Record<string, string> }> };
+    }>;
+
+    expect(must).toHaveLength(2);
+    expect(must[0].bool.should).toHaveLength(2);
+    expect(must[1].bool.should).toEqual([
+      { term: { 'tags.tagFQN': 'PII.Sensitive' } },
+    ]);
+  });
+
+  it('fields without values contribute no must clause', () => {
+    const filter = getBrowsePathQueryFilter([
+      { key: 'tier.tagFQN', label: 'tier.tagFQN', value: [] },
+      {
+        key: 'tags.tagFQN',
+        label: 'tags.tagFQN',
+        value: [{ key: 'PII.Sensitive', label: 'PII.Sensitive' }],
+      },
+    ]);
+    const must = filter?.query?.bool?.must as unknown[];
+
+    expect(must).toHaveLength(1);
+  });
+});
+
 describe('getCanonicalEntityType', () => {
   it('resolves lowercase aggregation keys to the EntityType enum casing', () => {
     expect(getCanonicalEntityType('tablecolumn')).toBe('tableColumn');
