@@ -307,3 +307,35 @@ CREATE TABLE IF NOT EXISTS context_memory (
   UNIQUE (nameHash)
 );
 CREATE INDEX IF NOT EXISTS idx_context_memory_updated_at ON context_memory (updatedAt);
+
+-- Database-backed user session store for multi-pod session management (issue #21971).
+CREATE TABLE IF NOT EXISTS user_session (
+    id character varying(64) GENERATED ALWAYS AS ((json ->> 'id'::text)) STORED NOT NULL,
+    userid character varying(36) GENERATED ALWAYS AS ((json ->> 'userId'::text)) STORED,
+    status character varying(32) GENERATED ALWAYS AS ((json ->> 'status'::text)) STORED NOT NULL,
+    expiresat bigint GENERATED ALWAYS AS (((json ->> 'expiresAt'::text))::bigint) STORED NOT NULL,
+    idleexpiresat bigint GENERATED ALWAYS AS (((json ->> 'idleExpiresAt'::text))::bigint) STORED NOT NULL,
+    updatedat bigint GENERATED ALWAYS AS (((json ->> 'updatedAt'::text))::bigint) STORED NOT NULL,
+    sessiontype character varying(32) GENERATED ALWAYS AS ((json ->> 'type'::text)) STORED,
+    provider character varying(64) GENERATED ALWAYS AS ((json ->> 'provider'::text)) STORED,
+    version bigint GENERATED ALWAYS AS (((json ->> 'version'::text))::bigint) STORED,
+    lastaccessedat bigint GENERATED ALWAYS AS (((json ->> 'lastAccessedAt'::text))::bigint) STORED,
+    refreshleaseuntil bigint GENERATED ALWAYS AS (((json ->> 'refreshLeaseUntil'::text))::bigint) STORED,
+    json jsonb NOT NULL,
+    CONSTRAINT user_session_pkey PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS user_session_user_status_idx ON user_session USING btree (userid, status);
+CREATE INDEX IF NOT EXISTS user_session_expiry_idx ON user_session USING btree (status, expiresat);
+CREATE INDEX IF NOT EXISTS user_session_idle_expiry_idx ON user_session USING btree (status, idleexpiresat);
+CREATE INDEX IF NOT EXISTS user_session_prune_idx ON user_session USING btree (status, updatedat);
+
+-- Per-entity `name` index for entity tables first created in 2.0.0, so the distributed
+-- reindex's `... ORDER BY name, id LIMIT 1 OFFSET :n` cursor query
+-- (EntityRepository.getCursorAtOffset) runs index-only instead of a sort that can exhaust
+-- work_mem on large tables. Added here (not 1.13.1) because these tables are created above
+-- in this same 2.0.0 migration. Idempotent via IF NOT EXISTS.
+CREATE INDEX IF NOT EXISTS task_entity_name_index ON task_entity (name);
+CREATE INDEX IF NOT EXISTS announcement_entity_name_index ON announcement_entity (name);
+CREATE INDEX IF NOT EXISTS drive_folder_name_index ON drive_folder (name);
+CREATE INDEX IF NOT EXISTS asset_entity_name_index ON asset_entity (name);

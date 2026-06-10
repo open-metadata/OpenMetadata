@@ -608,21 +608,14 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         """
         Given an AutomationWorkflow, JSON PATCH the status and response.
         """
+        # mode="json" recursively renders every enum/UUID/datetime to a
+        # JSON-native value (the step-level status, skipReason and diagnosis
+        # included), so json.dumps below never hits a bare enum object.
         result_data: Dict = {  # noqa: UP006
             PatchField.PATH: PatchPath.RESPONSE,
-            PatchField.VALUE: result.model_dump(),
+            PatchField.VALUE: result.model_dump(mode="json"),
             PatchField.OPERATION: PatchOperation.ADD,
         }
-
-        # for deserializing into json convert enum object to string
-        if isinstance(result, ReverseIngestionResponse):
-            # Convert UUID in string
-            data = result_data[PatchField.VALUE]
-            data["serviceId"] = str(data["serviceId"])
-            for operation_result in data["results"]:
-                operation_result["id"] = str(operation_result["id"])
-        else:
-            result_data[PatchField.VALUE]["status"] = result_data[PatchField.VALUE]["status"].value
         status_data: Dict = {  # noqa: UP006
             PatchField.PATH: PatchPath.STATUS,
             PatchField.OPERATION: PatchOperation.ADD,

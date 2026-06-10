@@ -2490,24 +2490,32 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             .queryParam("offset", "0")
             .build();
 
-    String responseJson =
-        client
-            .getHttpClient()
-            .executeForString(
-                HttpMethod.GET, "/v1/dataQuality/testCases/search/list", null, options);
-    TestCaseResource.TestCaseList result =
-        JsonUtils.readValue(responseJson, TestCaseResource.TestCaseList.class);
+    Awaitility.await("test case present in ES-backed search/list with incidentId")
+        .atMost(180, TimeUnit.SECONDS)
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String responseJson =
+                  client
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.GET, "/v1/dataQuality/testCases/search/list", null, options);
+              TestCaseResource.TestCaseList result =
+                  JsonUtils.readValue(responseJson, TestCaseResource.TestCaseList.class);
 
-    TestCase matching =
-        result.getData().stream()
-            .filter(tc -> testCase.getId().equals(tc.getId()))
-            .findFirst()
-            .orElse(null);
+              TestCase matching =
+                  result.getData().stream()
+                      .filter(tc -> testCase.getId().equals(tc.getId()))
+                      .findFirst()
+                      .orElse(null);
 
-    assertNotNull(matching, "Expected created test case in search/list response");
-    assertNotNull(
-        matching.getIncidentId(),
-        "search/list with fields=* must include incidentId even when testCaseResult is present");
+              assertNotNull(matching, "Expected created test case in search/list response");
+              assertNotNull(
+                  matching.getIncidentId(),
+                  "search/list with fields=* must include incidentId even when testCaseResult is"
+                      + " present");
+            });
   }
 
   @Test

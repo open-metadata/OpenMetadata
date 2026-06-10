@@ -356,3 +356,34 @@ CREATE TABLE IF NOT EXISTS context_memory (
   UNIQUE KEY unique_context_memory_name (nameHash),
   INDEX idx_context_memory_updated_at (updatedAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Database-backed user session store for multi-pod session management (issue #21971).
+CREATE TABLE IF NOT EXISTS `user_session` (
+  `id` varchar(64) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.id'))) STORED NOT NULL,
+  `userId` varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.userId'))) STORED,
+  `status` varchar(32) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.status'))) STORED NOT NULL,
+  `expiresAt` bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.expiresAt'))) STORED NOT NULL,
+  `idleExpiresAt` bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.idleExpiresAt'))) STORED NOT NULL,
+  `updatedAt` bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.updatedAt'))) STORED NOT NULL,
+  `sessionType` varchar(32) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.type'))) VIRTUAL,
+  `provider` varchar(64) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.provider'))) VIRTUAL,
+  `version` bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.version'))) VIRTUAL,
+  `lastAccessedAt` bigint unsigned GENERATED ALWAYS AS (nullif(json_unquote(json_extract(`json`,_utf8mb4'$.lastAccessedAt')),'null')) VIRTUAL,
+  `refreshLeaseUntil` bigint unsigned GENERATED ALWAYS AS (nullif(json_unquote(json_extract(`json`,_utf8mb4'$.refreshLeaseUntil')),'null')) VIRTUAL,
+  `json` json NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `user_session_user_status` (`userId`,`status`),
+  KEY `user_session_expiry` (`status`,`expiresAt`),
+  KEY `user_session_idle_expiry` (`status`,`idleExpiresAt`),
+  KEY `user_session_prune` (`status`,`updatedAt`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Per-entity `name` index for entity tables first created in 2.0.0, so the
+-- distributed reindex's `... ORDER BY name, id LIMIT 1 OFFSET :n` cursor query
+-- (EntityRepository.getCursorAtOffset) runs index-only instead of a filesort that
+-- can exhaust sort memory (ER_OUT_OF_SORTMEMORY) on large tables. Added here rather
+-- than in 1.13.1 because these tables are created above, in this same 2.0.0 migration.
+CREATE INDEX task_entity_name_index ON task_entity (name);
+CREATE INDEX announcement_entity_name_index ON announcement_entity (name);
+CREATE INDEX drive_folder_name_index ON drive_folder (name);
+CREATE INDEX asset_entity_name_index ON asset_entity (name);

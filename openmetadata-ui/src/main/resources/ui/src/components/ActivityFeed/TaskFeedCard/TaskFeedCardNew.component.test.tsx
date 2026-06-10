@@ -114,7 +114,7 @@ jest.mock('../../../utils/EntityLink', () => {
   };
 });
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Admin User'),
 }));
 

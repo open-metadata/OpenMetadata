@@ -22,10 +22,7 @@ import {
   mockIngestionListTableProps,
 } from '../../../../../mocks/IngestionListTable.mock';
 import { ENTITY_PERMISSIONS } from '../../../../../mocks/Permissions.mock';
-import {
-  deleteIngestionPipelineById,
-  getRunHistoryForPipeline,
-} from '../../../../../rest/ingestionPipelineAPI';
+import { deleteIngestionPipelineById } from '../../../../../rest/ingestionPipelineAPI';
 import IngestionListTable from './IngestionListTable';
 
 const mockGetEntityPermissionByFqn = jest.fn();
@@ -51,9 +48,6 @@ jest.mock('../../../../../rest/ingestionPipelineAPI', () => ({
   deleteIngestionPipelineById: jest
     .fn()
     .mockImplementation(() => Promise.resolve()),
-  getRunHistoryForPipeline: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve({ data: [] })),
 }));
 
 jest.mock('../../../../../utils/IngestionUtils', () => ({
@@ -324,16 +318,6 @@ describe('Ingestion', () => {
       2,
       'ingestionPipeline',
       mockIngestionData.fullyQualifiedName
-    );
-    expect(getRunHistoryForPipeline).toHaveBeenNthCalledWith(
-      1,
-      mockESIngestionData.fullyQualifiedName,
-      { limit: 5 }
-    );
-    expect(getRunHistoryForPipeline).toHaveBeenNthCalledWith(
-      2,
-      mockIngestionData.fullyQualifiedName,
-      { limit: 5 }
     );
   });
 });
