@@ -1537,6 +1537,215 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
   }
 
   /**
+   * Reproduces #28523: bulk-editing a table that inherits its domain and has a data product in that
+   * same domain must not fail "Data Product Domain Validation". The exported CSV carries no explicit
+   * domain (inherited domains are not exported), so an empty domain column must preserve the
+   * inherited domain for rule evaluation instead of wiping it.
+   */
+  @Test
+  void test_importCsv_tableWithInheritedDomainAndDataProduct_succeeds(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    org.openmetadata.schema.entity.domains.Domain domain =
+        client
+            .domains()
+            .create(
+                new org.openmetadata.schema.api.domains.CreateDomain()
+                    .withName(ns.prefix("inherited_dp_domain"))
+                    .withDomainType(
+                        org.openmetadata.schema.api.domains.CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("Domain inherited by the table under test"));
+
+    CreateDatabase createDb = new CreateDatabase();
+    createDb.setName(ns.prefix("inherited_dp_db"));
+    createDb.setService(service.getFullyQualifiedName());
+    createDb.setDomains(List.of(domain.getFullyQualifiedName()));
+    Database database = client.databases().create(createDb);
+
+    CreateDatabaseSchema createSchema = new CreateDatabaseSchema();
+    createSchema.setName(ns.prefix("inherited_dp_schema"));
+    createSchema.setDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema = createEntity(createSchema);
+
+    org.openmetadata.schema.entity.domains.DataProduct dataProduct =
+        client
+            .dataProducts()
+            .create(
+                new org.openmetadata.schema.api.domains.CreateDataProduct()
+                    .withName(ns.prefix("inherited_dp_product"))
+                    .withDescription("Data product sharing the table's inherited domain")
+                    .withDomains(List.of(domain.getFullyQualifiedName())));
+
+    String tableName = ns.prefix("inherited_dp_table");
+    CreateTable createTable = new CreateTable();
+    createTable.setName(tableName);
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setColumns(
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("id")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.BIGINT)));
+    org.openmetadata.schema.entity.data.Table table = client.tables().create(createTable);
+
+    org.openmetadata.schema.type.api.BulkAssets addAsset =
+        new org.openmetadata.schema.type.api.BulkAssets()
+            .withAssets(List.of(table.getEntityReference()));
+    client
+        .getHttpClient()
+        .execute(
+            org.openmetadata.sdk.network.HttpMethod.PUT,
+            "/v1/dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/add",
+            addAsset,
+            Void.class);
+
+    org.openmetadata.schema.entity.data.Table withDp =
+        client.tables().get(table.getId().toString(), "domains,dataProducts");
+    assertEquals(1, withDp.getDataProducts().size(), "Table should have the data product assigned");
+    assertNotNull(withDp.getDomains());
+    assertTrue(
+        withDp.getDomains().stream().anyMatch(d -> Boolean.TRUE.equals(d.getInherited())),
+        "Table should inherit its domain from the database");
+
+    String csv =
+        "name*,displayName,description,owner,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension\n"
+            + tableName
+            + ",Bulk Edited Table,Edited via bulk edit,,,,,,,,,";
+
+    String dryRunRaw =
+        client.databaseSchemas().importCsv(schema.getFullyQualifiedName(), csv, true, false);
+    CsvImportResult dryRun = JsonUtils.readValue(dryRunRaw, CsvImportResult.class);
+    assertEquals(
+        0,
+        dryRun.getNumberOfRowsFailed(),
+        "Bulk-edit dry run must not fail with an inherited domain: " + dryRunRaw);
+    assertFalse(
+        dryRunRaw.contains("Data Product Domain Validation"),
+        "Inherited domain must satisfy Data Product Domain Validation: " + dryRunRaw);
+
+    String importRaw =
+        client.databaseSchemas().importCsv(schema.getFullyQualifiedName(), csv, false, false);
+    CsvImportResult importResult = JsonUtils.readValue(importRaw, CsvImportResult.class);
+    assertEquals(0, importResult.getNumberOfRowsFailed(), "Bulk edit should pass: " + importRaw);
+
+    org.openmetadata.schema.entity.data.Table afterImport =
+        client.tables().get(table.getId().toString(), "domains");
+    assertTrue(
+        afterImport.getDomains() == null
+            || afterImport.getDomains().stream()
+                .allMatch(d -> Boolean.TRUE.equals(d.getInherited())),
+        "Inherited domain must not be materialized as a direct domain after import");
+    assertEquals("Edited via bulk edit", afterImport.getDescription());
+  }
+
+  /**
+   * Recursive variant of #28523: the recursive dry-run load excludes domains, so an empty domain
+   * column must still preserve the table's inherited domain for "Data Product Domain Validation".
+   * Exports the schema recursively, then forces the table row's domain column empty before re-import.
+   */
+  @Test
+  void test_importCsvRecursive_tableWithInheritedDomainAndDataProduct_succeeds(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    org.openmetadata.schema.entity.domains.Domain domain =
+        client
+            .domains()
+            .create(
+                new org.openmetadata.schema.api.domains.CreateDomain()
+                    .withName(ns.prefix("rec_inherited_domain"))
+                    .withDomainType(
+                        org.openmetadata.schema.api.domains.CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("Domain inherited by the recursive table under test"));
+
+    CreateDatabase createDb = new CreateDatabase();
+    createDb.setName(ns.prefix("rec_inherited_db"));
+    createDb.setService(service.getFullyQualifiedName());
+    createDb.setDomains(List.of(domain.getFullyQualifiedName()));
+    Database database = client.databases().create(createDb);
+
+    CreateDatabaseSchema createSchema = new CreateDatabaseSchema();
+    createSchema.setName(ns.prefix("rec_inherited_schema"));
+    createSchema.setDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema = createEntity(createSchema);
+
+    org.openmetadata.schema.entity.domains.DataProduct dataProduct =
+        client
+            .dataProducts()
+            .create(
+                new org.openmetadata.schema.api.domains.CreateDataProduct()
+                    .withName(ns.prefix("rec_inherited_product"))
+                    .withDescription("Data product sharing the table's inherited domain")
+                    .withDomains(List.of(domain.getFullyQualifiedName())));
+
+    String tableName = ns.prefix("rec_inherited_table");
+    CreateTable createTable = new CreateTable();
+    createTable.setName(tableName);
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setDescription("Initial Table Description");
+    createTable.setColumns(
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("id")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.BIGINT)));
+    org.openmetadata.schema.entity.data.Table table = client.tables().create(createTable);
+
+    org.openmetadata.schema.type.api.BulkAssets addAsset =
+        new org.openmetadata.schema.type.api.BulkAssets()
+            .withAssets(List.of(table.getEntityReference()));
+    client
+        .getHttpClient()
+        .execute(
+            org.openmetadata.sdk.network.HttpMethod.PUT,
+            "/v1/dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/add",
+            addAsset,
+            Void.class);
+
+    String exportedCsv = client.databaseSchemas().exportCsv(schema.getFullyQualifiedName(), true);
+    java.util.List<String> csvLines = java.util.Arrays.asList(exportedCsv.split("\\n"));
+    java.util.List<String> modified = new java.util.ArrayList<>();
+    modified.add(csvLines.get(0));
+    for (String line : csvLines.subList(1, csvLines.size())) {
+      String[] cols = line.split(",", -1);
+      if (cols.length > 12 && "table".equals(cols[12].trim())) {
+        cols[2] = "Recursive Bulk Edited";
+        cols[10] = "";
+        line = String.join(",", cols);
+      }
+      modified.add(line);
+    }
+    String newCsv = String.join("\n", modified) + "\n";
+
+    String dryRunRaw =
+        client.databaseSchemas().importCsv(schema.getFullyQualifiedName(), newCsv, true, true);
+    CsvImportResult dryRun = JsonUtils.readValue(dryRunRaw, CsvImportResult.class);
+    assertEquals(
+        0,
+        dryRun.getNumberOfRowsFailed(),
+        "Recursive bulk-edit dry run must not fail with an inherited domain: " + dryRunRaw);
+    assertFalse(
+        dryRunRaw.contains("Data Product Domain Validation"),
+        "Inherited domain must satisfy Data Product Domain Validation: " + dryRunRaw);
+
+    String importRaw =
+        client.databaseSchemas().importCsv(schema.getFullyQualifiedName(), newCsv, false, true);
+    CsvImportResult importResult = JsonUtils.readValue(importRaw, CsvImportResult.class);
+    assertEquals(
+        0, importResult.getNumberOfRowsFailed(), "Recursive bulk edit should pass: " + importRaw);
+
+    org.openmetadata.schema.entity.data.Table afterImport =
+        client.tables().get(table.getId().toString(), "domains");
+    assertTrue(
+        afterImport.getDomains() == null
+            || afterImport.getDomains().stream()
+                .allMatch(d -> Boolean.TRUE.equals(d.getInherited())),
+        "Inherited domain must not be materialized as a direct domain after recursive import");
+    assertEquals("Recursive Bulk Edited", afterImport.getDescription());
+  }
+
+  /**
    * Test that importing a table with APPROVED glossary terms as tags succeeds.
    */
   @Test
