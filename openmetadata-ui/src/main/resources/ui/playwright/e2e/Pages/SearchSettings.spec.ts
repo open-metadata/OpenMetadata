@@ -372,6 +372,7 @@ test.describe('Search Settings', () => {
         const revertedPreviewResponse = await revertedPreviewPromise;
         expect(revertedPreviewResponse.status()).toBe(200);
 
+        const revertedBody = revertedPreviewResponse.request().postDataJSON();
         const revertedNgramBoost =
           revertedPreviewResponse
             .request()

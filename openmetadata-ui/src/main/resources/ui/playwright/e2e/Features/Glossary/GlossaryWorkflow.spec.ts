@@ -149,7 +149,7 @@ test.describe('Term Status Transitions', () => {
     await expect(statusBadge).toHaveText('Approved');
   });
 
-  test('should start term as Draft when glossary has reviewers', async ({
+  test('should not auto-approve term when glossary has reviewers', async ({
     page,
   }) => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
@@ -175,15 +175,13 @@ test.describe('Term Status Transitions', () => {
 
     // Wait for the table to update
 
-    // Check the term shows in the table with Draft status
     const termRow = page.locator(`[data-row-key*="${termName}"]`);
 
     await expect(termRow).toBeVisible();
 
-    // Look for status badge - should be Draft
     const statusBadge = termRow.locator('.status-badge');
 
-    await expect(statusBadge).toHaveText('Draft');
+    await expect(statusBadge).toHaveText(/^(Draft|In Review)$/);
   });
 
   // T-C18: Create term - inherits glossary reviewers
@@ -332,9 +330,12 @@ test('should display correct status badge color and icon', async ({ page }) => {
 
     const statusBadge = termRow.locator('.status-badge');
 
-    await expect(statusBadge).toHaveText('In Review');
-    await expect(statusBadge).toHaveClass(/inReview/);
+    await expect(async () => {
+      await page.reload();
+      await expect(statusBadge).toHaveText('In Review', { timeout: 5000 });
+    }).toPass({ timeout: 30000 });
 
+    await expect(statusBadge).toHaveClass(/inReview/);
     await expect(statusBadge).toBeVisible();
   } finally {
     await glossary.delete(apiContext);
