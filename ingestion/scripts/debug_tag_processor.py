@@ -52,11 +52,9 @@ import os
 import sys
 from pathlib import Path
 
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
-
 # ---------------------------------------------------------------------------
-# Lazy imports so the script fails fast with a clear message if the package
-# is not installed rather than a confusing ImportError stack trace.
+# Guarded imports: wrap in try/except so a missing package produces a clear
+# actionable message instead of a raw ImportError traceback.
 # ---------------------------------------------------------------------------
 try:
     from metadata.generated.schema.entity.data.table import Column, ColumnName, DataType
@@ -68,6 +66,7 @@ try:
         OpenMetadataJWTClientConfig,
     )
     from metadata.generated.schema.security.ssl import validateSSLClientConfig, verifySSLConfig
+    from metadata.generated.schema.type.basic import FullyQualifiedEntityName
     from metadata.generated.schema.type.classificationLanguages import ClassificationLanguage
     from metadata.ingestion.api.parser import parse_workflow_config_gracefully
     from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
@@ -255,13 +254,14 @@ def main() -> None:
     parser.add_argument("--values-file", dest="values_file", help="File with one value per line")
     parser.add_argument("--values", help="Newline-separated string of values")
     parser.add_argument("--verbose", action="store_true", help="Show scores and reasons")
-    parser.add_argument(
+    ssl_group = parser.add_mutually_exclusive_group()
+    ssl_group.add_argument(
         "--no-ssl-verify",
         action="store_true",
         dest="no_ssl_verify",
         help="Disable SSL entirely (use for plain HTTP endpoints)",
     )
-    parser.add_argument(
+    ssl_group.add_argument(
         "--ca-cert",
         dest="ca_cert",
         default=None,
