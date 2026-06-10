@@ -1062,13 +1062,13 @@ export const editColumnCustomProperty = async (
       await page.keyboard.press('Escape');
     }
   } else if (['date-cp', 'time-cp', 'dateTime-cp'].includes(propertyType)) {
-    // Ant Design Pickers
     const picker = page.getByTestId(
       propertyType === 'time-cp' ? 'time-picker' : 'date-time-picker'
     );
+    await expect(picker).toBeVisible();
     await picker.click();
-    await page.keyboard.type(testValue);
-    await page.keyboard.press('Enter');
+    await picker.fill(testValue);
+    await picker.press('Enter');
   } else if (['string', 'integer', 'number'].includes(propertyType)) {
     const valueInput = page.getByTestId('value-input');
     await expect(valueInput).toBeVisible();

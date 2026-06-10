@@ -110,7 +110,37 @@ function buildDynamicExtensions(opts: UseCodeMirrorOptions): Extension[] {
   }
 
   if (opts.showFoldGutter) {
-    extensions.push(codeFolding(), foldGutter());
+    extensions.push(
+      codeFolding(),
+      foldGutter({
+        markerDOM: (open) => {
+          const span = document.createElement('span');
+          span.style.cssText =
+            'display:inline-flex;align-items:center;justify-content:center;width:12px;height:12px;';
+          const svg = document.createElementNS(
+            'http://www.w3.org/2000/svg',
+            'svg'
+          );
+          svg.setAttribute('width', '8');
+          svg.setAttribute('height', '8');
+          svg.setAttribute('viewBox', '0 0 8 8');
+          svg.style.display = 'block';
+          const path = document.createElementNS(
+            'http://www.w3.org/2000/svg',
+            'path'
+          );
+          path.setAttribute('d', open ? 'M1 2 L4 6 L7 2' : 'M2 1 L6 4 L2 7');
+          path.setAttribute('stroke', 'currentColor');
+          path.setAttribute('stroke-width', '1.5');
+          path.setAttribute('fill', 'none');
+          path.setAttribute('stroke-linecap', 'round');
+          path.setAttribute('stroke-linejoin', 'round');
+          svg.appendChild(path);
+          span.appendChild(svg);
+          return span;
+        },
+      })
+    );
   }
 
   if (opts.styleActiveLine) {
