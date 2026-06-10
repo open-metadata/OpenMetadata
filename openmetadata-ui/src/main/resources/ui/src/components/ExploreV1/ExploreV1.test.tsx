@@ -164,6 +164,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
 jest.mock('@untitledui/icons', () => ({
   ChevronDown: () => <span>ChevronDown</span>,
   Download01: () => <span data-testid="download-01-icon" />,
+  FilterFunnel01: () => <span data-testid="filter-funnel-icon" />,
+  Trash01: () => <span data-testid="trash-icon" />,
+  XCircle: () => <span data-testid="x-circle-icon" />,
+  XClose: () => <span data-testid="x-close-icon" />,
 }));
 
 jest.mock('../../rest/searchAPI', () => ({

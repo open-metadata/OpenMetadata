@@ -446,6 +446,27 @@ describe('Search DropDown Component', () => {
       );
     });
 
+    it('keeps a selected option visible even when missing from fetched options', async () => {
+      // Immediate-apply facets exclude their own field from the aggregation,
+      // so a selected value may fall outside the fetched top-N options.
+      render(
+        <SearchDropdown
+          {...mockProps}
+          immediateApply
+          selectedKeys={[{ key: 'glossaryterm', label: 'glossaryterm' }]}
+        />
+      );
+
+      const container = await screen.findByTestId('search-dropdown-Owner');
+
+      await act(async () => {
+        fireEvent.click(container);
+      });
+
+      expect(await screen.findByTestId('glossaryterm')).toBeInTheDocument();
+      expect(await screen.findByTestId('glossaryterm-checkbox')).toBeChecked();
+    });
+
     it('renders the helper text in immediateApply mode', async () => {
       render(
         <SearchDropdown

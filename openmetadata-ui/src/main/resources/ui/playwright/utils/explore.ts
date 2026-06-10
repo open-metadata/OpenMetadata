@@ -24,6 +24,18 @@ export interface Bucket {
   doc_count: number;
 }
 
+/**
+ * Explore quick filters apply immediately; the Update button only exists in
+ * legacy (non immediate-apply) consumers. Click it when present so shared
+ * flows work in both modes.
+ */
+export const clickUpdateButtonIfVisible = async (page: Page) => {
+  const updateButton = page.getByTestId('update-btn');
+  if (await updateButton.isVisible().catch(() => false)) {
+    await updateButton.click();
+  }
+};
+
 export const searchAndClickOnOption = async (
   page: Page,
   filter: { key: string; label: string; value?: string },

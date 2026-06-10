@@ -16,6 +16,7 @@ import { performAdminLogin } from '../../utils/admin';
 import { clickOutside, redirectToExplorePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
+  clickUpdateButtonIfVisible,
   countCsvResponseRows,
   getExportCountFromModal,
   getExportModalContent,
@@ -215,16 +216,16 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
 
       await page.getByTestId('search-input').fill('sample_data');
       await serviceAggregatePromise;
-      await page.getByTestId('sample_data').click();
-      await expect(page.getByTestId('sample_data-checkbox')).toBeChecked();
-
       const filteredQueryPromise = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
           response.status() === 200
       );
 
-      await page.getByTestId('update-btn').click();
+      await page.getByTestId('sample_data').click();
+      await expect(page.getByTestId('sample_data-checkbox')).toBeChecked();
+
+      await clickUpdateButtonIfVisible(page);
       await filteredQueryPromise;
       await waitForAllLoadersToDisappear(page);
     });

@@ -92,12 +92,17 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
 
   // derive menu props from options and selected keys
   const menuOptions: MenuProps['items'] = useMemo(() => {
-    // Filtering out selected options
-    const selectedOptionsObj = independent
-      ? selectedOptions
-      : options.filter((option) =>
-          selectedOptions.some((selectedOpt) => option.key === selectedOpt.key)
-        );
+    // Filtering out selected options. Immediate-apply facets exclude their
+    // own field from the aggregation, so a selected value may not be in the
+    // fetched options — keep it visible (and uncheckable) regardless.
+    const selectedOptionsObj =
+      independent || immediateApply
+        ? selectedOptions
+        : options.filter((option) =>
+            selectedOptions.some(
+              (selectedOpt) => option.key === selectedOpt.key
+            )
+          );
 
     if (fixedOrderOptions) {
       return options.map((item) => ({
@@ -147,6 +152,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     selectedOptions,
     fixedOrderOptions,
     independent,
+    immediateApply,
     searchText,
     hideCounts,
     singleSelect,
@@ -247,18 +253,10 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     handleDropdownClose();
   };
 
-  // In immediate-apply mode the QUERY bar owns clearing, and small option
-  // sets don't need a search box — matches the compact design menu.
+  // In immediate-apply mode the QUERY bar owns clearing.
   const showClearAllBtn = useMemo(
     () => !singleSelect && selectedOptions.length > 1 && !immediateApply,
     [singleSelect, selectedOptions, immediateApply]
-  );
-
-  const effectiveHideSearchBar = useMemo(
-    () =>
-      hideSearchBar ||
-      (immediateApply && isEmpty(searchText) && options.length <= 8),
-    [hideSearchBar, immediateApply, searchText, options]
   );
 
   useEffect(() => {
@@ -316,7 +314,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
         })}
         data-testid="drop-down-menu">
         <Space className="w-full" direction="vertical" size={0}>
-          {!effectiveHideSearchBar && (
+          {!hideSearchBar && (
             <div className="p-t-sm p-x-sm">
               <Input
                 autoFocus
@@ -345,7 +343,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
               </Button>
             </>
           )}
-          {!effectiveHideSearchBar && (
+          {!hideSearchBar && (
             <Divider
               className={classNames(showClearAllBtn ? 'm-y-0' : 'm-t-xs m-b-0')}
             />

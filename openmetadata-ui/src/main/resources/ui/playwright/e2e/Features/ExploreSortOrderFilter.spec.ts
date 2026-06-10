@@ -16,7 +16,11 @@ import { DATA_ASSETS_SORT } from '../../constant/explore';
 import { SidebarItem } from '../../constant/sidebar';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
-import { selectSortOrder, verifyEntitiesAreSorted } from '../../utils/explore';
+import {
+  clickUpdateButtonIfVisible,
+  selectSortOrder,
+  verifyEntitiesAreSorted,
+} from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.describe(
@@ -52,7 +56,8 @@ test.describe(
           .waitFor({ state: 'visible' });
 
         await page.getByTestId(`${filter.toLowerCase()}-checkbox`).check();
-        await page.getByTestId('update-btn').click();
+        await clickUpdateButtonIfVisible(page);
+        await page.keyboard.press('Escape');
 
         await selectSortOrder(page, 'Name');
         await verifyEntitiesAreSorted(page);
