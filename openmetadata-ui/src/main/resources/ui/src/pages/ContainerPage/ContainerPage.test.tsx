@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -21,7 +21,9 @@ import { Include } from '../../generated/type/include';
 import {
   addContainerFollower,
   getContainerByName,
+  getContainerChildrenByName,
 } from '../../rest/storageAPI';
+import { renderWithQueryClient } from '../../test/unit/test-utils';
 import ContainerPage from './ContainerPage';
 import {
   MOCK_CONTAINER_DATA,
@@ -178,11 +180,27 @@ jest.mock('../../rest/feedsAPI', () => ({
 
 jest.mock('../../rest/storageAPI');
 
-jest.mock('../../utils/CommonUtils', () => ({
-  addToRecentViewed: jest.fn(),
+jest.mock('../../utils/EntityDisplayUtils', () => ({
   getEntityMissingError: jest.fn().mockImplementation(() => <div>Error</div>),
+}));
+jest.mock('../../utils/EntityUtils', () => ({
+  addToRecentViewed: jest.fn(),
+}));
+jest.mock('../../utils/FeedUtils', () => ({
+  fetchEntityActivityCountInto: jest.fn(),
+  fetchEntityTaskCountsInto: jest.fn(),
   getFeedCounts: jest.fn().mockReturnValue(0),
+}));
+jest.mock('../../utils/TagsUtils', () => ({
   sortTagsCaseInsensitive: jest.fn().mockImplementation((tags) => tags),
+}));
+
+jest.mock('../../utils/EntityDisplayUtils', () => ({
+  getEntityMissingError: jest.fn().mockImplementation(() => <div>Error</div>),
+}));
+
+jest.mock('../../utils/RecentActivityUtils', () => ({
+  addToRecentViewed: jest.fn(),
 }));
 
 jest.mock('../../hooks/paging/usePaging', () => ({
@@ -210,7 +228,7 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   getPrioritizedViewPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('../../utils/StringsUtils', () => ({
+jest.mock('../../utils/StringUtils', () => ({
   getDecodedFqn: jest.fn().mockImplementation((fqn) => fqn),
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
   stringToHTML: jest.fn().mockImplementation((str) => str),
@@ -293,6 +311,10 @@ describe('Container Page Component', () => {
       jest.requireMock('../../utils/PermissionsUtils');
     getPrioritizedEditPermission.mockReturnValue(true);
     getPrioritizedViewPermission.mockReturnValue(true);
+    (getContainerChildrenByName as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
   });
 
   it('should show error-placeholder, if not have view permission', async () => {
@@ -307,7 +329,7 @@ describe('Container Page Component', () => {
 
     (getContainerByName as jest.Mock).mockResolvedValue({});
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <ContainerPage />
       </MemoryRouter>
@@ -325,7 +347,7 @@ describe('Container Page Component', () => {
   });
 
   it('fetch container data, if have view permission', async () => {
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <ContainerPage />
       </MemoryRouter>
@@ -367,7 +389,7 @@ describe('Container Page Component', () => {
       'failed to fetch container data'
     ); // For fetch
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <ContainerPage />
       </MemoryRouter>
@@ -387,7 +409,7 @@ describe('Container Page Component', () => {
   it('should render the page container data, with the schema tab selected', async () => {
     (getContainerByName as jest.Mock).mockResolvedValue(MOCK_CONTAINER_DATA);
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <ContainerPage />
       </MemoryRouter>
@@ -436,7 +458,7 @@ describe('Container Page Component', () => {
   it('onClick of follow container should call addContainerFollower', async () => {
     (getContainerByName as jest.Mock).mockResolvedValue(MOCK_CONTAINER_DATA);
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <ContainerPage />
       </MemoryRouter>
@@ -456,7 +478,7 @@ describe('Container Page Component', () => {
   it('tab switch should work', async () => {
     (getContainerByName as jest.Mock).mockResolvedValue(MOCK_CONTAINER_DATA);
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <ContainerPage />
       </MemoryRouter>
@@ -465,7 +487,7 @@ describe('Container Page Component', () => {
     expect(screen.getByText('Loader')).toBeVisible();
 
     const childrenTab = await screen.findByRole('tab', {
-      name: 'label.children',
+      name: 'label.container-plural',
     });
 
     userEvent.click(childrenTab);
@@ -485,7 +507,7 @@ describe('Container Page Component', () => {
       tab: EntityTabs.CHILDREN,
     });
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <ContainerPage />
       </MemoryRouter>
@@ -494,7 +516,7 @@ describe('Container Page Component', () => {
     expect(screen.getByText('Loader')).toBeVisible();
 
     const childrenTab = await screen.findByRole('tab', {
-      name: 'label.children',
+      name: 'label.container-plural',
     });
 
     expect(childrenTab).toHaveAttribute('aria-selected', 'true');
@@ -512,7 +534,7 @@ describe('Container Page Component', () => {
   it('should pass entity name as pageTitle to PageLayoutV1', async () => {
     (getContainerByName as jest.Mock).mockResolvedValue(MOCK_CONTAINER_DATA);
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <ContainerPage />
       </MemoryRouter>

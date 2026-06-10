@@ -210,16 +210,16 @@ def handle_array(query: Query, column: Column, table: Union[type, AliasedClass])
     """
     # pylint: disable=protected-access
     if not hasattr(column, "_is_array"):
-        return query.select_from(table)
+        return query.select_from(table)  # type: ignore
     if column._is_array:
         return query.select_from(
-            table,
+            table,  # type: ignore
             func.unnest(
                 # unnest expects an array. This type is not used anywhere else
                 Column(column._array_col, ARRAY(String))
             ).alias(column._array_col),
         )
-    return query.select_from(table)
+    return query.select_from(table)  # type: ignore
 
 
 def is_array(kwargs: Dict) -> bool:  # noqa: UP006

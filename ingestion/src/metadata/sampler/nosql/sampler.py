@@ -16,9 +16,11 @@ from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.profiler.adaptors.factory import factory
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
+from metadata.sampler.sampler_config import DatabaseSamplerConfig
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.sqa_like_column import SQALikeColumn
+from metadata.utils.ssl_manager import get_ssl_connection
 
 
 class NoSQLSampler(SamplerInterface):
@@ -28,6 +30,9 @@ class NoSQLSampler(SamplerInterface):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        db_config = kwargs.get("config") or DatabaseSamplerConfig()
+        self.connection = get_ssl_connection(self.service_connection_config)
+        self.sample_query: str | None = db_config.sample_query
         self.client = self.get_client()
 
     @property
@@ -81,15 +86,27 @@ class NoSQLSampler(SamplerInterface):
         )
 
     def _get_limit(self) -> Optional[int]:  # noqa: UP045
-        num_rows = self.client.item_count(self.raw_dataset)
-        static = self.sample_config.get_static_config()
+        num_rows = self._row_count if self._row_count is not None else self._get_asset_row_count()
+        static = self._resolve_sample_config
         if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
-            limit = num_rows * (static.profileSample or 100 / 100)
+            limit = num_rows * ((static.profileSample or 100) / 100)
         elif static and static.profileSampleType == ProfileSampleType.ROWS:
             limit = static.profileSample
         else:
             limit = SAMPLE_DATA_DEFAULT_COUNT
         return limit
+
+    def _get_asset_row_count(self) -> int:
+        """Get the total number of rows in the asset.
+
+        Returns:
+            int: The total number of rows in the asset.
+        """
+        self._row_count = self.client.item_count(self.raw_dataset)  # type: ignore
+        if not self._row_count:
+            self._row_count = SAMPLE_DATA_DEFAULT_COUNT
+
+        return self._row_count
 
     @staticmethod
     def transpose_records(

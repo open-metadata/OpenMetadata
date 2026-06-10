@@ -118,8 +118,22 @@ class DefaultSourceLoader(SourceLoader):
         )
 
 
-def import_source_class(service_type: ServiceType, source_type: str, from_: str = "ingestion") -> Type[Source]:  # noqa: UP006
-    source_class_type = source_type.split(TYPE_SEPARATOR)[-1]  # noqa: PLC0207
+def import_source_class(service_type: ServiceType, source_type: str, from_: str = "ingestion") -> type[Source]:
+    """
+    Import the source class for a given service type and source type.
+
+    The source type can follow the format
+    {base_source_type}{TYPE_SEPARATOR}{source_class_type} (for example,
+    ``mysql-usage``), where ``source_class_type`` is one of ``metadata``,
+    ``lineage``, or ``usage``.
+
+    For ``usage`` and ``lineage`` source types, and for all other source
+    types, the class path is resolved from the source ``ServiceSpec`` via the
+    corresponding ``*_source_class`` field.
+    """
+    _, sep, source_class_type = source_type.rpartition(TYPE_SEPARATOR)
+    if not sep:
+        source_class_type = source_type
     if source_class_type in ["usage", "lineage"]:
         field = f"{source_class_type}_source_class"
     else:

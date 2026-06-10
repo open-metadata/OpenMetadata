@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
+import { Alert } from '@openmetadata/ui-core-components';
 import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
@@ -43,22 +44,20 @@ import {
 } from '../../../constants/Services.constant';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
-import {
-  EntityTabs,
-  EntityType,
-  TabSpecificField,
-} from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
-import { Container } from '../../../generated/entity/data/container';
 import {
   ContractExecutionStatus,
   DataContract,
 } from '../../../generated/entity/data/dataContract';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
+import { Operation } from '../../../generated/entity/policies/policy';
+import { EntityReference } from '../../../generated/type/entityReference';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useDataAccessRequest } from '../../../hooks/useDataAccessRequest';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import {
   AnnouncementEntity,
@@ -67,7 +66,7 @@ import {
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
-import { getContainerByName } from '../../../rest/storageAPI';
+import { getContainerAncestors } from '../../../rest/storageAPI';
 import {
   getDataAssetsHeaderInfo,
   isDataAssetsWithServiceField,
@@ -80,11 +79,13 @@ import {
   getEntityName,
   getEntityVoteStatus,
 } from '../../../utils/EntityUtils';
+import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServiceUtils';
 import tableClassBase from '../../../utils/TableClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
+import { getDarButtonTooltip } from '../../../utils/TasksUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Certification from '../../Certification/Certification.component';
@@ -136,6 +137,7 @@ export const DataAssetsHeader = ({
   badge,
   isDqAlertSupported = false,
   isCustomizedView = false,
+  canCreateTask = false,
   disableRunAgentsButton = true,
   afterTriggerAction,
   isAutoPilotWorkflowStatusLoading = false,
@@ -153,7 +155,9 @@ export const DataAssetsHeader = ({
   const { customizedPage } = useCustomPages(
     ENTITY_PAGE_TYPE_MAP[entityType as CustomizeEntityType]
   );
-  const [parentContainers, setParentContainers] = useState<Container[]>([]);
+  const [parentContainers, setParentContainers] = useState<EntityReference[]>(
+    []
+  );
   const [isBreadcrumbLoading, setIsBreadcrumbLoading] = useState(false);
   const [dqFailureCount, setDqFailureCount] = useState(0);
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
@@ -162,6 +166,15 @@ export const DataAssetsHeader = ({
   const { entityRules } = useEntityRules(entityType);
   const [dataContract, setDataContract] = useState<DataContract>();
   const [isRequestDataAccessOpen, setIsRequestDataAccessOpen] = useState(false);
+  const {
+    isDarDisabled,
+    isDarAwaitingGrant,
+    isDarGranted,
+    refetch: refetchExistingDar,
+  } = useDataAccessRequest({
+    entityFqn: dataAsset.fullyQualifiedName,
+    enabled: entityType === EntityType.TABLE,
+  });
 
   const fetchDataContract = async (entityId: string) => {
     try {
@@ -336,27 +349,14 @@ export const DataAssetsHeader = ({
     }
   };
 
-  const fetchContainerParent = async (
-    parentName: string,
-    parents = [] as Container[]
-  ) => {
-    if (isEmpty(parentName)) {
+  const fetchContainerAncestors = async (fqn: string) => {
+    if (isEmpty(fqn)) {
       return;
     }
     setIsBreadcrumbLoading(true);
     try {
-      const response = await getContainerByName(parentName, {
-        fields: TabSpecificField.PARENT,
-      });
-      const updatedParent = [response, ...parents];
-      if (response?.parent?.fullyQualifiedName) {
-        await fetchContainerParent(
-          response.parent.fullyQualifiedName,
-          updatedParent
-        );
-      } else {
-        setParentContainers(updatedParent);
-      }
+      const ancestors = await getContainerAncestors(fqn);
+      setParentContainers(ancestors);
     } catch (error) {
       showErrorToast(error as AxiosError, t('server.unexpected-response'));
     } finally {
@@ -370,8 +370,7 @@ export const DataAssetsHeader = ({
       fetchDQFailureCount();
     }
     if (entityType === EntityType.CONTAINER && !isCustomizedView) {
-      const asset = dataAsset;
-      fetchContainerParent(asset.parent?.fullyQualifiedName ?? '');
+      fetchContainerAncestors(dataAsset.fullyQualifiedName ?? '');
     }
   }, [dataAsset.fullyQualifiedName, isTourPage, isCustomizedView]);
 
@@ -438,12 +437,16 @@ export const DataAssetsHeader = ({
     () => ({
       editDomainPermission: permissions.EditAll && !dataAsset.deleted,
       editOwnerPermission:
-        (permissions.EditAll || permissions.EditOwners) && !dataAsset.deleted,
-      editTierPermission:
-        (permissions.EditAll || permissions.EditTier) && !dataAsset.deleted,
-      editCertificationPermission:
-        (permissions.EditAll || permissions.EditCertification) &&
+        getPrioritizedEditPermission(permissions, Operation.EditOwners) &&
         !dataAsset.deleted,
+      editTierPermission:
+        getPrioritizedEditPermission(permissions, Operation.EditTier) &&
+        !dataAsset.deleted,
+      editCertificationPermission:
+        getPrioritizedEditPermission(
+          permissions,
+          Operation.EditCertification
+        ) && !dataAsset.deleted,
     }),
     [permissions, dataAsset]
   );
@@ -593,21 +596,40 @@ export const DataAssetsHeader = ({
   const requestDataAccessButton = useMemo(() => {
     if (
       !tableClassBase.getShowRequestDataAccess() ||
-      SERVICE_TYPES.includes(entityType) ||
-      deleted
+      entityType !== EntityType.TABLE ||
+      deleted ||
+      !canCreateTask
     ) {
       return null;
     }
 
-    return (
-      <Button
-        className="source-url-button font-semibold"
-        data-testid="request-data-access-button"
-        onClick={() => setIsRequestDataAccessOpen(true)}>
-        {t('label.request-data-access')}
-      </Button>
+    const tooltipTitle = getDarButtonTooltip(
+      isDarDisabled,
+      isDarGranted,
+      isDarAwaitingGrant,
+      t
     );
-  }, [entityType, deleted]);
+
+    return (
+      <Tooltip title={tooltipTitle}>
+        <Button
+          className="source-url-button font-semibold"
+          data-testid="request-data-access-button"
+          disabled={isDarDisabled}
+          onClick={() => setIsRequestDataAccessOpen(true)}>
+          {t('label.request-data-access')}
+        </Button>
+      </Tooltip>
+    );
+  }, [
+    entityType,
+    deleted,
+    isDarDisabled,
+    isDarAwaitingGrant,
+    isDarGranted,
+    canCreateTask,
+    t,
+  ]);
 
   useEffect(() => {
     if (dataAsset.id) {
@@ -621,6 +643,16 @@ export const DataAssetsHeader = ({
         className="data-assets-header-container"
         data-testid="data-assets-header"
         gutter={[0, 20]}>
+        {isDarAwaitingGrant && (
+          <Col span={24}>
+            <Alert
+              data-testid="dar-awaiting-grant-banner"
+              title={t('label.data-access-request-awaiting-grant')}
+              variant="brand">
+              {t('message.data-access-request-awaiting-grant-message')}
+            </Alert>
+          </Col>
+        )}
         <Col
           className={classNames('d-flex flex-col gap-3 ', {
             'p-l-xs': isCustomizedView,
@@ -925,7 +957,8 @@ export const DataAssetsHeader = ({
         () => setIsRequestDataAccessOpen(false),
         dataAsset.fullyQualifiedName ?? '',
         getEntityName(dataAsset),
-        entityType
+        entityType,
+        refetchExistingDar
       )}
     </>
   );

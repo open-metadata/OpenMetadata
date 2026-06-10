@@ -225,7 +225,7 @@ export interface AwsCredentials {
  * SQLAlchemy driver scheme options.
  */
 export enum DatabricksScheme {
-    DatabricksConnector = "databricks+connector",
+    Databricks = "databricks",
 }
 
 /**

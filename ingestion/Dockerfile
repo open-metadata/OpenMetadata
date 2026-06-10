@@ -1,6 +1,6 @@
 FROM mysql:8.3 AS mysql
 
-FROM apache/airflow:3.1.7-python3.10
+FROM apache/airflow:3.2.1-python3.10
 USER root
 RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
   && echo "deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list
@@ -43,6 +43,12 @@ RUN apt-get -qq update \
   wget --no-install-recommends \
   # Accept MSSQL ODBC License
   && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
+  # Pull bookworm-security fixes for known-vulnerable packages
+  # (gnutls28 -> 3.7.9-2+deb12u7, libcap2 -> 1:2.66-4+deb12u3,
+  # openssh -> 1:9.2p1-2+deb12u10, rsync -> 3.2.7-1+deb12u5).
+  # --only-upgrade is a no-op for packages not present in the base image.
+  && apt-get -qq install -y --only-upgrade \
+       libgnutls30 libcap2 libcap2-bin openssh-client rsync \
   && apt-get -qq purge -y \
        'imagemagick*' 'libmagick*' 'graphicsmagick*' \
   && apt-get -qq autoremove -y --purge \
@@ -61,11 +67,16 @@ RUN if [ $(uname -m) = "arm64" ] | [ $(uname -m) = "aarch64" ]; \
 ENV LD_LIBRARY_PATH=/instantclient
 
 # Install DB2 iAccess Driver
-RUN if [ $(uname -m) = "x86_64" ]; \
-  then \
-  curl https://public.dhe.ibm.com/software/ibmi/products/odbc/debs/dists/1.1.0/ibmi-acs-1.1.0.list | tee /etc/apt/sources.list.d/ibmi-acs-1.1.0.list \
-  && apt update \
-  && apt install ibm-iaccess; \
+# Mirrored on cdn.getcollate.io to decouple builds from IBM's CDN availability.
+# Use dpkg --force-depends because the .deb declares old Debian package names
+# (libodbc1, odbcinst1debian2) that don't exist in Debian 12; the actual
+# libraries (unixodbc, odbcinst) are installed earlier. SHA256 pinned to v29.
+RUN if [ $(uname -m) = "x86_64" ]; then \
+  wget -q https://cdn.getcollate.io/deps/ingestion/ibm/ibm-iaccess-1.1.0.29-1.0.amd64.deb -O /tmp/ibm-iaccess.deb \
+  && echo "e60e968d2cee96b2851964456f5b31ab990b1aa47d8f2399607809f7d4514f58  /tmp/ibm-iaccess.deb" | sha256sum -c - \
+  && dpkg -i --force-depends /tmp/ibm-iaccess.deb \
+  && apt-get install -f -y --no-install-recommends \
+  && rm -f /tmp/ibm-iaccess.deb; \
   fi
 
 # Required for Starting Ingestion Container in Docker Compose
@@ -89,13 +100,19 @@ ARG RI_VERSION="1.12.0.0.dev0"
 RUN pip install --upgrade pip "setuptools<81"
 # Pre-install cx-Oracle without build isolation to use the pinned setuptools
 RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
-RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.1.7/constraints-3.10.txt"
+RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.2.1/constraints-3.10.txt"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN [ $(uname -m) = "x86_64" ] \
   && pip install "openmetadata-ingestion[db2]~=${RI_VERSION}" \
   || echo "DB2 not supported on ARM architectures."
+
+# Ship py-spy so a hung worker can be sampled in place
+# (`py-spy dump --pid <pid>`) without first installing anything in the pod.
+# Container-only — kept out of setup.py to avoid forcing a native binary on
+# dev laptops / CI / non-container installs.
+RUN pip install "py-spy>=0.3.14"
 
 # bump python-daemon for https://github.com/apache/airflow/pull/29916
 RUN pip install "python-daemon>=3.0.0"

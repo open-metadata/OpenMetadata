@@ -336,6 +336,32 @@ public class AppScheduler {
     }
   }
 
+  /**
+   * Clears a persisted on-demand job/trigger for the given app from the Quartz store so a fresh
+   * on-demand trigger can be scheduled without hitting "Job is already running". Used by the CLI
+   * reindex commands to remove a leftover from a previous run that died before completing. A job
+   * that is currently executing is left untouched, so a genuinely running run is never cleared.
+   */
+  public void deleteOnDemandJob(App app) {
+    JobKey onDemandJobKey =
+        new JobKey(String.format("%s-%s", app.getName(), ON_DEMAND_JOB), APPS_JOB_GROUP);
+    try {
+      for (JobExecutionContext context : scheduler.getCurrentlyExecutingJobs()) {
+        if (context.getJobDetail().getKey().equals(onDemandJobKey)) {
+          LOG.info(
+              "On-demand job for app {} is currently executing; leaving it in place.",
+              app.getName());
+          return;
+        }
+      }
+      scheduler.deleteJob(onDemandJobKey);
+      scheduler.unscheduleJob(
+          new TriggerKey(String.format("%s-%s", app.getName(), ON_DEMAND_JOB), APPS_TRIGGER_GROUP));
+    } catch (SchedulerException ex) {
+      LOG.warn("Could not clear existing on-demand job for app {}", app.getName(), ex);
+    }
+  }
+
   public void stopApplicationRun(App application) {
     try {
       JobDetail jobDetailScheduled =
@@ -465,7 +491,7 @@ public class AppScheduler {
       if (runRecord != null) {
         // Update status to STOPPED
         runRecord.withStatus(AppRunRecord.Status.STOPPED);
-        runRecord.withEndTime(System.currentTimeMillis());
+        OmAppJobListener.fillTerminalTimings(runRecord);
 
         // Get WebSocket channel name
         String webSocketChannelName =

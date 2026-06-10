@@ -12,11 +12,14 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import axiosClient from '.';
 import { CreateBot } from '../generated/api/createBot';
 import { Bot } from '../generated/entity/bot';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
+import { ListParams } from '../interface/API.interface';
+import { getEncodedFqn } from '../utils/StringUtils';
 
 const BASE_URL = '/bots';
 
@@ -25,6 +28,7 @@ interface GetBotParams {
   after?: string;
   before?: string;
   include?: Include;
+  fields?: string;
 }
 
 export const getBots = async (params: GetBotParams) => {
@@ -41,6 +45,24 @@ export const getBots = async (params: GetBotParams) => {
 export const createBot = async (data: CreateBot) => {
   const response = await axiosClient.post<CreateBot, AxiosResponse<Bot>>(
     BASE_URL,
+    data
+  );
+
+  return response.data;
+};
+
+export const getBotByName = async (name: string, params?: ListParams) => {
+  const response = await axiosClient.get<Bot>(
+    `${BASE_URL}/name/${getEncodedFqn(name)}`,
+    { params }
+  );
+
+  return response.data;
+};
+
+export const updateBotDetail = async (id: string, data: Operation[]) => {
+  const response = await axiosClient.patch<Operation[], AxiosResponse<Bot>>(
+    `${BASE_URL}/${id}`,
     data
   );
 

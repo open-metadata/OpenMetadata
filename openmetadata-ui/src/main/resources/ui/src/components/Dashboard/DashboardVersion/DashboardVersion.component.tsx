@@ -28,7 +28,7 @@ import {
 } from '../../../generated/entity/data/dashboard';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TagSource } from '../../../generated/type/tagLabel';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
@@ -57,9 +57,6 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   tier,
   slashedDashboardName,
   versionList,
-  onLoadMore,
-  hasMore,
-  isLoadingMore,
   deleted = false,
   backHandler,
   versionHandler,
@@ -303,12 +300,9 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
       <EntityVersionTimeLine
         currentVersion={version ?? ''}
         entityType={EntityType.DASHBOARD}
-        hasMore={hasMore}
-        isLoadingMore={isLoadingMore}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
-        onLoadMore={onLoadMore}
       />
     </>
   );

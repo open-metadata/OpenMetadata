@@ -19,7 +19,7 @@ import {
   highlightSearchText,
 } from '../../../../../utils/EntityUtils';
 import { getTeamsWithFqnPath } from '../../../../../utils/RouterUtils';
-import { stringToHTML } from '../../../../../utils/StringsUtils';
+import { stringToHTML } from '../../../../../utils/StringUtils';
 import { TeamHierarchyNameCell } from './TeamHierarchyNameCell';
 
 jest.mock('antd', () => {
@@ -54,7 +54,7 @@ jest.mock('../../../../../utils/RouterUtils', () => ({
   getTeamsWithFqnPath: jest.fn(),
 }));
 
-jest.mock('../../../../../utils/StringsUtils', () => ({
+jest.mock('../../../../../utils/StringUtils', () => ({
   stringToHTML: jest.fn((html: string) => html),
 }));
 

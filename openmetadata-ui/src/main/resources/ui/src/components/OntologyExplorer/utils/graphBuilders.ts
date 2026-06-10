@@ -19,7 +19,7 @@ import { Metric } from '../../../generated/entity/data/metric';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { TermRelation } from '../../../generated/type/termRelation';
-import { GraphData } from '../../../rest/rdfAPI';
+import { GraphData } from '../../../rest/rdfAPI.interface';
 import {
   OntologyEdge,
   OntologyExplorerProps,
@@ -121,8 +121,12 @@ export function convertRdfGraphToOntologyGraph(
   });
 
   const nodes: OntologyNode[] = rdfData.nodes.map((node) => {
-    let glossaryId: string | undefined;
-    if (node.group) {
+    // Prefer the explicit glossaryId from the RDF endpoint — it survives
+    // glossary rename / display-name drift better than the FQN-prefix
+    // heuristic. Fall back to looking up the glossary by `group` (display
+    // name) or the FQN's first segment for backwards-compatible payloads.
+    let glossaryId: string | undefined = node.glossaryId;
+    if (!glossaryId && node.group) {
       glossaryId = glossaryNameToId.get(node.group.toLowerCase());
     }
     if (!glossaryId && node.fullyQualifiedName) {
@@ -162,14 +166,9 @@ export function convertRdfGraphToOntologyGraph(
   const edgeMap = new Map<string, OntologyEdge>();
   rdfData.edges.forEach((edge) => {
     const relationType = edge.relationType || 'relatedTo';
-    const nodePairKey = [edge.from, edge.to].sort().join('-');
-    const existingEdge = edgeMap.get(nodePairKey);
-    if (
-      !existingEdge ||
-      (existingEdge.relationType === 'relatedTo' &&
-        relationType !== 'relatedTo')
-    ) {
-      edgeMap.set(nodePairKey, {
+    const edgeKey = `${[edge.from, edge.to].sort().join('-')}|${relationType}`;
+    if (!edgeMap.has(edgeKey)) {
+      edgeMap.set(edgeKey, {
         from: edge.from,
         to: edge.to,
         label: edge.label || relationType,
@@ -216,29 +215,17 @@ export function buildGraphFromAllTerms(
         const relatedTermRef = relation.term;
         const relationType = relation.relationType || 'relatedTo';
         if (relatedTermRef?.id && isValidUUID(relatedTermRef.id)) {
-          const nodePairKey = [term.id, relatedTermRef.id].sort().join('-');
-          if (!edgeSet.has(nodePairKey)) {
-            edgeSet.add(nodePairKey);
+          const edgeKey = `${[term.id, relatedTermRef.id]
+            .sort()
+            .join('-')}|${relationType}`;
+          if (!edgeSet.has(edgeKey)) {
+            edgeSet.add(edgeKey);
             edges.push({
               from: term.id,
               to: relatedTermRef.id,
               label: relationType,
               relationType,
             });
-          } else if (relationType !== 'relatedTo') {
-            const existingEdgeIndex = edges.findIndex(
-              (e) =>
-                [e.from, e.to].sort().join('-') === nodePairKey &&
-                e.relationType === 'relatedTo'
-            );
-            if (existingEdgeIndex !== -1) {
-              edges[existingEdgeIndex] = {
-                from: term.id,
-                to: relatedTermRef.id,
-                label: relationType,
-                relationType,
-              };
-            }
           }
         }
       });
@@ -291,7 +278,6 @@ export function buildGraphFromCounts(
       fullyQualifiedName: fqn,
       glossaryId: glossary?.id,
       group: glossary?.name ?? glossaryFqn,
-      originalLabel: fqn,
     });
 
     if (parts.length > 2) {

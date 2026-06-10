@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
@@ -30,6 +31,7 @@ import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearch
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingMetrics;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("DefaultRecreateHandler Tests")
@@ -109,11 +111,86 @@ class DefaultRecreateHandlerTest {
     }
 
     @Test
+    @DisplayName("Should stamp mapping version after successful promotion")
+    void testPromoteEntityIndexStampsMappingVersion() throws Exception {
+      AliasState aliasState = new AliasState();
+      aliasState.put(
+          "table_search_index_rebuild_old", Set.of("table", "table_search_index", "all"));
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+
+      SearchClient client = aliasState.toMock();
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getClusterAlias()).thenReturn("");
+      when(repo.getIndexMapping("table"))
+          .thenReturn(
+              IndexMapping.builder()
+                  .indexName("table_search_index")
+                  .alias("table")
+                  .parentAliases(List.of("all", "dataAsset"))
+                  .childAliases(List.of())
+                  .build());
+
+      IndexMappingVersionTracker tracker = mock(IndexMappingVersionTracker.class);
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+          MockedStatic<IndexMappingVersionTracker> trackerMock =
+              mockStatic(IndexMappingVersionTracker.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+        entityMock.when(Entity::getCollectionDAO).thenReturn(mock(CollectionDAO.class));
+        trackerMock.when(() -> IndexMappingVersionTracker.create(any())).thenReturn(tracker);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("table")
+                .canonicalIndex("table_search_index")
+                .stagedIndex("table_search_index_rebuild_new")
+                .build();
+
+        new DefaultRecreateHandler().promoteEntityIndex(context, true);
+      }
+
+      verify(tracker).updateMappingVersion("table");
+    }
+
+    @Test
+    @DisplayName("Should not stamp mapping version when promotion fails")
+    void testPromoteEntityIndexDoesNotStampOnFailure() throws Exception {
+      AliasState aliasState = new AliasState();
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+
+      SearchClient client = aliasState.toMock();
+      when(client.getDocumentCount("table_search_index_rebuild_new")).thenReturn(0L);
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+
+      IndexMappingVersionTracker tracker = mock(IndexMappingVersionTracker.class);
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+          MockedStatic<IndexMappingVersionTracker> trackerMock =
+              mockStatic(IndexMappingVersionTracker.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+        trackerMock.when(() -> IndexMappingVersionTracker.create(any())).thenReturn(tracker);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("table")
+                .canonicalIndex("table_search_index")
+                .stagedIndex("table_search_index_rebuild_new")
+                .build();
+
+        new DefaultRecreateHandler().promoteEntityIndex(context, false);
+      }
+
+      verify(tracker, never()).updateMappingVersion(anyString());
+    }
+
+    @Test
     @DisplayName(
         "Should promote partial data and record success metrics when failed reindex has documents")
     void testPromoteEntityIndexPromotesPartialData() {
       AliasState aliasState = new AliasState();
-      aliasState.put("table_search_index", Set.of("table_search_index"));
+      // First-install shape: canonical is a concrete index (OS/ES forbid an alias and a concrete
+      // index sharing the same name, so it carries no self-alias).
+      aliasState.put("table_search_index", Set.of());
       aliasState.put("table_search_index_rebuild_old", Set.of("legacy"));
       aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
@@ -279,7 +356,7 @@ class DefaultRecreateHandlerTest {
       aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
       SearchClient client = aliasState.toMock();
-      when(client.swapAliases(anySet(), anyString(), anySet())).thenReturn(false);
+      when(client.swapAliases(anySet(), anyString(), anySet(), anySet())).thenReturn(false);
 
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
@@ -308,6 +385,45 @@ class DefaultRecreateHandlerTest {
 
       assertFalse(aliasState.deletedIndices.contains("table_search_index_rebuild_old"));
       assertTrue(aliasState.indexAliases.get("table_search_index_rebuild_new").isEmpty());
+    }
+
+    @Test
+    @DisplayName("Should NOT delete old serving index when no aliases resolve (orphan-alias guard)")
+    void testPromoteEntityIndexDoesNotOrphanAliasWhenMappingHasNoAliases() {
+      AliasState aliasState = new AliasState();
+      aliasState.put(
+          "table_search_index_rebuild_old",
+          new HashSet<>(Set.of("table", "table_search_index", "all")));
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+
+      SearchClient client = aliasState.toMock();
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getClusterAlias()).thenReturn("");
+      when(repo.getIndexMapping("table")).thenReturn(null);
+
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("table")
+                .canonicalIndex("table_search_index")
+                .stagedIndex("table_search_index_rebuild_new")
+                .build();
+
+        new DefaultRecreateHandler().promoteEntityIndex(context, true);
+      }
+
+      assertFalse(
+          aliasState.deletedIndices.contains("table_search_index_rebuild_old"),
+          "Old serving index must not be deleted when no alias was attached to the staged index");
+      assertTrue(
+          aliasState
+              .indexAliases
+              .get("table_search_index_rebuild_old")
+              .contains("table_search_index"),
+          "Canonical alias must remain resolvable on the old index after an aborted promotion");
     }
 
     @Test
@@ -535,7 +651,9 @@ class DefaultRecreateHandlerTest {
     @DisplayName("Should promote partial data and record success when failed reindex has documents")
     void testFinalizeReindexPromotesPartialData() {
       AliasState aliasState = new AliasState();
-      aliasState.put("table_search_index", Set.of("table_search_index"));
+      // Canonical is a concrete index with no aliases (the realistic first-reindex shape; OS/ES
+      // forbid an alias and a concrete sharing the same name).
+      aliasState.put("table_search_index", Set.of());
       aliasState.put("table_search_index_rebuild_old", Set.of("stale"));
       aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
@@ -544,6 +662,15 @@ class DefaultRecreateHandlerTest {
 
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getClusterAlias()).thenReturn("");
+      when(repo.getIndexMapping("table"))
+          .thenReturn(
+              IndexMapping.builder()
+                  .indexName("table_search_index")
+                  .alias("table")
+                  .parentAliases(List.of("all"))
+                  .childAliases(List.of())
+                  .build());
 
       ReindexingMetrics metrics = mock(ReindexingMetrics.class);
       try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
@@ -557,9 +684,6 @@ class DefaultRecreateHandlerTest {
                 .canonicalIndex("table_search_index")
                 .activeIndex("table_search_index")
                 .stagedIndex("table_search_index_rebuild_new")
-                .existingAliases(new HashSet<>(List.of("legacyAlias", "", " ")))
-                .canonicalAliases("table")
-                .parentAliases(new HashSet<>(List.of("all", "", " ")))
                 .build();
 
         new DefaultRecreateHandler().finalizeReindex(context, false);
@@ -568,8 +692,8 @@ class DefaultRecreateHandlerTest {
       assertTrue(aliasState.deletedIndices.contains("table_search_index"));
       assertTrue(aliasState.deletedIndices.contains("table_search_index_rebuild_old"));
       Set<String> stagedAliases = aliasState.indexAliases.get("table_search_index_rebuild_new");
-      assertTrue(stagedAliases.contains("legacyAlias"));
       assertTrue(stagedAliases.contains("table"));
+      assertTrue(stagedAliases.contains("table_search_index"));
       assertTrue(stagedAliases.contains("all"));
       verify(metrics).recordPromotionSuccess("table");
     }
@@ -594,8 +718,6 @@ class DefaultRecreateHandlerTest {
                 .entityType("table")
                 .canonicalIndex("table_search_index")
                 .stagedIndex("table_search_index_rebuild_new")
-                .existingAliases(new HashSet<>())
-                .parentAliases(new HashSet<>())
                 .build();
 
         new DefaultRecreateHandler().finalizeReindex(context, false);
@@ -612,10 +734,19 @@ class DefaultRecreateHandlerTest {
       aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
       SearchClient client = aliasState.toMock();
-      when(client.swapAliases(anySet(), anyString(), anySet())).thenReturn(false);
+      when(client.swapAliases(anySet(), anyString(), anySet(), anySet())).thenReturn(false);
 
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getClusterAlias()).thenReturn("");
+      when(repo.getIndexMapping("table"))
+          .thenReturn(
+              IndexMapping.builder()
+                  .indexName("table_search_index")
+                  .alias("table")
+                  .parentAliases(List.of("all"))
+                  .childAliases(List.of())
+                  .build());
 
       try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
         entityMock.when(Entity::getSearchRepository).thenReturn(repo);
@@ -625,9 +756,6 @@ class DefaultRecreateHandlerTest {
                 .entityType("table")
                 .canonicalIndex("table_search_index")
                 .stagedIndex("table_search_index_rebuild_new")
-                .existingAliases(new HashSet<>(Set.of("table")))
-                .canonicalAliases("table")
-                .parentAliases(new HashSet<>(Set.of("all")))
                 .build();
 
         new DefaultRecreateHandler().finalizeReindex(context, true);
@@ -635,6 +763,213 @@ class DefaultRecreateHandlerTest {
 
       assertFalse(aliasState.deletedIndices.contains("table_search_index_rebuild_old"));
       assertTrue(aliasState.indexAliases.get("table_search_index_rebuild_new").isEmpty());
+    }
+
+    @Test
+    @DisplayName("Should stamp mapping version after successful finalize promotion")
+    void testFinalizeReindexStampsMappingVersionOnSuccess() throws Exception {
+      AliasState aliasState = new AliasState();
+      aliasState.put(
+          "table_search_index_rebuild_old", Set.of("table", "table_search_index", "all"));
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+
+      SearchClient client = aliasState.toMock();
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getClusterAlias()).thenReturn("");
+      when(repo.getIndexMapping("table"))
+          .thenReturn(
+              IndexMapping.builder()
+                  .indexName("table_search_index")
+                  .alias("table")
+                  .parentAliases(List.of("all"))
+                  .childAliases(List.of())
+                  .build());
+
+      IndexMappingVersionTracker tracker = mock(IndexMappingVersionTracker.class);
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+          MockedStatic<IndexMappingVersionTracker> trackerMock =
+              mockStatic(IndexMappingVersionTracker.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+        entityMock.when(Entity::getCollectionDAO).thenReturn(mock(CollectionDAO.class));
+        trackerMock.when(() -> IndexMappingVersionTracker.create(any())).thenReturn(tracker);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("table")
+                .canonicalIndex("table_search_index")
+                .stagedIndex("table_search_index_rebuild_new")
+                .build();
+
+        new DefaultRecreateHandler().finalizeReindex(context, true);
+      }
+
+      verify(tracker).updateMappingVersion("table");
+    }
+
+    @Test
+    @DisplayName("Should not stamp mapping version when finalize alias swap fails")
+    void testFinalizeReindexDoesNotStampWhenSwapFails() throws Exception {
+      AliasState aliasState = new AliasState();
+      aliasState.put("table_search_index_rebuild_old", Set.of("table"));
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+
+      SearchClient client = aliasState.toMock();
+      when(client.swapAliases(anySet(), anyString(), anySet(), anySet())).thenReturn(false);
+
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getClusterAlias()).thenReturn("");
+      when(repo.getIndexMapping("table"))
+          .thenReturn(
+              IndexMapping.builder()
+                  .indexName("table_search_index")
+                  .alias("table")
+                  .parentAliases(List.of("all"))
+                  .childAliases(List.of())
+                  .build());
+
+      IndexMappingVersionTracker tracker = mock(IndexMappingVersionTracker.class);
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+          MockedStatic<IndexMappingVersionTracker> trackerMock =
+              mockStatic(IndexMappingVersionTracker.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+        trackerMock.when(() -> IndexMappingVersionTracker.create(any())).thenReturn(tracker);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("table")
+                .canonicalIndex("table_search_index")
+                .stagedIndex("table_search_index_rebuild_new")
+                .build();
+
+        new DefaultRecreateHandler().finalizeReindex(context, true);
+      }
+
+      verify(tracker, never()).updateMappingVersion(anyString());
+    }
+
+    @Test
+    @DisplayName("Should NOT delete old serving index when finalize resolves no aliases")
+    void testFinalizeReindexDoesNotOrphanAliasWhenNoAliasesResolved() {
+      AliasState aliasState = new AliasState();
+      aliasState.put(
+          "table_search_index_rebuild_old",
+          new HashSet<>(Set.of("table", "table_search_index", "all")));
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+
+      SearchClient client = aliasState.toMock();
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getClusterAlias()).thenReturn("");
+      when(repo.getIndexMapping("table")).thenReturn(null);
+
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("table")
+                .canonicalIndex("table_search_index")
+                .stagedIndex("table_search_index_rebuild_new")
+                .build();
+
+        new DefaultRecreateHandler().finalizeReindex(context, true);
+      }
+
+      assertFalse(
+          aliasState.deletedIndices.contains("table_search_index_rebuild_old"),
+          "Old serving index must not be deleted when finalize resolved no aliases");
+      assertTrue(
+          aliasState
+              .indexAliases
+              .get("table_search_index_rebuild_old")
+              .contains("table_search_index"),
+          "Canonical alias must remain resolvable on the old index after an aborted finalize");
+    }
+
+    @Test
+    @DisplayName("First-install concrete canonical is removed atomically inside the swap")
+    void testFinalizeReindexRemovesConcreteCanonicalAtomically() {
+      AliasState aliasState = new AliasState();
+      aliasState.put("table_search_index", new HashSet<>(Set.of("table", "all")));
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+
+      SearchClient client = aliasState.toMock();
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getClusterAlias()).thenReturn("");
+      when(repo.getIndexMapping("table"))
+          .thenReturn(
+              IndexMapping.builder()
+                  .indexName("table_search_index")
+                  .alias("table")
+                  .parentAliases(List.of("all"))
+                  .childAliases(List.of())
+                  .build());
+
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("table")
+                .canonicalIndex("table_search_index")
+                .activeIndex("table_search_index")
+                .stagedIndex("table_search_index_rebuild_new")
+                .build();
+
+        new DefaultRecreateHandler().finalizeReindex(context, true);
+      }
+
+      verify(client, never()).deleteIndexWithBackoff("table_search_index");
+      assertFalse(aliasState.indexAliases.containsKey("table_search_index"));
+      Set<String> stagedAliases = aliasState.indexAliases.get("table_search_index_rebuild_new");
+      assertTrue(stagedAliases.contains("table_search_index"));
+      assertTrue(stagedAliases.contains("table"));
+      assertTrue(stagedAliases.contains("all"));
+    }
+
+    @Test
+    @DisplayName("First-install: a failed atomic swap leaves the concrete index intact (no orphan)")
+    void testFinalizeReindexFailedSwapDoesNotOrphanConcreteCanonical() {
+      AliasState aliasState = new AliasState();
+      aliasState.put("table_search_index", new HashSet<>(Set.of("table", "all")));
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+
+      SearchClient client = aliasState.toMock();
+      when(client.swapAliases(anySet(), anyString(), anySet(), anySet())).thenReturn(false);
+
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getClusterAlias()).thenReturn("");
+      when(repo.getIndexMapping("table"))
+          .thenReturn(
+              IndexMapping.builder()
+                  .indexName("table_search_index")
+                  .alias("table")
+                  .parentAliases(List.of("all"))
+                  .childAliases(List.of())
+                  .build());
+
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("table")
+                .canonicalIndex("table_search_index")
+                .activeIndex("table_search_index")
+                .stagedIndex("table_search_index_rebuild_new")
+                .build();
+
+        new DefaultRecreateHandler().finalizeReindex(context, true);
+      }
+
+      verify(client, never()).deleteIndexWithBackoff("table_search_index");
+      assertTrue(aliasState.indexAliases.containsKey("table_search_index"));
+      assertTrue(aliasState.indexAliases.get("table_search_index").contains("table"));
+      assertFalse(aliasState.deletedIndices.contains("table_search_index"));
     }
 
     @Test
@@ -646,6 +981,10 @@ class DefaultRecreateHandlerTest {
 
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getClusterAlias()).thenReturn("");
+      when(repo.getIndexMapping("table"))
+          .thenReturn(
+              IndexMapping.builder().indexName("table_search_index").alias("table").build());
 
       ReindexingMetrics metrics = mock(ReindexingMetrics.class);
       try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
@@ -658,14 +997,140 @@ class DefaultRecreateHandlerTest {
                 .entityType("table")
                 .canonicalIndex("table_search_index")
                 .stagedIndex("table_search_index_rebuild_new")
-                .existingAliases(new HashSet<>(Set.of("table")))
-                .parentAliases(new HashSet<>())
                 .build();
 
         new DefaultRecreateHandler().finalizeReindex(context, true);
       }
 
       verify(metrics).recordPromotionFailure("table");
+    }
+
+    @Test
+    @DisplayName(
+        "Should not delete-by-alias-name when canonical is currently an alias on a previous staged")
+    void testFinalizeReindexSkipsDeleteWhenCanonicalIsAlias() {
+      // After the first reindex, the canonical name (table_search_index) is an alias on the
+      // previous staged index, not a concrete one. OpenSearch's listIndicesByPrefix returns the
+      // alias name as one of its result keys; without the guard, finalizeReindex would attempt
+      // deleteIndexWithBackoff(canonicalIndex), fail with "matches an alias" and burn ~31s of
+      // exponential backoff per entity. The guard must drop the alias name from oldIndicesToDelete
+      // BEFORE the delete branch fires.
+      AliasState aliasState = new AliasState();
+      aliasState.put(
+          "table_search_index_rebuild_old",
+          new HashSet<>(Set.of("table_search_index", "table", "all")));
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+      // Simulate the OpenSearch behavior where listIndicesByPrefix surfaces the alias name itself
+      // among its result keys (the key in our AliasState mock is what listIndicesByPrefix returns).
+      aliasState.put("table_search_index", Set.of());
+
+      SearchClient client = aliasState.toMock();
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getClusterAlias()).thenReturn("");
+      when(repo.getIndexMapping("table"))
+          .thenReturn(
+              IndexMapping.builder()
+                  .indexName("table_search_index")
+                  .alias("table")
+                  .parentAliases(List.of("all"))
+                  .childAliases(List.of())
+                  .build());
+
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("table")
+                .canonicalIndex("table_search_index")
+                .activeIndex("table_search_index_rebuild_old")
+                .stagedIndex("table_search_index_rebuild_new")
+                .build();
+
+        new DefaultRecreateHandler().finalizeReindex(context, true);
+      }
+
+      verify(client, never()).deleteIndexWithBackoff("table_search_index");
+      assertTrue(
+          aliasState.deletedIndices.contains("table_search_index_rebuild_old"),
+          "Old concrete rebuild must still be cleaned up by the swap path");
+      Set<String> stagedAliases = aliasState.indexAliases.get("table_search_index_rebuild_new");
+      assertTrue(
+          stagedAliases.contains("table_search_index"),
+          () -> "Canonical alias must end up on staged after promotion; got " + stagedAliases);
+      assertTrue(
+          stagedAliases.contains("table"),
+          () -> "Short alias must end up on staged after promotion; got " + stagedAliases);
+      assertTrue(
+          stagedAliases.contains("all"),
+          () -> "Parent alias must end up on staged after promotion; got " + stagedAliases);
+    }
+
+    @Test
+    @DisplayName(
+        "Should attach parent aliases from the mapping when the context carries none "
+            + "(participant-reconstructed context)")
+    void testFinalizeReindexDerivesAliasesFromMappingWhenContextHasNoAliases() {
+      // Regression for the distributed-reindex alias-loss bug: a participant server reconstructs
+      // the
+      // ReindexContext from only the job's staged-index mapping (ReindexContext
+      // .fromStagedIndexMapping), so existingAliases/parentAliases are empty. finalizeReindex must
+      // still attach the column index's parent aliases (all/table/dataAsset) by re-deriving them
+      // from indexMapping.json — otherwise the promoted column index drops out of the
+      // dataAsset/global-search alias. Before the fix, finalize trusted
+      // context.getExistingAliases()
+      // (empty here) and aborted promotion without attaching any alias.
+      AliasState aliasState = new AliasState();
+      aliasState.put(
+          "column_search_index_rebuild_old",
+          new HashSet<>(Set.of("tableColumn", "column_search_index", "all", "table", "dataAsset")));
+      aliasState.put("column_search_index_rebuild_new", new HashSet<>());
+
+      SearchClient client = aliasState.toMock();
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getClusterAlias()).thenReturn("");
+      when(repo.getIndexMapping("tableColumn"))
+          .thenReturn(
+              IndexMapping.builder()
+                  .indexName("column_search_index")
+                  .alias("tableColumn")
+                  .parentAliases(List.of("all", "table", "dataAsset"))
+                  .childAliases(List.of())
+                  .build());
+
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("tableColumn")
+                .canonicalIndex("column_search_index")
+                .stagedIndex("column_search_index_rebuild_new")
+                .existingAliases(new HashSet<>())
+                .parentAliases(new HashSet<>())
+                .build();
+
+        new DefaultRecreateHandler().finalizeReindex(context, true);
+      }
+
+      Set<String> stagedAliases = aliasState.indexAliases.get("column_search_index_rebuild_new");
+      assertTrue(stagedAliases.contains("tableColumn"));
+      assertTrue(stagedAliases.contains("column_search_index"));
+      assertTrue(
+          stagedAliases.contains("all"),
+          () -> "parent alias 'all' must be derived from the mapping; got " + stagedAliases);
+      assertTrue(
+          stagedAliases.contains("table"),
+          () -> "parent alias 'table' must be derived from the mapping; got " + stagedAliases);
+      assertTrue(
+          stagedAliases.contains("dataAsset"),
+          () ->
+              "parent alias 'dataAsset' must be derived from the mapping — this is the regression; "
+                  + "got "
+                  + stagedAliases);
+      assertTrue(aliasState.deletedIndices.contains("column_search_index_rebuild_old"));
     }
   }
 
@@ -674,12 +1139,11 @@ class DefaultRecreateHandlerTest {
   class RecreateIndexFromMappingTests {
 
     @Test
-    @DisplayName("Should resolve existing alias targets and populate context")
+    @DisplayName("Should derive aliases from the mapping only, never from the live index in ES")
     void testRecreateIndexFromMappingUsesAliasTargetAsActiveIndex() {
       SearchClient client = mock(SearchClient.class);
       when(client.indexExists("table_search_index")).thenReturn(false);
       when(client.getIndicesByAlias("table")).thenReturn(Set.of("table_search_index_v1"));
-      when(client.getAliases("table_search_index_v1")).thenReturn(new HashSet<>(Set.of("legacy")));
 
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getClusterAlias()).thenReturn("");
@@ -703,7 +1167,9 @@ class DefaultRecreateHandlerTest {
 
       assertEquals("table_search_index", context.getCanonicalIndex("table").orElseThrow());
       assertEquals("table_search_index_v1", context.getOriginalIndex("table").orElseThrow());
-      assertTrue(context.getExistingAliases("table").contains("legacy"));
+      // Aliases come purely from the mapping (short alias + raw index name); stray aliases on the
+      // live index are never read or carried forward.
+      verify(client, never()).getAliases(anyString());
       assertTrue(context.getExistingAliases("table").contains("table"));
       assertTrue(context.getExistingAliases("table").contains("table_search_index"));
       assertTrue(context.getParentAliases("table").contains("all"));
@@ -858,33 +1324,6 @@ class DefaultRecreateHandlerTest {
           .when(client)
           .addAliases(anyString(), anySet());
 
-      // Mock swapAliases - atomically remove aliases from old indices and add to new index
-      lenient()
-          .doAnswer(
-              invocation -> {
-                @SuppressWarnings("unchecked")
-                Set<String> oldIndices = invocation.getArgument(0);
-                String newIndex = invocation.getArgument(1);
-                @SuppressWarnings("unchecked")
-                Set<String> aliases = new HashSet<>(invocation.getArgument(2));
-
-                // Remove aliases from old indices
-                for (String oldIndex : oldIndices) {
-                  indexAliases.computeIfPresent(
-                      oldIndex,
-                      (k, v) -> {
-                        v.removeAll(aliases);
-                        return v;
-                      });
-                }
-
-                // Add aliases to new index
-                indexAliases.computeIfAbsent(newIndex, k -> new HashSet<>()).addAll(aliases);
-                return true;
-              })
-          .when(client)
-          .swapAliases(anySet(), anyString(), anySet());
-
       lenient()
           .doAnswer(
               invocation -> {
@@ -907,6 +1346,8 @@ class DefaultRecreateHandlerTest {
           .when(client)
           .deleteIndexWithBackoff(anyString());
 
+      // Atomic swap: remove aliases from old indices, delete any concrete indicesToRemove
+      // (remove_index) and add aliases to the new index — all or nothing.
       lenient()
           .doAnswer(
               invocation -> {
@@ -915,8 +1356,9 @@ class DefaultRecreateHandlerTest {
                 String newIndex = invocation.getArgument(1);
                 @SuppressWarnings("unchecked")
                 Set<String> aliases = new HashSet<>(invocation.getArgument(2));
+                @SuppressWarnings("unchecked")
+                Set<String> indicesToRemove = invocation.getArgument(3);
 
-                // Remove aliases from old indices
                 for (String oldIndex : oldIndices) {
                   Set<String> oldAliases = indexAliases.get(oldIndex);
                   if (oldAliases != null) {
@@ -924,15 +1366,112 @@ class DefaultRecreateHandlerTest {
                   }
                 }
 
-                // Add aliases to new index
-                indexAliases.computeIfAbsent(newIndex, k -> new HashSet<>()).addAll(aliases);
+                for (String indexToRemove : indicesToRemove) {
+                  indexAliases.remove(indexToRemove);
+                  deletedIndices.add(indexToRemove);
+                }
 
+                indexAliases.computeIfAbsent(newIndex, k -> new HashSet<>()).addAll(aliases);
                 return true;
               })
           .when(client)
-          .swapAliases(anySet(), anyString(), anySet());
+          .swapAliases(anySet(), anyString(), anySet(), anySet());
 
       return client;
+    }
+  }
+
+  @Nested
+  @DisplayName("buildRevertJson Tests")
+  class BuildRevertJsonTests {
+
+    @Test
+    @DisplayName("Returns null when both live and bulk are unset")
+    void noConfig() {
+      assertEquals(null, DefaultRecreateHandler.buildRevertJson(null, null));
+    }
+
+    @Test
+    @DisplayName("Returns only fields the admin set when bulk overrides were not applied")
+    void liveOnlyWithoutBulk() {
+      org.openmetadata.schema.system.IndexSettings live =
+          new org.openmetadata.schema.system.IndexSettings()
+              .withRefreshInterval("30s")
+              .withNumberOfReplicas(2);
+      String json = DefaultRecreateHandler.buildRevertJson(live, null);
+      assertNotNull(json);
+      assertTrue(json.contains("\"refresh_interval\":\"30s\""));
+      assertTrue(json.contains("\"number_of_replicas\":2"));
+      // No bulk → no implicit safety fields
+      assertFalse(json.contains("\"translog\""));
+    }
+
+    @Test
+    @DisplayName("Bulk override + missing live: revert fills safe defaults for every bulk field")
+    void bulkOverrideTriggersFullRevert() {
+      org.openmetadata.schema.system.BulkIndexOverrides bulk =
+          new org.openmetadata.schema.system.BulkIndexOverrides()
+              .withRefreshInterval("-1")
+              .withNumberOfReplicas(0)
+              .withTranslogDurability(
+                  org.openmetadata.schema.system.BulkIndexOverrides.TranslogDurability.ASYNC)
+              .withTranslogSyncInterval("30s");
+      String json = DefaultRecreateHandler.buildRevertJson(null, bulk);
+      assertNotNull(json);
+      // Every field bulk touched gets a safe live default — never the bulk value.
+      assertTrue(json.contains("\"refresh_interval\":\"1s\""));
+      assertTrue(json.contains("\"number_of_replicas\":1"));
+      // Translog fields land in a nested object — what the OS/ES typed IndexSettings
+      // model expects when its _DESERIALIZER parses the body.
+      assertTrue(json.contains("\"translog\":{"));
+      assertTrue(json.contains("\"durability\":\"request\""));
+      assertTrue(json.contains("\"sync_interval\":\"5s\""));
+    }
+
+    @Test
+    @DisplayName(
+        "Partial live + full bulk: live values win, bulk-only fields fall back to defaults")
+    void partialLiveOverridesBulk() {
+      // Admin only set translogDurability on live; bulk disabled refresh, replicas, both translog
+      // fields. Expectation: translogDurability comes from live; the rest fall back to safe
+      // defaults (NOT bulk values).
+      org.openmetadata.schema.system.IndexSettings live =
+          new org.openmetadata.schema.system.IndexSettings()
+              .withTranslogDurability(
+                  org.openmetadata.schema.system.IndexSettings.TranslogDurability.REQUEST);
+      org.openmetadata.schema.system.BulkIndexOverrides bulk =
+          new org.openmetadata.schema.system.BulkIndexOverrides()
+              .withRefreshInterval("-1")
+              .withNumberOfReplicas(0)
+              .withTranslogDurability(
+                  org.openmetadata.schema.system.BulkIndexOverrides.TranslogDurability.ASYNC)
+              .withTranslogSyncInterval("30s");
+      String json = DefaultRecreateHandler.buildRevertJson(live, bulk);
+      assertNotNull(json);
+      assertTrue(json.contains("\"refresh_interval\":\"1s\""));
+      assertTrue(json.contains("\"number_of_replicas\":1"));
+      // Translog fields land in a nested object — what the OS/ES typed IndexSettings
+      // model expects when its _DESERIALIZER parses the body.
+      assertTrue(json.contains("\"translog\":{"));
+      assertTrue(json.contains("\"durability\":\"request\""));
+      assertTrue(json.contains("\"sync_interval\":\"5s\""));
+    }
+
+    @Test
+    @DisplayName("Bulk JSON properly escapes admin-supplied string values")
+    void bulkSettingsEscapesQuotesInValues() {
+      // Hostile / unusual but legal admin input — quote, backslash, newline. Naive string
+      // concatenation would produce invalid JSON; Jackson must escape these.
+      org.openmetadata.schema.system.BulkIndexOverrides bulk =
+          new org.openmetadata.schema.system.BulkIndexOverrides()
+              .withRefreshInterval("3s\"; \\rogue")
+              .withTranslogSyncInterval("60s\n");
+      String json = DefaultRecreateHandler.buildBulkSettingsJson(bulk);
+      assertNotNull(json);
+      // Must round-trip parse — the strongest evidence escaping worked.
+      org.openmetadata.schema.utils.JsonUtils.readTree(json);
+      assertTrue(json.contains("\\\"")); // escaped quote present
+      assertTrue(json.contains("\\\\")); // escaped backslash present
     }
   }
 }

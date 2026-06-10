@@ -13,61 +13,44 @@
 
 import { isEmpty } from 'lodash';
 import {
-  FunctionComponent,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
+  type FunctionComponent,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import APIEndpointVersion from '../../components/APIEndpoint/APIEndpointVersion/APIEndpointVersion';
-import ChartVersion from '../../components/Chart/ChartVersion/ChartVersion.component';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
-import ContainerVersion from '../../components/Container/ContainerVersion/ContainerVersion.component';
-import DashboardVersion from '../../components/Dashboard/DashboardVersion/DashboardVersion.component';
-import DataModelVersion from '../../components/Dashboard/DataModel/DataModelVersion/DataModelVersion.component';
-import StoredProcedureVersion from '../../components/Database/StoredProcedureVersion/StoredProcedureVersion.component';
-import TableVersion from '../../components/Database/TableVersion/TableVersion.component';
-import DataProductsPage from '../../components/DataProducts/DataProductsPage/DataProductsPage.component';
-import DirectoryVersion from '../../components/DriveService/Directory/DirectoryVersion/DirectoryVersion';
-import FileVersion from '../../components/DriveService/File/FileVersion/FileVersion';
-import SpreadsheetVersion from '../../components/DriveService/Spreadsheet/SpreadsheetVersion/SpreadsheetVersion';
-import WorksheetVersion from '../../components/DriveService/Worksheet/WorksheetVersion/WorksheetVersion';
-import MetricVersion from '../../components/Metric/MetricVersion/MetricVersion';
-import MlModelVersion from '../../components/MlModel/MlModelVersion/MlModelVersion.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import PipelineVersion from '../../components/Pipeline/PipelineVersion/PipelineVersion.component';
-import SearchIndexVersion from '../../components/SearchIndexVersion/SearchIndexVersion';
-import TopicVersion from '../../components/Topic/TopicVersion/TopicVersion.component';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
+import type {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
-import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
-import { Chart } from '../../generated/entity/data/chart';
-import { Container } from '../../generated/entity/data/container';
-import { Dashboard } from '../../generated/entity/data/dashboard';
-import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
-import { Directory } from '../../generated/entity/data/directory';
-import { File } from '../../generated/entity/data/file';
-import { Metric } from '../../generated/entity/data/metric';
-import { Mlmodel } from '../../generated/entity/data/mlmodel';
-import { Pipeline } from '../../generated/entity/data/pipeline';
-import { SearchIndex } from '../../generated/entity/data/searchIndex';
-import { Spreadsheet } from '../../generated/entity/data/spreadsheet';
-import { StoredProcedure } from '../../generated/entity/data/storedProcedure';
-import { Table } from '../../generated/entity/data/table';
-import { Topic } from '../../generated/entity/data/topic';
-import { Worksheet } from '../../generated/entity/data/worksheet';
-import { EntityHistory } from '../../generated/type/entityHistory';
+import type { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
+import type { Chart } from '../../generated/entity/data/chart';
+import type { Container } from '../../generated/entity/data/container';
+import type { Dashboard } from '../../generated/entity/data/dashboard';
+import type { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
+import type { Directory } from '../../generated/entity/data/directory';
+import type { File } from '../../generated/entity/data/file';
+import type { Metric } from '../../generated/entity/data/metric';
+import type { Mlmodel } from '../../generated/entity/data/mlmodel';
+import type { Pipeline } from '../../generated/entity/data/pipeline';
+import type { SearchIndex } from '../../generated/entity/data/searchIndex';
+import type { Spreadsheet } from '../../generated/entity/data/spreadsheet';
+import type { StoredProcedure } from '../../generated/entity/data/storedProcedure';
+import type { Table } from '../../generated/entity/data/table';
+import type { Topic } from '../../generated/entity/data/topic';
+import type { Worksheet } from '../../generated/entity/data/worksheet';
+import type { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
-import { TagLabel } from '../../generated/type/tagLabel';
+import type { TagLabel } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
 import {
   getApiEndPointByFQN,
@@ -136,16 +119,12 @@ import {
 } from '../../rest/topicsAPI';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
+import entityVersionClassBase from '../../utils/EntityVersionClassBase';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { getTierTags } from '../../utils/TableUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-import APICollectionVersionPage from '../APICollectionPage/APICollectionVersionPage';
-import DatabaseSchemaVersionPage from '../DatabaseSchemaVersionPage/DatabaseSchemaVersionPage';
-import DatabaseVersionPage from '../DatabaseVersionPage/DatabaseVersionPage';
 import './EntityVersionPage.less';
-
-const VERSION_PAGE_SIZE = 20;
 
 export type VersionData =
   | Table
@@ -189,18 +168,6 @@ const EntityVersionPage: FunctionComponent = () => {
     {} as EntityHistory
   );
   const [isVersionLoading, setIsVersionLoading] = useState<boolean>(true);
-  const [hasMoreVersions, setHasMoreVersions] = useState<boolean>(false);
-  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
-  const isLoadingMoreRef = useRef<boolean>(false);
-  const versionListRef = useRef<EntityHistory>({} as EntityHistory);
-  const versionFetcherRef =
-    useRef<
-      (params?: { limit?: number; offset?: number }) => Promise<EntityHistory>
-    >();
-
-  useEffect(() => {
-    versionListRef.current = versionList;
-  }, [versionList]);
 
   const backHandler = useCallback(
     () => navigate(getEntityDetailsPath(entityType, decodedEntityFQN, tab)),
@@ -254,20 +221,8 @@ const EntityVersionPage: FunctionComponent = () => {
     [entityPermissions]
   );
 
-  const updateVersionState = useCallback((versions: EntityHistory) => {
-    setVersionList(versions);
-    if (versions.paging) {
-      const loaded =
-        (versions.paging.offset ?? 0) + (versions.versions?.length ?? 0);
-      setHasMoreVersions(loaded < versions.paging.total);
-    } else {
-      setHasMoreVersions(false);
-    }
-  }, []);
-
   const fetchEntityVersions = useCallback(async () => {
     setIsLoading(true);
-    const paginationParams = { limit: VERSION_PAGE_SIZE, offset: 0 };
     try {
       switch (entityType) {
         case EntityType.TABLE: {
@@ -276,11 +231,10 @@ const EntityVersionPage: FunctionComponent = () => {
           });
 
           setEntityId(id);
-          versionFetcherRef.current = (p) => getTableVersions(id, p);
 
-          const versions = await getTableVersions(id, paginationParams);
+          const versions = await getTableVersions(id);
 
-          updateVersionState(versions);
+          setVersionList(versions);
 
           break;
         }
@@ -291,11 +245,10 @@ const EntityVersionPage: FunctionComponent = () => {
           });
 
           setEntityId(id);
-          versionFetcherRef.current = (p) => getTopicVersions(id, p);
 
-          const versions = await getTopicVersions(id, paginationParams);
+          const versions = await getTopicVersions(id);
 
-          updateVersionState(versions);
+          setVersionList(versions);
 
           break;
         }
@@ -306,11 +259,10 @@ const EntityVersionPage: FunctionComponent = () => {
           });
 
           setEntityId(id);
-          versionFetcherRef.current = (p) => getDashboardVersions(id, p);
 
-          const versions = await getDashboardVersions(id, paginationParams);
+          const versions = await getDashboardVersions(id);
 
-          updateVersionState(versions);
+          setVersionList(versions);
 
           break;
         }
@@ -321,11 +273,10 @@ const EntityVersionPage: FunctionComponent = () => {
           });
 
           setEntityId(id);
-          versionFetcherRef.current = (p) => getPipelineVersions(id, p);
 
-          const versions = await getPipelineVersions(id, paginationParams);
+          const versions = await getPipelineVersions(id);
 
-          updateVersionState(versions);
+          setVersionList(versions);
 
           break;
         }
@@ -336,11 +287,10 @@ const EntityVersionPage: FunctionComponent = () => {
           });
 
           setEntityId(id);
-          versionFetcherRef.current = (p) => getMlModelVersions(id, p);
 
-          const versions = await getMlModelVersions(id, paginationParams);
+          const versions = await getMlModelVersions(id);
 
-          updateVersionState(versions);
+          setVersionList(versions);
 
           break;
         }
@@ -351,11 +301,10 @@ const EntityVersionPage: FunctionComponent = () => {
           });
 
           setEntityId(id);
-          versionFetcherRef.current = (p) => getContainerVersions(id, p);
 
-          const versions = await getContainerVersions(id, paginationParams);
+          const versions = await getContainerVersions(id);
 
-          updateVersionState(versions);
+          setVersionList(versions);
 
           break;
         }
@@ -366,11 +315,10 @@ const EntityVersionPage: FunctionComponent = () => {
           });
 
           setEntityId(id);
-          versionFetcherRef.current = (p) => getSearchIndexVersions(id, p);
 
-          const versions = await getSearchIndexVersions(id, paginationParams);
+          const versions = await getSearchIndexVersions(id);
 
-          updateVersionState(versions);
+          setVersionList(versions);
 
           break;
         }
@@ -381,15 +329,10 @@ const EntityVersionPage: FunctionComponent = () => {
           });
 
           setEntityId(id ?? '');
-          versionFetcherRef.current = (p) =>
-            getDataModelVersionsList(id ?? '', p);
 
-          const versions = await getDataModelVersionsList(
-            id ?? '',
-            paginationParams
-          );
+          const versions = await getDataModelVersionsList(id ?? '');
 
-          updateVersionState(versions);
+          setVersionList(versions);
 
           break;
         }
@@ -400,15 +343,10 @@ const EntityVersionPage: FunctionComponent = () => {
           });
 
           setEntityId(id ?? '');
-          versionFetcherRef.current = (p) =>
-            getStoredProceduresVersionsList(id ?? '', p);
 
-          const versions = await getStoredProceduresVersionsList(
-            id ?? '',
-            paginationParams
-          );
+          const versions = await getStoredProceduresVersionsList(id ?? '');
 
-          updateVersionState(versions);
+          setVersionList(versions);
 
           break;
         }
@@ -418,15 +356,10 @@ const EntityVersionPage: FunctionComponent = () => {
           });
 
           setEntityId(id ?? '');
-          versionFetcherRef.current = (p) =>
-            getApiEndPointVersions(id ?? '', p);
 
-          const versions = await getApiEndPointVersions(
-            id ?? '',
-            paginationParams
-          );
+          const versions = await getApiEndPointVersions(id ?? '');
 
-          updateVersionState(versions);
+          setVersionList(versions);
 
           break;
         }
@@ -436,11 +369,10 @@ const EntityVersionPage: FunctionComponent = () => {
           });
 
           setEntityId(id ?? '');
-          versionFetcherRef.current = (p) => getMetricVersions(id ?? '', p);
 
-          const versions = await getMetricVersions(id ?? '', paginationParams);
+          const versions = await getMetricVersions(id ?? '');
 
-          updateVersionState(versions);
+          setVersionList(versions);
 
           break;
         }
@@ -450,11 +382,10 @@ const EntityVersionPage: FunctionComponent = () => {
           });
 
           setEntityId(id ?? '');
-          versionFetcherRef.current = (p) => getChartVersions(id ?? '', p);
 
-          const versions = await getChartVersions(id ?? '', paginationParams);
+          const versions = await getChartVersions(id ?? '');
 
-          updateVersionState(versions);
+          setVersionList(versions);
 
           break;
         }
@@ -464,20 +395,10 @@ const EntityVersionPage: FunctionComponent = () => {
         case EntityType.WORKSHEET: {
           const { id } = await getDriveAssetByFqn(decodedEntityFQN, entityType);
           setEntityId(id ?? '');
-          versionFetcherRef.current = (p) =>
-            getDriveAssetsVersions(
-              id ?? '',
-              entityType,
-              p
-            ) as unknown as Promise<EntityHistory>;
 
-          const versions = await getDriveAssetsVersions(
-            id ?? '',
-            entityType,
-            paginationParams
-          );
+          const versions = await getDriveAssetsVersions(id ?? '', entityType);
 
-          updateVersionState(versions as unknown as EntityHistory);
+          setVersionList(versions as unknown as EntityHistory);
 
           break;
         }
@@ -489,39 +410,6 @@ const EntityVersionPage: FunctionComponent = () => {
       setIsLoading(false);
     }
   }, [entityType, decodedEntityFQN, viewVersionPermission]);
-
-  const fetchMoreVersions = useCallback(async () => {
-    if (
-      !versionFetcherRef.current ||
-      isLoadingMoreRef.current ||
-      !hasMoreVersions
-    ) {
-      return;
-    }
-    isLoadingMoreRef.current = true;
-    setIsLoadingMore(true);
-    try {
-      const currentOffset = versionListRef.current.versions?.length ?? 0;
-      const moreVersions = await versionFetcherRef.current({
-        limit: VERSION_PAGE_SIZE,
-        offset: currentOffset,
-      });
-      const appendedVersions = moreVersions.versions ?? [];
-      const totalLoaded = currentOffset + appendedVersions.length;
-
-      setHasMoreVersions(
-        moreVersions.paging ? totalLoaded < moreVersions.paging.total : false
-      );
-
-      setVersionList((prev) => ({
-        ...moreVersions,
-        versions: [...(prev.versions ?? []), ...appendedVersions],
-      }));
-    } finally {
-      isLoadingMoreRef.current = false;
-      setIsLoadingMore(false);
-    }
-  }, [hasMoreVersions]);
 
   const fetchCurrentVersion = useCallback(
     async (id: string) => {
@@ -704,384 +592,441 @@ const EntityVersionPage: FunctionComponent = () => {
       );
     }
 
-    let VersionPage = null;
+    const TableVersion = entityVersionClassBase.getEntityVersionComponent(
+      EntityType.TABLE
+    );
+    const TopicVersion = entityVersionClassBase.getEntityVersionComponent(
+      EntityType.TOPIC
+    );
+    const DashboardVersion = entityVersionClassBase.getEntityVersionComponent(
+      EntityType.DASHBOARD
+    );
+    const PipelineVersion = entityVersionClassBase.getEntityVersionComponent(
+      EntityType.PIPELINE
+    );
+    const MlModelVersion = entityVersionClassBase.getEntityVersionComponent(
+      EntityType.MLMODEL
+    );
+    const ContainerVersion = entityVersionClassBase.getEntityVersionComponent(
+      EntityType.CONTAINER
+    );
+    const SearchIndexVersion = entityVersionClassBase.getEntityVersionComponent(
+      EntityType.SEARCH_INDEX
+    );
+    const DataModelVersion = entityVersionClassBase.getEntityVersionComponent(
+      EntityType.DASHBOARD_DATA_MODEL
+    );
+    const StoredProcedureVersion =
+      entityVersionClassBase.getEntityVersionComponent(
+        EntityType.STORED_PROCEDURE
+      );
+    const APIEndpointVersion = entityVersionClassBase.getEntityVersionComponent(
+      EntityType.API_ENDPOINT
+    );
+    const MetricVersion = entityVersionClassBase.getEntityVersionComponent(
+      EntityType.METRIC
+    );
+    const ChartVersion = entityVersionClassBase.getEntityVersionComponent(
+      EntityType.CHART
+    );
+    const DirectoryVersion = entityVersionClassBase.getEntityVersionComponent(
+      EntityType.DIRECTORY
+    );
+    const FileVersion = entityVersionClassBase.getEntityVersionComponent(
+      EntityType.FILE
+    );
+    const SpreadsheetVersion = entityVersionClassBase.getEntityVersionComponent(
+      EntityType.SPREADSHEET
+    );
+    const WorksheetVersion = entityVersionClassBase.getEntityVersionComponent(
+      EntityType.WORKSHEET
+    );
+    const DatabaseVersionPage =
+      entityVersionClassBase.getEntityVersionComponent(EntityType.DATABASE);
+    const DatabaseSchemaVersionPage =
+      entityVersionClassBase.getEntityVersionComponent(
+        EntityType.DATABASE_SCHEMA
+      );
+    const DataProductsPage = entityVersionClassBase.getEntityVersionComponent(
+      EntityType.DATA_PRODUCT
+    );
+    const APICollectionVersionPage =
+      entityVersionClassBase.getEntityVersionComponent(
+        EntityType.API_COLLECTION
+      );
+
+    const wrapSuspense = (node: JSX.Element) => (
+      <Suspense fallback={<Loader />}>{node}</Suspense>
+    );
 
     switch (entityType) {
       case EntityType.TABLE: {
-        return (
-          <TableVersion
-            backHandler={backHandler}
-            currentVersionData={currentVersionData as Table}
-            dataProducts={currentVersionData.dataProducts}
-            deleted={currentVersionData.deleted}
-            domains={domains}
-            entityPermissions={entityPermissions}
-            hasMore={hasMoreVersions}
-            isLoadingMore={isLoadingMore}
-            isVersionLoading={isVersionLoading}
-            owners={owners}
-            slashedTableName={slashedEntityName}
-            tier={tier as TagLabel}
-            version={version}
-            versionHandler={versionHandler}
-            versionList={versionList}
-            onLoadMore={fetchMoreVersions}
-          />
-        );
+        return TableVersion
+          ? wrapSuspense(
+              <TableVersion
+                backHandler={backHandler}
+                currentVersionData={currentVersionData as Table}
+                dataProducts={currentVersionData.dataProducts}
+                deleted={currentVersionData.deleted}
+                domains={domains}
+                entityPermissions={entityPermissions}
+                isVersionLoading={isVersionLoading}
+                owners={owners}
+                slashedTableName={slashedEntityName}
+                tier={tier as TagLabel}
+                version={version}
+                versionHandler={versionHandler}
+                versionList={versionList}
+              />
+            )
+          : null;
       }
       case EntityType.TOPIC: {
-        return (
-          <TopicVersion
-            backHandler={backHandler}
-            currentVersionData={currentVersionData as Topic}
-            dataProducts={currentVersionData.dataProducts}
-            deleted={currentVersionData.deleted}
-            domains={domains}
-            entityPermissions={entityPermissions}
-            hasMore={hasMoreVersions}
-            isLoadingMore={isLoadingMore}
-            isVersionLoading={isVersionLoading}
-            owners={owners}
-            slashedTopicName={slashedEntityName}
-            tier={tier as TagLabel}
-            version={version}
-            versionHandler={versionHandler}
-            versionList={versionList}
-            onLoadMore={fetchMoreVersions}
-          />
-        );
+        return TopicVersion
+          ? wrapSuspense(
+              <TopicVersion
+                backHandler={backHandler}
+                currentVersionData={currentVersionData as Topic}
+                dataProducts={currentVersionData.dataProducts}
+                deleted={currentVersionData.deleted}
+                domains={domains}
+                entityPermissions={entityPermissions}
+                isVersionLoading={isVersionLoading}
+                owners={owners}
+                slashedTopicName={slashedEntityName}
+                tier={tier as TagLabel}
+                version={version}
+                versionHandler={versionHandler}
+                versionList={versionList}
+              />
+            )
+          : null;
       }
 
       case EntityType.DASHBOARD: {
-        return (
-          <DashboardVersion
-            backHandler={backHandler}
-            currentVersionData={currentVersionData as Dashboard}
-            dataProducts={currentVersionData.dataProducts}
-            deleted={currentVersionData.deleted}
-            domains={domains}
-            entityPermissions={entityPermissions}
-            hasMore={hasMoreVersions}
-            isLoadingMore={isLoadingMore}
-            isVersionLoading={isVersionLoading}
-            owners={owners}
-            slashedDashboardName={slashedEntityName}
-            tier={tier as TagLabel}
-            version={version}
-            versionHandler={versionHandler}
-            versionList={versionList}
-            onLoadMore={fetchMoreVersions}
-          />
-        );
+        return DashboardVersion
+          ? wrapSuspense(
+              <DashboardVersion
+                backHandler={backHandler}
+                currentVersionData={currentVersionData as Dashboard}
+                dataProducts={currentVersionData.dataProducts}
+                deleted={currentVersionData.deleted}
+                domains={domains}
+                entityPermissions={entityPermissions}
+                isVersionLoading={isVersionLoading}
+                owners={owners}
+                slashedDashboardName={slashedEntityName}
+                tier={tier as TagLabel}
+                version={version}
+                versionHandler={versionHandler}
+                versionList={versionList}
+              />
+            )
+          : null;
       }
 
       case EntityType.PIPELINE: {
-        return (
-          <PipelineVersion
-            backHandler={backHandler}
-            currentVersionData={currentVersionData as Pipeline}
-            dataProducts={currentVersionData.dataProducts}
-            deleted={currentVersionData.deleted}
-            domains={domains}
-            entityPermissions={entityPermissions}
-            hasMore={hasMoreVersions}
-            isLoadingMore={isLoadingMore}
-            isVersionLoading={isVersionLoading}
-            owners={owners}
-            slashedPipelineName={slashedEntityName}
-            tier={tier as TagLabel}
-            version={version}
-            versionHandler={versionHandler}
-            versionList={versionList}
-            onLoadMore={fetchMoreVersions}
-          />
-        );
+        return PipelineVersion
+          ? wrapSuspense(
+              <PipelineVersion
+                backHandler={backHandler}
+                currentVersionData={currentVersionData as Pipeline}
+                dataProducts={currentVersionData.dataProducts}
+                deleted={currentVersionData.deleted}
+                domains={domains}
+                entityPermissions={entityPermissions}
+                isVersionLoading={isVersionLoading}
+                owners={owners}
+                slashedPipelineName={slashedEntityName}
+                tier={tier as TagLabel}
+                version={version}
+                versionHandler={versionHandler}
+                versionList={versionList}
+              />
+            )
+          : null;
       }
 
       case EntityType.MLMODEL: {
-        return (
-          <MlModelVersion
-            backHandler={backHandler}
-            currentVersionData={currentVersionData as Mlmodel}
-            dataProducts={currentVersionData.dataProducts}
-            deleted={currentVersionData.deleted}
-            domains={domains}
-            entityPermissions={entityPermissions}
-            hasMore={hasMoreVersions}
-            isLoadingMore={isLoadingMore}
-            isVersionLoading={isVersionLoading}
-            owners={owners}
-            slashedMlModelName={slashedEntityName}
-            tier={tier as TagLabel}
-            version={version}
-            versionHandler={versionHandler}
-            versionList={versionList}
-            onLoadMore={fetchMoreVersions}
-          />
-        );
+        return MlModelVersion
+          ? wrapSuspense(
+              <MlModelVersion
+                backHandler={backHandler}
+                currentVersionData={currentVersionData as Mlmodel}
+                dataProducts={currentVersionData.dataProducts}
+                deleted={currentVersionData.deleted}
+                domains={domains}
+                entityPermissions={entityPermissions}
+                isVersionLoading={isVersionLoading}
+                owners={owners}
+                slashedMlModelName={slashedEntityName}
+                tier={tier as TagLabel}
+                version={version}
+                versionHandler={versionHandler}
+                versionList={versionList}
+              />
+            )
+          : null;
       }
       case EntityType.CONTAINER: {
-        return (
-          <ContainerVersion
-            backHandler={backHandler}
-            breadCrumbList={slashedEntityName}
-            currentVersionData={currentVersionData as Container}
-            dataProducts={currentVersionData.dataProducts}
-            deleted={currentVersionData.deleted}
-            domains={domains}
-            entityPermissions={entityPermissions}
-            hasMore={hasMoreVersions}
-            isLoadingMore={isLoadingMore}
-            isVersionLoading={isVersionLoading}
-            owners={owners}
-            tier={tier as TagLabel}
-            version={version}
-            versionHandler={versionHandler}
-            versionList={versionList}
-            onLoadMore={fetchMoreVersions}
-          />
-        );
+        return ContainerVersion
+          ? wrapSuspense(
+              <ContainerVersion
+                backHandler={backHandler}
+                breadCrumbList={slashedEntityName}
+                currentVersionData={currentVersionData as Container}
+                dataProducts={currentVersionData.dataProducts}
+                deleted={currentVersionData.deleted}
+                domains={domains}
+                entityPermissions={entityPermissions}
+                isVersionLoading={isVersionLoading}
+                owners={owners}
+                tier={tier as TagLabel}
+                version={version}
+                versionHandler={versionHandler}
+                versionList={versionList}
+              />
+            )
+          : null;
       }
       case EntityType.SEARCH_INDEX: {
-        return (
-          <SearchIndexVersion
-            backHandler={backHandler}
-            breadCrumbList={slashedEntityName}
-            currentVersionData={currentVersionData as SearchIndex}
-            dataProducts={currentVersionData.dataProducts}
-            deleted={currentVersionData.deleted}
-            domains={domains}
-            entityPermissions={entityPermissions}
-            hasMore={hasMoreVersions}
-            isLoadingMore={isLoadingMore}
-            isVersionLoading={isVersionLoading}
-            owners={owners}
-            tier={tier as TagLabel}
-            version={version}
-            versionHandler={versionHandler}
-            versionList={versionList}
-            onLoadMore={fetchMoreVersions}
-          />
-        );
+        return SearchIndexVersion
+          ? wrapSuspense(
+              <SearchIndexVersion
+                backHandler={backHandler}
+                breadCrumbList={slashedEntityName}
+                currentVersionData={currentVersionData as SearchIndex}
+                dataProducts={currentVersionData.dataProducts}
+                deleted={currentVersionData.deleted}
+                domains={domains}
+                entityPermissions={entityPermissions}
+                isVersionLoading={isVersionLoading}
+                owners={owners}
+                tier={tier as TagLabel}
+                version={version}
+                versionHandler={versionHandler}
+                versionList={versionList}
+              />
+            )
+          : null;
       }
 
       case EntityType.DASHBOARD_DATA_MODEL: {
-        return (
-          <DataModelVersion
-            backHandler={backHandler}
-            currentVersionData={currentVersionData as DashboardDataModel}
-            dataProducts={currentVersionData.dataProducts}
-            deleted={currentVersionData.deleted}
-            domains={domains}
-            entityPermissions={entityPermissions}
-            hasMore={hasMoreVersions}
-            isLoadingMore={isLoadingMore}
-            isVersionLoading={isVersionLoading}
-            owners={owners}
-            slashedDataModelName={slashedEntityName}
-            tier={tier as TagLabel}
-            version={version}
-            versionHandler={versionHandler}
-            versionList={versionList}
-            onLoadMore={fetchMoreVersions}
-          />
-        );
+        return DataModelVersion
+          ? wrapSuspense(
+              <DataModelVersion
+                backHandler={backHandler}
+                currentVersionData={currentVersionData as DashboardDataModel}
+                dataProducts={currentVersionData.dataProducts}
+                deleted={currentVersionData.deleted}
+                domains={domains}
+                entityPermissions={entityPermissions}
+                isVersionLoading={isVersionLoading}
+                owners={owners}
+                slashedDataModelName={slashedEntityName}
+                tier={tier as TagLabel}
+                version={version}
+                versionHandler={versionHandler}
+                versionList={versionList}
+              />
+            )
+          : null;
       }
 
       case EntityType.STORED_PROCEDURE: {
-        return (
-          <StoredProcedureVersion
-            backHandler={backHandler}
-            currentVersionData={currentVersionData as StoredProcedure}
-            dataProducts={currentVersionData.dataProducts}
-            deleted={currentVersionData.deleted}
-            domains={domains}
-            entityPermissions={entityPermissions}
-            hasMore={hasMoreVersions}
-            isLoadingMore={isLoadingMore}
-            isVersionLoading={isVersionLoading}
-            owners={owners}
-            slashedTableName={slashedEntityName}
-            tier={tier as TagLabel}
-            version={version}
-            versionHandler={versionHandler}
-            versionList={versionList}
-            onLoadMore={fetchMoreVersions}
-          />
-        );
+        return StoredProcedureVersion
+          ? wrapSuspense(
+              <StoredProcedureVersion
+                backHandler={backHandler}
+                currentVersionData={currentVersionData as StoredProcedure}
+                dataProducts={currentVersionData.dataProducts}
+                deleted={currentVersionData.deleted}
+                domains={domains}
+                entityPermissions={entityPermissions}
+                isVersionLoading={isVersionLoading}
+                owners={owners}
+                slashedTableName={slashedEntityName}
+                tier={tier as TagLabel}
+                version={version}
+                versionHandler={versionHandler}
+                versionList={versionList}
+              />
+            )
+          : null;
       }
 
       case EntityType.API_ENDPOINT: {
-        return (
-          <APIEndpointVersion
-            backHandler={backHandler}
-            currentVersionData={currentVersionData as APIEndpoint}
-            domains={domains}
-            entityPermissions={entityPermissions}
-            hasMore={hasMoreVersions}
-            isLoadingMore={isLoadingMore}
-            isVersionLoading={isVersionLoading}
-            owners={owners}
-            slashedApiEndpointName={slashedEntityName}
-            tier={tier as TagLabel}
-            version={version}
-            versionHandler={versionHandler}
-            versionList={versionList}
-            onLoadMore={fetchMoreVersions}
-          />
-        );
+        return APIEndpointVersion
+          ? wrapSuspense(
+              <APIEndpointVersion
+                backHandler={backHandler}
+                currentVersionData={currentVersionData as APIEndpoint}
+                domains={domains}
+                entityPermissions={entityPermissions}
+                isVersionLoading={isVersionLoading}
+                owners={owners}
+                slashedApiEndpointName={slashedEntityName}
+                tier={tier as TagLabel}
+                version={version}
+                versionHandler={versionHandler}
+                versionList={versionList}
+              />
+            )
+          : null;
       }
       case EntityType.METRIC: {
-        return (
-          <MetricVersion
-            backHandler={backHandler}
-            currentVersionData={currentVersionData as Metric}
-            domains={domains}
-            entityPermissions={entityPermissions}
-            hasMore={hasMoreVersions}
-            isLoadingMore={isLoadingMore}
-            isVersionLoading={isVersionLoading}
-            owners={owners}
-            slashedMetricName={slashedEntityName}
-            tier={tier as TagLabel}
-            version={version}
-            versionHandler={versionHandler}
-            versionList={versionList}
-            onLoadMore={fetchMoreVersions}
-          />
-        );
+        return MetricVersion
+          ? wrapSuspense(
+              <MetricVersion
+                backHandler={backHandler}
+                currentVersionData={currentVersionData as Metric}
+                domains={domains}
+                entityPermissions={entityPermissions}
+                isVersionLoading={isVersionLoading}
+                owners={owners}
+                slashedMetricName={slashedEntityName}
+                tier={tier as TagLabel}
+                version={version}
+                versionHandler={versionHandler}
+                versionList={versionList}
+              />
+            )
+          : null;
       }
       case EntityType.CHART: {
-        return (
-          <ChartVersion
-            backHandler={backHandler}
-            currentVersionData={currentVersionData as Chart}
-            dataProducts={currentVersionData.dataProducts}
-            deleted={currentVersionData.deleted}
-            domains={domains}
-            entityPermissions={entityPermissions}
-            hasMore={hasMoreVersions}
-            isLoadingMore={isLoadingMore}
-            isVersionLoading={isVersionLoading}
-            owners={owners}
-            slashedChartName={slashedEntityName as unknown as string[]}
-            tier={tier as TagLabel}
-            version={version}
-            versionHandler={versionHandler}
-            versionList={versionList}
-            onLoadMore={fetchMoreVersions}
-          />
-        );
+        return ChartVersion
+          ? wrapSuspense(
+              <ChartVersion
+                backHandler={backHandler}
+                currentVersionData={currentVersionData as Chart}
+                dataProducts={currentVersionData.dataProducts}
+                deleted={currentVersionData.deleted}
+                domains={domains}
+                entityPermissions={entityPermissions}
+                isVersionLoading={isVersionLoading}
+                owners={owners}
+                slashedChartName={slashedEntityName as unknown as string[]}
+                tier={tier as TagLabel}
+                version={version}
+                versionHandler={versionHandler}
+                versionList={versionList}
+              />
+            )
+          : null;
       }
       case EntityType.DIRECTORY: {
-        return (
-          <DirectoryVersion
-            backHandler={backHandler}
-            breadCrumbList={slashedEntityName}
-            currentVersionData={currentVersionData as Directory}
-            dataProducts={currentVersionData.dataProducts}
-            deleted={currentVersionData.deleted}
-            domains={domains}
-            entityPermissions={entityPermissions}
-            hasMore={hasMoreVersions}
-            isLoadingMore={isLoadingMore}
-            isVersionLoading={isVersionLoading}
-            owners={owners}
-            tier={tier as TagLabel}
-            version={version}
-            versionHandler={versionHandler}
-            versionList={versionList}
-            onLoadMore={fetchMoreVersions}
-          />
-        );
+        return DirectoryVersion
+          ? wrapSuspense(
+              <DirectoryVersion
+                backHandler={backHandler}
+                breadCrumbList={slashedEntityName}
+                currentVersionData={currentVersionData as Directory}
+                dataProducts={currentVersionData.dataProducts}
+                deleted={currentVersionData.deleted}
+                domains={domains}
+                entityPermissions={entityPermissions}
+                isVersionLoading={isVersionLoading}
+                owners={owners}
+                tier={tier as TagLabel}
+                version={version}
+                versionHandler={versionHandler}
+                versionList={versionList}
+              />
+            )
+          : null;
       }
       case EntityType.FILE: {
-        return (
-          <FileVersion
-            backHandler={backHandler}
-            breadCrumbList={slashedEntityName}
-            currentVersionData={currentVersionData as File}
-            dataProducts={currentVersionData.dataProducts}
-            deleted={currentVersionData.deleted}
-            domains={domains}
-            entityPermissions={entityPermissions}
-            hasMore={hasMoreVersions}
-            isLoadingMore={isLoadingMore}
-            isVersionLoading={isVersionLoading}
-            owners={owners}
-            tier={tier as TagLabel}
-            version={version}
-            versionHandler={versionHandler}
-            versionList={versionList}
-            onLoadMore={fetchMoreVersions}
-          />
-        );
+        return FileVersion
+          ? wrapSuspense(
+              <FileVersion
+                backHandler={backHandler}
+                breadCrumbList={slashedEntityName}
+                currentVersionData={currentVersionData as File}
+                dataProducts={currentVersionData.dataProducts}
+                deleted={currentVersionData.deleted}
+                domains={domains}
+                entityPermissions={entityPermissions}
+                isVersionLoading={isVersionLoading}
+                owners={owners}
+                tier={tier as TagLabel}
+                version={version}
+                versionHandler={versionHandler}
+                versionList={versionList}
+              />
+            )
+          : null;
       }
       case EntityType.SPREADSHEET: {
-        return (
-          <SpreadsheetVersion
-            backHandler={backHandler}
-            breadCrumbList={slashedEntityName}
-            currentVersionData={currentVersionData as Spreadsheet}
-            dataProducts={currentVersionData.dataProducts}
-            deleted={currentVersionData.deleted}
-            domains={domains}
-            entityPermissions={entityPermissions}
-            hasMore={hasMoreVersions}
-            isLoadingMore={isLoadingMore}
-            isVersionLoading={isVersionLoading}
-            owners={owners}
-            tier={tier as TagLabel}
-            version={version}
-            versionHandler={versionHandler}
-            versionList={versionList}
-            onLoadMore={fetchMoreVersions}
-          />
-        );
+        return SpreadsheetVersion
+          ? wrapSuspense(
+              <SpreadsheetVersion
+                backHandler={backHandler}
+                breadCrumbList={slashedEntityName}
+                currentVersionData={currentVersionData as Spreadsheet}
+                dataProducts={currentVersionData.dataProducts}
+                deleted={currentVersionData.deleted}
+                domains={domains}
+                entityPermissions={entityPermissions}
+                isVersionLoading={isVersionLoading}
+                owners={owners}
+                tier={tier as TagLabel}
+                version={version}
+                versionHandler={versionHandler}
+                versionList={versionList}
+              />
+            )
+          : null;
       }
       case EntityType.WORKSHEET: {
-        return (
-          <WorksheetVersion
-            backHandler={backHandler}
-            breadCrumbList={slashedEntityName}
-            currentVersionData={currentVersionData as Worksheet}
-            dataProducts={currentVersionData.dataProducts}
-            deleted={currentVersionData.deleted}
-            domains={domains}
-            entityPermissions={entityPermissions}
-            hasMore={hasMoreVersions}
-            isLoadingMore={isLoadingMore}
-            isVersionLoading={isVersionLoading}
-            owners={owners}
-            tier={tier as TagLabel}
-            version={version}
-            versionHandler={versionHandler}
-            versionList={versionList}
-            onLoadMore={fetchMoreVersions}
-          />
-        );
+        return WorksheetVersion
+          ? wrapSuspense(
+              <WorksheetVersion
+                backHandler={backHandler}
+                breadCrumbList={slashedEntityName}
+                currentVersionData={currentVersionData as Worksheet}
+                dataProducts={currentVersionData.dataProducts}
+                deleted={currentVersionData.deleted}
+                domains={domains}
+                entityPermissions={entityPermissions}
+                isVersionLoading={isVersionLoading}
+                owners={owners}
+                tier={tier as TagLabel}
+                version={version}
+                versionHandler={versionHandler}
+                versionList={versionList}
+              />
+            )
+          : null;
       }
 
       case EntityType.DATABASE: {
-        return <DatabaseVersionPage />;
+        return DatabaseVersionPage
+          ? wrapSuspense(<DatabaseVersionPage />)
+          : null;
       }
 
       case EntityType.DATABASE_SCHEMA: {
-        return <DatabaseSchemaVersionPage />;
+        return DatabaseSchemaVersionPage
+          ? wrapSuspense(<DatabaseSchemaVersionPage />)
+          : null;
       }
 
       case EntityType.DATA_PRODUCT: {
-        return <DataProductsPage />;
+        return DataProductsPage ? wrapSuspense(<DataProductsPage />) : null;
       }
 
       case EntityType.API_COLLECTION: {
-        return <APICollectionVersionPage />;
+        return APICollectionVersionPage
+          ? wrapSuspense(<APICollectionVersionPage />)
+          : null;
       }
 
-      default:
-        VersionPage = entityUtilClassBase.getEntityDetailComponent(entityType);
+      default: {
+        const VersionPage =
+          entityVersionClassBase.getEntityDetailComponent(entityType);
 
-        return VersionPage && <VersionPage />;
+        return VersionPage ? <VersionPage /> : null;
+      }
     }
   };
 

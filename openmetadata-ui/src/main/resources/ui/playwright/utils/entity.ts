@@ -30,6 +30,7 @@ import {
   clickOutside,
   closeFirstPopupAlert,
   descriptionBox,
+  getEntityTypeSearchIndexMapping,
   readElementInListWithScroll,
   redirectToHomePage,
   toastNotification,
@@ -80,7 +81,16 @@ export const visitEntityPage = async (data: {
       response.url().includes('exclude_source_fields')
   );
 
-  await page.getByTestId(dataTestId).getByTestId('data-name').click();
+  // Adding a failsafe for the operation below to avoid a tooltip overlap issue.
+  // A tooltip over the option can cause Playwright click failures:
+  // 1) Hover over the option to move the mouse away from the tooltip trigger element.
+  // 2) If the tooltip is still present, force-click the option.
+  await page.getByTestId(dataTestId).getByTestId('data-name').hover();
+  await page
+    .getByTestId(dataTestId)
+    .getByTestId('data-name')
+    // eslint-disable-next-line playwright/no-force-option
+    .click({ force: true });
   await waitForAllLoadersToDisappear(page);
   await page.getByTestId('searchBox').clear();
 };
@@ -158,7 +168,7 @@ export const addOwner = async ({
           const searchRetry = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/search/query') &&
-              response.url().includes('user_search_index')
+              response.url().includes(encodeURIComponent(owner))
           );
           await ownerSearchInput.fill('');
           await ownerSearchInput.fill(owner);
@@ -486,7 +496,7 @@ export const addMultiOwner = async (data: {
 
   for (const name of owners) {
     await expect(
-      page.locator(`[data-testid="${resultTestId}"]`).getByTestId(name)
+      page.locator(`[data-testid="${resultTestId}"]`).getByTestId(name).first()
     ).toBeVisible();
   }
 };
@@ -1073,17 +1083,6 @@ export const openColumnDetailPanel = async ({
       )
     : null;
 
-  const columnsProfileResponsePromise =
-    entityType === 'table'
-      ? page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/tables/name/') &&
-            response.url().includes('/columns') &&
-            response.url().includes('profile') &&
-            response.request().method() === 'GET',
-          { timeout: 90_000 }
-        )
-      : null;
   if (entityType === 'MlModel') {
     const columnName = page
       .locator(`[${rowSelector}="${columnId}"]`)
@@ -1112,10 +1111,6 @@ export const openColumnDetailPanel = async ({
   if (apiResponsePromise) {
     const apiResponse = await apiResponsePromise;
     expect(apiResponse.status()).toBe(200);
-  }
-
-  if (columnsProfileResponsePromise) {
-    await columnsProfileResponsePromise;
   }
 
   const panelContainer = page.locator('.column-detail-panel');
@@ -1182,10 +1177,6 @@ export const assignGlossaryTermToChildren = async ({
   );
   await expect(glossaryTermTag).toBeVisible();
 
-  // CRITICAL: Set up waitForResponse BEFORE the click that triggers it
-  const putRequest = page.waitForResponse(
-    (response) => response.request().method() === 'PUT'
-  );
   await glossaryTermTag.click();
 
   await page
@@ -1206,9 +1197,6 @@ export const assignGlossaryTermToChildren = async ({
 
   await expect(saveButton).not.toBeVisible();
 
-  await putRequest;
-
-  // CRITICAL: Wait for UI to update after API responses
   await waitForAllLoadersToDisappear(page);
 
   await expect(
@@ -2144,9 +2132,12 @@ export const checkDataAssetWidget = async (page: Page, serviceType: string) => {
 
   await quickFilterResponse;
 
-  await expect(
-    page.locator('[data-testid="search-dropdown-Service Type"]')
-  ).toContainText(serviceType);
+  // Click on filter dropdown
+  await page.getByTestId('search-dropdown-Service Type').click();
+  // assert on dropdown item visibility
+  await page.getByRole('menuitem', { name: serviceType }).waitFor();
+  // assert on checkbox state
+  await expect(page.getByTestId(`${serviceType}-checkbox`)).toBeChecked();
 
   await expect(
     page
@@ -2240,9 +2231,28 @@ export const checkExploreSearchFilter = async (
   filterLabel: string,
   filterKey: string,
   filterValue: string,
-  entity?: EntityClass
+  entity?: EntityClass,
+  searchEntityType = false
 ) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
+  if (entity?.type && searchEntityType) {
+    const entityTypeId = (
+      getEntityTypeSearchIndexMapping(entity.type) ?? entity.type
+    )
+      .toLocaleLowerCase()
+      .replaceAll(' ', '');
+    const entitySearchResponse = page.waitForResponse(
+      (req) =>
+        req.url().includes('/api/v1/search/query') &&
+        req.url().includes(`index=dataAsset`)
+    );
+
+    await page.getByTestId(`search-dropdown-Data Assets`).click();
+    await page.fill('[data-testid="search-input"]', entityTypeId);
+    await page.getByTestId(entityTypeId).click();
+    await entitySearchResponse;
+    await page.getByTestId('update-btn').click();
+  }
   await page.getByTestId(`search-dropdown-${filterLabel}`).click();
   await searchAndClickOnOption(
     page,

@@ -115,10 +115,6 @@ from metadata.generated.schema.entity.services.connections.database.trinoConnect
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoScheme,
 )
-from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
-    VerticaConnection,
-    VerticaScheme,
-)
 from metadata.generated.schema.security.credentials import awsCredentials
 from metadata.ingestion.connections.builders import (
     get_connection_args_common,
@@ -136,9 +132,9 @@ class SourceConnectionTest(TestCase):
             get_connection_url,
         )
 
-        expected_result = "databricks+connector://1.1.1.1:443"
+        expected_result = "databricks://1.1.1.1:443"
         databricks_conn_obj = DatabricksConnection(
-            scheme=DatabricksScheme.databricks_connector,
+            scheme=DatabricksScheme.databricks,
             hostPort="1.1.1.1:443",
             authType=PersonalAccessToken(token="KlivDTACWXKmZVfN1qIM"),
             httpPath="/sql/1.0/warehouses/abcdedfg",
@@ -150,9 +146,9 @@ class SourceConnectionTest(TestCase):
             get_connection_url,
         )
 
-        expected_result = "databricks+connector://1.1.1.1:443"
+        expected_result = "databricks://1.1.1.1:443?catalog=main"
         databricks_conn_obj = DatabricksConnection(
-            scheme=DatabricksScheme.databricks_connector,
+            scheme=DatabricksScheme.databricks,
             hostPort="1.1.1.1:443",
             authType=DatabricksOauth(
                 clientId="d40e2905-88ef-42ab-8898-fbefff2d071d",
@@ -162,6 +158,99 @@ class SourceConnectionTest(TestCase):
             catalog="main",
         )
         assert expected_result == get_connection_url(databricks_conn_obj)
+
+    def test_databricks_pipeline_url(self):
+        from metadata.generated.schema.entity.services.connections.pipeline.databricksPipelineConnection import (
+            DatabricksPipelineConnection,
+        )
+        from metadata.ingestion.source.pipeline.databrickspipeline.connection import (
+            get_connection_url,
+        )
+
+        conn_obj = DatabricksPipelineConnection(
+            hostPort="my-workspace.cloud.databricks.com:443",
+            token="dapi1234567890",
+        )
+        url = get_connection_url(conn_obj)
+        assert url == "databricks://token:dapi1234567890@my-workspace.cloud.databricks.com:443"
+        assert "databricks+connector" not in url
+
+    def test_databricks_url_with_special_chars_in_catalog(self):
+        from metadata.ingestion.source.database.databricks.connection import (
+            get_connection_url,
+        )
+
+        databricks_conn_obj = DatabricksConnection(
+            scheme=DatabricksScheme.databricks,
+            hostPort="1.1.1.1:443",
+            authType=PersonalAccessToken(token="KlivDTACWXKmZVfN1qIM"),
+            httpPath="/sql/1.0/warehouses/abcdedfg",
+            catalog="my catalog&name=val",
+        )
+        url = get_connection_url(databricks_conn_obj)
+        assert url == "databricks://1.1.1.1:443?catalog=my+catalog%26name%3Dval"
+
+    def test_unity_catalog_url_without_catalog(self):
+        from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+            DatabricksScheme as UCDatabricksScheme,
+        )
+        from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+            UnityCatalogConnection,
+        )
+        from metadata.ingestion.source.database.unitycatalog.connection import (
+            get_connection_url,
+        )
+
+        conn_obj = UnityCatalogConnection(
+            scheme=UCDatabricksScheme.databricks,
+            hostPort="my-workspace.cloud.databricks.com:443",
+            authType=PersonalAccessToken(token="dapi1234567890"),
+            httpPath="/sql/1.0/warehouses/abc",
+        )
+        url = get_connection_url(conn_obj)
+        assert url == "databricks://my-workspace.cloud.databricks.com:443"
+
+    def test_unity_catalog_url_with_catalog(self):
+        from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+            DatabricksScheme as UCDatabricksScheme,
+        )
+        from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+            UnityCatalogConnection,
+        )
+        from metadata.ingestion.source.database.unitycatalog.connection import (
+            get_connection_url,
+        )
+
+        conn_obj = UnityCatalogConnection(
+            scheme=UCDatabricksScheme.databricks,
+            hostPort="my-workspace.cloud.databricks.com:443",
+            authType=PersonalAccessToken(token="dapi1234567890"),
+            httpPath="/sql/1.0/warehouses/abc",
+            catalog="production",
+        )
+        url = get_connection_url(conn_obj)
+        assert url == "databricks://my-workspace.cloud.databricks.com:443?catalog=production"
+
+    def test_unity_catalog_url_with_special_chars_in_catalog(self):
+        from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+            DatabricksScheme as UCDatabricksScheme,
+        )
+        from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+            UnityCatalogConnection,
+        )
+        from metadata.ingestion.source.database.unitycatalog.connection import (
+            get_connection_url,
+        )
+
+        conn_obj = UnityCatalogConnection(
+            scheme=UCDatabricksScheme.databricks,
+            hostPort="my-workspace.cloud.databricks.com:443",
+            authType=PersonalAccessToken(token="dapi1234567890"),
+            httpPath="/sql/1.0/warehouses/abc",
+            catalog="my catalog&name=val",
+        )
+        url = get_connection_url(conn_obj)
+        assert url == "databricks://my-workspace.cloud.databricks.com:443?catalog=my+catalog%26name%3Dval"
 
     def test_hive_url(self):
         from metadata.ingestion.source.database.hive.connection import (
@@ -593,29 +682,6 @@ class SourceConnectionTest(TestCase):
 
         trino_connection = TrinoConnection(trino_conn_obj)
         assert trino_connection.build_connection_args(trino_conn_obj).root.get("auth") == OAuth2Authentication()
-
-    def test_vertica_url(self):
-        expected_url = "vertica+vertica_python://username:password@localhost:5443/database"
-        vertica_conn_obj = VerticaConnection(
-            scheme=VerticaScheme.vertica_vertica_python,
-            hostPort="localhost:5443",
-            username="username",
-            password="password",
-            database="database",
-        )
-        assert expected_url == get_connection_url_common(vertica_conn_obj)
-
-        # Passing @ in username and password
-        expected_url = "vertica+vertica_python://username%40444:password%40123@localhost:5443/database"
-        vertica_conn_obj = VerticaConnection(
-            scheme=VerticaScheme.vertica_vertica_python,
-            hostPort="localhost:5443",
-            username="username@444",
-            password="password@123",
-            database="database",
-        )
-
-        assert expected_url == get_connection_url_common(vertica_conn_obj)
 
     def test_druid_url(self):
         from metadata.ingestion.source.database.druid.connection import (

@@ -237,6 +237,60 @@ describe('ServiceDocPanel Component', () => {
     });
   });
 
+  describe('Brand Name Replacement', () => {
+    const originalEnv = process.env;
+
+    afterEach(() => {
+      process.env = originalEnv;
+    });
+
+    it('should replace OpenMetadata with BRAND_NAME when env var is set', async () => {
+      process.env = { ...originalEnv, BRAND_NAME: 'Collate' };
+      mockFetchMarkdownFile.mockResolvedValue(
+        'Connect to OpenMetadata using OpenMetadata SDK'
+      );
+
+      render(<ServiceDocPanel {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          'Connect to Collate using Collate SDK'
+        );
+      });
+    });
+
+    it('should keep OpenMetadata when BRAND_NAME env var is not set', async () => {
+      process.env = { ...originalEnv };
+      delete process.env.BRAND_NAME;
+      mockFetchMarkdownFile.mockResolvedValue(
+        'Connect to OpenMetadata using OpenMetadata SDK'
+      );
+
+      render(<ServiceDocPanel {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          'Connect to OpenMetadata using OpenMetadata SDK'
+        );
+      });
+    });
+
+    it('should replace all occurrences of OpenMetadata with BRAND_NAME', async () => {
+      process.env = { ...originalEnv, BRAND_NAME: 'MyBrand' };
+      mockFetchMarkdownFile.mockResolvedValue(
+        'OpenMetadata is great. Use OpenMetadata for metadata management.'
+      );
+
+      render(<ServiceDocPanel {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          'MyBrand is great. Use MyBrand for metadata management.'
+        );
+      });
+    });
+  });
+
   describe('Field Highlighting', () => {
     beforeEach(() => {
       mockQuerySelector.mockReturnValue(createMockElement());
@@ -415,6 +469,11 @@ describe('CodeBlockComponent', () => {
       value: { writeText: mockWriteText },
       writable: true,
     });
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      writable: true,
+      configurable: true,
+    });
   });
 
   it('should render the copy button', () => {
@@ -455,27 +514,7 @@ describe('CodeBlockComponent', () => {
     });
   });
 
-  it('should schedule a timer to reset data-copied after clicking copy', async () => {
-    const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
-
-    const { container } = render(<CodeBlockComponent {...mockNodeViewProps} />);
-
-    fireEvent.click(screen.getByTestId('code-block-copy-icon'));
-
-    await waitFor(() => {
-      expect(container.querySelector('.code-copy-button')).toHaveAttribute(
-        'data-copied',
-        'true'
-      );
-    });
-
-    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 2000);
-
-    setTimeoutSpy.mockRestore();
-  });
-
-  it('should cancel the previous timer on rapid clicks', async () => {
-    const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
+  it('should remain in copied state after rapid clicks', async () => {
     const { container } = render(<CodeBlockComponent {...mockNodeViewProps} />);
 
     fireEvent.click(screen.getByTestId('code-block-copy-icon'));
@@ -490,30 +529,9 @@ describe('CodeBlockComponent', () => {
       expect(mockWriteText).toHaveBeenCalledTimes(2);
     });
 
-    expect(clearTimeoutSpy).toHaveBeenCalled();
-
     expect(container.querySelector('.code-copy-button')).toHaveAttribute(
       'data-copied',
       'true'
     );
-
-    clearTimeoutSpy.mockRestore();
-  });
-
-  it('should clear timeout on unmount', async () => {
-    const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
-    const { unmount } = render(<CodeBlockComponent {...mockNodeViewProps} />);
-
-    fireEvent.click(screen.getByTestId('code-block-copy-icon'));
-
-    await waitFor(() => {
-      expect(mockWriteText).toHaveBeenCalled();
-    });
-
-    unmount();
-
-    expect(clearTimeoutSpy).toHaveBeenCalled();
-
-    clearTimeoutSpy.mockRestore();
   });
 });

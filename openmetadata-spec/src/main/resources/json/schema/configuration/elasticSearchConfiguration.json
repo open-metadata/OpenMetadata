@@ -149,12 +149,12 @@
           "default": 0.6
         },
         "embeddingProvider": {
-          "description": "The provider to use for generating vector embeddings (e.g., bedrock, openai).",
+          "description": "The provider to use for generating vector embeddings (e.g., bedrock, openai, google, djl).",
           "type": "string",
           "default": "bedrock"
         },
-        "maxConcurrentEmbeddingRequests": {
-          "description": "Maximum number of concurrent embedding API requests. Controls the semaphore used to throttle calls to the embedding provider and prevent overwhelming HTTP/2 connection limits.",
+        "maxConcurrentRequests": {
+          "description": "Maximum number of concurrent embedding and NLQ provider requests. Controls the semaphore used to throttle calls to the providers and prevent overwhelming HTTP/2 connection limits.",
           "type": "integer",
           "default": 10,
           "minimum": 1
@@ -186,6 +186,25 @@
               "description": "Dimension of the embedding vector",
               "type": "integer",
               "default": 512
+            },
+            "timeoutSeconds": {
+              "description": "Bedrock InvokeModel API call timeout in seconds.",
+              "type": "integer",
+              "minimum": 1,
+              "default": 15
+            },
+            "maxTokens": {
+              "description": "Maximum tokens the Bedrock model is allowed to generate.",
+              "type": "integer",
+              "minimum": 1,
+              "default": 256
+            },
+            "temperature": {
+              "description": "Sampling temperature for Bedrock requests.",
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 2.0,
+              "default": 0.0
             }
           },
           "additionalProperties": false
@@ -237,6 +256,120 @@
               "description": "Azure OpenAI API version. Only used with Azure OpenAI.",
               "type": "string",
               "default": "2024-02-01"
+            },
+            "timeoutSeconds": {
+              "description": "OpenAI HTTP request and connect timeout in seconds.",
+              "type": "integer",
+              "minimum": 1,
+              "default": 30
+            },
+            "maxTokens": {
+              "description": "Maximum tokens the OpenAI model is allowed to generate.",
+              "type": "integer",
+              "minimum": 1,
+              "default": 256
+            },
+            "temperature": {
+              "description": "Sampling temperature for OpenAI requests.",
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 2.0,
+              "default": 0.0
+            }
+          },
+          "additionalProperties": false
+        },
+        "filterExtractor": {
+          "description": "NLQ filter extractor cache and prompt tuning.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.service.configuration.elasticsearch.FilterExtractor",
+          "properties": {
+            "cacheMaxSize": {
+              "description": "Max number of entries in the NLQ filter extraction result cache.",
+              "type": "integer",
+              "minimum": 1,
+              "default": 1000
+            },
+            "cacheExpiryMinutes": {
+              "description": "Cache TTL in minutes for NLQ filter extraction results.",
+              "type": "integer",
+              "minimum": 1,
+              "default": 5
+            },
+            "maxSampleValues": {
+              "description": "Max sample values shown per filter category in the system prompt.",
+              "type": "integer",
+              "minimum": 1,
+              "default": 10
+            }
+          },
+          "additionalProperties": false
+        },
+        "hybridSearch": {
+          "description": "Hybrid search runtime tuning combining BM25 keyword and KNN semantic queries.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.service.configuration.elasticsearch.HybridSearch",
+          "properties": {
+            "searchPipeline": {
+              "description": "Name of the OpenSearch search pipeline used to normalize hybrid (BM25 + KNN) scores.",
+              "type": "string",
+              "default": "hybrid-rrf"
+            },
+            "semanticScoreThreshold": {
+              "description": "Minimum score threshold for the semantic (KNN) sub-query results.",
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "default": 0.55
+            },
+            "maxQueryTerms": {
+              "description": "Maximum number of query terms forwarded to the shard-fair keyword sub-query.",
+              "type": "integer",
+              "minimum": 1,
+              "default": 10
+            },
+            "fragmentSize": {
+              "description": "Highlight fragment size (characters) for hybrid search hits.",
+              "type": "integer",
+              "minimum": 1,
+              "default": 1000
+            },
+            "paginationDepth": {
+              "description": "Pagination depth used by the hybrid query for RRF normalization.",
+              "type": "integer",
+              "minimum": 1,
+              "default": 1000
+            }
+          },
+          "additionalProperties": false
+        },
+        "google": {
+          "description": "Google Gemini configuration for embedding generation via the Generative Language API.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.service.configuration.elasticsearch.Google",
+          "properties": {
+            "apiKey": {
+              "description": "API key from Google AI Studio for authenticating with the Generative Language API.",
+              "type": "string"
+            },
+            "modelId": {
+              "description": "Gemini chat model identifier for query transformation (e.g., gemini-2.5-flash, gemini-1.5-flash).",
+              "type": "string",
+              "default": "gemini-2.5-flash"
+            },
+            "embeddingModelId": {
+              "description": "Gemini embedding model identifier (e.g., gemini-embedding-001, text-embedding-004).",
+              "type": "string",
+              "default": "gemini-embedding-001"
+            },
+            "embeddingDimension": {
+              "description": "Dimension of the embedding vector, sent to Google as `outputDimensionality`. For `gemini-embedding-001` valid values are 768, 1536, or 3072. For `text-embedding-004` use 768.",
+              "type": "integer",
+              "default": 768
+            },
+            "endpoint": {
+              "description": "Optional override for the full embedding endpoint URL. Must be the complete URL including the model and `:embedContent` action (e.g. `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent`), not just a base URL. Leave empty to use the default Generative Language API endpoint, which is constructed from `embeddingModelId`. The `key` query parameter is appended automatically.",
+              "type": "string"
             }
           },
           "additionalProperties": false

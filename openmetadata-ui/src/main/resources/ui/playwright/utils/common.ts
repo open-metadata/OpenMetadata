@@ -198,6 +198,25 @@ export const clickOutside = async (page: Page) => {
   });
 };
 
+export const searchFromSearchInput = async (
+  page: Page,
+  searchInput: Locator,
+  searchTerm: string
+) => {
+  const searchResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.request().method() === 'GET'
+  );
+
+  await searchInput.clear();
+  await searchInput.fill(searchTerm);
+  await expect(searchInput).toHaveValue(searchTerm);
+
+  const searchResponse = await searchResponsePromise;
+  expect(searchResponse.status()).toBe(200);
+};
+
 export const visitOwnProfilePage = async (page: Page) => {
   await page.locator('[data-testid="dropdown-profile"] svg').click();
   await page.locator('[role="menu"].profile-dropdown').waitFor({

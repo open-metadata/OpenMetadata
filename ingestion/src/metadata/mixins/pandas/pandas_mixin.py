@@ -23,9 +23,9 @@ from metadata.generated.schema.entity.data.table import (
     PartitionIntervalTypes,
     PartitionProfilerConfig,
 )
+from metadata.generated.schema.type.basic import ProfileSampleType
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
-from metadata.sampler.models import ProfileSampleType
-from metadata.sampler.sampler_interface import SampleConfig
 from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR
 from metadata.utils.datalake.datalake_utils import (
     DatalakeColumnWrapper,
@@ -127,7 +127,7 @@ class PandasInterfaceMixin:
 
         return yield_sampled_dfs
 
-    def get_sampled_dataframe(self, raw_dataset: Callable, sample_config: SampleConfig) -> Callable:
+    def get_sampled_dataframe(self, raw_dataset: Callable, static: StaticSamplingConfig) -> Callable:
         """Get sampled dataframe based on profiler config
 
         Returns:
@@ -136,7 +136,6 @@ class PandasInterfaceMixin:
 
         def yield_sampled_dfs():
             dfs = raw_dataset
-            static = sample_config.get_static_config()
             if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
                 # Sampling based on percentage of rows will be applied to each dataframe chunk
                 # to ensure consistent efficiency across large dataset. Other option would be to
@@ -176,14 +175,14 @@ class PandasInterfaceMixin:
 
         Args:
             service_connection_config: Datalake connection config
-            client: Datalake client
+            client: DatalakeClient, we'll pass the client of the DatalakeClient to fetch_dataframe_generator
             table: Table entity
         Returns:
             DatalakeColumnWrapper
         """
         data = fetch_dataframe_generator(
             config_source=service_connection_config.configSource,
-            client=client,
+            client=client.client,  # type: ignore
             file_fqn=DatalakeTableSchemaWrapper(
                 key=table.name.root,
                 bucket_name=table.databaseSchema.name,

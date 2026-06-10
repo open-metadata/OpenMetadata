@@ -24,6 +24,7 @@ on:
         options:
           - okta
           - keycloak-azure-saml
+          - keycloak-azure-saml-crosssite
           - all
 
 permissions:
@@ -53,10 +54,12 @@ jobs:
       matrix:
         provider:
           ${{ (github.event_name == 'schedule' || github.event.inputs.sso_provider == 'all')
-          && fromJSON('[{"name":"okta","env_prefix":"OKTA"},{"name":"keycloak-azure-saml","env_prefix":"KEYCLOAK_AZURE_SAML"}]')
+          && fromJSON('[{"name":"okta","env_prefix":"OKTA"},{"name":"keycloak-azure-saml","env_prefix":"KEYCLOAK_AZURE_SAML"},{"name":"keycloak-azure-saml-crosssite","env_prefix":"KEYCLOAK_AZURE_SAML"}]')
           || (github.event.inputs.sso_provider == 'keycloak-azure-saml'
               && fromJSON('[{"name":"keycloak-azure-saml","env_prefix":"KEYCLOAK_AZURE_SAML"}]')
-              || fromJSON('[{"name":"okta","env_prefix":"OKTA"}]')) }}
+              || (github.event.inputs.sso_provider == 'keycloak-azure-saml-crosssite'
+                  && fromJSON('[{"name":"keycloak-azure-saml-crosssite","env_prefix":"KEYCLOAK_AZURE_SAML"}]')
+                  || fromJSON('[{"name":"okta","env_prefix":"OKTA"}]'))) }}
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -111,12 +114,14 @@ jobs:
           SSO_PROVIDER_TYPE: ${{ matrix.provider.name }}
           SSO_USERNAME: ${{ vars[format('{0}_SSO_USERNAME', matrix.provider.env_prefix)] }}
           SSO_PASSWORD: ${{ vars[format('{0}_SSO_PASSWORD', matrix.provider.env_prefix)] || secrets[format('{0}_SSO_PASSWORD', matrix.provider.env_prefix)] }}
-          KEYCLOAK_SAML_BASE_URL: http://localhost:8080
+          # The '-crosssite' variant fronts the IdP on 127.0.0.1 while OM stays on localhost. The two
+          # are a same registrable-domain pair but a *different site* (SameSite ignores port; 127.0.0.1
+          # and localhost are distinct sites), so the SAML callback POST is cross-site and the browser
+          # drops the SameSite=Lax OM_SESSION cookie. This reproduces the production "No pending session"
+          # failure that the localhost-only job cannot, guarding the SAML RelayState fix.
+          KEYCLOAK_SAML_BASE_URL: ${{ matrix.provider.name == 'keycloak-azure-saml-crosssite' && 'http://127.0.0.1:8080' || 'http://localhost:8080' }}
           PLAYWRIGHT_IS_OSS: true
-        run: |
-          npx playwright test playwright/e2e/Auth/SSOLogin.spec.ts \
-            --project=sso-auth \
-            --workers=1
+        run: npx playwright test --project=sso-auth --workers=1
 
       - name: Upload HTML report
         if: always()

@@ -13,18 +13,18 @@
 
 import {
   AntdConfig,
-  AsyncFetchListValuesResult,
-  BasicConfig,
-  Field,
-  Fields,
-  ListItem,
-  ListValues,
-  SelectFieldSettings,
+  type AsyncFetchListValuesResult,
+  type BasicConfig,
+  type Field,
+  type Fields,
+  type ListItem,
+  type ListValues,
+  type SelectFieldSettings,
 } from '@react-awesome-query-builder/antd';
 import { debounce, isEmpty, sortBy, toLower } from 'lodash';
 import {
-  CustomPropertyEnumConfig,
   SearchOutputType,
+  type CustomPropertyEnumConfig,
 } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import {
   CP_TYPE_WITHOUT_KEYWORD_FIELD,
@@ -42,9 +42,9 @@ import {
   SuggestionField,
 } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { Config } from '../generated/api/data/createCustomProperty';
+import type { Config } from '../generated/api/data/createCustomProperty';
 import { EntityStatus } from '../generated/entity/data/searchIndex';
-import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
+import type { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
 import {
   getCustomPropertyAdvanceSearchEnumOptions,
@@ -52,7 +52,7 @@ import {
 } from './AdvancedSearchUtils';
 import { getCustomPropertyMomentFormat } from './CustomProperty.utils';
 import { buildTermQuery } from './elasticsearchQueryBuilder';
-import { getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
 import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 import { parseBucketsData } from './SearchUtils';
@@ -87,6 +87,17 @@ class AdvancedSearchClassBase {
     },
     text: {
       ...this.baseConfig.types.text,
+      widgets: {
+        ...this.baseConfig.types.text.widgets,
+        text: {
+          ...(this.baseConfig.types.text.widgets?.text ?? {}),
+          operators: [
+            ...(this.baseConfig.types.text.widgets?.text?.operators ?? []),
+            'match_phrase',
+            'not_match_phrase',
+          ],
+        },
+      },
       valueSources: ['value'],
     },
   };
@@ -136,6 +147,8 @@ class AdvancedSearchClassBase {
             return {
               [fieldName]: { value: newValue, case_insensitive: true },
             };
+          case 'match_phrase':
+            return { [fieldName]: newValue };
           default:
             return { [fieldName]: { value: newValue } };
         }
@@ -162,6 +175,24 @@ class AdvancedSearchClassBase {
     multiselect_not_contains: {
       ...this.baseConfig.operators.multiselect_not_contains,
       sqlOp: 'NOT IN',
+    },
+    match_phrase: {
+      label: t('label.contain-plural'),
+      labelForFormat: t('label.contain-plural'),
+      reversedOp: 'not_match_phrase',
+      elasticSearchQueryType: 'match_phrase',
+      valueSources: ['value'],
+      cardinality: 1,
+      sqlOp: 'CONTAINS',
+    },
+    not_match_phrase: {
+      label: t('label.not-contain-plural'),
+      labelForFormat: t('label.not-contain-plural'),
+      reversedOp: 'match_phrase',
+      valueSources: ['value'],
+      cardinality: 1,
+      isNotOp: true,
+      sqlOp: 'NOT CONTAINS',
     },
   } as BasicConfig['operators'];
 
@@ -972,8 +1003,20 @@ class AdvancedSearchClassBase {
         mainWidgetProps: this.mainWidgetProps,
         subfields: {},
       },
-      descriptionStatus: {
+      description: {
         label: t('label.description'),
+        type: 'text',
+        operators: [
+          'match_phrase',
+          'not_match_phrase',
+          'is_null',
+          'is_not_null',
+        ],
+        mainWidgetProps: this.mainWidgetProps,
+        valueSources: ['value'],
+      },
+      descriptionStatus: {
+        label: t('label.description-status'),
         type: 'select',
         operators: LIST_VALUE_OPERATORS,
         mainWidgetProps: this.mainWidgetProps,

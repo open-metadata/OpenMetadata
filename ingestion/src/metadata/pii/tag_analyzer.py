@@ -79,6 +79,12 @@ class TagAnalyzer:
             get_entity_link(Table, FQN_SEPARATOR.join(table_fqn_parts), column_name=column_name) in blacklisted_entities
         )
 
+    def _supports_language(self, created: EntityRecognizer) -> bool:
+        return self._language is ClassificationLanguage.any or created.supported_language in {
+            ClassificationLanguage.any.value,
+            self._language.value,
+        }
+
     def get_recognizers_by(self, target: recognizer.Target) -> list[EntityRecognizer]:
         if self.tag.autoClassificationEnabled is False:
             return []
@@ -94,12 +100,7 @@ class TagAnalyzer:
                 continue
 
             created = PresidioRecognizerFactory.create_recognizer(recognizer)
-            if created is not None:
-                if (
-                    self._language is not ClassificationLanguage.any
-                    and created.supported_language != self._language.value
-                ):
-                    continue
+            if created is not None and self._supports_language(created):
                 recognizers.append(created)
 
         return recognizers

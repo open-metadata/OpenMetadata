@@ -10,7 +10,9 @@ import static org.openmetadata.it.bootstrap.SharedEntities.*;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -201,17 +203,6 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return SdkClients.adminClient().dataProducts().getVersionList(id);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
-    return SdkClients.adminClient().dataProducts().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    return SdkClients.adminClient().dataProducts().getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override
@@ -3003,5 +2994,220 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     assertTrue(
         listed.getOwners() == null || listed.getOwners().isEmpty(),
         "Soft-deleted owner must not appear in list endpoint");
+  }
+
+  // ===================================================================
+  // BULK REMOVE ASSETS — dryRun behavior (issue #27954)
+  // ===================================================================
+
+  @Test
+  void test_bulkRemoveAssets_dryRunTrue_doesNotDetach(TestNamespace ns) throws Exception {
+    Domain domain = createTestDomain(ns, "dr_true_domain");
+    DataProduct dataProduct = createDataProductInDomain(ns, domain, "dr_true");
+    Table table = createTestTable(ns, "dr_true_tbl", domain);
+
+    addTableToDataProduct(dataProduct, table);
+
+    BulkAssets dryRunRemove =
+        new BulkAssets().withAssets(List.of(table.getEntityReference())).withDryRun(true);
+    String removePath =
+        "/v1/dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/remove";
+    BulkOperationResult result =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(HttpMethod.PUT, removePath, dryRunRemove, BulkOperationResult.class);
+
+    assertNotNull(result);
+    assertTrue(result.getDryRun(), "Result must propagate dryRun=true");
+    assertEquals(1, result.getNumberOfRowsProcessed());
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    Table refreshed =
+        SdkClients.adminClient().tables().get(table.getId().toString(), "dataProducts");
+    assertNotNull(refreshed.getDataProducts(), "dataProducts field must be populated");
+    assertTrue(
+        refreshed.getDataProducts().stream().anyMatch(d -> dataProduct.getId().equals(d.getId())),
+        "Table must still be attached to the data product after dryRun=true remove");
+  }
+
+  @Test
+  void test_bulkRemoveAssets_dryRunFalse_detaches(TestNamespace ns) throws Exception {
+    Domain domain = createTestDomain(ns, "dr_false_domain");
+    DataProduct dataProduct = createDataProductInDomain(ns, domain, "dr_false");
+    Table table = createTestTable(ns, "dr_false_tbl", domain);
+
+    addTableToDataProduct(dataProduct, table);
+
+    BulkAssets realRemove =
+        new BulkAssets().withAssets(List.of(table.getEntityReference())).withDryRun(false);
+    String removePath =
+        "/v1/dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/remove";
+    BulkOperationResult result =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(HttpMethod.PUT, removePath, realRemove, BulkOperationResult.class);
+
+    assertNotNull(result);
+    assertFalse(Boolean.TRUE.equals(result.getDryRun()));
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    Table refreshed =
+        SdkClients.adminClient().tables().get(table.getId().toString(), "dataProducts");
+    assertTrue(
+        refreshed.getDataProducts() == null
+            || refreshed.getDataProducts().stream()
+                .noneMatch(d -> dataProduct.getId().equals(d.getId())),
+        "Table should no longer be attached to the data product when dryRun=false");
+  }
+
+  @Test
+  void test_bulkAddAssets_dryRunTrue_doesNotAttach(TestNamespace ns) throws Exception {
+    Domain domain = createTestDomain(ns, "add_dr_true_domain");
+    DataProduct dataProduct = createDataProductInDomain(ns, domain, "add_dr_true");
+    Table table = createTestTable(ns, "add_dr_true_tbl", domain);
+
+    BulkAssets dryRunAdd =
+        new BulkAssets().withAssets(List.of(table.getEntityReference())).withDryRun(true);
+    String addPath = "/v1/dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/add";
+    BulkOperationResult result =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(HttpMethod.PUT, addPath, dryRunAdd, BulkOperationResult.class);
+
+    assertNotNull(result);
+    assertTrue(result.getDryRun(), "Result must propagate dryRun=true");
+    assertEquals(1, result.getNumberOfRowsProcessed());
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    Table refreshed =
+        SdkClients.adminClient().tables().get(table.getId().toString(), "dataProducts");
+    assertTrue(
+        refreshed.getDataProducts() == null
+            || refreshed.getDataProducts().stream()
+                .noneMatch(d -> dataProduct.getId().equals(d.getId())),
+        "Table must NOT be attached to the data product on dryRun=true add");
+  }
+
+  @Test
+  void test_bulkRemoveAssets_dryRunOmitted_defaultsToDetach(TestNamespace ns) throws Exception {
+    Domain domain = createTestDomain(ns, "dr_omit_domain");
+    DataProduct dataProduct = createDataProductInDomain(ns, domain, "dr_omit");
+    Table table = createTestTable(ns, "dr_omit_tbl", domain);
+
+    addTableToDataProduct(dataProduct, table);
+
+    String rawBody = "{\"assets\":[{\"id\":\"" + table.getId() + "\",\"type\":\"table\"}]}";
+    String removePath =
+        "/v1/dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/remove";
+    BulkOperationResult result =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(HttpMethod.PUT, removePath, rawBody, BulkOperationResult.class);
+
+    assertNotNull(result);
+    assertFalse(
+        Boolean.TRUE.equals(result.getDryRun()),
+        "Omitted dryRun must deserialize to schema default=false (destructive)");
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    Table refreshed =
+        SdkClients.adminClient().tables().get(table.getId().toString(), "dataProducts");
+    assertTrue(
+        refreshed.getDataProducts() == null
+            || refreshed.getDataProducts().stream()
+                .noneMatch(d -> dataProduct.getId().equals(d.getId())),
+        "Table should be detached when dryRun is omitted (default destructive)");
+  }
+
+  private DataProduct createDataProductInDomain(TestNamespace ns, Domain domain, String suffix) {
+    return SdkClients.adminClient()
+        .dataProducts()
+        .create(
+            new CreateDataProduct()
+                .withName(ns.prefix("br_dp_" + suffix))
+                .withDomains(List.of(domain.getFullyQualifiedName()))
+                .withDescription("Data product for bulk remove dryRun test"));
+  }
+
+  private void addTableToDataProduct(DataProduct dataProduct, Table table) throws Exception {
+    BulkAssets addRequest =
+        new BulkAssets().withAssets(List.of(table.getEntityReference())).withDryRun(false);
+    String addPath = "/v1/dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/add";
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, addPath, addRequest, BulkOperationResult.class);
+  }
+
+  // ===================================================================
+  // Issue #28696 (data product analogue): a prefix-extension rename must keep
+  // the linked asset's dataProducts[].fullyQualifiedName pointing at the new
+  // FQN in search. Data products are flat and their reference update uses an
+  // EXACT-match term query + script (==oldFqn -> newFqn), so this path is
+  // idempotent and prefix-safe by construction (no sibling concern, no
+  // double-apply); this confirms it empirically.
+  // ===================================================================
+  @Test
+  void test_renameDataProductPrefixExtension_keepsAssetReference(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+    Domain domain = getOrCreateDomain(ns);
+
+    String dpName = "dp_" + ns.shortPrefix();
+    DataProduct dataProduct =
+        createEntity(
+            new CreateDataProduct()
+                .withName(dpName)
+                .withDisplayName("Revenue")
+                .withDescription("Data product renamed via prefix extension (#28696)")
+                .withDomains(List.of(domain.getFullyQualifiedName())));
+    String oldFqn = dataProduct.getFullyQualifiedName();
+
+    Table asset = createTestTable(ns, "dp_asset", domain);
+    bulkAddAssets(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(asset.getEntityReference())));
+
+    awaitAssetDataProduct(client, mapper, asset.getId().toString(), oldFqn);
+
+    dataProduct.setName(dpName + " Renamed");
+    dataProduct.setDisplayName("Revenue Renamed");
+    DataProduct renamed = patchEntity(dataProduct.getId().toString(), dataProduct);
+    String newFqn = renamed.getFullyQualifiedName();
+    assertNotEquals(oldFqn, newFqn);
+    assertTrue(newFqn.startsWith(oldFqn), "rename must extend the FQN as a prefix: " + newFqn);
+
+    awaitAssetDataProduct(client, mapper, asset.getId().toString(), newFqn);
+  }
+
+  private void awaitAssetDataProduct(
+      OpenMetadataClient client, ObjectMapper mapper, String tableId, String expectedDpFqn) {
+    Awaitility.await("asset " + tableId + " carries data product " + expectedDpFqn + " in search")
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode hits = mapper.readTree(response).path("hits").path("hits");
+              assertTrue(hits.isArray() && !hits.isEmpty(), "table should be indexed");
+              List<String> dpFqns = new ArrayList<>();
+              for (JsonNode dp : hits.get(0).path("_source").path("dataProducts")) {
+                dpFqns.add(dp.path("fullyQualifiedName").asText());
+              }
+              assertTrue(
+                  dpFqns.contains(expectedDpFqn),
+                  "Expected data product FQN '"
+                      + expectedDpFqn
+                      + "' on table search doc but found "
+                      + dpFqns);
+            });
   }
 }

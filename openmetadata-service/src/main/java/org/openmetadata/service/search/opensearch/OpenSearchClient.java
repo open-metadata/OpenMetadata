@@ -250,8 +250,19 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public boolean swapAliases(Set<String> oldIndices, String newIndex, Set<String> aliases) {
-    return indexManager.swapAliases(oldIndices, newIndex, aliases);
+  public boolean swapAliases(
+      Set<String> oldIndices, String newIndex, Set<String> aliases, Set<String> indicesToRemove) {
+    return indexManager.swapAliases(oldIndices, newIndex, aliases, indicesToRemove);
+  }
+
+  @Override
+  public void updateIndexSettings(String indexName, String settingsJson) {
+    indexManager.updateIndexSettings(indexName, settingsJson);
+  }
+
+  @Override
+  public void forceMerge(String indexName, int maxNumSegments) {
+    indexManager.forceMerge(indexName, maxNumSegments);
   }
 
   @Override
@@ -386,14 +397,23 @@ public class OpenSearchClient implements SearchClient {
       int downstreamDepth,
       String queryFilter,
       boolean includeDeleted,
-      String entityType)
+      String entityType,
+      Long startTime,
+      Long endTime)
       throws IOException {
     if (lineageGraphBuilder == null) {
       throw new UnsupportedOperationException(
           "Lineage features are not available in this deployment");
     }
     return lineageGraphBuilder.getLineagePaginationInfo(
-        fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType);
+        fqn,
+        upstreamDepth,
+        downstreamDepth,
+        queryFilter,
+        includeDeleted,
+        entityType,
+        startTime,
+        endTime);
   }
 
   @Override
@@ -1102,5 +1122,353 @@ public class OpenSearchClient implements SearchClient {
     } else {
       LOG.debug("OSLineageGraphBuilder already initialized or newClient is null");
     }
+  }
+
+  // ===================== Knowledge Center page hierarchy =====================
+
+  @Override
+  @lombok.SneakyThrows
+  public org.openmetadata.schema.utils.ResultList<org.openmetadata.schema.entity.data.PageHierarchy>
+      listPageHierarchy(String parentFqn, String pageType, int offset, int limit) {
+    return getPageHierarchyFromSearch(parentFqn, pageType, offset, limit);
+  }
+
+  @Override
+  @lombok.SneakyThrows
+  public org.openmetadata.schema.utils.ResultList<org.openmetadata.schema.entity.data.PageHierarchy>
+      listPageHierarchyForActivePage(String activeFqn, String pageType, int offset, int limit) {
+    return getPageHierarchyFromSearchForActivePage(activeFqn, pageType, offset, limit);
+  }
+
+  private org.openmetadata.schema.utils.ResultList<
+          org.openmetadata.schema.entity.data.PageHierarchy>
+      getPageHierarchyFromSearch(String parentFqn, String pageType, int offset, int limit)
+          throws java.io.IOException {
+    os.org.opensearch.client.opensearch._types.query_dsl.Query boolQuery =
+        buildPageHierarchyBoolQuery(parentFqn, pageType);
+
+    os.org.opensearch.client.opensearch.core.SearchRequest searchRequest =
+        os.org.opensearch.client.opensearch.core.SearchRequest.of(
+            s ->
+                s.index(
+                        org.openmetadata.service.Entity.getSearchRepository()
+                            .getIndexOrAliasName(
+                                org.openmetadata.service.jdbi3.KnowledgePageRepository
+                                    .KNOWLEDGE_PAGE_TERM_SEARCH_INDEX))
+                    .query(boolQuery)
+                    // Stable sort so from/size pagination cannot miss/duplicate hits.
+                    // fullyQualifiedName is a keyword field with doc_values and is unique per
+                    // page (name is unique within a parent's children), so no tiebreaker is
+                    // needed. _id cannot be used as a sort field on ES 9.x / OpenSearch 3.x
+                    // without setting indices.id_field_data.enabled=true at the cluster level.
+                    .sort(
+                        sort ->
+                            sort.field(
+                                f ->
+                                    f.field("fullyQualifiedName")
+                                        .order(
+                                            os.org.opensearch.client.opensearch._types.SortOrder
+                                                .Asc)))
+                    .from(offset)
+                    .size(limit));
+
+    os.org.opensearch.client.opensearch.core.SearchResponse<os.org.opensearch.client.json.JsonData>
+        searchResponse =
+            newClient.search(searchRequest, os.org.opensearch.client.json.JsonData.class);
+    java.util.List<org.openmetadata.schema.entity.data.PageHierarchy> pageHierarchies =
+        processPageHierarchyHits(searchResponse);
+    int total = 0;
+    if (searchResponse != null
+        && searchResponse.hits() != null
+        && searchResponse.hits().total() != null) {
+      total = (int) searchResponse.hits().total().value();
+    }
+    return new org.openmetadata.schema.utils.ResultList<>(
+        pageHierarchies, offset, pageHierarchies.size(), total);
+  }
+
+  private org.openmetadata.schema.utils.ResultList<
+          org.openmetadata.schema.entity.data.PageHierarchy>
+      getPageHierarchyFromSearchForActivePage(
+          String activeFqn, String pageType, int offset, int limit) throws java.io.IOException {
+    os.org.opensearch.client.opensearch._types.query_dsl.Query boolQuery =
+        buildPageHierarchyBoolQueryForActivePage(activeFqn, pageType);
+
+    os.org.opensearch.client.opensearch.core.SearchRequest searchRequest =
+        os.org.opensearch.client.opensearch.core.SearchRequest.of(
+            s ->
+                s.index(
+                        org.openmetadata.service.Entity.getSearchRepository()
+                            .getIndexOrAliasName(
+                                org.openmetadata.service.jdbi3.KnowledgePageRepository
+                                    .KNOWLEDGE_PAGE_TERM_SEARCH_INDEX))
+                    .query(boolQuery)
+                    // Stable sort by fqn (keyword, unique per page). See note above on _id.
+                    .sort(
+                        sort ->
+                            sort.field(
+                                f ->
+                                    f.field("fullyQualifiedName")
+                                        .order(
+                                            os.org.opensearch.client.opensearch._types.SortOrder
+                                                .Asc)))
+                    .from(offset)
+                    .size(limit));
+
+    os.org.opensearch.client.opensearch.core.SearchResponse<os.org.opensearch.client.json.JsonData>
+        searchResponse =
+            newClient.search(searchRequest, os.org.opensearch.client.json.JsonData.class);
+    java.util.List<org.openmetadata.schema.entity.data.PageHierarchy> pageHierarchies =
+        processPageHierarchyHits(searchResponse);
+    pageHierarchies = buildPageNestedSearchHierarchy(pageHierarchies);
+    int total = 0;
+    if (searchResponse != null
+        && searchResponse.hits() != null
+        && searchResponse.hits().total() != null) {
+      total = (int) searchResponse.hits().total().value();
+    }
+    return new org.openmetadata.schema.utils.ResultList<>(
+        pageHierarchies, offset, pageHierarchies.size(), total);
+  }
+
+  private os.org.opensearch.client.opensearch._types.query_dsl.Query buildPageHierarchyBoolQuery(
+      String parentFqn, String pageType) {
+    os.org.opensearch.client.opensearch._types.query_dsl.BoolQuery.Builder boolQueryBuilder =
+        new os.org.opensearch.client.opensearch._types.query_dsl.BoolQuery.Builder();
+
+    if (org.openmetadata.common.utils.CommonUtil.nullOrEmpty(parentFqn)) {
+      boolQueryBuilder.must(
+          os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+              q ->
+                  q.term(
+                      t ->
+                          t.field("fqnDepth")
+                              .value(
+                                  os.org.opensearch.client.opensearch._types.FieldValue.of(1)))));
+    } else {
+      int parentDepth = org.openmetadata.service.util.FullyQualifiedName.split(parentFqn).length;
+      boolQueryBuilder.must(
+          os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+              q -> q.prefix(p -> p.field("fullyQualifiedName").value(parentFqn + "."))));
+      boolQueryBuilder.must(
+          os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+              q ->
+                  q.term(
+                      t ->
+                          t.field("fqnDepth")
+                              .value(
+                                  os.org.opensearch.client.opensearch._types.FieldValue.of(
+                                      parentDepth + 1)))));
+    }
+
+    if (!org.openmetadata.common.utils.CommonUtil.nullOrEmpty(pageType)) {
+      boolQueryBuilder.must(
+          os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+              q ->
+                  q.term(
+                      t ->
+                          t.field("pageType")
+                              .value(
+                                  os.org.opensearch.client.opensearch._types.FieldValue.of(
+                                      pageType)))));
+    }
+
+    return os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+        q -> q.bool(boolQueryBuilder.build()));
+  }
+
+  private os.org.opensearch.client.opensearch._types.query_dsl.Query
+      buildPageHierarchyBoolQueryForActivePage(String activeFqn, String pageType) {
+    os.org.opensearch.client.opensearch._types.query_dsl.BoolQuery.Builder boolQueryBuilder =
+        new os.org.opensearch.client.opensearch._types.query_dsl.BoolQuery.Builder();
+
+    String rootParentFqn = org.openmetadata.service.util.FullyQualifiedName.split(activeFqn)[0];
+    boolQueryBuilder.should(
+        os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+            q ->
+                q.term(
+                    t ->
+                        t.field("fqnDepth")
+                            .value(os.org.opensearch.client.opensearch._types.FieldValue.of(1)))));
+    boolQueryBuilder.should(
+        os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+            q -> q.prefix(p -> p.field("fullyQualifiedName").value(rootParentFqn + "."))));
+    boolQueryBuilder.minimumShouldMatch("1");
+
+    if (!org.openmetadata.common.utils.CommonUtil.nullOrEmpty(pageType)) {
+      boolQueryBuilder.must(
+          os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+              q ->
+                  q.term(
+                      t ->
+                          t.field("pageType")
+                              .value(
+                                  os.org.opensearch.client.opensearch._types.FieldValue.of(
+                                      pageType)))));
+    }
+
+    return os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+        q -> q.bool(boolQueryBuilder.build()));
+  }
+
+  private java.util.List<org.openmetadata.schema.entity.data.PageHierarchy>
+      processPageHierarchyHits(
+          os.org.opensearch.client.opensearch.core.SearchResponse<
+                  os.org.opensearch.client.json.JsonData>
+              searchResponse)
+          throws java.io.IOException {
+    java.util.List<org.openmetadata.schema.entity.data.PageHierarchy> pageHierarchies =
+        new java.util.ArrayList<>();
+
+    if (searchResponse != null && searchResponse.hits() != null) {
+      for (os.org.opensearch.client.opensearch.core.search.Hit<
+              os.org.opensearch.client.json.JsonData>
+          hit : searchResponse.hits().hits()) {
+        if (hit.source() != null) {
+          java.util.Map<String, Object> sourceMap = OsUtils.jsonDataToMap(hit.source());
+          org.openmetadata.schema.entity.data.PageHierarchy page =
+              org.openmetadata.service.util.SearchUtils.getPageHierarchy(sourceMap);
+          pageHierarchies.add(page);
+        }
+      }
+    }
+
+    populateChildrenCounts(pageHierarchies);
+    return pageHierarchies;
+  }
+
+  /**
+   * Populate {@code childrenCount} on each page using a single aggregation round-trip
+   * instead of one search per page (N+1). Uses a filters aggregation keyed by page id,
+   * where each bucket matches descendants via the page's fullyQualifiedName prefix.
+   */
+  private void populateChildrenCounts(
+      java.util.List<org.openmetadata.schema.entity.data.PageHierarchy> pageHierarchies)
+      throws java.io.IOException {
+    if (pageHierarchies.isEmpty()) {
+      return;
+    }
+
+    java.util.Map<String, os.org.opensearch.client.opensearch._types.query_dsl.Query> filters =
+        new java.util.HashMap<>();
+    for (org.openmetadata.schema.entity.data.PageHierarchy page : pageHierarchies) {
+      if (page.getId() == null
+          || page.getFullyQualifiedName() == null
+          || page.getFullyQualifiedName().isEmpty()) {
+        continue;
+      }
+      String fqnPrefix = page.getFullyQualifiedName() + ".";
+      int childDepth =
+          org.openmetadata.service.util.FullyQualifiedName.split(page.getFullyQualifiedName())
+                  .length
+              + 1;
+      // Match only direct children: FQN starts with "<parentFqn>." AND fqnDepth is
+      // exactly one deeper than the parent. Descendants deeper than that are excluded.
+      filters.put(
+          page.getId().toString(),
+          os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+              q ->
+                  q.bool(
+                      b ->
+                          b.must(
+                                  os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+                                      m ->
+                                          m.prefix(
+                                              p -> p.field("fullyQualifiedName").value(fqnPrefix))))
+                              .must(
+                                  os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+                                      m ->
+                                          m.term(
+                                              t ->
+                                                  t.field("fqnDepth")
+                                                      .value(
+                                                          os.org.opensearch.client.opensearch._types
+                                                              .FieldValue.of(childDepth))))))));
+      page.setChildrenCount(0);
+    }
+
+    if (filters.isEmpty()) {
+      return;
+    }
+
+    os.org.opensearch.client.opensearch.core.SearchRequest aggregationRequest =
+        os.org.opensearch.client.opensearch.core.SearchRequest.of(
+            s ->
+                s.index(
+                        org.openmetadata.service.Entity.getSearchRepository()
+                            .getIndexOrAliasName(
+                                org.openmetadata.service.jdbi3.KnowledgePageRepository
+                                    .KNOWLEDGE_PAGE_TERM_SEARCH_INDEX))
+                    .size(0)
+                    .aggregations(
+                        "children_by_parent",
+                        a -> a.filters(f -> f.filters(fs -> fs.keyed(filters)))));
+
+    os.org.opensearch.client.opensearch.core.SearchResponse<os.org.opensearch.client.json.JsonData>
+        aggregationResponse =
+            newClient.search(aggregationRequest, os.org.opensearch.client.json.JsonData.class);
+
+    if (aggregationResponse == null
+        || aggregationResponse.aggregations() == null
+        || aggregationResponse.aggregations().get("children_by_parent") == null) {
+      return;
+    }
+
+    java.util.Map<String, os.org.opensearch.client.opensearch._types.aggregations.FiltersBucket>
+        buckets =
+            aggregationResponse
+                .aggregations()
+                .get("children_by_parent")
+                .filters()
+                .buckets()
+                .keyed();
+
+    for (org.openmetadata.schema.entity.data.PageHierarchy page : pageHierarchies) {
+      if (page.getId() == null) {
+        continue;
+      }
+      os.org.opensearch.client.opensearch._types.aggregations.FiltersBucket bucket =
+          buckets.get(page.getId().toString());
+      if (bucket != null) {
+        page.setChildrenCount((int) bucket.docCount());
+      }
+    }
+  }
+
+  private java.util.List<org.openmetadata.schema.entity.data.PageHierarchy>
+      buildPageNestedSearchHierarchy(
+          java.util.List<org.openmetadata.schema.entity.data.PageHierarchy> pageHierarchyList) {
+    java.util.Map<java.util.UUID, org.openmetadata.schema.entity.data.PageHierarchy>
+        pageHierarchyMap =
+            pageHierarchyList.stream()
+                // Skip hits that lost their id during parsing (SearchUtils returns a
+                // null id for malformed/missing UUID strings) so Collectors.toMap
+                // does not throw on the null key.
+                .filter(p -> p.getId() != null)
+                .collect(
+                    java.util.stream.Collectors.toMap(
+                        org.openmetadata.schema.entity.data.PageHierarchy::getId,
+                        page -> {
+                          page.setChildren(new java.util.ArrayList<>());
+                          return page;
+                        },
+                        (existing, replacement) -> existing,
+                        java.util.LinkedHashMap::new));
+
+    java.util.List<org.openmetadata.schema.entity.data.PageHierarchy> rootPages =
+        new java.util.ArrayList<>();
+
+    for (org.openmetadata.schema.entity.data.PageHierarchy page : pageHierarchyMap.values()) {
+      java.util.UUID parentId = page.getParent() != null ? page.getParent().getId() : null;
+      org.openmetadata.schema.entity.data.PageHierarchy parentPage =
+          parentId != null ? pageHierarchyMap.get(parentId) : null;
+      if (parentPage != null) {
+        parentPage.getChildren().add(page);
+      } else {
+        rootPages.add(page);
+      }
+    }
+
+    return rootPages;
   }
 }

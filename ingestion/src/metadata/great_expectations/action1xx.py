@@ -22,15 +22,15 @@ from datetime import datetime
 from typing import Dict, List, Literal, Optional, Union, cast  # noqa: UP035
 
 from great_expectations.checkpoint import (
-    ActionContext,
-    CheckpointResult,
-    ValidationAction,
+    ActionContext,  # type: ignore
+    CheckpointResult,  # type: ignore
+    ValidationAction,  # type: ignore
 )
 from great_expectations.core.batch import Batch
 from great_expectations.core.expectation_validation_result import (
     ExpectationSuiteValidationResultMeta,
 )
-from great_expectations.datasource.fluent import DataAsset
+from great_expectations.datasource.fluent import DataAsset  # type: ignore
 from great_expectations.validator.validator import Validator
 from sqlalchemy.engine.base import Connection, Engine
 from sqlalchemy.engine.url import URL
@@ -83,7 +83,7 @@ class OpenMetadataValidationAction1xx(ValidationAction):
             Format: {"suite_name": {"database_name": "db", "schema_name": "schema", "table_name": "table"}}
     """
 
-    type: Literal["open_metadata_validation_action"] = "open_metadata_validation_action"
+    type: Literal["open_metadata_validation_action"] = "open_metadata_validation_action"  # type: ignore
     name: str = "OpenMetadataValidationAction"
     config_file_path: Optional[str] = None  # noqa: UP045
     database_service_name: Optional[str] = None  # noqa: UP045
@@ -153,7 +153,7 @@ class OpenMetadataValidationAction1xx(ValidationAction):
 
             if table_entity:
                 for result in v.results:
-                    self._handle_test_case(result, table_entity)
+                    self._handle_test_case(result, table_entity)  # type: ignore
 
     @staticmethod
     def _get_checkpoint_batch_spec(meta: Union[ExpectationSuiteValidationResultMeta, dict]):  # noqa: UP007
@@ -253,10 +253,10 @@ class OpenMetadataValidationAction1xx(ValidationAction):
         Raises:
             ValueError: if expectation is not ran against DB
         """
-        if isinstance(data_asset.execution_engine.engine, Engine):
-            return data_asset.execution_engine.engine.url
-        if isinstance(data_asset.execution_engine.engine, Connection):
-            return data_asset.execution_engine.engine.engine.url
+        if isinstance(data_asset.execution_engine.engine, Engine):  # pyright: ignore[reportAttributeAccessIssue]
+            return data_asset.execution_engine.engine.url  # pyright: ignore[reportAttributeAccessIssue]
+        if isinstance(data_asset.execution_engine.engine, Connection):  # pyright: ignore[reportAttributeAccessIssue]
+            return data_asset.execution_engine.engine.engine.url  # pyright: ignore[reportAttributeAccessIssue]
         raise ValueError("Type is not supported. Make sur you ran your expectations against a relational database")
 
     def _create_ometa_connection(self) -> OpenMetadata:

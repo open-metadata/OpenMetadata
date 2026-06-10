@@ -11,6 +11,7 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CreateAndRunIngestionPipelineTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.DataCompletenessTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.PolicyAgentTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RejectRecognizerFeedbackTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RollbackEntityTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RunAppTaskDefinition;
@@ -60,7 +61,8 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.User
       name = "applyRecognizerFeedbackTask"),
   @JsonSubTypes.Type(
       value = RejectRecognizerFeedbackTaskDefinition.class,
-      name = "rejectRecognizerFeedbackTask")
+      name = "rejectRecognizerFeedbackTask"),
+  @JsonSubTypes.Type(value = PolicyAgentTaskDefinition.class, name = "policyAgentTask")
 })
 public interface WorkflowNodeDefinitionInterface {
   String getType();

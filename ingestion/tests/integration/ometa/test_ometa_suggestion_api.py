@@ -153,8 +153,7 @@ def _create_description_suggestion_task(metadata: OpenMetadata, table: Table, de
             description="Create a description suggestion task",
             category=TaskCategory.MetadataUpdate,
             type=TaskEntityType.Suggestion,
-            about=table.fullyQualifiedName.root,
-            aboutType="table",
+            about=f"<#E::table::{table.fullyQualifiedName.root}>",
             payload={
                 "suggestionType": "Description",
                 "fieldPath": "description",
@@ -172,8 +171,7 @@ def _create_tag_suggestion_task(metadata: OpenMetadata, table: Table, labels: li
             description="Create a tag suggestion task",
             category=TaskCategory.MetadataUpdate,
             type=TaskEntityType.Suggestion,
-            about=table.fullyQualifiedName.root,
-            aboutType="table",
+            about=f"<#E::table::{table.fullyQualifiedName.root}>",
             payload={
                 "suggestionType": "Tag",
                 "fieldPath": "tags",

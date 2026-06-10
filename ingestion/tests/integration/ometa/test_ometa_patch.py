@@ -413,7 +413,7 @@ class TestOMetaPatch:
     def test_patch_column_tags(self, metadata, patch_table):
         """Update column tags"""
         updated: Table = metadata.patch_column_tags(
-            table=patch_table,
+            entity=patch_table,
             column_tags=[
                 ColumnTag(
                     column_fqn=patch_table.fullyQualifiedName.root + ".id",
@@ -426,7 +426,7 @@ class TestOMetaPatch:
         assert updated_col.tags[0].tagFQN.root == "PII.Sensitive"
 
         updated_again: Table = metadata.patch_column_tags(
-            table=patch_table,
+            entity=patch_table,
             column_tags=[
                 ColumnTag(
                     column_fqn=patch_table.fullyQualifiedName.root + ".id",
@@ -605,7 +605,7 @@ class TestOMetaPatch:
         created: Table = metadata.create_or_update(create)
 
         with_tags: Table = metadata.patch_column_tags(
-            table=created,
+            entity=created,
             column_tags=[
                 ColumnTag(
                     column_fqn=created.fullyQualifiedName.root + ".struct.id",

@@ -47,6 +47,7 @@ from metadata.ingestion.connections.test_connections import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.snowflake.queries import (
+    SNOWFLAKE_ACCESS_HISTORY_PROBE,
     SNOWFLAKE_GET_DATABASES,
     SNOWFLAKE_TEST_FETCH_TAG,
     SNOWFLAKE_TEST_GET_QUERIES,
@@ -112,6 +113,28 @@ def test_table_query(engine_wrapper: SnowflakeEngineWrapper, statement: str):
         engine=engine_wrapper.engine,
         statement=statement.format(database_name=engine_wrapper.database_name),
     )
+
+
+def probe_access_history_available(engine: Engine, account_usage_schema: str) -> bool:
+    """
+    Check whether the configured Snowflake role can read ACCOUNT_USAGE.ACCESS_HISTORY.
+
+    Required for the ACCESS_HISTORY-based lineage path. Standard Edition accounts
+    or roles without `IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE` will fail this
+    probe and the caller should fall back to the legacy parser path.
+
+    Logs failures at INFO (not WARNING) — Standard Edition is a legitimate state.
+    """
+    try:
+        with engine.connect() as conn:
+            conn.execute(text(SNOWFLAKE_ACCESS_HISTORY_PROBE.format(account_usage=account_usage_schema)))
+    except Exception as exc:
+        logger.info(
+            f"ACCESS_HISTORY probe failed (will fall back to legacy lineage path): {exc}. "
+            f"Ensure the role has IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE and the account is Enterprise+."
+        )
+        return False
+    return True
 
 
 class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
@@ -205,6 +228,13 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
         if keep_alive := self._get_client_session_keep_alive():
             connection.connectionArguments.root["client_session_keep_alive"] = keep_alive
 
+        # Bound the Snowflake socket so a silently-severed TCP connection
+        # (NAT/LB idle reaping in K8s/hybrid runners) surfaces as a network
+        # error within 10 minutes instead of hanging the worker indefinitely.
+        # User-supplied connectionArguments win via setdefault.
+        if connection.connectionArguments.root is not None:
+            connection.connectionArguments.root.setdefault("network_timeout", 600)
+
         engine = create_generic_db_connection(
             connection=connection,
             get_connection_url_fn=self.get_connection_url,
@@ -264,6 +294,13 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
                 statement=SNOWFLAKE_TEST_GET_QUERIES.format(account_usage=self.service_connection.accountUsageSchema),
                 engine=self.client,
             ),
+            "GetAccessHistory": partial(
+                test_query,
+                statement=SNOWFLAKE_ACCESS_HISTORY_PROBE.format(
+                    account_usage=self.service_connection.accountUsageSchema
+                ),
+                engine=self.client,
+            ),
             "GetTags": partial(
                 test_query,
                 statement=SNOWFLAKE_TEST_FETCH_TAG.format(account_usage=self.service_connection.accountUsageSchema),
@@ -278,9 +315,3 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
             automation_workflow=automation_workflow,
             timeout_seconds=timeout_seconds,
         )
-
-    def get_connection_dict(self) -> dict:
-        """
-        Return the connection dictionary for this service.
-        """
-        raise NotImplementedError("get_connection_dict is not implemented for Snowflake")

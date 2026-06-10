@@ -143,6 +143,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
             );
             Field = (
               <Select
+                showSearch
                 getPopupContainer={getPopupContainer}
                 options={partitionColumnOptions}
                 placeholder={t('message.select-column-name')}
@@ -171,6 +172,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
           } else if (data.name === 'column') {
             Field = (
               <Select
+                showSearch
                 getPopupContainer={getPopupContainer}
                 options={table?.columns.map((column) => ({
                   label: getEntityName(column),

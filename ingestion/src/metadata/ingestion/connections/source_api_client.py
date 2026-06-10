@@ -25,7 +25,7 @@ Usage:
 """
 
 from time import perf_counter
-from typing import Optional
+from typing import Any, Optional, Union
 
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.utils.operation_metrics import OperationMetricsState
@@ -119,11 +119,19 @@ class TrackedREST(REST):
             duration_ms = (perf_counter() - start) * 1000
             self._record_api_call("GET", path, duration_ms)
 
-    def post(self, path, data=None, json=None, headers=None):
+    def post(
+        self,
+        path: str,
+        data: Any = None,
+        json: Any = None,
+        headers: Optional[dict] = None,  # noqa: UP045
+        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
+        retries: Optional[int] = None,  # noqa: UP045
+    ):
         """POST method with tracking."""
         start = perf_counter()
         try:
-            return super().post(path, data, json, headers)
+            return super().post(path, data, json, headers, timeout=timeout, retries=retries)
         finally:
             duration_ms = (perf_counter() - start) * 1000
             self._record_api_call("POST", path, duration_ms)

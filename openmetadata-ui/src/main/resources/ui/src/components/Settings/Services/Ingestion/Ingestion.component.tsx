@@ -32,7 +32,7 @@ import {
   ServiceCategory,
 } from '../../../../enums/service.enum';
 import { useFqn } from '../../../../hooks/useFqn';
-import { getCountBadge } from '../../../../utils/CommonUtils';
+import { getCountBadge } from '../../../../utils/EntityDisplayUtils';
 import { getTypeAndStatusMenuItems } from '../../../../utils/IngestionUtils';
 import { getServiceDetailsPath } from '../../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';

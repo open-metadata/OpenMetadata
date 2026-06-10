@@ -192,8 +192,7 @@ test.describe('Task Workflow Tests', () => {
         await apiContext.post('/api/v1/tasks', {
           data: {
             name: `Test Task - ${Date.now()}`,
-            about: tableWithOwner.entityResponseData?.fullyQualifiedName,
-            aboutType: 'table',
+            about: `<#E::table::${tableWithOwner.entityResponseData?.fullyQualifiedName}>`,
             type: 'DescriptionUpdate',
             category: 'MetadataUpdate',
             assignees: [regularUser.responseData.name],
@@ -262,8 +261,7 @@ test.describe('Task Workflow Tests', () => {
         const taskResponse = await apiContext.post('/api/v1/tasks', {
           data: {
             name: `Test Task - ${Date.now()}`,
-            about: tableWithOwner.entityResponseData?.fullyQualifiedName,
-            aboutType: 'table',
+            about: `<#E::table::${tableWithOwner.entityResponseData?.fullyQualifiedName}>`,
             type: 'DescriptionUpdate',
             category: 'MetadataUpdate',
             assignees: [regularUser.responseData.name],
@@ -349,8 +347,7 @@ test.describe('Task Workflow Tests', () => {
         const taskResponse = await apiContext.post('/api/v1/tasks', {
           data: {
             name: `Test Task - ${Date.now()}`,
-            about: tableWithOwner.entityResponseData?.fullyQualifiedName,
-            aboutType: 'table',
+            about: `<#E::table::${tableWithOwner.entityResponseData?.fullyQualifiedName}>`,
             type: 'DescriptionUpdate',
             category: 'MetadataUpdate',
             assignees: [restrictedUser.responseData.name],
@@ -446,8 +443,7 @@ test.describe('Task Workflow Tests', () => {
         const taskResponse = await apiContext.post('/api/v1/tasks', {
           data: {
             name: `Test Task - ${Date.now()}`,
-            about: tableWithOwner.entityResponseData?.fullyQualifiedName,
-            aboutType: 'table',
+            about: `<#E::table::${tableWithOwner.entityResponseData?.fullyQualifiedName}>`,
             type: 'DescriptionUpdate',
             category: 'MetadataUpdate',
             assignees: [regularUser.responseData.name],
@@ -497,8 +493,7 @@ test.describe('Task Workflow Tests', () => {
         await apiContext.post('/api/v1/tasks', {
           data: {
             name: `Test Task - ${Date.now()}`,
-            about: tableWithOwner.entityResponseData?.fullyQualifiedName,
-            aboutType: 'table',
+            about: `<#E::table::${tableWithOwner.entityResponseData?.fullyQualifiedName}>`,
             type: 'DescriptionUpdate',
             category: 'MetadataUpdate',
             assignees: [regularUser.responseData.name],
@@ -565,8 +560,7 @@ test.describe('Task Workflow Tests', () => {
         const taskResponse = await apiContext.post('/api/v1/tasks', {
           data: {
             name: `Test Task - ${Date.now()}`,
-            about: tableInDomain.entityResponseData?.fullyQualifiedName,
-            aboutType: 'table',
+            about: `<#E::table::${tableInDomain.entityResponseData?.fullyQualifiedName}>`,
             type: 'DescriptionUpdate',
             category: 'MetadataUpdate',
             assignees: [adminUser.responseData.name],

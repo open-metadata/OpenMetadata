@@ -44,7 +44,7 @@ jest.mock('../../../utils/TagsUtils', () => ({
   getTagTooltip: jest.fn().mockReturnValue(<p>ToolTip Data</p>),
 }));
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/ColorUtils', () => ({
   reduceColorOpacity: jest.fn().mockReturnValue('#00000'),
 }));
 

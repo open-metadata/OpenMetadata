@@ -66,7 +66,7 @@ class QueryParserSource(Source, ABC):
         connection_type = self.service_connection.type.value
         self.dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
         self.source_config = self.config.sourceConfig.config
-        self.start, self.end = get_start_and_end(self.source_config.queryLogDuration)
+        self.start, self.end = get_start_and_end(self.source_config.queryLogDuration)  # pyright: ignore[reportAttributeAccessIssue]
         self.graph = None
         self.procedure_graph_map = None
 
@@ -108,7 +108,7 @@ class QueryParserSource(Source, ABC):
             start_time=start_time,
             end_time=end_time,
             filters=self.get_filters(),
-            result_limit=self.source_config.resultLimit,
+            result_limit=self.source_config.resultLimit,  # pyright: ignore[reportAttributeAccessIssue]
         )
 
     def check_life_cycle_query(
@@ -124,8 +124,8 @@ class QueryParserSource(Source, ABC):
         return False
 
     def get_filters(self) -> str:
-        if self.source_config.filterCondition:
-            return f"{self.filters} AND ({self.source_config.filterCondition})"
+        if self.source_config.filterCondition:  # pyright: ignore[reportAttributeAccessIssue]
+            return f"{self.filters} AND ({self.source_config.filterCondition})"  # pyright: ignore[reportAttributeAccessIssue]
         return self.filters
 
     def get_query_parser_type(self) -> QueryParserType:
@@ -136,10 +136,10 @@ class QueryParserSource(Source, ABC):
         """
         if (
             hasattr(self.source_config, "queryParserConfig")
-            and self.source_config.queryParserConfig
-            and self.source_config.queryParserConfig.type
+            and self.source_config.queryParserConfig  # pyright: ignore[reportAttributeAccessIssue]
+            and self.source_config.queryParserConfig.type  # pyright: ignore[reportAttributeAccessIssue]
         ):
-            return self.source_config.queryParserConfig.type
+            return self.source_config.queryParserConfig.type  # pyright: ignore[reportAttributeAccessIssue]
         return QueryParserType.Auto
 
     def get_engine(self):

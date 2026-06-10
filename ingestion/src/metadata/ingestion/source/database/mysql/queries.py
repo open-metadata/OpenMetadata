@@ -26,8 +26,8 @@ SELECT
     NULL `query_type`,
     NULL `user_name`,
     NULL `aborted`
-FROM mysql.general_log
-WHERE command_type = 'Query' 
+FROM {query_history_table}
+WHERE command_type = 'Query'
     AND event_time between '{start_time}' and '{end_time}'
     AND argument NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
     AND argument NOT LIKE '/* {{"app": "dbt", %%}} */%%'
@@ -50,7 +50,7 @@ SELECT
     NULL `query_type`,
     NULL `user_name`,
     NULL `aborted`
-FROM mysql.slow_log
+FROM {query_history_table}
 WHERE start_time between '{start_time}' and '{end_time}'
     AND sql_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
     AND sql_text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
@@ -62,13 +62,13 @@ LIMIT {result_limit};
 
 MYSQL_TEST_GET_QUERIES = textwrap.dedent(
     """
-SELECT `argument` from mysql.general_log limit 1;
+SELECT `argument` from {query_history_table} limit 1;
 """
 )
 
 MYSQL_TEST_GET_QUERIES_SLOW_LOGS = textwrap.dedent(
     """
-SELECT `sql_text` from mysql.slow_log limit 1;
+SELECT `sql_text` from {query_history_table} limit 1;
 """
 )
 
@@ -78,6 +78,7 @@ MYSQL_GET_ROUTINES = """
     ROUTINE_SCHEMA AS schema_name,
     ROUTINE_DEFINITION AS definition,
     ROUTINE_TYPE AS routine_type,
+    ROUTINE_BODY AS language,
     ROUTINE_COMMENT AS description
 FROM information_schema.ROUTINES
 WHERE ROUTINE_TYPE IN ('PROCEDURE', 'FUNCTION')

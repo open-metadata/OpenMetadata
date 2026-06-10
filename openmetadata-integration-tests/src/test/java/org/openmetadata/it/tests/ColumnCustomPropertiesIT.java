@@ -129,6 +129,158 @@ public class ColumnCustomPropertiesIT {
   }
 
   @Test
+  void test_tableColumn_inlineExtensionInCreatePersists(TestNamespace ns) throws Exception {
+    String propName = ns.prefix("inlineCreateProp");
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    try {
+      addCustomPropertyToColumnType(client, TABLE_COLUMN, propName, STRING_TYPE, null);
+
+      DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+      DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+      Map<String, Object> idExtension = new HashMap<>();
+      idExtension.put(propName, "inline-on-create-id");
+      Map<String, Object> nameExtension = new HashMap<>();
+      nameExtension.put(propName, "inline-on-create-name");
+
+      Column idColumn =
+          new Column()
+              .withName("id")
+              .withDataType(ColumnDataType.BIGINT)
+              .withExtension(idExtension);
+      Column nameColumn =
+          new Column()
+              .withName("name")
+              .withDataType(ColumnDataType.VARCHAR)
+              .withDataLength(255)
+              .withExtension(nameExtension);
+
+      org.openmetadata.schema.api.data.CreateTable create =
+          new org.openmetadata.schema.api.data.CreateTable()
+              .withName(ns.prefix("inlineCpTable"))
+              .withDatabaseSchema(schema.getFullyQualifiedName())
+              .withColumns(List.of(idColumn, nameColumn));
+      Table created = client.tables().create(create);
+
+      Table reloaded = client.tables().get(created.getId().toString(), "columns,extension");
+      assertNotNull(reloaded.getColumns());
+      assertEquals(2, reloaded.getColumns().size());
+      for (Column c : reloaded.getColumns()) {
+        assertNotNull(
+            c.getExtension(),
+            "column " + c.getName() + " lost its inline extension on POST/PUT-create");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> ext = (Map<String, Object>) c.getExtension();
+        if ("id".equals(c.getName())) {
+          assertEquals("inline-on-create-id", ext.get(propName));
+        } else if ("name".equals(c.getName())) {
+          assertEquals("inline-on-create-name", ext.get(propName));
+        }
+      }
+    } finally {
+      deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  @Test
+  void test_dashboardColumn_inlineExtensionInCreatePersists(TestNamespace ns) throws Exception {
+    String propName = ns.prefix("inlineDashCreateProp");
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    try {
+      addCustomPropertyToColumnType(
+          client, DASHBOARD_DATA_MODEL_COLUMN, propName, STRING_TYPE, null);
+
+      DashboardService service = DashboardServiceTestFactory.createLooker(ns);
+
+      Map<String, Object> metric1Ext = new HashMap<>();
+      metric1Ext.put(propName, "inline-dash-metric");
+
+      List<Column> columns =
+          Arrays.asList(
+              new Column()
+                  .withName("metric1")
+                  .withDataType(ColumnDataType.BIGINT)
+                  .withExtension(metric1Ext),
+              new Column()
+                  .withName("dimension1")
+                  .withDataType(ColumnDataType.VARCHAR)
+                  .withDataLength(256));
+
+      CreateDashboardDataModel request =
+          new CreateDashboardDataModel()
+              .withName(ns.prefix("inlineCpDataModel"))
+              .withService(service.getFullyQualifiedName())
+              .withDataModelType(DataModelType.LookMlView)
+              .withColumns(columns);
+      DashboardDataModel created = client.dashboardDataModels().create(request);
+
+      DashboardDataModel reloaded =
+          client.dashboardDataModels().get(created.getId().toString(), "columns,extension");
+      Column metric1 =
+          reloaded.getColumns().stream()
+              .filter(c -> "metric1".equals(c.getName()))
+              .findFirst()
+              .orElseThrow();
+      assertNotNull(
+          metric1.getExtension(),
+          "dashboardDataModel column metric1 lost its inline extension on POST");
+      @SuppressWarnings("unchecked")
+      Map<String, Object> ext = (Map<String, Object>) metric1.getExtension();
+      assertEquals("inline-dash-metric", ext.get(propName));
+    } finally {
+      deleteCustomPropertyFromColumnType(client, DASHBOARD_DATA_MODEL_COLUMN, propName);
+    }
+  }
+
+  @Test
+  void test_tableColumn_inlineExtensionOnPutAddedColumnPersists(TestNamespace ns) throws Exception {
+    String propName = ns.prefix("addedColProp");
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    try {
+      addCustomPropertyToColumnType(client, TABLE_COLUMN, propName, STRING_TYPE, null);
+
+      DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+      DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+      Column idColumn = new Column().withName("id").withDataType(ColumnDataType.BIGINT);
+      org.openmetadata.schema.api.data.CreateTable create =
+          new org.openmetadata.schema.api.data.CreateTable()
+              .withName(ns.prefix("putAddedColTable"))
+              .withDatabaseSchema(schema.getFullyQualifiedName())
+              .withColumns(List.of(idColumn));
+      Table created = client.tables().create(create);
+
+      Map<String, Object> nameExtension = new HashMap<>();
+      nameExtension.put(propName, "added-via-put");
+      Column addedColumn =
+          new Column()
+              .withName("name")
+              .withDataType(ColumnDataType.VARCHAR)
+              .withDataLength(255)
+              .withExtension(nameExtension);
+      created.setColumns(List.of(idColumn, addedColumn));
+      client.tables().update(created.getId().toString(), created);
+
+      Table reloaded = client.tables().get(created.getId().toString(), "columns,extension");
+      Column nameAfter =
+          reloaded.getColumns().stream()
+              .filter(c -> "name".equals(c.getName()))
+              .findFirst()
+              .orElseThrow();
+      assertNotNull(
+          nameAfter.getExtension(), "newly-added column lost its inline extension on PUT-update");
+      @SuppressWarnings("unchecked")
+      Map<String, Object> ext = (Map<String, Object>) nameAfter.getExtension();
+      assertEquals("added-via-put", ext.get(propName));
+    } finally {
+      deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  @Test
   void test_dashboardColumn_stringCustomProperty(TestNamespace ns) throws Exception {
     String propName = ns.prefix("dashStrProp");
     OpenMetadataClient client = SdkClients.adminClient();

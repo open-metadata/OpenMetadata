@@ -47,6 +47,9 @@ Object.defineProperty(window, 'localStorage', {
 jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
+jest.mock('./MyDataPageSkeleton.component', () => {
+  return jest.fn().mockImplementation(() => <div>MyDataPageSkeleton</div>);
+});
 jest.mock('../../utils/CustomizeMyDataPageClassBase', () => {
   return mockCustomizePageClassBase;
 });
@@ -219,10 +222,10 @@ describe('MyDataPage component', () => {
     expect(screen.queryByText('WelcomeScreen')).toBeNull();
   });
 
-  it('MyDataPage should display loader initially while loading data', async () => {
+  it('MyDataPage should display skeleton initially while loading data', async () => {
     render(<MyDataPage />);
 
-    expect(screen.getByText('Loader')).toBeInTheDocument();
+    expect(screen.getByText('MyDataPageSkeleton')).toBeInTheDocument();
     expect(screen.queryByTestId('react-grid-layout')).toBeNull();
 
     expect(screen.queryByText('WelcomeScreen')).toBeNull();

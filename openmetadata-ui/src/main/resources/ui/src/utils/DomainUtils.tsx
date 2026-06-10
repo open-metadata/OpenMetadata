@@ -23,7 +23,6 @@ import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/Acti
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import { TreeListItem } from '../components/common/DomainSelectableTree/DomainSelectableTree.interface';
-import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import ResizablePanels from '../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
@@ -35,7 +34,7 @@ import SubDomainsTable from '../components/Domain/SubDomainsTable/SubDomainsTabl
 import EntitySummaryPanel from '../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import AssetsTabs from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
-import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from '../constants/constants';
+import { DE_ACTIVE_COLOR } from '../constants/constants';
 import { DOMAIN_TYPE_DATA } from '../constants/Domain.constants';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
@@ -44,13 +43,17 @@ import { Operation } from '../generated/entity/policies/policy';
 import { EntityReference } from '../generated/entity/type';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import {
-  QueryFieldInterface,
-  QueryFilterInterface,
-} from '../pages/ExplorePage/ExplorePage.interface';
 import { DomainDetailPageTabProps } from './Domain/DomainClassBase';
-import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
-import Fqn from './Fqn';
+import {
+  domainBuildESQuery,
+  getQueryFilterForDataProducts,
+  getQueryFilterForDomain,
+  getQueryFilterToExcludeDomainTerms,
+  getQueryFilterToIncludeDomain,
+  initializeDomainEntityRef,
+  isDomainExist,
+} from './DomainFilterUtils';
+import { getEntityName } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 import { renderIcon } from './IconUtils';
 import {
@@ -59,189 +62,14 @@ import {
 } from './PermissionsUtils';
 import { getDomainPath } from './RouterUtils';
 
-export const getOwner = (
-  hasPermission: boolean,
-  owners: EntityReference[],
-  ownerDisplayNames: Map<string, ReactNode>
-) => {
-  if (!isEmpty(owners)) {
-    return <OwnerLabel ownerDisplayName={ownerDisplayNames} owners={owners} />;
-  }
-  if (!hasPermission) {
-    return <div>{NO_DATA_PLACEHOLDER}</div>;
-  }
-
-  return null;
-};
-
-export const getQueryFilterToIncludeDomain = (
-  domainFqn: string,
-  dataProductFqn: string
-) => ({
-  query: {
-    bool: {
-      must: [
-        {
-          term: {
-            'domains.fullyQualifiedName': domainFqn,
-          },
-        },
-        {
-          bool: {
-            must_not: [
-              {
-                term: {
-                  'dataProducts.fullyQualifiedName': dataProductFqn,
-                },
-              },
-            ],
-          },
-        },
-        {
-          bool: {
-            must_not: [
-              {
-                terms: {
-                  entityType: [
-                    EntityType.DATA_PRODUCT,
-                    EntityType.TEST_SUITE,
-                    EntityType.QUERY,
-                    EntityType.TEST_CASE,
-                    EntityType.TABLE_COLUMN,
-                  ],
-                },
-              },
-            ],
-          },
-        },
-      ],
-    },
-  },
-});
-
-export const getQueryFilterToExcludeDomainTerms = (
-  fqn: string,
-  parentFqn?: string
-): QueryFilterInterface => {
-  const mustTerm: QueryFieldInterface[] = parentFqn
-    ? [
-        {
-          term: {
-            'domains.fullyQualifiedName': parentFqn,
-          },
-        },
-      ]
-    : [];
-
-  return {
-    query: {
-      bool: {
-        must: mustTerm.concat([
-          {
-            bool: {
-              must_not: [
-                {
-                  term: {
-                    'domains.fullyQualifiedName': fqn,
-                  },
-                },
-              ],
-            },
-          },
-          {
-            bool: {
-              must_not: [
-                {
-                  terms: {
-                    entityType: [EntityType.TABLE_COLUMN],
-                  },
-                },
-              ],
-            },
-          },
-        ]),
-      },
-    },
-  };
-};
-
-/**
- * Returns an Elasticsearch query filter for fetching assets belonging to a domain,
- * excluding DataProduct entities. Use this for general domain asset listings.
- * @param domainFqn - The fully qualified name of the domain
- */
-export const getQueryFilterForDomain = (domainFqn: string) => {
-  if (!domainFqn) {
-    return { query: { match_none: {} } };
-  }
-
-  return {
-    query: {
-      bool: {
-        must: [
-          {
-            bool: {
-              should: [
-                {
-                  term: {
-                    'domains.fullyQualifiedName': domainFqn,
-                  },
-                },
-                {
-                  prefix: {
-                    'domains.fullyQualifiedName': `${domainFqn}.`,
-                  },
-                },
-              ],
-            },
-          },
-        ],
-        must_not: [
-          {
-            terms: {
-              entityType: [EntityType.DATA_PRODUCT, EntityType.TABLE_COLUMN],
-            },
-          },
-        ],
-      },
-    },
-  };
-};
-
-/**
- * Returns an Elasticsearch query filter for fetching DataProduct entities within a domain.
- * Unlike getQueryFilterForDomain, this does not exclude any entity types.
- * @param domainFqn - The fully qualified name of the domain
- */
-export const getQueryFilterForDataProducts = (domainFqn: string) => {
-  if (!domainFqn) {
-    return { query: { match_none: {} } };
-  }
-
-  return {
-    query: {
-      bool: {
-        must: [
-          {
-            bool: {
-              should: [
-                {
-                  term: {
-                    'domains.fullyQualifiedName': domainFqn,
-                  },
-                },
-                {
-                  prefix: {
-                    'domains.fullyQualifiedName': `${domainFqn}.`,
-                  },
-                },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  };
+export {
+  domainBuildESQuery,
+  getQueryFilterForDataProducts,
+  getQueryFilterForDomain,
+  getQueryFilterToExcludeDomainTerms,
+  getQueryFilterToIncludeDomain,
+  initializeDomainEntityRef,
+  isDomainExist,
 };
 
 // Domain type description which will be shown in tooltip
@@ -308,20 +136,6 @@ export const renderDomainLink = (
   );
 };
 
-export const initializeDomainEntityRef = (
-  domains: EntityReference[],
-  activeDomainKey: string
-) => {
-  const domain = domains.find((item) => {
-    return item.fullyQualifiedName === activeDomainKey;
-  });
-  if (domain) {
-    return getEntityReferenceFromEntity(domain, EntityType.DOMAIN);
-  }
-
-  return undefined;
-};
-
 export const convertDomainsToTreeOptions = (
   options: EntityReference[] | Domain[] = [],
   level = 0,
@@ -378,29 +192,6 @@ export const convertDomainsToTreeOptions = (
   });
 
   return treeData;
-};
-
-/**
- * Recursively checks if a domain exists in the hierarchy
- * @param domain The domain to search in
- * @param searchDomain The domain to search for
- * @returns boolean indicating if the domain exists
- */
-export const isDomainExist = (
-  domain: Domain,
-  searchDomainFqn: string
-): boolean => {
-  if (domain.fullyQualifiedName === searchDomainFqn) {
-    return true;
-  }
-
-  if (domain.children?.length) {
-    return domain.children.some((child) =>
-      isDomainExist(child as unknown as Domain, searchDomainFqn)
-    );
-  }
-
-  return false;
 };
 
 export const getDomainDetailTabs = ({
@@ -631,80 +422,4 @@ export const getDomainIcon = (iconURL?: string) => {
 
   // Otherwise return the default domain icon
   return <DomainIcon className="domain-default-icon" />;
-};
-
-export const DomainListItemRenderer = (props: EntityReference) => {
-  const isSubDomain = Fqn.split(props.fullyQualifiedName ?? '').length > 1;
-  const fqn = `(${props.fullyQualifiedName ?? ''})`;
-
-  return (
-    <div className="d-flex items-center gap-2">
-      <DomainIcon
-        color={DE_ACTIVE_COLOR}
-        height={20}
-        name="folder"
-        width={20}
-      />
-      <div className="d-flex items-center w-max-400">
-        <Typography.Text ellipsis>{getEntityName(props)}</Typography.Text>
-        {isSubDomain && (
-          <Typography.Text
-            ellipsis
-            className="m-l-xss text-xs"
-            type="secondary">
-            {fqn}
-          </Typography.Text>
-        )}
-      </div>
-    </div>
-  );
-};
-
-export const domainBuildESQuery = (
-  filters: Record<string, string[]>,
-  baseFilter?: string
-): Record<string, unknown> => {
-  let query = baseFilter ? JSON.parse(baseFilter) : null;
-
-  if (!query) {
-    query = {
-      query: {
-        bool: {
-          must: [],
-        },
-      },
-    };
-  }
-
-  if (!query.query) {
-    query.query = { bool: { must: [] } };
-  }
-  if (!query.query.bool) {
-    query.query.bool = { must: [] };
-  }
-  if (!query.query.bool.must) {
-    query.query.bool.must = [];
-  }
-
-  for (const [filterKey, values] of Object.entries(filters)) {
-    if (!values || values.length === 0) {
-      continue;
-    }
-
-    if (values.length === 1) {
-      query.query.bool.must.push({
-        term: {
-          [filterKey]: values[0],
-        },
-      });
-    } else {
-      query.query.bool.must.push({
-        terms: {
-          [filterKey]: values,
-        },
-      });
-    }
-  }
-
-  return query;
 };

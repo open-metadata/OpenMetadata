@@ -44,6 +44,11 @@ export enum LineagePlatformView {
   DataProduct = 'DataProduct',
 }
 
+export interface LineageTimeRange {
+  startTime?: number;
+  endTime?: number;
+}
+
 export interface LineageContextType {
   reactFlowInstance?: ReactFlowInstance;
   dataQualityLineage?: EntityLineageResponse;
@@ -53,6 +58,8 @@ export interface LineageContextType {
   status: LoadingState;
   entityLineage: EntityLineageResponse;
   entityFqn: string;
+  timeFilter: LineageTimeRange;
+  setTimeFilter: (range: LineageTimeRange) => void;
   exportLineageData: (_: string) => Promise<CSVExportResponse>;
   onInitReactFlow: (reactFlowInstance: ReactFlowInstance) => void;
   onPaneClick: () => void;

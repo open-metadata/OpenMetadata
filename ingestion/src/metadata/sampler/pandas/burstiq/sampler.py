@@ -17,16 +17,19 @@ so that PandasProfilerInterface can be used without any BurstIQ-specific
 profiler code.
 """
 
-from typing import Callable, Iterator, List, Optional  # noqa: UP035
+from typing import TYPE_CHECKING, Callable, Iterator, Optional, cast  # noqa: UP035
 
 import pandas as pd
 
-from metadata.generated.schema.entity.data.table import DataType, TableData
+from metadata.generated.schema.entity.data.table import DataType
 from metadata.generated.schema.type.basic import ProfileSampleType
-from metadata.ingestion.source.database.burstiq.client import BurstIQClient
-from metadata.sampler.sampler_interface import SamplerInterface
-from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
+from metadata.sampler.config import resolve_static_sampling_config
+from metadata.sampler.pandas.sampler import DatalakeSampler
+from metadata.utils.datalake.datalake_utils import DatalakeColumnWrapper
 from metadata.utils.sqa_like_column import SQALikeColumn
+
+if TYPE_CHECKING:
+    from metadata.ingestion.source.database.burstiq.client import BurstIQClient
 
 _PAGE_SIZE = 5_000
 
@@ -51,7 +54,7 @@ _DATETIME_TYPES = {
 }
 
 
-class BurstIQSampler(SamplerInterface):
+class BurstIQSampler(DatalakeSampler):
     """
     Sampler for BurstIQ LifeGraph.
 
@@ -62,95 +65,85 @@ class BurstIQSampler(SamplerInterface):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.client: BurstIQClient = self.get_client()
-        self._cached_frames: Optional[List[pd.DataFrame]] = None  # noqa: UP006, UP045
+        self.client: BurstIQClient = cast("BurstIQClient", self.get_client())  # type: ignore[assignment]
 
-    # ------------------------------------------------------------------
-    # SamplerInterface abstract methods
-    # ------------------------------------------------------------------
+    def get_dataframes(self, service_connection_config, client, table) -> DatalakeColumnWrapper:
+        """Get the dataframes for burstIQ sampler
 
-    def get_client(self) -> BurstIQClient:
-        """Return the BurstIQClient created by get_ssl_connection in the base __init__."""
-        return self.connection
-
-    def _load_frames(self) -> List[pd.DataFrame]:  # noqa: UP006
-        """Fetch records from BurstIQ in paginated chunks and cache for reuse across metrics."""
-        if self._cached_frames is not None:
-            return self._cached_frames
-
-        chain = self.entity.name.root
-        static = self.sample_config.get_static_config()
-        sample = static.profileSample if static else None
-        sample_type = static.profileSampleType if static else None
-
-        if sample and sample_type == ProfileSampleType.ROWS:
-            total_limit: Optional[int] = int(sample)  # noqa: UP045
-        elif sample and sample_type == ProfileSampleType.PERCENTAGE:
-            total = self.client.get_chain_metrics().get(chain, 0)
-            total_limit = max(1, int(total * sample / 100))
-        else:
-            total_limit = None
-
-        frames = []
-        skip = 0
-        while True:
-            page_size = min(_PAGE_SIZE, total_limit - skip) if total_limit else _PAGE_SIZE
-            records = self.client.get_records_by_tql(chain, limit=page_size, skip=skip)
-            if not records:
-                break
-            frames.append(self._cast_dataframe(pd.DataFrame(records)))
-            skip += len(records)
-            if len(records) < page_size:
-                break
-            if total_limit and skip >= total_limit:
-                break
-
-        self._cached_frames = frames if frames else [pd.DataFrame()]
-        return self._cached_frames
-
-    @property
-    def raw_dataset(self) -> Callable[[], Iterator[pd.DataFrame]]:
-        """Return a callable that yields cached DataFrame chunks from BurstIQ."""
+        Args:
+            service_connection_config: Service connection config
+            client: BurstIQ client
+            table: Table entity
+        Returns:
+            DatalakeColumnWrapper: Wrapper containing the columns and dataframes
+        """
 
         def chunk_generator() -> Iterator[pd.DataFrame]:
-            yield from self._load_frames()
+            chain = self.entity.name.root
+            total_limit = self._compute_total_limit(chain)
+            skip = 0
+            yielded = False
+            while True:
+                page_size = min(_PAGE_SIZE, total_limit - skip) if total_limit else _PAGE_SIZE
+                records = self.client.get_records_by_tql(chain, limit=page_size, skip=skip)
+                if not records:
+                    break
+                frame = self._cast_dataframe(pd.DataFrame(records))
+                skip += len(records)
+                yielded = True
+                yield frame
+                if len(records) < page_size:
+                    break
+                if total_limit and skip >= total_limit:
+                    break
+            if not yielded:
+                yield pd.DataFrame()
 
-        return chunk_generator
+        return DatalakeColumnWrapper(
+            dataframes=chunk_generator,
+            columns=None,
+            raw_data=None,
+        )
 
-    def get_dataset(self, **__) -> Callable[[], Iterator[pd.DataFrame]]:
-        """Return the dataset callable (sampling applied via TQL limit)."""
-        return self.raw_dataset
+    def get_col_row(
+        self,
+        df_iterator: Callable,
+        columns: list[SQALikeColumn] | None = None,
+        sample_query: str | None = None,
+    ):
+        """Override to filter columns to those present in the DataFrame.
+        BurstIQ TQL responses can omit columns that exist in entity metadata."""
+        cols = [col.name for col in columns] if columns else None
+        available: list[str] = []
+        rows = []
+        for chunk in df_iterator():
+            if cols is None:
+                cols = chunk.columns.tolist()
+            available = [c for c in cols if c in chunk.columns]
+            if sample_query is not None:
+                chunk = chunk.query(sample_query)  # noqa: PLW2901
+            rows.extend(self._fetch_rows(chunk[available])[: self.sample_limit])
+            if len(rows) >= (self.sample_limit or 100):
+                break
+        return available, rows
 
-    def _rdn_sample_from_user_query(self) -> Callable[[], Iterator[pd.DataFrame]]:
-        """BurstIQ does not support custom profiler queries; fall back to full scan."""
-        return self.raw_dataset
+    def _compute_total_limit(self, chain: str) -> Optional[int]:  # noqa: UP045
+        """Compute the total record limit based on the sampling config.
 
-    def _fetch_sample_data_from_user_query(self) -> TableData:
-        """BurstIQ does not support custom profiler queries; fall back to full scan."""
-        return self.fetch_sample_data(self.columns)
-
-    def fetch_sample_data(self, columns: Optional[List[SQALikeColumn]]) -> TableData:  # noqa: UP006, UP045
-        """Return a TableData snapshot for the Data Preview tab in the UI."""
-        df = next(self.raw_dataset())
-        target_cols = [c.name for c in (columns or self.get_columns())]
-
-        if df.empty:
-            return TableData(columns=target_cols, rows=[])
-
-        available = [c for c in target_cols if c in df.columns]
-        row_limit = min(self.sample_limit or SAMPLE_DATA_DEFAULT_COUNT, len(df))
-        subset = df[available].head(row_limit)
-
-        rows = [[self._truncate_cell(str(v)) for v in row] for row in subset.itertuples(index=False, name=None)]
-        return TableData(columns=available, rows=rows)
-
-    def get_columns(self) -> List[SQALikeColumn]:  # noqa: UP006
-        """Return SQALikeColumn list derived from the OM Table entity."""
-        return [SQALikeColumn(name=c.name.root, type=c.dataType) for c in self.entity.columns]
-
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
+        Uses ``resolve_static_sampling_config`` with ``row_count=None``
+        instead of the ``_resolve_sample_config`` cached property to avoid a
+        circular dependency: _resolve_sample_config may call
+        _get_asset_row_count → raw_dataset() → _compute_total_limit.
+        """
+        static = resolve_static_sampling_config(self.sample_config.profileSampleConfig)
+        if not static or not static.profileSample:
+            return None
+        if static.profileSampleType == ProfileSampleType.ROWS:
+            return int(static.profileSample)
+        if static.profileSampleType == ProfileSampleType.PERCENTAGE:
+            total = self.client.get_chain_metrics().get(chain, 0)
+            return max(1, int(total * static.profileSample / 100))
+        return None
 
     def _cast_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
         """Cast DataFrame columns to their declared types from OM entity metadata.

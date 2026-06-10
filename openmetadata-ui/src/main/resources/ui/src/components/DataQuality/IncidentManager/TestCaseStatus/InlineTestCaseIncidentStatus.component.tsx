@@ -47,7 +47,10 @@ import {
   TaskEntityType,
   TaskResolutionType,
 } from '../../../../rest/tasksAPI';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import {
+  getEntityFeedLink,
+  getEntityName,
+} from '../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
 import { UserTag } from '../../../common/UserTag/UserTag.component';
@@ -173,8 +176,7 @@ const InlineTestCaseIncidentStatus = ({
           name: `Incident: ${testCaseName}`,
           category: TaskCategory.Incident,
           type: TaskEntityType.TestCaseResolution,
-          about: testCaseFqn,
-          aboutType: 'testCase',
+          about: getEntityFeedLink('testCase', testCaseFqn),
         });
 
         if (targetStatus !== TestCaseResolutionStatusTypes.New && newTask?.id) {
@@ -567,6 +569,7 @@ const InlineTestCaseIncidentStatus = ({
           containerClassName="tw:max-h-[500px] tw:min-w-0 tw:w-[320px] tw:border tw:border-border-secondary"
           dataTestid={`${data.testCaseReference?.name}-assignee-popover`}
           isOpen={showAssigneePopover}
+          popoverClassName="tw:!max-h-none"
           trigger={renderStatusChipButton()}
           onOpenChange={(open) => {
             if (open) {
@@ -584,9 +587,10 @@ const InlineTestCaseIncidentStatus = ({
     if (showResolvedPopover) {
       return (
         <IncidentStatusPopoverShell
-          containerClassName="tw:min-w-0 tw:w-[320px] tw:border tw:border-border-secondary"
+          containerClassName="tw:min-w-0 tw:w-80 tw:overflow-y-auto tw:border tw:border-border-secondary"
           dataTestid={`${data.testCaseReference?.name}-resolved-popover`}
           isOpen={showResolvedPopover}
+          popoverClassName="tw:!max-h-none"
           trigger={renderStatusChipButton()}
           onOpenChange={(open) => {
             if (!open) {
@@ -609,7 +613,7 @@ const InlineTestCaseIncidentStatus = ({
         onOpenChange={handleStatusMenuOpenChange}>
         {renderStatusChipButton()}
         <Dropdown.Popover
-          className="tw:min-w-[100px] tw:w-max tw:overflow-auto"
+          className="tw:min-w-25 tw:w-max tw:overflow-auto"
           placement="top">
           {statusMenuItems}
         </Dropdown.Popover>

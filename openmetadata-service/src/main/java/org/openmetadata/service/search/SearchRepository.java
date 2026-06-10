@@ -18,6 +18,7 @@ import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA;
 import static org.openmetadata.service.search.SearchClient.ADD_FOLLOWERS_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.CASCADE_CERTIFICATION_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.DATA_ASSET_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.DEFAULT_UPDATE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
@@ -32,7 +33,6 @@ import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_ENT
 import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_TAGS_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_TEST_SUITE_CHILDREN_SCRIPT;
-import static org.openmetadata.service.search.SearchClient.SOFT_DELETE_RESTORE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_ADDED_DELETE_GLOSSARY_TAGS;
 import static org.openmetadata.service.search.SearchClient.UPDATE_CERTIFICATION_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
@@ -129,6 +129,7 @@ import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
@@ -136,12 +137,14 @@ import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
+import org.openmetadata.service.search.scripts.SoftDeleteScript;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.VectorEmbeddingHandler;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.client.BedrockEmbeddingClient;
 import org.openmetadata.service.search.vector.client.DjlEmbeddingClient;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.client.GoogleEmbeddingClient;
 import org.openmetadata.service.search.vector.client.OpenAIEmbeddingClient;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -152,6 +155,129 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 public class SearchRepository {
 
   private volatile SearchClient searchClient;
+
+  /**
+   * When a search-write deferral scope is open on the calling thread, the rename/move/domain-change
+   * cascade ES mutations ({@link #updateEntityIndex}, {@link #updateEntity(EntityReference)}, the
+   * {@code update*ByFqnPrefix} / {@code updateAssetDomains*} bulk rewrites, plus the direct {@code
+   * getSearchClient().*} cascade calls routed through {@link #deferIfFlushScopeActive}) capture their
+   * blocking Elasticsearch round trip here instead of issuing it inline. The create/update flush
+   * opens a scope before its DB transaction so NO Elasticsearch call runs while a pooled DB
+   * connection is held, then drains the captured closures after commit. A deadlock replay re-runs the
+   * flush body, so the scope is reset per attempt and the closures are drained exactly once after the
+   * final successful commit. {@code null} means "no scope active" and the mutation executes inline —
+   * every non-flush caller (reindex apps, the post-commit search-index handler, lineage jobs) is
+   * unaffected.
+   */
+  private static final ThreadLocal<List<DeferredSearchWrite>> DEFERRED_SEARCH_WRITES =
+      new ThreadLocal<>();
+
+  /**
+   * A captured search-index mutation plus the locator of the entity whose document it rewrites. When
+   * a post-commit drain fails the round trip, {@code entityId}/{@code entityFqn}/{@code entityType}
+   * are enqueued to the durable, entity-keyed {@link SearchIndexRetryQueue} so the document is
+   * rebuilt from the committed source-of-truth DB rows on retry instead of silently losing the
+   * cascade rewrite. A {@code null} locator means the mutation already self-enqueues on failure (the
+   * {@code SearchRepository.update*} methods wrap their own try/catch), so the drain only logs.
+   */
+  public record DeferredSearchWrite(
+      Runnable esWrite, String operation, String entityId, String entityFqn, String entityType) {
+    public void run() {
+      esWrite.run();
+    }
+  }
+
+  /**
+   * Open a search-write deferral scope on the current thread. While open, the cascade ES mutations
+   * enqueue their work instead of running it inline. Returns {@code true} if this call opened the
+   * scope (caller owns draining/closing it), {@code false} if a scope was already open (nested call —
+   * the outer owner stays responsible). Pair a {@code true} result with a {@code finally} that calls
+   * {@link #drainSearchWriteDeferred()} after commit and {@link #clearSearchWriteDeferred()} on
+   * failure.
+   */
+  public static boolean beginSearchWriteDeferral() {
+    boolean opened = DEFERRED_SEARCH_WRITES.get() == null;
+    if (opened) {
+      DEFERRED_SEARCH_WRITES.set(new ArrayList<>());
+    }
+    return opened;
+  }
+
+  /**
+   * Number of closures captured in the currently-open scope, or {@code 0} when no scope is open. A
+   * nested (non-owning) caller records this before contributing so it can {@link
+   * #rollbackSearchWriteToCheckpoint(int)} its own contributions on a deadlock replay without
+   * disturbing closures the outer owner captured.
+   */
+  public static int searchWriteCheckpoint() {
+    List<DeferredSearchWrite> deferred = DEFERRED_SEARCH_WRITES.get();
+    return deferred == null ? 0 : deferred.size();
+  }
+
+  /** Drop every closure captured after {@code checkpoint} so a retried nested flush re-captures cleanly. */
+  public static void rollbackSearchWriteToCheckpoint(int checkpoint) {
+    List<DeferredSearchWrite> deferred = DEFERRED_SEARCH_WRITES.get();
+    if (deferred != null) {
+      while (deferred.size() > checkpoint) {
+        deferred.removeLast();
+      }
+    }
+  }
+
+  /** Return the closures captured since {@link #beginSearchWriteDeferral} and close the scope. */
+  public static List<DeferredSearchWrite> drainSearchWriteDeferred() {
+    List<DeferredSearchWrite> deferred = DEFERRED_SEARCH_WRITES.get();
+    DEFERRED_SEARCH_WRITES.remove();
+    return deferred == null ? List.of() : deferred;
+  }
+
+  /** Discard captured closures and close the scope without running them (failed transaction). */
+  public static void clearSearchWriteDeferred() {
+    DEFERRED_SEARCH_WRITES.remove();
+  }
+
+  /** {@code true} while a flush has opened a search-write deferral scope on the current thread. */
+  public static boolean isSearchWriteDeferralActive() {
+    return DEFERRED_SEARCH_WRITES.get() != null;
+  }
+
+  private static boolean deferSearchWrite(DeferredSearchWrite write) {
+    List<DeferredSearchWrite> deferred = DEFERRED_SEARCH_WRITES.get();
+    boolean captured = deferred != null;
+    if (captured) {
+      deferred.add(write);
+    }
+    return captured;
+  }
+
+  /**
+   * Capture {@code esWrite} for post-commit execution when a flush deferral scope is open on this
+   * thread; otherwise run it inline. The locator is used to enqueue the entity to the durable
+   * search-index retry outbox if the deferred round trip later fails. Use this for the direct {@code
+   * getSearchClient().*} cascade rewrites that bypass the {@code SearchRepository.update*} methods
+   * (glossary-term / classification / container FQN-prefix updates) so they too never run inside the
+   * transaction handle.
+   */
+  public void deferIfFlushScopeActive(
+      Runnable esWrite, String operation, String entityId, String entityFqn, String entityType) {
+    deferOrRunSearchWrite(esWrite, operation, entityId, entityFqn, entityType);
+  }
+
+  /**
+   * Static variant of {@link #deferIfFlushScopeActive} for call sites that have no {@code
+   * SearchRepository} instance in scope (e.g. the static {@code
+   * EntityRepository.invalidateCacheForTaggedEntities} ES-search loop). The {@code entityId}/{@code
+   * entityFqn} locator drives durable retry on a failed post-commit drain.
+   */
+  public static void deferOrRunSearchWrite(
+      Runnable esWrite, String operation, String entityId, String entityFqn, String entityType) {
+    if (!deferSearchWrite(
+        new DeferredSearchWrite(esWrite, operation, entityId, entityFqn, entityType))) {
+      // No flush deferral scope is open (a non-flush cascade rewrite): run it synchronously inline
+      // on the request thread so the rewrite is read-your-write visible when the request returns.
+      esWrite.run();
+    }
+  }
 
   @Getter private Map<String, IndexMapping> entityIndexMap;
 
@@ -328,7 +454,6 @@ public class SearchRepository {
                   .parentAliases(parentAliases)
                   .build();
           recreateIndexHandler.finalizeReindex(entityReindexContext, true);
-
         } catch (Exception ex) {
           LOG.error("Failed to recreate index for entity {}", entityType, ex);
         }
@@ -1218,12 +1343,33 @@ public class SearchRepository {
   }
 
   /**
+   * Capture this entity-index rewrite for post-commit drain when a flush deferral scope is open on
+   * the current thread (it is reached from a rename/move/domain cascade inside the wrapped DB
+   * transaction). The entity locator is retained so a failed post-commit drain re-enqueues this
+   * entity to the durable retry outbox. Returns {@code false} (run inline) for every non-flush
+   * caller — the post-commit search-index handler, reindex apps, lineage jobs.
+   */
+  private boolean deferEntityIndex(EntityInterface entity) {
+    EntityReference ref = entity.getEntityReference();
+    return deferSearchWrite(
+        new DeferredSearchWrite(
+            () -> updateEntityIndex(entity),
+            "updateEntityIndex",
+            entity.getId() != null ? entity.getId().toString() : null,
+            entity.getFullyQualifiedName(),
+            ref != null ? ref.getType() : null));
+  }
+
+  /**
    * Update search index for an entity only (no lifecycle events).
    * This method is used by SearchIndexHandler.
    */
   public void updateEntityIndex(EntityInterface entity) {
     if (entity == null) {
       LOG.warn("Entity is null, cannot update index.");
+      return;
+    }
+    if (deferEntityIndex(entity)) {
       return;
     }
 
@@ -1381,9 +1527,26 @@ public class SearchRepository {
   }
 
   public void updateEntity(EntityReference entityReference) {
+    if (deferSearchWrite(
+        new DeferredSearchWrite(
+            () -> updateEntity(entityReference),
+            "updateEntity",
+            entityReference.getId() != null ? entityReference.getId().toString() : null,
+            entityReference.getFullyQualifiedName(),
+            entityReference.getType()))) {
+      return;
+    }
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityReference.getType());
+    // Fetch only the fields this entity's search index needs, never "*". For container
+    // entities (database/schema) "*" hydrates every child — tens of thousands of tables on
+    // large catalogs — and can OOM the server on a single live update. The required-field
+    // set is the same one the reindex pipeline uses, so live updates and reindex stay
+    // consistent and bounded.
+    String fields =
+        String.join(",", searchIndexFactory.getReindexFieldsFor(entityReference.getType()));
     EntityInterface entity =
-        entityRepository.get(null, entityReference.getId(), entityRepository.getFields("*"));
+        entityRepository.get(
+            null, entityReference.getId(), entityRepository.getOnlySupportedFields(fields));
     entity.setChangeDescription(null);
     updateEntityIndex(entity);
   }
@@ -1459,6 +1622,7 @@ public class SearchRepository {
         bulkSink = createBulkSink(batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
         Map<String, Object> contextData = new HashMap<>();
         contextData.put(ReindexingUtil.ENTITY_TYPE_KEY, entityType);
+        ReindexingUtil.populateDocBuildContext(contextData, entityType, typeEntities);
         bulkSink.write(typeEntities, contextData);
         bulkSink.flushAndAwait(60); // Wait up to 60 seconds for completion
       } catch (Exception e) {
@@ -1551,6 +1715,15 @@ public class SearchRepository {
    */
   public void updateAssetDomainsForDataProduct(
       String dataProductFqn, List<String> oldDomainFqns, List<EntityReference> newDomains) {
+    if (deferSearchWrite(
+        new DeferredSearchWrite(
+            () -> updateAssetDomainsForDataProduct(dataProductFqn, oldDomainFqns, newDomains),
+            "updateAssetDomainsForDataProduct",
+            null,
+            dataProductFqn,
+            null))) {
+      return;
+    }
     Timer.Sample s = RequestLatencyContext.startSearchOperation();
     if (!getSearchClient().isClientAvailable()) {
       SearchIndexRetryQueue.enqueue(
@@ -1571,6 +1744,15 @@ public class SearchRepository {
 
   public void updateAssetDomainsByIds(
       List<UUID> assetIds, List<String> oldDomainFqns, List<EntityReference> newDomains) {
+    if (deferSearchWrite(
+        new DeferredSearchWrite(
+            () -> updateAssetDomainsByIds(assetIds, oldDomainFqns, newDomains),
+            "updateAssetDomainsByIds",
+            null,
+            null,
+            null))) {
+      return;
+    }
     Timer.Sample s = RequestLatencyContext.startSearchOperation();
 
     if (!getSearchClient().isClientAvailable()) {
@@ -1597,6 +1779,15 @@ public class SearchRepository {
   }
 
   public void updateDomainFqnByPrefix(String oldFqn, String newFqn) {
+    if (deferSearchWrite(
+        new DeferredSearchWrite(
+            () -> updateDomainFqnByPrefix(oldFqn, newFqn),
+            "updateDomainFqnByPrefix",
+            null,
+            newFqn,
+            null))) {
+      return;
+    }
     Timer.Sample s = RequestLatencyContext.startSearchOperation();
     if (!getSearchClient().isClientAvailable()) {
       SearchIndexRetryQueue.enqueue(
@@ -1614,6 +1805,15 @@ public class SearchRepository {
   }
 
   public void updateAssetDomainFqnByPrefix(String oldFqn, String newFqn) {
+    if (deferSearchWrite(
+        new DeferredSearchWrite(
+            () -> updateAssetDomainFqnByPrefix(oldFqn, newFqn),
+            "updateAssetDomainFqnByPrefix",
+            null,
+            newFqn,
+            null))) {
+      return;
+    }
     Timer.Sample s = RequestLatencyContext.startSearchOperation();
 
     if (!getSearchClient().isClientAvailable()) {
@@ -1815,6 +2015,47 @@ public class SearchRepository {
 
     AssetCertification certification = getCertificationFromEntity(entity);
     updateEntityCertificationInSearch(entity, certification);
+    cascadeCertificationToChildren(entity, certification);
+  }
+
+  // Pushes the cert change onto every child search doc denormalized from this
+  // entity. Without this the cert filter on the DQ dashboard (which queries
+  // children like test_case/test_case_result/test_case_resolution_status by
+  // `certification.tagLabel.tagFQN`) would silently use the stale cert until a
+  // reindex. RAW_REPLACE in PropagationDescriptor can't be used because it
+  // restores the old value on delete; we drive a dedicated script instead.
+  private void cascadeCertificationToChildren(
+      EntityInterface entity, AssetCertification certification) {
+    String type = entity.getEntityReference().getType();
+    if (!Entity.TABLE.equalsIgnoreCase(type)) {
+      // Scope: Table only. Dashboard/ApiCollection children also have cert in
+      // their mappings; extend here when those denormalization paths are added.
+      return;
+    }
+    IndexMapping indexMapping = entityIndexMap.get(Entity.TABLE);
+    if (indexMapping == null) {
+      return;
+    }
+    List<String> childAliases = indexMapping.getChildAliases(clusterAlias);
+    if (nullOrEmpty(childAliases)) {
+      return;
+    }
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("certification", certification); // null when cert was removed
+
+    Pair<String, String> parentMatch = new ImmutablePair<>("table.id", entity.getId().toString());
+
+    try {
+      searchClient.updateChildren(
+          childAliases, parentMatch, new ImmutablePair<>(CASCADE_CERTIFICATION_SCRIPT, params));
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to cascade certification for table [{}]: {}",
+          entity.getFullyQualifiedName(),
+          e.getMessage(),
+          e);
+    }
   }
 
   private boolean isCertificationUpdated(ChangeDescription change) {
@@ -2011,12 +2252,17 @@ public class SearchRepository {
             String.format(PROPAGATE_NESTED_FIELD_SCRIPT, desc.nestPath(), field.getName()));
       }
       case SIMPLE_VALUE -> {
-        script.append(String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
+        data.put(field.getName(), field.getNewValue());
+        script.append(String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getName()));
       }
       case RAW_REPLACE -> {
         data.put(field.getName(), field.getNewValue());
         script.append(
-            String.format("ctx._source.%s = params.%s", field.getName(), field.getName()));
+            String.format("ctx._source.%s = params.%s;", field.getName(), field.getName()));
+      }
+      case EXTERNAL_HANDLER -> {
+        // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
+        return;
       }
     }
     script.append(" ");
@@ -2067,7 +2313,11 @@ public class SearchRepository {
       case RAW_REPLACE -> {
         data.put(field.getName(), field.getOldValue());
         script.append(
-            String.format("ctx._source.%s = params.%s", field.getName(), field.getName()));
+            String.format("ctx._source.%s = params.%s;", field.getName(), field.getName()));
+      }
+      case EXTERNAL_HANDLER -> {
+        // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
+        return;
       }
     }
     script.append(" ");
@@ -2120,7 +2370,8 @@ public class SearchRepository {
         data.put(field.getName(), ref);
       }
       case SIMPLE_VALUE -> {
-        script.append(String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
+        data.put(field.getName(), field.getNewValue());
+        script.append(String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getName()));
       }
       case NESTED_FIELD -> {
         data.put(field.getName(), field.getNewValue().toString());
@@ -2130,7 +2381,11 @@ public class SearchRepository {
       case RAW_REPLACE -> {
         data.put(field.getName(), field.getNewValue());
         script.append(
-            String.format("ctx._source.%s = params.%s", field.getName(), field.getName()));
+            String.format("ctx._source.%s = params.%s;", field.getName(), field.getName()));
+      }
+      case EXTERNAL_HANDLER -> {
+        // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
+        return;
       }
     }
     script.append(" ");
@@ -2199,7 +2454,8 @@ public class SearchRepository {
           }
         }
         Collections.sort(ctx._source.tags, (o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN));
-        """;
+        """
+        + SearchClient.TAG_RESEPARATION_SCRIPT;
   }
 
   private String generateDeleteTagLabelListScript() {
@@ -2214,7 +2470,8 @@ public class SearchRepository {
             }
           }
         }
-        """;
+        """
+        + SearchClient.TAG_RESEPARATION_SCRIPT;
   }
 
   private String generateUpdateTagLabelListScript() {
@@ -2247,7 +2504,8 @@ public class SearchRepository {
           }
         }
         Collections.sort(ctx._source.tags, (o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN));
-        """;
+        """
+        + SearchClient.TAG_RESEPARATION_SCRIPT;
   }
 
   public void deleteByScript(String entityType, String scriptTxt, Map<String, Object> params) {
@@ -2388,10 +2646,11 @@ public class SearchRepository {
       return;
     }
     IndexMapping indexMapping = entityIndexMap.get(entityType);
-    String scriptTxt = String.format(SOFT_DELETE_RESTORE_SCRIPT, delete);
+    SoftDeleteScript script = new SoftDeleteScript(delete);
     Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
     try {
-      searchClient.softDeleteOrRestoreEntity(getWriteIndexName(indexMapping), entityId, scriptTxt);
+      searchClient.softDeleteOrRestoreEntity(
+          getWriteIndexName(indexMapping), entityId, script.painless());
       softDeleteOrRestoredChildren(entity.getEntityReference(), indexMapping, delete);
 
       if (Entity.TABLE.equals(entityType)) {
@@ -2418,12 +2677,12 @@ public class SearchRepository {
       return;
     }
 
-    String scriptTxt = String.format(SOFT_DELETE_RESTORE_SCRIPT, delete);
+    SoftDeleteScript script = new SoftDeleteScript(delete);
     try {
       searchClient.updateChildren(
           List.of(columnIndexMapping.getIndexName(clusterAlias)),
           new ImmutablePair<>("table.id", table.getId().toString()),
-          new ImmutablePair<>(scriptTxt, null));
+          new ImmutablePair<>(script.painless(), null));
     } catch (Exception e) {
       LOG.error(
           "Issue soft deleting/restoring columns for table [{}]: {}",
@@ -2491,6 +2750,12 @@ public class SearchRepository {
           Entity.DRIVE_SERVICE -> searchClient.deleteEntityByFields(
           indexMapping.getChildAliases(clusterAlias),
           List.of(new ImmutablePair<>("service.id", docId)));
+        // Knowledge Center pages are nested via FQN (parent.fqn -> parent.fqn.child),
+        // not via a parent.id field on the child doc. A recursive hard-delete on the
+        // parent must therefore also remove every descendant from search by FQN
+        // prefix; otherwise stale child docs survive in the index and re-appear in
+        // hierarchy / search results until a full reindex.
+      case Entity.PAGE -> deleteEntityByFQNPrefix(entity);
       default -> {
         List<String> indexNames = indexMapping.getChildAliases(clusterAlias);
         if (!indexNames.isEmpty()) {
@@ -2504,32 +2769,28 @@ public class SearchRepository {
   public void softDeleteOrRestoredChildren(
       EntityReference entityReference, IndexMapping indexMapping, boolean delete)
       throws IOException {
-    String docId = entityReference.getId().toString();
-    String entityType = entityReference.getType();
-    String scriptTxt = String.format(SOFT_DELETE_RESTORE_SCRIPT, delete);
-    switch (entityType) {
-      case Entity.DASHBOARD_SERVICE,
-          Entity.DATABASE_SERVICE,
-          Entity.MESSAGING_SERVICE,
-          Entity.PIPELINE_SERVICE,
-          Entity.MLMODEL_SERVICE,
-          Entity.STORAGE_SERVICE,
-          Entity.SEARCH_SERVICE,
-          Entity.SECURITY_SERVICE,
-          Entity.DRIVE_SERVICE -> searchClient.softDeleteOrRestoreChildren(
-          indexMapping.getChildAliases(clusterAlias),
-          scriptTxt,
-          List.of(new ImmutablePair<>("service.id", docId)));
-      default -> {
-        List<String> indexNames = indexMapping.getChildAliases(clusterAlias);
-        if (!indexNames.isEmpty()) {
-          searchClient.softDeleteOrRestoreChildren(
-              indexMapping.getChildAliases(clusterAlias),
-              scriptTxt,
-              List.of(new ImmutablePair<>(entityType + ".id", docId)));
-        }
-      }
+    // Each childAlias is an entity-type name (per indexMapping.json). Use the typed script's
+    // capability check so we never apply soft-delete to an index whose schema lacks `deleted`.
+    SoftDeleteScript script = new SoftDeleteScript(delete);
+    boolean hasClusterAlias = clusterAlias != null && !clusterAlias.isEmpty();
+    List<String> targets =
+        indexMapping.getChildAliases().stream()
+            .filter(a -> script.compatibleWith(EntityIndexCapabilityRegistry.get(a)))
+            .map(a -> hasClusterAlias ? clusterAlias + IndexMapping.INDEX_NAME_SEPARATOR + a : a)
+            .toList();
+    if (targets.isEmpty()) {
+      return;
     }
+    String entityType = entityReference.getType();
+    // Service entities propagate child deletions through a shared service.id field; everything
+    // else uses the entity-type-specific <type>.id. Reuses the canonical SERVICE_ENTITY_SET that
+    // updateChildrenForSearchPropagation also relies on, so the contract stays in one place.
+    String parentIdField =
+        SERVICE_ENTITY_SET.contains(entityType) ? "service.id" : entityType + ".id";
+    searchClient.softDeleteOrRestoreChildren(
+        targets,
+        script.painless(),
+        List.of(new ImmutablePair<>(parentIdField, entityReference.getId().toString())));
   }
 
   public String getScriptWithParams(
@@ -2927,8 +3188,29 @@ public class SearchRepository {
       boolean includeDeleted,
       String entityType)
       throws IOException {
+    return getLineagePaginationInfo(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType, null, null);
+  }
+
+  public LineagePaginationInfo getLineagePaginationInfo(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean includeDeleted,
+      String entityType,
+      Long startTime,
+      Long endTime)
+      throws IOException {
     return searchClient.getLineagePaginationInfo(
-        fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType);
+        fqn,
+        upstreamDepth,
+        downstreamDepth,
+        queryFilter,
+        includeDeleted,
+        entityType,
+        startTime,
+        endTime);
   }
 
   public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
@@ -3226,6 +3508,13 @@ public class SearchRepository {
               "OpenAI configuration is required when using openai provider");
         }
         yield new OpenAIEmbeddingClient(esConfig);
+      }
+      case "google" -> {
+        if (config.getGoogle() == null) {
+          throw new IllegalStateException(
+              "Google configuration is required when using google provider");
+        }
+        yield new GoogleEmbeddingClient(esConfig);
       }
       case "djl" -> {
         if (config.getDjl() == null) {

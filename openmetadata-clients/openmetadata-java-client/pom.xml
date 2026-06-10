@@ -241,6 +241,7 @@
                             </output>
                             <skipOperationExample>true</skipOperationExample>
                             <skipValidateSpec>true</skipValidateSpec>
+                            <templateDirectory>${project.basedir}/src/main/openapi-templates</templateDirectory>
                         </configuration>
                     </execution>
                 </executions>
