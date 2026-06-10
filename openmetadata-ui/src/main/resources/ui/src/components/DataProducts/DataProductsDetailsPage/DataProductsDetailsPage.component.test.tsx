@@ -16,7 +16,6 @@ import { usePermissionProvider } from '../../../context/PermissionProvider/Permi
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDataAccessRequest } from '../../../hooks/useDataAccessRequest';
-import { hasEditAccess } from '../../../utils/EntityUtils';
 import DataProductsDetailsPage from './DataProductsDetailsPage.component';
 import { DataProductsDetailsPageProps } from './DataProductsDetailsPage.interface';
 
@@ -49,7 +48,6 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
 jest.mock('../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Test Data Product'),
   getEntityVoteStatus: jest.fn().mockReturnValue('unVoted'),
-  hasEditAccess: jest.fn().mockReturnValue(false),
   getEntityFeedLink: jest.fn().mockReturnValue(''),
 }));
 
@@ -149,7 +147,6 @@ describe('DataProductsDetailsPage — Request Data Access button', () => {
       getEntityPermission: jest.fn().mockResolvedValue({}),
       permissions: { task: { Create: true } },
     });
-    (hasEditAccess as jest.Mock).mockReturnValue(false);
     getDataProductClassBase().getShowRequestDataAccess.mockReturnValue(false);
   });
 
@@ -161,7 +158,7 @@ describe('DataProductsDetailsPage — Request Data Access button', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('renders and is enabled for an admin when the feature flag is on', () => {
+  it('does not render for admin without task-Create permission', () => {
     enableRequestDataAccess();
     (useApplicationStore as unknown as jest.Mock).mockReturnValue({
       currentUser: { id: 'admin-1', name: 'admin', isAdmin: true },
@@ -173,12 +170,24 @@ describe('DataProductsDetailsPage — Request Data Access button', () => {
 
     render(<DataProductsDetailsPage {...defaultProps} />);
 
+    expect(
+      screen.queryByTestId('request-data-access-button')
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders and is enabled for an admin with task-Create permission', () => {
+    enableRequestDataAccess();
+    (useApplicationStore as unknown as jest.Mock).mockReturnValue({
+      currentUser: { id: 'admin-1', name: 'admin', isAdmin: true },
+    });
+
+    render(<DataProductsDetailsPage {...defaultProps} />);
+
     expect(screen.getByTestId('request-data-access-button')).toBeEnabled();
   });
 
-  it('does not render for the entity owner', () => {
+  it('renders for entity owner with task-Create permission', () => {
     enableRequestDataAccess();
-    (hasEditAccess as jest.Mock).mockReturnValue(true);
 
     render(
       <DataProductsDetailsPage
@@ -190,9 +199,7 @@ describe('DataProductsDetailsPage — Request Data Access button', () => {
       />
     );
 
-    expect(
-      screen.queryByTestId('request-data-access-button')
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('request-data-access-button')).toBeEnabled();
   });
 
   it('does not render when the user lacks task-Create permission', () => {
@@ -237,7 +244,6 @@ describe('DataProductsDetailsPage — awaiting-grant banner', () => {
       getEntityPermission: jest.fn().mockResolvedValue({}),
       permissions: { task: { Create: true } },
     });
-    (hasEditAccess as jest.Mock).mockReturnValue(false);
     getDataProductClassBase().getShowRequestDataAccess.mockReturnValue(true);
     (useDataAccessRequest as jest.Mock).mockReturnValue({
       isDarDisabled: false,
