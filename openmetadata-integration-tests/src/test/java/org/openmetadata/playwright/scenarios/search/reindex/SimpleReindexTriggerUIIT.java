@@ -1,5 +1,6 @@
 package org.openmetadata.playwright.scenarios.search.reindex;
 
+import com.microsoft.playwright.assertions.LocatorAssertions.IsVisibleOptions;
 import com.microsoft.playwright.assertions.PlaywrightAssertions;
 import java.time.Duration;
 import java.util.Map;
@@ -65,9 +66,9 @@ class SimpleReindexTriggerUIIT {
 
   private static final Duration REINDEX_TIMEOUT = ReindexHelpers.reindexTimeout();
   private static final String STATUS_SUCCESS = "Success";
-  // After Run Now reports Success the alias has swapped, but the ES refresh on the new index can
-  // lag by a refresh interval. Poll the count until it converges rather than asserting once.
-  private static final Duration INDEX_COUNT_TIMEOUT = Duration.ofMinutes(2);
+  // Run Now success swaps the alias, but ES refresh on the new index lags a beat (longer on a
+  // loaded shared/external cluster). Poll until the count converges.
+  private static final Duration INDEX_COUNT_TIMEOUT = ReindexHelpers.searchPropagationTimeout();
   private static final Duration INDEX_COUNT_POLL_INTERVAL = Duration.ofSeconds(3);
 
   // Entity name base for each kind — must match what EntityLoader uses internally. The base
@@ -159,6 +160,12 @@ class SimpleReindexTriggerUIIT {
     final Tab tab = EXPLORE_TAB_PER_KIND.get(kind);
     final String firstEntityName = ns.prefix(type) + "_0";
     final ExplorePage explore = ExplorePage.openWithSearch(ui, tab, firstEntityName);
-    PlaywrightAssertions.assertThat(explore.firstResultByName(firstEntityName)).isVisible();
+    // The doc is already confirmed in the index (assertExactlyIngestedAreIndexed ran first), so the
+    // search returns the hit; only the result row's render needs time. Give it the propagation
+    // budget instead of the default 5s, which is too tight on a loaded shared/external cluster.
+    PlaywrightAssertions.assertThat(explore.firstResultByName(firstEntityName))
+        .isVisible(
+            new IsVisibleOptions()
+                .setTimeout(ReindexHelpers.searchPropagationTimeout().toMillis()));
   }
 }

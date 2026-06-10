@@ -38,7 +38,7 @@ class ClassificationRenameSearchUIIT {
 
   private static final String ORIGINAL_DISPLAY_NAME = "CLV";
   private static final String RENAMED_DISPLAY_NAME = "CLV Renamed";
-  private static final Duration PROPAGATION_TIMEOUT = Duration.ofMinutes(2);
+  private static final Duration PROPAGATION_TIMEOUT = ReindexHelpers.searchPropagationTimeout();
   private static final Duration REINDEX_TIMEOUT = ReindexHelpers.reindexTimeout();
   private static final Duration POLL_INTERVAL = Duration.ofSeconds(2);
 

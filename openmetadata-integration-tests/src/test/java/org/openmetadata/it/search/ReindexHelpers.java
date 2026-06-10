@@ -30,6 +30,8 @@ public final class ReindexHelpers {
   private static final Set<String> SUCCESS_STATUSES = Set.of("success", "completed");
   private static final String REINDEX_TIMEOUT_MIN_PROP = "jpw.reindex.timeoutMin";
   private static final int DEFAULT_TIMEOUT_MINUTES = 60;
+  private static final String PROPAGATION_TIMEOUT_MIN_PROP = "jpw.search.propagationTimeoutMin";
+  private static final int DEFAULT_PROPAGATION_MINUTES = 5;
   private static final int BASELINE_RECREATE_ATTEMPTS = 3;
   private static final Duration POLL_INTERVAL = Duration.ofSeconds(2);
 
@@ -46,6 +48,18 @@ public final class ReindexHelpers {
   public static Duration reindexTimeout() {
     return Duration.ofMinutes(
         Integer.getInteger(REINDEX_TIMEOUT_MIN_PROP, DEFAULT_TIMEOUT_MINUTES));
+  }
+
+  /**
+   * Max wait for a single document/field change to become query-visible — live-indexing lag or the
+   * tail of a reindex. On a clean cluster this is seconds, so the poll returns almost immediately
+   * and the cap never slows a passing test; it only bounds the failure. On a shared/external cluster
+   * under concurrent reindex load it can run minutes, so this defaults high and is overridable via
+   * {@code -Djpw.search.propagationTimeoutMin}.
+   */
+  public static Duration searchPropagationTimeout() {
+    return Duration.ofMinutes(
+        Integer.getInteger(PROPAGATION_TIMEOUT_MIN_PROP, DEFAULT_PROPAGATION_MINUTES));
   }
 
   /** Triggers the named app via {@code POST /v1/apps/trigger/{name}}. */

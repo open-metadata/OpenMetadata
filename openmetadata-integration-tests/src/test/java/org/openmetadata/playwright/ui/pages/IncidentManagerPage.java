@@ -4,7 +4,9 @@ import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.assertions.LocatorAssertions;
 import com.microsoft.playwright.assertions.PlaywrightAssertions;
+import com.microsoft.playwright.options.AriaRole;
 import com.microsoft.playwright.options.WaitForSelectorState;
+import java.util.regex.Pattern;
 import org.openmetadata.playwright.ui.UiSession;
 
 /**
@@ -205,17 +207,19 @@ public final class IncidentManagerPage extends PageObject {
 
   /** Open page size dropdown, click the {@code 50 / Page} option, await list with limit=50. */
   public IncidentManagerPage selectPageSize50() {
-    openMenu(byTestId("page-size-selection-dropdown"), page.locator(".ant-dropdown-menu"));
+    // Scope to the OPEN dropdown panel: Ant Design keeps closed panels in the DOM tagged
+    // .ant-dropdown-hidden, and a page-wide getByRole("50 / page") can resolve a stale/closing one
+    // — the click then burns its full timeout on an element that is "not stable" / "not visible".
+    final Locator menu = page.locator(".ant-dropdown:not(.ant-dropdown-hidden) .ant-dropdown-menu");
+    openMenu(byTestId("page-size-selection-dropdown"), menu);
+    final Locator option =
+        menu.getByRole(
+            AriaRole.MENUITEM,
+            new Locator.GetByRoleOptions()
+                .setName(Pattern.compile("50.*page", Pattern.CASE_INSENSITIVE)));
+    option.scrollIntoViewIfNeeded();
     page.waitForResponse(
-        r -> r.url().matches(API_LIST_REGEX) && r.url().contains("limit=50"),
-        () ->
-            page.getByRole(
-                    com.microsoft.playwright.options.AriaRole.MENUITEM,
-                    new Page.GetByRoleOptions()
-                        .setName(
-                            java.util.regex.Pattern.compile(
-                                "50.*page", java.util.regex.Pattern.CASE_INSENSITIVE)))
-                .click());
+        r -> r.url().matches(API_LIST_REGEX) && r.url().contains("limit=50"), () -> option.click());
     return this;
   }
 

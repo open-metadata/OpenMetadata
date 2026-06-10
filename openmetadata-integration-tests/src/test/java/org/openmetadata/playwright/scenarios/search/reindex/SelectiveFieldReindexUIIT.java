@@ -134,7 +134,7 @@ class SelectiveFieldReindexUIIT {
   // tabs whose hit count is zero, so a not-yet-refreshed search returns a missing tab testid
   // (not just a 0 count). Re-issuing the navigation on each tick lets the assertion absorb
   // that lag instead of failing at the first Playwright timeout.
-  private static final Duration UI_ASSERT_TIMEOUT = Duration.ofMinutes(2);
+  private static final Duration UI_ASSERT_TIMEOUT = ReindexHelpers.searchPropagationTimeout();
   private static final Duration UI_ASSERT_POLL_INTERVAL = Duration.ofSeconds(3);
   // Inner Playwright assertion timeout — short, since the Awaitility retry handles the long
   // wait. Long inner timeouts would only fire once and miss the next ES refresh.
