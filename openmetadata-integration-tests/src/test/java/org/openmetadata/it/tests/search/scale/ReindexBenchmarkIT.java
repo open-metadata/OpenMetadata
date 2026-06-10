@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeAll;
@@ -72,30 +71,38 @@ class ReindexBenchmarkIT {
         ns,
         server);
 
+    // Only ingest mode owns a known SEED_TABLES cohort; static/ensure reindex whatever the cluster
+    // already holds (potentially 100k+), so a single measured pass is enough and 3 full rebuilds of
+    // a large cluster would be needlessly slow.
+    final boolean ingestMode = SeedData.mode() == SeedData.Mode.INGEST;
+    final int warmupRuns = ingestMode ? WARMUP_RUNS : 0;
+    final int measuredRuns = ingestMode ? MEASURED_RUNS : 1;
+
     long totalMs = 0;
     long totalDocs = 0;
     long peakHeap = 0;
-    for (int i = 0; i < WARMUP_RUNS + MEASURED_RUNS; i++) {
+    for (int i = 0; i < warmupRuns + measuredRuns; i++) {
       final long start = System.currentTimeMillis();
       final AppRunRecord run = ReindexHelpers.triggerSearchIndexAndWait(server);
       assertThat(run.getStatus().value()).isIn("success", "completed");
       final long elapsed = System.currentTimeMillis() - start;
       final long docs = search.count(TABLE_ALIAS);
       final long heap = usedHeap();
-      if (i >= WARMUP_RUNS) {
+      if (i >= warmupRuns) {
         totalMs += elapsed;
         totalDocs += docs;
         peakHeap = Math.max(peakHeap, heap);
       }
     }
 
-    final double avgMs = totalMs / (double) MEASURED_RUNS;
-    final long avgDocs = totalDocs / MEASURED_RUNS;
+    final double avgMs = totalMs / (double) measuredRuns;
+    final long avgDocs = totalDocs / measuredRuns;
     final double throughput = avgDocs * 1000.0 / Math.max(1.0, avgMs);
 
     final Map<String, Object> metrics = new LinkedHashMap<>();
     metrics.put("seed_tables", SEED_TABLES);
-    metrics.put("measured_runs", MEASURED_RUNS);
+    metrics.put("data_mode", SeedData.mode().name());
+    metrics.put("measured_runs", measuredRuns);
     metrics.put("avg_total_ms", avgMs);
     metrics.put("avg_doc_count", avgDocs);
     metrics.put("throughput_docs_per_sec", throughput);
@@ -103,8 +110,9 @@ class ReindexBenchmarkIT {
 
     writeMetrics(metrics, "reindex-benchmark.json");
 
+    // Throughput (recorded to JSON) is the regression signal. No hard wall-clock cap: reindex time
+    // is environment- and cohort-size-dependent (especially in static mode), so it flakes.
     assertThat(throughput).as("throughput must be non-zero").isGreaterThan(0);
-    assertThat(Duration.ofMillis((long) avgMs)).isLessThan(Duration.ofMinutes(10));
   }
 
   private static long usedHeap() {
