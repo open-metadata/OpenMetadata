@@ -41,7 +41,6 @@ export interface BreadcrumbItemType {
 }
 
 export interface BreadcrumbsProps extends HTMLAttributes<HTMLElement> {
-  'data-testid'?: string;
   /** Ordered list of crumbs; the last item is treated as the current page. */
   items: BreadcrumbItemType[];
   /** Visual style of the crumbs. */
@@ -56,6 +55,8 @@ export interface BreadcrumbsProps extends HTMLAttributes<HTMLElement> {
    * visible. Omit to always render every crumb.
    */
   maxItems?: number;
+  /** Test identifier for the root navigation element. */
+  'data-testid'?: string;
   /**
    * Called with the item id when a non-current crumb is activated. When
    * provided, native `href` navigation is suppressed so the callback alone
@@ -223,6 +224,7 @@ export const Breadcrumbs = ({
   maxItems,
   className,
   onAction,
+  'aria-label': ariaLabel = 'Breadcrumb',
   'data-testid': dataTestId = 'breadcrumb',
   ...props
 }: BreadcrumbsProps) => {
@@ -231,7 +233,7 @@ export const Breadcrumbs = ({
 
   return (
     <AriaBreadcrumbs
-      aria-label={props['aria-label'] ?? 'Breadcrumb'}
+      aria-label={ariaLabel}
       className={cx(
         'tw:flex tw:items-center',
         sizes[size].gap,
@@ -239,7 +241,8 @@ export const Breadcrumbs = ({
         className
       )}
       data-testid={dataTestId}
-      items={displayItems}>
+      items={displayItems}
+      {...props}>
       {(item) => (
         <AriaBreadcrumb
           className={cx('tw:flex tw:items-center', sizes[size].gap)}>
