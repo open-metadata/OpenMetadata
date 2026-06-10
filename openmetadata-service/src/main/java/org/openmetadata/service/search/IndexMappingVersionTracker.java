@@ -10,8 +10,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.VersionUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.exception.IndexMappingHashException;
@@ -57,23 +59,70 @@ public class IndexMappingVersionTracker {
     return changedMappings;
   }
 
+  /**
+   * Returns {@code true} when the indexes were last built at a different major/minor release than
+   * the version currently running. A patch-level bump (e.g. {@code 1.12.8 -> 1.12.9}) returns
+   * {@code false} so smart reindexing only touches changed mappings, whereas a major/minor bump
+   * (e.g. {@code 1.12.8 -> 1.13.0} or {@code 1.12.8 -> 2.0.0}) returns {@code true} so every index
+   * is recreated and fully reindexed. A fresh install with no stored versions returns
+   * {@code false} because every mapping is already reported as changed.
+   */
+  public boolean requiresFullReindexForVersionUpgrade() {
+    String previousVersion = findStoredVersionWithDifferentMajorMinor();
+    boolean requiresFullReindex = previousVersion != null;
+    if (requiresFullReindex) {
+      LOG.info(
+          "Index mapping version change {} -> {} crosses a major/minor release - full reindex required",
+          previousVersion,
+          version);
+    }
+    return requiresFullReindex;
+  }
+
+  private String findStoredVersionWithDifferentMajorMinor() {
+    String currentMajorMinor = VersionUtils.getMajorMinorVersion(version);
+    String mismatchedVersion = null;
+    for (String storedVersion : indexMappingVersionDAO.getDistinctMappingVersions()) {
+      if (!currentMajorMinor.equals(VersionUtils.getMajorMinorVersion(storedVersion))) {
+        mismatchedVersion = storedVersion;
+      }
+    }
+    return mismatchedVersion;
+  }
+
   public void updateMappingVersions() throws IOException {
-    Map<String, MappingEntry> currentMappings = computeCurrentMappings();
+    persistMappingVersions(computeCurrentMappings());
+  }
+
+  /**
+   * Persists the version/hash only for the entities that were actually reindexed. Stamping every
+   * entity (as the no-arg overload does) would mask entities that still need a reindex when only a
+   * subset was run - on a later major/minor upgrade those skipped entities would wrongly look
+   * up-to-date and never be recreated.
+   */
+  public void updateMappingVersions(Set<String> reindexedEntities) throws IOException {
+    Map<String, MappingEntry> reindexedMappings = new HashMap<>();
+    for (Map.Entry<String, MappingEntry> entry : computeCurrentMappings().entrySet()) {
+      if (reindexedEntities.contains(entry.getKey())) {
+        reindexedMappings.put(entry.getKey(), entry.getValue());
+      }
+    }
+    persistMappingVersions(reindexedMappings);
+  }
+
+  private void persistMappingVersions(Map<String, MappingEntry> mappings) {
     long updatedAt = System.currentTimeMillis();
-
-    for (Map.Entry<String, MappingEntry> entry : currentMappings.entrySet()) {
-      String entityType = entry.getKey();
+    for (Map.Entry<String, MappingEntry> entry : mappings.entrySet()) {
       MappingEntry mappingEntry = entry.getValue();
-
       indexMappingVersionDAO.upsertIndexMappingVersion(
-          entityType,
+          entry.getKey(),
           mappingEntry.hash(),
           JsonUtils.pojoToJson(mappingEntry.json()),
           version,
           updatedAt,
           updatedBy);
     }
-    LOG.info("Updated index mapping versions for {} entities", currentMappings.size());
+    LOG.info("Updated index mapping versions for {} entities", mappings.size());
   }
 
   private Map<String, String> getStoredMappingHashes() {

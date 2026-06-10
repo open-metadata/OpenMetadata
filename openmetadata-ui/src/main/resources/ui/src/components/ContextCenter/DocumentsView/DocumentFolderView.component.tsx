@@ -169,7 +169,10 @@ const DocumentFolderView = ({
                       <div className="custom-group tw:flex tw:flex-1 tw:items-center tw:gap-2 tw:min-w-0">
                         <button
                           className="tw:flex tw:flex-1 tw:items-center tw:gap-2 tw:min-w-0 tw:text-left tw:bg-transparent tw:border-none tw:cursor-pointer tw:p-0"
-                          onClick={() => handleFolderItemSelect(folder.id)}>
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleFolderItemSelect(folder.id);
+                          }}>
                           <FolderIcon
                             className="tw:shrink-0 tw:text-gray-500"
                             height={16}
@@ -205,9 +208,11 @@ const DocumentFolderView = ({
                         id={file.id}
                         key={file.id}
                         textValue={file.name}>
-                        <Tree.ItemContent showExpandIcon={false}>
+                        <Tree.ItemContent
+                          className="tw:ml-7!"
+                          showExpandIcon={false}>
                           <FileIcon
-                            className="tw:size-6"
+                            className="tw:size-5"
                             theme="light"
                             type={file.fileExtension ?? ''}
                             variant="default"
