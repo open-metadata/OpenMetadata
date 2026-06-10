@@ -38,10 +38,8 @@ import {
   updateTestCaseById,
 } from '../../../rest/testAPI';
 import { createUpdatedTestCasePatch } from '../../../utils/DataQuality/DataQualityUtils';
-import {
-  getColumnNameFromEntityLink,
-  getEntityName,
-} from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getColumnNameFromEntityLink } from '../../../utils/EntityPureUtils';
 import { getEntityFQN } from '../../../utils/FeedUtils';
 import {
   generateFormFields,
@@ -49,8 +47,8 @@ import {
 } from '../../../utils/formUtils';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { isValidJSONString } from '../../../utils/StringUtils';
+import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
-import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Loader from '../../common/Loader/Loader';

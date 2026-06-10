@@ -323,7 +323,7 @@ jest.mock('../../utils/AdvancedSearchUtils', () => ({
   getDropDownItems: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntitySearchUtils', () => ({
   highlightEntityNameAndDescription: jest
     .fn()
     .mockImplementation((entity) => entity),

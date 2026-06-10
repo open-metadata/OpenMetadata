@@ -18,7 +18,7 @@ import {
   SearchIndexField,
 } from '../../../generated/entity/data/searchIndex';
 import { useFqn } from '../../../hooks/useFqn';
-import { getAllRowKeysByKeyName } from '../../../utils/TableUtils';
+import { getAllRowKeysByKeyName } from '../../../utils/TablePureUtils';
 import SearchIndexFieldsTable from '../SearchIndexFieldsTable/SearchIndexFieldsTable';
 
 function SearchIndexFieldsTab() {

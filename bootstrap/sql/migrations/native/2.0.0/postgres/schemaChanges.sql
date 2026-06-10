@@ -329,3 +329,13 @@ CREATE INDEX IF NOT EXISTS user_session_user_status_idx ON user_session USING bt
 CREATE INDEX IF NOT EXISTS user_session_expiry_idx ON user_session USING btree (status, expiresat);
 CREATE INDEX IF NOT EXISTS user_session_idle_expiry_idx ON user_session USING btree (status, idleexpiresat);
 CREATE INDEX IF NOT EXISTS user_session_prune_idx ON user_session USING btree (status, updatedat);
+
+-- Per-entity `name` index for entity tables first created in 2.0.0, so the distributed
+-- reindex's `... ORDER BY name, id LIMIT 1 OFFSET :n` cursor query
+-- (EntityRepository.getCursorAtOffset) runs index-only instead of a sort that can exhaust
+-- work_mem on large tables. Added here (not 1.13.1) because these tables are created above
+-- in this same 2.0.0 migration. Idempotent via IF NOT EXISTS.
+CREATE INDEX IF NOT EXISTS task_entity_name_index ON task_entity (name);
+CREATE INDEX IF NOT EXISTS announcement_entity_name_index ON announcement_entity (name);
+CREATE INDEX IF NOT EXISTS drive_folder_name_index ON drive_folder (name);
+CREATE INDEX IF NOT EXISTS asset_entity_name_index ON asset_entity (name);

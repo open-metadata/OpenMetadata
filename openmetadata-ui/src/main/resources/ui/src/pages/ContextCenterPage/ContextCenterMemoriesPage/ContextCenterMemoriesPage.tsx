@@ -24,7 +24,6 @@ import {
   ChevronDown,
   ChevronRight,
   FilterFunnel02,
-  Home02,
   Pin01,
   Plus,
 } from '@untitledui/icons';
@@ -450,19 +449,11 @@ const ContextCenterMemoriesPage: FC = () => {
         actionsSlot={headerActions}
         breadcrumbs={[
           {
-            name: '',
-            icon: <Home02 size={14} />,
-            url: contextCenterClassBase.getHomePath(),
-            activeTitle: true,
+            label: t('label.context-center'),
+            href: contextCenterClassBase.getContextCenterPath(),
           },
           {
-            name: t('label.context-center'),
-            url: contextCenterClassBase.getContextCenterPath(),
-          },
-          {
-            activeTitle: true,
-            name: t('label.memory-plural'),
-            url: '',
+            label: t('label.memory-plural'),
           },
         ]}
         searchPlaceholder={t('label.search-memories')}

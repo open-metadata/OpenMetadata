@@ -43,8 +43,10 @@ jest.mock('../../../utils/RouterUtils', () => ({
   getDomainPath: jest.fn().mockReturnValue('/mock-domain'),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Mock Entity'),
+}));
+jest.mock('../../../utils/EntitySearchUtils', () => ({
   highlightSearchText: jest.fn().mockReturnValue(''),
   highlightEntityNameAndDescription: jest.fn((source, highlight) => {
     if (!highlight) {
@@ -179,7 +181,7 @@ describe('ExploreSearchCard - Card container', () => {
 
 describe('ExploreSearchCard - Highlight functionality', () => {
   const { highlightEntityNameAndDescription } = jest.requireMock(
-    '../../../utils/EntityUtils'
+    '../../../utils/EntitySearchUtils'
   );
 
   beforeEach(() => {

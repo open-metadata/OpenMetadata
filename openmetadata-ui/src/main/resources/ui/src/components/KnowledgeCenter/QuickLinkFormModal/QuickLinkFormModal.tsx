@@ -39,14 +39,14 @@ import {
   getKnowledgePageByFqn,
   patchKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   generateFormFields,
   getPopupContainer,
 } from '../../../utils/formUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
+import { getTagsWithoutTier } from '../../../utils/TablePureUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
-import { getTagsWithoutTier } from '../../../utils/TableUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
