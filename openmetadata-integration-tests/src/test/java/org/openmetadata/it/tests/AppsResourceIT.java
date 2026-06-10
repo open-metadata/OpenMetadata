@@ -1443,6 +1443,7 @@ public class AppsResourceIT {
             .withSourcePythonClass("metadata.applications.example.HelloPipelines")
             .withAppType(AppType.External)
             .withScheduleType(ScheduleType.ScheduledOrManual)
+            .withRuntime(new ScheduledExecutionContext().withEnabled(true))
             .withAppConfiguration(new HashMap<>())
             .withPermission(NativeAppPermission.All);
 
