@@ -266,7 +266,7 @@ public class SearchRepository {
   /**
    * Static variant of {@link #deferIfFlushScopeActive} for call sites that have no {@code
    * SearchRepository} instance in scope (e.g. the static {@code
-   * EntityRepository.invalidateCacheForTaggedEntities} ES-search loop). The {@code entityId}/{@code
+   * EntityCacheInvalidator.invalidateCacheForTaggedEntities} ES-search loop). The {@code entityId}/{@code
    * entityFqn} locator drives durable retry on a failed post-commit drain.
    */
   public static void deferOrRunSearchWrite(

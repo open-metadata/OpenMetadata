@@ -32,7 +32,7 @@ import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabelMetadata;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO.TagUsageDAO;
+import org.openmetadata.service.jdbi3.ClassificationTagDAOs.TagUsageDAO;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;

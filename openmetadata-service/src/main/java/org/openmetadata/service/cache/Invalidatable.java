@@ -35,7 +35,7 @@ public interface Invalidatable {
    * have both; implementations should drop what they can.
    *
    * <p>Called on the local pod via {@link CacheBundle#invalidateEntity(String, UUID, String)},
-   * which is wired into {@code EntityRepository.invalidateCacheForEntity} (called from
+   * which is wired into {@code EntityCacheInvalidator.invalidateCacheForEntity} (called from
    * {@code postCreate}, write-through bulk update paths, and the admin invalidate endpoint).
    * Note that {@code postUpdate} / {@code postDelete} / {@code restoreEntity} do NOT call
    * this fan-out today — they rely on the write-through cache + L1 eviction. If a new

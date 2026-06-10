@@ -31,7 +31,7 @@ import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.EntityCaches;
 import org.openmetadata.service.jdbi3.TableRepository;
 
 class TaskResourceContextTest {
@@ -71,7 +71,7 @@ class TaskResourceContextTest {
             .withName(target.getName())
             .withFullyQualifiedName(target.getFullyQualifiedName());
 
-    EntityRepository.CACHE_WITH_ID.put(
+    EntityCaches.CACHE_WITH_ID.put(
         new ImmutablePair<>(TARGET_ENTITY_TYPE, target.getId()), JsonUtils.pojoToJson(target));
 
     // Repository.getOwners(reference) → returns the entity's owners
@@ -81,14 +81,14 @@ class TaskResourceContextTest {
         .thenAnswer(
             i ->
                 JsonUtils.readValue(
-                    EntityRepository.CACHE_WITH_ID.get(
+                    EntityCaches.CACHE_WITH_ID.get(
                         new ImmutablePair<>(TARGET_ENTITY_TYPE, i.getArgument(0))),
                     Table.class));
     Mockito.when(targetRepository.findByName(anyString(), any()))
         .thenAnswer(
             i ->
                 JsonUtils.readValue(
-                    EntityRepository.CACHE_WITH_NAME.get(
+                    EntityCaches.CACHE_WITH_NAME.get(
                         new ImmutablePair<>(TARGET_ENTITY_TYPE, i.getArgument(0))),
                     Table.class));
 

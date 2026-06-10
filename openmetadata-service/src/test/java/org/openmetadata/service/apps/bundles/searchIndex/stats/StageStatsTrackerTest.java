@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexServerStatsDAO;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexServerStatsDAO;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("StageStatsTracker Tests")

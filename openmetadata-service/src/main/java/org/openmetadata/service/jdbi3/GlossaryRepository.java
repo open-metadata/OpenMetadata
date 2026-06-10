@@ -78,7 +78,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
 import org.openmetadata.service.resources.settings.SettingsCache;
@@ -683,9 +683,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       // Capture the descendants so the post-write pass can re-evict any entry a racing reader
       // re-populated with the pre-rename row between this call and glossaryTermDAO.updateFqn.
       // The pass below runs after updateFqn but inside this transaction — see
-      // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit window.
+      // EntityCacheInvalidator.invalidateCacheForRenameCascade for the residual pre-commit window.
       List<EntityDAO.EntityIdFqnPair> renamedTerms =
-          invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
+          EntityCacheInvalidator.invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
       daoCollection.glossaryTermDAO().updateFqn(oldFqn, newFqn);
       daoCollection.tagUsageDAO().updateTagPrefix(TagSource.GLOSSARY.ordinal(), oldFqn, newFqn);
       recordChange("name", FullyQualifiedName.unquoteName(oldFqn), updated.getName());
@@ -706,12 +706,13 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
               PolicyConditionUpdater.renamePrefixInCondition(
                   condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
 
-      finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
+      EntityCacheInvalidator.finishInvalidateCacheForRenameCascade(
+          Entity.GLOSSARY_TERM, renamedTerms);
     }
 
     public void invalidateGlossary(UUID classificationId) {
       // Glossary name changed. Invalidate the glossary and its children terms
-      CACHE_WITH_ID.invalidate(new ImmutablePair<>(GLOSSARY, classificationId));
+      EntityCaches.CACHE_WITH_ID.invalidate(new ImmutablePair<>(GLOSSARY, classificationId));
       List<EntityRelationshipRecord> tags =
           findToRecords(classificationId, GLOSSARY, Relationship.CONTAINS, GLOSSARY_TERM);
       for (EntityRelationshipRecord tagRecord : tags) {
@@ -724,7 +725,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       // children from the cache
       List<EntityRelationshipRecord> tagRecords =
           findToRecords(termId, GLOSSARY_TERM, Relationship.CONTAINS, GLOSSARY_TERM);
-      CACHE_WITH_ID.invalidate(new ImmutablePair<>(GLOSSARY_TERM, termId));
+      EntityCaches.CACHE_WITH_ID.invalidate(new ImmutablePair<>(GLOSSARY_TERM, termId));
       for (EntityRelationshipRecord tagRecord : tagRecords) {
         invalidateTerms(tagRecord.getId());
       }
