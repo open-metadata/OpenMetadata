@@ -219,37 +219,47 @@ public abstract class AbstractEventConsumer
 
   @Override
   public void publishEvents(Map<ChangeEvent, Set<UUID>> events) {
-    if (!events.isEmpty()) {
-      // Filter events based on subscription configuration (entity type, conditions, etc.)
-      Map<ChangeEvent, Set<UUID>> filteredEvents = getFilteredEvents(eventSubscription, events);
-      RecipientResolver resolver = new RecipientResolver();
-      for (var eventWithReceivers : filteredEvents.entrySet()) {
-        publishEvent(eventWithReceivers.getKey(), eventWithReceivers.getValue(), resolver);
-      }
+    if (events.isEmpty()) {
+      return;
     }
+    Map<ChangeEvent, Set<UUID>> filteredEvents = getFilteredEvents(eventSubscription, events);
+    RecipientResolver resolver = new RecipientResolver();
+    int successDeliveries = 0;
+    int failedDeliveries = 0;
+    for (Map.Entry<ChangeEvent, Set<UUID>> eventWithReceivers : filteredEvents.entrySet()) {
+      EventDeliveryResult result =
+          publishEvent(eventWithReceivers.getKey(), eventWithReceivers.getValue(), resolver);
+      // Record once per (event, subscription): the table has no destination dimension, so
+      // recording per type would duplicate rows and break Postgres ON CONFLICT.
+      if (result.delivered()) {
+        successfulEvents.add(eventWithReceivers.getKey());
+      }
+      successDeliveries += result.successCount();
+      failedDeliveries += result.failedCount();
+    }
+    alertMetrics.withSuccessEvents(alertMetrics.getSuccessEvents() + successDeliveries);
+    alertMetrics.withFailedEvents(alertMetrics.getFailedEvents() + failedDeliveries);
   }
 
-  private void publishEvent(
+  private EventDeliveryResult publishEvent(
       ChangeEvent event, Set<UUID> destinationIds, RecipientResolver resolver) {
     // Group destinations by type to enable cross-destination recipient deduplication
     Map<SubscriptionType, List<Destination<ChangeEvent>>> destinationsByType =
         groupDestinationsByType(destinationIds);
-    boolean delivered = false;
-    for (var entry : destinationsByType.entrySet()) {
+    int successCount = 0;
+    int failedCount = 0;
+    for (Map.Entry<SubscriptionType, List<Destination<ChangeEvent>>> entry :
+        destinationsByType.entrySet()) {
       if (sendToDestinationType(event, entry.getValue(), resolver)) {
-        delivered = true;
-        alertMetrics.withSuccessEvents(alertMetrics.getSuccessEvents() + 1);
+        successCount++;
       } else {
-        alertMetrics.withFailedEvents(alertMetrics.getFailedEvents() + 1);
+        failedCount++;
       }
     }
-    // Record each delivered event once. successful_sent_change_events is keyed by
-    // (change_event_id, event_subscription_id) with no destination dimension, so recording per
-    // destination type produces duplicate batch rows that break Postgres ON CONFLICT.
-    if (delivered) {
-      successfulEvents.add(event);
-    }
+    return new EventDeliveryResult(successCount > 0, successCount, failedCount);
   }
+
+  private record EventDeliveryResult(boolean delivered, int successCount, int failedCount) {}
 
   private boolean sendToDestinationType(
       ChangeEvent event, List<Destination<ChangeEvent>> destinations, RecipientResolver resolver) {
