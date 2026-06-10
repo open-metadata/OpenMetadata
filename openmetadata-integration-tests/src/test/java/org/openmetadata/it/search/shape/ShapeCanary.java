@@ -84,13 +84,16 @@ public final class ShapeCanary {
    */
   private String notRetrievableDetail(
       final String indexName, final String docId, final JsonNode getResponse) {
+    // _count reads the near-real-time search view (unlike the realtime get-by-id), so refresh
+    // first — otherwise a just-written doc could read 0 and make the hint below wrong.
+    httpSearch.post("/" + indexName + "/_refresh", "");
     final long count = httpSearch.get("/" + indexName + "/_count").path("count").asLong(-1);
     final String detail =
         "PUT returned without error but GET /"
             + indexName
             + "/_doc/"
             + docId
-            + " -> found=false; index _count="
+            + " -> found=false; post-refresh index _count="
             + count
             + (count == 0 ? " (nothing written — silent no-op PUT)" : " (doc written elsewhere?)")
             + "; raw get: "
