@@ -914,6 +914,8 @@ export interface Connection {
     tokenUrl?: string;
     /**
      * Client SSL verification.
+     *
+     * Client SSL verification. Make sure to configure the SSLConfig if enabled.
      */
     verifySSL?: VerifySSL;
     /**

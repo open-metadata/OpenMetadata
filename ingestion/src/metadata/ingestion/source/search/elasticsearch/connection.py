@@ -44,6 +44,7 @@ from metadata.generated.schema.entity.services.connections.search.elasticSearchC
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
 from metadata.ingestion.connections.builders import init_empty_connection_arguments
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -102,22 +103,28 @@ def _handle_ssl_context_by_path(ssl_config: SslConfig):
     return ca_cert, client_cert, private_key
 
 
-def get_ssl_context(ssl_config: SslConfig) -> ssl.SSLContext:
+def get_ssl_context(
+    ssl_config: SslConfig | None, verify_ssl: VerifySSL | None = VerifySSL.validate
+) -> ssl.SSLContext | None:
     """
     Method to get SSL Context
     """
+    if verify_ssl == VerifySSL.no_ssl:
+        return None
+
+    if verify_ssl == VerifySSL.ignore:
+        return ssl._create_unverified_context()
+
     ca_cert = False
     client_cert = None
     private_key = None
     cert_chain = None
 
-    if not ssl_config.certificates:
-        return None
-
-    if isinstance(ssl_config.certificates, SslCertificatesByValues):
-        ca_cert, client_cert, private_key = _handle_ssl_context_by_value(ssl_config=ssl_config)
-    elif isinstance(ssl_config.certificates, SslCertificatesByPath):
-        ca_cert, client_cert, private_key = _handle_ssl_context_by_path(ssl_config=ssl_config)
+    if ssl_config and ssl_config.certificates:
+        if isinstance(ssl_config.certificates, SslCertificatesByValues):
+            ca_cert, client_cert, private_key = _handle_ssl_context_by_value(ssl_config=ssl_config)
+        elif isinstance(ssl_config.certificates, SslCertificatesByPath):
+            ca_cert, client_cert, private_key = _handle_ssl_context_by_path(ssl_config=ssl_config)
 
     if client_cert and private_key:
         cert_chain = (client_cert, private_key)
@@ -127,13 +134,12 @@ def get_ssl_context(ssl_config: SslConfig) -> ssl.SSLContext:
         cert_chain = None
 
     if ca_cert or cert_chain:
-        ssl_context = create_ssl_context(
+        return create_ssl_context(
             cert=cert_chain,
             verify=ca_cert,
         )
-        return ssl_context  # noqa: RET504
 
-    return ssl._create_unverified_context()  # pylint: disable=protected-access
+    return ssl.create_default_context()
 
 
 def get_connection(connection: ElasticsearchConnection) -> Elasticsearch:
@@ -161,8 +167,7 @@ def get_connection(connection: ElasticsearchConnection) -> Elasticsearch:
     if not connection.connectionArguments:
         connection.connectionArguments = init_empty_connection_arguments()
 
-    if connection.sslConfig:
-        ssl_context = get_ssl_context(connection.sslConfig)
+    ssl_context = get_ssl_context(connection.sslConfig, connection.verifySSL)
 
     return Elasticsearch(
         str(connection.hostPort),

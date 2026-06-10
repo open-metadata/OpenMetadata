@@ -1,4 +1,4 @@
-#  Copyright 2022 Collate
+#  Copyright 2021 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-Secrets manager implementation using AWS Secrets Manager
+AWS Secrets Manager handle
 """
 
 import traceback
@@ -24,27 +24,32 @@ from metadata.generated.schema.security.secrets.secretsManagerClientLoader impor
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
+from metadata.utils.logger import ingestion_logger
 from metadata.utils.secrets.aws_based_secrets_manager import (
     NULL_VALUE,
     AWSBasedSecretsManager,
 )
-from metadata.utils.secrets.secrets_manager import logger
+
+logger = ingestion_logger()
 
 
 class AWSSecretsManager(AWSBasedSecretsManager):
     """
-    Secrets Manager Implementation Class
+    AWS Secrets Manager
     """
 
     def __init__(self, loader: SecretsManagerClientLoader):
-        super().__init__(client="secretsmanager", provider=SecretsManagerProvider.aws, loader=loader)
+        super().__init__(
+            client="secretsmanager",
+            provider=SecretsManagerProvider.aws,
+            loader=loader,
+        )
 
     def get_string_value(self, secret_id: str) -> Optional[str]:  # noqa: UP045
         """
-        :param secret_id: The secret id to retrieve. Current stage is always retrieved.
-        :return: The value of the secret. When the secret is a string, the value is
-                 contained in the `SecretString` field. When the secret is bytes or not present,
-                 it throws a `ValueError` exception.
+        Get the secret value as a string
+        :param secret_id: secret id
+        :return: secret value
         """
         if secret_id is None:
             raise ValueError("[name] argument is None")
@@ -55,7 +60,7 @@ class AWSSecretsManager(AWSBasedSecretsManager):
             logger.debug("Got value for secret %s.", secret_id)
         except ClientError as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Couldn't get value for secret [{secret_id}]: {err}")
+            logger.error(f"Couldn't get value for secret [{secret_id}] from secrets manager: {err}")
             raise err  # noqa: TRY201
         if "SecretString" in response:
             return response["SecretString"] if response["SecretString"] != NULL_VALUE else None

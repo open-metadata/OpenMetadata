@@ -7,6 +7,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.services.CreateSearchService;
 import org.openmetadata.schema.api.services.CreateSearchService.SearchServiceType;
 import org.openmetadata.schema.entity.services.SearchService;
+import org.openmetadata.schema.security.ssl.VerifySSL;
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.search.OpenSearchConnection;
 import org.openmetadata.schema.type.SearchConnection;
@@ -27,7 +28,9 @@ public class SearchServiceTestFactory {
     String name = ns.prefix("elasticService_" + uniqueId);
 
     ElasticSearchConnection esConn =
-        new ElasticSearchConnection().withHostPort(URI.create("http://localhost:9200"));
+        new ElasticSearchConnection()
+            .withHostPort(URI.create("http://localhost:9200"))
+            .withVerifySSL(VerifySSL.IGNORE);
 
     SearchConnection conn = new SearchConnection().withConfig(esConn);
 

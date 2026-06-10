@@ -54,6 +54,7 @@ export interface SASConnection {
      * Hostname of SAS Viya deployment.
      */
     serverHost:                  string;
+    sslConfig?:                  Config;
     supportsMetadataExtraction?: boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
@@ -67,6 +68,10 @@ export interface SASConnection {
      * Username to connect to SAS Viya.
      */
     username: string;
+    /**
+     * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+     */
+    verifySSL?: VerifySSL;
 }
 
 /**
@@ -90,10 +95,39 @@ export interface FilterPattern {
 }
 
 /**
+ * Client SSL configuration
+ *
+ * OpenMetadata Client configured to validate SSL certificates.
+ */
+export interface Config {
+    /**
+     * The CA certificate used for SSL validation.
+     */
+    caCertificate?: string;
+    /**
+     * The SSL certificate used for client authentication.
+     */
+    sslCertificate?: string;
+    /**
+     * The private key associated with the SSL certificate.
+     */
+    sslKey?: string;
+}
+
+/**
  * Service Type
  *
  * Service type.
  */
 export enum SASType {
     SAS = "SAS",
+}
+
+/**
+ * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+ */
+export enum VerifySSL {
+    Ignore = "ignore",
+    NoSSL = "no-ssl",
+    Validate = "validate",
 }
