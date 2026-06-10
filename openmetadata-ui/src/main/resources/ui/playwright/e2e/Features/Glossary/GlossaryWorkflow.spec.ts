@@ -149,7 +149,7 @@ test.describe('Term Status Transitions', () => {
     await expect(statusBadge).toHaveText('Approved');
   });
 
-  test('should start term as Draft when glossary has reviewers', async ({
+  test('should not auto-approve term when glossary has reviewers', async ({
     page,
   }) => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
