@@ -13,7 +13,7 @@
 import { Dropdown } from '@/components/base/dropdown/dropdown';
 import { cx, sortCx } from '@/utils/cx';
 import { ChevronRight, DotsHorizontal } from '@untitledui/icons';
-import type { FC, Key, ReactNode } from 'react';
+import type { FC, HTMLAttributes, Key, ReactNode } from 'react';
 import {
   Breadcrumb as AriaBreadcrumb,
   Breadcrumbs as AriaBreadcrumbs,
@@ -40,7 +40,8 @@ export interface BreadcrumbItemType {
   icon?: FC<{ className?: string }>;
 }
 
-export interface BreadcrumbsProps {
+export interface BreadcrumbsProps extends HTMLAttributes<HTMLElement> {
+  'data-testid'?: string;
   /** Ordered list of crumbs; the last item is treated as the current page. */
   items: BreadcrumbItemType[];
   /** Visual style of the crumbs. */
@@ -55,10 +56,6 @@ export interface BreadcrumbsProps {
    * visible. Omit to always render every crumb.
    */
   maxItems?: number;
-  /** Accessible label for the navigation landmark. */
-  'aria-label'?: string;
-  /** Class name for the root navigation element. */
-  className?: string;
   /**
    * Called with the item id when a non-current crumb is activated. When
    * provided, native `href` navigation is suppressed so the callback alone
@@ -226,6 +223,7 @@ export const Breadcrumbs = ({
   maxItems,
   className,
   onAction,
+  'data-testid': dataTestId = 'breadcrumb',
   ...props
 }: BreadcrumbsProps) => {
   const displayItems = collapseItems(items, maxItems);
@@ -240,7 +238,7 @@ export const Breadcrumbs = ({
         sizes[size].text,
         className
       )}
-      data-testid="breadcrumb"
+      data-testid={dataTestId}
       items={displayItems}>
       {(item) => (
         <AriaBreadcrumb
