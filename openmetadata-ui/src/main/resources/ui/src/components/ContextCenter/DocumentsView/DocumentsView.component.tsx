@@ -34,14 +34,16 @@ import {
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import React, { FC, useState } from 'react';
+import { FC, useMemo, useState } from 'react';
 import { SubmenuTrigger } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { moveFileToFolder } from '../../../rest/assetAPI';
+import { formatBytes } from '../../../utils/ContextCenterUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import {
   DocumentsViewProps,
@@ -100,12 +102,15 @@ const FileActions: FC<FileActionsProps> = ({
   const { t } = useTranslation();
   const [isMoving, setIsMoving] = useState(false);
 
-  const availableFolders = folders.filter((f) => f.id !== file.folderId);
+  const availableFolders = useMemo(
+    () => folders.filter((folder) => folder.id !== file.folder?.id),
+    [folders, file]
+  );
 
   const handleMoveToFolder = async (folderId: string) => {
     try {
       setIsMoving(true);
-      await moveFileToFolder(file.driveFileId ?? file.id, folderId);
+      await moveFileToFolder(file.id, folderId);
       onFileMoved?.(file, folderId);
       showSuccessToast(
         t('message.entity-moved-successfully', { entity: t('label.document') })
@@ -247,10 +252,7 @@ const ListHeader: FC<ListHeaderProps> = ({
     return (
       <Box
         align="center"
-        className={
-          'tw:px-4 tw:py-2.5 tw:border-b tw:border-blue-100 tw:bg-blue-50 ' +
-          'tw:sticky tw:top-0 tw:z-10'
-        }
+        className="tw:px-4 tw:h-12 tw:shrink-0 tw:border-b tw:border-blue-100 tw:bg-blue-50"
         gap={2}>
         <Typography
           className="tw:text-blue-700"
@@ -313,10 +315,7 @@ const ListHeader: FC<ListHeaderProps> = ({
   return (
     <Box
       align="center"
-      className={
-        'tw:px-4 tw:py-3 tw:border-b tw:border-secondary ' +
-        'tw:sticky tw:top-0 tw:z-10 tw:bg-primary'
-      }>
+      className="tw:px-4 tw:h-12 tw:shrink-0 tw:border-b tw:border-secondary tw:bg-primary">
       <Typography className="tw:text-gray-500" size="text-xs" weight="semibold">
         {count} {t('label.file-plural').toLowerCase()}
       </Typography>
@@ -346,10 +345,20 @@ const FileRow: FC<FileRowProps> = ({
 }) => {
   const { t } = useTranslation();
 
+  const { folderName, fileName, formattedFileSize, relativeTime } =
+    useMemo(() => {
+      return {
+        folderName: getEntityName(file.folder),
+        fileName: getEntityName(file),
+        formattedFileSize: formatBytes(file.fileSize),
+        relativeTime: getShortRelativeTime(file.updatedAt),
+      };
+    }, [file]);
+
   return (
     <Box
       align="center"
-      className={`tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:cursor-pointer tw:transition-colors tw:duration-100 ${
+      className={`tw:relative tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:cursor-pointer tw:transition-colors tw:duration-100 ${
         isActive ? 'tw:bg-blue-50' : 'tw:bg-primary hover:tw:bg-gray-25'
       }`}
       data-testid={`document-row-${file.id}`}
@@ -363,7 +372,7 @@ const FileRow: FC<FileRowProps> = ({
         }
       }}>
       <Checkbox
-        aria-label={file.name}
+        aria-label={fileName}
         isSelected={isSelected}
         onChange={() => onSelectFile?.(file.id)}
         onClick={(e) => (e as React.MouseEvent).stopPropagation()}
@@ -382,14 +391,14 @@ const FileRow: FC<FileRowProps> = ({
           data-testid="document-name"
           size="text-sm"
           weight="medium">
-          {file.name}
+          {fileName}
         </Typography>
         <Box align="center" gap={2}>
           <Typography
             className="tw:text-gray-500"
             data-testid="document-size"
             size="text-xs">
-            {file.sizeLabel}
+            {formattedFileSize}
           </Typography>
           {file.updatedBy && (
             <>
@@ -409,18 +418,18 @@ const FileRow: FC<FileRowProps> = ({
                 className="tw:text-gray-500"
                 data-testid="document-updated-at"
                 size="text-xs">
-                {getShortRelativeTime(file.updatedAt)}
+                {relativeTime}
               </Typography>
             </>
           )}
-          {file.folderName && (
+          {folderName && (
             <>
               <Dot className="tw:text-gray-500" size="micro" />
               <Typography
                 className="tw:text-gray-500"
                 data-testid="document-folder-name"
                 size="text-xs">
-                {file.folderName}
+                {folderName}
               </Typography>
             </>
           )}
@@ -504,7 +513,9 @@ const DocumentsView: FC<DocumentsViewProps> = ({
       )}
       data-testid="documents-view">
       {data.length > 0 || isLoading ? (
-        <Box className="tw:flex-1 tw:overflow-y-auto" direction="col">
+        <Box
+          className="tw:flex-1 tw:min-h-0 tw:overflow-hidden"
+          direction="col">
           {!isLoading && (
             <ListHeader
               count={data.length}
@@ -516,26 +527,30 @@ const DocumentsView: FC<DocumentsViewProps> = ({
               onClear={handleClear}
             />
           )}
-          {isLoading ? (
-            <DocumentViewLoading />
-          ) : (
-            data.map((file) => (
-              <FileRow
-                canDelete={canDelete}
-                file={file}
-                folders={folders}
-                isActive={previewFileId === file.id}
-                isSelected={selectedIds?.has(file.id)}
-                key={file.id}
-                onDeleteFile={onDeleteFile}
-                onDownload={onDownload}
-                onFileMoved={onFileMoved}
-                onPreview={onPreview}
-                onSelectFile={onSelectFile}
-                onShareFile={onShareFile}
-              />
-            ))
-          )}
+          <Box
+            className="tw:flex-1 tw:overflow-y-auto tw:min-h-0"
+            direction="col">
+            {isLoading ? (
+              <DocumentViewLoading />
+            ) : (
+              data.map((file) => (
+                <FileRow
+                  canDelete={canDelete}
+                  file={file}
+                  folders={folders}
+                  isActive={previewFileId === file.id}
+                  isSelected={selectedIds?.has(file.id)}
+                  key={file.id}
+                  onDeleteFile={onDeleteFile}
+                  onDownload={onDownload}
+                  onFileMoved={onFileMoved}
+                  onPreview={onPreview}
+                  onSelectFile={onSelectFile}
+                  onShareFile={onShareFile}
+                />
+              ))
+            )}
+          </Box>
         </Box>
       ) : (
         <Box align="center" className="tw:flex-1 tw:p-12" justify="center">
