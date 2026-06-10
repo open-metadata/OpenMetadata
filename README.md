@@ -77,7 +77,7 @@ OpenMetadata collects and connects the context AI needs to reason safely over en
 
 ## Architecture: Context + Memory Graph
 
-![How OpenMetadata Works](docs/assets/open-context-layer-architecture-memory.svg)
+![How OpenMetadata Works](docs/assets/open-context-layer-architecture-memory.png)
 
 OpenMetadata is built around an open, schema-first metadata graph.
 
@@ -114,10 +114,10 @@ Test Case           ──validates───────────> Table
 Policy              ──governs─────────────> Classification
 Data Contract       ──appliesTo───────────> Table
 OpenLineage Event   ──updatesLineageFor───> Pipeline
-Agent Conversation  ──capturedAs──────────> Memory Nugget
-Memory Nugget       ──informs─────────────> Data Product
-Memory Nugget       ──documentsDecisionFor> Metric
-Memory Nugget       ──attachedTo──────────> Table / Column / Topic / Dashboard / Pipeline / API
+Agent Conversation  ──capturedAs──────────> Memory 
+Memory              ──informs─────────────> Data Product
+Memory              ──documentsDecisionFor> Metric
+Memory              ──attachedTo──────────> Table / Column / Topic / Dashboard / Pipeline / API
 ```
 
 This graph gives AI systems the relationships, meaning, memory, and governance they need to reason across the data estate.
@@ -126,7 +126,7 @@ This graph gives AI systems the relationships, meaning, memory, and governance t
 
 ## Memories: Organizational Context for Humans and Agents
 
-![Memory Primitives](docs/assets/memory-primitives.svg)
+![Memory Primitives](docs/assets/memory-primitives.png)
 
 Memories preserve the important context that usually disappears inside chats, tickets, meetings, notebooks, and AI agent threads.
 
