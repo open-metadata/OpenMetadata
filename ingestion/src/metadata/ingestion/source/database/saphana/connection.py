@@ -20,6 +20,7 @@ from urllib.parse import quote_plus
 
 from sqlalchemy import inspect
 from sqlalchemy.engine import Engine
+from typing_extensions import assert_never
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -119,6 +120,8 @@ class SapHanaConnection(BaseConnection[SapHanaConnectionConfig, Engine]):
                 strategy: SapHanaStrategy = SapHanaSQLStrategy(self.service_connection, sql)
             case SapHanaHDBConnection() as hdb:
                 strategy = SapHanaHDBStrategy(self.service_connection, hdb)
+            case _:
+                assert_never(self.service_connection.connection)
         return strategy.build()
 
     def test_connection(
