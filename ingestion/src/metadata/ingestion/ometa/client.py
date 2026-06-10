@@ -463,22 +463,28 @@ class REST:
         """
         return self._request("PUT", path, data, json=json, headers=headers)
 
-    def patch(self, path, data=None):
+    def patch(self, path, data=None, headers=None):
         """
         PATCH method
 
         Parameters:
             path (str):
             data ():
+            headers (dict): Optional extra headers (e.g. ``If-Match`` for
+                optimistic-concurrency-safe writes) merged on top of the
+                JSON Patch content type.
 
         Returns:
             Response
         """
+        request_headers = {"Content-type": "application/json-patch+json"}
+        if headers:
+            request_headers.update(headers)
         return self._request(
             method="PATCH",
             path=path,
             data=data,
-            headers={"Content-type": "application/json-patch+json"},
+            headers=request_headers,
         )
 
     def delete(self, path, data=None, headers=None):

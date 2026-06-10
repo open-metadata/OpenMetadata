@@ -144,11 +144,11 @@ class TrackedREST(REST):
             duration_ms = (perf_counter() - start) * 1000
             self._record_api_call("PUT", path, duration_ms)
 
-    def patch(self, path, data=None):
+    def patch(self, path, data=None, headers=None):
         """PATCH method with tracking."""
         start = perf_counter()
         try:
-            return super().patch(path, data)
+            return super().patch(path, data, headers)
         finally:
             duration_ms = (perf_counter() - start) * 1000
             self._record_api_call("PATCH", path, duration_ms)

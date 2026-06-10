@@ -1319,7 +1319,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
       Operation operation,
       ChangeSource changeSource,
       boolean useOptimisticLocking) {
-    return new EntityUpdater(original, updated, operation, changeSource, useOptimisticLocking);
+    // Delegate to the entity-specific updater (overridden per repository) so the optimistic-locking
+    // (If-Match) PATCH path runs the same entitySpecificUpdate — column tag/description
+    // persistence,
+    // etc. — as the normal path. Constructing a base EntityUpdater here would silently drop every
+    // nested/entity-specific change under If-Match, since subclasses only override the 4-arg
+    // variant.
+    EntityUpdater updater = getUpdater(original, updated, operation, changeSource);
+    updater.setUseOptimisticLocking(useOptimisticLocking);
+    return updater;
   }
 
   public final T get(UriInfo uriInfo, UUID id, Fields fields) {
@@ -6999,7 +7007,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private boolean versionChanged = false;
     @Getter protected ChangeDescription incrementalChangeDescription = null;
     private final ChangeSource changeSource;
-    private final boolean useOptimisticLocking;
+    @Setter private boolean useOptimisticLocking;
     @Setter private Set<String> patchedFields;
     private final List<Runnable> deferredReactOperations = new ArrayList<>();
     private boolean deferredReactExecuted;
