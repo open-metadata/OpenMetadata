@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.chat.CreateMcpConversation;
 import org.openmetadata.schema.api.chat.CreateMcpMessage;
+import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.entity.app.internal.McpChatAppConfig;
 import org.openmetadata.schema.entity.chat.McpConversation;
 import org.openmetadata.schema.entity.chat.McpMessage;
@@ -89,18 +90,19 @@ public class McpClientService implements AutoCloseable {
   private volatile List<Map<String, Object>> toolDefinitions = Collections.emptyList();
   private volatile List<Map<String, Object>> lastToolDefinitionsSource;
 
-  public McpClientService(CollectionDAO dao, McpChatAppConfig config) {
+  public McpClientService(
+      CollectionDAO dao, LLMConfiguration llmConfig, McpChatAppConfig appConfig) {
     this.conversationRepository = new McpConversationRepository(dao.mcpConversationDAO());
     this.messageRepository = new McpMessageRepository(dao.mcpMessageDAO());
-    this.config = config;
-    this.llmClient = createLlmClient(config);
+    this.config = appConfig;
+    this.llmClient = createLlmClient(llmConfig);
   }
 
-  private static LlmClient createLlmClient(McpChatAppConfig config) {
-    boolean hasApiKey = config.getLlmApiKey() != null && !config.getLlmApiKey().isBlank();
-    boolean hasAwsConfig = config.getAwsConfig() != null;
+  private static LlmClient createLlmClient(LLMConfiguration config) {
+    boolean enabled =
+        config != null && Boolean.TRUE.equals(config.getEnabled()) && config.getProvider() != null;
     LlmClient client = null;
-    if (hasApiKey || hasAwsConfig) {
+    if (enabled) {
       try {
         client = LlmClientFactory.create(config);
       } catch (IllegalArgumentException e) {
@@ -572,7 +574,7 @@ public class McpClientService implements AutoCloseable {
   private void requireChatEnabled() {
     if (llmClient == null) {
       throw new IllegalStateException(
-          "LLM API key is not configured. Update the McpApplication configuration with a valid API key.");
+          "LLM is not configured. Enable and configure a provider under 'llmConfiguration' in the platform configuration.");
     }
   }
 

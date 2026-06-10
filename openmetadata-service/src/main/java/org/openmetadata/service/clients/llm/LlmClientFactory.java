@@ -12,17 +12,25 @@
  */
 package org.openmetadata.service.clients.llm;
 
-import org.openmetadata.schema.entity.app.internal.McpChatAppConfig;
+import org.openmetadata.schema.configuration.LLMConfiguration;
 
 public final class LlmClientFactory {
 
   private LlmClientFactory() {}
 
-  public static LlmClient create(McpChatAppConfig config) {
-    return switch (LlmProvider.fromValue(config.getLlmProvider())) {
+  public static LlmClient create(LLMConfiguration config) {
+    if (config == null || config.getProvider() == null) {
+      throw new IllegalArgumentException(
+          "llmConfiguration.provider must be set to build an LLM client.");
+    }
+    return switch (config.getProvider()) {
       case OPENAI -> new OpenAiLlmClient(config);
       case ANTHROPIC -> new AnthropicLlmClient(config);
       case BEDROCK -> new BedrockLlmClient(config);
+      case AZURE_OPENAI, GOOGLE, NOOP -> throw new IllegalArgumentException(
+          "LLM provider '"
+              + config.getProvider()
+              + "' is not supported by MCP chat. Use one of: openai, anthropic, bedrock.");
     };
   }
 }

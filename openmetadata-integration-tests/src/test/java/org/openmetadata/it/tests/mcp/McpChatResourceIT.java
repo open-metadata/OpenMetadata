@@ -13,6 +13,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.auth.JwtAuthProvider;
+import org.openmetadata.schema.configuration.LLMBedrockConfig;
+import org.openmetadata.schema.configuration.LLMConfiguration;
+import org.openmetadata.schema.configuration.LLMProvider;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.CreateApp;
 import org.openmetadata.schema.entity.app.internal.McpChatAppConfig;
@@ -37,9 +40,6 @@ public class McpChatResourceIT extends McpTestBase {
       return;
     }
     Map<String, Object> appConfig = new HashMap<>();
-    appConfig.put("llmProvider", "openai");
-    appConfig.put("llmApiKey", "");
-    appConfig.put("llmModel", "gpt-4o");
     appConfig.put("systemPrompt", "Test prompt");
 
     CreateApp createApp =
@@ -57,23 +57,26 @@ public class McpChatResourceIT extends McpTestBase {
 
     McpChatAppConfig config =
         JsonUtils.convertValue(app.getAppConfiguration(), McpChatAppConfig.class);
-    assertThat(config.getLlmProvider()).isEqualTo("openai");
-    assertThat(config.getLlmModel()).isEqualTo("gpt-4o");
+    assertThat(config.getSystemPrompt()).isEqualTo("Test prompt");
   }
 
   @Test
-  void testAppConfigWithAwsConfig() throws Exception {
-    McpChatAppConfig config = new McpChatAppConfig();
-    config.setLlmProvider("anthropic");
-    config.setLlmModel("anthropic.claude-sonnet-4-20250514-v1:0");
-    config.setAwsConfig(new AWSBaseConfig().withRegion("us-east-1"));
+  void testLlmConfigurationDeserialization() throws Exception {
+    LLMConfiguration config =
+        new LLMConfiguration()
+            .withEnabled(true)
+            .withProvider(LLMProvider.BEDROCK)
+            .withBedrock(
+                new LLMBedrockConfig()
+                    .withModelId("anthropic.claude-sonnet-4-20250514-v1:0")
+                    .withAwsConfig(new AWSBaseConfig().withRegion("us-east-1")));
 
     String json = JsonUtils.pojoToJson(config);
-    McpChatAppConfig deserialized = JsonUtils.readValue(json, McpChatAppConfig.class);
+    LLMConfiguration deserialized = JsonUtils.readValue(json, LLMConfiguration.class);
 
-    assertThat(deserialized.getLlmProvider()).isEqualTo("anthropic");
-    assertThat(deserialized.getAwsConfig()).isNotNull();
-    assertThat(deserialized.getAwsConfig().getRegion()).isEqualTo("us-east-1");
+    assertThat(deserialized.getProvider()).isEqualTo(LLMProvider.BEDROCK);
+    assertThat(deserialized.getBedrock()).isNotNull();
+    assertThat(deserialized.getBedrock().getAwsConfig().getRegion()).isEqualTo("us-east-1");
   }
 
   @Test
@@ -268,7 +271,7 @@ public class McpChatResourceIT extends McpTestBase {
   }
 
   @Test
-  void testChatWithoutLlmKey() throws Exception {
+  void testChatWhenLlmDisabled() throws Exception {
     Map<String, Object> chatRequest = new HashMap<>();
     chatRequest.put("message", "Hello");
 

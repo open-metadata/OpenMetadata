@@ -11,74 +11,13 @@
  *  limitations under the License.
  */
 /**
- * Configuration for the MCP Chat Application.
+ * Configuration for the MCP Chat Application. The LLM provider and credentials are
+ * configured at the platform level via `llmConfiguration`; this app only governs chat
+ * behavior.
  */
 export interface MCPChatAppConfig {
-    /**
-     * AWS credentials for accessing Anthropic models via AWS Bedrock.
-     */
-    awsConfig?: AWSBaseConfig;
-    /**
-     * Custom API endpoint URL. Leave empty to use the provider default.
-     */
-    llmApiEndpoint?: string;
-    /**
-     * API key for the LLM provider.
-     */
-    llmApiKey?: string;
-    /**
-     * The model identifier to use (e.g., gpt-4o, anthropic.claude-sonnet-4-20250514-v1:0).
-     */
-    llmModel?: string;
-    /**
-     * LLM provider to use (openai or anthropic).
-     */
-    llmProvider?: string;
     /**
      * The system prompt that guides the assistant behavior.
      */
     systemPrompt?: string;
-}
-
-/**
- * AWS credentials for accessing Anthropic models via AWS Bedrock.
- *
- * Base AWS configuration for authentication. Supports static credentials, IAM roles, and
- * default credential provider chain.
- */
-export interface AWSBaseConfig {
-    /**
-     * AWS Access Key ID. Falls back to default credential provider chain if not set.
-     */
-    accessKeyId?: string;
-    /**
-     * ARN of IAM role to assume for cross-account access.
-     */
-    assumeRoleArn?: string;
-    /**
-     * Session name for assumed role.
-     */
-    assumeRoleSessionName?: string;
-    /**
-     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
-     * (environment variables, instance profile, etc.). Defaults to false for backward
-     * compatibility.
-     */
-    enabled?: boolean;
-    /**
-     * Custom endpoint URL for AWS-compatible services (MinIO, LocalStack).
-     */
-    endpointUrl?: string;
-    /**
-     * AWS Region (e.g., us-east-1). Required when AWS authentication is enabled.
-     */
-    region?: string;
-    /**
-     * AWS Secret Access Key. Falls back to default credential provider chain if not set.
-     */
-    secretAccessKey?: string;
-    /**
-     * AWS Session Token for temporary credentials.
-     */
-    sessionToken?: string;
 }

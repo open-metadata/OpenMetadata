@@ -2,33 +2,10 @@
   "$id": "https://open-metadata.org/schema/entity/applications/configuration/internal/mcpChatAppConfig.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "McpChatAppConfig",
-  "description": "Configuration for the MCP Chat Application.",
+  "description": "Configuration for the MCP Chat Application. The LLM provider and credentials are configured at the platform level via `llmConfiguration`; this app only governs chat behavior.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.app.internal.McpChatAppConfig",
   "properties": {
-    "llmProvider": {
-      "description": "LLM provider to use (openai or anthropic).",
-      "type": "string",
-      "default": "openai"
-    },
-    "llmApiKey": {
-      "description": "API key for the LLM provider.",
-      "type": "string",
-      "format": "password"
-    },
-    "llmModel": {
-      "description": "The model identifier to use (e.g., gpt-4o, anthropic.claude-sonnet-4-20250514-v1:0).",
-      "type": "string",
-      "default": "gpt-4o"
-    },
-    "llmApiEndpoint": {
-      "description": "Custom API endpoint URL. Leave empty to use the provider default.",
-      "type": "string"
-    },
-    "awsConfig": {
-      "description": "AWS credentials for accessing Anthropic models via AWS Bedrock.",
-      "$ref": "../../../../security/credentials/awsBaseConfig.json"
-    },
     "systemPrompt": {
       "description": "The system prompt that guides the assistant behavior.",
       "type": "string",

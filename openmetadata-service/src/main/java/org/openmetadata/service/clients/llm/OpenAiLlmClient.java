@@ -32,7 +32,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.entity.app.internal.McpChatAppConfig;
+import org.openmetadata.schema.configuration.LLMConfiguration;
+import org.openmetadata.schema.configuration.LLMOpenAIConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 
 @Slf4j
@@ -46,15 +47,16 @@ public class OpenAiLlmClient implements LlmClient {
   private final ObjectMapper mapper;
   private final HttpClient httpClient;
 
-  public OpenAiLlmClient(McpChatAppConfig config) {
-    this.apiKey = config.getLlmApiKey();
+  public OpenAiLlmClient(LLMConfiguration config) {
+    LLMOpenAIConfig openai = config.getOpenai();
+    this.apiKey = openai == null ? null : openai.getApiKey();
     if (apiKey == null || apiKey.isBlank()) {
       throw new IllegalArgumentException("An API key is required for the OpenAI LLM provider.");
     }
-    this.model = config.getLlmModel();
+    this.model = openai.getModelId();
     this.apiEndpoint =
-        config.getLlmApiEndpoint() != null && !config.getLlmApiEndpoint().isBlank()
-            ? config.getLlmApiEndpoint()
+        openai.getEndpoint() != null && !openai.getEndpoint().isBlank()
+            ? openai.getEndpoint()
             : DEFAULT_ENDPOINT;
     this.mapper = JsonUtils.getObjectMapper();
     this.httpClient = HttpClient.newBuilder().connectTimeout(TIMEOUT).build();

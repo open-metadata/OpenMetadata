@@ -1,8 +1,8 @@
 {
   "name": "McpChatApplication",
   "displayName": "MCP Chat",
-  "description": "AI-powered chat assistant for OpenMetadata. Uses LLM providers (OpenAI or Anthropic via AWS Bedrock) with MCP tools to search, explore, and manage metadata through natural language.",
-  "features": "Chat with an AI assistant that can use MCP tools to interact with your metadata. Supports conversation history, streaming responses, and tool execution. Supports OpenAI with API key or Anthropic models via AWS Bedrock.",
+  "description": "AI-powered chat assistant for OpenMetadata. Uses MCP tools to search, explore, and manage metadata through natural language. The LLM provider and credentials are configured at the platform level via `llmConfiguration`.",
+  "features": "Chat with an AI assistant that can use MCP tools to interact with your metadata. Supports conversation history, streaming responses, and tool execution. The LLM provider (OpenAI, Anthropic, or Bedrock) is set platform-wide in `llmConfiguration`.",
   "appType": "internal",
   "appScreenshots": ["McpChatApplication"],
   "developer": "Collate Inc.",
@@ -17,10 +17,6 @@
   },
   "supportsInterrupt": true,
   "appConfiguration": {
-    "llmProvider": "openai",
-    "llmApiKey": "",
-    "llmModel": "gpt-4o",
-    "llmApiEndpoint": "",
     "systemPrompt": "You are a helpful metadata assistant for OpenMetadata. Use the available tools to search, explore, and manage metadata. Be concise and actionable."
   }
 }

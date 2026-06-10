@@ -14,11 +14,13 @@ package org.openmetadata.service.apps.bundles.mcp;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.internal.McpChatAppConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
+import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.mcpclient.McpClientService;
 import org.openmetadata.service.search.SearchRepository;
@@ -53,17 +55,23 @@ public class McpChatApplication extends AbstractNativeApplication {
   private void initializeService() {
     closeService();
 
-    Object appConfigObj = getApp().getAppConfiguration();
-    if (appConfigObj == null) {
-      LOG.warn("McpChatApplication has no configuration.");
-      return;
-    }
-
-    McpChatAppConfig mcpConfig = JsonUtils.convertValue(appConfigObj, McpChatAppConfig.class);
-    this.mcpClientService = new McpClientService(Entity.getCollectionDAO(), mcpConfig);
+    McpChatAppConfig mcpConfig = resolveAppConfig();
+    LLMConfiguration llmConfig = LlmConfigHolder.get();
+    this.mcpClientService = new McpClientService(Entity.getCollectionDAO(), llmConfig, mcpConfig);
     LOG.info(
         "McpChatApplication service initialized (chat enabled: {})",
         mcpClientService.isChatEnabled());
+  }
+
+  private McpChatAppConfig resolveAppConfig() {
+    Object appConfigObj = getApp().getAppConfiguration();
+    McpChatAppConfig result;
+    if (appConfigObj == null) {
+      result = new McpChatAppConfig();
+    } else {
+      result = JsonUtils.convertValue(appConfigObj, McpChatAppConfig.class);
+    }
+    return result;
   }
 
   private void closeService() {

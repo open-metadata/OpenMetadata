@@ -31,7 +31,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.entity.app.internal.McpChatAppConfig;
+import org.openmetadata.schema.configuration.LLMAnthropicConfig;
+import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
 
 @Slf4j
@@ -47,15 +48,16 @@ public class AnthropicLlmClient implements LlmClient {
   private final ObjectMapper mapper;
   private final HttpClient httpClient;
 
-  public AnthropicLlmClient(McpChatAppConfig config) {
-    this.apiKey = config.getLlmApiKey();
+  public AnthropicLlmClient(LLMConfiguration config) {
+    LLMAnthropicConfig anthropic = config.getAnthropic();
+    this.apiKey = anthropic == null ? null : anthropic.getApiKey();
     if (apiKey == null || apiKey.isBlank()) {
       throw new IllegalArgumentException("An API key is required for the Anthropic LLM provider.");
     }
-    this.model = config.getLlmModel();
+    this.model = anthropic.getModelId();
     this.apiEndpoint =
-        config.getLlmApiEndpoint() != null && !config.getLlmApiEndpoint().isBlank()
-            ? config.getLlmApiEndpoint()
+        anthropic.getBaseUrl() != null && !anthropic.getBaseUrl().isBlank()
+            ? anthropic.getBaseUrl()
             : DEFAULT_ENDPOINT;
     this.mapper = JsonUtils.getObjectMapper();
     this.httpClient = HttpClient.newBuilder().connectTimeout(TIMEOUT).build();

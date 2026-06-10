@@ -22,7 +22,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.entity.app.internal.McpChatAppConfig;
+import org.openmetadata.schema.configuration.LLMBedrockConfig;
+import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.security.credentials.AWSBaseConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.util.AwsCredentialsUtil;
@@ -42,11 +43,16 @@ public class BedrockLlmClient implements LlmClient {
   private final ObjectMapper mapper;
   private final BedrockRuntimeClient bedrockClient;
 
-  public BedrockLlmClient(McpChatAppConfig config) {
-    this.model = config.getLlmModel();
+  public BedrockLlmClient(LLMConfiguration config) {
+    LLMBedrockConfig bedrock = config.getBedrock();
+    if (bedrock == null) {
+      throw new IllegalArgumentException(
+          "Bedrock configuration is required for the Bedrock LLM provider.");
+    }
+    this.model = bedrock.getModelId();
     this.mapper = JsonUtils.getObjectMapper();
 
-    AWSBaseConfig awsConfig = config.getAwsConfig();
+    AWSBaseConfig awsConfig = bedrock.getAwsConfig();
     if (awsConfig == null || awsConfig.getRegion() == null) {
       throw new IllegalArgumentException(
           "AWS configuration with a region is required for the Bedrock LLM provider.");
