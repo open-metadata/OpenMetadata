@@ -70,6 +70,10 @@ class SimpleReindexTriggerUIIT {
   // loaded shared/external cluster). Poll until the count converges.
   private static final Duration INDEX_COUNT_TIMEOUT = ReindexHelpers.searchPropagationTimeout();
   private static final Duration INDEX_COUNT_POLL_INTERVAL = Duration.ofSeconds(3);
+  // Short inner Playwright timeout per Explore re-search tick: the Awaitility loop owns the long
+  // wait and re-issues the search each tick, so a long inner timeout would fire once and miss the
+  // next refresh.
+  private static final long EXPLORE_VISIBLE_TICK_MS = 5_000;
 
   // Entity name base for each kind — must match what EntityLoader uses internally. The base
   // doubles as the entity type used to resolve the search index.
@@ -159,13 +163,20 @@ class SimpleReindexTriggerUIIT {
     final String type = NAME_BASE_PER_KIND.get(kind);
     final Tab tab = EXPLORE_TAB_PER_KIND.get(kind);
     final String firstEntityName = ns.prefix(type) + "_0";
-    final ExplorePage explore = ExplorePage.openWithSearch(ui, tab, firstEntityName);
-    // The doc is already confirmed in the index (assertExactlyIngestedAreIndexed ran first), so the
-    // search returns the hit; only the result row's render needs time. Give it the propagation
-    // budget instead of the default 5s, which is too tight on a loaded shared/external cluster.
-    PlaywrightAssertions.assertThat(explore.firstResultByName(firstEntityName))
-        .isVisible(
-            new IsVisibleOptions()
-                .setTimeout(ReindexHelpers.searchPropagationTimeout().toMillis()));
+    // Re-issue the Explore search on each tick rather than waiting on a single query: the doc is
+    // confirmed in the index, but the UI search can return a stale view for a beat after the alias
+    // swap, and a one-shot navigation that runs in that window never re-queries. Re-navigating
+    // absorbs the lag on a loaded shared/external cluster.
+    Awaitility.await("entity '" + firstEntityName + "' discoverable on Explore[" + tab + "]")
+        .atMost(INDEX_COUNT_TIMEOUT)
+        .pollInterval(INDEX_COUNT_POLL_INTERVAL)
+        .pollDelay(Duration.ZERO)
+        .ignoreNoExceptions()
+        .untilAsserted(
+            () -> {
+              final ExplorePage explore = ExplorePage.openWithSearch(ui, tab, firstEntityName);
+              PlaywrightAssertions.assertThat(explore.firstResultByName(firstEntityName))
+                  .isVisible(new IsVisibleOptions().setTimeout(EXPLORE_VISIBLE_TICK_MS));
+            });
   }
 }

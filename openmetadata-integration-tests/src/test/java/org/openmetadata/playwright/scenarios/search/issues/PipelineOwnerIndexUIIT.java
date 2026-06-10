@@ -8,9 +8,12 @@ import java.util.List;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.search.IndexAliasInspector;
+import org.openmetadata.it.search.ReindexHelpers;
 import org.openmetadata.it.search.SearchClient;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -36,10 +39,14 @@ import org.openmetadata.service.Entity;
  * a regression drops owners from every entity's doc; the reported incident was on
  * {@code ingestion_pipeline_search_index}, and the same guard belongs on any owned entity type.
  */
+// READ lock: this asserts a live-indexed doc is present, so it must not run concurrently with a
+// sibling's recreate reindex (READ_WRITE) — an alias swap mid-flight drops the freshly-indexed doc
+// and the assertion sees 0 hits. READ holders still run in parallel with each other.
 @ExtendWith({UiSessionExtension.class, TestNamespaceExtension.class})
+@ResourceLock(value = "SEARCH_INDEX_APP", mode = ResourceAccessMode.READ)
 class PipelineOwnerIndexUIIT {
 
-  private static final Duration INDEX_TIMEOUT = Duration.ofMinutes(1);
+  private static final Duration INDEX_TIMEOUT = ReindexHelpers.searchPropagationTimeout();
   private static final Duration POLL_INTERVAL = Duration.ofSeconds(2);
 
   @Test
