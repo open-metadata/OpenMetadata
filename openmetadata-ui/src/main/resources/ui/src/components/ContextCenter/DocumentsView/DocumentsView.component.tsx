@@ -37,7 +37,7 @@ import classNames from 'classnames';
 import { FC, useMemo, useState } from 'react';
 import { SubmenuTrigger } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import CopyLinkButton from 'src/components/CopyLinkButton/CopyLinkButton.component';
+import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -324,7 +324,6 @@ const ListHeader: FC<ListHeaderProps> = ({
 const FileRow: FC<FileRowProps> = ({
   canDelete,
   file,
-  url,
   folders,
   isActive,
   isSelected,
@@ -336,13 +335,18 @@ const FileRow: FC<FileRowProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const { folderName, fileName, formattedFileSize, relativeTime } =
+  const { folderName, fileName, formattedFileSize, relativeTime, rowUrl } =
     useMemo(() => {
+      const params = new URLSearchParams(window.location.search);
+      params.set('document', file.id);
+      const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+
       return {
         folderName: getEntityName(file.folder),
         fileName: getEntityName(file),
         formattedFileSize: formatBytes(file.fileSize),
         relativeTime: getShortRelativeTime(file.updatedAt),
+        rowUrl: url,
       };
     }, [file]);
 
@@ -447,7 +451,7 @@ const FileRow: FC<FileRowProps> = ({
             />
           </TooltipTrigger>
         </Tooltip>
-         <CopyLinkButton  className="tw:w-8 tw:h-8" url={url ?? ''}>
+         <CopyLinkButton className="tw:w-8 tw:h-8" url={rowUrl}>
             <Copy06
               aria-hidden="true"
               size={20}
@@ -478,7 +482,6 @@ const DocumentViewLoading = () =>
 const DocumentsView: FC<DocumentsViewProps> = ({
   canDelete,
   data,
-  url,
   folders,
   isLoading,
   previewFileId,
@@ -538,7 +541,6 @@ const DocumentsView: FC<DocumentsViewProps> = ({
                   isActive={previewFileId === file.id}
                   isSelected={selectedIds?.has(file.id)}
                   key={file.id}
-                  url={url}
                   onDeleteFile={onDeleteFile}
                   onDownload={onDownload}
                   onFileMoved={onFileMoved}

@@ -56,6 +56,8 @@ import {
   getEntityName,
 } from '../../../utils/EntityNameUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
+import { isValidUrl } from '../../../utils/SSOUtils';
+import { escapeESReservedCharacters } from '../../../utils/StringUtils';
 import { getTagsWithoutTier } from '../../../utils/TablePureUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import tagClassBase from '../../../utils/TagClassBase';
@@ -253,8 +255,9 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
 
   const fetchAssetOptions = useCallback(async (searchText = '') => {
     try {
+      const escaped = escapeESReservedCharacters(searchText);
       const response = await searchQuery({
-        query: searchText ? `*${searchText}*` : '*',
+        query: escaped ? `*${escaped}*` : '*',
         pageNumber: 1,
         pageSize: PAGE_SIZE,
         searchIndex: SearchIndex.ALL,
@@ -411,6 +414,8 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
       required: t('label.field-required', {
         field: t('label.url-uppercase'),
       }),
+      validate: (value: string) =>
+        isValidUrl(value) || t('message.invalid-url'),
     },
     props: {
       'data-testid': 'url',
@@ -424,7 +429,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
     required: false,
     label: t('label.description'),
     id: 'root/description',
-    type: FieldTypes.TEXTAREA,
+    type: FieldTypes.DESCRIPTION,
     props: {
       'data-testid': 'description',
       disabled: !(permissions.EditAll || permissions.EditDescription),

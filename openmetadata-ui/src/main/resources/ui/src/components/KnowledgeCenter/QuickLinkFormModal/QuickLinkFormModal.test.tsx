@@ -177,6 +177,14 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
+jest.mock('utils/SSOUtils', () => ({
+  isValidUrl: jest.fn().mockReturnValue(true),
+}));
+
+jest.mock('utils/StringUtils', () => ({
+  escapeESReservedCharacters: jest.fn().mockImplementation((text) => text),
+}));
+
 jest.mock('utils/EntityUtils', () => ({
   getEntityName: jest
     .fn()
