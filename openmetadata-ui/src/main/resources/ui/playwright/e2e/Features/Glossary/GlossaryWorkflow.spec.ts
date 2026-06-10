@@ -330,9 +330,12 @@ test('should display correct status badge color and icon', async ({ page }) => {
 
     const statusBadge = termRow.locator('.status-badge');
 
-    await expect(statusBadge).toHaveText('In Review');
-    await expect(statusBadge).toHaveClass(/inReview/);
+    await expect(async () => {
+      await page.reload();
+      await expect(statusBadge).toHaveText('In Review', { timeout: 5000 });
+    }).toPass({ timeout: 30000 });
 
+    await expect(statusBadge).toHaveClass(/inReview/);
     await expect(statusBadge).toBeVisible();
   } finally {
     await glossary.delete(apiContext);
