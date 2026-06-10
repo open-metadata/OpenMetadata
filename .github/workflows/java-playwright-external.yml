@@ -14,12 +14,13 @@
 #   - ui-it-external      : *UIIT.java (Playwright) via the `ui-it` profile
 #   - search-it-external  : tests/search/*IT.java via the `search-it` profile
 #   - scale-it-external   : tests/search/scale/*IT.java via `scale-it`, matrixed over cohort
-#                           sizes (default 100k, 500k) to find the cluster's breaking point.
-#                           Bulk entity loading is configurable via `scaleDataMode` (jpw.data.mode):
-#                           `ingest` re-creates the cohort each run (default), `ensure` tops up only
-#                           the shortfall, `static` reuses data already on the cluster. Set
-#                           `seedStaticData` to load it once first (seed-it profile / StaticDatasetSeedIT).
-#                           Small-footprint suites (ui-it, search-it) always create on the fly.
+#                           sizes (scaleSeeds, default [100000]).
+#
+# All three jobs share ONE cluster, so each starts with a "Purge orphaned test data" step
+# (purge-it profile) to clear any bulk cohort a cancelled prior run left behind. Scale runs in
+# jpw.data.mode=ingest: it creates AND cleans up its own 100k (TestNamespaceExtension), so the
+# cluster stays clean for ui-it/search-it — whose own reindexes then only ever process their small
+# per-test fixtures. (Persistent static-100k reuse is for a SEPARATE scale-only cluster, not here.)
 #
 # The harness switches to external mode automatically when OM_URL + OM_ADMIN_TOKEN are set (see
 # UiTestServer.get / ExternalServer.fromEnv / OssTestServer.defaultHandle): no Docker image is
@@ -48,16 +49,6 @@ name: Java Integration Tests (External Cluster)
 on:
   workflow_dispatch:
     inputs:
-      excludedGroups:
-        description: 'JUnit @Tag groups to exclude from the ui-it run'
-        required: false
-        type: string
-        default: 'sso-bootstrap,search-direct'
-      itTest:
-        description: 'Optional single class/glob to run for ui-it (failsafe -Dit.test). Empty = full suite.'
-        required: false
-        type: string
-        default: ''
       runUiIt:
         description: 'Run the ui-it (Playwright) job'
         required: false
@@ -73,11 +64,16 @@ on:
         required: false
         type: boolean
         default: false
-      scaleSeeds:
-        description: 'JSON array of table cohort sizes for the scale matrix'
+      itTest:
+        description: 'Optional single class/glob to run for ui-it (failsafe -Dit.test). Empty = full suite.'
         required: false
         type: string
-        default: '[100000, 500000]'
+        default: ''
+      scaleSeeds:
+        description: 'JSON array of scale table cohort sizes (matrix). E.g. [100000] or [100000, 500000].'
+        required: false
+        type: string
+        default: '[100000]'
       scaleTimeoutMin:
         description: 'Per-run reindex timeout (minutes) for scale tests'
         required: false
@@ -93,16 +89,6 @@ on:
         required: false
         type: string
         default: '8'
-      scaleDataMode:
-        description: 'Scale data provisioning. Use ingest for this shared-cluster run: the scale test creates AND cleans up its own 100k (TestNamespaceExtension), so the cluster stays clean for ui-it/search-it. static/ensure leave a persistent 100k that makes every ui-it/search-it reindex reprocess it (~20m each) — only use them on a dedicated scale-only cluster.'
-        required: false
-        type: string
-        default: 'ingest'
-      seedStaticData:
-        description: 'Seed the static dataset (StaticDatasetSeedIT) before the scale matrix. Only with scaleDataMode=static/ensure on a dedicated scale-only cluster — leaves a persistent 100k, so do NOT use on the shared ui-it/search-it cluster.'
-        required: false
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -221,7 +207,7 @@ jobs:
           mvn verify -P ui-it -pl :openmetadata-integration-tests $STRESS_PROPS $IT_TEST_PROP \
             -Djpw.loader.maxWorkers=${{ github.event.inputs.entityLoaderMaxWorkers || '8' }} \
             -Djpw.reindex.timeoutMin=${{ github.event.inputs.reindexTimeoutMin || '60' }} \
-            -Dui.it.excludedGroups="${{ github.event.inputs.excludedGroups || 'sso-bootstrap,search-direct' }}"
+            -Dui.it.excludedGroups="sso-bootstrap,search-direct"
 
       - name: Upload Playwright traces
         if: ${{ always() }}
@@ -478,9 +464,9 @@ jobs:
           echo "OM_URL=${OM_EXTERNAL_URL%/}" >> "$GITHUB_ENV"
 
       - name: Purge orphaned test data (clean cluster before run)
-        # Clear any bulk cohort a cancelled prior run left behind. In the default ingest mode the
-        # scale test creates and then cleans up its own 100k, so the cluster returns to clean; this
-        # purge just guarantees a clean starting point. (Skip is harmless when seedStaticData=true.)
+        # Clear any bulk cohort a cancelled prior run left behind. The scale test (ingest mode)
+        # creates and then cleans up its own 100k, so the cluster returns to clean; this purge just
+        # guarantees a clean starting point.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OM_URL: ${{ env.OM_URL }}
@@ -490,23 +476,9 @@ jobs:
         run: |
           mvn verify -P purge-it -pl :openmetadata-integration-tests -Dskip.embedded.bootstrap=true
 
-      - name: Seed static dataset (${{ matrix.seed }} tables)
-        # Optional one-time load: creates the cohort and leaves it on the cluster (no cleanup) so
-        # the scale run below can reuse it with scaleDataMode=static/ensure instead of re-creating
-        # it. Skipped unless seedStaticData is set. The seed-it profile runs only StaticDatasetSeedIT.
-        if: ${{ github.event.inputs.seedStaticData == 'true' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OM_URL: ${{ env.OM_URL }}
-          OM_ADMIN_TOKEN: ${{ env.OM_ADMIN_TOKEN }}
-          OM_EXTERNAL_USERNAME: ${{ secrets.OM_EXTERNAL_USERNAME }}
-          OM_EXTERNAL_PASSWORD: ${{ secrets.OM_EXTERNAL_PASSWORD }}
-        run: |
-          mvn verify -P seed-it -pl :openmetadata-integration-tests -Dskip.embedded.bootstrap=true \
-            -Djpw.scale.tables=${{ matrix.seed }} \
-            -Djpw.loader.maxWorkers=${{ github.event.inputs.entityLoaderMaxWorkers || '8' }}
-
       - name: Run scale test (${{ matrix.seed }} tables, external cluster)
+        # Self-contained: ingest mode creates the cohort and cleans it up afterwards
+        # (TestNamespaceExtension), so the cluster returns to clean for the next run.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OM_URL: ${{ env.OM_URL }}
@@ -518,7 +490,7 @@ jobs:
           mvn verify -P scale-it -pl :openmetadata-integration-tests -Dskip.embedded.bootstrap=true \
             -Djpw.scale.tables=${{ matrix.seed }} \
             -Djpw.scale.timeoutMin=${{ github.event.inputs.scaleTimeoutMin || '300' }} \
-            -Djpw.data.mode=${{ github.event.inputs.scaleDataMode || 'ingest' }} \
+            -Djpw.data.mode=ingest \
             -Djpw.loader.maxWorkers=${{ github.event.inputs.entityLoaderMaxWorkers || '8' }}
 
       - name: Upload scale metrics
