@@ -72,7 +72,7 @@ jest.mock(
     )),
   })
 );
-jest.mock('../../../common/EntityDescription/DescriptionV1', () => {
+jest.mock('../../../common/EntityDescription/Description', () => {
   return jest.fn().mockImplementation(({ onDescriptionUpdate }) => (
     <div>
       Description.component

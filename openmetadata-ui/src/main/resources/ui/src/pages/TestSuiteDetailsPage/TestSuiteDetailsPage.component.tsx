@@ -27,7 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TestSuiteIcon } from '../../assets/svg/icon-test-suite.svg';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
-import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
+import Description from '../../components/common/EntityDescription/Description';
 import ManageButton from '../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -459,7 +459,7 @@ const TestSuiteDetailsPage = () => {
 
     const renderDescription = () => (
       <div className="tw:w-full">
-        <DescriptionV1
+        <Description
           wrapInCard
           description={testSuiteDescription}
           entityName={getEntityName(testSuite)}

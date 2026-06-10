@@ -59,7 +59,7 @@ import {
 import { createTagObject } from '../../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
-import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
+import Description from '../../../common/EntityDescription/Description';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import TestSummary from '../../../Database/Profiler/TestSummary/TestSummary';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
@@ -455,7 +455,7 @@ const TestCaseResultTab = () => {
         }`}>
         <div className="tw:flex tw:w-full tw:flex-col tw:gap-2.5">
           <div className="tw:w-full">
-            <DescriptionV1
+            <Description
               wrapInCard
               description={description}
               entityType={EntityType.TEST_CASE}

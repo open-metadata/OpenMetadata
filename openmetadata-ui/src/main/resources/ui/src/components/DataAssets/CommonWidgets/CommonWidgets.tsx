@@ -54,7 +54,7 @@ import { createTagObject } from '../../../utils/TagsPureUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import CertificationWidget from '../../common/CertificationWidget/CertificationWidget';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
+import Description from '../../common/EntityDescription/Description';
 import TierWidget from '../../common/TierWidget/TierWidget';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { LeftPanelContainer } from '../../Customization/GenericTab/LeftPanelContainer';
@@ -353,7 +353,7 @@ export const CommonWidgets = ({
 
   const descriptionWidget = useMemo(() => {
     return (
-      <DescriptionV1
+      <Description
         showSuggestions
         wrapInCard
         description={description}
