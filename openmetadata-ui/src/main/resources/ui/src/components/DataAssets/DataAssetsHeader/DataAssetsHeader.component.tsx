@@ -899,7 +899,6 @@ export const DataAssetsHeader = ({
           onClose={handleCloseAnnouncementDrawer}
         />
       )}
-
     </>
   );
 };
