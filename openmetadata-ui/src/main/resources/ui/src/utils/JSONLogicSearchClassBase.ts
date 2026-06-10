@@ -456,7 +456,7 @@ class JSONLogicSearchClassBase {
         label: t('label.test-suite'),
         type: 'select',
         mainWidgetProps: this.mainWidgetProps,
-        operators: [...this.defaultSelectOperators],
+        operators: ['is_null', 'is_not_null'],
         fieldSettings: {
           asyncFetch: advancedSearchClassBase.autocomplete({
             searchIndex: SearchIndex.TEST_SUITE,
