@@ -52,7 +52,7 @@ class EntityShapeBaselineIT {
             .withFullyQualifiedName("shapeBaselineSvc.db.schema." + UUID.randomUUID())
             .withColumns(List.of(new Column().withName("c0").withDataType(ColumnDataType.STRING)));
 
-    final Outcome outcome = canary.index(Entity.TABLE, table, null);
+    final Outcome outcome = canary.index(Entity.TABLE, table, null).outcome();
 
     assertEquals(Outcome.OK, outcome, "A minimal in-memory table must build, PUT, and retrieve");
   }

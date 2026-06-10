@@ -32,26 +32,25 @@ public final class ShapeCanary {
     this.shadowIndex = new ShadowIndex(searchRepository, httpSearch);
   }
 
-  public Outcome index(
+  public ShapeResult index(
       final String entityType, final EntityInterface entity, final FieldProbe probe) {
     final String docId = entity.getId().toString();
     final String freshIndex = shadowIndex.create(entityType);
-    Outcome outcome;
+    ShapeResult result;
     try {
       final SearchIndex index =
           searchRepository.getSearchIndexFactory().buildIndex(entityType, entity);
       final String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
       searchRepository.getSearchClient().createEntity(freshIndex, docId, doc);
-      outcome = verify(freshIndex, docId, probe);
+      result = new ShapeResult(verify(freshIndex, docId, probe), "");
     } catch (final Exception e) {
-      // Intentional broad catch: this is the canary's error-capture seam. The engine rejects
-      // oversized / over-field-count docs with varied exception types; the classifier triages
-      // the rejection by message into the corresponding Outcome.
-      outcome = ShapeClassifier.classifyError(e.getMessage());
+      // Intentional broad catch: the engine refuses an unindexable doc with varied exception types.
+      // We do NOT classify the cause — REJECTED plus the raw message is the honest, reliable signal.
+      result = new ShapeResult(Outcome.REJECTED, String.valueOf(e.getMessage()));
     } finally {
       shadowIndex.drop(freshIndex);
     }
-    return outcome;
+    return result;
   }
 
   private Outcome verify(final String indexName, final String docId, final FieldProbe probe) {

@@ -20,8 +20,8 @@ public final class AcceptedLimits {
       List.of(
           // Opt-in acceptances go here, e.g.:
           // new Accepted(
-          //     org.openmetadata.service.Entity.TABLE, "columns.count", "100k",
-          //     Outcome.REJECT_SIZE, "100k columns is unrealistic for a single table")
+          //     org.openmetadata.service.Entity.GLOSSARY_TERM, "owners.count", "12k",
+          //     Outcome.REJECTED, "12k owners is unrealistic; inherent nested_objects limit")
           );
 
   private AcceptedLimits() {}

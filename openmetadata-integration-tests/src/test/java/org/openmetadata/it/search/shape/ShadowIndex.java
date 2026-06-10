@@ -102,7 +102,7 @@ public final class ShadowIndex {
     }
     // Carry over any index.mapping.* limit overrides (total_fields/nested_objects/depth) so the
     // shadow index enforces exactly the real index's limits — otherwise an entity that raised a
-    // limit would falsely report REJECT_FIELDS against the default.
+    // limit would falsely report REJECTED against the default.
     if (srcSettingsIndex.has(MAPPING)) {
       indexSettings.set(MAPPING, srcSettingsIndex.get(MAPPING));
     }

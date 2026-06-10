@@ -28,6 +28,7 @@ import org.openmetadata.it.search.shape.EntityShapeRegistry;
 import org.openmetadata.it.search.shape.Outcome;
 import org.openmetadata.it.search.shape.PlannedCase;
 import org.openmetadata.it.search.shape.ShapeCanary;
+import org.openmetadata.it.search.shape.ShapeResult;
 import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.service.Entity;
@@ -55,8 +56,9 @@ class EntityShapeIT {
   @ParameterizedTest(name = "{0}")
   @MethodSource("cases")
   void sweep(final PlannedCase plannedCase) {
-    final Outcome observed =
+    final ShapeResult result =
         canary.index(plannedCase.entityType(), plannedCase.entity().get(), plannedCase.probe());
+    final Outcome observed = result.outcome();
     final Optional<AcceptedLimits.Accepted> accepted =
         AcceptedLimits.find(
             plannedCase.entityType(), plannedCase.dimension(), plannedCase.rung().label());
@@ -69,6 +71,7 @@ class EntityShapeIT {
           plannedCase.label()
               + " must index + be queryable but got "
               + observed
+              + (result.detail().isBlank() ? "" : " [" + result.detail() + "]")
               + ". Fix the cause, or opt-in via AcceptedLimits if this limit is acceptable.");
     }
   }
