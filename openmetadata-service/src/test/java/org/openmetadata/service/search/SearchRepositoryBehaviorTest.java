@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.apache.commons.lang3.tuple.Pair;
@@ -2118,13 +2119,13 @@ class SearchRepositoryBehaviorTest {
     when(context.getEntities())
         .thenReturn(new LinkedHashSet<>(List.of(Entity.TABLE, Entity.DOMAIN)));
     when(context.getOriginalIndex(any()))
-        .thenAnswer(invocation -> java.util.Optional.of("original_" + invocation.getArgument(0)));
+        .thenAnswer(invocation -> Optional.of("original_" + invocation.getArgument(0)));
     when(context.getCanonicalIndex(any()))
-        .thenAnswer(invocation -> java.util.Optional.of("canonical_" + invocation.getArgument(0)));
+        .thenAnswer(invocation -> Optional.of("canonical_" + invocation.getArgument(0)));
     when(context.getStagedIndex(any()))
-        .thenAnswer(invocation -> java.util.Optional.of("staged_" + invocation.getArgument(0)));
+        .thenAnswer(invocation -> Optional.of("staged_" + invocation.getArgument(0)));
     when(context.getCanonicalAlias(any()))
-        .thenAnswer(invocation -> java.util.Optional.of("alias_" + invocation.getArgument(0)));
+        .thenAnswer(invocation -> Optional.of("alias_" + invocation.getArgument(0)));
     when(context.getExistingAliases(any()))
         .thenAnswer(invocation -> Set.of("existing_" + invocation.getArgument(0)));
     when(context.getParentAliases(any()))
