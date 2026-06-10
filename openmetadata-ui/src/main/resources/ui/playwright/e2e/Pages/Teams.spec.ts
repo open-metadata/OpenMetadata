@@ -464,9 +464,23 @@ test.describe('Teams Page', () => {
         )
         .click();
 
-      const updateUserResponse = page.waitForResponse('/api/v1/users/*');
+      const patchUserPromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/users/') &&
+          !response.url().includes('/api/v1/users/name/') &&
+          response.request().method() === 'PATCH'
+      );
+      const userPromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/users/name/') &&
+          response.url().includes('fields=profile') &&
+          response.request().method() === 'GET'
+      );
       await page.getByTestId('teams-edit-save-btn').click();
-      await updateUserResponse;
+      const patchResponse = await patchUserPromise;
+      expect(patchResponse.status()).toBe(200);
+      const userResponse = await userPromise;
+      expect(userResponse.status()).toBe(200);
 
       await expect(
         page.getByTestId('profile-teams-edit-popover')
