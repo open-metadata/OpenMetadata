@@ -467,12 +467,11 @@ class MessagingFetcherStrategy(FetcherStrategy):
         Returns:
             Iterable[Topic]: Topic entities
         """
+        service_name = self.config.source.serviceName
         topics = self.metadata.list_all_entities(
             entity=Topic,
             fields=["messageSchema", "tags"],
-            params={
-                "service": self.config.source.serviceName,
-            },
+            params={"service": service_name} if service_name else None,
         )
         return cast(Iterable[Topic], topics)  # noqa: TC006
 
@@ -498,7 +497,7 @@ class MessagingFetcherStrategy(FetcherStrategy):
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
-                    name=self.config.source.serviceName,
+                    name=self.config.source.serviceName or "unknown",
                     error=f"Error listing source and entities for messaging service due to [{exc}]",
                     stackTrace=traceback.format_exc(),
                 ),

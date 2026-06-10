@@ -13,9 +13,9 @@ Base sampler for messaging services (Kafka, Kinesis, PubSub, etc.)
 """
 
 from abc import abstractmethod
-from typing import Any, List, Optional  # noqa: UP035
+from typing import Any, List, Optional, cast  # noqa: UP035
 
-from metadata.generated.schema.entity.data.table import ColumnName, TableData
+from metadata.generated.schema.entity.data.table import ColumnName, DataType, TableData
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.messagingService import MessagingConnection
 from metadata.generated.schema.type.schema import DataTypeTopic
@@ -67,7 +67,7 @@ class MessagingSampler(SamplerInterface):
         raise NotImplementedError
 
     def get_columns(self) -> List[SQALikeColumn]:  # noqa: UP006
-        entity: Topic = self.entity
+        entity: Topic = cast("Topic", self.entity)
         if entity.messageSchema and entity.messageSchema.schemaFields:
             columns = []
             for field in entity.messageSchema.schemaFields:
@@ -89,7 +89,7 @@ class MessagingSampler(SamplerInterface):
 
         if depth > max_depth:
             logger.warning(f"RECORD nesting exceeded max_depth {max_depth}; stopping recursion at field {current_name}")
-            return [SQALikeColumn(current_name, field.dataType)]
+            return [SQALikeColumn(current_name, cast("DataType", field.dataType))]
 
         if field.dataType == DataTypeTopic.RECORD and field.children:
             result = []
@@ -98,7 +98,7 @@ class MessagingSampler(SamplerInterface):
                     self._flatten_field(child, depth=depth + 1, max_depth=max_depth, parent_name=current_name)
                 )
             return result
-        return [SQALikeColumn(current_name, field.dataType)]
+        return [SQALikeColumn(current_name, cast("DataType", field.dataType))]
 
     @abstractmethod
     def _fetch_messages(self, count: int) -> List[dict]:  # noqa: UP006
