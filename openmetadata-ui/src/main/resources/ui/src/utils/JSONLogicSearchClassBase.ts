@@ -457,13 +457,6 @@ class JSONLogicSearchClassBase {
         type: 'select',
         mainWidgetProps: this.mainWidgetProps,
         operators: ['is_null', 'is_not_null'],
-        fieldSettings: {
-          asyncFetch: advancedSearchClassBase.autocomplete({
-            searchIndex: SearchIndex.TEST_SUITE,
-            entityField: EntityFields.DISPLAY_NAME_KEYWORD,
-          }),
-          useAsyncSearch: true,
-        },
       },
 
       [EntityReferenceFields.REVIEWERS]: {
