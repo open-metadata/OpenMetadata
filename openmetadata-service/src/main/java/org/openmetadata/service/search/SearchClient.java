@@ -84,7 +84,55 @@ public interface SearchClient
       }
       """;
   String SOFT_DELETE_RESTORE_SCRIPT = "ctx._source.put('deleted', '%s')";
-  String REMOVE_TAGS_CHILDREN_SCRIPT = "ctx._source.tags.removeIf(tag -> tag.tagFQN == params.fqn)";
+
+  /**
+   * Painless snippet that re-derives {@code tier} / {@code classificationTags} /
+   * {@code glossaryTags} from the current state of {@code ctx._source.tags}. Append this to every
+   * script that mutates {@code tags[]} so live-indexing updates produce the same separation that
+   * the reindex path ({@code ParseTags}) produces. Without this, a propagation or glossary-rename
+   * script can leave the lifted fields stale or land a Tier.* TagLabel inside {@code tags[]}.
+   *
+   * <p>The shape mirrors {@code ParseTags}: Tier.* is lifted out of {@code tags[]} into
+   * {@code tier}, but its FQN is still included in {@code classificationTags} since it's
+   * sourced from a Classification — {@code ParseTags} iterates the original list to populate
+   * {@code classificationTags}, so the painless equivalent must do the same.
+   *
+   * <p>Important: {@code ctx._source.tier} is only overwritten when a Tier.* entry is actually
+   * found in {@code tags[]}. The reindex path already strips Tier out of {@code tags[]} into the
+   * dedicated {@code tier} field at index time, so docs touched by a tag-mutating painless almost
+   * never carry Tier in {@code tags[]}. Unconditionally assigning {@code tier = null} when no Tier
+   * was seen would wipe the live-indexed dedicated field.
+   */
+  String TAG_RESEPARATION_SCRIPT =
+      """
+      def newTags = new ArrayList();
+      def tier = null;
+      def classTags = new ArrayList();
+      def glossTags = new ArrayList();
+      if (ctx._source.containsKey('tags') && ctx._source.tags != null) {
+        for (def t : ctx._source.tags) {
+          if (t == null || !t.containsKey('tagFQN') || t.tagFQN == null) { continue; }
+          if (t.tagFQN.startsWith('Tier.')) {
+            tier = t;
+          } else {
+            newTags.add(t);
+          }
+          if (t.containsKey('source')) {
+            if (t.source == 'Classification') { classTags.add(t.tagFQN); }
+            else if (t.source == 'Glossary') { glossTags.add(t.tagFQN); }
+          }
+        }
+        ctx._source.tags = newTags;
+        if (tier != null) {
+          ctx._source.tier = tier;
+        }
+        ctx._source.classificationTags = classTags;
+        ctx._source.glossaryTags = glossTags;
+      }
+      """;
+
+  String REMOVE_TAGS_CHILDREN_SCRIPT =
+      "ctx._source.tags.removeIf(tag -> tag.tagFQN == params.fqn);" + TAG_RESEPARATION_SCRIPT;
 
   String REMOVE_DATA_PRODUCTS_CHILDREN_SCRIPT =
       "ctx._source.dataProducts.removeIf(product -> product.fullyQualifiedName == params.fqn)";
@@ -222,7 +270,8 @@ public interface SearchClient
           }
         }
       }
-      """;
+      """
+          + TAG_RESEPARATION_SCRIPT;
 
   String UPDATE_CLASSIFICATION_TAG_FQN_BY_PREFIX_SCRIPT =
       """
@@ -237,7 +286,8 @@ public interface SearchClient
           }
         }
       }
-      """;
+      """
+          + TAG_RESEPARATION_SCRIPT;
 
   String UPDATE_FQN_PREFIX_SCRIPT =
       """
@@ -267,7 +317,8 @@ public interface SearchClient
                       }
                     }
                   }
-                  """;
+                  """
+          + TAG_RESEPARATION_SCRIPT;
 
   String REMOVE_LINEAGE_SCRIPT =
       """
@@ -415,7 +466,8 @@ public interface SearchClient
 
         Collections.sort(uniqueTags, (o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN));
         ctx._source.tags = uniqueTags;
-        """;
+        """
+          + TAG_RESEPARATION_SCRIPT;
 
   String REMOVE_TEST_SUITE_CHILDREN_SCRIPT =
       "ctx._source.testSuites.removeIf(suite -> suite.id == params.suiteId)";
