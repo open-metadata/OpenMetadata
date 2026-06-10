@@ -18,7 +18,7 @@ on:
       e2e-tests:
         description: "E2E Tests to run"
         required: True
-        default: '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "python-unittests", "python-integration", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project", "exasol"]'
+        default: '["bigquery", "databricks", "unitycatalog", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "python-unittests", "python-integration", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project", "exasol"]'
       debug:
         description: "If Debugging the Pipeline, Slack and Sonar events won't be triggered [default, true or false]. Default will trigger only on main branch."
         required: False
@@ -45,7 +45,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        e2e-test: ${{ fromJSON(inputs.e2e-tests || '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "python-unittests", "python-integration", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project", "exasol"]') }}
+        e2e-test: ${{ fromJSON(inputs.e2e-tests || '["bigquery", "databricks", "unitycatalog", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "python-unittests", "python-integration", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project", "exasol"]') }}
     environment: test
 
     steps:
@@ -130,6 +130,12 @@ jobs:
         E2E_SNOWFLAKE_ACCOUNT: ${{ secrets.TEST_SNOWFLAKE_ACCOUNT }}
         E2E_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE_E2E }}
         E2E_SNOWFLAKE_WAREHOUSE: ${{ secrets.TEST_SNOWFLAKE_WAREHOUSE }}
+        E2E_DATABRICKS_HOST_PORT: ${{ secrets.E2E_DATABRICKS_HOST_PORT }}
+        E2E_DATABRICKS_HTTP_PATH: ${{ secrets.E2E_DATABRICKS_HTTP_PATH }}
+        E2E_DATABRICKS_TOKEN: ${{ secrets.E2E_DATABRICKS_TOKEN }}
+        E2E_DATABRICKS_EXTERNAL_LOCATION: ${{ secrets.E2E_DATABRICKS_EXTERNAL_LOCATION }}
+        E2E_UNITY_CATALOG_EXTERNAL_LOCATION: ${{ secrets.E2E_UNITY_CATALOG_EXTERNAL_LOCATION }}
+        E2E_UNITY_CATALOG_OWNER_EMAIL: ${{ secrets.E2E_UNITY_CATALOG_OWNER_EMAIL }}
         E2E_REDSHIFT_DBT_CATALOG_HTTP_FILE_PATH: ${{ secrets.E2E_REDSHIFT_DBT_CATALOG_HTTP_FILE_PATH }}
         E2E_REDSHIFT_DBT_MANIFEST_HTTP_FILE_PATH: ${{ secrets.E2E_REDSHIFT_DBT_MANIFEST_HTTP_FILE_PATH }}
         E2E_REDSHIFT_DBT_RUN_RESULTS_HTTP_FILE_PATH: ${{ secrets.E2E_REDSHIFT_DBT_RUN_RESULTS_HTTP_FILE_PATH }}
