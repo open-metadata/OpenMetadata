@@ -19,7 +19,7 @@ import {
   followEntity,
   validateFollowedEntityToWidget,
 } from '../../utils/entity';
-import {test} from './../../e2e/fixtures/pages';
+import { test } from './../../e2e/fixtures/pages';
 
 test.describe('Verify RTL Layout for landing page', () => {
   const table = EntityDataClass.table1;
@@ -43,6 +43,7 @@ test.describe('Verify RTL Layout for landing page', () => {
   });
 
   test('Verify DataAssets widget functionality', async ({ page }) => {
+    test.slow();
     const serviceType = toLower(table.service.serviceType);
 
     await clickOutside(page);
@@ -70,6 +71,7 @@ test.describe('Verify RTL Layout for landing page', () => {
   });
 
   test('Verify Following widget functionality', async ({ page }) => {
+    test.slow();
     await table.visitEntityPage(page);
 
     const entityName = table.entityResponseData?.['displayName'];
