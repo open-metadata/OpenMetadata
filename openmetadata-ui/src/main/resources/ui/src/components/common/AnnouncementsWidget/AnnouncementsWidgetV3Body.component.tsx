@@ -103,7 +103,7 @@ const AnnouncementsWidgetV3Body = ({
 
         {onViewAll && (
           <Button
-            color="tertiary"
+            color="link-color"
             data-testid="view-all-btn"
             size="sm"
             onClick={onViewAll}>
