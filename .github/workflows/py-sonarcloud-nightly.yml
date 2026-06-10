@@ -201,7 +201,7 @@ jobs:
         if: ${{ !cancelled() }}
         id: push-to-sonar
         continue-on-error: true
-        uses: SonarSource/sonarqube-scan-action@v7
+        uses: SonarSource/sonarqube-scan-action@v8
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
@@ -217,7 +217,7 @@ jobs:
 
       - name: Retry 'Push Results to Sonar'
         if: ${{ !cancelled() && steps.push-to-sonar.outcome != 'success' }}
-        uses: SonarSource/sonarqube-scan-action@v7
+        uses: SonarSource/sonarqube-scan-action@v8
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
