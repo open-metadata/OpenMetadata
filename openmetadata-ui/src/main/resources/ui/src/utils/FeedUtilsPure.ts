@@ -48,7 +48,7 @@ import { getTaskCounts } from '../rest/tasksAPI';
 import { getRelativeCalendar } from './date-time/DateTimeUtils';
 import EntityLink from './EntityLink';
 import entityUtilClassBase from './EntityUtilClassBase';
-import { ENTITY_LINK_SEPARATOR } from './EntityUtils';
+import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
 import Fqn from './Fqn';
 import { getPartialNameFromFQN, getPartialNameFromTableFQN } from './FqnUtils';
 import { t } from './i18next/LocalUtil';

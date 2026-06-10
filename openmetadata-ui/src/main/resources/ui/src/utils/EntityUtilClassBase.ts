@@ -77,23 +77,12 @@ import { patchTableDetails } from '../rest/tableAPI';
 import { patchClassification, patchTag } from '../rest/tagAPI';
 import { patchTeamDetail } from '../rest/teamsAPI';
 import { patchTopicDetails } from '../rest/topicsAPI';
-import { ExtraDatabaseDropdownOptions } from './Database/Database.util';
-import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDetailsUtils';
+import { ExtraDatabaseDropdownOptions } from './Database/DatabaseDropdownOptions';
+import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDropdownOptions';
 import { ExtraDatabaseServiceDropdownOptions } from './DatabaseServiceUtils';
 import { getEntityByFqnUtil } from './EntityByFqnUtils';
-import { EntityTypeName } from './EntityUtils';
-import {
-  FormattedAPIServiceType,
-  FormattedDashboardServiceType,
-  FormattedDatabaseServiceType,
-  FormattedDriveServiceType,
-  FormattedMessagingServiceType,
-  FormattedMetadataServiceType,
-  FormattedMlModelServiceType,
-  FormattedPipelineServiceType,
-  FormattedSearchServiceType,
-  FormattedStorageServiceType,
-} from './EntityUtils.interface';
+import { EntityTypeName } from './EntityNameUtils';
+import { FormattedAPIServiceType, FormattedDashboardServiceType, FormattedDatabaseServiceType, FormattedDriveServiceType, FormattedMessagingServiceType, FormattedMetadataServiceType, FormattedMlModelServiceType, FormattedPipelineServiceType, FormattedSearchServiceType, FormattedStorageServiceType } from './EntityUtils.interface';
 import Fqn from './Fqn';
 import { getKnowledgePagePath } from './KnowledgePageUtils';
 import {
@@ -118,7 +107,7 @@ import {
   getTestCaseDetailPagePath,
   getUserPath,
 } from './RouterUtils';
-import { ExtraTableDropdownOptions } from './TableUtils';
+import { ExtraTableDropdownOptions } from './TableDropdownOptions';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 
 type PatchAPIFunction = (id: string, patch: Operation[]) => Promise<unknown>;

@@ -38,7 +38,7 @@ import {
   CustomPrevArrow,
 } from '../../../../utils/CustomizableLandingPageUtils';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
-import { getDomainDisplayName } from '../../../../utils/EntityUtils';
+import { getDomainDisplayName } from '../../../../utils/EntityNameUtils';
 import { getRecentlyViewedData } from '../../../../utils/RecentActivityUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';

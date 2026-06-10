@@ -95,7 +95,8 @@ import { defaultFields as DatabaseSchemaFields } from './DatabaseSchemaDetailsUt
 import { defaultFields as DataModelFields } from './DataModelsUtils';
 import { defaultFieldsWithColumns as TableFields } from './DatasetDetailsUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
-import { ENTITY_LINK_SEPARATOR, getEntityName } from './EntityUtils';
+import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
+import { getEntityName } from './EntityNameUtils';
 import { getEntityFQNFromAbout, getEntityTypeFromAbout } from './FeedUtils';
 import { getPartialNameFromTableFQN } from './FqnUtils';
 import { getGlossaryBreadcrumbs } from './GlossaryUtils';

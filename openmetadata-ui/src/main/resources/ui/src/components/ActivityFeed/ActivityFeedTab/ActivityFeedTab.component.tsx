@@ -65,7 +65,7 @@ import { getFeedCount } from '../../../rest/feedsAPI';
 import { getTaskCounts, Task, TaskStatusGroup } from '../../../rest/tasksAPI';
 import { getCountBadge } from '../../../utils/EntityDisplayUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityUserLink } from '../../../utils/EntityUtils';
+import { getEntityUserLink } from '../../../utils/EntityPureUtils';
 import { getFeedCounts } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';

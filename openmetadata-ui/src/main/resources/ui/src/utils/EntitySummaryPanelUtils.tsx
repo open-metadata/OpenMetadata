@@ -69,7 +69,7 @@ import {
   type SummaryListItem,
 } from './EntitySummaryPanelPureUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
-import { getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
 import searchClassBase from './SearchClassBase';
 import { stringToHTML } from './StringUtils';

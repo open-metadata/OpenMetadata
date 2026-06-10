@@ -36,21 +36,19 @@ import {
   searchDataModelColumnsByFQN,
   updateDataModelColumn,
 } from '../../../../../rest/dataModelsAPI';
-import {
-  getColumnSorter,
-  getEntityName,
-} from '../../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
+import { getColumnSorter } from '../../../../../utils/EntitySortUtils';
 import { columnFilterIcon } from '../../../../../utils/TableColumn.util';
 import {
   getAllTags,
   searchTagInData,
 } from '../../../../../utils/TableTags/TableTags.utils';
+import { getTableExpandableConfig } from '../../../../../utils/TableUtils';
 import {
   getHighlightedRowClassName,
-  getTableExpandableConfig,
   pruneEmptyChildren,
   updateColumnInNestedStructure,
-} from '../../../../../utils/TableUtils';
+} from '../../../../../utils/TablePureUtils';
 import DisplayName from '../../../../common/DisplayName/DisplayName';
 import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';

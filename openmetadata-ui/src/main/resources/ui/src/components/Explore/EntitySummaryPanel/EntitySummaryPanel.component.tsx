@@ -98,10 +98,8 @@ import {
 } from '../../../rest/tableAPI';
 import { getTopicByFqn, patchTopicDetails } from '../../../rest/topicsAPI';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import {
-  DRAWER_NAVIGATION_OPTIONS,
-  getEntityLinkFromType,
-} from '../../../utils/EntityUtils';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../utils/EntityPureUtils';
+import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,

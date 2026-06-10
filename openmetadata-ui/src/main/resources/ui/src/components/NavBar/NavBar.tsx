@@ -65,7 +65,7 @@ import {
 } from '../../utils/BrowserNotificationUtils';
 import { getCustomPropertyEntityPathname } from '../../utils/CustomProperty.utils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getDomainDisplayName } from '../../utils/EntityUtils';
+import { getDomainDisplayName } from '../../utils/EntityNameUtils';
 import {
   getEntityFQN,
   getEntityType,

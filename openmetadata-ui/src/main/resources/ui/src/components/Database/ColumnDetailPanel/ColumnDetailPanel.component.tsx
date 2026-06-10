@@ -38,7 +38,7 @@ import { listTestCases } from '../../../rest/testAPI';
 import { calculateTestCaseStatusCounts } from '../../../utils/DataQuality/DataQualityUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { toEntityData } from '../../../utils/EntitySummaryPanelUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getErrorText, stringToHTML } from '../../../utils/StringUtils';
 import {
   buildColumnBreadcrumbPath,
@@ -48,7 +48,7 @@ import {
   getDataTypeDisplay,
   mergeTagsWithGlossary,
   normalizeTags,
-} from '../../../utils/TableUtils';
+} from '../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
 import DataQualitySection from '../../common/DataQualitySection/DataQualitySection';

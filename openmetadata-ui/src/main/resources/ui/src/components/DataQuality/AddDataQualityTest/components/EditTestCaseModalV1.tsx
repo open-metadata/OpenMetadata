@@ -58,10 +58,8 @@ import {
   updateTestCaseById,
 } from '../../../../rest/testAPI';
 import { createUpdatedTestCasePatch } from '../../../../utils/DataQuality/DataQualityUtils';
-import {
-  getColumnNameFromEntityLink,
-  getEntityName,
-} from '../../../../utils/EntityUtils';
+import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
 import {
   createScrollToErrorHandler,
@@ -71,7 +69,10 @@ import {
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import { isValidJSONString } from '../../../../utils/StringUtils';
 import { getFilterTags } from '../../../../utils/TableTags/TableTags.utils';
-import { getTagsWithoutTier, getTierTags } from '../../../../utils/TableUtils';
+import {
+  getTagsWithoutTier,
+  getTierTags,
+} from '../../../../utils/TablePureUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import AlertBar from '../../../AlertBar/AlertBar';
 import { EntityAttachmentProvider } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';

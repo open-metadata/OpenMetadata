@@ -118,11 +118,12 @@ import {
   getTopicVersions,
 } from '../../rest/topicsAPI';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
+import { getEntityBreadcrumbs } from '../../utils/EntityBreadcrumbPureUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import entityVersionClassBase from '../../utils/EntityVersionClassBase';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
-import { getTierTags } from '../../utils/TableUtils';
+import { getTierTags } from '../../utils/TablePureUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './EntityVersionPage.less';
 

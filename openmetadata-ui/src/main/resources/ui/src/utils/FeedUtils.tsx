@@ -34,11 +34,9 @@ import type { User } from '../generated/entity/teams/user';
 import { searchQuery } from '../rest/searchAPI';
 import { getRandomColor } from './ColorUtils';
 import { getEntityPlaceHolder } from './EntityDisplayUtils';
-import {
-  ENTITY_LINK_SEPARATOR,
-  getEntityBreadcrumbs,
-  getEntityName,
-} from './EntityUtils';
+import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
+import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
+import { getEntityName } from './EntityNameUtils';
 import { buildMentionLink } from './FeedUtilsPure';
 import { t, Transi18next } from './i18next/LocalUtil';
 import {

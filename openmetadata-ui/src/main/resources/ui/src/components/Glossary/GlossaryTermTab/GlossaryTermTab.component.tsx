@@ -91,10 +91,8 @@ import {
 } from '../../../rest/tasksAPI';
 import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { EntityStatusClass } from '../../../utils/EntityStatusUtils';
-import {
-  getEntityBulkEditPath,
-  getEntityName,
-} from '../../../utils/EntityUtils';
+import { getEntityBulkEditPath } from '../../../utils/EntityPureUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import Fqn from '../../../utils/Fqn';
 import {
   buildTree,

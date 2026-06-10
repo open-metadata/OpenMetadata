@@ -31,7 +31,8 @@ import {
   convertEntityReferencesToTagLabels,
   convertTagLabelsToEntityReferences,
 } from '../EntityReferenceUtils';
-import { ENTITY_LINK_SEPARATOR, getEntityName } from '../EntityUtils';
+import { ENTITY_LINK_SEPARATOR } from '../EntityPureUtils';
+import { getEntityName } from '../EntityNameUtils';
 
 export const getGlossaryTermWidgetFromKey = (widgetConfig: WidgetConfig) => {
   if (

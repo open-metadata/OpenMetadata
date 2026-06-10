@@ -18,11 +18,9 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as ClassificationIcon } from '../../../assets/svg/classification.svg';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
 import { TagSource } from '../../../generated/tests/testCase';
-import { getEntityName } from '../../../utils/EntityUtils';
-import {
-  getDataTypeString,
-  prepareConstraintIcon,
-} from '../../../utils/TableUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { prepareConstraintIcon } from '../../../utils/TableUtils';
+import { getDataTypeString } from '../../../utils/TablePureUtils';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import { FieldCardProps } from './FieldCard.interface';
 import './FieldCard.less';

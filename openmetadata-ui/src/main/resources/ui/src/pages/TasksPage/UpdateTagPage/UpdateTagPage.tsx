@@ -42,7 +42,7 @@ import {
   TaskPriority,
 } from '../../../rest/tasksAPI';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityFeedLink } from '../../../utils/EntityUtils';
+import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
 import {
   applyTaskFormSchemaDefaults,

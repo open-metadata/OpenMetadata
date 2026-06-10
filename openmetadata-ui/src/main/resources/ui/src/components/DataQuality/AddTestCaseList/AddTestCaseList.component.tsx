@@ -55,10 +55,8 @@ import {
   getSelectedOptionsFromKeys,
   parseColumnAggregateBuckets,
 } from '../../../utils/DataQuality/DataQualityUtils';
-import {
-  getColumnNameFromEntityLink,
-  getEntityName,
-} from '../../../utils/EntityUtils';
+import { getColumnNameFromEntityLink } from '../../../utils/EntityPureUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFQN } from '../../../utils/FeedUtils';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';

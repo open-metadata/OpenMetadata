@@ -54,7 +54,8 @@ import {
   getRemovedDiffElement,
   getTextDiff,
 } from './EntityDiffUtils';
-import { getEntityBreadcrumbs, getEntityName } from './EntityUtils';
+import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
+import { getEntityName } from './EntityNameUtils';
 import type {
   AssetsChildForVersionPages,
   TagLabelWithStatus,
@@ -62,7 +63,10 @@ import type {
 } from './EntityVersionUtils.interface';
 import { t } from './i18next/LocalUtil';
 import { isValidJSONString } from './StringUtils';
-import { getTagsWithoutTier, getTierTags } from './TableUtils';
+import {
+  getTagsWithoutTier,
+  getTierTags,
+} from './TablePureUtils';
 
 type EntityColumn = TableColumn | ContainerColumn | Field;
 

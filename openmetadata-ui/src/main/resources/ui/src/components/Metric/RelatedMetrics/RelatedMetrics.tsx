@@ -21,7 +21,7 @@ import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { Metric } from '../../../generated/entity/data/metric';
 import { EntityReference } from '../../../generated/type/entityReference';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityIcon } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';

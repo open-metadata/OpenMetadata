@@ -25,7 +25,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { getEntityLabel } from '../../../../utils/EntityUtils';
+import getEntityLabel from '../../../Entity/EntityLabel/EntityLabel.component';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';
 import Loader from '../../../common/Loader/Loader';

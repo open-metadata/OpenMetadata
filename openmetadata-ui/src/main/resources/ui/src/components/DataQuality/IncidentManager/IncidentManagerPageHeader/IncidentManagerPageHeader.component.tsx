@@ -39,10 +39,8 @@ import {
   transitionIncident,
   updateTestCaseIncidentById,
 } from '../../../../rest/incidentManagerAPI';
-import {
-  getColumnNameFromEntityLink,
-  getEntityName,
-} from '../../../../utils/EntityUtils';
+import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getCommonExtraInfoForVersionDetails } from '../../../../utils/EntityVersionUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
