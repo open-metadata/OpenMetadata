@@ -10,10 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Select, SelectProps, Space } from 'antd';
+import type {
+  PopoverProps,
+  SelectItemType,
+} from '@openmetadata/ui-core-components';
+import { Autocomplete } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { debounce, isArray, isString } from 'lodash';
-import { FC, useCallback, useMemo, useRef, useState } from 'react';
+import {
+  FC,
+  Key,
+  ReactNode,
+  UIEvent,
+  UIEventHandler,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -34,8 +49,16 @@ import {
   FetchOptionsResponse,
 } from './DataAssetAsyncSelectList.interface';
 
+const createPlaceholderOption = (fqn: string): DataAssetOption => ({
+  id: fqn,
+  label: fqn,
+  value: fqn,
+  reference: { fullyQualifiedName: fqn } as EntityReference,
+  displayName: fqn,
+});
+
 const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
-  mode,
+  multiple = false,
   autoFocus = true,
   onChange,
   debounceTimeout = 800,
@@ -44,17 +67,30 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   value: selectedValue,
   filterFqns = [],
   queryFilter,
+  popoverClassName: callerPopoverClassName,
+  popoverProps: callerPopoverProps,
   ...props
 }) => {
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const [currentPage, setCurrentPage] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasContentLoading, setHasContentLoading] = useState(false);
   const [options, setOptions] = useState<DataAssetOption[]>(
     initialOptions ?? []
   );
+  const [selectedItems, setSelectedItems] = useState<DataAssetOption[]>(
+    initialOptions ?? []
+  );
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [searchValue, setSearchValue] = useState<string>('');
-  const selectedDataAssetsRef = useRef<DataAssetOption[]>(initialOptions ?? []);
+  const hasInitiallyLoaded = useRef(false);
+  // Tracks all options ever seen so selected items survive option list changes
+  const knownOptionsRef = useRef<Map<string, DataAssetOption>>(
+    new Map(initialOptions?.map((opt) => [opt.value, opt]) ?? [])
+  );
+
+  const defaultQueryFilter = useMemo(
+    () => ({ query: { bool: { must_not: [{ match: { isBot: true } }] } } }),
+    []
+  );
 
   const fetchOptions = useCallback(
     async (
@@ -67,9 +103,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
         pageSize: PAGE_SIZE,
         searchIndex: searchIndex,
         // Filter out bots from user search
-        queryFilter: queryFilter ?? {
-          query: { bool: { must_not: [{ match: { isBot: true } }] } },
-        },
+        queryFilter: queryFilter ?? defaultQueryFilter,
       });
 
       const hits = dataAssetsResponse.hits.hits;
@@ -77,19 +111,25 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
 
       const dataAssets = hits.map(({ _source }) => {
         const entityName = getEntityName(_source);
+        const sourceType = (_source as { entityType: EntityType }).entityType;
         const entityRef = getEntityReferenceFromEntity(
           _source as EntityReference,
-          _source.entityType as EntityType
+          sourceType
         );
 
         return {
+          id: entityRef.fullyQualifiedName,
           label: entityName,
-          value: _source.fullyQualifiedName,
+          value: entityRef.fullyQualifiedName,
           reference: {
             ...entityRef,
           },
           displayName: entityName,
-          name: _source.name,
+          name: entityRef.name,
+          icon: searchClassBase.getEntityIcon(
+            entityRef.type,
+            'tw:text-sm tw:h-4'
+          ) as ReactNode,
         };
       });
 
@@ -100,173 +140,256 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
         },
       };
     },
-    [searchIndex, queryFilter]
+    [searchIndex, queryFilter, defaultQueryFilter]
   );
 
   const loadOptions = useCallback(
     async (value: string) => {
-      setOptions([]);
-      setIsLoading(true);
       try {
         const res = await fetchOptions(value, 1);
         setOptions(res.data);
         setSearchValue(value);
         setPaging(res.paging);
         setCurrentPage(1);
+        // Track all loaded options so selection survives option list changes
+        res.data.forEach((opt) => knownOptionsRef.current.set(opt.value, opt));
       } catch (error) {
         showErrorToast(error as AxiosError);
-      } finally {
-        setIsLoading(false);
       }
     },
     [fetchOptions]
   );
 
-  const optionList = useMemo(() => {
-    return options
-      .filter(
-        (op) => !filterFqns.includes(op.reference.fullyQualifiedName ?? '')
-      )
-      .map((option) => {
-        const { value, reference, displayName } = option;
+  const loadMoreOptions = useCallback(async () => {
+    if (isLoadingMore || options.length >= paging.total) {
+      return;
+    }
 
-        let label;
+    try {
+      setIsLoadingMore(true);
+      const res = await fetchOptions(searchValue, currentPage + 1);
+      setOptions((prev) => [...prev, ...res.data]);
+      setPaging(res.paging);
+      setCurrentPage((prev) => prev + 1);
+      res.data.forEach((opt) => knownOptionsRef.current.set(opt.value, opt));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [
+    isLoadingMore,
+    options.length,
+    paging.total,
+    fetchOptions,
+    searchValue,
+    currentPage,
+  ]);
+
+  const filteredOptions = useMemo(() => {
+    return options.filter(
+      (op) => !filterFqns.includes(op.reference.fullyQualifiedName ?? '')
+    );
+  }, [options, filterFqns]);
+
+  const debouncedSearch = useMemo(
+    () => debounce(loadOptions, debounceTimeout),
+    [loadOptions, debounceTimeout]
+  );
+
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [debouncedSearch]);
+
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      debouncedSearch(value);
+    },
+    [debouncedSearch]
+  );
+
+  const handleItemInserted = useCallback(
+    (key: Key) => {
+      const item = filteredOptions.find((opt) => opt.id === key);
+      if (!item) {
+        return;
+      }
+
+      if (multiple) {
+        setSelectedItems((prev) => {
+          if (prev.some((i) => i.id === item.id)) {
+            return prev;
+          }
+          const updatedSelection = [...prev, item];
+          onChange?.(updatedSelection);
+
+          return updatedSelection;
+        });
+      } else {
+        setSelectedItems([item]);
+        onChange?.(item);
+      }
+    },
+    [filteredOptions, multiple, onChange]
+  );
+
+  const handleItemCleared = useCallback(
+    (key: Key) => {
+      setSelectedItems((prev) => {
+        const updatedSelection = prev.filter((item) => item.id !== key);
+        if (multiple) {
+          onChange?.(updatedSelection);
+        } else {
+          onChange?.(updatedSelection[0] ?? null);
+        }
+
+        return updatedSelection;
+      });
+    },
+    [multiple, onChange]
+  );
+
+  useEffect(() => {
+    if (!selectedValue) {
+      setSelectedItems([]);
+
+      return;
+    }
+    if (isArray(selectedValue)) {
+      const arr = selectedValue as (string | DataAssetOption)[];
+      if (arr.length === 0) {
+        setSelectedItems([]);
+
+        return;
+      }
+      if (isString(arr[0])) {
+        // Array of FQN strings - resolve from knownOptionsRef or create placeholder
+        const items = (arr as string[]).map(
+          (val) =>
+            knownOptionsRef.current.get(val) ?? createPlaceholderOption(val)
+        );
+        setSelectedItems(items);
+      } else {
+        // Array of DataAssetOption objects
+        setSelectedItems(arr as DataAssetOption[]);
+      }
+    } else if (isString(selectedValue)) {
+      // Single FQN string - resolve from knownOptionsRef or create placeholder
+      const item =
+        knownOptionsRef.current.get(selectedValue) ??
+        createPlaceholderOption(selectedValue);
+      setSelectedItems([item]);
+    } else {
+      // Single DataAssetOption object
+      setSelectedItems([selectedValue]);
+    }
+  }, [selectedValue]);
+
+  useEffect(() => {
+    if (!hasInitiallyLoaded.current) {
+      hasInitiallyLoaded.current = true;
+      loadOptions('');
+    }
+  }, []);
+
+  const customPopoverClassName = useMemo(() => {
+    return `data-asset-async-select-popover ${callerPopoverClassName ?? ''}`;
+  }, [callerPopoverClassName]);
+
+  const handleNativeScroll: UIEventHandler<HTMLDivElement> = useCallback(
+    (e) => {
+      const target = e.currentTarget;
+      const scrollThreshold = 50;
+      const isNearBottom =
+        target.scrollHeight - target.scrollTop - target.clientHeight <
+        scrollThreshold;
+
+      if (isNearBottom) {
+        loadMoreOptions();
+      }
+    },
+    [loadMoreOptions]
+  );
+
+  const popoverProps = useMemo(() => {
+    const callerOnScroll = callerPopoverProps?.onScroll;
+
+    return {
+      ...callerPopoverProps,
+      onScroll: (e: UIEvent<HTMLElement>) => {
+        callerOnScroll?.(e);
+        handleNativeScroll(e as UIEvent<HTMLDivElement>);
+      },
+    } as Partial<PopoverProps>;
+  }, [callerPopoverProps, handleNativeScroll]);
+
+  return (
+    <Autocomplete
+      {...props}
+      autoFocus={autoFocus}
+      data-testid="asset-select-list"
+      items={filteredOptions}
+      multiple={multiple}
+      placeholder={props.placeholder}
+      popoverClassName={customPopoverClassName}
+      popoverProps={popoverProps}
+      selectedItems={selectedItems}
+      onItemCleared={handleItemCleared}
+      onItemInserted={handleItemInserted}
+      onSearchChange={handleSearchChange}>
+      {(item: SelectItemType) => {
+        const dataAssetItem = item as DataAssetOption;
+        const { reference, displayName, name } = dataAssetItem;
+
         if (
           searchIndex === SearchIndex.USER ||
           searchIndex === SearchIndex.TEAM ||
           reference.type === EntityType.USER ||
           reference.type === EntityType.TEAM
         ) {
-          label = (
-            <Space>
-              <ProfilePicture
-                className="d-flex"
-                isTeam={reference.type === EntityType.TEAM}
-                name={option.name ?? ''}
-                type="circle"
-                width="24"
-              />
-              <span className="m-l-xs" data-testid={getEntityName(option)}>
-                {getEntityName(option)}
-              </span>
-            </Space>
-          );
-        } else {
-          label = (
-            <div
-              className="d-flex items-center gap-2"
-              data-testid={`option-${value}`}>
-              <div className="flex-center data-asset-icon">
-                {searchClassBase.getEntityIcon(reference.type)}
-              </div>
-              <div className="d-flex flex-col">
-                <span className="text-grey-muted text-xs">
-                  {reference.type}
+          return (
+            <Autocomplete.Item
+              id={item.id}
+              key={item.id}
+              label={getEntityName(dataAssetItem)}>
+              <div className="tw:flex tw:items-center tw:gap-2">
+                <ProfilePicture
+                  className="d-flex"
+                  isTeam={reference.type === EntityType.TEAM}
+                  name={name ?? ''}
+                  type="circle"
+                  width="24"
+                />
+                <span data-testid={getEntityName(dataAssetItem)}>
+                  {getEntityName(dataAssetItem)}
                 </span>
-                <span className="font-medium truncate w-56">{displayName}</span>
               </div>
-            </div>
+            </Autocomplete.Item>
           );
         }
 
-        return { label, value, reference, displayName };
-      });
-  }, [options, searchIndex, filterFqns]);
+        const isLastItem =
+          filteredOptions[filteredOptions.length - 1]?.id === item.id;
 
-  const debounceFetcher = useMemo(
-    () => debounce(loadOptions, debounceTimeout),
-    [loadOptions, debounceTimeout]
-  );
-
-  const onScroll = async (e: React.UIEvent<HTMLDivElement>) => {
-    const { currentTarget } = e;
-    if (
-      currentTarget.scrollTop + currentTarget.offsetHeight ===
-      currentTarget.scrollHeight
-    ) {
-      if (options.length < paging.total) {
-        try {
-          setHasContentLoading(true);
-          const res = await fetchOptions(searchValue, currentPage + 1);
-          setOptions((prev) => [...prev, ...res.data]);
-          setPaging(res.paging);
-          setCurrentPage((prev) => prev + 1);
-        } catch (error) {
-          showErrorToast(error as AxiosError);
-        } finally {
-          setHasContentLoading(false);
-        }
-      }
-    }
-  };
-
-  const dropdownRender = (menu: React.ReactElement) => (
-    <>
-      {menu}
-      {hasContentLoading ? <Loader size="small" /> : null}
-    </>
-  );
-
-  const handleChange: SelectProps['onChange'] = (values: string[], options) => {
-    if (mode) {
-      const selectedOptions = (options as DataAssetOption[]).reduce(
-        (acc, option) => {
-          if (values.includes(option.value as string)) {
-            acc.push({ ...option, label: option.displayName });
-          }
-
-          return acc;
-        },
-        [] as DataAssetOption[]
-      );
-
-      selectedDataAssetsRef.current = selectedOptions;
-      onChange?.(selectedOptions);
-    } else {
-      onChange?.(options as DataAssetOption);
-    }
-  };
-
-  const handleBlur = useCallback(() => {
-    setCurrentPage(1);
-    setSearchValue('');
-    setOptions([]);
-  }, []);
-
-  const handleFocus = useCallback(() => {
-    loadOptions('');
-  }, []);
-
-  const internalValue = useMemo(() => {
-    if (isString(selectedValue) || isArray(selectedValue)) {
-      return selectedValue as string | string[];
-    }
-    const selectedOption = selectedValue as DataAssetOption;
-
-    return selectedOption?.value as string;
-  }, [mode, selectedValue]);
-
-  return (
-    <Select
-      allowClear
-      showSearch
-      autoFocus={autoFocus}
-      data-testid="asset-select-list"
-      dropdownRender={dropdownRender}
-      filterOption={false}
-      mode={mode}
-      notFoundContent={isLoading ? <Loader size="small" /> : null}
-      optionLabelProp="displayName"
-      options={optionList}
-      style={{ width: '100%' }}
-      value={internalValue}
-      onBlur={handleBlur}
-      onChange={handleChange}
-      onFocus={handleFocus}
-      onPopupScroll={onScroll}
-      onSearch={debounceFetcher}
-      {...props}
-    />
+        return (
+          <Autocomplete.Item
+            data-testid={`option-${item.id}`}
+            icon={item.icon}
+            id={item.id}
+            key={item.id}
+            label={displayName}
+            supportingText={reference.type}>
+            {isLoadingMore && isLastItem && (
+              <div className="tw:flex tw:justify-center tw:p-2">
+                <Loader size="small" />
+              </div>
+            )}
+          </Autocomplete.Item>
+        );
+      }}
+    </Autocomplete>
   );
 };
 

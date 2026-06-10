@@ -73,9 +73,9 @@ export const RelatedMetricsForm: FC<RelatedMetricsFormProps> = ({
         <Col className="gutter-row" span={24}>
           <Form.Item noStyle name="relatedMetrics">
             <DataAssetAsyncSelectList
+              multiple
               filterFqns={[metricFqn]}
               initialOptions={initialOptions}
-              mode="multiple"
               placeholder={t('label.related-metric-plural')}
               searchIndex={SearchIndex.METRIC}
             />

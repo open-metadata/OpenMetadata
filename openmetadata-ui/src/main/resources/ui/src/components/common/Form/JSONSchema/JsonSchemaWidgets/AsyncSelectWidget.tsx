@@ -12,11 +12,17 @@
  */
 import { WidgetProps } from '@rjsf/utils';
 import { SearchIndex } from '../../../../../enums/search.enum';
+import { getEntityName } from '../../../../../utils/EntityUtils';
 import DataAssetAsyncSelectList from '../../../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
 import { DataAssetOption } from '../../../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 
 const AsyncSelectWidget = ({ onChange, schema, ...props }: WidgetProps) => {
-  const handleChange = (value: DataAssetOption | DataAssetOption[]) => {
+  const handleChange = (value: DataAssetOption | DataAssetOption[] | null) => {
+    if (!value) {
+      onChange(undefined);
+
+      return;
+    }
     if (Array.isArray(value)) {
       const data = value.map((item: DataAssetOption) => item.reference);
       onChange(data);
@@ -26,11 +32,26 @@ const AsyncSelectWidget = ({ onChange, schema, ...props }: WidgetProps) => {
     }
   };
 
+  const entityRef = props?.value;
+  const resolvedFqn = entityRef?.fullyQualifiedName ?? entityRef?.id ?? '';
+  const initialOptions: DataAssetOption[] | undefined = entityRef
+    ? [
+        {
+          id: resolvedFqn,
+          label: getEntityName(entityRef),
+          value: resolvedFqn,
+          reference: entityRef,
+          displayName: getEntityName(entityRef),
+        },
+      ]
+    : undefined;
+
   return (
     <DataAssetAsyncSelectList
-      defaultValue={props?.value?.fullyQualifiedName ?? ''}
+      initialOptions={initialOptions}
       placeholder={schema.placeholder ?? ''}
       searchIndex={schema?.autoCompleteType ?? SearchIndex.TABLE}
+      value={entityRef?.fullyQualifiedName ?? undefined}
       onChange={handleChange}
     />
   );
