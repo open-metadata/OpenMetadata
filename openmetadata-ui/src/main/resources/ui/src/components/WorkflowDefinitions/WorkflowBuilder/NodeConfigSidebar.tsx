@@ -130,6 +130,7 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
   );
 
   useEffect(() => {
+    let cancelled = false;
     const assets = effectiveConfig.dataAssets ?? [];
     if (assets.length === 0) {
       setTriggerFields([]);
@@ -138,28 +139,34 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
       return;
     }
 
+    // allSettled so a failure of one request (or one asset) does not wipe the
+    // whole exclude-field list; each source degrades independently.
     Promise.all(
       assets.map((asset) =>
-        Promise.all([
+        Promise.allSettled([
           getWorkflowTriggerFieldsByEntityType(asset),
           getCustomPropertiesByEntityType(asset),
         ])
       )
-    )
-      .then((results) => {
-        setTriggerFields([...new Set(results.flatMap(([fields]) => fields))]);
-        setCustomPropertyFields([
-          ...new Set(
-            results.flatMap(([, properties]) =>
-              properties.map((p) => `extension.${p.name}`)
-            )
-          ),
-        ]);
-      })
-      .catch(() => {
-        setTriggerFields([]);
-        setCustomPropertyFields([]);
-      });
+    ).then((results) => {
+      if (cancelled) {
+        return;
+      }
+      const fields = results.flatMap(([trigger]) =>
+        trigger.status === 'fulfilled' ? trigger.value : []
+      );
+      const properties = results.flatMap(([, custom]) =>
+        custom.status === 'fulfilled' ? custom.value : []
+      );
+      setTriggerFields([...new Set(fields)]);
+      setCustomPropertyFields([
+        ...new Set(properties.map((p) => `extension.${p.name}`)),
+      ]);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [effectiveConfig.dataAssets]);
 
   const availableExcludeFields = useMemo(() => {

@@ -28,7 +28,12 @@ import org.slf4j.LoggerFactory;
  */
 public final class WorkflowTriggerFieldsRegistry {
   private static final Logger LOG = LoggerFactory.getLogger(WorkflowTriggerFieldsRegistry.class);
-  private static final String SCHEMA_PATH = "json/schema";
+  // Canonical entity-schema roots. Scanning all of json/schema would risk basename collisions
+  // (e.g. entity/feed/domain.json vs entity/domains/domain.json), so we limit to where the
+  // workflow-target entity schemas live.
+  private static final String[] SCHEMA_PATHS = {
+    "json/schema/entity", "json/schema/tests", "json/schema/dataInsight"
+  };
   private static final String TRIGGER_FIELDS_KEY = "workflowTriggerFields";
 
   private static volatile Map<String, Set<String>> triggerFieldsByEntityType;
@@ -69,7 +74,7 @@ public final class WorkflowTriggerFieldsRegistry {
   private static Map<String, Set<String>> scanSchemas() {
     Map<String, Set<String>> result = new ConcurrentHashMap<>();
     try (ScanResult scanResult =
-        new ClassGraph().acceptPaths(SCHEMA_PATH).enableMemoryMapping().scan()) {
+        new ClassGraph().acceptPaths(SCHEMA_PATHS).enableMemoryMapping().scan()) {
       for (Resource resource : scanResult.getResourcesWithExtension("json")) {
         readSchema(resource, result);
       }
@@ -83,8 +88,17 @@ public final class WorkflowTriggerFieldsRegistry {
   private static void readSchema(Resource resource, Map<String, Set<String>> result) {
     try (InputStream is = resource.open()) {
       JSONArray fields = new JSONObject(new JSONTokener(is)).optJSONArray(TRIGGER_FIELDS_KEY);
-      if (fields != null) {
-        result.put(entityTypeFromPath(resource.getPath()), toFieldSet(fields));
+      if (fields == null) {
+        return;
+      }
+      String entityType = entityTypeFromPath(resource.getPath());
+      Set<String> existing = result.putIfAbsent(entityType, toFieldSet(fields));
+      if (existing != null) {
+        LOG.error(
+            "Duplicate workflowTriggerFields for entity type '{}' (schema {}); keeping the first. "
+                + "Resolve the schema basename collision.",
+            entityType,
+            resource.getPath());
       }
     } catch (Exception e) {
       LOG.warn("Skipping schema {} while loading workflow trigger fields", resource.getPath(), e);
