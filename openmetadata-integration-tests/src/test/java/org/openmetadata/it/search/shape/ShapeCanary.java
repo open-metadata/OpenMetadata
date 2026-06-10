@@ -45,7 +45,8 @@ public final class ShapeCanary {
       result = new ShapeResult(verify(freshIndex, docId, probe), "");
     } catch (final Exception e) {
       // Intentional broad catch: the engine refuses an unindexable doc with varied exception types.
-      // We do NOT classify the cause — REJECTED plus the raw message is the honest, reliable signal.
+      // We do NOT classify the cause — REJECTED plus the raw message is the honest, reliable
+      // signal.
       result = new ShapeResult(Outcome.REJECTED, String.valueOf(e.getMessage()));
     } finally {
       shadowIndex.drop(freshIndex);
