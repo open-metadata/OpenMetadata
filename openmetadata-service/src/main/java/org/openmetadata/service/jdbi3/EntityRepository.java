@@ -406,15 +406,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   // Deferred L1 re-eviction. Backstops the nanosecond race where a loader's put lands after the
   // writer's inline invalidate. Daemon threads.
-  private static final ScheduledExecutorService L1_REPAIR_EXECUTOR =
-      Executors.newScheduledThreadPool(
-          2,
-          r -> {
-            // FQN: org.openmetadata.schema.entity.feed.Thread shadows the simple name here.
-            java.lang.Thread t = new java.lang.Thread(r, "entity-cache-l1-repair");
-            t.setDaemon(true);
-            return t;
-          });
+  private static volatile ScheduledExecutorService l1RepairExecutor = createL1RepairExecutor();
+
+  private static ScheduledExecutorService createL1RepairExecutor() {
+    return Executors.newScheduledThreadPool(
+        2,
+        r -> {
+          // FQN: org.openmetadata.schema.entity.feed.Thread shadows the simple name here.
+          java.lang.Thread t = new java.lang.Thread(r, "entity-cache-l1-repair");
+          t.setDaemon(true);
+          return t;
+        });
+  }
 
   private static final long L1_REPAIR_DELAY_MS = 500L;
 
@@ -425,7 +428,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       java.util.concurrent.ConcurrentHashMap.newKeySet();
 
   private static void scheduleL1Repair(String entityType, UUID id, String fqn, String originalFqn) {
-    if (entityType == null || L1_REPAIR_EXECUTOR.isShutdown()) {
+    ScheduledExecutorService executor = l1RepairExecutor;
+    if (entityType == null || executor.isShutdown()) {
       return;
     }
     // Include fqn so a rename within the delay window gets its own task instead of being
@@ -436,7 +440,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return;
     }
     try {
-      L1_REPAIR_EXECUTOR.schedule(
+      executor.schedule(
           () -> {
             // Clear at task start so a writer arriving during the invalidates re-schedules its
             // own task and gets the full delay-window backstop.
@@ -464,15 +468,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  public static synchronized void startL1RepairExecutor() {
+    if (l1RepairExecutor.isShutdown() || l1RepairExecutor.isTerminated()) {
+      PENDING_L1_REPAIRS.clear();
+      l1RepairExecutor = createL1RepairExecutor();
+    }
+  }
+
   public static void shutdownL1RepairExecutor() {
-    L1_REPAIR_EXECUTOR.shutdown();
+    ScheduledExecutorService executor = l1RepairExecutor;
+    executor.shutdown();
     try {
-      if (!L1_REPAIR_EXECUTOR.awaitTermination(2, TimeUnit.SECONDS)) {
-        L1_REPAIR_EXECUTOR.shutdownNow();
+      if (!executor.awaitTermination(2, TimeUnit.SECONDS)) {
+        executor.shutdownNow();
       }
     } catch (InterruptedException e) {
       java.lang.Thread.currentThread().interrupt();
-      L1_REPAIR_EXECUTOR.shutdownNow();
+      executor.shutdownNow();
+    } finally {
+      PENDING_L1_REPAIRS.clear();
     }
   }
 

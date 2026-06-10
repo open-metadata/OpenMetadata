@@ -1,17 +1,155 @@
-ALTER TABLE background_jobs
-  ADD COLUMN progress int DEFAULT 0,
-  ADD COLUMN total int DEFAULT 0,
-  ADD COLUMN result longtext,
-  ADD COLUMN error longtext,
-  ADD COLUMN message varchar(2048),
-  ADD COLUMN cancelRequested boolean DEFAULT false,
-  ADD COLUMN completedAt bigint;
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'background_jobs'
+        AND column_name = 'progress'
+    ),
+    'SELECT 1',
+    'ALTER TABLE background_jobs ADD COLUMN progress int DEFAULT 0'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
-CREATE INDEX idx_background_jobs_job_type_created_by
-  ON background_jobs (jobType, createdBy, createdAt);
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'background_jobs'
+        AND column_name = 'total'
+    ),
+    'SELECT 1',
+    'ALTER TABLE background_jobs ADD COLUMN total int DEFAULT 0'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
-CREATE INDEX idx_background_jobs_status_updated_at
-  ON background_jobs (status, updatedAt);
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'background_jobs'
+        AND column_name = 'result'
+    ),
+    'SELECT 1',
+    'ALTER TABLE background_jobs ADD COLUMN result longtext'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'background_jobs'
+        AND column_name = 'error'
+    ),
+    'SELECT 1',
+    'ALTER TABLE background_jobs ADD COLUMN error longtext'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'background_jobs'
+        AND column_name = 'message'
+    ),
+    'SELECT 1',
+    'ALTER TABLE background_jobs ADD COLUMN message varchar(2048)'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'background_jobs'
+        AND column_name = 'cancelRequested'
+    ),
+    'SELECT 1',
+    'ALTER TABLE background_jobs ADD COLUMN cancelRequested boolean DEFAULT false'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'background_jobs'
+        AND column_name = 'completedAt'
+    ),
+    'SELECT 1',
+    'ALTER TABLE background_jobs ADD COLUMN completedAt bigint'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'background_jobs'
+        AND index_name = 'idx_background_jobs_job_type_created_by'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_background_jobs_job_type_created_by ON background_jobs (jobType, createdBy, createdAt)'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'background_jobs'
+        AND index_name = 'idx_background_jobs_status_updated_at'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_background_jobs_status_updated_at ON background_jobs (status, updatedAt)'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 CREATE TABLE IF NOT EXISTS background_job_logs (
   logId varchar(36) NOT NULL,
@@ -49,11 +187,90 @@ CREATE TABLE IF NOT EXISTS intake_form_entity (
 -- buffer size") on large tables. `<table>_name_index(name)` (InnoDB appends the PK
 -- `id`) lets the cursor query run index-only instead. Covers entity tables that exist
 -- as of 1.13.1; tables introduced later get the index in their own migration.
-CREATE INDEX directory_entity_name_index ON directory_entity (name);
-CREATE INDEX drive_service_entity_name_index ON drive_service_entity (name);
-CREATE INDEX file_entity_name_index ON file_entity (name);
-CREATE INDEX spreadsheet_entity_name_index ON spreadsheet_entity (name);
-CREATE INDEX worksheet_entity_name_index ON worksheet_entity (name);
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'directory_entity'
+        AND index_name = 'directory_entity_name_index'
+    ),
+    'SELECT 1',
+    'CREATE INDEX directory_entity_name_index ON directory_entity (name)'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'drive_service_entity'
+        AND index_name = 'drive_service_entity_name_index'
+    ),
+    'SELECT 1',
+    'CREATE INDEX drive_service_entity_name_index ON drive_service_entity (name)'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'file_entity'
+        AND index_name = 'file_entity_name_index'
+    ),
+    'SELECT 1',
+    'CREATE INDEX file_entity_name_index ON file_entity (name)'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'spreadsheet_entity'
+        AND index_name = 'spreadsheet_entity_name_index'
+    ),
+    'SELECT 1',
+    'CREATE INDEX spreadsheet_entity_name_index ON spreadsheet_entity (name)'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'worksheet_entity'
+        AND index_name = 'worksheet_entity_name_index'
+    ),
+    'SELECT 1',
+    'CREATE INDEX worksheet_entity_name_index ON worksheet_entity (name)'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 -- learning_resource_entity is intentionally omitted: its `name` is varchar(3072),
 -- which exceeds MySQL's 3072-byte index key limit (utf8mb4), and the table is small
 -- enough that the reindex cursor sort is not a concern.
