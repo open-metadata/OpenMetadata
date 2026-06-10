@@ -25,7 +25,6 @@ import ContextCenterHeader from '../../../components/ContextCenter/ContextCenter
 import ContextKnowledgePillarCard from '../../../components/ContextCenter/ContextKnowledgePillarCard/ContextKnowledgePillarCard.component';
 import NeedsAttentionSection from '../../../components/ContextCenter/NeedsAttentionSection/NeedsAttentionSection.component';
 import UploadDocumentModal from '../../../components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
-import { UploadedDocumentItem } from '../../../components/ContextCenter/UploadedDocumentCard/UploadedDocumentCard.interface';
 import {
   QuickLinkFormModal,
   QuickLinkFormModalFormData,
@@ -55,10 +54,7 @@ import {
   postKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import {
-  contextFileToUploadedDocumentItem,
-  createArticleKnowledgePage,
-} from '../../../utils/ContextCenterUtils';
+import { createArticleKnowledgePage } from '../../../utils/ContextCenterUtils';
 import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -75,7 +71,7 @@ const ContextCenterDashboardPage: FC = () => {
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
   const [articles, setArticles] = useState<KnowledgePage[]>([]);
   const [articlesCount, setArticlesCount] = useState(0);
-  const [documents, setDocuments] = useState<UploadedDocumentItem[]>([]);
+  const [documents, setDocuments] = useState<ContextFile[]>([]);
   const [documentsCount, setDocumentsCount] = useState(0);
   const [folderCount, setFolderCount] = useState(0);
   const [memories, setMemories] = useState<
@@ -158,7 +154,7 @@ const ContextCenterDashboardPage: FC = () => {
         limit: RECENT_DASHBOARD_DOCUMENTS_LIMIT,
       });
       setDocumentsCount(response.paging.total ?? response.data.length);
-      setDocuments(response.data.map(contextFileToUploadedDocumentItem));
+      setDocuments(response.data);
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
@@ -222,10 +218,7 @@ const ContextCenterDashboardPage: FC = () => {
   ]);
 
   const handleUploaded = useCallback((newFiles: ContextFile[]) => {
-    setDocuments((prev) => [
-      ...newFiles.map(contextFileToUploadedDocumentItem),
-      ...prev,
-    ]);
+    setDocuments((prev) => [...newFiles, ...prev]);
   }, []);
 
   const articlesRecentItems = useMemo(
@@ -242,12 +235,13 @@ const ContextCenterDashboardPage: FC = () => {
 
   const documentsRecentItems = useMemo(
     () =>
-      documents.map((d) => {
-        const metaParts = [d.updatedBy, getRelativeTime(d.updatedAt)].filter(
-          Boolean
-        );
+      documents.map((doc) => {
+        const metaParts = [
+          doc.updatedBy,
+          getRelativeTime(doc.updatedAt),
+        ].filter(Boolean);
 
-        return { title: d.name, meta: metaParts.join(' · ') };
+        return { title: getEntityName(doc), meta: metaParts.join(' · ') };
       }),
     [documents]
   );

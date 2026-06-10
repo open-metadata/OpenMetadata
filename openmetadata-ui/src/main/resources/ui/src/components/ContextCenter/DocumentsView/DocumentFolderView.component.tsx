@@ -25,14 +25,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
+import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { Folder } from '../../../generated/entity/data/folder';
 import { deleteFolder, listFolders } from '../../../rest/assetAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import CreateFolderModal from '../CreateFolderModal/CreateFolderModal.component';
-import { DocFile } from './DocumentsView.interface';
 
 export interface DocumentFolderViewProps {
-  files?: DocFile[];
+  files?: ContextFile[];
   selectedFolderId?: string;
   onSelectFolder: (folderId: string | undefined) => void;
   onFoldersLoaded?: (folders: Folder[]) => void;
@@ -156,7 +156,7 @@ const DocumentFolderView = ({
               {folders.map((folder) => {
                 const isSelected = selectedFolderId === folder.id;
                 const folderFiles = files.filter(
-                  (f) => f.folderId === folder.id
+                  (file) => file.folder?.id === folder.id
                 );
 
                 return (
@@ -212,7 +212,7 @@ const DocumentFolderView = ({
                           className="tw:ml-7!"
                           showExpandIcon={false}>
                           <FileIcon
-                            className="tw:size-5"
+                            className="tw:size-5 tw:shrink-0"
                             theme="light"
                             type={file.fileExtension ?? ''}
                             variant="default"

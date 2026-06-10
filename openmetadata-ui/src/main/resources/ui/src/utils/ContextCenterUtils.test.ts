@@ -15,7 +15,6 @@ import { ROUTES } from '../constants/constants';
 import { PageType } from '../interface/knowledge-center.interface';
 import { downloadDriveFile } from '../rest/assetAPI';
 import {
-  assetToDocumentItem,
   formatBytes,
   handleAssetDownload,
   knowledgePageToArticleItem,
@@ -53,30 +52,6 @@ describe('formatBytes', () => {
 
   it('should format MB correctly', () => {
     expect(formatBytes(5 * 1024 * 1024)).toBe('5.0 MB');
-  });
-});
-
-describe('assetToDocumentItem', () => {
-  it('should transform ContextFile into UploadedDocumentItem', () => {
-    const asset = {
-      id: '1',
-      name: 'sample.pdf',
-      displayName: 'sample.pdf',
-      fileExtension: 'pdf',
-      fileSize: 2048,
-      updatedAt: 1778756959299,
-      updatedBy: 'admin',
-    };
-
-    expect(assetToDocumentItem(asset as any)).toEqual({
-      fileExtension: 'pdf',
-      id: '1',
-      name: 'sample.pdf',
-      sizeLabel: '2.0 KB',
-      status: 'processed',
-      updatedAt: 1778756959299,
-      updatedBy: 'admin',
-    });
   });
 });
 
