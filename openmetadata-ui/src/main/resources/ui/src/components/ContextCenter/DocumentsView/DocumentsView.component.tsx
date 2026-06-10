@@ -34,7 +34,7 @@ import {
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import React, { FC, useMemo, useState } from 'react';
+import { FC, useMemo, useState } from 'react';
 import { SubmenuTrigger } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
@@ -249,10 +249,7 @@ const ListHeader: FC<ListHeaderProps> = ({
     return (
       <Box
         align="center"
-        className={
-          'tw:px-4 tw:py-2.5 tw:border-b tw:border-blue-100 tw:bg-blue-50 ' +
-          'tw:sticky tw:top-0 tw:z-10'
-        }
+        className="tw:px-4 tw:h-12 tw:shrink-0 tw:border-b tw:border-blue-100 tw:bg-blue-50"
         gap={2}>
         <Typography
           className="tw:text-blue-700"
@@ -315,10 +312,7 @@ const ListHeader: FC<ListHeaderProps> = ({
   return (
     <Box
       align="center"
-      className={
-        'tw:px-4 tw:py-3 tw:border-b tw:border-secondary ' +
-        'tw:sticky tw:top-0 tw:z-10 tw:bg-primary'
-      }>
+      className="tw:px-4 tw:h-12 tw:shrink-0 tw:border-b tw:border-secondary tw:bg-primary">
       <Typography className="tw:text-gray-500" size="text-xs" weight="semibold">
         {count} {t('label.file-plural').toLowerCase()}
       </Typography>
@@ -362,7 +356,7 @@ const FileRow: FC<FileRowProps> = ({
   return (
     <Box
       align="center"
-      className={`tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:cursor-pointer tw:transition-colors tw:duration-100 ${isActive ? 'tw:bg-blue-50' : 'tw:bg-primary hover:tw:bg-gray-25'
+      className={`tw:relative tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:cursor-pointer tw:transition-colors tw:duration-100 ${isActive ? 'tw:bg-blue-50' : 'tw:bg-primary hover:tw:bg-gray-25'
         }`}
       data-testid={`document-row-${file.id}`}
       gap={4}
@@ -516,7 +510,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
       )}
       data-testid="documents-view">
       {data.length > 0 || isLoading ? (
-        <Box className="tw:flex-1 tw:overflow-y-auto" direction="col">
+        <Box className="tw:flex-1 tw:min-h-0 tw:overflow-hidden" direction="col">
           {!isLoading && (
             <ListHeader
               count={data.length}
@@ -528,26 +522,28 @@ const DocumentsView: FC<DocumentsViewProps> = ({
               onClear={handleClear}
             />
           )}
-          {isLoading ? (
-            <DocumentViewLoading />
-          ) : (
-            data.map((file) => (
-              <FileRow
-                canDelete={canDelete}
-                file={file}
-                folders={folders}
-                isActive={previewFileId === file.id}
-                isSelected={selectedIds?.has(file.id)}
-                key={file.id}
-                onDeleteFile={onDeleteFile}
-                onDownload={onDownload}
-                onFileMoved={onFileMoved}
-                onPreview={onPreview}
-                onSelectFile={onSelectFile}
-                onShareFile={onShareFile}
-              />
-            ))
-          )}
+          <Box className="tw:flex-1 tw:overflow-y-auto tw:min-h-0" direction="col">
+            {isLoading ? (
+              <DocumentViewLoading />
+            ) : (
+              data.map((file) => (
+                <FileRow
+                  canDelete={canDelete}
+                  file={file}
+                  folders={folders}
+                  isActive={previewFileId === file.id}
+                  isSelected={selectedIds?.has(file.id)}
+                  key={file.id}
+                  onDeleteFile={onDeleteFile}
+                  onDownload={onDownload}
+                  onFileMoved={onFileMoved}
+                  onPreview={onPreview}
+                  onSelectFile={onSelectFile}
+                  onShareFile={onShareFile}
+                />
+              ))
+            )}
+          </Box>
         </Box>
       ) : (
         <Box align="center" className="tw:flex-1 tw:p-12" justify="center">

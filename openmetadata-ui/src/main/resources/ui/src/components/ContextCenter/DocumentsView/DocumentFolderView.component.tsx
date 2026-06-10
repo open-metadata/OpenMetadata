@@ -212,7 +212,7 @@ const DocumentFolderView = ({
                           className="tw:ml-7!"
                           showExpandIcon={false}>
                           <FileIcon
-                            className="tw:size-5"
+                            className="tw:size-5 tw:shrink-0"
                             theme="light"
                             type={file.fileExtension ?? ''}
                             variant="default"

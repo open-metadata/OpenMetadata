@@ -226,7 +226,7 @@ const ContextCenterDocumentsPage: FC = () => {
             ? ({
                 ...d,
                 folder: { ...d.folder, id: targetFolderId, type: d.folder?.type ?? 'folder' },
-              } as ContextFile)
+              })
             : d
         )
       );
@@ -319,7 +319,6 @@ const ContextCenterDocumentsPage: FC = () => {
   const handleBulkMove = useCallback(
     async (targetFolderId: string) => {
       const filesToMove = allDocuments.filter((d) => selectedIds.has(d.id));
-      const targetFolder = folderOptions.find((f) => f.id === targetFolderId);
 
       const results = await Promise.allSettled(
         filesToMove.map((f) =>
@@ -342,8 +341,7 @@ const ContextCenterDocumentsPage: FC = () => {
 
           return {
             ...d,
-            folderId: targetFolderId,
-            folderName: targetFolder?.name,
+            folder: { ...d.folder, id: targetFolderId, type: d.folder?.type ?? 'folder' },
           };
         })
       );
@@ -369,7 +367,7 @@ const ContextCenterDocumentsPage: FC = () => {
         );
       }
     },
-    [allDocuments, selectedIds, folderOptions, t]
+    [allDocuments, selectedIds, t]
   );
 
   return (
