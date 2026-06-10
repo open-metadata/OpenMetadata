@@ -33,7 +33,8 @@
         "MicroStrategyDataset",
         "ThoughtSpotDataModel",
         "SapS4HanaCdsView",
-        "SsrsDataModel"
+        "SsrsDataModel",
+        "SapBw4HanaQuery"
       ],
       "javaEnums": [
         {
@@ -86,6 +87,9 @@
         },
         {
           "name": "SsrsDataModel"
+        },
+        {
+          "name": "SapBw4HanaQuery"
         }
       ]
     }
