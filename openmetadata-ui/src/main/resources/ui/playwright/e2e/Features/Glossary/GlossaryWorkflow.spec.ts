@@ -81,6 +81,11 @@ test.beforeEach(async ({ page }) => {
 test.describe('Term Status Transitions', () => {
   const glossaryNoReviewers = new Glossary();
   const glossaryWithReviewer = new Glossary();
+  // Only the empty-description branch of GlossaryApprovalWorkflow lands a
+  // reviewer-gated term in Draft. The Add Term modal validates description as
+  // required, so the Draft fixture is seeded via API in beforeAll.
+  const draftTerm = new GlossaryTerm(glossaryWithReviewer);
+  draftTerm.data.description = '';
 
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -101,6 +106,8 @@ test.describe('Term Status Transitions', () => {
         },
       },
     ]);
+
+    await draftTerm.create(apiContext);
 
     await afterAction();
   });
@@ -149,41 +156,49 @@ test.describe('Term Status Transitions', () => {
     await expect(statusBadge).toHaveText('Approved');
   });
 
-  test('should start term as Draft when glossary has reviewers', async ({
+  test('should keep term as Draft when description is empty and glossary has reviewers', async ({
     page,
   }) => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossaryWithReviewer.data.displayName);
 
-    // Click add term button
+    const termRow = page.locator(
+      `[data-row-key*="${draftTerm.responseData.name}"]`
+    );
+
+    await expect(termRow).toBeVisible();
+    await expect(termRow.locator('.status-badge')).toHaveText('Draft');
+  });
+
+  test('should settle term at In Review when glossary has reviewers and description is filled', async ({
+    page,
+  }) => {
+    await sidebarClick(page, SidebarItem.GLOSSARY);
+    await selectActiveGlossary(page, glossaryWithReviewer.data.displayName);
+
     await openAddGlossaryTermModal(page);
 
-    // Fill in term details
-    const termName = `DraftTerm${Date.now()}`;
+    const termName = `InReviewTerm${Date.now()}`;
     await page.fill('[data-testid="name"]', termName);
-    await page.locator(descriptionBox).fill('Test description for draft');
+    await page.locator(descriptionBox).fill('Test description for in review');
 
-    // Submit the term
     const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
     await page.click('[data-testid="save-glossary-term"]');
     await createResponse;
 
-    // Wait for modal to close
     await expect(
       page.locator('[role="dialog"].edit-glossary-modal')
     ).not.toBeVisible();
 
-    // Wait for the table to update
-
-    // Check the term shows in the table with Draft status
     const termRow = page.locator(`[data-row-key*="${termName}"]`);
 
     await expect(termRow).toBeVisible();
-
-    // Look for status badge - should be Draft
-    const statusBadge = termRow.locator('.status-badge');
-
-    await expect(statusBadge).toHaveText('Draft');
+    await expect(async () => {
+      await page.reload();
+      await expect(termRow.locator('.status-badge')).toHaveText('In Review', {
+        timeout: 2000,
+      });
+    }).toPass({ timeout: 20000 });
   });
 
   // T-C18: Create term - inherits glossary reviewers
