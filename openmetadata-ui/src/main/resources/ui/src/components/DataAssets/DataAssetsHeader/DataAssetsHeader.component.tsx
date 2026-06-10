@@ -134,7 +134,6 @@ export const DataAssetsHeader = ({
   badge,
   isDqAlertSupported = false,
   isCustomizedView = false,
-  canCreateTask = false,
   disableRunAgentsButton = true,
   afterTriggerAction,
   isAutoPilotWorkflowStatusLoading = false,
