@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Alert } from '@openmetadata/ui-core-components';
 import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
@@ -57,7 +56,6 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
-import { useDataAccessRequest } from '../../../hooks/useDataAccessRequest';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import {
   AnnouncementEntity,
@@ -85,7 +83,6 @@ import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServiceUtils';
 import tableClassBase from '../../../utils/TableClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
-import { getDarButtonTooltip } from '../../../utils/TasksUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Certification from '../../Certification/Certification.component';
@@ -165,17 +162,6 @@ export const DataAssetsHeader = ({
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
   const { entityRules } = useEntityRules(entityType);
   const [dataContract, setDataContract] = useState<DataContract>();
-  const [isRequestDataAccessOpen, setIsRequestDataAccessOpen] = useState(false);
-  const {
-    isDarDisabled,
-    isDarAwaitingGrant,
-    isDarGranted,
-    refetch: refetchExistingDar,
-  } = useDataAccessRequest({
-    entityFqn: dataAsset.fullyQualifiedName,
-    enabled: entityType === EntityType.TABLE,
-  });
-
   const fetchDataContract = async (entityId: string) => {
     try {
       const contract = await getContractByEntityId(entityId, entityType);
@@ -593,44 +579,6 @@ export const DataAssetsHeader = ({
     permissions.Trigger,
   ]);
 
-  const requestDataAccessButton = useMemo(() => {
-    if (
-      !tableClassBase.getShowRequestDataAccess() ||
-      entityType !== EntityType.TABLE ||
-      deleted ||
-      !canCreateTask
-    ) {
-      return null;
-    }
-
-    const tooltipTitle = getDarButtonTooltip(
-      isDarDisabled,
-      isDarGranted,
-      isDarAwaitingGrant,
-      t
-    );
-
-    return (
-      <Tooltip title={tooltipTitle}>
-        <Button
-          className="source-url-button font-semibold"
-          data-testid="request-data-access-button"
-          disabled={isDarDisabled}
-          onClick={() => setIsRequestDataAccessOpen(true)}>
-          {t('label.request-data-access')}
-        </Button>
-      </Tooltip>
-    );
-  }, [
-    entityType,
-    deleted,
-    isDarDisabled,
-    isDarAwaitingGrant,
-    isDarGranted,
-    canCreateTask,
-    t,
-  ]);
-
   useEffect(() => {
     if (dataAsset.id) {
       fetchDataContract(dataAsset.id);
@@ -643,15 +591,9 @@ export const DataAssetsHeader = ({
         className="data-assets-header-container"
         data-testid="data-assets-header"
         gutter={[0, 20]}>
-        {isDarAwaitingGrant && (
-          <Col span={24}>
-            <Alert
-              data-testid="dar-awaiting-grant-banner"
-              title={t('label.data-access-request-awaiting-grant')}
-              variant="brand">
-              {t('message.data-access-request-awaiting-grant-message')}
-            </Alert>
-          </Col>
+        {tableClassBase.getRequestDataAccessBanner(
+          dataAsset.fullyQualifiedName ?? '',
+          entityType
         )}
         <Col
           className={classNames('d-flex flex-col gap-3 ', {
@@ -742,7 +684,13 @@ export const DataAssetsHeader = ({
                       </Typography.Link>
                     </Tooltip>
                   )}
-                  {requestDataAccessButton}
+                  {tableClassBase.getRequestDataAccessButton(
+                    dataAsset.fullyQualifiedName ?? '',
+                    entityName,
+                    entityType,
+                    !!deleted,
+                    canCreateTask
+                  )}
                   <ManageButton
                     isAsyncDelete
                     afterDeleteAction={afterDeleteAction}
@@ -952,14 +900,6 @@ export const DataAssetsHeader = ({
         />
       )}
 
-      {tableClassBase.getRequestDataAccessDrawer(
-        isRequestDataAccessOpen,
-        () => setIsRequestDataAccessOpen(false),
-        dataAsset.fullyQualifiedName ?? '',
-        getEntityName(dataAsset),
-        entityType,
-        refetchExistingDar
-      )}
     </>
   );
 };
