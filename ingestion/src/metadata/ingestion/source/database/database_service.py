@@ -735,7 +735,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                     entity_type=Table,
                     entity_source_state=self.database_source_state,
                     mark_deleted_entity=self.source_config.markDeletedTables,
-                    params={"database": schema_fqn},
+                    params={"databaseSchema": schema_fqn},
                 )
 
     def mark_stored_procedures_as_deleted(self):
