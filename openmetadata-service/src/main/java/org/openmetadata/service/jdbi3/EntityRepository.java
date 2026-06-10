@@ -349,18 +349,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
           CacheConfiguration.DEFAULT_ENTITY_CACHE_MAX_SIZE_BYTES,
           CacheConfiguration.DEFAULT_ENTITY_CACHE_TTL_SECONDS);
 
-  /**
-   * Per-entity write-epoch counters. Each writer that invalidates L1 also bumps the entity's
-   * epoch; each loader records the epoch at load start and re-reads it at load end. A mismatch
-   * means a writer ran during the load, and the loader throws {@link LoaderRaceException} so
-   * Guava skips caching its stale return value (Guava's {@link LoadingCache} otherwise puts a
-   * returning loader's value into L1 even if {@code invalidate()} was called during the load —
-   * documented behavior, and the root mechanism of the stale-after-update flakes the
-   * postgres-elasticsearch-redis CI variant catches). Bounded Guava caches so memory stays
-   * proportional to the L1 cache rather than to total entity count over time; eviction is
-   * tolerable because an evicted-then-re-fetched epoch only widens the race window for the next
-   * load, not for any load already in-flight against the prior epoch slot.
-   */
+  // Per-entity write-epoch counters. Writers increment; loaders capture at start and re-check
+  // at end. Mismatch means a write raced the load — loader throws LoaderRaceException so Guava
+  // skips caching its stale return value. Bounded so memory tracks the L1 working set.
   private static final Cache<Pair<String, UUID>, AtomicLong> WRITE_EPOCH_BY_ID =
       CacheBuilder.newBuilder().maximumSize(200_000).expireAfterAccess(5, TimeUnit.MINUTES).build();
 
@@ -384,17 +375,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .get(new ImmutablePair<>(entityType, id), AtomicLong::new)
             .incrementAndGet();
       } catch (ExecutionException e) {
-        // AtomicLong::new cannot throw; signature-mandated catch. Log so a future runtime
-        // surprise (e.g. interrupted thread during get()) isn't silently swallowed.
         LOG.debug("Unexpected epoch-bump failure for type={} id={}", entityType, id, e);
       }
     }
     if (fqn != null) {
-      // quoteFqn entity repositories (Glossary, Team, User, Classification, etc.) quote the FQN
-      // before the loader records its epoch (`fqn = quoteFqn ? quoteName(fqn) : fqn;` at the top
-      // of findByName). Writers pass the entity's stored FQN which may not be in the same form,
-      // so bump both raw and quoted variants — the loader's read will match one of them. Bumping
-      // a no-op variant is harmless (~50ns AtomicLong increment).
+      // findByName quotes the input fqn for quoteFqn entities (Glossary, Team, User, ...) before
+      // the loader records its epoch; writers pass the stored fqn which may differ. Bump both
+      // forms so the loader's read matches one.
       bumpNameEpoch(cacheNameKey(entityType, fqn), entityType, fqn);
       String quoted = quoteName(fqn);
       if (!quoted.equals(fqn)) {
@@ -411,36 +398,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  /**
-   * Thrown by a cache loader that detected a concurrent write during its load. Guava swallows
-   * normal exceptions from loaders into {@link UncheckedExecutionException}; {@code find()} /
-   * {@code findByName()} catch this specific cause and re-read through the explicit-bypass path
-   * instead of returning the stale loaded value. This is internal to the cache layer — never
-   * propagated to API callers.
-   */
   static final class LoaderRaceException extends RuntimeException {
     LoaderRaceException(String message) {
       super(message);
     }
   }
 
-  /**
-   * Daemon-thread scheduler for deferred L1 re-invalidations. Backstops the rare nanosecond race
-   * window between a cache loader's end-of-load epoch check passing and Guava's internal put
-   * landing: a writer that bumps the epoch + invalidates L1 inside that window can have its
-   * inline invalidate beaten by the loader's put, leaving L1 poisoned. The deferred invalidate
-   * runs after every loader could plausibly have finished, wiping any such poison. Two threads
-   * are sufficient — the tasks are pure local map evictions, no I/O. Daemon threads so the JVM
-   * shuts down cleanly without an explicit close; production lifecycle owners (Dropwizard
-   * managed objects) can call {@link #shutdownL1RepairExecutor} during graceful shutdown if
-   * they want to wait for in-flight repairs.
-   */
+  // Deferred L1 re-eviction. Backstops the nanosecond race where a loader's put lands after the
+  // writer's inline invalidate. Daemon threads.
   private static final ScheduledExecutorService L1_REPAIR_EXECUTOR =
       Executors.newScheduledThreadPool(
           2,
           r -> {
-            // FQN java.lang.Thread because org.openmetadata.schema.entity.feed.Thread is also
-            // imported elsewhere in this file and the simple name resolves to it.
+            // FQN: org.openmetadata.schema.entity.feed.Thread shadows the simple name here.
             java.lang.Thread t = new java.lang.Thread(r, "entity-cache-l1-repair");
             t.setDaemon(true);
             return t;
@@ -448,19 +418,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private static final long L1_REPAIR_DELAY_MS = 500L;
 
-  /**
-   * Schedule a deferred L1 eviction for {@code (entityType, id, fqn, originalFqn)} {@value
-   * #L1_REPAIR_DELAY_MS}ms after the writer's inline invalidate. Closes the loader-vs-writer
-   * race: a loader whose end-of-load epoch check passed (so {@link #bumpWriteEpoch} hadn't run
-   * yet at check time) but whose Guava-internal put has not yet landed will land its stale value
-   * AFTER the writer's inline invalidate. The delay is comfortably longer than any plausible
-   * loader execution (L2 + DB + JSON parse, all sub-100ms in practice), so by the time this task
-   * fires the racing loader's put has either already happened (caught here) or never will (the
-   * loader threw on its epoch check). Idempotent — repeated calls for the same key just do
-   * repeat no-op invalidates.
-   */
+  // Coalescing guard. Without this, bulk writes can enqueue thousands of pending repair tasks
+  // per key (one per write). One pending task per key is sufficient to evict any racing loader's
+  // put — repeated bumps within the delay window collapse to a single eviction.
+  private static final java.util.Set<Object> PENDING_L1_REPAIRS =
+      java.util.concurrent.ConcurrentHashMap.newKeySet();
+
   private static void scheduleL1Repair(String entityType, UUID id, String fqn, String originalFqn) {
     if (entityType == null || L1_REPAIR_EXECUTOR.isShutdown()) {
+      return;
+    }
+    Object coalesceKey = id != null ? new ImmutablePair<>(entityType, id) : entityType + "|" + fqn;
+    if (!PENDING_L1_REPAIRS.add(coalesceKey)) {
       return;
     }
     try {
@@ -477,28 +446,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, originalFqn));
               }
             } catch (RuntimeException e) {
-              // Guava L1 invalidate is pure local-map work and shouldn't throw, but defensively
-              // catch RuntimeException so a freak event-loop exception doesn't kill the daemon
-              // thread (the executor would survive — ScheduledThreadPoolExecutor logs and keeps
-              // going — but the next-scheduled task would still benefit from us not propagating).
               LOG.debug(
                   "Deferred L1 repair failed for type={} id={} fqn={}", entityType, id, fqn, e);
+            } finally {
+              PENDING_L1_REPAIRS.remove(coalesceKey);
             }
           },
           L1_REPAIR_DELAY_MS,
           TimeUnit.MILLISECONDS);
     } catch (RejectedExecutionException e) {
-      // Pool rejection (shutdown race, queue overflow) is non-fatal — Fix B epoch check still
-      // catches the common case and the L1 TTL is the ultimate backstop.
+      // Submission rejected — clear the coalescing marker so the next write can re-schedule.
+      PENDING_L1_REPAIRS.remove(coalesceKey);
       LOG.debug("Failed to schedule L1 repair type={} id={}", entityType, id, e);
     }
   }
 
-  /**
-   * Graceful shutdown hook for the L1 repair executor. Optional — daemon threads will be killed
-   * on JVM exit anyway. Call from a Dropwizard {@code Managed.stop()} if you want to drain
-   * in-flight repair tasks before shutdown.
-   */
   public static void shutdownL1RepairExecutor() {
     L1_REPAIR_EXECUTOR.shutdown();
     try {
@@ -1684,20 +1646,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
           && notFoundCache != null
           && readEpochById(cacheKey) != 0L
           && notFoundCache.isMarkedNotFoundById(entityType, id)) {
-        // L1 hit, but the negative-cache marker says this entity is deleted. The marker is
-        // set post-commit by the delete path; if we reach here it means a concurrent
-        // EntityLoaderWithId race poisoned L1 with the pre-delete state AFTER the writer's
-        // invalidate ran (Guava's LoadingCache puts the loader's return value into L1 even if
-        // invalidate() was called during the load — documented behavior). Without this check
-        // the stale L1 entry shadows the marker until the L1 TTL expires (default 30 s), and
-        // the writer's two invalidate passes are insufficient under load (see the comment in
-        // {@link #delete}'s post-commit invalidate block).
-        //
-        // Gated on a non-zero write-epoch so the common, uncontended case keeps the zero-Redis
-        // L1 fast path. {@link #bumpWriteEpoch} (called by every writer) is what makes the
-        // epoch non-zero, so the gate only opens for keys a writer has ever touched — exactly
-        // the population where the race can occur. The earlier unconditional shape was
-        // reverted precisely because it paid a Redis GET on EVERY L1 hit.
+        // Stale L1 from a racing loader after a delete — marker says gone, evict and 404.
+        // Epoch gate skips the Redis GET on keys no writer has touched.
         CACHE_WITH_ID.invalidate(cacheKey);
         throw new EntityNotFoundException(entityNotFound(entityType, id));
       }
@@ -1731,8 +1681,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // causes are rethrown unchanged.
       Throwable cause = e.getCause();
       if (cause instanceof LoaderRaceException) {
-        // The loader detected a concurrent write and refused to cache its stale value. Re-read
-        // through the explicit-bypass path so the response reflects the freshly-committed state.
         return find(id, include, false);
       }
       if (cause instanceof EntityNotFoundException notFound) {
@@ -2288,9 +2236,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (!fromCache) {
       // Explicit cache bypass — checking the negative cache before the DB still saves the
       // DB hit on a known-missing entity. (Same reasoning as find(UUID, …).)
+      String bypassCanonicalFqn = cacheNameKey(entityType, fqn).getRight();
       if (include == NON_DELETED
           && notFoundCache != null
-          && notFoundCache.isMarkedNotFoundByName(entityType, fqn)) {
+          && notFoundCache.isMarkedNotFoundByName(entityType, bypassCanonicalFqn)) {
         throw new EntityNotFoundException(entityNotFound(entityType, fqn));
       }
       CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
@@ -2300,7 +2249,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       if (entity == null) {
         if (include == NON_DELETED && notFoundCache != null) {
-          notFoundCache.markNotFoundByName(entityType, fqn);
+          notFoundCache.markNotFoundByName(entityType, bypassCanonicalFqn);
         }
         throw new EntityNotFoundException(entityNotFound(entityType, fqn));
       }
@@ -2314,9 +2263,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Hot path — L1 Guava first, NotFoundCache only on L1 miss. Same shape as find(UUID,…).
     try {
       Pair<String, String> cacheKey = cacheNameKey(entityType, fqn);
-      // Canonical FQN for marker lookups: cacheNameKey lowercases USER FQNs so a mixed-case
-      // delete (writer keys the marker off the canonical form) is observable from a mixed-case
-      // read here. Using the raw `fqn` would miss markers across case variants.
+      // cacheNameKey lowercases USER FQNs; use the canonical form on both marker reads and
+      // writes so mixed-case lookups observe markers set by canonical-form writes.
       String canonicalFqn = cacheKey.getRight();
       String cachedJson = CACHE_WITH_NAME.getIfPresent(cacheKey);
       if (cachedJson == null) {
@@ -2332,10 +2280,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           && notFoundCache != null
           && readEpochByName(cacheKey) != 0L
           && notFoundCache.isMarkedNotFoundByName(entityType, canonicalFqn)) {
-        // L1 hit but marker is set — racing loader poisoned L1 after the delete's invalidate.
-        // See find(UUID,…) for the full rationale; mirror it here so by-name reads honor the
-        // post-commit marker even when the L1 entry is from a pre-delete read race. Gated on
-        // non-zero write-epoch so uncontended reads keep the zero-Redis fast path.
+        // Stale L1 from a racing loader after a delete — marker says gone, evict and 404.
         CACHE_WITH_NAME.invalidate(cacheKey);
         throw new EntityNotFoundException(entityNotFound(entityType, fqn));
       }
@@ -2349,17 +2294,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       return entity;
     } catch (ExecutionException | UncheckedExecutionException e) {
-      // Only negative-cache when the cause is genuinely "entity doesn't exist". Transient
-      // failures (DB timeout, deserialization error) must not poison the cache for 30s and
-      // must not be masked as 404s — same reasoning as the find(UUID, …) path above.
       Throwable cause = e.getCause();
       if (cause instanceof LoaderRaceException) {
-        // Loader saw a concurrent write — re-read through the explicit-bypass path.
         return findByName(fqn, include, false);
       }
       if (cause instanceof EntityNotFoundException notFound) {
         if (include == NON_DELETED && notFoundCache != null) {
-          notFoundCache.markNotFoundByName(entityType, fqn);
+          notFoundCache.markNotFoundByName(entityType, cacheNameKey(entityType, fqn).getRight());
         }
         throw notFound;
       }
@@ -3338,13 +3279,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (entityType == null || id == null) {
       return;
     }
-    // Bump the per-entity write-epoch so a concurrent cache loader's end-of-load check observes
-    // the increment and refuses to poison L1 with the pre-write state.
     bumpWriteEpoch(entityType, id, fqn);
-    // Guava L1 always cleared inline — it is a local map eviction, not a network round trip, and
-    // the rare uncached read path may have populated it even for UNCACHED_ENTITY_TYPES.
+    // Guava L1 always cleared inline — local map eviction, not a network round trip.
     CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
-    // Backstop the nanosecond race window where a loader's put can land after this invalidate.
     scheduleL1Repair(entityType, id, fqn, null);
     if (fqn != null) {
       CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
@@ -4826,17 +4763,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   void invalidate(T entity) {
-    // Bump the write-epoch first so any in-flight cache loader's end-of-load check sees the
-    // new value and refuses to populate L1 with the pre-write state.
     bumpWriteEpoch(entityType, entity.getId(), entity.getFullyQualifiedName());
     CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));
     CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, entity.getFullyQualifiedName()));
     RequestEntityCache.invalidate(entityType, entity.getId(), entity.getFullyQualifiedName());
-
-    // Backstop the nanosecond race between this inline invalidate and a Guava loader's put.
     scheduleL1Repair(entityType, entity.getId(), entity.getFullyQualifiedName(), null);
-
-    // Also invalidate Redis cache
     invalidateCache(entity);
   }
 
@@ -10126,10 +10057,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       EntityRepository.this.writeThroughCache(updated, true);
       RequestEntityCache.invalidate(entityType, id, fqn);
 
-      // Backstop: schedule a deferred L1 re-eviction after the inline invalidate completes.
-      // Closes the nanosecond race where a loader's end-of-load epoch check passes (so Fix B
-      // doesn't catch it) and its Guava-internal put lands AFTER our inline invalidate above.
-      // The deferred task wipes any such poison once every plausible loader has finished.
       scheduleL1Repair(entityType, id, fqn, originalFqn);
 
       var pubsub = CacheBundle.getCacheInvalidationPubSub();
@@ -10465,10 +10392,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   static class EntityLoaderWithName extends CacheLoader<Pair<String, String>, String> {
     @Override
     public @NonNull String load(@NotNull Pair<String, String> fqnPair) {
-      // Race guard: capture the write-epoch BEFORE we start loading and re-check after we have
-      // the json. If a writer ran between these two reads, our loaded value reflects the pre-write
-      // state and must NOT be cached — throw {@link LoaderRaceException} so Guava skips the put,
-      // and {@code findByName()} retries through the explicit-bypass path.
+      // Race guard — epoch mismatch means a writer ran during the load; throw so Guava skips
+      // caching the now-stale value and find() re-reads via the bypass path.
       long startEpoch = readEpochByName(fqnPair);
       String json = loadInternal(fqnPair);
       if (readEpochByName(fqnPair) != startEpoch) {
