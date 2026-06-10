@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
  * databases/schemas/tables/columns with it), so only roots are tracked and deleted. Best-effort:
  * failures are logged, never thrown, so cleanup never fails a green test.
  */
-final class NamespaceCleanup {
+public final class NamespaceCleanup {
 
   private static final Logger LOG = LoggerFactory.getLogger(NamespaceCleanup.class);
 
@@ -42,7 +42,7 @@ final class NamespaceCleanup {
 
   private NamespaceCleanup() {}
 
-  static void deleteRoots(final List<EntityRoot> roots) {
+  public static void deleteRoots(final List<EntityRoot> roots) {
     if (roots.isEmpty()) {
       return;
     }
