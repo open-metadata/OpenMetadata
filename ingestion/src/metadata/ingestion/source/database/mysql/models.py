@@ -25,6 +25,7 @@ DEFAULT_STORED_PROC_LANGUAGE = Language.SQL
 
 STORED_PROC_LANGUAGE_MAP = {
     "SQL": Language.SQL,
+    "EXTERNAL": Language.External,
 }
 
 STORED_PROC_TYPE_MAP = {
