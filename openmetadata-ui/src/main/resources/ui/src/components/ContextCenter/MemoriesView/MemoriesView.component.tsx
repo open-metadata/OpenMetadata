@@ -298,11 +298,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
             }}
           />
           <CopyLinkButton className="tw:w-7 tw:h-7" url={memoryUrl}>
-            <Copy06
-              aria-hidden="true"
-              size={17}
-              strokeWidth={1.8}
-            />
+            <Copy06 aria-hidden="true" size={17} strokeWidth={1.8} />
           </CopyLinkButton>
           {canActOnMemory && onEditMemory && (
             <Tooltip title={t('label.edit')}>

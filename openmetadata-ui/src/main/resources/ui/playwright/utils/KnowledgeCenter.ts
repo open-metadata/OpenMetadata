@@ -219,9 +219,13 @@ export const createQuickLink = async (
     modal.getByRole('heading', { name: 'Add Quick Link' })
   ).toBeVisible();
 
-  await modal.locator('[data-testid="displayName"] input').fill(data.displayName);
+  await modal
+    .locator('[data-testid="displayName"] input')
+    .fill(data.displayName);
   await modal.locator('[data-testid="url"] input').fill(data.url);
-  await modal.locator('[data-testid="description"] textarea').fill(data.description);
+  await modal
+    .locator('[data-testid="description"] textarea')
+    .fill(data.description);
 
   const assetInput = modal.locator(
     '[data-testid="related-entities-container"] input[role="combobox"]'
@@ -235,7 +239,7 @@ export const createQuickLink = async (
   ).toBeVisible();
 
   await page.getByRole('option', { name: dataAsset.entity.name }).click();
-  await page.keyboard.press('Escape')
+  await page.keyboard.press('Escape');
 
   await modal.getByRole('button', { name: 'Save' }).click();
 };
@@ -321,8 +325,8 @@ export const updateQuickLink = async (
   ).toBeVisible();
 
   await page.getByRole('option', { name: knowledgePageQuickLink.tag }).click();
-  await page.keyboard.press('Escape')
-  
+  await page.keyboard.press('Escape');
+
   await modal.getByRole('button', { name: 'Save' }).click();
 
   await readQuickLink(page, {

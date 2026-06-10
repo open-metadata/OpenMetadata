@@ -15,8 +15,8 @@ import {
   Tooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
 import { Check } from '@untitledui/icons';
+import classNames from 'classnames';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClipboard } from '../../hooks/useClipBoard';

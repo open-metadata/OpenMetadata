@@ -30,14 +30,13 @@ import {
   Copy06,
   Download01,
   Pin02,
-  Trash01
+  Trash01,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { FC, useMemo, useState } from 'react';
 import { SubmenuTrigger } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -46,6 +45,7 @@ import { formatBytes } from '../../../utils/ContextCenterUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import {
   DocumentsViewProps,
   FileActionsProps,
@@ -339,7 +339,9 @@ const FileRow: FC<FileRowProps> = ({
     useMemo(() => {
       const params = new URLSearchParams(window.location.search);
       params.set('document', file.id);
-      const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+      const url = `${window.location.origin}${
+        window.location.pathname
+      }?${params.toString()}`;
 
       return {
         folderName: getEntityName(file.folder),
@@ -451,13 +453,9 @@ const FileRow: FC<FileRowProps> = ({
             />
           </TooltipTrigger>
         </Tooltip>
-         <CopyLinkButton className="tw:w-8 tw:h-8" url={rowUrl}>
-            <Copy06
-              aria-hidden="true"
-              size={20}
-              strokeWidth={1.8}
-            />
-          </CopyLinkButton>
+        <CopyLinkButton className="tw:w-8 tw:h-8" url={rowUrl}>
+          <Copy06 aria-hidden="true" size={20} strokeWidth={1.8} />
+        </CopyLinkButton>
         <FileActions
           canDelete={canDelete}
           file={file}

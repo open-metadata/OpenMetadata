@@ -233,19 +233,28 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
     try {
       const response = await searchGlossaryTerms(searchText);
       const hits = response?.hits?.hits ?? [];
-      const options = hits.map((hit: { _source: { fullyQualifiedName?: string; displayName?: string; name?: string; description?: string } }) => {
-        const source = hit._source;
+      const options = hits.map(
+        (hit: {
+          _source: {
+            fullyQualifiedName?: string;
+            displayName?: string;
+            name?: string;
+            description?: string;
+          };
+        }) => {
+          const source = hit._source;
 
-        return mapTagLabelToSelectItem({
-          labelType: LabelType.Manual,
-          source: TagSource.Glossary,
-          state: State.Confirmed,
-          tagFQN: source.fullyQualifiedName ?? '',
-          displayName: source.displayName,
-          name: source.name,
-          description: source.description,
-        });
-      });
+          return mapTagLabelToSelectItem({
+            labelType: LabelType.Manual,
+            source: TagSource.Glossary,
+            state: State.Confirmed,
+            tagFQN: source.fullyQualifiedName ?? '',
+            displayName: source.displayName,
+            name: source.name,
+            description: source.description,
+          });
+        }
+      );
 
       setGlossaryOptions(options);
     } catch {
@@ -544,9 +553,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
               form={form}
               onSubmit={form.handleSubmit(handleFormSubmit)}>
               {getField(displayNameField)}
-              <div>
-                {getField(urlField)}
-              </div>
+              <div>{getField(urlField)}</div>
               {getField(descriptionField)}
               {getField(tagsField)}
               {getField(glossaryTermsField)}

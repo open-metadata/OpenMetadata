@@ -189,7 +189,9 @@ jest.mock('utils/EntityUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation((entity) => entity?.displayName ?? ''),
-  getEntityReferenceFromEntity: jest.fn().mockImplementation((entity) => entity),
+  getEntityReferenceFromEntity: jest
+    .fn()
+    .mockImplementation((entity) => entity),
 }));
 
 jest.mock('utils/TableUtils', () => ({
