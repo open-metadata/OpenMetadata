@@ -57,6 +57,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.handlers.IncidentTcrsSyncHandler;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -99,13 +100,14 @@ public class TaskRepository extends EntityRepository<Task> {
       List.of(TaskEntityStatus.Open, TaskEntityStatus.InProgress, TaskEntityStatus.Pending);
 
   /**
-   * Statuses in which a task is still "active" (non-terminal): work can still progress. Every other
-   * status — Rejected, Revoked, Completed, Cancelled, Failed, and any future status such as Expired
-   * — is terminal and frees the user to file a new Data Access Request for the same entity. Must
-   * stay in sync with the canonical {@code CreateTask.isTerminalTaskStatus} predicate and the
-   * {@code active} status group in {@link ListFilter}.
+   * Statuses for which a task is still live (non-terminal): work can still progress. Approved and
+   * Granted are intermediate stages in multi-stage approval/grant workflows, not terminal states.
+   * Every other status — Rejected, Revoked, Completed, Cancelled, Failed, and any future status
+   * such as Expired — is terminal and frees the creator to file a new Data Access Request for the
+   * same entity. Must stay in sync with the canonical {@code CreateTask.isTerminalTaskStatus}
+   * predicate and the {@code active} status group in {@link ListFilter}.
    */
-  public static final List<TaskEntityStatus> ACTIVE_TASK_STATUSES =
+  public static final List<TaskEntityStatus> NON_TERMINAL_TASK_STATUSES =
       List.of(
           TaskEntityStatus.Open,
           TaskEntityStatus.InProgress,
@@ -113,8 +115,8 @@ public class TaskRepository extends EntityRepository<Task> {
           TaskEntityStatus.Approved,
           TaskEntityStatus.Granted);
 
-  private static final List<String> ACTIVE_TASK_STATUS_VALUES =
-      ACTIVE_TASK_STATUSES.stream().map(TaskEntityStatus::value).toList();
+  private static final List<String> NON_TERMINAL_TASK_STATUS_VALUES =
+      NON_TERMINAL_TASK_STATUSES.stream().map(TaskEntityStatus::value).toList();
 
   public TaskRepository() {
     super(
@@ -366,7 +368,7 @@ public class TaskRepository extends EntityRepository<Task> {
   /**
    * Enforce the business rule that a user may have only one active Data Access Request per target
    * entity. A request is "active" while it is non-terminal
-   * ({@link #ACTIVE_TASK_STATUS_VALUES}); creation is rejected when the same creator already has an
+   * ({@link #NON_TERMINAL_TASK_STATUS_VALUES}); creation is rejected when the same creator already has an
    * active request for the same entity, regardless of the entry point used to submit it.
    */
   private void validateNoDuplicateActiveDataAccessRequest(Task task) {
@@ -398,7 +400,7 @@ public class TaskRepository extends EntityRepository<Task> {
                 entityFqn,
                 TaskEntityType.DataAccessRequest.value(),
                 createdById.toString(),
-                ACTIVE_TASK_STATUS_VALUES);
+                NON_TERMINAL_TASK_STATUS_VALUES);
     return json == null ? null : JsonUtils.readValue(json, Task.class);
   }
 
@@ -1162,6 +1164,30 @@ public class TaskRepository extends EntityRepository<Task> {
       return null;
     }
     return hydrateStoredTask(JsonUtils.readValue(json, Task.class));
+  }
+
+  /**
+   * Reads the task straight from the database (bypassing the entity cache) so callers observe the
+   * latest committed state rather than a possibly-stale cached snapshot. Returns null if the task
+   * does not exist.
+   */
+  public Task findCommittedTask(UUID taskId) {
+    try {
+      return dao.findEntityById(taskId, Include.ALL);
+    } catch (EntityNotFoundException e) {
+      return null;
+    }
+  }
+
+  public List<Task> listNonTerminalTasksByEntityAndCategory(
+      String entityFqn, TaskCategory category) {
+    return daoCollection
+        .taskDAO()
+        .listByAboutAndCategoryAndStatuses(
+            entityFqn, category.value(), NON_TERMINAL_TASK_STATUS_VALUES)
+        .stream()
+        .map(json -> hydrateStoredTask(JsonUtils.readValue(json, Task.class)))
+        .toList();
   }
 
   public Task hydrateStoredTask(Task task) {
