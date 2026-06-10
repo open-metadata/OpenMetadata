@@ -1,6 +1,7 @@
 package org.openmetadata.service.secrets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -171,6 +172,13 @@ public class SecretsManagerLifecycleTest {
     assertEquals(
         exception.getMessage(),
         String.format("Key [%s] not found in in-memory secrets manager", secretName));
+  }
+
+  @Test
+  void isNotFoundExceptionIsSpecificToMissingKeys() {
+    assertFalse(
+        secretsManager.isNotFoundException(new SecretsManagerException("a real backend failure")),
+        "a generic SecretsManagerException must not be classified as a missing key");
   }
 
   @Test
