@@ -2314,11 +2314,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Hot path — L1 Guava first, NotFoundCache only on L1 miss. Same shape as find(UUID,…).
     try {
       Pair<String, String> cacheKey = cacheNameKey(entityType, fqn);
+      // Canonical FQN for marker lookups: cacheNameKey lowercases USER FQNs so a mixed-case
+      // delete (writer keys the marker off the canonical form) is observable from a mixed-case
+      // read here. Using the raw `fqn` would miss markers across case variants.
+      String canonicalFqn = cacheKey.getRight();
       String cachedJson = CACHE_WITH_NAME.getIfPresent(cacheKey);
       if (cachedJson == null) {
         if (include == NON_DELETED
             && notFoundCache != null
-            && notFoundCache.isMarkedNotFoundByName(entityType, fqn)) {
+            && notFoundCache.isMarkedNotFoundByName(entityType, canonicalFqn)) {
           throw new EntityNotFoundException(entityNotFound(entityType, fqn));
         }
         try (var ignored = phase("cacheGet")) {
@@ -2327,7 +2331,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       } else if (include == NON_DELETED
           && notFoundCache != null
           && readEpochByName(cacheKey) != 0L
-          && notFoundCache.isMarkedNotFoundByName(entityType, fqn)) {
+          && notFoundCache.isMarkedNotFoundByName(entityType, canonicalFqn)) {
         // L1 hit but marker is set — racing loader poisoned L1 after the delete's invalidate.
         // See find(UUID,…) for the full rationale; mirror it here so by-name reads honor the
         // post-commit marker even when the L1 entry is from a pre-delete read race. Gated on
