@@ -1538,6 +1538,8 @@ public class EventSubscriptionResource
     }
   }
 
+  private static final String ALL_RESOURCE_NAME = "all";
+
   public static List<FilterResourceDescriptor> getNotificationsFilterDescriptors()
       throws IOException {
     List<NotificationResourceDescriptor> entityNotificationDescriptors =
@@ -1547,19 +1549,39 @@ public class EventSubscriptionResource
         getDescriptorsFromFile("FilterFunctionsDescriptor.json", EventFilterRule.class).stream()
             .collect(
                 Collectors.toMap(EventFilterRule::getName, eventFilterRule -> eventFilterRule));
-    return entityNotificationDescriptors.stream()
-        .map(
-            descriptor -> {
-              List<EventFilterRule> rules =
-                  descriptor.getSupportedFilters().stream()
-                      .map(operation -> functions.get(operation.value()))
-                      .filter(Objects::nonNull)
-                      .toList();
-              return new FilterResourceDescriptor()
-                  .withName(descriptor.getName())
-                  .withSupportedFilters(rules);
-            })
-        .toList();
+    List<FilterResourceDescriptor> descriptors =
+        entityNotificationDescriptors.stream()
+            .map(
+                descriptor -> {
+                  List<EventFilterRule> rules =
+                      descriptor.getSupportedFilters().stream()
+                          .map(operation -> functions.get(operation.value()))
+                          .filter(Objects::nonNull)
+                          .toList();
+                  return new FilterResourceDescriptor()
+                      .withName(descriptor.getName())
+                      .withSupportedFilters(rules)
+                      .withContainerEntities(descriptor.getContainerEntities());
+                })
+            .toList();
+    setAllResourceContainerEntities(descriptors);
+    return descriptors;
+  }
+
+  // The "all" source spans every entity type, so its container entities are the union of every
+  // source's container entities — letting the UI scope an Entity FQN filter to descendants.
+  private static void setAllResourceContainerEntities(List<FilterResourceDescriptor> descriptors) {
+    List<String> unionContainerEntities =
+        descriptors.stream()
+            .map(FilterResourceDescriptor::getContainerEntities)
+            .filter(Objects::nonNull)
+            .flatMap(List::stream)
+            .distinct()
+            .toList();
+    descriptors.stream()
+        .filter(descriptor -> ALL_RESOURCE_NAME.equals(descriptor.getName()))
+        .findFirst()
+        .ifPresent(descriptor -> descriptor.setContainerEntities(unionContainerEntities));
   }
 
   private ResultList<TypedEvent> fetchEventRecords(

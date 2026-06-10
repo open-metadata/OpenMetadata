@@ -231,6 +231,13 @@ const AddNotificationPage = () => {
     [entityFunctions, selectedTrigger]
   );
 
+  const containerEntities = useMemo(
+    () =>
+      entityFunctions.find((resource) => resource.name === selectedTrigger)
+        ?.containerEntities,
+    [entityFunctions, selectedTrigger]
+  );
+
   const shouldShowFiltersSection = useMemo(
     () => (selectedTrigger ? !isEmpty(supportedFilters) : true),
     [selectedTrigger, supportedFilters]
@@ -373,6 +380,7 @@ const AddNotificationPage = () => {
                               </Col>
                               <Col span={24}>
                                 <ObservabilityFormFiltersItem
+                                  containerEntities={containerEntities}
                                   supportedFilters={supportedFilters}
                                 />
                               </Col>

@@ -58,6 +58,7 @@ import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
 import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
 import { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
 import TeamAndUserSelectItem from '../../components/Alerts/DestinationFormItem/TeamAndUserSelectItem/TeamAndUserSelectItem';
+import FQNListSelect from '../../components/Alerts/FQNListSelect/FQNListSelect.component';
 import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
 import {
   DATA_CONTRACT_STATUS_OPTIONS,
@@ -208,12 +209,14 @@ export const searchEntity = async ({
   queryFilter,
   showDisplayNameAsLabel = true,
   setSourceAsValue = false,
+  wildcardEntityTypes,
 }: {
   searchText: string;
   searchIndex: SearchIndex | SearchIndex[];
   queryFilter?: Record<string, unknown>;
   showDisplayNameAsLabel?: boolean;
   setSourceAsValue?: boolean;
+  wildcardEntityTypes?: string[];
 }) => {
   try {
     const response = await searchQuery({
@@ -234,6 +237,13 @@ export const searchEntity = async ({
           ? getEntityName(d._source)
           : d._source.fullyQualifiedName ?? '';
 
+        // Container options (a type that has in-scope descendants) show a display-only ".*" hint
+        // to convey "matches everything under this FQN"; the stored value stays the plain FQN.
+        const isContainerOption =
+          !!d._source.entityType &&
+          (wildcardEntityTypes ?? []).includes(d._source.entityType);
+        const label = isContainerOption ? `${displayName}.*` : displayName;
+
         const value = setSourceAsValue
           ? JSON.stringify({
               ...d._source,
@@ -242,7 +252,7 @@ export const searchEntity = async ({
           : d._source.fullyQualifiedName ?? '';
 
         return {
-          label: displayName,
+          label,
           value,
         };
       }),
@@ -258,6 +268,25 @@ export const searchEntity = async ({
 
     return [];
   }
+};
+
+// Indexes to search for an Entity FQN filter: the source plus its ancestor (container) entity
+// types from the resource descriptor, so a parent FQN can be selected to scope to its descendants.
+export const getFqnSearchIndexes = (
+  selectedTrigger: string,
+  containerEntities: string[] = []
+): SearchIndex[] => {
+  const mapping = searchClassBase.getEntityTypeSearchIndexMapping();
+  const sourceIndex = mapping[selectedTrigger];
+
+  // The "all" index already spans every entity, so ancestor indexes are redundant there.
+  if (sourceIndex === SearchIndex.ALL) {
+    return [sourceIndex];
+  }
+
+  return [selectedTrigger, ...containerEntities]
+    .map((type) => mapping[type])
+    .filter((index): index is SearchIndex => Boolean(index));
 };
 
 const getTableSuggestions = async (searchText: string) => {
@@ -861,18 +890,17 @@ export const getFieldByArgumentType = (
   fieldName: number,
   argument: string,
   index: number,
-  selectedTrigger: string
+  selectedTrigger: string,
+  containerEntities: string[] = []
 ) => {
   let field: JSX.Element;
 
   const getEntityByFQN = async (searchText: string) => {
-    const searchIndexMapping =
-      searchClassBase.getEntityTypeSearchIndexMapping();
-
     return searchEntity({
       searchText,
-      searchIndex: searchIndexMapping[selectedTrigger],
+      searchIndex: getFqnSearchIndexes(selectedTrigger, containerEntities),
       showDisplayNameAsLabel: false,
+      wildcardEntityTypes: containerEntities,
     });
   };
 
@@ -928,16 +956,17 @@ export const getFieldByArgumentType = (
   switch (argument) {
     case 'fqnList':
       field = (
-        <AsyncSelect
+        <FQNListSelect
           api={getEntityByFQN}
           className="w-full"
+          containerEntities={containerEntities}
           data-testid="fqn-list-select"
-          maxTagTextLength={45}
           mode="multiple"
           optionFilterProp="label"
           placeholder={t('label.search-by-type', {
             type: t('label.fqn-uppercase'),
           })}
+          searchIndex={getFqnSearchIndexes(selectedTrigger, containerEntities)}
         />
       );
 
@@ -1184,7 +1213,8 @@ export const getConditionalField = (
   condition: string,
   name: number,
   selectedTrigger: string,
-  supportedActions?: EventFilterRule[]
+  supportedActions?: EventFilterRule[],
+  containerEntities?: string[]
 ) => {
   const selectedAction = supportedActions?.find(
     (action) => action.name === condition
@@ -1199,7 +1229,13 @@ export const getConditionalField = (
   return (
     <>
       {requiredArguments?.map((argument, index) => {
-        return getFieldByArgumentType(name, argument, index, selectedTrigger);
+        return getFieldByArgumentType(
+          name,
+          argument,
+          index,
+          selectedTrigger,
+          containerEntities
+        );
       })}
     </>
   );
