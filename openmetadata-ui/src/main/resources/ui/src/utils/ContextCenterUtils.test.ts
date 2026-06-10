@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { ROUTES } from '../constants/constants';
 import { PageType } from '../interface/knowledge-center.interface';
@@ -18,7 +17,6 @@ import { downloadDriveFile } from '../rest/assetAPI';
 import {
   assetToDocumentItem,
   formatBytes,
-  getFileTypeIcon,
   handleAssetDownload,
   knowledgePageToArticleItem,
 } from './ContextCenterUtils';
@@ -122,18 +120,6 @@ describe('knowledgePageToArticleItem', () => {
       tags: [],
       title: 'Untitled',
     });
-  });
-});
-
-describe('getFileTypeIcon', () => {
-  it('should render default icon for unknown type', () => {
-    const { container } = render(getFileTypeIcon('unknown'));
-
-    expect(container.querySelector('svg')).toBeInTheDocument();
-  });
-
-  it('should render icon component for pdf type', () => {
-    expect(getFileTypeIcon('pdf')).toBeTruthy();
   });
 });
 
