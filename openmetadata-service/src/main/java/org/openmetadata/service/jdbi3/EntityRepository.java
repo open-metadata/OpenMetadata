@@ -428,13 +428,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (entityType == null || L1_REPAIR_EXECUTOR.isShutdown()) {
       return;
     }
-    Object coalesceKey = id != null ? new ImmutablePair<>(entityType, id) : entityType + "|" + fqn;
+    // Include fqn so a rename within the delay window gets its own task instead of being
+    // coalesced into a prior task that only knows the old fqn.
+    Object coalesceKey =
+        List.of(entityType, id == null ? "" : id.toString(), fqn == null ? "" : fqn);
     if (!PENDING_L1_REPAIRS.add(coalesceKey)) {
       return;
     }
     try {
       L1_REPAIR_EXECUTOR.schedule(
           () -> {
+            // Clear at task start so a writer arriving during the invalidates re-schedules its
+            // own task and gets the full delay-window backstop.
+            PENDING_L1_REPAIRS.remove(coalesceKey);
             try {
               if (id != null) {
                 CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
@@ -448,14 +454,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
             } catch (RuntimeException e) {
               LOG.debug(
                   "Deferred L1 repair failed for type={} id={} fqn={}", entityType, id, fqn, e);
-            } finally {
-              PENDING_L1_REPAIRS.remove(coalesceKey);
             }
           },
           L1_REPAIR_DELAY_MS,
           TimeUnit.MILLISECONDS);
     } catch (RejectedExecutionException e) {
-      // Submission rejected — clear the coalescing marker so the next write can re-schedule.
       PENDING_L1_REPAIRS.remove(coalesceKey);
       LOG.debug("Failed to schedule L1 repair type={} id={}", entityType, id, e);
     }
