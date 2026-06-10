@@ -115,6 +115,33 @@ setup('authenticate all users', async ({ browser }) => {
 
     const { apiContext, afterAction } = await getApiContext(adminPage);
 
+    // TODO(collate#4484): Remove this block once the auth-config env reconcile bug is fixed.
+    // AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER is ignored on an existing/upgraded DB
+    // (the authenticationConfiguration settings row is seeded once and never reconciled),
+    // so the per-user session cap stays at the default of 5. That evicts the long-lived
+    // storageState session and causes 401 "Invalid session" on reused bearer tokens.
+    // Raise it at runtime via the security-config PATCH endpoint as a temporary workaround.
+    // https://github.com/open-metadata/openmetadata-collate/issues/4484
+    try {
+      await apiContext.patch('/api/v1/system/security/config', {
+        headers: { 'Content-Type': 'application/json-patch+json' },
+        data: [
+          {
+            op: 'add',
+            path: '/authenticationConfiguration/maxActiveSessionsPerUser',
+            value: 1000,
+          },
+        ],
+      });
+    } catch (error) {
+      // Non-fatal: builds without the field/endpoint should not break setup.
+      // eslint-disable-next-line no-console
+      console.log(
+        'collate#4484 workaround: failed to raise maxActiveSessionsPerUser',
+        error
+      );
+    }
+
     // Create all users, Using allSettled to avoid failing the setup if one of the users fails to create
     await Promise.allSettled([
       dataConsumer.create(apiContext, false),
