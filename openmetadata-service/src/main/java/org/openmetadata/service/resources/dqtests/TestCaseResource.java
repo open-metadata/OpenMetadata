@@ -454,7 +454,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
               schema = @Schema(type = "string", example = "{columnName}"))
           @QueryParam("columnName")
           String columnName,
-      @Parameter(description = "data product filter to use in list", schema = @Schema(type = "string"))
+      @Parameter(
+              description = "data product filter to use in list",
+              schema = @Schema(type = "string"))
           @QueryParam("dataProductFqn")
           String dataProductFqn)
       throws IOException {
