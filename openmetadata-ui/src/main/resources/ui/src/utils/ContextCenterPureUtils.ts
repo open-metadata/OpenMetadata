@@ -16,7 +16,6 @@ import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isNull, isUndefined } from 'lodash';
 import { PagingResponse } from 'Models';
 import { ListParams } from 'src/interface/API.interface';
-import type { ArticleCardItem } from '../components/ContextCenter/ArticleCard/ArticleCard.interface';
 import { CREATE_PAGE_HASH } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import type { Asset } from '../generated/attachments/asset';
@@ -67,7 +66,7 @@ export const knowledgePageToArticleItem = (
     page?: QuickLink | unknown;
   },
   untitledLabel: string
-): ArticleCardItem => ({
+): any => ({
   description: data.description ?? '',
   href:
     data.pageType === PageType.QUICK_LINK
