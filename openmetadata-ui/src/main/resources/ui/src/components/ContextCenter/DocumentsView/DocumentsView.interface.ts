@@ -21,6 +21,7 @@ export interface DocFile {
   updatedAt?: number;
   folderId?: string;
   folderFqn?: string;
+  folderName?: string;
 }
 
 export interface DocFolder {
@@ -39,8 +40,62 @@ export interface DocumentsViewProps {
   data: DocFile[];
   folders?: FolderOption[];
   isLoading: boolean;
+  previewFileId?: string;
+  selectedIds?: Set<string>;
   onDownload?: (file: DocFile) => void;
   onShareFile?: (file: DocFile) => void;
   onDeleteFile?: (file: DocFile) => void;
   onFileMoved?: (file: DocFile, targetFolderId: string) => void;
+  onPreview?: (file: DocFile | undefined) => void;
+  onSelectFile?: (fileId: string) => void;
+  onBulkDelete?: () => void;
+  onBulkMove?: (folderId: string) => void;
+  onBulkDownload?: () => void;
+}
+
+export interface MetaRowProps {
+  label: string;
+  value: string;
+}
+
+export interface DocumentPreviewPanelProps {
+  file: DocFile;
+  url: string;
+  onClose: () => void;
+}
+
+export interface FolderPickerMenuProps {
+  folders: FolderOption[];
+  onPick: (folderId: string) => void;
+}
+export interface FileActionsProps {
+  canDelete?: boolean;
+  file: DocFile;
+  folders?: FolderOption[];
+  onShareFile?: (file: DocFile) => void;
+  onDeleteFile?: (file: DocFile) => void;
+  onFileMoved?: (file: DocFile, targetFolderId: string) => void;
+}
+export interface ListHeaderProps {
+  count: number;
+  folders?: FolderOption[];
+  selectedCount: number;
+  onClear?: () => void;
+  onBulkDelete?: () => void;
+  onBulkMove?: (folderId: string) => void;
+  onBulkDownload?: () => void;
+}
+
+export interface FileRowProps {
+  canDelete?: boolean;
+  file: DocFile;
+  folders?: FolderOption[];
+  isActive?: boolean;
+  isSelected?: boolean;
+  onDownload?: (file: DocFile) => void;
+  onShareFile?: (file: DocFile) => void;
+  onDeleteFile?: (file: DocFile) => void;
+  onFileMoved?: (file: DocFile, targetFolderId: string) => void;
+  onPreview?: (file: DocFile) => void;
+  onSelectFile?: (fileId: string) => void;
 }
