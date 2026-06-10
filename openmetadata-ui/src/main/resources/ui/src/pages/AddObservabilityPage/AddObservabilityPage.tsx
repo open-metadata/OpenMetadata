@@ -200,6 +200,13 @@ function AddObservabilityPage() {
     [filterResources, selectedTrigger]
   );
 
+  const containerEntities = useMemo(
+    () =>
+      filterResources.find((resource) => resource.name === selectedTrigger)
+        ?.containerEntities,
+    [filterResources, selectedTrigger]
+  );
+
   const supportedTriggers = useMemo(
     () =>
       filterResources.find((resource) => resource.name === selectedTrigger)
@@ -339,6 +346,7 @@ function AddObservabilityPage() {
                             </Col>
                             <Col span={24}>
                               <ObservabilityFormFiltersItem
+                                containerEntities={containerEntities}
                                 supportedFilters={supportedFilters}
                               />
                             </Col>
