@@ -20,6 +20,7 @@ import pytest
 pytest.importorskip("confluent_kafka", reason="confluent_kafka not installed; skipping Redpanda tests")
 
 from ingestion.tests.integration.auto_classification.messaging.conftest import (
+    PII_SCHEMA_FIELDS,
     PII_TOPIC_NAME,
 )
 from metadata.generated.schema.entity.data.topic import Topic
@@ -103,11 +104,31 @@ def redpanda_autoclassification_config_pii(
 
 
 @pytest.fixture(scope="module")
+def redpanda_pii_topic(metadata, kafka_pii_topic, redpanda_messaging_service):
+    """Create PII topic entity under the Redpanda service (messages already in Kafka via kafka_pii_topic)."""
+    from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
+    from metadata.generated.schema.type import schema as schema_module
+    from metadata.generated.schema.type.schema import SchemaType
+
+    return metadata.create_or_update(
+        CreateTopicRequest(
+            name=PII_TOPIC_NAME,
+            service=redpanda_messaging_service.fullyQualifiedName,
+            partitions=1,
+            messageSchema=schema_module.Topic(
+                schemaType=SchemaType.JSON,
+                schemaFields=PII_SCHEMA_FIELDS,
+            ),
+        )
+    )
+
+
+@pytest.fixture(scope="module")
 def run_redpanda_autoclassification_pii(
     pii_classification,
     sensitive_pii_tag,
     non_sensitive_pii_tag,
-    kafka_pii_topic,
+    redpanda_pii_topic,
     run_workflow,
     redpanda_autoclassification_config_pii,
 ):

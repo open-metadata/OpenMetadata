@@ -49,7 +49,7 @@ class KafkaSampler(MessagingSampler):
     def _get_topic_name(self) -> str:
         from metadata.utils.fqn import split as fqn_split  # noqa: PLC0415
 
-        fqn = self.entity.fullyQualifiedName.root
+        fqn = self.entity.fullyQualifiedName.root if self.entity.fullyQualifiedName else ""
         parts = fqn_split(fqn)
         topic_name = parts[-1] if len(parts) > 1 else fqn
         if topic_name.startswith('"') and topic_name.endswith('"'):
@@ -146,7 +146,7 @@ class KafkaSampler(MessagingSampler):
                     len(messages),
                     count,
                 )
-        except KafkaException as exc:
+        except Exception as exc:  # KafkaException when confluent_kafka is available
             logger.debug(traceback.format_exc())
             logger.warning("Error fetching messages from Kafka topic %s: %s", topic_name, exc)
         finally:

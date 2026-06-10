@@ -420,7 +420,6 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             result = self.metadata.bulk_create_or_update(
                 entities=self.query_buffer,  # pyright: ignore[reportArgumentType]
                 use_async=False,
-                override_metadata=self.config.override_metadata,
             )
         except Exception as exc:
             logger.error(f"Failed to flush queries to bulk API: {exc}")
@@ -946,14 +945,15 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
     def _(self, entity: Topic, sample_data: TableData) -> bool:
         """Topic-specific sample data ingestion implementation"""
         messages = []
-        if sample_data.rows:
+        if sample_data.rows and sample_data.columns:
             for row in sample_data.rows:
                 row_dict = {col.root: row[idx] for idx, col in enumerate(sample_data.columns)}
                 messages.append(json.dumps(row_dict))
         topic_sample_data = TopicSampleData(messages=messages)
         result = self.metadata.ingest_topic_sample_data(topic=entity, sample_data=topic_sample_data)
         if result:
-            logger.debug(f"Successfully ingested sample data for {entity.fullyQualifiedName.root}")
+            fqn = entity.fullyQualifiedName.root if entity.fullyQualifiedName else str(entity)
+            logger.debug(f"Successfully ingested sample data for {fqn}")
             return True
         return False
 

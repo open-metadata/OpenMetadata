@@ -126,21 +126,12 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         self.context.storage_location = None
         # Caches to avoid redundant API calls (N+1 optimization)
         self._catalog_cache: dict[str, Any] = {}
-        self._schema_cache: dict[tuple[str, str], Any] = {}
+        self._schema_cache: dict[str, Any] = {}
         self.owner_resolver = DatabricksOwnerResolver(
             api_client=DatabricksClient(self.service_connection),
             metadata=self.metadata,
             include_owners=self.source_config.includeOwners,
         )
-
-        self.incremental = incremental_configuration
-        self.incremental_table_processor: UnityCatalogIncrementalTableProcessor | None = None
-        self.context.get_global().deleted_tables = []  # pyright: ignore[reportAttributeAccessIssue]
-        if self.incremental.enabled:
-            logger.info(
-                "Starting Incremental Metadata Extraction.\n\t Considering Table changes from %s",
-                self.incremental.start_datetime_utc,
-            )
 
         self.test_connection()
 

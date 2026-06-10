@@ -30,7 +30,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar, cast
 
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.table import Column, Table
@@ -215,12 +215,12 @@ class TopicAdapter(EntityAdapter[Topic]):
 
     def get_columns(self, entity: Topic) -> list[Column] | None:
         if entity.messageSchema and hasattr(entity.messageSchema, "schemaFields"):
-            return entity.messageSchema.schemaFields
+            return cast("list[Column]", entity.messageSchema.schemaFields)
         return None
 
     def set_columns(self, entity: Topic, columns: list[Column]) -> None:
         if entity.messageSchema:
-            entity.messageSchema.schemaFields = columns
+            entity.messageSchema.schemaFields = cast("Any", columns)
 
     def build_sampler_kwargs(
         self,
