@@ -9,6 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
@@ -26,17 +27,18 @@ import org.slf4j.LoggerFactory;
  * does not clean up after itself, and any data left by integration tests that were cancelled before
  * their {@code TestNamespaceExtension} cleanup ran.
  *
- * <p>{@link org.openmetadata.it.factories.EntityLoader} names every entity (and its root service)
- * with the owning test's class id, e.g. {@code postgresService_ab12cd34__<runId>__StaticDatasetSeed__...}.
- * So a name-substring match on the class id ({@code StaticDatasetSeed} by default) deterministically
- * identifies seeded roots regardless of the random per-run id; deleting each root recursively takes
- * its databases/schemas/tables (or terms/tags/children) with it.
+ * <p>{@code TestNamespace.prefix()} stamps a {@code __<32-hex run id>__} signature into every
+ * namespace-created root, e.g. {@code postgresService_ab12cd34__<32hex>__Scale100kEntities__...}. By
+ * default this matches that signature ({@link #DEFAULT_NAME_REGEX}), so it deletes the bulk data of
+ * <b>any</b> cancelled run without a brittle per-class list; deleting each root recursively takes its
+ * databases/schemas/tables (or terms/tags/children) with it. Override the matcher with
+ * {@code -Djpw.purge.regex=} and/or add substring class markers via {@code -Djpw.purge.markers=}.
  *
  * <p>{@code @Tag("purge")} keeps it out of every normal suite; run it explicitly:
  *
  * <pre>{@code
- * mvn verify -P purge-it -Dskip.embedded.bootstrap=true            # default marker StaticDatasetSeed
- * mvn verify -P purge-it -Dskip.embedded.bootstrap=true -Djpw.purge.markers=StaticDatasetSeed,Scale100kEntities
+ * mvn verify -P purge-it -Dskip.embedded.bootstrap=true                                  # default: all test-namespace roots
+ * mvn verify -P purge-it -Dskip.embedded.bootstrap=true -Djpw.purge.markers=StaticDatasetSeed  # targeted
  * }</pre>
  *
  * with {@code OM_URL} / {@code OM_ADMIN_TOKEN} for the external cluster.
@@ -47,6 +49,12 @@ class ClusterPurgeIT {
   private static final Logger LOG = LoggerFactory.getLogger(ClusterPurgeIT.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final int PAGE_SIZE = 1000;
+
+  // Default matcher: the test-namespace signature TestNamespace.prefix() stamps into every
+  // EntityLoader/factory-created root — base__<32-hex run id>__<ClassId>... So this deletes ALL
+  // bulk test data left by any cancelled run, without a brittle per-class marker list. Override
+  // with -Djpw.purge.regex=, and/or add substring markers via -Djpw.purge.markers.
+  private static final String DEFAULT_NAME_REGEX = "__[0-9a-f]{32}__";
 
   /** Root entity type -> REST collection path. Deleting a root cascades its children. */
   private static final Map<String, String> ROOT_COLLECTIONS =
@@ -67,19 +75,26 @@ class ClusterPurgeIT {
 
   private static HttpClient http;
   private static List<String> markers;
+  private static Pattern namePattern;
 
   @BeforeAll
   static void setup() {
     final ServerHandle server = OssTestServer.defaultHandle();
     http = server.sdk().getHttpClient();
     markers = resolveMarkers();
-    LOG.info("ClusterPurgeIT targeting markers {} on {}", markers, server.baseUrl());
+    namePattern = resolvePattern();
+    LOG.info(
+        "ClusterPurgeIT targeting regex={} markers={} on {}",
+        namePattern,
+        markers,
+        server.baseUrl());
   }
 
   @Test
   void purgeOrphanedTestEntities() {
     Assumptions.assumeFalse(
-        markers.isEmpty(), "no purge markers configured (-Djpw.purge.markers) — nothing to do");
+        namePattern == null && markers.isEmpty(),
+        "no purge matcher configured (jpw.purge.regex / jpw.purge.markers) — nothing to do");
     final Map<String, Integer> deletedByType = new LinkedHashMap<>();
     int total = 0;
     for (final Map.Entry<String, String> collection : ROOT_COLLECTIONS.entrySet()) {
@@ -114,7 +129,7 @@ class ClusterPurgeIT {
       final JsonNode page = MAPPER.valueToTree(fetchPage(collection, after));
       for (final JsonNode item : page.path("data")) {
         final String name = item.path("name").asText("");
-        if (matchesAnyMarker(name)) {
+        if (matches(name)) {
           matched.add(new MatchedRoot(item.path("id").asText(), name));
         }
       }
@@ -145,20 +160,22 @@ class ClusterPurgeIT {
     return ok;
   }
 
-  private static boolean matchesAnyMarker(final String name) {
-    final String lower = name.toLowerCase(Locale.ROOT);
-    boolean matched = false;
-    for (final String marker : markers) {
-      if (lower.contains(marker)) {
-        matched = true;
-        break;
+  private static boolean matches(final String name) {
+    boolean matched = namePattern != null && namePattern.matcher(name).find();
+    if (!matched) {
+      final String lower = name.toLowerCase(Locale.ROOT);
+      for (final String marker : markers) {
+        if (lower.contains(marker)) {
+          matched = true;
+          break;
+        }
       }
     }
     return matched;
   }
 
   private static List<String> resolveMarkers() {
-    final String raw = System.getProperty("jpw.purge.markers", "StaticDatasetSeed");
+    final String raw = System.getProperty("jpw.purge.markers", "");
     final List<String> result = new ArrayList<>();
     for (final String token : raw.split(",")) {
       final String trimmed = token.trim().toLowerCase(Locale.ROOT);
@@ -167,6 +184,11 @@ class ClusterPurgeIT {
       }
     }
     return result;
+  }
+
+  private static Pattern resolvePattern() {
+    final String raw = System.getProperty("jpw.purge.regex", DEFAULT_NAME_REGEX);
+    return (raw == null || raw.isBlank()) ? null : Pattern.compile(raw);
   }
 
   private record MatchedRoot(String id, String name) {}

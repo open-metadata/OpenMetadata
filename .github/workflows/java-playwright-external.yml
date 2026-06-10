@@ -94,12 +94,12 @@ on:
         type: string
         default: '8'
       scaleDataMode:
-        description: 'Scale-test data provisioning: ingest (create fresh each run) | ensure (top up only the shortfall) | static (reuse pre-seeded data, create nothing)'
+        description: 'Scale data provisioning. Use ingest for this shared-cluster run: the scale test creates AND cleans up its own 100k (TestNamespaceExtension), so the cluster stays clean for ui-it/search-it. static/ensure leave a persistent 100k that makes every ui-it/search-it reindex reprocess it (~20m each) — only use them on a dedicated scale-only cluster.'
         required: false
         type: string
         default: 'ingest'
       seedStaticData:
-        description: 'Seed the static dataset (StaticDatasetSeedIT) on the cluster once before the scale matrix runs. Pair with scaleDataMode=static/ensure.'
+        description: 'Seed the static dataset (StaticDatasetSeedIT) before the scale matrix. Only with scaleDataMode=static/ensure on a dedicated scale-only cluster — leaves a persistent 100k, so do NOT use on the shared ui-it/search-it cluster.'
         required: false
         type: boolean
         default: false
@@ -184,6 +184,20 @@ jobs:
           echo "::add-mask::$TOKEN"
           echo "OM_ADMIN_TOKEN=$TOKEN" >> "$GITHUB_ENV"
           echo "OM_URL=${OM_EXTERNAL_URL%/}" >> "$GITHUB_ENV"
+
+      - name: Purge orphaned test data (clean cluster before run)
+        # Functional suites must start on a cluster free of leftover bulk cohorts — a cancelled prior
+        # run skips per-test cleanup, and a stale 100k makes every reindex reprocess it (~20m each).
+        # purge-it hard-deletes every test-namespace root (matched by the __<run-id>__ signature), so
+        # reindexes here only ever process this run's own small fixtures.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OM_URL: ${{ env.OM_URL }}
+          OM_ADMIN_TOKEN: ${{ env.OM_ADMIN_TOKEN }}
+          OM_EXTERNAL_USERNAME: ${{ secrets.OM_EXTERNAL_USERNAME }}
+          OM_EXTERNAL_PASSWORD: ${{ secrets.OM_EXTERNAL_PASSWORD }}
+        run: |
+          mvn verify -P purge-it -pl :openmetadata-integration-tests -Dskip.embedded.bootstrap=true
 
       - name: Run UI integration tests (external cluster)
         env:
@@ -330,6 +344,19 @@ jobs:
           echo "OM_ADMIN_TOKEN=$TOKEN" >> "$GITHUB_ENV"
           echo "OM_URL=${OM_EXTERNAL_URL%/}" >> "$GITHUB_ENV"
 
+      - name: Purge orphaned test data (clean cluster before run)
+        # search-it does ~14 full reindexes; on a cluster carrying a stale 100k each is ~20m and the
+        # job blows its cap. Purge every test-namespace root first so reindexes only process this
+        # run's own small per-test fixtures.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OM_URL: ${{ env.OM_URL }}
+          OM_ADMIN_TOKEN: ${{ env.OM_ADMIN_TOKEN }}
+          OM_EXTERNAL_USERNAME: ${{ secrets.OM_EXTERNAL_USERNAME }}
+          OM_EXTERNAL_PASSWORD: ${{ secrets.OM_EXTERNAL_PASSWORD }}
+        run: |
+          mvn verify -P purge-it -pl :openmetadata-integration-tests -Dskip.embedded.bootstrap=true
+
       - name: Run search integration tests (external cluster)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -449,6 +476,19 @@ jobs:
           echo "::add-mask::$TOKEN"
           echo "OM_ADMIN_TOKEN=$TOKEN" >> "$GITHUB_ENV"
           echo "OM_URL=${OM_EXTERNAL_URL%/}" >> "$GITHUB_ENV"
+
+      - name: Purge orphaned test data (clean cluster before run)
+        # Clear any bulk cohort a cancelled prior run left behind. In the default ingest mode the
+        # scale test creates and then cleans up its own 100k, so the cluster returns to clean; this
+        # purge just guarantees a clean starting point. (Skip is harmless when seedStaticData=true.)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OM_URL: ${{ env.OM_URL }}
+          OM_ADMIN_TOKEN: ${{ env.OM_ADMIN_TOKEN }}
+          OM_EXTERNAL_USERNAME: ${{ secrets.OM_EXTERNAL_USERNAME }}
+          OM_EXTERNAL_PASSWORD: ${{ secrets.OM_EXTERNAL_PASSWORD }}
+        run: |
+          mvn verify -P purge-it -pl :openmetadata-integration-tests -Dskip.embedded.bootstrap=true
 
       - name: Seed static dataset (${{ matrix.seed }} tables)
         # Optional one-time load: creates the cohort and leaves it on the cluster (no cleanup) so
