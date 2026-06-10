@@ -92,8 +92,10 @@ import {
 } from '../../../../rest/tasksAPI';
 import { formatIsoDuration } from '../../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../../utils/EntityLink';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
+import { getUserPath } from '../../../../utils/RouterUtils';
 import { getErrorText } from '../../../../utils/StringUtils';
 import {
   applyTaskFormSchemaDefaults,
@@ -127,8 +129,14 @@ import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvi
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
-
-import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
+import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
+import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
+import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
+import { EditorContentRef } from '../../../common/RichTextEditor/RichTextEditor.interface';
+import TaskTabIncidentManagerHeaderNewFromTask from '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNewFromTask';
+import './task-tab-new.less';
+import { TaskTabProps } from './TaskTab.interface';
 
 const FeedbackApprovalTask = withSuspenseFallback(
   lazy(() => import('../../../../pages/TasksPage/shared/FeedbackApprovalTask'))
@@ -139,15 +147,6 @@ const TaskPayloadSchemaFields = withSuspenseFallback(
     () => import('../../../../pages/TasksPage/shared/TaskPayloadSchemaFields')
   )
 );
-import { getUserPath } from '../../../../utils/RouterUtils';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
-import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
-import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
-import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
-import { EditorContentRef } from '../../../common/RichTextEditor/RichTextEditor.interface';
-import TaskTabIncidentManagerHeaderNewFromTask from '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNewFromTask';
-import './task-tab-new.less';
-import { TaskTabProps } from './TaskTab.interface';
 
 const DAR_FIELD_ICONS: Record<string, string> = {
   accessType: icAccessType,
