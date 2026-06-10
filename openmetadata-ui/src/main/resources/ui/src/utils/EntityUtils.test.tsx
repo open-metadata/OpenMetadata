@@ -16,7 +16,6 @@ import { DEFAULT_DOMAIN_VALUE } from '../constants/constants';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { TestSuite } from '../generated/tests/testCase';
-import { columnSorter, getColumnSorter } from './EntitySortUtils';
 import {
   getBreadcrumbForTestSuite,
   getEntityBreadcrumbs,
@@ -33,6 +32,7 @@ import {
   highlightSearchArrayElement,
   highlightSearchText,
 } from './EntitySearchUtils';
+import { columnSorter, getColumnSorter } from './EntitySortUtils';
 import {
   entityWithoutNameAndDescHighlight,
   highlightedEntityDescription,

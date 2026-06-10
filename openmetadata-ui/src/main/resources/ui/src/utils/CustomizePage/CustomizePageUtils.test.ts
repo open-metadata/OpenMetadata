@@ -15,6 +15,7 @@ import { EntityTabs } from '../../enums/entity.enum';
 import { PageType, Tab } from '../../generated/system/ui/page';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import glossaryTermClassBase from '../Glossary/GlossaryTermClassBase';
+import { getTabLabelFromId } from './CustomizePagePureUtils';
 import {
   checkIfExpandViewSupported,
   getDefaultTabs,
@@ -25,7 +26,6 @@ import {
   sortTabs,
   updateWidgetHeightRecursively,
 } from './CustomizePageUtils';
-import { getTabLabelFromId } from './CustomizePagePureUtils';
 
 describe('CustomizePageUtils', () => {
   describe('getTabDisplayName', () => {
