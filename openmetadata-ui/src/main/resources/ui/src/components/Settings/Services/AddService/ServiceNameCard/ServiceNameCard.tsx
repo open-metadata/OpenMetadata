@@ -13,9 +13,9 @@
 
 import { Button, Input } from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
-import classNames from 'classnames';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import RichTextEditor from '../../../../common/RichTextEditor/RichTextEditor';
 
 interface ServiceNameCardProps {
   serviceType: string;
@@ -37,6 +37,7 @@ const ServiceNameCard = ({
   onFocus,
 }: ServiceNameCardProps) => {
   const { t } = useTranslation();
+  const initialDescription = useRef(description);
   const [showDescription, setShowDescription] = useState(
     () => description.length > 0
   );
@@ -73,17 +74,11 @@ const ServiceNameCard = ({
             htmlFor="service-description">
             {t('label.description')}
           </label>
-          <textarea
-            className={classNames(
-              'tw:min-h-[88px] tw:w-full tw:rounded-lg tw:border tw:border-primary tw:bg-primary',
-              'tw:p-3 tw:text-primary tw:shadow-xs tw:outline-none tw:placeholder:text-placeholder focus:tw:border-brand focus:tw:ring-4 focus:tw:ring-brand'
-            )}
-            data-testid="service-description"
-            id="service-description"
-            placeholder={t('message.add-a-description-for-the-service')}
-            value={description}
-            onChange={(e) => onDescriptionChange(e.target.value)}
+          <RichTextEditor
+            initialValue={initialDescription.current}
+            placeHolder={t('message.add-a-description-for-the-service')}
             onFocus={() => onFocus?.('serviceDescription')}
+            onTextChange={onDescriptionChange}
           />
         </div>
       ) : (
