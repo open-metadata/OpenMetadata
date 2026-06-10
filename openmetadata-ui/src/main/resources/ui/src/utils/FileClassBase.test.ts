@@ -41,7 +41,7 @@ jest.mock('../constants/File.constant', () => ({
   } as File,
 }));
 
-jest.mock('./CustomizePage/CustomizePageUtils', () => ({
+jest.mock('./CustomizePage/CustomizePagePureUtils', () => ({
   getTabLabelFromId: jest.fn((tabId: EntityTabs) => {
     const labelMap: Partial<Record<EntityTabs, string>> = {
       [EntityTabs.OVERVIEW]: 'Overview',

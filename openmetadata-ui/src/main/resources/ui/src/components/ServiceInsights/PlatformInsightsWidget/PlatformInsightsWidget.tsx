@@ -22,7 +22,7 @@ import { GREEN_1, RED_1 } from '../../../constants/Color.constants';
 import { PLATFORM_INSIGHTS_CHARTS } from '../../../constants/ServiceInsightsTab.constants';
 import { SystemChartType } from '../../../enums/DataInsight.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
-import { getTitleByChartType } from '../../../utils/ServiceInsightsTabUtils';
+import { getTitleByChartType } from '../../../utils/ServiceInsightsTabPureUtils';
 import { getReadableCountString } from '../../../utils/ServiceUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import './platform-insights-widget.less';

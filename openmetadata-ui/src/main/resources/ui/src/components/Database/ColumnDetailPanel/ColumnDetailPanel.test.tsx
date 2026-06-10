@@ -364,7 +364,7 @@ jest.mock('../../../utils/DataQuality/DataQualityUtils', () => ({
     ),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation((entity) => entity?.displayName || entity?.name || ''),

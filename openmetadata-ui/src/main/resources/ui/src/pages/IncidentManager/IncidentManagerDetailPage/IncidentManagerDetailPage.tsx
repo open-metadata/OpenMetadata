@@ -62,7 +62,7 @@ import {
   getTestCaseVersionList,
   updateTestCaseById,
 } from '../../../rest/testAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import {
   fetchEntityTaskCountsInto,
