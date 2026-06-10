@@ -1,0 +1,55 @@
+# GDPR Compliance at Collate
+
+> **Note:** This document is an internal reference describing how Collate approaches compliance with the EU General Data Protection Regulation (GDPR). Items in `[brackets]` are placeholders that should be confirmed with the legal team before this document is published or shared externally. It does not constitute legal advice.
+
+## 1. Our Commitment
+
+Collate is committed to protecting the privacy and personal data of every individual whose information we process, in full alignment with Regulation (EU) 2016/679, the General Data Protection Regulation. As the company behind OpenMetadata — a unified platform for data discovery, observability, and governance — we recognize that trust in how we handle data is foundational to our business. GDPR compliance is not treated as a one-time checkbox but as an ongoing operational discipline embedded in how we design products, onboard customers, manage vendors, and train our staff. This document describes the principles, controls, and responsibilities that govern our handling of personal data across all of our products and corporate functions.
+
+## 2. Scope and Roles
+
+This policy applies to all personal data that Collate processes, whether relating to our customers, prospects, website visitors, job applicants, or employees, and regardless of whether the data is processed on our own infrastructure or through trusted third-party processors. Under the GDPR, Collate acts as a **data controller** for the personal data it collects in the course of running its business — for example marketing contacts, support tickets, and HR records. When customers deploy OpenMetadata or our managed Collate service to catalog their own data estate, Collate generally acts as a **data processor**, handling personal data only on documented instructions from the customer, who remains the controller. The distinction matters because it determines which obligations fall on us directly and which we fulfil on our customers' behalf, and our Data Processing Agreement (DPA) sets out these responsibilities in detail.
+
+## 3. Lawful Basis for Processing
+
+We process personal data only when we have a valid lawful basis to do so under Article 6 of the GDPR. In practice, the bases we rely on most often are: **consent** (for marketing communications and non-essential cookies), **contractual necessity** (to deliver the services a customer has signed up for), **legitimate interests** (for product analytics, security monitoring, and fraud prevention, balanced against the rights of data subjects), and **legal obligation** (for tax, accounting, and regulatory record-keeping). Where we rely on legitimate interests, we conduct and document a Legitimate Interests Assessment to ensure our interests do not override the fundamental rights and freedoms of the individuals concerned. We do not knowingly process special categories of personal data (such as health, biometric, or political data) unless an explicit condition under Article 9 applies.
+
+## 4. Data Minimization and Purpose Limitation
+
+Collate collects only the personal data that is genuinely necessary for a clearly defined purpose, and we do not repurpose that data for incompatible uses without a fresh lawful basis or notice. When we design new features for OpenMetadata or extend our internal systems, we apply **data protection by design and by default**, meaning privacy-protective settings are the starting point rather than an afterthought. Engineering teams are encouraged to ask whether a given field of personal data is required at all before it is collected, to prefer pseudonymized or aggregated data where it satisfies the use case, and to set sensible retention defaults. Because our platform deals primarily with *metadata* — descriptions of data assets rather than the underlying records themselves — we have a structural advantage in minimizing exposure to raw personal data, and we reinforce this with configuration guidance for customers.
+
+## 5. Data Subject Rights
+
+The GDPR grants individuals a set of enforceable rights over their personal data, and Collate has procedures in place to honour each of them within the statutory one-month window. These rights include the right of **access** (to obtain a copy of their data), **rectification** (to correct inaccuracies), **erasure** (the "right to be forgotten"), **restriction** of processing, **data portability** (to receive their data in a structured, machine-readable format), and the right to **object** to certain processing, including direct marketing. Requests can be submitted to `[privacy@getcollate.io]` and are logged, verified for identity, and tracked to completion. Where Collate acts as a processor on behalf of a customer, we will promptly forward any rights requests we receive directly to the relevant controller and provide the technical means within OpenMetadata to locate, export, or delete the affected records.
+
+## 6. Security of Processing
+
+Article 32 of the GDPR requires controllers and processors to implement appropriate technical and organizational measures to ensure a level of security proportionate to the risk. Collate encrypts personal data **in transit** using TLS and **at rest** using industry-standard algorithms, enforces role-based access control and the principle of least privilege across internal systems, and requires multi-factor authentication for access to production environments. We maintain audit logging, network segmentation, regular vulnerability scanning, and a documented secure software development lifecycle that includes peer code review and dependency monitoring. Access to customer data is restricted to a small number of authorized personnel on a need-to-know basis, and that access is logged and periodically reviewed. Our security posture is validated through `[SOC 2 Type II / ISO 27001]` controls and independent penetration testing conducted at least `[annually]`.
+
+## 7. Data Retention and Deletion
+
+We retain personal data only for as long as it is needed to fulfil the purpose for which it was collected, or for as long as we are legally required to keep it. Retention periods are defined in our internal data retention schedule and vary by data category: marketing contacts are removed after a defined period of inactivity or upon unsubscribe, support records are retained for the duration of the customer relationship plus a limited grace period, and financial records are kept for the statutory period required by `[applicable]` tax law. When personal data reaches the end of its retention period, it is securely deleted or irreversibly anonymized. For customer data processed through our platform, deletion is governed by the customer's own retention configuration and our contractual commitment to delete or return data upon termination of the agreement.
+
+## 8. International Data Transfers
+
+Collate operates and works with sub-processors that may be located outside the European Economic Area. Where personal data is transferred to a country that has not received an adequacy decision from the European Commission, we ensure the transfer is protected by an appropriate safeguard under Chapter V of the GDPR — in most cases the European Commission's **Standard Contractual Clauses (SCCs)**, supplemented where necessary by additional technical and organizational measures following a transfer impact assessment. We maintain a record of where personal data is stored and processed, and we offer customers the ability to select regional hosting where supported. Our DPA incorporates the SCCs by reference so that customers transferring EU personal data to us have a compliant transfer mechanism in place.
+
+## 9. Sub-processors and Vendor Management
+
+We rely on a carefully vetted set of third-party sub-processors — for example cloud infrastructure, email delivery, analytics, and customer support tooling — to operate our business and deliver our services. Before engaging any sub-processor that will handle personal data, we conduct due diligence on its security and privacy practices and put in place a written data processing agreement that binds it to obligations no less protective than our own. We maintain an up-to-date list of sub-processors at `[getcollate.io/sub-processors]` and notify customers in advance of any intended changes, giving them the opportunity to object as provided in our DPA. We remain fully liable to our customers for the performance of our sub-processors' data protection obligations.
+
+## 10. Breach Notification and Incident Response
+
+Despite strong preventive controls, no organization can entirely eliminate the risk of a personal data breach, so Collate maintains a documented incident response plan that defines detection, containment, assessment, and notification steps. In the event of a personal data breach that is likely to result in a risk to the rights and freedoms of individuals, we will notify the relevant supervisory authority without undue delay and, where feasible, within **72 hours** of becoming aware of it, as required by Article 33. Where Collate acts as a processor, we will notify the affected controller without undue delay so they can meet their own obligations. If a breach is likely to result in a high risk to individuals, we will also communicate it to the affected data subjects in clear and plain language, along with the measures we are taking to mitigate the impact.
+
+## 11. Accountability and Governance
+
+The GDPR's accountability principle requires us not only to comply but to be able to *demonstrate* compliance, and Collate meets this through documented policies, maintained records of processing activities (RoPA) under Article 30, and Data Protection Impact Assessments (DPIAs) for higher-risk processing. Privacy responsibilities are owned at the leadership level, with a designated `[Data Protection Officer / privacy lead]` reachable at `[privacy@getcollate.io]` who oversees this programme, fields data subject and regulator inquiries, and advises product and engineering teams. All employees receive privacy and security awareness training at onboarding and on a recurring basis, and access to personal data is conditioned on the completion of that training.
+
+## 12. Review and Continuous Improvement
+
+Data protection is not static: regulations evolve, our products grow, and the threat landscape shifts, so this policy and the controls behind it are reviewed at least `[annually]` and whenever there is a significant change to our processing activities or applicable law. Feedback from audits, incidents, customer due-diligence questionnaires, and regulatory guidance feeds directly into improvements to our practices. By treating GDPR compliance as a living programme rather than a fixed deliverable, Collate aims to maintain the trust of our customers and the individuals whose data we are responsible for, while supporting the broader mission of OpenMetadata: helping organizations understand, govern, and responsibly use their data.
+
+---
+
+*Last reviewed: `[YYYY-MM-DD]` · Owner: `[Data Protection Officer]` · Contact: `[privacy@getcollate.io]`*

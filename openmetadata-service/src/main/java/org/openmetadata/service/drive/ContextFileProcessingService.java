@@ -275,6 +275,7 @@ public class ContextFileProcessingService {
   }
 
   private void applyFailure(UUID fileId, UUID contentId, String reason) {
+    LOG.error("Processing failed for file {} content {}: {}", fileId, contentId, reason);
     updateContent(
         contentId,
         current -> {
