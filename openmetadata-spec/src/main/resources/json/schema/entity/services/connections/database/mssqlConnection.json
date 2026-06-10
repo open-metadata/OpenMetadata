@@ -88,6 +88,12 @@
       "type": "boolean",
       "default": false
     },
+    "useQueryStore": {
+      "title": "Use Query Store for Lineage and Usage",
+      "description": "Use SQL Server Query Store as a durable source for lineage and usage query history instead of the volatile plan cache. Requires Query Store to be enabled with QUERY_CAPTURE_MODE = ALL on the database and applies to single-database services. When disabled, the plan cache (sys.dm_exec_*) is used.",
+      "type": "boolean",
+      "default": false
+    },
     "schemaFilterPattern": {
       "title": "Default Schema Filter Pattern",
       "description": "Regex to only include/exclude schemas that matches the pattern.",
