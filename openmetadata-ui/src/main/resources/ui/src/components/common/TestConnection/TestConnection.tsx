@@ -10,17 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Tooltip } from '@openmetadata/ui-core-components';
+import {
+  Alert,
+  AlertVariant,
+  Button,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
 import { AlertTriangle, CheckCircle, XCircle, Zap } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
+import cx from 'classnames';
 import { isEmpty, toNumber } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
 import {
-  FETCHING_EXPIRY_TIME,
   FETCH_INTERVAL,
+  FETCHING_EXPIRY_TIME,
   TEST_CONNECTION_FAILURE_MESSAGE,
   TEST_CONNECTION_INITIAL_MESSAGE,
   TEST_CONNECTION_PROGRESS_PERCENTAGE,
@@ -60,6 +65,8 @@ import { getErrorText } from '../../../utils/StringUtils';
 import Loader from '../Loader/Loader';
 import { TestConnectionProps, TestStatus } from './TestConnection.interface';
 import TestConnectionModal from './TestConnectionModal/TestConnectionModal';
+
+const LoaderIcon: FC<{ className?: string }> = () => <Loader size="small" />;
 
 const getAreRequiredStepsPassing = (
   resultSteps: TestConnectionStepResult[],
@@ -632,6 +639,37 @@ const TestConnection: FC<TestConnectionProps> = ({
     return t('label.test-entity', { entity: t('label.connection') });
   }, [isTestingConnection, t, testStatus]);
 
+  const alertVariant = useMemo((): AlertVariant => {
+    if (testStatus === StatusType.Successful) {
+      return 'success';
+    }
+    if (testStatus === StatusType.Failed) {
+      return 'error';
+    }
+    if (testStatus === 'Warning') {
+      return 'warning';
+    }
+
+    return 'brand';
+  }, [testStatus]);
+
+  const alertIcon = useMemo(() => {
+    if (isTestingConnection) {
+      return LoaderIcon;
+    }
+    if (testStatus === StatusType.Successful) {
+      return CheckCircle;
+    }
+    if (testStatus === StatusType.Failed) {
+      return XCircle;
+    }
+    if (testStatus === 'Warning') {
+      return AlertTriangle;
+    }
+
+    return Zap;
+  }, [isTestingConnection, testStatus]);
+
   useEffect(() => {
     currentWorkflowRef.current = currentWorkflow; // update ref with latest value of currentWorkflow state variable
   }, [currentWorkflow]);
@@ -653,121 +691,48 @@ const TestConnection: FC<TestConnectionProps> = ({
   return (
     <>
       {showDetails ? (
-        <div
-          className={classNames(
-            'tw:flex tw:w-full tw:items-center tw:justify-between tw:gap-5 tw:mt-3.5 tw:border tw:border-gray-200 tw:rounded-xl tw:bg-primary tw:p-[14px_20px]',
-            {
-              'tw:border-utility-success-200 tw:bg-utility-success-50':
-                testStatus === StatusType.Successful,
-              'tw:border-utility-error-200 tw:bg-utility-error-50':
-                testStatus === StatusType.Failed,
-              'tw:border-utility-warning-200 tw:bg-utility-warning-50':
-                testStatus === 'Warning',
-              'tw:border-utility-brand-200 tw:bg-utility-brand-50':
-                isTestingConnection,
-              'tw:border-utility-brand-300 tw:bg-utility-brand-50 tw:p-[22px_24px] tw:shadow-[0_0_0_6px_#e8f4ff]':
-                isReadyToTestCard,
-            }
-          )}
-          data-testid="test-connection-card">
+        <Alert
+          iconOutlined
+          className={cx('tw:mt-3.5', {
+            'tw:shadow-[0_0_0_6px_#e8f4ff]': isReadyToTestCard,
+          })}
+          data-testid="test-connection-card"
+          icon={alertIcon}
+          iconBgColor="white"
+          iconRadius="lg"
+          iconShape="square"
+          iconSize="md"
+          rightContent={
+            <Tooltip title={buttonTooltipTitle}>
+              <Button
+                color={isReadyToTestCard ? 'primary' : 'secondary'}
+                data-testid="test-connection-btn"
+                isDisabled={isTestConnectionDisabled}
+                isLoading={isTestingConnection}
+                size="md"
+                onClick={handleTestConnection}>
+                {connectionButtonLabel}
+              </Button>
+            </Tooltip>
+          }
+          title={connectionCardTitle}
+          variant={alertVariant}>
           <div
-            className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-3"
+            className="tw:flex tw:flex-wrap tw:items-center tw:gap-1.5"
             data-testid="message-container">
-            {(isTestingConnection || testStatus || isReadyToTestCard) && (
-              <div
-                className={classNames(
-                  'tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-[10px] tw:border tw:border-utility-brand-200 tw:bg-utility-brand-50 tw:text-utility-brand-600',
-                  {
-                    'tw:border-utility-success-200 tw:bg-utility-success-100 tw:text-utility-success-600':
-                      testStatus === StatusType.Successful,
-                    'tw:border-utility-error-200 tw:bg-utility-error-50 tw:text-utility-error-600':
-                      testStatus === StatusType.Failed,
-                    'tw:border-utility-warning-200 tw:bg-utility-warning-50 tw:text-utility-warning-600':
-                      testStatus === 'Warning',
-                    'tw:size-12 tw:basis-12 tw:rounded-xl tw:border-[#c9e4ff] tw:bg-[#dbeeff] tw:text-[#2563eb]':
-                      isReadyToTestCard,
-                  }
-                )}>
-                {isTestingConnection && <Loader size="small" />}
-                {isReadyToTestCard && (
-                  <Zap
-                    className="tw:size-[18px]"
-                    data-testid="ready-badge"
-                    size={20}
-                  />
-                )}
-                {testStatus === StatusType.Successful && (
-                  <CheckCircle
-                    className="tw:size-[18px]"
-                    data-testid="success-badge"
-                    size={18}
-                  />
-                )}
-                {testStatus === StatusType.Failed && (
-                  <XCircle
-                    className="tw:size-[18px]"
-                    data-testid="fail-badge"
-                    size={18}
-                  />
-                )}
-                {testStatus === 'Warning' && (
-                  <AlertTriangle
-                    className="tw:size-[18px]"
-                    data-testid="warning-badge"
-                    size={18}
-                  />
-                )}
-              </div>
+            {connectionCardDescription}
+            {(testStatus || isTestingConnection) && (
+              <Button
+                className="p-0 [&>span]:tw:underline"
+                color="link-color"
+                data-testid="test-connection-details-btn"
+                size="sm"
+                onClick={() => setDialogOpen(true)}>
+                {t('label.view')}
+              </Button>
             )}
-            <div className="tw:min-w-0" data-testid="messag-text">
-              <div
-                className={classNames(
-                  'tw:text-sm tw:font-medium tw:leading-6 tw:text-primary',
-                  {
-                    'tw:text-base tw:font-bold tw:leading-6': isReadyToTestCard,
-                  }
-                )}>
-                {connectionCardTitle}
-              </div>
-              <div
-                className={classNames(
-                  'tw:mt-0.5 tw:flex tw:flex-wrap tw:items-center tw:gap-1.5 tw:text-sm tw:leading-[18px] tw:text-quaternary',
-                  {
-                    'tw:text-utility-success-700 tw:font-medium':
-                      testStatus === StatusType.Successful,
-                    'tw:text-utility-warning-700': testStatus === 'Warning',
-                    'tw:text-utility-error-700':
-                      testStatus === StatusType.Failed,
-                    'tw:text-sm tw:leading-6 tw:text-[#2563eb]':
-                      isReadyToTestCard,
-                  }
-                )}>
-                {connectionCardDescription}
-                {(testStatus || isTestingConnection) && (
-                  <Button
-                    className="p-0 [&>span]:tw:underline"
-                    color="link-color"
-                    data-testid="test-connection-details-btn"
-                    size="sm"
-                    onClick={() => setDialogOpen(true)}>
-                    {t('label.view')}
-                  </Button>
-                )}
-              </div>
-            </div>
           </div>
-          <Tooltip title={buttonTooltipTitle}>
-            <Button
-              color="primary"
-              data-testid="test-connection-btn"
-              isDisabled={isTestConnectionDisabled}
-              isLoading={isTestingConnection}
-              size="md"
-              onClick={handleTestConnection}>
-              {connectionButtonLabel}
-            </Button>
-          </Tooltip>
-        </div>
+        </Alert>
       ) : (
         <Tooltip title={buttonTooltipTitle}>
           <Button
