@@ -105,7 +105,7 @@ jest.mock('../../../rest/tagAPI', () => ({
   }),
 }));
 
-jest.mock('../../common/EntityDescription/DescriptionV1', () =>
+jest.mock('../../common/EntityDescription/Description', () =>
   jest.fn().mockImplementation(({ onDescriptionUpdate }) => (
     <div data-testid="description-container">
       <button

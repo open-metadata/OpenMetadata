@@ -25,7 +25,7 @@ import { DashboardVersionProp } from './DashboardVersion.interface';
 
 const mockNavigate = jest.fn();
 
-jest.mock('../../common/EntityDescription/DescriptionV1', () => {
+jest.mock('../../common/EntityDescription/Description', () => {
   return jest.fn().mockImplementation(() => <div>Description.component</div>);
 });
 

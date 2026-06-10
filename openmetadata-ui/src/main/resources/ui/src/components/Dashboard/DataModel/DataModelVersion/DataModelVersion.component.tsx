@@ -38,7 +38,7 @@ import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils
 import { getVersionPath } from '../../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
+import Description from '../../../common/EntityDescription/Description';
 import Loader from '../../../common/Loader/Loader';
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../../Customization/GenericProvider/GenericProvider';
@@ -150,7 +150,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
             <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[0, 16]}>
                 <Col span={24}>
-                  <DescriptionV1
+                  <Description
                     description={description}
                     entityType={EntityType.DASHBOARD_DATA_MODEL}
                     showActions={false}

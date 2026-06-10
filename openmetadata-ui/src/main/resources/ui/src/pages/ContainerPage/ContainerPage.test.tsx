@@ -85,11 +85,11 @@ jest.mock(
   })
 );
 
-jest.mock('../../components/common/EntityDescription/DescriptionV1', () =>
+jest.mock('../../components/common/EntityDescription/Description', () =>
   jest
     .fn()
     .mockImplementation(({ onThreadLinkSelect }) => (
-      <button onClick={onThreadLinkSelect}>DescriptionV1</button>
+      <button onClick={onThreadLinkSelect}>Description</button>
     ))
 );
 
@@ -447,7 +447,7 @@ describe('Container Page Component', () => {
 
     expect(tabs).toHaveLength(7);
     expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByText('DescriptionV1')).toBeVisible();
+    expect(screen.getByText('Description')).toBeVisible();
     expect(screen.getByText('ContainerDataModel')).toBeVisible();
     expect(screen.getByText('CustomPropertyTable')).toBeVisible();
     expect(screen.getByText('label.glossary-term')).toBeVisible();
