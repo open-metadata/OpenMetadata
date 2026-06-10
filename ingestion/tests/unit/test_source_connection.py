@@ -9,7 +9,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import base64
+import io
+import tempfile
+import zipfile
+from pathlib import Path
 from unittest import TestCase
+from unittest.mock import patch
 
 from trino.auth import BasicAuthentication, JWTAuthentication, OAuth2Authentication
 
@@ -75,13 +81,14 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
     MySQLScheme,
 )
 from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
-    OracleConnection as OracleConnectionConfig,
-)
-from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
+    OracleAutonomousConnection,
     OracleDatabaseSchema,
     OracleScheme,
     OracleServiceName,
     OracleTNSConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
+    OracleConnection as OracleConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.database.pinotDBConnection import (
     PinotDBConnection,
@@ -1248,7 +1255,7 @@ class SourceConnectionTest(TestCase):
             hostPort="localhost:1541",
             scheme=OracleScheme.oracle_cx_oracle,
             oracleConnectionType=OracleDatabaseSchema(databaseSchema="testdb"),
-            connectionOptions=dict(test_key_1="test_value_1", test_key_2="test_value_2"),  # noqa: C408
+            connectionOptions={"test_key_1": "test_value_1", "test_key_2": "test_value_2"},
         )
         assert OracleConnection.get_connection_url(oracle_conn_obj) in expected_url
 
@@ -1264,7 +1271,7 @@ class SourceConnectionTest(TestCase):
             hostPort="localhost:1541",
             scheme=OracleScheme.oracle_cx_oracle,
             oracleConnectionType=OracleServiceName(oracleServiceName="testdb"),
-            connectionOptions=dict(test_key_1="test_value_1", test_key_2="test_value_2"),  # noqa: C408
+            connectionOptions={"test_key_1": "test_value_1", "test_key_2": "test_value_2"},
         )
         assert OracleConnection.get_connection_url(oracle_conn_obj) in expected_url
 
@@ -1281,6 +1288,334 @@ class SourceConnectionTest(TestCase):
             oracleConnectionType=OracleTNSConnection(oracleTNSConnection=tns_connection),
         )
         assert OracleConnection.get_connection_url(oracle_conn_obj) == expected_url
+
+        expected_url = "oracle+cx_oracle://admin:password@myadb_high"
+        oracle_conn_obj = OracleConnectionConfig(
+            username="admin",
+            password="password",
+            oracleConnectionType=OracleAutonomousConnection(
+                tnsAlias="myadb_high",
+                walletPath="/tmp/my_wallet",
+            ),
+        )
+        assert OracleConnection.get_connection_url(oracle_conn_obj) == expected_url
+
+        expected_url = [
+            "oracle+cx_oracle://admin:password@myadb_high?test_key_2=test_value_2&test_key_1=test_value_1",
+            "oracle+cx_oracle://admin:password@myadb_high?test_key_1=test_value_1&test_key_2=test_value_2",
+        ]
+        oracle_conn_obj = OracleConnectionConfig(
+            username="admin",
+            password="password",
+            oracleConnectionType=OracleAutonomousConnection(
+                tnsAlias="myadb_high",
+                walletPath="/tmp/my_wallet",
+            ),
+            connectionOptions={"test_key_1": "test_value_1", "test_key_2": "test_value_2"},
+        )
+        assert OracleConnection.get_connection_url(oracle_conn_obj) in expected_url
+
+    @patch("metadata.ingestion.source.database.oracle.connection.oracledb.init_oracle_client")
+    @patch("metadata.ingestion.source.database.oracle.connection.create_generic_db_connection")
+    def test_oracle_autonomous_wallet_path_args(self, mock_create_generic_db_connection, mock_init_oracle_client):
+        connection = OracleConnectionConfig(
+            username="admin",
+            password="password",
+            instantClientDirectory="/instantclient",
+            oracleConnectionType=OracleAutonomousConnection(
+                tnsAlias="myadb_high",
+                walletPath="/tmp/my_wallet",
+                walletPassword="wallet_password",
+            ),
+        )
+        oracle_connection = OracleConnection(connection)
+        mock_create_generic_db_connection.return_value = "dummy_engine"
+
+        oracle_connection._get_client()
+
+        assert mock_init_oracle_client.call_count == 0
+        assert oracle_connection.service_connection.connectionArguments.root["config_dir"] == "/tmp/my_wallet"
+        assert oracle_connection.service_connection.connectionArguments.root["wallet_location"] == "/tmp/my_wallet"
+        # wallet_password must NOT be persisted into connectionArguments — it
+        # would otherwise leak via get_connection_dict() and any logging of the
+        # service_connection. It is injected just-in-time at engine creation.
+        assert "wallet_password" not in oracle_connection.service_connection.connectionArguments.root
+        # The driver-call-boundary helper must surface it for oracledb.
+        engine_args = oracle_connection._build_connection_args(oracle_connection.service_connection)
+        assert engine_args["wallet_password"] == "wallet_password"
+
+    @patch("metadata.ingestion.source.database.oracle.connection.create_generic_db_connection")
+    def test_oracle_autonomous_wallet_content_args(self, mock_create_generic_db_connection):
+        wallet_bytes = io.BytesIO()
+        with zipfile.ZipFile(wallet_bytes, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            zip_file.writestr("tnsnames.ora", "MYADB_HIGH=(DESCRIPTION=...)")
+
+        encoded_wallet = base64.b64encode(wallet_bytes.getvalue()).decode("utf-8")
+
+        connection = OracleConnectionConfig(
+            username="admin",
+            password="password",
+            oracleConnectionType=OracleAutonomousConnection(
+                tnsAlias="myadb_high",
+                walletContent=encoded_wallet,
+            ),
+        )
+        oracle_connection = OracleConnection(connection)
+        mock_create_generic_db_connection.return_value = "dummy_engine"
+
+        oracle_connection._get_client()
+
+        wallet_dir = Path(oracle_connection.service_connection.connectionArguments.root["config_dir"])
+        assert wallet_dir.is_dir()
+        assert (wallet_dir / "tnsnames.ora").exists()
+
+        # Repeated _get_client calls should reuse the same extracted wallet directory.
+        oracle_connection._get_client()
+        assert oracle_connection.service_connection.connectionArguments.root["config_dir"] == str(wallet_dir)
+
+        oracle_connection._cleanup_wallet_temp_dir()
+        assert not wallet_dir.exists()
+
+    @patch("metadata.ingestion.source.database.oracle.connection.create_generic_db_connection")
+    def test_oracle_autonomous_wallet_content_cleanup_on_connection_failure(self, mock_create_generic_db_connection):
+        wallet_bytes = io.BytesIO()
+        with zipfile.ZipFile(wallet_bytes, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            zip_file.writestr("tnsnames.ora", "MYADB_HIGH=(DESCRIPTION=...)")
+
+        encoded_wallet = base64.b64encode(wallet_bytes.getvalue()).decode("utf-8")
+        connection = OracleConnectionConfig(
+            username="admin",
+            password="password",
+            oracleConnectionType=OracleAutonomousConnection(
+                tnsAlias="myadb_high",
+                walletContent=encoded_wallet,
+            ),
+        )
+        oracle_connection = OracleConnection(connection)
+        wallet_dir = None
+
+        def raise_connection_error(**kwargs):
+            nonlocal wallet_dir
+            wallet_dir = kwargs["connection"].connectionArguments.root["config_dir"]
+            raise RuntimeError("engine creation failed")
+
+        mock_create_generic_db_connection.side_effect = raise_connection_error
+
+        with self.assertRaises(RuntimeError):
+            oracle_connection._get_client()
+
+        assert wallet_dir is not None
+        assert not Path(wallet_dir).exists()
+        assert oracle_connection._wallet_temp_dir is None
+
+    @patch("metadata.ingestion.source.database.oracle.connection.create_generic_db_connection")
+    def test_oracle_autonomous_wallet_content_zip_slip_rejected(self, mock_create_generic_db_connection):
+        wallet_bytes = io.BytesIO()
+        with zipfile.ZipFile(wallet_bytes, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            zip_file.writestr("../malicious.txt", "malicious")
+
+        encoded_wallet = base64.b64encode(wallet_bytes.getvalue()).decode("utf-8")
+
+        connection = OracleConnectionConfig(
+            username="admin",
+            password="password",
+            oracleConnectionType=OracleAutonomousConnection(
+                tnsAlias="myadb_high",
+                walletContent=encoded_wallet,
+            ),
+        )
+        oracle_connection = OracleConnection(connection)
+        mock_create_generic_db_connection.return_value = "dummy_engine"
+
+        with self.assertRaises(ValueError) as error:
+            oracle_connection._get_client()
+
+        assert "unsafe file paths" in str(error.exception)
+        assert oracle_connection._wallet_temp_dir is None
+
+    @patch("metadata.ingestion.source.database.oracle.connection.create_generic_db_connection")
+    def test_oracle_autonomous_wallet_content_invalid_base64_rejected(self, mock_create_generic_db_connection):
+        connection = OracleConnectionConfig(
+            username="admin",
+            password="password",
+            oracleConnectionType=OracleAutonomousConnection(
+                tnsAlias="myadb_high",
+                walletContent="Zm9v$",
+            ),
+        )
+        oracle_connection = OracleConnection(connection)
+        mock_create_generic_db_connection.return_value = "dummy_engine"
+
+        with self.assertRaises(ValueError) as error:
+            oracle_connection._get_client()
+
+        assert "base64-encoded wallet zip" in str(error.exception)
+        assert oracle_connection._wallet_temp_dir is None
+
+    def test_oracle_autonomous_schema_requires_wallet_path_or_content(self):
+        # The JSON schema uses anyOf to enforce that walletPath OR walletContent
+        # is set. Pydantic should refuse to construct the model when neither is
+        # provided, so invalid configs are rejected at the API boundary instead
+        # of failing later at ingestion runtime.
+        from pydantic import ValidationError
+
+        with self.assertRaises(ValidationError):
+            OracleAutonomousConnection(tnsAlias="myadb_high")
+
+    @patch("metadata.ingestion.source.database.oracle.connection.create_generic_db_connection")
+    def test_oracle_autonomous_wallet_content_empty_rejected(self, mock_create_generic_db_connection):
+        # An empty SecretStr walletContent must be treated as missing — not as
+        # a valid wallet payload that just happens to decode to b"".
+        connection = OracleConnectionConfig(
+            username="admin",
+            password="password",
+            oracleConnectionType=OracleAutonomousConnection(
+                tnsAlias="myadb_high",
+                walletPath="/tmp/my_wallet",
+                walletContent="",
+            ),
+        )
+        oracle_connection = OracleConnection(connection)
+        mock_create_generic_db_connection.return_value = "dummy_engine"
+        # walletContent is empty -> code path falls back to walletPath, which is
+        # set, so configuration succeeds.
+        oracle_connection._configure_autonomous_connection_arguments()
+        assert oracle_connection.service_connection.connectionArguments.root["config_dir"] == "/tmp/my_wallet"
+        assert oracle_connection._wallet_temp_dir is None
+
+    @patch("metadata.ingestion.source.database.oracle.connection.create_generic_db_connection")
+    def test_oracle_autonomous_wallet_content_whitespace_only_rejected(self, mock_create_generic_db_connection):
+        # A whitespace-only walletContent must raise a clear error instead of
+        # silently decoding to b"" and failing later as an opaque zip error.
+        connection = OracleConnectionConfig(
+            username="admin",
+            password="password",
+            oracleConnectionType=OracleAutonomousConnection(
+                tnsAlias="myadb_high",
+                walletContent="   \n  \t  ",
+            ),
+        )
+        oracle_connection = OracleConnection(connection)
+        mock_create_generic_db_connection.return_value = "dummy_engine"
+
+        with self.assertRaises(ValueError) as error:
+            oracle_connection._get_client()
+
+        assert "walletContent is empty" in str(error.exception)
+        assert oracle_connection._wallet_temp_dir is None
+
+    def test_oracle_mkdir_secure_within_rejects_path_outside_root(self):
+        # _safe_extract_wallet_archive validates containment before calling
+        # _mkdir_secure_within, but the helper must also be defensive on its own
+        # so a future caller cannot accidentally trigger an unbounded recursion
+        # (or worse, write outside the wallet temp dir).
+        root = Path(tempfile.mkdtemp(prefix="oracle_wallet_root_"))
+        outside = Path(tempfile.mkdtemp(prefix="oracle_wallet_outside_")) / "evil"
+        try:
+            with self.assertRaises(ValueError) as error:
+                OracleConnection._mkdir_secure_within(outside, root)
+            assert "outside wallet root" in str(error.exception)
+            assert not outside.exists()
+        finally:
+            import shutil
+
+            shutil.rmtree(root, ignore_errors=True)
+            shutil.rmtree(outside.parent, ignore_errors=True)
+
+    def test_oracle_mkdir_secure_within_tightens_preexisting_dirs(self):
+        # If an intermediate dir was somehow pre-created with looser permissions
+        # (e.g. by an earlier extraction that ran under a different umask), the
+        # helper must still chmod it to 0o700 instead of leaving it as-is.
+        import shutil
+        import stat
+
+        root = Path(tempfile.mkdtemp(prefix="oracle_wallet_root_"))
+        try:
+            loose = root / "loose"
+            loose.mkdir(mode=0o755)
+            loose.chmod(0o755)
+            target = loose / "leaf"
+
+            OracleConnection._mkdir_secure_within(target, root)
+
+            assert stat.S_IMODE(loose.stat().st_mode) == 0o700
+            assert stat.S_IMODE(target.stat().st_mode) == 0o700
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+
+    def test_oracle_safe_extract_rejects_duplicate_zip_entries(self):
+        # A malicious wallet zip could include two entries with the same path
+        # to overwrite earlier extracted files. O_EXCL on the file open prevents
+        # this.
+        import shutil
+
+        wallet_bytes = io.BytesIO()
+        with zipfile.ZipFile(wallet_bytes, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            zip_file.writestr("tnsnames.ora", "first=...")
+            zip_file.writestr("tnsnames.ora", "second=...")
+        wallet_bytes.seek(0)
+
+        target_dir = tempfile.mkdtemp(prefix="oracle_wallet_dupe_")
+        try:
+            with self.assertRaises(FileExistsError), zipfile.ZipFile(wallet_bytes) as zip_ref:
+                OracleConnection._safe_extract_wallet_archive(zip_ref, target_dir)
+            assert (Path(target_dir) / "tnsnames.ora").read_text() == "first=..."
+        finally:
+            shutil.rmtree(target_dir, ignore_errors=True)
+
+    def test_oracle_safe_extract_rejects_symlink_at_target(self):
+        # O_NOFOLLOW protects against an attacker pre-creating a symlink at
+        # the target path before extraction. We point the symlink at a sibling
+        # file *inside* the wallet root so the resolve()-based zip-slip check
+        # still passes — the protection under test here is O_NOFOLLOW, not the
+        # path-containment guard.
+        import shutil
+
+        wallet_bytes = io.BytesIO()
+        with zipfile.ZipFile(wallet_bytes, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            zip_file.writestr("cwallet.sso", "attacker-controlled")
+        wallet_bytes.seek(0)
+
+        target_dir = Path(tempfile.mkdtemp(prefix="oracle_wallet_sym_"))
+        try:
+            victim = target_dir / "victim"
+            victim.write_text("untouched")
+            (target_dir / "cwallet.sso").symlink_to(victim)
+
+            with self.assertRaises((FileExistsError, OSError)), zipfile.ZipFile(wallet_bytes) as zip_ref:
+                OracleConnection._safe_extract_wallet_archive(zip_ref, str(target_dir))
+            assert victim.read_text() == "untouched"
+        finally:
+            shutil.rmtree(target_dir, ignore_errors=True)
+
+    @patch("metadata.ingestion.source.database.oracle.connection.create_generic_db_connection")
+    def test_oracle_autonomous_wallet_content_accepts_wrapped_base64(self, mock_create_generic_db_connection):
+        # macOS `base64 -i` wraps lines every 76 chars; ensure ingestion strips
+        # whitespace before decoding so users do not have to.
+        wallet_bytes = io.BytesIO()
+        with zipfile.ZipFile(wallet_bytes, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            zip_file.writestr("tnsnames.ora", "MYADB_HIGH=(DESCRIPTION=...)")
+
+        raw = base64.b64encode(wallet_bytes.getvalue()).decode("utf-8")
+        wrapped = "\n".join(raw[i : i + 76] for i in range(0, len(raw), 76)) + "\n"
+
+        connection = OracleConnectionConfig(
+            username="admin",
+            password="password",
+            oracleConnectionType=OracleAutonomousConnection(
+                tnsAlias="myadb_high",
+                walletContent=wrapped,
+            ),
+        )
+        oracle_connection = OracleConnection(connection)
+        mock_create_generic_db_connection.return_value = "dummy_engine"
+
+        oracle_connection._get_client()
+
+        wallet_dir = Path(oracle_connection.service_connection.connectionArguments.root["config_dir"])
+        assert (wallet_dir / "tnsnames.ora").exists()
+
+        oracle_connection._cleanup_wallet_temp_dir()
 
     def test_exasol_url(self):
         from metadata.ingestion.source.database.exasol.connection import (

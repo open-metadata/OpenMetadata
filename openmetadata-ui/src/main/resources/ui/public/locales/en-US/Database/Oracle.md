@@ -77,6 +77,7 @@ Connect with oracle by either passing service name or database schema name.
 - **Database Schema**: Using a database schema name when connecting to an Oracle database allows the user to access only the objects within that schema, rather than the entire database.
 - **Oracle Service Name**: Oracle Service Name is a unique identifier for a database instance or group of instances that perform a particular function.
 - **Oracle TNS Connection**: You can directly use the TNS connection string, e.g., `(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=myhost)(PORT=1530)))(CONNECT_DATA=(SID=MYSERVICENAME)))`.
+- **Oracle Autonomous Connection**: Use a wallet-based Oracle Autonomous Database setup by providing a `tnsAlias` plus either a wallet directory path or inline wallet content.
 $$
 
 $$section
@@ -97,6 +98,48 @@ $$section
 TNS connection string you would set in `tnsnames.ora`, e.g., `(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=myhost)(PORT=1530)))(CONNECT_DATA=(SID=MYSERVICENAME)))`.
 
 Note that if this is informed, we will ignore the `hostPort` property, so you should make sure that the `HOST` entry is present here.
+$$
+
+$$section
+### Oracle Autonomous TNS Alias $(id="tnsAlias")
+
+Service alias from the wallet `tnsnames.ora`, such as `myadb_high`.
+
+For Autonomous mode, OpenMetadata uses this alias as the Oracle DSN target and does not require `hostPort`.
+$$
+
+$$section
+### Wallet Path $(id="walletPath")
+
+Path to the extracted Oracle wallet directory on the ingestion host.
+
+Use this when wallet files are already present on the host running ingestion.
+$$
+
+$$section
+### Wallet Content $(id="walletContent")
+
+Base64-encoded wallet zip content as a single unwrapped line. Recommended for Docker/Kubernetes deployments where you cannot mount wallet files onto the ingestion pod.
+
+**How to generate:**
+
+Linux:
+```bash
+base64 -w 0 Wallet_mydb.zip
+```
+
+macOS (the default `base64` wraps lines every 76 characters; pipe through `tr` to strip them):
+```bash
+base64 -i Wallet_mydb.zip | tr -d '\n'
+```
+
+Copy the output and paste it into this field. OpenMetadata stores it as a secret, then decodes and extracts it at runtime inside the pod — no volume mounts or pre-provisioning needed.
+$$
+
+$$section
+### Wallet Password $(id="walletPassword")
+
+Wallet password used by Oracle Autonomous mTLS connections, if your wallet requires one.
 $$
 
 $$section
