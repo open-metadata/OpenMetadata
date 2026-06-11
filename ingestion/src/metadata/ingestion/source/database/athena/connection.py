@@ -42,6 +42,7 @@ from metadata.ingestion.connections.test_connections import (
     test_connection_steps,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.connections_utils import kill_active_connections
 from metadata.utils.constants import THREE_MIN
 
 
@@ -120,13 +121,17 @@ class AthenaConnection(BaseConnection[AthenaConnectionConfig, Engine]):
             "GetViews": custom_executor_for_view,
         }
 
-        return test_connection_steps(
+        result = test_connection_steps(
             metadata=metadata,
             test_fn=test_fn,
             service_type=self.service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
             automation_workflow=automation_workflow,
             timeout_seconds=timeout_seconds,
         )
+
+        kill_active_connections(engine)
+
+        return result
 
 
 def get_lake_formation_client(connection: AthenaConnectionConfig):

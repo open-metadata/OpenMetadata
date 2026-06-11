@@ -10,7 +10,7 @@
 #  limitations under the License.
 """Unit tests for Athena connection handling."""
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection as AthenaConnectionConfig,
@@ -44,6 +44,17 @@ def test_get_client_uses_the_class_url_builder():
     with patch(f"{CONNECTION_MODULE}.create_generic_db_connection") as mock_connection:
         _ = AthenaConnection(_config()).client
     assert mock_connection.call_args.kwargs["get_connection_url_fn"].__name__ == "get_connection_url"
+
+
+def test_test_connection_disposes_the_engine():
+    conn = AthenaConnection(_config())
+    conn._client = MagicMock()
+    with (
+        patch(f"{CONNECTION_MODULE}.test_connection_steps"),
+        patch(f"{CONNECTION_MODULE}.kill_active_connections") as mock_kill,
+    ):
+        conn.test_connection(metadata=MagicMock())
+    mock_kill.assert_called_once_with(conn._client)
 
 
 def test_athena_url():
