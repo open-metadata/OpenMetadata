@@ -12,19 +12,18 @@
  */
 
 import { ComponentType, forwardRef, Suspense } from 'react';
-import Loader from '../common/Loader/Loader';
 
+/**
+ * Test mock for withSuspenseFallback.
+ * Mirrors production: uses forwardRef so ref-dependent components behave
+ * correctly in tests. Uses null fallback so no loader appears during resolution.
+ */
 export function withSuspenseFallback<T extends object>(
   Component: ComponentType<T>
 ) {
   return forwardRef<unknown, T>(function DefaultFallback(props, ref) {
     return (
-      <Suspense
-        fallback={
-          <div className="ant-layout-content flex-center">
-            <Loader />
-          </div>
-        }>
+      <Suspense fallback={null}>
         <Component {...(props as T)} ref={ref} />
       </Suspense>
     );

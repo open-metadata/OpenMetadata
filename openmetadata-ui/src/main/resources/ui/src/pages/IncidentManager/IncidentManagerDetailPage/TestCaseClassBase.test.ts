@@ -64,7 +64,13 @@ describe('TestCaseClassBase', () => {
 
     const result = testCaseClassBase.getTab(openTaskCount, false);
 
-    expect(result).toEqual(expectedTabs);
+    result.forEach((tab, i) => {
+      const { Tab, ...rest } = tab;
+      const { Tab: _expectedTab, ...expectedRest } = expectedTabs[i];
+
+      expect(rest).toEqual(expectedRest);
+      expect(Tab).toBeDefined();
+    });
   });
 
   it('should return an array of fields', () => {

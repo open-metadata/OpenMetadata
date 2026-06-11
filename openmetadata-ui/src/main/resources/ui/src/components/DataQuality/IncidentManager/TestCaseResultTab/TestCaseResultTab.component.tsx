@@ -20,7 +20,7 @@ import isEmpty from 'lodash/isEmpty';
 import isUndefined from 'lodash/isUndefined';
 import startCase from 'lodash/startCase';
 import toString from 'lodash/toString';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -57,6 +57,7 @@ import {
 } from '../../../../utils/TablePureUtils';
 import { createTagObject } from '../../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import TestSummary from '../../../Database/Profiler/TestSummary/TestSummary';
@@ -68,6 +69,10 @@ import EditTestCaseModal from '../../AddDataQualityTest/EditTestCaseModal';
 import '../incident-manager.style.less';
 import './test-case-result-tab.style.less';
 import testCaseResultTabClassBase from './TestCaseResultTabClassBase';
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../../../Database/SchemaEditor/SchemaEditor'))
+);
 
 function ParameterTooltipText({
   className,
