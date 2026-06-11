@@ -73,9 +73,7 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
   );
 
   return (
-    <div
-      className="tw:flex tw:flex-col"
-      data-testid="context-center-header">
+    <div className="tw:flex tw:flex-col" data-testid="context-center-header">
       {!breadcrumbInsideCard && breadcrumbEl}
 
       <Card className={`tw:mb-5 tw:p-5 ${className}`} style={cardStyle}>
