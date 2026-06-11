@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Typography } from '@openmetadata/ui-core-components';
-import { Typography as AntDTypography, Card, Tooltip } from 'antd';
+import { Card, Tooltip, Typography as AntDTypography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -157,11 +157,9 @@ export const DomainLabelV2 = <
     } else {
       return (
         <Typography
-          className={classNames(
-           'tw:text-gray-500',
-            props.textClassName
-          )} size="text-xs"
-          data-testid="no-domain-text">
+          className={classNames('tw:text-gray-500', props.textClassName)}
+          data-testid="no-domain-text"
+          size="text-xs">
           {t('label.no-entity', { entity: t('label.domain-plural') })}
         </Typography>
       );

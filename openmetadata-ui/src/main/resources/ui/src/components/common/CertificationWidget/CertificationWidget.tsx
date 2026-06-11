@@ -82,7 +82,7 @@ const CertificationWidget = () => {
         {entity.certification ? (
           <CertificationTag showName certification={entity.certification} />
         ) : (
-          <Typography className="tw:text-gray-500" size='text-xs'>
+          <Typography className="tw:text-gray-500" size="text-xs">
             {t('label.no-entity-assigned', {
               entity: t('label.certification'),
             })}

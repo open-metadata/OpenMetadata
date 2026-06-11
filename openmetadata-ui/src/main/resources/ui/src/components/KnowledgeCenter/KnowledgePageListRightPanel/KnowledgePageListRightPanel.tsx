@@ -202,7 +202,7 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
         title={t('label.recently-viewed')}
         titleIcon={<EyeIcon height={16} width={16} />}>
         {isEmpty(recentlyViewed) ? (
-          <Typography className='tw:text-gray-500' size="text-xs">
+          <Typography className="tw:text-gray-500" size="text-xs">
             {t('message.no-recently-viewed-date')}
           </Typography>
         ) : (
