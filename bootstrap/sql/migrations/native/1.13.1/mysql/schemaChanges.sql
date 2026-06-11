@@ -1,161 +1,17 @@
--- CSV async jobs: extend background_jobs with progress/result/error tracking.
--- MySQL has no ADD COLUMN IF NOT EXISTS, so each ALTER is guarded by an
--- information_schema check via a uniquely named prepared statement. Names must
--- be unique per statement: the migration runner records every executed
--- statement by checksum and skips duplicates, so repeating an identical
--- PREPARE/EXECUTE/DEALLOCATE trio would run only once.
-SET @add_bg_jobs_progress_sql = (
-  SELECT IF(
-    EXISTS (
-      SELECT 1
-      FROM information_schema.columns
-      WHERE table_schema = DATABASE()
-        AND table_name = 'background_jobs'
-        AND column_name = 'progress'
-    ),
-    'SELECT 1',
-    'ALTER TABLE background_jobs ADD COLUMN progress int DEFAULT 0'
-  )
-);
-PREPARE add_bg_jobs_progress_stmt FROM @add_bg_jobs_progress_sql;
-EXECUTE add_bg_jobs_progress_stmt;
-DEALLOCATE PREPARE add_bg_jobs_progress_stmt;
+ALTER TABLE background_jobs
+  ADD COLUMN progress int DEFAULT 0,
+  ADD COLUMN total int DEFAULT 0,
+  ADD COLUMN result longtext,
+  ADD COLUMN error longtext,
+  ADD COLUMN message varchar(2048),
+  ADD COLUMN cancelRequested boolean DEFAULT false,
+  ADD COLUMN completedAt bigint;
 
-SET @add_bg_jobs_total_sql = (
-  SELECT IF(
-    EXISTS (
-      SELECT 1
-      FROM information_schema.columns
-      WHERE table_schema = DATABASE()
-        AND table_name = 'background_jobs'
-        AND column_name = 'total'
-    ),
-    'SELECT 1',
-    'ALTER TABLE background_jobs ADD COLUMN total int DEFAULT 0'
-  )
-);
-PREPARE add_bg_jobs_total_stmt FROM @add_bg_jobs_total_sql;
-EXECUTE add_bg_jobs_total_stmt;
-DEALLOCATE PREPARE add_bg_jobs_total_stmt;
+CREATE INDEX idx_background_jobs_job_type_created_by
+  ON background_jobs (jobType, createdBy, createdAt);
 
-SET @add_bg_jobs_result_sql = (
-  SELECT IF(
-    EXISTS (
-      SELECT 1
-      FROM information_schema.columns
-      WHERE table_schema = DATABASE()
-        AND table_name = 'background_jobs'
-        AND column_name = 'result'
-    ),
-    'SELECT 1',
-    'ALTER TABLE background_jobs ADD COLUMN result longtext'
-  )
-);
-PREPARE add_bg_jobs_result_stmt FROM @add_bg_jobs_result_sql;
-EXECUTE add_bg_jobs_result_stmt;
-DEALLOCATE PREPARE add_bg_jobs_result_stmt;
-
-SET @add_bg_jobs_error_sql = (
-  SELECT IF(
-    EXISTS (
-      SELECT 1
-      FROM information_schema.columns
-      WHERE table_schema = DATABASE()
-        AND table_name = 'background_jobs'
-        AND column_name = 'error'
-    ),
-    'SELECT 1',
-    'ALTER TABLE background_jobs ADD COLUMN error longtext'
-  )
-);
-PREPARE add_bg_jobs_error_stmt FROM @add_bg_jobs_error_sql;
-EXECUTE add_bg_jobs_error_stmt;
-DEALLOCATE PREPARE add_bg_jobs_error_stmt;
-
-SET @add_bg_jobs_message_sql = (
-  SELECT IF(
-    EXISTS (
-      SELECT 1
-      FROM information_schema.columns
-      WHERE table_schema = DATABASE()
-        AND table_name = 'background_jobs'
-        AND column_name = 'message'
-    ),
-    'SELECT 1',
-    'ALTER TABLE background_jobs ADD COLUMN message varchar(2048)'
-  )
-);
-PREPARE add_bg_jobs_message_stmt FROM @add_bg_jobs_message_sql;
-EXECUTE add_bg_jobs_message_stmt;
-DEALLOCATE PREPARE add_bg_jobs_message_stmt;
-
-SET @add_bg_jobs_cancel_requested_sql = (
-  SELECT IF(
-    EXISTS (
-      SELECT 1
-      FROM information_schema.columns
-      WHERE table_schema = DATABASE()
-        AND table_name = 'background_jobs'
-        AND column_name = 'cancelRequested'
-    ),
-    'SELECT 1',
-    'ALTER TABLE background_jobs ADD COLUMN cancelRequested boolean DEFAULT false'
-  )
-);
-PREPARE add_bg_jobs_cancel_requested_stmt FROM @add_bg_jobs_cancel_requested_sql;
-EXECUTE add_bg_jobs_cancel_requested_stmt;
-DEALLOCATE PREPARE add_bg_jobs_cancel_requested_stmt;
-
-SET @add_bg_jobs_completed_at_sql = (
-  SELECT IF(
-    EXISTS (
-      SELECT 1
-      FROM information_schema.columns
-      WHERE table_schema = DATABASE()
-        AND table_name = 'background_jobs'
-        AND column_name = 'completedAt'
-    ),
-    'SELECT 1',
-    'ALTER TABLE background_jobs ADD COLUMN completedAt bigint'
-  )
-);
-PREPARE add_bg_jobs_completed_at_stmt FROM @add_bg_jobs_completed_at_sql;
-EXECUTE add_bg_jobs_completed_at_stmt;
-DEALLOCATE PREPARE add_bg_jobs_completed_at_stmt;
-
-SET @add_bg_jobs_type_creator_idx_sql = (
-  SELECT IF(
-    EXISTS (
-      SELECT 1
-      FROM information_schema.statistics
-      WHERE table_schema = DATABASE()
-        AND table_name = 'background_jobs'
-        AND index_name = 'idx_background_jobs_job_type_created_by'
-    ),
-    'SELECT 1',
-    'CREATE INDEX idx_background_jobs_job_type_created_by ON background_jobs (jobType, createdBy, createdAt)'
-  )
-);
-PREPARE add_bg_jobs_type_creator_idx_stmt FROM @add_bg_jobs_type_creator_idx_sql;
-EXECUTE add_bg_jobs_type_creator_idx_stmt;
-DEALLOCATE PREPARE add_bg_jobs_type_creator_idx_stmt;
-
-SET @add_bg_jobs_status_updated_idx_sql = (
-  SELECT IF(
-    EXISTS (
-      SELECT 1
-      FROM information_schema.statistics
-      WHERE table_schema = DATABASE()
-        AND table_name = 'background_jobs'
-        AND index_name = 'idx_background_jobs_status_updated_at'
-    ),
-    'SELECT 1',
-    'CREATE INDEX idx_background_jobs_status_updated_at ON background_jobs (status, updatedAt)'
-  )
-);
-PREPARE add_bg_jobs_status_updated_idx_stmt FROM @add_bg_jobs_status_updated_idx_sql;
-EXECUTE add_bg_jobs_status_updated_idx_stmt;
-DEALLOCATE PREPARE add_bg_jobs_status_updated_idx_stmt;
+CREATE INDEX idx_background_jobs_status_updated_at
+  ON background_jobs (status, updatedAt);
 
 CREATE TABLE IF NOT EXISTS background_job_logs (
   logId varchar(36) NOT NULL,
