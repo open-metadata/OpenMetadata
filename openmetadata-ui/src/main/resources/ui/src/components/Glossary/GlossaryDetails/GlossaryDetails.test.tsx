@@ -83,14 +83,6 @@ jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   })),
 }));
 
-jest.mock('../../Customization/GenericProvider/GenericContext', () => {
-  return {
-    useGenericContext: jest.fn().mockImplementation(() => ({
-      permissions: MOCK_PERMISSIONS,
-    })),
-  };
-});
-
 jest.mock('../../Customization/GenericTab/GenericTab', () => ({
   GenericTab: jest.fn().mockImplementation(() => <div>GenericTab</div>),
 }));

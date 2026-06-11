@@ -58,9 +58,13 @@ jest.mock(
   () => () => <div />
 );
 
-jest.mock('../../../components/Customization/GenericProvider/GenericContext', () => ({
-  ...jest.requireActual('../../../components/Customization/GenericProvider/GenericContext'),
-  useGenericContext: jest
+jest.mock(
+  '../../../components/Customization/GenericProvider/GenericContext',
+  () => ({
+    ...jest.requireActual(
+      '../../../components/Customization/GenericProvider/GenericContext'
+    ),
+    useGenericContext: jest
       .fn()
       .mockImplementation(() => mockGenericContextProps),
   })

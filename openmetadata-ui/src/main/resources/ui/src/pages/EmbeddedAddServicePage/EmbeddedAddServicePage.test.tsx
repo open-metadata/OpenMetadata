@@ -16,8 +16,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { triggerOnDemandApp } from '../../rest/applicationAPI';
 import { postService } from '../../rest/serviceAPI';
 import { getServiceLogo } from '../../utils/EntityDisplayUtils';
-import * as serviceUtilClassBaseModule from '../../utils/ServiceUtilClassBase';
 import { getAddServiceEntityBreadcrumb } from '../../utils/ServicePureUtils';
+import * as serviceUtilClassBaseModule from '../../utils/ServiceUtilClassBase';
 import EmbeddedAddServicePage from './EmbeddedAddServicePage.component';
 
 const mockParam = {

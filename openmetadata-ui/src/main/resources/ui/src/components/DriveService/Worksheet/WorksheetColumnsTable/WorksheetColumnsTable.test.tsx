@@ -84,7 +84,9 @@ const mockUseGenericContextResult = {
 };
 
 jest.mock('../../../Customization/GenericProvider/GenericContext', () => ({
-  ...jest.requireActual('../../../Customization/GenericProvider/GenericContext'),
+  ...jest.requireActual(
+    '../../../Customization/GenericProvider/GenericContext'
+  ),
   useGenericContext: jest.fn(() => mockUseGenericContextResult),
 }));
 jest.mock('../../../Database/ColumnFilter/ColumnFilter.component', () => ({

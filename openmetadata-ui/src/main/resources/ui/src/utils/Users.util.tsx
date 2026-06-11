@@ -13,8 +13,12 @@
 
 export {
   getEmptyTextFromUserProfileItem,
+  getEmptyTextFromUserProfileItem,
+  getUserCreationErrorMessage,
   getUserCreationErrorMessage,
   getUserOnlineStatus,
+  getUserOnlineStatus,
+  isMaskedEmail,
   isMaskedEmail,
 } from './UsersPureUtils';
 
@@ -30,13 +34,6 @@ import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
 import { LIST_CAP } from './PermissionsUtils';
 import { getRoleWithFqnPath, getTeamsWithFqnPath } from './RouterUtils';
-
-export {
-  getEmptyTextFromUserProfileItem,
-  getUserCreationErrorMessage,
-  getUserOnlineStatus,
-  isMaskedEmail,
-} from './UsersPureUtils';
 
 export const userCellRenderer = (user: EntityReference | User) => {
   return user.name ? (

@@ -25,13 +25,6 @@ import { CondensedBreadcrumb } from '../../components/CondensedBreadcrumb/Conden
 import { EImpactLevel } from '../../components/LineageTable/LineageTable.interface';
 import i18n from '../i18next/LocalUtil';
 
-export {
-  getSearchNameEsQuery,
-  prepareColumnLevelNodesFromEdges,
-  prepareDownstreamColumnLevelNodesFromDownstreamEdges,
-  prepareUpstreamColumnLevelNodesFromUpstreamEdges,
-} from './LineagePureUtils';
-
 export const LINEAGE_IMPACT_OPTIONS = [
   {
     label: i18n.t('label.asset-level'),

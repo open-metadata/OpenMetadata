@@ -311,7 +311,7 @@ jest.mock('../../../rest/metadataTypeAPI', () => ({
 
 jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
-  useGenericContextuseGenericContext: jest.fn().mockReturnValue({
+  useGenericContext: jest.fn().mockReturnValue({
     permissions: {
       EditTags: true,
       EditGlossaryTerms: true,

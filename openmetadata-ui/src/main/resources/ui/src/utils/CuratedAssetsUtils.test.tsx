@@ -22,10 +22,7 @@ import {
   getTotalResourceCount,
   isValidElasticsearchQuery,
 } from './CuratedAssetsPureUtils';
-import {
-  AlertMessage,
-  getSelectedResourceCount,
-} from './CuratedAssetsUtils';
+import { AlertMessage, getSelectedResourceCount } from './CuratedAssetsUtils';
 
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn(),

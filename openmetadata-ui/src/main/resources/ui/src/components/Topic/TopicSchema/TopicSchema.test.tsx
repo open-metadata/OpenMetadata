@@ -72,9 +72,7 @@ jest.mock('../../../utils/TableUtils', () => ({
   getTableExpandableConfig: jest.fn().mockImplementation(() => ({
     expandIcon: jest.fn(({ onExpand, expandable, record }) =>
       expandable ? (
-        <button
-          data-testid="expand-icon"
-          onClick={(e) => onExpand(record, e)}>
+        <button data-testid="expand-icon" onClick={(e) => onExpand(record, e)}>
           ExpandIcon
         </button>
       ) : null

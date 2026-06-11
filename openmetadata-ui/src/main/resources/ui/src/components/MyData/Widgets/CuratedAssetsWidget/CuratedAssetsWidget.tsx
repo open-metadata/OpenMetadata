@@ -58,7 +58,6 @@ import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import CertificationTag from '../../../common/CertificationTag/CertificationTag';
 import {
   AdvanceSearchProvider,

@@ -39,7 +39,6 @@ import { createMetric } from '../../../rest/metricsAPI';
 import { generateFormFields } from '../../../utils/formUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { withSuspenseFallback } from '../../../components/AppRouter/withSuspenseFallback';
 
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../../components/Database/SchemaEditor/SchemaEditor'))

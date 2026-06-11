@@ -54,11 +54,11 @@ import {
   getWorkflowInstanceStateById,
 } from '../../rest/workflowAPI';
 import { getPrioritizedViewPermission } from '../../utils/PermissionsUtils';
-import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
   getCountLabel,
   shouldTestConnection,
 } from '../../utils/ServicePureUtils';
+import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import ServiceDetailsPage from './ServiceDetailsPage';

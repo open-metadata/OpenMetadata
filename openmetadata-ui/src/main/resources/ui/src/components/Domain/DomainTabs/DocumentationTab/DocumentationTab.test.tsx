@@ -40,8 +40,10 @@ jest.mock('../../../common/ProfilePicture/ProfilePicture', () =>
 );
 
 jest.mock('../../../Customization/GenericProvider/GenericContext', () => ({
-  ...jest.requireActual('../../../Customization/GenericProvider/GenericContext'),
-  useGenericContextuseGenericContext: jest.fn().mockReturnValue({
+  ...jest.requireActual(
+    '../../../Customization/GenericProvider/GenericContext'
+  ),
+  useGenericContext: jest.fn().mockReturnValue({
     data: MOCK_DOMAIN,
     onUpdate: mockOnUpdate,
     permissions: {

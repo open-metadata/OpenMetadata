@@ -19,7 +19,6 @@ import {
   handleAssetDownload,
   knowledgePageToArticleItem,
 } from './ContextCenterPureUtils';
-import { getFileTypeIcon } from './ContextCenterUtils';
 import { showErrorToast } from './ToastUtils';
 
 jest.mock('./ToastUtils', () => ({
