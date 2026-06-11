@@ -1,5 +1,5 @@
 from itertools import groupby
-from typing import List, Optional, Sequence, Union, final  # noqa: UP035
+from typing import List, Optional, Sequence, final  # noqa: UP035
 
 from presidio_analyzer import (
     AnalyzerEngine,
@@ -149,7 +149,7 @@ class TagAnalyzer:
 
     def _analyze_with(
         self,
-        text_or_values: Union[str, Sequence[str]],  # noqa: UP007
+        text_or_values: str | Sequence[str],
         recognizers: list[EntityRecognizer],
         context: Optional[list[str]] = None,  # noqa: UP045
     ) -> list[RecognizerResult]:
