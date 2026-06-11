@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
+import type { FormEvent, ReactNode } from 'react';
+import {
+  Controller,
+  FormProvider,
+  useFormContext,
+  type FieldValues,
+  type RegisterOptions,
+} from 'react-hook-form';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   QuickLinkFormModal,
@@ -19,70 +26,183 @@ import {
 } from './QuickLinkFormModal';
 
 jest.mock('@openmetadata/ui-core-components', () => {
-  const MockDialogContent = jest.fn(
-    ({ children }: { children: React.ReactNode }) => (
-      <div data-testid="dialog-content">{children}</div>
-    )
-  );
-  const MockDialogFooter = jest.fn(
-    ({ children }: { children: React.ReactNode }) => (
-      <div data-testid="dialog-footer">{children}</div>
-    )
-  );
-  const MockDialogHeader = jest.fn(({ title }: { title: string }) => (
-    <div data-testid="dialog-header">{title}</div>
-  ));
-  const MockDialog = jest.fn(({ children }: { children: React.ReactNode }) => (
-    <div data-testid="dialog">{children}</div>
-  )) as jest.Mock & {
-    Content: typeof MockDialogContent;
-    Footer: typeof MockDialogFooter;
-    Header: typeof MockDialogHeader;
-  };
+  const Autocomplete = ({
+    children,
+    'data-testid': testId,
+  }: {
+    children?: ReactNode;
+    'data-testid'?: string;
+    [key: string]: unknown;
+  }) => <div data-testid={testId}>{children}</div>;
 
-  MockDialog.Content = MockDialogContent;
-  MockDialog.Footer = MockDialogFooter;
-  MockDialog.Header = MockDialogHeader;
+  Autocomplete.Item = ({
+    label,
+    'data-testid': testId,
+  }: {
+    label?: ReactNode;
+    'data-testid'?: string;
+  }) => <div data-testid={testId}>{label}</div>;
 
   return {
-    ModalOverlay: jest.fn(
-      ({ children, isOpen }: { children: React.ReactNode; isOpen: boolean }) =>
-        isOpen ? <div data-testid="modal-overlay">{children}</div> : null
+    Autocomplete,
+    Button: ({
+      children,
+      onClick,
+    }: {
+      children: ReactNode;
+      onClick?: () => void;
+    }) => <button onClick={onClick}>{children}</button>,
+    Dialog: Object.assign(
+      ({ children }: { children: ReactNode }) => (
+        <div data-testid="dialog">{children}</div>
+      ),
+      {
+        Content: ({ children }: { children: ReactNode }) => (
+          <div data-testid="dialog-content">{children}</div>
+        ),
+        Footer: ({ children }: { children: ReactNode }) => (
+          <div data-testid="dialog-footer">{children}</div>
+        ),
+        Header: ({ title }: { title: string }) => (
+          <div data-testid="dialog-header">{title}</div>
+        ),
+      }
     ),
-    Modal: jest.fn(({ children }: { children: React.ReactNode }) => (
+    FieldTypes: {
+      ASYNC_SELECT: 'ASYNC_SELECT',
+      DESCRIPTION: 'DESCRIPTION',
+      GLOSSARY_TAG_SUGGESTION: 'GLOSSARY_TAG_SUGGESTION',
+      TAG_SUGGESTION: 'TAG_SUGGESTION',
+      TEXT: 'TEXT',
+      TEXTAREA: 'TEXTAREA',
+    },
+    FormField: <TFieldValues extends FieldValues = FieldValues>({
+      control,
+      name,
+      rules,
+      children,
+    }: {
+      control: import('react-hook-form').Control<TFieldValues>;
+      name: import('react-hook-form').FieldPath<TFieldValues>;
+      rules?: Omit<
+        RegisterOptions<TFieldValues>,
+        'valueAsNumber' | 'valueAsDate' | 'setValueAs' | 'disabled'
+      >;
+      children: (controller: {
+        field: import('react-hook-form').ControllerRenderProps<
+          TFieldValues,
+          import('react-hook-form').FieldPath<TFieldValues>
+        >;
+        fieldState: import('react-hook-form').ControllerFieldState;
+      }) => ReactNode;
+    }) => (
+      <Controller
+        control={control}
+        name={name}
+        render={({ field, fieldState }) => (
+          <>{children({ field, fieldState })}</>
+        )}
+        rules={rules}
+      />
+    ),
+    FormItemLabel: ({ label }: { label: ReactNode }) => <div>{label}</div>,
+    HintText: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    HookForm: ({
+      children,
+      form,
+      onSubmit,
+      ...props
+    }: {
+      children: ReactNode;
+      form: ReturnType<typeof import('react-hook-form').useForm>;
+      onSubmit?: (event: FormEvent<HTMLFormElement>) => void;
+      [key: string]: unknown;
+    }) => (
+      <FormProvider {...form}>
+        <form
+          {...props}
+          onSubmit={(event) => {
+            event.preventDefault();
+            onSubmit?.(event);
+          }}>
+          {children}
+        </form>
+      </FormProvider>
+    ),
+    getField: ({
+      name,
+      type,
+      props: fieldProps = {},
+    }: {
+      name: string;
+      type: string;
+      props?: Record<string, unknown>;
+    }) => {
+      const testId = fieldProps['data-testid'] as string | undefined;
+      const disabled = fieldProps.disabled as boolean | undefined;
+
+      if (type === 'TEXT' || type === 'TEXTAREA' || type === 'DESCRIPTION') {
+        const RegisteredInput = () => {
+          const { register } = useFormContext();
+          const { onChange, onBlur, name: regName, ref } = register(name);
+
+          return (
+            <input
+              data-testid={testId ?? name}
+              disabled={disabled}
+              name={regName}
+              ref={ref}
+              onBlur={onBlur}
+              onChange={onChange}
+            />
+          );
+        };
+
+        return <RegisteredInput />;
+      }
+
+      return <div data-testid={testId ?? name} />;
+    },
+    Modal: ({ children }: { children: ReactNode }) => (
       <div data-testid="modal">{children}</div>
-    )),
-    Dialog: MockDialog,
-    Button: jest.fn(
-      ({
-        children,
-        onClick,
-      }: {
-        children: React.ReactNode;
-        onClick: () => void;
-      }) => <button onClick={onClick}>{children}</button>
     ),
+    ModalOverlay: ({
+      children,
+      isOpen,
+    }: {
+      children: ReactNode;
+      isOpen: boolean;
+    }) => (isOpen ? <div data-testid="modal-overlay">{children}</div> : null),
   };
 });
 
-jest.mock(
-  'components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList',
-  () => jest.fn(() => <div data-testid="data-asset-async-select-list" />)
-);
+jest.mock('utils/SSOUtils', () => ({
+  isValidUrl: jest.fn().mockReturnValue(true),
+}));
 
-const mockSave = jest.fn();
-
-const mockCancel = jest.fn();
+jest.mock('utils/StringUtils', () => ({
+  escapeESReservedCharacters: jest.fn().mockImplementation((text) => text),
+}));
 
 jest.mock('utils/EntityNameUtils', () => ({
-  getEntityName: jest.fn().mockImplementation((entity) => entity.displayName),
+  getEntityName: jest
+    .fn()
+    .mockImplementation((entity) => entity?.displayName ?? ''),
+}));
+
+jest.mock('utils/EntityReferenceUtils', () => ({
+  getEntityReferenceFromEntity: jest
+    .fn()
+    .mockImplementation((entity) => entity),
 }));
 jest.mock('utils/TablePureUtils', () => ({
   getTagsWithoutTier: jest.fn(),
 }));
 
 jest.mock('utils/TableTags/TableTags.utils', () => ({
-  getFilterTags: jest.fn(),
+  getFilterTags: jest
+    .fn()
+    .mockReturnValue({ Classification: [], Glossary: [] }),
 }));
 
 jest.mock('utils/ToastUtils', () => ({
@@ -90,11 +210,39 @@ jest.mock('utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
-jest.mock('pages/TasksPage/shared/DescriptionTask');
-jest.mock('pages/TasksPage/shared/DescriptionTaskNew');
-jest.mock('pages/TasksPage/shared/TagSuggestion', () =>
-  jest.fn(() => <div data-testid="tag-selector" />)
-);
+jest.mock('utils/TagsUtils', () => ({
+  getTagDisplay: jest.fn().mockImplementation((name) => name),
+}));
+
+jest.mock('utils/TagClassBase', () => ({
+  __esModule: true,
+  default: {
+    getTags: jest.fn().mockResolvedValue({ data: [] }),
+    setFilterClassification: jest.fn(),
+  },
+}));
+
+jest.mock('rest/glossaryAPI', () => ({
+  searchGlossaryTerms: jest.fn().mockResolvedValue({ hits: { hits: [] } }),
+}));
+
+jest.mock('rest/searchAPI', () => ({
+  searchQuery: jest
+    .fn()
+    .mockResolvedValue({ hits: { hits: [], total: { value: 0 } } }),
+}));
+
+jest.mock('rest/knowledgeCenterAPI', () => ({
+  getKnowledgePageByFqn: jest.fn(),
+  patchKnowledgePage: jest.fn(),
+}));
+
+jest.mock('constants/KnowledgeCenter.constant', () => ({
+  getKnowledgePageFields: jest.fn().mockReturnValue([]),
+}));
+
+const mockSave = jest.fn();
+const mockCancel = jest.fn();
 
 const mockProps: QuickLinkFormModalProps = {
   isOpen: true,
@@ -109,44 +257,43 @@ const mockProps: QuickLinkFormModalProps = {
 };
 
 describe('QuickLinkFormModal', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('Should render the form inputs', async () => {
     render(<QuickLinkFormModal {...mockProps} />);
 
-    const displayNameInput = screen.getByTestId('displayName');
-    const urlInput = screen.getByTestId('url');
-    const descriptionEditor = screen.getByTestId('editor');
-    const tagSelectors = screen.getAllByTestId('tag-selector');
-
-    expect(displayNameInput).toBeInTheDocument();
-    expect(urlInput).toBeInTheDocument();
-    expect(descriptionEditor).toBeInTheDocument();
-    expect(tagSelectors).toHaveLength(2);
+    expect(screen.getByTestId('displayName')).toBeInTheDocument();
+    expect(screen.getByTestId('url')).toBeInTheDocument();
+    expect(screen.getByTestId('description')).toBeInTheDocument();
+    expect(screen.getByTestId('tags-container')).toBeInTheDocument();
+    expect(screen.getByTestId('glossaryTerms-container')).toBeInTheDocument();
     expect(
-      screen.getByTestId('data-asset-async-select-list')
+      screen.getByTestId('related-entities-container')
     ).toBeInTheDocument();
   });
 
   it('onSave should work', async () => {
     render(<QuickLinkFormModal {...mockProps} />);
 
-    const displayNameInput = screen.getByTestId('displayName');
-    const urlInput = screen.getByTestId('url');
-
-    fireEvent.change(displayNameInput, { target: { value: 'displayName' } });
-    fireEvent.change(urlInput, { target: { value: 'https://example.coms' } });
-
-    const submitBtn = screen.getByText('label.save');
+    fireEvent.change(screen.getByTestId('displayName'), {
+      target: { value: 'displayName' },
+    });
+    fireEvent.change(screen.getByTestId('url'), {
+      target: { value: 'https://example.coms' },
+    });
 
     await act(async () => {
-      fireEvent.click(submitBtn);
+      fireEvent.click(screen.getByText('label.save'));
     });
 
     expect(mockSave).toHaveBeenCalledWith({
       description: '',
       displayName: 'displayName',
-      glossaryTerms: undefined,
+      glossaryTerms: [],
       relatedEntities: [],
-      tags: undefined,
+      tags: [],
       url: 'https://example.coms',
     });
   });
@@ -154,10 +301,8 @@ describe('QuickLinkFormModal', () => {
   it('onCancel should work', async () => {
     render(<QuickLinkFormModal {...mockProps} />);
 
-    const cancelBtn = screen.getByText('label.cancel');
-
     await act(async () => {
-      fireEvent.click(cancelBtn);
+      fireEvent.click(screen.getByText('label.cancel'));
     });
 
     expect(mockCancel).toHaveBeenCalled();
