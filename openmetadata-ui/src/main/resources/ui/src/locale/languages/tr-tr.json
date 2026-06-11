@@ -3487,6 +3487,7 @@
     "scim-allows-automatic-user-and-group-management-directly-from-your-sso-provider": "SCIM, SSO sağlayıcınızdan doğrudan otomatik kullanıcı ve grup yönetimi sağlar.",
     "scopes-comma-separated": "Kapsam değerini virgülle ayırarak ekleyin",
     "search-entity-count": "Bu filtreyle {{count}} varlık bulundu.",
+    "search-export-job-started": "Export started — track progress and download the CSV from Background jobs.",
     "search-for-data-assets-placeholder": "Veri Varlıklarını Ara",
     "search-for-edge": "İş Akışı, Saklı Yordamlar için Ara",
     "search-for-entity-types": "Tablolar, Konular, Kontrol Panelleri, İş Akışları, ML Modelleri, Sözlük ve Etiketler için arama yapın.",

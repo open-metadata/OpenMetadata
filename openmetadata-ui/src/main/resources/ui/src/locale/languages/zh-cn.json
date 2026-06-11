@@ -3487,6 +3487,7 @@
     "scim-allows-automatic-user-and-group-management-directly-from-your-sso-provider": "SCIM允许直接从您的SSO提供商自动管理用户和组。",
     "scopes-comma-separated": "范围值逗号分隔",
     "search-entity-count": "使用此筛选器找到了{{count}}个资产。",
+    "search-export-job-started": "Export started — track progress and download the CSV from Background jobs.",
     "search-for-data-assets-placeholder": "搜索数据资产",
     "search-for-edge": "搜索工作流、存储过程",
     "search-for-entity-types": "搜索数据表、消息主题、仪表板、工作流和机械学习模型",

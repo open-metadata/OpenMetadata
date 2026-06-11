@@ -10,7 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { getCsvAsyncJobResult } from '../../../rest/csvAPI';
+import { downloadFile } from '../../../utils/Export/ExportUtils';
 import { useLocation } from 'react-router-dom';
 import { ExportTypes } from '../../../constants/Export.constants';
 import {
@@ -36,10 +44,37 @@ jest.mock('react-router-dom', () => ({
   })),
 }));
 
+jest.mock('../../../rest/csvAPI', () => ({
+  getCsvAsyncJobResult: jest.fn(),
+}));
+
+jest.mock('../../../utils/Export/ExportUtils', () => ({
+  downloadFile: jest.fn(),
+}));
+
 const ConsumerComponent = () => {
   const { showModal } = useEntityExportModalProvider();
 
   return <button onClick={() => showModal(mockShowModal)}>Manage</button>;
+};
+
+const WebsocketConsumerComponent = () => {
+  const { showModal, onUpdateCSVExportJob } = useEntityExportModalProvider();
+
+  return (
+    <>
+      <button onClick={() => showModal(mockShowModal)}>Manage</button>
+      <button
+        onClick={() =>
+          onUpdateCSVExportJob({
+            jobId: mockExportJob.jobId,
+            status: 'COMPLETED',
+          })
+        }>
+        Complete
+      </button>
+    </>
+  );
 };
 
 describe('EntityExportModalProvider component', () => {
@@ -149,6 +184,38 @@ describe('EntityExportModalProvider component', () => {
     });
 
     expect(await screen.findByText(mockExportJob.message)).toBeInTheDocument();
+  });
+
+  it('Completion event without payload downloads the CSV from the job result endpoint', async () => {
+    (getCsvAsyncJobResult as jest.Mock).mockResolvedValueOnce(
+      'name\nmetric_one'
+    );
+
+    render(
+      <EntityExportModalProvider>
+        <WebsocketConsumerComponent />
+      </EntityExportModalProvider>
+    );
+
+    fireEvent.click(await screen.findByText('Manage'));
+
+    const exportBtn = await screen.findByText('label.export');
+
+    await act(async () => {
+      fireEvent.click(exportBtn);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Complete'));
+    });
+
+    expect(getCsvAsyncJobResult).toHaveBeenCalledWith(mockExportJob.jobId);
+    await waitFor(() =>
+      expect(downloadFile).toHaveBeenCalledWith(
+        'name\nmetric_one',
+        expect.stringContaining('.csv')
+      )
+    );
   });
 
   it('Export modal should not be visible if route is bulk edit', async () => {

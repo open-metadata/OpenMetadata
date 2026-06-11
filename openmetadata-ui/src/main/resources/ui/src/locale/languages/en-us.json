@@ -3487,6 +3487,7 @@
     "scim-allows-automatic-user-and-group-management-directly-from-your-sso-provider": "SCIM allows automatic user and group management directly from your SSO provider.",
     "scopes-comma-separated": "Add the Scopes value, separated by commas",
     "search-entity-count": "{{count}} assets have been found with this filter.",
+    "search-export-job-started": "Export started — track progress and download the CSV from Background jobs.",
     "search-for-data-assets-placeholder": "Search for Data Assets",
     "search-for-edge": "Search for Pipeline, StoredProcedures",
     "search-for-entity-types": "Search for Tables, Topics, Dashboards, Pipelines, ML Models, Glossary and Tags.",

@@ -67,9 +67,7 @@ import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { ROUTES, SOCKET_EVENTS } from '../../../constants/constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import { Metric } from '../../../generated/entity/data/metric';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
-import { Include } from '../../../generated/type/include';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import { useGridEditController } from '../../../hooks/useGridEditController';
@@ -80,7 +78,6 @@ import {
   getCsvAsyncJobs,
   getCsvDocumentation,
 } from '../../../rest/csvAPI';
-import { getMetrics } from '../../../rest/metricsAPI';
 import {
   COLUMNS_WIDTH,
   getCsvHeaderKey,
@@ -89,12 +86,14 @@ import {
   getImportOperation,
   getImportOperationRowClass,
   getImportOperationSummary,
-  getMetricColumnsAndDataSourceFromMetrics,
   IMPORT_OPERATIONS,
   IMPORT_OPERATION_COLUMN_KEY,
   isMetricBulkEditHiddenColumn,
 } from '../../../utils/CSV/CSV.utils';
 import csvUtilsClassBase from '../../../utils/CSV/CSVUtilsClassBase';
+import entityBulkEditConfigClassBase, {
+  BulkEditListingScope,
+} from '../../../utils/CSV/EntityBulkEditConfigClassBase';
 import {
   getBulkEntityNavigationPath,
   isBulkEditRoute,
@@ -120,10 +119,7 @@ import {
   BulkEntityImportLocationState,
   CSVImportAsyncWebsocketResponse,
   CSVImportJobType,
-  MetricBulkEditScope,
 } from './BulkEntityImportPage.interface';
-
-const METRIC_BULK_EDIT_PAGE_SIZE = 1000;
 
 interface SelectedCsvFile {
   content: string;
@@ -154,28 +150,6 @@ const getCsvFileSizeLabel = (bytes = 0) => {
   return `${normalizedSize.toFixed(unitIndex === 0 ? 0 : 1)} ${
     CSV_FILE_SIZE_UNITS[unitIndex]
   }`;
-};
-
-const matchesMetricBulkEditFilters = (
-  metric: Metric,
-  filters: MetricBulkEditScope['filters']
-) => {
-  const searchValue = filters.searchText?.trim().toLowerCase();
-  const matchesSearch = searchValue
-    ? [
-        metric.name,
-        metric.displayName,
-        metric.fullyQualifiedName,
-        metric.description,
-      ]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(searchValue))
-    : true;
-  const matchesStatus = filters.statusFilter
-    ? metric.entityStatus === filters.statusFilter
-    : true;
-
-  return matchesSearch && matchesStatus;
 };
 
 const BulkEntityImportPage = () => {
@@ -255,7 +229,7 @@ const BulkEntityImportPage = () => {
   const [activeImportLogLines, setActiveImportLogLines] = useState<string[]>(
     []
   );
-  const [metricBulkEditLoadState, setMetricBulkEditLoadState] = useState({
+  const [bulkEditLoadState, setBulkEditLoadState] = useState({
     isLoading: Boolean(metricBulkEditScope),
     loadedCount: 0,
     matchedCount: 0,
@@ -269,38 +243,38 @@ const BulkEntityImportPage = () => {
     () => isBulkEditRoute(location.pathname),
     [location]
   );
-  const isMetricImport = !isBulkEdit && entityType === EntityType.METRIC;
-  const shouldUseMetricEditorGrid = isBulkEdit || isMetricImport;
+  const bulkEditConfig = entityBulkEditConfigClassBase.getConfig(entityType);
+  const isRichGridImport = !isBulkEdit && Boolean(bulkEditConfig?.richGrid);
+  const shouldUseRichEditorGrid = isBulkEdit || isRichGridImport;
 
-  const effectiveMetricBulkEditScope = useMemo<
-    MetricBulkEditScope | undefined
+  // The router carries the metric-flavored scope shape; the listing pipeline
+  // consumes the generic registry shape.
+  const effectiveBulkEditScope = useMemo<
+    BulkEditListingScope | undefined
   >(() => {
+    const supportsListing = Boolean(
+      bulkEditConfig?.fetchBulkEditGridFromListing
+    );
+    if (!supportsListing || !isBulkEdit || fqn !== WILD_CARD_CHAR) {
+      return undefined;
+    }
+
     if (metricBulkEditScope) {
-      return metricBulkEditScope;
+      return metricBulkEditScope.mode === 'selected'
+        ? {
+            mode: 'selected',
+            ids: metricBulkEditScope.metricIds,
+            names: metricBulkEditScope.metricNames,
+            filters: metricBulkEditScope.filters,
+          }
+        : { mode: 'filtered', filters: metricBulkEditScope.filters };
     }
 
-    if (
-      isBulkEdit &&
-      entityType === EntityType.METRIC &&
-      fqn === WILD_CARD_CHAR
-    ) {
-      return {
-        mode: 'filtered',
-        filters: {},
-      };
-    }
+    return { mode: 'filtered', filters: {} };
+  }, [bulkEditConfig, fqn, isBulkEdit, metricBulkEditScope]);
 
-    return undefined;
-  }, [entityType, fqn, isBulkEdit, metricBulkEditScope]);
-
-  const isMetricListingBulkEdit = useMemo(
-    () =>
-      isBulkEdit &&
-      entityType === EntityType.METRIC &&
-      fqn === WILD_CARD_CHAR &&
-      Boolean(effectiveMetricBulkEditScope),
-    [effectiveMetricBulkEditScope, entityType, fqn, isBulkEdit]
-  );
+  const isListingBulkEdit = Boolean(effectiveBulkEditScope);
+  const importUploadConfig = bulkEditConfig?.importUpload;
 
   const importedEntityType = useMemo(
     () => getImportedEntityType(entityType),
@@ -313,9 +287,9 @@ const BulkEntityImportPage = () => {
       !isMetricBulkEditHiddenColumn(
         columnKey,
         importedEntityType,
-        shouldUseMetricEditorGrid
+        shouldUseRichEditorGrid
       ),
-    [importedEntityType, shouldUseMetricEditorGrid]
+    [importedEntityType, shouldUseRichEditorGrid]
   );
 
   const filterColumns = useMemo(
@@ -562,124 +536,62 @@ const BulkEntityImportPage = () => {
     }
   }, []);
 
-  const hydrateMetricBulkEditFromListing = useCallback(
+  const hydrateBulkEditFromListing = useCallback(
     async (signal: AbortSignal) => {
-      if (!effectiveMetricBulkEditScope || !csvDocumentation?.headers.length) {
+      const fetchGrid = bulkEditConfig?.fetchBulkEditGridFromListing;
+      if (
+        !fetchGrid ||
+        !effectiveBulkEditScope ||
+        !csvDocumentation?.headers.length
+      ) {
         return;
       }
 
-      const selectedMetricIds =
-        effectiveMetricBulkEditScope.mode === 'selected'
-          ? new Set(effectiveMetricBulkEditScope.metricIds)
-          : new Set<string>();
-      const selectedMetricNames =
-        effectiveMetricBulkEditScope.mode === 'selected'
-          ? new Set(effectiveMetricBulkEditScope.metricNames)
-          : new Set<string>();
-      const foundMetricIds = new Set<string>();
-      const foundMetricNames = new Set<string>();
-      const matchedMetrics: Metric[] = [];
-      let after: string | undefined;
-      let loadedCount = 0;
-      let shouldContinue = true;
-
-      setMetricBulkEditLoadState({
+      setBulkEditLoadState({
         isLoading: true,
         loadedCount: 0,
         matchedCount: 0,
       });
 
-      while (shouldContinue && !signal.aborted) {
-        const metricResponse = await getMetrics(
-          {
-            after,
-            fields: '*',
-            limit: METRIC_BULK_EDIT_PAGE_SIZE,
-            include: Include.All,
-          },
-          { signal }
-        );
-
-        loadedCount += metricResponse.data.length;
-
-        metricResponse.data.forEach((metric) => {
-          const isSelectedScope =
-            effectiveMetricBulkEditScope.mode === 'selected';
-          const isSelectedMetric =
-            selectedMetricIds.has(metric.id) ||
-            selectedMetricNames.has(metric.name);
-          const shouldIncludeMetric = isSelectedScope
-            ? isSelectedMetric
-            : matchesMetricBulkEditFilters(
-                metric,
-                effectiveMetricBulkEditScope.filters
-              );
-
-          if (!shouldIncludeMetric) {
-            return;
-          }
-
-          matchedMetrics.push(metric);
-
-          if (selectedMetricIds.has(metric.id)) {
-            foundMetricIds.add(metric.id);
-          }
-
-          if (selectedMetricNames.has(metric.name)) {
-            foundMetricNames.add(metric.name);
-          }
-        });
-
-        setMetricBulkEditLoadState({
-          isLoading: true,
-          loadedCount,
-          matchedCount: matchedMetrics.length,
-        });
-
-        const hasFoundSelectedMetrics =
-          effectiveMetricBulkEditScope.mode === 'selected' &&
-          (selectedMetricIds.size
-            ? [...selectedMetricIds].every((id) => foundMetricIds.has(id))
-            : [...selectedMetricNames].every((name) =>
-                foundMetricNames.has(name)
-              ));
-
-        after = metricResponse.paging.after;
-        shouldContinue = Boolean(after) && !hasFoundSelectedMetrics;
-      }
+      const grid = await fetchGrid({
+        scope: effectiveBulkEditScope,
+        headers: csvDocumentation.headers,
+        multipleOwner: {
+          user: canAddMultipleUserOwners,
+          team: canAddMultipleTeamOwner,
+        },
+        isBulkEdit,
+        signal,
+        onProgress: (loadedCount, matchedCount) =>
+          setBulkEditLoadState({
+            isLoading: true,
+            loadedCount,
+            matchedCount,
+          }),
+      });
 
       if (signal.aborted) {
         return;
       }
 
-      const { columns, dataSource } = getMetricColumnsAndDataSourceFromMetrics(
-        matchedMetrics,
-        csvDocumentation.headers,
-        {
-          user: canAddMultipleUserOwners,
-          team: canAddMultipleTeamOwner,
-        },
-        true,
-        isBulkEdit
-      );
-
-      setColumns(columns);
-      setDataSource(dataSource);
-      setInitialDataSource(dataSource.map((row) => ({ ...row })));
-      setMetricBulkEditLoadState({
+      setColumns(grid.columns);
+      setDataSource(grid.dataSource);
+      setInitialDataSource(grid.dataSource.map((row) => ({ ...row })));
+      setBulkEditLoadState({
         isLoading: false,
-        loadedCount,
-        matchedCount: matchedMetrics.length,
+        loadedCount: grid.loadedCount,
+        matchedCount: grid.matchedCount,
       });
       handleActiveStepChange(VALIDATION_STEP.EDIT_VALIDATE);
     },
     [
+      bulkEditConfig,
       csvDocumentation,
       canAddMultipleTeamOwner,
       canAddMultipleUserOwners,
       handleActiveStepChange,
       isBulkEdit,
-      effectiveMetricBulkEditScope,
+      effectiveBulkEditScope,
     ]
   );
 
@@ -753,13 +665,11 @@ const BulkEntityImportPage = () => {
         },
         cellEditable,
         isBulkEdit,
-        shouldUseMetricEditorGrid
+        shouldUseRichEditorGrid
       );
 
       const filteredDataSource =
-        isBulkEdit &&
-        entityType === EntityType.METRIC &&
-        selectedMetricNamesForBulkEdit.length
+        isBulkEdit && selectedMetricNamesForBulkEdit.length
           ? dataSource.filter((row) =>
               selectedMetricNamesForBulkEdit.includes(row.name ?? row['name*'])
             )
@@ -780,7 +690,7 @@ const BulkEntityImportPage = () => {
       selectedMetricNamesForBulkEdit,
       setColumns,
       setDataSource,
-      shouldUseMetricEditorGrid,
+      shouldUseRichEditorGrid,
     ]
   );
 
@@ -870,7 +780,7 @@ const BulkEntityImportPage = () => {
         isBulkEdit ? bulkEditChangeSummary.changedDataSource : dataSource
       );
       const isMetricImportApply =
-        isMetricImport && activeStep === VALIDATION_STEP.EDIT_VALIDATE;
+        isRichGridImport && activeStep === VALIDATION_STEP.EDIT_VALIDATE;
 
       const api = getImportValidateAPIEntityType(entityType);
 
@@ -903,7 +813,7 @@ const BulkEntityImportPage = () => {
     } catch (error) {
       showErrorToast(error as AxiosError);
       setIsValidating(false);
-      if (isMetricImport && activeStep === VALIDATION_STEP.EDIT_VALIDATE) {
+      if (isRichGridImport && activeStep === VALIDATION_STEP.EDIT_VALIDATE) {
         handleActiveStepChange(VALIDATION_STEP.EDIT_VALIDATE);
       }
     }
@@ -929,7 +839,7 @@ const BulkEntityImportPage = () => {
         },
         false,
         isBulkEdit,
-        shouldUseMetricEditorGrid
+        shouldUseRichEditorGrid
       );
 
       return {
@@ -944,7 +854,7 @@ const BulkEntityImportPage = () => {
       importedEntityType,
       isBulkEdit,
       shouldShowCsvColumn,
-      shouldUseMetricEditorGrid,
+      shouldUseRichEditorGrid,
     ]
   );
 
@@ -967,7 +877,7 @@ const BulkEntityImportPage = () => {
           });
           handleActiveStepChange(VALIDATION_STEP.UPDATE);
           setIsValidating(false);
-        } else if (isMetricImport) {
+        } else if (isRichGridImport) {
           setValidationData(importResults);
           readString(importResults?.importResultsCsv ?? '', {
             worker: true,
@@ -1023,7 +933,7 @@ const BulkEntityImportPage = () => {
       fqn,
       handleResetImportJob,
       handleActiveStepChange,
-      isMetricImport,
+      isRichGridImport,
       effectiveSourceEntityType,
       getVisibleCsvGridData,
       navigate,
@@ -1165,15 +1075,15 @@ const BulkEntityImportPage = () => {
   }, [fetchEntityData]);
 
   useEffect(() => {
-    if (!isMetricListingBulkEdit || !csvDocumentation?.headers.length) {
+    if (!isListingBulkEdit || !csvDocumentation?.headers.length) {
       return;
     }
 
     const controller = new AbortController();
 
-    hydrateMetricBulkEditFromListing(controller.signal).catch((error) => {
+    hydrateBulkEditFromListing(controller.signal).catch((error) => {
       if (!controller.signal.aborted) {
-        setMetricBulkEditLoadState((state) => ({
+        setBulkEditLoadState((state) => ({
           ...state,
           isLoading: false,
         }));
@@ -1182,11 +1092,7 @@ const BulkEntityImportPage = () => {
     });
 
     return () => controller.abort();
-  }, [
-    csvDocumentation,
-    hydrateMetricBulkEditFromListing,
-    isMetricListingBulkEdit,
-  ]);
+  }, [csvDocumentation, hydrateBulkEditFromListing, isListingBulkEdit]);
 
   useEffect(() => {
     const fetchDocumentation = async () => {
@@ -1425,7 +1331,7 @@ const BulkEntityImportPage = () => {
             activeAsyncImportJob?.jobId && isEmpty(activeAsyncImportJob.error)
           )}
           fileType=".csv"
-          variant={entityType === EntityType.METRIC ? 'compact' : 'default'}
+          variant={importUploadConfig?.variant ?? 'default'}
           onCSVUploaded={handleLoadData}
         />
       );
@@ -1511,29 +1417,30 @@ const BulkEntityImportPage = () => {
       <div className="csv-import-stack">
         <div className="csv-import-copy">
           <h2>
-            {entityType === EntityType.METRIC
-              ? t('message.import-metrics-upload-heading')
+            {importUploadConfig
+              ? t(importUploadConfig.headingKey)
               : t('label.import-entity', {
                   entity: entityDisplayName,
                 })}
           </h2>
           <p>
-            {entityType === EntityType.METRIC
-              ? t('message.import-metrics-upload-description')
+            {importUploadConfig
+              ? t(importUploadConfig.descriptionKey)
               : t('message.import-entity-help', {
                   entity: entityDisplayName,
                 })}
           </p>
         </div>
 
-        {entityType !== EntityType.METRIC && !isEmpty(requiredCsvHeaders) && (
-          <div className="csv-import-required">
-            <span>{`${t('label.required')}:`}</span>
-            {requiredCsvHeaders.map((header) => (
-              <code key={header}>{header}</code>
-            ))}
-          </div>
-        )}
+        {!importUploadConfig?.hideRequiredHeaders &&
+          !isEmpty(requiredCsvHeaders) && (
+            <div className="csv-import-required">
+              <span>{`${t('label.required')}:`}</span>
+              {requiredCsvHeaders.map((header) => (
+                <code key={header}>{header}</code>
+              ))}
+            </div>
+          )}
 
         <div className="csv-import-action-row">
           <Button
@@ -1672,7 +1579,7 @@ const BulkEntityImportPage = () => {
   );
 
   const shouldRenderMetricImportEditor =
-    isMetricImport && activeStep === VALIDATION_STEP.EDIT_VALIDATE;
+    isRichGridImport && activeStep === VALIDATION_STEP.EDIT_VALIDATE;
 
   const metricImportWorkflowHeaderConfig = useMemo(
     () => ({
@@ -1711,10 +1618,8 @@ const BulkEntityImportPage = () => {
             handleRevertChanges={handleRevertChanges}
             handleValidate={handleValidate}
             initialDataSource={initialDataSource}
-            isExportHydrationRequired={
-              isBulkEdit ? !isMetricListingBulkEdit : false
-            }
-            isLoadingSourceData={metricBulkEditLoadState.isLoading}
+            isExportHydrationRequired={isBulkEdit ? !isListingBulkEdit : false}
+            isLoadingSourceData={bulkEditLoadState.isLoading}
             isNextDisabled={
               isBulkEdit
                 ? bulkEditChangeSummary.changedCellCount === 0
@@ -1896,7 +1801,7 @@ const BulkEntityImportPage = () => {
               !validationData?.abortReason &&
               renderUploadFooter()}
 
-            {isMetricImport &&
+            {isRichGridImport &&
               activeStep === VALIDATION_STEP.UPDATE &&
               !isValidating && (
                 <div className="csv-import-wizard-footer import-footer">
@@ -1911,7 +1816,7 @@ const BulkEntityImportPage = () => {
 
             {activeStep > 0 &&
               !(isValidating && activeAsyncImportJob) &&
-              !(isMetricImport && activeStep === VALIDATION_STEP.UPDATE) && (
+              !(isRichGridImport && activeStep === VALIDATION_STEP.UPDATE) && (
                 <div className="csv-import-wizard-footer import-footer">
                   {activeStep > 0 && (
                     <Button
@@ -1933,7 +1838,7 @@ const BulkEntityImportPage = () => {
                       isDisabled={isValidating}
                       onPress={handleValidate}>
                       {activeStep === VALIDATION_STEP.EDIT_VALIDATE &&
-                      isMetricImport
+                      isRichGridImport
                         ? `${t('label.start')} ${t('label.import')}`
                         : activeStep === VALIDATION_STEP.UPDATE
                         ? t('label.update')

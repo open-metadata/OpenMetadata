@@ -49,6 +49,7 @@ import { CsvHeaderDocumentation } from '../../rest/csvAPI';
 import { t } from '../i18next/LocalUtil';
 import { removeOuterEscapes } from '../StringUtils';
 import csvUtilsClassBase from './CSVUtilsClassBase';
+import entityBulkEditConfigClassBase from './EntityBulkEditConfigClassBase';
 
 export interface EditorProps {
   value: string;
@@ -82,15 +83,9 @@ export const CSV_DISABLED_COLUMNS = [
   'testSuite',
 ];
 
-export const METRIC_BULK_EDIT_HIDDEN_COLUMNS = [
-  'relatedMetrics',
-  'entityStatus',
-];
-
-// Hidden for metric in BOTH import and bulk edit: the expression language is set
-// from the language tabs inside the unified Expression code cell, so a separate
-// language column would be redundant. The value still round-trips in the CSV.
-export const METRIC_HIDDEN_COLUMNS = ['expressionLanguage'];
+// Per-entity hidden/locked/enum column policy lives in
+// EntityBulkEditConfigClassBase so other entities can opt into the rich bulk
+// edit grid without touching this file.
 
 // Per-row outcome the server writes into the import-result CSV `details` column
 // (EntityCsv.ENTITY_UPDATED). The Import preview uses it to tell create from
@@ -395,14 +390,13 @@ export const isMetricBulkEditHiddenColumn = (
   entityType: EntityType,
   isBulkEdit: boolean
 ) => {
+  const config = entityBulkEditConfigClassBase.getConfig(entityType);
   const columnName = getCsvColumnName(column);
-  const isMetric = entityType === EntityType.METRIC;
 
-  return (
-    (isMetric && METRIC_HIDDEN_COLUMNS.includes(columnName)) ||
-    (isBulkEdit &&
-      isMetric &&
-      METRIC_BULK_EDIT_HIDDEN_COLUMNS.includes(columnName))
+  return Boolean(
+    config &&
+      (config.hiddenColumns.includes(columnName) ||
+        (isBulkEdit && config.bulkEditHiddenColumns.includes(columnName)))
   );
 };
 
@@ -562,15 +556,15 @@ export const getColumnConfig = (
   useMetricRichGrid = isBulkEdit
 ): Column<Record<string, string>> => {
   const colType = column.split('.').pop() ?? '';
-  const isMetricRichGrid =
-    useMetricRichGrid && entityType === EntityType.METRIC;
-  const isMetricEnumColumn =
-    isMetricRichGrid && csvUtilsClassBase.metricEnumColumns().includes(colType);
-  const shouldUsePlainTextEditor = isMetricRichGrid;
+  const bulkEditConfig = entityBulkEditConfigClassBase.getConfig(entityType);
+  const isRichGrid = useMetricRichGrid && Boolean(bulkEditConfig?.richGrid);
+  const isEnumColumn =
+    isRichGrid && Boolean(bulkEditConfig?.enumColumns[colType]);
+  const shouldUsePlainTextEditor = isRichGrid;
   const isLockedColumn =
-    isBulkEdit && entityType === EntityType.METRIC && colType === 'name';
+    isBulkEdit && Boolean(bulkEditConfig?.lockedColumns.includes(colType));
   const columnDisplayName =
-    isMetricRichGrid && colType === 'extension'
+    isRichGrid && colType === 'extension'
       ? t('label.custom-property-plural')
       : startCase(column);
   const disabledColumns = isBulkEdit
@@ -585,7 +579,7 @@ export const getColumnConfig = (
     cellClass: () =>
       `rdg-cell-${column.replaceAll(/[^a-zA-Z0-9-_]/g, '')}${
         isLockedColumn ? ' rdg-cell-locked' : ''
-      }${isMetricEnumColumn ? ' rdg-cell-select' : ''}`,
+      }${isEnumColumn ? ' rdg-cell-select' : ''}`,
     editable: editable ? !disabledColumns : false,
     renderEditCell: csvUtilsClassBase.getEditor(
       colType,
@@ -603,7 +597,7 @@ export const getColumnConfig = (
           data: { details: '', glossaryStatus: '', row: data.row },
         },
         {
-          showSelectAffordance: isMetricEnumColumn,
+          showSelectAffordance: isEnumColumn,
           usePlainTextDescription: shouldUsePlainTextEditor,
         }
       ),

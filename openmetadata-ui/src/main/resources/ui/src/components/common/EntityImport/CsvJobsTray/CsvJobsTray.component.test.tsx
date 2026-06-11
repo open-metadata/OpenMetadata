@@ -22,6 +22,7 @@ import { useWebSocketConnector } from '../../../../context/WebSocketProvider/Web
 import {
   cancelCsvAsyncJob,
   CsvAsyncJob,
+  getCsvAsyncJobResult,
   getCsvAsyncJobs,
 } from '../../../../rest/csvAPI';
 import { CsvJobsTray, CSV_JOBS_REFRESH_EVENT } from './CsvJobsTray.component';
@@ -52,6 +53,7 @@ jest.mock('../../../../context/WebSocketProvider/WebSocketProvider', () => ({
 
 jest.mock('../../../../rest/csvAPI', () => ({
   cancelCsvAsyncJob: jest.fn(),
+  getCsvAsyncJobResult: jest.fn(),
   getCsvAsyncJobs: jest.fn(),
 }));
 
@@ -65,6 +67,9 @@ const mockGetCsvAsyncJobs = getCsvAsyncJobs as jest.MockedFunction<
 >;
 const mockCancelCsvAsyncJob = cancelCsvAsyncJob as jest.MockedFunction<
   typeof cancelCsvAsyncJob
+>;
+const mockGetCsvAsyncJobResult = getCsvAsyncJobResult as jest.MockedFunction<
+  typeof getCsvAsyncJobResult
 >;
 const mockUseWebSocketConnector = useWebSocketConnector as jest.MockedFunction<
   typeof useWebSocketConnector
@@ -224,10 +229,10 @@ describe('CsvJobsTray', () => {
     mockGetCsvAsyncJobs.mockResolvedValueOnce([]).mockResolvedValueOnce([
       createJob({
         jobId: 'completed-export-job',
-        result: 'name\nmetric',
         status: 'COMPLETED',
       }),
     ]);
+    mockGetCsvAsyncJobResult.mockResolvedValueOnce('name\nmetric');
 
     await renderComponent();
 
@@ -238,6 +243,11 @@ describe('CsvJobsTray', () => {
     fireEvent.click(await screen.findByText('label.background-job-plural'));
     fireEvent.click(screen.getByRole('button', { name: 'label.download' }));
 
+    await waitFor(() =>
+      expect(mockGetCsvAsyncJobResult).toHaveBeenCalledWith(
+        'completed-export-job'
+      )
+    );
     expect(createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:csv-job');
   });

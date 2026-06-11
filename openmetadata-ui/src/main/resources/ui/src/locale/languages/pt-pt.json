@@ -3487,6 +3487,7 @@
     "scim-allows-automatic-user-and-group-management-directly-from-your-sso-provider": "O SCIM permite a gestão automática de utilizadores e grupos diretamente do seu fornecedor SSO.",
     "scopes-comma-separated": "Adicione o valor dos Escopos, separados por vírgulas",
     "search-entity-count": "{{count}} ativos foram encontrados com este filtro.",
+    "search-export-job-started": "Export started — track progress and download the CSV from Background jobs.",
     "search-for-data-assets-placeholder": "Pesquisar ativos de dados",
     "search-for-edge": "Pesquisar por Pipeline, Procedimentos Armazenados",
     "search-for-entity-types": "Pesquisar por Tabelas, Tópicos, Painéis, Pipelines, Modelos de ML, Glossário e Etiquetas.",

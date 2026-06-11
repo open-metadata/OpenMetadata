@@ -3487,6 +3487,7 @@
     "scim-allows-automatic-user-and-group-management-directly-from-your-sso-provider": "SCIM позволяет автоматическое управление пользователями и группами непосредственно от вашего поставщика SSO.",
     "scopes-comma-separated": "Добавьте значение областей, разделенное запятыми",
     "search-entity-count": "Найдено {{count}} объектов с этим фильтром.",
+    "search-export-job-started": "Export started — track progress and download the CSV from Background jobs.",
     "search-for-data-assets-placeholder": "Поиск объектов данных",
     "search-for-edge": "Поиск по пайплайнам, хранимым процедурам",
     "search-for-entity-types": "Поиск по таблицам, топикам, дашбордам, пайплайнам, моделям машинного обучения, глоссарию и тегам.",

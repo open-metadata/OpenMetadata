@@ -3487,6 +3487,7 @@
     "scim-allows-automatic-user-and-group-management-directly-from-your-sso-provider": "SCIM อนุญาตให้จัดการผู้ใช้และกลุ่มโดยอัตโนมัติโดยตรงจากผู้ให้บริการ SSO ของคุณ",
     "scopes-comma-separated": "เพิ่มค่าขอบเขต โดยแยกด้วยเครื่องหมายจุลภาค",
     "search-entity-count": "พบ {{count}} สินทรัพย์ด้วยตัวกรองนี้",
+    "search-export-job-started": "Export started — track progress and download the CSV from Background jobs.",
     "search-for-data-assets-placeholder": "ค้นหาสินทรัพย์ข้อมูล",
     "search-for-edge": "ค้นหาท่อ, กระบวนการที่เก็บ",
     "search-for-entity-types": "ค้นหาตาราง, หัวข้อ, แดชบอร์ด, ท่อ, โมเดล ML, สารานุกรม และแท็ก",

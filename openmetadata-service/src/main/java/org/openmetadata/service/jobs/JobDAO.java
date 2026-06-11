@@ -124,6 +124,21 @@ public interface JobDAO {
     updateJobStatusInternal(id, status.name());
   }
 
+  // Atomically claims a PENDING job for execution. Returns 0 when another
+  // worker thread (or another server in a multi-server deployment) claimed it
+  // first, so concurrent pollers never run the same job twice.
+  @ConnectionAwareSqlUpdate(
+      value =
+          "UPDATE background_jobs SET status = 'RUNNING', updatedAt = (UNIX_TIMESTAMP(NOW(3)) * 1000) "
+              + "WHERE id = :id AND status = 'PENDING'",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+      value =
+          "UPDATE background_jobs SET status = 'RUNNING', updatedAt = (EXTRACT(EPOCH FROM NOW()) * 1000) "
+              + "WHERE id = :id AND status = 'PENDING'",
+      connectionType = POSTGRES)
+  int claimPendingJob(@Bind("id") long id);
+
   @SqlQuery(
       "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
           + "progress, total, result, error, message, cancelRequested, completedAt "
@@ -135,9 +150,13 @@ public interface JobDAO {
     return Optional.ofNullable(getJob(id));
   }
 
+  // The list intentionally omits `result`: a completed export stores the whole
+  // CSV there, so selecting it would make every jobs-tray refresh transfer the
+  // concatenation of all recent exports. Clients download a single job's result
+  // via GET /csvAsyncJobs/{jobId}/result.
   @SqlQuery(
       "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
-          + "progress, total, result, error, message, cancelRequested, completedAt "
+          + "progress, total, NULL AS result, error, message, cancelRequested, completedAt "
           + "FROM background_jobs WHERE createdBy = :createdBy "
           + "AND jobType IN ('CSV_IMPORT', 'CSV_EXPORT') ORDER BY createdAt DESC LIMIT :limit")
   @RegisterRowMapper(BackgroundJobMapper.class)

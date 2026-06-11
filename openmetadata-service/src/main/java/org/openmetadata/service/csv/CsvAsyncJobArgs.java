@@ -30,4 +30,23 @@ public class CsvAsyncJobArgs {
   private Boolean recursive;
   private String csv;
   private String versioningEntityType;
+  // Present when the job exports search results instead of a single entity
+  // tree; the handler streams matching documents straight into the spool file.
+  private SearchExportArgs searchExport;
+
+  @Getter
+  @Setter
+  @NoArgsConstructor
+  @Accessors(chain = true)
+  public static class SearchExportArgs {
+    private String query;
+    private String index;
+    private Boolean deleted;
+    private String queryFilter;
+    private String postFilter;
+    private String sortField;
+    private String sortOrder;
+    private Integer size;
+    private Integer from;
+  }
 }

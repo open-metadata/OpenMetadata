@@ -41,6 +41,7 @@ import {
   CsvAsyncJob,
   CsvAsyncJobOperation,
   CsvAsyncJobStatus,
+  getCsvAsyncJobResult,
   getCsvAsyncJobs,
 } from '../../../../rest/csvAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -92,6 +93,7 @@ export const CsvJobsTray = () => {
   const [jobs, setJobs] = useState<CsvAsyncJob[]>([]);
   const [open, setOpen] = useState(false);
   const [cancellingJobId, setCancellingJobId] = useState<string>();
+  const [downloadingJobId, setDownloadingJobId] = useState<string>();
   const [dismissedJobIds, setDismissedJobIds] = useState<Set<string>>(
     () => new Set()
   );
@@ -154,6 +156,26 @@ export const CsvJobsTray = () => {
       showErrorToast(error as AxiosError);
     } finally {
       setCancellingJobId(undefined);
+    }
+  }, []);
+
+  const handleDownload = useCallback(async (job: CsvAsyncJob) => {
+    try {
+      setDownloadingJobId(job.jobId);
+      const csvData = await getCsvAsyncJobResult(job.jobId);
+      const blob = new Blob([csvData], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${job.entityType}-${job.jobId}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setDownloadingJobId(undefined);
     }
   }, []);
 
@@ -278,28 +300,15 @@ export const CsvJobsTray = () => {
       );
     }
 
-    if (
-      job.status === 'COMPLETED' &&
-      job.operation === 'EXPORT' &&
-      job.result
-    ) {
+    if (job.status === 'COMPLETED' && job.operation === 'EXPORT') {
       return (
         <Button
           className="csv-jobs-tray-action"
           color="secondary"
           iconLeading={Download01}
+          isLoading={downloadingJobId === job.jobId}
           size="xs"
-          onPress={() => {
-            const blob = new Blob([job.result ?? ''], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `${job.entityType}-${job.jobId}.csv`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-          }}>
+          onPress={() => handleDownload(job)}>
           {t('label.download')}
         </Button>
       );

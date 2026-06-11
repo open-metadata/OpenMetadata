@@ -35,6 +35,7 @@ import { ENTITY_BULK_EDIT_STEPS } from '../../constants/BulkEdit.constants';
 import { ExportTypes } from '../../constants/Export.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { useFqn } from '../../hooks/useFqn';
+import entityBulkEditConfigClassBase from '../../utils/CSV/EntityBulkEditConfigClassBase';
 import {
   getBulkEditCSVExportEntityApi,
   getBulkEntityNavigationPath,
@@ -173,23 +174,19 @@ const BulkEditEntity = ({
   };
 
   const newRowSeqRef = useRef(0);
-  const isMetricEntity = entityType === EntityType.METRIC;
+  const bulkEditConfig = entityBulkEditConfigClassBase.getConfig(entityType);
+  const isRichGridEntity = Boolean(bulkEditConfig?.richGrid);
+  const newRowConfig = bulkEditConfig?.newRow;
   const isImportWorkflow = workflowMode === 'import';
   const shouldDisableNext =
     isValidating || (isNextDisabled ?? changedCellCount === 0);
 
-  const handleAddMetric = useCallback(() => {
+  const handleAddRow = useCallback(() => {
     const blankRow: Record<string, string> = {};
     columns.forEach((col) => {
       blankRow[col.key] = '';
     });
-    const enumDefaults: Record<string, string> = {
-      metricType: 'COUNT',
-      unitOfMeasurement: 'COUNT',
-      granularity: 'DAY',
-      expressionLanguage: 'SQL',
-    };
-    Object.entries(enumDefaults).forEach(([key, value]) => {
+    Object.entries(newRowConfig?.defaults ?? {}).forEach(([key, value]) => {
       if (key in blankRow) {
         blankRow[key] = value;
       }
@@ -349,7 +346,8 @@ const BulkEditEntity = ({
       const columnWidth = BULK_EDIT_COLUMN_WIDTHS[columnKey];
       const isNameColumn = columnKey === 'name';
       const shouldLockNameColumn =
-        isMetricEntity && !isImportWorkflow && isNameColumn;
+        !isImportWorkflow &&
+        Boolean(bulkEditConfig?.lockedColumns.includes(columnKey));
 
       return {
         ...column,
@@ -448,7 +446,7 @@ const BulkEditEntity = ({
     highlightedRowId,
     initialRowById,
     isImportWorkflow,
-    isMetricEntity,
+    bulkEditConfig,
     setGridRef,
     t,
     workflowMode,
@@ -582,7 +580,7 @@ const BulkEditEntity = ({
                     </div>
                   </div>
                   <div className="bulk-edit-grid-shell">{editDataGrid}</div>
-                  {isMetricEntity && (
+                  {newRowConfig && (
                     <div className="bulk-edit-add-row-bar">
                       <div className="bulk-edit-add-row-content">
                         <Button
@@ -590,16 +588,16 @@ const BulkEditEntity = ({
                           color="secondary"
                           data-testid="bulk-edit-add-metric"
                           iconLeading={Plus}
-                          onPress={handleAddMetric}>
+                          onPress={handleAddRow}>
                           {isImportWorkflow
                             ? t('label.add-row')
                             : t('label.add-entity', {
-                                entity: t('label.metric'),
+                                entity: t(newRowConfig.entityLabelKey),
                               })}
                         </Button>
                         {!isImportWorkflow && (
                           <span className="bulk-edit-add-row-hint">
-                            {t('message.bulk-edit-add-metric-hint')}
+                            {t(newRowConfig.hintMessageKey)}
                           </span>
                         )}
                       </div>
@@ -649,7 +647,7 @@ const BulkEditEntity = ({
               </div>
             )}
           </div>
-          {activeStep > 0 && !(activeStep === 1 && isMetricEntity) && (
+          {activeStep > 0 && !(activeStep === 1 && isRichGridEntity) && (
             <div>
               <div className="float-right import-footer">
                 {activeStep === 1 && (

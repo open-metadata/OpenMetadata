@@ -3487,6 +3487,7 @@
     "scim-allows-automatic-user-and-group-management-directly-from-your-sso-provider": "SCIMはSSOプロバイダーから直接ユーザーとグループの自動管理を可能にします。",
     "scopes-comma-separated": "スコープ値をカンマで区切って入力してください",
     "search-entity-count": "{{count}} 件のアセットがこのフィルターに一致しました。",
+    "search-export-job-started": "Export started — track progress and download the CSV from Background jobs.",
     "search-for-data-assets-placeholder": "データアセットを検索",
     "search-for-edge": "パイプライン、ストアドプロシージャを検索",
     "search-for-entity-types": "テーブル、トピック、ダッシュボード、パイプライン、MLモデルを検索",

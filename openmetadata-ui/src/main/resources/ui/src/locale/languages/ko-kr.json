@@ -3487,6 +3487,7 @@
     "scim-allows-automatic-user-and-group-management-directly-from-your-sso-provider": "SCIM을 사용하면 SSO 공급자에서 직접 사용자 및 그룹을 자동으로 관리할 수 있습니다.",
     "scopes-comma-separated": "쉼표로 구분된 범위 값을 추가하세요",
     "search-entity-count": "이 필터로 {{count}}개의 자산이 발견되었습니다.",
+    "search-export-job-started": "Export started — track progress and download the CSV from Background jobs.",
     "search-for-data-assets-placeholder": "데이터 자산 검색",
     "search-for-edge": "파이프라인, 저장 프로시저 검색",
     "search-for-entity-types": "테이블, 토픽, 대시보드, 파이프라인, ML 모델, 용어집 및 태그 검색.",

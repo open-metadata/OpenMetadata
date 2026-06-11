@@ -3487,6 +3487,7 @@
     "scim-allows-automatic-user-and-group-management-directly-from-your-sso-provider": "SCIM مدیریت خودکار کاربر و گروه را مستقیماً از ارائه‌دهنده SSO شما امکان‌پذیر می‌سازد.",
     "scopes-comma-separated": "مقدار Scopes را با کاما جدا کنید.",
     "search-entity-count": "{{count}} دارایی با این فیلتر یافت شد.",
+    "search-export-job-started": "Export started — track progress and download the CSV from Background jobs.",
     "search-for-data-assets-placeholder": "جستجوی دارایی‌های داده",
     "search-for-edge": "جستجوی خطوط لوله، StoredProcedures.",
     "search-for-entity-types": "جستجوی جداول، موضوعات، داشبوردها، خطوط لوله، مدل‌های ML، واژه‌نامه و برچسب‌ها.",

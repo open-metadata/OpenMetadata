@@ -15,7 +15,9 @@ package org.openmetadata.service.csv;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import java.io.FilterOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.csv.CsvExportProgressCallback;
@@ -23,6 +25,7 @@ import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.jobs.BackgroundJob;
+import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.csv.CsvImportResult;
@@ -32,6 +35,9 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jobs.BackgroundJobException;
 import org.openmetadata.service.jobs.JobHandler;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchResultCsvExporter;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.CSVExportMessage;
 import org.openmetadata.service.util.CSVImportMessage;
@@ -55,6 +61,8 @@ public class CsvImportExportJobHandler implements JobHandler {
       jobManager.checkpoint(jobId);
       if (args.getOperation() == CsvAsyncJob.Operation.IMPORT) {
         runImport(job, args);
+      } else if (args.getSearchExport() != null) {
+        runSearchExport(job, args.getSearchExport());
       } else {
         runExport(job, args);
       }
@@ -146,7 +154,95 @@ public class CsvImportExportJobHandler implements JobHandler {
     int progress = finishedJob.getProgress() == null ? 0 : finishedJob.getProgress();
     int total = finishedJob.getTotal() == null ? progress : finishedJob.getTotal();
     jobManager.completeExportJob(jobId, csvData, "Export completed.", progress, total);
-    sendExportMessage(job.getCreatedBy(), new CSVExportMessage(jobId, "COMPLETED", csvData, null));
+    // The completion event intentionally omits the CSV — clients download it
+    // via GET /csvAsyncJobs/{jobId}/result instead of receiving a potentially
+    // huge payload over the websocket.
+    sendExportMessage(job.getCreatedBy(), new CSVExportMessage(jobId, "COMPLETED", null, null));
+  }
+
+  // Streams matching search documents straight into the spool file — the only
+  // export path that never materializes the whole CSV in memory.
+  private void runSearchExport(BackgroundJob job, CsvAsyncJobArgs.SearchExportArgs searchExport)
+      throws IOException {
+    String jobId = String.valueOf(job.getId());
+    SubjectContext subjectContext = SubjectContext.getSubjectContext(job.getCreatedBy());
+    SearchRequest request =
+        SearchResultCsvExporter.buildExportSearchRequest(
+            subjectContext,
+            searchExport.getQuery(),
+            searchExport.getIndex(),
+            searchExport.getDeleted(),
+            searchExport.getQueryFilter(),
+            searchExport.getPostFilter(),
+            searchExport.getSortField(),
+            searchExport.getSortOrder());
+    SearchRepository searchRepository = Entity.getSearchRepository();
+    int from = searchExport.getFrom() == null ? 0 : searchExport.getFrom();
+    int totalHits = searchRepository.countSearchResults(request, subjectContext);
+    Integer size = searchExport.getSize();
+    int effectiveTotal =
+        Math.max(
+            (size != null && size > 0) ? Math.min(size, totalHits - from) : totalHits - from, 0);
+    if (effectiveTotal > SearchResultCsvExporter.MAX_EXPORT_ROWS) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Results contain %d rows, max is %d. Please add filters to reduce the result set.",
+              effectiveTotal, SearchResultCsvExporter.MAX_EXPORT_ROWS));
+    }
+
+    try (OutputStream spool = CsvExportSpool.openForWrite(jobId)) {
+      OutputStream progressTracking =
+          new RowCountingOutputStream(spool, effectiveTotal, jobId, jobManager);
+      searchRepository.exportSearchResultsCsvStream(
+          request, subjectContext, effectiveTotal, from, progressTracking);
+    }
+    jobManager.completeSpooledExportJob(jobId, "Export completed.", effectiveTotal, effectiveTotal);
+    sendExportMessage(job.getCreatedBy(), new CSVExportMessage(jobId, "COMPLETED", null, null));
+  }
+
+  // Counts CSV rows as they stream by so the job reports live progress and
+  // honors cancellation between batches.
+  private static final class RowCountingOutputStream extends FilterOutputStream {
+    private static final int PROGRESS_EVERY_ROWS = 1000;
+    private final int total;
+    private final String jobId;
+    private final CsvAsyncJobManager jobManager;
+    private int rows;
+    private int rowsAtLastReport;
+
+    private RowCountingOutputStream(
+        OutputStream delegate, int total, String jobId, CsvAsyncJobManager jobManager) {
+      super(delegate);
+      this.total = total;
+      this.jobId = jobId;
+      this.jobManager = jobManager;
+    }
+
+    @Override
+    public void write(int b) throws IOException {
+      out.write(b);
+      countRows(b);
+    }
+
+    @Override
+    public void write(byte[] buffer, int offset, int length) throws IOException {
+      out.write(buffer, offset, length);
+      for (int i = offset; i < offset + length; i++) {
+        countRows(buffer[i]);
+      }
+    }
+
+    private void countRows(int b) {
+      if (b == '\n') {
+        rows++;
+        if (rows - rowsAtLastReport >= PROGRESS_EVERY_ROWS) {
+          rowsAtLastReport = rows;
+          jobManager.updateProgress(
+              jobId, Math.min(rows, total), total, "Exported " + rows + " rows.");
+          jobManager.checkpoint(jobId);
+        }
+      }
+    }
   }
 
   private void createBulkImportVersion(

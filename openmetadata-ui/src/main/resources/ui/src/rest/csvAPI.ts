@@ -112,6 +112,20 @@ export const getCsvAsyncJob = async (jobId: string) => {
   return response.data;
 };
 
+// Export results are intentionally omitted from the jobs list (they can be
+// arbitrarily large); download a single job's CSV through this endpoint.
+export const getCsvAsyncJobResult = async (jobId: string) => {
+  const response = await APIClient.get<string>(
+    `/csvAsyncJobs/${jobId}/result`,
+    {
+      headers: { Accept: 'text/csv' },
+      responseType: 'text',
+    }
+  );
+
+  return response.data;
+};
+
 export const cancelCsvAsyncJob = async (jobId: string) => {
   const response = await APIClient.put<string, AxiosResponse<CsvAsyncJob>>(
     `/csvAsyncJobs/${jobId}/cancel`

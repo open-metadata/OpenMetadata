@@ -13,8 +13,11 @@
 
 package org.openmetadata.service.resources.csv;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.GET;
@@ -26,10 +29,14 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.StreamingOutput;
+import java.io.InputStream;
 import java.util.List;
 import org.openmetadata.service.csv.CsvAsyncJob;
 import org.openmetadata.service.csv.CsvAsyncJobManager;
+import org.openmetadata.service.csv.CsvExportSpool;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -60,6 +67,47 @@ public class CsvAsyncJobResource {
     }
     validateAccess(subjectContext, job);
     return job;
+  }
+
+  @GET
+  @Path("/{jobId}/result")
+  @Produces("text/csv")
+  @Operation(
+      operationId = "getCsvAsyncJobResult",
+      summary = "Download the CSV produced by a completed export job")
+  public Response getJobResult(
+      @Context SecurityContext securityContext, @PathParam("jobId") String jobId) {
+    SubjectContext subjectContext = DefaultAuthorizer.getSubjectContext(securityContext);
+    CsvAsyncJob job = jobManager.getJob(jobId);
+    if (job == null) {
+      throw new NotFoundException("CSV job not found: " + jobId);
+    }
+    validateAccess(subjectContext, job);
+    if (job.getOperation() != CsvAsyncJob.Operation.EXPORT
+        || job.getStatus() != CsvAsyncJob.Status.COMPLETED) {
+      throw new BadRequestException(
+          "CSV job " + jobId + " is not a completed export; it has no downloadable result.");
+    }
+    if (jobManager.isSpoolResultReference(job.getResult())) {
+      if (!CsvExportSpool.exists(jobId)) {
+        throw new NotFoundException(
+            "The result of CSV job "
+                + jobId
+                + " is no longer available; it may have expired or been produced on another server.");
+      }
+      StreamingOutput stream =
+          output -> {
+            try (InputStream spooled = CsvExportSpool.openForRead(jobId)) {
+              spooled.transferTo(output);
+            }
+          };
+      return Response.ok(stream, "text/csv").build();
+    }
+    if (nullOrEmpty(job.getResult())) {
+      throw new NotFoundException("The result of CSV job " + jobId + " is no longer available.");
+    }
+    // Jobs completed before spooling was introduced stored the CSV inline.
+    return Response.ok(job.getResult(), "text/csv").build();
   }
 
   @PUT

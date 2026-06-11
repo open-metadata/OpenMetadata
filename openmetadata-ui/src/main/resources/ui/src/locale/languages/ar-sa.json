@@ -3487,6 +3487,7 @@
     "scim-allows-automatic-user-and-group-management-directly-from-your-sso-provider": "SCIM يتيح إدارة المستخدمين والمجموعات تلقائيًا مباشرةً من موفر SSO الخاص بك.",
     "scopes-comma-separated": "أضف قيمة النطاقات، مفصولة بفواصل",
     "search-entity-count": "تم العثور على {{count}} أصل باستخدام هذا الفلتر.",
+    "search-export-job-started": "Export started — track progress and download the CSV from Background jobs.",
     "search-for-data-assets-placeholder": "البحث عن أصول البيانات",
     "search-for-edge": "البحث عن مسار (Pipeline)، إجراءات مخزنة (StoredProcedures)",
     "search-for-entity-types": "البحث عن الجداول، المواضيع، لوحات المعلومات، المسارات، نماذج تعلم الآلة (ML Models)، المسرد والعلامات.",

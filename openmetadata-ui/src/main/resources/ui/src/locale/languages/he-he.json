@@ -3487,6 +3487,7 @@
     "scim-allows-automatic-user-and-group-management-directly-from-your-sso-provider": "SCIM מאפשר ניהול אוטומטי של משתמשים וקבוצות ישירות מספק ה-SSO שלך.",
     "scopes-comma-separated": "הוסף את ערכי הניקוד, מופרדים בפסיקים",
     "search-entity-count": "{{count}} נכסים נמצאו עם מסנן זה.",
+    "search-export-job-started": "Export started — track progress and download the CSV from Background jobs.",
     "search-for-data-assets-placeholder": "חפש נכסי נתונים",
     "search-for-edge": "חיפוש לפי תהליך טעינה, פונקציות מאוחסנות",
     "search-for-entity-types": "חיפוש לפי טבלאות, נושאים, דשבורדים, תהליכי טעינה, מודלי למידת מכונה, מילוני מונחים ותגיות",

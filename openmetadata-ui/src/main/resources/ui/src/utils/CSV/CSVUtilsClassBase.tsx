@@ -74,13 +74,7 @@ import { CSMode } from '../../enums/codemirror.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Tag } from '../../generated/entity/classification/tag';
-import {
-  EntityStatus,
-  Language,
-  MetricGranularity,
-  MetricType,
-  UnitOfMeasurement,
-} from '../../generated/entity/data/metric';
+import { Language } from '../../generated/entity/data/metric';
 import { Config, EntityReference, Type } from '../../generated/entity/type';
 import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import TagSuggestion from '../../pages/TasksPage/shared/TagSuggestion';
@@ -103,6 +97,7 @@ import {
   getCustomPropertyEntityType,
   isSystemClassificationTagFqn,
 } from './CSV.utils';
+import entityBulkEditConfigClassBase from './EntityBulkEditConfigClassBase';
 
 export interface CSVEditorOptions {
   usePlainTextEditor?: boolean;
@@ -1912,29 +1907,9 @@ const InlineDescriptionEditor = ({
   );
 };
 
-const toSelectOptions = (values: string[]) =>
-  values.map((value) => ({ label: value, value }));
-const toTierSelectOptions = () =>
-  ['Tier1', 'Tier2', 'Tier3', 'Tier4', 'Tier5'].map((tier) => ({
-    label: tier,
-    value: `Tier.${tier}`,
-  }));
-
-const METRIC_ENUM_COLUMN_OPTIONS: Record<string, DefaultOptionType[]> = {
-  metricType: toSelectOptions(Object.values(MetricType)),
-  unitOfMeasurement: toSelectOptions(Object.values(UnitOfMeasurement)),
-  granularity: toSelectOptions(Object.values(MetricGranularity)),
-  entityStatus: toSelectOptions(Object.values(EntityStatus)),
-  tiers: toTierSelectOptions(),
-};
-
 class CSVUtilsClassBase {
   public hideImportsColumnList() {
     return ['glossaryStatus', 'inspectionQuery'];
-  }
-
-  public metricEnumColumns() {
-    return Object.keys(METRIC_ENUM_COLUMN_OPTIONS);
   }
 
   public columnsWithMultipleValuesEscapeNeeded() {
@@ -2222,7 +2197,11 @@ class CSVUtilsClassBase {
                   getPopupContainer={() => document.body}
                   menuItemSelectedIcon={<Check size={16} />}
                   optionFilterProp="label"
-                  options={METRIC_ENUM_COLUMN_OPTIONS[column.key]}
+                  options={
+                    entityBulkEditConfigClassBase.getEnumColumnOptions(
+                      entityType
+                    )[column.key]
+                  }
                   popupClassName="bulk-edit-enum-select-dropdown"
                   size="small"
                   suffixIcon={<ChevronDown size={16} />}
@@ -2600,7 +2579,11 @@ class CSVUtilsClassBase {
                 getPopupContainer={() => document.body}
                 menuItemSelectedIcon={<Check size={16} />}
                 optionFilterProp="label"
-                options={METRIC_ENUM_COLUMN_OPTIONS[column.key]}
+                options={
+                  entityBulkEditConfigClassBase.getEnumColumnOptions(
+                    entityType
+                  )[column.key]
+                }
                 popupClassName="bulk-edit-enum-select-dropdown"
                 size="small"
                 suffixIcon={<ChevronDown size={16} />}

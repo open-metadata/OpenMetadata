@@ -30,6 +30,7 @@ import {
   BETA_EXPORT_TYPES,
   ExportTypes,
 } from '../../../constants/Export.constants';
+import { getCsvAsyncJobResult } from '../../../rest/csvAPI';
 import { getCurrentISODate } from '../../../utils/date-time/DateTimeUtils';
 import { isBulkEditRoute } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { downloadFile } from '../../../utils/Export/ExportUtils';
@@ -199,6 +200,22 @@ export const EntityExportModalProvider = ({
           response.data ?? '',
           csvExportJobRef.current?.fileName
         );
+      } else if (response.status === 'COMPLETED') {
+        // Completion events no longer carry the CSV (it can be arbitrarily
+        // large) — download it from the job result endpoint instead.
+        const jobId = response.jobId ?? csvExportJobRef.current?.jobId;
+        if (jobId) {
+          getCsvAsyncJobResult(jobId)
+            .then((csvData) =>
+              handleCSVExportSuccess(csvData, csvExportJobRef.current?.fileName)
+            )
+            .catch((error) => {
+              showErrorToast(error as AxiosError);
+              setDownloading(false);
+            });
+        } else {
+          setDownloading(false);
+        }
       } else if (response.status === 'IN_PROGRESS') {
         // Keep downloading state true during progress
         setDownloading(true);

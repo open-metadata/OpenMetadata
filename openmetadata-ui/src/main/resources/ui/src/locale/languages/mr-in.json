@@ -3487,6 +3487,7 @@
     "scim-allows-automatic-user-and-group-management-directly-from-your-sso-provider": "SCIM आपल्या SSO प्रदात्याकडून थेट स्वयंचलित वापरकर्ता आणि गट व्यवस्थापन सक्षम करते.",
     "scopes-comma-separated": "स्वल्पविरामाने विभक्त स्कोप मूल्य जोडा",
     "search-entity-count": "या फिल्टरसह {{count}} अॅसेट सापडले आहेत.",
+    "search-export-job-started": "Export started — track progress and download the CSV from Background jobs.",
     "search-for-data-assets-placeholder": "डेटा एसेट्स शोधा",
     "search-for-edge": "पाइपलाइन, StoredProcedures साठी शोधा",
     "search-for-entity-types": "टेबल्स, विषय, डॅशबोर्ड, पाइपलाइन, ML मॉडेल्स, शब्दकोश आणि टॅग्स साठी शोधा.",
