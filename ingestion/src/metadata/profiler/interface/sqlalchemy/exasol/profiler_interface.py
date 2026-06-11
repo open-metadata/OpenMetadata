@@ -2,7 +2,9 @@
 Interfaces with Exasol database for profiler support.
 """
 
-from typing import List, Type, cast  # noqa: UP035
+from typing import Callable, List, Type, cast  # noqa: UP035
+
+from sqlalchemy.orm import Session
 
 from metadata.generated.schema.entity.data.table import SystemProfile, TableType
 from metadata.profiler.interface.sqlalchemy.profiler_interface import SQAProfilerInterface
@@ -29,6 +31,9 @@ class ExasolProfilerInterface(SQAProfilerInterface):
             return []
 
         logger.debug(f"Computing {metrics.name()} metric for {runner.table_name}")
-        exasol_system_metrics_class = cast(Type[ExasolSystemMetricsComputer], self.system_metrics_class)  # noqa: TC006, UP006
-        instance = exasol_system_metrics_class(self.session, runner)
+        exasol_system_metrics_constructor = cast(
+            Callable[[Session, QueryRunner], ExasolSystemMetricsComputer],
+            self.system_metrics_class,
+        )  # noqa: TC006, UP006
+        instance = exasol_system_metrics_constructor(self.session, runner)
         return instance.get_system_metrics()
