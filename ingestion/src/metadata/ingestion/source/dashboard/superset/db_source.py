@@ -140,6 +140,13 @@ class SupersetDBSource(SupersetSourceMixin):
                     )
                     for chart in self.context.get().charts or []
                 ],
+                # Force-clear Dashboard.dataModels by sending an empty list.
+                # The DataModel<->Dashboard relationship is represented via
+                # the DataModel -> Chart -> Dashboard lineage chain emitted
+                # in SupersetSourceMixin.yield_dashboard_lineage_details.
+                # Sending [] (instead of omitting the field) ensures any
+                # datamodel entries left over from prior runs are deleted.
+                dataModels=[],
                 service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
