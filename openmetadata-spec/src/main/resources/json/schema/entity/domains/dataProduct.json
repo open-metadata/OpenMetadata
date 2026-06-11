@@ -262,7 +262,7 @@
       "$ref": "../../type/status.json"
     }
   },
-  "workflowTriggerFields": ["name", "displayName", "fullyQualifiedName", "description", "owners", "reviewers", "tags", "certification", "domains", "extension", "experts", "style", "sla", "consumesFrom", "providesTo", "lifecycleStage"],
+  "workflowTriggerFields": ["name", "displayName", "fullyQualifiedName", "description", "owners", "reviewers", "tags", "certification", "domains", "extension", "experts", "style", "sla", "consumesFrom", "providesTo", "lifecycleStage", "inputPorts", "outputPorts"],
   "required": ["id", "name", "description"],
   "additionalProperties": false
 }
