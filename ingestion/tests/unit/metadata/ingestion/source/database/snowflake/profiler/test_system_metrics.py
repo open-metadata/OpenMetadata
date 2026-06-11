@@ -18,6 +18,8 @@ from metadata.ingestion.source.database.snowflake.models import (
     SnowflakeQueryLogEntry,
 )
 from metadata.profiler.metrics.system.snowflake.system import (
+    _parse_query,
+    cache,
     PUBLIC_SCHEMA,
     SnowflakeSystemMetricsComputer,
     SnowflakeTableResovler,
@@ -465,3 +467,147 @@ def test_it_turns_sql_alchemy_response_to_snowflake_query_log_entries() -> None:
             rows_deleted=0,
         ),
     ]
+
+
+@pytest.fixture
+def isolated_parse_query_cache():
+    cache.clear()
+    yield
+    cache.clear()
+
+
+@pytest.mark.parametrize(
+    "query, expected_identifier",
+    [
+        # --- Existing working cases (no leading whitespace/comments) ---
+        (
+            "INSERT INTO my_schema.my_table (col1) VALUES (1)",
+            "my_schema.my_table",
+        ),
+        (
+            "INSERT OVERWRITE INTO my_schema.my_table SELECT * FROM src",
+            "my_schema.my_table",
+        ),
+        (
+            "UPDATE my_db.my_schema.my_table SET col1 = 1 WHERE id = 2",
+            "my_db.my_schema.my_table",
+        ),
+        (
+            "MERGE INTO target_table USING source ON target_table.id = source.id WHEN MATCHED THEN UPDATE SET col = source.col",
+            "target_table",
+        ),
+        (
+            "DELETE FROM my_table WHERE id = 1",
+            "my_table",
+        ),
+        (
+            "INSERT INTO IDENTIFIER('MY_DB.MY_SCHEMA.MY_TABLE') SELECT * FROM src",
+            "MY_DB.MY_SCHEMA.MY_TABLE",
+        ),
+        # --- Queries that previously failed: leading whitespace ---
+        (
+            "  INSERT INTO my_schema.my_table (col1) VALUES (1)",
+            "my_schema.my_table",
+        ),
+        (
+            "\tINSERT INTO my_schema.my_table (col1) VALUES (1)",
+            "my_schema.my_table",
+        ),
+        (
+            "\n\nDELETE FROM my_table WHERE id = 1",
+            "my_table",
+        ),
+        (
+            "   UPDATE my_table SET col = 1 WHERE id = 2",
+            "my_table",
+        ),
+        # --- Queries that previously failed: leading single-line SQL comments ---
+        (
+            "-- populate staging table\nINSERT INTO staging.my_table SELECT * FROM raw",
+            "staging.my_table",
+        ),
+        (
+            "-- first comment\n-- second comment\nDELETE FROM my_schema.my_table WHERE expired = TRUE",
+            "my_schema.my_table",
+        ),
+        (
+            "  -- comment with leading spaces\n  UPDATE my_table SET col = 1",
+            "my_table",
+        ),
+        # --- Queries that previously failed: leading multi-line SQL comments ---
+        (
+            "/* batch load */\nINSERT INTO my_table SELECT * FROM src",
+            "my_table",
+        ),
+        (
+            "/* first comment */\n/* second comment */\nDELETE FROM my_table WHERE id = 1",
+            "my_table",
+        ),
+        (
+            "/* multi\n   line\n   comment */\nMERGE INTO my_table USING src ON my_table.id = src.id WHEN MATCHED THEN UPDATE SET col = src.col",
+            "my_table",
+        ),
+        # --- Non-DML queries should return None ---
+        (
+            "SELECT * FROM my_table",
+            None,
+        ),
+        (
+            "  SELECT * FROM my_table",
+            None,
+        ),
+        (
+            "-- a comment\nSELECT col FROM my_table WHERE id = 1",
+            None,
+        ),
+        # --- Comment bodies with DML must NOT affect parsing ---
+        # Single-line comment with a different DML table must be ignored
+        (
+            "-- INSERT INTO old_table VALUES (1)\nINSERT INTO new_table VALUES (2)",
+            "new_table",
+        ),
+        (
+            "-- DELETE FROM wrong_table\nUPDATE real_table SET col = 1 WHERE id = 2",
+            "real_table",
+        ),
+        # Block comment with DML inside must be ignored
+        (
+            "/* INSERT INTO wrong_table VALUES (1) */\nINSERT INTO new_table VALUES (2)",
+            "new_table",
+        ),
+        (
+            "/* UPDATE wrong_table SET col = 0 */\nDELETE FROM real_table WHERE id = 1",
+            "real_table",
+        ),
+        # Multi-line block comment with embedded DML must be ignored
+        (
+            "/* this was the old approach:\n   INSERT INTO legacy_table SELECT * FROM raw\n*/\nINSERT INTO current_table SELECT * FROM raw",
+            "current_table",
+        ),
+        # --- COPY INTO ---
+        (
+            "COPY INTO my_schema.my_table FROM @my_stage",
+            "my_schema.my_table",
+        ),
+        (
+            "COPY INTO my_db.my_schema.my_table FROM @my_stage FILE_FORMAT = (TYPE = CSV)",
+            "my_db.my_schema.my_table",
+        ),
+        (
+            "  COPY INTO my_table FROM @stage",
+            "my_table",
+        ),
+        (
+            "-- load batch\nCOPY INTO my_schema.my_table FROM @stage",
+            "my_schema.my_table",
+        ),
+        # --- None / empty input ---
+        (None, None),
+        ("", None),
+    ],
+)
+def test_parse_query(query, expected_identifier, isolated_parse_query_cache):
+    """Test that _parse_query correctly extracts the target table identifier from DML queries,
+    including those with leading whitespace or SQL comments."""
+    result = _parse_query(query)
+    assert result == expected_identifier
