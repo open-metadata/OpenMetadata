@@ -7,6 +7,8 @@ import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
@@ -35,9 +37,19 @@ public class GetCompanyContextTool implements McpTool {
       ContextMemory memory =
           Entity.getEntityByName(
               Entity.CONTEXT_MEMORY, fqn, "sourceFile,owners,tags,domains", null);
-      result = projectPill(memory);
+      result =
+          isExposablePill(memory)
+              ? projectPill(memory)
+              : Map.of("error", "Requested entity is not a shared Company Context knowledge pill");
     }
     return result;
+  }
+
+  /** Mirrors the search tool's scope: file-extracted pills with Shared visibility only. */
+  private static boolean isExposablePill(ContextMemory memory) {
+    return memory.getSourceType() == ContextMemorySourceType.FILE_EXTRACTION
+        && memory.getShareConfig() != null
+        && memory.getShareConfig().getVisibility() == MemoryVisibility.SHARED;
   }
 
   static Map<String, Object> projectPill(ContextMemory memory) {

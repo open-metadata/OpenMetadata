@@ -141,7 +141,7 @@ class ContextFileProcessingServiceTest {
     assertEquals(ProcessingStatus.ExtractingContext, fileUpdates.get(1).getProcessingStatus());
     assertEquals(ProcessingStatus.Processed, fileUpdates.get(2).getProcessingStatus());
 
-    verify(repository).deleteExtractedMemories(same(file), eq(false));
+    verify(repository).deleteExtractedMemories(same(file), eq(true));
     verify(memoryExtractor).extract(same(file), eq("Quarterly results canonical"));
   }
 

@@ -213,7 +213,9 @@ public class ContextFileProcessingService {
       return;
     }
     try {
-      repository.deleteExtractedMemories(file, false);
+      // Hard-delete: stale machine-generated pills are replaced wholesale on every
+      // re-extraction, so soft-deleted rows would only accumulate with no restore path.
+      repository.deleteExtractedMemories(file, true);
       memoryExtractorSupplier.get().extract(file, canonicalText(contentId, file));
       setFileStatus(fileId, contentId, ProcessingStatus.Processed);
     } catch (Exception e) {

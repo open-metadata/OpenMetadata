@@ -11,6 +11,8 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
+import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
@@ -31,7 +33,6 @@ public class SearchCompanyContextTool implements McpTool {
   private static final int MAX_SIZE = 50;
   private static final int DEFAULT_K = 100;
   private static final double DEFAULT_THRESHOLD = 0.0;
-  private static final String SOURCE_TYPE_FILE_EXTRACTION = "FileExtraction";
 
   @Override
   public Map<String, Object> execute(
@@ -78,7 +79,8 @@ public class SearchCompanyContextTool implements McpTool {
   private Map<String, List<String>> companyContextFilters() {
     Map<String, List<String>> filters = new HashMap<>();
     filters.put("entityType", List.of(Entity.CONTEXT_MEMORY));
-    filters.put("sourceType", List.of(SOURCE_TYPE_FILE_EXTRACTION));
+    filters.put("sourceType", List.of(ContextMemorySourceType.FILE_EXTRACTION.value()));
+    filters.put("visibility", List.of(MemoryVisibility.SHARED.value()));
     return filters;
   }
 
