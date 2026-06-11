@@ -13,11 +13,15 @@
 import { WidgetProps } from '@rjsf/utils';
 import { Alert, Typography } from 'antd';
 import { TFunction } from 'i18next';
-import { useCallback, useMemo } from 'react';
+import { lazy, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../../../../enums/codemirror.enum';
-import SchemaEditor from '../../../../../Database/SchemaEditor/SchemaEditor';
+import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
 import './manifest-json-widget.less';
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../../../../../Database/SchemaEditor/SchemaEditor'))
+);
 
 // SchemaEditor uses CodeMirror's JavaScript mode with the ``json: true``
 // flag to get proper JSON-aware syntax highlighting. Reuse the default

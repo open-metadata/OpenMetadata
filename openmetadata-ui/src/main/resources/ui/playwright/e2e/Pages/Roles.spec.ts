@@ -48,8 +48,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await redirectToHomePage(page);
     await settingClick(page, GlobalSettingOptions.ROLES);
 
-    // Wait for loader to disappear using assertion-based wait
-    await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+    await waitForAllLoadersToDisappear(page);
 
     // Verify roles page is ready
     await expect(page.locator('[data-testid="add-role"]')).toBeVisible();

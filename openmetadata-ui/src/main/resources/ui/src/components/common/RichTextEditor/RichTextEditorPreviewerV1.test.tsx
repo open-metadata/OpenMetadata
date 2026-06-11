@@ -56,12 +56,12 @@ const mockProp: PreviewerProp = {
 };
 
 describe('RichTextEditorPreviewerV1', () => {
-  it('should render the component with markdown content', () => {
+  it('should render the component with markdown content', async () => {
     render(<RichTextEditorPreviewerV1 {...mockProp} />);
 
     expect(screen.getByTestId('viewer-container')).toBeInTheDocument();
     expect(screen.getByTestId('markdown-parser')).toBeInTheDocument();
-    expect(screen.getByTestId('block-editor')).toBeInTheDocument();
+    expect(await screen.findByTestId('block-editor')).toBeInTheDocument();
   });
 
   it('should render no-description placeholder when markdown is empty', () => {

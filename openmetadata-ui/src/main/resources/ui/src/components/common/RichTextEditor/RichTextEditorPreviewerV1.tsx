@@ -12,7 +12,7 @@
  */
 import { Button } from 'antd';
 import classNames from 'classnames';
-import { FC, useEffect, useMemo, useState } from 'react';
+import { FC, lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DESCRIPTION_MAX_PREVIEW_CHARACTERS } from '../../../constants/constants';
 import {
@@ -20,9 +20,13 @@ import {
   isDescriptionContentEmpty,
 } from '../../../utils/BlockEditorUtils';
 import { getTrimmedContent } from '../../../utils/StringUtils';
-import BlockEditor from '../../BlockEditor/BlockEditor';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './rich-text-editor-previewerV1.less';
 import { PreviewerProp } from './RichTextEditor.interface';
+
+const BlockEditor = withSuspenseFallback(
+  lazy(() => import('../../BlockEditor/BlockEditor'))
+);
 
 const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
   markdown = '',
