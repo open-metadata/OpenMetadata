@@ -70,7 +70,6 @@ from metadata.ingestion.models.topology import (
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.connections import test_connection_common
 from metadata.utils import fqn
-from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.filters import filter_by_schema, filter_by_stored_procedure
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.owner_utils import get_owner_from_config
@@ -106,7 +105,6 @@ class DatabaseServiceTopology(ServiceTopology):
                 processor="yield_create_request_database_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             ),
         ],
         children=["database"],
@@ -130,8 +128,6 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="database",
                 processor="yield_database",
                 consumer=["database_service"],
-                cache_entities=True,
-                use_cache=True,
             ),
         ],
         children=["databaseSchema"],
@@ -152,8 +148,6 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="database_schema",
                 processor="yield_database_schema",
                 consumer=["database_service", "database"],
-                cache_entities=True,
-                use_cache=True,
             ),
         ],
         children=["table", "stored_procedure"],
@@ -180,7 +174,6 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="table",
                 processor="yield_table",
                 consumer=["database_service", "database", "database_schema"],
-                use_cache=True,
             ),
             NodeStage(
                 type_=OMetaLifeCycleData,
@@ -200,7 +193,6 @@ class DatabaseServiceTopology(ServiceTopology):
                 consumer=["database_service", "database", "database_schema"],
                 store_all_in_context=True,
                 store_fqn=True,
-                use_cache=True,
             ),
         ],
     )
@@ -451,7 +443,6 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         )
         return self.get_tag_by_fqn(entity_fqn=schema_fqn)
 
-    @calculate_execution_time()
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
         """
         This will only get executed if the tags context
@@ -484,7 +475,6 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         )
         return self.get_tag_by_fqn(entity_fqn=col_fqn)
 
-    @calculate_execution_time()
     def register_record(self, table_request: CreateTableRequest) -> None:
         """
         Mark the table record as scanned and update the database_source_state
@@ -671,7 +661,6 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
 
         return None
 
-    @calculate_execution_time()
     def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:  # noqa: UP045
         """
         Get owner for table entity using ownerConfig.
@@ -734,7 +723,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                     metadata=self.metadata,
                     entity_type=Table,
                     entity_source_state=self.database_source_state,
-                    mark_deleted_entity=self.source_config.markDeletedTables,
+                    recursive=self.source_config.markDeletedTables,
                     params={"databaseSchema": schema_fqn},
                 )
 
@@ -752,7 +741,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                     metadata=self.metadata,
                     entity_type=StoredProcedure,
                     entity_source_state=self.stored_procedure_source_state,
-                    mark_deleted_entity=self.source_config.markDeletedStoredProcedures,
+                    recursive=self.source_config.markDeletedStoredProcedures,
                     params={"databaseSchema": schema_fqn},
                 )
 
@@ -788,7 +777,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                 metadata=self.metadata,
                 entity_type=Database,
                 entity_source_state=complete_db_source_state,
-                mark_deleted_entity=self.source_config.markDeletedDatabases,
+                recursive=self.source_config.markDeletedDatabases,
                 params={"service": self.context.get().database_service},
             )
 
@@ -825,7 +814,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                 metadata=self.metadata,
                 entity_type=DatabaseSchema,
                 entity_source_state=complete_source_state,
-                mark_deleted_entity=self.source_config.markDeletedSchemas,
+                recursive=self.source_config.markDeletedSchemas,
                 params={"database": database_fqn},
             )
 
