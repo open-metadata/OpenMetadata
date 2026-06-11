@@ -1,5 +1,7 @@
 package org.openmetadata.service.llm;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
@@ -14,5 +16,16 @@ class LLMClientHolderTest {
     LLMClientHolder.initialize(new LLMConfiguration().withProvider(LLMProvider.NOOP));
     assertNotNull(LLMClientHolder.get());
     assertSame(LLMClientHolder.get(), LLMClientHolder.get());
+  }
+
+  @Test
+  void disabledConfigNeverConstructsProviderClient() {
+    LLMConfiguration config =
+        new LLMConfiguration().withEnabled(false).withProvider(LLMProvider.OPENAI);
+
+    LLMClientHolder.initialize(config);
+
+    assertFalse(LLMClientHolder.isEnabled());
+    assertInstanceOf(NoopCompletionClient.class, LLMClientHolder.get());
   }
 }

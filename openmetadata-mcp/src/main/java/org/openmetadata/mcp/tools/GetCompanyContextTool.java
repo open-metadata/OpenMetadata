@@ -22,15 +22,22 @@ public class GetCompanyContextTool implements McpTool {
   public Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params)
       throws IOException {
-    String fqn = (String) params.get("fqn");
     authorizer.authorize(
         securityContext,
         new OperationContext(Entity.CONTEXT_MEMORY, VIEW_ALL),
         new ResourceContext<>(Entity.CONTEXT_MEMORY));
-    LOG.info("Getting company context pill: {}", fqn);
-    ContextMemory memory =
-        Entity.getEntityByName(Entity.CONTEXT_MEMORY, fqn, "sourceFile,owners,tags,domains", null);
-    return projectPill(memory);
+    Map<String, Object> result;
+    String fqn = (String) params.get("fqn");
+    if (fqn == null || fqn.isBlank()) {
+      result = Map.of("error", "'fqn' parameter is required");
+    } else {
+      LOG.info("Getting company context pill: {}", fqn);
+      ContextMemory memory =
+          Entity.getEntityByName(
+              Entity.CONTEXT_MEMORY, fqn, "sourceFile,owners,tags,domains", null);
+      result = projectPill(memory);
+    }
+    return result;
   }
 
   static Map<String, Object> projectPill(ContextMemory memory) {

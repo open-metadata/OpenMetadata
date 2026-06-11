@@ -16,7 +16,8 @@
             "description": "Number of pills to return. Default is 10, maximum is 50.",
             "default": 10
           }
-        }
+        },
+        "required": ["query"]
       }
     },
     {
@@ -30,7 +31,8 @@
             "type": "string",
             "description": "fullyQualifiedName of the knowledge pill, taken from a search_company_context result."
           }
-        }
+        },
+        "required": ["fqn"]
       }
     },
     {

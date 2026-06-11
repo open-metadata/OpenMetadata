@@ -146,6 +146,70 @@ class ContextFileProcessingServiceTest {
   }
 
   @Test
+  void llmRejectionMarksFailureAndKeepsExtractedText() throws Exception {
+    when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream("Quarterly results".getBytes())));
+    when(textExtractor.extract(any(InputStream.class), same(file)))
+        .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
+    file.setExtractedText("indexed text");
+    content.setExtractedText("Quarterly results canonical");
+    Executor rejectingLlmExecutor =
+        task -> {
+          throw new RejectedExecutionException("queue full");
+        };
+
+    service(Runnable::run, () -> assetService, rejectingLlmExecutor, true)
+        .process(fileId, contentId);
+
+    verify(repository, times(3))
+        .update(isNull(), same(file), updatedFileCaptor.capture(), anyString());
+    List<ContextFile> fileUpdates = updatedFileCaptor.getAllValues();
+    assertEquals(ProcessingStatus.ExtractingContext, fileUpdates.get(1).getProcessingStatus());
+    assertEquals(ProcessingStatus.Failed, fileUpdates.get(2).getProcessingStatus());
+    assertEquals("indexed text", fileUpdates.get(2).getExtractedText());
+
+    verify(contentRepository, times(3))
+        .update(isNull(), same(content), updatedContentCaptor.capture(), anyString());
+    ContextFileContent failedContent = updatedContentCaptor.getAllValues().get(2);
+    assertEquals(ProcessingStatus.Failed, failedContent.getProcessingStatus());
+    assertEquals(
+        "Knowledge pill extraction queue is full. Please retry later.",
+        failedContent.getProcessingError());
+    assertEquals("Quarterly results canonical", failedContent.getExtractedText());
+  }
+
+  @Test
+  void llmFailureRecordsProcessingErrorAndKeepsExtractedText() throws Exception {
+    when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream("Quarterly results".getBytes())));
+    when(textExtractor.extract(any(InputStream.class), same(file)))
+        .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
+    file.setExtractedText("indexed text");
+    content.setExtractedText("Quarterly results canonical");
+    when(memoryExtractor.extract(same(file), eq("Quarterly results canonical")))
+        .thenThrow(new RuntimeException("provider exploded"));
+
+    service(Runnable::run, () -> assetService, true).process(fileId, contentId);
+
+    verify(repository, times(3))
+        .update(isNull(), same(file), updatedFileCaptor.capture(), anyString());
+    List<ContextFile> fileUpdates = updatedFileCaptor.getAllValues();
+    assertEquals(ProcessingStatus.Failed, fileUpdates.get(2).getProcessingStatus());
+    assertEquals("indexed text", fileUpdates.get(2).getExtractedText());
+
+    verify(contentRepository, times(3))
+        .update(isNull(), same(content), updatedContentCaptor.capture(), anyString());
+    ContextFileContent failedContent = updatedContentCaptor.getAllValues().get(2);
+    assertEquals(ProcessingStatus.Failed, failedContent.getProcessingStatus());
+    assertEquals("provider exploded", failedContent.getProcessingError());
+    assertEquals("Quarterly results canonical", failedContent.getExtractedText());
+  }
+
+  @Test
   void processMarksFailureWhenObjectStorageIsUnavailable() {
     service(Runnable::run, () -> null).process(fileId, contentId);
 
@@ -240,12 +304,20 @@ class ContextFileProcessingServiceTest {
 
   private ContextFileProcessingService service(
       Executor executor, Supplier<AssetService> assetServiceSupplier, boolean llmEnabled) {
+    return service(executor, assetServiceSupplier, Runnable::run, llmEnabled);
+  }
+
+  private ContextFileProcessingService service(
+      Executor executor,
+      Supplier<AssetService> assetServiceSupplier,
+      Executor llmExecutor,
+      boolean llmEnabled) {
     return new ContextFileProcessingService(
         repository,
         assetServiceSupplier,
         executor,
         textExtractor,
-        Runnable::run,
+        llmExecutor,
         () -> memoryExtractor,
         () -> llmEnabled);
   }

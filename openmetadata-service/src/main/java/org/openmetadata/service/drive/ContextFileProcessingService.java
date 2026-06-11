@@ -127,8 +127,21 @@ public class ContextFileProcessingService {
       ProcessingStatus textStatus = extractText(fileId, contentId);
       if (textStatus == ProcessingStatus.Processed
           && Boolean.TRUE.equals(llmEnabledSupplier.get())) {
-        llmExecutor.execute(() -> runMemoryExtraction(fileId, contentId));
+        submitMemoryExtraction(fileId, contentId);
       }
+    }
+  }
+
+  private void submitMemoryExtraction(UUID fileId, UUID contentId) {
+    try {
+      llmExecutor.execute(() -> runMemoryExtraction(fileId, contentId));
+    } catch (RejectedExecutionException e) {
+      LOG.warn(
+          "Skipping knowledge pill extraction for file {} because the LLM executor rejected it",
+          fileId,
+          e);
+      applyFailure(
+          fileId, contentId, "Knowledge pill extraction queue is full. Please retry later.", false);
     }
   }
 
@@ -205,7 +218,7 @@ public class ContextFileProcessingService {
       setFileStatus(fileId, contentId, ProcessingStatus.Processed);
     } catch (Exception e) {
       LOG.error("Knowledge pill extraction failed for file {}", fileId, e);
-      setFileStatus(fileId, contentId, ProcessingStatus.Failed);
+      applyFailure(fileId, contentId, describeFailure(e), false);
     }
   }
 
@@ -275,6 +288,16 @@ public class ContextFileProcessingService {
   }
 
   private void applyFailure(UUID fileId, UUID contentId, String reason) {
+    applyFailure(fileId, contentId, reason, true);
+  }
+
+  /**
+   * Marks the content and file Failed with {@code reason}. {@code clearExtractedText} is false for
+   * failures that happen after a successful text extraction (the knowledge-pill stage), so the
+   * already-extracted text survives for indexing and retries.
+   */
+  private void applyFailure(
+      UUID fileId, UUID contentId, String reason, boolean clearExtractedText) {
     LOG.error("Processing failed for file {} content {}: {}", fileId, contentId, reason);
     updateContent(
         contentId,
@@ -282,7 +305,9 @@ public class ContextFileProcessingService {
           ContextFileContent updated = JsonUtils.deepCopy(current, ContextFileContent.class);
           updated.setProcessingStatus(ProcessingStatus.Failed);
           updated.setProcessingError(reason);
-          updated.setExtractedText(null);
+          if (clearExtractedText) {
+            updated.setExtractedText(null);
+          }
           return updated;
         });
 
@@ -294,8 +319,10 @@ public class ContextFileProcessingService {
           }
           ContextFile updated = JsonUtils.deepCopy(current, ContextFile.class);
           updated.setProcessingStatus(ProcessingStatus.Failed);
-          updated.setExtractedText(null);
-          updated.setPageCount(null);
+          if (clearExtractedText) {
+            updated.setExtractedText(null);
+            updated.setPageCount(null);
+          }
           return updated;
         });
   }

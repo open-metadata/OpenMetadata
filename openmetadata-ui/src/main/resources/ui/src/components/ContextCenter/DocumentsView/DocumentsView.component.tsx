@@ -387,7 +387,7 @@ const FileRow: FC<FileRowProps> = ({
       />
 
       <Box className="tw:min-w-0 tw:flex-1" direction="col">
-        <Box align="center" gap={2}>
+        <Box align="center" className="tw:min-w-0" gap={2}>
           <Typography
             className="tw:truncate"
             data-testid="document-name"

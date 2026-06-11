@@ -15,7 +15,7 @@ public final class LLMClientHolder {
 
   public static synchronized void initialize(LLMConfiguration config) {
     enabled = config != null && Boolean.TRUE.equals(config.getEnabled());
-    instance = LLMCompletionClientFactory.create(config);
+    instance = enabled ? LLMCompletionClientFactory.create(config) : new NoopCompletionClient();
   }
 
   public static LLMCompletionClient get() {

@@ -1,5 +1,7 @@
 package org.openmetadata.mcp.tools;
 
+import static org.openmetadata.schema.type.MetadataOperation.VIEW_ALL;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -15,6 +17,8 @@ import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 /**
  * Semantic search over Company Context knowledge pills (file-extracted {@link
@@ -33,6 +37,10 @@ public class SearchCompanyContextTool implements McpTool {
   public Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params)
       throws IOException {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(Entity.CONTEXT_MEMORY, VIEW_ALL),
+        new ResourceContext<>(Entity.CONTEXT_MEMORY));
     Map<String, Object> result;
     String query = (String) params.get("query");
     if (query == null || query.isBlank()) {
