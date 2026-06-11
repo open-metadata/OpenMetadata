@@ -74,7 +74,7 @@ const mockSave = jest.fn();
 
 const mockCancel = jest.fn();
 
-jest.mock('utils/EntityUtils', () => ({
+jest.mock('utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockImplementation((entity) => entity.displayName),
 }));
 jest.mock('utils/TableUtils', () => ({

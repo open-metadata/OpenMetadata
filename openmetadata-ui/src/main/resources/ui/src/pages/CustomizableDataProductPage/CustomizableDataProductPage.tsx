@@ -28,7 +28,7 @@ import { Page } from '../../generated/system/ui/page';
 import { PageType } from '../../generated/system/ui/uiCustomization';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { getDummyDataByPage } from '../../utils/CustomizePage/CustomizePageUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
 import '../CustomizeDetailsPage/customize-details-page.less';
 
