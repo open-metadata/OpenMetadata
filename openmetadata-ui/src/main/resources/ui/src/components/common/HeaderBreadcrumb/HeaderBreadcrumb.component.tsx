@@ -26,7 +26,7 @@ const HOME_CRUMB_ID = '__breadcrumb_home__';
 
 const HeaderBreadcrumb: FC<HeaderBreadcrumbProps> = ({
   items,
-  showHome = false,
+  showHome = true,
   type,
   divider,
   size,

@@ -35,7 +35,6 @@ import { useDomainFilters } from '../common/atoms/domain/ui/useDomainFilters';
 import { useDomainTableColumns } from '../common/atoms/domain/ui/useDomainTableColumns';
 import { useFormDrawerWithHook } from '../common/atoms/drawer';
 import { useFilterSelection } from '../common/atoms/filters/useFilterSelection';
-import { useBreadcrumbs } from '../common/atoms/navigation/useBreadcrumbs';
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useSearch } from '../common/atoms/navigation/useSearch';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
@@ -45,6 +44,7 @@ import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveS
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import AddDomainForm, {
   DOMAIN_FORM_DEFAULTS,
   transformDomainFormData,
@@ -150,19 +150,6 @@ const DomainListPage = () => {
       loading: isLoading,
     });
 
-  const { breadcrumbs } = useBreadcrumbs({
-    items: [
-      ...(isMarketplace
-        ? [
-            {
-              name: t('label.data-marketplace'),
-              url: ROUTES.DATA_MARKETPLACE,
-            },
-          ]
-        : []),
-      { name: t('label.domain-plural'), url: domainBasePath },
-    ],
-  });
 
   const { pageHeader } = usePageHeader({
     titleKey: 'label.domain-plural',
@@ -328,7 +315,20 @@ const DomainListPage = () => {
     <Box
       direction="col"
       style={isTreeView ? { height: 'calc(100vh - 80px)' } : {}}>
-      {breadcrumbs}
+      <HeaderBreadcrumb
+        className='tw:mb-3'
+        items={[
+          ...(isMarketplace
+            ? [
+                {
+                  label: t('label.data-marketplace'),
+                  href: ROUTES.DATA_MARKETPLACE,
+                },
+              ]
+            : []),
+          { label: t('label.domain-plural'), href: domainBasePath },
+        ]}
+      />
       {pageHeader}
 
       <Card style={{ marginBottom: 20 }} variant="elevated">
