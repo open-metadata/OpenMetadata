@@ -44,6 +44,7 @@ class TestDatabricksGetColumnsSectionBoundary:
     def setup_method(self):
         self.mock_self = Mock()
         self.mock_connection = Mock()
+        self.mock_connection.info = {}
 
     def _run(self):
         return get_columns(

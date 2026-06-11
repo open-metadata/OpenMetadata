@@ -402,6 +402,7 @@ class DatabricksUnitTest(TestCase):
         from metadata.ingestion.source.database.databricks.metadata import get_columns
 
         mock_connection = Mock()
+        mock_connection.info = {}
         mock_dialect = Mock()
         mock_get_column_rows.return_value = MOCK_DELTA_UNIFORM_ICEBERG_COLUMNS
 
@@ -971,6 +972,7 @@ class DatabricksConnectionTest(TestCase):
         # Create a mock dialect instance
         mock_dialect = Mock()
         mock_connection = Mock()
+        mock_connection.info = {}
 
         # Mock identifier_preparer
         mock_identifier_preparer = Mock()
