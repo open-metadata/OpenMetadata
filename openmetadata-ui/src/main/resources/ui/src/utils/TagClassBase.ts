@@ -31,7 +31,7 @@ import { Tab } from '../generated/system/ui/uiCustomization';
 import { TagLabel } from '../generated/type/tagLabel';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { searchQuery } from '../rest/searchAPI';
-import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
+import { getTabLabelFromId } from './CustomizePage/CustomizePagePureUtils';
 import i18n from './i18next/LocalUtil';
 import { getTermQuery } from './SearchUtils';
 import { escapeESReservedCharacters, getEncodedFqn } from './StringUtils';

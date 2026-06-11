@@ -57,7 +57,7 @@ import { Trash01 } from '@untitledui/icons';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { deleteKnowledgePage } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 
 export interface KnowledgeCardProps {
   knowledgeItem: KnowledgePage;

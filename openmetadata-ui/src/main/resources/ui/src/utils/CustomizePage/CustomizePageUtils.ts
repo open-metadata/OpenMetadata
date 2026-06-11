@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-export { getTabLabelFromId } from './CustomizePagePureUtils';
-
 import { TabsProps } from 'antd';
 import { get, noop, uniqueId } from 'lodash';
 import { EntityUnion } from '../../components/Explore/ExplorePage.interface';
@@ -38,7 +36,7 @@ import dataMarketplaceClassBase from '../DataMarketplace/DataMarketplaceClassBas
 import dataProductClassBase from '../DataProduct/DataProductClassBase';
 import directoryClassBase from '../DirectoryClassBase';
 import domainClassBase from '../Domain/DomainClassBase';
-import { getEntityName } from '../EntityUtils';
+import { getEntityName } from '../EntityNameUtils';
 import fileClassBase from '../FileClassBase';
 import i18n from '../i18next/LocalUtil';
 import metricDetailsClassBase from '../MetricEntityUtils/MetricDetailsClassBase';

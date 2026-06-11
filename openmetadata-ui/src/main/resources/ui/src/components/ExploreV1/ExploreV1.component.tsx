@@ -54,7 +54,7 @@ import {
 } from '../../rest/searchAPI';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { parseExportErrorMessage } from '../../utils/APIUtils';
-import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
+import { highlightEntityNameAndDescription } from '../../utils/EntitySearchUtils';
 import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import {
   getExploreQueryFilterMust,
