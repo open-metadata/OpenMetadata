@@ -100,7 +100,7 @@ import {
   convertSearchSourceToTable,
   getServiceTypeForTestDefinition,
 } from '../../../../utils/DataQuality/DataQualityUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { filterSelectOptions } from '../../../../utils/FilterQueryUtils';
 import {
   createScrollToErrorHandler,
@@ -115,7 +115,7 @@ import {
   generateUUID,
   replaceAllSpacialCharWith_,
 } from '../../../../utils/StringUtils';
-import { generateEntityLink } from '../../../../utils/TableUtils';
+import { generateEntityLink } from '../../../../utils/TablePureUtils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';
 import SelectionCardGroup from '../../../common/SelectionCardGroup/SelectionCardGroup';

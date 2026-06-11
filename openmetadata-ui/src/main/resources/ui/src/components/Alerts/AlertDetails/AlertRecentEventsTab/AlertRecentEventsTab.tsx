@@ -44,7 +44,7 @@ import {
   getLabelsForEventDetails,
 } from '../../../../utils/Alerts/AlertsUtil';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';

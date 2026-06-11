@@ -41,10 +41,8 @@ import { TestCaseStatus } from '../../../../../generated/tests/testCase';
 import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
 import { getIngestionPipelines } from '../../../../../rest/ingestionPipelineAPI';
 import { ListTestCaseParamsBySearch } from '../../../../../rest/testAPI';
-import {
-  getBreadcrumbForTable,
-  getEntityName,
-} from '../../../../../utils/EntityUtils';
+import { getBreadcrumbForTable } from '../../../../../utils/EntityDataBreadcrumbUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import {
   checkPermission,
   getPrioritizedEditPermission,
