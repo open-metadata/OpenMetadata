@@ -80,7 +80,14 @@ const EmbeddedConnectionConfigForm = ({
     EMPTY_CONNECTION_SCHEMA
   );
   const [isSchemaLoading, setIsSchemaLoading] = useState(true);
-  const rawValidConfig = useMemo(() => buildValidConfig(data), [data]);
+  const connectionConfig = data?.connection?.config;
+  const rawValidConfig = useMemo(
+    () =>
+      buildValidConfig({
+        connection: { config: connectionConfig },
+      } as ServicesType),
+    [connectionConfig]
+  );
 
   const fetchHostIp = async () => {
     try {
@@ -265,7 +272,7 @@ const EmbeddedConnectionConfigForm = ({
         cancelText={cancelText ?? ''}
         fields={{ authSelect: AuthSelectField }}
         formContext={{ handleFocus: onFocus }}
-        formData={validConfig}
+        formData={currentFormData}
         isSubmitDisabled={isSubmitDisabled}
         noValidate={!isEmpty(connSch.schema)}
         okText={okText ?? ''}
