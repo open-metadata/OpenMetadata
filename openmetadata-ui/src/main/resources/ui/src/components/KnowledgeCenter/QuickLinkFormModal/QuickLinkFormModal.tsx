@@ -28,7 +28,10 @@ import { cloneDeep, debounce, isEqual, isNil, isUndefined } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { KNOWLEDGE_CENTER_CLASSIFICATION, PAGE_SIZE } from '../../../constants/constants';
+import {
+  KNOWLEDGE_CENTER_CLASSIFICATION,
+  PAGE_SIZE,
+} from '../../../constants/constants';
 import { getKnowledgePageFields } from '../../../constants/KnowledgeCenter.constant';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
@@ -51,9 +54,7 @@ import {
   patchKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
 import { searchQuery } from '../../../rest/searchAPI';
-import {
-  getEntityName,
-} from '../../../utils/EntityNameUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
 import { isValidUrl } from '../../../utils/SSOUtils';

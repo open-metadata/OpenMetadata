@@ -25,7 +25,6 @@ import {
   QuickLinkFormModalProps,
 } from './QuickLinkFormModal';
 
-
 jest.mock('@openmetadata/ui-core-components', () => {
   const Autocomplete = ({
     children,

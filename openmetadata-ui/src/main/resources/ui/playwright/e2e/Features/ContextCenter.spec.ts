@@ -587,7 +587,10 @@ test.describe('Context Center', () => {
       const modal = page.getByRole('dialog', { name: /quick link/i });
       await expect(modal).toBeVisible();
 
-      await modal.getByTestId('displayName').locator('input').fill(testQuickLinkTitle);
+      await modal
+        .getByTestId('displayName')
+        .locator('input')
+        .fill(testQuickLinkTitle);
       await modal.getByTestId('url').locator('input').fill(QUICK_LINK_URL);
 
       const createResPromise = page.waitForResponse(
