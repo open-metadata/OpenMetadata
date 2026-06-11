@@ -116,6 +116,7 @@ export interface KnowledgeCenterPageHandlers {
   onSetThreadLink: (link: string) => void;
   onToggleDelete: () => void;
   onSave?: () => void;
+  onUpdate?: (updatedPage: KnowledgePage) => Promise<void>;
   contentChangeState: ContentChangeState;
 }
 

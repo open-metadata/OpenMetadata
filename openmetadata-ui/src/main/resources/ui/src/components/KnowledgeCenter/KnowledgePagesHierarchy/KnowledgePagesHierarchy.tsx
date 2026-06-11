@@ -19,13 +19,11 @@ import {
   Dot,
   Modal,
   ModalOverlay,
-  Tabs,
   Tree,
-  Typography,
+  Typography
 } from '@openmetadata/ui-core-components';
 import { File06, Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, uniq } from 'lodash';
 import {
@@ -47,7 +45,6 @@ import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import CreateErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/CreateErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import { CREATE_PAGE_HASH } from '../../../constants/constants';
-import { ARTICLE_FILTER_TABS } from '../../../constants/ContextCenter.constants';
 import {
   KNOWLEDGE_CENTER_PAGINATION_LIMIT,
   KNOWLEDGE_CENTER_PAGINATION_OFFSET_INCREMENT,
@@ -93,8 +90,6 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 
-type ArticleFilterTab = 'all' | 'published' | 'draft' | 'sensitive';
-
 interface KnowledgePagesHierarchyProps {
   permissions: OperationPermission;
   isPageHeaderAvailable: boolean;
@@ -134,7 +129,6 @@ const KnowledgePagesHierarchy = forwardRef<
 
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
-    const [activeFilter, setActiveFilter] = useState<ArticleFilterTab>('all');
     const [deletePage, setDeletePage] = useState<PageHierarchy>();
     const [isDeleting, setIsDeleting] = useState(false);
 
@@ -651,39 +645,24 @@ const KnowledgePagesHierarchy = forwardRef<
           }
         }}
         onScroll={handleScroll}>
-        <div className="tw:px-1.5 tw:pb-2.5">
-          <Tabs
-            className="tw:w-full"
-            selectedKey={activeFilter}
-            onSelectionChange={(key) =>
-              setActiveFilter(key as ArticleFilterTab)
-            }>
-            <Tabs.List
-              className="tw:gap-1 tw:flex-wrap"
-              items={ARTICLE_FILTER_TABS.map((tab) => ({
-                id: tab.id,
-                label: t(tab.labelKey),
-              }))}
-              type="button-brand">
-              {(tab) => (
-                <Tabs.Item
-                  {...tab}
-                  className={({ isSelected }) =>
-                    classNames(
-                      'tw:rounded-full tw:border tw:px-2.5 tw:py-1 tw:text-xs tw:font-semibold tw:cursor-pointer',
-                      {
-                        'tw:border-brand-100 tw:bg-brand-50 tw:text-brand-700':
-                          isSelected,
-                        'tw:border-gray-300 tw:bg-white tw:text-gray-700':
-                          !isSelected,
-                      }
-                    )
-                  }
-                />
-              )}
-            </Tabs.List>
-          </Tabs>
-        </div>
+
+           <Box align='center' className="tw:px-1.5 tw:pb-5" gap={3}>
+            <div className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0">
+              <File06 className="tw:text-gray-600" size={20} />
+            </div>
+            <div>
+              <Typography size="text-md" weight="semibold">
+                {t('label.article-plural')}
+              </Typography>
+              <Typography
+                className="tw:text-gray-500 tw:flex tw:items-center tw:gap-2"
+                size="text-xs">
+                  {paginationState.paging.total ?? 0}{' '}
+                  {t('label.article-plural')}
+              </Typography>
+            </div>
+          </Box>
+
 
         <Box align="center" className="tw:px-1.5 tw:pb-3" gap={2}>
           <Button

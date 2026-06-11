@@ -65,10 +65,3 @@ export const VISIBILITY_OPTIONS = [
     iconName: 'FileLock02' as const,
   },
 ];
-
-export const ARTICLE_FILTER_TABS = [
-  { id: 'all', labelKey: 'label.all' },
-  { id: 'published', labelKey: 'label.published' },
-  { id: 'draft', labelKey: 'label.draft' },
-  { id: 'sensitive', labelKey: 'label.sensitive' },
-] as const;

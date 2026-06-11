@@ -762,6 +762,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         onSave: handleSave,
         onSetThreadLink: setThreadLink,
         onToggleDelete: handleToggleDelete,
+        onUpdate: updatePage,
         onVoteChange: handleVoteChange,
       },
       header: <div className="m-b-box rounded-12">{getHeaderElement()}</div>,
