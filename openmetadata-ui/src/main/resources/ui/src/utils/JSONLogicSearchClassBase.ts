@@ -322,6 +322,28 @@ class JSONLogicSearchClassBase {
           },
         },
       },
+      [EntityReferenceFields.COLUMN_TAG]: {
+        label: t('label.column-tag-plural'),
+        type: '!group',
+        mode: 'some',
+        defaultField: 'tagFQN',
+        subfields: {
+          tagFQN: {
+            label: t('label.column-tag-plural'),
+            type: 'select',
+            mainWidgetProps: this.mainWidgetProps,
+            operators: this.defaultSelectOperators,
+            fieldSettings: {
+              asyncFetch: this.searchAutocomplete({
+                searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY_TERM],
+                fieldName: 'fullyQualifiedName',
+                fieldLabel: 'name',
+              }),
+              useAsyncSearch: true,
+            },
+          },
+        },
+      },
       [EntityReferenceFields.TIER]: {
         label: t('label.tier'),
         type: '!group',
