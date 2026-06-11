@@ -46,20 +46,6 @@ jest.mock('../constants/Worksheet.constant', () => ({
   } as Worksheet,
 }));
 
-jest.mock('./CustomizePage/CustomizePageUtils', () => ({
-  getTabLabelFromId: jest.fn((tabId: EntityTabs) => {
-    const labelMap: Partial<Record<EntityTabs, string>> = {
-      [EntityTabs.SCHEMA]: 'Schema',
-      [EntityTabs.ACTIVITY_FEED]: 'Activity Feed',
-      [EntityTabs.LINEAGE]: 'Lineage',
-      [EntityTabs.CONTRACT]: 'Contract',
-      [EntityTabs.CUSTOM_PROPERTIES]: 'Custom Properties',
-    };
-
-    return labelMap[tabId] || tabId;
-  }),
-}));
-
 jest.mock('./WorksheetDetailsUtils', () => ({
   getWorksheetDetailsPageTabs: jest.fn((): TabProps[] => [
     {

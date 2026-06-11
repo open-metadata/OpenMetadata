@@ -15,7 +15,7 @@ import { Button, Carousel, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { get } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DropdownIcon } from '../../../../assets/svg/drop-down.svg';
@@ -42,12 +42,24 @@ import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { getRecentlyViewedData } from '../../../../utils/RecentActivityUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import DomainSelectableList from '../../../common/DomainSelectableList/DomainSelectableList.component';
-import AnnouncementsWidgetV1 from '../../Widgets/AnnouncementsWidgetV1/AnnouncementsWidgetV1.component';
-import CustomiseHomeModal from '../CustomiseHomeModal/CustomiseHomeModal';
 import './customise-landing-page-header.less';
 import { CustomiseLandingPageHeaderProps } from './CustomiseLandingPageHeader.interface';
 import CustomiseSearchBar from './CustomiseSearchBar';
+
+const AnnouncementsWidgetV1 = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../Widgets/AnnouncementsWidgetV1/AnnouncementsWidgetV1.component'
+      )
+  )
+);
+
+const CustomiseHomeModal = withSuspenseFallback(
+  lazy(() => import('../CustomiseHomeModal/CustomiseHomeModal'))
+);
 
 const CustomiseLandingPageHeader = ({
   addedWidgetsList,
