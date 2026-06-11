@@ -22,6 +22,7 @@ from sqlalchemy import types as sqltypes
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.ingestion.source.database.starrocks.lineage import normalize_mv_ddl
 from metadata.ingestion.source.database.starrocks.metadata import (
     StarRocksSource,
     _get_sqlalchemy_type,
@@ -171,3 +172,250 @@ class TestStarRocksIcebergMapping(TestCase):
         from metadata.ingestion.source.database.starrocks.metadata import RELKIND_MAP
 
         assert RELKIND_MAP["ICEBERG"] == TableType.Iceberg
+
+
+class TestStarRocksLineageFilters:
+    def test_lineage_source_filters_include_mv(self):
+        from metadata.ingestion.source.database.starrocks.lineage import StarRocksLineageSource
+
+        assert "CREATE%MATERIALIZED%VIEW%AS%SELECT" in StarRocksLineageSource.filters
+
+
+class TestStarRocksMvDdlNormalization:
+    """Normalization of StarRocks/Doris CREATE MATERIALIZED VIEW DDL into a
+    CREATE VIEW form that the SQL lineage parser can handle."""
+
+    def test_basic_with_column_list(self):
+        query = (
+            "CREATE MATERIALIZED VIEW `mv_order_enriched` (`order_id`, `order_date`, `total_amount`) "
+            "DISTRIBUTED BY HASH(`order_id`) BUCKETS 4 "
+            "REFRESH ASYNC PROPERTIES ('replication_num'='1') "
+            "AS SELECT o.order_id, o.order_date, o.total_amount FROM clean_orders o"
+        )
+        assert normalize_mv_ddl(query) == (
+            "CREATE VIEW `mv_order_enriched` AS SELECT o.order_id, o.order_date, o.total_amount FROM clean_orders o"
+        )
+
+    def test_without_column_list(self):
+        query = (
+            "CREATE MATERIALIZED VIEW mv_daily_sales "
+            "DISTRIBUTED BY HASH(order_date) BUCKETS 4 "
+            "REFRESH ASYNC PROPERTIES ('replication_num'='1') "
+            "AS SELECT order_date, SUM(amount) AS total FROM orders GROUP BY order_date"
+        )
+        assert normalize_mv_ddl(query) == (
+            "CREATE VIEW mv_daily_sales AS SELECT order_date, SUM(amount) AS total FROM orders GROUP BY order_date"
+        )
+
+    def test_regular_view_is_untouched(self):
+        query = "CREATE VIEW my_view AS SELECT * FROM my_table"
+        assert normalize_mv_ddl(query) == query
+
+    def test_non_mv_query_is_untouched(self):
+        query = "INSERT INTO target SELECT * FROM source"
+        assert normalize_mv_ddl(query) == query
+
+    def test_or_replace(self):
+        query = (
+            "CREATE OR REPLACE MATERIALIZED VIEW mv_daily "
+            "DISTRIBUTED BY HASH(order_id) BUCKETS 4 REFRESH ASYNC "
+            "AS SELECT order_id FROM clean_orders"
+        )
+        assert normalize_mv_ddl(query) == "CREATE VIEW mv_daily AS SELECT order_id FROM clean_orders"
+
+    def test_backtick_name_with_hyphen(self):
+        query = (
+            "CREATE MATERIALIZED VIEW `my-view` "
+            "DISTRIBUTED BY HASH(`order-id`) BUCKETS 4 "
+            "AS SELECT `order-id` FROM clean_orders"
+        )
+        assert normalize_mv_ddl(query) == ("CREATE VIEW `my-view` AS SELECT `order-id` FROM clean_orders")
+
+    def test_stray_as_in_comment_and_properties(self):
+        query = (
+            "CREATE MATERIALIZED VIEW mv "
+            "COMMENT 'rolls up as needed' "
+            "PROPERTIES ('note'='run as batch') "
+            "AS SELECT order_id FROM clean_orders"
+        )
+        assert normalize_mv_ddl(query) == "CREATE VIEW mv AS SELECT order_id FROM clean_orders"
+
+    def test_cte_body_is_preserved(self):
+        query = (
+            "CREATE MATERIALIZED VIEW mv "
+            "DISTRIBUTED BY HASH(order_id) BUCKETS 4 "
+            "AS WITH c AS (SELECT order_id FROM clean_orders) SELECT * FROM c"
+        )
+        assert normalize_mv_ddl(query) == (
+            "CREATE VIEW mv AS WITH c AS (SELECT order_id FROM clean_orders) SELECT * FROM c"
+        )
+
+    def test_literal_as_select_in_comment(self):
+        """A literal 'AS SELECT' inside a COMMENT must not be taken as the body"""
+        query = (
+            "CREATE MATERIALIZED VIEW mv "
+            "COMMENT 'generated AS SELECT rollup' "
+            "DISTRIBUTED BY HASH(order_id) BUCKETS 4 "
+            "AS SELECT order_id FROM clean_orders"
+        )
+        assert normalize_mv_ddl(query) == "CREATE VIEW mv AS SELECT order_id FROM clean_orders"
+
+    def test_literal_as_with_in_properties(self):
+        """A literal 'AS WITH' inside a PROPERTIES value must not be taken as the body"""
+        query = (
+            "CREATE MATERIALIZED VIEW mv "
+            "PROPERTIES ('note'='generated AS WITH rollup') "
+            "AS WITH c AS (SELECT order_id FROM clean_orders) SELECT * FROM c"
+        )
+        assert normalize_mv_ddl(query) == (
+            "CREATE VIEW mv AS WITH c AS (SELECT order_id FROM clean_orders) SELECT * FROM c"
+        )
+
+    def test_parenthesized_select_body(self):
+        """An 'AS (SELECT ...)' body is anchored and kept balanced"""
+        query = (
+            "CREATE MATERIALIZED VIEW mv DISTRIBUTED BY HASH(order_id) BUCKETS 4 AS (SELECT order_id FROM clean_orders)"
+        )
+        assert normalize_mv_ddl(query) == "CREATE VIEW mv AS (SELECT order_id FROM clean_orders)"
+
+    def test_inline_comment_between_as_and_select(self):
+        """An inline /* ... */ comment between AS and SELECT is not mistaken for the body"""
+        query = (
+            "CREATE MATERIALIZED VIEW mv "
+            "DISTRIBUTED BY HASH(order_id) BUCKETS 4 "
+            "AS /* build immediate */ SELECT order_id FROM clean_orders"
+        )
+        assert normalize_mv_ddl(query) == "CREATE VIEW mv AS SELECT order_id FROM clean_orders"
+
+
+class TestStarRocksViewLineageProducer:
+    """The view-lineage path parses ``view_definition`` directly, so the
+    StarRocks source must normalize MV definitions there too (not only on the
+    query-log path)."""
+
+    def _make_view(self, view_definition):
+        from metadata.ingestion.source.models import TableView
+
+        return TableView(
+            table_name="mv",
+            schema_name="s",
+            db_name="d",
+            view_definition=view_definition,
+        )
+
+    def test_view_definitions_are_normalized(self):
+        from unittest.mock import patch
+
+        from metadata.ingestion.source.database.lineage_source import LineageSource
+        from metadata.ingestion.source.database.starrocks.lineage import (
+            StarRocksLineageSource,
+        )
+
+        mv = self._make_view(
+            "CREATE MATERIALIZED VIEW mv DISTRIBUTED BY HASH(id) BUCKETS 4 REFRESH ASYNC AS SELECT id FROM t"
+        )
+        plain = self._make_view("SELECT a FROM t")
+        empty = self._make_view(None)
+
+        source = StarRocksLineageSource.__new__(StarRocksLineageSource)
+        with patch.object(
+            LineageSource,
+            "view_lineage_producer",
+            lambda self: iter([mv, plain, empty]),
+        ):
+            produced = list(source.view_lineage_producer())
+
+        assert produced[0].view_definition == "CREATE VIEW mv AS SELECT id FROM t"
+        assert produced[1].view_definition == "SELECT a FROM t"
+        assert produced[2].view_definition is None
+
+
+MV_DDL = (
+    "CREATE MATERIALIZED VIEW mv "
+    "DISTRIBUTED BY HASH(order_id) BUCKETS 4 REFRESH ASYNC "
+    "AS SELECT order_id FROM clean_orders"
+)
+NORMALIZED_MV = "CREATE VIEW mv AS SELECT order_id FROM clean_orders"
+
+
+class TestStarRocksQueryLogProducer:
+    """The query-log producer must keep the ORIGINAL statement on TableQuery.query
+    so the persisted Query entity is the real MV DDL, not the normalized shim."""
+
+    def test_producer_preserves_original_mv_ddl(self, tmp_path):
+        import csv
+        from types import SimpleNamespace
+
+        from metadata.ingestion.source.database.starrocks.lineage import (
+            StarRocksLineageSource,
+        )
+
+        log_file = tmp_path / "query_log.csv"
+        with log_file.open("w", encoding="utf-8", newline="") as handle:
+            writer = csv.writer(handle)
+            writer.writerow(["query_text"])
+            writer.writerow([MV_DDL])
+
+        source = StarRocksLineageSource.__new__(StarRocksLineageSource)
+        source.source_config = SimpleNamespace(queryLogFilePath=str(log_file))
+        source.config = SimpleNamespace(serviceName="svc")
+        source.get_database_name = lambda query_dict: "db"
+        source.get_schema_name = lambda query_dict: "s"
+
+        queries = list(source.yield_table_queries_from_logs())
+
+        assert len(queries) == 1
+        assert queries[0].query == MV_DDL
+
+
+class TestStarRocksQueryLogHook:
+    """The processor must parse the NORMALIZED query (via prepare_query) while
+    persisting the ORIGINAL — regression guard for the 'persisted shim' bug."""
+
+    def test_processor_parses_normalized_persists_original(self):
+        from unittest.mock import MagicMock
+
+        from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
+        from metadata.generated.schema.type.tableQuery import TableQuery
+        from metadata.ingestion.api.models import Either
+        from metadata.ingestion.source.database import lineage_processors
+        from metadata.ingestion.source.database.starrocks.lineage import normalize_mv_ddl
+
+        captured = {}
+
+        def fake_get_lineage_by_query(metadata, query, **kwargs):
+            captured["query"] = query
+            return [Either(right=MagicMock())]
+
+        class FakeQueue:
+            def __init__(self):
+                self.items = []
+
+            def put(self, item):
+                self.items.append(item)
+
+        table_query = TableQuery(query=MV_DDL, serviceName="svc")
+        queue = FakeQueue()
+
+        with (
+            patch.object(lineage_processors, "get_lineage_by_query", fake_get_lineage_by_query),
+            patch.object(lineage_processors, "_query_already_processed", return_value=False),
+        ):
+            lineage_processors.query_lineage_processor(
+                [table_query],
+                queue,
+                MagicMock(),
+                None,
+                None,
+                False,
+                [],
+                30,
+                "svc",
+                None,
+                normalize_mv_ddl,
+            )
+
+        assert captured["query"] == NORMALIZED_MV
+        persisted = [i.right for i in queue.items if isinstance(i.right, CreateQueryRequest)]
+        assert len(persisted) == 1
+        assert persisted[0].query.root == MV_DDL

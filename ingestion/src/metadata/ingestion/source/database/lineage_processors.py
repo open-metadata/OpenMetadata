@@ -17,7 +17,7 @@ import time
 import traceback
 from datetime import datetime
 from multiprocessing import Queue
-from typing import Dict, Iterable, List, Optional, Union  # noqa: UP035
+from typing import Callable, Dict, Iterable, List, Optional, Union  # noqa: UP035
 
 import networkx as nx
 from pydantic import BaseModel, ConfigDict, Field
@@ -293,9 +293,13 @@ def query_lineage_processor(
     parsingTimeoutLimit: int,  # noqa: N803
     serviceName: str,  # noqa: N803
     parser_type: QueryParserType,
+    prepare_query: Callable[[str], str] = lambda query: query,
 ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:  # noqa: UP007
     """
-    Generate lineage for a list of table queries
+    Generate lineage for a list of table queries.
+
+    ``prepare_query`` normalizes a statement for parsing only; the original
+    ``table_query.query`` is still what gets persisted as the Query entity.
     """
 
     for table_query in table_queries or []:
@@ -307,7 +311,7 @@ def query_lineage_processor(
 
             lineages: Iterable[Either[AddLineageRequest]] = get_lineage_by_query(
                 metadata,
-                query=table_query.query,
+                query=prepare_query(table_query.query),
                 service_names=service_names,
                 database_name=table_query.databaseName,
                 schema_name=table_query.databaseSchema,
