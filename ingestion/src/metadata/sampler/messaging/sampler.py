@@ -107,14 +107,24 @@ class MessagingSampler(SamplerInterface):
         Returns a list of dicts mapping field name to value.
         """
 
+    @staticmethod
+    def _resolve(msg: dict, dotted: str) -> object:
+        """Walk a dotted path into nested dicts, returning None when absent."""
+        cur: object = msg
+        for part in dotted.split("."):
+            if isinstance(cur, dict):
+                cur = cur.get(part)
+            else:
+                return None
+        return cur
+
     def fetch_sample_data(self, columns: Optional[List[SQALikeColumn]]) -> TableData:  # noqa: UP006, UP045
         column_objs = columns or self.get_columns()
         column_names = [col.name for col in column_objs]
         if not column_names:
             return TableData(rows=[], columns=[])
         messages = self._fetch_messages(self.sample_limit)
-        leaf_names = [col_name.split(".")[-1] for col_name in column_names]
-        rows = [[msg.get(leaf_name) for leaf_name in leaf_names] for msg in messages]
+        rows = [[self._resolve(msg, col_name) for col_name in column_names] for msg in messages]
         column_name_objs = [ColumnName(col_name) for col_name in column_names]
         return TableData(columns=column_name_objs, rows=rows)
 

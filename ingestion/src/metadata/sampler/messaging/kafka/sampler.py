@@ -75,20 +75,18 @@ class KafkaSampler(MessagingSampler):
             config["sasl.password"] = self.service_connection_config.saslPassword.get_secret_value()
         if self.service_connection_config.saslUsername and self.service_connection_config.saslMechanism:
             config["sasl.mechanism"] = self.service_connection_config.saslMechanism.value
-        if (
-            self.service_connection_config.saslUsername
-            and self.service_connection_config.securityProtocol
-            and self.service_connection_config.securityProtocol != SecurityProtocol.PLAINTEXT
+        if self.service_connection_config.securityProtocol and (
+            self.service_connection_config.securityProtocol != SecurityProtocol.PLAINTEXT
         ):
             config["security.protocol"] = self.service_connection_config.securityProtocol.value
 
         consumer_config_ssl = getattr(self.service_connection_config, "consumerConfigSSL", None)
         if consumer_config_ssl:
-            if hasattr(consumer_config_ssl, "caLocation"):
+            if getattr(consumer_config_ssl, "caLocation", None):
                 config["ssl.ca.location"] = consumer_config_ssl.caLocation
-            if hasattr(consumer_config_ssl, "certificateLocation"):
+            if getattr(consumer_config_ssl, "certificateLocation", None):
                 config["ssl.certificate.location"] = consumer_config_ssl.certificateLocation
-            if hasattr(consumer_config_ssl, "keyLocation"):
+            if getattr(consumer_config_ssl, "keyLocation", None):
                 config["ssl.key.location"] = consumer_config_ssl.keyLocation
 
         return config
