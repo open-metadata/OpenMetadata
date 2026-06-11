@@ -46,6 +46,7 @@ import {
   performColumnSelectAndDeleteOperation,
   performDeleteOperationOnEntity,
   pressKeyXTimes,
+  startCsvPreviewAndWaitForGrid,
   validateImportStatus,
 } from '../../utils/importUtils';
 
@@ -167,10 +168,7 @@ test.describe('Bulk Import Export', () => {
         'downloads/' + dbService.entity.name + '.csv',
       ]);
 
-      // Wait for upload widget to be hidden indicating file is loaded
-      await page.getByTestId('upload-file-widget').waitFor({
-        state: 'hidden',
-      });
+      await startCsvPreviewAndWaitForGrid(page);
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
       await expect(page.getByTestId('add-row-btn')).toBeVisible();
@@ -418,10 +416,7 @@ test.describe('Bulk Import Export', () => {
         .locator('[type="file"]')
         .setInputFiles(['downloads/' + dbEntity.entity.name + '.csv']);
 
-      // Wait for upload widget to be hidden indicating file is loaded
-      await page.getByTestId('upload-file-widget').waitFor({
-        state: 'hidden',
-      });
+      await startCsvPreviewAndWaitForGrid(page);
 
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
@@ -627,10 +622,7 @@ test.describe('Bulk Import Export', () => {
         .locator('[type="file"]')
         .setInputFiles(['downloads/' + dbSchemaEntity.entity.name + '.csv']);
 
-      // Wait for upload widget to be hidden indicating file is loaded
-      await page.getByTestId('upload-file-widget').waitFor({
-        state: 'hidden',
-      });
+      await startCsvPreviewAndWaitForGrid(page);
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
       await expect(page.getByTestId('add-row-btn')).toBeVisible();
@@ -787,10 +779,7 @@ test.describe('Bulk Import Export', () => {
         .locator('[type="file"]')
         .setInputFiles(['downloads/' + tableEntity.entity.name + '.csv']);
 
-      // Wait for upload widget to be hidden indicating file is loaded
-      await page.getByTestId('upload-file-widget').waitFor({
-        state: 'hidden',
-      });
+      await startCsvPreviewAndWaitForGrid(page);
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
       await expect(page.getByTestId('add-row-btn')).toBeVisible();
@@ -870,9 +859,7 @@ test.describe('Bulk Import Export', () => {
         .locator('[type="file"]')
         .setInputFiles(['downloads/' + dbEntity.entity.name + '.csv']);
 
-      await page.getByTestId('add-row-btn').waitFor({
-        state: 'visible',
-      });
+      await startCsvPreviewAndWaitForGrid(page);
 
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.getByTestId('add-row-btn')).toBeVisible();
@@ -952,9 +939,7 @@ test.describe('Bulk Import Export', () => {
           'downloads/' + `${dbEntity.entity.name}-delete` + '.csv',
         ]);
 
-      await page.getByTestId('add-row-btn').waitFor({
-        state: 'visible',
-      });
+      await startCsvPreviewAndWaitForGrid(page);
 
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.getByTestId('add-row-btn')).toBeVisible();
@@ -1070,10 +1055,7 @@ test.describe('Bulk Import Export', () => {
       await page
         .locator('[type="file"]')
         .setInputFiles(['downloads/' + dbEntity.entity.name + '.csv']);
-      // Wait for upload widget to be hidden indicating file is loaded
-      await page.getByTestId('upload-file-widget').waitFor({
-        state: 'hidden',
-      });
+      await startCsvPreviewAndWaitForGrid(page);
 
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();

@@ -41,13 +41,11 @@ describe('ImportStatus component', () => {
     expect(processed.textContent).toStrictEqual(
       `${mockCsvImportResult.numberOfRowsProcessed}`
     );
-    expect(await screen.findByText('label.passed:')).toBeInTheDocument();
-    expect(pass.textContent).toStrictEqual(
-      `${mockCsvImportResult.numberOfRowsPassed}`
+    expect(pass).toHaveTextContent(
+      `${mockCsvImportResult.numberOfRowsPassed} label.passed`
     );
-    expect(await screen.findByText('label.failed:')).toBeInTheDocument();
-    expect(failed.textContent).toStrictEqual(
-      `${mockCsvImportResult.numberOfRowsFailed}`
+    expect(failed).toHaveTextContent(
+      `${mockCsvImportResult.numberOfRowsFailed} label.failed`
     );
   });
 });

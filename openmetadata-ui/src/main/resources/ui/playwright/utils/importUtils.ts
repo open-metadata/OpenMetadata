@@ -517,6 +517,33 @@ export const validateImportStatus = async (
   await page.locator('.rdg-header-row').waitFor({ state: 'visible' });
 };
 
+export const startCsvPreview = async (page: Page, timeout = 90000) => {
+  const nextPreviewButton = page.getByRole('button', {
+    name: /Next:\s*Preview/i,
+  });
+
+  await expect(nextPreviewButton).toBeEnabled({ timeout });
+  await nextPreviewButton.click();
+};
+
+export const startCsvPreviewAndWaitForGrid = async (
+  page: Page,
+  options?: {
+    csvImportCompletedPromise?: Promise<void>;
+    timeout?: number;
+  }
+) => {
+  const timeout = options?.timeout ?? 90000;
+
+  await startCsvPreview(page, timeout);
+
+  if (options?.csvImportCompletedPromise) {
+    await options.csvImportCompletedPromise;
+  }
+
+  await page.locator('.rdg-header-row').waitFor({ state: 'visible', timeout });
+};
+
 export const uploadCSVAndWaitForGrid = async (
   page: Page,
   filePath: string,
@@ -541,13 +568,9 @@ export const uploadCSVAndWaitForGrid = async (
 
   await uploadWidget.setInputFiles([actualFilePath]);
 
-  if (options?.csvImportCompletedPromise) {
-    await options.csvImportCompletedPromise;
-  }
-
-  await page
-    .locator('.rdg-header-row')
-    .waitFor({ state: 'visible', timeout: 30000 });
+  await startCsvPreviewAndWaitForGrid(page, {
+    csvImportCompletedPromise: options?.csvImportCompletedPromise,
+  });
   const rowCount = await page.locator('.rdg-row').count();
   return { rowCount, tempFilePath };
 };

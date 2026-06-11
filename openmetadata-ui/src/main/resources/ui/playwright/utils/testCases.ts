@@ -16,7 +16,11 @@ import * as path from 'path';
 import { TableClass } from '../support/entity/TableClass';
 import { toastNotification } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
-import { fillTagDetails, pressKeyXTimes } from './importUtils';
+import {
+  fillTagDetails,
+  pressKeyXTimes,
+  startCsvPreviewAndWaitForGrid,
+} from './importUtils';
 
 export const getFailedRowsData = (table: TableClass) => {
   const columns = table.entity.columns.map((col) => col.name);
@@ -379,9 +383,7 @@ export const navigateToImportPage = async (
 export const uploadCSVFile = async (page: Page, filePath: string) => {
   await page.locator('[type="file"]').waitFor({ state: 'attached' });
   await page.setInputFiles('[type="file"]', filePath);
-  await page.getByTestId('upload-file-widget').waitFor({
-    state: 'hidden',
-  });
+  await startCsvPreviewAndWaitForGrid(page);
 };
 
 /**
@@ -674,6 +676,8 @@ export const performE2EExportImportFlow = async (
     await page
       .locator('[type="file"]')
       .setInputFiles(['downloads/' + exportedFile]);
+
+    await startCsvPreviewAndWaitForGrid(page);
 
     await expect(page.locator('.rdg-header-row')).toBeVisible();
     await expect(page.getByTestId('add-row-btn')).toBeVisible();

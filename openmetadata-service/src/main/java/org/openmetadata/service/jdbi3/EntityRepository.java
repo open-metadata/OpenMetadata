@@ -143,10 +143,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -404,78 +401,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  // Deferred L1 re-eviction. Backstops the nanosecond race where a loader's put lands after the
-  // writer's inline invalidate. Daemon threads.
-  private static final ScheduledExecutorService L1_REPAIR_EXECUTOR =
-      Executors.newScheduledThreadPool(
-          2,
-          r -> {
-            // FQN: org.openmetadata.schema.entity.feed.Thread shadows the simple name here.
-            java.lang.Thread t = new java.lang.Thread(r, "entity-cache-l1-repair");
-            t.setDaemon(true);
-            return t;
-          });
-
-  private static final long L1_REPAIR_DELAY_MS = 500L;
-
-  // Coalescing guard. Without this, bulk writes can enqueue thousands of pending repair tasks
-  // per key (one per write). One pending task per key is sufficient to evict any racing loader's
-  // put — repeated bumps within the delay window collapse to a single eviction.
-  private static final java.util.Set<Object> PENDING_L1_REPAIRS =
-      java.util.concurrent.ConcurrentHashMap.newKeySet();
-
-  private static void scheduleL1Repair(String entityType, UUID id, String fqn, String originalFqn) {
-    if (entityType == null || L1_REPAIR_EXECUTOR.isShutdown()) {
-      return;
-    }
-    // Include fqn so a rename within the delay window gets its own task instead of being
-    // coalesced into a prior task that only knows the old fqn.
-    Object coalesceKey =
-        List.of(entityType, id == null ? "" : id.toString(), fqn == null ? "" : fqn);
-    if (!PENDING_L1_REPAIRS.add(coalesceKey)) {
-      return;
-    }
-    try {
-      L1_REPAIR_EXECUTOR.schedule(
-          () -> {
-            // Clear at task start so a writer arriving during the invalidates re-schedules its
-            // own task and gets the full delay-window backstop.
-            PENDING_L1_REPAIRS.remove(coalesceKey);
-            try {
-              if (id != null) {
-                CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
-              }
-              if (fqn != null) {
-                CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
-              }
-              if (originalFqn != null && !originalFqn.equals(fqn)) {
-                CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, originalFqn));
-              }
-            } catch (RuntimeException e) {
-              LOG.debug(
-                  "Deferred L1 repair failed for type={} id={} fqn={}", entityType, id, fqn, e);
-            }
-          },
-          L1_REPAIR_DELAY_MS,
-          TimeUnit.MILLISECONDS);
-    } catch (RejectedExecutionException e) {
-      PENDING_L1_REPAIRS.remove(coalesceKey);
-      LOG.debug("Failed to schedule L1 repair type={} id={}", entityType, id, e);
-    }
-  }
-
-  public static void shutdownL1RepairExecutor() {
-    L1_REPAIR_EXECUTOR.shutdown();
-    try {
-      if (!L1_REPAIR_EXECUTOR.awaitTermination(2, TimeUnit.SECONDS)) {
-        L1_REPAIR_EXECUTOR.shutdownNow();
-      }
-    } catch (InterruptedException e) {
-      java.lang.Thread.currentThread().interrupt();
-      L1_REPAIR_EXECUTOR.shutdownNow();
-    }
-  }
-
   /**
    * Canonical {@link #CACHE_WITH_NAME} key. User FQNs are lowercased at the DB layer
    * ({@code UserDAO.findEntityByName}), so the Guava cache must use the same normalization —
@@ -483,7 +408,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * invalidations written against the lowercased canonical form miss the mixed-case entry,
    * serving stale data until TTL.
    */
-  private static Pair<String, String> cacheNameKey(String entityType, String fqn) {
+  static Pair<String, String> cacheNameKey(String entityType, String fqn) {
     if (fqn != null && Entity.USER.equals(entityType)) {
       return new ImmutablePair<>(entityType, fqn.toLowerCase(Locale.ROOT));
     }
@@ -1588,7 +1513,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final List<EntityReference> getReferences(List<UUID> id, Include include)
       throws EntityNotFoundException {
-    return find(id, include).stream().map(EntityInterface::getEntityReference).toList();
+    return dao.findReferencesByIds(id, include);
   }
 
   /**
@@ -2201,8 +2126,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final EntityReference getReferenceByName(String fqn, Include include) {
-    fqn = quoteFqn ? quoteName(fqn) : fqn;
-    return findByName(fqn, include).getEntityReference();
+    String entityFqn = quoteFqn ? quoteName(fqn) : fqn;
+    return dao.findReferencesByFqns(List.of(entityFqn), include).stream()
+        .findFirst()
+        .orElseThrow(() -> new EntityNotFoundException(entityNotFound(entityType, entityFqn)));
   }
 
   public final List<T> getByNames(
@@ -3295,7 +3222,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     bumpWriteEpoch(entityType, id, fqn);
     // Guava L1 always cleared inline — local map eviction, not a network round trip.
     CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
-    scheduleL1Repair(entityType, id, fqn, null);
+    EntityCacheRepair.scheduleRepair(entityType, id, fqn, null);
     if (fqn != null) {
       CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
     }
@@ -4780,7 +4707,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));
     CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, entity.getFullyQualifiedName()));
     RequestEntityCache.invalidate(entityType, entity.getId(), entity.getFullyQualifiedName());
-    scheduleL1Repair(entityType, entity.getId(), entity.getFullyQualifiedName(), null);
+    EntityCacheRepair.scheduleRepair(
+        entityType, entity.getId(), entity.getFullyQualifiedName(), null);
     invalidateCache(entity);
   }
 
@@ -10070,7 +9998,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       EntityRepository.this.writeThroughCache(updated, true);
       RequestEntityCache.invalidate(entityType, id, fqn);
 
-      scheduleL1Repair(entityType, id, fqn, originalFqn);
+      EntityCacheRepair.scheduleRepair(entityType, id, fqn, originalFqn);
 
       var pubsub = CacheBundle.getCacheInvalidationPubSub();
       if (pubsub != null) {
