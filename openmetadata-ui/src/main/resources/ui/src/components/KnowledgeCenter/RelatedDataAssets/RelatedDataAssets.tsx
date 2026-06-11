@@ -10,21 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Space, Typography } from 'antd';
+import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import { KnowledgePage } from '../../../interface/knowledge-center.interface';
-
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import ExpandableCard from '../../../components/common/ExpandableCard/ExpandableCard';
 import {
-  EditIconButton,
-  PlusIconButton,
-} from '../../../components/common/IconButtons/EditIconButton';
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../../../components/common/WidgetActionButton/WidgetActionButton';
+import WidgetCard from '../../../components/common/WidgetCard/WidgetCard';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import { EntityReference } from '../../../generated/entity/type';
+import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityIcon } from '../../../utils/TableUtils';
@@ -57,7 +56,6 @@ const RelatedDataAssets: FC<RelatedDataAssetsProps> = ({
     const { filteredRelatedDataAssets, restRelatedDataAssets } =
       relatedDataAssets.reduce(
         (acc, item) => {
-          // filter out team and user as they are not data assets
           if (!['team', 'user'].includes(item.type)) {
             acc.filteredRelatedDataAssets.push(item);
           } else {
@@ -73,14 +71,12 @@ const RelatedDataAssets: FC<RelatedDataAssetsProps> = ({
       );
 
     const initialOptions: DataAssetOption[] = filteredRelatedDataAssets.map(
-      (item) => {
-        return {
-          displayName: getEntityName(item),
-          reference: item,
-          label: getEntityName(item),
-          value: item.id,
-        };
-      }
+      (item) => ({
+        displayName: getEntityName(item),
+        reference: item,
+        label: getEntityName(item),
+        value: item.id,
+      })
     );
 
     const defaultValue = filteredRelatedDataAssets.map((item) => item.id);
@@ -100,51 +96,50 @@ const RelatedDataAssets: FC<RelatedDataAssetsProps> = ({
     return { visibleDataAssets, hiddenDataAssets };
   }, [filteredRelatedDataAssets]);
 
-  const showMoreLessElement = useMemo(() => {
-    return (
+  const showMoreLessElement = useMemo(
+    () => (
       <Typography.Text
         className="cursor-pointer text-xs text-primary underline"
         data-testid={`show-${isShowMore ? 'less' : 'more'}`}
         onClick={() => setIsShowMore(!isShowMore)}>
         {isShowMore ? t('label.show-less') : t('label.show-more')}
       </Typography.Text>
-    );
-  }, [isShowMore, hiddenDataAssets]);
+    ),
+    [isShowMore, hiddenDataAssets]
+  );
 
   const getDataAssetListing = useCallback((dataAssets: EntityReference[]) => {
-    return dataAssets.map((item) => {
-      return (
-        <div
-          className="right-panel-list-item flex items-center justify-between"
-          data-testid={getEntityName(item)}
-          key={item.id}>
-          <div className="flex items-center">
-            <Link
-              className="font-medium"
-              to={entityUtilClassBase.getEntityLink(
-                item.type,
-                item.fullyQualifiedName ?? ''
-              )}>
-              <Button
-                className="data-asset-button flex-center p-0 m--ml-1"
-                icon={
-                  <div className="entity-button-icon m-r-xs">
-                    {getEntityIcon(item.type)}
-                  </div>
-                }
-                title={getEntityName(item)}
-                type="text">
-                <Typography.Text
-                  className="w-72 text-left text-xs"
-                  ellipsis={{ tooltip: true }}>
-                  {getEntityName(item)}
-                </Typography.Text>
-              </Button>
-            </Link>
-          </div>
+    return dataAssets.map((item) => (
+      <div
+        className="right-panel-list-item flex items-center justify-between"
+        data-testid={getEntityName(item)}
+        key={item.id}>
+        <div className="flex items-center">
+          <Link
+            className="font-medium"
+            to={entityUtilClassBase.getEntityLink(
+              item.type,
+              item.fullyQualifiedName ?? ''
+            )}>
+            <Button
+              className="data-asset-button flex-center p-0 m--ml-1"
+              icon={
+                <div className="entity-button-icon m-r-xs">
+                  {getEntityIcon(item.type)}
+                </div>
+              }
+              title={getEntityName(item)}
+              type="text">
+              <Typography.Text
+                className="w-72 text-left text-xs"
+                ellipsis={{ tooltip: true }}>
+                {getEntityName(item)}
+              </Typography.Text>
+            </Button>
+          </Link>
         </div>
-      );
-    });
+      </div>
+    ));
   }, []);
 
   const handleAssetsUpdate = useCallback(
@@ -166,37 +161,27 @@ const RelatedDataAssets: FC<RelatedDataAssetsProps> = ({
     [onRelatedDataAssetsUpdate, restRelatedDataAssets]
   );
 
-  const header = useMemo(() => {
-    return (
-      <Space className="w-full items-center">
-        <Typography.Text
-          className="text-sm font-medium"
-          data-testid="header-label">
-          {t('label.data-asset-plural')}
-        </Typography.Text>
-        {!isEdit &&
-          hasPermission &&
-          (isEmpty(filteredRelatedDataAssets) ? (
-            <PlusIconButton
-              data-testid="add-data-assets-container"
-              size="small"
-              title={t('label.add-entity', {
-                entity: t('label.data-asset-plural'),
-              })}
-              onClick={() => setIsEdit(true)}
-            />
-          ) : (
-            <EditIconButton
-              newLook
-              data-testid="edit-data-assets"
-              size="small"
-              title={t('label.edit-entity', {
-                entity: t('label.data-asset-plural'),
-              })}
-              onClick={() => setIsEdit(true)}
-            />
-          ))}
-      </Space>
+  const headerExtra = useMemo(() => {
+    if (isEdit || !hasPermission) {
+      return null;
+    }
+
+    return isEmpty(filteredRelatedDataAssets) ? (
+      <WidgetPlusButton
+        data-testid="add-data-assets-container"
+        title={t('label.add-entity', {
+          entity: t('label.data-asset-plural'),
+        })}
+        onClick={() => setIsEdit(true)}
+      />
+    ) : (
+      <WidgetEditButton
+        data-testid="edit-data-assets"
+        title={t('label.edit-entity', {
+          entity: t('label.data-asset-plural'),
+        })}
+        onClick={() => setIsEdit(true)}
+      />
     );
   }, [isEdit, hasPermission, filteredRelatedDataAssets]);
 
@@ -235,13 +220,12 @@ const RelatedDataAssets: FC<RelatedDataAssetsProps> = ({
   }
 
   return (
-    <ExpandableCard
-      cardProps={{
-        title: header,
-      }}
-      isExpandDisabled={isEmpty(filteredRelatedDataAssets)}>
+    <WidgetCard
+      headerExtra={headerExtra}
+      isExpandDisabled={isEmpty(filteredRelatedDataAssets)}
+      title={t('label.data-asset-plural')}>
       {content}
-    </ExpandableCard>
+    </WidgetCard>
   );
 };
 

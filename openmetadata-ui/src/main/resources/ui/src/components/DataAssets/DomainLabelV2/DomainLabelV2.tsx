@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Typography as AntDTypography, Card, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -30,7 +31,8 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { DomainLabelProps } from '../../common/DomainLabel/DomainLabel.interface';
 import DomainSelectableList from '../../common/DomainSelectableList/DomainSelectableList.component';
-import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
+import { WidgetEditButton } from '../../common/WidgetActionButton/WidgetActionButton';
+import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetsUnion } from '../AssetsSelectionModal/AssetSelectionModal.interface';
 import { DataAssetWithDomains } from '../DataAssetsHeader/DataAssetsHeader.interface';
@@ -132,7 +134,7 @@ export const DomainLabelV2 = <
 
         return (
           <div className="d-flex w-max-full items-center gap-1" key={domain.id}>
-            <Typography.Text className="self-center text-xs whitespace-nowrap">
+            <AntDTypography.Text className="self-center text-xs whitespace-nowrap">
               <DomainIcon
                 className="d-flex"
                 color={DE_ACTIVE_COLOR}
@@ -140,7 +142,7 @@ export const DomainLabelV2 = <
                 name="folder"
                 width={16}
               />
-            </Typography.Text>
+            </AntDTypography.Text>
             {renderDomainLink(
               domain,
               getEntityName(domain),
@@ -154,14 +156,14 @@ export const DomainLabelV2 = <
       });
     } else {
       return (
-        <Typography.Text
+        <Typography
           className={classNames(
-            { 'font-medium text-xs': !props.showDomainHeading },
+           'tw:text-gray-500',
             props.textClassName
-          )}
+          )} size="text-xs"
           data-testid="no-domain-text">
           {t('label.no-entity', { entity: t('label.domain-plural') })}
-        </Typography.Text>
+        </Typography>
       );
     }
   }, [activeDomain]);
@@ -178,8 +180,16 @@ export const DomainLabelV2 = <
           isClearable={props.isClearable}
           multiple={props.multiple}
           selectedDomain={activeDomain}
-          onUpdate={handleDomainSave}
-        />
+          onUpdate={handleDomainSave}>
+          <WidgetEditButton
+            data-testid="add-domain"
+            disabled={!hasPermission}
+            title={t('label.edit-entity', {
+              entity: t('label.domain-plural'),
+            })}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </DomainSelectableList>
       )
     );
   }, [hasPermission, activeDomain, handleDomainSave, props.isClearable]);
@@ -187,22 +197,14 @@ export const DomainLabelV2 = <
   const label = useMemo(() => {
     if (props.showDomainHeading) {
       return (
-        <ExpandableCard
-          cardProps={{
-            title: (
-              <div className="d-flex items-center gap-1">
-                <Typography.Text className="text-sm font-medium">
-                  {t('label.domain-plural')}
-                </Typography.Text>
-                {selectableList}
-              </div>
-            ),
-          }}
-          isExpandDisabled={!Array.isArray(domainLink)}>
+        <WidgetCard
+          headerExtra={selectableList}
+          isExpandDisabled={!Array.isArray(domainLink)}
+          title={t('label.domain-plural')}>
           <div className="d-flex items-center gap-1 flex-wrap">
             {domainLink}
           </div>
-        </ExpandableCard>
+        </WidgetCard>
       );
     }
 
