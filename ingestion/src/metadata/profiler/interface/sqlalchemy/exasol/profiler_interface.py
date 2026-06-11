@@ -29,9 +29,6 @@ class ExasolProfilerInterface(SQAProfilerInterface):
             return []
 
         logger.debug(f"Computing {metrics.name()} metric for {runner.table_name}")
-        self.system_metrics_class = cast(Type[ExasolSystemMetricsComputer], self.system_metrics_class)  # noqa: TC006, UP006
-        instance = self.system_metrics_class(
-            session=self.session,
-            runner=runner,
-        )
+        exasol_system_metrics_class = cast(Type[ExasolSystemMetricsComputer], self.system_metrics_class)  # noqa: TC006, UP006
+        instance = exasol_system_metrics_class(self.session, runner)
         return instance.get_system_metrics()
