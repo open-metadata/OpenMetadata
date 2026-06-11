@@ -14,7 +14,7 @@
 import { Collapse, Tag, Typography } from 'antd';
 import { lazy, ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { withSuspenseFallback } from '../../AppRouter/withSuspenseFallback';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './message-card.less';
 
 const SchemaEditor = withSuspenseFallback(

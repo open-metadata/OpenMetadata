@@ -13,8 +13,8 @@
 import { CSMode } from '../../enums/codemirror.enum';
 import {
   Language,
-  Metric,
   MetricGranularity,
+  type Metric,
 } from '../../generated/entity/data/metric';
 
 const granularityOrder = [

@@ -115,10 +115,8 @@ const mockData = {
   deleted: false,
 };
 
-jest.mock('../../../utils/EntityUtils', () => ({
-  ...jest.requireActual('../../../utils/EntityUtils'),
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('entityName'),
-  getHtmlForNonAdminAction: jest.fn().mockReturnValue('admin action'),
 }));
 
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
@@ -144,8 +142,7 @@ jest.mock(
 
 const mockHandleFeaturesUpdate = jest.fn();
 
-jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
-  ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   useGenericContext: jest.fn().mockImplementation(() => ({
     data: mockData,
     permissions: DEFAULT_ENTITY_PERMISSION,

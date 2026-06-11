@@ -34,7 +34,7 @@ import {
   getRandomizedAlertName,
 } from './Alerts/AlertsUtil';
 import alertsClassBase, { AlertsClassBase } from './AlertsClassBase';
-import { getEntityLabel } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
 import { handleEntityCreationError } from './formUtils';
 import { showSuccessToast } from './ToastUtils';
 
@@ -79,9 +79,8 @@ jest.mock('./Alerts/AlertsUtil', () => ({
   ),
 }));
 
-jest.mock('./EntityUtils', () => ({
-  ...jest.requireActual('./EntityUtils'),
-  getEntityLabel: jest.fn((entity) => entity?.displayName || entity?.name || ''),
+jest.mock('./EntityNameUtils', () => ({
+  getEntityName: jest.fn((entity) => entity?.displayName || entity?.name || ''),
 }));
 
 jest.mock('./ToastUtils', () => ({
@@ -216,7 +215,7 @@ describe('AlertsClassBase', () => {
       expect(result.alertName).toBe('openMetadata_alert_abc123456');
       expect(result.alertDisplayName).toBe('Test Alert Display');
       expect(getRandomizedAlertName).toHaveBeenCalled();
-      expect(getEntityLabel).toHaveBeenCalledWith(mockModifiedData);
+      expect(getEntityName).toHaveBeenCalledWith(mockModifiedData);
     });
 
     it('should use initial alert name if provided', () => {

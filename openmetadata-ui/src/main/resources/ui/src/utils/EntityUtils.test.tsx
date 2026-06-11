@@ -16,9 +16,11 @@ import { DEFAULT_DOMAIN_VALUE } from '../constants/constants';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { TestSuite } from '../generated/tests/testCase';
-import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
-import { getBreadcrumbForTestSuite } from './EntityGovernanceBreadcrumbUtils';
-import { getEntityLinkFromType } from './EntityLinkUtils';
+import {
+  getBreadcrumbForTestSuite,
+  getEntityBreadcrumbs,
+  getEntityLinkFromType,
+} from './EntityBreadcrumbUtils';
 import { getDomainDisplayName } from './EntityNameUtils';
 import {
   hasCustomPropertiesTab,
@@ -117,7 +119,7 @@ jest.mock('./StringUtils', () => ({
   getEncodedFqn: jest.fn(),
   stringToHTML: jest.fn().mockImplementation((value) => value),
 }));
-jest.mock('./TablePureUtils', () => ({
+jest.mock('./TableUtils', () => ({
   getDataTypeString: jest.fn(),
   getTagsWithoutTier: jest.fn(),
   getTierTags: jest.fn(),

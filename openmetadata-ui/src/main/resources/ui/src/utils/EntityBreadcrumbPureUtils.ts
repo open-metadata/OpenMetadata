@@ -11,33 +11,43 @@
  *  limitations under the License.
  */
 
+/**
+ * Backward-compatible re-export barrel + getEntityBreadcrumbs dispatcher.
+ *
+ * Implementations split into:
+ *   - EntityDataBreadcrumbUtils.ts    — table, chart, API, container/drive helpers
+ *   - EntityServiceBreadcrumbUtils.ts — service-type breadcrumbs (12 service categories)
+ *   - EntityGovernanceBreadcrumbUtils.ts — glossary, domain, test, KPI, role, bot, etc.
+ *   - EntityLinkUtils.ts              — getEntityLinkFromType
+ */
+
 import { isUndefined } from 'lodash';
-import { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
+import type { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import type { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../enums/entity.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
-import { Kpi } from '../generated/dataInsight/kpi/kpi';
-import { APICollection } from '../generated/entity/data/apiCollection';
-import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
-import { Chart } from '../generated/entity/data/chart';
-import { Container } from '../generated/entity/data/container';
-import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
-import { Database } from '../generated/entity/data/database';
-import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
-import { Directory } from '../generated/entity/data/directory';
-import { File } from '../generated/entity/data/file';
-import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
-import { SearchIndex as SearchIndexAsset } from '../generated/entity/data/searchIndex';
-import { Spreadsheet } from '../generated/entity/data/spreadsheet';
-import { StoredProcedure } from '../generated/entity/data/storedProcedure';
-import { Table } from '../generated/entity/data/table';
-import { Topic } from '../generated/entity/data/topic';
-import { Worksheet } from '../generated/entity/data/worksheet';
-import { DataProduct } from '../generated/entity/domains/dataProduct';
-import { Team } from '../generated/entity/teams/team';
-import { EventSubscription } from '../generated/events/eventSubscription';
-import { TestCase, TestSuite } from '../generated/tests/testCase';
-import {
+import type { Kpi } from '../generated/dataInsight/kpi/kpi';
+import type { APICollection } from '../generated/entity/data/apiCollection';
+import type { APIEndpoint } from '../generated/entity/data/apiEndpoint';
+import type { Chart } from '../generated/entity/data/chart';
+import type { Container } from '../generated/entity/data/container';
+import type { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
+import type { Database } from '../generated/entity/data/database';
+import type { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import type { Directory } from '../generated/entity/data/directory';
+import type { File } from '../generated/entity/data/file';
+import type { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import type { SearchIndex as SearchIndexAsset } from '../generated/entity/data/searchIndex';
+import type { Spreadsheet } from '../generated/entity/data/spreadsheet';
+import type { StoredProcedure } from '../generated/entity/data/storedProcedure';
+import type { Table } from '../generated/entity/data/table';
+import type { Topic } from '../generated/entity/data/topic';
+import type { Worksheet } from '../generated/entity/data/worksheet';
+import type { DataProduct } from '../generated/entity/domains/dataProduct';
+import type { Team } from '../generated/entity/teams/team';
+import type { EventSubscription } from '../generated/events/eventSubscription';
+import type { TestCase, TestSuite } from '../generated/tests/testCase';
+import type {
   SearchSourceAlias,
   TableColumnSearchSource,
 } from '../interface/search.interface';
@@ -76,6 +86,42 @@ import {
   getServiceCategoryBreadcrumb,
 } from './EntityServiceBreadcrumbUtils';
 import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
+
+// Re-export all for backward compatibility
+export {
+  getBreadCrumbForAPICollection,
+  getBreadCrumbForAPIEndpoint,
+  getBreadcrumbForChart,
+  getBreadcrumbForEntitiesWithServiceOnly,
+  getBreadcrumbForEntityWithParent,
+  getBreadcrumbForTable,
+} from './EntityDataBreadcrumbUtils';
+export {
+  getBreadcrumbForApplication,
+  getBreadcrumbForBot,
+  getBreadcrumbForClassification,
+  getBreadcrumbForDataProduct,
+  getBreadcrumbForDomain,
+  getBreadcrumbForEventSubscription,
+  getBreadcrumbForGlossaryOrTerm,
+  getBreadcrumbForKnowledgePage,
+  getBreadCrumbForKpi,
+  getBreadcrumbForMetric,
+  getBreadcrumbForPersona,
+  getBreadcrumbForPolicy,
+  getBreadcrumbForRole,
+  getBreadcrumbForTag,
+  getBreadcrumbForTeam,
+  getBreadcrumbForTestCase,
+  getBreadcrumbForTestSuite,
+} from './EntityGovernanceBreadcrumbUtils';
+export { getEntityLinkFromType } from './EntityLinkUtils';
+export {
+  getBreadcrumbForDatabase,
+  getBreadcrumbForDatabaseSchema,
+  getBreadcrumbForDatabaseService,
+  getServiceCategoryBreadcrumb,
+} from './EntityServiceBreadcrumbUtils';
 
 export const getEntityBreadcrumbs = (
   entity:
@@ -119,7 +165,9 @@ export const getEntityBreadcrumbs = (
       );
     }
     case EntityType.CLASSIFICATION:
-      return getBreadcrumbForClassification(getEntityName(entity as any));
+      return getBreadcrumbForClassification(
+        getEntityName(entity as { name?: string; displayName?: string })
+      );
     case EntityType.DATABASE:
       return getBreadcrumbForDatabase(entity as Database);
     case EntityType.DATABASE_SCHEMA:
@@ -220,22 +268,22 @@ export const getEntityBreadcrumbs = (
       return getBreadcrumbForTeam(entity as Team);
     case EntityType.APPLICATION:
       return getBreadcrumbForApplication(
-        getEntityName(entity as any),
+        getEntityName(entity as { name?: string; displayName?: string }),
         entity.fullyQualifiedName ?? ''
       );
     case EntityType.PERSONA:
       return getBreadcrumbForPersona(
-        getEntityName(entity as any),
+        getEntityName(entity as { name?: string; displayName?: string }),
         entity.fullyQualifiedName ?? ''
       );
     case EntityType.ROLE:
       return getBreadcrumbForRole(
-        getEntityName(entity as any),
+        getEntityName(entity as { name?: string; displayName?: string }),
         entity.fullyQualifiedName ?? ''
       );
     case EntityType.POLICY:
       return getBreadcrumbForPolicy(
-        getEntityName(entity as any),
+        getEntityName(entity as { name?: string; displayName?: string }),
         entity.fullyQualifiedName ?? ''
       );
     case EntityType.API_COLLECTION:
@@ -248,7 +296,7 @@ export const getEntityBreadcrumbs = (
       return getBreadCrumbForKpi(entity as Kpi);
     case EntityType.KNOWLEDGE_PAGE:
       return getBreadcrumbForKnowledgePage(
-        getEntityName(entity as any),
+        getEntityName(entity as { name?: string; displayName?: string }),
         includeCurrent
       );
     case EntityType.TABLE_COLUMN: {

@@ -130,10 +130,10 @@ import {
   getDayAgoStartGMTinMillis,
 } from '../../utils/date-time/DateTimeUtils';
 import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
-import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityFeedLink } from '../../utils/EntityLinkUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import { getEntityFeedLink } from '../../utils/EntityPureUtils';
 import { getEntityReferenceFromEntity } from '../../utils/EntityReferenceUtils';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import {
   EXTENSION_POINTS,
   PluginEntityDetailsContext,
@@ -149,7 +149,6 @@ import {
   getServiceVersionPath,
   getSettingPath,
 } from '../../utils/RouterUtils';
-import { getDefaultAgentsTabWidgets } from '../../utils/ServiceInsightsWidgets';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
   getCountLabel,
@@ -158,7 +157,7 @@ import {
   getServiceDisplayNameQueryFilter,
   getServiceRouteFromServiceType,
   shouldTestConnection,
-} from '../../utils/ServicePureUtils';
+} from '../../utils/ServiceUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
@@ -311,10 +310,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [serviceDetails, currentUser]
   );
   const { CollateAIAgentsWidget } = useMemo(
-    () => ({
-      ...getDefaultAgentsTabWidgets(),
-      ...serviceUtilClassBase.getAgentsTabWidgets(),
-    }),
+    () => serviceUtilClassBase.getAgentsTabWidgets(),
     []
   );
   const isDBService = useMemo(

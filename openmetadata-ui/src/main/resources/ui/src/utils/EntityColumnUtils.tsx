@@ -16,48 +16,16 @@ import { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
-import { ColumnJoins, JoinedWith } from '../generated/entity/data/table';
+import type { ColumnJoins } from '../generated/entity/data/table';
+import {
+  checkIfJoinsAvailable,
+  getFrequentlyJoinedWithColumns,
+} from './EntityPureUtils';
 import {
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from './FqnUtils';
 import { getEntityDetailsPath } from './RouterUtils';
-
-/**
- * It checks if a column has a join
- * @param {string} columnName - The name of the column you want to check if joins are available for.
- * @param joins - Array<ColumnJoins>
- * @returns A boolean value.
- */
-export const checkIfJoinsAvailable = (
-  columnName: string,
-  joins: Array<ColumnJoins>
-): boolean => {
-  return (
-    joins &&
-    Boolean(joins.length) &&
-    Boolean(joins.some((join) => join.columnName === columnName))
-  );
-};
-
-/**
- * It takes a column name and a list of joins and returns the list of joinedWith for the column name
- * @param {string} columnName - The name of the column you want to get the frequently joined with
- * columns for.
- * @param joins - Array<ColumnJoins>
- * @returns An array of joinedWith objects
- */
-export const getFrequentlyJoinedWithColumns = (
-  columnName: string,
-  joins: Array<ColumnJoins>
-): Array<JoinedWith> => {
-  return (
-    (joins &&
-      Boolean(joins.length) &&
-      joins?.find((join) => join.columnName === columnName)?.joinedWith) ||
-    []
-  );
-};
 
 export const getFrequentlyJoinedColumns = (
   columnName: string,

@@ -12,23 +12,22 @@
  *  limitations under the License.
  */
 
-/**
- * Backward-compatible re-export barrel.
- *
- * Implementations have been split into focused modules:
- *   - DataAssetsHeaderExtraInfo.tsx  — ExtraInfoLabel, ExtraInfoLink
- *   - DataAssetsHeaderTypeUtils.ts   — isDataAssetsWithServiceField, getEntityExtraInfoLength
- *
- * Import directly from those modules for new code.
- */
-
+import Icon from '@ant-design/icons';
 import { Divider, Tooltip, Typography } from 'antd';
-import { isObject, isUndefined } from 'lodash';
+import classNames from 'classnames';
+import { isArray, isEmpty, isObject, isUndefined } from 'lodash';
+import React, { ReactNode } from 'react';
+import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
+  DataAssetsType,
+  DataAssetsWithServiceField,
 } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { NO_DATA_PLACEHOLDER } from '../constants/constants';
+import {
+  DATA_ASSET_ICON_DIMENSION,
+  NO_DATA_PLACEHOLDER,
+} from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { APICollection } from '../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
@@ -64,7 +63,6 @@ import { SearchService } from '../generated/entity/services/searchService';
 import { SecurityService } from '../generated/entity/services/securityService';
 import { StorageService } from '../generated/entity/services/storageService';
 import { EntityReference } from '../generated/type/entityReference';
-import { ExtraInfoLabel, ExtraInfoLink } from './DataAssetsHeaderExtraInfo';
 import { formatDateTime } from './date-time/DateTimeUtils';
 import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
 import {
@@ -77,13 +75,103 @@ import { getEntityDetailsPath } from './RouterUtils';
 import { bytesToSize } from './StringUtils';
 import { getUsagePercentile } from './TablePureUtils';
 
-export { ExtraInfoLabel, ExtraInfoLink } from './DataAssetsHeaderExtraInfo';
-export {
-  getEntityExtraInfoLength,
-  isDataAssetsWithServiceField,
-} from './DataAssetsHeaderTypeUtils';
-
 const { t } = i18n;
+
+export const ExtraInfoLabel = ({
+  label,
+  value,
+  dataTestId,
+  inlineLayout = false,
+}: {
+  label: string;
+  value: string | number | React.ReactNode;
+  dataTestId?: string;
+  inlineLayout?: boolean;
+}) => {
+  if (inlineLayout) {
+    return (
+      <>
+        <Divider className="self-center" type="vertical" />
+        <Typography.Text
+          className="self-center text-xs whitespace-nowrap"
+          data-testid={dataTestId}>
+          {!isEmpty(label) && (
+            <span className="text-grey-muted">{`${label}: `}</span>
+          )}
+          <span className="font-medium">{value}</span>
+        </Typography.Text>
+      </>
+    );
+  }
+
+  return (
+    <div className="d-flex align-start extra-info-container">
+      <Typography.Text
+        className="text-sm d-flex flex-col gap-2 w-full"
+        data-testid={dataTestId}>
+        {!isEmpty(label) && (
+          <Typography.Text
+            className="extra-info-label-heading"
+            ellipsis={{ tooltip: true }}>
+            {label}
+          </Typography.Text>
+        )}
+
+        <Typography.Text
+          className={classNames('font-medium extra-info-value')}
+          ellipsis={{
+            tooltip: true,
+          }}>
+          {value ?? NO_DATA_PLACEHOLDER}
+        </Typography.Text>
+      </Typography.Text>
+    </div>
+  );
+};
+
+export const ExtraInfoLink = ({
+  label,
+  value,
+  href,
+  newTab = false,
+  ellipsis = false,
+}: {
+  label: string;
+  value: string | number;
+  href: string;
+  newTab?: boolean;
+  ellipsis?: boolean;
+}) => (
+  <div
+    className={classNames('d-flex  text-sm  flex-col gap-2', {
+      'w-48': ellipsis,
+    })}>
+    {!isEmpty(label) && (
+      <Typography.Text
+        className="extra-info-label-heading m-r-xss"
+        ellipsis={ellipsis ? { tooltip: true } : false}>
+        {label}
+      </Typography.Text>
+    )}
+    <div className="d-flex items-center gap-1">
+      <Tooltip title={value}>
+        <Typography.Link
+          ellipsis
+          className="extra-info-link"
+          href={href}
+          rel={newTab ? 'noopener noreferrer' : undefined}
+          target={newTab ? '_blank' : undefined}>
+          {value}
+        </Typography.Link>
+      </Tooltip>
+      <Icon
+        className="m-l-xs"
+        component={IconExternalLink}
+        style={DATA_ASSET_ICON_DIMENSION}
+      />
+    </div>
+  </div>
+);
 
 export const getDataAssetsHeaderInfo = (
   entityType: DataAssetsHeaderProps['entityType'],
@@ -896,4 +984,21 @@ export const getDataAssetsHeaderInfo = (
   }
 
   return returnData;
+};
+
+export const isDataAssetsWithServiceField = (
+  asset: DataAssetsType
+): asset is DataAssetsWithServiceField => {
+  return (asset as DataAssetsWithServiceField).service !== undefined;
+};
+
+export const getEntityExtraInfoLength = (element: ReactNode): number => {
+  if (React.isValidElement(element)) {
+    if (isArray(element.props.children)) {
+      return element.props.children?.filter((child?: ReactNode) => child)
+        .length;
+    }
+  }
+
+  return 0;
 };

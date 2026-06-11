@@ -43,9 +43,9 @@ import {
 
 const CustomPropertyTable = withSuspenseFallback(
   lazy(() =>
-    import(
-      '../components/common/CustomPropertyTable/CustomPropertyTable'
-    ).then((module) => ({ default: module.CustomPropertyTable }))
+    import('../components/common/CustomPropertyTable/CustomPropertyTable').then(
+      (module) => ({ default: module.CustomPropertyTable })
+    )
   )
 ) as <T extends ExtentionEntitiesKeys>(
   props: CustomPropertyProps<T>

@@ -41,8 +41,8 @@ import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
-import { getEntityLabel } from '../../../utils/EntityUtils';
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import {
   fetchEntityActivityCountInto,
@@ -120,7 +120,7 @@ function SpreadsheetDetails({
       ...spreadsheetDetails,
       tier: getTierTags(spreadsheetDetails.tags ?? []),
       spreadsheetTags: getTagsWithoutTier(spreadsheetDetails.tags ?? []),
-      entityName: getEntityLabel(spreadsheetDetails),
+      entityName: getEntityName(spreadsheetDetails),
     }),
     [spreadsheetDetails]
   );

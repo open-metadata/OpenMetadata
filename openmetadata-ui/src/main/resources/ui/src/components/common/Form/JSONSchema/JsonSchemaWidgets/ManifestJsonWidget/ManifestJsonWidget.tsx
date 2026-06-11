@@ -16,7 +16,7 @@ import { TFunction } from 'i18next';
 import { lazy, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../../../../enums/codemirror.enum';
-import { withSuspenseFallback } from '../../../../../AppRouter/withSuspenseFallback';
+import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
 import './manifest-json-widget.less';
 
 const SchemaEditor = withSuspenseFallback(

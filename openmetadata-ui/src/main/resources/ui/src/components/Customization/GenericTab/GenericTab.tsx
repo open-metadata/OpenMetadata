@@ -21,8 +21,8 @@ import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { PageType } from '../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
-import { getWidgetsFromKey } from '../../../utils/CustomizePage/CustomizePageUtils';
-import { useGenericContext } from '../GenericProvider/GenericContext';
+import { getWidgetsFromKey } from '../../../utils/CustomizePage/CustomizePageDispatchUtils';
+import { useGenericContext } from '../GenericProvider/GenericProvider';
 import { DynamicHeightWidget } from './DynamicHeightWidget';
 import './generic-tab.less';
 

@@ -31,7 +31,7 @@ import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
 import { getAllPersonas } from '../../../../rest/PersonaAPI';
-import { getEntityLabel } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../../utils/EntityReferenceUtils';
 import { normalizeToArray } from '../../../../utils/ObjectUtils';
 import { TagRenderer } from '../../../common/TagRenderer/TagRenderer';
@@ -43,7 +43,7 @@ export const PersonaListItemRenderer = (props: EntityReference) => {
   return (
     <Space>
       {props ? (
-        <Typography.Text>{getEntityLabel(props)}</Typography.Text>
+        <Typography.Text>{getEntityName(props)}</Typography.Text>
       ) : (
         <Typography.Text className="text-grey-body">
           {t('message.no-data-available')}
@@ -243,7 +243,7 @@ export const PersonaSelectableList = ({
               mode={isDefaultPersona ? undefined : 'multiple'}
               open={isDropdownOpen}
               options={selectOptions?.map((persona) => ({
-                label: getEntityLabel(persona),
+                label: getEntityName(persona),
                 value: persona.fullyQualifiedName,
               }))}
               placeholder="Please select"

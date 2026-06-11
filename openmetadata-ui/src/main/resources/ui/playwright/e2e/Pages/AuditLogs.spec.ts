@@ -284,7 +284,8 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const userSearchResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=user')
+          response.url().includes('index=user') &&
+          response.url().includes('q=admin')
       );
       await searchInput.fill('admin');
       await userSearchResponse;

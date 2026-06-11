@@ -30,14 +30,14 @@ import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import { DataProductDomainWidget } from '../components/DataProducts/DataProductDomainWidget/DataProductDomainWidget';
 import { EntityDetailsObjectInterface } from '../components/Explore/ExplorePage.interface';
-import { AssetsTabRef } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
+import type { AssetsTabRef } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
-import { EntityReference } from '../generated/entity/data/table';
-import { DataProduct } from '../generated/entity/domains/dataProduct';
-import { Operation } from '../generated/entity/policies/accessControl/resourcePermission';
+import type { EntityReference } from '../generated/entity/data/table';
+import type { DataProduct } from '../generated/entity/domains/dataProduct';
+import { Operation } from '../generated/entity/policies/policy';
 import { PageType } from '../generated/system/ui/page';
 import { FeedCounts } from '../interface/feed.interface';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
@@ -51,9 +51,9 @@ import {
 
 const CustomPropertyTable = withSuspenseFallback(
   lazy(() =>
-    import(
-      '../components/common/CustomPropertyTable/CustomPropertyTable'
-    ).then((module) => ({ default: module.CustomPropertyTable }))
+    import('../components/common/CustomPropertyTable/CustomPropertyTable').then(
+      (module) => ({ default: module.CustomPropertyTable })
+    )
   )
 ) as <T extends ExtentionEntitiesKeys>(
   props: CustomPropertyProps<T>
@@ -399,3 +399,10 @@ export const DataProductListItemRenderer = (props: EntityReference) => {
     </Space>
   );
 };
+
+// Re-exports from DataProductPureUtils (backward compat)
+export {
+  convertDataProductsToEntityReferences,
+  convertEntityReferencesToDataProducts,
+  getQueryFilterForDataProductPorts,
+} from './DataProductPureUtils';

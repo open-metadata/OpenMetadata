@@ -16,7 +16,7 @@ import { ReactComponent as IconComments } from '../assets/svg/comment.svg';
 import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
 import { ThreadType } from '../generated/entity/feed/thread';
-import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from './EntityLinkUtils';
+import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from './EntityPureUtils';
 import { t } from './i18next/LocalUtil';
 
 export const getFieldThreadElement = (

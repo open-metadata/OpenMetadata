@@ -38,6 +38,22 @@ const WorkflowsTable = withSuspenseFallback(
   )
 );
 
+const ContractTab = withSuspenseFallback(
+  lazy(() =>
+    import('../components/DataContract/ContractTab/ContractTab').then(
+      (module) => ({ default: module.ContractTab })
+    )
+  )
+);
+const WorkflowsTable = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/DriveService/Spreadsheet/WorkflowsTable/WorkflowsTable'
+      )
+  )
+);
+
 export interface SpreadsheetDetailPageTabProps {
   childrenCount: number;
   activityFeedTab: JSX.Element;

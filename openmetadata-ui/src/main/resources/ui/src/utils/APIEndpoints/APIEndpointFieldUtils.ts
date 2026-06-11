@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
-import { EntityReference } from '../../generated/type/entityReference';
-import { Field } from '../../generated/type/schema';
+import type { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
+import type { EntityReference } from '../../generated/type/entityReference';
+import type { Field } from '../../generated/type/schema';
 
 export const extractApiEndpointFields = <
   T extends Omit<EntityReference, 'type'>

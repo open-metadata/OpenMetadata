@@ -27,7 +27,7 @@ import { EntityReference } from '../../../generated/entity/data/table';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getUsers } from '../../../rest/userAPI';
 import { formatUsersResponse } from '../../../utils/APIUtils';
-import { getEntityLabel } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
 import { getTermQuery } from '../../../utils/SearchUtils';
 
@@ -176,7 +176,7 @@ export const UserSelectableList = ({
         <UserTag
           avatarType="outlined"
           id={item.name ?? ''}
-          name={getEntityLabel(item)}
+          name={getEntityName(item)}
         />
       </div>
     ),

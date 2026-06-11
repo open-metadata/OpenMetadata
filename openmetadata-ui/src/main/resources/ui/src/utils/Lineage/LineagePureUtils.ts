@@ -12,17 +12,17 @@
  */
 
 import { get, omit, pick } from 'lodash';
-import {
+import type {
   ColumnLevelLineageNode,
   EdgeDetails,
   LineageNodeType,
   NodeData,
 } from '../../components/Lineage/Lineage.interface';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
-import { Column } from '../../generated/entity/data/table';
-import { TagLabel } from '../../generated/type/tagLabel';
-import { TableSearchSource } from '../../interface/search.interface';
-import { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
+import type { Column } from '../../generated/entity/data/table';
+import type { TagLabel } from '../../generated/type/tagLabel';
+import type { TableSearchSource } from '../../interface/search.interface';
+import type { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 
 const buildColumnTagMap = <T>(
   entityData: T & { columns?: Column[] }

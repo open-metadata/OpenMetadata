@@ -45,8 +45,8 @@ import {
   getPopupContainer,
 } from '../../../utils/formUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
-import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import { getTagsWithoutTier } from '../../../utils/TablePureUtils';
+import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 

@@ -41,8 +41,8 @@ import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
-import { getEntityLabel } from '../../../utils/EntityUtils';
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import {
   fetchEntityActivityCountInto,
@@ -122,7 +122,7 @@ function FileDetails({
       ...fileDetails,
       tier: getTierTags(fileDetails.tags ?? []),
       fileTags: getTagsWithoutTier(fileDetails.tags ?? []),
-      entityName: getEntityLabel(fileDetails),
+      entityName: getEntityName(fileDetails),
     }),
     [fileDetails]
   );

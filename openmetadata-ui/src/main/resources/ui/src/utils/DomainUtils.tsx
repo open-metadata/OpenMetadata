@@ -26,7 +26,6 @@ import type {
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import { TreeListItem } from '../components/common/DomainSelectableTree/DomainSelectableTree.interface';
-import ResizablePanels from '../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
@@ -41,6 +40,15 @@ import { EntityReference } from '../generated/entity/type';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { DomainDetailPageTabProps } from './Domain/DomainClassBase';
+import {
+  domainBuildESQuery,
+  getQueryFilterForDataProducts,
+  getQueryFilterForDomain,
+  getQueryFilterToExcludeDomainTerms,
+  getQueryFilterToIncludeDomain,
+  initializeDomainEntityRef,
+  isDomainExist,
+} from './DomainFilterUtils';
 import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
 import { renderIcon } from './IconUtils';
@@ -52,9 +60,9 @@ import { getDomainPath } from './RouterUtils';
 
 const CustomPropertyTable = withSuspenseFallback(
   lazy(() =>
-    import(
-      '../components/common/CustomPropertyTable/CustomPropertyTable'
-    ).then((module) => ({ default: module.CustomPropertyTable }))
+    import('../components/common/CustomPropertyTable/CustomPropertyTable').then(
+      (module) => ({ default: module.CustomPropertyTable })
+    )
   )
 ) as <T extends ExtentionEntitiesKeys>(
   props: CustomPropertyProps<T>
@@ -116,6 +124,10 @@ const DomainTypeWidget = withSuspenseFallback(
   )
 );
 
+const ResizablePanels = withSuspenseFallback(
+  lazy(() => import('../components/common/ResizablePanels/ResizablePanels'))
+);
+
 export {
   domainBuildESQuery,
   getQueryFilterForDataProducts,
@@ -124,7 +136,7 @@ export {
   getQueryFilterToIncludeDomain,
   initializeDomainEntityRef,
   isDomainExist,
-} from './DomainFilterUtils';
+};
 
 // Domain type description which will be shown in tooltip
 export const domainTypeTooltipDataRender = () => (

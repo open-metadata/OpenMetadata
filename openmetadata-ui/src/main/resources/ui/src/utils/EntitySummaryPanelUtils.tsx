@@ -28,36 +28,38 @@ import { OperationPermission } from '../context/PermissionProvider/PermissionPro
 import { CSMode } from '../enums/codemirror.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SummaryEntityType } from '../enums/EntitySummary.enum';
-import { Tag } from '../generated/entity/classification/tag';
-import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
-import { Chart } from '../generated/entity/data/chart';
-import { Container } from '../generated/entity/data/container';
-import { Dashboard } from '../generated/entity/data/dashboard';
-import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
-import { Database } from '../generated/entity/data/database';
-import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
-import { Metric } from '../generated/entity/data/metric';
-import { MlFeature, Mlmodel } from '../generated/entity/data/mlmodel';
-import { Pipeline, Task } from '../generated/entity/data/pipeline';
-import { SearchIndex } from '../generated/entity/data/searchIndex';
-import {
+import type { Tag } from '../generated/entity/classification/tag';
+import type { APIEndpoint } from '../generated/entity/data/apiEndpoint';
+import type { Chart } from '../generated/entity/data/chart';
+import type { Container } from '../generated/entity/data/container';
+import type { Dashboard } from '../generated/entity/data/dashboard';
+import type { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
+import type { Database } from '../generated/entity/data/database';
+import type { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import type { Metric } from '../generated/entity/data/metric';
+import type { MlFeature, Mlmodel } from '../generated/entity/data/mlmodel';
+import type { Pipeline, Task } from '../generated/entity/data/pipeline';
+import type { SearchIndex } from '../generated/entity/data/searchIndex';
+import type {
   StoredProcedure,
   StoredProcedureCodeObject,
 } from '../generated/entity/data/storedProcedure';
-import { Column, Table, TableConstraint } from '../generated/entity/data/table';
-import { Field, Topic } from '../generated/entity/data/topic';
-import { DataProduct } from '../generated/entity/domains/dataProduct';
-import { Domain } from '../generated/entity/domains/domain';
-import { EntityReference } from '../generated/tests/testCase';
-import { getEntityName } from './EntityNameUtils';
 import type {
-  ListItemHighlights,
-  SummaryListItem,
-} from './EntitySummaryPanelPureUtils';
+  Column,
+  Table,
+  TableConstraint,
+} from '../generated/entity/data/table';
+import type { Field, Topic } from '../generated/entity/data/topic';
+import type { DataProduct } from '../generated/entity/domains/dataProduct';
+import type { Domain } from '../generated/entity/domains/domain';
+import type { EntityReference } from '../generated/tests/testCase';
+import { getEntityName } from './EntityNameUtils';
 import {
   getHighlightOfListItem,
   getMapOfListHighlights,
   getSummaryListItemType,
+  type ListItemHighlights,
+  type SummaryListItem,
 } from './EntitySummaryPanelPureUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
 import { t } from './i18next/LocalUtil';
@@ -77,7 +79,7 @@ const ColumnSummaryList = withSuspenseFallback(
   lazy(() =>
     import(
       '../components/Explore/EntitySummaryPanel/ColumnSummaryList/ColumnsSummaryList'
-    ).then((module) => ({ default: module.ColumnSummaryList }))
+    ).then((m) => ({ default: m.ColumnSummaryList }))
   )
 );
 
@@ -138,15 +140,25 @@ const RelatedMetrics = withSuspenseFallback(
   lazy(() => import('../components/Metric/RelatedMetrics/RelatedMetrics'))
 );
 
+export {
+  getHighlightOfListItem,
+  getMapOfListHighlights,
+  getSortedTagsWithHighlight,
+  getSummaryListItemType,
+  toEntityData,
+} from './EntitySummaryPanelPureUtils';
+export type { ListItemHighlights, SummaryListItem };
+
 const { Text } = Typography;
 
-/* @param {
-    listItem: SummaryItem,
-    highlightedTitle: will be a string if the title of given summaryItem is present in highlights | undefined
-}
-
-    @return SummaryItemTitle
-*/
+/*
+ * @param {
+ *   listItem: SummaryItem,
+ *   highlightedTitle: will be a string if the title of given summaryItem is present in highlights | undefined
+ * }
+ *
+ *  @return SummaryItemTitle
+ */
 export const getTitle = (
   listItem: SummaryListItem,
   highlightedTitle?: ListItemHighlights['highlightedTitle']
@@ -196,19 +208,19 @@ export const getTitle = (
 };
 
 /*
-    @params {
-        entityType: SummaryEntityType,
-        entityInfo: Array<SummaryListItem> = [],
-        highlights: highlights get from the query api + highlights added for tags (i.e. tag.name)
-        tableConstraints: only pass for SummayEntityType.Column
-    }
-    @return sorted and highlighted listItem array, but listItem will be type of BasicEntityInfo
-    
-    Note: SummaryItem will be sort and highlight only if -
-        # if listItem.tags present in highlights.tags
-        # if listItem.name present in highlights comes from query api
-        # if listItem.description present in highlights comes from query api
-*/
+ *  @params {
+ *     entityType: SummaryEntityType,
+ *     entityInfo: Array<SummaryListItem> = [],
+ *     highlights: highlights get from the query api + highlights added for tags (i.e. tag.name)
+ *     tableConstraints: only pass for SummayEntityType.Column
+ *  }
+ *  @return sorted and highlighted listItem array, but listItem will be type of BasicEntityInfo
+ *
+ *  Note: SummaryItem will be sort and highlight only if -
+ *      # if listItem.tags present in highlights.tags
+ *      # if listItem.name present in highlights comes from query api
+ *      # if listItem.description present in highlights comes from query api
+ */
 export const getFormattedEntityData = (
   entityType: SummaryEntityType,
   entityInfo: Array<SummaryListItem> = [],
@@ -219,13 +231,9 @@ export const getFormattedEntityData = (
     return [];
   }
 
-  // Only go ahead if entityType is present in SummaryEntityType enum
   if (Object.values(SummaryEntityType).includes(entityType)) {
-    // tagHighlights is the array of tagFQNs for highlighting tags
     const tagHighlights = get(highlights, 'tag.name', [] as string[]);
 
-    // listHighlights i.e. highlight get from query api
-    // listHighlightsMap i.e. map of highlight get from api to reduce search time complexity in highlights array
     const { listHighlights, listHighlightsMap } =
       getMapOfListHighlights(highlights);
 
@@ -237,7 +245,6 @@ export const getFormattedEntityData = (
 
     const { highlightedListItem, remainingListItem } = entityInfo.reduce(
       (acc, listItem) => {
-        // return the highlight of listItem
         const { highlightedTags, highlightedTitle, highlightedDescription } =
           getHighlightOfListItem(
             listItem,
@@ -246,7 +253,6 @@ export const getFormattedEntityData = (
             listHighlightsMap
           );
 
-        // convert listItem in BasicEntityInfo type
         const listItemModifiedData = {
           name: listItem.name ?? '',
           title: getTitle(listItem, highlightedTitle),
@@ -269,7 +275,6 @@ export const getFormattedEntityData = (
           }),
         };
 
-        // if highlights present in listItem then sort the listItem
         if (highlightedTags || highlightedTitle || highlightedDescription) {
           acc.highlightedListItem.push(listItemModifiedData);
         } else {

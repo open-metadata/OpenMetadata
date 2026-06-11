@@ -20,7 +20,7 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { Paging } from '../../../generated/type/paging';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getEntityLabel } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -74,7 +74,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
       const total = dataAssetsResponse.hits.total.value;
 
       const dataAssets = hits.map(({ _source }) => {
-        const entityName = getEntityLabel(_source);
+        const entityName = getEntityName(_source);
         const entityRef = getEntityReferenceFromEntity(
           _source as EntityReference,
           _source.entityType as EntityType
@@ -144,8 +144,8 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
                 type="circle"
                 width="24"
               />
-              <span className="m-l-xs" data-testid={getEntityLabel(option)}>
-                {getEntityLabel(option)}
+              <span className="m-l-xs" data-testid={getEntityName(option)}>
+                {getEntityName(option)}
               </span>
             </Space>
           );

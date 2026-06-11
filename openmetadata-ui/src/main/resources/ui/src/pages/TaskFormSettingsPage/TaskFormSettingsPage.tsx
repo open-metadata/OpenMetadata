@@ -40,7 +40,7 @@ import {
 import { AxiosError } from 'axios';
 import { lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { withSuspenseFallback } from '../../components/AppRouter/withSuspenseFallback';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {

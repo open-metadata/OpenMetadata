@@ -38,7 +38,7 @@ import {
   TaskPayload,
   TaskPriority,
 } from '../../../rest/tasksAPI';
-import { getEntityFeedLink } from '../../../utils/EntityLinkUtils';
+import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   applyTaskFormSchemaDefaults,

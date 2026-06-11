@@ -13,8 +13,8 @@
 import { isEmpty, isString, isUndefined } from 'lodash';
 import { parse, unparse } from 'papaparse';
 import type { Column } from 'react-data-grid';
-import { TableTypePropertyValueType } from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
-import {
+import type { TableTypePropertyValueType } from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import type {
   ExtensionDataProps,
   ExtensionDataTypes,
 } from '../../components/Modals/ModalWithCustomProperty/ModalWithMarkdownEditor.interface';

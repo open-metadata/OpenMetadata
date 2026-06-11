@@ -238,6 +238,60 @@ describe('ServiceDocPanel Component', () => {
     });
   });
 
+  describe('Brand Name Replacement', () => {
+    const originalEnv = process.env;
+
+    afterEach(() => {
+      process.env = originalEnv;
+    });
+
+    it('should replace OpenMetadata with BRAND_NAME when env var is set', async () => {
+      process.env = { ...originalEnv, BRAND_NAME: 'Collate' };
+      mockFetchMarkdownFile.mockResolvedValue(
+        'Connect to OpenMetadata using OpenMetadata SDK'
+      );
+
+      render(<ServiceDocPanel {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          'Connect to Collate using Collate SDK'
+        );
+      });
+    });
+
+    it('should keep OpenMetadata when BRAND_NAME env var is not set', async () => {
+      process.env = { ...originalEnv };
+      delete process.env.BRAND_NAME;
+      mockFetchMarkdownFile.mockResolvedValue(
+        'Connect to OpenMetadata using OpenMetadata SDK'
+      );
+
+      render(<ServiceDocPanel {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          'Connect to OpenMetadata using OpenMetadata SDK'
+        );
+      });
+    });
+
+    it('should replace all occurrences of OpenMetadata with BRAND_NAME', async () => {
+      process.env = { ...originalEnv, BRAND_NAME: 'MyBrand' };
+      mockFetchMarkdownFile.mockResolvedValue(
+        'OpenMetadata is great. Use OpenMetadata for metadata management.'
+      );
+
+      render(<ServiceDocPanel {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          'MyBrand is great. Use MyBrand for metadata management.'
+        );
+      });
+    });
+  });
+
   describe('Field Highlighting', () => {
     beforeEach(() => {
       mockQuerySelector.mockReturnValue(createMockElement());

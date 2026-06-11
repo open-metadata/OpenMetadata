@@ -33,7 +33,7 @@ import { EntityAttachmentProvider } from '../../../components/common/EntityDescr
 import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../../components/common/Table/Table';
 import ToggleExpandButton from '../../../components/common/ToggleExpandButton/ToggleExpandButton';
-import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
+import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../../components/Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../components/Database/TableDescription/TableDescription.component';
 import TableTags from '../../../components/Database/TableTags/TableTags.component';
@@ -57,24 +57,24 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
-import { getColumnSorter } from '../../../utils/EntitySortUtils';
-import { getEntityLabel } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   highlightSearchArrayElement,
   highlightSearchText,
 } from '../../../utils/EntitySearchUtils';
+import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { makeData } from '../../../utils/SearchIndexUtils';
 import { stringToHTML } from '../../../utils/StringUtils';
-import {
-  getAllTags,
-  searchTagInData,
-} from '../../../utils/TableTags/TableTags.utils';
 import {
   getHighlightedRowClassName,
   searchInFields,
   updateFieldDescription,
   updateFieldTags,
 } from '../../../utils/TablePureUtils';
+import {
+  getAllTags,
+  searchTagInData,
+} from '../../../utils/TableTags/TableTags.utils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import {
   SearchIndexCellRendered,
@@ -304,7 +304,7 @@ const SearchIndexFieldsTable = ({
             style={{ maxWidth: '80%' }}>
             <span className="break-word text-link-color">
               {stringToHTML(
-                highlightSearchText(getEntityLabel(record), searchText)
+                highlightSearchText(getEntityName(record), searchText)
               )}
             </span>
             <CopyLinkButton
@@ -473,7 +473,7 @@ const SearchIndexFieldsTable = ({
           <ModalWithMarkdownEditor
             header={`${t('label.edit-entity', {
               entity: t('label.field'),
-            })}: "${getEntityLabel(editField.field)}"`}
+            })}: "${getEntityName(editField.field)}"`}
             placeholder={t('label.enter-field-description', {
               field: t('label.field'),
             })}

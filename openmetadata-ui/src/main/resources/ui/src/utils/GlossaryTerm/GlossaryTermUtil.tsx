@@ -14,7 +14,7 @@ import { Space, Typography } from 'antd';
 import { lazy } from 'react';
 import { ReactComponent as IconTerm } from '../../assets/svg/book.svg';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
-import { useGenericContext } from '../../components/Customization/GenericProvider/GenericContext';
+import { useGenericContext } from '../../components/Customization/GenericProvider/GenericProvider';
 import { CommonWidgets } from '../../components/DataAssets/CommonWidgets/CommonWidgets';
 import { DomainLabelV2 } from '../../components/DataAssets/DomainLabelV2/DomainLabelV2';
 import { OwnerLabelV2 } from '../../components/DataAssets/OwnerLabelV2/OwnerLabelV2';
@@ -28,8 +28,8 @@ import { EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/data/table';
 import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
-import { ENTITY_LINK_SEPARATOR } from '../EntityLinkUtils';
 import { getEntityName } from '../EntityNameUtils';
+import { ENTITY_LINK_SEPARATOR } from '../EntityPureUtils';
 import {
   convertEntityReferencesToTagLabels,
   convertTagLabelsToEntityReferences,

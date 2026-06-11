@@ -55,7 +55,7 @@ import { ServicesType } from '../../interface/service.interface';
 import { searchQuery } from '../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import { getBulkEditButton } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
-import { getEntityBulkEditPath } from '../../utils/EntityLinkUtils';
+import { getEntityBulkEditPath } from '../../utils/EntityPureUtils';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
@@ -68,7 +68,7 @@ import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
   getSearchIndexForService,
-} from '../../utils/ServicePureUtils';
+} from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TablePureUtils';
 import { createTagObject } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';

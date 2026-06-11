@@ -13,13 +13,13 @@
 
 import { cloneDeep, isEqual, uniqBy } from 'lodash';
 import { EntityField } from '../constants/Feeds.constants';
-import {
+import type {
   ChangeDescription,
   SearchIndex,
 } from '../generated/entity/data/searchIndex';
-import { TagLabel } from '../generated/type/tagLabel';
-import { EntityDiffProps } from '../interface/EntityVersion.interface';
-import { VersionData } from '../pages/EntityVersionPage/EntityVersionPage.component';
+import type { TagLabel } from '../generated/type/tagLabel';
+import type { EntityDiffProps } from '../interface/EntityVersion.interface';
+import type { VersionData } from '../pages/EntityVersionPage/EntityVersionPage.component';
 import {
   getAllChangedEntityNames,
   getAllDiffByFieldName,
@@ -30,8 +30,8 @@ import {
   isEndsWithField,
 } from './EntityDiffPureUtils';
 import { getTextDiff } from './EntityDiffUtils';
-import { getTagsDiff } from './EntityVersionUtils';
-import { TagLabelWithStatus } from './EntityVersionUtils.interface';
+import type { TagLabelWithStatus } from './EntityVersionUtils.interface';
+import { getTagsDiff } from './EntityVersionUtilsPure';
 
 const handleFieldDescriptionChangeDiff = (
   fieldsDiff: EntityDiffProps,

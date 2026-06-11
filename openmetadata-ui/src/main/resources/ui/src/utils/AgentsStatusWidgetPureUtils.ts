@@ -12,7 +12,7 @@
  */
 
 import { groupBy, isEmpty, reduce } from 'lodash';
-import { AgentsInfo } from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget.interface';
+import type { AgentsInfo } from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget.interface';
 import { AUTOPILOT_AGENTS_STATUS_ORDERED_LIST } from '../constants/AgentsStatusWidget.constant';
 import {
   COLLATE_AUTO_TIER_APP_NAME,

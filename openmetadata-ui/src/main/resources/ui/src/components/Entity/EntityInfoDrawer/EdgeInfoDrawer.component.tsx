@@ -25,6 +25,7 @@ import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { AddLineage } from '../../../generated/api/lineage/addLineage';
 import { Source } from '../../../generated/type/entityLineage';
+import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import {
   getColumnFunctionValue,
   getLineageDetailsObject,
@@ -32,7 +33,7 @@ import {
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
-import { withSuspenseFallback } from '../../AppRouter/withSuspenseFallback';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import Loader from '../../common/Loader/Loader';
 import './entity-info-drawer.less';
 import { EdgeInfoDrawerInfo } from './EntityInfoDrawer.interface';
@@ -56,6 +57,12 @@ const ModalWithQueryEditor = withSuspenseFallback(
     )
   )
 );
+
+const getUserTimeValue = (user?: string, timestamp?: number) => {
+  const valueParts = [user, getRelativeTime(timestamp)].filter(Boolean);
+
+  return valueParts.length > 0 ? valueParts.join(' ') : NO_DATA_PLACEHOLDER;
+};
 
 const EdgeInfoDrawer = ({
   edge,
@@ -303,6 +310,20 @@ const EdgeInfoDrawer = ({
           pipeline.fullyQualifiedName
         ),
         isLink: true,
+      });
+    }
+
+    const edgeInfo = data?.edge;
+    if (edgeInfo?.createdBy || edgeInfo?.createdAt) {
+      overviewData.push({
+        name: t('label.created-by'),
+        value: getUserTimeValue(edgeInfo?.createdBy, edgeInfo?.createdAt),
+      });
+    }
+    if (edgeInfo?.updatedBy || edgeInfo?.updatedAt) {
+      overviewData.push({
+        name: t('label.updated-by'),
+        value: getUserTimeValue(edgeInfo?.updatedBy, edgeInfo?.updatedAt),
       });
     }
 

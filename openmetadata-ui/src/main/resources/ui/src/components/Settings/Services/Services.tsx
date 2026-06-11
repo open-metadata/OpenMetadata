@@ -46,16 +46,16 @@ import { getServices, searchService } from '../../../rest/serviceAPI';
 import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import { getServiceLogo } from '../../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { highlightSearchText } from '../../../utils/EntitySearchUtils';
+import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getServiceDetailsPath } from '../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import {
+  getOptionalFields,
   getResourceEntityFromServiceCategory,
   getServiceTypesFromServiceCategory,
-} from '../../../utils/ServicePureUtils';
-import { getOptionalFields } from '../../../utils/ServiceUtils';
+} from '../../../utils/ServiceUtils';
 import { stringToHTML } from '../../../utils/StringUtils';
 import {
   columnFilterIcon,

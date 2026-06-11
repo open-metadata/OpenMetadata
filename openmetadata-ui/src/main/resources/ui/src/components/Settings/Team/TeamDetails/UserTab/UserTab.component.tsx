@@ -45,7 +45,7 @@ import { searchQuery } from '../../../../../rest/searchAPI';
 import { exportUserOfTeam } from '../../../../../rest/teamsAPI';
 import { getUsers } from '../../../../../rest/userAPI';
 import { formatUsersResponse } from '../../../../../utils/APIUtils';
-import { getEntityLabel } from '../../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../../../utils/EntityReferenceUtils';
 import { getSettingsPathWithFqn } from '../../../../../utils/RouterUtils';
 import { getTermQuery } from '../../../../../utils/SearchUtils';
@@ -352,7 +352,7 @@ export const UserTab = ({
             {!isTeamDeleted && (
               <ManageButton
                 canDelete={false}
-                displayName={getEntityLabel(currentTeam)}
+                displayName={getEntityName(currentTeam)}
                 entityName={currentTeam.name}
                 entityType={EntityType.USER}
                 extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
@@ -371,7 +371,7 @@ export const UserTab = ({
     ) : (
       <ErrorPlaceHolder
         placeholderText={t('message.no-user-part-of-team', {
-          team: getEntityLabel(currentTeam),
+          team: getEntityName(currentTeam),
         })}
       />
     );
@@ -411,7 +411,7 @@ export const UserTab = ({
                 )}
                 <ManageButton
                   canDelete={false}
-                  displayName={getEntityLabel(currentTeam)}
+                  displayName={getEntityName(currentTeam)}
                   entityName={currentTeam.name}
                   entityType={EntityType.USER}
                   extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
@@ -446,7 +446,7 @@ export const UserTab = ({
         onOk={handleRemoveUser}>
         {t('message.are-you-sure-want-to-text', {
           text: t('label.remove-entity', {
-            entity: getEntityLabel(deletingUser),
+            entity: getEntityName(deletingUser),
           }),
         })}
       </Modal>

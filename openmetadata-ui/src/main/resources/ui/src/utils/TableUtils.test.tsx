@@ -18,9 +18,9 @@ import { Column, DataType, Table } from '../generated/entity/data/table';
 import { EntityReference } from '../generated/type/entityReference';
 import { LabelType, State, TagSource } from '../generated/type/tagLabel';
 import { MOCK_TABLE, MOCK_TABLE_DBT } from '../mocks/TableData.mock';
+import { ExtraTableDropdownOptions } from '../utils/TableDropdownOptions';
 import {
   extractColumnsFromData,
-  extractTableColumns,
   fieldExistsByFQN,
   findColumnByEntityLink,
   getCertificationTag,
@@ -43,11 +43,11 @@ import {
   updateColumnInNestedStructure,
   updateFieldExtension,
 } from '../utils/TablePureUtils';
-import { ExtraTableDropdownOptions } from '../utils/TableDropdownOptions';
 import { getTableDetailPageBaseTabs } from '../utils/TableTabsUtils';
 import { getEntityIcon } from '../utils/TableUtils';
 import EntityLink from './EntityLink';
 import { TableDetailPageTabProps } from './TableClassBase';
+import { extractTableColumns } from './TablePureUtils';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 
 type ParentFieldObject = {

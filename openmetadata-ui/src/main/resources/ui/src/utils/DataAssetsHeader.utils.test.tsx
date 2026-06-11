@@ -51,15 +51,18 @@ jest.mock('./DataAssetsHeader.utils', () => ({
   ...jest.requireActual('./DataAssetsHeader.utils'),
   ExtraInfoLink: jest.fn().mockImplementation(({ value }) => value),
 }));
-jest.mock('./EntityUtils', () => ({
-  ...jest.requireActual('./EntityUtils'),
-  getEntityLabel: jest.fn().mockReturnValue('entityName'),
+jest.mock('./EntityNameUtils', () => ({
+  getEntityName: jest.fn().mockReturnValue('entityName'),
+}));
+jest.mock('./EntityBreadcrumbPureUtils', () => ({
   getEntityBreadcrumbs: jest.fn().mockReturnValue([
     {
       name: 'entityName',
       url: 'url',
     },
   ]),
+}));
+jest.mock('./EntityDataBreadcrumbUtils', () => ({
   getBreadcrumbForTable: jest.fn().mockReturnValue([
     {
       name: 'entityName',

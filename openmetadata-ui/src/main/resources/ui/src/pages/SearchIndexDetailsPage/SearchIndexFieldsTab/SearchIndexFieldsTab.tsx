@@ -13,7 +13,7 @@
 
 import { lazy, useCallback, useMemo } from 'react';
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
-import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
+import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
 import {
   SearchIndex,
   SearchIndexField,

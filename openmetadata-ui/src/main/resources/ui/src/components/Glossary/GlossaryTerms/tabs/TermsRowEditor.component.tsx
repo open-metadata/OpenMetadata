@@ -22,7 +22,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../../generated/entity/type';
 import { searchGlossaryTermsPaginated } from '../../../../rest/glossaryAPI';
-import { getEntityLabel } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../../utils/EntityReferenceUtils';
 import {
   TermItem,
@@ -80,7 +80,7 @@ const TermsRow: React.FC<TermsRowProps> = ({
       .filter((term) => term.fullyQualifiedName !== excludeFQN)
       .map((term) => ({
         id: term.fullyQualifiedName ?? '',
-        label: getEntityLabel(term),
+        label: getEntityName(term),
       }));
 
     if (isSearchActive && items.length === 0) {
@@ -143,7 +143,7 @@ const TermsRow: React.FC<TermsRowProps> = ({
       if (term) {
         const updated = [
           ...selectedTerms,
-          { id: term.fullyQualifiedName ?? '', label: getEntityLabel(term) },
+          { id: term.fullyQualifiedName ?? '', label: getEntityName(term) },
         ];
         setSelectedTerms(updated);
         onTermsChange(rowId, toTermItems(updated));

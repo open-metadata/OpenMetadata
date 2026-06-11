@@ -40,8 +40,8 @@ import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
-import { getEntityLabel } from '../../../utils/EntityUtils';
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import {
   fetchEntityActivityCountInto,
@@ -120,7 +120,7 @@ function WorksheetDetails({
       ...worksheetDetails,
       tier: getTierTags(worksheetDetails.tags ?? []),
       worksheetTags: getTagsWithoutTier(worksheetDetails.tags ?? []),
-      entityName: getEntityLabel(worksheetDetails),
+      entityName: getEntityName(worksheetDetails),
     }),
     [worksheetDetails]
   );

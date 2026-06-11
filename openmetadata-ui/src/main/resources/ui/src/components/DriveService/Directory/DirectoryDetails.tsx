@@ -42,9 +42,9 @@ import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import directoryClassBase from '../../../utils/DirectoryClassBase';
-import { getEntityLabel } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import {
   fetchEntityActivityCountInto,
@@ -126,7 +126,7 @@ function DirectoryDetails({
       ...directoryDetails,
       tier: getTierTags(directoryDetails.tags ?? []),
       directoryTags: getTagsWithoutTier(directoryDetails.tags ?? []),
-      entityName: getEntityLabel(directoryDetails),
+      entityName: getEntityName(directoryDetails),
     }),
     [directoryDetails]
   );

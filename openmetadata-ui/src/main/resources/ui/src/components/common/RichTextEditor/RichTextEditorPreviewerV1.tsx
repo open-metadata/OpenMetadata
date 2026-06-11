@@ -14,13 +14,13 @@ import { Button } from 'antd';
 import classNames from 'classnames';
 import { FC, lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import { DESCRIPTION_MAX_PREVIEW_CHARACTERS } from '../../../constants/constants';
 import {
-  formatContentForClient,
+  formatContent,
   isDescriptionContentEmpty,
-} from '../../../utils/BlockEditorPureUtils';
+} from '../../../utils/BlockEditorUtils';
 import { getTrimmedContent } from '../../../utils/StringUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './rich-text-editor-previewerV1.less';
 import { PreviewerProp } from './RichTextEditor.interface';
 
@@ -65,7 +65,7 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
   }, [hasReadMore, readMore, maxLength, content]);
 
   useEffect(() => {
-    setContent(formatContentForClient(markdown));
+    setContent(formatContent(markdown, 'client'));
   }, [markdown]);
 
   useEffect(() => {

@@ -14,11 +14,11 @@ import { Button } from 'antd';
 import classNames from 'classnames';
 import { FC, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import {
-  formatContentForClient,
+  formatContent,
   isDescriptionContentEmpty,
-} from '../../../utils/BlockEditorPureUtils';
+} from '../../../utils/BlockEditorUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './rich-text-editor-previewerV1.less';
 import { PreviewerProp } from './RichTextEditor.interface';
 
@@ -59,7 +59,7 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
   const handleReadMoreToggle = () => setReadMore((prev) => !prev);
 
   useEffect(() => {
-    setContent(formatContentForClient(markdown));
+    setContent(formatContent(markdown, 'client'));
     setIsContentLoaded(false);
     setIsOverflowing(false);
   }, [markdown]);

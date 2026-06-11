@@ -11,25 +11,13 @@
  *  limitations under the License.
  */
 
-import { isUndefined } from 'lodash';
-import { Node } from 'reactflow';
-import {
-  PLACEHOLDER_ROUTE_ENTITY_TYPE,
-  PLACEHOLDER_ROUTE_FQN,
-  ROUTES,
-} from '../constants/constants';
-import {
-  EntityLineageNodeType,
-  EntityTabs,
-  EntityType,
-} from '../enums/entity.enum';
-import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
+import { EntityTabs, EntityType } from '../enums/entity.enum';
+import { ServiceCategory } from '../enums/service.enum';
 import {
   AlertType,
-  EventSubscription,
+  type EventSubscription,
 } from '../generated/events/eventSubscription';
-import { SearchSourceAlias } from '../interface/search.interface';
-import EntityLink from './EntityLink';
+import type { SearchSourceAlias } from '../interface/search.interface';
 import { getKnowledgePagePath } from './KnowledgePageUtils';
 import {
   getApplicationDetailsPath,
@@ -38,7 +26,6 @@ import {
   getDataProductDetailsPath,
   getDomainDetailsPath,
   getEntityDetailsPath,
-  getGlossaryPath,
   getGlossaryTermDetailsPath,
   getKpiPath,
   getNotificationAlertDetailsPath,
@@ -51,31 +38,6 @@ import {
   getTeamsWithFqnPath,
   getTestCaseDetailPagePath,
 } from './RouterUtils';
-import { getEncodedFqn } from './StringUtils';
-
-export const ENTITY_LINK_SEPARATOR = '::';
-
-export const getEntityFeedLink = (
-  type?: string,
-  fqn?: string,
-  field?: string
-): string => {
-  if (isUndefined(type) || isUndefined(fqn)) {
-    return '';
-  }
-
-  return `<#E${ENTITY_LINK_SEPARATOR}${type}${ENTITY_LINK_SEPARATOR}${fqn}${
-    field ? `${ENTITY_LINK_SEPARATOR}${field}` : ''
-  }>`;
-};
-
-/*
-  params: userName - fullyQualifiedName
-  return : <#E::user::userName>
-*/
-export const getEntityUserLink = (userName: string): string => {
-  return `<#E${ENTITY_LINK_SEPARATOR}user${ENTITY_LINK_SEPARATOR}${userName}>`;
-};
 
 export const getEntityLinkFromType = (
   fullyQualifiedName: string,
@@ -198,80 +160,4 @@ export const getEntityLinkFromType = (
     default:
       return '';
   }
-};
-
-export const getColumnNameFromEntityLink = (entityLink: string) => {
-  return EntityLink.getTableColumnName(entityLink);
-};
-
-export const getEntityImportPath = (entityType: EntityType, fqn: string) => {
-  return ROUTES.ENTITY_IMPORT.replace(
-    PLACEHOLDER_ROUTE_ENTITY_TYPE,
-    entityType
-  ).replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
-};
-
-export const getEntityBulkEditPath = (entityType: EntityType, fqn: string) => {
-  return ROUTES.BULK_EDIT_ENTITY_WITH_FQN.replace(
-    PLACEHOLDER_ROUTE_ENTITY_TYPE,
-    entityType
-  ).replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
-};
-
-/**
- * Updates the node type based on whether it's a source or target node
- * @param node - The node to update
- * @param sourceNodeId - ID of the source node
- * @param targetNodeId - ID of the target node
- * @returns The updated node with the correct type
- */
-export const updateNodeType = (
-  node: Node,
-  sourceNodeId?: string,
-  targetNodeId?: string
-): Node => {
-  if (node.id === sourceNodeId) {
-    return {
-      ...node,
-      type: EntityLineageNodeType.INPUT,
-    };
-  }
-  if (node.id === targetNodeId) {
-    return {
-      ...node,
-      type: EntityLineageNodeType.OUTPUT,
-    };
-  }
-
-  return node;
-};
-
-export const getGlossaryBreadcrumbPath = (
-  fullyQualifiedName: string,
-  glossaryFqn: string
-) => {
-  const fqnList = fullyQualifiedName ? fullyQualifiedName.split('.') : [];
-  const tree = fqnList.slice(1, fqnList.length);
-
-  return [
-    {
-      name: glossaryFqn,
-      url: getGlossaryPath(glossaryFqn),
-    },
-    ...tree.map((fqn: string, index: number, source: string[]) => ({
-      name: fqn,
-      url: getGlossaryPath(
-        `${glossaryFqn}.${source.slice(0, index + 1).join('.')}`
-      ),
-    })),
-  ];
-};
-
-export const getServiceCategoryPath = (name: string, type?: string) => {
-  return name
-    ? getServiceDetailsPath(
-        name,
-        ServiceCategoryPlural[type as keyof typeof ServiceCategoryPlural]
-      )
-    : '';
 };

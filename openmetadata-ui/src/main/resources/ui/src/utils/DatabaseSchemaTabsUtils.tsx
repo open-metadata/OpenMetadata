@@ -19,21 +19,21 @@ import type {
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
-import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
+import type { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/page';
-import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import { DatabaseSchemaPageTabProps } from './DatabaseSchemaClassBase';
+import type { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
+import type { DatabaseSchemaPageTabProps } from './DatabaseSchemaClassBase';
 import { t } from './i18next/LocalUtil';
 
 const CustomPropertyTable = withSuspenseFallback(
   lazy(() =>
-    import(
-      '../components/common/CustomPropertyTable/CustomPropertyTable'
-    ).then((module) => ({ default: module.CustomPropertyTable }))
+    import('../components/common/CustomPropertyTable/CustomPropertyTable').then(
+      (module) => ({ default: module.CustomPropertyTable })
+    )
   )
 ) as <T extends ExtentionEntitiesKeys>(
   props: CustomPropertyProps<T>

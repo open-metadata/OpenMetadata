@@ -12,8 +12,8 @@
  */
 
 import { isArray } from 'lodash';
-import React, { ReactNode } from 'react';
-import {
+import React, { type ReactNode } from 'react';
+import type {
   DataAssetsType,
   DataAssetsWithServiceField,
 } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';

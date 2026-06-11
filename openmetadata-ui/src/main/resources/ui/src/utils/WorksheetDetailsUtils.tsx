@@ -38,6 +38,22 @@ const WorksheetColumnsTable = withSuspenseFallback(
   )
 );
 
+const ContractTab = withSuspenseFallback(
+  lazy(() =>
+    import('../components/DataContract/ContractTab/ContractTab').then(
+      (module) => ({ default: module.ContractTab })
+    )
+  )
+);
+const WorksheetColumnsTable = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/DriveService/Worksheet/WorksheetColumnsTable/WorksheetColumnsTable'
+      )
+  )
+);
+
 export interface WorksheetDetailPageTabProps {
   activityFeedTab: JSX.Element;
   lineageTab: JSX.Element;

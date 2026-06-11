@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { RuleObject } from 'antd/lib/form';
+import type { RuleObject } from 'antd/lib/form';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isEmpty, isEqual, isUndefined, map, omitBy, startCase } from 'lodash';
-import { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
+import type { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
 import {
   DESTINATION_DROPDOWN_TABS,
   DESTINATION_SOURCE_ITEMS,
@@ -22,19 +22,19 @@ import {
 } from '../../constants/Alerts.constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
 import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
-import { EventSubscriptionDiagnosticInfo } from '../../generated/events/api/eventSubscriptionDiagnosticInfo';
-import {
+import type { EventSubscriptionDiagnosticInfo } from '../../generated/events/api/eventSubscriptionDiagnosticInfo';
+import type {
   ChangeEvent,
-  Status,
   TypedEvent,
 } from '../../generated/events/api/typedEvent';
+import { Status } from '../../generated/events/api/typedEvent';
 import {
   Destination,
   SubscriptionCategory,
   SubscriptionType,
-  Webhook,
+  type Webhook,
 } from '../../generated/events/eventSubscription';
-import { ModifiedDestination } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import type { ModifiedDestination } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { t } from '../i18next/LocalUtil';
 
 export const getFunctionDisplayName = (func: string): string => {

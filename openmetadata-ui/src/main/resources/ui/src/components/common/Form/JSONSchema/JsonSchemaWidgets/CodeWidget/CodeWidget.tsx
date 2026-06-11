@@ -12,7 +12,7 @@
  */
 import { WidgetProps } from '@rjsf/utils';
 import { lazy, useCallback } from 'react';
-import { withSuspenseFallback } from '../../../../../AppRouter/withSuspenseFallback';
+import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
 import './code-widget.less';
 
 const SchemaEditor = withSuspenseFallback(

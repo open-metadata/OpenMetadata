@@ -29,7 +29,6 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { ModifiedGlossaryTerm } from '../../Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import { TreeDataResponse, TreeNode } from '../atoms/asyncTreeSelect/types';
-
 import {
   convertGlossaryTermsToTreeOptionsWithNames,
   convertToTreeNodes,

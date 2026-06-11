@@ -10,15 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
+import type {
   FieldOrGroup,
   Fields,
+  OldJsonItem,
   OldJsonTree,
 } from '@react-awesome-query-builder/antd';
 import { isBoolean, isEmpty, isUndefined } from 'lodash';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
-import {
+import type {
   EsBoolQuery,
   EsExistsQuery,
   EsTerm,
@@ -407,10 +408,10 @@ export const getJsonTreeFromQueryFilter = (
           ),
           id: id2,
           path: [id1, id2],
-        },
+        } as OldJsonItem,
       },
       id: id1,
-    } as unknown as OldJsonTree;
+    };
   } catch {
     return {} as OldJsonTree;
   }
@@ -820,11 +821,9 @@ export const migrateJsonLogic = (
         };
       }
     }
-
     if (Array.isArray(node)) {
       return node.map(migrateNode) as unknown as JsonLogic;
     }
-
     const result: Record<string, JsonLogic> = {};
     for (const key in node) {
       result[key] = migrateNode(node[key] as JsonLogic);

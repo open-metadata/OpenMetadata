@@ -50,10 +50,13 @@ import {
 } from '../../../../utils/EntityVersionUtils';
 import { VersionEntityTypes } from '../../../../utils/EntityVersionUtils.interface';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
-import { getTagsWithoutTier, getTierTags } from '../../../../utils/TablePureUtils';
+import {
+  getTagsWithoutTier,
+  getTierTags,
+} from '../../../../utils/TablePureUtils';
 import { createTagObject } from '../../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
-import { withSuspenseFallback } from '../../../AppRouter/withSuspenseFallback';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import TestSummary from '../../../Database/Profiler/TestSummary/TestSummary';

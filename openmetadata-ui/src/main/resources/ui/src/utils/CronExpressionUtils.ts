@@ -13,8 +13,8 @@
 
 import { isUndefined, toNumber, toString } from 'lodash';
 
-import { RuleObject } from 'rc-field-form/es/interface';
-import {
+import type { RuleObject } from 'rc-field-form/es/interface';
+import type {
   Combination,
   StateValue,
   WorkflowExtraConfig,
@@ -175,9 +175,6 @@ export const getDefaultScheduleValue = ({
       : defaultSchedule || DEFAULT_SCHEDULE_CRON_DAILY;
   }
 
-  // In case of include periodOptions are present
-  // but the default schedule is undefined and allowNoSchedule is true
-  // return the default schedule
   if (allowNoSchedule && isUndefined(defaultSchedule)) {
     return defaultSchedule;
   }
@@ -188,8 +185,6 @@ export const getDefaultScheduleValue = ({
 export const getDefaultScheduleFromPeriod = (
   includePeriodOptions: string[]
 ) => {
-  // By order, return the default schedule as day, week, month and hour as a last resort
-  // if none of the previous options are included
   if (includePeriodOptions.includes('day')) {
     return DEFAULT_SCHEDULE_CRON_DAILY;
   } else if (includePeriodOptions.includes('week')) {
@@ -200,11 +195,9 @@ export const getDefaultScheduleFromPeriod = (
     return DEFAULT_SCHEDULE_CRON_HOURLY;
   }
 
-  // return the fallback schedule as daily
   return DEFAULT_SCHEDULE_CRON_DAILY;
 };
 
-// Function to update return updated state from form values
 export const getUpdatedStateFromFormState = <T>(
   currentState: StateValue,
   formValues: StateValue & WorkflowExtraConfig & T
@@ -213,31 +206,22 @@ export const getUpdatedStateFromFormState = <T>(
     const newState = { ...currentState, ...formValues };
     let { min, hour, dow, dom } = newState;
 
-    // min, hour values in a state should be a string
-    // which can be parsed to number to be a valid values for the
-    // respective cron select fields.
     min = isNaN(toNumber(min)) ? '0' : min;
     hour = isNaN(toNumber(hour)) ? '0' : hour;
     const cronValue = newState.cron?.split(' ');
 
     switch (newState.selectedPeriod) {
       case 'week':
-        // For selected period week, dow should be a valid value i.e. a number string
-        // and the dom should be '*'
         dow = isNaN(toNumber(dow)) ? '1' : dow;
         dom = '*';
 
         break;
       case 'month':
-        // For selected period month, dom should be a valid value i.e. a number string
-        // and the dow should be '*'
         dom = isNaN(toNumber(dom)) ? '1' : dom;
         dow = '*';
 
         break;
       case 'custom':
-        // For selected period custom, change the min, hour, dom and dow values
-        // to the values parsed from the cron string
         min = cronValue?.[0] ?? '0';
         hour = cronValue?.[1] ?? '0';
         dom = cronValue?.[2] ?? '*';
@@ -261,14 +245,11 @@ export const getUpdatedStateFromFormState = <T>(
 export const cronValidator = async (_: RuleObject, value: string) => {
   const trimmedValue = value.trim();
 
-  // to avoid multiple validation errors
   if (!trimmedValue) {
     return;
   }
 
   const cronParts = trimmedValue.split(' ');
-
-  // Check if the cron expression has exactly 5 fields (standard Unix cron)
 
   if (cronParts.length !== 5) {
     return Promise.reject(
@@ -276,7 +257,6 @@ export const cronValidator = async (_: RuleObject, value: string) => {
     );
   }
 
-  // Validate that each field follows standard Unix cron format
   const [minute, hour, dayOfMonth, month, dayOfWeek] = cronParts;
 
   if (!MINUTE_PATTERN.test(minute)) {
@@ -305,10 +285,8 @@ export const cronValidator = async (_: RuleObject, value: string) => {
 
   try {
     const cronstrue = (await import('cronstrue/i18n')).default;
-    // Check if cron is valid and get the description
     const description = cronstrue.toString(trimmedValue);
 
-    // Check if cron has a frequency of less than an hour
     const isFrequencyInMinutes = /Every \d* *minute/.test(description);
     const isFrequencyInSeconds = /Every \d* *second/.test(description);
 
@@ -320,7 +298,6 @@ export const cronValidator = async (_: RuleObject, value: string) => {
 
     return Promise.resolve();
   } catch {
-    // If cronstrue fails to parse, it's an invalid cron expression
     return Promise.reject(new Error(i18n.t('message.cron-invalid-expression')));
   }
 };

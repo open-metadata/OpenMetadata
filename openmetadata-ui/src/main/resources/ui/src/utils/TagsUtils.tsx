@@ -16,10 +16,11 @@ import { Space, Tag as AntdTag, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
-import React, { lazy } from 'react';
+import React from 'react';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as DeleteIcon } from '../assets/svg/ic-delete.svg';
-import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import Loader from '../components/common/Loader/Loader';
+import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { SettledStatus } from '../enums/Axios.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Classification } from '../generated/entity/classification/classification';
@@ -34,42 +35,30 @@ import {
   getTags,
 } from '../rest/tagAPI';
 import { getEntityName } from './EntityNameUtils';
-import { getQueryFilterToIncludeApprovedTerm } from './GlossaryUtils';
-import { getTagDisplay } from './TagTransformUtils';
+import { getQueryFilterToIncludeApprovedTerm } from './GlossaryPureUtils';
+import { getTagDisplay } from './TagsPureUtils';
 
-const Loader = withSuspenseFallback(
-  lazy(() => import('../components/common/Loader/Loader'))
-);
-
-const RichTextEditorPreviewerV1 = withSuspenseFallback(
-  lazy(
-    () =>
-      import('../components/common/RichTextEditor/RichTextEditorPreviewerV1')
-  )
-);
-
-export {
-  getExcludedIndexesBasedOnEntityTypeEditTagPermission,
-  getQueryFilterToExcludeTermsAndEntities,
-  getTagAssetsQueryFilter,
-  getTagRedirectLink,
-  getUsageCountLink,
-} from './TagsPureUtils';
 export {
   createCertificationTag,
   createTagObject,
   createTierTag,
   getClassificationTags,
+  getExcludedIndexesBasedOnEntityTypeEditTagPermission,
   getGlossaryTags,
+  getQueryFilterToExcludeTermsAndEntities,
   getTableTags,
+  getTagAssetsQueryFilter,
   getTagDisplay,
   getTagName,
   getTagPlaceholder,
+  getTagRedirectLink,
   getTagValue,
+  getUsageCountLink,
   isGlossaryTag,
   updateCertificationTag,
   updateTierTag,
-} from './TagTransformUtils';
+} from './TagsPureUtils';
+export type { ResultType } from './TagsPureUtils';
 
 export const getClassifications = async (
   fields?: Array<string> | string,
@@ -209,12 +198,6 @@ export const tagRender = (customTagProps: CustomTagProps) => {
       </Tooltip>
     </AntdTag>
   );
-};
-
-export type ResultType = {
-  label: string;
-  value: string;
-  data: Tag;
 };
 
 export const fetchGlossaryList = async (

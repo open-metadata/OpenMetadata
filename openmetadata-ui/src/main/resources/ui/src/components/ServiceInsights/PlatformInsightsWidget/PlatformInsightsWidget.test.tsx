@@ -15,8 +15,8 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { SystemChartType } from '../../../enums/DataInsight.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
-import { getTitleByChartType } from '../../../utils/ServiceInsightsTabUtils';
-import { getReadableCountString } from '../../../utils/ServicePureUtils';
+import { getTitleByChartType } from '../../../utils/ServiceInsightsTabPureUtils';
+import { getReadableCountString } from '../../../utils/ServiceUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import PlatformInsightsWidget from './PlatformInsightsWidget';
 import { PlatformInsightsWidgetProps } from './PlatformInsightsWidget.interface';
@@ -26,11 +26,11 @@ jest.mock('../../../utils/useRequiredParams', () => ({
   useRequiredParams: jest.fn(),
 }));
 
-jest.mock('../../../utils/ServiceInsightsTabUtils', () => ({
+jest.mock('../../../utils/ServiceInsightsTabPureUtils', () => ({
   getTitleByChartType: jest.fn(),
 }));
 
-jest.mock('../../../utils/ServicePureUtils', () => ({
+jest.mock('../../../utils/ServiceUtils', () => ({
   getReadableCountString: jest.fn(),
 }));
 

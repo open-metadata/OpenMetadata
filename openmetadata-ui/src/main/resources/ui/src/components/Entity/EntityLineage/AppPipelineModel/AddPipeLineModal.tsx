@@ -25,7 +25,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { EntityReference } from '../../../../generated/entity/type';
 import { searchQuery } from '../../../../rest/searchAPI';
-import { getEntityLabel } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../../utils/EntityReferenceUtils';
 import Fqn from '../../../../utils/Fqn';
 import searchClassBase from '../../../../utils/SearchClassBase';
@@ -177,7 +177,7 @@ const AddPipeLineModal = ({
                 </div>
                 <div className="d-flex flex-col">
                   <span className="font-medium truncate">
-                    {getEntityLabel(item)}
+                    {getEntityName(item)}
                   </span>
                 </div>
               </div>

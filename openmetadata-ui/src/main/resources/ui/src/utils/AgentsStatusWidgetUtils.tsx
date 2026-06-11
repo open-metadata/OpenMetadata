@@ -23,6 +23,10 @@ import { ReactComponent as UsageIcon } from '../assets/svg/ic-database.svg';
 import { ReactComponent as LineageIcon } from '../assets/svg/ic-inherited-roles.svg';
 import { ReactComponent as PendingIcon } from '../assets/svg/ic-pending.svg';
 import { ReactComponent as RunningIcon } from '../assets/svg/ic-running.svg';
+import {
+  getAgentLabelFromType,
+  getAgentStatusLabelFromStatus,
+} from './AgentsStatusWidgetPureUtils';
 
 import { ReactComponent as AutoClassificationIcon } from '../assets/svg/ic-auto-classification.svg';
 import { ReactComponent as AutoTieringIcon } from '../assets/svg/ic-auto-tiering.svg';
@@ -32,8 +36,8 @@ import { ReactComponent as ProfilerIcon } from '../assets/svg/ic-stack-search.sv
 
 import { Skeleton, Typography } from 'antd';
 import { isEmpty, isUndefined, reduce } from 'lodash';
-import { AgentsInfo } from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget.interface';
-import {
+import type { AgentsInfo } from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget.interface';
+import type {
   AgentsLiveInfo,
   CollateAgentLiveInfo,
 } from '../components/ServiceInsights/ServiceInsightsTab.interface';
@@ -44,21 +48,17 @@ import {
   COLLATE_DOCUMENTATION_APP_NAME,
 } from '../constants/Applications.constant';
 import { AgentStatus } from '../enums/ServiceInsights.enum';
-import { App } from '../generated/entity/applications/app';
-import { AppRunRecord } from '../generated/entity/applications/appRunRecord';
+import type { App } from '../generated/entity/applications/app';
+import type { AppRunRecord } from '../generated/entity/applications/appRunRecord';
 import {
-  IngestionPipeline,
   PipelineType,
   ProviderType,
+  type IngestionPipeline,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
-  WorkflowInstance,
   WorkflowStatus,
+  type WorkflowInstance,
 } from '../generated/governance/workflows/workflowInstance';
-import {
-  getAgentLabelFromType,
-  getAgentStatusLabelFromStatus,
-} from './AgentsStatusWidgetPureUtils';
 import { t } from './i18next/LocalUtil';
 
 export const getAgentIconFromType = (agentType: string) => {
@@ -125,7 +125,7 @@ export const getFormattedAgentsList = (
     isCollateAgent: false,
     label: getAgentLabelFromType(agent.pipelineType),
     status: getAgentStatusLabelFromStatus(
-      agent.pipelineStatuses?.pipelineState
+      agent.pipelineStatuses?.[0]?.pipelineState
     ),
   }));
 

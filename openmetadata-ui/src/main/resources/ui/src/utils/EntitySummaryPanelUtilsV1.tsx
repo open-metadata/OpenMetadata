@@ -10,11 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export {
-  filterItemsBySearchText,
-  filterNestedFields,
-} from './EntitySummaryPanelPureUtilsV1';
-
 import { Typography } from '@openmetadata/ui-core-components';
 import {
   Button,
@@ -63,7 +58,7 @@ import {
   filterItemsBySearchText,
   filterNestedFields,
 } from './EntitySummaryPanelPureUtilsV1';
-import { GenericNestedField } from './EntitySummaryPanelUtilsV1.interface';
+import type { GenericNestedField } from './EntitySummaryPanelUtilsV1.interface';
 import { t } from './i18next/LocalUtil';
 
 import { pruneEmptyChildren } from './TablePureUtils';

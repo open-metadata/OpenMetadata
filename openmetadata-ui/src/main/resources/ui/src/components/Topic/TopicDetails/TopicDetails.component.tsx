@@ -36,8 +36,8 @@ import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
-import { getEntityLabel } from '../../../utils/EntityUtils';
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import {
   fetchEntityActivityCountInto,
@@ -114,7 +114,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       ...topicDetails,
       tier: getTierTags(topicDetails.tags ?? []),
       topicTags: getTagsWithoutTier(topicDetails.tags ?? []),
-      entityName: getEntityLabel(topicDetails),
+      entityName: getEntityName(topicDetails),
     }),
     [topicDetails]
   );

@@ -17,11 +17,12 @@ import { filter, isEmpty } from 'lodash';
 import { lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { withSuspenseFallback } from '../../components/AppRouter/withSuspenseFallback';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import getEntityLabel from '../../components/Entity/EntityLabel/EntityLabel.component';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import {
   INITIAL_PAGING_VALUE,
@@ -45,7 +46,6 @@ import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { getCurrentMillis } from '../../utils/date-time/DateTimeUtils';
 import { getEntityBreadcrumbs } from '../../utils/EntityBreadcrumbPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import { getEntityLabel } from '../../utils/EntityUtils';
 import { getField } from '../../utils/formUtils';
 import { getPartialNameFromFQN } from '../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../utils/RouterUtils';

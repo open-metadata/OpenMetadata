@@ -12,12 +12,12 @@
  */
 
 import { startCase } from 'lodash';
-import { SourceType } from '../components/SearchedData/SearchedData.interface';
+import type { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import { EntityType } from '../enums/entity.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
-import { Database } from '../generated/entity/data/database';
-import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import type { Database } from '../generated/entity/data/database';
+import type { DatabaseSchema } from '../generated/entity/data/databaseSchema';
 import { getBreadcrumbForEntitiesWithServiceOnly } from './EntityDataBreadcrumbUtils';
 import { getEntityLinkFromType } from './EntityLinkUtils';
 import { getEntityName } from './EntityNameUtils';
@@ -28,10 +28,6 @@ import {
 } from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServicePureUtils';
 
-/**
- * Returns a single-item breadcrumb list pointing to the service category
- * settings page. Used for all service entity types.
- */
 export const getServiceCategoryBreadcrumb = (
   serviceCategory: ServiceCategory
 ) => [

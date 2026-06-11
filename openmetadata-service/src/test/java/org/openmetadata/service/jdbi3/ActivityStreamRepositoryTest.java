@@ -15,21 +15,23 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
@@ -126,24 +128,11 @@ class ActivityStreamRepositoryTest {
 
     assertDoesNotThrow(() -> repository.insert(event));
 
-    verify(dao)
-        .insert(
-            eq(event.getId().toString()),
-            eq(ActivityEventType.ENTITY_CREATED.value()),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            isNull(), // actorId
-            isNull(), // actorName
-            anyLong(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any());
+    CollectionDAO.ActivityStreamRow row = captureSingleRow(dao);
+    assertEquals(event.getId().toString(), row.id());
+    assertEquals(ActivityEventType.ENTITY_CREATED.value(), row.eventType());
+    assertNull(row.actorId());
+    assertNull(row.actorName());
   }
 
   @Test
@@ -157,24 +146,49 @@ class ActivityStreamRepositoryTest {
 
     assertDoesNotThrow(() -> repository.insert(event));
 
-    verify(dao)
-        .insert(
-            eq(event.getId().toString()),
-            eq(ActivityEventType.ENTITY_CREATED.value()),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            isNull(), // actorId
-            eq("ghost-user"), // actorName preserved
-            anyLong(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any());
+    CollectionDAO.ActivityStreamRow row = captureSingleRow(dao);
+    assertNull(row.actorId());
+    assertEquals("ghost-user", row.actorName());
+  }
+
+  @Test
+  void insertDelegatesToSingleElementBatch() {
+    CollectionDAO.ActivityStreamDAO dao = mock(CollectionDAO.ActivityStreamDAO.class);
+    ActivityStreamRepository repository = new ActivityStreamRepository(dao);
+
+    repository.insert(baseEvent());
+
+    assertEquals(1, captureRows(dao).size());
+  }
+
+  @Test
+  void insertBatchSkipsNullsAndNoOpsOnEmpty() {
+    CollectionDAO.ActivityStreamDAO dao = mock(CollectionDAO.ActivityStreamDAO.class);
+    ActivityStreamRepository repository = new ActivityStreamRepository(dao);
+
+    repository.insertBatch(Arrays.asList(baseEvent(), null, baseEvent()));
+    assertEquals(2, captureRows(dao).size());
+
+    repository.insertBatch(List.of());
+    repository.insertBatch(null);
+    // empty/null are no-ops
+    verify(dao, times(1)).insertBatch(any());
+  }
+
+  private static CollectionDAO.ActivityStreamRow captureSingleRow(
+      CollectionDAO.ActivityStreamDAO dao) {
+    List<CollectionDAO.ActivityStreamRow> rows = captureRows(dao);
+    assertEquals(1, rows.size());
+    return rows.get(0);
+  }
+
+  @SuppressWarnings("unchecked")
+  private static List<CollectionDAO.ActivityStreamRow> captureRows(
+      CollectionDAO.ActivityStreamDAO dao) {
+    ArgumentCaptor<List<CollectionDAO.ActivityStreamRow>> captor =
+        ArgumentCaptor.forClass(List.class);
+    verify(dao).insertBatch(captor.capture());
+    return captor.getValue();
   }
 
   private ActivityEvent baseEvent() {

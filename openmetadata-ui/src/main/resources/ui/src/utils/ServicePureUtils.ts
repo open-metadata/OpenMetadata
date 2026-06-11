@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,12 +12,8 @@
  */
 
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { startCase } from 'lodash';
-import { ServiceTypes } from 'Models';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../constants/GlobalSettings.constants';
+import type { ServiceTypes } from 'Models';
+import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import {
   SERVICE_TYPES_ENUM,
   SERVICE_TYPE_MAP,
@@ -35,7 +31,6 @@ import { PipelineType as IngestionPipelineType } from '../generated/entity/servi
 import { MessagingServiceType } from '../generated/entity/services/messagingService';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
 import { t } from './i18next/LocalUtil';
-import { getSettingPath } from './RouterUtils';
 import { replaceAllSpacialCharWith_ } from './StringUtils';
 
 export const getIngestionName = (
@@ -306,17 +301,12 @@ export const getServiceNameQueryFilter = (serviceName: string) => ({
   },
 });
 
-/**
- * Gets the active field name for application documentation by converting the path format
- * from "root/field1/field2" to "field1.field2"
- * @param activeField Optional string containing the active field path
- * @returns The field name in dot notation, or undefined if no active field
- */
 export const getActiveFieldNameForAppDocs = (activeField?: string) => {
   if (!activeField) {
     return undefined;
   }
 
+  // Split by '/', remove 'root', then filter out array indices and join with '.'
   return activeField
     .split('/')
     .slice(1)
@@ -331,23 +321,19 @@ export const getReadableCountString = (count: number, maxDigits = 2) => {
   }).format(count);
 };
 
-export const getAddServiceEntityBreadcrumb = (
-  serviceCategory: ServiceCategory
-) => {
-  return [
-    {
-      name: startCase(serviceCategory),
-      url: getSettingPath(
-        GlobalSettingsMenuCategory.SERVICES,
-        getServiceRouteFromServiceType(serviceCategory as ServiceTypes)
-      ),
-    },
-    {
-      name: t('label.add-new-entity', {
-        entity: t('label.service'),
-      }),
-      url: '',
-      activeTitle: true,
-    },
-  ];
+export const getSearchIndexFromService = (serviceName: string): SearchIndex => {
+  const mapping: Partial<Record<string, SearchIndex>> = {
+    [ServiceCategory.DATABASE_SERVICES]: SearchIndex.DATABASE_SERVICE,
+    [ServiceCategory.DASHBOARD_SERVICES]: SearchIndex.DASHBOARD_SERVICE,
+    [ServiceCategory.MESSAGING_SERVICES]: SearchIndex.MESSAGING_SERVICE,
+    [ServiceCategory.PIPELINE_SERVICES]: SearchIndex.PIPELINE_SERVICE,
+    [ServiceCategory.ML_MODEL_SERVICES]: SearchIndex.ML_MODEL_SERVICE,
+    [ServiceCategory.STORAGE_SERVICES]: SearchIndex.STORAGE_SERVICE,
+    [ServiceCategory.SEARCH_SERVICES]: SearchIndex.SEARCH_SERVICE,
+    [ServiceCategory.API_SERVICES]: SearchIndex.API_SERVICE,
+    [ServiceCategory.DRIVE_SERVICES]: SearchIndex.DRIVE_SERVICE,
+    [ServiceCategory.METADATA_SERVICES]: SearchIndex.METADATA_SERVICE,
+  };
+
+  return mapping[serviceName] ?? SearchIndex.DATABASE_SERVICE;
 };

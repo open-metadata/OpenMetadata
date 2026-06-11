@@ -202,6 +202,18 @@
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-jdbi3</artifactId>
     </dependency>
+    <!--
+      dropwizard-http2 registers `type: h2` (TLS) and `type: h2c` (cleartext) connector
+      factories via META-INF/services. Adding the dep is what makes those connector types
+      available in conf/openmetadata.yaml — without it, "type: h2c" fails at startup with
+      "unknown connector type". Both factories are backward-compatible with HTTP/1.1 clients
+      on the same port (cleartext via Upgrade, TLS via ALPN), so adopting them does not
+      break existing clients.
+    -->
+    <dependency>
+      <groupId>io.dropwizard</groupId>
+      <artifactId>dropwizard-http2</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.jdbi</groupId>
       <artifactId>jdbi3-sqlobject</artifactId>
@@ -894,6 +906,29 @@
       <groupId>io.github.resilience4j</groupId>
       <artifactId>resilience4j-retry</artifactId>
       <version>${resilience4j-ratelimiter.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.platform</groupId>
+      <artifactId>junit-platform-commons</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers</artifactId>
+      <version>1.21.4</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>1.21.4</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>localstack</artifactId>
+      <version>1.21.4</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>info.picocli</groupId>

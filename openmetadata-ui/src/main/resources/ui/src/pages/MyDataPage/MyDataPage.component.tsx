@@ -18,7 +18,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, { ReactGridLayoutProps, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import DeferredWidget from '../../components/common/DeferredWidget/DeferredWidget.component';
-import Loader from '../../components/common/Loader/Loader';
+import { AdvanceSearchProvider } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import CustomiseLandingPageHeader from '../../components/MyData/CustomizableComponents/CustomiseLandingPageHeader/CustomiseLandingPageHeader';
 import WelcomeScreen from '../../components/MyData/WelcomeScreen/WelcomeScreen.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -45,6 +45,7 @@ import customizePageClassBase from '../../utils/CustomizeMyDataPageClassBase';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './my-data.less';
+import MyDataPageSkeleton from './MyDataPageSkeleton.component';
 
 const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
   ReactGridLayoutProps & { children?: React.ReactNode }
@@ -272,10 +273,6 @@ const MyDataPage = () => {
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection(isLoading);
 
-  if (isLoading) {
-    return <Loader fullScreen />;
-  }
-
   if (showWelcomeScreen) {
     return (
       <PageLayoutV1 pageTitle={t('label.my-data')}>
@@ -285,45 +282,51 @@ const MyDataPage = () => {
   }
 
   return (
-    <PageLayoutV1
-      className="p-b-lg"
-      mainContainerClassName="p-t-0 my-data-page-main-container"
-      pageTitle={t('label.my-data')}>
-      {/* Explicitly set the direction to ltr to avoid issues with react-grid-layout in rtl mode */}
-      {/*
+    <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
+      <PageLayoutV1
+        className="p-b-lg"
+        mainContainerClassName="p-t-0 my-data-page-main-container"
+        pageTitle={t('label.my-data')}>
+        {/* Explicitly set the direction to ltr to avoid issues with react-grid-layout in rtl mode */}
+        {/*
             ReactGridLayout has known issues with RTL layouts,
             setting dir="ltr" on the container ensures correct behavior
             without affecting the overall RTL layout of the page
         */}
-      <div className="grid-wrapper" dir="ltr">
-        <CustomiseLandingPageHeader
-          overlappedContainer
-          announcements={announcements}
-          backgroundColor={backgroundColor}
-          dataTestId="landing-page-header"
-          hideCustomiseButton={!selectedPersona}
-          isAnnouncementLoading={isAnnouncementLoading}
-          onHomePage
-          onBackgroundColorUpdate={handleBackgroundColorUpdate}
-        />
-        <ReactGridLayout
-          className="grid-container p-x-box"
-          cols={customizePageClassBase.landingPageMaxGridSize}
-          containerPadding={[0, 0]}
-          isDraggable={false}
-          isResizable={false}
-          margin={[
-            customizePageClassBase.landingPageWidgetMargin,
-            customizePageClassBase.landingPageWidgetMargin,
-          ]}
-          rowHeight={customizePageClassBase.landingPageRowHeight}>
-          {widgets}
-        </ReactGridLayout>
-      </div>
-      <LimitWrapper resource="dataAssets">
-        <br />
-      </LimitWrapper>
-    </PageLayoutV1>
+        <div className="grid-wrapper" dir="ltr">
+          <CustomiseLandingPageHeader
+            overlappedContainer
+            announcements={announcements}
+            backgroundColor={backgroundColor}
+            dataTestId="landing-page-header"
+            hideCustomiseButton={!selectedPersona}
+            isAnnouncementLoading={isAnnouncementLoading}
+            onHomePage
+            onBackgroundColorUpdate={handleBackgroundColorUpdate}
+          />
+          {isLoading ? (
+            <MyDataPageSkeleton />
+          ) : (
+            <ReactGridLayout
+              className="grid-container p-x-box"
+              cols={customizePageClassBase.landingPageMaxGridSize}
+              containerPadding={[0, 0]}
+              isDraggable={false}
+              isResizable={false}
+              margin={[
+                customizePageClassBase.landingPageWidgetMargin,
+                customizePageClassBase.landingPageWidgetMargin,
+              ]}
+              rowHeight={customizePageClassBase.landingPageRowHeight}>
+              {widgets}
+            </ReactGridLayout>
+          )}
+        </div>
+        <LimitWrapper resource="dataAssets">
+          <br />
+        </LimitWrapper>
+      </PageLayoutV1>
+    </AdvanceSearchProvider>
   );
 };
 

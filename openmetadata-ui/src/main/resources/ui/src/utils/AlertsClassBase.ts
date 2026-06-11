@@ -10,21 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FormInstance } from 'antd';
-import { AxiosError } from 'axios';
+import type { FormInstance } from 'antd';
+import type { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, trim } from 'lodash';
 import { DEFAULT_READ_TIMEOUT } from '../constants/Alerts.constants';
-import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
+import type { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
-import { NotificationTemplate } from '../generated/entity/events/notificationTemplate';
-import { User } from '../generated/entity/teams/user';
-import { CreateEventSubscription } from '../generated/events/api/createEventSubscription';
+import type { NotificationTemplate } from '../generated/entity/events/notificationTemplate';
+import type { User } from '../generated/entity/teams/user';
+import type { CreateEventSubscription } from '../generated/events/api/createEventSubscription';
 import {
-  EventSubscription,
   SubscriptionCategory,
+  type EventSubscription,
 } from '../generated/events/eventSubscription';
-import {
+import type {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
 } from '../pages/AddObservabilityPage/AddObservabilityPage.interface';
@@ -35,7 +35,7 @@ import {
   getConfigQueryParamsObjectFromArray,
   getRandomizedAlertName,
 } from './Alerts/AlertsUtil';
-import { HandleAlertSaveProps } from './AlertsClassBase.interface';
+import type { HandleAlertSaveProps } from './AlertsClassBase.interface';
 import { getEntityName } from './EntityNameUtils';
 import { handleEntityCreationError } from './formUtils';
 import { t } from './i18next/LocalUtil';

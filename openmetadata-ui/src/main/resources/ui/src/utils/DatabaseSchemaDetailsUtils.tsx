@@ -11,23 +11,8 @@
  *  limitations under the License.
  */
 
-/**
- * Backward-compatible re-export barrel.
- *
- * Implementations have been split into focused modules:
- *   - DatabaseSchemaDropdownOptions.tsx — ExtraDatabaseSchemaDropdownOptions
- *   - DatabaseSchemaTabsUtils.tsx       — getDataBaseSchemaPageBaseTabs, getDatabaseSchemaWidgetsFromKey
- *
- * Import directly from those modules for new code.
- */
 import { TabSpecificField } from '../enums/entity.enum';
 import { getTermQuery } from './SearchUtils';
-
-export { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDropdownOptions';
-export {
-  getDataBaseSchemaPageBaseTabs,
-  getDatabaseSchemaWidgetsFromKey,
-} from './DatabaseSchemaTabsUtils';
 
 export const defaultFields = `${TabSpecificField.TAGS},${TabSpecificField.OWNERS},${TabSpecificField.USAGE_SUMMARY},${TabSpecificField.DOMAINS},${TabSpecificField.DATA_PRODUCTS}`;
 

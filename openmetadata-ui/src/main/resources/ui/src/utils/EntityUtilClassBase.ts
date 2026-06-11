@@ -16,6 +16,7 @@ import { Operation } from 'fast-json-patch';
 import { capitalize } from 'lodash';
 import { FC } from 'react';
 import { NavigateFunction } from 'react-router-dom';
+import DataProductsPage from '../components/DataProducts/DataProductsPage/DataProductsPage.component';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import {
   OperationPermission,
@@ -27,7 +28,26 @@ import { APICollection } from '../generated/entity/data/apiCollection';
 import { Database } from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
 import { ServicesType } from '../interface/service.interface';
+import APICollectionPage from '../pages/APICollectionPage/APICollectionPage';
+import APIEndpointPage from '../pages/APIEndpointPage/APIEndpointPage';
+import ChartDetailsPage from '../pages/ChartDetailsPage/ChartDetailsPage.component';
+import ContainerPage from '../pages/ContainerPage/ContainerPage';
+import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
+import DatabaseDetailsPage from '../pages/DatabaseDetailsPage/DatabaseDetailsPage';
+import DatabaseSchemaPageComponent from '../pages/DatabaseSchemaPage/DatabaseSchemaPage.component';
+import DataModelsPage from '../pages/DataModelPage/DataModelPage.component';
+import DirectoryDetailsPage from '../pages/DirectoryDetailsPage/DirectoryDetailsPage';
 import { VersionData } from '../pages/EntityVersionPage/EntityVersionPage.component';
+import FileDetailsPage from '../pages/FileDetailsPage/FileDetailsPage';
+import MetricDetailsPage from '../pages/MetricsPage/MetricDetailsPage/MetricDetailsPage';
+import MlModelPage from '../pages/MlModelPage/MlModelPage.component';
+import PipelineDetailsPage from '../pages/PipelineDetails/PipelineDetailsPage.component';
+import SearchIndexDetailsPage from '../pages/SearchIndexDetailsPage/SearchIndexDetailsPage';
+import SpreadsheetDetailsPage from '../pages/SpreadsheetDetailsPage/SpreadsheetDetailsPage';
+import StoredProcedurePage from '../pages/StoredProcedure/StoredProcedurePage';
+import TableDetailsPageV1 from '../pages/TableDetailsPageV1/TableDetailsPageV1';
+import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
+import WorksheetDetailsPage from '../pages/WorksheetDetailsPage/WorksheetDetailsPage';
 import { patchApiCollection } from '../rest/apiCollectionsAPI';
 import { patchApiEndPoint } from '../rest/apiEndpointsAPI';
 import { patchApplication } from '../rest/applicationAPI';
@@ -61,7 +81,6 @@ import { ExtraDatabaseDropdownOptions } from './Database/DatabaseDropdownOptions
 import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDropdownOptions';
 import { ExtraDatabaseServiceDropdownOptions } from './DatabaseServiceUtils';
 import { getEntityByFqnUtil } from './EntityByFqnUtils';
-import { getEntityDetailComponent as getEntityDetailComponentUtil } from './EntityDetailComponentUtils';
 import { EntityTypeName } from './EntityNameUtils';
 import {
   FormattedAPIServiceType,
@@ -464,7 +483,51 @@ class EntityUtilClassBase {
   }
 
   public getEntityDetailComponent(entityType: string): FC | null {
-    return getEntityDetailComponentUtil(entityType);
+    switch (entityType) {
+      case EntityType.DATABASE:
+        return DatabaseDetailsPage;
+      case EntityType.DATABASE_SCHEMA:
+        return DatabaseSchemaPageComponent;
+      case EntityType.PIPELINE:
+        return PipelineDetailsPage;
+      case EntityType.TOPIC:
+        return TopicDetailsPage;
+      case EntityType.DASHBOARD:
+        return DashboardDetailsPage;
+      case EntityType.CHART:
+        return ChartDetailsPage;
+      case EntityType.STORED_PROCEDURE:
+        return StoredProcedurePage;
+      case EntityType.DASHBOARD_DATA_MODEL:
+        return DataModelsPage;
+      case EntityType.MLMODEL:
+        return MlModelPage;
+      case EntityType.CONTAINER:
+        return ContainerPage;
+      case EntityType.SEARCH_INDEX:
+        return SearchIndexDetailsPage;
+      case EntityType.DATA_PRODUCT:
+        return DataProductsPage;
+      case EntityType.TABLE:
+        return TableDetailsPageV1;
+      case EntityType.API_COLLECTION:
+        return APICollectionPage;
+      case EntityType.API_ENDPOINT:
+        return APIEndpointPage;
+      case EntityType.METRIC:
+        return MetricDetailsPage;
+      case EntityType.DIRECTORY:
+        return DirectoryDetailsPage;
+      case EntityType.FILE:
+        return FileDetailsPage;
+      case EntityType.SPREADSHEET:
+        return SpreadsheetDetailsPage;
+      case EntityType.WORKSHEET:
+        return WorksheetDetailsPage;
+
+      default:
+        return null;
+    }
   }
 
   public getResourceEntityFromEntityType(entityType: string): string {

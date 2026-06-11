@@ -119,6 +119,7 @@ jest.mock('../../../utils/TableUtils', () => {
 
   return {
     ...actual,
+    getHighlightedRowClassName: jest.fn().mockReturnValue(''),
     getTableExpandableConfig: jest.fn(),
     getTableColumnConfigSelections: jest
       .fn()

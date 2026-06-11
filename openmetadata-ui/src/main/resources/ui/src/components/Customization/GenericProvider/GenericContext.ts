@@ -12,8 +12,8 @@
  */
 import { once } from 'lodash';
 import { createContext, useContext } from 'react';
-import { EntityReference } from '../../../generated/entity/type';
-import { GenericContextType } from './GenericProvider.interface';
+import type { EntityReference } from '../../../generated/entity/type';
+import type { GenericContextType } from './GenericProvider.interface';
 
 export const createGenericContext = once(<
   T extends Omit<EntityReference, 'type'>

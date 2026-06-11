@@ -211,8 +211,6 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "atlas": {},
     "azuresql": {VERSIONS["pyodbc"]},
     "azure-sso": {VERSIONS["msal"]},
-    "microsoftfabric": {VERSIONS["pyodbc"], VERSIONS["msal"]},
-    "microsoftfabricpipeline": {VERSIONS["msal"]},
     "backup": {VERSIONS["boto3"], VERSIONS["azure-identity"], "azure-storage-blob"},
     "googledrive": {
         "google-api-python-client>=2.0.0",
@@ -500,6 +498,7 @@ test = {
     VERSIONS["cockroach"],
     # pydoris-custom pre-installed with --no-deps in Dockerfiles (SA<2 metadata constraint).
     VERSIONS["starrocks"],
+    *plugins["vertica"],
     "testcontainers~=4.8.0",
     "minio==7.2.5",
     *plugins["mlflow"],

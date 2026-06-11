@@ -19,9 +19,11 @@ import { DataAssetOption } from './DataAssetAsyncSelectList.interface';
 
 jest.mock('../../../rest/searchAPI');
 jest.mock('../../../utils/TableUtils');
-jest.mock('../../../utils/EntityUtils', () => ({
-  ...jest.requireActual('../../../utils/EntityUtils'),
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Test'),
+}));
+
+jest.mock('../../../utils/EntityReferenceUtils', () => ({
   getEntityReferenceFromEntity: jest
     .fn()
     .mockImplementation((entity, type) => ({

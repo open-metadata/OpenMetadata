@@ -17,16 +17,17 @@
  * Pure entity diff accessors live in EntityDiffPureUtils.ts.
  */
 
-import { Change, diffWords, diffWordsWithSpace } from 'diff';
+import type { Change } from 'diff';
+import { diffWords, diffWordsWithSpace } from 'diff';
 import { isEmpty, isObject, toString, uniqueId } from 'lodash';
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import ReactDOMServer from 'react-dom/server';
-import {
+import type {
   ExtentionEntities,
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import { EntityChangeOperations } from '../enums/VersionPage.enum';
-import { EntityDiffProps } from '../interface/EntityVersion.interface';
+import type { EntityDiffProps } from '../interface/EntityVersion.interface';
 import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,

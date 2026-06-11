@@ -14,7 +14,6 @@
 import { Divider, Space, Typography } from 'antd';
 import { get, isUndefined } from 'lodash';
 import { lazy, Suspense } from 'react';
-import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import type {
@@ -25,27 +24,35 @@ import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPla
 import Loader from '../components/common/Loader/Loader';
 import QueryViewer from '../components/common/QueryViewer/QueryViewer.component';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
-import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
+import type { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import { SourceType } from '../components/SearchedData/SearchedData.interface';
+import type { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/uiCustomization';
 import { useApplicationStore } from '../hooks/useApplicationStore';
-import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
+import type { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { FrequentlyJoinedTables } from '../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import { PartitionedKeys } from '../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component';
 import { t } from './i18next/LocalUtil';
-import { TableDetailPageTabProps } from './TableClassBase';
+import type { TableDetailPageTabProps } from './TableClassBase';
+
+const ActivityFeedTab = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component'
+    ).then((module) => ({ default: module.ActivityFeedTab }))
+  )
+);
 
 const CustomPropertyTable = withSuspenseFallback(
   lazy(() =>
-    import(
-      '../components/common/CustomPropertyTable/CustomPropertyTable'
-    ).then((module) => ({ default: module.CustomPropertyTable }))
+    import('../components/common/CustomPropertyTable/CustomPropertyTable').then(
+      (module) => ({ default: module.CustomPropertyTable })
+    )
   )
 ) as <T extends ExtentionEntitiesKeys>(
   props: CustomPropertyProps<T>

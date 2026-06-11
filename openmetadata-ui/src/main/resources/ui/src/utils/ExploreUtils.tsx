@@ -33,11 +33,11 @@ import {
 } from '../rest/miscAPI';
 import { nlqSearch, searchQuery } from '../rest/searchAPI';
 import { getCountBadge } from './EntityDisplayUtils';
+import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
 import {
   findActiveSearchIndex,
   isElasticsearchError,
-} from './ExploreFilterUtils';
-import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
+} from './ExplorePureUtils';
 import { escapeESReservedCharacters } from './StringUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -50,13 +50,11 @@ export {
   getQuickFilterObject,
   getQuickFilterObjectForEntities,
   getQuickFilterQuery,
+  getSelectedValuesFromQuickFilter,
   getSubLevelHierarchyKey,
   isElasticsearchError,
   parseSearchParams,
   updateCountsInTreeData,
-} from './ExploreFilterUtils';
-export {
-  getSelectedValuesFromQuickFilter,
   updateTreeData,
   updateTreeDataWithCounts,
 } from './ExplorePureUtils';

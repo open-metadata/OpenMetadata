@@ -11,8 +11,17 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { isEmpty, omit } from 'lodash';
-import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { isEmpty, omit, once } from 'lodash';
+import {
+  createContext,
+  lazy,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ENTITY_PAGE_TYPE_MAP } from '../../../constants/Customize.constants';
@@ -32,7 +41,7 @@ import { EntityDataMapValue } from '../../../utils/ColumnUpdateUtils.interface';
 import {
   getLayoutFromCustomizedPage,
   updateWidgetHeightRecursively,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
+} from '../../../utils/CustomizePage/CustomizePageWidgetUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import {
   extractColumnsFromData,
@@ -47,9 +56,10 @@ import {
   ColumnFieldUpdate,
   ColumnOrTask,
 } from '../../Database/ColumnDetailPanel/ColumnDetailPanel.interface';
-import { createGenericContext } from './GenericContext';
-export { useGenericContext } from './GenericContext';
-import { GenericProviderProps } from './GenericProvider.interface';
+import {
+  GenericContextType,
+  GenericProviderProps,
+} from './GenericProvider.interface';
 
 const ColumnDetailPanel = withSuspenseFallback(
   lazy(() =>
@@ -57,6 +67,10 @@ const ColumnDetailPanel = withSuspenseFallback(
       (module) => ({ default: module.ColumnDetailPanel })
     )
   )
+);
+
+const createGenericContext = once(<T extends Omit<EntityReference, 'type'>>() =>
+  createContext({} as GenericContextType<T>)
 );
 
 export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
@@ -479,3 +493,6 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     </GenericContext.Provider>
   );
 };
+
+export const useGenericContext = <T extends Omit<EntityReference, 'type'>>() =>
+  useContext(createGenericContext<T>());

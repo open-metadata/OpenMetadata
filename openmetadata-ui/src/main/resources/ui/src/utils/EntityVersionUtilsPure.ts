@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ArrayChange, diffArrays } from 'diff';
+import { diffArrays, type ArrayChange } from 'diff';
 import {
   cloneDeep,
   isEmpty,
@@ -20,27 +20,26 @@ import {
   toString,
   uniqBy,
 } from 'lodash';
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { EntityField } from '../constants/Feeds.constants';
-import { EntityType, TabSpecificField } from '../enums/entity.enum';
+import { TabSpecificField, type EntityType } from '../enums/entity.enum';
 import { EntityChangeOperations } from '../enums/VersionPage.enum';
-import { Column as ContainerColumn } from '../generated/entity/data/container';
-import { Column as DataModelColumn } from '../generated/entity/data/dashboardDataModel';
-import { Column as TableColumn } from '../generated/entity/data/table';
-import { Field } from '../generated/entity/data/topic';
-import {
+import type { Column as ContainerColumn } from '../generated/entity/data/container';
+import type { Column as DataModelColumn } from '../generated/entity/data/dashboardDataModel';
+import type { Column as TableColumn } from '../generated/entity/data/table';
+import type { Field } from '../generated/entity/data/topic';
+import type {
   ChangeDescription,
   FieldChange,
 } from '../generated/entity/services/databaseService';
-import { MetadataService } from '../generated/entity/services/metadataService';
-import { EntityReference } from '../generated/entity/type';
-import { TestCaseParameterValue } from '../generated/tests/testCase';
-import { TagLabel } from '../generated/type/tagLabel';
-import { EntityDiffProps } from '../interface/EntityVersion.interface';
+import type { MetadataService } from '../generated/entity/services/metadataService';
+import type { EntityReference } from '../generated/entity/type';
+import type { TestCaseParameterValue } from '../generated/tests/testCase';
+import type { TagLabel } from '../generated/type/tagLabel';
+import type { EntityDiffProps } from '../interface/EntityVersion.interface';
 import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
 import {
-  getAddedDiffElement,
   getAllChangedEntityNames,
   getAllDiffByFieldName,
   getChangeColumnNameFromDiffValue,
@@ -51,12 +50,13 @@ import {
   isEndsWithField,
 } from './EntityDiffPureUtils';
 import {
+  getAddedDiffElement,
   getDiffValue,
   getRemovedDiffElement,
   getTextDiff,
 } from './EntityDiffUtils';
 import { getEntityName } from './EntityNameUtils';
-import {
+import type {
   AssetsChildForVersionPages,
   TagLabelWithStatus,
   VersionEntityTypes,

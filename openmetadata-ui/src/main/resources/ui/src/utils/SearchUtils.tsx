@@ -11,19 +11,6 @@
  *  limitations under the License.
  */
 
-/**
- * Backward-compatible re-export barrel.
- *
- * Pure query/transform functions extracted to SearchPureUtils.ts.
- * Import directly from that module for new code.
- */
-export {
-  filterOptionsByIndex,
-  getEntityTypeFromSearchIndex,
-  getTermQuery,
-  parseBucketsData,
-} from './SearchPureUtils';
-
 import { SearchOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
 import { Link } from 'react-router-dom';
@@ -44,7 +31,10 @@ import { ReactComponent as IconMlModal } from '../assets/svg/mlmodal.svg';
 import { ReactComponent as IconPipeline } from '../assets/svg/pipeline-grey.svg';
 import { ReactComponent as IconTag } from '../assets/svg/tag-grey.svg';
 import { ReactComponent as IconTopic } from '../assets/svg/topic-grey.svg';
-import { SearchSuggestions } from '../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
+import {
+  Option,
+  SearchSuggestions,
+} from '../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 import { FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { SearchSourceAlias } from '../interface/search.interface';
@@ -52,6 +42,12 @@ import { getPartialNameFromTableFQN } from './FqnUtils';
 import i18n from './i18next/LocalUtil';
 import searchClassBase from './SearchClassBase';
 import serviceUtilClassBase from './ServiceUtilClassBase';
+
+export {
+  getEntityTypeFromSearchIndex,
+  getTermQuery,
+  parseBucketsData,
+} from './SearchPureUtils';
 
 export const getGroupLabel = (index: string) => {
   let label = '';
@@ -246,4 +242,22 @@ export const getSuggestionElement = (
       </Link>
     </Button>
   );
+};
+
+export const filterOptionsByIndex = (
+  options: Array<Option>,
+  searchIndex: SearchIndex,
+  maxItemsPerType = 5
+) => {
+  const entityType =
+    searchClassBase.getSearchIndexEntityTypeMapping()[searchIndex];
+
+  if (!entityType) {
+    return [];
+  }
+
+  return options
+    .filter((option) => option._source?.entityType === entityType)
+    .map((option) => option._source)
+    .slice(0, maxItemsPerType);
 };

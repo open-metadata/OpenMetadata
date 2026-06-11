@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DataNode } from 'antd/lib/tree';
-import { cloneDeep, get, isEmpty } from 'lodash';
-import { RecentlyViewedData } from 'Models';
+import type { DataNode } from 'antd/lib/tree';
+import { cloneDeep, isEmpty } from 'lodash';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   PLACEHOLDER_ROUTE_FQN,
@@ -26,94 +25,20 @@ import {
   TAGS_WIDGET,
 } from '../constants/CustomizeWidgets.constants';
 import { EntityTabs } from '../enums/entity.enum';
-import { usePersistentStorage } from '../hooks/currentUserStore/useCurrentUserStore';
-import { useApplicationStore } from '../hooks/useApplicationStore';
-import {
+import type {
   KnowledgePage,
   KnowledgePageHierarchyResponse,
   PageHierarchy,
   PageSearchResult,
-  RecentlyViewedQuickLinks,
-  RecentViewedKnowledgePage,
 } from '../interface/knowledge-center.interface';
 import { getEntityName } from './EntityNameUtils';
 import Fqn from './Fqn';
 import { t } from './i18next/LocalUtil';
-import { arraySorterByKey } from './RecentActivityUtils';
 
 export const getKnowledgePageName = (
   knowledgePage: { name?: string; displayName?: string } | undefined,
   tFn?: (key: string) => string
 ): string => getEntityName(knowledgePage) || (tFn ?? t)('label.untitled');
-
-export const setRecentlyViewedData = (
-  recentData: RecentlyViewedQuickLinks['data']
-): void => {
-  const currentUser = useApplicationStore.getState().currentUser;
-  if (!currentUser) {
-    return;
-  }
-  const { setUserPreference } = usePersistentStorage.getState();
-  setUserPreference(currentUser.name, {
-    recentlyViewedQuickLinks: recentData as unknown as RecentlyViewedData[],
-  });
-};
-
-export const addToKnowledgeCenterRecentViewed = (
-  eData: RecentViewedKnowledgePage
-): void => {
-  try {
-    const entityData = { ...eData, timestamp: Date.now() };
-
-    const currentUser = useApplicationStore.getState().currentUser;
-    let recentlyViewed: RecentlyViewedQuickLinks['data'] = [];
-    if (!currentUser) {
-      recentlyViewed = [];
-    } else {
-      const { preferences } = usePersistentStorage.getState();
-      recentlyViewed = get(
-        preferences,
-        [currentUser.name, 'recentlyViewedQuickLinks'],
-        []
-      ) as RecentlyViewedQuickLinks['data'];
-    }
-    if (recentlyViewed) {
-      const arrData = recentlyViewed
-        .filter(
-          (item) => item.fullyQualifiedName !== entityData.fullyQualifiedName
-        )
-        .sort(arraySorterByKey<RecentViewedKnowledgePage>('timestamp', true));
-      arrData.unshift(entityData);
-
-      if (arrData.length > 5) {
-        arrData.pop();
-      }
-      recentlyViewed = arrData;
-    } else {
-      recentlyViewed = [entityData];
-    }
-    setRecentlyViewedData(recentlyViewed);
-  } catch (error) {
-    // do not throw error
-  }
-};
-
-export const updateKnowledgeCenterRecentViewed = (
-  data: RecentlyViewedQuickLinks['data']
-) => {
-  try {
-    const currentUser = useApplicationStore.getState().currentUser;
-    if (!currentUser) {
-      return;
-    }
-    const { setUserPreference } = usePersistentStorage.getState();
-    setUserPreference(currentUser.name, {
-      recentlyViewedQuickLinks: data as unknown as RecentlyViewedData[],
-    });
-  } catch (error) {
-    // do not throw error
-  }
-};
 
 export const getKnowledgePagePath = (
   pageName: string,
@@ -290,19 +215,19 @@ export const updateTreeData = (
 
   const updateChildren = (
     pages: PageHierarchy[],
-    parentKey: string,
-    newPages: PageHierarchy[]
+    key: string,
+    children: PageHierarchy[]
   ): boolean => {
     for (const page of pages) {
-      if (page.fullyQualifiedName === parentKey) {
+      if (page.fullyQualifiedName === key) {
         if (!page.children) {
           page.children = [];
         }
-        page.children.push(...newPages);
+        page.children.push(...children);
 
         return true;
       }
-      if (page.children && updateChildren(page.children, parentKey, newPages)) {
+      if (page.children && updateChildren(page.children, key, children)) {
         return true;
       }
     }
@@ -376,7 +301,7 @@ export const getUpdatePageHierarchyForDelete = (
   return newPages;
 };
 
-type ActionType = {
+export type ActionType = {
   value: unknown;
   type: 'SET_PAGINATION_LOADING' | 'SET_PAGING_VALUE' | 'SET_IS_PAGINATION_END';
 };

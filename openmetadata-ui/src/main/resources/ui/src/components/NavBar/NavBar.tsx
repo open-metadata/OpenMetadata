@@ -282,10 +282,13 @@ const NavBar = () => {
         break;
       }
     }
-    const notification = new Notification('Notification From OpenMetadata', {
-      body: body,
-      icon: Logo,
-    });
+    const notification = new Notification(
+      t('label.notification-from-brand-name'),
+      {
+        body: body,
+        icon: Logo,
+      }
+    );
     notification.onclick = () => {
       const isChrome = globalThis.navigator.userAgent.indexOf('Chrome');
       // Applying logic to open a new window onclick of browser notification from chrome

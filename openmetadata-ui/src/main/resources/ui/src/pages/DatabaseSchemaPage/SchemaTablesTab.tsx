@@ -24,7 +24,7 @@ import DisplayName from '../../components/common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import TableAntd from '../../components/common/Table/Table';
-import { useGenericContext } from '../../components/Customization/GenericProvider/GenericContext';
+import { useGenericContext } from '../../components/Customization/GenericProvider/GenericProvider';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import {
   INITIAL_PAGING_VALUE,
@@ -56,10 +56,10 @@ import {
 import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import { getBulkEditButton } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
+import { getEntityBulkEditPath } from '../../utils/EntityPureUtils';
+import { highlightSearchText } from '../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../utils/EntitySortUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityBulkEditPath } from '../../utils/EntityLinkUtils';
-import { highlightSearchText } from '../../utils/EntitySearchUtils';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,

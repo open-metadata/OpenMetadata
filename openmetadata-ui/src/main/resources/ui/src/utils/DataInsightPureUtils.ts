@@ -10,40 +10,29 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import {
   first,
-  get,
   isInteger,
   isString,
   isUndefined,
   last,
-  meanBy,
   round,
-  sumBy,
   toNumber,
 } from 'lodash';
 import { DateTime } from 'luxon';
-import { RangePickerProps } from '../components/common/DatePicker/DatePicker';
+import type { RangePickerProps } from '../components/common/DatePicker/DatePicker';
 import { PLACEHOLDER_ROUTE_TAB, ROUTES } from '../constants/constants';
-import {
-  ENTITIES_SUMMARY_LIST,
-  WEB_SUMMARY_LIST,
-} from '../constants/DataInsight.constants';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import {
-  DataInsightChartResult,
   DataInsightChartType,
+  type DataInsightChartResult,
 } from '../generated/dataInsight/dataInsightChartResult';
-import { DailyActiveUsers } from '../generated/dataInsight/type/dailyActiveUsers';
+import type { DailyActiveUsers } from '../generated/dataInsight/type/dailyActiveUsers';
 import {
-  ChartValue,
   DataInsightTabs,
+  type ChartValue,
 } from '../interface/data-insight.interface';
-import { DataInsightCustomChartResult } from '../rest/DataInsightAPI';
 import { customFormatDateTime } from './date-time/DateTimeUtils';
-import { t, translateWithNestedKeys } from './i18next/LocalUtil';
-import { pluralize } from './StringUtils';
 
 export const getEntryFormattedValue = (
   value: number | string | undefined,
@@ -194,87 +183,10 @@ export const getFormattedActiveUsersData = (
   };
 };
 
-export const getEntitiesChartSummary = (
-  chartResults?: Record<SystemChartType, DataInsightCustomChartResult>
-) => {
-  const updatedSummaryList = ENTITIES_SUMMARY_LIST.map((summary) => {
-    const chartData = get(chartResults, summary.type) as
-      | DataInsightCustomChartResult
-      | undefined;
-
-    const count = round(first(chartData?.results)?.count ?? 0, 2);
-    const translatedLabel = translateWithNestedKeys(
-      summary.label,
-      summary.labelData
-    );
-
-    return chartData
-      ? {
-          ...summary,
-          latest: count,
-          label: translatedLabel,
-        }
-      : {
-          ...summary,
-          label: translatedLabel,
-        };
-  });
-
-  return updatedSummaryList;
-};
-
-export const getWebChartSummary = (
-  chartResults: (DataInsightChartResult | undefined)[]
-) => {
-  const updatedSummary = [];
-
-  for (const summary of WEB_SUMMARY_LIST) {
-    const chartData = chartResults.find(
-      (chart) => chart?.chartType === summary.id
-    );
-    if (isUndefined(chartData)) {
-      updatedSummary.push(summary);
-
-      continue;
-    }
-
-    const { chartType, data } = chartData;
-
-    let latest;
-    if (chartType === DataInsightChartType.DailyActiveUsers) {
-      latest = round(meanBy(data, 'activeUsers'));
-    } else {
-      latest = sumBy(data, 'pageViews');
-    }
-
-    updatedSummary.push({
-      ...summary,
-      latest: latest,
-      label: t(summary.label),
-    });
-  }
-
-  return updatedSummary;
-};
-
 export const getDisabledDates: RangePickerProps['disabledDate'] = (current) => {
   const today = DateTime.now().startOf('day');
 
   return current ? current.startOf('day') < today : false;
-};
-
-export const getKpiResultFeedback = (day: number, isTargetMet: boolean) => {
-  if (day > 0 && isTargetMet) {
-    return t('message.kpi-target-achieved-before-time');
-  } else if (day <= 0 && !isTargetMet) {
-    return t('message.kpi-target-overdue', {
-      count: day,
-    });
-  } else if (isTargetMet) {
-    return t('message.kpi-target-achieved');
-  } else {
-    return t('label.day-left', { day: pluralize(day, 'day') });
-  }
 };
 
 export const getDataInsightPathWithFqn = (tab = DataInsightTabs.DATA_ASSETS) =>

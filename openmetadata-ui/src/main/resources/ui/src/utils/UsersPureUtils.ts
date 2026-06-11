@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
+import type { AxiosError } from 'axios';
 import moment from 'moment';
 import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
 import { ERROR_MESSAGE, NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { MASKED_EMAIL } from '../constants/User.constants';
-import { User } from '../generated/entity/teams/user';
+import type { User } from '../generated/entity/teams/user';
 import { getIsErrorMatch } from './APIUtils';
 import { t } from './i18next/LocalUtil';
 

@@ -36,7 +36,6 @@ import { prefetchDashboard } from '../../../rest/queries/dashboardQuery';
 import { prefetchPipeline } from '../../../rest/queries/pipelineQuery';
 import { prefetchTable } from '../../../rest/queries/tableQuery';
 import { prefetchTopic } from '../../../rest/queries/topicQuery';
-import { getEntityLabel } from '../../../utils/EntityUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { highlightEntityNameAndDescription } from '../../../utils/EntitySearchUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -144,12 +143,12 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             value: (
               <Link
                 className="text-primary no-underline truncate w-max-13 d-inline-block align-middle"
-                title={getEntityLabel(columnSource.table)}
+                title={getEntityName(columnSource.table)}
                 to={searchClassBase.getEntityLink({
                   ...columnSource.table,
                   entityType: EntityType.TABLE,
                 } as SourceType)}>
-                {getEntityLabel(columnSource.table)}
+                {getEntityName(columnSource.table)}
               </Link>
             ),
           });
@@ -360,7 +359,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 <Typography.Text
                   className="text-lg font-medium text-link-color"
                   data-testid="entity-header-display-name">
-                  {stringToHTML(getEntityName(source))}
+                  {stringToHTML(searchClassBase.getEntityName(source))}
                 </Typography.Text>
               </Button>
             ) : (
@@ -384,7 +383,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                   <Typography.Text
                     className="text-lg font-medium text-link-color break-word whitespace-normal"
                     data-testid="entity-header-display-name">
-                    {stringToHTML(getEntityName(source))}
+                    {stringToHTML(searchClassBase.getEntityName(source))}
                   </Typography.Text>
                 </Link>
 

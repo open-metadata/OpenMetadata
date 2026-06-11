@@ -32,7 +32,7 @@ import {
   formatUsersResponse,
 } from '../../../utils/APIUtils';
 import { getCountBadge } from '../../../utils/EntityDisplayUtils';
-import { getEntityLabel } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
 import { getTermQuery } from '../../../utils/SearchUtils';
 import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
@@ -47,7 +47,7 @@ export const TeamListItemRenderer = (props: EntityReference) => {
   return (
     <Space>
       <Icon component={IconTeamsGrey} style={{ fontSize: '16px' }} />
-      <Typography.Text>{getEntityLabel(props)}</Typography.Text>
+      <Typography.Text>{getEntityName(props)}</Typography.Text>
     </Space>
   );
 };
@@ -308,7 +308,7 @@ export const UserTeamSelectableList = ({
                         id={user.name ?? ''}
                         isTeam={user.type === EntityType.TEAM}
                         key={user.id}
-                        name={getEntityLabel(user)}
+                        name={getEntityName(user)}
                         size={UserTagSize.small}
                         onRemove={() => onRemove(user.id)}
                       />

@@ -10,31 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { Bucket } from 'Models';
-import { Option } from '../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
+import type { Bucket } from 'Models';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { ElasticsearchQuery } from './QueryBuilderPureUtils';
-import searchClassBase from './SearchClassBase';
-
-export const filterOptionsByIndex = (
-  options: Array<Option>,
-  searchIndex: SearchIndex,
-  maxItemsPerType = 5
-) => {
-  const entityType =
-    searchClassBase.getSearchIndexEntityTypeMapping()[searchIndex];
-
-  if (!entityType) {
-    return [];
-  }
-
-  return options
-    .filter((option) => option._source?.entityType === entityType)
-    .map((option) => option._source)
-    .slice(0, maxItemsPerType);
-};
+import type { ElasticsearchQuery } from './QueryBuilderPureUtils';
 
 export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
   const commonAssets: Record<string, EntityType> = {
@@ -69,12 +48,6 @@ export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
   return commonAssets[searchIndex] || null;
 };
 
-/**
- * Parse bucket data from aggregation responses into a format suitable for select fields
- * @param buckets - The bucket data from aggregation response
- * @param sourceFields - Optional string representing dot-notation path to extract values
- * @returns An array of objects with value and title properties
- */
 export const parseBucketsData = (
   buckets: Array<Bucket>,
   sourceFields?: string,
@@ -138,15 +111,6 @@ export const parseBucketsData = (
   });
 };
 
-/**
- * Generic term query builder from object
- * Creates an Elasticsearch query filter structure from field-value pairs
- * @param terms - Record of field names and their values, or mixed query configuration
- * @param queryType - Type of boolean query: 'must' | 'must_not' | 'should' | 'should_not'
- * @param minimumShouldMatch - Minimum number of should clauses that must match (only for 'should')
- * @param wildcardTerms - Optional record for wildcard queries
- * @returns Query filter object for searchQuery API
- */
 const NESTED_FIELDS = ['owners'];
 
 const getNestedPath = (field: string): string | undefined => {

@@ -37,9 +37,9 @@ import {
   getEpochMillisForPastDays,
 } from '../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../utils/EntityLink';
-import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { DRAWER_NAVIGATION_OPTIONS } from '../../utils/EntityUtils';
 import { hasLineageTab } from '../../utils/EntityPermissionUtils';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../utils/EntityPureUtils';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { generateEntityLink, getTierTags } from '../../utils/TablePureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';

@@ -14,14 +14,14 @@
 import { cloneDeep, isEmpty, isEqual, isUndefined } from 'lodash';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { EntityField } from '../constants/Feeds.constants';
-import {
+import type {
   ChangeDescription,
   DataTypeTopic,
   Field,
   MessageSchemaObject,
 } from '../generated/entity/data/topic';
-import { APISchema } from '../generated/type/apiSchema';
-import { EntityDiffProps } from '../interface/EntityVersion.interface';
+import type { APISchema } from '../generated/type/apiSchema';
+import type { EntityDiffProps } from '../interface/EntityVersion.interface';
 import {
   getAllChangedEntityNames,
   getAllDiffByFieldName,
@@ -35,7 +35,7 @@ import {
   getEntityDescriptionDiff,
   getEntityTagDiff,
   getStringEntityDiff,
-} from './EntityVersionUtils';
+} from './EntityVersionUtilsPure';
 
 export function getNewFieldFromSchemaFieldDiff(
   newCol: Array<Field>

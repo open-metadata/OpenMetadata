@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { EntityReference } from '../generated/entity/data/table';
-import { DataProduct } from '../generated/entity/domains/dataProduct';
-import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
+import type { EntityReference } from '../generated/entity/data/table';
+import type { DataProduct } from '../generated/entity/domains/dataProduct';
+import type { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import {
   convertDataProductsToEntityReferences as convertDataProductsToEntityReferencesUtil,
   convertEntityReferencesToDataProducts as convertEntityReferencesToDataProductsUtil,

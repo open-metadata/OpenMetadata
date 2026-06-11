@@ -10,21 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { first, isEmpty, isNil, last, round, sortBy, toLower } from 'lodash';
-import { ServiceTypes } from 'Models';
-import { ChartsResults } from '../components/ServiceInsights/ServiceInsightsTab.interface';
+import type { ServiceTypes } from 'Models';
+import type { ChartsResults } from '../components/ServiceInsights/ServiceInsightsTab.interface';
 import { SERVICE_AUTOPILOT_AGENT_TYPES } from '../constants/Services.constant';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { EntityType } from '../enums/entity.enum';
 import {
-  IngestionPipeline,
   ProviderType,
+  type IngestionPipeline,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { DataInsightCustomChartResult } from '../rest/DataInsightAPI';
-import i18n from '../utils/i18next/LocalUtil';
+import type { DataInsightCustomChartResult } from '../rest/DataInsightAPI';
 import Fqn from './Fqn';
-
-const { t } = i18n;
+import { t } from './i18next/LocalUtil';
 
 export const getAssetsByServiceType = (serviceType: ServiceTypes): string[] => {
   switch (serviceType) {
@@ -154,14 +153,18 @@ export const getPlatformInsightsChartDataFormattingMethod =
       ];
     }
 
+    // Data for the earliest day
     const earliestDayData = first(data)?.count ?? 0;
+    // Data for the last day
     const lastDayData = last(data)?.count ?? 0;
 
+    // Percentage change for the last 7 days
     const percentageChangeOverall = round(
       Math.abs(lastDayData - earliestDayData),
       1
     );
 
+    // This is true if the current data is greater than or equal to the earliest day data
     const isIncreased = (lastDayData ?? 0) >= (earliestDayData ?? 0);
 
     return {
@@ -178,6 +181,7 @@ export const filterDistributionChartItem = (item: {
   term: string;
   group: string;
 }) => {
+  // Add input validation to prevent DOS vulnerabilities | typescript:S5852
   if (
     !item.term ||
     !item.group ||
@@ -187,11 +191,14 @@ export const filterDistributionChartItem = (item: {
     return false;
   }
 
+  // Split once and cache the result
   const termParts = Fqn.split(item.term);
   if (termParts.length !== 2) {
+    // Invalid Tag FQN
     return false;
   }
 
+  // clean start and end quotes
   const tag_name = termParts[1].replaceAll(/(^["']+|["']+$)/g, '');
 
   return toLower(tag_name) === toLower(item.group);

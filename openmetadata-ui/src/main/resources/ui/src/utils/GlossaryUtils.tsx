@@ -33,6 +33,26 @@ import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interfa
 import { getEntityName } from './EntityNameUtils';
 import { VersionStatus } from './EntityVersionUtils.interface';
 
+export {
+  buildTree,
+  filterTreeNodeOptions,
+  findAndUpdateNested,
+  findExpandableKeys,
+  findExpandableKeysForArray,
+  findItemByFqn,
+  getGlossaryBreadcrumbs,
+  getGlossaryEntityLink,
+  getQueryFilterToExcludeTerm,
+  getQueryFilterToIncludeApprovedTerm,
+  glossaryTermTableColumnsWidth,
+  permissionForApproveOrReject,
+  referenceURLValidator,
+  StatusClass,
+  StatusFilters,
+  updateGlossaryTermByFqn,
+  validateReferenceURL,
+} from './GlossaryPureUtils';
+
 const CommonWidgets = withSuspenseFallback(
   lazy(() =>
     import('../components/DataAssets/CommonWidgets/CommonWidgets').then(
@@ -47,28 +67,6 @@ const GlossaryTermTab = withSuspenseFallback(
       import('../components/Glossary/GlossaryTermTab/GlossaryTermTab.component')
   )
 );
-
-export {
-  getGlossaryBreadcrumbs,
-  StatusClass,
-  StatusFilters,
-} from './GlossaryPureUtils';
-export {
-  buildTree,
-  filterTreeNodeOptions,
-  findAndUpdateNested,
-  findExpandableKeys,
-  findExpandableKeysForArray,
-  findItemByFqn,
-  getGlossaryEntityLink,
-  getQueryFilterToExcludeTerm,
-  getQueryFilterToIncludeApprovedTerm,
-  glossaryTermTableColumnsWidth,
-  permissionForApproveOrReject,
-  referenceURLValidator,
-  updateGlossaryTermByFqn,
-  validateReferenceURL,
-} from './GlossaryTreeUtils';
 
 export const convertGlossaryTermsToTreeOptions = (
   options: ModifiedGlossaryTerm[] = [],

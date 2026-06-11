@@ -145,15 +145,14 @@ jest.mock('../../../utils/StringUtils', () => ({
   stringToHTML: jest.fn((text) => text),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => {
-  const actual = jest.requireActual('../../../utils/EntityUtils');
-
-  return {
-    ...actual,
-    getEntityName: jest.fn().mockReturnValue('Glue'),
-    highlightSearchText: jest.fn((text) => text),
-  };
-});
+jest.mock('../../../utils/EntityNameUtils', () => ({
+  ...jest.requireActual('../../../utils/EntityNameUtils'),
+  getEntityName: jest.fn().mockReturnValue('Glue'),
+}));
+jest.mock('../../../utils/EntitySearchUtils', () => ({
+  ...jest.requireActual('../../../utils/EntitySearchUtils'),
+  highlightSearchText: jest.fn((text) => text),
+}));
 
 jest.mock('../../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),

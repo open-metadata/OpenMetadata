@@ -11,17 +11,16 @@
  *  limitations under the License.
  */
 
-export { getDatabaseConfig } from './DatabaseServicePureUtils';
-import { NavigateFunction } from 'react-router-dom';
+import type { NavigateFunction } from 'react-router-dom';
 import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../assets/svg/ic-import.svg';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { ExportTypes } from '../constants/Export.constants';
-import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
+import type { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
 import { exportDatabaseServiceDetailsInCSV } from '../rest/serviceAPI';
-import { getEntityImportPath } from './EntityLinkUtils';
+import { getEntityImportPath } from './EntityPureUtils';
 import { t } from './i18next/LocalUtil';
 
 export const ExtraDatabaseServiceDropdownOptions = (

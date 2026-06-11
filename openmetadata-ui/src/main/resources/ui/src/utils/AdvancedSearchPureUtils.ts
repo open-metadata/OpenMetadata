@@ -10,21 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import {
-  Field,
-  FieldOrGroup,
-  ListValues,
-  OldJsonTree,
-  Utils as QbUtils,
-  ValueSource,
-} from '@react-awesome-query-builder/antd';
+import type { OldJsonTree } from '@react-awesome-query-builder/antd';
+import { Utils as QbUtils } from '@react-awesome-query-builder/antd';
 import { isArray, isEmpty, toLower } from 'lodash';
-import { Bucket } from 'Models';
-import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
-import { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
+import type { Bucket } from 'Models';
+import type { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
-import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
+import type { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
   COMMON_DROPDOWN_ITEMS,
   DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS,
@@ -39,7 +31,7 @@ import {
 } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
-import {
+import type {
   ContainerSearchSource,
   DashboardSearchSource,
   ExploreSearchSource,
@@ -49,18 +41,11 @@ import {
   TableSearchSource,
   TopicSearchSource,
 } from '../interface/search.interface';
-import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
-import { getTags } from '../rest/tagAPI';
-import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { getEntityName } from './EntityNameUtils';
-import jsonLogicSearchClassBase from './JSONLogicSearchClassBase';
-import searchClassBase from './SearchClassBase';
 
-export const getDropDownItems = (index: string): ExploreQuickFilterField[] => {
-  return searchClassBase.getDropDownItems(index);
-};
-
-export const getAssetsPageQuickFilters = (type?: AssetsOfEntity) => {
+export const getAssetsPageQuickFilters = (
+  type?: AssetsOfEntity
+): ExploreQuickFilterField[] => {
   switch (type) {
     case AssetsOfEntity.DOMAIN:
     case AssetsOfEntity.DATA_PRODUCT:
@@ -239,40 +224,6 @@ export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
     }));
 };
 
-export const getTierOptions = async (): Promise<ListValues> => {
-  try {
-    const { data: tiers } = await getTags({
-      parent: 'Tier',
-      limit: 50,
-    });
-
-    const tierFields = tiers.map((tier) => ({
-      title: tier.fullyQualifiedName,
-      value: tier.fullyQualifiedName,
-    }));
-
-    return tierFields as ListValues;
-  } catch {
-    return [];
-  }
-};
-
-export const getTreeConfig = ({
-  searchOutputType,
-  searchIndex,
-  isExplorePage,
-}: {
-  searchOutputType: SearchOutputType;
-  searchIndex: SearchIndex | SearchIndex[];
-  isExplorePage: boolean;
-}) => {
-  const index = isArray(searchIndex) ? searchIndex : [searchIndex];
-
-  return searchOutputType === SearchOutputType.ElasticSearch
-    ? advancedSearchClassBase.getQbConfigs(index, isExplorePage)
-    : jsonLogicSearchClassBase.getQbConfigs(index, isExplorePage);
-};
-
 export const formatQueryValueBasedOnType = (
   value: string[],
   field: string,
@@ -328,10 +279,6 @@ export const getEmptyJsonTree = (
   };
 };
 
-/**
- * Creates an empty JSON tree structure specifically optimized for QueryBuilderWidget
- * This structure allows easy addition of groups and rules
- */
 export const getEmptyJsonTreeForQueryBuilder = (
   defaultField: string = EntityReferenceFields.OWNERS,
   subField = 'fullyQualifiedName'
@@ -374,92 +321,4 @@ export const getEmptyJsonTreeForQueryBuilder = (
       },
     },
   };
-};
-
-/**
- * Process a custom property field and add it to the subfields
- * @param field - The custom property field to process
- * @param resEntityType - The entity type containing the field
- * @param subfields - The subfields record to update
- * @param entityType - Optional specific entity type to filter for
- */
-export const processCustomPropertyField = (
-  field: CustomPropertySummary,
-  resEntityType: string,
-  subfields: Record<string, FieldOrGroup>,
-  entityType?: string,
-  searchOutputType?: SearchOutputType
-) => {
-  if (!field.name || !field.type) {
-    return;
-  }
-
-  const result = advancedSearchClassBase.getCustomPropertiesSubFields(
-    field,
-    searchOutputType
-  );
-  const subfieldsArray = Array.isArray(result) ? result : [result];
-
-  subfieldsArray.forEach(({ subfieldsKey, dataObject }) => {
-    if (entityType) {
-      subfields[subfieldsKey] = {
-        ...dataObject,
-        valueSources: dataObject.valueSources as ValueSource[],
-      };
-    } else {
-      const existingGroup = subfields[resEntityType];
-      const entitySubfields: Record<string, Field> =
-        existingGroup && 'subfields' in existingGroup
-          ? existingGroup.subfields ?? {}
-          : {};
-
-      entitySubfields[subfieldsKey] = {
-        ...dataObject,
-        valueSources: dataObject.valueSources as ValueSource[],
-      };
-
-      if (!isEmpty(entitySubfields)) {
-        subfields[resEntityType] = {
-          label: resEntityType.charAt(0).toUpperCase() + resEntityType.slice(1),
-          type: '!group',
-          subfields: entitySubfields,
-        };
-      }
-    }
-  });
-};
-
-/**
- * Process all custom property fields for a specific entity type
- * @param resEntityType - The entity type to process
- * @param fields - Array of custom property fields
- * @param subfields - The subfields record to update
- * @param entityType - Optional specific entity type to filter for
- */
-export const processEntityTypeFields = (
-  resEntityType: string,
-  fields: CustomPropertySummary[],
-  subfields: Record<string, FieldOrGroup>,
-  entityType?: string,
-  searchOutputType?: SearchOutputType
-) => {
-  if (
-    entityType &&
-    entityType !== EntityType.ALL &&
-    resEntityType !== entityType
-  ) {
-    return;
-  }
-
-  if (Array.isArray(fields) && fields.length > 0) {
-    fields.forEach((field) => {
-      processCustomPropertyField(
-        field,
-        resEntityType,
-        subfields,
-        entityType,
-        searchOutputType
-      );
-    });
-  }
 };

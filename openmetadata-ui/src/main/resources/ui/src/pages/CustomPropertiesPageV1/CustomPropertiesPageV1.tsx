@@ -18,7 +18,7 @@ import { compare } from 'fast-json-patch';
 import { isUndefined, startCase } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { withSuspenseFallback } from '../../components/AppRouter/withSuspenseFallback';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import { usePageHeader } from '../../components/common/atoms/navigation/usePageHeader';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';

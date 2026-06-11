@@ -75,9 +75,10 @@ jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew', () => ({
 }));
 
 // Mock utility functions
-jest.mock('../../../../utils/EntityUtils', () => ({
-  ...jest.requireActual('../../../../utils/EntityUtils'),
+jest.mock('../../../../utils/EntityBreadcrumbUtils', () => ({
   getEntityLinkFromType: jest.fn().mockReturnValue('/test-entity-link'),
+}));
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation((entity) => entity?.displayName || entity?.name || ''),

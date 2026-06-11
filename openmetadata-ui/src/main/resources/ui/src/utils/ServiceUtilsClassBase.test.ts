@@ -17,9 +17,6 @@ import serviceUtilClassBase, {
   ServiceUtilClassBase,
 } from './ServiceUtilClassBase';
 
-jest.mock('./EntityNameUtils', () => ({
-  getEntityName: jest.fn(),
-}));
 jest.mock('./ServiceIconUtils', () => ({
   getServiceLogo: jest.fn(),
 }));
@@ -70,8 +67,7 @@ jest.mock('./SearchServiceUtils', () => ({
 jest.mock('./SecurityServiceUtils', () => ({
   getSecurityConfig: jest.fn().mockResolvedValue({ schema: {}, uiSchema: {} }),
 }));
-jest.mock('./ServicePureUtils', () => ({ getTestConnectionName: jest.fn() }));
-jest.mock('./ServiceUtils', () => ({ getSearchIndexFromService: jest.fn() }));
+jest.mock('./ServiceUtils', () => ({ getTestConnectionName: jest.fn() }));
 jest.mock('./StorageServiceUtils', () => ({
   getStorageConfig: jest.fn().mockResolvedValue({ schema: {}, uiSchema: {} }),
 }));

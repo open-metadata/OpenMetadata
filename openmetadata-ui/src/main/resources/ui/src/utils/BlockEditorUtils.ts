@@ -11,6 +11,11 @@
  *  limitations under the License.
  */
 
+export {
+  getTextFromHtmlString,
+  isDescriptionContentEmpty,
+} from './BlockEditorPureUtils';
+
 import { EditorState } from '@tiptap/pm/state';
 import type { Editor } from '@tiptap/react';
 import { isString } from 'lodash';
@@ -22,7 +27,7 @@ import { ReactComponent as IconFormatVideo } from '../assets/svg/ic-format-video
 import { FileType } from '../components/BlockEditor/BlockEditor.interface';
 import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
 import blockEditorExtensionsClassBase from './BlockEditorExtensionsClassBase';
-import { ENTITY_LINK_SEPARATOR } from './EntityLinkUtils';
+import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
 import { getEntityDetail, getHashTagList, getMentionList } from './FeedUtils';
 import { getSanitizeContent } from './sanitize.utils';
 
@@ -314,11 +319,6 @@ export const setEditorContent = (editor: Editor, newContent: string) => {
   });
   editor.view.updateState(newEditorState);
 };
-
-export {
-  getTextFromHtmlString,
-  isDescriptionContentEmpty,
-} from './BlockEditorPureUtils';
 
 export const getAcceptedFileTypes = (fileType: FileType) => {
   switch (fileType) {

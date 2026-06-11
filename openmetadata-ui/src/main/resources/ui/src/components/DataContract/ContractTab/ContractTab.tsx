@@ -31,7 +31,7 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import Loader from '../../common/Loader/Loader';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import './contract-tab.less';
 
 const AddDataContract = withSuspenseFallback(

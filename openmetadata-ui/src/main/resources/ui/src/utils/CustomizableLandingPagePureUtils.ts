@@ -12,10 +12,10 @@
  */
 
 import { capitalize, uniqBy, uniqueId } from 'lodash';
-import { Layout } from 'react-grid-layout';
+import type { Layout } from 'react-grid-layout';
 import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
-import { Document } from '../generated/entity/docStore/document';
-import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
+import type { Document } from '../generated/entity/docStore/document';
+import type { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import customizeMyDataPageClassBase from './CustomizeMyDataPageClassBase';
 import i18n from './i18next/LocalUtil';
 

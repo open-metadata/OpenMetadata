@@ -12,9 +12,9 @@
  */
 
 import { EntityType } from '../enums/entity.enum';
-import { Domain } from '../generated/entity/domains/domain';
-import { EntityReference } from '../generated/entity/type';
-import {
+import type { Domain } from '../generated/entity/domains/domain';
+import type { EntityReference } from '../generated/entity/type';
+import type {
   QueryFieldInterface,
   QueryFilterInterface,
 } from '../pages/ExplorePage/ExplorePage.interface';

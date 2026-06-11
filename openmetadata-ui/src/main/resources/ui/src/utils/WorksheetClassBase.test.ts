@@ -46,20 +46,6 @@ jest.mock('../constants/Worksheet.constant', () => ({
   } as Worksheet,
 }));
 
-jest.mock('./CustomizePage/CustomizePagePureUtils', () => ({
-  getTabLabelFromId: jest.fn((tabId: EntityTabs) => {
-    const labelMap: Partial<Record<EntityTabs, string>> = {
-      [EntityTabs.SCHEMA]: 'Schema',
-      [EntityTabs.ACTIVITY_FEED]: 'Activity Feed',
-      [EntityTabs.LINEAGE]: 'Lineage',
-      [EntityTabs.CONTRACT]: 'Contract',
-      [EntityTabs.CUSTOM_PROPERTIES]: 'Custom Properties',
-    };
-
-    return labelMap[tabId] || tabId;
-  }),
-}));
-
 jest.mock('./WorksheetDetailsUtils', () => ({
   getWorksheetDetailsPageTabs: jest.fn((): TabProps[] => [
     {
@@ -178,35 +164,35 @@ describe('WorksheetClassBase', () => {
       expect(result[0]).toEqual({
         id: EntityTabs.SCHEMA,
         name: EntityTabs.SCHEMA,
-        displayName: 'Schema',
+        displayName: 'label.schema',
         layout: expect.any(Array),
         editable: true,
       });
       expect(result[1]).toEqual({
         id: EntityTabs.ACTIVITY_FEED,
         name: EntityTabs.ACTIVITY_FEED,
-        displayName: 'Activity Feed',
+        displayName: 'label.activity-feed-and-task-plural',
         layout: [],
         editable: false,
       });
       expect(result[2]).toEqual({
         id: EntityTabs.LINEAGE,
         name: EntityTabs.LINEAGE,
-        displayName: 'Lineage',
+        displayName: 'label.lineage',
         layout: [],
         editable: false,
       });
       expect(result[3]).toEqual({
         id: EntityTabs.CONTRACT,
         name: EntityTabs.CONTRACT,
-        displayName: 'Contract',
+        displayName: 'label.contract',
         layout: [],
         editable: false,
       });
       expect(result[4]).toEqual({
         id: EntityTabs.CUSTOM_PROPERTIES,
         name: EntityTabs.CUSTOM_PROPERTIES,
-        displayName: 'Custom Properties',
+        displayName: 'label.custom-property-plural',
         layout: [],
         editable: false,
       });

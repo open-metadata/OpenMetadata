@@ -13,18 +13,19 @@
 
 import { Divider, Space, Typography } from 'antd';
 import { get, isEmpty, isObject, startCase, toString } from 'lodash';
-import { Fragment, lazy, ReactNode } from 'react';
+import type { ReactNode } from 'react';
+import { Fragment, lazy } from 'react';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import { VersionButton } from '../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { TabSpecificField } from '../enums/entity.enum';
 import { EntityChangeOperations } from '../enums/VersionPage.enum';
-import {
+import type {
   ChangeDescription,
   FieldChange,
 } from '../generated/entity/services/databaseService';
-import { EntityReference } from '../generated/entity/type';
-import { TestCaseParameterValue } from '../generated/tests/testCase';
+import type { EntityReference } from '../generated/entity/type';
+import type { TestCaseParameterValue } from '../generated/tests/testCase';
 import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
@@ -57,6 +58,30 @@ const OwnerLabel = withSuspenseFallback(
   )
 );
 
+// Re-export everything from EntityDiffPureUtils for backward compatibility
+export {
+  getAllChangedEntityNames,
+  getAllDiffByFieldName,
+  getChangeColumnNameFromDiffValue,
+  getChangedEntityName,
+  getChangedEntityNewValue,
+  getChangedEntityOldValue,
+  getDiffByFieldName,
+  isEndsWithField,
+} from './EntityDiffPureUtils';
+// Re-export everything from EntityDiffUtils for backward compatibility
+export {
+  getAddedDiffElement,
+  getDiffDisplayValue,
+  getDiffValue,
+  getNormalDiffElement,
+  getRemovedDiffElement,
+  getTextDiff,
+  getTextDiffCustomProperty,
+  getTextDiffElements,
+  getUpdatedExtensionDiffFields,
+} from './EntityDiffUtils';
+// Re-export everything from EntityVersionUtilsPure for backward compatibility
 export {
   addDeletedColumnsDiff,
   getBasicEntityInfoFromVersionData,

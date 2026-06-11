@@ -74,7 +74,7 @@ import {
   TaskEntityType,
   TaskStatusGroup,
 } from '../../../rest/tasksAPI';
-import { getEntityFeedLink } from '../../../utils/EntityLinkUtils';
+import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import { getUpdatedThread } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
@@ -345,7 +345,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       type?: ThreadType,
       entityType?: EntityType,
       fqn?: string,
-      _taskStatusGroup?: TaskStatusGroup,
+      taskStatusGroup?: TaskStatusGroup,
       limit?: number
     ) => {
       try {

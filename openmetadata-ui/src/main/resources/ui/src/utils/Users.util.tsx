@@ -11,6 +11,13 @@
  *  limitations under the License.
  */
 
+export {
+  getEmptyTextFromUserProfileItem,
+  getUserCreationErrorMessage,
+  getUserOnlineStatus,
+  isMaskedEmail,
+} from './UsersPureUtils';
+
 import { Popover, Skeleton, Space, Tag, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';

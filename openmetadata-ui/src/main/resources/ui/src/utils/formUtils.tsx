@@ -10,13 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export {
-  createScrollToErrorHandler,
-  getPopupContainer,
-  handleEntityCreationError,
-  setInlineErrorValue,
-  transformErrors,
-} from './formPureUtils';
 import { TooltipProps as MUITooltipProps } from '@mui/material/Tooltip';
 import { Toggle, ToggleProps } from '@openmetadata/ui-core-components';
 import {
@@ -34,154 +27,67 @@ import {
 } from 'antd';
 import { RuleObject } from 'antd/lib/form';
 import { TooltipPlacement } from 'antd/lib/tooltip';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isString, startCase, toString } from 'lodash';
-import React, { Fragment, lazy, ReactNode } from 'react';
-import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import React, { Fragment, ReactNode } from 'react';
+import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
+import TreeAsyncSelectList from '../components/common/AsyncSelectList/TreeAsyncSelectList';
+import { MUIColorPicker } from '../components/common/ColorPicker';
+import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
+import { MUICoverImageUpload } from '../components/common/CoverImageUpload';
+import DomainSelectableList from '../components/common/DomainSelectableList/DomainSelectableList.component';
 import { DomainSelectableListProps } from '../components/common/DomainSelectableList/DomainSelectableList.interface';
+import FilterPattern from '../components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from '../components/common/FilterPattern/filterPattern.interface';
 import FormItemLabel from '../components/common/Form/FormItemLabel';
+import { MUIIconPicker } from '../components/common/IconPicker';
+import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
+import MUIDomainSelect from '../components/common/MUIDomainSelect/MUIDomainSelect';
 import { MUIDomainSelectProps } from '../components/common/MUIDomainSelect/MUIDomainSelect.interface';
 import MUIFormItemLabel from '../components/common/MUIFormItemLabel';
-import type { MUIUserTeamSelectProps } from '../components/common/MUIUserTeamSelect/MUIUserTeamSelect';
+import MUIGlossaryTagSuggestion from '../components/common/MUIGlossaryTagSuggestion/MUIGlossaryTagSuggestion';
+import MUISelect from '../components/common/MUISelect/MUISelect';
+import MUITextField from '../components/common/MUITextField/MUITextField';
+import MUIUserTeamSelect, {
+  MUIUserTeamSelectProps,
+} from '../components/common/MUIUserTeamSelect/MUIUserTeamSelect';
+import RichTextEditor from '../components/common/RichTextEditor/RichTextEditor';
 import { RichTextEditorProp } from '../components/common/RichTextEditor/RichTextEditor.interface';
+import SanitizedInput from '../components/common/SanitizedInput/SanitizedInput';
+import SliderWithInput from '../components/common/SliderWithInput/SliderWithInput';
 import { SliderWithInputProps } from '../components/common/SliderWithInput/SliderWithInput.interface';
-import { TagSuggestionProps } from '../components/common/TagSuggestion/TagSuggestion';
+import TagSuggestion, {
+  TagSuggestionProps,
+} from '../components/common/TagSuggestion/TagSuggestion';
+import { UserSelectableList } from '../components/common/UserSelectableList/UserSelectableList.component';
 import { UserSelectableListProps } from '../components/common/UserSelectableList/UserSelectableList.interface';
+import { UserTeamSelectableList } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { UserSelectDropdownProps } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.interface';
-import { MUIAutocompleteProps } from '../components/form/MUIAutocomplete/MUIAutocomplete.interface';
+import UserTeamSelectableListSearchInput from '../components/common/UserTeamSelectableListSearchInput/UserTeamSelectableListSearchInput.component';
+import MUIAutocomplete, {
+  MUIAutocompleteProps,
+} from '../components/form/MUIAutocomplete';
+import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
 import {
   FieldProp,
   FieldTypes,
   FormItemLayout,
   HelperTextType,
 } from '../interface/FormUtils.interface';
-import { TagSuggestionProps as AntDTagSuggestionProps } from '../pages/TasksPage/shared/TagSuggestion';
+import AntDTagSuggestion, {
+  TagSuggestionProps as AntDTagSuggestionProps,
+} from '../pages/TasksPage/shared/TagSuggestion';
 import { t } from './i18next/LocalUtil';
+import { getErrorText } from './StringUtils';
 
-const AsyncSelectList = withSuspenseFallback(
-  lazy(() => import('../components/common/AsyncSelectList/AsyncSelectList'))
-);
-
-const TreeAsyncSelectList = withSuspenseFallback(
-  lazy(() => import('../components/common/AsyncSelectList/TreeAsyncSelectList'))
-);
-
-const MUIColorPicker = withSuspenseFallback(
-  lazy(() =>
-    import('../components/common/ColorPicker').then((module) => ({
-      default: module.MUIColorPicker,
-    }))
-  )
-);
-
-const ColorPicker = withSuspenseFallback(
-  lazy(() => import('../components/common/ColorPicker/ColorPicker.component'))
-);
-
-const MUICoverImageUpload = withSuspenseFallback(
-  lazy(() =>
-    import('../components/common/CoverImageUpload').then((module) => ({
-      default: module.MUICoverImageUpload,
-    }))
-  )
-);
-
-const DomainSelectableList = withSuspenseFallback(
-  lazy(
-    () =>
-      import(
-        '../components/common/DomainSelectableList/DomainSelectableList.component'
-      )
-  )
-);
-
-const FilterPattern = withSuspenseFallback(
-  lazy(() => import('../components/common/FilterPattern/FilterPattern'))
-);
-
-const MUIIconPicker = withSuspenseFallback(
-  lazy(() =>
-    import('../components/common/IconPicker').then((module) => ({
-      default: module.MUIIconPicker,
-    }))
-  )
-);
-
-const MUIDomainSelect = withSuspenseFallback(
-  lazy(() => import('../components/common/MUIDomainSelect/MUIDomainSelect'))
-);
-
-const MUIGlossaryTagSuggestion = withSuspenseFallback(
-  lazy(
-    () =>
-      import(
-        '../components/common/MUIGlossaryTagSuggestion/MUIGlossaryTagSuggestion'
-      )
-  )
-);
-
-const MUISelect = withSuspenseFallback(
-  lazy(() => import('../components/common/MUISelect/MUISelect'))
-);
-
-const MUITextField = withSuspenseFallback(
-  lazy(() => import('../components/common/MUITextField/MUITextField'))
-);
-
-const MUIUserTeamSelect = withSuspenseFallback(
-  lazy(() => import('../components/common/MUIUserTeamSelect/MUIUserTeamSelect'))
-);
-
-const RichTextEditor = withSuspenseFallback(
-  lazy(() => import('../components/common/RichTextEditor/RichTextEditor'))
-);
-
-const SanitizedInput = withSuspenseFallback(
-  lazy(() => import('../components/common/SanitizedInput/SanitizedInput'))
-);
-
-const SliderWithInput = withSuspenseFallback(
-  lazy(() => import('../components/common/SliderWithInput/SliderWithInput'))
-);
-
-const TagSuggestion = withSuspenseFallback(
-  lazy(() => import('../components/common/TagSuggestion/TagSuggestion'))
-);
-
-const UserSelectableList = withSuspenseFallback(
-  lazy(() =>
-    import(
-      '../components/common/UserSelectableList/UserSelectableList.component'
-    ).then((module) => ({ default: module.UserSelectableList }))
-  )
-);
-
-const UserTeamSelectableList = withSuspenseFallback(
-  lazy(() =>
-    import(
-      '../components/common/UserTeamSelectableList/UserTeamSelectableList.component'
-    ).then((module) => ({ default: module.UserTeamSelectableList }))
-  )
-);
-
-const UserTeamSelectableListSearchInput = withSuspenseFallback(
-  lazy(
-    () =>
-      import(
-        '../components/common/UserTeamSelectableListSearchInput/UserTeamSelectableListSearchInput.component'
-      )
-  )
-);
-
-const MUIAutocomplete = withSuspenseFallback(
-  lazy(() => import('../components/form/MUIAutocomplete'))
-);
-
-const AntDTagSuggestion = withSuspenseFallback(
-  lazy(() => import('../pages/TasksPage/shared/TagSuggestion'))
-);
+export {
+  createScrollToErrorHandler,
+  getPopupContainer,
+  transformErrors,
+  type ScrollToErrorOptions,
+} from './formPureUtils';
 
 export const getField = (field: FieldProp) => {
   const {
@@ -656,5 +562,73 @@ export const generateFormFields = (fields: FieldProp[]) => {
         <Fragment key={field.id || index}>{getField(field)}</Fragment>
       ))}
     </>
+  );
+};
+
+export const setInlineErrorValue = (
+  description: string,
+  serverAPIError: string,
+  setInlineAlertDetails: (alertDetails?: InlineAlertProps | undefined) => void
+) => {
+  setInlineAlertDetails({
+    type: 'error',
+    heading: t('label.error'),
+    description,
+    subDescription: serverAPIError,
+    onClose: () => setInlineAlertDetails(undefined),
+  });
+};
+
+export const handleEntityCreationError = ({
+  error,
+  setInlineAlertDetails,
+  entity,
+  entityLowercase,
+  entityLowercasePlural,
+  name,
+  defaultErrorType,
+}: {
+  error: AxiosError;
+  setInlineAlertDetails: (alertDetails?: InlineAlertProps | undefined) => void;
+  entity: string;
+  entityLowercase?: string;
+  entityLowercasePlural?: string;
+  name: string;
+  defaultErrorType?: 'create';
+}) => {
+  if (error.response?.status === HTTP_STATUS_CODE.CONFLICT) {
+    setInlineErrorValue(
+      t('server.entity-already-exist', {
+        entity,
+        entityPlural: entityLowercasePlural ?? entity,
+        name: name,
+      }),
+      getErrorText(error, t('server.unexpected-error')),
+      setInlineAlertDetails
+    );
+
+    return;
+  }
+
+  if (error.response?.status === HTTP_STATUS_CODE.LIMIT_REACHED) {
+    setInlineErrorValue(
+      t('server.entity-limit-reached', {
+        entity,
+      }),
+      getErrorText(error, t('server.unexpected-error')),
+      setInlineAlertDetails
+    );
+
+    return;
+  }
+
+  setInlineErrorValue(
+    defaultErrorType === 'create'
+      ? t(`server.entity-creation-error`, {
+          entity: entityLowercase ?? entity,
+        })
+      : getErrorText(error, t('server.unexpected-error')),
+    getErrorText(error, t('server.unexpected-error')),
+    setInlineAlertDetails
   );
 };

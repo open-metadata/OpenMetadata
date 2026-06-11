@@ -18,8 +18,8 @@ import {
   RowFilter,
 } from '../../../generated/entity/data/dataContract';
 import { DataType, Table } from '../../../generated/entity/data/table';
-import { getEntityLabel } from '../../../utils/EntityUtils';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import ContractSecurityCard from './ContractSecurityCard.component';
 
 jest.mock('react-i18next', () => ({
@@ -28,12 +28,11 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
-  getEntityLabel: jest.fn(),
+jest.mock('../../../utils/EntityNameUtils', () => ({
+  getEntityName: jest.fn(),
 }));
 
-jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
-  ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   useGenericContext: jest.fn(),
 }));
 
@@ -101,7 +100,7 @@ describe('ContractSecurityCard', () => {
     (useGenericContext as jest.Mock).mockReturnValue({
       data: mockTableData,
     });
-    (getEntityLabel as jest.Mock).mockImplementation(
+    (getEntityName as jest.Mock).mockImplementation(
       (entity) => entity.displayName || entity.name
     );
   });

@@ -15,11 +15,11 @@ import { EntityField } from '../constants/Feeds.constants';
 import { ProviderType } from '../generated/entity/bot';
 import { Classification } from '../generated/entity/classification/classification';
 import { ChangeDescription } from '../generated/entity/type';
-import { getClassificationInfo } from './ClassificationPureUtils';
-import { getEntityVersionByField } from './EntityVersionUtils';
+import { getClassificationInfo } from './ClassificationUtils';
+import { getEntityVersionByField } from './EntityVersionUtilsPure';
 
 // Mock dependencies
-jest.mock('./EntityVersionUtils', () => ({
+jest.mock('./EntityVersionUtilsPure', () => ({
   getEntityVersionByField: jest.fn(),
 }));
 

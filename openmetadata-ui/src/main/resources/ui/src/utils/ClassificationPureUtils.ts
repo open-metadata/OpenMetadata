@@ -10,14 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { EntityField } from '../constants/Feeds.constants';
-import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
+import type { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ProviderType } from '../generated/entity/bot';
-import { Classification } from '../generated/entity/classification/classification';
-import { Tag } from '../generated/entity/classification/tag';
-import { ChangeDescription } from '../generated/entity/type';
-import { getEntityVersionByField } from './EntityVersionUtils';
+import type { Classification } from '../generated/entity/classification/classification';
+import type { Tag } from '../generated/entity/classification/tag';
+import type { ChangeDescription } from '../generated/entity/type';
+import { getEntityVersionByField } from './EntityVersionUtilsPure';
 import { t } from './i18next/LocalUtil';
 
 export const getDeleteButtonData = (

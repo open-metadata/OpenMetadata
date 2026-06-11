@@ -10,8 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
+import type { RenderSettings } from '@react-awesome-query-builder/antd';
+import { Button } from 'antd';
+import { t } from './i18next/LocalUtil';
 
-// Re-exports from pure (non-JSX) utilities
 export {
   addEntityTypeFilter,
   buildExploreUrlParams,
@@ -32,12 +35,9 @@ export {
   migrateJsonLogic,
   READONLY_SETTINGS,
   resolveFieldType,
+  type ElasticsearchQuery,
+  type JsonLogic,
 } from './QueryBuilderPureUtils';
-
-import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
-import { RenderSettings } from '@react-awesome-query-builder/antd';
-import { Button } from 'antd';
-import { t } from './i18next/LocalUtil';
 
 export const renderQueryBuilderFilterButtons: RenderSettings['renderButton'] = (
   props

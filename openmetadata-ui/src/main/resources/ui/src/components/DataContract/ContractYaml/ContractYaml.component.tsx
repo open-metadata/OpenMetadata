@@ -15,7 +15,7 @@ import { lazy, useMemo } from 'react';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { getUpdatedContractDetails } from '../../../utils/DataContract/DataContractUtils';
-import { withSuspenseFallback } from '../../AppRouter/withSuspenseFallback';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './contract-yaml.less';
 
 const SchemaEditor = withSuspenseFallback(

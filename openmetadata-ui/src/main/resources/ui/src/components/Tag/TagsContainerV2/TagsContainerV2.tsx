@@ -28,9 +28,9 @@ import { EntityType } from '../../../enums/entity.enum';
 import { LabelType } from '../../../generated/entity/data/table';
 import { State, TagSource } from '../../../generated/type/tagLabel';
 import EntityLink from '../../../utils/EntityLink';
-import { getEntityFeedLink } from '../../../utils/EntityLinkUtils';
-import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
+import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import { getTierTags } from '../../../utils/TablePureUtils';
+import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { fetchGlossaryList, getTagPlaceholder } from '../../../utils/TagsUtils';
 import {
@@ -46,7 +46,7 @@ import {
   PlusIconButton,
   RequestIconButton,
 } from '../../common/IconButtons/EditIconButton';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { TableTagsProps } from '../../Database/TableTags/TableTags.interface';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';

@@ -22,7 +22,7 @@ import { Link } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import TableAntd from '../../components/common/Table/Table';
-import { useGenericContext } from '../../components/Customization/GenericProvider/GenericContext';
+import { useGenericContext } from '../../components/Customization/GenericProvider/GenericProvider';
 import { API_COLLECTION_API_ENDPOINTS } from '../../constants/APICollection.constants';
 import { INITIAL_PAGING_VALUE, NO_DATA } from '../../constants/constants';
 import {
@@ -47,9 +47,9 @@ import {
 import { searchQuery } from '../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import { highlightSearchText } from '../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../utils/EntitySortUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { highlightSearchText } from '../../utils/EntitySearchUtils';
 import { stringToHTML } from '../../utils/StringUtils';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';

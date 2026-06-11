@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { FC, Suspense } from 'react';
+import { ComponentType, forwardRef, Suspense } from 'react';
 import Loader from '../common/Loader/Loader';
 
-export function withSuspenseFallback<T>(Component: FC<T>) {
-  return function DefaultFallback(
-    props: JSX.IntrinsicAttributes & { children?: React.ReactNode } & T
-  ) {
+export function withSuspenseFallback<T extends object>(
+  Component: ComponentType<T>
+) {
+  return forwardRef<unknown, T>(function DefaultFallback(props, ref) {
     return (
       <Suspense
         fallback={
@@ -25,10 +25,10 @@ export function withSuspenseFallback<T>(Component: FC<T>) {
             <Loader />
           </div>
         }>
-        <Component {...props} />
+        <Component {...(props as T)} ref={ref} />
       </Suspense>
     );
-  };
+  });
 }
 
 export default withSuspenseFallback;

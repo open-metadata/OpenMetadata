@@ -14,23 +14,19 @@
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isNull, isUndefined } from 'lodash';
-import { ArticleCardItem } from '../components/ContextCenter/ArticleCard/ArticleCard.interface';
-import { DocFile } from '../components/ContextCenter/DocumentsView/DocumentsView.interface';
-import { UploadedDocumentItem } from '../components/ContextCenter/UploadedDocumentCard/UploadedDocumentCard.interface';
+import { PagingResponse } from 'Models';
+import { ListParams } from 'src/interface/API.interface';
 import { CREATE_PAGE_HASH } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
-import { Asset, AssetType } from '../generated/attachments/asset';
-import { ContextFile } from '../generated/entity/data/contextFile';
-import {
+import type { Asset } from '../generated/attachments/asset';
+import { AssetType } from '../generated/attachments/asset';
+import type { ContextFile } from '../generated/entity/data/contextFile';
+import type {
   CreateKnowledgePage,
-  PageType,
   QuickLink,
 } from '../interface/knowledge-center.interface';
-import {
-  downloadDriveFile,
-  listAssetsByFqn,
-  ListAssetsByFqnParams,
-} from '../rest/assetAPI';
+import { PageType } from '../interface/knowledge-center.interface';
+import { downloadDriveFile, listAssetsByFqn } from '../rest/assetAPI';
 import { postKnowledgePage } from '../rest/knowledgeCenterAPI';
 import contextCenterClassBase from './ContextCenterClassBase';
 import EntityLink from './EntityLink';
@@ -58,43 +54,6 @@ export const formatBytes = (bytes?: number): string => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-export const assetToDocumentItem = (
-  asset: ContextFile
-): UploadedDocumentItem => ({
-  fileExtension: asset.fileExtension ?? '',
-  id: asset.id,
-  name: getEntityName(asset) ?? '',
-  sizeLabel: formatBytes(asset.fileSize),
-  status: 'processed',
-  updatedBy: asset.updatedBy ?? '',
-  updatedAt: asset.updatedAt ?? 0,
-});
-
-export const contextFileToDocumentItem = (file: ContextFile): DocFile => ({
-  driveFileId: file.id,
-  folderId: file.folder?.id,
-  folderFqn: file.folder?.fullyQualifiedName,
-  id: file.assetId ?? file.id,
-  name: file.displayName ?? file.name,
-  sizeLabel: formatBytes(file.fileSize),
-  fileExtension: file.fileExtension ?? '',
-  updatedAt: file.updatedAt,
-  updatedBy: file.updatedBy,
-});
-
-export const contextFileToUploadedDocumentItem = (
-  file: ContextFile
-): UploadedDocumentItem => ({
-  driveFileId: file.id,
-  id: file.assetId ?? file.id,
-  name: file.displayName ?? file.name,
-  sizeLabel: formatBytes(file.fileSize),
-  status: 'processed',
-  updatedAt: file.updatedAt ?? 0,
-  updatedBy: file.updatedBy ?? '',
-  fileExtension: file.fileExtension ?? '',
-});
-
 export const knowledgePageToArticleItem = (
   data: {
     id: string;
@@ -107,7 +66,7 @@ export const knowledgePageToArticleItem = (
     page?: QuickLink | unknown;
   },
   untitledLabel: string
-): ArticleCardItem => ({
+): any => ({
   description: data.description ?? '',
   href:
     data.pageType === PageType.QUICK_LINK
@@ -124,8 +83,8 @@ export const knowledgePageToArticleItem = (
 });
 
 export const fetchContextCenterDocuments = async (
-  params?: ListAssetsByFqnParams
-): Promise<Asset[]> => {
+  params?: ListParams
+): Promise<PagingResponse<Asset[]>> => {
   return listAssetsByFqn(
     CONTEXT_CENTER_DOCUMENTS_FQN,
     AssetType.External,
@@ -163,16 +122,16 @@ export const createArticleKnowledgePage = async (
   }
 };
 
-export const handleAssetDownload = async (file: DocFile) => {
+export const handleAssetDownload = async (file: ContextFile) => {
   let url: string | undefined;
   let element: HTMLAnchorElement | undefined;
 
   try {
-    const blob = await downloadDriveFile(file.driveFileId ?? file.id);
+    const blob = await downloadDriveFile(file.id);
     url = URL.createObjectURL(blob);
     element = document.createElement('a');
     element.href = url;
-    element.download = file.name;
+    element.download = file.displayName ?? file.name;
     document.body.appendChild(element);
     element.click();
   } catch (err) {

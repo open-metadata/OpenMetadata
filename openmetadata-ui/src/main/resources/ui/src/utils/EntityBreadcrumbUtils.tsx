@@ -11,17 +11,8 @@
  *  limitations under the License.
  */
 
-/**
- * Backward-compatible re-export barrel + getEntityBreadcrumbs dispatcher.
- *
- * Implementations split into:
- *   - EntityDataBreadcrumbUtils.ts    — table, chart, API, container/drive helpers
- *   - EntityServiceBreadcrumbUtils.ts — service-type breadcrumbs (12 service categories)
- *   - EntityGovernanceBreadcrumbUtils.ts — glossary, domain, test, KPI, role, bot, etc.
- *   - EntityBreadcrumbPureUtils.ts    — pure getEntityBreadcrumbs dispatcher
- */
-
 // Re-export all for backward compatibility
+export { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
 export {
   getBreadCrumbForAPICollection,
   getBreadCrumbForAPIEndpoint,
@@ -29,7 +20,6 @@ export {
   getBreadcrumbForEntitiesWithServiceOnly,
   getBreadcrumbForEntityWithParent,
   getBreadcrumbForTable,
-  getBreadcrumbsFromFqn,
 } from './EntityDataBreadcrumbUtils';
 export {
   getBreadcrumbForApplication,
@@ -50,6 +40,7 @@ export {
   getBreadcrumbForTestCase,
   getBreadcrumbForTestSuite,
 } from './EntityGovernanceBreadcrumbUtils';
+export { getEntityLinkFromType } from './EntityLinkUtils';
 export {
   getBreadcrumbForDatabase,
   getBreadcrumbForDatabaseSchema,

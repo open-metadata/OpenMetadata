@@ -13,10 +13,9 @@
 
 import { Form, FormProps, Input, Modal } from 'antd';
 import { AxiosError } from 'axios';
-import { useEffect, useState } from 'react';
+import { lazy, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { lazy } from 'react';
 import { HTTP_STATUS_CODE } from '../../../../../constants/Auth.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../../constants/HelperTextUtil';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
@@ -35,7 +34,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
-import { withSuspenseFallback } from '../../../../AppRouter/withSuspenseFallback';
+import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
 import Loader from '../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../common/RichTextEditor/RichTextEditor';
 import { AddSqlQueryFormModalProps } from './AddSqlQueryFormModal.interface';

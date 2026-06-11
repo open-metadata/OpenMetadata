@@ -27,9 +27,9 @@ import {
 } from '../../../generated/tests/testCase';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
-import { getBreadcrumbsFromFqn } from '../../../utils/EntityDataBreadcrumbUtils';
 import { getEntityChildrenAndLabel } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getBreadcrumbsFromFqn } from '../../../utils/EntityPureUtils';
 import { getEntityTypeIcon, getServiceIcon } from '../../../utils/TableUtils';
 import { LineageNodeType } from '../../Lineage/Lineage.interface';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';

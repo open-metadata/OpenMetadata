@@ -40,7 +40,7 @@ import { triggerOnDemandApp } from '../../rest/applicationAPI';
 import { postService } from '../../rest/serviceAPI';
 import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import { getServiceLogo } from '../../utils/EntityDisplayUtils';
-import { getEntityFeedLink } from '../../utils/EntityLinkUtils';
+import { getEntityFeedLink } from '../../utils/EntityPureUtils';
 import { handleEntityCreationError } from '../../utils/formUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
@@ -48,7 +48,7 @@ import {
   getAddServiceEntityBreadcrumb,
   getEntityTypeFromServiceCategory,
   getServiceType,
-} from '../../utils/ServicePureUtils';
+} from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { ServiceConfig } from '../AddServicePage/AddServicePage.interface';

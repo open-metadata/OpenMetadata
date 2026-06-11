@@ -106,7 +106,7 @@ export interface ListTasksParams {
 
 export interface ListDataAccessRequestsParams {
   fields?: string;
-  status?: TaskStatus;
+  status?: TaskStatus | TaskStatus[];
   statusGroup?: TaskStatusGroup;
   dataset?: string;
   service?: string;
@@ -114,8 +114,10 @@ export interface ListDataAccessRequestsParams {
   requestedById?: string;
   approver?: string;
   approverId?: string;
-  accessType?: DataAccessType;
+  assignee?: string;
+  accessType?: DataAccessType | DataAccessType[];
   domain?: string;
+  q?: string;
   sortOrder?: 'asc' | 'desc';
   limit?: number;
   offset?: number;

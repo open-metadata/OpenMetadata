@@ -12,7 +12,7 @@
  */
 
 import { isEmpty, isUndefined, startCase, uniq } from 'lodash';
-import { ServicesUpdateRequest, ServiceTypes } from 'Models';
+import type { ServicesUpdateRequest, ServiceTypes } from 'Models';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -28,14 +28,15 @@ import { EntityTabs } from '../enums/entity.enum';
 import { ServiceAgentSubTabs, ServiceCategory } from '../enums/service.enum';
 import { ServiceConnectionFilterPatternFields } from '../enums/ServiceConnection.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { HiveMetastoreConnectionDetails as Connection } from '../generated/entity/services/databaseService';
+import type { HiveMetastoreConnectionDetails as Connection } from '../generated/entity/services/databaseService';
 import {
-  IngestionPipeline,
   PipelineState,
-  StepSummary,
+  type IngestionPipeline,
+  type StepSummary,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { SearchSourceAlias } from '../interface/search.interface';
-import { DataObj, ServicesType } from '../interface/service.interface';
+import type { SearchSourceAlias } from '../interface/search.interface';
+import type { DataObj, ServicesType } from '../interface/service.interface';
+import { getDayCron } from './CronExpressionUtils';
 import i18n from './i18next/LocalUtil';
 import { getSchemaByWorkflowType } from './IngestionWorkflowUtils';
 import {
@@ -43,13 +44,12 @@ import {
   getSettingPath,
   getSettingsPathWithFqn,
 } from './RouterUtils';
-import { getDayCron } from './SchedularUtils';
 import { getFilteredSchema } from './ServiceConnectionUtils';
-import serviceUtilClassBase from './ServiceUtilClassBase';
 import {
   getReadableCountString,
   getServiceRouteFromServiceType,
 } from './ServicePureUtils';
+import serviceUtilClassBase from './ServiceUtilClassBase';
 
 export const getIngestionHeadingName = (
   ingestionType: string,
@@ -216,17 +216,14 @@ export const getDefaultIngestionSchedule = ({
   scheduleInterval?: string;
   defaultSchedule?: string;
 }) => {
-  // If it is edit mode, then return the schedule interval from the ingestion data
   if (isEditMode) {
     return scheduleInterval;
   }
 
-  // If it is not edit mode and schedule interval is not empty, then return the schedule interval
   if (!isEmpty(scheduleInterval)) {
     return scheduleInterval;
   }
 
-  // If it is not edit mode, then return the default schedule
   return (
     defaultSchedule ??
     getDayCron({
@@ -262,29 +259,22 @@ export const getDefaultFilterPropertyValues = ({
   ingestionData?: IngestionPipeline;
   serviceData?: ServicesUpdateRequest;
 }) => {
-  // If it is edit mode, then return the filter property values from the ingestion data
   if (isEditMode) {
     return getFilteredSchema(
-      ingestionData?.sourceConfig.config as
-        | Record<string, unknown>
-        | undefined,
+      ingestionData?.sourceConfig.config as Record<string, unknown> | undefined,
       false
     );
   } else {
-    // Get the default filter property fields from the schema
     const filterPropertiesInSchema = getDefaultFilterPropertyFieldsFromSchema(
       pipelineType,
       serviceCategory
     );
 
-    // Get the default filter values from the service data
     const filterValues = getFilteredSchema(
       serviceData?.connection?.config,
       false
     );
 
-    // Return the default filter property values from the service data only if
-    // the property is present in the ingestion schema
     return Object.entries(filterValues).reduce((acc, [key, value]) => {
       if (filterPropertiesInSchema.includes(key)) {
         acc[key] = value;

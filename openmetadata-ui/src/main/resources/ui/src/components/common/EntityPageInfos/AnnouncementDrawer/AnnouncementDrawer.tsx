@@ -21,7 +21,7 @@ import {
   deleteAnnouncement,
   patchAnnouncement,
 } from '../../../../rest/announcementsAPI';
-import { getEntityFeedLink } from '../../../../utils/EntityLinkUtils';
+import { getEntityFeedLink } from '../../../../utils/EntityPureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import AnnouncementThreadBody from '../../../Announcement/AnnouncementThreadBody.component';
 import AddAnnouncementModal from '../../../Modals/AnnouncementModal/AddAnnouncementModal';

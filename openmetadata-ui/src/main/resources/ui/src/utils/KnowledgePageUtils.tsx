@@ -10,8 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { get } from 'lodash';
+import {
+  KnowledgePage,
+  PageType,
+  QuickLink,
+  RecentlyViewedQuickLinks,
+  RecentViewedKnowledgePage,
+} from '../interface/knowledge-center.interface';
+
+import { Space } from 'antd';
+import { RecentlyViewedData } from 'Models';
+import { Link } from 'react-router-dom';
+import { ReactComponent as ExternalLinkIcon } from '../assets/svg/external-links.svg';
+import { ReactComponent as IconArticle } from '../assets/svg/ic-articles.svg';
+import { usePersistentStorage } from '../hooks/currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from '../hooks/useApplicationStore';
+import contextCenterClassBase from './ContextCenterClassBase';
+import { t } from './i18next/LocalUtil';
+import { getKnowledgePageName } from './KnowledgePagePureUtils';
+import { arraySorterByKey } from './RecentActivityUtils';
+
 export {
-  addToKnowledgeCenterRecentViewed,
   convertToTreeData,
   extractKnowledgePageParentFQN,
   findPageAndParentInTreeData,
@@ -29,23 +49,78 @@ export {
   hierarchyPaginationInitialState,
   hierarchyPaginationReducer,
   integrateNodesIntoHierarchy,
-  setRecentlyViewedData,
-  updateKnowledgeCenterRecentViewed,
   updateTreeData,
 } from './KnowledgePagePureUtils';
+export type { ActionType } from './KnowledgePagePureUtils';
 
-import { Space } from 'antd';
-import { Link } from 'react-router-dom';
-import { ReactComponent as ExternalLinkIcon } from '../assets/svg/external-links.svg';
-import { ReactComponent as IconArticle } from '../assets/svg/ic-articles.svg';
-import {
-  KnowledgePage,
-  PageType,
-  QuickLink,
-} from '../interface/knowledge-center.interface';
-import contextCenterClassBase from './ContextCenterClassBase';
-import { t } from './i18next/LocalUtil';
-import { getKnowledgePageName } from './KnowledgePagePureUtils';
+export const setRecentlyViewedData = (
+  recentData: RecentlyViewedQuickLinks['data']
+): void => {
+  const currentUser = useApplicationStore.getState().currentUser;
+  if (!currentUser) {
+    return;
+  }
+  const { setUserPreference } = usePersistentStorage.getState();
+  setUserPreference(currentUser.name, {
+    recentlyViewedQuickLinks: recentData as unknown as RecentlyViewedData[],
+  });
+};
+
+export const addToKnowledgeCenterRecentViewed = (
+  eData: RecentViewedKnowledgePage
+): void => {
+  try {
+    const entityData = { ...eData, timestamp: Date.now() };
+
+    const currentUser = useApplicationStore.getState().currentUser;
+    let recentlyViewed: RecentlyViewedQuickLinks['data'] = [];
+    if (!currentUser) {
+      recentlyViewed = [];
+    } else {
+      const { preferences } = usePersistentStorage.getState();
+      recentlyViewed = get(
+        preferences,
+        [currentUser.name, 'recentlyViewedQuickLinks'],
+        []
+      ) as RecentlyViewedQuickLinks['data'];
+    }
+    if (recentlyViewed) {
+      const arrData = recentlyViewed
+        .filter(
+          (item) => item.fullyQualifiedName !== entityData.fullyQualifiedName
+        )
+        .sort(arraySorterByKey<RecentViewedKnowledgePage>('timestamp', true));
+      arrData.unshift(entityData);
+
+      if (arrData.length > 5) {
+        arrData.pop();
+      }
+      recentlyViewed = arrData;
+    } else {
+      recentlyViewed = [entityData];
+    }
+    setRecentlyViewedData(recentlyViewed);
+  } catch (error) {
+    // do not throw error
+  }
+};
+
+export const updateKnowledgeCenterRecentViewed = (
+  data: RecentlyViewedQuickLinks['data']
+) => {
+  try {
+    const currentUser = useApplicationStore.getState().currentUser;
+    if (!currentUser) {
+      return;
+    }
+    const { setUserPreference } = usePersistentStorage.getState();
+    setUserPreference(currentUser.name, {
+      recentlyViewedQuickLinks: data as unknown as RecentlyViewedData[],
+    });
+  } catch (error) {
+    // do not throw error
+  }
+};
 
 export const getLink = (knowledgePage: KnowledgePage, testIdPrefix: string) => {
   const isQuickLink = knowledgePage.pageType === PageType.QUICK_LINK;

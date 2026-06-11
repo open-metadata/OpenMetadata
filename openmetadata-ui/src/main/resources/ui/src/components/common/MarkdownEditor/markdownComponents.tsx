@@ -15,7 +15,7 @@ import React, { lazy } from 'react';
 import ReactMarkdown, { Components } from 'react-markdown';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
-import { withSuspenseFallback } from '../../AppRouter/withSuspenseFallback';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import EntityMarkdownLink from './EntityMarkdownLink/EntityMarkdownLink';
 import EntityPill from './EntityPill/EntityPill';
 

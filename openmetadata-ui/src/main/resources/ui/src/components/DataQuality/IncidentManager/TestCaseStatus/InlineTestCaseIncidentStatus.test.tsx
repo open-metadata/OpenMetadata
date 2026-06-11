@@ -26,7 +26,7 @@ import {
 import { transitionIncident } from '../../../../rest/incidentManagerAPI';
 import { getUserAndTeamSearch } from '../../../../rest/miscAPI';
 import { createTask } from '../../../../rest/tasksAPI';
-import { getEntityFeedLink } from '../../../../utils/EntityLinkUtils';
+import { getEntityFeedLink } from '../../../../utils/EntityPureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 
 jest.mock('@untitledui/icons', () => ({

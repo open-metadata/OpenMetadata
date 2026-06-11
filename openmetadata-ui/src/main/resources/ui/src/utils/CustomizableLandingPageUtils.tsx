@@ -27,8 +27,7 @@ export {
 
 import Icon from '@ant-design/icons';
 import { isUndefined } from 'lodash';
-import { DOMAttributes, Suspense } from 'react';
-import { Layout } from 'react-grid-layout';
+import { Suspense, type DOMAttributes } from 'react';
 import { ReactComponent as ArrowRightIcon } from '../assets/svg/arrow-right.svg';
 import EmptyWidgetPlaceholderV1 from '../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholderV1';
 import WidgetWrapper from '../components/MyData/Widgets/Common/WidgetWrapper/WidgetWrapper';
@@ -50,7 +49,7 @@ export const getWidgetFromKey = ({
   widgetConfig,
 }: {
   currentLayout?: Array<WidgetConfig>;
-  handleLayoutUpdate?: (layout: Layout[]) => void;
+  handleLayoutUpdate?: (layout: import('react-grid-layout').Layout[]) => void;
   handleOpenAddWidgetModal?: () => void;
   handlePlaceholderWidgetKey?: (key: string) => void;
   handleRemoveWidget?: (key: string) => void;

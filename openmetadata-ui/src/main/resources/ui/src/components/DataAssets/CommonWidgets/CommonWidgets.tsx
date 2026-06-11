@@ -41,7 +41,7 @@ import {
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import commonWidgetClassBase from '../../../utils/CommonWidget/CommonWidgetClassBase';
-import { getEntityLabel } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import {
   getEntityVersionByField,
@@ -56,7 +56,7 @@ import CertificationWidget from '../../common/CertificationWidget/CertificationW
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import TierWidget from '../../common/TierWidget/TierWidget';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { LeftPanelContainer } from '../../Customization/GenericTab/LeftPanelContainer';
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import { DomainExpertWidget } from '../../Domain/DomainExpertsWidget/DomainExpertWidget';
@@ -158,7 +158,7 @@ export const CommonWidgets = ({
       ...updatedData,
       tier: getTierTags(tags ?? []),
       tags: getTagsWithoutTier(tags ?? []),
-      entityName: getEntityLabel(data),
+      entityName: getEntityName(data),
     };
   }, [updatedData, updatedData?.tags]);
 

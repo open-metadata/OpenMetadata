@@ -45,6 +45,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class AlertsRuleEvaluator {
@@ -128,7 +129,7 @@ public class AlertsRuleEvaluator {
       name = "matchAnyEntityFqn",
       input = "List of comma separated fully qualified entity names",
       description =
-          "Returns true if the change event entity's fully qualified name equals any of the listed FQNs.",
+          "Returns true if the change event entity's fully qualified name equals, or is a descendant of, any of the listed FQNs.",
       examples = {
         "matchAnyEntityFqn({'service.database.schema.table1', 'service.database.schema.table2'})"
       },
@@ -144,7 +145,7 @@ public class AlertsRuleEvaluator {
     }
 
     EntityInterface entity = getEntity(changeEvent);
-    if (entityFqns.contains(entity.getFullyQualifiedName())) {
+    if (matchesFqnOrDescendant(entity.getFullyQualifiedName(), entityFqns)) {
       return true;
     }
 
@@ -157,6 +158,20 @@ public class AlertsRuleEvaluator {
     }
 
     return false;
+  }
+
+  // Matches the entity FQN exactly or as a descendant (segment-anchored via isParent, no regex).
+  private boolean matchesFqnOrDescendant(String entityFqn, List<String> entityFqns) {
+    boolean matched = false;
+    if (entityFqn != null) {
+      for (String listedFqn : entityFqns) {
+        if (entityFqn.equals(listedFqn) || FullyQualifiedName.isParent(entityFqn, listedFqn)) {
+          matched = true;
+          break;
+        }
+      }
+    }
+    return matched;
   }
 
   @Function(

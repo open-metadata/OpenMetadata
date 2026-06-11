@@ -63,7 +63,7 @@ import {
   validateLessThanOrEquals,
   validateNotEquals,
 } from '../../../../utils/ParameterForm/ParameterFormUtils';
-import { withSuspenseFallback } from '../../../AppRouter/withSuspenseFallback';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import '../../../Database/Profiler/TableProfiler/table-profiler.less';
 import { ParameterFormProps } from '../AddDataQualityTest.interface';
 

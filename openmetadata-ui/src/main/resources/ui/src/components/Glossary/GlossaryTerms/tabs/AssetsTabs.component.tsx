@@ -77,7 +77,7 @@ import { getTagByFqn, removeAssetsFromTags } from '../../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchUtils';
 import { getEntityTypeString } from '../../../../utils/Assets/AssetsUtils';
 import { getDomainDryRunImpacts } from '../../../../utils/Domain/DomainDryRunUtils';
-import { getEntityLabel } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../../utils/EntityReferenceUtils';
 import { getCombinedQueryFilterObject } from '../../../../utils/ExplorePage/ExplorePageUtils';
 import {
@@ -426,7 +426,7 @@ const AssetsTabs = forwardRef(
         const baseMessage =
           assetsToRemove.length === 1
             ? t('message.are-you-sure-action-property', {
-                propertyName: getEntityLabel(assetsToRemove[0]),
+                propertyName: getEntityName(assetsToRemove[0]),
                 action: t('label.remove-lowercase'),
               })
             : t('message.are-you-sure-action-property', {
@@ -450,7 +450,7 @@ const AssetsTabs = forwardRef(
                 assetsInOutputPorts.length > 1 || assetsToRemove.length > 1 ? (
                   <ul className="m-b-0 p-l-md">
                     {assetsInOutputPorts.map((asset) => (
-                      <li key={asset.id}>{getEntityLabel(asset)}</li>
+                      <li key={asset.id}>{getEntityName(asset)}</li>
                     ))}
                   </ul>
                 ) : undefined
@@ -1096,7 +1096,7 @@ const AssetsTabs = forwardRef(
             cancelText={t('label.cancel')}
             confirmText={t('label.delete')}
             header={t('label.remove-entity', {
-              entity: getEntityLabel(assetToDelete) + '?',
+              entity: getEntityName(assetToDelete) + '?',
             })}
             isLoading={assetRemoving}
             visible={showDeleteModal}

@@ -44,11 +44,10 @@ jest.mock('../../../utils/RouterUtils', () => ({
 }));
 
 jest.mock('../../../utils/EntityNameUtils', () => ({
-  ...jest.requireActual('../../../utils/EntityNameUtils'),
+  getEntityName: jest.fn().mockReturnValue('Mock Entity'),
 }));
-
 jest.mock('../../../utils/EntitySearchUtils', () => ({
-  ...jest.requireActual('../../../utils/EntitySearchUtils'),
+  highlightSearchText: jest.fn().mockReturnValue(''),
   highlightEntityNameAndDescription: jest.fn((source, highlight) => {
     if (!highlight) {
       return source;
@@ -64,13 +63,6 @@ jest.mock('../../../utils/EntitySearchUtils', () => ({
       description: highlight?.description?.[0] || source.description,
     };
   }),
-}));
-
-
-
-jest.mock('../../../utils/EntityUtils', () => ({
-  ...jest.requireActual('../../../utils/EntityUtils'),
-  highlightSearchText: jest.fn().mockReturnValue(''),
 }));
 
 jest.mock('../../../utils/SearchClassBase', () => ({

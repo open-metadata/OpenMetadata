@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { lazy, useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { SUPPORTED_BULK_IMPORT_EDIT_ENTITY } from '../../constants/BulkImport.constant';
 import { ROUTES } from '../../constants/constants';
@@ -22,7 +22,7 @@ import { useRequiredParams } from '../../utils/useRequiredParams';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const BulkEntityImportPage = withSuspenseFallback(
-  lazy(
+  React.lazy(
     () =>
       import(
         '../../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage'

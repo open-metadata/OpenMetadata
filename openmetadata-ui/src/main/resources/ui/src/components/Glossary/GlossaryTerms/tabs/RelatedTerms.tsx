@@ -44,13 +44,13 @@ import {
   getGlossaryTermRelationSettings,
   searchGlossaryTermsPaginated,
 } from '../../../../rest/glossaryAPI';
-import { getTextFromHtmlString } from '../../../../utils/BlockEditorPureUtils';
+import { getTextFromHtmlString } from '../../../../utils/BlockEditorUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
-} from '../../../../utils/EntityDiffPureUtils';
-import { getEntityName } from '../../../../utils/EntityNameUtils';
+} from '../../../../utils/EntityVersionUtils';
 import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../../../utils/RouterUtils';
@@ -59,7 +59,7 @@ import {
   EditIconButton,
   PlusIconButton,
 } from '../../../common/IconButtons/EditIconButton';
-import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
 import { DEFAULT_GLOSSARY_TERM_RELATION_TYPES_FALLBACK } from '../../../OntologyExplorer/OntologyExplorer.constants';
 import {
   RelatedTermTagButtonProps,

@@ -22,7 +22,7 @@ import { SearchIndex } from '../enums/search.enum';
 import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { AdvancedSearchClassBase } from './AdvancedSearchClassBase';
 import { getCustomPropertyAdvanceSearchEnumOptions } from './AdvancedSearchUtils';
-import { getEntityLabel } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
 
 jest.mock('../rest/miscAPI', () => ({
   getAggregateFieldOptions: jest.fn().mockImplementation(() =>
@@ -36,9 +36,8 @@ jest.mock('./JSONLogicSearchClassBase', () => ({
   getQueryBuilderFields: jest.fn(),
 }));
 
-jest.mock('./EntityUtils', () => ({
-  ...jest.requireActual('./EntityUtils'),
-  getEntityLabel: jest.fn(),
+jest.mock('./EntityNameUtils', () => ({
+  getEntityName: jest.fn(),
 }));
 
 jest.mock('./AdvancedSearchUtils', () => ({
@@ -315,7 +314,7 @@ describe('configOperators', () => {
 
 describe('getCustomPropertiesSubFields', () => {
   let advancedSearchClassBase: AdvancedSearchClassBase;
-  const mockGetEntityName = getEntityLabel as jest.Mock;
+  const mockGetEntityName = getEntityName as jest.Mock;
   const mockGetCustomPropertyAdvanceSearchEnumOptions =
     getCustomPropertyAdvanceSearchEnumOptions as jest.Mock;
 

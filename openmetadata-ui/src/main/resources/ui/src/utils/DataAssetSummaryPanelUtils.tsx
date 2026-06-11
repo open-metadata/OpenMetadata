@@ -10,15 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 export {
   getTableFieldsFromTableDetails,
   getUsageData,
 } from './DataAssetSummaryPanelPureUtils';
+export type { ColumnSearchResult } from './DataAssetSummaryPanelPureUtils';
+
 import { isEmpty, isNil, isObject, isUndefined } from 'lodash';
-import {
-  getTableFieldsFromTableDetails,
-  getUsageData,
-} from './DataAssetSummaryPanelPureUtils';
 import { lazy } from 'react';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import { DomainLabel } from '../components/common/DomainLabel/DomainLabel.component';
@@ -54,7 +53,23 @@ import {
 import { Table, TableType, TagLabel } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { Worksheet } from '../generated/entity/data/worksheet';
-import type { ColumnSearchResult } from './DataAssetSummaryPanelPureUtils';
+
+import { Pipeline } from '../generated/entity/data/pipeline';
+import { EntityReference } from '../generated/entity/type';
+import {
+  ColumnSearchResult,
+  getTableFieldsFromTableDetails,
+  getUsageData,
+} from './DataAssetSummaryPanelPureUtils';
+import { getEntityName } from './EntityNameUtils';
+import { DRAWER_NAVIGATION_OPTIONS } from './EntityPureUtils';
+import { BasicEntityOverviewInfo } from './EntityUtils.interface';
+import { getPartialNameFromTableFQN } from './FqnUtils';
+import i18n from './i18next/LocalUtil';
+import { formatNumberWithComma } from './NumberUtils';
+import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
+import { bytesToSize, stringToHTML } from './StringUtils';
+import { getTierTags } from './TablePureUtils';
 
 const OwnerLabel = withSuspenseFallback(
   lazy(() =>
@@ -63,18 +78,6 @@ const OwnerLabel = withSuspenseFallback(
     )
   )
 );
-
-import { Pipeline } from '../generated/entity/data/pipeline';
-import { EntityReference } from '../generated/entity/type';
-import { getEntityName } from './EntityNameUtils';
-import { DRAWER_NAVIGATION_OPTIONS } from './EntityUtils';
-import { BasicEntityOverviewInfo } from './EntityUtils.interface';
-import { getPartialNameFromTableFQN } from './FqnUtils';
-import i18n from './i18next/LocalUtil';
-import { formatNumberWithComma } from './NumberUtils';
-import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
-import { bytesToSize, stringToHTML } from './StringUtils';
-import { getTierTags } from './TablePureUtils';
 
 const entityTierRenderer = (tier?: TagLabel) => {
   return tier ? (

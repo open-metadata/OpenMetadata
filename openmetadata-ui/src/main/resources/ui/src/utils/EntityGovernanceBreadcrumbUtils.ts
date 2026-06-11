@@ -12,27 +12,27 @@
  */
 
 import { startCase } from 'lodash';
-import { TitleLink } from '../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import { SourceType } from '../components/SearchedData/SearchedData.interface';
+import type { TitleLink } from '../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import type { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { ROUTES } from '../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
 import { EntityType } from '../enums/entity.enum';
-import { Kpi } from '../generated/dataInsight/kpi/kpi';
-import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
-import { DataProduct } from '../generated/entity/domains/dataProduct';
-import { Team } from '../generated/entity/teams/team';
+import type { Kpi } from '../generated/dataInsight/kpi/kpi';
+import type { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import type { DataProduct } from '../generated/entity/domains/dataProduct';
+import type { Team } from '../generated/entity/teams/team';
 import {
   AlertType,
-  EventSubscription,
+  type EventSubscription,
 } from '../generated/events/eventSubscription';
-import { TestCase, TestSuite } from '../generated/tests/testCase';
+import type { TestCase, TestSuite } from '../generated/tests/testCase';
 import { DataInsightTabs } from '../interface/data-insight.interface';
-import { SearchSourceAlias } from '../interface/search.interface';
+import type { SearchSourceAlias } from '../interface/search.interface';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
-import { getDataInsightPathWithFqn } from './DataInsightUtils';
+import { getDataInsightPathWithFqn } from './DataInsightPureUtils';
 import { getEntityLinkFromType } from './EntityLinkUtils';
 import { getEntityName } from './EntityNameUtils';
 import Fqn from './Fqn';

@@ -14,6 +14,7 @@ export {
   getMetricExpressionLanguageName,
   getSortedOptions,
 } from './MetricPureUtils';
+
 import { lazy, Suspense } from 'react';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';

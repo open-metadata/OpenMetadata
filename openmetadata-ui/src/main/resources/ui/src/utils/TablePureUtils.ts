@@ -20,30 +20,30 @@ import {
   uniqueId,
   upperCase,
 } from 'lodash';
-import { EntityTags } from 'Models';
+import type { EntityTags } from 'Models';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
-import { MlFeature } from '../generated/entity/data/mlmodel';
-import { Task } from '../generated/entity/data/pipeline';
-import { SearchIndexField } from '../generated/entity/data/searchIndex';
-import {
+import type { MlFeature } from '../generated/entity/data/mlmodel';
+import type { Task } from '../generated/entity/data/pipeline';
+import type { SearchIndexField } from '../generated/entity/data/searchIndex';
+import type {
   Column,
   ConstraintType,
-  DataType,
   JoinedWith,
   Table,
   TableJoins,
 } from '../generated/entity/data/table';
-import { EntityReference } from '../generated/entity/type';
-import { Field } from '../generated/type/schema';
+import { DataType } from '../generated/entity/data/table';
+import type { EntityReference } from '../generated/entity/type';
+import type { Field } from '../generated/type/schema';
 import {
   LabelType,
   State,
-  TagLabel,
   TagSource,
+  type TagLabel,
 } from '../generated/type/tagLabel';
-import { extractApiEndpointFields } from './APIEndpoints/APIEndpointFieldUtils';
+import { extractApiEndpointFields } from './APIEndpoints/APIEndpointUtils';
 import { extractContainerColumns } from './ContainerDetailUtils';
 import { extractDataModelColumns } from './DashboardDataModelUtils';
 import EntityLink from './EntityLink';
@@ -56,7 +56,7 @@ import { extractMlModelFeatures } from './MlModelDetailsUtils';
 import { extractPipelineTasks } from './PipelineDetailsUtils';
 import { extractSearchIndexFields } from './SearchIndexUtils';
 import { ordinalize } from './StringUtils';
-import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
+import type { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 import { extractTopicFields } from './TopicDetailsUtils';
 
 export const getUsagePercentile = (pctRank: number, isLiteral = false) => {

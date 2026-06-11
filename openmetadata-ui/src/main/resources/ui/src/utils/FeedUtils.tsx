@@ -15,11 +15,11 @@ import { RightOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography } from 'antd';
 import { lowerCase } from 'lodash';
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import ReactDOM from 'react-dom';
 import { ReactComponent as AddIcon } from '../assets/svg/added-icon.svg';
 import { ReactComponent as UpdatedIcon } from '../assets/svg/updated-icon.svg';
-import { MentionSuggestionsItem } from '../components/ActivityFeed/FeedEditor/FeedEditor.interface';
+import type { MentionSuggestionsItem } from '../components/ActivityFeed/FeedEditor/FeedEditor.interface';
 import { EntityUrlMapType, ENTITY_URL_MAP } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -30,13 +30,13 @@ import {
   FieldOperation,
   TestCaseStatus,
 } from '../generated/entity/feed/thread';
-import { User } from '../generated/entity/teams/user';
+import type { User } from '../generated/entity/teams/user';
 import { searchQuery } from '../rest/searchAPI';
 import { getRandomColor } from './ColorUtils';
 import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
 import { getEntityPlaceHolder } from './EntityDisplayUtils';
-import { ENTITY_LINK_SEPARATOR } from './EntityLinkUtils';
 import { getEntityName } from './EntityNameUtils';
+import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
 import { buildMentionLink } from './FeedUtilsPure';
 import { t, Transi18next } from './i18next/LocalUtil';
 import {
@@ -45,6 +45,7 @@ import {
 } from './ProfilerUtils';
 import { getTermQuery } from './SearchUtils';
 
+// Re-exports from FeedUtilsPure (backward compat)
 export {
   buildMentionLink,
   deletePost,

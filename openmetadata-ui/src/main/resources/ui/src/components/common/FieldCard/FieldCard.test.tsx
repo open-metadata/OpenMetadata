@@ -49,19 +49,14 @@ jest.mock('../../../utils/TableUtils', () => ({
   )),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
-  ...jest.requireActual('../../../utils/EntityUtils'),
-  getEntityLabel: jest.fn((entity) => entity?.displayName || entity?.name || ''),
+jest.mock('../../../utils/EntityNameUtils', () => ({
+  getEntityName: jest.fn((entity) => entity?.displayName || entity?.name || ''),
 }));
 
-const { getDataTypeString } = jest.requireMock(
-  '../../../utils/TablePureUtils'
-);
-const { prepareConstraintIcon } = jest.requireMock(
-  '../../../utils/TableUtils'
-);
+const { getDataTypeString } = jest.requireMock('../../../utils/TablePureUtils');
+const { prepareConstraintIcon } = jest.requireMock('../../../utils/TableUtils');
 
-const { getEntityLabel } = jest.requireMock('../../../utils/EntityUtils');
+const { getEntityName } = jest.requireMock('../../../utils/EntityNameUtils');
 
 const mockTags = [
   {
@@ -202,10 +197,10 @@ describe('FieldCard', () => {
     it('calls getEntityName for each tag', () => {
       render(<FieldCard {...baseProps} />);
 
-      expect(getEntityLabel).toHaveBeenCalledWith(
+      expect(getEntityName).toHaveBeenCalledWith(
         expect.objectContaining({ tagFQN: 'Classification.PII.Sensitive' })
       );
-      expect(getEntityLabel).toHaveBeenCalledWith(
+      expect(getEntityName).toHaveBeenCalledWith(
         expect.objectContaining({ tagFQN: 'Classification.Security.Public' })
       );
     });
@@ -270,7 +265,7 @@ describe('FieldCard', () => {
     it('calls getEntityName for each glossary term', () => {
       render(<FieldCard {...baseProps} />);
 
-      expect(getEntityLabel).toHaveBeenCalledWith(
+      expect(getEntityName).toHaveBeenCalledWith(
         expect.objectContaining({ tagFQN: 'Glossary.Customer' })
       );
     });
@@ -419,7 +414,7 @@ describe('FieldCard', () => {
 
       render(<FieldCard {...baseProps} tags={tagsWithoutDisplayName} />);
 
-      expect(getEntityLabel).toHaveBeenCalledWith(
+      expect(getEntityName).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'NoDisplayName' })
       );
       expect(screen.getByText('NoDisplayName')).toBeInTheDocument();
@@ -437,7 +432,7 @@ describe('FieldCard', () => {
 
       render(<FieldCard {...baseProps} tags={tagsWithoutNames} />);
 
-      expect(getEntityLabel).toHaveBeenCalledWith(
+      expect(getEntityName).toHaveBeenCalledWith(
         expect.objectContaining({ tagFQN: 'Classification.Empty' })
       );
     });

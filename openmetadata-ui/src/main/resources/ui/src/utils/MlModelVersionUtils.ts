@@ -13,12 +13,12 @@
 
 import { cloneDeep, isEqual } from 'lodash';
 import { EntityField } from '../constants/Feeds.constants';
-import {
+import type {
   ChangeDescription,
   MlFeature,
   Mlmodel,
 } from '../generated/entity/data/mlmodel';
-import { VersionData } from '../pages/EntityVersionPage/EntityVersionPage.component';
+import type { VersionData } from '../pages/EntityVersionPage/EntityVersionPage.component';
 import {
   getAllChangedEntityNames,
   getAllDiffByFieldName,
@@ -27,8 +27,8 @@ import {
   getDiffByFieldName,
 } from './EntityDiffPureUtils';
 import { getTextDiff } from './EntityDiffUtils';
-import { getTagsDiff, removeDuplicateTags } from './EntityVersionUtils';
-import { TagLabelWithStatus } from './EntityVersionUtils.interface';
+import type { TagLabelWithStatus } from './EntityVersionUtils.interface';
+import { getTagsDiff, removeDuplicateTags } from './EntityVersionUtilsPure';
 
 const handleFeatureDescriptionChangeDiff = (
   colList: Mlmodel['mlFeatures'],

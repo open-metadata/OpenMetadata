@@ -21,8 +21,10 @@ import {
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { fetchMarkdownFile } from '../../../rest/miscAPI';
 import { SupportedLocales } from '../../../utils/i18next/LocalUtil.interface';
-import { getActiveFieldNameForAppDocs } from '../../../utils/ServicePureUtils';
-import { processDocMarkdown } from '../../../utils/ServiceUtils';
+import {
+  getActiveFieldNameForAppDocs,
+  processDocMarkdown,
+} from '../../../utils/ServiceUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import Loader from '../Loader/Loader';
@@ -35,7 +37,6 @@ const EntitySummaryPanel = withSuspenseFallback(
       import('../../Explore/EntitySummaryPanel/EntitySummaryPanel.component')
   )
 );
-
 interface ServiceDocPanelProp {
   serviceName: string;
   serviceType: string;
@@ -122,7 +123,12 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
         response = fallbackTranslation.value;
       }
 
-      setMarkdownContent(response);
+      setMarkdownContent(
+        response.replaceAll(
+          'OpenMetadata',
+          process.env.BRAND_NAME ?? 'OpenMetadata'
+        )
+      );
     } catch {
       setMarkdownContent('');
     } finally {

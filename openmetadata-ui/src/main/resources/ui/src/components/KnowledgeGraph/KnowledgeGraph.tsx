@@ -82,7 +82,14 @@ import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../common/Loader/Loader';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
-import type { SearchSourceDetails } from '../Explore/EntitySummaryPanel/EntitySummaryPanel.interface';
+import { SearchSourceDetails } from '../Explore/EntitySummaryPanel/EntitySummaryPanel.interface';
+
+const EntitySummaryPanel = withSuspenseFallback(
+  lazy(
+    () => import('../Explore/EntitySummaryPanel/EntitySummaryPanel.component')
+  )
+);
+
 import ExportGraphPanel from '../OntologyExplorer/ExportGraphPanel';
 import { ExportFormat } from '../OntologyExplorer/ExportGraphPanel.interface';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
@@ -107,12 +114,6 @@ import {
   KnowledgeGraphProps,
 } from './KnowledgeGraph.interface';
 import './KnowledgeGraph.style.less';
-
-const EntitySummaryPanel = withSuspenseFallback(
-  lazy(
-    () => import('../Explore/EntitySummaryPanel/EntitySummaryPanel.component')
-  )
-);
 
 register(ExtensionCategory.NODE, 'react-node', AntVReactNode);
 

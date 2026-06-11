@@ -40,14 +40,14 @@ import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getColumnSorter } from '../../../../../utils/EntitySortUtils';
 import { columnFilterIcon } from '../../../../../utils/TableColumn.util';
 import {
-  getAllTags,
-  searchTagInData,
-} from '../../../../../utils/TableTags/TableTags.utils';
-import {
   getHighlightedRowClassName,
   pruneEmptyChildren,
   updateColumnInNestedStructure,
 } from '../../../../../utils/TablePureUtils';
+import {
+  getAllTags,
+  searchTagInData,
+} from '../../../../../utils/TableTags/TableTags.utils';
 import { getTableExpandableConfig } from '../../../../../utils/TableUtils';
 import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
 import DisplayName from '../../../../common/DisplayName/DisplayName';
@@ -55,7 +55,7 @@ import { EntityAttachmentProvider } from '../../../../common/EntityDescription/E
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../../../common/Table/Table';
-import { useGenericContext } from '../../../../Customization/GenericProvider/GenericContext';
+import { useGenericContext } from '../../../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../../../Database/TableTags/TableTags.component';

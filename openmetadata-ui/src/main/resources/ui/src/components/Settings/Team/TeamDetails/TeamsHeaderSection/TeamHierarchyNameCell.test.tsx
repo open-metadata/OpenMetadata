@@ -14,7 +14,7 @@ import { render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Team } from '../../../../../generated/entity/teams/team';
-import { getEntityLabel } from '../../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { highlightSearchText } from '../../../../../utils/EntitySearchUtils';
 import { getTeamsWithFqnPath } from '../../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../../utils/StringUtils';
@@ -43,9 +43,8 @@ jest.mock('antd', () => {
   };
 });
 
-jest.mock('../../../../../utils/EntityUtils', () => ({
-  ...jest.requireActual('../../../../../utils/EntityUtils'),
-  getEntityLabel: jest.fn(),
+jest.mock('../../../../../utils/EntityNameUtils', () => ({
+  getEntityName: jest.fn(),
 }));
 
 jest.mock('../../../../../utils/EntitySearchUtils', () => ({
@@ -60,8 +59,8 @@ jest.mock('../../../../../utils/StringUtils', () => ({
   stringToHTML: jest.fn((html: string) => html),
 }));
 
-const mockGetEntityName = getEntityLabel as jest.MockedFunction<
-  typeof getEntityLabel
+const mockGetEntityName = getEntityName as jest.MockedFunction<
+  typeof getEntityName
 >;
 const mockHighlightSearchText = highlightSearchText as jest.MockedFunction<
   typeof highlightSearchText

@@ -12,8 +12,7 @@
  */
 
 jest.mock('@antv/g6', () => ({}));
-jest.mock('./EntityUtils', () => ({
-  ...jest.requireActual('./EntityUtils'),
+jest.mock('./EntityLinkUtils', () => ({
   getEntityLinkFromType: jest.fn().mockReturnValue('/test/entity/path'),
 }));
 

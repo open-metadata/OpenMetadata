@@ -43,7 +43,7 @@ import { DataAssetSummaryPanelProps } from './DataAssetSummaryPanelV1.interface'
 
 type DataAssetType = DataAssetSummaryPanelProps['dataAsset'];
 
-// Mock TablePureUtils first to ensure getTierTags is available
+// Mock TablePureUtils to ensure functions are available
 jest.mock('../../utils/TablePureUtils', () => {
   const mockGetTierTags = jest.fn(() => null);
   const mockGetTagsWithoutTier = jest.fn(() => []);

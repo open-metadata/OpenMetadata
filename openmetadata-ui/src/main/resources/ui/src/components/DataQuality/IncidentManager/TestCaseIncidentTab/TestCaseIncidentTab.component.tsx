@@ -29,14 +29,13 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { useElementInView } from '../../../../hooks/useElementInView';
 import { useFqn } from '../../../../hooks/useFqn';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
-import { getTaskCounts, Task, TaskStatusGroup } from '../../../../rest/tasksAPI';
+import { getTaskCounts, Task } from '../../../../rest/tasksAPI';
 import TaskListV1 from '../../../ActivityFeed/ActivityFeedList/TaskListV1.component';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { TaskFilter } from '../../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import Loader from '../../../common/Loader/Loader';
 import './test-case-incident-tab.style.less';
-
-type TaskFilter = 'open' | 'close';
 
 const TaskTabNew = withSuspenseFallback(
   lazy(() =>
@@ -70,8 +69,7 @@ const TestCaseIncidentTab = () => {
   const [openTasksCount, setOpenTasksCount] = useState(0);
   const [closedTasksCount, setClosedTasksCount] = useState(0);
 
-  const statusGroup =
-    taskFilter === 'open' ? TaskStatusGroup.Open : TaskStatusGroup.Closed;
+  const statusGroup = taskFilter === 'open' ? 'open' : 'closed';
 
   const fetchCounts = useCallback(async () => {
     if (!decodedFqn) {

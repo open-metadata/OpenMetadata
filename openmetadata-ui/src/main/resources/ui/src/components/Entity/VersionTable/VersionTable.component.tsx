@@ -23,11 +23,11 @@ import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 import { Column } from '../../../generated/entity/data/table';
 import { getFrequentlyJoinedColumns } from '../../../utils/EntityColumnUtils';
 import { searchInColumns } from '../../../utils/EntitySearchUtils';
-import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import {
   getAllRowKeysByKeyName,
   makeData,
 } from '../../../utils/TablePureUtils';
+import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import {
   getTableExpandableConfig,
   prepareConstraintIcon,

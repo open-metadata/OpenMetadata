@@ -48,7 +48,7 @@ import { createScrollToErrorHandler } from '../../../utils/formUtils';
 import { isExternalTestDefinition } from '../../../utils/TestDefinitionUtils';
 import { showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
-import { withSuspenseFallback } from '../../AppRouter/withSuspenseFallback';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import FormItemLabel from '../../common/Form/FormItemLabel';
 
 const CodeEditor = withSuspenseFallback(

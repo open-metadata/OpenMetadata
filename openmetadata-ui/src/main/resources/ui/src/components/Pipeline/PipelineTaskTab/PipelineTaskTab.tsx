@@ -61,10 +61,18 @@ import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../common/Table/Table';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
+
+const ModalWithMarkdownEditor = withSuspenseFallback(
+  lazy(() =>
+    import('../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor').then(
+      (m) => ({ default: m.ModalWithMarkdownEditor })
+    )
+  )
+);
 
 // TasksDAGView pulls in @xyflow/react via the EntityLineage helpers it shares
 // with the Lineage tab. Eagerly importing it leaks ~90 KB brotli of reactflow
@@ -75,14 +83,6 @@ import TableTags from '../../Database/TableTags/TableTags.component';
 // the Tasks tab. Suspense fallback is `null` because the surrounding Card
 // already has its own title/skeleton; a spinner here would flash once.
 const TasksDAGView = lazy(() => import('../TasksDAGView/TasksDAGView'));
-
-const ModalWithMarkdownEditor = withSuspenseFallback(
-  lazy(() =>
-    import('../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor').then(
-      (m) => ({ default: m.ModalWithMarkdownEditor })
-    )
-  )
-);
 
 export const PipelineTaskTab = () => {
   const {

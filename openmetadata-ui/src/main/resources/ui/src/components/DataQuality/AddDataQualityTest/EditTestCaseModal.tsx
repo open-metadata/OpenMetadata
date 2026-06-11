@@ -14,8 +14,7 @@
 import { Form, FormProps, Input, InputNumber, Select } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
-import { isArray, isEmpty, isEqual, pick } from 'lodash';
+import { isArray, isEqual, pick } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
@@ -38,8 +37,9 @@ import {
   getTestDefinitionById,
   updateTestCaseById,
 } from '../../../rest/testAPI';
-import { getColumnNameFromEntityLink } from '../../../utils/EntityLinkUtils';
+import { createUpdatedTestCasePatch } from '../../../utils/DataQuality/DataQualityUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getColumnNameFromEntityLink } from '../../../utils/EntityPureUtils';
 import { getEntityFQN } from '../../../utils/FeedUtils';
 import {
   generateFormFields,
@@ -47,8 +47,8 @@ import {
 } from '../../../utils/formUtils';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { isValidJSONString } from '../../../utils/StringUtils';
-import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
+import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Loader from '../../common/Loader/Loader';
@@ -123,7 +123,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
     return <></>;
   }, [selectedDefinition, table]);
 
-  const { tags, glossaryTerms, tierTag } = useMemo(() => {
+  const { tags, glossaryTerms } = useMemo(() => {
     if (!testCase?.tags) {
       return { tags: [], glossaryTerms: [], tierTag: null };
     }
@@ -142,31 +142,16 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
   }, [testCase?.tags]);
 
   const handleFormSubmit: FormProps['onFinish'] = async (value) => {
-    const updatedTestCase = {
-      ...testCase,
-      ...testCaseClassBase.getCreateTestCaseObject(value, selectedDefinition),
-      description: showOnlyParameter
-        ? testCase.description
-        : isEmpty(value.description)
-        ? undefined
-        : value.description,
-      displayName: showOnlyParameter
-        ? testCase?.displayName
-        : value.displayName,
-      computePassedFailedRowCount: isComputeRowCountFieldVisible
-        ? value.computePassedFailedRowCount
-        : testCase?.computePassedFailedRowCount,
-      tags: showOnlyParameter
-        ? testCase.tags
-        : [
-            ...(tierTag ? [tierTag] : []),
-            ...(value.tags ?? []),
-            ...(value.glossaryTerms ?? []),
-          ],
-      dimensionColumns: value.dimensionColumns || undefined,
-      topDimensions: value.topDimensions ?? undefined,
-    };
-    const jsonPatch = compare(testCase, updatedTestCase);
+    const jsonPatch = createUpdatedTestCasePatch({
+      testCase,
+      value,
+      createTestCaseObject: testCaseClassBase.getCreateTestCaseObject(
+        value,
+        selectedDefinition
+      ),
+      showOnlyParameter,
+      isComputeRowCountFieldVisible,
+    });
 
     if (jsonPatch.length) {
       try {

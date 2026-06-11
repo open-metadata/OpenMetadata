@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
-import { Operation } from 'fast-json-patch';
+import type { AxiosError } from 'axios';
+import type { Operation } from 'fast-json-patch';
 import { isEqual, isUndefined } from 'lodash';
-import { Dispatch, SetStateAction } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import Showdown from 'showdown';
 import TurndownService from 'turndown';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
@@ -30,13 +30,12 @@ import {
   teamsLinkRegEx,
 } from '../constants/Feeds.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
-import {
+import type {
   EntityTestResultSummaryObject,
-  TestCaseStatus,
   Thread,
-  ThreadType,
 } from '../generated/entity/feed/thread';
-import { FeedCounts } from '../interface/feed.interface';
+import { TestCaseStatus, ThreadType } from '../generated/entity/feed/thread';
+import type { FeedCounts } from '../interface/feed.interface';
 import {
   deletePostById,
   deleteThread,
@@ -48,7 +47,7 @@ import {
 import { getTaskCounts } from '../rest/tasksAPI';
 import { getRelativeCalendar } from './date-time/DateTimeUtils';
 import EntityLink from './EntityLink';
-import { ENTITY_LINK_SEPARATOR } from './EntityLinkUtils';
+import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
 import Fqn from './Fqn';
 import { getPartialNameFromFQN, getPartialNameFromTableFQN } from './FqnUtils';

@@ -17,9 +17,9 @@ import { isEqual } from 'lodash';
 import { lazy, useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
-import type { EditorContentRef } from '../../../components/common/RichTextEditor/RichTextEditor.interface';
+import { EditorContentRef } from '../../../components/common/RichTextEditor/RichTextEditor.interface';
 import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
-import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
+import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
 import { getDescriptionDiff } from '../../../utils/TasksUtils';
 import DiffView from './DiffView/DiffView';
 

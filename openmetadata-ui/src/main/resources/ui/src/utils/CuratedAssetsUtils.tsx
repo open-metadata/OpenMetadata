@@ -13,7 +13,7 @@
 
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Alert } from 'antd';
-import { Bucket } from 'Models';
+import type { Bucket } from 'Models';
 import { useTranslation } from 'react-i18next';
 import '../components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsModal/curated-assets-modal.less';
 import { CURATED_ASSETS_LIST } from '../constants/AdvancedSearch.constants';
@@ -21,6 +21,17 @@ import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { searchQuery } from '../rest/searchAPI';
 import { getTotalResourceCount } from './CuratedAssetsPureUtils';
+
+export {
+  EMPTY_QUERY_FILTER_STRINGS,
+  getExpandedResourceList,
+  getExploreURLForAdvancedFilter,
+  getExploreURLWithFilters,
+  getModifiedQueryFilterWithSelectedAssets,
+  getSimpleExploreURLForAssetTypes,
+  getTotalResourceCount,
+  isValidElasticsearchQuery,
+} from './CuratedAssetsPureUtils';
 
 export interface CuratedAssetsFormSelectedAssetsInfo {
   resourceCount?: number;

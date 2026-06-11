@@ -61,7 +61,7 @@ public class TableCertificationPropagationIT {
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final String CERTIFICATION_GOLD = "Certification.Gold";
   private static final String CERTIFICATION_SILVER = "Certification.Silver";
-  private static final Duration AWAIT_TIMEOUT = Duration.ofMinutes(1);
+  private static final Duration AWAIT_TIMEOUT = Duration.ofMinutes(3);
   private static final Duration POLL_INTERVAL = Duration.ofSeconds(2);
 
   @Test

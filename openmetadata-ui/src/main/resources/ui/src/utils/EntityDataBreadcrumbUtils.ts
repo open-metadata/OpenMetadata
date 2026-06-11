@@ -12,22 +12,21 @@
  */
 
 import { startCase } from 'lodash';
-import { EntityWithServices } from '../components/Explore/ExplorePage.interface';
-import { SourceType } from '../components/SearchedData/SearchedData.interface';
+import type { EntityWithServices } from '../components/Explore/ExplorePage.interface';
+import type { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import { EntityType } from '../enums/entity.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
-import { APICollection } from '../generated/entity/data/apiCollection';
-import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
-import { Chart } from '../generated/entity/data/chart';
-import { Container } from '../generated/entity/data/container';
-import { Directory } from '../generated/entity/data/directory';
-import { File } from '../generated/entity/data/file';
-import { Table } from '../generated/entity/data/table';
-import { EntityReference } from '../generated/type/entityUsage';
+import type { APICollection } from '../generated/entity/data/apiCollection';
+import type { APIEndpoint } from '../generated/entity/data/apiEndpoint';
+import type { Chart } from '../generated/entity/data/chart';
+import type { Container } from '../generated/entity/data/container';
+import type { Directory } from '../generated/entity/data/directory';
+import type { File } from '../generated/entity/data/file';
+import type { Table } from '../generated/entity/data/table';
+import type { EntityReference } from '../generated/type/entityUsage';
 import { getEntityLinkFromType } from './EntityLinkUtils';
 import { getEntityName } from './EntityNameUtils';
-import Fqn from './Fqn';
 import {
   getEntityDetailsPath,
   getServiceDetailsPath,
@@ -230,15 +229,3 @@ export function getBreadcrumbForEntityWithParent<
       : []),
   ];
 }
-
-export const getBreadcrumbsFromFqn = (fqn: string, includeCurrent = false) => {
-  const fqnList = Fqn.split(fqn);
-  if (!includeCurrent) {
-    fqnList.pop();
-  }
-
-  return fqnList.map((part) => ({
-    name: part,
-    url: '',
-  }));
-};
