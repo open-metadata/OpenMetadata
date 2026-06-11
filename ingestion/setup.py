@@ -301,6 +301,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "exasol": {
         "sqlalchemy_exasol>=7.1.1,<8",
         "exasol-integration-test-docker-environment>=6.0.0,<7",
+        "luigi>=2.8.4,<=3.6.0",
     },
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},

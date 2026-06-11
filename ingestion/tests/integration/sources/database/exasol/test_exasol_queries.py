@@ -10,6 +10,7 @@
 #  limitations under the License.
 
 import subprocess
+import sys
 from time import monotonic, sleep
 from typing import ClassVar
 
@@ -111,6 +112,14 @@ class TestExasolQueries:
 
     @classmethod
     def setup_class(cls):
+        subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "import luigi; print(f'luigi version: {luigi.__version__}')",
+            ],
+            check=True,
+        )
         subprocess.run(["docker", "pull", f"exasol/docker-db:{DB_VERSION}"], check=True)
         subprocess.run(
             [
