@@ -30,9 +30,6 @@ test.describe(
         data: {
           name: APP_NAME,
           appConfiguration: {
-            llmProvider: 'openai',
-            llmApiKey: '',
-            llmModel: 'gpt-4o',
             systemPrompt: 'Test prompt',
           },
         },
