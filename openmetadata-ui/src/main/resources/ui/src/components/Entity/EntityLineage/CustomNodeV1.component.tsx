@@ -196,6 +196,7 @@ const CustomNodeV1 = (props: NodeProps) => {
     upstreamLineage = [],
     upstreamExpandPerformed = false,
     downstreamExpandPerformed = false,
+    nodeDepth,
   } = node;
 
   const showColumnsWithLineageOnly = useMemo(
@@ -341,8 +342,10 @@ const CustomNodeV1 = (props: NodeProps) => {
   return (
     <div
       className={containerClass}
+      data-nodedepth={nodeDepth}
       data-testid={`lineage-node-${fullyQualifiedName}`}
-      style={{ width: NODE_WIDTH }}>
+      style={{ width: NODE_WIDTH }}
+    >
       {isRootNode && (
         <div className="lineage-node-badge-container">
           <div className="lineage-node-badge" />
