@@ -16,6 +16,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
@@ -47,6 +48,7 @@ import org.openmetadata.schema.entity.app.NativeAppPermission;
 import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
@@ -1079,5 +1081,377 @@ public class AppsResourceIT {
     App finalApp = Apps.getByName(autopilotAppName);
     Map<String, Object> finalConfig = JsonUtils.getMap(finalApp.getAppConfiguration());
     assertTrue((Boolean) finalConfig.get("active"), "AutoPilot should be active at test end");
+  }
+
+  /** Verify that an enabled app can be installed and a disabled app cannot. */
+  @Test
+  void test_installEnabledAndDisabledApps(TestNamespace ns) throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String enabledAppName = ns.prefix("EnabledApp");
+    String disabledAppName = "DisabledTestApp";
+
+    try {
+      CreateAppMarketPlaceDefinitionReq enabledMarketPlace =
+          new CreateAppMarketPlaceDefinitionReq()
+              .withName(enabledAppName)
+              .withDisplayName("Enabled Test App")
+              .withDescription("An app with default enabled config")
+              .withFeatures("test features")
+              .withDeveloper("Test Developer")
+              .withDeveloperUrl("https://www.example.com")
+              .withPrivacyPolicyUrl("https://www.example.com/privacy")
+              .withSupportEmail("support@example.com")
+              .withClassName("org.openmetadata.service.resources.apps.TestApp")
+              .withAppType(AppType.Internal)
+              .withScheduleType(ScheduleType.Scheduled)
+              .withRuntime(new ScheduledExecutionContext().withEnabled(true))
+              .withAppConfiguration(new HashMap<>())
+              .withPermission(NativeAppPermission.All);
+
+      httpClient.execute(
+          HttpMethod.PUT,
+          "/v1/apps/marketplace",
+          enabledMarketPlace,
+          AppMarketPlaceDefinition.class);
+
+      App installedApp = Apps.install().name(enabledAppName).execute();
+      assertNotNull(installedApp);
+      assertEquals(enabledAppName, installedApp.getName());
+
+      CreateAppMarketPlaceDefinitionReq disabledMarketPlace =
+          new CreateAppMarketPlaceDefinitionReq()
+              .withName(disabledAppName)
+              .withDisplayName("Disabled Test App")
+              .withDescription("An app with enabled=false in its config")
+              .withFeatures("test features")
+              .withDeveloper("Test Developer")
+              .withDeveloperUrl("https://www.example.com")
+              .withPrivacyPolicyUrl("https://www.example.com/privacy")
+              .withSupportEmail("support@example.com")
+              .withClassName("org.openmetadata.service.resources.apps.TestApp")
+              .withAppType(AppType.Internal)
+              .withScheduleType(ScheduleType.Scheduled)
+              .withRuntime(new ScheduledExecutionContext().withEnabled(true))
+              .withAppConfiguration(new HashMap<>())
+              .withPermission(NativeAppPermission.All);
+
+      httpClient.execute(
+          HttpMethod.PUT,
+          "/v1/apps/marketplace",
+          disabledMarketPlace,
+          AppMarketPlaceDefinition.class);
+
+      Exception installException =
+          assertThrows(
+              Exception.class,
+              () -> Apps.install().name(disabledAppName).execute(),
+              "Disabled app should not be installable");
+      assertTrue(
+          installException.getMessage().contains("NotEnabled"),
+          "Install error should mention NotEnabled: " + installException.getMessage());
+    } finally {
+      try {
+        Apps.uninstall(enabledAppName, true);
+      } catch (Exception ignored) {
+      }
+      try {
+        Apps.uninstall(disabledAppName, true);
+      } catch (Exception ignored) {
+      }
+    }
+  }
+
+  /**
+   * Verifies that clearing an external app's cron schedule propagates the null
+   * scheduleInterval to the bound IngestionPipeline.
+   *
+   * <p>Bug: updateAppConfig did not call deriveInterval, so the pipeline kept the
+   * stale schedule even after the app schedule was cleared.
+   *
+   * <p>Fix: AbstractNativeApplication.updateAppConfig now syncs scheduleInterval
+   * via deriveInterval(app.getAppSchedule()) before persisting the pipeline.
+   */
+  @Test
+  void test_externalAppScheduleSync_clearingCronNullsOutPipelineInterval(TestNamespace ns)
+      throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String appName = ns.prefix("extSchedSync");
+    String initialCron = "17 4 * * *";
+
+    try {
+      AppMarketPlaceDefinition marketPlaceDef = createExternalAppMarketplace(httpClient, appName);
+
+      CreateApp createApp =
+          new CreateApp()
+              .withName(marketPlaceDef.getName())
+              .withAppConfiguration(marketPlaceDef.getAppConfiguration())
+              .withAppSchedule(
+                  new AppSchedule()
+                      .withScheduleTimeline(ScheduleTimeline.CUSTOM)
+                      .withCronExpression(initialCron));
+
+      httpClient.execute(HttpMethod.POST, "/v1/apps", createApp, App.class);
+
+      String pipelineFqn = "OpenMetadata." + appName;
+      IngestionPipeline pipeline =
+          SdkClients.adminClient().ingestionPipelines().getByName(pipelineFqn);
+      assertEquals(
+          initialCron,
+          pipeline.getAirflowConfig().getScheduleInterval(),
+          "Bound pipeline should have the initial cron schedule");
+
+      App installedApp = Apps.getByName(appName);
+      String appId = installedApp.getId().toString();
+      String clearCronPatch =
+          "[{\"op\":\"replace\",\"path\":\"/appSchedule/scheduleTimeline\",\"value\":\"None\"},"
+              + "{\"op\":\"remove\",\"path\":\"/appSchedule/cronExpression\"}]";
+
+      httpClient.executeForString(
+          HttpMethod.PATCH,
+          "/v1/apps/" + appId,
+          clearCronPatch,
+          RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+      IngestionPipeline pipelineAfterClear =
+          SdkClients.adminClient().ingestionPipelines().getByName(pipelineFqn);
+      assertNull(
+          pipelineAfterClear.getAirflowConfig().getScheduleInterval(),
+          "scheduleInterval must be null after app schedule is cleared");
+
+    } finally {
+      try {
+        Apps.uninstall(appName, true);
+      } catch (Exception ignored) {
+      }
+    }
+  }
+
+  /**
+   * Verifies that changing an external app's cron expression updates the bound
+   * IngestionPipeline's scheduleInterval to the new value.
+   *
+   * <p>A schedule change must also flip the pipeline's requiresRedeployment flag,
+   * which is detected by IngestionPipelineRepository.hasScheduleChanged comparing
+   * the old and new scheduleInterval values.
+   */
+  @Test
+  void test_externalAppScheduleSync_changingCronUpdatedPipelineInterval(TestNamespace ns)
+      throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String appName = ns.prefix("extSchedChange");
+    String initialCron = "17 4 * * *";
+    String updatedCron = "30 2 * * *";
+
+    try {
+      AppMarketPlaceDefinition marketPlaceDef = createExternalAppMarketplace(httpClient, appName);
+
+      CreateApp createApp =
+          new CreateApp()
+              .withName(marketPlaceDef.getName())
+              .withAppConfiguration(marketPlaceDef.getAppConfiguration())
+              .withAppSchedule(
+                  new AppSchedule()
+                      .withScheduleTimeline(ScheduleTimeline.CUSTOM)
+                      .withCronExpression(initialCron));
+
+      httpClient.execute(HttpMethod.POST, "/v1/apps", createApp, App.class);
+
+      App installedApp = Apps.getByName(appName);
+      String appId = installedApp.getId().toString();
+      String changeCronPatch =
+          "[{\"op\":\"replace\",\"path\":\"/appSchedule/cronExpression\",\"value\":\""
+              + updatedCron
+              + "\"}]";
+
+      httpClient.executeForString(
+          HttpMethod.PATCH,
+          "/v1/apps/" + appId,
+          changeCronPatch,
+          RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+      String pipelineFqn = "OpenMetadata." + appName;
+      IngestionPipeline pipelineAfterChange =
+          SdkClients.adminClient().ingestionPipelines().getByName(pipelineFqn);
+      assertEquals(
+          updatedCron,
+          pipelineAfterChange.getAirflowConfig().getScheduleInterval(),
+          "scheduleInterval must reflect the updated cron after patching the app schedule");
+
+    } finally {
+      try {
+        Apps.uninstall(appName, true);
+      } catch (Exception ignored) {
+      }
+    }
+  }
+
+  @Test
+  void test_externalAppScheduleSync_removingAppScheduleNullsOutPipelineInterval(TestNamespace ns)
+      throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String appName = ns.prefix("extSchedRemove");
+    String initialCron = "17 4 * * *";
+
+    try {
+      AppMarketPlaceDefinition marketPlaceDef = createExternalAppMarketplace(httpClient, appName);
+
+      CreateApp createApp =
+          new CreateApp()
+              .withName(marketPlaceDef.getName())
+              .withAppConfiguration(marketPlaceDef.getAppConfiguration())
+              .withAppSchedule(
+                  new AppSchedule()
+                      .withScheduleTimeline(ScheduleTimeline.CUSTOM)
+                      .withCronExpression(initialCron));
+
+      httpClient.execute(HttpMethod.POST, "/v1/apps", createApp, App.class);
+
+      String pipelineFqn = "OpenMetadata." + appName;
+      IngestionPipeline pipeline =
+          SdkClients.adminClient().ingestionPipelines().getByName(pipelineFqn);
+      assertEquals(
+          initialCron,
+          pipeline.getAirflowConfig().getScheduleInterval(),
+          "Bound pipeline should have the initial cron schedule");
+
+      App installedApp = Apps.getByName(appName);
+      String appId = installedApp.getId().toString();
+      String removeSchedulePatch = "[{\"op\":\"remove\",\"path\":\"/appSchedule\"}]";
+
+      httpClient.executeForString(
+          HttpMethod.PATCH,
+          "/v1/apps/" + appId,
+          removeSchedulePatch,
+          RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+      IngestionPipeline pipelineAfterRemove =
+          SdkClients.adminClient().ingestionPipelines().getByName(pipelineFqn);
+      assertNull(
+          pipelineAfterRemove.getAirflowConfig().getScheduleInterval(),
+          "Pipeline scheduleInterval should be null after removing appSchedule");
+
+    } finally {
+      try {
+        Apps.uninstall(appName, true);
+      } catch (Exception ignored) {
+      }
+    }
+  }
+
+  @Test
+  void test_externalAppScheduleSync_noneTimelineNullsOutPipelineInterval(TestNamespace ns)
+      throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String appName = ns.prefix("extSchedNone");
+    String initialCron = "17 4 * * *";
+
+    try {
+      AppMarketPlaceDefinition marketPlaceDef = createExternalAppMarketplace(httpClient, appName);
+
+      CreateApp createApp =
+          new CreateApp()
+              .withName(marketPlaceDef.getName())
+              .withAppConfiguration(marketPlaceDef.getAppConfiguration())
+              .withAppSchedule(
+                  new AppSchedule()
+                      .withScheduleTimeline(ScheduleTimeline.CUSTOM)
+                      .withCronExpression(initialCron));
+
+      httpClient.execute(HttpMethod.POST, "/v1/apps", createApp, App.class);
+
+      App installedApp = Apps.getByName(appName);
+      String appId = installedApp.getId().toString();
+      String setNoneTimelinePatch =
+          "[{\"op\":\"replace\",\"path\":\"/appSchedule/scheduleTimeline\",\"value\":\"None\"}]";
+
+      httpClient.executeForString(
+          HttpMethod.PATCH,
+          "/v1/apps/" + appId,
+          setNoneTimelinePatch,
+          RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+      String pipelineFqn = "OpenMetadata." + appName;
+      IngestionPipeline pipelineAfterNone =
+          SdkClients.adminClient().ingestionPipelines().getByName(pipelineFqn);
+      assertNull(
+          pipelineAfterNone.getAirflowConfig().getScheduleInterval(),
+          "Pipeline scheduleInterval should be null when scheduleTimeline is None, even if cronExpression remains");
+
+    } finally {
+      try {
+        Apps.uninstall(appName, true);
+      } catch (Exception ignored) {
+      }
+    }
+  }
+
+  @Test
+  void test_externalAppScheduleSync_nullScheduleNullsOutPipelineInterval(TestNamespace ns)
+      throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String appName = ns.prefix("extSchedNullTL");
+    String initialCron = "17 4 * * *";
+
+    try {
+      AppMarketPlaceDefinition marketPlaceDef = createExternalAppMarketplace(httpClient, appName);
+
+      CreateApp createApp =
+          new CreateApp()
+              .withName(marketPlaceDef.getName())
+              .withAppConfiguration(marketPlaceDef.getAppConfiguration())
+              .withAppSchedule(
+                  new AppSchedule()
+                      .withScheduleTimeline(ScheduleTimeline.CUSTOM)
+                      .withCronExpression(initialCron));
+
+      httpClient.execute(HttpMethod.POST, "/v1/apps", createApp, App.class);
+
+      App installedApp = Apps.getByName(appName);
+      String appId = installedApp.getId().toString();
+      String removeSchedulePatch = "[{\"op\":\"remove\",\"path\":\"/appSchedule\"}]";
+
+      httpClient.executeForString(
+          HttpMethod.PATCH,
+          "/v1/apps/" + appId,
+          removeSchedulePatch,
+          RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+      String pipelineFqn = "OpenMetadata." + appName;
+      IngestionPipeline pipelineAfterNullSchedule =
+          SdkClients.adminClient().ingestionPipelines().getByName(pipelineFqn);
+      assertNull(
+          pipelineAfterNullSchedule.getAirflowConfig().getScheduleInterval(),
+          "Pipeline scheduleInterval should be null when appSchedule is removed");
+
+    } finally {
+      try {
+        Apps.uninstall(appName, true);
+      } catch (Exception ignored) {
+      }
+    }
+  }
+
+  private AppMarketPlaceDefinition createExternalAppMarketplace(
+      HttpClient httpClient, String appName) throws Exception {
+    CreateAppMarketPlaceDefinitionReq req =
+        new CreateAppMarketPlaceDefinitionReq()
+            .withName(appName)
+            .withDisplayName("External Schedule Sync Test App")
+            .withDescription("Validates that appSchedule changes propagate to IngestionPipeline")
+            .withFeatures("schedule sync validation")
+            .withDeveloper("Test Developer")
+            .withDeveloperUrl("https://www.example.com")
+            .withPrivacyPolicyUrl("https://www.example.com/privacy")
+            .withSupportEmail("support@example.com")
+            .withClassName("org.openmetadata.service.apps.AbstractNativeApplication")
+            .withSourcePythonClass("metadata.applications.example.HelloPipelines")
+            .withAppType(AppType.External)
+            .withScheduleType(ScheduleType.ScheduledOrManual)
+            .withRuntime(new ScheduledExecutionContext().withEnabled(true))
+            .withAppConfiguration(new HashMap<>())
+            .withPermission(NativeAppPermission.All);
+
+    return httpClient.execute(
+        HttpMethod.POST, "/v1/apps/marketplace", req, AppMarketPlaceDefinition.class);
   }
 }
