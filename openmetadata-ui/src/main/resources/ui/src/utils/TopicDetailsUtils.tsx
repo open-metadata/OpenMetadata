@@ -39,17 +39,6 @@ const TopicSchemaFields = withSuspenseFallback(
   lazy(() => import('../components/Topic/TopicSchema/TopicSchema'))
 );
 
-const ContractTab = withSuspenseFallback(
-  lazy(() =>
-    import('../components/DataContract/ContractTab/ContractTab').then(
-      (module) => ({ default: module.ContractTab })
-    )
-  )
-);
-const TopicSchemaFields = withSuspenseFallback(
-  lazy(() => import('../components/Topic/TopicSchema/TopicSchema'))
-);
-
 export const getTopicDetailsPageTabs = ({
   schemaCount,
   activityFeedTab,

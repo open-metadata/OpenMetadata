@@ -44,10 +44,6 @@ const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../../components/Database/SchemaEditor/SchemaEditor'))
 );
 
-const SchemaEditor = withSuspenseFallback(
-  lazy(() => import('../../../components/Database/SchemaEditor/SchemaEditor'))
-);
-
 const AddMetricPage = () => {
   const navigate = useNavigate();
   const [form] = Form.useForm();

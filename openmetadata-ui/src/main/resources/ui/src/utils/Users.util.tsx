@@ -13,15 +13,10 @@
 
 export {
   getEmptyTextFromUserProfileItem,
-  getEmptyTextFromUserProfileItem,
-  getUserCreationErrorMessage,
   getUserCreationErrorMessage,
   getUserOnlineStatus,
-  getUserOnlineStatus,
-  isMaskedEmail,
   isMaskedEmail,
 } from './UsersPureUtils';
-
 import { Popover, Skeleton, Space, Tag, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
