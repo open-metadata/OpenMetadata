@@ -600,6 +600,49 @@ public class ExpressionValidatorTest {
         "Property access on System remains blocked even under negation");
   }
 
+  /**
+   * Paren-less references to approved functions ({@code isOwner}, {@code !noOwner}, ...) are
+   * long-standing valid condition syntax: SpEL parses them as {@link
+   * org.springframework.expression.spel.ast.PropertyOrFieldReference} and resolves them to the
+   * same zero-argument evaluator method, and the {@code @Function} examples document them.
+   * Customer-reported regression: a policy containing a stored {@code isOwner} condition could
+   * not be saved because the validator rejected {@code PropertyOrFieldReference ('isOwner')}.
+   */
+  @Test
+  void testParenlessApprovedFunctionReferencesAreAllowed() {
+    String[] parenlessExpressions = {
+      "isOwner",
+      "!isOwner",
+      "noOwner",
+      "!noOwner",
+      "noOwner || isOwner",
+      "noOwner() || isOwner",
+      "matchAnyTag('Tier.Tier1') && isOwner"
+    };
+
+    for (String expression : parenlessExpressions) {
+      assertDoesNotThrow(
+          () -> ExpressionValidator.validateExpressionSafety(expression),
+          "Paren-less reference '" + expression + "' should be allowed");
+    }
+  }
+
+  @Test
+  void testParenlessUnknownReferencesAreRejected() {
+    String[] unknownReferences = {"owner", "systemProperties", "deleteAllData", "!somethingElse"};
+
+    for (String expression : unknownReferences) {
+      Exception exception =
+          assertThrows(
+              IllegalArgumentException.class,
+              () -> ExpressionValidator.validateExpressionSafety(expression),
+              "Unknown bare reference '" + expression + "' should be rejected");
+      assertTrue(
+          exception.getMessage().contains("is not allowed in policy expressions"),
+          "Exception should mention that the function is not allowed");
+    }
+  }
+
   /** Malformed SpEL must surface as an IllegalArgumentException, not a crash. */
   @Test
   void testMalformedExpressionsThrow() {

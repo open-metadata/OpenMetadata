@@ -41,6 +41,7 @@ import org.springframework.expression.spel.ast.OpLT;
 import org.springframework.expression.spel.ast.OpNE;
 import org.springframework.expression.spel.ast.OpOr;
 import org.springframework.expression.spel.ast.OperatorNot;
+import org.springframework.expression.spel.ast.PropertyOrFieldReference;
 import org.springframework.expression.spel.ast.RealLiteral;
 import org.springframework.expression.spel.ast.StringLiteral;
 import org.springframework.expression.spel.ast.Ternary;
@@ -65,13 +66,20 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
  *       SpEL AST. Parse failures throw {@link IllegalArgumentException}.
  *   <li>Walk the AST. A node is accepted only if its concrete class is in
  *       {@link #ALLOWED_NODE_CLASSES}: literals, boolean/comparison operators, list/map
- *       literals, ternaries, and {@link MethodReference}s. Every other construct
- *       (type references, constructors, bean references, property/field accesses,
- *       projections/selections, indexers, assignments, arithmetic, variable references,
- *       compound expressions, ...) is rejected by default-deny.
- *   <li>For {@link MethodReference} nodes, the called name must also be on
- *       {@link #ALLOWED_FUNCTIONS} — i.e. a method annotated with
- *       {@link Function @Function} on one of the evaluator classes.
+ *       literals, ternaries, {@link MethodReference}s, and bare
+ *       {@link PropertyOrFieldReference}s. Every other construct (type references,
+ *       constructors, bean references, projections/selections, indexers, assignments,
+ *       arithmetic, variable references, compound expressions, ...) is rejected by
+ *       default-deny.
+ *   <li>For {@link MethodReference} and {@link PropertyOrFieldReference} nodes, the
+ *       referenced name must also be on {@link #ALLOWED_FUNCTIONS} — i.e. a method
+ *       annotated with {@link Function @Function} on one of the evaluator classes.
+ *       Paren-less references such as {@code !isOwner} are long-standing valid syntax
+ *       (documented in {@code @Function} examples and stored in existing policies):
+ *       SpEL parses them as property references and resolves them to the same
+ *       zero-argument evaluator method, so they are exactly as safe as {@code isOwner()}.
+ *       Chained access such as {@code System.exit} still parses as a compound
+ *       expression and remains rejected.
  * </ol>
  *
  * <p>Defense-in-depth: any new SpEL syntax feature is implicitly rejected by the
@@ -107,8 +115,10 @@ public final class ExpressionValidator {
           // Collection literals used to pass arguments to filter functions
           InlineList.class,
           InlineMap.class,
-          // Method calls — subject to ALLOWED_FUNCTIONS check below
+          // Method calls and paren-less function references — both subject to the
+          // ALLOWED_FUNCTIONS check below
           MethodReference.class,
+          PropertyOrFieldReference.class,
           // Conditional combinators
           Ternary.class,
           Elvis.class);
@@ -138,7 +148,7 @@ public final class ExpressionValidator {
       return;
     }
     ensureNodeKindAllowed(node);
-    ensureMethodNameAllowed(node);
+    ensureReferencedNameAllowed(node);
     for (int i = 0; i < node.getChildCount(); i++) {
       validateNode(node.getChild(i));
     }
@@ -153,23 +163,30 @@ public final class ExpressionValidator {
             + node.getClass().getSimpleName()
             + " ('"
             + node.toStringAST()
-            + "'). Only literals, boolean/comparison operators, list/map literals,"
-            + " ternaries, and method calls on approved @Function-annotated methods are allowed.");
+            + "'). Only literals, boolean/comparison operators, list/map literals, ternaries,"
+            + " and calls or paren-less references to approved @Function-annotated methods"
+            + " are allowed.");
   }
 
-  private static void ensureMethodNameAllowed(SpelNode node) {
-    if (!(node instanceof MethodReference methodRef)) {
-      return;
+  private static void ensureReferencedNameAllowed(SpelNode node) {
+    String name = referencedFunctionName(node);
+    if (name != null && !ALLOWED_FUNCTIONS.contains(name)) {
+      throw new IllegalArgumentException(
+          "Function '"
+              + name
+              + "' is not allowed in policy expressions. "
+              + "Only use approved functions with @Function annotations in evaluator classes.");
     }
-    String name = methodRef.getName();
-    if (ALLOWED_FUNCTIONS.contains(name)) {
-      return;
+  }
+
+  private static String referencedFunctionName(SpelNode node) {
+    String name = null;
+    if (node instanceof MethodReference methodReference) {
+      name = methodReference.getName();
+    } else if (node instanceof PropertyOrFieldReference propertyReference) {
+      name = propertyReference.getName();
     }
-    throw new IllegalArgumentException(
-        "Function '"
-            + name
-            + "' is not allowed in policy expressions. "
-            + "Only use approved functions with @Function annotations in evaluator classes.");
+    return name;
   }
 
   private static Set<String> initAllowedFunctions() {
