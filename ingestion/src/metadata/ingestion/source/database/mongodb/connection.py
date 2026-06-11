@@ -23,72 +23,72 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.database.mongoDBConnection import (
-    MongoDBConnection,
+    MongoDBConnection as MongoDBConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
 from metadata.ingestion.connections.builders import get_connection_url_common
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
 
 
-def get_connection(connection: MongoDBConnection):
-    """
-    Create connection
-    """
-    mongo_url = get_connection_url_common(connection)
-    args = {}
+class MongoDBConnection(BaseConnection[MongoDBConnectionConfig, MongoClient]):
+    def _get_client(self) -> MongoClient:
+        connection = self.service_connection
+        mongo_url = get_connection_url_common(connection)
+        args = {}
 
-    # Check for extended timeout configuration in connectionArguments
-    # serverSelectionTimeoutMS, connectTimeoutMS, socketTimeoutMS
-    if connection.connectionOptions and connection.connectionOptions.root:
-        args = connection.connectionOptions.root
+        # Extended timeout configuration in connectionOptions:
+        # serverSelectionTimeoutMS, connectTimeoutMS, socketTimeoutMS
+        if connection.connectionOptions and connection.connectionOptions.root:
+            args = connection.connectionOptions.root
 
-    return MongoClient(mongo_url, **args)
+        return MongoClient(mongo_url, **args)  # pyright: ignore[reportArgumentType]
 
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        """
+        Test connection. This can be executed either as part
+        of a metadata workflow or during an Automation Workflow
+        """
+        client = self.client
+        service_connection = self.service_connection
 
-def test_connection(
-    metadata: OpenMetadata,
-    client: MongoClient,
-    service_connection: MongoDBConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
-) -> TestConnectionResult:
-    """
-    Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
-    """
+        class SchemaHolder(BaseModel):
+            database: Optional[str] = None  # noqa: UP045
 
-    class SchemaHolder(BaseModel):
-        database: Optional[str] = None  # noqa: UP045
+        holder = SchemaHolder()
 
-    holder = SchemaHolder()
+        def test_get_databases(client_: MongoClient, holder_: SchemaHolder, database_name: Optional[str] = None):  # noqa: UP045
+            # If database name is provided, use it directly instead of listing all databases
+            if database_name:
+                holder_.database = database_name
+            else:
+                for database in client_.list_database_names():
+                    holder_.database = database
+                    break
 
-    def test_get_databases(client_: MongoClient, holder_: SchemaHolder, database_name: Optional[str] = None):  # noqa: UP045
-        # If database name is provided, use it directly instead of listing all databases
-        if database_name:
-            holder_.database = database_name
-        else:
-            for database in client_.list_database_names():
-                holder_.database = database
-                break
+        def test_get_collections(client_: MongoClient, holder_: SchemaHolder):
+            database = client_.get_database(holder_.database)
+            database.list_collection_names()
 
-    def test_get_collections(client_: MongoClient, holder_: SchemaHolder):
-        database = client_.get_database(holder_.database)
-        database.list_collection_names()
+        test_fn = {
+            "CheckAccess": client.server_info,
+            "GetDatabases": partial(test_get_databases, client, holder, service_connection.databaseSchema),
+            "GetCollections": partial(test_get_collections, client, holder),
+        }
 
-    test_fn = {
-        "CheckAccess": client.server_info,
-        "GetDatabases": partial(test_get_databases, client, holder, service_connection.databaseSchema),
-        "GetCollections": partial(test_get_collections, client, holder),
-    }
-
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
+        return test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
+            automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
+        )
