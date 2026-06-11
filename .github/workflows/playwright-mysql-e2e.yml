@@ -33,6 +33,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write # Required for GitHub OIDC (Flakiness.io reporter)
 
 concurrency:
   group: playwright-ci-pr-mysql-${{ github.event.pull_request.number || github.run_id }}
