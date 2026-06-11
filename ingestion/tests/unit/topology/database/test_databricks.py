@@ -435,16 +435,18 @@ class DatabricksConnectionTest(TestCase):
             DatabricksScheme,
         )
         from metadata.ingestion.source.database.databricks.connection import (
+            DatabricksConnection as DatabricksConnectionHandler,
+        )
+        from metadata.ingestion.source.database.databricks.connection import (
             DatabricksEngineWrapper,
             get_connection,
             get_connection_url,
-            test_connection,
         )
 
         self.DatabricksEngineWrapper = DatabricksEngineWrapper
         self.get_connection_url = get_connection_url
         self.get_connection = get_connection
-        self.test_connection = test_connection
+        self.DatabricksConnectionHandler = DatabricksConnectionHandler
         self.DatabricksConnection = DatabricksConnection
         self.DatabricksScheme = DatabricksScheme
 
@@ -806,11 +808,9 @@ class DatabricksConnectionTest(TestCase):
         mock_metadata = Mock()
 
         # Test the function
-        result = self.test_connection(
-            metadata=mock_metadata,
-            connection=mock_engine,
-            service_connection=service_connection,
-        )
+        handler = self.DatabricksConnectionHandler(service_connection)
+        handler._client = mock_engine
+        result = handler.test_connection(metadata=mock_metadata)
 
         # Verify the result
         self.assertEqual(result, mock_result)
