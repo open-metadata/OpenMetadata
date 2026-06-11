@@ -60,3 +60,108 @@ def test_get_client_runs_ssl_setup_when_manager_present():
     ):
         _ = HiveConnection(config).client
     assert mock_connection.call_args.kwargs["connection"].connectionArguments.root["use_ssl"] is True
+
+
+def test_hive_url():
+    assert (
+        HiveConnection.get_connection_url(HiveConnectionConfig(scheme=HiveScheme.hive, hostPort="localhost:10000"))
+        == "hive://localhost:10000"
+    )
+    assert (
+        HiveConnection.get_connection_url(HiveConnectionConfig(scheme=HiveScheme.hive_http, hostPort="localhost:1000"))
+        == "hive+http://localhost:1000"
+    )
+    assert (
+        HiveConnection.get_connection_url(HiveConnectionConfig(scheme=HiveScheme.hive_https, hostPort="localhost:1000"))
+        == "hive+https://localhost:1000"
+    )
+
+
+def test_hive_url_custom_auth():
+    config = HiveConnectionConfig(
+        scheme=HiveScheme.hive.value,
+        username="username",
+        password="password",
+        hostPort="localhost:10000",
+        connectionArguments={"auth": "CUSTOM"},
+    )
+    assert HiveConnection.get_connection_url(config) == "hive://username:password@localhost:10000"
+
+    config = HiveConnectionConfig(
+        scheme=HiveScheme.hive.value,
+        username="username@444",
+        password="password@333",
+        hostPort="localhost:10000",
+        connectionArguments={"auth": "CUSTOM"},
+    )
+    assert HiveConnection.get_connection_url(config) == "hive://username%40444:password%40333@localhost:10000"
+
+
+def test_hive_url_conn_options_with_db():
+    config = HiveConnectionConfig(
+        hostPort="localhost:10000",
+        databaseSchema="test_db",
+        connectionOptions={"Key": "Value"},
+    )
+    assert HiveConnection.get_connection_url(config) == "hive://localhost:10000/test_db?Key=Value"
+
+
+def test_hive_url_conn_options_without_db():
+    config = HiveConnectionConfig(
+        hostPort="localhost:10000",
+        connectionOptions={"Key": "Value"},
+    )
+    assert HiveConnection.get_connection_url(config) == "hive://localhost:10000?Key=Value"
+
+
+def test_hive_url_with_kerberos_auth():
+    config = HiveConnectionConfig(
+        scheme=HiveScheme.hive.value,
+        hostPort="localhost:10000",
+        connectionArguments={
+            "auth": "KERBEROS",
+            "kerberos_service_name": "hive",
+        },
+    )
+    assert HiveConnection.get_connection_url(config) == "hive://localhost:10000"
+
+
+def test_hive_url_with_ldap_auth():
+    config = HiveConnectionConfig(
+        scheme=HiveScheme.hive.value,
+        username="username",
+        password="password",
+        hostPort="localhost:10000",
+        connectionArguments={"auth": "LDAP"},
+    )
+    assert HiveConnection.get_connection_url(config) == "hive://username:password@localhost:10000"
+
+
+def test_hive_url_without_auth():
+    config = HiveConnectionConfig(
+        scheme=HiveScheme.hive.value,
+        username="username",
+        password="password",
+        hostPort="localhost:10000",
+        connectionArguments={"customKey": "value"},
+    )
+    assert HiveConnection.get_connection_url(config) == "hive://username:password@localhost:10000"
+
+
+def test_hive_url_without_connection_arguments():
+    config = HiveConnectionConfig(
+        scheme=HiveScheme.hive.value,
+        username="username",
+        password="password",
+        hostPort="localhost:10000",
+    )
+    assert HiveConnection.get_connection_url(config) == "hive://username:password@localhost:10000"
+
+
+def test_hive_url_without_connection_arguments_pass():
+    config = HiveConnectionConfig(
+        scheme=HiveScheme.hive.value,
+        username="username",
+        hostPort="localhost:10000",
+    )
+    assert HiveConnection.get_connection_url(config) == "hive://username@localhost:10000"

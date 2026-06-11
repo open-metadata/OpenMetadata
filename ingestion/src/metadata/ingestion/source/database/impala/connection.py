@@ -42,37 +42,37 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
 
 
-def get_connection_url(connection: ImpalaConnectionConfig) -> str:
-    """
-    Build the URL handling auth requirements
-    """
-    url = f"{connection.scheme.value}://"
-    if connection.username and connection.authMechanism and connection.authMechanism.value in ("LDAP", "CUSTOM"):
-        url += quote_plus(connection.username)
-        if not connection.password:
-            connection.password = SecretStr("")
-        url += f":{quote_plus(connection.password.get_secret_value())}"
-        url += "@"
-
-    elif connection.username:
-        url += quote_plus(connection.username)
-        if connection.password:
-            url += f":{quote_plus(connection.password.get_secret_value())}"
-        url += "@"
-
-    url += connection.hostPort
-    url += f"/{connection.databaseSchema}" if connection.databaseSchema else ""
-
-    options = get_connection_options_dict(connection)
-    if options:
-        params = "&".join(f"{key}={quote_plus(value)}" for (key, value) in options.items() if value)
-        url = f"{url}?{params}"
-    if connection.authOptions:
-        url = f"{url};{connection.authOptions}"
-    return url
-
-
 class ImpalaConnection(BaseConnection[ImpalaConnectionConfig, Engine]):
+    @staticmethod
+    def get_connection_url(connection: ImpalaConnectionConfig) -> str:
+        """
+        Build the URL handling auth requirements
+        """
+        url = f"{connection.scheme.value}://"  # pyright: ignore[reportOptionalMemberAccess]
+        if connection.username and connection.authMechanism and connection.authMechanism.value in ("LDAP", "CUSTOM"):
+            url += quote_plus(connection.username)
+            if not connection.password:
+                connection.password = SecretStr("")  # pyright: ignore[reportAttributeAccessIssue]
+            url += f":{quote_plus(connection.password.get_secret_value())}"  # pyright: ignore[reportOptionalMemberAccess]
+            url += "@"
+
+        elif connection.username:
+            url += quote_plus(connection.username)
+            if connection.password:
+                url += f":{quote_plus(connection.password.get_secret_value())}"
+            url += "@"
+
+        url += connection.hostPort
+        url += f"/{connection.databaseSchema}" if connection.databaseSchema else ""
+
+        options = get_connection_options_dict(connection)
+        if options:
+            params = "&".join(f"{key}={quote_plus(value)}" for (key, value) in options.items() if value)
+            url = f"{url}?{params}"
+        if connection.authOptions:
+            url = f"{url};{connection.authOptions}"
+        return url
+
     def _get_client(self) -> Engine:
         connection = self.service_connection
 
@@ -87,7 +87,7 @@ class ImpalaConnection(BaseConnection[ImpalaConnectionConfig, Engine]):
 
         return create_generic_db_connection(
             connection=connection,
-            get_connection_url_fn=get_connection_url,
+            get_connection_url_fn=self.get_connection_url,
             get_connection_args_fn=get_connection_args_common,
         )
 

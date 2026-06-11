@@ -67,37 +67,37 @@ import pyhive.hive  # noqa: E402
 pyhive.hive.Connection = CustomHiveConnection
 
 
-def get_connection_url(connection: HiveConnectionConfig) -> str:
-    """
-    Build the URL handling auth requirements
-    """
-    url = f"{connection.scheme.value}://"
-    if connection.username and connection.auth and connection.auth.value in ("LDAP", "CUSTOM"):
-        url += quote_plus(connection.username)
-        if not connection.password:
-            connection.password = SecretStr("")
-        url += f":{quote_plus(connection.password.get_secret_value())}"
-        url += "@"
-
-    elif connection.username:
-        url += quote_plus(connection.username)
-        if connection.password:
-            url += f":{quote_plus(connection.password.get_secret_value())}"
-        url += "@"
-
-    url += connection.hostPort
-    url += f"/{connection.databaseSchema}" if connection.databaseSchema else ""
-
-    options = get_connection_options_dict(connection)
-    if options:
-        params = "&".join(f"{key}={quote_plus(value)}" for (key, value) in options.items() if value)
-        url = f"{url}?{params}"
-    if connection.authOptions:
-        return f"{url};{connection.authOptions}"
-    return url
-
-
 class HiveConnection(BaseConnection[HiveConnectionConfig, Engine]):
+    @staticmethod
+    def get_connection_url(connection: HiveConnectionConfig) -> str:
+        """
+        Build the URL handling auth requirements
+        """
+        url = f"{connection.scheme.value}://"  # pyright: ignore[reportOptionalMemberAccess]
+        if connection.username and connection.auth and connection.auth.value in ("LDAP", "CUSTOM"):
+            url += quote_plus(connection.username)
+            if not connection.password:
+                connection.password = SecretStr("")  # pyright: ignore[reportAttributeAccessIssue]
+            url += f":{quote_plus(connection.password.get_secret_value())}"  # pyright: ignore[reportOptionalMemberAccess]
+            url += "@"
+
+        elif connection.username:
+            url += quote_plus(connection.username)
+            if connection.password:
+                url += f":{quote_plus(connection.password.get_secret_value())}"
+            url += "@"
+
+        url += connection.hostPort
+        url += f"/{connection.databaseSchema}" if connection.databaseSchema else ""
+
+        options = get_connection_options_dict(connection)
+        if options:
+            params = "&".join(f"{key}={quote_plus(value)}" for (key, value) in options.items() if value)
+            url = f"{url}?{params}"
+        if connection.authOptions:
+            return f"{url};{connection.authOptions}"
+        return url
+
     def _get_client(self) -> Engine:
         connection = self.service_connection
 
@@ -126,7 +126,7 @@ class HiveConnection(BaseConnection[HiveConnectionConfig, Engine]):
 
         return create_generic_db_connection(
             connection=connection,
-            get_connection_url_fn=get_connection_url,
+            get_connection_url_fn=self.get_connection_url,
             get_connection_args_fn=get_connection_args_common,
         )
 

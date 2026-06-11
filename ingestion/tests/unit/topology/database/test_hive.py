@@ -61,7 +61,6 @@ from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.source.database.hive.connection import (
     HiveConnection as HiveConnectionHandler,
 )
-from metadata.ingestion.source.database.hive.connection import get_connection_url
 from metadata.ingestion.source.database.hive.metadata import HiveSource
 
 mock_hive_config = {
@@ -606,7 +605,7 @@ class HiveUnitTest(TestCase):
             useSSL=True,
         )
 
-        url = get_connection_url(ssl_connection)
+        url = HiveConnectionHandler.get_connection_url(ssl_connection)
         self.assertEqual(url, "hive://username@localhost:1466")
 
         # Test HTTPS scheme connection
@@ -619,7 +618,7 @@ class HiveUnitTest(TestCase):
             auth=Auth.BASIC,
         )
 
-        url = get_connection_url(https_connection)
+        url = HiveConnectionHandler.get_connection_url(https_connection)
         self.assertEqual(url, "hive+https://username:password@localhost:1000")
 
     def test_custom_hive_connection_ssl_initialization(self):
