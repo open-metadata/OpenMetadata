@@ -17,10 +17,10 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { getCsvAsyncJobResult } from '../../../rest/csvAPI';
-import { downloadFile } from '../../../utils/Export/ExportUtils';
 import { useLocation } from 'react-router-dom';
 import { ExportTypes } from '../../../constants/Export.constants';
+import { getCsvAsyncJobResult } from '../../../rest/csvAPI';
+import { downloadFile } from '../../../utils/Export/ExportUtils';
 import {
   EntityExportModalProvider,
   useEntityExportModalProvider,
@@ -210,6 +210,7 @@ describe('EntityExportModalProvider component', () => {
     });
 
     expect(getCsvAsyncJobResult).toHaveBeenCalledWith(mockExportJob.jobId);
+
     await waitFor(() =>
       expect(downloadFile).toHaveBeenCalledWith(
         'name\nmetric_one',

@@ -248,6 +248,7 @@ describe('CsvJobsTray', () => {
         'completed-export-job'
       )
     );
+
     expect(createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:csv-job');
   });
