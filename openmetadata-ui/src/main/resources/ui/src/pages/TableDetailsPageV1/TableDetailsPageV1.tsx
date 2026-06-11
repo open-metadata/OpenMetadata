@@ -448,9 +448,7 @@ const TableDetailsPageV1: React.FC = () => {
     };
   }, [tableFqn]);
 
-  const canCreateTask = Boolean(
-    resourcePermissions?.[ResourceEntity.TASK]?.Create
-  );
+
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -1042,7 +1040,6 @@ const TableDetailsPageV1: React.FC = () => {
               afterDeleteAction={afterDeleteAction}
               afterDomainUpdateAction={updateTableDetailsState}
               badge={alertBadge}
-              canCreateTask={canCreateTask}
               dataAsset={tableDetails}
               entityType={EntityType.TABLE}
               extraDropdownContent={extraDropdownContent}
