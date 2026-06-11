@@ -1839,7 +1839,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
               original.getAuthenticationMechanism());
       user.setRoles(original.getRoles());
     }
-    // TODO remove this -> Still valid TODO?
     addAuthMechanismToBot(user, create, uriInfo);
     addRolesToBot(user, uriInfo);
     PutResponse<User> response =
@@ -1884,7 +1883,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return repository.findToRecords(bot.getId(), Entity.BOT, Relationship.CONTAINS, Entity.USER);
   }
 
-  // TODO remove this -> still valid TODO?
   private void addAuthMechanismToBot(User user, @Valid CreateUser create, UriInfo uriInfo) {
     if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException(
