@@ -13,8 +13,8 @@
 
 import { AxiosError } from 'axios';
 import parse from 'html-react-parser';
-import removeMarkdown from 'remove-markdown';
 import { get, isString } from 'lodash';
+import removeMarkdown from 'remove-markdown';
 import { VALIDATE_ESCAPE_START_END_REGEX } from '../constants/regex.constants';
 import i18n from './i18next/LocalUtil';
 
