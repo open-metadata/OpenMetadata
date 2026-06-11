@@ -35,5 +35,5 @@ class ExasolProfilerInterface(SQAProfilerInterface):
             Callable[[Session, QueryRunner], ExasolSystemMetricsComputer],  # noqa: TC006
             self.system_metrics_class,
         )
-        instance = exasol_system_metrics_constructor(self.session, runner)
+        instance = exasol_system_metrics_constructor(self.session, runner)  # pyright: ignore[reportArgumentType]
         return instance.get_system_metrics()
