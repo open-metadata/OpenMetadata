@@ -61,7 +61,6 @@ import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import TestSummary from '../../../Database/Profiler/TestSummary/TestSummary';
-import SchemaEditor from '../../../Database/SchemaEditor/SchemaEditor';
 import DataProductsContainer from '../../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
