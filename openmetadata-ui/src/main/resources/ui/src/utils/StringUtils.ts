@@ -12,10 +12,9 @@
  */
 
 import { AxiosError } from 'axios';
-import DOMPurify from 'dompurify';
 import parse from 'html-react-parser';
+import removeMarkdown from 'remove-markdown';
 import { get, isString } from 'lodash';
-import Showdown from 'showdown';
 import { VALIDATE_ESCAPE_START_END_REGEX } from '../constants/regex.constants';
 import i18n from './i18next/LocalUtil';
 
@@ -400,17 +399,8 @@ export const jsonToCSV = <T extends JSONRecord>(
  * @param htmlString - HTML content as a string
  * @returns A cleaned HTML string with invalid file-attachment divs removed
  */
-const markdownConverter = new Showdown.Converter({
-  strikethrough: true,
-  tables: true,
-  tasklists: true,
-  simpleLineBreaks: true,
-});
-
 export function stripMarkdown(text: string): string {
-  const html = markdownConverter.makeHtml(text);
-
-  return DOMPurify.sanitize(html, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] }).trim();
+  return removeMarkdown(text).trim();
 }
 
 export function removeAttachmentsWithoutUrl(htmlString: string): string {

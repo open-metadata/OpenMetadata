@@ -11818,6 +11818,11 @@ remark-rehype@^11.0.0:
     unified "^11.0.0"
     vfile "^6.0.0"
 
+remove-markdown@^0.6.4:
+  version "0.6.4"
+  resolved "https://registry.yarnpkg.com/remove-markdown/-/remove-markdown-0.6.4.tgz#d973e4d2e3d09eb14c2261446e1173e444d5d3df"
+  integrity sha512-BompiLClzjfh46irZmzv+1Q61jZYlKN3iq/hzae9EOUwf7ctr/5wpD4qwgn/FWDAYE18RORO7z/yr+HXZJCY8Q==
+
 repeat-string@^1.5.2:
   version "1.6.1"
   resolved "https://registry.yarnpkg.com/repeat-string/-/repeat-string-1.6.1.tgz#8dcae470e1c88abc2d600fff4a776286da75e637"
