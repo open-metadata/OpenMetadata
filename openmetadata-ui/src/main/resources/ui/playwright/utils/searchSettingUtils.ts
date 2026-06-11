@@ -85,7 +85,7 @@ export async function setSliderValue(
   max = 100
 ) {
   const sliderHandle = page.getByTestId(testId).locator('.ant-slider-handle');
-  const sliderTrack = page.getByTestId(testId).locator('.ant-slider-track');
+  const sliderTrack = page.getByTestId(testId).locator('.ant-slider-rail');
 
   // Get slider track dimensions
   const box = await sliderTrack.boundingBox();

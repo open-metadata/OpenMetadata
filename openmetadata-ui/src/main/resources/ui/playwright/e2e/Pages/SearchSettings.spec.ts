@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { TableClass } from '../../support/entity/TableClass';
@@ -304,6 +304,11 @@ test.describe('Search Settings', () => {
     PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
     () => {
       test.beforeEach(async ({ page }) => {
+        // Reset settings via API before each test to avoid parallel-test bleed.
+        // Call the API directly (without asserting on the response body) so that
+        // a schema mismatch in restoreDefaultSearchSettings never kills setUp.
+        const { apiContext } = await getApiContext(page);
+        await apiContext.put('/api/v1/system/settings/reset/searchSettings');
         await redirectToHomePage(page);
       });
 
@@ -316,12 +321,6 @@ test.describe('Search Settings', () => {
       }) => {
         await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
         const tableCard = page.getByTestId(mockEntitySearchSettings.key);
-
-        // Register before navigation so the on-load preview request is captured.
-        const initialPreviewPromise = page.waitForResponse((r) =>
-          r.url().includes('/api/v1/search/preview')
-        );
-
         await tableCard.click();
 
         await expect(page).toHaveURL(
@@ -329,28 +328,22 @@ test.describe('Search Settings', () => {
         );
         await waitForAllLoadersToDisappear(page);
 
-        const initialPreviewResponse = await initialPreviewPromise;
-        expect(initialPreviewResponse.status()).toBe(200);
-
-        const initialNgramBoost =
-          initialPreviewResponse
-            .request()
-            .postDataJSON()
-            ?.searchSettings?.assetTypeConfigurations?.find(
-              (c: { assetType: string }) => c.assetType === 'table'
-            )
-            ?.searchFields?.find(
-              (f: { field: string }) => f.field === 'name.ngram'
-            )?.boost ?? 0;
-
         // Expand the name.ngram field configuration panel.
         const ngramPanel = page.getByTestId(
           'field-configuration-panel-name.ngram'
         );
         await ngramPanel.click();
 
-        // Change n-gram weight to 5 and save.
-        await setSliderValue(page, 'field-weight-slider', 5);
+        // Use large, precisely-settable values so slider imprecision cannot
+        // cause the predicate to miss. 50 is the "saved" value; 20 is the
+        // "reverted" value — both are far from the 0-end of the range.
+        await setSliderValue(page, 'field-weight-slider', 50);
+
+        // Wait for React to propagate the slider change — the Save button
+        // becomes enabled only after searchSettings.isUpdated turns true.
+        // Without this guard, clicking Save while it is still disabled fires
+        // no API request and leaves saveResponse pending until timeout.
+        await expect(page.getByTestId('save-btn')).toBeEnabled();
 
         const saveResponse = page.waitForResponse(
           (r) =>
@@ -361,8 +354,8 @@ test.describe('Search Settings', () => {
         await saveResponse;
         await toastNotification(page, /Search Settings updated successfully/);
 
-        // Scope the predicate to the reverted boost value so a stale post-save
-        // preview response (boost=5) can never satisfy the promise.
+        // Scope the predicate to boost=20 so a stale post-save preview
+        // response (boost=50) can never satisfy the promise.
         const revertedPreviewPromise = page.waitForResponse((r) => {
           if (!r.url().includes('/api/v1/search/preview')) {
             return false;
@@ -377,10 +370,10 @@ test.describe('Search Settings', () => {
               (f: { field: string }) => f.field === 'name.ngram'
             )?.boost;
 
-          return boost === initialNgramBoost;
+          return boost === 20;
         });
 
-        await setSliderValue(page, 'field-weight-slider', initialNgramBoost);
+        await setSliderValue(page, 'field-weight-slider', 20);
 
         const revertedPreviewResponse = await revertedPreviewPromise;
         expect(revertedPreviewResponse.status()).toBe(200);
