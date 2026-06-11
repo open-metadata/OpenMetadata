@@ -159,6 +159,7 @@
     "react-i18next": "^15.5.3",
     "react-intersection-observer": "^9.16.0",
     "react-latex-next": "^3.0.0",
+    "react-markdown": "^10.1.0",
     "react-oidc": "^1.0.3",
     "react-markdown": "^10.1.0",
     "react-papaparse": "^4.1.0",

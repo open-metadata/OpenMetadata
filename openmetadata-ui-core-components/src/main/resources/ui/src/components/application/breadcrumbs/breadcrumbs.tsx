@@ -10,16 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Dropdown } from '@/components/base/dropdown/dropdown';
+import { cx, sortCx } from '@/utils/cx';
 import { ChevronRight, DotsHorizontal } from '@untitledui/icons';
-import type { FC, Key, ReactNode } from 'react';
+import type { FC, HTMLAttributes, Key, ReactNode } from 'react';
 import {
   Breadcrumb as AriaBreadcrumb,
   Breadcrumbs as AriaBreadcrumbs,
   Button as AriaButton,
   Link as AriaLink,
 } from 'react-aria-components';
-import { Dropdown } from '@/components/base/dropdown/dropdown';
-import { cx, sortCx } from '@/utils/cx';
 
 export type BreadcrumbsType = 'text' | 'button-white' | 'button-gray';
 
@@ -32,13 +32,15 @@ export interface BreadcrumbItemType {
   id: Key;
   /** The text shown for the crumb. */
   label: ReactNode;
+  /** Accessible label for icon-only crumbs. */
+  ariaLabel?: string;
   /** Navigation target. Omit on the current (last) page. */
   href?: string;
   /** Optional leading icon, e.g. a home icon on the first crumb. */
   icon?: FC<{ className?: string }>;
 }
 
-export interface BreadcrumbsProps {
+export interface BreadcrumbsProps extends HTMLAttributes<HTMLElement> {
   /** Ordered list of crumbs; the last item is treated as the current page. */
   items: BreadcrumbItemType[];
   /** Visual style of the crumbs. */
@@ -53,10 +55,6 @@ export interface BreadcrumbsProps {
    * visible. Omit to always render every crumb.
    */
   maxItems?: number;
-  /** Accessible label for the navigation landmark. */
-  'aria-label'?: string;
-  /** Class name for the root navigation element. */
-  className?: string;
   /**
    * Called with the item id when a non-current crumb is activated. When
    * provided, native `href` navigation is suppressed so the callback alone
@@ -224,6 +222,7 @@ export const Breadcrumbs = ({
   maxItems,
   className,
   onAction,
+  'aria-label': ariaLabel = 'Breadcrumb',
   ...props
 }: BreadcrumbsProps) => {
   const displayItems = collapseItems(items, maxItems);
@@ -231,14 +230,15 @@ export const Breadcrumbs = ({
 
   return (
     <AriaBreadcrumbs
-      aria-label={props['aria-label'] ?? 'Breadcrumb'}
+      aria-label={ariaLabel}
       className={cx(
         'tw:flex tw:items-center',
         sizes[size].gap,
         sizes[size].text,
         className
       )}
-      items={displayItems}>
+      items={displayItems}
+      {...props}>
       {(item) => (
         <AriaBreadcrumb
           className={cx('tw:flex tw:items-center', sizes[size].gap)}>
@@ -254,6 +254,7 @@ export const Breadcrumbs = ({
                 />
               ) : !isCurrent && (item.href || onAction) ? (
                 <AriaLink
+                  aria-label={item.ariaLabel}
                   className={cx(linkClassName, styles[type].link, padding)}
                   href={onAction ? undefined : item.href}
                   onPress={() => onAction?.(item.id)}>

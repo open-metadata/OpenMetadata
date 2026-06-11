@@ -46,7 +46,7 @@ import {
   TableSearchSource,
 } from '../../../../interface/search.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getPopupContainer } from '../../../../utils/formUtils';
 import {
   getSelectedColumnsSet,

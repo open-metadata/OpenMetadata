@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { ContractSecurity } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import './contract-security.less';
 

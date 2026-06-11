@@ -339,8 +339,20 @@ public class DatabaseServiceResourceIT
 
   @Test
   void list_databaseServiceWithPipelinesField_populatesPipelines(TestNamespace ns) {
-    DatabaseService service =
-        createEntity(createMinimalRequest(ns).withName(ns.prefix("svc_pipe")));
+    Domain domain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("svc_pipe_dom"))
+                    .withDescription("Isolates list query for pipelines-field test")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
+
+    CreateDatabaseService createRequest =
+        createMinimalRequest(ns)
+            .withName(ns.prefix("svc_pipe"))
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DatabaseService service = createEntity(createRequest);
 
     CreateIngestionPipeline pipelineRequest =
         new CreateIngestionPipeline()
@@ -354,8 +366,7 @@ public class DatabaseServiceResourceIT
     IngestionPipeline pipeline =
         SdkClients.adminClient().ingestionPipelines().create(pipelineRequest);
 
-    ListParams params = new ListParams();
-    params.setLimit(1000);
+    ListParams params = new ListParams().withDomain(domain.getFullyQualifiedName()).withLimit(1000);
     params.setFields("pipelines");
     ListResponse<DatabaseService> response = listEntities(params);
 
