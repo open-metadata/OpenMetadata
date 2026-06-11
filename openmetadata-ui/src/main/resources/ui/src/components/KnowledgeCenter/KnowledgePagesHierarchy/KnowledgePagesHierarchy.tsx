@@ -20,7 +20,7 @@ import {
   Modal,
   ModalOverlay,
   Tree,
-  Typography
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { File06, Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
@@ -645,24 +645,21 @@ const KnowledgePagesHierarchy = forwardRef<
           }
         }}
         onScroll={handleScroll}>
-
-           <Box align='center' className="tw:px-1.5 tw:pb-5" gap={3}>
-            <div className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0">
-              <File06 className="tw:text-gray-600" size={20} />
-            </div>
-            <div>
-              <Typography size="text-md" weight="semibold">
-                {t('label.article-plural')}
-              </Typography>
-              <Typography
-                className="tw:text-gray-500 tw:flex tw:items-center tw:gap-2"
-                size="text-xs">
-                  {paginationState.paging.total ?? 0}{' '}
-                  {t('label.article-plural')}
-              </Typography>
-            </div>
-          </Box>
-
+        <Box align="center" className="tw:px-1.5 tw:pb-5" gap={3}>
+          <div className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0">
+            <File06 className="tw:text-gray-600" size={20} />
+          </div>
+          <div>
+            <Typography size="text-md" weight="semibold">
+              {t('label.article-plural')}
+            </Typography>
+            <Typography
+              className="tw:text-gray-500 tw:flex tw:items-center tw:gap-2"
+              size="text-xs">
+              {paginationState.paging.total ?? 0} {t('label.article-plural')}
+            </Typography>
+          </div>
+        </Box>
 
         <Box align="center" className="tw:px-1.5 tw:pb-3" gap={2}>
           <Button
