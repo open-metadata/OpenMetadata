@@ -32,7 +32,7 @@ import type { TestCase, TestSuite } from '../generated/tests/testCase';
 import { DataInsightTabs } from '../interface/data-insight.interface';
 import type { SearchSourceAlias } from '../interface/search.interface';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
-import { getDataInsightPathWithFqn } from './DataInsightUtils';
+import { getDataInsightPathWithFqn } from './DataInsightPureUtils';
 import { getEntityLinkFromType } from './EntityLinkUtils';
 import { getEntityName } from './EntityNameUtils';
 import Fqn from './Fqn';

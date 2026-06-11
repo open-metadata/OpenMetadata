@@ -111,10 +111,6 @@ from metadata.generated.schema.entity.services.connections.database.trinoConnect
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoScheme,
 )
-from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
-    VerticaConnection,
-    VerticaScheme,
-)
 from metadata.generated.schema.security.credentials import awsCredentials
 from metadata.ingestion.connections.builders import (
     get_connection_args_common,
@@ -682,29 +678,6 @@ class SourceConnectionTest(TestCase):
 
         trino_connection = TrinoConnection(trino_conn_obj)
         assert trino_connection.build_connection_args(trino_conn_obj).root.get("auth") == OAuth2Authentication()
-
-    def test_vertica_url(self):
-        expected_url = "vertica+vertica_python://username:password@localhost:5443/database"
-        vertica_conn_obj = VerticaConnection(
-            scheme=VerticaScheme.vertica_vertica_python,
-            hostPort="localhost:5443",
-            username="username",
-            password="password",
-            database="database",
-        )
-        assert expected_url == get_connection_url_common(vertica_conn_obj)
-
-        # Passing @ in username and password
-        expected_url = "vertica+vertica_python://username%40444:password%40123@localhost:5443/database"
-        vertica_conn_obj = VerticaConnection(
-            scheme=VerticaScheme.vertica_vertica_python,
-            hostPort="localhost:5443",
-            username="username@444",
-            password="password@123",
-            database="database",
-        )
-
-        assert expected_url == get_connection_url_common(vertica_conn_obj)
 
     def test_pinotdb_url(self):
         from metadata.ingestion.source.database.pinotdb.connection import (

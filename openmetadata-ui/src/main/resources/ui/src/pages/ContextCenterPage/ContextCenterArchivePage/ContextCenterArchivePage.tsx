@@ -17,7 +17,7 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { File06, Home02 } from '@untitledui/icons';
+import { File06 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -45,7 +45,7 @@ import {
   restoreKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
@@ -193,19 +193,11 @@ const ContextCenterArchivePage: FC = () => {
       <ContextCenterHeader
         breadcrumbs={[
           {
-            name: '',
-            icon: <Home02 size={14} />,
-            url: contextCenterClassBase.getHomePath(),
-            activeTitle: true,
+            label: t('label.context-center'),
+            href: contextCenterClassBase.getContextCenterPath(),
           },
           {
-            name: t('label.context-center'),
-            url: contextCenterClassBase.getContextCenterPath(),
-          },
-          {
-            activeTitle: true,
-            name: t('label.archive'),
-            url: '',
+            label: t('label.archive'),
           },
         ]}
         hasPermission={permissions?.Create}
