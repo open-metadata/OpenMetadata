@@ -127,6 +127,7 @@ import {
 import { updateNodeType } from '../../utils/EntityPureUtils';
 import { getEntityReferenceFromEntity } from '../../utils/EntityReferenceUtils';
 import { getQuickFilterQuery } from '../../utils/ExploreUtils';
+import { addBaseNodeDepthToNodes } from '../../utils/Lineage/LineageUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useTourProvider } from '../TourProvider/TourProvider';
@@ -532,7 +533,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         // else fallback to rootNode
         const nodeToFocus =
           typeof recenter === 'string'
-            ? visibleNodes.find((n) => n.data.fullyQualifiedName === recenter)
+            ? visibleNodes.find(
+                (n) => n.data.node.fullyQualifiedName === recenter
+              )
             : visibleNodes.find((n) => n.data.isRootNode);
 
         if (nodeToFocus) {
@@ -763,7 +766,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   );
 
   const loadChildNodesHandler = useCallback(
-    async (node: SourceType, direction: LineageDirection, depth = 1) => {
+    async (node: LineageNodeType, direction: LineageDirection, depth = 1) => {
       try {
         const res = await getLineageDataByFQN({
           fqn: node.fullyQualifiedName ?? '',
@@ -791,10 +794,16 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             },
           };
         }
+
+        const updatedNodes = addBaseNodeDepthToNodes(
+          node.nodeDepth ?? 0,
+          res.nodes
+        );
+
         const concatenatedLineageData = {
           nodes: {
             ...currentNodes,
-            ...res.nodes,
+            ...updatedNodes,
           },
           downstreamEdges: {
             ...lineageData?.downstreamEdges,
