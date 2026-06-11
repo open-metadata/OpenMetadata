@@ -29,7 +29,7 @@ import { ReactComponent as EditNewIcon } from '../../../assets/svg/edit-new.svg'
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { stripMarkdown } from '../../../utils/StringUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import {
@@ -196,7 +196,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
       )}
       {(memory.owners?.[0]?.name ?? memory.updatedBy) && (
         <div className="tw:shrink-0 tw:mt-0.5">
-          <ProfilePicture name={memory.owners?.[0]?.name || ''} />
+          <ProfilePicture name={getEntityName(memory.owners?.[0])} />
         </div>
       )}
       <Box

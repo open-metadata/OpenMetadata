@@ -21,15 +21,15 @@ import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { TableConstraint } from '../../../generated/api/data/createTable';
 import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 import { Column } from '../../../generated/entity/data/table';
-import {
-  getFrequentlyJoinedColumns,
-  searchInColumns,
-} from '../../../utils/EntityUtils';
-import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
+import { getFrequentlyJoinedColumns } from '../../../utils/EntityColumnUtils';
+import { searchInColumns } from '../../../utils/EntitySearchUtils';
 import {
   getAllRowKeysByKeyName,
-  getTableExpandableConfig,
   makeData,
+} from '../../../utils/TablePureUtils';
+import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
+import {
+  getTableExpandableConfig,
   prepareConstraintIcon,
 } from '../../../utils/TableUtils';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';

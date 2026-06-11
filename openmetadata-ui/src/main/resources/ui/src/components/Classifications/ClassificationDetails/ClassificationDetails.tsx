@@ -48,7 +48,7 @@ import {
   getClassificationInfo,
   getTagsTableColumn,
 } from '../../../utils/ClassificationUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,

@@ -46,7 +46,7 @@ import {
   convertDomainsToTreeOptions,
   isDomainExist,
 } from '../../../utils/DomainUtils';
-import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,

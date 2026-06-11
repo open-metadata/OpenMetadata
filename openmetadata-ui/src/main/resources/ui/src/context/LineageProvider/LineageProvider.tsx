@@ -103,6 +103,7 @@ import {
   updateLineageEdge,
 } from '../../rest/lineageAPI';
 import { getCurrentISODate } from '../../utils/date-time/DateTimeUtils';
+import { getEntityBreadcrumbs } from '../../utils/EntityBreadcrumbPureUtils';
 import {
   addLineageHandler,
   centerNodePosition,
@@ -131,11 +132,8 @@ import {
   removeLineageHandler,
   removeUnconnectedNodes,
 } from '../../utils/EntityLineageUtils';
-import {
-  getEntityBreadcrumbs,
-  getEntityReferenceFromEntity,
-  updateNodeType,
-} from '../../utils/EntityUtils';
+import { updateNodeType } from '../../utils/EntityPureUtils';
+import { getEntityReferenceFromEntity } from '../../utils/EntityReferenceUtils';
 import { getQuickFilterQuery } from '../../utils/ExploreUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
