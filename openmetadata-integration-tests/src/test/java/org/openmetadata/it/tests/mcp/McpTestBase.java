@@ -121,19 +121,23 @@ public abstract class McpTestBase {
   }
 
   protected static <T> T get(String path, Class<T> responseType) throws Exception {
-    String baseUrl = TestSuiteBootstrap.getBaseUrl();
-    HttpRequest request =
-        HttpRequest.newBuilder()
-            .uri(URI.create(baseUrl + "/api/v1/" + path))
-            .header("Authorization", authToken)
-            .GET()
-            .timeout(Duration.ofSeconds(30))
-            .build();
-    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    HttpResponse<String> response = getResponse(path, authToken);
     if (response.statusCode() != 200) {
       throw new RuntimeException("HTTP " + response.statusCode() + ": " + response.body());
     }
     return OBJECT_MAPPER.readValue(response.body(), responseType);
+  }
+
+  protected static HttpResponse<String> getResponse(String path, String token) throws Exception {
+    String baseUrl = TestSuiteBootstrap.getBaseUrl();
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(baseUrl + "/api/v1/" + path))
+            .header("Authorization", token)
+            .GET()
+            .timeout(Duration.ofSeconds(30))
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
   protected static <T> T put(String path, Object body, Class<T> responseType) throws Exception {
@@ -181,6 +185,37 @@ public abstract class McpTestBase {
             .timeout(Duration.ofSeconds(30))
             .build();
     HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  protected static HttpResponse<String> deleteResponse(String path) throws Exception {
+    return deleteResponse(path, authToken);
+  }
+
+  protected static HttpResponse<String> deleteResponse(String path, String token) throws Exception {
+    String baseUrl = TestSuiteBootstrap.getBaseUrl();
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(baseUrl + "/api/v1/" + path))
+            .header("Authorization", token)
+            .DELETE()
+            .timeout(Duration.ofSeconds(30))
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  protected static HttpResponse<String> postResponse(String path, Object body, String token)
+      throws Exception {
+    String baseUrl = TestSuiteBootstrap.getBaseUrl();
+    String jsonBody = OBJECT_MAPPER.writeValueAsString(body);
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(baseUrl + "/api/v1/" + path))
+            .header("Content-Type", "application/json")
+            .header("Authorization", token)
+            .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+            .timeout(Duration.ofSeconds(30))
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
   protected String getMcpUrl(String path) {
