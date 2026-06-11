@@ -33,7 +33,7 @@ import {
   getChangedEntityName,
   getDiffByFieldName,
 } from './EntityDiffPureUtils';
-import { getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
 import { getEntityVersionByField } from './EntityVersionUtilsPure';
 import { t } from './i18next/LocalUtil';
 import { stringToHTML } from './StringUtils';

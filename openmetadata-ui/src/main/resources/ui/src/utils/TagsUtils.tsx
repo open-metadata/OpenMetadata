@@ -13,39 +13,52 @@
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Space, Tag as AntdTag, Tooltip, Typography } from 'antd';
-import type { AxiosError } from 'axios';
-import { isString, omit } from 'lodash';
-import type { EntityTags } from 'Models';
+import { AxiosError } from 'axios';
+import { isString } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React from 'react';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as DeleteIcon } from '../assets/svg/ic-delete.svg';
 import Loader from '../components/common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
-import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { SettledStatus } from '../enums/Axios.enum';
 import { SearchIndex } from '../enums/search.enum';
-import type { Classification } from '../generated/entity/classification/classification';
-import type { Tag } from '../generated/entity/classification/tag';
-import type { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
-import {
-  TagSource,
-  type AssetCertification,
-  type Column,
-  type EntityReference,
-} from '../generated/entity/data/table';
-import type { Paging } from '../generated/type/paging';
-import { LabelType, State, type TagLabel } from '../generated/type/tagLabel';
+import { Classification } from '../generated/entity/classification/classification';
+import { Tag } from '../generated/entity/classification/tag';
+import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import { EntityReference } from '../generated/entity/data/table';
+import { Paging } from '../generated/type/paging';
 import { searchQuery } from '../rest/searchAPI';
 import {
   getAllClassifications,
   getClassificationByName,
   getTags,
 } from '../rest/tagAPI';
-import { getEntityName } from './EntityUtils';
-import { getQueryFilterToIncludeApprovedTerm } from './GlossaryUtils';
-import i18n from './i18next/LocalUtil';
-import { getTagsWithoutTier } from './TableUtils';
+import { getEntityName } from './EntityNameUtils';
+import { getQueryFilterToIncludeApprovedTerm } from './GlossaryPureUtils';
+import { getTagDisplay } from './TagsPureUtils';
+
+export {
+  createCertificationTag,
+  createTagObject,
+  createTierTag,
+  getClassificationTags,
+  getExcludedIndexesBasedOnEntityTypeEditTagPermission,
+  getGlossaryTags,
+  getQueryFilterToExcludeTermsAndEntities,
+  getTableTags,
+  getTagAssetsQueryFilter,
+  getTagDisplay,
+  getTagName,
+  getTagPlaceholder,
+  getTagRedirectLink,
+  getTagValue,
+  getUsageCountLink,
+  isGlossaryTag,
+  updateCertificationTag,
+  updateTierTag,
+} from './TagsPureUtils';
+export type { ResultType } from './TagsPureUtils';
 
 export const getClassifications = async (
   fields?: Array<string> | string,
@@ -125,39 +138,6 @@ export const getTaglist = async (
   }
 };
 
-export const getTableTags = (
-  columns: Array<Partial<Column>>
-): Array<EntityTags> => {
-  const flag: { [x: string]: boolean } = {};
-  const uniqueTags: Array<EntityTags> = [];
-  const tags = columns
-    .map((column) => column.tags || [])
-    .reduce((prev, curr) => prev.concat(curr), [])
-    .map((tag) => tag);
-
-  tags.forEach((elem) => {
-    if (!flag[elem.tagFQN]) {
-      flag[elem.tagFQN] = true;
-      uniqueTags.push(elem);
-    }
-  });
-
-  return uniqueTags;
-};
-
-//  Will return tag with ellipses if it exceeds the limit
-export const getTagDisplay = (tag?: string) => {
-  const tagLevelsArray = tag?.split(FQN_SEPARATOR_CHAR) ?? [];
-
-  if (tagLevelsArray.length > 3) {
-    return `${tagLevelsArray[0]}...${tagLevelsArray
-      .slice(-2)
-      .join(FQN_SEPARATOR_CHAR)}`;
-  }
-
-  return tag;
-};
-
 export const getTagTooltip = (fqn: string, description?: string) => (
   <div className="text-left p-xss">
     <div className="m-b-xs">
@@ -186,24 +166,6 @@ export const getDeleteIcon = (arg: {
 
   return <DeleteIcon data-testid="delete-icon" name="Delete" width={14} />;
 };
-
-// Re-exports from TagsPureUtils (backward compat)
-export {
-  getExcludedIndexesBasedOnEntityTypeEditTagPermission,
-  getQueryFilterToExcludeTermsAndEntities,
-  getTagAssetsQueryFilter,
-  getTagRedirectLink,
-  getUsageCountLink,
-} from './TagsPureUtils';
-
-export const getTagPlaceholder = (isGlossaryType: boolean): string =>
-  isGlossaryType
-    ? i18n.t('label.search-entity', {
-        entity: i18n.t('label.glossary-term-plural'),
-      })
-    : i18n.t('label.search-entity', {
-        entity: i18n.t('label.tag-plural'),
-      });
 
 export const tagRender = (customTagProps: CustomTagProps) => {
   const { label, onClose } = customTagProps;
@@ -236,12 +198,6 @@ export const tagRender = (customTagProps: CustomTagProps) => {
       </Tooltip>
     </AntdTag>
   );
-};
-
-export type ResultType = {
-  label: string;
-  value: string;
-  data: Tag;
 };
 
 export const fetchGlossaryList = async (
@@ -277,104 +233,6 @@ export const fetchGlossaryList = async (
   };
 };
 
-export const createTierTag = (tag: Tag) => {
-  return {
-    displayName: tag.displayName,
-    name: tag.name,
-    description: tag.description,
-    tagFQN: tag.fullyQualifiedName,
-    labelType: LabelType.Manual,
-    state: State.Confirmed,
-  };
-};
-
-export const createCertificationTag = (tag: Tag) => {
-  return {
-    tagLabel: {
-      displayName: tag.displayName,
-      name: tag.name,
-      href: tag.href,
-      description: tag.description,
-      tagFQN: tag.fullyQualifiedName,
-      labelType: LabelType.Manual,
-      state: State.Confirmed,
-    },
-  };
-};
-export const updateTierTag = (oldTags: Tag[] | TagLabel[], newTier?: Tag) => {
-  return newTier
-    ? [...getTagsWithoutTier(oldTags), createTierTag(newTier)]
-    : getTagsWithoutTier(oldTags);
-};
-
-export const updateCertificationTag = (
-  newCertification?: Tag
-): AssetCertification | undefined => {
-  if (!newCertification) {
-    return undefined;
-  }
-
-  return {
-    tagLabel: {
-      tagFQN: newCertification.fullyQualifiedName || '',
-      name: newCertification.name,
-      displayName: newCertification.displayName,
-      description: newCertification.description || '',
-      source: TagSource.Classification,
-      labelType: LabelType.Manual,
-      state: State.Confirmed,
-      style: newCertification.style,
-    },
-    appliedDate: Date.now(),
-    expiryDate: Date.now() + 90 * 24 * 60 * 60 * 1000, // 90 days from now
-  };
-};
-
-export const createTagObject = (tags: EntityTags[]) => {
-  return tags.map(
-    (tag) =>
-      ({
-        ...omit(tag, 'isRemovable'),
-        state: State.Confirmed,
-        source: tag.source,
-        tagFQN: tag.tagFQN,
-      } as TagLabel)
-  );
-};
-
-/**
- * Check if a tag is a glossary tag
- */
-export const isGlossaryTag = (tag: EntityTags): boolean => {
-  return tag.source === TagSource.Glossary;
-};
-
-/**
- * Get the display name for a tag
- */
-export const getTagName = (tag: EntityTags, showOnlyName?: boolean): string => {
-  return (
-    getEntityName(tag) ||
-    getTagDisplay(
-      showOnlyName
-        ? tag.tagFQN
-            .split(FQN_SEPARATOR_CHAR)
-            .slice(-2)
-            .join(FQN_SEPARATOR_CHAR)
-        : tag.tagFQN
-    ) ||
-    tag.tagFQN
-  );
-};
-
-export const getGlossaryTags = (tags: TagLabel[] | undefined): TagLabel[] =>
-  tags?.filter((tag) => tag.source === TagSource.Glossary) ?? [];
-
-export const getClassificationTags = (
-  tags: TagLabel[] | undefined
-): TagLabel[] =>
-  tags?.filter((tag) => tag.source === TagSource.Classification) ?? [];
-
 export const TagListItemRenderer = (props: EntityReference) => {
   return (
     <Space>
@@ -382,19 +240,4 @@ export const TagListItemRenderer = (props: EntityReference) => {
       <Typography.Text>{getEntityName(props)}</Typography.Text>
     </Space>
   );
-};
-
-export const getTagValue = (tag: string | TagLabel): string | TagLabel => {
-  if (isString(tag)) {
-    return tag.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
-      ? tag.split(FQN_SEPARATOR_CHAR)[1]
-      : tag;
-  } else {
-    return {
-      ...tag,
-      tagFQN: tag.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
-        ? tag.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
-        : tag.tagFQN,
-    };
-  }
 };

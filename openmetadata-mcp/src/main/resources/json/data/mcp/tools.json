@@ -182,7 +182,7 @@
     },
     {
       "name": "get_entity_details",
-      "description": "Get detailed information about a specific entity by its fully qualified name, including its custom properties (returned under the 'extension' field). IMPORTANT: Use the 'fullyQualifiedName' and 'entityType' values directly from search_metadata or semantic_search results — do not construct the FQN manually. Response is optimized for LLM context by excluding verbose metadata fields.",
+      "description": "Get detailed information about a specific entity by its fully qualified name, including its custom properties (returned under the 'extension' field). IMPORTANT: Use the 'fullyQualifiedName' and 'entityType' values directly from search_metadata or semantic_search results — do not construct the FQN manually. Response is optimized for LLM context: verbose metadata fields are excluded, and per-column descriptions and raw schema/model SQL are truncated at 500 characters (marked with 'columnDescriptionsTruncated' / 'schemaDefinitionTruncated', or 'sqlTruncated' inside 'dataModel', when cut). The entity-level description is always returned in full.",
       "parameters": {
         "description": "Use 'fullyQualifiedName' and 'entityType' from search results directly.",
         "type": "object",
