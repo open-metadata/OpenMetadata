@@ -41,6 +41,7 @@ import org.springframework.expression.spel.ast.OpLT;
 import org.springframework.expression.spel.ast.OpNE;
 import org.springframework.expression.spel.ast.OpOr;
 import org.springframework.expression.spel.ast.OperatorNot;
+import org.springframework.expression.spel.ast.PropertyOrFieldReference;
 import org.springframework.expression.spel.ast.RealLiteral;
 import org.springframework.expression.spel.ast.StringLiteral;
 import org.springframework.expression.spel.ast.Ternary;
@@ -109,6 +110,11 @@ public final class ExpressionValidator {
           InlineMap.class,
           // Method calls — subject to ALLOWED_FUNCTIONS check below
           MethodReference.class,
+          // Bare references to no-arg boolean functions (e.g. `!isOwner`, `noOwner`) —
+          // SpEL resolves these to the matching @Function getter; subject to the
+          // ALLOWED_FUNCTIONS check below. Compound references (e.g. `System.exit`) parse
+          // as CompoundExpression, which stays disallowed.
+          PropertyOrFieldReference.class,
           // Conditional combinators
           Ternary.class,
           Elvis.class);
@@ -138,7 +144,7 @@ public final class ExpressionValidator {
       return;
     }
     ensureNodeKindAllowed(node);
-    ensureMethodNameAllowed(node);
+    ensureCallableNameAllowed(node);
     for (int i = 0; i < node.getChildCount(); i++) {
       validateNode(node.getChild(i));
     }
@@ -157,12 +163,14 @@ public final class ExpressionValidator {
             + " ternaries, and method calls on approved @Function-annotated methods are allowed.");
   }
 
-  private static void ensureMethodNameAllowed(SpelNode node) {
-    if (!(node instanceof MethodReference methodRef)) {
-      return;
-    }
-    String name = methodRef.getName();
-    if (ALLOWED_FUNCTIONS.contains(name)) {
+  private static void ensureCallableNameAllowed(SpelNode node) {
+    String name =
+        switch (node) {
+          case MethodReference methodRef -> methodRef.getName();
+          case PropertyOrFieldReference propertyRef -> propertyRef.getName();
+          default -> null;
+        };
+    if (name == null || ALLOWED_FUNCTIONS.contains(name)) {
       return;
     }
     throw new IllegalArgumentException(
