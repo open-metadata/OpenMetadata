@@ -27,9 +27,9 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   ChevronRight,
+  Copy06,
   Download01,
   Pin02,
-  Share06,
   Trash01,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
@@ -45,6 +45,7 @@ import { formatBytes } from '../../../utils/ContextCenterUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import {
   DocumentsViewProps,
   FileActionsProps,
@@ -97,7 +98,6 @@ const FileActions: FC<FileActionsProps> = ({
   folders = [],
   onDeleteFile,
   onFileMoved,
-  onShareFile,
 }) => {
   const { t } = useTranslation();
   const [isMoving, setIsMoving] = useState(false);
@@ -133,19 +133,10 @@ const FileActions: FC<FileActionsProps> = ({
       <Dropdown.Popover className="tw:w-46">
         <Dropdown.Menu
           onAction={(key) => {
-            if (key === 'share') {
-              onShareFile?.(file);
-            } else if (key === 'delete') {
+            if (key === 'delete') {
               onDeleteFile?.(file);
             }
           }}>
-          <Dropdown.Item
-            data-testid="share-btn"
-            icon={Share06}
-            id="share"
-            label={t('label.share-file')}
-          />
-
           <SubmenuTrigger>
             <Dropdown.Item
               data-testid="move-btn"
@@ -341,17 +332,23 @@ const FileRow: FC<FileRowProps> = ({
   onFileMoved,
   onPreview,
   onSelectFile,
-  onShareFile,
 }) => {
   const { t } = useTranslation();
 
-  const { folderName, fileName, formattedFileSize, relativeTime } =
+  const { folderName, fileName, formattedFileSize, relativeTime, rowUrl } =
     useMemo(() => {
+      const params = new URLSearchParams(window.location.search);
+      params.set('document', file.id);
+      const url = `${window.location.origin}${
+        window.location.pathname
+      }?${params.toString()}`;
+
       return {
         folderName: getEntityName(file.folder),
         fileName: getEntityName(file),
         formattedFileSize: formatBytes(file.fileSize),
         relativeTime: getShortRelativeTime(file.updatedAt),
+        rowUrl: url,
       };
     }, [file]);
 
@@ -456,13 +453,15 @@ const FileRow: FC<FileRowProps> = ({
             />
           </TooltipTrigger>
         </Tooltip>
+        <CopyLinkButton className="tw:w-8 tw:h-8" url={rowUrl}>
+          <Copy06 aria-hidden="true" size={20} strokeWidth={1.8} />
+        </CopyLinkButton>
         <FileActions
           canDelete={canDelete}
           file={file}
           folders={folders}
           onDeleteFile={onDeleteFile}
           onFileMoved={onFileMoved}
-          onShareFile={onShareFile}
         />
       </div>
     </Box>
@@ -493,7 +492,6 @@ const DocumentsView: FC<DocumentsViewProps> = ({
   onFileMoved,
   onPreview,
   onSelectFile,
-  onShareFile,
 }) => {
   const selectedCount = selectedIds?.size ?? 0;
 
@@ -546,7 +544,6 @@ const DocumentsView: FC<DocumentsViewProps> = ({
                   onFileMoved={onFileMoved}
                   onPreview={onPreview}
                   onSelectFile={onSelectFile}
-                  onShareFile={onShareFile}
                 />
               ))
             )}
