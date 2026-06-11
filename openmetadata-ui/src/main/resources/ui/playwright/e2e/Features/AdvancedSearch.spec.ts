@@ -23,6 +23,8 @@ import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
+import { ClassificationClass } from '../../support/tag/ClassificationClass';
+import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -44,8 +46,6 @@ import {
 } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
-import { ClassificationClass } from '../../support/tag/ClassificationClass';
-import { TagClass } from '../../support/tag/TagClass';
 
 const user = new UserClass();
 const table = new TableClass(undefined, 'Regular');
@@ -1016,7 +1016,7 @@ test.describe(
       });
 
       await test.step('Clear filters and verify count disappears', async () => {
-        await page.getByTestId('clear-all-chips').click();
+        await page.getByTestId('clear-filters').click();
         await waitForAllLoadersToDisappear(page);
 
         await expect(
@@ -1074,8 +1074,7 @@ test.describe(
       });
 
       await test.step('Only the chip Clear button exists, no toolbar Clear All', async () => {
-        await expect(page.getByTestId('clear-filters')).not.toBeVisible();
-        await expect(page.getByTestId('clear-all-chips')).toBeVisible();
+        await expect(page.getByTestId('clear-filters')).toBeVisible();
       });
     });
 
@@ -1222,7 +1221,7 @@ test.describe(
         ).not.toBeVisible();
       });
 
-      await page.getByTestId('advance-search-clear-btn').click();
+      await page.getByTestId('clear-filters').click();
     });
 
     test('Column Tags == tag2 returns table2 and hides table1', async ({
@@ -1272,7 +1271,7 @@ test.describe(
         ).not.toBeVisible();
       });
 
-      await page.getByTestId('advance-search-clear-btn').click();
+      await page.getByTestId('clear-filters').click();
     });
 
     test('Column Tags != tag1 excludes table1 from results', async ({
@@ -1315,7 +1314,7 @@ test.describe(
         ).not.toBeVisible();
       });
 
-      await page.getByTestId('advance-search-clear-btn').click();
+      await page.getByTestId('clear-filters').click();
     });
 
     test('Column Tags Contains tag1 name returns table1', async ({ page }) => {
@@ -1347,7 +1346,7 @@ test.describe(
         ).toBeVisible();
       });
 
-      await page.getByTestId('advance-search-clear-btn').click();
+      await page.getByTestId('clear-filters').click();
     });
 
     test('Column Tags Not contains tag1 name excludes table1', async ({
@@ -1390,7 +1389,7 @@ test.describe(
         ).not.toBeVisible();
       });
 
-      await page.getByTestId('advance-search-clear-btn').click();
+      await page.getByTestId('clear-filters').click();
     });
 
     test('Column Tags Any in [tag1, tag2] returns both tables', async ({
@@ -1424,7 +1423,7 @@ test.describe(
         ).toBeVisible();
       });
 
-      await page.getByTestId('advance-search-clear-btn').click();
+      await page.getByTestId('clear-filters').click();
     });
 
     test('Column Tags Not in [tag1] excludes table1', async ({ page }) => {
@@ -1465,7 +1464,7 @@ test.describe(
         ).not.toBeVisible();
       });
 
-      await page.getByTestId('advance-search-clear-btn').click();
+      await page.getByTestId('clear-filters').click();
     });
 
     test('Column Tags Is not null returns table with a column tag', async ({
@@ -1507,7 +1506,7 @@ test.describe(
         ).toBeVisible();
       });
 
-      await page.getByTestId('advance-search-clear-btn').click();
+      await page.getByTestId('clear-filters').click();
     });
 
     test('Column Tags Is null excludes tables that have column tags', async ({
@@ -1549,7 +1548,7 @@ test.describe(
         ).not.toBeVisible();
       });
 
-      await page.getByTestId('advance-search-clear-btn').click();
+      await page.getByTestId('clear-filters').click();
     });
   }
 );
