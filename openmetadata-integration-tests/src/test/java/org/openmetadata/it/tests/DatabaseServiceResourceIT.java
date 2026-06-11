@@ -377,10 +377,10 @@ public class DatabaseServiceResourceIT
             .orElse(null);
     assertNotNull(listed, "Created service should be present in list response");
     assertNotNull(
-        listed.getPipelines(), "fields=pipelines must populate pipelines on the list endpoint");
+        listed.getPipelines(), "fields=pipelines must populate pipelines on the service endpoint");
     assertTrue(
         listed.getPipelines().stream().anyMatch(p -> p.getId().equals(pipeline.getId())),
-        "List response should include the ingestion pipeline for the service");
+        "Service should include the ingestion pipeline when fields=pipelines");
   }
 
   @Test
