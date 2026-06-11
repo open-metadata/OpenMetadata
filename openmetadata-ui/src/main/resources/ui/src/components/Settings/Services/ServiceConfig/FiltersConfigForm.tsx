@@ -21,7 +21,15 @@ import {
 import { customizeValidator } from '@rjsf/validator-ajv8';
 import { CheckCircle } from '@untitledui/icons';
 import { isEmpty, isUndefined } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { ConfigData } from '../../../../interface/service.interface';
@@ -34,7 +42,10 @@ import {
 import InlineAlert from '../../../common/InlineAlert/InlineAlert';
 import { FilterPatternField } from './FilterPatternField';
 import { FORM_TEST_ID } from './FiltersConfigForm.constants';
-import { FiltersConfigFormProps } from './FiltersConfigForm.interface';
+import {
+  FiltersConfigFormHandle,
+  FiltersConfigFormProps,
+} from './FiltersConfigForm.interface';
 import {
   FilterPatternConfig,
   FilterSchemaProperty,
@@ -61,17 +72,22 @@ const FiltersFormObjectTemplate = ({
 const FiltersFormFieldTemplate = ({ children, hidden }: FieldTemplateProps) =>
   hidden ? <div className="tw:hidden">{children}</div> : <>{children}</>;
 
-function FiltersConfigForm({
+const FiltersConfigForm = forwardRef<
+  FiltersConfigFormHandle,
+  FiltersConfigFormProps
+>(function FiltersConfigForm({
   data,
   okText,
   cancelText,
+  hideFooter = false,
   serviceType,
   serviceCategory,
   status,
   onCancel,
   onSave,
   onFocus,
-}: Readonly<FiltersConfigFormProps>) {
+}: Readonly<FiltersConfigFormProps>,
+ref) {
   const { t } = useTranslation();
   const { inlineAlertDetails } = useApplicationStore();
   const [connSch, setConnSch] = useState(EMPTY_CONNECTION_SCHEMA);
@@ -171,6 +187,9 @@ function FiltersConfigForm({
     await onSave({ formData: formattedFormData } as IChangeEvent<ConfigData>);
   };
 
+  // Exposes submit to the parent card footer, which triggers the form when hideFooter is true.
+  useImperativeHandle(ref, () => ({ submit: handleSubmit }), [handleSubmit]);
+
   const connectionHost = getConnectionDisplayHost(validConfig, serviceType);
   const formKey = filterEntries.map(([name]) => name as string).join(',');
 
@@ -230,28 +249,32 @@ function FiltersConfigForm({
         <InlineAlert alertClassName="m-t-xs" {...inlineAlertDetails} />
       )}
 
-      <div className="tw:sticky tw:bottom-0 tw:z-10 tw:mt-2 tw:flex tw:items-center tw:justify-end tw:gap-5 tw:border-t tw:border-secondary tw:bg-primary tw:pt-4 tw:pb-1">
-        {onCancel && (
+      {!hideFooter && (
+        <div className="tw:sticky tw:bottom-0 tw:z-10 tw:mt-2 tw:flex tw:items-center tw:justify-end tw:gap-5 tw:border-t tw:border-secondary tw:bg-primary tw:pt-4 tw:pb-1">
+          {onCancel && (
+            <Button
+              color="secondary"
+              isDisabled={isSaving}
+              size="sm"
+              type="button"
+              onPress={onCancel}>
+              {backText}
+            </Button>
+          )}
           <Button
-            color="secondary"
+            color="primary"
             isDisabled={isSaving}
             size="sm"
             type="button"
-            onPress={onCancel}>
-            {backText}
+            onPress={handleSubmit}>
+            {submitText}
           </Button>
-        )}
-        <Button
-          color="primary"
-          isDisabled={isSaving}
-          size="sm"
-          type="button"
-          onPress={handleSubmit}>
-          {submitText}
-        </Button>
-      </div>
+        </div>
+      )}
     </div>
   );
-}
+});
+
+FiltersConfigForm.displayName = 'FiltersConfigForm';
 
 export default FiltersConfigForm;

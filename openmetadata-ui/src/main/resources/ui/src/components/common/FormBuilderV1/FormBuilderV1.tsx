@@ -65,6 +65,7 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
       isLoading,
       isSubmitDisabled = false,
       hideCancelButton = false,
+      hideFooter = false,
       status = 'initial',
       onCancel,
       onSubmit,
@@ -149,25 +150,29 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
         onChange={handleFormChange}
         onSubmit={onSubmit}>
         {children}
-        <div className="tw:sticky tw:bottom-0 tw:z-10 tw:mt-4 tw:flex tw:justify-end tw:gap-2 tw:border-t tw:border-secondary tw:bg-primary tw:pt-4 tw:pb-1">
-          {!hideCancelButton && (
+        {/* When hideFooter is true, the parent card renders the footer to span full width
+         * and keep the card's bottom border-radius visible during scroll. */}
+        {!hideFooter && (
+          <div className="tw:sticky tw:bottom-0 tw:z-10 tw:mt-4 tw:flex tw:justify-end tw:gap-2 tw:border-t tw:border-secondary tw:bg-primary tw:pt-4 tw:pb-1">
+            {!hideCancelButton && (
+              <Button
+                color="secondary"
+                size="sm"
+                type="button"
+                onClick={handleCancel}>
+                {cancelText ?? t('label.cancel')}
+              </Button>
+            )}
             <Button
-              color="secondary"
+              color="primary"
+              data-testid="submit-btn"
+              isDisabled={isSubmitting || isLoading || isSubmitDisabled}
               size="sm"
-              type="button"
-              onClick={handleCancel}>
-              {cancelText ?? t('label.cancel')}
+              type="submit">
+              {isSubmitting ? t('label.submitting') : okText ?? t('label.submit')}
             </Button>
-          )}
-          <Button
-            color="primary"
-            data-testid="submit-btn"
-            isDisabled={isSubmitting || isLoading || isSubmitDisabled}
-            size="sm"
-            type="submit">
-            {isSubmitting ? t('label.submitting') : okText ?? t('label.submit')}
-          </Button>
-        </div>
+          </div>
+        )}
       </Form>
     );
   }

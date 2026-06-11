@@ -11,11 +11,22 @@
  *  limitations under the License.
  */
 
-import { Breadcrumbs, Typography } from '@openmetadata/ui-core-components';
+import {
+  Breadcrumbs,
+  Button,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -24,7 +35,9 @@ import ServiceFlowStepper from '../../components/Settings/Services/AddService/Se
 import ServiceNameCard from '../../components/Settings/Services/AddService/ServiceNameCard/ServiceNameCard';
 import SelectServiceType from '../../components/Settings/Services/AddService/Steps/SelectServiceType';
 import ConnectionConfigForm from '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm';
+import { ConnectionConfigFormHandle } from '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm.interface';
 import FiltersConfigForm from '../../components/Settings/Services/ServiceConfig/FiltersConfigForm';
+import { FiltersConfigFormHandle } from '../../components/Settings/Services/ServiceConfig/FiltersConfigForm.interface';
 import { AUTO_PILOT_APP_NAME } from '../../constants/Applications.constant';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
@@ -79,6 +92,8 @@ const AddServicePage = () => {
   const [saveServiceState, setSaveServiceState] =
     useState<LoadingState>('initial');
   const [activeField, setActiveField] = useState<string>('');
+  const connectionFormRef = useRef<ConnectionConfigFormHandle>(null);
+  const filtersFormRef = useRef<FiltersConfigFormHandle>(null);
   const {
     isServiceNameChecking,
     nameError,
@@ -300,111 +315,158 @@ const AddServicePage = () => {
     [handleConnectorChangeClick, navigate, serviceCategory]
   );
 
+  const isStep2NextDisabled =
+    !serviceConfig.name.trim() || Boolean(nameError) || isServiceNameChecking;
+  const isSavingService = saveServiceState === 'waiting';
+  const showFooter = activeServiceStep === 2 || activeServiceStep === 3;
+
+  const handleFooterBack = () => {
+    if (activeServiceStep === 2) {
+      handleConnectionDetailsBackClick();
+    } else {
+      handleFiltersInputBackClick();
+    }
+  };
+
+  const handleFooterNext = () => {
+    if (activeServiceStep === 2) {
+      connectionFormRef.current?.submit();
+    } else {
+      filtersFormRef.current?.submit();
+    }
+  };
+
+  const footerNextText =
+    activeServiceStep === 3
+      ? t('label.create-and-deploy')
+      : t('label.next-what-to-ingest');
+
+  const footerNextDisabled =
+    activeServiceStep === 2 ? isStep2NextDisabled : isSavingService;
+
+  // flex-col layout bounds the scroll area so the footer stays anchored at the card bottom,
+  // keeping the card's rounded corners visible at all times during scroll.
   const firstPanelChildren = (
-    <>
-      <Breadcrumbs
-        items={serviceBreadcrumb}
-        onAction={handleBreadcrumbAction}
-      />
-      <div className="tw:mt-[22px]">
-        <div data-testid="add-new-service-container">
-          {serviceConfig.serviceType ? (
-            <div className="tw:flex tw:items-center tw:gap-3 tw:pb-0">
-              {getServiceLogo(
-                serviceConfig.serviceType || '',
-                'tw:size-10 tw:max-w-10 tw:max-h-10 tw:object-contain'
-              )}
+    <Card className="add-service-page-card max-width-lg m-x-auto tw:p-0 tw:h-full tw:flex tw:flex-col tw:overflow-hidden">
+      <div className="tw:flex-1 tw:overflow-y-auto tw:p-5">
+        <Breadcrumbs
+          items={serviceBreadcrumb}
+          onAction={handleBreadcrumbAction}
+        />
+        <div className="tw:mt-[22px]">
+          <div data-testid="add-new-service-container">
+            {serviceConfig.serviceType ? (
+              <div className="tw:flex tw:items-center tw:gap-3 tw:pb-0">
+                {getServiceLogo(
+                  serviceConfig.serviceType || '',
+                  'tw:size-10 tw:max-w-10 tw:max-h-10 tw:object-contain'
+                )}
+                <Typography
+                  className="tw:m-0"
+                  data-testid="header"
+                  size="text-xl"
+                  weight="semibold">
+                  {`${serviceConfig.serviceType} ${t('label.service')}`}
+                </Typography>
+              </div>
+            ) : (
               <Typography
                 className="tw:m-0"
                 data-testid="header"
                 size="text-xl"
                 weight="semibold">
-                {`${serviceConfig.serviceType} ${t('label.service')}`}
+                {t('label.add-new-entity', { entity: t('label.service') })}
               </Typography>
-            </div>
-          ) : (
-            <Typography
-              className="tw:m-0"
-              data-testid="header"
-              size="text-xl"
-              weight="semibold">
-              {t('label.add-new-entity', { entity: t('label.service') })}
-            </Typography>
-          )}
-
-          <ServiceFlowStepper
-            activeStep={activeServiceStep}
-            className="tw:mt-6"
-            steps={translatedSteps}
-          />
-          <div className="tw:mt-[30px]">
-            {activeServiceStep === 1 && (
-              <SelectServiceType
-                handleServiceTypeClick={handleServiceTypeClick}
-                selectServiceType={serviceConfig.serviceType}
-                serviceCategory={serviceCategory}
-                serviceCategoryHandler={handleServiceCategoryChange}
-                showError={showErrorMessage.serviceType}
-              />
             )}
 
-            {activeServiceStep === 2 && (
-              <div className="tw:flex tw:flex-col tw:gap-4">
-                <ServiceNameCard
-                  description={serviceConfig.description}
-                  name={serviceConfig.name}
-                  nameError={nameError}
-                  serviceType={serviceConfig.serviceType}
-                  onDescriptionChange={(description) =>
-                    setServiceConfig((prev) => ({ ...prev, description }))
-                  }
-                  onFocus={handleFieldFocus}
-                  onNameChange={(name) => {
-                    resetNameValidation();
-                    setServiceConfig((prev) => ({ ...prev, name }));
-                  }}
+            <ServiceFlowStepper
+              activeStep={activeServiceStep}
+              className="tw:mt-6"
+              steps={translatedSteps}
+            />
+            <div className="tw:mt-[30px]">
+              {activeServiceStep === 1 && (
+                <SelectServiceType
+                  handleServiceTypeClick={handleServiceTypeClick}
+                  selectServiceType={serviceConfig.serviceType}
+                  serviceCategory={serviceCategory}
+                  serviceCategoryHandler={handleServiceCategoryChange}
+                  showError={showErrorMessage.serviceType}
                 />
-                <ConnectionConfigForm
-                  requireTestConnection
-                  cancelText={t('label.back')}
+              )}
+
+              {activeServiceStep === 2 && (
+                <div className="tw:flex tw:flex-col tw:gap-4">
+                  <ServiceNameCard
+                    description={serviceConfig.description}
+                    name={serviceConfig.name}
+                    nameError={nameError}
+                    serviceType={serviceConfig.serviceType}
+                    onDescriptionChange={(description) =>
+                      setServiceConfig((prev) => ({ ...prev, description }))
+                    }
+                    onFocus={handleFieldFocus}
+                    onNameChange={(name) => {
+                      resetNameValidation();
+                      setServiceConfig((prev) => ({ ...prev, name }));
+                    }}
+                  />
+                  <ConnectionConfigForm
+                    hideFooter
+                    requireTestConnection
+                    data={serviceConfig as ServicesType}
+                    isSubmitDisabled={isStep2NextDisabled}
+                    ref={connectionFormRef}
+                    serviceCategory={serviceCategory}
+                    serviceType={serviceConfig.serviceType}
+                    status={saveServiceState}
+                    onFocus={handleFieldFocus}
+                    onSave={async (e) => {
+                      e.formData && (await handleConfigUpdate(e.formData));
+                    }}
+                  />
+                </div>
+              )}
+
+              {activeServiceStep === 3 && (
+                <FiltersConfigForm
+                  hideFooter
                   data={serviceConfig as ServicesType}
-                  isSubmitDisabled={
-                    !serviceConfig.name.trim() ||
-                    Boolean(nameError) ||
-                    isServiceNameChecking
-                  }
-                  okText={t('label.next-what-to-ingest')}
+                  ref={filtersFormRef}
                   serviceCategory={serviceCategory}
                   serviceType={serviceConfig.serviceType}
                   status={saveServiceState}
-                  onCancel={handleConnectionDetailsBackClick}
                   onFocus={handleFieldFocus}
                   onSave={async (e) => {
-                    e.formData && (await handleConfigUpdate(e.formData));
+                    e.formData && handleFiltersInputNextClick(e.formData);
                   }}
                 />
-              </div>
-            )}
-
-            {activeServiceStep === 3 && (
-              <FiltersConfigForm
-                cancelText={t('label.back')}
-                data={serviceConfig as ServicesType}
-                okText={t('label.create-and-deploy')}
-                serviceCategory={serviceCategory}
-                serviceType={serviceConfig.serviceType}
-                status={saveServiceState}
-                onCancel={handleFiltersInputBackClick}
-                onFocus={handleFieldFocus}
-                onSave={async (e) => {
-                  e.formData && handleFiltersInputNextClick(e.formData);
-                }}
-              />
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </>
+      {showFooter && (
+        <div className="tw:flex tw:flex-shrink-0 tw:items-center tw:justify-end tw:gap-5 tw:border-t tw:border-secondary tw:bg-primary tw:px-5 tw:py-4">
+          <Button
+            color="secondary"
+            isDisabled={isSavingService}
+            size="sm"
+            type="button"
+            onPress={handleFooterBack}>
+            {t('label.back')}
+          </Button>
+          <Button
+            color="primary"
+            isDisabled={footerNextDisabled || isSavingService}
+            size="sm"
+            type="button"
+            onPress={handleFooterNext}>
+            {footerNextText}
+          </Button>
+        </div>
+      )}
+    </Card>
   );
 
   useEffect(() => {
@@ -419,8 +481,8 @@ const AddServicePage = () => {
         minWidth: 700,
         flex: 0.7,
         className: 'content-resizable-panel-container',
-        cardClassName: 'add-service-page-card max-width-lg m-x-auto',
-        allowScroll: true,
+        // Renders our own Card below; built-in AntD card would cause a double card and break the h-full layout.
+        wrapInCard: false,
       }}
       hideSecondPanel={hideSecondPanel}
       pageTitle={t('label.add-entity', { entity: t('label.service') })}

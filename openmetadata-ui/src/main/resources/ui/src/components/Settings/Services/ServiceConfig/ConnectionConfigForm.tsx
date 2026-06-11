@@ -18,8 +18,10 @@ import { RegistryFieldsType, RJSFSchema } from '@rjsf/utils';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
 import {
   Fragment,
+  forwardRef,
   useCallback,
   useEffect,
+  useImperativeHandle,
   useMemo,
   useRef,
   useState,
@@ -59,12 +61,19 @@ import FormBuilderV1 from '../../../common/FormBuilderV1/FormBuilderV1';
 import InlineAlert from '../../../common/InlineAlert/InlineAlert';
 import Loader from '../../../common/Loader/Loader';
 import TestConnection from '../../../common/TestConnection/TestConnection';
-import { ConnectionConfigFormProps } from './ConnectionConfigForm.interface';
+import {
+  ConnectionConfigFormHandle,
+  ConnectionConfigFormProps,
+} from './ConnectionConfigForm.interface';
 
-const ConnectionConfigForm = ({
+const ConnectionConfigForm = forwardRef<
+  ConnectionConfigFormHandle,
+  ConnectionConfigFormProps
+>(({
   data,
   okText = i18n.t('label.save'),
   cancelText = i18n.t('label.cancel'),
+  hideFooter = false,
   serviceType,
   serviceCategory,
   status,
@@ -73,7 +82,7 @@ const ConnectionConfigForm = ({
   onFocus,
   disableTestConnection = false,
   isSubmitDisabled: isSubmitDisabledFromParent = false,
-}: Readonly<ConnectionConfigFormProps>) => {
+}: Readonly<ConnectionConfigFormProps>, ref) => {
   const { inlineAlertDetails } = useApplicationStore();
   const { t } = useTranslation();
   const [ingestionRunner, setIngestionRunner] = useState<string | undefined>();
@@ -267,6 +276,16 @@ const ConnectionConfigForm = ({
     }
   }, [currentFormData]);
 
+  // Exposes submit to the parent card footer, which triggers the form when hideFooter is true.
+  useImperativeHandle(
+    ref,
+    () => ({
+      submit: () => formRef.current?.submit(),
+      isSubmitDisabled,
+    }),
+    [isSubmitDisabled]
+  );
+
   const formChildren = (
     <>
       {isEmpty(connSch.schema) && (
@@ -330,6 +349,7 @@ const ConnectionConfigForm = ({
         cancelText={cancelText ?? ''}
         fields={customFields}
         formData={currentFormData}
+        hideFooter={hideFooter}
         isSubmitDisabled={isSubmitDisabled}
         noValidate={!isEmpty(connSch.schema)}
         okText={okText ?? ''}
@@ -348,6 +368,8 @@ const ConnectionConfigForm = ({
       </FormBuilderV1>
     </Fragment>
   );
-};
+});
+
+ConnectionConfigForm.displayName = 'ConnectionConfigForm';
 
 export default ConnectionConfigForm;

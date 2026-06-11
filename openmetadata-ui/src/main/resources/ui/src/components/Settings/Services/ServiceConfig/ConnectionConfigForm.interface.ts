@@ -22,6 +22,7 @@ export interface ConnectionConfigFormProps {
   data?: ServicesType;
   okText?: string;
   cancelText?: string;
+  hideFooter?: boolean;
   serviceType: string;
   serviceCategory: ServiceCategory;
   status: LoadingState;
@@ -31,4 +32,9 @@ export interface ConnectionConfigFormProps {
   isSubmitDisabled?: boolean;
   requireTestConnection?: boolean;
   onCancel?: () => void;
+}
+
+export interface ConnectionConfigFormHandle {
+  submit: () => void;
+  isSubmitDisabled: boolean;
 }

@@ -15,7 +15,15 @@ import Form, { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
 import { Alert } from 'antd';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AIRFLOW_HYBRID,
@@ -49,12 +57,19 @@ import FormBuilderV1 from '../../../common/FormBuilderV1/FormBuilderV1';
 import InlineAlert from '../../../common/InlineAlert/InlineAlert';
 import Loader from '../../../common/Loader/Loader';
 import TestConnection from '../../../common/TestConnection/TestConnection';
-import { ConnectionConfigFormProps } from './ConnectionConfigForm.interface';
+import {
+  ConnectionConfigFormHandle,
+  ConnectionConfigFormProps,
+} from './ConnectionConfigForm.interface';
 
-const EmbeddedConnectionConfigForm = ({
+const EmbeddedConnectionConfigForm = forwardRef<
+  ConnectionConfigFormHandle,
+  ConnectionConfigFormProps
+>(({
   data,
   okText = i18n.t('label.save'),
   cancelText = i18n.t('label.cancel'),
+  hideFooter = false,
   serviceType,
   serviceCategory,
   status,
@@ -63,7 +78,7 @@ const EmbeddedConnectionConfigForm = ({
   onFocus,
   disableTestConnection = false,
   isSubmitDisabled: isSubmitDisabledFromParent = false,
-}: Readonly<ConnectionConfigFormProps>) => {
+}: Readonly<ConnectionConfigFormProps>, ref) => {
   const { inlineAlertDetails } = useApplicationStore();
   const { t } = useTranslation();
   const [ingestionRunner, setIngestionRunner] = useState<string | undefined>();
@@ -252,6 +267,16 @@ const EmbeddedConnectionConfigForm = ({
     }
   }, [currentFormData]);
 
+  // Exposes submit to the parent card footer, which triggers the form when hideFooter is true.
+  useImperativeHandle(
+    ref,
+    () => ({
+      submit: () => formRef.current?.submit(),
+      isSubmitDisabled,
+    }),
+    [isSubmitDisabled]
+  );
+
   if (isSchemaLoading) {
     return (
       <>
@@ -273,6 +298,7 @@ const EmbeddedConnectionConfigForm = ({
         fields={{ authSelect: AuthSelectField }}
         formContext={{ handleFocus: onFocus }}
         formData={currentFormData}
+        hideFooter={hideFooter}
         isSubmitDisabled={isSubmitDisabled}
         noValidate={!isEmpty(connSch.schema)}
         okText={okText ?? ''}
@@ -328,6 +354,8 @@ const EmbeddedConnectionConfigForm = ({
       </FormBuilderV1>
     </>
   );
-};
+});
+
+EmbeddedConnectionConfigForm.displayName = 'EmbeddedConnectionConfigForm';
 
 export default EmbeddedConnectionConfigForm;
