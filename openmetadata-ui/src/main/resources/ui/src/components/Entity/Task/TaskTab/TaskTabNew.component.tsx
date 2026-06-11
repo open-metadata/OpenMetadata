@@ -32,6 +32,7 @@ import classNames from 'classnames';
 import { isEmpty, isEqual, isUndefined, last, orderBy } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, {
+  lazy,
   useCallback,
   useEffect,
   useMemo,
@@ -70,8 +71,6 @@ import {
 import { useAuth } from '../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import Assignees from '../../../../pages/TasksPage/shared/Assignees';
-import FeedbackApprovalTask from '../../../../pages/TasksPage/shared/FeedbackApprovalTask';
-import TaskPayloadSchemaFields from '../../../../pages/TasksPage/shared/TaskPayloadSchemaFields';
 import {
   Option,
   TaskAction,
@@ -93,8 +92,10 @@ import {
 } from '../../../../rest/tasksAPI';
 import { formatIsoDuration } from '../../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../../utils/EntityLink';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
+import { getUserPath } from '../../../../utils/RouterUtils';
 import { getErrorText } from '../../../../utils/StringUtils';
 import {
   applyTaskFormSchemaDefaults,
@@ -125,11 +126,9 @@ import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import TaskCommentCard from '../../../ActivityFeed/ActivityFeedCardNew/TaskCommentCard.component';
 import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
-
-import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { getUserPath } from '../../../../utils/RouterUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
@@ -138,6 +137,16 @@ import { EditorContentRef } from '../../../common/RichTextEditor/RichTextEditor.
 import TaskTabIncidentManagerHeaderNewFromTask from '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNewFromTask';
 import './task-tab-new.less';
 import { TaskTabProps } from './TaskTab.interface';
+
+const FeedbackApprovalTask = withSuspenseFallback(
+  lazy(() => import('../../../../pages/TasksPage/shared/FeedbackApprovalTask'))
+);
+
+const TaskPayloadSchemaFields = withSuspenseFallback(
+  lazy(
+    () => import('../../../../pages/TasksPage/shared/TaskPayloadSchemaFields')
+  )
+);
 
 const DAR_FIELD_ICONS: Record<string, string> = {
   accessType: icAccessType,

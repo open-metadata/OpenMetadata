@@ -14,6 +14,7 @@ import { AxiosError } from 'axios';
 import { isEmpty, omit, once } from 'lodash';
 import {
   createContext,
+  lazy,
   useCallback,
   useContext,
   useEffect,
@@ -40,7 +41,7 @@ import { EntityDataMapValue } from '../../../utils/ColumnUpdateUtils.interface';
 import {
   getLayoutFromCustomizedPage,
   updateWidgetHeightRecursively,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
+} from '../../../utils/CustomizePage/CustomizePageWidgetUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import {
   extractColumnsFromData,
@@ -50,7 +51,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import { ColumnDetailPanel } from '../../Database/ColumnDetailPanel/ColumnDetailPanel.component';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import {
   ColumnFieldUpdate,
   ColumnOrTask,
@@ -59,6 +60,14 @@ import {
   GenericContextType,
   GenericProviderProps,
 } from './GenericProvider.interface';
+
+const ColumnDetailPanel = withSuspenseFallback(
+  lazy(() =>
+    import('../../Database/ColumnDetailPanel/ColumnDetailPanel.component').then(
+      (module) => ({ default: module.ColumnDetailPanel })
+    )
+  )
+);
 
 const createGenericContext = once(<T extends Omit<EntityReference, 'type'>>() =>
   createContext({} as GenericContextType<T>)

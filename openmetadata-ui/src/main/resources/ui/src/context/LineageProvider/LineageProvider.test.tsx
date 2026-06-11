@@ -13,6 +13,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useEffect } from 'react';
 import { Edge } from 'reactflow';
+import { LineageNodeType } from '../../components/Lineage/Lineage.interface';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { LineageDirection } from '../../generated/api/lineage/searchLineageRequest';
@@ -437,7 +438,7 @@ describe('LineageProvider', () => {
           data-testid="load-upstream-nodes"
           onClick={() =>
             loadChildNodesHandler(
-              nodeData as SourceType,
+              nodeData as LineageNodeType,
               LineageDirection.Upstream,
               1
             )
@@ -502,7 +503,7 @@ describe('LineageProvider', () => {
           data-testid="load-child-nodes"
           onClick={() =>
             loadChildNodesHandler(
-              nodeData as SourceType,
+              nodeData as LineageNodeType,
               LineageDirection.Downstream,
               1
             )
