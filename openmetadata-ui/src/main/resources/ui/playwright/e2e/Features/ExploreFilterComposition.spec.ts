@@ -148,11 +148,18 @@ const selectOptionAndWaitForQuery = async (
   await ensureFilterOptionVisible(page, label, optionKey, searchText);
   const option = page.getByTestId('drop-down-menu').getByTestId(optionKey);
 
-  const queryRes = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      decodeURIComponent(response.url()).includes(optionKey)
-  );
+  // searchParams.get decodes '+' as space (axios encodes spaces as '+'),
+  // so multi-word option keys like domain display names still match
+  const queryRes = page.waitForResponse((response) => {
+    let isMatch = false;
+    if (response.url().includes('/api/v1/search/query')) {
+      const queryFilter =
+        new URL(response.url()).searchParams.get('query_filter') ?? '';
+      isMatch = queryFilter.includes(optionKey);
+    }
+
+    return isMatch;
+  });
   await option.click();
   await clickUpdateButtonIfVisible(page);
   const response = await queryRes;
@@ -188,6 +195,22 @@ const getShouldClausesForField = (queryFilter: unknown, fieldKey: string) =>
   collectShouldArrays(queryFilter, []).filter((should) =>
     should.some((clause) => JSON.stringify(clause).includes(`"${fieldKey}"`))
   );
+
+/**
+ * searchAndExpectEntity* helpers leave the page in search mode, where facet
+ * aggregations are scoped to the stale search term and the active tab can
+ * switch to an entity-specific one (dropping dataAsset-only facets such as
+ * Certification). Return to browse mode before further facet interactions.
+ */
+const clearGlobalSearch = async (page: Page) => {
+  const queryRes = page.waitForResponse(
+    '/api/v1/search/query?*index=dataAsset*'
+  );
+  await page.getByTestId('searchBox').fill('');
+  await page.getByTestId('searchBox').press('Enter');
+  await queryRes;
+  await waitForAllLoadersToDisappear(page);
+};
 
 const applyTierUnion = async (page: Page) => {
   await selectOptionAndWaitForQuery(page, 'Tier', TIER1_KEY);
@@ -455,6 +478,7 @@ test('glossary term filter spans asset types and ANDs with tier', async ({
 
   const tierResponse =
     await test.step('Stack a Tier2 filter on top of the term', async () => {
+      await clearGlobalSearch(page);
       const response = await selectOptionAndWaitForQuery(
         page,
         'Tier',
@@ -504,6 +528,7 @@ test('domain filter spans asset types and ANDs with an asset-type filter', async
   });
 
   await test.step('Narrow the domain to tables only', async () => {
+    await clearGlobalSearch(page);
     await selectOptionAndWaitForQuery(page, 'Data Assets', 'table');
     await page.keyboard.press('Escape');
 
@@ -544,6 +569,7 @@ test('certification union shows assets certified with either level', async ({
 
   const unionResponse =
     await test.step('Add the silver certification to the union', async () => {
+      await clearGlobalSearch(page);
       const response = await selectOptionAndWaitForQuery(
         page,
         'Certification',
