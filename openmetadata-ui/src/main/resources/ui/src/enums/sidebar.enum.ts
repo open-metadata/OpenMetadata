@@ -34,6 +34,7 @@ export enum SidebarItem {
   METRICS = 'metrics',
   LINEAGE = 'lineage',
   COLUMN_BULK_OPERATIONS = 'column-bulk-operations',
+  MCP_CHAT = 'mcp-chat',
   KNOWLEDGE_CENTER = 'knowledge-center',
   CONTEXT_CENTER = 'context-center',
   WORKFLOWS = 'workflows',

@@ -11,23 +11,17 @@
  *  limitations under the License.
  */
 
-export { getTabLabelFromId } from './CustomizePagePureUtils';
-
-import { TabsProps } from 'antd';
-import { get, noop, uniqueId } from 'lodash';
-import { EntityUnion } from '../../components/Explore/ExplorePage.interface';
+import type { EntityUnion } from '../../components/Explore/ExplorePage.interface';
 import { TAB_LABEL_MAP } from '../../constants/Customize.constants';
-import { CommonWidgetType } from '../../constants/CustomizeWidgets.constants';
-import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
+import type { CommonWidgetType } from '../../constants/CustomizeWidgets.constants';
 import { EntityTabs } from '../../enums/entity.enum';
-import { Page, PageType, Tab } from '../../generated/system/ui/page';
-import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
+import type { Tab } from '../../generated/system/ui/page';
+import { PageType } from '../../generated/system/ui/page';
+import type { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import apiCollectionClassBase from '../APICollection/APICollectionClassBase';
 import apiEndpointClassBase from '../APIEndpoints/APIEndpointClassBase';
 import chartDetailsClassBase from '../ChartDetailsClassBase';
 import containerDetailsClassBase from '../ContainerDetailsClassBase';
-import { getNewWidgetPlacement } from '../CustomizableLandingPageUtils';
-import customizeDetailPageClassBase from '../CustomizeDetailPage/CustomizeDetailPageClassBase';
 import customizeGlossaryPageClassBase from '../CustomizeGlossaryPage/CustomizeGlossaryPage';
 import customizeGlossaryTermPageClassBase from '../CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
 import dashboardDataModelClassBase from '../DashboardDataModelClassBase';
@@ -38,7 +32,6 @@ import dataMarketplaceClassBase from '../DataMarketplace/DataMarketplaceClassBas
 import dataProductClassBase from '../DataProduct/DataProductClassBase';
 import directoryClassBase from '../DirectoryClassBase';
 import domainClassBase from '../Domain/DomainClassBase';
-import { getEntityName } from '../EntityUtils';
 import fileClassBase from '../FileClassBase';
 import i18n from '../i18next/LocalUtil';
 import metricDetailsClassBase from '../MetricEntityUtils/MetricDetailsClassBase';
@@ -271,28 +264,6 @@ export const getDefaultWidgetForTab = (pageType: PageType, tab: EntityTabs) => {
     default:
       return [];
   }
-};
-
-export const sortTabs = (tabs: TabsProps['items'], order: string[]) => {
-  return [...(tabs ?? [])].sort((a, b) => {
-    const orderA = order.indexOf(a.key);
-    const orderB = order.indexOf(b.key);
-
-    if (orderA !== -1 && orderB !== -1) {
-      return orderA - orderB;
-    }
-    if (orderA !== -1) {
-      return -1;
-    }
-    if (orderB !== -1) {
-      return 1;
-    }
-
-    const ia = tabs?.indexOf(a) ?? 0;
-    const ib = tabs?.indexOf(b) ?? 0;
-
-    return ia - ib;
-  });
 };
 
 export const getCustomizableWidgetByPage = (
@@ -528,302 +499,4 @@ export const getWidgetHeight = (pageType: PageType, widgetName: string) => {
     default:
       return 0;
   }
-};
-
-const calculateNewPosition = (
-  currentLayout: WidgetConfig[],
-  newWidget: { w: number; h: number },
-  maxCols = 8
-) => {
-  // Sort layout by y position to find last row
-  const sortedLayout = [...currentLayout].sort(
-    (a, b) => a.y + a.h - (b.y + b.h)
-  );
-
-  // Get the last widget
-  const lastWidget = sortedLayout.at(sortedLayout.length - 1);
-
-  if (!lastWidget) {
-    // If no widgets exist, start at 0,0
-    return { x: 0, y: 0 };
-  }
-
-  // Calculate next position
-  const lastRowY = lastWidget.y + lastWidget.h;
-  const lastRowWidgets = sortedLayout.filter(
-    (widget) => widget.y + widget.h === lastRowY
-  );
-
-  // Find the rightmost x position in the last row
-  const lastX = lastRowWidgets.reduce(
-    (maxX, widget) => Math.max(maxX, widget.x + widget.w),
-    0
-  );
-
-  // If there's room in the current row
-  if (lastX + newWidget.w <= maxCols) {
-    return { x: lastX, y: lastRowY - lastWidget.h };
-  }
-
-  // Otherwise, start a new row
-  return { x: 0, y: lastRowY };
-};
-
-export const getAddWidgetHandler =
-  (
-    newWidgetData: CommonWidgetType,
-    placeholderWidgetKey: string,
-    widgetWidth: number,
-    pageType: PageType
-  ) =>
-  (currentLayout: Array<WidgetConfig>): WidgetConfig[] => {
-    const widgetFQN = uniqueId(`${newWidgetData.fullyQualifiedName}-`);
-    const widgetHeight = getWidgetHeight(
-      pageType,
-      newWidgetData.fullyQualifiedName
-    );
-
-    // The widget with key "ExtraWidget.EmptyWidgetPlaceholder" will always remain in the bottom
-    // and is not meant to be replaced hence
-    // if placeholderWidgetKey is "ExtraWidget.EmptyWidgetPlaceholder"
-    // append the new widget in the array
-    // else replace the new widget with other placeholder widgets
-    if (
-      placeholderWidgetKey === LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
-    ) {
-      const newPlacement = getNewWidgetPlacement(currentLayout, widgetWidth);
-
-      return [
-        ...currentLayout.map((widget) =>
-          widget.i === placeholderWidgetKey
-            ? // Push down emptyWidget to 1 row
-              { ...widget, y: newPlacement.y + 1 }
-            : widget
-        ),
-        {
-          i: widgetFQN,
-          h: widgetHeight,
-          w: widgetWidth,
-          static: false,
-          ...newPlacement,
-        },
-      ];
-    } else {
-      // To handle case of adding widget from top button instead of empty widget placeholder
-      const { x: widgetX, y: widgetY } = calculateNewPosition(
-        currentLayout.filter(
-          (widget) =>
-            widget.i !== LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
-        ),
-        {
-          w: widgetWidth,
-          h: widgetHeight,
-        }
-      );
-
-      return [
-        ...currentLayout,
-        {
-          i: widgetFQN,
-          h: widgetHeight,
-          w: widgetWidth,
-          x: widgetX,
-          y: widgetY,
-        },
-      ];
-    }
-  };
-
-export const getDetailsTabWithNewLabel = (
-  defaultTabs: Array<
-    NonNullable<TabsProps['items']>[number] & { isHidden?: boolean }
-  >,
-  customizedTabs?: Tab[],
-  defaultTabId: EntityTabs = EntityTabs.OVERVIEW,
-  isVersionView = false
-) => {
-  if (!customizedTabs || isVersionView) {
-    return defaultTabs.filter((data) => !data.isHidden);
-  }
-  const overviewTab = defaultTabs?.find((t) => t.key === defaultTabId);
-
-  const newTabs =
-    customizedTabs?.map((t) => {
-      const tabItemDetails = defaultTabs?.find((i) => i.key === t.id);
-
-      return (
-        tabItemDetails ?? {
-          label: getEntityName(t),
-          key: t.id,
-          children: overviewTab?.children,
-        }
-      );
-    }) ?? defaultTabs;
-
-  return newTabs.filter((data) => !data.isHidden);
-};
-
-export const getTabLabelMapFromTabs = (
-  tabs?: Tab[]
-): Record<EntityTabs, string> => {
-  const labelMap = {} as Record<EntityTabs, string>;
-
-  return (
-    tabs?.reduce((acc: Record<EntityTabs, string>, item) => {
-      if (item.id && item.displayName) {
-        const tab = item.id as EntityTabs;
-        acc[tab] = item.displayName;
-      }
-
-      return acc;
-    }, labelMap) ?? labelMap
-  );
-};
-
-export const asyncNoop = async () => {
-  noop();
-};
-
-export const getLayoutFromCustomizedPage = (
-  pageType: PageType,
-  tab: EntityTabs,
-  customizedPage?: Page | null,
-  isVersionView = false
-) => {
-  if (!customizedPage || isVersionView) {
-    return getDefaultWidgetForTab(pageType, tab);
-  }
-
-  if (customizedPage?.tabs?.length) {
-    return tab
-      ? customizedPage.tabs?.find((t: Tab) => t.id === tab)?.layout
-      : get(customizedPage, 'tabs.0.layout', []);
-  } else {
-    return getDefaultWidgetForTab(pageType, tab);
-  }
-};
-
-export const checkIfExpandViewSupported = (
-  firstTab: NonNullable<TabsProps['items']>[number],
-  activeTab: EntityTabs,
-  pageType: PageType
-) => {
-  switch (pageType) {
-    case PageType.Table:
-    case PageType.Topic:
-    case PageType.APIEndpoint:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.SCHEMA) ||
-        activeTab === EntityTabs.SCHEMA
-      );
-
-    case PageType.Glossary:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.TERMS) ||
-        activeTab === EntityTabs.TERMS
-      );
-    case PageType.GlossaryTerm:
-    case PageType.Metric:
-    case PageType.File:
-    case PageType.Worksheet:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.OVERVIEW) ||
-        activeTab === EntityTabs.OVERVIEW
-      );
-    case PageType.Dashboard:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.DETAILS) ||
-        activeTab === EntityTabs.DETAILS
-      );
-    case PageType.DashboardDataModel:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.MODEL) ||
-        activeTab === EntityTabs.MODEL
-      );
-    case PageType.Container:
-    case PageType.Directory:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.CHILDREN) ||
-        activeTab === EntityTabs.CHILDREN
-      );
-    case PageType.Database:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.SCHEMAS) ||
-        activeTab === EntityTabs.SCHEMAS
-      );
-    case PageType.SearchIndex:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.FIELDS) ||
-        activeTab === EntityTabs.FIELDS
-      );
-    case PageType.DatabaseSchema:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.TABLE) ||
-        activeTab === EntityTabs.TABLE
-      );
-    case PageType.Pipeline:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.TASKS) ||
-        activeTab === EntityTabs.TASKS
-      );
-    case PageType.APICollection:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.API_ENDPOINT) ||
-        activeTab === EntityTabs.API_ENDPOINT
-      );
-
-    case PageType.StoredProcedure:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.CODE) ||
-        activeTab === EntityTabs.CODE
-      );
-
-    case PageType.MlModel:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.FEATURES) ||
-        activeTab === EntityTabs.FEATURES
-      );
-    case PageType.Spreadsheet:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.WORKSHEETS) ||
-        activeTab === EntityTabs.WORKSHEETS
-      );
-    case PageType.Domain:
-    case PageType.DataProduct:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.DOCUMENTATION) ||
-        activeTab === EntityTabs.DOCUMENTATION
-      );
-    default:
-      return false;
-  }
-};
-
-export const updateWidgetHeightRecursively = (
-  widgetId: string,
-  height: number,
-  widgets: WidgetConfig[]
-) =>
-  widgets.reduce((acc, widget) => {
-    if (widget.i === widgetId) {
-      acc.push({ ...widget, h: height });
-    } else if (widget.children) {
-      acc.push({
-        ...widget,
-        children: widget.children.map((child) =>
-          child.i === widgetId ? { ...child, h: height } : child
-        ),
-      });
-    } else {
-      acc.push(widget);
-    }
-
-    return acc;
-  }, [] as WidgetConfig[]);
-
-export const getTabDisplayName = (item: Tab) => {
-  return (
-    item.displayName ??
-    customizeDetailPageClassBase.getTabLabelFromId(item.name as EntityTabs)
-  );
 };
