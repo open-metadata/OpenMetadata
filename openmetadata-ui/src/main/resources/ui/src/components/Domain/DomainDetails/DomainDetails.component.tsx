@@ -72,7 +72,7 @@ import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import domainClassBase from '../../../utils/Domain/DomainClassBase';
 import {
   getQueryFilterForDataProducts,
