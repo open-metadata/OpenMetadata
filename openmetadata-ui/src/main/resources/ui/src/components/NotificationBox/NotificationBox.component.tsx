@@ -36,7 +36,7 @@ import {
   Task as TaskEntity,
   TaskEntityStatus,
 } from '../../rest/tasksAPI';
-import { getEntityFQN, getEntityType } from '../../utils/FeedUtils';
+import { getEntityFQN, getEntityType } from '../../utils/FeedUtilsPure';;
 import { getUserPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';

@@ -11,13 +11,6 @@
  *  limitations under the License.
  */
 
-/**
- * Backward-compatible re-export barrel.
- *
- * Pure CSV/custom-property transform functions extracted to CSVPureUtils.ts.
- * Import directly from that module for new code.
- */
-
 import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
 import { Typography } from 'antd';
 import { startCase } from 'lodash';
@@ -29,16 +22,6 @@ import { EntityType } from '../../enums/entity.enum';
 import { Status } from '../../generated/type/csvImportResult';
 import { COLUMNS_WIDTH, CSV_DISABLED_COLUMNS } from './CSVPureUtils';
 import csvUtilsClassBase from './CSVUtilsClassBase';
-
-export {
-  COLUMNS_WIDTH,
-  convertCustomPropertyStringToEntityExtension,
-  convertEntityExtensionToCustomPropertyString,
-  CSV_DISABLED_COLUMNS,
-  getCSVStringFromColumnsAndDataSource,
-  getCustomPropertyEntityType,
-  splitCSV,
-} from './CSVPureUtils';
 
 export interface EditorProps {
   value: string;

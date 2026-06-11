@@ -41,10 +41,8 @@ import { CSVImportResult } from '../../../generated/type/csvImportResult';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import { useGridEditController } from '../../../hooks/useGridEditController';
-import {
-  getCSVStringFromColumnsAndDataSource,
-  getEntityColumnsAndDataSourceFromCSV,
-} from '../../../utils/CSV/CSV.utils';
+import { getEntityColumnsAndDataSourceFromCSV } from '../../../utils/CSV/CSV.utils';
+import { getCSVStringFromColumnsAndDataSource } from '../../../utils/CSV/CSVPureUtils';;
 import csvUtilsClassBase from '../../../utils/CSV/CSVUtilsClassBase';
 import {
   getBulkEntityNavigationPath,

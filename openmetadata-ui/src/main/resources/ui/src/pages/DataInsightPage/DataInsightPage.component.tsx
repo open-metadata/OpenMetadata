@@ -27,7 +27,7 @@ import { DataInsightChartType } from '../../generated/dataInsight/dataInsightCha
 import { Operation } from '../../generated/entity/policies/policy';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { DataInsightTabs } from '../../interface/data-insight.interface';
-import { getDataInsightPathWithFqn } from '../../utils/DataInsightUtils';
+import { getDataInsightPathWithFqn } from '../../utils/DataInsightPureUtils';;
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './data-insight.less';

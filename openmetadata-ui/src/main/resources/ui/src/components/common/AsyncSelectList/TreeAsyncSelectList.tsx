@@ -50,11 +50,8 @@ import {
   searchGlossaryTerms,
 } from '../../../rest/glossaryAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import {
-  convertGlossaryTermsToTreeOptions,
-  filterTreeNodeOptions,
-  findItemByFqn,
-} from '../../../utils/GlossaryUtils';
+import { convertGlossaryTermsToTreeOptions } from '../../../utils/GlossaryUtils';
+import { filterTreeNodeOptions, findItemByFqn } from '../../../utils/GlossaryPureUtils';;
 import {
   escapeESReservedCharacters,
   getEncodedFqn,

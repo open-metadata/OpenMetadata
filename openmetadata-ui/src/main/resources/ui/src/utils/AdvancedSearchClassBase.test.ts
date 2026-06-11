@@ -21,7 +21,7 @@ import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { AdvancedSearchClassBase } from './AdvancedSearchClassBase';
-import { getCustomPropertyAdvanceSearchEnumOptions } from './AdvancedSearchUtils';
+import { getCustomPropertyAdvanceSearchEnumOptions } from './AdvancedSearchPureUtils';;
 import { getEntityName } from './EntityNameUtils';
 
 jest.mock('../rest/miscAPI', () => ({

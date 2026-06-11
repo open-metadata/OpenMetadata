@@ -19,7 +19,7 @@ import { GRAYED_OUT_COLOR } from '../../../../constants/constants';
 import { EventSubscriptionDiagnosticInfo } from '../../../../generated/events/api/eventSubscriptionDiagnosticInfo';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getDiagnosticInfo } from '../../../../rest/observabilityAPI';
-import { getDiagnosticItems } from '../../../../utils/Alerts/AlertsUtil';
+import { getDiagnosticItems } from '../../../../utils/Alerts/AlertsUtilPure';;
 import { showErrorToast } from '../../../../utils/ToastUtils';
 
 function AlertDiagnosticInfoTab() {

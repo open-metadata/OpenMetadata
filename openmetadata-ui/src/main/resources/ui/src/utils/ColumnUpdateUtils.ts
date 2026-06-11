@@ -34,10 +34,7 @@ import {
   HandleColumnFieldUpdateOptions,
   HandleColumnFieldUpdateResult,
 } from './ColumnUpdateUtils.interface';
-import {
-  updateContainerColumnDescription,
-  updateContainerColumnTags,
-} from './ContainerDetailUtils';
+import { updateContainerColumnDescription, updateContainerColumnTags } from './ContainerDetailPureUtils';;
 import {
   findFieldByFQN,
   normalizeTags,

@@ -50,10 +50,10 @@ import {
   cronValidator,
   getCron,
   getDefaultScheduleValue,
-  getHourMinuteSelect,
   getStateValue,
   getUpdatedStateFromFormState,
-} from '../../../../../utils/SchedularUtils';
+} from '../../../../../utils/CronExpressionUtils';
+import { getHourMinuteSelect } from '../../../../../utils/SchedularUtils';
 import './schedule-interval.less';
 import {
   ScheduleIntervalProps,

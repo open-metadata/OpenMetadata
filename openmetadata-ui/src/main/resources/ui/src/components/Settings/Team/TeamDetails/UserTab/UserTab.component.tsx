@@ -48,7 +48,7 @@ import { formatUsersResponse } from '../../../../../utils/APIUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../../../utils/EntityReferenceUtils';
 import { getSettingsPathWithFqn } from '../../../../../utils/RouterUtils';
-import { getTermQuery } from '../../../../../utils/SearchUtils';
+import { getTermQuery } from '../../../../../utils/SearchPureUtils';;
 import { commonUserDetailColumns } from '../../../../../utils/Users.util';
 import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';

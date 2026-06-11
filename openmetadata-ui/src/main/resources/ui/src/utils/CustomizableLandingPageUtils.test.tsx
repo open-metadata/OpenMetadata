@@ -12,16 +12,7 @@
  */
 import { mockWidget } from '../mocks/AddWidgetTabContent.mock';
 import { mockCurrentAddWidget } from '../mocks/CustomizablePage.mock';
-import {
-  getAddWidgetHandler,
-  getLandingPageLayoutWithEmptyWidgetPlaceholder,
-  getLayoutUpdateHandler,
-  getLayoutWithEmptyWidgetPlaceholder,
-  getNewWidgetPlacement,
-  getRemoveWidgetHandler,
-  getUniqueFilteredLayout,
-  getWidgetWidthLabelFromKey,
-} from './CustomizableLandingPageUtils';
+import { getAddWidgetHandler, getLandingPageLayoutWithEmptyWidgetPlaceholder, getLayoutUpdateHandler, getLayoutWithEmptyWidgetPlaceholder, getNewWidgetPlacement, getRemoveWidgetHandler, getUniqueFilteredLayout, getWidgetWidthLabelFromKey } from './CustomizableLandingPagePureUtils';;
 
 describe('CustomizableLandingPageUtils', () => {
   describe('getNewWidgetPlacement', () => {

@@ -42,19 +42,15 @@ import {
   getTestDefinitionById,
   updateTestCaseById,
 } from '../../../../rest/testAPI';
-import {
-  getComputeRowCountDiffDisplay,
-  getEntityVersionByField,
-  getEntityVersionTags,
-  getParameterValueDiffDisplay,
-} from '../../../../utils/EntityVersionUtils';
+import { getComputeRowCountDiffDisplay, getParameterValueDiffDisplay } from '../../../../utils/EntityVersionUtils';
+import { getEntityVersionByField, getEntityVersionTags } from '../../../../utils/EntityVersionUtilsPure';;
 import { VersionEntityTypes } from '../../../../utils/EntityVersionUtils.interface';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import {
   getTagsWithoutTier,
   getTierTags,
 } from '../../../../utils/TablePureUtils';
-import { createTagObject } from '../../../../utils/TagsUtils';
+import { createTagObject } from '../../../../utils/TagsPureUtils';;
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';

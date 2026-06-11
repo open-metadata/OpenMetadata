@@ -19,7 +19,7 @@ import { Language } from '../../../generated/api/data/createMetric';
 import { Metric } from '../../../generated/entity/data/metric';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../utils/formUtils';
-import { getMetricExpressionLanguageName } from '../../../utils/MetricEntityUtils/MetricUtils';
+import { getMetricExpressionLanguageName } from '../../../utils/MetricEntityUtils/MetricPureUtils';;
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 

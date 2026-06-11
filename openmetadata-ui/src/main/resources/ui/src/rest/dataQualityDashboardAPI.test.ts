@@ -15,12 +15,7 @@ import { IncidentTimeMetricsType } from '../components/DataQuality/DataQuality.i
 import { EntityType } from '../enums/entity.enum';
 import { TestCaseStatus } from '../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolutionStatus';
-import {
-  buildDataQualityDashboardFilters,
-  buildMustEsFilterForOwner,
-  buildMustEsFilterForTags,
-  buildMustEsFilterForTier,
-} from '../utils/DataQuality/DataQualityUtils';
+import { buildDataQualityDashboardFilters, buildMustEsFilterForOwner, buildMustEsFilterForTags, buildMustEsFilterForTier } from '../utils/DataQuality/DataQualityPureUtils';;
 import {
   fetchCountOfIncidentStatusTypeByDays,
   fetchEntityCoveredWithDQ,

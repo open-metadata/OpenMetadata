@@ -27,10 +27,7 @@ import {
   getLineageDataByFQN,
   getLineagePagingData,
 } from '../../rest/lineageAPI';
-import {
-  prepareDownstreamColumnLevelNodesFromDownstreamEdges,
-  prepareUpstreamColumnLevelNodesFromUpstreamEdges,
-} from '../../utils/Lineage/LineageUtils';
+import { prepareDownstreamColumnLevelNodesFromDownstreamEdges, prepareUpstreamColumnLevelNodesFromUpstreamEdges } from '../../utils/Lineage/LineagePureUtils';;
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
 import { LineageConfig } from '../Entity/EntityLineage/EntityLineage.interface';

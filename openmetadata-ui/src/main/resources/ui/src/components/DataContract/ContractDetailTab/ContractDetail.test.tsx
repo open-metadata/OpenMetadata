@@ -33,7 +33,7 @@ import {
   validateContractById,
 } from '../../../rest/contractAPI';
 import '../../../test/unit/mocks/mui.mock';
-import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
+import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';;
 import {
   downloadContractAsODCSYaml,
   downloadContractYamlFile,

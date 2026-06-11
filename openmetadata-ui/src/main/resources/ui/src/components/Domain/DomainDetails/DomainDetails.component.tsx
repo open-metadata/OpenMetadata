@@ -81,13 +81,9 @@ import {
 } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
-import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';;
 import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
-import {
-  fetchEntityActivityCountInto,
-  fetchEntityTaskCountsInto,
-  getFeedCounts,
-} from '../../../utils/FeedUtils';
+import { fetchEntityActivityCountInto, fetchEntityTaskCountsInto, getFeedCounts } from '../../../utils/FeedUtilsPure';;
 import { submitAndClose } from '../../../utils/FormDrawerUtils';
 import Fqn from '../../../utils/Fqn';
 import { showNotistackError } from '../../../utils/NotistackUtils';
@@ -100,7 +96,7 @@ import {
   getDomainPath,
   getDomainVersionsPath,
 } from '../../../utils/RouterUtils';
-import { getTermQuery } from '../../../utils/SearchUtils';
+import { getTermQuery } from '../../../utils/SearchPureUtils';;
 import {
   escapeESReservedCharacters,
   getDecodedFqn,

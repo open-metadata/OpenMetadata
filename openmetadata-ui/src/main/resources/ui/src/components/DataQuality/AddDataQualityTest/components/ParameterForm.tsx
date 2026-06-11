@@ -55,7 +55,7 @@ import {
 } from '../../../../interface/search.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { getPopupContainer } from '../../../../utils/formUtils';
+import { getPopupContainer } from '../../../../utils/formPureUtils';;
 import {
   getSelectedColumnsSet,
   validateEquals,

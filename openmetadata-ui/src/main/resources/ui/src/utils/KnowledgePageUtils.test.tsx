@@ -19,15 +19,8 @@ import {
   PageType,
   QuickLink,
 } from '../interface/knowledge-center.interface';
-import {
-  extractKnowledgePageParentFQN,
-  findPageAndParentInTreeData,
-  findPageInTreeData,
-  getKnowledgePageName,
-  getLink,
-  getUpdatePageHierarchy,
-  integrateNodesIntoHierarchy,
-} from './KnowledgePageUtils';
+import { getKnowledgePageName, getLink } from './KnowledgePageUtils';
+import { extractKnowledgePageParentFQN, findPageAndParentInTreeData, findPageInTreeData, getUpdatePageHierarchy, integrateNodesIntoHierarchy } from './KnowledgePagePureUtils';;
 
 describe('getKnowledgePageName', () => {
   it('returns displayName when present', () => {

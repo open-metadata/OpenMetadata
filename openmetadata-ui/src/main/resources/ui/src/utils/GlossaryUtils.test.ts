@@ -21,18 +21,7 @@ import {
   MOCKED_GLOSSARY_TERMS_TREE,
   MOCKED_GLOSSARY_TERMS_TREE_1,
 } from '../mocks/Glossary.mock';
-import {
-  buildTree,
-  filterTreeNodeOptions,
-  findAndUpdateNested,
-  findExpandableKeys,
-  findExpandableKeysForArray,
-  getQueryFilterToExcludeTerm,
-  glossaryTermTableColumnsWidth,
-  permissionForApproveOrReject,
-  referenceURLValidator,
-  validateReferenceURL,
-} from './GlossaryUtils';
+import { buildTree, filterTreeNodeOptions, findAndUpdateNested, findExpandableKeys, findExpandableKeysForArray, getQueryFilterToExcludeTerm, glossaryTermTableColumnsWidth, permissionForApproveOrReject, referenceURLValidator, validateReferenceURL } from './GlossaryPureUtils';;
 
 describe('Glossary Utils', () => {
   it('getQueryFilterToExcludeTerm returns the correct query filter', () => {

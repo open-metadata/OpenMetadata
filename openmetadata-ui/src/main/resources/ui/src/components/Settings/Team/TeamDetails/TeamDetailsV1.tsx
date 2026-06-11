@@ -79,7 +79,7 @@ import {
   getSettingsPathWithFqn,
   getTeamsWithFqnPath,
 } from '../../../../utils/RouterUtils';
-import { getTermQuery } from '../../../../utils/SearchUtils';
+import { getTermQuery } from '../../../../utils/SearchPureUtils';;
 import { getDeleteMessagePostFix } from '../../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';

@@ -43,14 +43,11 @@ import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.i
 import commonWidgetClassBase from '../../../utils/CommonWidget/CommonWidgetClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
-import {
-  getEntityVersionByField,
-  getEntityVersionTags,
-} from '../../../utils/EntityVersionUtils';
+import { getEntityVersionByField, getEntityVersionTags } from '../../../utils/EntityVersionUtilsPure';;
 import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
-import { createTagObject } from '../../../utils/TagsUtils';
+import { createTagObject } from '../../../utils/TagsPureUtils';;
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import CertificationWidget from '../../common/CertificationWidget/CertificationWidget';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';

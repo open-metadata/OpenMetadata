@@ -23,10 +23,8 @@ import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
-import {
-  getClassificationTags,
-  getGlossaryTags,
-} from '../../../utils/TagsUtils';
+import { getClassificationTags } from '../../../utils/TagsPureUtils';
+import { getGlossaryTags } from '../../../utils/TagsPureUtils';;
 import { useListingData } from '../../common/atoms/compositions/useListingData';
 import {
   CellRenderer,

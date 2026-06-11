@@ -34,17 +34,13 @@ import {
 } from '../../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import dashboardDataModelClassBase from '../../../../utils/DashboardDataModelClassBase';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import {
-  fetchEntityActivityCountInto,
-  fetchEntityTaskCountsInto,
-  getFeedCounts,
-} from '../../../../utils/FeedUtils';
+import { fetchEntityActivityCountInto, fetchEntityTaskCountsInto, getFeedCounts } from '../../../../utils/FeedUtilsPure';;
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import {
   getEntityDetailsPath,
   getVersionPath,
 } from '../../../../utils/RouterUtils';
-import { updateCertificationTag } from '../../../../utils/TagsUtils';
+import { updateCertificationTag } from '../../../../utils/TagsPureUtils';;
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';

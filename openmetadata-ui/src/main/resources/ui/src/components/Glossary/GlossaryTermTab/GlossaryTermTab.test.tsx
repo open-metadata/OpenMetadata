@@ -24,10 +24,9 @@ import {
   mockedGlossaryTerms,
   MOCK_PERMISSIONS,
 } from '../../../mocks/Glossary.mock';
-import { findExpandableKeysForArray } from '../../../utils/GlossaryUtils';
+import { findExpandableKeysForArray } from '../../../utils/GlossaryPureUtils';
 import GlossaryTermTab from './GlossaryTermTab.component';
 import { ModifiedGlossaryTerm } from './GlossaryTermTab.interface';
-
 const mockOnAddGlossaryTerm = jest.fn();
 const mockRefreshGlossaryTerms = jest.fn();
 const mockOnEditGlossaryTerm = jest.fn();

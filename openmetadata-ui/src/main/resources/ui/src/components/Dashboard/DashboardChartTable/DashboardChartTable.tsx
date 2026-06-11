@@ -44,7 +44,7 @@ import {
   getAllTags,
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
-import { createTagObject } from '../../../utils/TagsUtils';
+import { createTagObject } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
@@ -55,7 +55,6 @@ import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
 import { ChartsPermissions } from '../DashboardDetails/DashboardDetails.interface';
-
 const ModalWithMarkdownEditor = withSuspenseFallback(
   lazy(() =>
     import('../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor').then(

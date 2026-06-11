@@ -20,14 +20,8 @@ import { Link } from 'react-router-dom';
 import CloseIcon from '../../../components/Modals/CloseIcon.component';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import {
-  entityDisplayName,
-  getEntityField,
-  getEntityFieldDisplay,
-  getEntityFQN,
-  getEntityType,
-  getFeedPanelHeaderText,
-} from '../../../utils/FeedUtils';
+import { getEntityFieldDisplay } from '../../../utils/FeedUtils';
+import { entityDisplayName, getEntityFQN, getEntityField, getEntityType, getFeedPanelHeaderText } from '../../../utils/FeedUtilsPure';;
 import { FeedPanelHeaderProp } from './ActivityFeedPanel.interface';
 
 const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({

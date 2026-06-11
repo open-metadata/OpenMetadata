@@ -16,7 +16,7 @@ import TestCaseIncidentTab from '../../../components/DataQuality/IncidentManager
 import TestCaseResultTab from '../../../components/DataQuality/IncidentManager/TestCaseResultTab/TestCaseResultTab.component';
 import { CreateTestCase } from '../../../generated/api/tests/createTestCase';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
-import { createTestCaseParameters } from '../../../utils/DataQuality/DataQualityUtils';
+import { createTestCaseParameters } from '../../../utils/DataQuality/DataQualityPureUtils';;
 import i18n from '../../../utils/i18next/LocalUtil';
 import { TestCasePageTabs } from '../IncidentManager.interface';
 import { TestCaseClassBase, TestCaseTabType } from './TestCaseClassBase';

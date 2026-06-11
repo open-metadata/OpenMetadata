@@ -23,12 +23,7 @@ import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { ChangeDescription } from '../../../../generated/entity/data/file';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { TagSource } from '../../../../generated/type/tagLabel';
-import {
-  getCommonExtraInfoForVersionDetails,
-  getConstraintChanges,
-  getEntityVersionByField,
-  getEntityVersionTags,
-} from '../../../../utils/EntityVersionUtils';
+import { getCommonExtraInfoForVersionDetails, getConstraintChanges, getEntityVersionByField, getEntityVersionTags } from '../../../../utils/EntityVersionUtilsPure';;
 import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';

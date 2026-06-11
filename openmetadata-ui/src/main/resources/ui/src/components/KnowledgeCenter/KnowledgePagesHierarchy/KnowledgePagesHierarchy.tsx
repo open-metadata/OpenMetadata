@@ -75,21 +75,9 @@ import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import Fqn from '../../../utils/Fqn';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
-import {
-  extractKnowledgePageParentFQN,
-  findPageAndParentInTreeData,
-  findPageInTreeData,
-  getExpandedNodeKeys,
-  getKnowledgePageName,
-  getPageAllChildren,
-  getUpdatePageHierarchy,
-  getUpdatePageHierarchyForDelete,
-  hierarchyPaginationInitialState,
-  hierarchyPaginationReducer,
-  integrateNodesIntoHierarchy,
-  updateKnowledgeCenterRecentViewed,
-  updateTreeData,
-} from '../../../utils/KnowledgePageUtils';
+import { getKnowledgePageName, updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
+import { updateTreeData } from '../../../utils/ExplorePureUtils';;
+import { extractKnowledgePageParentFQN, findPageAndParentInTreeData, findPageInTreeData, getExpandedNodeKeys, getPageAllChildren, getUpdatePageHierarchy, getUpdatePageHierarchyForDelete, hierarchyPaginationInitialState, hierarchyPaginationReducer, integrateNodesIntoHierarchy } from '../../../utils/KnowledgePagePureUtils';;
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 

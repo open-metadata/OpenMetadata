@@ -28,26 +28,7 @@ import {
   TagSource,
 } from '../../generated/type/tagLabel';
 import { ListTestCaseParamsBySearch } from '../../rest/testAPI';
-import {
-  buildDataQualityDashboardFilters,
-  buildMustEsFilterForDataProducts,
-  buildMustEsFilterForOwner,
-  buildMustEsFilterForTags,
-  buildMustEsFilterForTier,
-  buildTestCaseParams,
-  createTestCaseParameters,
-  createUpdatedTestCasePatch,
-  filterTestCasesByTableAndColumn,
-  getColumnFilterEntityLink,
-  getColumnFilterOptions,
-  getColumnNameFromColumnFilterKey,
-  getEntityLinkForColumnFilter,
-  getSelectedOptionsFromKeys,
-  getServiceTypeForTestDefinition,
-  getTestCaseFiltersValue,
-  parseColumnAggregateBuckets,
-  transformToTestCaseStatusObject,
-} from './DataQualityUtils';
+import { buildDataQualityDashboardFilters, buildMustEsFilterForDataProducts, buildMustEsFilterForOwner, buildMustEsFilterForTags, buildMustEsFilterForTier, buildTestCaseParams, createTestCaseParameters, createUpdatedTestCasePatch, filterTestCasesByTableAndColumn, getColumnFilterEntityLink, getColumnFilterOptions, getColumnNameFromColumnFilterKey, getEntityLinkForColumnFilter, getSelectedOptionsFromKeys, getServiceTypeForTestDefinition, getTestCaseFiltersValue, parseColumnAggregateBuckets, transformToTestCaseStatusObject } from './DataQualityPureUtils';;
 
 jest.mock('../../constants/profiler.constant', () => ({
   TEST_CASE_FILTERS: {

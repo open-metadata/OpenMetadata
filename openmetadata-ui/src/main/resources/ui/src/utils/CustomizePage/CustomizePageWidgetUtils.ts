@@ -18,7 +18,7 @@ import { EntityTabs } from '../../enums/entity.enum';
 import type { Page, Tab } from '../../generated/system/ui/page';
 import { PageType } from '../../generated/system/ui/page';
 import type { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
-import { getNewWidgetPlacement } from '../CustomizableLandingPageUtils';
+import { getNewWidgetPlacement } from '../CustomizableLandingPagePureUtils';;
 import {
   getDefaultWidgetForTab,
   getWidgetHeight,

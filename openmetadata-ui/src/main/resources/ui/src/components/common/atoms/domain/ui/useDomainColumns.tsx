@@ -13,10 +13,8 @@
 
 import { useMemo } from 'react';
 import { Domain } from '../../../../../generated/entity/domains/domain';
-import {
-  getClassificationTags,
-  getGlossaryTags,
-} from '../../../../../utils/TagsUtils';
+import { getClassificationTags } from '../../../../../utils/TagsPureUtils';
+import { getGlossaryTags } from '../../../../../utils/TagsPureUtils';;
 import { ColumnConfig } from '../../shared/types';
 
 interface UseDomainColumnsConfig {

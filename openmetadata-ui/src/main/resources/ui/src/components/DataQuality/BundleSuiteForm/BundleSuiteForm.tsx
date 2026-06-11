@@ -54,13 +54,11 @@ import {
   addTestCasesToLogicalTestSuiteBulk,
   createTestSuites,
 } from '../../../rest/testAPI';
+import { getScheduleOptionsFromSchedules } from '../../../utils/CronExpressionUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import {
-  createScrollToErrorHandler,
-  generateFormFields,
-} from '../../../utils/formUtils';
+import { createScrollToErrorHandler } from '../../../utils/formPureUtils';
+import { generateFormFields } from '../../../utils/formUtils';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
-import { getScheduleOptionsFromSchedules } from '../../../utils/SchedularUtils';
 import { getIngestionName } from '../../../utils/ServicePureUtils';
 import {
   generateUUID,
@@ -76,7 +74,6 @@ import {
   BundleSuiteFormData,
   BundleSuiteFormProps,
 } from './BundleSuiteForm.interface';
-
 // =============================================
 // MAIN COMPONENT
 // =============================================

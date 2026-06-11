@@ -46,7 +46,7 @@ import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCase
 import { EntityReference } from '../../../generated/type/entityReference';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getSelectedOptionLabelString } from '../../../utils/AdvancedSearchUtils';
+import { getSelectedOptionLabelString } from '../../../utils/AdvancedSearchPureUtils';;
 import {
   formatDate,
   getCurrentMillis,

@@ -22,11 +22,7 @@ import {
   AnnouncementEntity,
   getActiveAnnouncements,
 } from '../../../rest/announcementsAPI';
-import {
-  getEntityFQN,
-  getEntityType,
-  prepareFeedLink,
-} from '../../../utils/FeedUtils';
+import { getEntityFQN, getEntityType, prepareFeedLink } from '../../../utils/FeedUtilsPure';;
 import Loader from '../../common/Loader/Loader';
 import AnnouncementItemV2 from './AnnouncementItemV2.component';
 

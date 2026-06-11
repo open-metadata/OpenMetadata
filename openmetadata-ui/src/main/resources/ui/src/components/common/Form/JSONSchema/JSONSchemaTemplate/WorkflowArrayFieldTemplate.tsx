@@ -18,7 +18,7 @@ import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyLeft } from '../../../../../assets/svg/copy-left.svg';
 import { useClipboard } from '../../../../../hooks/useClipBoard';
-import { splitCSV } from '../../../../../utils/CSV/CSV.utils';
+import { splitCSV } from '../../../../../utils/CSV/CSVPureUtils';;
 import './workflow-array-field-template.less';
 
 const WorkflowArrayFieldTemplate = (props: FieldProps) => {

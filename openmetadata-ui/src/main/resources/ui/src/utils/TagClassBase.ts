@@ -30,9 +30,8 @@ import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interfa
 import { searchQuery } from '../rest/searchAPI';
 import { getTabLabelFromId } from './CustomizePage/CustomizePagePureUtils';
 import i18n from './i18next/LocalUtil';
-import { getTermQuery } from './SearchUtils';
+import { getTermQuery } from './SearchPureUtils';
 import { escapeESReservedCharacters, getEncodedFqn } from './StringUtils';
-
 const CommonWidgets = React.lazy(() =>
   import('../components/DataAssets/CommonWidgets/CommonWidgets').then((m) => ({
     default: m.CommonWidgets,

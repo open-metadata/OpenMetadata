@@ -150,19 +150,13 @@ import {
   getSettingPath,
 } from '../../utils/RouterUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
-import {
-  getCountLabel,
-  getEntityTypeFromServiceCategory,
-  getResourceEntityFromServiceCategory,
-  getServiceDisplayNameQueryFilter,
-  getServiceRouteFromServiceType,
-  shouldTestConnection,
-} from '../../utils/ServiceUtils';
+import { getServiceRouteFromServiceType } from '../../utils/ServiceUtils';
+import { getCountLabel, getEntityTypeFromServiceCategory, getResourceEntityFromServiceCategory, getServiceDisplayNameQueryFilter, shouldTestConnection } from '../../utils/ServicePureUtils';;
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../../utils/StringUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { updateTierTag } from '../../utils/TagsPureUtils';;
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './service-details-page.less';

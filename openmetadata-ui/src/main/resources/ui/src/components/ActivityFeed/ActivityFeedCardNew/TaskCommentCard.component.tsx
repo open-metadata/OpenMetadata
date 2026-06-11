@@ -20,7 +20,7 @@ import {
   getRelativeTime,
 } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { getFrontEndFormat } from '../../../utils/FeedUtils';
+import { getFrontEndFormat } from '../../../utils/FeedUtilsPure';;
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 

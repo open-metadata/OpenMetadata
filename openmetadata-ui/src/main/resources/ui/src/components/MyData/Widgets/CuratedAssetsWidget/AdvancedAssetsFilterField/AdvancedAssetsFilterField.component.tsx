@@ -34,7 +34,7 @@ import {
   CuratedAssetsFormSelectedAssetsInfo,
 } from '../../../../../utils/CuratedAssetsUtils';
 import { elasticSearchFormat } from '../../../../../utils/QueryBuilderElasticsearchFormatUtils';
-import { getJsonTreeFromQueryFilter } from '../../../../../utils/QueryBuilderUtils';
+import { getJsonTreeFromQueryFilter } from '../../../../../utils/QueryBuilderPureUtils';
 import { useAdvanceSearch } from '../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import { CuratedAssetsConfig } from '../CuratedAssetsModal/CuratedAssetsModal.interface';
 import './advanced-assets-filter-field.less';

@@ -37,8 +37,8 @@ import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   getChangedEntityNewValue,
   getDiffByFieldName,
-  getUpdatedExtensionDiffFields,
-} from '../../../utils/EntityVersionUtils';
+} from '../../../utils/EntityDiffPureUtils';
+import { getUpdatedExtensionDiffFields } from '../../../utils/EntityDiffUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';

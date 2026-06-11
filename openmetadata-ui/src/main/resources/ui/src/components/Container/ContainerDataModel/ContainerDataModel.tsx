@@ -42,10 +42,7 @@ import { TagSource } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
-import {
-  updateContainerColumnDescription,
-  updateContainerColumnTags,
-} from '../../../utils/ContainerDetailUtils';
+import { updateContainerColumnDescription, updateContainerColumnTags } from '../../../utils/ContainerDetailPureUtils';;
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {

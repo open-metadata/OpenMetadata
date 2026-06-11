@@ -25,11 +25,8 @@ import {
   FormItemLayout,
   HelperTextType,
 } from '../../../interface/FormUtils.interface';
-import {
-  generateFormFields,
-  getField,
-  getPopupContainer,
-} from '../../../utils/formUtils';
+import { generateFormFields, getField } from '../../../utils/formUtils';
+import { getPopupContainer } from '../../../utils/formPureUtils';;
 
 import { isArray } from 'lodash';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';

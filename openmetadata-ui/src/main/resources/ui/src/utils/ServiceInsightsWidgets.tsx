@@ -12,6 +12,8 @@
  */
 
 import { Typography } from 'antd';
+import React from 'react';
+import MetadataAgentsWidget from '../components/Settings/Services/Ingestion/MetadataAgentsWidget/MetadataAgentsWidget';
 import { ReactComponent as DescriptionPlaceholderIcon } from '../assets/svg/ic-flat-doc.svg';
 import { ReactComponent as TablePlaceholderIcon } from '../assets/svg/ic-large-table.svg';
 import { ReactComponent as NoDataPlaceholderIcon } from '../assets/svg/ic-no-records.svg';
@@ -148,3 +150,10 @@ export const getServiceInsightsWidgetPlaceholder = ({
     </ErrorPlaceHolder>
   );
 };
+
+export const getDefaultAgentsTabWidgets = (): Record<
+  string,
+  React.ComponentType<any>
+> => ({
+  MetadataAgentsWidget,
+});

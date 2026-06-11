@@ -96,19 +96,19 @@ import {
   getListTestCaseBySearch,
   getListTestDefinitions,
 } from '../../../../rest/testAPI';
+import { getScheduleOptionsFromSchedules } from '../../../../utils/CronExpressionUtils';
 import {
   convertSearchSourceToTable,
   getServiceTypeForTestDefinition,
-} from '../../../../utils/DataQuality/DataQualityUtils';
+} from '../../../../utils/DataQuality/DataQualityPureUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { filterSelectOptions } from '../../../../utils/FilterQueryUtils';
 import {
   createScrollToErrorHandler,
-  generateFormFields,
   getPopupContainer,
-} from '../../../../utils/formUtils';
+} from '../../../../utils/formPureUtils';
+import { generateFormFields } from '../../../../utils/formUtils';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
-import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
 import { getIngestionName } from '../../../../utils/ServicePureUtils';
 import {
   escapeESReservedCharacters,
@@ -133,7 +133,6 @@ import {
   TestLevel,
 } from './TestCaseFormV1.interface';
 import './TestCaseFormV1.less';
-
 // =============================================
 // MAIN COMPONENT
 // =============================================

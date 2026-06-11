@@ -16,8 +16,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { triggerOnDemandApp } from '../../rest/applicationAPI';
 import { postService } from '../../rest/serviceAPI';
 import { getServiceLogo } from '../../utils/EntityDisplayUtils';
-import { getAddServiceEntityBreadcrumb } from '../../utils/ServicePureUtils';
 import * as serviceUtilClassBaseModule from '../../utils/ServiceUtilClassBase';
+import { getAddServiceEntityBreadcrumb } from '../../utils/ServiceUtils';
 import EmbeddedAddServicePage from './EmbeddedAddServicePage.component';
 
 const mockParam = {
@@ -145,7 +145,7 @@ jest.mock('../../utils/EntityDisplayUtils', () => ({
   getServiceLogo: jest.fn(),
 }));
 
-jest.mock('../../utils/ServicePureUtils', () => ({
+jest.mock('../../utils/ServiceUtils', () => ({
   getAddServiceEntityBreadcrumb: jest.fn().mockReturnValue([]),
   getEntityTypeFromServiceCategory: jest.fn(),
   getServiceType: jest.fn(),

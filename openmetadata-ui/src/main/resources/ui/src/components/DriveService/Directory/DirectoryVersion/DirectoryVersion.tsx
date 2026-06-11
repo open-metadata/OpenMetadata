@@ -32,12 +32,7 @@ import { TagSource } from '../../../../generated/type/tagLabel';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getDriveAssetByFqn } from '../../../../rest/driveAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import {
-  getCommonExtraInfoForVersionDetails,
-  getConstraintChanges,
-  getEntityVersionByField,
-  getEntityVersionTags,
-} from '../../../../utils/EntityVersionUtils';
+import { getCommonExtraInfoForVersionDetails, getConstraintChanges, getEntityVersionByField, getEntityVersionTags } from '../../../../utils/EntityVersionUtilsPure';;
 import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../../utils/RouterUtils';
 import { descriptionTableObject } from '../../../../utils/TableColumn.util';

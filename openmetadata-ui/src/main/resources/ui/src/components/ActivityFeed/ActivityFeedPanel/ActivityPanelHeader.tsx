@@ -20,12 +20,8 @@ import { EntityType } from '../../../enums/entity.enum';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import {
-  entityDisplayName,
-  getActivityEventHeaderText,
-  getEntityFQN,
-  getEntityType,
-} from '../../../utils/FeedUtils';
+import { getActivityEventHeaderText } from '../../../utils/FeedUtils';
+import { entityDisplayName, getEntityFQN, getEntityType } from '../../../utils/FeedUtilsPure';;
 
 interface ActivityPanelHeaderProps {
   activity: ActivityEvent;

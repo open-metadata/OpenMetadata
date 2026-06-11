@@ -32,7 +32,8 @@ import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import { getTierTags } from '../../../utils/TablePureUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import tagClassBase from '../../../utils/TagClassBase';
-import { fetchGlossaryList, getTagPlaceholder } from '../../../utils/TagsUtils';
+import { fetchGlossaryList } from '../../../utils/TagsUtils';
+import { getTagPlaceholder } from '../../../utils/TagsPureUtils';;
 import {
   getRequestTagsPath,
   getUpdateTagsPath,

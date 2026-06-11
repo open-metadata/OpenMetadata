@@ -26,7 +26,7 @@ import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { updateTableColumn } from '../../../rest/tableAPI';
-import { getTextFromHtmlString } from '../../../utils/BlockEditorUtils';
+import { getTextFromHtmlString } from '../../../utils/BlockEditorPureUtils';;
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import searchClassBase from '../../../utils/SearchClassBase';

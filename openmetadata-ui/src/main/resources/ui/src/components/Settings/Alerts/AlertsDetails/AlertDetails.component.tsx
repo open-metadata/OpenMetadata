@@ -22,11 +22,8 @@ import {
   Effect,
   EventSubscription,
 } from '../../../../generated/events/eventSubscription';
-import {
-  EDIT_LINK_PATH,
-  getDisplayNameForEntities,
-  getFunctionDisplayName,
-} from '../../../../utils/Alerts/AlertsUtil';
+import { EDIT_LINK_PATH } from '../../../../utils/Alerts/AlertsUtil';
+import { getDisplayNameForEntities, getFunctionDisplayName } from '../../../../utils/Alerts/AlertsUtilPure';;
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../PageHeader/PageHeader.component';

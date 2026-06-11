@@ -28,7 +28,7 @@ import { Paging } from '../../../generated/type/paging';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { getAllFeeds } from '../../../rest/feedsAPI';
 import { TaskStatusGroup } from '../../../rest/tasksAPI';
-import { getEntityFQN, getEntityType } from '../../../utils/FeedUtils';
+import { getEntityFQN, getEntityType } from '../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -42,7 +42,6 @@ import TaskFeedCardFromTask from '../TaskFeedCard/TaskFeedCardFromTask.component
 import ActivityThread from './ActivityThread';
 import ActivityThreadList from './ActivityThreadList';
 import { ActivityThreadPanelBodyProp } from './ActivityThreadPanel.interface';
-
 const TaskTabNew = withSuspenseFallback(
   lazy(() =>
     import('../../Entity/Task/TaskTab/TaskTabNew.component').then((m) => ({

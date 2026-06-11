@@ -22,7 +22,7 @@ import {
 } from '../../../../generated/entity/applications/app';
 import { EntityReference } from '../../../../generated/tests/testSuite';
 import { mockApplicationData } from '../../../../mocks/rests/applicationAPI.mock';
-import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
+import { getScheduleOptionsFromSchedules } from '../../../../utils/CronExpressionUtils';
 import AppSchedule from './AppSchedule.component';
 
 const mockGetIngestionPipelineByFqn = jest.fn().mockResolvedValue({

@@ -34,11 +34,8 @@ import {
   getMultiChartsPreviewByName,
 } from '../../rest/DataInsightAPI';
 import { getTeamByName } from '../../rest/teamsAPI';
-import {
-  getEntitiesChartSummary,
-  getQueryFilterForDataInsightChart,
-  getWebChartSummary,
-} from '../../utils/DataInsightUtils';
+import { getEntitiesChartSummary, getWebChartSummary } from '../../utils/DataInsightUtils';
+import { getQueryFilterForDataInsightChart } from '../../utils/DataInsightPureUtils';;
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';

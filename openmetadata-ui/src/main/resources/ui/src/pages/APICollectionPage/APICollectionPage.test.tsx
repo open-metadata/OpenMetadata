@@ -20,7 +20,7 @@ import { useFqn } from '../../hooks/useFqn';
 import { getApiCollectionByFQN } from '../../rest/apiCollectionsAPI';
 import { getApiEndPoints } from '../../rest/apiEndpointsAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
-import { fetchEntityTaskCountsInto } from '../../utils/FeedUtils';
+import { fetchEntityTaskCountsInto } from '../../utils/FeedUtilsPure';;
 import APICollectionPage from './APICollectionPage';
 
 jest.mock('../../rest/apiCollectionsAPI', () => ({

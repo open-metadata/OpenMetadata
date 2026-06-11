@@ -26,12 +26,11 @@ import {
   getDiffByFieldName,
 } from '../../../../utils/EntityDiffPureUtils';
 import { getDiffDisplayValue } from '../../../../utils/EntityDiffUtils';
-import { getChangedEntityStatus } from '../../../../utils/EntityVersionUtils';
+import { getChangedEntityStatus } from '../../../../utils/EntityVersionUtilsPure';
 import Loader from '../../../common/Loader/Loader';
 import QueryViewer from '../../../common/QueryViewer/QueryViewer.component';
 import '../TestCaseResultTab/test-case-result-tab.style.less';
 import AddSqlQueryFormModal from './AddSqlQueryFormModal/AddSqlQueryFormModal.component';
-
 const SqlQueryTab = () => {
   const { testCase, isLoading } = useTestCaseStore();
   const { version } = useParams<{ version: string }>();

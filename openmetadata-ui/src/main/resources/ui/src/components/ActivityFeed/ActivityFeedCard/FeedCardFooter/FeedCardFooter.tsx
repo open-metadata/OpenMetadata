@@ -15,7 +15,7 @@ import { Button, Divider } from 'antd';
 import { isUndefined } from 'lodash';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getReplyText } from '../../../../utils/FeedUtils';
+import { getReplyText } from '../../../../utils/FeedUtilsPure';;
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { FeedFooterProp } from '../ActivityFeedCard.interface';
 

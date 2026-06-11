@@ -14,7 +14,7 @@ import { Card } from 'antd';
 import { FC, Fragment } from 'react';
 import { GLOBAL_BORDER } from '../../../constants/Feeds.constants';
 import { Post } from '../../../generated/entity/feed/thread';
-import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
+import { getFeedListWithRelativeDays } from '../../../utils/FeedUtilsPure';;
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';

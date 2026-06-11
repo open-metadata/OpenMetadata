@@ -27,12 +27,7 @@ import {
 } from '../../../../generated/entity/data/dashboardDataModel';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { TagSource } from '../../../../generated/type/schema';
-import {
-  getColumnsDataWithVersionChanges,
-  getCommonExtraInfoForVersionDetails,
-  getEntityVersionByField,
-  getEntityVersionTags,
-} from '../../../../utils/EntityVersionUtils';
+import { getColumnsDataWithVersionChanges, getCommonExtraInfoForVersionDetails, getEntityVersionByField, getEntityVersionTags } from '../../../../utils/EntityVersionUtilsPure';;
 import { getPartialNameFromTableFQN } from '../../../../utils/FqnUtils';
 import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../../utils/RouterUtils';

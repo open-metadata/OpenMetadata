@@ -128,16 +128,6 @@ const ResizablePanels = withSuspenseFallback(
   lazy(() => import('../components/common/ResizablePanels/ResizablePanels'))
 );
 
-export {
-  domainBuildESQuery,
-  getQueryFilterForDataProducts,
-  getQueryFilterForDomain,
-  getQueryFilterToExcludeDomainTerms,
-  getQueryFilterToIncludeDomain,
-  initializeDomainEntityRef,
-  isDomainExist,
-};
-
 // Domain type description which will be shown in tooltip
 export const domainTypeTooltipDataRender = () => (
   <Space direction="vertical" size="middle">

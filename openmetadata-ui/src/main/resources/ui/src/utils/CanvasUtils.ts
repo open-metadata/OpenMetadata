@@ -24,10 +24,8 @@ import {
 } from '../constants/Lineage.constants';
 import { EntityType } from '../enums/entity.enum';
 import { useLineageStore } from '../hooks/useLineageStore';
-import {
-  getEdgePathData,
-  getEntityChildrenAndLabel,
-} from './EntityLineageUtils';
+import { getEdgePathData } from './EntityLineageEdgeUtils';
+import { getEntityChildrenAndLabel } from './EntityLineageNodeUtils';
 
 export interface BoundingBox {
   minX: number;

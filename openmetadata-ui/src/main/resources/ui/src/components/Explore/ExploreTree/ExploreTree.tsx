@@ -30,14 +30,7 @@ import { searchQuery } from '../../../rest/searchAPI';
 import { getCountBadge } from '../../../utils/EntityDisplayUtils';
 import { getPluralizeEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import {
-  getAggregations,
-  getQuickFilterObject,
-  getQuickFilterObjectForEntities,
-  getSubLevelHierarchyKey,
-  updateTreeData,
-  updateTreeDataWithCounts,
-} from '../../../utils/ExploreUtils';
+import { getAggregations, getQuickFilterObject, getQuickFilterObjectForEntities, getSubLevelHierarchyKey, updateTreeData, updateTreeDataWithCounts } from '../../../utils/ExplorePureUtils';;
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import searchClassBase from '../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';

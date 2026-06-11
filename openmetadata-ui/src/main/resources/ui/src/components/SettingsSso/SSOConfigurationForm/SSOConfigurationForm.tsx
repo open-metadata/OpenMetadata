@@ -52,10 +52,7 @@ import {
   SecurityValidationResponse,
   validateSecurityConfiguration,
 } from '../../../rest/securityConfigAPI';
-import {
-  createScrollToErrorHandler,
-  transformErrors,
-} from '../../../utils/formUtils';
+import { createScrollToErrorHandler, transformErrors } from '../../../utils/formPureUtils';;
 import {
   applySamlConfiguration,
   cleanupProviderSpecificFields,

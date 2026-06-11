@@ -14,10 +14,8 @@ import { Button } from 'antd';
 import classNames from 'classnames';
 import { FC, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  formatContent,
-  isDescriptionContentEmpty,
-} from '../../../utils/BlockEditorUtils';
+import { formatContent } from '../../../utils/BlockEditorUtils';
+import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';;
 import BlockEditor from '../../BlockEditor/BlockEditor';
 import './rich-text-editor-previewerV1.less';
 import { PreviewerProp } from './RichTextEditor.interface';

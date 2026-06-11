@@ -13,7 +13,7 @@
 import { startCase, uniqBy } from 'lodash';
 import { Surface } from 'recharts';
 import { DataInsightChartTooltipProps } from '../../interface/data-insight.interface';
-import { getEntryFormattedValue } from '../DataInsightUtils';
+import { getEntryFormattedValue } from '../DataInsightPureUtils';;
 import { formatDate } from '../date-time/DateTimeUtils';
 
 export const CustomDQTooltip = (props: DataInsightChartTooltipProps) => {

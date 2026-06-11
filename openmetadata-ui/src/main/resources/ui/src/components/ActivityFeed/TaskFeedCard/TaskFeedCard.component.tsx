@@ -33,7 +33,7 @@ import {
   getRelativeTime,
 } from '../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../utils/EntityLink';
-import { getEntityFQN, getEntityType } from '../../../utils/FeedUtils';
+import { getEntityFQN, getEntityType } from '../../../utils/FeedUtilsPure';;
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { getTaskDetailPath } from '../../../utils/TasksUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
