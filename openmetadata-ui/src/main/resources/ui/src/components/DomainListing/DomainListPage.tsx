@@ -150,7 +150,6 @@ const DomainListPage = () => {
       loading: isLoading,
     });
 
-
   const { pageHeader } = usePageHeader({
     titleKey: 'label.domain-plural',
     descriptionMessageKey: 'message.domain-description',
@@ -316,7 +315,6 @@ const DomainListPage = () => {
       direction="col"
       style={isTreeView ? { height: 'calc(100vh - 80px)' } : {}}>
       <HeaderBreadcrumb
-        className='tw:mb-3'
         items={[
           ...(isMarketplace
             ? [

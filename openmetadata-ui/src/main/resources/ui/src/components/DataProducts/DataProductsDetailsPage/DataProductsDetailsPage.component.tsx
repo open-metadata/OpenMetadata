@@ -1138,7 +1138,7 @@ const DataProductsDetailsPage = ({
 
   return (
     <>
-      <HeaderBreadcrumb className='tw:mb-3' items={breadcrumbItems} />
+      <HeaderBreadcrumb items={breadcrumbItems} />
       <div className="domain-page-container">{content}</div>
     </>
   );

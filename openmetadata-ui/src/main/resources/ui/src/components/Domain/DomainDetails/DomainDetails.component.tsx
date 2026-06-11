@@ -1197,7 +1197,7 @@ const DomainDetails = ({
 
   return (
     <>
-      <HeaderBreadcrumb className='tw:mb-3' items={breadcrumbItems} />
+      <HeaderBreadcrumb items={breadcrumbItems} />
       <div
         className={classNames('domain-page-container', {
           'domain-tree-view-variant': isTreeView,

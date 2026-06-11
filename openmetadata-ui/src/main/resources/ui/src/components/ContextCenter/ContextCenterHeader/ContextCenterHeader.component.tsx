@@ -74,7 +74,7 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
 
   return (
     <div
-      className="tw:flex tw:flex-col tw:gap-3"
+      className="tw:flex tw:flex-col"
       data-testid="context-center-header">
       {!breadcrumbInsideCard && breadcrumbEl}
 

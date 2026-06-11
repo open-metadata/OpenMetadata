@@ -301,7 +301,6 @@ const AuditLogsPage = () => {
     }
   }, [exportDateRange, searchTerm, filterParams]);
 
-
   const handleExportModalClose = useCallback(() => {
     if (!isExporting) {
       setIsExportModalOpen(false);
@@ -322,7 +321,7 @@ const AuditLogsPage = () => {
       <div
         className="tw:flex tw:flex-col tw:h-full tw:min-h-0 tw:overflow-hidden"
         data-testid="audit-logs-page">
-        <div className="tw:shrink-0 tw:mb-2">
+        <div className="tw:shrink-0">
           <HeaderBreadcrumb
             items={[
               { label: t('label.setting-plural'), href: getSettingPath() },

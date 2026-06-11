@@ -22,7 +22,6 @@ const ColumnBulkOperations = () => {
     <PageLayoutV1 pageTitle={t('label.column-bulk-operations')}>
       <div>
         <HeaderBreadcrumb
-          className='tw:mb-3'
           items={[{ label: t('label.column-bulk-operations') }]}
         />
         <ColumnGrid />

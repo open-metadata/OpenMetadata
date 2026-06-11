@@ -16,6 +16,7 @@ import {
   Breadcrumbs,
 } from '@openmetadata/ui-core-components';
 import { HomeLine } from '@untitledui/icons';
+import classNames from 'classnames';
 import { FC, Key, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -69,7 +70,7 @@ const HeaderBreadcrumb: FC<HeaderBreadcrumbProps> = ({
 
   return (
     <Breadcrumbs
-      className={className}
+      className={classNames('tw:mb-3',className)}
       data-testid="breadcrumb"
       divider={divider}
       items={allItems}

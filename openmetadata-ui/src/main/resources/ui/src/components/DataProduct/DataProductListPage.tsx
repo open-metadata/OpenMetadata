@@ -156,7 +156,6 @@ const DataProductListPage = () => {
       loading: isLoading,
     });
 
-
   const { pageHeader } = usePageHeader({
     titleKey: 'label.data-product-plural',
     descriptionMessageKey: 'message.data-product-description',
@@ -373,7 +372,6 @@ const DataProductListPage = () => {
   return (
     <>
       <HeaderBreadcrumb
-        className='tw:mb-3'
         items={[
           ...(isMarketplace
             ? [
