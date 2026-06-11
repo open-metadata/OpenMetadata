@@ -61,7 +61,8 @@ const WidgetCard = ({
         extra={
           <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-1">
             {!isExpandDisabled && (
-              <Tooltip title={t(isExpanded ? 'label.collapse': 'label.expand')}>
+              <Tooltip
+                title={t(isExpanded ? 'label.collapse' : 'label.expand')}>
                 <TooltipTrigger>
                   <ButtonUtility
                     className={classNames(
