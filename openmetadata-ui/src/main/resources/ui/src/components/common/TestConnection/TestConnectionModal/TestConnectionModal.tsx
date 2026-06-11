@@ -199,10 +199,10 @@ const TestConnectionModal = ({
               {serviceLogo}
             </div>
             <div className="tw:min-w-0 tw:flex-1">
-              <div className="tw:text-lg tw:font-medium tw:leading-[26px] tw:text-primary">
+              <div className="tw:text-lg tw:font-medium tw:text-primary">
                 {t('label.connection-status')}
               </div>
-              <div className="tw:overflow-hidden tw:text-sm tw:leading-[18px] tw:text-quaternary tw:text-ellipsis tw:whitespace-nowrap">
+              <div className="tw:overflow-hidden tw:text-sm tw:text-quaternary tw:text-ellipsis tw:whitespace-nowrap">
                 {connectionDisplayName}
               </div>
             </div>

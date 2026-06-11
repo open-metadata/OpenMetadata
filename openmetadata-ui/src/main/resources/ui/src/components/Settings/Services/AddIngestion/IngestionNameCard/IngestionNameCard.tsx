@@ -34,7 +34,7 @@ const IngestionNameCard = ({
       <div className="tw:text-sm tw:font-semibold tw:leading-6 tw:text-primary">
         {t('label.name-this-ingestion')}
       </div>
-      <div className="tw:mt-0.5 tw:text-xs tw:leading-[18px] tw:text-tertiary">
+      <div className="tw:mt-0.5 tw:text-xs tw:text-tertiary">
         {t('message.name-this-ingestion-description')}
       </div>
       <div className="tw:my-3 tw:h-px tw:bg-[var(--tw-color-border-secondary)]" />

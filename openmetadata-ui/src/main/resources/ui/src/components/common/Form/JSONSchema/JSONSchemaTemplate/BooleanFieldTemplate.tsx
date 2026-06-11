@@ -36,7 +36,7 @@ const BooleanFieldTemplate = (props: FieldProps) => {
           {title}
         </label>
         {props.schema.description && (
-          <div className="tw:mt-1 tw:text-xs tw:leading-[1.4] tw:text-tertiary">
+          <div className="tw:mt-1 tw:text-xs tw:text-tertiary">
             {props.schema.description}
           </div>
         )}

@@ -174,7 +174,7 @@ const SectionHeader = ({
         {title}
       </span>
       {description && (
-        <span className="tw:mt-0.5 tw:block tw:text-xs tw:leading-[18px] tw:text-tertiary">
+        <span className="tw:mt-0.5 tw:block tw:text-xs tw:text-tertiary">
           {description}
         </span>
       )}
@@ -356,7 +356,7 @@ export const IngestionObjectFieldTemplate: FunctionComponent<
         <div className="tw:flex tw:min-h-6 tw:items-center tw:justify-between tw:gap-4">
           <Typography
             as="label"
-            className="tw:font-semibold tw:leading-[17px] tw:text-secondary"
+            className="tw:font-semibold tw:text-secondary"
             size="text-xs"
             weight="semibold">
             {t('label.additional-property-plural')}
@@ -372,10 +372,7 @@ export const IngestionObjectFieldTemplate: FunctionComponent<
           </Button>
         </div>
         {visibleProperties.length === 0 ? (
-          <Typography
-            as="span"
-            className="tw:leading-[18px] tw:text-tertiary"
-            size="text-xs">
+          <Typography as="span" className="tw:text-tertiary" size="text-xs">
             {t('message.no-properties-added')}
           </Typography>
         ) : (

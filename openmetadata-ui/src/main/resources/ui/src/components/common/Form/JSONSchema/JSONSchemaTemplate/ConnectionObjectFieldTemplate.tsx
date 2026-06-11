@@ -199,7 +199,7 @@ const SectionHeader = ({
         {badge}
       </span>
       {description && (
-        <span className="connection-section-header-description tw:mt-0.5 tw:block tw:text-xs tw:leading-[18px] tw:text-tertiary">
+        <span className="connection-section-header-description tw:mt-0.5 tw:block tw:text-xs tw:text-tertiary">
           {description}
         </span>
       )}

@@ -53,7 +53,7 @@ function RulePreview({
     <div className="tw:rounded-xl tw:border tw:border-secondary tw:bg-secondary tw:p-3.5">
       <div className="tw:mb-2.5 tw:flex tw:items-center tw:gap-2">
         <Eye className="tw:text-utility-brand-600" size={15} />
-        <span className="tw:text-xs] tw:font-medium tw:leading-[18px] tw:text-primary">
+        <span className="tw:text-xs] tw:font-medium tw:text-primary">
           {t('label.preview')}
         </span>
       </div>
@@ -68,7 +68,7 @@ function RulePreview({
       </p>
       {includeCount > 0 && (
         <div className="tw:mt-3 tw:grid tw:gap-1.5">
-          <span className="tw:text-xs tw:font-medium tw:leading-[18px] tw:text-secondary">
+          <span className="tw:text-xs tw:font-medium tw:text-secondary">
             {t('label.include-entity', {
               entity: t(getRuleLabelKey(includeCount)),
             })}
@@ -87,7 +87,7 @@ function RulePreview({
       )}
       {excludeCount > 0 && (
         <div className="tw:mt-3 tw:grid tw:gap-1.5">
-          <span className="tw:text-xs tw:font-medium tw:leading-[18px] tw:text-secondary">
+          <span className="tw:text-xs tw:font-medium tw:text-secondary">
             {t('label.exclude-entity', {
               entity: t(getRuleLabelKey(excludeCount)),
             })}
@@ -145,14 +145,14 @@ function RegexDisclosure({
         <div className="tw:mt-2 tw:grid tw:gap-1.5 tw:rounded-[10px] tw:bg-gray-900 tw:p-3">
           {includes.map((regex) => (
             <code
-              className="tw:font-mono tw:text-xs tw:font-medium tw:leading-[18px] tw:text-blue-300"
+              className="tw:font-mono tw:text-xs tw:font-medium tw:text-blue-300"
               key={`include-${regex}`}>
               {t('message.includes-regex-line', { regex })}
             </code>
           ))}
           {excludes.map((regex) => (
             <code
-              className="tw:font-mono tw:text-xs tw:font-medium tw:leading-[18px] tw:text-red-300"
+              className="tw:font-mono tw:text-xs tw:font-medium tw:text-red-300"
               key={`exclude-${regex}`}>
               {t('message.excludes-regex-line', { regex })}
             </code>
@@ -253,7 +253,7 @@ export function FilterSectionCard({
         </span>
         <span
           className={classNames(
-            'tw:inline-flex tw:items-center tw:gap-[5px] tw:rounded-full tw:border tw:px-2.5 tw:py-0.5 tw:text-xs tw:font-medium tw:leading-[18px]',
+            'tw:inline-flex tw:items-center tw:gap-[5px] tw:rounded-full tw:border tw:px-2.5 tw:py-0.5 tw:text-xs tw:font-medium',
             summary.tone === 'success'
               ? 'tw:border-utility-success-200 tw:bg-utility-success-50 tw:text-utility-success-700'
               : 'tw:border-utility-brand-200 tw:bg-utility-brand-50 tw:text-utility-brand-700'
@@ -273,7 +273,7 @@ export function FilterSectionCard({
       {isOpen && (
         <div className="tw:grid tw:gap-[18px] tw:border-t tw:border-secondary tw:p-[18px]">
           <div>
-            <div className="tw:mb-2 tw:text-xs tw:font-medium tw:leading-[18px] tw:text-secondary">
+            <div className="tw:mb-2 tw:text-xs tw:font-medium tw:text-secondary">
               {t('label.what-to-scan')}
             </div>
             <div className="tw:grid tw:grid-cols-2 tw:gap-1 tw:rounded-[10px] tw:border tw:border-primary tw:bg-secondary tw:p-1">
@@ -312,7 +312,7 @@ export function FilterSectionCard({
 
           {filter.restrict && (
             <div>
-              <div className="tw:mb-2 tw:text-xs tw:font-medium tw:leading-[18px] tw:text-utility-brand-700">
+              <div className="tw:mb-2 tw:text-xs tw:font-medium tw:text-utility-brand-700">
                 {t('message.include-only-entities-where-name', {
                   entity: section.label.toLowerCase(),
                 })}
@@ -355,7 +355,7 @@ export function FilterSectionCard({
 
           <div className="tw:border-t tw:border-dashed tw:border-primary tw:pt-1">
             <div className="tw:my-3.5 tw:mb-2 tw:flex tw:items-center tw:gap-2.5">
-              <span className="tw:text-xs tw:font-medium tw:leading-[18px] tw:text-utility-error-700">
+              <span className="tw:text-xs tw:font-medium tw:text-utility-error-700">
                 {t('label.always-exclude')}
               </span>
               {hasSystemExcludes && (

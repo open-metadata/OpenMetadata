@@ -259,7 +259,7 @@ export function ConnectionStepRow(props: Readonly<ConnectionStepRowProps>) {
   } = props;
 
   const resultTextClass = classNames(
-    'tw:min-w-12 tw:text-right tw:text-xs tw:font-medium tw:leading-[18px] tw:text-quaternary',
+    'tw:min-w-12 tw:text-right tw:text-xs tw:font-medium  tw:text-quaternary',
     {
       'tw:text-utility-success-700': state === 'passed',
       'tw:text-utility-error-700': state === 'failed',
@@ -315,7 +315,7 @@ export function ConnectionStepRow(props: Readonly<ConnectionStepRowProps>) {
         </div>
       </button>
       {isExpanded && (
-        <pre className="tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:font-mono tw:text-xs tw:leading-[18px] tw:text-gray-300 tw:whitespace-pre-wrap tw:mx-3.5 tw:mb-3.5 tw:ml-[54px]">
+        <pre className="tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:font-mono tw:text-xs  tw:text-gray-300 tw:whitespace-pre-wrap tw:mx-3.5 tw:mb-3.5 tw:ml-[54px]">
           {details}
         </pre>
       )}
@@ -375,7 +375,7 @@ export function ConnectionStatusBanner(
           </span>
         </div>
         {!isSuccessful && (
-          <div className="tw:mt-0.5 tw:leading-[18px] tw:text-secondary">
+          <div className="tw:mt-0.5  tw:text-secondary">
             {t('message.test-connection-checks-passed-count', {
               passed: passedCount,
               total: totalCount,
@@ -429,9 +429,7 @@ export function ConnectionGateCard(
           <div className="tw:text-sm tw:font-medium tw:leading-5 tw:text-primary">
             {t('label.establish-connection')}
           </div>
-          <div className="tw:mt-0.5 tw:leading-[18px] tw:text-secondary">
-            {gateDescription}
-          </div>
+          <div className="tw:mt-0.5  tw:text-secondary">{gateDescription}</div>
         </div>
         <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2.5 tw:text-quaternary">
           <span
@@ -452,16 +450,16 @@ export function ConnectionGateCard(
       </button>
       {isGateExpanded && (
         <div className="tw:flex tw:flex-wrap tw:gap-2 tw:px-4 tw:pb-3.5">
-          <span className="tw:inline-flex tw:h-6 tw:items-center tw:rounded-full tw:border tw:border-gray-300 tw:bg-white tw:px-2.5 tw:text-xs tw:font-medium tw:leading-[18px] tw:text-secondary">
+          <span className="tw:inline-flex tw:h-6 tw:items-center tw:rounded-full tw:border tw:border-gray-300 tw:bg-white tw:px-2.5 tw:text-xs tw:font-medium  tw:text-secondary">
             {t('label.resolve-host')}
           </span>
-          <span className="tw:inline-flex tw:h-6 tw:items-center tw:rounded-full tw:border tw:border-gray-300 tw:bg-white tw:px-2.5 tw:text-xs tw:font-medium tw:leading-[18px] tw:text-secondary">
+          <span className="tw:inline-flex tw:h-6 tw:items-center tw:rounded-full tw:border tw:border-gray-300 tw:bg-white tw:px-2.5 tw:text-xs tw:font-medium  tw:text-secondary">
             {t('label.open-socket')}
           </span>
-          <span className="tw:inline-flex tw:h-6 tw:items-center tw:rounded-full tw:border tw:border-gray-300 tw:bg-white tw:px-2.5 tw:text-xs tw:font-medium tw:leading-[18px] tw:text-secondary">
+          <span className="tw:inline-flex tw:h-6 tw:items-center tw:rounded-full tw:border tw:border-gray-300 tw:bg-white tw:px-2.5 tw:text-xs tw:font-medium  tw:text-secondary">
             {t('label.authenticate')}
           </span>
-          <span className="tw:inline-flex tw:h-6 tw:items-center tw:rounded-full tw:border tw:border-gray-300 tw:bg-white tw:px-2.5 tw:text-xs tw:font-medium tw:leading-[18px] tw:text-secondary">
+          <span className="tw:inline-flex tw:h-6 tw:items-center tw:rounded-full tw:border tw:border-gray-300 tw:bg-white tw:px-2.5 tw:text-xs tw:font-medium  tw:text-secondary">
             {t('label.open-session')}
           </span>
         </div>
@@ -582,7 +580,7 @@ export function ConnectionRawLogSection(
       <button
         className={classNames(
           'tw:inline-flex tw:max-w-full tw:w-max tw:cursor-pointer tw:items-center tw:gap-1',
-          'tw:border-0 tw:bg-transparent tw:p-0 tw:font-medium tw:leading-[18px]',
+          'tw:border-0 tw:bg-transparent tw:p-0 tw:font-medium ',
           'tw:text-utility-brand-600 tw:text-left tw:whitespace-nowrap'
         )}
         type="button"
@@ -592,7 +590,7 @@ export function ConnectionRawLogSection(
       </button>
       {showRawLog && (
         <pre
-          className="tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:font-mono tw:text-xs tw:leading-[18px] tw:text-gray-300 tw:whitespace-pre-wrap tw:w-full tw:max-h-[360px] tw:m-0"
+          className="tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:font-mono tw:text-xs  tw:text-gray-300 tw:whitespace-pre-wrap tw:w-full tw:max-h-[360px] tw:m-0"
           data-testid="raw-connection-log">
           {rawLog}
         </pre>

@@ -49,7 +49,7 @@ const ServiceNameCard = ({
       <div className="tw:text-sm tw:font-medium tw:leading-5 tw:text-primary">
         {t('label.name-this-service')}
       </div>
-      <div className="tw:mt-0.5 tw:text-xs tw:leading-[18px] tw:text-tertiary">
+      <div className="tw:mt-0.5 tw:text-xs tw:text-tertiary">
         {t('message.name-this-service-description', { serviceType })}
       </div>
       <div className="tw:my-3 tw:h-px tw:bg-[var(--tw-color-border-secondary)]" />
@@ -70,7 +70,7 @@ const ServiceNameCard = ({
       {showDescription ? (
         <div className="tw:mt-4">
           <label
-            className="tw:mb-2 tw:block tw:font-medium tw:leading-[17px] tw:text-secondary"
+            className="tw:mb-2 tw:block tw:font-medium tw:text-secondary"
             htmlFor="service-description">
             {t('label.description')}
           </label>

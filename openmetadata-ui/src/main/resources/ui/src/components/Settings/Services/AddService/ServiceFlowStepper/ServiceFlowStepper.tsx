@@ -98,7 +98,7 @@ const ServiceFlowStepper = ({
             <StepNode state={state} />
             <span
               className={classNames(
-                'tw:text-center tw:text-sm tw:leading-[1.3]',
+                'tw:text-center tw:text-sm',
                 LABEL_CLASS_BY_STATE[state]
               )}
               data-testid={`step-label-${item.step}`}>

@@ -75,19 +75,21 @@ const FiltersFormFieldTemplate = ({ children, hidden }: FieldTemplateProps) =>
 const FiltersConfigForm = forwardRef<
   FiltersConfigFormHandle,
   FiltersConfigFormProps
->(function FiltersConfigForm({
-  data,
-  okText,
-  cancelText,
-  hideFooter = false,
-  serviceType,
-  serviceCategory,
-  status,
-  onCancel,
-  onSave,
-  onFocus,
-}: Readonly<FiltersConfigFormProps>,
-ref) {
+>(function FiltersConfigForm(
+  {
+    data,
+    okText,
+    cancelText,
+    hideFooter = false,
+    serviceType,
+    serviceCategory,
+    status,
+    onCancel,
+    onSave,
+    onFocus,
+  }: Readonly<FiltersConfigFormProps>,
+  ref
+) {
   const { t } = useTranslation();
   const { inlineAlertDetails } = useApplicationStore();
   const [connSch, setConnSch] = useState(EMPTY_CONNECTION_SCHEMA);
@@ -212,7 +214,7 @@ ref) {
           <div className="tw:font-medium tw:leading-5 tw:text-primary">
             {t('message.connected-to-host', { host: connectionHost })}
           </div>
-          <div className="tw:mt-px tw:text-xs tw:font-normal tw:leading-[18px] tw:text-tertiary">
+          <div className="tw:mt-px tw:text-xs tw:font-normal tw:text-tertiary">
             {t('message.connection-verified-ingestion-scope')}
           </div>
         </div>
