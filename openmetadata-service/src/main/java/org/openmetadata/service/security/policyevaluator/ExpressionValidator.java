@@ -82,7 +82,19 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 @Slf4j
 public final class ExpressionValidator {
 
-  private static final Set<String> ALLOWED_FUNCTIONS = initAllowedFunctions();
+  private static final Set<String> ALLOWED_FUNCTIONS = new HashSet<>();
+
+  /**
+   * Names of no-arg boolean {@code @Function} methods. Only these may appear as a bare {@link
+   * PropertyOrFieldReference} (e.g. {@code !isOwner}); SpEL resolves a bare reference to the
+   * matching no-arg getter, so arg-taking functions such as {@code matchAnyTag} cannot be used
+   * bare and are rejected up front rather than failing later at evaluation time.
+   */
+  private static final Set<String> ALLOWED_BARE_FUNCTIONS = new HashSet<>();
+
+  static {
+    initAllowedFunctions(ALLOWED_FUNCTIONS, ALLOWED_BARE_FUNCTIONS);
+  }
 
   private static final Set<Class<?>> ALLOWED_NODE_CLASSES =
       Set.of(
@@ -164,13 +176,20 @@ public final class ExpressionValidator {
   }
 
   private static void ensureCallableNameAllowed(SpelNode node) {
-    String name =
-        switch (node) {
-          case MethodReference methodRef -> methodRef.getName();
-          case PropertyOrFieldReference propertyRef -> propertyRef.getName();
-          default -> null;
-        };
-    if (name == null || ALLOWED_FUNCTIONS.contains(name)) {
+    String name = null;
+    Set<String> allowed = null;
+    switch (node) {
+      case MethodReference methodRef -> {
+        name = methodRef.getName();
+        allowed = ALLOWED_FUNCTIONS;
+      }
+      case PropertyOrFieldReference propertyRef -> {
+        name = propertyRef.getName();
+        allowed = ALLOWED_BARE_FUNCTIONS;
+      }
+      default -> {}
+    }
+    if (name == null || allowed.contains(name)) {
       return;
     }
     throw new IllegalArgumentException(
@@ -180,8 +199,8 @@ public final class ExpressionValidator {
             + "Only use approved functions with @Function annotations in evaluator classes.");
   }
 
-  private static Set<String> initAllowedFunctions() {
-    Set<String> allowedFunctions = new HashSet<>();
+  private static void initAllowedFunctions(
+      Set<String> allowedFunctions, Set<String> bareFunctions) {
     try {
       // Classes that provide functions for policy expressions
       List<Class<?>> evaluatorClasses = new ArrayList<>();
@@ -189,11 +208,12 @@ public final class ExpressionValidator {
       evaluatorClasses.addAll(getClassesAlertAndCompletion());
 
       for (Class<?> clazz : evaluatorClasses) {
-        scanClassForFunctions(clazz, allowedFunctions);
+        scanClassForFunctions(clazz, allowedFunctions, bareFunctions);
       }
       LOG.info(
-          "Initialized ExpressionValidator with {} allowed functions: {}",
+          "Initialized ExpressionValidator with {} allowed functions ({} usable bare): {}",
           allowedFunctions.size(),
+          bareFunctions.size(),
           allowedFunctions);
     } catch (Exception e) {
       LOG.error("Failed to initialize allowed functions", e);
@@ -226,9 +246,20 @@ public final class ExpressionValidator {
               "matchDataContractStatus",
               "filterByEntityNameDataContractBelongsTo",
               "isBot"));
+      bareFunctions.addAll(
+          Arrays.asList(
+              "noOwner",
+              "isOwner",
+              "isReviewer",
+              "isTaskFiler",
+              "isTaskAssignee",
+              "isTaskReviewer",
+              "hasDomain",
+              "noDomain",
+              "matchTeam",
+              "isBot"));
       LOG.info("Using fallback list of {} allowed functions", allowedFunctions.size());
     }
-    return allowedFunctions;
   }
 
   private static List<Class<?>> getClassesAlertAndCompletion() {
@@ -249,17 +280,27 @@ public final class ExpressionValidator {
     return evaluatorClasses;
   }
 
-  private static void scanClassForFunctions(Class<?> clazz, Set<String> allowedFunctions) {
+  private static void scanClassForFunctions(
+      Class<?> clazz, Set<String> allowedFunctions, Set<String> bareFunctions) {
     try {
       for (Method method : clazz.getDeclaredMethods()) {
         if (method.isAnnotationPresent(Function.class)) {
-          Function annotation = method.getAnnotation(Function.class);
-          allowedFunctions.add(annotation.name());
-          LOG.debug("Added allowed function from {}: {}", clazz.getSimpleName(), annotation.name());
+          String name = method.getAnnotation(Function.class).name();
+          allowedFunctions.add(name);
+          if (isNoArgBoolean(method)) {
+            bareFunctions.add(name);
+          }
+          LOG.debug("Added allowed function from {}: {}", clazz.getSimpleName(), name);
         }
       }
     } catch (Exception e) {
       LOG.warn("Failed to scan functions from class {}", clazz.getName(), e);
     }
+  }
+
+  private static boolean isNoArgBoolean(Method method) {
+    Class<?> returnType = method.getReturnType();
+    return method.getParameterCount() == 0
+        && (returnType == boolean.class || returnType == Boolean.class);
   }
 }

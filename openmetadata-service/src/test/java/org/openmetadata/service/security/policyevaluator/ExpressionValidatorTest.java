@@ -103,6 +103,28 @@ public class ExpressionValidatorTest {
     }
   }
 
+  /**
+   * Bare references are only meaningful for no-arg boolean functions. An arg-taking function such
+   * as {@code matchAnyTag} used bare would pass the node check but fail at SpEL evaluation (no
+   * such property/getter), so it is rejected up front - even though its parenthesised form is a
+   * valid allowed function.
+   */
+  @Test
+  void bareReferencesToArgTakingFunctionsAreRejected() {
+    String[] argTakingBareReferences = {"matchAnyTag", "matchAllTags", "inAnyTeam", "hasAnyRole"};
+
+    for (String expression : argTakingBareReferences) {
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> ExpressionValidator.validateExpressionSafety(expression),
+          "Bare reference to arg-taking function '" + expression + "' must be rejected");
+    }
+
+    assertDoesNotThrow(
+        () -> ExpressionValidator.validateExpressionSafety("matchAnyTag('PII.Sensitive')"),
+        "The parenthesised call form of the same function must still be allowed");
+  }
+
   @Test
   void combinedBooleanWrappedConditionIsSafe() {
     // Boolean wrappers (()/&&/||/!) only add safe nodes, so combining safe fragments stays safe.
