@@ -18,7 +18,7 @@ import type {
   QueryFieldInterface,
   QueryFilterInterface,
 } from '../pages/ExplorePage/ExplorePage.interface';
-import { getEntityReferenceFromEntity } from './EntityUtils';
+import { getEntityReferenceFromEntity } from './EntityReferenceUtils';
 
 export const getQueryFilterToIncludeDomain = (
   domainFqn: string,

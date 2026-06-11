@@ -23,7 +23,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { JoinedWith, Table } from '../../../generated/entity/data/table';
 import { getCountBadge } from '../../../utils/EntityDisplayUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import { getJoinsFromTableJoins } from '../../../utils/TableUtils';
+import { getJoinsFromTableJoins } from '../../../utils/TablePureUtils';
 import './frequently-joined-tables.style.less';
 
 export type Joined = JoinedWith & {

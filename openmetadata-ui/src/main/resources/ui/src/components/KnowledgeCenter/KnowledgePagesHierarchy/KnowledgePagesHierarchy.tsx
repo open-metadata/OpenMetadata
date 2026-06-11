@@ -72,7 +72,7 @@ import {
   patchKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import Fqn from '../../../utils/Fqn';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import {
