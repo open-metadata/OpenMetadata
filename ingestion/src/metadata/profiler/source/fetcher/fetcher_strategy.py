@@ -45,6 +45,7 @@ from metadata.utils.filters import (
     filter_by_container,
     filter_by_schema,
     filter_by_table,
+    filter_by_topic,
     validate_regex,
 )
 from metadata.utils.fqn import split
@@ -462,18 +463,24 @@ class MessagingFetcherStrategy(FetcherStrategy):
         super().__init__(config, metadata, global_profiler_config, status)
 
     def _get_topic_entities(self) -> Iterable[Topic]:
-        """Get all topic entities from the messaging service
-
-        Returns:
-            Iterable[Topic]: Topic entities
-        """
+        """Get topic entities for the service, applying topicFilterPattern and skipping schema-less topics."""
         service_name = self.config.source.serviceName
         topics = self.metadata.list_all_entities(
             entity=Topic,
             fields=["messageSchema", "tags"],
             params={"service": service_name} if service_name else None,
         )
-        return cast(Iterable[Topic], topics)  # noqa: TC006
+        source_config = self.config.source.sourceConfig.config
+        topic_filter = getattr(source_config, "topicFilterPattern", None)
+        use_fqn = getattr(source_config, "useFqnForFiltering", False)
+        for topic in cast(Iterable[Topic], topics):  # noqa: TC006
+            if not (topic.messageSchema and topic.messageSchema.schemaFields):
+                continue
+            name = topic.fullyQualifiedName.root if use_fqn and topic.fullyQualifiedName else topic.name.root
+            if topic_filter and filter_by_topic(topic_filter, name):
+                self.status.filter(name, "Topic pattern not allowed")
+                continue
+            yield topic
 
     def fetch(self) -> Iterator[Either[ProfilerSourceAndEntity]]:
         """Fetch topic entities from messaging service"""
