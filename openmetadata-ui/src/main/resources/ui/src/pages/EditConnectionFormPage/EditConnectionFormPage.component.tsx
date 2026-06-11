@@ -11,12 +11,17 @@
  *  limitations under the License.
  */
 
-import { Breadcrumbs, Typography } from '@openmetadata/ui-core-components';
+import {
+  Breadcrumbs,
+  Button,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { LoadingState, ServicesUpdateRequest, ServiceTypes } from 'Models';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -25,7 +30,9 @@ import ResizablePanels from '../../components/common/ResizablePanels/ResizablePa
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
 import ServiceFlowStepper from '../../components/Settings/Services/AddService/ServiceFlowStepper/ServiceFlowStepper';
 import ConnectionConfigForm from '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm';
+import { ConnectionConfigFormHandle } from '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm.interface';
 import FiltersConfigForm from '../../components/Settings/Services/ServiceConfig/FiltersConfigForm';
+import { FiltersConfigFormHandle } from '../../components/Settings/Services/ServiceConfig/FiltersConfigForm.interface';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
   OPEN_METADATA,
@@ -69,6 +76,8 @@ function EditConnectionFormPage() {
   const [saveServiceState, setSaveServiceState] =
     useState<LoadingState>('initial');
   const [activeServiceStep, setActiveServiceStep] = useState(1);
+  const connectionFormRef = useRef<ConnectionConfigFormHandle>(null);
+  const filtersFormRef = useRef<FiltersConfigFormHandle>(null);
   const [isLoading, setIsLoading] = useState(!isOpenMetadataService);
   const [isError, setIsError] = useState(isOpenMetadataService);
   const [serviceDetails, setServiceDetails] = useState<ServicesType>();
@@ -226,66 +235,108 @@ function EditConnectionFormPage() {
     );
   }
 
+  const isSavingService = saveServiceState === 'waiting';
+
+  const handleFooterBack = () => {
+    if (activeServiceStep === 1) {
+      onCancel();
+    } else {
+      handleFiltersInputBackClick();
+    }
+  };
+
+  const handleFooterNext = () => {
+    if (activeServiceStep === 1) {
+      connectionFormRef.current?.submit();
+    } else {
+      filtersFormRef.current?.submit();
+    }
+  };
+
+  const footerNextText =
+    activeServiceStep === 2 ? t('label.save') : t('label.next');
+
+  // flex-col layout bounds the scroll area so the footer stays anchored at the card bottom,
+  // keeping the card's rounded corners visible at all times during scroll.
   const firstPanelChildren = (
-    <>
-      <Breadcrumbs items={slashedBreadcrumb} />
-      <div className="tw:mt-[22px]">
-        <div className="tw:flex tw:items-center tw:gap-3 tw:pb-0">
-          {getServiceLogo(
-            serviceDetails?.serviceType ?? '',
-            'tw:size-10 tw:max-w-10 tw:max-h-10 tw:object-contain'
-          )}
-          <Typography
-            className="tw:m-0"
-            data-testid="header"
-            size="text-xl"
-            weight="semibold">
-            {t('message.edit-service-entity-connection', {
-              entity: serviceFQN,
-            })}
-          </Typography>
-        </div>
+    <Card className="add-service-page-card max-width-lg m-x-auto tw:p-0 tw:h-full tw:flex tw:flex-col tw:overflow-hidden">
+      <div className="tw:flex-1 tw:overflow-y-auto tw:p-5">
+        <Breadcrumbs items={slashedBreadcrumb} />
+        <div className="tw:mt-[22px]">
+          <div className="tw:flex tw:items-center tw:gap-3 tw:pb-0">
+            {getServiceLogo(
+              serviceDetails?.serviceType ?? '',
+              'tw:size-10 tw:max-w-10 tw:max-h-10 tw:object-contain'
+            )}
+            <Typography
+              className="tw:m-0"
+              data-testid="header"
+              size="text-xl"
+              weight="semibold">
+              {t('message.edit-service-entity-connection', {
+                entity: serviceFQN,
+              })}
+            </Typography>
+          </div>
 
-        <ServiceFlowStepper
-          activeStep={activeServiceStep}
-          className="tw:mt-6"
-          steps={translatedSteps}
-        />
+          <ServiceFlowStepper
+            activeStep={activeServiceStep}
+            className="tw:mt-6"
+            steps={translatedSteps}
+          />
 
-        <div className="tw:mt-[30px]">
-          {activeServiceStep === 1 && (
-            <ConnectionConfigForm
-              cancelText={t('label.back')}
-              data={serviceDetails}
-              okText={t('label.next')}
-              serviceCategory={serviceCategory as ServiceCategory}
-              serviceType={serviceDetails?.serviceType ?? ''}
-              status={saveServiceState}
-              onCancel={onCancel}
-              onFocus={handleFieldFocus}
-              onSave={async (e) => {
-                e.formData && handleConfigSave(e.formData);
-              }}
-            />
-          )}
+          <div className="tw:mt-[30px]">
+            {activeServiceStep === 1 && (
+              <ConnectionConfigForm
+                hideFooter
+                data={serviceDetails}
+                ref={connectionFormRef}
+                serviceCategory={serviceCategory as ServiceCategory}
+                serviceType={serviceDetails?.serviceType ?? ''}
+                status={saveServiceState}
+                onFocus={handleFieldFocus}
+                onSave={async (e) => {
+                  e.formData && handleConfigSave(e.formData);
+                }}
+              />
+            )}
 
-          {activeServiceStep === 2 && (
-            <FiltersConfigForm
-              cancelText={t('label.back')}
-              data={serviceDetails}
-              serviceCategory={serviceCategory as ServiceCategory}
-              serviceType={serviceDetails?.serviceType ?? ''}
-              status={saveServiceState}
-              onCancel={handleFiltersInputBackClick}
-              onFocus={handleFieldFocus}
-              onSave={async (e) => {
-                e.formData && handleFiltersSave(e.formData);
-              }}
-            />
-          )}
+            {activeServiceStep === 2 && (
+              <FiltersConfigForm
+                hideFooter
+                data={serviceDetails}
+                ref={filtersFormRef}
+                serviceCategory={serviceCategory as ServiceCategory}
+                serviceType={serviceDetails?.serviceType ?? ''}
+                status={saveServiceState}
+                onFocus={handleFieldFocus}
+                onSave={async (e) => {
+                  e.formData && handleFiltersSave(e.formData);
+                }}
+              />
+            )}
+          </div>
         </div>
       </div>
-    </>
+      <div className="tw:flex tw:flex-shrink-0 tw:items-center tw:justify-end tw:gap-5 tw:border-t tw:border-secondary tw:bg-primary tw:px-5 tw:py-4">
+        <Button
+          color="secondary"
+          isDisabled={isSavingService}
+          size="sm"
+          type="button"
+          onPress={handleFooterBack}>
+          {t('label.back')}
+        </Button>
+        <Button
+          color="primary"
+          isDisabled={isSavingService}
+          size="sm"
+          type="button"
+          onPress={handleFooterNext}>
+          {footerNextText}
+        </Button>
+      </div>
+    </Card>
   );
 
   return (
@@ -296,8 +347,8 @@ function EditConnectionFormPage() {
         minWidth: 700,
         flex: 0.7,
         className: 'content-resizable-panel-container',
-        cardClassName: 'add-service-page-card max-width-lg m-x-auto',
-        allowScroll: true,
+        // Renders our own Card above; built-in AntD card would cause a double card and break the h-full layout.
+        wrapInCard: false,
       }}
       hideSecondPanel={!serviceDetails?.serviceType}
       pageTitle={t('label.edit-entity', { entity: t('label.connection') })}

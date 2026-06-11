@@ -14,7 +14,7 @@
 import { Typography } from '@openmetadata/ui-core-components';
 import { Col, Form, Input } from 'antd';
 import { isEmpty, isUndefined, omit, trim } from 'lodash';
-import { useMemo, useState } from 'react';
+import { forwardRef, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { STEPS_FOR_ADD_INGESTION } from '../../../../constants/Ingestions.constant';
 import {
@@ -49,21 +49,24 @@ import { generateUUID } from '../../../../utils/StringUtils';
 import SuccessScreen from '../../../common/SuccessScreen/SuccessScreen';
 import DeployIngestionLoaderModal from '../../../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
 import ServiceFlowStepper from '../AddService/ServiceFlowStepper/ServiceFlowStepper';
+import { IngestionWorkflowFormHandle } from '../../../../interface/service.interface';
 import IngestionWorkflowForm from '../Ingestion/IngestionWorkflowForm/IngestionWorkflowForm';
 import IngestionNameCard from './IngestionNameCard/IngestionNameCard';
-import { AddIngestionProps } from './IngestionWorkflow.interface';
+import { AddIngestionHandle, AddIngestionProps } from './IngestionWorkflow.interface';
 import ScheduleInterval from './Steps/ScheduleInterval';
 import {
   IngestionExtraConfig,
+  ScheduleIntervalHandle,
   WorkflowExtraConfig,
 } from './Steps/ScheduleInterval.interface';
 
-const AddIngestion = ({
+const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(function AddIngestion({
   activeIngestionStep,
   data,
   handleCancelClick,
   handleViewServiceClick,
   heading,
+  hideFooter = false,
   ingestionAction = '',
   ingestionProgress = 0,
   isIngestionCreated = false,
@@ -80,7 +83,9 @@ const AddIngestion = ({
   showSuccessScreen = true,
   status,
   onFocus,
-}: AddIngestionProps) => {
+}: Readonly<AddIngestionProps>, ref) {
+  const workflowFormRef = useRef<IngestionWorkflowFormHandle>(null);
+  const scheduleIntervalRef = useRef<ScheduleIntervalHandle>(null);
   const { t } = useTranslation();
   const { ingestionFQN } = useFqn();
   const { currentUser } = useApplicationStore();
@@ -318,6 +323,21 @@ const AddIngestion = ({
     }
   };
 
+  // Exposes submit to the parent card footer, dispatching to the active step's form when hideFooter is true.
+  useImperativeHandle(
+    ref,
+    () => ({
+      submit: () => {
+        if (activeIngestionStep === 1) {
+          workflowFormRef.current?.submit();
+        } else if (activeIngestionStep === 2) {
+          scheduleIntervalRef.current?.submit();
+        }
+      },
+    }),
+    [activeIngestionStep]
+  );
+
   const raiseOnErrorFormField = useMemo(
     () => getRaiseOnErrorFormField(onFocus),
     [onFocus]
@@ -356,9 +376,11 @@ const AddIngestion = ({
               onFocus={onFocus}
             />
             <IngestionWorkflowForm
+              hideFooter={hideFooter}
               okText={t('label.next')}
               operationType={status}
               pipeLineType={pipelineType}
+              ref={workflowFormRef}
               serviceCategory={serviceCategory}
               serviceData={serviceData}
               workflowData={workflowData}
@@ -385,7 +407,9 @@ const AddIngestion = ({
               raiseOnError: data?.raiseOnError ?? true,
             }}
             isEditMode={isEditMode}
+            ref={scheduleIntervalRef}
             schedularOptions={schedularOptionsTranslated}
+            showActionButtons={!hideFooter}
             status={saveState}
             onBack={() => handlePrev(1)}
             onDeploy={handleScheduleIntervalDeployClick}>
@@ -434,6 +458,8 @@ const AddIngestion = ({
       </div>
     </div>
   );
-};
+});
+
+AddIngestion.displayName = 'AddIngestion';
 
 export default AddIngestion;

@@ -16,7 +16,13 @@ import { customizeValidator } from '@rjsf/validator-ajv8';
 import { Button, Space } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, omit, omitBy } from 'lodash';
-import { FC, useMemo, useState } from 'react';
+import {
+  forwardRef,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA,
@@ -29,6 +35,7 @@ import {
 } from '../../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
   IngestionWorkflowData,
+  IngestionWorkflowFormHandle,
   IngestionWorkflowFormProps,
 } from '../../../../../interface/service.interface';
 import ProfilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
@@ -53,20 +60,28 @@ import { IngestionObjectFieldTemplate } from '../../AddIngestion/IngestionObject
 import { FilterPatternField } from '../../ServiceConfig/FilterPatternField';
 import ProfileSampleConfigField from './ProfileSampleConfigField';
 
-const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
-  pipeLineType,
-  className,
-  okText,
-  cancelText,
-  serviceCategory,
-  workflowData,
-  operationType,
-  onCancel,
-  onFocus,
-  onSubmit,
-  onChange,
-  serviceData,
-}) => {
+const IngestionWorkflowForm = forwardRef<
+  IngestionWorkflowFormHandle,
+  IngestionWorkflowFormProps
+>(function IngestionWorkflowForm(
+  {
+    pipeLineType,
+    className,
+    okText,
+    cancelText,
+    hideFooter = false,
+    serviceCategory,
+    workflowData,
+    operationType,
+    onCancel,
+    onFocus,
+    onSubmit,
+    onChange,
+    serviceData,
+  }: Readonly<IngestionWorkflowFormProps>,
+  ref
+) {
+  const formRef = useRef<Form<IngestionWorkflowData>>(null);
   const [internalData, setInternalData] =
     useState<IngestionWorkflowData>(workflowData);
   const { t } = useTranslation();
@@ -174,6 +189,13 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
     return fields;
   }, [pipeLineType]);
 
+  // Exposes submit to the parent card footer, which triggers the form when hideFooter is true.
+  useImperativeHandle(
+    ref,
+    () => ({ submit: () => formRef.current?.submit() }),
+    []
+  );
+
   const handleSubmit = (e: IChangeEvent<IngestionWorkflowData>) => {
     if (e.formData) {
       let formData = { ...e.formData };
@@ -213,6 +235,7 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
       formContext={{ handleFocus: onFocus }}
       formData={internalData}
       idSeparator="/"
+      ref={formRef}
       schema={schema}
       showErrorList={false}
       templates={{
@@ -241,19 +264,25 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
       onChange={handleOnChange}
       onFocus={onFocus}
       onSubmit={handleSubmit}>
-      <div className="d-flex w-full justify-end">
-        <Space>
-          <Button type="link" onClick={onCancel}>
-            {cancelText ?? t('label.cancel')}
-          </Button>
+      {/* When hideFooter is true, the parent card renders the footer to span full width
+       * and keep the card's bottom border-radius visible during scroll. */}
+      {!hideFooter && (
+        <div className="d-flex w-full justify-end">
+          <Space>
+            <Button type="link" onClick={onCancel}>
+              {cancelText ?? t('label.cancel')}
+            </Button>
 
-          <Button data-testid="submit-btn" htmlType="submit" type="primary">
-            {okText ?? t('label.save')}
-          </Button>
-        </Space>
-      </div>
+            <Button data-testid="submit-btn" htmlType="submit" type="primary">
+              {okText ?? t('label.save')}
+            </Button>
+          </Space>
+        </div>
+      )}
     </Form>
   );
-};
+});
+
+IngestionWorkflowForm.displayName = 'IngestionWorkflowForm';
 
 export default IngestionWorkflowForm;
