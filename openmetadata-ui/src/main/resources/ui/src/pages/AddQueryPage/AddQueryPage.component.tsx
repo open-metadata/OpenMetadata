@@ -19,10 +19,10 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
-import getEntityLabel from '../../components/Entity/EntityLabel/EntityLabel.component';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import getEntityLabel from '../../components/Entity/EntityLabel/EntityLabel.component';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import {
   INITIAL_PAGING_VALUE,
