@@ -219,6 +219,8 @@ export interface ServiceConnectionClass {
  *
  * Kinesis Connection Config
  *
+ * NATS Connection Config
+ *
  * Google Cloud Pub/Sub Connection Config
  *
  * Custom Messaging Service Connection to build a source that is not supported by
@@ -370,6 +372,8 @@ export interface ConfigObject {
      * token to connect to Qlik Cloud.
      *
      * Hex API token for authentication. Can be personal or workspace token.
+     *
+     * Token for NATS token-based authentication.
      *
      * To Connect to Dagster Cloud
      *
@@ -706,6 +710,8 @@ export interface ConfigObject {
      *
      * Password to connect to IOMETE.
      *
+     * Password for NATS basic authentication.
+     *
      * password to connect to the Amundsen Neo4j Connection.
      *
      * password to connect  to the Atlas.
@@ -837,6 +843,8 @@ export interface ConfigObject {
      * Username to connect to IOMETE.
      *
      * Username to connect to QuestDB.
+     *
+     * Username for NATS basic authentication.
      *
      * username to connect to the Amundsen Neo4j Connection.
      *
@@ -1806,8 +1814,36 @@ export interface ConfigObject {
     securityProtocol?: KafkaSecurityProtocol;
     /**
      * Regex to only fetch topics that matches the pattern.
+     *
+     * Regex to only fetch subjects/streams that match the pattern.
      */
     topicFilterPattern?: FilterPattern;
+    /**
+     * Additional NATS client configuration options. See https://nats-io.github.io/nats.py/
+     */
+    additionalConfig?: { [key: string]: any };
+    /**
+     * Enable JetStream to ingest Streams and Consumers metadata. If false, only core NATS
+     * subjects are ingested.
+     */
+    jetStreamEnabled?: boolean;
+    /**
+     * NATS server URLs as comma-separated values. Ex: nats://host1:4222,nats://host2:4222
+     */
+    natsServers?: string;
+    /**
+     * NKey seed for NATS NKey-based authentication.
+     */
+    nkeySeed?: string;
+    /**
+     * Name of the JetStream KV bucket where schemas are stored. Keys must match stream names.
+     * Values should be Avro JSON, Protobuf (.proto) or JSON Schema text.
+     */
+    schemaKvBucket?: string;
+    /**
+     * TLS/SSL configuration for secure NATS connections.
+     */
+    tlsConfig?: ConsumerConfigSSLClass;
     /**
      * GCP credentials configuration for authenticating with Pub/Sub.
      */
@@ -2375,6 +2411,8 @@ export interface UsernamePasswordAuthentication {
  * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
  *
  * Regex to only fetch topics that matches the pattern.
+ *
+ * Regex to only fetch subjects/streams that match the pattern.
  *
  * Regex to only include/exclude domains that match the pattern.
  *
@@ -3238,6 +3276,8 @@ export enum KafkaSecurityProtocol {
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
+ * TLS/SSL configuration for secure NATS connections.
+ *
  * SSL Configuration for OpenMetadata Server
  *
  * OpenMetadata Client configured to validate SSL certificates.
@@ -3989,6 +4029,8 @@ export enum ConnectionScheme {
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
+ *
+ * TLS/SSL configuration for secure NATS connections.
  *
  * SSL Configuration for OpenMetadata Server
  */
@@ -4838,6 +4880,8 @@ export enum SpaceType {
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
+ * TLS/SSL configuration for secure NATS connections.
+ *
  * SSL Configuration for OpenMetadata Server
  *
  * OpenMetadata Client configured to validate SSL certificates.
@@ -5103,6 +5147,7 @@ export enum ConfigType {
     Mssql = "Mssql",
     Mulesoft = "Mulesoft",
     Mysql = "Mysql",
+    Nats = "Nats",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",
     OpenMetadata = "OpenMetadata",
