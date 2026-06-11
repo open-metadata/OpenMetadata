@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { cloneDeep } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,9 +26,9 @@ import { updateTierTag } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
-import ExpandableCard from '../ExpandableCard/ExpandableCard';
-import { EditIconButton } from '../IconButtons/EditIconButton';
 import TierCard from '../TierCard/TierCard';
+import { WidgetEditButton } from '../WidgetActionButton/WidgetActionButton';
+import WidgetCard from '../WidgetCard/WidgetCard';
 import './TierWidget.less';
 const TierWidget = () => {
   const {
@@ -69,26 +68,13 @@ const TierWidget = () => {
     [permissions, isVersionView]
   );
 
-  const header = (
-    <div className={classNames('d-flex items-center gap-2')}>
-      <Typography.Text
-        className="text-sm font-medium"
-        data-testid="tier-heading-name">
-        {t('label.tier')}
-      </Typography.Text>
-      {canEdit && (
-        <EditIconButton
-          newLook
-          data-testid="edit-tier"
-          size="small"
-          title={t('label.edit-entity', {
-            entity: t('label.tier'),
-          })}
-          onClick={() => setIsEditing(true)}
-        />
-      )}
-    </div>
-  );
+  const headerExtra = canEdit ? (
+    <WidgetEditButton
+      data-testid="edit-tier"
+      title={t('label.edit-entity', { entity: t('label.tier') })}
+      onClick={() => setIsEditing(true)}
+    />
+  ) : null;
 
   const tierDisplay = tier ? (
     <TagsV1
@@ -98,11 +84,11 @@ const TierWidget = () => {
       tagProps={{ 'data-testid': 'Tier' }}
     />
   ) : (
-    <span className="no-data-placeholder" data-testid="Tier">
+    <Typography className="tw:text-gray-500" data-testid="Tier" size="text-xs">
       {t('label.no-entity-assigned', {
         entity: t('label.tier'),
       })}
-    </span>
+    </Typography>
   );
 
   const content = isEditing ? (
@@ -127,9 +113,12 @@ const TierWidget = () => {
   );
 
   return (
-    <ExpandableCard cardProps={{ title: header }} dataTestId="tier">
+    <WidgetCard
+      dataTestId="tier"
+      headerExtra={headerExtra}
+      title={t('label.tier')}>
       {content}
-    </ExpandableCard>
+    </WidgetCard>
   );
 };
 

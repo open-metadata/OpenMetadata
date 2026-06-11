@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Space, Tag, Typography } from 'antd';
-import classNames from 'classnames';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Typography as AntDTypography, Col, Row, Space, Tag } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,11 +24,11 @@ import { EntityReference } from '../../../generated/entity/type';
 import { fetchDataProductsElasticSearch } from '../../../rest/dataProductAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDataProductDetailsPath } from '../../../utils/RouterUtils';
-import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import {
-  EditIconButton,
-  PlusIconButton,
-} from '../../common/IconButtons/EditIconButton';
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../../common/WidgetActionButton/WidgetActionButton';
+import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import DataProductsSelectList from '../DataProductsSelectList/DataProductsSelectList';
 interface DataProductsContainerProps {
@@ -128,9 +128,9 @@ const DataProductsContainer = ({
 
     if (isEmpty(dataProducts) && hasPermission && isEmpty(activeDomains)) {
       return (
-        <Typography.Text className="text-sm text-grey-muted">
+        <Typography className="tw:text-gray-500" size="text-xs">
           {t('message.select-domain-to-add-data-product')}
-        </Typography.Text>
+        </Typography>
       );
     }
 
@@ -147,11 +147,11 @@ const DataProductsContainer = ({
                 height={12}
                 width={12}
               />
-              <Typography.Paragraph
+              <AntDTypography.Paragraph
                 className="m-0 tags-label"
                 data-testid={`data-product-${product.fullyQualifiedName}`}>
                 {getEntityName(product)}
-              </Typography.Paragraph>
+              </AntDTypography.Paragraph>
             </div>
           </div>
         </Tag>
@@ -159,42 +159,32 @@ const DataProductsContainer = ({
     });
   }, [dataProducts, activeDomains]);
 
-  const header = useMemo(() => {
+  const headerExtra = useMemo(() => {
+    if (!showHeader) {
+      return null;
+    }
+
     return (
-      showHeader && (
-        <Space align="center" className={classNames('w-full')} size="middle">
-          <Typography.Text className={classNames('text-sm font-medium')}>
-            {t('label.data-product-plural')}
-          </Typography.Text>
-          {showAddTagButton && (
-            <PlusIconButton
-              data-testid="add-data-product"
-              size="small"
-              title={t('label.add-entity', {
-                entity: t('label.data-product-plural'),
-              })}
-              onClick={handleAddClick}
-            />
-          )}
-          {hasPermission && !isEmpty(activeDomains) && (
-            <Row gutter={12}>
-              {!isEmpty(dataProducts) && (
-                <Col>
-                  <EditIconButton
-                    newLook
-                    data-testid="edit-button"
-                    size="small"
-                    title={t('label.edit-entity', {
-                      entity: t('label.data-product-plural'),
-                    })}
-                    onClick={handleAddClick}
-                  />
-                </Col>
-              )}
-            </Row>
-          )}
-        </Space>
-      )
+      <Space align="center" size="middle">
+        {showAddTagButton && (
+          <WidgetPlusButton
+            data-testid="add-data-product"
+            title={t('label.add-entity', {
+              entity: t('label.data-product-plural'),
+            })}
+            onClick={handleAddClick}
+          />
+        )}
+        {hasPermission && !isEmpty(activeDomains) && !isEmpty(dataProducts) && (
+          <WidgetEditButton
+            data-testid="edit-button"
+            title={t('label.edit-entity', {
+              entity: t('label.data-product-plural'),
+            })}
+            onClick={handleAddClick}
+          />
+        )}
+      </Space>
     );
   }, [showHeader, dataProducts, hasPermission, showAddTagButton]);
 
@@ -236,26 +226,28 @@ const DataProductsContainer = ({
     autoCompleteFormSelectContainer,
   ]);
 
-  const cardProps = useMemo(() => {
-    return {
-      title: header,
-    };
-  }, [header, showAddTagButton, isEditMode]);
-
   if (newLook) {
     return (
-      <ExpandableCard
-        cardProps={cardProps}
+      <WidgetCard
         dataTestId="data-products-container"
-        isExpandDisabled={isEmpty(dataProducts)}>
+        headerExtra={headerExtra}
+        isExpandDisabled={isEmpty(dataProducts)}
+        title={t('label.data-product-plural')}>
         {renderer}
-      </ExpandableCard>
+      </WidgetCard>
     );
   }
 
   return (
     <div className="w-full" data-testid="data-products-container">
-      {header}
+      {showHeader && (
+        <Space align="center" size="middle">
+          <AntDTypography.Text className="text-sm font-medium">
+            {t('label.data-product-plural')}
+          </AntDTypography.Text>
+          {headerExtra}
+        </Space>
+      )}
       {renderer}
     </div>
   );
