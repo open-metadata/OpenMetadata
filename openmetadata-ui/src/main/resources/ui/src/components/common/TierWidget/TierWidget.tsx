@@ -22,7 +22,7 @@ import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
-import { getTierTags } from '../../../utils/TableUtils';
+import { getTierTags } from '../../../utils/TablePureUtils';
 import { updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';

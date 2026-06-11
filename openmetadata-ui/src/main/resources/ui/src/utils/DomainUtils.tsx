@@ -53,7 +53,7 @@ import {
   initializeDomainEntityRef,
   isDomainExist,
 } from './DomainFilterUtils';
-import { getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
 import { renderIcon } from './IconUtils';
 import {

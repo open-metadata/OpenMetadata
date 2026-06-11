@@ -23,7 +23,8 @@ import {
 } from '../../generated/type/changeEvent';
 import { getTextFromHtmlString } from '../../utils/BlockEditorUtils';
 import { getRelativeTime } from '../../utils/date-time/DateTimeUtils';
-import { getEntityLinkFromType, getEntityName } from '../../utils/EntityUtils';
+import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import Fqn from '../../utils/Fqn';
 import {
   getDomainPath,
