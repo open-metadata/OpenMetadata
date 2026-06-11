@@ -39,7 +39,7 @@ import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import mlModelDetailsClassBase from '../../../utils/MlModel/MlModelClassBase';
 import {
