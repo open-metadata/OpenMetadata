@@ -65,10 +65,8 @@ import { generateRandomPwd } from '../../../../rest/auth-API';
 import { getAllPersonas } from '../../../../rest/PersonaAPI';
 import { searchRoles } from '../../../../rest/rolesAPIV1';
 import { getJWTTokenExpiryOptions } from '../../../../utils/BotsUtils';
-import {
-  getEntityName,
-  getEntityReferenceListFromEntities,
-} from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getEntityReferenceListFromEntities } from '../../../../utils/EntityReferenceUtils';
 import { getField } from '../../../../utils/formUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';

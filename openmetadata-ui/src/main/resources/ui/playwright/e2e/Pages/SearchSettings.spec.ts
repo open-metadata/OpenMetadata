@@ -316,12 +316,32 @@ test.describe('Search Settings', () => {
       }) => {
         await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
         const tableCard = page.getByTestId(mockEntitySearchSettings.key);
+
+        // Register before navigation so the on-load preview request is captured.
+        const initialPreviewPromise = page.waitForResponse((r) =>
+          r.url().includes('/api/v1/search/preview')
+        );
+
         await tableCard.click();
 
         await expect(page).toHaveURL(
           new RegExp(mockEntitySearchSettings.url + '$')
         );
         await waitForAllLoadersToDisappear(page);
+
+        const initialPreviewResponse = await initialPreviewPromise;
+        expect(initialPreviewResponse.status()).toBe(200);
+
+        const initialNgramBoost =
+          initialPreviewResponse
+            .request()
+            .postDataJSON()
+            ?.searchSettings?.assetTypeConfigurations?.find(
+              (c: { assetType: string }) => c.assetType === 'table'
+            )
+            ?.searchFields?.find(
+              (f: { field: string }) => f.field === 'name.ngram'
+            )?.boost ?? 0;
 
         // Expand the name.ngram field configuration panel.
         const ngramPanel = page.getByTestId(
@@ -341,31 +361,29 @@ test.describe('Search Settings', () => {
         await saveResponse;
         await toastNotification(page, /Search Settings updated successfully/);
 
-        // Re-expand the panel after save — it may have collapsed during re-render.
-        await ngramPanel.click();
+        // Scope the predicate to the reverted boost value so a stale post-save
+        // preview response (boost=5) can never satisfy the promise.
+        const revertedPreviewPromise = page.waitForResponse((r) => {
+          if (!r.url().includes('/api/v1/search/preview')) {
+            return false;
+          }
+          const boost = r
+            .request()
+            .postDataJSON()
+            ?.searchSettings?.assetTypeConfigurations?.find(
+              (c: { assetType: string }) => c.assetType === 'table'
+            )
+            ?.searchFields?.find(
+              (f: { field: string }) => f.field === 'name.ngram'
+            )?.boost;
 
-        // Register the listener BEFORE moving the slider so the response is
-        // never missed regardless of how fast the preview fires.
-        const revertedPreviewPromise = page.waitForResponse((r) =>
-          r.url().includes('/api/v1/search/preview')
-        );
+          return boost === initialNgramBoost;
+        });
 
-        // Revert weight to 1 (the default from mockEntitySearchConfig).
-        await setSliderValue(page, 'field-weight-slider', 1);
+        await setSliderValue(page, 'field-weight-slider', initialNgramBoost);
 
         const revertedPreviewResponse = await revertedPreviewPromise;
         expect(revertedPreviewResponse.status()).toBe(200);
-
-        const revertedBody = revertedPreviewResponse.request().postDataJSON();
-        const revertedNgramBoost =
-          revertedBody?.searchSettings?.assetTypeConfigurations
-            ?.find((c: { assetType: string }) => c.assetType === 'table')
-            ?.searchFields?.find(
-              (f: { field: string }) => f.field === 'name.ngram'
-            )?.boost ?? 0;
-
-        // Preview must reflect the reverted value, not the saved value of 5.
-        expect(revertedNgramBoost).toBe(1);
       });
 
       test('Preview config updates when restore defaults returns empty search fields', async ({

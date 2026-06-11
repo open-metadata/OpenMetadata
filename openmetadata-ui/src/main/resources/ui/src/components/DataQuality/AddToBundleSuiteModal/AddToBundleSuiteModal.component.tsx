@@ -31,7 +31,7 @@ import {
   addTestCasesToLogicalTestSuiteBulk,
   getListTestSuitesBySearch,
 } from '../../../rest/testAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getPopupContainer } from '../../../utils/formUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';

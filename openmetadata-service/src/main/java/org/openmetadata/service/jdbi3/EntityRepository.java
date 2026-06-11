@@ -1481,7 +1481,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
       Operation operation,
       ChangeSource changeSource,
       boolean useOptimisticLocking) {
-    return new EntityUpdater(original, updated, operation, changeSource, useOptimisticLocking);
+    // Delegate to the entity-specific updater (overridden per repository) so the optimistic-locking
+    // (If-Match) PATCH path runs the same entitySpecificUpdate — column tag/description
+    // persistence,
+    // etc. — as the normal path. Constructing a base EntityUpdater here would silently drop every
+    // nested/entity-specific change under If-Match, since subclasses only override the 4-arg
+    // variant.
+    EntityUpdater updater = getUpdater(original, updated, operation, changeSource);
+    updater.setUseOptimisticLocking(useOptimisticLocking);
+    return updater;
   }
 
   public final T get(UriInfo uriInfo, UUID id, Fields fields) {
@@ -2536,14 +2544,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * The id is always unique, which helps to avoid pagination issues caused by duplicate names and have unique ordering.
    */
   public String getCursorValue(T entity) {
-    Map<String, String> cursorMap =
-        Map.of("name", entity.getName(), "id", String.valueOf(entity.getId()));
+    return getCursorValue(entity.getName(), String.valueOf(entity.getId()));
+  }
+
+  protected String getCursorValue(String name, String id) {
+    Map<String, String> cursorMap = Map.of("name", name, "id", id);
     return JsonUtils.pojoToJson(cursorMap);
   }
 
   public String getCursorAtOffset(ListFilter filter, int offset) {
-    List<String> jsons = dao.listAfter(filter, 1, offset);
-    if (jsons.isEmpty()) {
+    EntityDAO.CursorRow row = dao.getCursorAtOffset(filter, offset);
+    if (row == null) {
       LOG.debug(
           "getCursorAtOffset for {} at offset {} returned empty (filter condition={})",
           entityType,
@@ -2551,8 +2562,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           filter.getCondition(dao.getTableName()));
       return null;
     }
-    T entity = JsonUtils.readValue(jsons.get(0), entityClass);
-    return RestUtil.encodeCursor(getCursorValue(entity));
+    return RestUtil.encodeCursor(getCursorValue(row.name(), row.id()));
   }
 
   public final T getVersion(UUID id, String version) {
@@ -8184,7 +8194,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private boolean entityStored = false;
     @Getter protected ChangeDescription incrementalChangeDescription = null;
     private final ChangeSource changeSource;
-    private final boolean useOptimisticLocking;
+    @Setter private boolean useOptimisticLocking;
     @Setter private Set<String> patchedFields;
 
     // When set (bulk path with overrideMetadata=true), bot updates are allowed to overwrite
