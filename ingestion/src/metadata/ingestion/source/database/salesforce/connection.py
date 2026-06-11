@@ -40,10 +40,10 @@ class SalesforceConnection(BaseConnection[SalesforceConnectionConfig, Salesforce
         connection = self.service_connection
         return Salesforce(
             username=connection.username,
-            password=connection.password and connection.password.get_secret_value(),
-            security_token=connection.securityToken and connection.securityToken.get_secret_value(),
+            password=connection.password and connection.password.get_secret_value(),  # pyright: ignore[reportArgumentType]
+            security_token=connection.securityToken and connection.securityToken.get_secret_value(),  # pyright: ignore[reportArgumentType]
             consumer_key=connection.consumerKey,
-            consumer_secret=connection.consumerSecret and connection.consumerSecret.get_secret_value(),
+            consumer_secret=connection.consumerSecret and connection.consumerSecret.get_secret_value(),  # pyright: ignore[reportArgumentType]
             organizationId=connection.organizationId,
             domain=connection.salesforceDomain,
             version=connection.salesforceApiVersion,
