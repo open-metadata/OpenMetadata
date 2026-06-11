@@ -32,7 +32,12 @@ public final class ReindexHelpers {
   private static final int DEFAULT_TIMEOUT_MINUTES = 60;
   private static final String PROPAGATION_TIMEOUT_MIN_PROP = "jpw.search.propagationTimeoutMin";
   private static final int DEFAULT_PROPAGATION_MINUTES = 5;
-  private static final int BASELINE_RECREATE_ATTEMPTS = 3;
+  // A stopped run leaves the server in a post-stop window (reindex lock still held by the
+  // winding-down job) where fresh runs are ACCEPTED but fail within seconds with an empty
+  // failureContext. The window self-heals within minutes, so baseline-recreate retries must
+  // be spaced across a minutes-scale budget — back-to-back attempts all land inside it.
+  private static final Duration BASELINE_RECREATE_MAX_WAIT = Duration.ofMinutes(10);
+  private static final Duration BASELINE_RECREATE_BACKOFF = Duration.ofSeconds(30);
   private static final Duration POLL_INTERVAL = Duration.ofSeconds(2);
 
   private ReindexHelpers() {}
@@ -189,30 +194,52 @@ public final class ReindexHelpers {
    * indices are recreated and read aliases are re-promoted — the only reliable way to restore a
    * baseline after a test has dropped indices or left an alias unswapped (e.g. a stopped recreate
    * run). Used by {@code SearchClusterResetExtension}.
+   *
+   * <p>Failed attempts retry with {@link #BASELINE_RECREATE_BACKOFF} spacing for up to {@link
+   * #BASELINE_RECREATE_MAX_WAIT}: after a stop, fresh runs fast-fail until the stopped job's
+   * wind-down releases the server-side reindex lock, so only spaced retries can outlast that
+   * window. The budget only bounds the failure — the first successful run returns immediately.
    */
   public static AppRunRecord recreateAllAndWait(final ServerHandle server, final Duration timeout) {
+    final long deadlineMillis = System.currentTimeMillis() + BASELINE_RECREATE_MAX_WAIT.toMillis();
     AppRunRecord run = null;
-    for (int attempt = 1; attempt <= BASELINE_RECREATE_ATTEMPTS && !isSuccess(run); attempt++) {
+    for (int attempt = 1; shouldRetryBaselineRecreate(run, attempt, deadlineMillis); attempt++) {
+      if (attempt > 1) {
+        backOff(BASELINE_RECREATE_BACKOFF);
+      }
       final long triggeredAtMillis = System.currentTimeMillis();
-      // Trigger via the idle-aware path: the SearchIndexApp single-run lock can linger briefly
-      // after
-      // a previous run flips to terminal, so a one-shot trigger races it and gets "Job is already
-      // running" (notably at class transitions in the serial search-it suite). This waits for the
-      // prior run to finish and retries the trigger until accepted, then blocks for the fresh run.
       triggerSearchIndexWithConfigWhenIdle(server, Map.of("recreateIndex", true), reindexTimeout());
       run = waitForRunAfter(server, SEARCH_INDEX_APP, triggeredAtMillis, timeout);
-      if (!isSuccess(run)) {
-        LOG.warn(
-            "Baseline recreate attempt {}/{} ended in status '{}'{} — a prior test (e.g. a stopped"
-                + " reindex or a 504 on a large cleanup) can leave indices half-dropped; retrying to"
-                + " restore a clean baseline.",
-            attempt,
-            BASELINE_RECREATE_ATTEMPTS,
-            statusOf(run),
-            failureSummary(run));
-      }
+      logBaselineRecreateAttempt(run, attempt);
     }
     return run;
+  }
+
+  private static boolean shouldRetryBaselineRecreate(
+      final AppRunRecord run, final int attempt, final long deadlineMillis) {
+    return !isSuccess(run) && (attempt == 1 || System.currentTimeMillis() < deadlineMillis);
+  }
+
+  private static void logBaselineRecreateAttempt(final AppRunRecord run, final int attempt) {
+    if (!isSuccess(run)) {
+      LOG.warn(
+          "Baseline recreate attempt {} ended in status '{}'{} — a stopped reindex leaves a"
+              + " minutes-long post-stop window where fresh runs are accepted but fail within"
+              + " seconds with an empty failureContext; backing off {} and retrying for up to {}.",
+          attempt,
+          statusOf(run),
+          failureSummary(run),
+          BASELINE_RECREATE_BACKOFF,
+          BASELINE_RECREATE_MAX_WAIT);
+    }
+  }
+
+  private static void backOff(final Duration duration) {
+    try {
+      Thread.sleep(duration.toMillis());
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
   }
 
   /** Triggers a per-entity reindex via {@code POST /v1/search/reindex?entityType=...}. */
@@ -258,11 +285,13 @@ public final class ReindexHelpers {
             HttpMethod.GET, "/v1/apps/name/" + appName + "/runs/latest", null, AppRunRecord.class);
   }
 
-  private static boolean isSuccess(final AppRunRecord run) {
+  /** Whether the run ended in a status the suite treats as success. */
+  public static boolean isSuccess(final AppRunRecord run) {
     return run != null && run.getStatus() != null && SUCCESS_STATUSES.contains(statusOf(run));
   }
 
-  private static String statusOf(final AppRunRecord run) {
+  /** The run's status value, or {@code "none"} when the run or its status is absent. */
+  public static String statusOf(final AppRunRecord run) {
     return (run == null || run.getStatus() == null) ? "none" : run.getStatus().value();
   }
 
