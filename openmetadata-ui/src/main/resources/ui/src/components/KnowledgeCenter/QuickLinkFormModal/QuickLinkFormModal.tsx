@@ -28,7 +28,6 @@ import { cloneDeep, debounce, isEqual, isNil, isUndefined } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import { KNOWLEDGE_CENTER_CLASSIFICATION, PAGE_SIZE } from '../../../constants/constants';
 import { getKnowledgePageFields } from '../../../constants/KnowledgeCenter.constant';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -55,6 +54,7 @@ import { searchQuery } from '../../../rest/searchAPI';
 import {
   getEntityName,
 } from '../../../utils/EntityNameUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
 import { isValidUrl } from '../../../utils/SSOUtils';
 import { escapeESReservedCharacters } from '../../../utils/StringUtils';
@@ -269,10 +269,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
         query: escaped ? `*${escaped}*` : '*',
         pageNumber: 1,
         pageSize: PAGE_SIZE,
-        searchIndex: SearchIndex.ALL,
-        queryFilter: {
-          query: { bool: { must_not: [{ match: { isBot: true } }] } },
-        },
+        searchIndex: SearchIndex.DATA_ASSET,
       });
       const options = response.hits.hits.map(({ _source }) => {
         const ref = getEntityReferenceFromEntity(
