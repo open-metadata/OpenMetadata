@@ -12,47 +12,114 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.openmetadata.schema.entity.data.APIEndpoint;
+import org.openmetadata.schema.entity.data.Container;
+import org.openmetadata.schema.entity.data.DashboardDataModel;
+import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Pipeline;
+import org.openmetadata.schema.entity.data.SearchIndex;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.data.Worksheet;
+import org.openmetadata.schema.type.APISchema;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ContainerDataModel;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Field;
+import org.openmetadata.schema.type.MessageSchema;
+import org.openmetadata.schema.type.MlFeature;
+import org.openmetadata.schema.type.MlFeatureSource;
+import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityDAO;
 
 /**
- * Tests the one-time pipeline task-FQN repair migration. The DB is mocked at the DAO boundary; the
- * real repair logic, JSON (de)serialization, and per-row resilience are exercised. Because this runs
+ * Tests the one-time child-FQN repair migration. The DB is mocked at the DAO boundary; the real
+ * repair logic, JSON (de)serialization, and per-row resilience are exercised. Because this runs
  * during an upgrade, the key property is that a single bad row never aborts the migration.
  */
 class MigrationUtilTest {
 
-  // Legacy form: a task named a"b was stored with a backslash-escaped, unparseable FQN segment.
-  private static final String CORRUPT_TASK_NAME = "a\"b";
+  // Legacy form: a child named a"b was stored with a backslash-escaped, unparseable FQN segment.
+  private static final String CORRUPT_NAME = "a\"b";
   private static final String CORRUPT_TASK_FQN = "svc.pipeA.a\\\"b";
   private static final String REPAIRED_TASK_FQN = "svc.pipeA.\"a\"\"b\"";
 
-  // Mirrors MigrationUtil.PAGE_SIZE (private); the repair loop pages the table in chunks of this.
+  // Mirrors MigrationUtil.PAGE_SIZE (private); the repair loop pages each table in chunks of this.
   private static final int PAGE_SIZE = 1000;
 
   private CollectionDAO collectionDAO;
+  private CollectionDAO.TableDAO tableDAO;
+  private CollectionDAO.DataModelDAO dashboardDataModelDAO;
+  private CollectionDAO.ContainerDAO containerDAO;
+  private CollectionDAO.WorksheetDAO worksheetDAO;
+  private CollectionDAO.TopicDAO topicDAO;
+  private CollectionDAO.SearchIndexDAO searchIndexDAO;
+  private CollectionDAO.APIEndpointDAO apiEndpointDAO;
+  private CollectionDAO.MlModelDAO mlModelDAO;
   private CollectionDAO.PipelineDAO pipelineDAO;
 
   @BeforeEach
   void setUp() {
     collectionDAO = mock(CollectionDAO.class);
+    tableDAO = mock(CollectionDAO.TableDAO.class);
+    dashboardDataModelDAO = mock(CollectionDAO.DataModelDAO.class);
+    containerDAO = mock(CollectionDAO.ContainerDAO.class);
+    worksheetDAO = mock(CollectionDAO.WorksheetDAO.class);
+    topicDAO = mock(CollectionDAO.TopicDAO.class);
+    searchIndexDAO = mock(CollectionDAO.SearchIndexDAO.class);
+    apiEndpointDAO = mock(CollectionDAO.APIEndpointDAO.class);
+    mlModelDAO = mock(CollectionDAO.MlModelDAO.class);
     pipelineDAO = mock(CollectionDAO.PipelineDAO.class);
+    when(collectionDAO.tableDAO()).thenReturn(tableDAO);
+    when(collectionDAO.dashboardDataModelDAO()).thenReturn(dashboardDataModelDAO);
+    when(collectionDAO.containerDAO()).thenReturn(containerDAO);
+    when(collectionDAO.worksheetDAO()).thenReturn(worksheetDAO);
+    when(collectionDAO.topicDAO()).thenReturn(topicDAO);
+    when(collectionDAO.searchIndexDAO()).thenReturn(searchIndexDAO);
+    when(collectionDAO.apiEndpointDAO()).thenReturn(apiEndpointDAO);
+    when(collectionDAO.mlModelDAO()).thenReturn(mlModelDAO);
     when(collectionDAO.pipelineDAO()).thenReturn(pipelineDAO);
   }
 
   @Test
+  void coversEveryEntityTypeWithDerivedChildFqns() {
+    Set<String> repairedTypes =
+        MigrationUtil.repairChildFqns(collectionDAO).stream()
+            .map(MigrationUtil.RepairSummary::entityType)
+            .collect(Collectors.toSet());
+
+    assertEquals(
+        Set.of(
+            Entity.TABLE,
+            Entity.DASHBOARD_DATA_MODEL,
+            Entity.CONTAINER,
+            Entity.WORKSHEET,
+            Entity.TOPIC,
+            Entity.SEARCH_INDEX,
+            Entity.API_ENDPOINT,
+            Entity.MLMODEL,
+            Entity.PIPELINE),
+        repairedTypes);
+  }
+
+  @Test
   void repairsUnparseableTaskFqnAndPersistsOnlyChangedPipelines() {
-    givenPipelinePage(
-        pipelineJson("svc.pipeA", task(CORRUPT_TASK_NAME, CORRUPT_TASK_FQN)),
+    givenPage(
+        pipelineDAO,
+        pipelineJson("svc.pipeA", task(CORRUPT_NAME, CORRUPT_TASK_FQN)),
         pipelineJson("svc.pipeB", task("t1", "svc.pipeB.t1")));
 
-    MigrationUtil.repairPipelineTaskFqns(collectionDAO);
+    MigrationUtil.repairChildFqns(collectionDAO);
 
     ArgumentCaptor<Pipeline> captor = ArgumentCaptor.forClass(Pipeline.class);
     verify(pipelineDAO, times(1)).update(captor.capture());
@@ -62,19 +129,20 @@ class MigrationUtilTest {
 
   @Test
   void leavesValidTaskFqnsUntouched() {
-    givenPipelinePage(
+    givenPage(
+        pipelineDAO,
         pipelineJson("svc.pipeA", task("t1", "svc.pipeA.t1"), task("t2", "svc.pipeA.t2")));
 
-    MigrationUtil.repairPipelineTaskFqns(collectionDAO);
+    MigrationUtil.repairChildFqns(collectionDAO);
 
     verify(pipelineDAO, never()).update(any());
   }
 
   @Test
   void repairsNullTaskFqnWithoutNpe() {
-    givenPipelinePage(pipelineJson("svc.pipeA", task("t1", null)));
+    givenPage(pipelineDAO, pipelineJson("svc.pipeA", task("t1", null)));
 
-    assertDoesNotThrow(() -> MigrationUtil.repairPipelineTaskFqns(collectionDAO));
+    assertDoesNotThrow(() -> MigrationUtil.repairChildFqns(collectionDAO));
 
     ArgumentCaptor<Pipeline> captor = ArgumentCaptor.forClass(Pipeline.class);
     verify(pipelineDAO).update(captor.capture());
@@ -83,70 +151,74 @@ class MigrationUtilTest {
 
   @Test
   void doesNotAbortWhenARowIsUnreadableJson() {
-    givenPipelinePage(
-        pipelineJson("svc.pipeA", task(CORRUPT_TASK_NAME, CORRUPT_TASK_FQN)),
+    givenPage(
+        pipelineDAO,
+        pipelineJson("svc.pipeA", task(CORRUPT_NAME, CORRUPT_TASK_FQN)),
         "{ not valid pipeline json",
         pipelineJson("svc.pipeC", task("t", "svc.pipeC.t")));
 
-    assertDoesNotThrow(() -> MigrationUtil.repairPipelineTaskFqns(collectionDAO));
+    assertDoesNotThrow(() -> MigrationUtil.repairChildFqns(collectionDAO));
 
     verify(pipelineDAO, times(1)).update(any());
   }
 
   @Test
   void doesNotAbortWhenUpdateThrows() {
-    givenPipelinePage(
-        pipelineJson("svc.pipeA", task(CORRUPT_TASK_NAME, CORRUPT_TASK_FQN)),
+    givenPage(
+        pipelineDAO,
+        pipelineJson("svc.pipeA", task(CORRUPT_NAME, CORRUPT_TASK_FQN)),
         pipelineJson("svc.pipeB", task("c\"d", "svc.pipeB.c\\\"d")));
     doThrow(new RuntimeException("db unavailable")).doNothing().when(pipelineDAO).update(any());
 
-    assertDoesNotThrow(() -> MigrationUtil.repairPipelineTaskFqns(collectionDAO));
+    assertDoesNotThrow(() -> MigrationUtil.repairChildFqns(collectionDAO));
 
     verify(pipelineDAO, times(2)).update(any());
   }
 
   @Test
   void doesNotCountFailedPersistAsRepaired() {
-    givenPipelinePage(pipelineJson("svc.pipeA", task(CORRUPT_TASK_NAME, CORRUPT_TASK_FQN)));
+    givenPage(pipelineDAO, pipelineJson("svc.pipeA", task(CORRUPT_NAME, CORRUPT_TASK_FQN)));
     doThrow(new RuntimeException("db unavailable")).when(pipelineDAO).update(any());
 
-    MigrationUtil.RepairSummary summary = MigrationUtil.repairPipelineTaskFqns(collectionDAO);
+    MigrationUtil.RepairSummary summary = repairAndSummarize(Entity.PIPELINE);
 
     assertEquals(1, summary.scanned());
-    assertEquals(0, summary.repairedPipelines());
-    assertEquals(0, summary.repairedTasks());
-    assertEquals(1, summary.failedPipelines());
+    assertEquals(0, summary.repairedEntities());
+    assertEquals(0, summary.repairedChildren());
+    assertEquals(1, summary.failedEntities());
   }
 
   @Test
   void skipsPipelineWithNoTasks() {
     Pipeline pipeline =
         new Pipeline().withId(UUID.randomUUID()).withName("p").withFullyQualifiedName("svc.pipeA");
-    givenPipelinePage(JsonUtils.pojoToJson(pipeline));
+    givenPage(pipelineDAO, JsonUtils.pojoToJson(pipeline));
 
-    MigrationUtil.repairPipelineTaskFqns(collectionDAO);
+    MigrationUtil.repairChildFqns(collectionDAO);
 
     verify(pipelineDAO, never()).update(any());
   }
 
   @Test
-  void handlesEmptyPipelineTable() {
-    when(pipelineDAO.listAfterWithOffset(anyInt(), anyInt())).thenReturn(List.of());
+  void handlesEmptyEntityTables() {
+    List<MigrationUtil.RepairSummary> summaries =
+        assertDoesNotThrow(() -> MigrationUtil.repairChildFqns(collectionDAO));
 
-    assertDoesNotThrow(() -> MigrationUtil.repairPipelineTaskFqns(collectionDAO));
-
+    assertEquals(9, summaries.size());
+    summaries.forEach(summary -> assertEquals(0, summary.scanned()));
     verify(pipelineDAO, never()).update(any());
+    verify(tableDAO, never()).update(any());
   }
 
   @Test
   void scansEveryPageAdvancingOffsetUntilAnEmptyPage() {
-    String firstPage = pipelineJson("svc.pipeA", task(CORRUPT_TASK_NAME, CORRUPT_TASK_FQN));
-    String secondPage = pipelineJson("svc.pipeZ", task(CORRUPT_TASK_NAME, CORRUPT_TASK_FQN));
+    String firstPage = pipelineJson("svc.pipeA", task(CORRUPT_NAME, CORRUPT_TASK_FQN));
+    String secondPage = pipelineJson("svc.pipeZ", task(CORRUPT_NAME, CORRUPT_TASK_FQN));
     when(pipelineDAO.listAfterWithOffset(PAGE_SIZE, 0)).thenReturn(List.of(firstPage));
     when(pipelineDAO.listAfterWithOffset(PAGE_SIZE, PAGE_SIZE)).thenReturn(List.of(secondPage));
     when(pipelineDAO.listAfterWithOffset(PAGE_SIZE, 2 * PAGE_SIZE)).thenReturn(List.of());
 
-    MigrationUtil.repairPipelineTaskFqns(collectionDAO);
+    MigrationUtil.repairChildFqns(collectionDAO);
 
     ArgumentCaptor<Pipeline> captor = ArgumentCaptor.forClass(Pipeline.class);
     verify(pipelineDAO, times(2)).update(captor.capture());
@@ -157,8 +229,212 @@ class MigrationUtilTest {
     verify(pipelineDAO).listAfterWithOffset(PAGE_SIZE, 2 * PAGE_SIZE);
   }
 
-  private void givenPipelinePage(String... jsons) {
-    when(pipelineDAO.listAfterWithOffset(anyInt(), anyInt()))
+  @Test
+  void repairsCorruptTableColumnFqnsIncludingNestedChildren() {
+    Column child = column("c1", "svc.db.sch.tbl.a\\\"b.c1");
+    Column corrupt = column(CORRUPT_NAME, "svc.db.sch.tbl.a\\\"b").withChildren(List.of(child));
+    Column valid = column("ok", "svc.db.sch.tbl.ok");
+    givenPage(tableDAO, tableJson("svc.db.sch.tbl", corrupt, valid));
+
+    MigrationUtil.RepairSummary summary = repairAndSummarize(Entity.TABLE);
+
+    ArgumentCaptor<Table> captor = ArgumentCaptor.forClass(Table.class);
+    verify(tableDAO, times(1)).update(captor.capture());
+    Column repaired = captor.getValue().getColumns().getFirst();
+    assertEquals("svc.db.sch.tbl.\"a\"\"b\"", repaired.getFullyQualifiedName());
+    assertEquals(
+        "svc.db.sch.tbl.\"a\"\"b\".c1", repaired.getChildren().getFirst().getFullyQualifiedName());
+    assertEquals(
+        "svc.db.sch.tbl.ok", captor.getValue().getColumns().getLast().getFullyQualifiedName());
+    assertEquals(2, summary.repairedChildren());
+    assertEquals(1, summary.repairedEntities());
+  }
+
+  @Test
+  void recordsUnrepairableEmptyColumnNameAsFailureWithoutPersisting() {
+    givenPage(tableDAO, tableJson("svc.db.sch.tbl", column("", "svc.db.sch.tbl.")));
+
+    MigrationUtil.RepairSummary summary = repairAndSummarize(Entity.TABLE);
+
+    verify(tableDAO, never()).update(any());
+    assertEquals(1, summary.failedEntities());
+    assertEquals(0, summary.repairedEntities());
+    assertEquals(0, summary.repairedChildren());
+  }
+
+  @Test
+  void repairsDashboardDataModelColumnFqns() {
+    DashboardDataModel dataModel =
+        new DashboardDataModel()
+            .withId(UUID.randomUUID())
+            .withName("dm")
+            .withFullyQualifiedName("svc.model.dm")
+            .withColumns(List.of(column(CORRUPT_NAME, "svc.model.dm.a\\\"b")));
+    givenPage(dashboardDataModelDAO, JsonUtils.pojoToJson(dataModel));
+
+    MigrationUtil.repairChildFqns(collectionDAO);
+
+    ArgumentCaptor<DashboardDataModel> captor = ArgumentCaptor.forClass(DashboardDataModel.class);
+    verify(dashboardDataModelDAO, times(1)).update(captor.capture());
+    assertEquals(
+        "svc.model.dm.\"a\"\"b\"",
+        captor.getValue().getColumns().getFirst().getFullyQualifiedName());
+  }
+
+  @Test
+  void repairsContainerDataModelColumnFqnsAndSkipsContainersWithoutDataModel() {
+    Container corrupt =
+        container("svc.contA")
+            .withDataModel(
+                new ContainerDataModel()
+                    .withColumns(List.of(column(CORRUPT_NAME, "svc.contA.a\\\"b"))));
+    Container noDataModel = container("svc.contB");
+    givenPage(containerDAO, JsonUtils.pojoToJson(corrupt), JsonUtils.pojoToJson(noDataModel));
+
+    MigrationUtil.repairChildFqns(collectionDAO);
+
+    ArgumentCaptor<Container> captor = ArgumentCaptor.forClass(Container.class);
+    verify(containerDAO, times(1)).update(captor.capture());
+    assertEquals(
+        "svc.contA.\"a\"\"b\"",
+        captor.getValue().getDataModel().getColumns().getFirst().getFullyQualifiedName());
+  }
+
+  @Test
+  void repairsWorksheetColumnFqns() {
+    Worksheet worksheet =
+        new Worksheet()
+            .withId(UUID.randomUUID())
+            .withName("w")
+            .withFullyQualifiedName("svc.sheet.w")
+            .withColumns(List.of(column(CORRUPT_NAME, "svc.sheet.w.a\\\"b")));
+    givenPage(worksheetDAO, JsonUtils.pojoToJson(worksheet));
+
+    MigrationUtil.repairChildFqns(collectionDAO);
+
+    ArgumentCaptor<Worksheet> captor = ArgumentCaptor.forClass(Worksheet.class);
+    verify(worksheetDAO, times(1)).update(captor.capture());
+    assertEquals(
+        "svc.sheet.w.\"a\"\"b\"",
+        captor.getValue().getColumns().getFirst().getFullyQualifiedName());
+  }
+
+  @Test
+  void repairsTopicMessageSchemaFieldFqnsIncludingNestedChildrenAndSkipsTopicsWithoutSchema() {
+    Field child = field("f1", "svc.topicA.a\\\"b.f1");
+    Field corrupt = field(CORRUPT_NAME, "svc.topicA.a\\\"b").withChildren(List.of(child));
+    Topic corruptTopic =
+        topic("svc.topicA")
+            .withMessageSchema(new MessageSchema().withSchemaFields(List.of(corrupt)));
+    Topic noSchemaTopic = topic("svc.topicB");
+    givenPage(topicDAO, JsonUtils.pojoToJson(corruptTopic), JsonUtils.pojoToJson(noSchemaTopic));
+
+    MigrationUtil.repairChildFqns(collectionDAO);
+
+    ArgumentCaptor<Topic> captor = ArgumentCaptor.forClass(Topic.class);
+    verify(topicDAO, times(1)).update(captor.capture());
+    Field repaired = captor.getValue().getMessageSchema().getSchemaFields().getFirst();
+    assertEquals("svc.topicA.\"a\"\"b\"", repaired.getFullyQualifiedName());
+    assertEquals(
+        "svc.topicA.\"a\"\"b\".f1", repaired.getChildren().getFirst().getFullyQualifiedName());
+  }
+
+  @Test
+  void repairsSearchIndexFieldFqnsIncludingNestedChildren() {
+    SearchIndexField child = searchIndexField("f1", "svc.idx.a\\\"b.f1");
+    SearchIndexField corrupt =
+        searchIndexField(CORRUPT_NAME, "svc.idx.a\\\"b").withChildren(List.of(child));
+    SearchIndex searchIndex =
+        new SearchIndex()
+            .withId(UUID.randomUUID())
+            .withName("idx")
+            .withFullyQualifiedName("svc.idx")
+            .withFields(List.of(corrupt));
+    givenPage(searchIndexDAO, JsonUtils.pojoToJson(searchIndex));
+
+    MigrationUtil.repairChildFqns(collectionDAO);
+
+    ArgumentCaptor<SearchIndex> captor = ArgumentCaptor.forClass(SearchIndex.class);
+    verify(searchIndexDAO, times(1)).update(captor.capture());
+    SearchIndexField repaired = captor.getValue().getFields().getFirst();
+    assertEquals("svc.idx.\"a\"\"b\"", repaired.getFullyQualifiedName());
+    assertEquals(
+        "svc.idx.\"a\"\"b\".f1", repaired.getChildren().getFirst().getFullyQualifiedName());
+  }
+
+  @Test
+  void repairsApiEndpointFieldFqnsUnderRequestAndResponseSchemaParents() {
+    APIEndpoint endpoint =
+        new APIEndpoint()
+            .withId(UUID.randomUUID())
+            .withName("ep")
+            .withFullyQualifiedName("svc.coll.ep")
+            .withRequestSchema(
+                new APISchema()
+                    .withSchemaFields(
+                        List.of(field(CORRUPT_NAME, "svc.coll.ep.requestSchema.a\\\"b"))))
+            .withResponseSchema(
+                new APISchema()
+                    .withSchemaFields(List.of(field("c\"d", "svc.coll.ep.responseSchema.c\\\"d"))));
+    givenPage(apiEndpointDAO, JsonUtils.pojoToJson(endpoint));
+
+    MigrationUtil.RepairSummary summary = repairAndSummarize(Entity.API_ENDPOINT);
+
+    ArgumentCaptor<APIEndpoint> captor = ArgumentCaptor.forClass(APIEndpoint.class);
+    verify(apiEndpointDAO, times(1)).update(captor.capture());
+    assertEquals(
+        "svc.coll.ep.requestSchema.\"a\"\"b\"",
+        captor.getValue().getRequestSchema().getSchemaFields().getFirst().getFullyQualifiedName());
+    assertEquals(
+        "svc.coll.ep.responseSchema.\"c\"\"d\"",
+        captor.getValue().getResponseSchema().getSchemaFields().getFirst().getFullyQualifiedName());
+    assertEquals(2, summary.repairedChildren());
+  }
+
+  @Test
+  void repairsMlFeatureAndFeatureSourceFqns() {
+    MlFeatureSource sourceWithDataSource =
+        new MlFeatureSource()
+            .withName("s\"1")
+            .withFullyQualifiedName("svc.db.sch.tbl.s\\\"1")
+            .withDataSource(new EntityReference().withFullyQualifiedName("svc.db.sch.tbl"));
+    MlFeatureSource sourceWithoutDataSource =
+        new MlFeatureSource().withName("s\"2").withFullyQualifiedName("s\"2");
+    MlFeature feature =
+        new MlFeature()
+            .withName(CORRUPT_NAME)
+            .withFullyQualifiedName("svc.model.a\\\"b")
+            .withFeatureSources(List.of(sourceWithDataSource, sourceWithoutDataSource));
+    MlModel mlModel =
+        new MlModel()
+            .withId(UUID.randomUUID())
+            .withName("model")
+            .withFullyQualifiedName("svc.model")
+            .withMlFeatures(List.of(feature));
+    givenPage(mlModelDAO, JsonUtils.pojoToJson(mlModel));
+
+    MigrationUtil.RepairSummary summary = repairAndSummarize(Entity.MLMODEL);
+
+    ArgumentCaptor<MlModel> captor = ArgumentCaptor.forClass(MlModel.class);
+    verify(mlModelDAO, times(1)).update(captor.capture());
+    MlFeature repaired = captor.getValue().getMlFeatures().getFirst();
+    assertEquals("svc.model.\"a\"\"b\"", repaired.getFullyQualifiedName());
+    assertEquals(
+        "svc.db.sch.tbl.\"s\"\"1\"",
+        repaired.getFeatureSources().getFirst().getFullyQualifiedName());
+    assertEquals("\"s\"\"2\"", repaired.getFeatureSources().getLast().getFullyQualifiedName());
+    assertEquals(3, summary.repairedChildren());
+  }
+
+  private MigrationUtil.RepairSummary repairAndSummarize(String entityType) {
+    return MigrationUtil.repairChildFqns(collectionDAO).stream()
+        .filter(summary -> summary.entityType().equals(entityType))
+        .findFirst()
+        .orElseThrow();
+  }
+
+  private void givenPage(EntityDAO<?> entityDAO, String... jsons) {
+    when(entityDAO.listAfterWithOffset(anyInt(), anyInt()))
         .thenAnswer(inv -> (int) inv.getArgument(1) == 0 ? List.of(jsons) : List.of());
   }
 
@@ -174,5 +450,35 @@ class MigrationUtilTest {
 
   private Task task(String name, String fullyQualifiedName) {
     return new Task().withName(name).withFullyQualifiedName(fullyQualifiedName);
+  }
+
+  private String tableJson(String fqn, Column... columns) {
+    Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("tbl")
+            .withFullyQualifiedName(fqn)
+            .withColumns(List.of(columns));
+    return JsonUtils.pojoToJson(table);
+  }
+
+  private Column column(String name, String fullyQualifiedName) {
+    return new Column().withName(name).withFullyQualifiedName(fullyQualifiedName);
+  }
+
+  private Field field(String name, String fullyQualifiedName) {
+    return new Field().withName(name).withFullyQualifiedName(fullyQualifiedName);
+  }
+
+  private SearchIndexField searchIndexField(String name, String fullyQualifiedName) {
+    return new SearchIndexField().withName(name).withFullyQualifiedName(fullyQualifiedName);
+  }
+
+  private Container container(String fqn) {
+    return new Container().withId(UUID.randomUUID()).withName("c").withFullyQualifiedName(fqn);
+  }
+
+  private Topic topic(String fqn) {
+    return new Topic().withId(UUID.randomUUID()).withName("t").withFullyQualifiedName(fqn);
   }
 }

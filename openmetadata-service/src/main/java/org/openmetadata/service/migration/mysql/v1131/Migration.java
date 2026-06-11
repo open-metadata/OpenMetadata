@@ -1,6 +1,6 @@
 package org.openmetadata.service.migration.mysql.v1131;
 
-import static org.openmetadata.service.migration.utils.v1131.MigrationUtil.repairPipelineTaskFqns;
+import static org.openmetadata.service.migration.utils.v1131.MigrationUtil.repairChildFqns;
 
 import lombok.SneakyThrows;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
@@ -15,6 +15,6 @@ public class Migration extends MigrationProcessImpl {
   @Override
   @SneakyThrows
   public void runDataMigration() {
-    repairPipelineTaskFqns(collectionDAO);
+    repairChildFqns(collectionDAO);
   }
 }
