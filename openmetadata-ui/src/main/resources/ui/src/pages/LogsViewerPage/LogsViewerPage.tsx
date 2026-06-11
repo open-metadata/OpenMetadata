@@ -69,7 +69,7 @@ import {
 } from '../../rest/ingestionPipelineAPI';
 import { ExtraInfoLabel } from '../../utils/DataAssetsHeader.utils';
 import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   downloadAppLogs,
   downloadIngestionLog,

@@ -24,7 +24,7 @@ import {
 import { Domain } from '../../../../generated/entity/domains/domain';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { ChangeDescription } from '../../../../generated/entity/type';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityVersionByField } from '../../../../utils/EntityVersionUtils';
 import {
   getPrioritizedEditPermission,
