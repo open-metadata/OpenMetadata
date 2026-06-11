@@ -86,14 +86,11 @@ import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContr
 import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBase';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
 import { getEntityDeleteMessage } from '../../../utils/EntityDisplayUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import {
-  getEntityFeedLink,
-  getEntityName,
-  getEntityVoteStatus,
-  hasEditAccess,
-} from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import { downloadFile } from '../../../utils/Export/ExportUtils';
 import {
   fetchEntityActivityCountInto,
@@ -382,16 +379,6 @@ const DataProductsDetailsPage = ({
   const voteStatus = useMemo(
     () => getEntityVoteStatus(currentUser?.id ?? '', dataProduct.votes),
     [dataProduct.votes, currentUser?.id]
-  );
-
-  const isOwner = useMemo(
-    () =>
-      Boolean(
-        currentUser &&
-          dataProduct.owners?.length &&
-          hasEditAccess(dataProduct.owners, currentUser)
-      ),
-    [dataProduct.owners, currentUser]
   );
 
   const handleVoteChange = useCallback(
@@ -895,8 +882,7 @@ const DataProductsDetailsPage = ({
           <div>
             <div className="tw:flex tw:gap-3 tw:justify-end tw:items-center tw:pb-1">
               {!isVersionsView &&
-                !isOwner &&
-                (canCreateTask || currentUser?.isAdmin) &&
+                canCreateTask &&
                 dataProductClassBase.getShowRequestDataAccess() && (
                   <CoreTooltip
                     isDisabled={!isDarDisabled}

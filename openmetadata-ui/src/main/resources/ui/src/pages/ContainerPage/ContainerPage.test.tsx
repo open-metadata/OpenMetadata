@@ -183,7 +183,7 @@ jest.mock('../../rest/storageAPI');
 jest.mock('../../utils/EntityDisplayUtils', () => ({
   getEntityMissingError: jest.fn().mockImplementation(() => <div>Error</div>),
 }));
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/RecentActivityUtils', () => ({
   addToRecentViewed: jest.fn(),
 }));
 jest.mock('../../utils/FeedUtils', () => ({
@@ -214,11 +214,15 @@ jest.mock('../../hooks/paging/usePaging', () => ({
   }),
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation((entity) => entity?.name ?? 'entityName'),
+}));
+jest.mock('../../utils/EntityPureUtils', () => ({
   getEntityFeedLink: jest.fn(),
+}));
+jest.mock('../../utils/EntitySortUtils', () => ({
   getColumnSorter: jest.fn(),
 }));
 

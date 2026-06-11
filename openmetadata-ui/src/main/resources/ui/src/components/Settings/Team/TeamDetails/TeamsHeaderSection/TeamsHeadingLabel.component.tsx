@@ -24,7 +24,8 @@ import { DE_ACTIVE_COLOR } from '../../../../../constants/constants';
 import { Team } from '../../../../../generated/entity/teams/team';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
-import { getEntityName, hasEditAccess } from '../../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
+import { hasEditAccess } from '../../../../../utils/EntityPermissionUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import { TeamsHeadingLabelProps } from '../team.interface';
 

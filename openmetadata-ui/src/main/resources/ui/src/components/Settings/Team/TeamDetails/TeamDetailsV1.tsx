@@ -68,7 +68,7 @@ import AddAttributeModal from '../../../../pages/RolesPage/AddAttributeModal/Add
 import { ImportType } from '../../../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { exportTeam, restoreTeam } from '../../../../rest/teamsAPI';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   EXTENSION_POINTS,
   TabContribution,

@@ -10,15 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { ROUTES } from '../constants/constants';
 import { PageType } from '../interface/knowledge-center.interface';
 import { downloadDriveFile } from '../rest/assetAPI';
 import {
-  assetToDocumentItem,
   formatBytes,
-  getFileTypeIcon,
   handleAssetDownload,
   knowledgePageToArticleItem,
 } from './ContextCenterUtils';
@@ -55,30 +52,6 @@ describe('formatBytes', () => {
 
   it('should format MB correctly', () => {
     expect(formatBytes(5 * 1024 * 1024)).toBe('5.0 MB');
-  });
-});
-
-describe('assetToDocumentItem', () => {
-  it('should transform ContextFile into UploadedDocumentItem', () => {
-    const asset = {
-      id: '1',
-      name: 'sample.pdf',
-      displayName: 'sample.pdf',
-      fileExtension: 'pdf',
-      fileSize: 2048,
-      updatedAt: 1778756959299,
-      updatedBy: 'admin',
-    };
-
-    expect(assetToDocumentItem(asset as any)).toEqual({
-      fileExtension: 'pdf',
-      id: '1',
-      name: 'sample.pdf',
-      sizeLabel: '2.0 KB',
-      status: 'processed',
-      updatedAt: 1778756959299,
-      updatedBy: 'admin',
-    });
   });
 });
 
@@ -122,18 +95,6 @@ describe('knowledgePageToArticleItem', () => {
       tags: [],
       title: 'Untitled',
     });
-  });
-});
-
-describe('getFileTypeIcon', () => {
-  it('should render default icon for unknown type', () => {
-    const { container } = render(getFileTypeIcon('unknown'));
-
-    expect(container.querySelector('svg')).toBeInTheDocument();
-  });
-
-  it('should render icon component for pdf type', () => {
-    expect(getFileTypeIcon('pdf')).toBeTruthy();
   });
 });
 

@@ -73,19 +73,16 @@ import {
 } from '../../../utils/DataAssetsHeader.utils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import EntityLink from '../../../utils/EntityLink';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import {
-  getEntityFeedLink,
-  getEntityName,
-  getEntityVoteStatus,
-  hasEditAccess,
-} from '../../../utils/EntityUtils';
+import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServiceUtils';
 import tableClassBase from '../../../utils/TableClassBase';
-import { getTierTags } from '../../../utils/TableUtils';
+import { getTierTags } from '../../../utils/TablePureUtils';
 import { getDarButtonTooltip } from '../../../utils/TasksUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -594,24 +591,12 @@ export const DataAssetsHeader = ({
     permissions.Trigger,
   ]);
 
-  const isOwner = useMemo(
-    () =>
-      Boolean(
-        currentUser &&
-          dataAsset.owners?.length &&
-          hasEditAccess(dataAsset.owners, currentUser)
-      ),
-    [dataAsset.owners, currentUser]
-  );
-
   const requestDataAccessButton = useMemo(() => {
     if (
       !tableClassBase.getShowRequestDataAccess() ||
-      SERVICE_TYPES.includes(entityType) ||
       entityType !== EntityType.TABLE ||
       deleted ||
-      isOwner ||
-      (!canCreateTask && !currentUser?.isAdmin)
+      !canCreateTask
     ) {
       return null;
     }
@@ -637,12 +622,10 @@ export const DataAssetsHeader = ({
   }, [
     entityType,
     deleted,
-    isOwner,
     isDarDisabled,
     isDarAwaitingGrant,
     isDarGranted,
     canCreateTask,
-    currentUser,
     t,
   ]);
 

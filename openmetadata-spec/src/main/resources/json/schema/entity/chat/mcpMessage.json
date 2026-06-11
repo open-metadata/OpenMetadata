@@ -1,0 +1,68 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/chat/mcpMessage.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "McpMessage",
+  "description": "A message within a chat conversation, supporting text and tool usage tracking.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.chat.McpMessage",
+  "definitions": {
+    "sender": {
+      "description": "Sender type.",
+      "type": "string",
+      "enum": ["human", "assistant"]
+    },
+    "tokens": {
+      "description": "LLM token usage for generating this message.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.chat.TokenUsage",
+      "properties": {
+        "inputTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "outputTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "totalTokens": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier for the message.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "conversationId": {
+      "description": "ID of the conversation this message belongs to.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "sender": {
+      "$ref": "#/definitions/sender"
+    },
+    "index": {
+      "description": "Sequential index of the message in the conversation.",
+      "type": "integer"
+    },
+    "timestamp": {
+      "description": "Timestamp when the message was sent.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "content": {
+      "description": "Rich content blocks.",
+      "type": "array",
+      "items": {
+        "$ref": "./content/messageBlock.json"
+      }
+    },
+    "tokens": {
+      "description": "LLM token usage for generating this message.",
+      "$ref": "#/definitions/tokens"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["id", "conversationId", "sender", "index", "timestamp"]
+}

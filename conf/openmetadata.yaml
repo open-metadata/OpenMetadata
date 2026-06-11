@@ -11,7 +11,6 @@
 
 clusterName: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
 
-
 swagger:
   resourcePackage: org.openmetadata.service.resources
 
@@ -620,12 +619,13 @@ elasticsearch:
     djl:
       embeddingModel: ${DJL_EMBEDDING_MODEL:-"ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2"}
 
-# Generic platform-wide LLM chat/completion configuration. Used by Context Center knowledge-pill
-# extraction (and reusable by other features). The file content of uploaded documents is sent to
-# the configured provider when enabled. Disabled by default.
+# Platform-wide LLM provider configuration. Generic - consumed by any feature that needs LLM
+# completions (e.g. Context Center knowledge-pill extraction and the MCP Chat application). The
+# file content of uploaded documents is sent to the configured provider when enabled. Disabled by
+# default; set provider + credentials (or the matching env vars) to enable.
 llmConfiguration:
-  enabled: ${LLM_ENABLED:-true}
-  provider: ${LLM_PROVIDER:-bedrock}  # noop | openai | azureOpenAI | bedrock | google | anthropic
+  enabled: ${LLM_ENABLED:-false}
+  provider: ${LLM_PROVIDER:-noop}  # noop | openai | azureOpenAI | bedrock | google | anthropic
   maxConcurrentRequests: ${LLM_MAX_CONCURRENT_REQUESTS:-5}
   openai:
     apiKey: ${LLM_OPENAI_API_KEY:-""}
