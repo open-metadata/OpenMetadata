@@ -13,7 +13,7 @@
 Source connection handler
 """
 
-from typing import Optional
+from typing import Any, Optional
 from urllib.parse import quote_plus
 
 from pydantic import SecretStr
@@ -23,7 +23,7 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.database.impalaConnection import (
-    ImpalaConnection,
+    ImpalaConnection as ImpalaConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
@@ -34,6 +34,7 @@ from metadata.ingestion.connections.builders import (
     get_connection_options_dict,
     init_empty_connection_arguments,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import (
     test_connection_db_schema_sources,
 )
@@ -41,7 +42,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
 
 
-def get_connection_url(connection: ImpalaConnection) -> str:
+def get_connection_url(connection: ImpalaConnectionConfig) -> str:
     """
     Build the URL handling auth requirements
     """
@@ -71,48 +72,48 @@ def get_connection_url(connection: ImpalaConnection) -> str:
     return url
 
 
-def get_connection(connection: ImpalaConnection) -> Engine:
-    """
-    Create connection
-    """
+class ImpalaConnection(BaseConnection[ImpalaConnectionConfig, Engine]):
+    def _get_client(self) -> Engine:
+        connection = self.service_connection
 
-    if connection.authMechanism:
-        if not connection.connectionArguments:
-            connection.connectionArguments = init_empty_connection_arguments()
-        connection.connectionArguments.root["auth_mechanism"] = connection.authMechanism.value
+        if connection.authMechanism:
+            self._connection_arguments_root(connection)["auth_mechanism"] = connection.authMechanism.value
 
-    if connection.kerberosServiceName:
-        if not connection.connectionArguments:
-            connection.connectionArguments = init_empty_connection_arguments()
-        connection.connectionArguments.root["kerberos_service_name"] = connection.kerberosServiceName
+        if connection.kerberosServiceName:
+            self._connection_arguments_root(connection)["kerberos_service_name"] = connection.kerberosServiceName
 
-    if connection.useSSL:
-        if not connection.connectionArguments:
-            connection.connectionArguments = init_empty_connection_arguments()
-        connection.connectionArguments.root["use_ssl"] = connection.useSSL
+        if connection.useSSL:
+            self._connection_arguments_root(connection)["use_ssl"] = connection.useSSL
 
-    return create_generic_db_connection(
-        connection=connection,
-        get_connection_url_fn=get_connection_url,
-        get_connection_args_fn=get_connection_args_common,
-    )
+        return create_generic_db_connection(
+            connection=connection,
+            get_connection_url_fn=get_connection_url,
+            get_connection_args_fn=get_connection_args_common,
+        )
 
+    @staticmethod
+    def _connection_arguments_root(connection: ImpalaConnectionConfig) -> dict[str, Any]:
+        """Get-or-create the connectionArguments root dict for in-place key injection."""
+        arguments = connection.connectionArguments or init_empty_connection_arguments()
+        connection.connectionArguments = arguments
+        if arguments.root is None:
+            arguments.root = {}
+        return arguments.root
 
-def test_connection(
-    metadata: OpenMetadata,
-    engine: Engine,
-    service_connection: ImpalaConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
-) -> TestConnectionResult:
-    """
-    Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
-    """
-    return test_connection_db_schema_sources(
-        metadata=metadata,
-        engine=engine,
-        service_connection=service_connection,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        """
+        Test connection. This can be executed either as part
+        of a metadata workflow or during an Automation Workflow
+        """
+        return test_connection_db_schema_sources(
+            metadata=metadata,
+            engine=self.client,
+            service_connection=self.service_connection,
+            automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
+        )
