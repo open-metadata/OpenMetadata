@@ -198,6 +198,8 @@
     "assume-role-session-name": "Имя сеанса роли для принятой роли",
     "assume-role-source-identity": "Идентификатор источника для принятой роли",
     "attach-file-plural": "Прикрепить файлы",
+    "attachment": "Вложение",
+    "attachment-plural": "Вложения",
     "attention": "Внимание",
     "audience": "Аудитория",
     "audio": "Аудио",

@@ -198,6 +198,8 @@
     "assume-role-session-name": "用於 Assume Role 的角色工作階段名稱",
     "assume-role-source-identity": "用於 Assume Role 的來源身分",
     "attach-file-plural": "附加檔案",
+    "attachment": "附件",
+    "attachment-plural": "附件",
     "attention": "注意",
     "audience": "對象",
     "audio": "音訊",

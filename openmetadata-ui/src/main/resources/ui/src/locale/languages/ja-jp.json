@@ -198,6 +198,8 @@
     "assume-role-session-name": "セッション名ロールを引き受ける",
     "assume-role-source-identity": "ソースIDロールを引き受ける",
     "attach-file-plural": "ファイルを添付",
+    "attachment": "添付ファイル",
+    "attachment-plural": "添付ファイル",
     "attention": "注意",
     "audience": "オーディエンス",
     "audio": "音声",

@@ -198,6 +198,8 @@
     "assume-role-session-name": "Nome da Sessão para Assumir Papel",
     "assume-role-source-identity": "Identidade Fonte para Assumir Papel",
     "attach-file-plural": "Anexar ficheiros",
+    "attachment": "Anexo",
+    "attachment-plural": "Anexos",
     "attention": "Atenção",
     "audience": "Audiência",
     "audio": "Áudio",
