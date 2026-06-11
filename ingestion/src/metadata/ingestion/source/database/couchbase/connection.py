@@ -43,7 +43,9 @@ class CouchbaseConnection(BaseConnection[CouchbaseConnectionConfig, Any]):
         connection = self.service_connection
         auth = PasswordAuthenticator(connection.username, connection.password.get_secret_value())
         url = f"{connection.scheme.value}://{connection.hostport}"  # pyright: ignore[reportOptionalMemberAccess]
-        return Cluster.connect(url, ClusterOptions(auth))
+        cluster = Cluster.connect(url, ClusterOptions(auth))  # pyright: ignore[reportArgumentType]
+        self._on_close(cluster.close)
+        return cluster
 
     def test_connection(
         self,
@@ -73,7 +75,7 @@ class CouchbaseConnection(BaseConnection[CouchbaseConnectionConfig, Any]):
                 break
 
         def test_get_collections(client: Cluster, holder: SchemaHolder):
-            database = client.bucket(holder.database)
+            database = client.bucket(holder.database)  # pyright: ignore[reportArgumentType]
             collection_manager = database.collections()
             collection_manager.get_all_scopes()
 

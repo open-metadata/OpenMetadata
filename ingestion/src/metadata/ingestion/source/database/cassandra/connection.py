@@ -85,6 +85,7 @@ class CassandraConnection(BaseConnection[CassandraConnectionConfig, CassandraSes
             **cluster_config,
             ssl_context=connection.connectionArguments.root.get("ssl_context"),  # pyright: ignore[reportOptionalMemberAccess]
         )
+        self._on_close(cluster.shutdown)
         return cluster.connect()
 
     def test_connection(

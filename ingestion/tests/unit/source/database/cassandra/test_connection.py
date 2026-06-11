@@ -35,3 +35,11 @@ def test_get_client_connects_a_cluster_session():
     mock_cluster.assert_called_once()
     mock_cluster.return_value.connect.assert_called_once_with()
     assert session is mock_cluster.return_value.connect.return_value
+
+
+def test_close_shuts_down_the_cluster():
+    with patch(f"{CONNECTION_MODULE}.Cluster") as mock_cluster:
+        connection = CassandraConnection(_config())
+        _ = connection.client
+        connection.close()
+    mock_cluster.return_value.shutdown.assert_called_once_with()
