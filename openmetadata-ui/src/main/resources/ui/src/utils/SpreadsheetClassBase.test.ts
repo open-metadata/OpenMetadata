@@ -184,28 +184,28 @@ describe('SpreadsheetClassBase', () => {
       expect(result[1]).toEqual({
         id: EntityTabs.ACTIVITY_FEED,
         name: EntityTabs.ACTIVITY_FEED,
-        displayName: 'Activity Feed',
+        displayName: 'label.activity-feed-and-task-plural',
         layout: [],
         editable: false,
       });
       expect(result[2]).toEqual({
         id: EntityTabs.LINEAGE,
         name: EntityTabs.LINEAGE,
-        displayName: 'Lineage',
+        displayName: 'label.lineage',
         layout: [],
         editable: false,
       });
       expect(result[3]).toEqual({
         id: EntityTabs.CONTRACT,
         name: EntityTabs.CONTRACT,
-        displayName: 'Contract',
+        displayName: 'label.contract',
         layout: [],
         editable: false,
       });
       expect(result[4]).toEqual({
         id: EntityTabs.CUSTOM_PROPERTIES,
         name: EntityTabs.CUSTOM_PROPERTIES,
-        displayName: 'Custom Properties',
+        displayName: 'label.custom-property-plural',
         layout: [],
         editable: false,
       });

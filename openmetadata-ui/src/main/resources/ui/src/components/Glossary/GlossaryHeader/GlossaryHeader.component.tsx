@@ -57,10 +57,8 @@ import {
   getGlossaryTermsById,
 } from '../../../rest/glossaryAPI';
 import { getEntityDeleteMessage } from '../../../utils/EntityDisplayUtils';
-import {
-  getEntityImportPath,
-  getEntityVoteStatus,
-} from '../../../utils/EntityUtils';
+import { getEntityImportPath } from '../../../utils/EntityPureUtils';
+import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import Fqn from '../../../utils/Fqn';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {

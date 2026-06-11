@@ -128,7 +128,7 @@ import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvi
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getUserPath } from '../../../../utils/RouterUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';

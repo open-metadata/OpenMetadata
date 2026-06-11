@@ -34,8 +34,13 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { File } from '../../../../generated/entity/data/file';
 import { Column, TagSource } from '../../../../generated/entity/data/table';
 import { TagLabel } from '../../../../generated/type/tagLabel';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { columnFilterIcon } from '../../../../utils/TableColumn.util';
+import {
+  pruneEmptyChildren,
+  updateFieldDescription,
+  updateFieldTags,
+} from '../../../../utils/TablePureUtils';
 import {
   getAllTags,
   searchTagInData,
@@ -43,9 +48,6 @@ import {
 import {
   getTableExpandableConfig,
   prepareConstraintIcon,
-  pruneEmptyChildren,
-  updateFieldDescription,
-  updateFieldTags,
 } from '../../../../utils/TableUtils';
 import { EntityAttachmentProvider } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';

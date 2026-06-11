@@ -126,58 +126,6 @@ import { t } from './i18next/LocalUtil';
 import searchClassBase from './SearchClassBase';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 
-// Re-exports from TablePureUtils (backward compat)
-export { ExtraTableDropdownOptions } from './TableDropdownOptions';
-export {
-  buildColumnBreadcrumbPath,
-  createTableConstraintObject,
-  extractColumnsFromData,
-  extractTableColumns,
-  fieldExistsByFQN,
-  findColumnByEntityLink,
-  findFieldByFQN,
-  findOriginalColumnIndex,
-  findParentColumn,
-  flattenColumns,
-  generateEntityLink,
-  getAllRowKeysByKeyName,
-  getCertificationTag,
-  getColumnOptionsFromTableColumn,
-  getDataTypeDisplay,
-  getDataTypeString,
-  getExpandAllKeysToDepth,
-  getHighlightedRowClassName,
-  getJoinsFromTableJoins,
-  getNestedSectionTitle,
-  getParentKeysToExpand,
-  getSafeExpandAllKeys,
-  getSchemaDepth,
-  getSchemaFieldCount,
-  getTagsWithoutCertification,
-  getTagsWithoutTier,
-  getTierTags,
-  getUpdatedTags,
-  getUsagePercentile,
-  isCertificationTag,
-  isLargeSchema,
-  isTierTag,
-  makeData,
-  mergeTagsWithGlossary,
-  normalizeTags,
-  pruneEmptyChildren,
-  searchInFields,
-  shouldCollapseSchema,
-  updateColumnInNestedStructure,
-  updateFieldDescription,
-  updateFieldDisplayName,
-  updateFieldExtension,
-  updateFieldTags,
-} from './TablePureUtils';
-export {
-  getTableDetailPageBaseTabs,
-  getTableWidgetFromKey,
-} from './TableTabsUtils';
-
 export const getConstraintIcon = ({
   constraint = '',
   className = '',
