@@ -46,9 +46,7 @@ const AttachmentWidget: FC<AttachmentWidgetProps> = ({ hasPermission }) => {
   const content = useMemo(() => {
     if (attachments.length === 0) {
       return (
-        <Typography
-          className="tw:text-center tw:text-gray-500"
-          size="text-xs">
+        <Typography className="tw:text-center tw:text-gray-500" size="text-xs">
           {t('message.no-entity-data-available', {
             entity: t('label.attachment-plural'),
           })}
@@ -68,17 +66,10 @@ const AttachmentWidget: FC<AttachmentWidgetProps> = ({ hasPermission }) => {
               type={item.fileType}
             />
             <div className="tw:min-w-0 tw:flex-1">
-              <Typography
-                ellipsis
-                as="p"
-                size="text-sm"
-                weight="medium">
+              <Typography ellipsis as="p" size="text-sm" weight="medium">
                 {item.name}
               </Typography>
-              <Typography
-                as="p"
-                className="tw:text-gray-500"
-                size="text-xs">
+              <Typography as="p" className="tw:text-gray-500" size="text-xs">
                 {getReadableFileSize(item.size)}
               </Typography>
             </div>
