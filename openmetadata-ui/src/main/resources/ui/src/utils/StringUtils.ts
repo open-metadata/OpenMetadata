@@ -12,6 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
+import DOMPurify from 'dompurify';
 import parse from 'html-react-parser';
 import { get, isString } from 'lodash';
 import Showdown from 'showdown';
@@ -408,9 +409,8 @@ const markdownConverter = new Showdown.Converter({
 
 export function stripMarkdown(text: string): string {
   const html = markdownConverter.makeHtml(text);
-  const doc = new DOMParser().parseFromString(html, 'text/html');
 
-  return doc.body.textContent?.trim() ?? '';
+  return DOMPurify.sanitize(html, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] }).trim();
 }
 
 export function removeAttachmentsWithoutUrl(htmlString: string): string {
