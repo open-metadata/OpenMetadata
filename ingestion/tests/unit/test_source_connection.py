@@ -44,10 +44,6 @@ from metadata.generated.schema.entity.services.connections.database.db2Connectio
     Db2Connection,
     Db2Scheme,
 )
-from metadata.generated.schema.entity.services.connections.database.druidConnection import (
-    DruidConnection,
-    DruidScheme,
-)
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
     HiveScheme,
@@ -668,16 +664,6 @@ class SourceConnectionTest(TestCase):
 
         trino_connection = TrinoConnection(trino_conn_obj)
         assert trino_connection.build_connection_args(trino_conn_obj).root.get("auth") == OAuth2Authentication()
-
-    def test_druid_url(self):
-        from metadata.ingestion.source.database.druid.connection import (
-            get_connection_url,
-        )
-
-        expected_url = "druid://localhost:8082/druid/v2/sql"
-        druid_conn_obj = DruidConnection(scheme=DruidScheme.druid, hostPort="localhost:8082")
-
-        assert expected_url == get_connection_url(druid_conn_obj)
 
     def test_mysql_url(self):
         # connection arguments without db

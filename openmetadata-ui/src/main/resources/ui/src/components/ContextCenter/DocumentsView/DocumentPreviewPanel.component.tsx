@@ -18,7 +18,7 @@ import {
   FileIcon,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Link04, XClose } from '@untitledui/icons';
+import { Copy06, XClose } from '@untitledui/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatBytes } from '../../../utils/ContextCenterUtils';
@@ -89,13 +89,8 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
           </div>
         </Box>
         <Box align="center" gap={2}>
-          <CopyLinkButton url={url}>
-            <Link04
-              aria-hidden="true"
-              className="tw:-rotate-45"
-              size={17}
-              strokeWidth={1.8}
-            />
+          <CopyLinkButton className="tw:w-7 tw:h-7" url={url}>
+            <Copy06 aria-hidden="true" size={17} strokeWidth={1.8} />
           </CopyLinkButton>
           <ButtonUtility
             color="tertiary"
