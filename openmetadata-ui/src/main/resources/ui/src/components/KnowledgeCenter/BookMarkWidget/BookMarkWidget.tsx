@@ -80,7 +80,7 @@ const BookMarkWidget = ({
       title={t('label.bookmark-plural')}
       titleIcon={titleIcon}>
       {isEmpty(data) ? (
-        <Typography className='tw:text-gray-500' size="text-xs">
+        <Typography className="tw:text-gray-500" size="text-xs">
           {t('message.not-bookmark-anything')}
         </Typography>
       ) : (

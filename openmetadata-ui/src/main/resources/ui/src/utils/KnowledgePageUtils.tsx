@@ -49,7 +49,7 @@ export {
   hierarchyPaginationInitialState,
   hierarchyPaginationReducer,
   integrateNodesIntoHierarchy,
-  updateTreeData
+  updateTreeData,
 } from './KnowledgePagePureUtils';
 export type { ActionType } from './KnowledgePagePureUtils';
 
@@ -145,10 +145,7 @@ export const getLink = (knowledgePage: KnowledgePage, testIdPrefix: string) => {
             width={16}
           />
         ) : (
-          <File06
-            size={16}
-            strokeWidth={1.5}
-          />
+          <File06 size={16} strokeWidth={1.5} />
         )}
 
         <span>{getKnowledgePageName(knowledgePage, t)}</span>
