@@ -1,7 +1,6 @@
 package org.openmetadata.mcp.server.auth.util;
 
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -20,46 +19,45 @@ public class UriUtils {
    * @return The constructed redirect URI.
    */
   public static String constructRedirectUri(String redirectUriBase, Map<String, String> params) {
-    try {
-      URI uri = new URI(redirectUriBase);
+    URI uri = URI.create(redirectUriBase);
 
-      // Get existing query
-      String query = uri.getQuery();
-      StringBuilder queryBuilder = new StringBuilder();
-
-      // Append existing query parameters if any
-      if (query != null && !query.isEmpty()) {
-        queryBuilder.append(query);
-        if (!params.isEmpty()) {
-          queryBuilder.append("&");
-        }
-      }
-
-      // Append new parameters
-      if (!params.isEmpty()) {
-        String newParams =
-            params.entrySet().stream()
-                .filter(entry -> entry.getValue() != null)
-                .map(
-                    entry ->
-                        URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8)
-                            + "="
-                            + URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8))
-                .collect(Collectors.joining("&"));
-        queryBuilder.append(newParams);
-      }
-
-      // Create new URI with updated query
-      return new URI(
-              uri.getScheme(),
-              uri.getAuthority(),
-              uri.getPath(),
-              queryBuilder.toString(),
-              uri.getFragment())
-          .toString();
-    } catch (URISyntaxException e) {
-      throw new IllegalArgumentException("Invalid redirect URI: " + redirectUriBase, e);
+    StringBuilder queryBuilder = new StringBuilder();
+    String existingQuery = uri.getRawQuery();
+    if (existingQuery != null && !existingQuery.isEmpty()) {
+      queryBuilder.append(existingQuery);
     }
+
+    String newParams =
+        params.entrySet().stream()
+            .filter(entry -> entry.getValue() != null)
+            .map(
+                entry ->
+                    URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8)
+                        + "="
+                        + URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8))
+            .collect(Collectors.joining("&"));
+    if (!newParams.isEmpty()) {
+      if (queryBuilder.length() > 0) {
+        queryBuilder.append("&");
+      }
+      queryBuilder.append(newParams);
+    }
+
+    // Reassemble the URI by string concatenation. The query is already percent-encoded above;
+    // passing it through the multi-argument URI constructor would re-encode the '%' characters
+    // (e.g. a base64 state "a==" -> "a%3D%3D" -> "a%253D%253D"), corrupting opaque values such as
+    // the OAuth state and breaking clients that compare it byte-for-byte (e.g. VS Code loopback).
+    String base = redirectUriBase;
+    int fragmentIdx = base.indexOf('#');
+    if (fragmentIdx >= 0) {
+      base = base.substring(0, fragmentIdx);
+    }
+    int queryIdx = base.indexOf('?');
+    if (queryIdx >= 0) {
+      base = base.substring(0, queryIdx);
+    }
+    String fragment = uri.getRawFragment() != null ? "#" + uri.getRawFragment() : "";
+    return queryBuilder.length() > 0 ? base + "?" + queryBuilder + fragment : base + fragment;
   }
 
   /**
