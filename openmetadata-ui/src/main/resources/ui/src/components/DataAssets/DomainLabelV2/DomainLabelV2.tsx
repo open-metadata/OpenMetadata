@@ -157,10 +157,8 @@ export const DomainLabelV2 = <
     } else {
       return (
         <Typography
-          className={classNames(
-           'tw:text-gray-500',
-            props.textClassName
-          )} data-testid="no-domain-text"
+          className={classNames('tw:text-gray-500', props.textClassName)}
+          data-testid="no-domain-text"
           size="text-xs">
           {t('label.no-entity', { entity: t('label.domain-plural') })}
         </Typography>
