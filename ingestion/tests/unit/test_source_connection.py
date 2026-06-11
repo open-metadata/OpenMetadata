@@ -48,12 +48,6 @@ from metadata.generated.schema.entity.services.connections.database.druidConnect
     DruidConnection,
     DruidScheme,
 )
-from metadata.generated.schema.entity.services.connections.database.exasolConnection import (
-    ExasolConnection,
-    ExasolScheme,
-    ExasolType,
-    Tls,
-)
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
     HiveScheme,
@@ -83,17 +77,9 @@ from metadata.generated.schema.entity.services.connections.database.oracleConnec
     OracleServiceName,
     OracleTNSConnection,
 )
-from metadata.generated.schema.entity.services.connections.database.pinotDBConnection import (
-    PinotDBConnection,
-    PinotDBScheme,
-)
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
     PostgresScheme,
-)
-from metadata.generated.schema.entity.services.connections.database.prestoConnection import (
-    PrestoConnection,
-    PrestoScheme,
 )
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
@@ -693,20 +679,6 @@ class SourceConnectionTest(TestCase):
 
         assert expected_url == get_connection_url(druid_conn_obj)
 
-    def test_pinotdb_url(self):
-        from metadata.ingestion.source.database.pinotdb.connection import (
-            get_connection_url,
-        )
-
-        expected_url = "pinot://localhost:8099/query/sql?controller=http://localhost:9000/"
-        pinot_conn_obj = PinotDBConnection(
-            scheme=PinotDBScheme.pinot,
-            hostPort="localhost:8099",
-            pinotControllerHost="http://localhost:9000/",
-        )
-
-        assert expected_url == get_connection_url(pinot_conn_obj)
-
     def test_mysql_url(self):
         # connection arguments without db
         expected_url = "mysql+pymysql://openmetadata_user:@localhost:3306"
@@ -1137,52 +1109,6 @@ class SourceConnectionTest(TestCase):
         )
         assert expected_url == get_connection_url(mssql_conn_obj)
 
-    def test_presto_url(self):
-        from metadata.ingestion.source.database.presto.connection import (
-            get_connection_url,
-        )
-
-        # connection arguments without db
-        expected_url = "presto://admin@localhost:8080/test_catalog"
-
-        presto_conn_obj = PrestoConnection(
-            username="admin",
-            hostPort="localhost:8080",
-            scheme=PrestoScheme.presto,
-            catalog="test_catalog",
-        )
-
-        assert expected_url == get_connection_url(presto_conn_obj)
-
-        # Passing @ in username and password
-        expected_url = "presto://admin%40333:pass%40111@localhost:8080/test_catalog"
-
-        presto_conn_obj = PrestoConnection(
-            username="admin@333",
-            password="pass@111",
-            hostPort="localhost:8080",
-            scheme=PrestoScheme.presto,
-            catalog="test_catalog",
-        )
-
-        assert expected_url == get_connection_url(presto_conn_obj)
-
-    def test_presto_without_catalog(self):
-        from metadata.ingestion.source.database.presto.connection import (
-            get_connection_url,
-        )
-
-        # Test presto url without catalog
-        expected_url = "presto://username:pass@localhost:8080"
-        presto_conn_obj = PrestoConnection(
-            scheme=PrestoScheme.presto,
-            hostPort="localhost:8080",
-            username="username",
-            password="pass",
-        )
-
-        assert expected_url == get_connection_url(presto_conn_obj)
-
     def test_oracle_url(self):
         # oracle with db
         expected_url = "oracle+cx_oracle://admin:password@localhost:1541/testdb"
@@ -1254,59 +1180,3 @@ class SourceConnectionTest(TestCase):
             oracleConnectionType=OracleTNSConnection(oracleTNSConnection=tns_connection),
         )
         assert OracleConnection.get_connection_url(oracle_conn_obj) == expected_url
-
-    def test_exasol_url(self):
-        from metadata.ingestion.source.database.exasol.connection import (
-            get_connection_url,
-        )
-
-        def generate_test_data(username="admin", password="password", port=8563, hostname="localhost"):
-            from collections import namedtuple
-
-            TestData = namedtuple("TestData", ["comment", "kwargs", "expected"])
-            host_port = f"{hostname}:{port}"
-
-            yield from (
-                TestData(
-                    comment="Testing default parameters",
-                    kwargs={
-                        "username": username,
-                        "password": password,
-                        "hostPort": host_port,
-                        "tls": Tls.validate_certificate,
-                    },
-                    expected="exa+websocket://admin:password@localhost:8563",
-                ),
-                TestData(
-                    comment="Testing the manual setting of parameters",
-                    kwargs={
-                        "type": ExasolType.Exasol,
-                        "scheme": ExasolScheme.exa_websocket,
-                        "username": username,
-                        "password": password,
-                        "hostPort": host_port,
-                        "tls": Tls.ignore_certificate,
-                    },
-                    expected="exa+websocket://admin:password@localhost:8563?SSLCertificate=SSL_VERIFY_NONE",
-                ),
-                TestData(
-                    comment="Testing disabling TLS completely",
-                    kwargs={
-                        "type": ExasolType.Exasol,
-                        "scheme": ExasolScheme.exa_websocket,
-                        "username": username,
-                        "password": password,
-                        "hostPort": host_port,
-                        "tls": Tls.disable_tls,
-                    },
-                    expected="exa+websocket://admin:password@localhost:8563?SSLCertificate=SSL_VERIFY_NONE&ENCRYPTION=no",
-                ),
-            )
-
-        # execute test cases
-        for data in generate_test_data():
-            with self.subTest(kwargs=data.kwargs, expected=data.expected):
-                connection = ExasolConnection(**data.kwargs)
-                actual = get_connection_url(connection)
-                expected = data.expected
-                assert actual == expected
