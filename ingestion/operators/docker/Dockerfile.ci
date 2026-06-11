@@ -1,4 +1,11 @@
-FROM python:3.10-bookworm
+FROM python:3.10-slim-bookworm
+
+# slim-bookworm omits curl, ca-certificates, gnupg — bootstrap them so the
+# apt-key + Microsoft repo steps below can run.
+RUN apt-get -qq update \
+    && apt-get -qq install -y --no-install-recommends \
+       curl ca-certificates gnupg \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN curl -sS https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
@@ -16,6 +23,7 @@ RUN apt-get -qq update \
     libaio1 \
     libevent-dev \
     libffi-dev \
+    libgomp1 \
     libpq-dev \
     librdkafka-dev \
     libsasl2-dev \
@@ -29,8 +37,10 @@ RUN apt-get -qq update \
     openssl \
     # To ensure compatibility with unixodbc package
     odbcinst=2.3.11-2+deb12u1 \
+    pkg-config \
     postgresql \
     postgresql-contrib \
+    procps \
     tdsodbc \
     unixodbc=2.3.11-2+deb12u1 \
     unixodbc-dev=2.3.11-2+deb12u1 \
