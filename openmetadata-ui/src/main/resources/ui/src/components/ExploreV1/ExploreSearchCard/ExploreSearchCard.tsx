@@ -16,7 +16,7 @@ import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isObject, isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
-import { forwardRef, useCallback, useMemo } from 'react';
+import { forwardRef, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ScoreIcon } from '../../../assets/svg/score.svg';
@@ -38,6 +38,7 @@ import { prefetchTable } from '../../../rest/queries/tableQuery';
 import { prefetchTopic } from '../../../rest/queries/topicQuery';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { highlightEntityNameAndDescription } from '../../../utils/EntitySearchUtils';
+import { getExploreAssetIcon } from '../../../utils/ExploreIconUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringUtils';
 import { getUsagePercentile } from '../../../utils/TablePureUtils';
@@ -263,6 +264,32 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       [source]
     );
 
+    // Long paths collapse to "first / … / last"; clicking the ellipsis
+    // reveals the full path. Keeps every card a single breadcrumb line.
+    const [isBreadcrumbExpanded, setIsBreadcrumbExpanded] = useState(false);
+    const displayBreadcrumbs = useMemo(() => {
+      if (isBreadcrumbExpanded || breadcrumbs.length <= 3) {
+        return breadcrumbs;
+      }
+
+      return [
+        breadcrumbs[0],
+        { name: '…', url: '' },
+        breadcrumbs[breadcrumbs.length - 1],
+      ];
+    }, [breadcrumbs, isBreadcrumbExpanded]);
+
+    const handleBreadcrumbEllipsisClick = useCallback(
+      (event: React.MouseEvent<HTMLDivElement>) => {
+        if ((event.target as HTMLElement).textContent === '…') {
+          event.preventDefault();
+          event.stopPropagation();
+          setIsBreadcrumbExpanded(true);
+        }
+      },
+      []
+    );
+
     const entityIcon = useMemo(() => {
       if (showEntityIcon) {
         if (source.entityType === 'glossaryTerm') {
@@ -284,10 +311,11 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
 
         return (
           <span className="w-6 h-6 m-r-xs d-inline-flex text-xl align-middle">
-            {searchClassBase.getEntityIcon(
-              source.entityType ?? '',
-              'text-link-color'
-            )}
+            {getExploreAssetIcon(source.entityType ?? '', 'text-link-color') ??
+              searchClassBase.getEntityIcon(
+                source.entityType ?? '',
+                'text-link-color'
+              )}
           </span>
         );
       }
@@ -328,10 +356,13 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             <Col className="d-flex justify-between items-center" flex="auto">
               <div className="d-flex gap-2 items-center">
                 {breadcrumbs.length > 0 && serviceIcon}
-                <div className="entity-breadcrumb" data-testid="category-name">
+                <div
+                  className="entity-breadcrumb"
+                  data-testid="category-name"
+                  onClick={handleBreadcrumbEllipsisClick}>
                   <TitleBreadcrumb
                     className={classNameForBreadcrumb}
-                    titleLinks={breadcrumbs}
+                    titleLinks={displayBreadcrumbs}
                     widthDeductions={780}
                   />
                 </div>

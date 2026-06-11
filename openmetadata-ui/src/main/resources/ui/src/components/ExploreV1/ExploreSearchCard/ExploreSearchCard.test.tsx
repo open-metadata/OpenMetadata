@@ -148,6 +148,37 @@ describe('ExploreSearchCard - Domain section', () => {
   });
 });
 
+describe('ExploreSearchCard - Card container', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('always carries the base explore-search-card class', () => {
+    renderCard({ fullyQualifiedName: 'svc.db.schema.users' });
+
+    expect(
+      screen.getByTestId('table-data-card_svc.db.schema.users')
+    ).toHaveClass('explore-search-card');
+  });
+
+  it('applies the selected highlight-card class passed by SearchedData', () => {
+    renderWithQueryClient(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          className="highlight-card"
+          source={{ ...baseSource, fullyQualifiedName: 'svc.db.schema.users' }}
+        />
+      </MemoryRouter>
+    );
+
+    const card = screen.getByTestId('table-data-card_svc.db.schema.users');
+
+    expect(card).toHaveClass('explore-search-card');
+    expect(card).toHaveClass('highlight-card');
+  });
+});
+
 describe('ExploreSearchCard - Highlight functionality', () => {
   const { highlightEntityNameAndDescription } = jest.requireMock(
     '../../../utils/EntitySearchUtils'

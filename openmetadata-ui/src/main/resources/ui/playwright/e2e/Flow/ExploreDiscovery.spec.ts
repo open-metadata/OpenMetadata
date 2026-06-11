@@ -280,7 +280,7 @@ test.describe('Explore Assets Discovery', () => {
         .getByTestId(user.responseData.displayName)
     ).not.toBeAttached();
 
-    await page.getByTestId('close-btn').click();
+    await page.keyboard.press('Escape');
 
     // The domain should not be visible in the domains filter when the deleted switch is off
     await page.click('[data-testid="search-dropdown-Domains"]');
@@ -303,7 +303,7 @@ test.describe('Explore Assets Discovery', () => {
         .getByTestId(domain.responseData.displayName)
     ).not.toBeAttached();
 
-    await page.getByTestId('close-btn').click();
+    await page.keyboard.press('Escape');
   });
 
   test('Should display domain and owner of deleted asset in suggestions when showDeleted is on', async ({

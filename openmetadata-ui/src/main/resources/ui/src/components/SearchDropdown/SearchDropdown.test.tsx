@@ -405,6 +405,89 @@ describe('Search DropDown Component', () => {
     );
   });
 
+  describe('Immediate apply mode', () => {
+    it('does not render the Update/Close footer when immediateApply is set', async () => {
+      render(<SearchDropdown {...mockProps} immediateApply />);
+
+      const container = await screen.findByTestId('search-dropdown-Owner');
+
+      await act(async () => {
+        fireEvent.click(container);
+      });
+
+      expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
+      expect(screen.queryByTestId('update-btn')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('close-btn')).not.toBeInTheDocument();
+    });
+
+    it('applies each selection immediately without clicking Update', async () => {
+      mockOnChange.mockClear();
+
+      render(<SearchDropdown {...mockProps} immediateApply />);
+
+      const container = await screen.findByTestId('search-dropdown-Owner');
+
+      await act(async () => {
+        fireEvent.click(container);
+      });
+
+      const option2 = await screen.findByTestId('User 2');
+
+      await act(async () => {
+        fireEvent.click(option2);
+      });
+
+      expect(mockOnChange).toHaveBeenCalledWith(
+        [
+          { key: 'User 1', label: 'User 1' },
+          { key: 'User 2', label: 'User 2' },
+        ],
+        'owner.displayName'
+      );
+    });
+
+    it('keeps a selected option visible even when missing from fetched options', async () => {
+      // Immediate-apply facets exclude their own field from the aggregation,
+      // so a selected value may fall outside the fetched top-N options.
+      render(
+        <SearchDropdown
+          {...mockProps}
+          immediateApply
+          selectedKeys={[{ key: 'glossaryterm', label: 'glossaryterm' }]}
+        />
+      );
+
+      const container = await screen.findByTestId('search-dropdown-Owner');
+
+      await act(async () => {
+        fireEvent.click(container);
+      });
+
+      expect(await screen.findByTestId('glossaryterm')).toBeInTheDocument();
+      expect(await screen.findByTestId('glossaryterm-checkbox')).toBeChecked();
+    });
+
+    it('renders the helper text in immediateApply mode', async () => {
+      render(
+        <SearchDropdown
+          {...mockProps}
+          immediateApply
+          helperText="Pick values to refine."
+        />
+      );
+
+      const container = await screen.findByTestId('search-dropdown-Owner');
+
+      await act(async () => {
+        fireEvent.click(container);
+      });
+
+      expect(
+        await screen.findByTestId('search-dropdown-helper-text')
+      ).toHaveTextContent('Pick values to refine.');
+    });
+  });
+
   describe('Single Select Mode', () => {
     it('should allow only one option to be selected at a time', async () => {
       render(<SearchDropdown {...mockProps} singleSelect />);

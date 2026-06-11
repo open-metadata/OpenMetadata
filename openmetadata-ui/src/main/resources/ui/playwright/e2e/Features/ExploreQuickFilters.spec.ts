@@ -108,9 +108,14 @@ test.describe('search dropdown quick filters - index readiness', () => {
         filter.key
       }*${(filter.value ?? '').replaceAll(' ', '+').toLowerCase()}*`;
 
-      const queryRes = page.waitForResponse(querySearchURL);
-      await page.click('[data-testid="update-btn"]');
-      await queryRes;
+      const updateButton = page.getByTestId('update-btn');
+      if (await updateButton.isVisible().catch(() => false)) {
+        const queryRes = page.waitForResponse(querySearchURL);
+        await updateButton.click();
+        await queryRes;
+      } else {
+        await waitForAllLoadersToDisappear(page);
+      }
       await page.click('[data-testid="clear-filters"]');
     }
   });
@@ -233,9 +238,14 @@ test('Filter by column entity type shows only column results', async ({
   await dataAssetDropdownRequest;
 
   await columnCheckbox.check();
-  await page.getByTestId('update-btn').click();
 
-  await page.getByTestId('search-dropdown-Data Assets').click();
+  const updateButton = page.getByTestId('update-btn');
+  if (await updateButton.isVisible().catch(() => false)) {
+    // Legacy mode: apply, then reopen the dropdown to confirm persistence.
+    await updateButton.click();
+    await page.getByTestId('search-dropdown-Data Assets').click();
+  }
+  // Immediate-apply leaves the dropdown open with the box already checked.
   await expect(page.getByTestId('tablecolumn-checkbox')).toBeChecked();
   await expect(page.getByTestId('search-dropdown-Data Assets')).toContainText(
     '(1)'
@@ -313,11 +323,14 @@ test.describe('Tier filter - aggregation-based options', () => {
     });
 
     await test.step('Apply filter and verify asset is visible in results', async () => {
-      const queryRes = page.waitForResponse(
-        `/api/v1/search/query?*index=dataAsset*query_filter=*tier.tagFQN*`
-      );
-      await page.getByTestId('update-btn').click();
-      await queryRes;
+      const updateButton = page.getByTestId('update-btn');
+      if (await updateButton.isVisible().catch(() => false)) {
+        const queryRes = page.waitForResponse(
+          `/api/v1/search/query?*index=dataAsset*query_filter=*tier.tagFQN*`
+        );
+        await updateButton.click();
+        await queryRes;
+      }
       await waitForAllLoadersToDisappear(page);
 
       await expect(
@@ -357,11 +370,14 @@ test.describe('Filter persistence after bug fixes', () => {
         { key: 'tags.tagFQN', label: 'Tag', value: 'PersonalData.Personal' },
         true
       );
-      const queryRes = page.waitForResponse(
-        '/api/v1/search/query?*index=dataAsset*'
-      );
-      await page.getByTestId('update-btn').click();
-      await queryRes;
+      const updateButton = page.getByTestId('update-btn');
+      if (await updateButton.isVisible().catch(() => false)) {
+        const queryRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await updateButton.click();
+        await queryRes;
+      }
       await waitForAllLoadersToDisappear(page);
     });
 
@@ -391,11 +407,14 @@ test.describe('Filter persistence after bug fixes', () => {
         { key: 'tags.tagFQN', label: 'Tag', value: 'PersonalData.Personal' },
         true
       );
-      const queryRes = page.waitForResponse(
-        '/api/v1/search/query?*index=dataAsset*'
-      );
-      await page.getByTestId('update-btn').click();
-      await queryRes;
+      const updateButton = page.getByTestId('update-btn');
+      if (await updateButton.isVisible().catch(() => false)) {
+        const queryRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await updateButton.click();
+        await queryRes;
+      }
       await waitForAllLoadersToDisappear(page);
     });
 

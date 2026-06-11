@@ -36,6 +36,7 @@ import {
 } from './common';
 import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { waitForAllLoadersToDisappear } from './entity';
+import { clickUpdateButtonIfVisible } from './explore';
 import { settingClick, SettingOptionsType, sidebarClick } from './sidebar';
 
 export const visitUserListPage = async (page: Page) => {
@@ -661,14 +662,16 @@ export const checkStewardServicesPermissions = async (page: Page) => {
   await dataAssetDropdownRequest;
 
   await page.locator('[data-testid="table-checkbox"]').scrollIntoViewIfNeeded();
-  await page.click('[data-testid="table-checkbox"]');
 
+  // Arm before the option click: immediate-apply fires the query on the click
   const getSearchResultResponse = page.waitForResponse(
     '/api/v1/search/query?q=*'
   );
-  await page.click('[data-testid="update-btn"]');
+  await page.click('[data-testid="table-checkbox"]');
+  await clickUpdateButtonIfVisible(page);
 
   await getSearchResultResponse;
+  await page.keyboard.press('Escape');
 
   // Click on the entity link in the drawer title
   await page.click('.summary-panel-container [data-testid="entity-link"]');
