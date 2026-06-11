@@ -110,6 +110,7 @@ import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.BulkExecutor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityCacheRepair;
 import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MigrationDAO;
@@ -1235,7 +1236,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     @Override
     public void start() {
-      EntityRepository.startL1RepairExecutor();
+      EntityCacheRepair.start();
       LOG.info("Starting the application");
     }
 
@@ -1243,7 +1244,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     public void stop() throws InterruptedException, SchedulerException {
       LOG.info("Cache with Id Stats {}", EntityRepository.CACHE_WITH_ID.stats());
       LOG.info("Cache with name Stats {}", EntityRepository.CACHE_WITH_NAME.stats());
-      EntityRepository.shutdownL1RepairExecutor();
+      EntityCacheRepair.shutdown();
       EventPubSub.shutdown();
       EventSubscriptionScheduler.shutDown();
       AsyncService.getInstance().shutdown();
