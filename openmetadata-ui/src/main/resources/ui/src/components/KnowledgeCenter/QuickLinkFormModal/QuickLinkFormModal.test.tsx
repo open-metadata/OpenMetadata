@@ -185,10 +185,13 @@ jest.mock('utils/StringUtils', () => ({
   escapeESReservedCharacters: jest.fn().mockImplementation((text) => text),
 }));
 
-jest.mock('utils/EntityUtils', () => ({
+jest.mock('utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation((entity) => entity?.displayName ?? ''),
+}));
+
+jest.mock('utils/EntityReferenceUtils', () => ({
   getEntityReferenceFromEntity: jest
     .fn()
     .mockImplementation((entity) => entity),

@@ -28,7 +28,7 @@ import { cloneDeep, debounce, isEqual, isNil, isUndefined } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { getEntityReferenceFromEntity } from 'src/utils/EntityReferenceUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import { KNOWLEDGE_CENTER_CLASSIFICATION, PAGE_SIZE } from '../../../constants/constants';
 import { getKnowledgePageFields } from '../../../constants/KnowledgeCenter.constant';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
