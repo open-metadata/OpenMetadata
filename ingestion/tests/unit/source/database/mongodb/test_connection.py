@@ -58,3 +58,11 @@ def test_get_client_passes_connection_options_as_kwargs():
     with patch(f"{CONNECTION_MODULE}.MongoClient") as mock_mongo:
         _ = MongoDBConnection(config).client
     assert mock_mongo.call_args.kwargs["serverSelectionTimeoutMS"] == "5000"
+
+
+def test_close_releases_the_mongo_client_pool():
+    with patch(f"{CONNECTION_MODULE}.MongoClient") as mock_mongo:
+        connection = MongoDBConnection(_config())
+        _ = connection.client
+        connection.close()
+    mock_mongo.return_value.close.assert_called_once_with()

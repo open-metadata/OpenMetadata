@@ -46,7 +46,9 @@ class MongoDBConnection(BaseConnection[MongoDBConnectionConfig, MongoClient]):
         if connection.connectionOptions and connection.connectionOptions.root:
             args = connection.connectionOptions.root
 
-        return MongoClient(mongo_url, **args)  # pyright: ignore[reportArgumentType]
+        client = MongoClient(mongo_url, **args)  # pyright: ignore[reportArgumentType]
+        self._on_close(client.close)
+        return client
 
     def test_connection(
         self,
