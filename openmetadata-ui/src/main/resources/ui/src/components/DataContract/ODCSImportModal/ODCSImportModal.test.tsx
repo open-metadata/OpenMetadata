@@ -35,84 +35,256 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ContractImportModal from './ODCSImportModal.component';
 
-const mockTheme = {
-  palette: {
-    grey: {
-      50: '#fafafa',
-      100: '#f5f5f5',
-    },
-    primary: {
-      main: '#1976d2',
-    },
-    divider: '#e0e0e0',
-    text: {
-      primary: '#212121',
-      secondary: '#757575',
-    },
-    action: {
-      hover: 'rgba(0, 0, 0, 0.04)',
-    },
-    allShades: {
-      success: {
-        50: '#e8f5e9',
-        500: '#4caf50',
-        700: '#388e3c',
-      },
-      error: {
-        50: '#ffebee',
-        100: '#ffcdd2',
-        600: '#e53935',
-      },
-      warning: {
-        50: '#fff8e1',
-        300: '#ffb74d',
-        600: '#fb8c00',
-        800: '#ef6c00',
-      },
-    },
-  },
-};
-
-jest.mock('@mui/material', () => {
-  const actualMui = jest.requireActual('@mui/material');
-
-  return {
-    ...actualMui,
-    useTheme: () => mockTheme,
-    Select: ({
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Badge: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <span>{children}</span>
+  )),
+  BadgeWithIcon: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <span>{children}</span>
+  )),
+  Box: jest.fn(
+    ({
       children,
-      value,
-      onChange,
-      displayEmpty,
+      className,
+      ...rest
+    }: {
+      children?: React.ReactNode;
+      className?: string;
+      [key: string]: unknown;
+    }) => (
+      <div className={className} {...rest}>
+        {children}
+      </div>
+    )
+  ),
+  Button: jest.fn(
+    ({
+      children,
+      isDisabled,
+      onClick,
+      ...rest
     }: {
       children: React.ReactNode;
+      isDisabled?: boolean;
+      onClick?: () => void;
+      [key: string]: unknown;
+    }) => (
+      <button disabled={isDisabled} onClick={onClick} {...rest}>
+        {children}
+      </button>
+    )
+  ),
+  ButtonUtility: jest.fn(({ onClick, ...rest }: { onClick?: () => void; [key: string]: unknown }) => (
+    <button onClick={onClick} {...rest} />
+  )),
+  Card: Object.assign(
+    jest.fn(({ children, className }: { children?: React.ReactNode; className?: string }) => (
+      <div className={className}>{children}</div>
+    )),
+    {
+      Content: jest.fn(({ children }: { children: React.ReactNode }) => <div>{children}</div>),
+      Footer: jest.fn(({ children }: { children: React.ReactNode }) => <div>{children}</div>),
+      Header: jest.fn(({ children }: { children: React.ReactNode }) => <div>{children}</div>),
+    }
+  ),
+  FileUploadDropZone: jest.fn(
+    ({
+      accept,
+      clickToUploadLabel,
+      hint,
+      'input-data-testid': inputTestId,
+      onDropFiles,
+      orDragAndDropLabel,
+    }: {
+      accept?: string;
+      clickToUploadLabel?: string;
+      hint?: string;
+      'input-data-testid'?: string;
+      onDropFiles?: (f: FileList) => void;
+      orDragAndDropLabel?: string;
+    }) => {
+      const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        const raw = e.dataTransfer?.files;
+        const files: File[] = raw ? Array.from(raw as unknown as File[]) : [];
+        const accepted = accept
+          ? files.filter((f) =>
+              accept.split(',').some((ext) => f.name.endsWith(ext.trim()))
+            )
+          : files;
+        if (accepted.length > 0) {
+          onDropFiles?.(accepted as unknown as FileList);
+        }
+      };
+
+      return (
+        <div
+          onDragLeave={(e) => e.preventDefault()}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={handleDrop}>
+          <span>{clickToUploadLabel}</span>
+          <span>{orDragAndDropLabel}</span>
+          {hint && <span>{hint}</span>}
+          <input
+            data-testid={inputTestId ?? 'file-upload-input'}
+            type="file"
+            onChange={(e) => e.target.files && onDropFiles?.(e.target.files)}
+          />
+        </div>
+      );
+    }
+  ),
+  Dialog: Object.assign(
+    jest.fn(
+      ({
+        children,
+        onClose,
+      }: {
+        children: React.ReactNode;
+        onClose?: () => void;
+      }) => (
+        <div data-testid="import-contract-modal">
+          <button data-testid="dialog-close-button" onClick={onClose}>
+            close
+          </button>
+          {children}
+        </div>
+      )
+    ),
+    {
+      Content: jest.fn(({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      )),
+      Footer: jest.fn(({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      )),
+      Header: jest.fn(({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      )),
+    }
+  ),
+  Modal: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  )),
+  ModalOverlay: jest.fn(
+    ({ children, isOpen }: { children: React.ReactNode; isOpen?: boolean }) =>
+      isOpen ? <div data-testid="modal-overlay">{children}</div> : null
+  ),
+  RadioButton: jest.fn(
+    ({
+      value,
+      className,
+      checked,
+      onChange,
+    }: {
       value: string;
-      onChange: (e: { target: { value: string } }) => void;
-      displayEmpty?: boolean;
+      className?: string;
+      checked?: boolean;
+      onChange?: React.ChangeEventHandler<HTMLInputElement>;
+    }) => (
+      <input
+        checked={checked}
+        className={className}
+        type="radio"
+        value={value}
+        onChange={onChange ?? (() => undefined)}
+      />
+    )
+  ),
+  RadioGroup: jest.fn(
+    ({
+      children,
+      onChange,
+      value,
+    }: {
+      children: React.ReactNode;
+      onChange?: (value: string) => void;
+      value?: string;
+    }) => {
+      const childrenWithChecked = React.Children.map(children, (child) => {
+        if (!React.isValidElement(child)) {
+          return child;
+        }
+
+        const cloneChildren = (node: React.ReactNode): React.ReactNode =>
+          React.Children.map(node, (c) => {
+            if (!React.isValidElement(c)) {
+              return c;
+            }
+            const cProps = c.props as Record<string, unknown>;
+            const newProps: Record<string, unknown> = {};
+            if (cProps.value !== undefined) {
+              newProps.checked = cProps.value === value;
+              newProps.onChange = (e: React.ChangeEvent<HTMLInputElement>) =>
+                onChange?.(e.target.value);
+            }
+            if (cProps.children) {
+              newProps.children = cloneChildren(
+                cProps.children as React.ReactNode
+              );
+            }
+
+            return React.cloneElement(c, newProps);
+          });
+
+        return cloneChildren(child);
+      });
+
+      return (
+        <div
+          data-testid="radio-group"
+          data-value={value}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            onChange?.(e.target.value)
+          }>
+          {childrenWithChecked}
+        </div>
+      );
+    }
+  ),
+  Select: jest.fn(
+    ({
+      items,
+      onSelectionChange,
+      placeholder,
+      selectedKey,
+    }: {
+      items?: Array<{ id: string; label?: string }>;
+      onSelectionChange?: (key: string | null) => void;
+      placeholder?: string;
+      selectedKey?: string | null;
     }) => (
       <select
-        data-testid="object-selector"
-        value={value}
-        onChange={(e) => onChange({ target: { value: e.target.value } })}>
-        {displayEmpty && <option value="">Select Schema Object</option>}
-        {children}
+        data-testid="schema-object-select"
+        value={selectedKey ?? ''}
+        onChange={(e) => onSelectionChange?.(e.target.value || null)}>
+        <option value="">{placeholder}</option>
+        {items?.map((item) => (
+          <option key={item.id} value={item.id}>
+            {item.label}
+          </option>
+        ))}
       </select>
-    ),
-    MenuItem: ({
+    )
+  ),
+  Typography: jest.fn(
+    ({
+      as: Tag = 'span',
       children,
-      value,
-      disabled,
+      className,
+      ...rest
     }: {
-      children: React.ReactNode;
-      value: string;
-      disabled?: boolean;
+      as?: React.ElementType;
+      children?: React.ReactNode;
+      className?: string;
+      [key: string]: unknown;
     }) => (
-      <option disabled={disabled} value={value}>
+      <Tag className={className} {...rest}>
         {children}
-      </option>
-    ),
-  };
-});
+      </Tag>
+    )
+  ),
+}));
 
 jest.mock('../../../rest/contractAPI', () => ({
   createContract: jest.fn(),
@@ -648,7 +820,7 @@ describe('ContractImportModal', () => {
 
       const dropZone = screen
         .getByText('Click to upload')
-        .closest('div[class*="MuiBox"]') as HTMLElement;
+        .closest('div') as HTMLElement;
 
       await act(async () => {
         fireEvent.dragOver(dropZone, { preventDefault: jest.fn() });
@@ -671,7 +843,7 @@ describe('ContractImportModal', () => {
 
       const dropZone = screen
         .getByText('Click to upload')
-        .closest('div[class*="MuiBox"]') as HTMLElement;
+        .closest('div') as HTMLElement;
 
       await act(async () => {
         fireEvent.dragLeave(dropZone, { preventDefault: jest.fn() });
@@ -694,7 +866,7 @@ describe('ContractImportModal', () => {
 
       const dropZone = screen
         .getByText('Click to upload')
-        .closest('div[class*="MuiBox"]') as HTMLElement;
+        .closest('div') as HTMLElement;
 
       const file = new File([validODCSYaml], 'contract.yaml', {
         type: 'application/x-yaml',
@@ -725,7 +897,7 @@ describe('ContractImportModal', () => {
 
       const dropZone = screen
         .getByText('Click to upload')
-        .closest('div[class*="MuiBox"]') as HTMLElement;
+        .closest('div') as HTMLElement;
 
       const file = new File(['invalid'], 'contract.txt', {
         type: 'text/plain',
@@ -754,7 +926,7 @@ describe('ContractImportModal', () => {
 
       const dropZone = screen
         .getByText('Click to upload')
-        .closest('div[class*="MuiBox"]') as HTMLElement;
+        .closest('div') as HTMLElement;
 
       await act(async () => {
         fireEvent.drop(dropZone, {
@@ -1415,12 +1587,12 @@ describe('ContractImportModal', () => {
       });
 
       await waitFor(() => {
-        const objectSelector = screen.getByTestId('object-selector');
+        const objectSelector = screen.getByTestId('schema-object-select');
 
         expect(objectSelector).toBeInTheDocument();
       });
 
-      const objectSelector = screen.getByTestId('object-selector');
+      const objectSelector = screen.getByTestId('schema-object-select');
 
       await act(async () => {
         fireEvent.change(objectSelector, { target: { value: 'orders' } });
@@ -2009,13 +2181,10 @@ termsOfUse: Updated terms`;
         />
       );
 
-      const closeIcon = screen.getByTestId('CloseIcon').parentElement;
+      const closeButton = screen.getByTestId('dialog-close-button');
+      fireEvent.click(closeButton);
 
-      if (closeIcon) {
-        fireEvent.click(closeIcon);
-
-        expect(mockOnClose).toHaveBeenCalled();
-      }
+      expect(mockOnClose).toHaveBeenCalled();
     });
   });
 
