@@ -13,7 +13,6 @@ SQL Queries used during ingestion
 """
 
 import textwrap
-
 # Column comments in Vertica can only happen on Projections
 #   https://forum.vertica.com/discussion/238945/vertica-try-to-create-comment
 # And Vertica projections follow this naming:

@@ -288,7 +288,16 @@ def test_connection_engine_step(connection: Engine) -> None:
     Generic step to validate the connection against a db
     """
     with connection.connect() as conn:
-        result = conn.execute(ConnTestFn())
+        stmt = ConnTestFn()
+        
+        # Compile the executable clause block safely using the current dialect
+        compiled_stmt = stmt.compile(
+            bind=connection, 
+            compile_kwargs={"literal_binds": True}
+        )
+        
+        # Pass the fully compiled string expression to text() to satisfy 2.x
+        result = conn.execute(text(str(compiled_stmt)))
         if result:
             result.fetchone()
 
