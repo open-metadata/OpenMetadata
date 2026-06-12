@@ -95,11 +95,28 @@ export default defineConfig({
       testMatch: '**/activity-config.setup.ts',
       dependencies: ['setup'],
     },
+    // IntakeForm tests create singleton-per-entityType forms that are enforced
+    // globally by the API. Keep them out of the broad chromium project and run
+    // them as an isolated dependency so unrelated data-product tests do not
+    // overlap while a required intake form is enabled.
+    {
+      name: 'IntakeForms',
+      testMatch: '**/IntakeForm.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup', 'entity-data-setup', 'activity-feed-config'],
+      fullyParallel: false,
+      workers: 1,
+    },
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
       // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
-      dependencies: ['setup', 'entity-data-setup', 'activity-feed-config'],
+      dependencies: [
+        'setup',
+        'entity-data-setup',
+        'activity-feed-config',
+        'IntakeForms',
+      ],
       grepInvert: [/@data-insight/, /@basic/, /@knowledge-graph/],
       teardown: 'entity-data-teardown',
       testIgnore: [
@@ -107,6 +124,7 @@ export default defineConfig({
         '**/Search/**',
         '**/Auth/**',
         '**/Http2/**',
+        '**/IntakeForm.spec.ts',
         '**/DataAssetRulesEnabled.spec.ts',
         '**/DataAssetRulesDisabled.spec.ts',
         '**/SystemCertificationTags.spec.ts',
@@ -170,7 +188,7 @@ export default defineConfig({
       name: 'DataAssetRulesEnabled',
       testMatch: '**/DataAssetRulesEnabled.spec.ts',
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup'],
+      dependencies: ['setup', 'IntakeForms'],
       fullyParallel: true,
     },
     {
@@ -184,7 +202,7 @@ export default defineConfig({
       name: 'Basic',
       grep: [/@basic/],
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup'],
+      dependencies: ['setup', 'IntakeForms'],
       fullyParallel: true,
     },
     {
