@@ -29,7 +29,7 @@ from metadata.generated.schema.entity.services.connections.database.common.iamAu
     IamAuthConfigurationSource,
 )
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
-    RedshiftConnection,
+    RedshiftConnection as RedshiftConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
@@ -40,6 +40,7 @@ from metadata.ingestion.connections.builders import (
     get_connection_options_dict,
     get_connection_url_common,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import (
     SourceConnectionException,
     execute_inspector_func,
@@ -81,7 +82,7 @@ def _get_provisioned_cluster_identifier(host: str) -> str:
     return host.split(".")[0]  # noqa: PLC0207
 
 
-def _get_serverless_iam_credentials(connection: RedshiftConnection, host: str) -> tuple:
+def _get_serverless_iam_credentials(connection: RedshiftConnectionConfig, host: str) -> tuple:
     workgroup = _get_serverless_workgroup(host)
     try:
         aws_client = AWSClient(config=connection.authType.awsConfig).get_redshift_serverless_client()
@@ -96,7 +97,7 @@ def _get_serverless_iam_credentials(connection: RedshiftConnection, host: str) -
         ) from exc
 
 
-def _get_provisioned_iam_credentials(connection: RedshiftConnection, host: str) -> tuple:
+def _get_provisioned_iam_credentials(connection: RedshiftConnectionConfig, host: str) -> tuple:
     cluster_identifier = _get_provisioned_cluster_identifier(host)
     try:
         aws_client = AWSClient(config=connection.authType.awsConfig).get_redshift_client()
@@ -117,7 +118,7 @@ def _get_provisioned_iam_credentials(connection: RedshiftConnection, host: str) 
         ) from exc
 
 
-def _get_redshift_iam_credentials(connection: RedshiftConnection) -> tuple:
+def _get_redshift_iam_credentials(connection: RedshiftConnectionConfig) -> tuple:
     """
     Get temporary credentials for Redshift using IAM authentication.
     Detects Serverless vs Provisioned from the host and uses the appropriate API.
@@ -129,7 +130,7 @@ def _get_redshift_iam_credentials(connection: RedshiftConnection) -> tuple:
     return _get_provisioned_iam_credentials(connection, host)
 
 
-def get_redshift_connection_url(connection: RedshiftConnection) -> str:
+def get_redshift_connection_url(connection: RedshiftConnectionConfig) -> str:
     """
     Build the Redshift connection URL.
     Handles both basic auth and IAM auth.
@@ -156,17 +157,6 @@ def get_redshift_connection_url(connection: RedshiftConnection) -> str:
         return url
 
     return get_connection_url_common(connection)
-
-
-def get_connection(connection: RedshiftConnection) -> Engine:
-    """
-    Create connection
-    """
-    return create_generic_db_connection(
-        connection=connection,
-        get_connection_url_fn=get_redshift_connection_url,
-        get_connection_args_fn=get_connection_args_common,
-    )
 
 
 def get_redshift_instance_type(engine: Engine) -> RedshiftInstanceType:
@@ -200,49 +190,59 @@ def get_redshift_instance_type(engine: Engine) -> RedshiftInstanceType:
         return RedshiftInstanceType.SERVERLESS
 
 
-def test_connection(
-    metadata: OpenMetadata,
-    engine: Engine,
-    service_connection: RedshiftConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
-) -> TestConnectionResult:
-    """
-    Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
-    """
-    table_and_view_query = REDSHIFT_GET_ALL_RELATIONS.format(schema_clause="", table_clause="", limit_clause="LIMIT 1")
+class RedshiftConnection(BaseConnection[RedshiftConnectionConfig, Engine]):
+    def _get_client(self) -> Engine:
+        return create_generic_db_connection(
+            connection=self.service_connection,
+            get_connection_url_fn=get_redshift_connection_url,
+            get_connection_args_fn=get_connection_args_common,
+        )
 
-    def test_get_queries_permissions(engine_: Engine):
-        """Check if we have the right permissions to list queries"""
-        redshift_instance_type = get_redshift_instance_type(engine_)
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        """
+        Test connection. This can be executed either as part
+        of a metadata workflow or during an Automation Workflow
+        """
+        engine = self.client
+        table_and_view_query = REDSHIFT_GET_ALL_RELATIONS.format(
+            schema_clause="", table_clause="", limit_clause="LIMIT 1"
+        )
 
-        with engine_.connect() as conn:
-            res = conn.execute(text(REDSHIFT_TEST_GET_QUERIES_MAP[redshift_instance_type])).fetchone()
-            if not all(res):
-                raise SourceConnectionException(
-                    f"We don't have the right permissions to list queries from sys views (Redshift Serverless) - {res}"
-                    if redshift_instance_type == RedshiftInstanceType.SERVERLESS
-                    else f"We don't have the right permissions to list queries from stl views (Redshift Provisioned) - {res}"  # noqa: E501, RUF100
-                )
+        def test_get_queries_permissions(engine_: Engine):
+            """Check if we have the right permissions to list queries"""
+            redshift_instance_type = get_redshift_instance_type(engine_)
 
-    test_fn = {
-        "CheckAccess": partial(test_connection_engine_step, engine),
-        "GetSchemas": partial(execute_inspector_func, engine, "get_schema_names"),
-        "GetTables": partial(test_query, statement=table_and_view_query, engine=engine),
-        "GetViews": partial(test_query, statement=table_and_view_query, engine=engine),
-        "GetQueries": partial(test_get_queries_permissions, engine),
-        "GetDatabases": partial(test_query, statement=REDSHIFT_GET_DATABASE_NAMES, engine=engine),
-    }
+            with engine_.connect() as conn:
+                res = conn.execute(text(REDSHIFT_TEST_GET_QUERIES_MAP[redshift_instance_type])).fetchone()
+                if not all(res):  # pyright: ignore[reportArgumentType]
+                    raise SourceConnectionException(
+                        f"We don't have the right permissions to list queries from sys views (Redshift Serverless) - {res}"
+                        if redshift_instance_type == RedshiftInstanceType.SERVERLESS
+                        else f"We don't have the right permissions to list queries from stl views (Redshift Provisioned) - {res}"  # noqa: E501, RUF100
+                    )
 
-    result = test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
+        test_fn = {
+            "CheckAccess": partial(test_connection_engine_step, engine),
+            "GetSchemas": partial(execute_inspector_func, engine, "get_schema_names"),
+            "GetTables": partial(test_query, statement=table_and_view_query, engine=engine),
+            "GetViews": partial(test_query, statement=table_and_view_query, engine=engine),
+            "GetQueries": partial(test_get_queries_permissions, engine),
+            "GetDatabases": partial(test_query, statement=REDSHIFT_GET_DATABASE_NAMES, engine=engine),
+        }
 
-    kill_active_connections(engine)
+        result = test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=self.service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
+            automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
+        )
 
-    return result
+        kill_active_connections(engine)
+
+        return result
