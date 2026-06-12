@@ -12,6 +12,7 @@
  */
 import {
   Badge,
+  Box,
   ButtonUtility,
   Dot,
   Dropdown,
@@ -20,21 +21,22 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Clock, Link04, Trash01 } from '@untitledui/icons';
-import { FC, useMemo } from 'react';
+import { Clock, Copy06, Pin01, Trash01 } from '@untitledui/icons';
+import classNames from 'classnames';
+import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditNewIcon } from '../../../assets/svg/edit-new.svg';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { stripMarkdown } from '../../../utils/StringUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import {
   MemoriesViewProps,
   MemoryActionsProps,
 } from './MemoriesView.interface';
+import './MemoriesView.less';
 
 const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
   const { t } = useTranslation();
@@ -54,7 +56,7 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
             }
           }}>
           <Dropdown.Item data-testid="delete-btn" id="delete">
-            <div className="tw:flex tw:items-center tw:gap-2">
+            <Box align="center" gap={2}>
               <Trash01
                 aria-hidden="true"
                 className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-600"
@@ -66,7 +68,7 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
                 weight="medium">
                 {t('label.delete')}
               </Typography>
-            </div>
+            </Box>
           </Dropdown.Item>
         </Dropdown.Menu>
       </Dropdown.Popover>
@@ -74,24 +76,58 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
   );
 };
 
+interface PinButtonProps {
+  pinned: boolean;
+  animKey: number;
+  onClick: () => void;
+}
+
+const PinButton: FC<PinButtonProps> = ({ pinned, animKey, onClick }) => {
+  const { t } = useTranslation();
+
+  return (
+    <Tooltip title={pinned ? t('label.unpin') : t('label.pin')}>
+      <TooltipTrigger>
+        <ButtonUtility
+          className={classNames('tw:transition-colors tw:duration-150', {
+            'tw:bg-blue-50 tw:text-brand-600': pinned,
+          })}
+          color="tertiary"
+          icon={
+            <Pin01
+              className={pinned ? 'pin-icon-pinned' : 'pin-icon-unpinned'}
+              key={animKey}
+              size={15}
+            />
+          }
+          onClick={onClick}
+        />
+      </TooltipTrigger>
+    </Tooltip>
+  );
+};
+
 const SKELETON_KEYS = Array.from({ length: 8 }, (_, i) => `skeleton-${i}`);
 
 const MemoryRowSkeleton: FC = () => (
-  <div className="tw:flex tw:items-start tw:gap-3 tw:px-4 tw:py-4 tw:border-b tw:border-secondary">
+  <Box
+    align="start"
+    className="tw:px-4 tw:py-4 tw:border-b tw:border-secondary"
+    gap={3}>
     <Skeleton height="32px" variant="circular" width="32px" />
-    <div className="tw:flex tw:flex-1 tw:flex-col tw:gap-2">
-      <div className="tw:flex tw:items-center tw:gap-2">
+    <Box className="tw:flex-1" direction="col" gap={2}>
+      <Box align="center" gap={2}>
         <Skeleton height="12px" variant="rounded" width="80px" />
         <Skeleton height="12px" variant="rounded" width="48px" />
-      </div>
+      </Box>
       <Skeleton height="14px" variant="rounded" width="70%" />
       <Skeleton height="12px" variant="rounded" width="90%" />
-      <div className="tw:flex tw:items-center tw:gap-2 tw:mt-1">
+      <Box align="center" className="tw:mt-1" gap={2}>
         <Skeleton height="20px" variant="rounded" width="56px" />
         <Skeleton height="20px" variant="rounded" width="72px" />
-      </div>
-    </div>
-  </div>
+      </Box>
+    </Box>
+  </Box>
 );
 
 interface MemoryRowProps {
@@ -115,6 +151,8 @@ const MemoryRow: FC<MemoryRowProps> = ({
     memory.owners?.some((owner) => owner.name === currentUserName) ?? false;
   const canActOnMemory = isOwner || Boolean(isAdminUser);
   const { t } = useTranslation();
+  const [pinned, setPinned] = useState(false);
+  const [pinAnimKey, setPinAnimKey] = useState(0);
   const memoryUrl = useMemo(
     () =>
       memory.name
@@ -126,18 +164,51 @@ const MemoryRow: FC<MemoryRowProps> = ({
   );
 
   return (
-    <div
-      className="tw:group tw:relative tw:flex tw:items-start tw:gap-3 tw:px-4 tw:py-4 tw:border-b tw:border-secondary tw:last:border-b-0 tw:cursor-pointer tw:hover:bg-gray-50 tw:transition-colors"
+    <Box
+      align="start"
+      className="tw:group tw:relative tw:px-5.5 tw:py-4.5 tw:border-b tw:border-secondary tw:last:border-b-0 tw:cursor-pointer tw:transition-colors tw:overflow-hidden"
       data-testid={`memory-row-${memory.id}`}
+      gap={3}
+      style={
+        pinned
+          ? {
+              background:
+                'linear-gradient(180deg, color-mix(in srgb, var(--tw-color-brand-50) 80%, transparent) 0%, transparent 60%)',
+            }
+          : undefined
+      }
       onClick={() => onViewMemory?.(memory)}>
+      {pinned && (
+        <Box
+          align="start"
+          className="tw:pointer-events-none tw:absolute tw:top-0 tw:right-0 tw:text-brand-600"
+          justify="end"
+          style={{
+            width: 28,
+            height: 28,
+            background:
+              'linear-gradient(225deg, color-mix(in srgb, var(--tw-color-brand-100) 80%, transparent) 0%, transparent 70%)',
+            borderBottomLeftRadius: 12,
+            padding: '5px 7px 0 0',
+          }}>
+          <Pin01 size={11} strokeWidth={2.4} />
+        </Box>
+      )}
       {(memory.owners?.[0]?.name ?? memory.updatedBy) && (
         <div className="tw:shrink-0 tw:mt-0.5">
-          <ProfilePicture name={memory.owners?.[0]?.name || ''} />
+          <ProfilePicture name={getEntityName(memory.owners?.[0])} />
         </div>
       )}
-      <div className="tw:flex tw:items-end tw:justify-between tw:w-full tw:min-w-0 tw:gap-2">
-        <div className="tw:flex tw:min-w-0 tw:flex-1 tw:max-w-[75%] tw:flex-col tw:gap-1">
-          <div className="tw:flex tw:items-center tw:gap-1.5 tw:flex-wrap">
+      <Box
+        align="start"
+        className="tw:w-full tw:min-w-0"
+        gap={2}
+        justify="between">
+        <Box
+          className="tw:min-w-0 tw:flex-1 tw:max-w-[75%]"
+          direction="col"
+          gap={1}>
+          <Box align="center" gap={2} wrap="wrap">
             {(memory.owners?.[0]?.displayName ??
               memory.owners?.[0]?.name ??
               memory.updatedBy) && (
@@ -157,21 +228,20 @@ const MemoryRow: FC<MemoryRowProps> = ({
                 </Typography>
               </>
             )}
-          </div>
+          </Box>
 
           <Typography ellipsis weight="medium">
             {memory.title || memory.name}
           </Typography>
 
           <Typography
-            ellipsis
             className="tw:text-gray-600 tw:line-clamp-2"
             size="text-xs">
             {stripMarkdown(memory.summary ?? memory.answer ?? '')}
           </Typography>
 
           {memory.tags && memory.tags.length > 0 && (
-            <div className="tw:flex tw:items-center tw:gap-2 tw:flex-wrap tw:mt-0.5">
+            <Box align="center" className="tw:mt-0.5" gap={2} wrap="wrap">
               {memory.tags.map((tag) => (
                 <Badge
                   className="tw:max-w-90 tw:min-w-0"
@@ -190,63 +260,65 @@ const MemoryRow: FC<MemoryRowProps> = ({
                     ellipsis
                     className="tw:text-gray-700"
                     size="text-xs">
-                    {tag.tagFQN}
+                    {getEntityName(tag)}
                   </Typography>
                 </Badge>
               ))}
-            </div>
+            </Box>
           )}
-        </div>
-        {(memory.usageCount !== undefined ||
-          memory.lastUsedAt !== undefined) && (
-          <div className="tw:flex tw:items-center tw:gap-1 tw:shrink-0">
-            <Clock className="tw:text-gray-500" size={12} strokeWidth={1.5} />
-            <Typography
-              className="tw:text-gray-500 tw:whitespace-nowrap"
-              size="text-xs">
-              {memory.usageCount === undefined
-                ? ''
-                : t('label.used-n-times', { count: memory.usageCount })}
-              {memory.lastUsedAt
-                ? ` · ${t('label.last')} ${getShortRelativeTime(
-                    memory.lastUsedAt
-                  )}`
-                : ''}
-            </Typography>
-          </div>
-        )}
-      </div>
 
-      {/* Actions — always visible */}
-      <div
-        className="tw:absolute tw:top-3 tw:right-3 tw:flex tw:items-center tw:gap-1"
-        onClick={(e) => e.stopPropagation()}>
-        <CopyLinkButton url={memoryUrl}>
-          <Link04
-            aria-hidden="true"
-            className="tw:-rotate-45"
-            size={17}
-            strokeWidth={1.8}
+          {(memory.usageCount !== undefined ||
+            memory.lastUsedAt !== undefined) && (
+            <Box align="center" className="tw:mt-1" gap={1}>
+              <Clock className="tw:text-gray-500" size={12} strokeWidth={1.5} />
+              <Typography
+                className="tw:text-gray-500 tw:whitespace-nowrap"
+                size="text-xs">
+                {memory.usageCount === undefined
+                  ? ''
+                  : t('label.cited-n-times', { count: memory.usageCount })}
+                {memory.lastUsedAt
+                  ? ` · ${t('label.last')} ${getShortRelativeTime(
+                      memory.lastUsedAt
+                    )}`
+                  : ''}
+              </Typography>
+            </Box>
+          )}
+        </Box>
+
+        {/* Actions — always visible */}
+        <Box align="center" gap={1} onClick={(e) => e.stopPropagation()}>
+          <PinButton
+            animKey={pinAnimKey}
+            pinned={pinned}
+            onClick={() => {
+              setPinned((prev) => !prev);
+              setPinAnimKey((prev) => prev + 1);
+            }}
           />
-        </CopyLinkButton>
-        {canActOnMemory && onEditMemory && (
-          <Tooltip title={t('label.edit')}>
-            <TooltipTrigger>
-              <ButtonUtility
-                color="tertiary"
-                data-testid="edit-memory-btn"
-                icon={<EditNewIcon height={16} width={16} />}
-                size="sm"
-                onClick={() => onEditMemory(memory)}
-              />
-            </TooltipTrigger>
-          </Tooltip>
-        )}
-        {canActOnMemory && (
-          <MemoryActions memory={memory} onDeleteMemory={onDeleteMemory} />
-        )}
-      </div>
-    </div>
+          <CopyLinkButton className="tw:w-7 tw:h-7" url={memoryUrl}>
+            <Copy06 aria-hidden="true" size={17} strokeWidth={1.8} />
+          </CopyLinkButton>
+          {canActOnMemory && onEditMemory && (
+            <Tooltip title={t('label.edit')}>
+              <TooltipTrigger>
+                <ButtonUtility
+                  color="tertiary"
+                  data-testid="edit-memory-btn"
+                  icon={<EditNewIcon height={16} width={16} />}
+                  size="sm"
+                  onClick={() => onEditMemory(memory)}
+                />
+              </TooltipTrigger>
+            </Tooltip>
+          )}
+          {canActOnMemory && (
+            <MemoryActions memory={memory} onDeleteMemory={onDeleteMemory} />
+          )}
+        </Box>
+      </Box>
+    </Box>
   );
 };
 
@@ -259,6 +331,7 @@ const MemoriesView: FC<MemoriesViewProps> = ({
   onEditMemory,
   onViewMemory,
 }) => {
+  const { t } = useTranslation();
   if (isLoading) {
     return (
       <>
@@ -271,9 +344,21 @@ const MemoriesView: FC<MemoriesViewProps> = ({
 
   if (data.length === 0) {
     return (
-      <div className="tw:flex tw:flex-1 tw:items-center tw:justify-center tw:p-12">
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.NO_DATA} />
-      </div>
+      <Box
+        align="center"
+        className="tw:py-12 tw:text-center"
+        direction="col"
+        gap={1}
+        justify="center">
+        <Typography className="tw:text-gray-700" size="text-sm" weight="medium">
+          {t('label.no-entity-available', {
+            entity: t('label.memory-plural'),
+          })}
+        </Typography>
+        <Typography className="tw:text-gray-500" size="text-sm">
+          {t('message.try-a-different-filter-or-search')}
+        </Typography>
+      </Box>
     );
   }
 

@@ -16,10 +16,10 @@ import { ProviderType } from '../generated/entity/bot';
 import { Classification } from '../generated/entity/classification/classification';
 import { ChangeDescription } from '../generated/entity/type';
 import { getClassificationInfo } from './ClassificationUtils';
-import { getEntityVersionByField } from './EntityVersionUtils';
+import { getEntityVersionByField } from './EntityVersionUtilsPure';
 
 // Mock dependencies
-jest.mock('./EntityVersionUtils', () => ({
+jest.mock('./EntityVersionUtilsPure', () => ({
   getEntityVersionByField: jest.fn(),
 }));
 

@@ -1,7 +1,6 @@
 package org.openmetadata.mcp.tools;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.search.SearchUtils.mapEntityTypesToIndexNames;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -15,7 +14,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -29,9 +30,6 @@ public class SearchMetadataTool implements McpTool {
 
   private static final int DEFAULT_MAX_AGGREGATION_BUCKETS = 10;
   private static final int MAX_ALLOWED_AGGREGATION_BUCKETS = 50;
-  private static final int DESCRIPTION_MAX_LENGTH = 500;
-  private static final int DESCRIPTION_TRUNCATE_LENGTH = 450;
-  private static final int MAX_RESPONSE_CHARS = 100_000;
 
   private static final List<String> ESSENTIAL_FIELDS_ONLY =
       List.of(
@@ -50,59 +48,68 @@ public class SearchMetadataTool implements McpTool {
           "tier",
           "tableType",
           "columnNames",
-          "deleted");
+          "deleted",
+          "entityFQN",
+          "originEntityFQN",
+          "testCaseStatus",
+          "testCaseType",
+          "dataQualityDimension",
+          "testPlatforms",
+          "basic",
+          "lastResultTimestamp");
+
+  // Latest-result subset kept in test case search results; the full testCaseResult object
+  // (testResultValue, sample row counts, ...) is available via the 'fields' parameter.
+  private static final List<String> TEST_CASE_RESULT_SLIM_FIELDS =
+      List.of("testCaseStatus", "timestamp", "result");
 
   private static final List<String> DETAILED_EXCLUDE_KEYS =
-      List.of(
-          "id",
-          "version",
-          "updatedAt",
-          "updatedBy",
-          "usageSummary",
-          "followers",
-          "votes",
-          "lifeCycle",
-          "sourceHash",
-          "processedLineage",
-          "totalVotes",
-          "fqnParts",
-          "service_suggest",
-          "column_suggest",
-          "schema_suggest",
-          "database_suggest",
-          "upstreamLineage",
-          "entityRelationship",
-          "changeSummary",
-          "fqnHash",
-          "columns",
-          "schemaDefinition",
-          "queries",
-          "sourceUrl",
-          "locationPath",
-          "customMetrics",
-          "tierSources",
-          "tagSources",
-          "descriptionSources",
-          "columnDescriptionStatus",
-          "columnNamesFuzzy",
-          "descriptionStatus",
-          "domains",
-          "embeddings",
-          "embedding",
-          "textToEmbed",
-          "textToLLMContext",
-          "fingerprint",
-          "chunkCount",
-          "chunkIndex");
+      Stream.concat(
+              Stream.of(
+                  "id",
+                  "version",
+                  "updatedAt",
+                  "updatedBy",
+                  "usageSummary",
+                  "followers",
+                  "votes",
+                  "lifeCycle",
+                  "sourceHash",
+                  "processedLineage",
+                  "totalVotes",
+                  "fqnParts",
+                  "service_suggest",
+                  "column_suggest",
+                  "schema_suggest",
+                  "database_suggest",
+                  "upstreamLineage",
+                  "entityRelationship",
+                  "changeSummary",
+                  "fqnHash",
+                  "columns",
+                  "schemaDefinition",
+                  "queries",
+                  "sourceUrl",
+                  "locationPath",
+                  "customMetrics",
+                  "tierSources",
+                  "tagSources",
+                  "descriptionSources",
+                  "columnDescriptionStatus",
+                  "columnNamesFuzzy",
+                  "descriptionStatus",
+                  "domains"),
+              McpResponseTrim.VECTOR_NOISE_FIELDS.stream())
+          .toList();
 
   @Override
   public Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params)
       throws IOException {
     LOG.info("Executing searchMetadata with params: {}", params);
-    String query = params.containsKey("query") ? (String) params.get("query") : "*";
-    String entityType = params.containsKey("entityType") ? (String) params.get("entityType") : null;
-    String index = entityType == null ? "dataAsset" : mapEntityTypesToIndexNames(entityType);
+    String query = stringParam(params, "query", "*");
+    String entityType = stringParam(params, "entityType", null);
+    String index = resolveIndex(entityType);
 
     int size = 10;
     if (params.containsKey("size")) {
@@ -173,21 +180,25 @@ public class SearchMetadataTool implements McpTool {
     }
 
     List<String> requestedFields = new ArrayList<>();
-    if (params.containsKey("fields")) {
-      String fieldsParam = (String) params.get("fields");
-      if (fieldsParam != null && !fieldsParam.trim().isEmpty()) {
-        requestedFields =
-            List.of(fieldsParam.split(",")).stream()
-                .map(String::trim)
-                .filter(field -> !field.isEmpty())
-                .collect(Collectors.toList());
-      }
+    String fieldsParam = stringParam(params, "fields", null);
+    if (fieldsParam != null && !fieldsParam.trim().isEmpty()) {
+      requestedFields =
+          List.of(fieldsParam.split(",")).stream()
+              .map(String::trim)
+              .filter(field -> !field.isEmpty())
+              .collect(Collectors.toList());
     }
 
     String queryFilter = null;
-    if (params.containsKey("queryFilter")) {
-      queryFilter = (String) params.get("queryFilter");
-      JsonNode queryNode = JsonUtils.getObjectMapper().readTree(queryFilter);
+    Object queryFilterParam = params.get("queryFilter");
+    if (queryFilterParam != null) {
+      // LLM callers occasionally send the filter as a JSON object instead of a string; serialize
+      // non-string input back to JSON rather than failing on a cast.
+      String rawFilter =
+          queryFilterParam instanceof String stringValue
+              ? stringValue
+              : JsonUtils.pojoToJson(queryFilterParam);
+      JsonNode queryNode = JsonUtils.getObjectMapper().readTree(rawFilter);
 
       if (!queryNode.has("query")) {
         ObjectNode queryWrapper = JsonUtils.getObjectMapper().createObjectNode();
@@ -303,6 +314,9 @@ public class SearchMetadataTool implements McpTool {
         if (source == null) continue;
 
         Map<String, Object> cleanedSource = cleanSearchResult(source, requestedFields);
+        if (hit.containsKey("_score")) {
+          cleanedSource.put("similarityScore", hit.get("_score"));
+        }
         cleanedResults.add(cleanedSource);
       }
     }
@@ -352,13 +366,15 @@ public class SearchMetadataTool implements McpTool {
           "[MCP] search_metadata response size: {} chars for query '{}'",
           serialized.length(),
           query);
-      if (serialized.length() > MAX_RESPONSE_CHARS) {
+      if (serialized.length() > McpResponseTrim.MAX_RESPONSE_CHARS) {
         int targetCount =
             Math.min(
                 Math.max(
                     1,
                     (int)
-                        (cleanedResults.size() * (MAX_RESPONSE_CHARS * 0.8) / serialized.length())),
+                        (cleanedResults.size()
+                            * (McpResponseTrim.MAX_RESPONSE_CHARS * 0.8)
+                            / serialized.length())),
                 cleanedResults.size());
         List<Map<String, Object>> trimmed = new ArrayList<>(cleanedResults.subList(0, targetCount));
         LOG.warn(
@@ -375,7 +391,7 @@ public class SearchMetadataTool implements McpTool {
                 "Response exceeded %d characters and was trimmed to %d of %d results. "
                     + "There are many matching assets. Are you looking for something specific? "
                     + "Try narrowing with a service name, schema, or specific name.",
-                MAX_RESPONSE_CHARS, trimmed.size(), totalResults));
+                McpResponseTrim.MAX_RESPONSE_CHARS, trimmed.size(), totalResults));
       }
     } catch (RuntimeException e) {
       LOG.warn("Failed to check response size for query '{}': {}", query, e.getMessage());
@@ -402,14 +418,30 @@ public class SearchMetadataTool implements McpTool {
       }
     }
 
+    addSlimTestCaseResult(source, result);
+
     // Truncate long descriptions to optimize LLM context usage
-    if (result.containsKey("description")) {
-      Object descObj = result.get("description");
-      if (descObj instanceof String description && description.length() > DESCRIPTION_MAX_LENGTH) {
-        result.put("description", description.substring(0, DESCRIPTION_TRUNCATE_LENGTH) + "...");
-      }
+    if (result.get("description") instanceof String description) {
+      result.put("description", McpResponseTrim.truncateDescription(description));
     }
     return result;
+  }
+
+  private static void addSlimTestCaseResult(
+      Map<String, Object> source, Map<String, Object> result) {
+    if (result.containsKey("testCaseResult")
+        || !(source.get("testCaseResult") instanceof Map<?, ?> testCaseResult)) {
+      return;
+    }
+    Map<String, Object> slim = new HashMap<>();
+    for (String field : TEST_CASE_RESULT_SLIM_FIELDS) {
+      if (testCaseResult.containsKey(field)) {
+        slim.put(field, testCaseResult.get(field));
+      }
+    }
+    if (!slim.isEmpty()) {
+      result.put("testCaseResult", slim);
+    }
   }
 
   public static Map<String, Object> createEmptyResponse() {
@@ -425,6 +457,34 @@ public class SearchMetadataTool implements McpTool {
   public static Map<String, Object> cleanSearchResponseObject(Map<String, Object> object) {
     DETAILED_EXCLUDE_KEYS.forEach(object::remove);
     return object;
+  }
+
+  /**
+   * Reads a parameter as a string without assuming the caller sent a string. LLM callers sometimes
+   * send numbers or other scalars (e.g. {@code "entityType": 123}); {@code toString} keeps the tool
+   * tolerant instead of failing on a class cast.
+   */
+  private static String stringParam(Map<String, Object> params, String key, String defaultValue) {
+    Object value = params.get(key);
+    return value == null ? defaultValue : value.toString();
+  }
+
+  /**
+   * Resolves the search index from the requested entity type using the authoritative index registry
+   * instead of a hand-maintained switch. A registered entity type resolves to its own single-type
+   * index, so results are correctly scoped (fixing #27796, where unlisted types fell back to the
+   * broad dataAsset alias and leaked other types). Null, unregistered, wildcard, or comma-separated
+   * input is not a registry key and falls back to dataAsset, preserving the prior graceful default
+   * rather than erroring or widening the search.
+   */
+  @VisibleForTesting
+  static String resolveIndex(String entityType) {
+    String index = "dataAsset";
+    if (!nullOrEmpty(entityType)
+        && Entity.getSearchRepository().getIndexMapping(entityType) != null) {
+      index = entityType;
+    }
+    return index;
   }
 
   /**

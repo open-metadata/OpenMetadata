@@ -55,7 +55,7 @@ import {
 import { getContainers } from '../../rest/storageAPI';
 import { getTopics } from '../../rest/topicsAPI';
 import { commonTableFields } from '../../utils/DatasetDetailsUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   getBasicEntityInfoFromVersionData,
   getCommonExtraInfoForVersionDetails,

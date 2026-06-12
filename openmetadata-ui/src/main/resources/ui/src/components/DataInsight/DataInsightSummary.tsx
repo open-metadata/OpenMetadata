@@ -39,7 +39,7 @@ import {
   getQueryFilterForDataInsightChart,
   getWebChartSummary,
 } from '../../utils/DataInsightUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import UserPopOverCard from '../common/PopOverCard/UserPopOverCard';
@@ -182,7 +182,7 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
       <Typography.Paragraph className="font-medium">
         {t('label.data-insight-summary', {
           organization:
-            getEntityName(OrganizationDetails) ?? t('label.open-metadata'),
+            getEntityName(OrganizationDetails) ?? t('label.brand-name'),
         })}
       </Typography.Paragraph>
       <Row data-testid="summary-card-content" gutter={[16, 16]}>

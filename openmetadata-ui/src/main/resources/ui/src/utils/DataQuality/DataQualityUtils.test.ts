@@ -74,7 +74,7 @@ jest.mock('../date-time/DateTimeUtils', () => ({
   getCurrentMillis: jest.fn().mockReturnValue(1640995200000),
 }));
 
-jest.mock('../TableUtils', () => ({
+jest.mock('../TablePureUtils', () => ({
   generateEntityLink: jest.fn().mockImplementation((fqn: string) => {
     return `<#E::table::${fqn}>`;
   }),
@@ -85,7 +85,7 @@ jest.mock('../FeedUtils', () => ({
   getEntityFQN: jest.fn((link: string) => link),
 }));
 
-jest.mock('../EntityUtils', () => ({
+jest.mock('../EntityPureUtils', () => ({
   getColumnNameFromEntityLink: jest.fn((link: string) => {
     const match = link?.match(/::columns::([^>]+)/);
 

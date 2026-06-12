@@ -46,7 +46,6 @@ import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineMapper;
@@ -159,12 +158,9 @@ public class CreateIngestionPipelineImpl {
   }
 
   private final IngestionPipelineMapper mapper;
-  private final PipelineServiceClientInterface pipelineServiceClient;
 
-  public CreateIngestionPipelineImpl(
-      IngestionPipelineMapper mapper, PipelineServiceClientInterface pipelineServiceClient) {
+  public CreateIngestionPipelineImpl(IngestionPipelineMapper mapper) {
     this.mapper = mapper;
-    this.pipelineServiceClient = pipelineServiceClient;
   }
 
   public CreateIngestionPipelineResult execute(
@@ -191,12 +187,11 @@ public class CreateIngestionPipelineImpl {
           "[GovernanceWorkflows] Deploying '{}' for '{}'",
           ingestionPipeline.getDisplayName(),
           service.getName());
-      wasSuccessful = deployPipeline(pipelineServiceClient, ingestionPipeline, service);
+      IngestionPipelineRepository repository =
+          (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+      wasSuccessful = deployPipeline(repository, ingestionPipeline, service);
       if (wasSuccessful) {
-        // Mark the pipeline as deployed
         ingestionPipeline.setDeployed(true);
-        IngestionPipelineRepository repository =
-            (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
         repository.createOrUpdate(null, ingestionPipeline, ingestionPipeline.getUpdatedBy());
       } else {
         LOG.warn(
@@ -217,11 +212,11 @@ public class CreateIngestionPipelineImpl {
   }
 
   private boolean deployPipeline(
-      PipelineServiceClientInterface pipelineServiceClient,
+      IngestionPipelineRepository repository,
       IngestionPipeline ingestionPipeline,
       ServiceEntityInterface service) {
     PipelineServiceClientResponse response =
-        pipelineServiceClient.deployPipeline(ingestionPipeline, service);
+        repository.deployIngestionPipeline(ingestionPipeline, service);
     return response.getCode() == 200;
   }
 

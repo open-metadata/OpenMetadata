@@ -1,0 +1,428 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import type { AxiosError } from 'axios';
+import { get, isEmpty, isString, isUndefined } from 'lodash';
+import type { Bucket } from 'Models';
+import Qs from 'qs';
+import type { Key } from 'react';
+import type {
+  ExploreQuickFilterField,
+  ExploreSearchIndex,
+  SearchHitCounts,
+} from '../components/Explore/ExplorePage.interface';
+import type {
+  DatabaseFields,
+  ExploreTreeNode,
+} from '../components/Explore/ExploreTree/ExploreTree.interface';
+import type { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
+import { NULL_OPTION_KEY } from '../constants/AdvancedSearch.constants';
+import {
+  ES_EXCEPTION_SHARDS_FAILED,
+  FAILED_TO_FIND_INDEX_ERROR,
+  INITIAL_SORT_FIELD,
+} from '../constants/explore.constants';
+import { EntityFields } from '../enums/AdvancedSearch.enum';
+import { SORT_ORDER } from '../enums/common.enum';
+import { EntityType } from '../enums/entity.enum';
+import type { Aggregations } from '../interface/search.interface';
+import type {
+  EsBoolQuery,
+  QueryFieldInterface,
+  QueryFilterInterface,
+  TabsInfoData,
+} from '../pages/ExplorePage/ExplorePage.interface';
+import { t, translateWithNestedKeys } from './i18next/LocalUtil';
+
+export const getParseValueFromLocation = (
+  filters: Array<QueryFieldInterface>,
+  dataLookUp: SearchDropdownOption[]
+): Record<string, SearchDropdownOption[]> => {
+  const dataLookupMap = new Map(
+    dataLookUp.map((option) => [option.key, option])
+  );
+  const result: Record<string, SearchDropdownOption[]> = {};
+
+  for (const filter of filters) {
+    let key = '';
+    let value = '';
+    let customLabel = false;
+    if (filter.term) {
+      key = Object.keys(filter.term)[0];
+      value = filter.term[key] as string;
+    } else {
+      key =
+        (filter?.bool?.must_not as QueryFieldInterface)?.exists?.field ?? '';
+      value = NULL_OPTION_KEY;
+      customLabel = true;
+    }
+
+    const dataCategory = dataLookupMap.get(key);
+
+    if (dataCategory) {
+      result[dataCategory.label] = result[dataCategory.label] || [];
+      result[dataCategory.label].push({
+        key: value,
+        label: !customLabel
+          ? value
+          : t('label.no-entity', {
+              entity: translateWithNestedKeys(
+                dataCategory.label,
+                dataCategory.labelKeyOptions
+              ),
+            }),
+      });
+    }
+  }
+
+  return result;
+};
+
+export const getSelectedValuesFromQuickFilter = (
+  dropdownItems: SearchDropdownOption[],
+  queryFilter?: QueryFilterInterface
+) => {
+  if (!queryFilter) {
+    return null;
+  }
+
+  const mustFilters: Array<QueryFieldInterface> = (
+    get(queryFilter, 'query.bool.must', []) as QueryFieldInterface[]
+  ).flatMap(
+    (item: QueryFieldInterface) =>
+      (item.bool?.should || []) as QueryFieldInterface[]
+  );
+  const combinedData: Record<string, SearchDropdownOption[]> = {};
+
+  dropdownItems.forEach((item) => {
+    const data = getParseValueFromLocation(mustFilters, [item]);
+    combinedData[item.label] = data[item.label] || [];
+  });
+
+  return combinedData;
+};
+
+export const findActiveSearchIndex = (
+  obj: SearchHitCounts,
+  tabsData: Record<ExploreSearchIndex, TabsInfoData>
+): ExploreSearchIndex | null => {
+  const keysInOrder = Object.keys(tabsData) as ExploreSearchIndex[];
+  const filteredKeys = keysInOrder.filter((key) => obj[key] > 0);
+
+  return filteredKeys.length > 0 ? filteredKeys[0] : null;
+};
+
+export const getAggregations = (data: Aggregations) => {
+  return Object.fromEntries(
+    Object.entries(data).map(([key, value]) => [
+      key.replace('sterms#', ''),
+      value,
+    ])
+  ) as Aggregations;
+};
+
+export const getQuickFilterQuery = (data: ExploreQuickFilterField[]) => {
+  const must: QueryFieldInterface[] = [];
+  data.forEach((filter) => {
+    if (!isEmpty(filter.value)) {
+      const should: QueryFieldInterface[] = [];
+      if (filter.value) {
+        filter.value.forEach((filterValue) => {
+          const term: Record<string, string> = {};
+          term[filter.key] = filterValue.key;
+          should.push({ term });
+        });
+      }
+
+      must.push({
+        bool: { should },
+      });
+    }
+  });
+
+  const quickFilterQuery = isEmpty(must)
+    ? undefined
+    : {
+        query: { bool: { must } },
+      };
+
+  return quickFilterQuery;
+};
+
+export const extractTermKeys = (objects: QueryFieldInterface[]): string[] => {
+  const termKeys: string[] = [];
+
+  objects.forEach((obj: QueryFieldInterface) => {
+    if (obj.term) {
+      const keys = Object.keys(obj.term);
+      termKeys.push(...keys);
+    }
+  });
+
+  return termKeys;
+};
+
+export const getExploreQueryFilterMust = (data: ExploreQuickFilterField[]) => {
+  const must = [] as Array<QueryFieldInterface>;
+
+  data.forEach((filter) => {
+    if (!isEmpty(filter.value)) {
+      const should = [] as Array<QueryFieldInterface>;
+
+      const queryFieldKey =
+        filter.key === EntityFields.ENTITY_TYPE
+          ? EntityFields.ENTITY_TYPE_KEYWORD
+          : filter.key;
+
+      const shouldLowerCase = filter.key === EntityFields.ENTITY_TYPE;
+
+      filter.value?.forEach((filterValue) => {
+        const termValue = shouldLowerCase
+          ? filterValue.key.toLowerCase()
+          : filterValue.key;
+
+        const term = {
+          [queryFieldKey]: termValue,
+        };
+
+        if (filterValue.key === NULL_OPTION_KEY) {
+          should.push({
+            bool: {
+              must_not: { exists: { field: queryFieldKey } },
+            },
+          });
+        } else {
+          should.push({ term });
+        }
+      });
+
+      if (should.length > 0) {
+        must.push({ bool: { should } });
+      }
+    }
+  });
+
+  return must;
+};
+
+export const getSubLevelHierarchyKey = (
+  isDatabaseHierarchy = false,
+  filterField?: ExploreQuickFilterField[],
+  key?: EntityFields,
+  value?: string
+) => {
+  const queryFilter = {
+    query: { bool: {} },
+  };
+
+  if ((key && value) || filterField) {
+    (queryFilter.query.bool as EsBoolQuery).must = isUndefined(filterField)
+      ? { term: { [key ?? '']: value } }
+      : getExploreQueryFilterMust(filterField);
+  }
+
+  const bucketMapping = isDatabaseHierarchy
+    ? {
+        [EntityFields.SERVICE_TYPE]: EntityFields.SERVICE,
+        [EntityFields.SERVICE]: EntityFields.DATABASE_DISPLAY_NAME,
+        [EntityFields.DATABASE_DISPLAY_NAME]:
+          EntityFields.DATABASE_SCHEMA_DISPLAY_NAME,
+        [EntityFields.DATABASE_SCHEMA_DISPLAY_NAME]: EntityFields.ENTITY_TYPE,
+      }
+    : {
+        [EntityFields.SERVICE_TYPE]: EntityFields.SERVICE,
+        [EntityFields.SERVICE]: EntityFields.ENTITY_TYPE,
+      };
+
+  return {
+    bucket: bucketMapping[key as DatabaseFields] ?? EntityFields.SERVICE_TYPE,
+    queryFilter,
+  };
+};
+
+export const updateTreeData = (
+  list: ExploreTreeNode[],
+  key: Key,
+  children: ExploreTreeNode[]
+): ExploreTreeNode[] =>
+  list.map((node) => {
+    if (node.key === key) {
+      return {
+        ...node,
+        children,
+      };
+    }
+    if (node.children) {
+      return {
+        ...node,
+        children: updateTreeData(node.children, key, children),
+      };
+    }
+
+    return node;
+  });
+
+export const updateCountsInTreeData = (
+  list: ExploreTreeNode[],
+  key: Key,
+  count: number
+): ExploreTreeNode[] =>
+  list.map((node) => {
+    if (node.key === key) {
+      return {
+        ...node,
+        count: count ?? 0,
+      };
+    }
+    if (node.children) {
+      return {
+        ...node,
+        children: updateCountsInTreeData(node.children, key, count),
+      };
+    }
+
+    return node;
+  });
+
+export const getQuickFilterObject = (
+  bucketKey: EntityFields,
+  bucketValue: string
+) => {
+  return {
+    label: bucketKey,
+    key: bucketKey,
+    value: [
+      {
+        key: bucketValue,
+        label: bucketValue,
+      },
+    ],
+  };
+};
+
+export const getQuickFilterObjectForEntities = (
+  bucketKey: EntityFields,
+  bucketValues: EntityType[]
+) => {
+  return {
+    label: bucketKey,
+    key: bucketKey,
+    value: bucketValues.map((value) => ({
+      key: value,
+      label: value,
+    })),
+  };
+};
+
+export const updateTreeDataWithCounts = (
+  exploreTreeNodes: ExploreTreeNode[],
+  entityCounts: Bucket[]
+) => {
+  return exploreTreeNodes.map((node) => {
+    if ((node.data?.childEntities ?? []).length > 0) {
+      let totalCount = 0;
+      node.data?.childEntities?.forEach((child) => {
+        const count = entityCounts.find(
+          (count) => count.key === child
+        )?.doc_count;
+        totalCount += count ?? 0;
+      });
+      node.totalCount = totalCount;
+    }
+
+    if (node.children) {
+      let totalCount = 0;
+      node.children.forEach((child) => {
+        const count = entityCounts.find(
+          (count) => count.key === child.key
+        )?.doc_count;
+        child.count = count ?? 0;
+        totalCount += child.count;
+      });
+      node.totalCount = totalCount;
+    }
+
+    return node;
+  });
+};
+
+export const isElasticsearchError = (error: unknown): boolean => {
+  if (!error) {
+    return false;
+  }
+
+  const axiosError = error as AxiosError;
+  if (!axiosError.response?.data) {
+    return false;
+  }
+
+  const data = axiosError.response.data as Record<string, unknown>;
+  const message = data.message as string;
+
+  return (
+    !!message &&
+    (message.includes(FAILED_TO_FIND_INDEX_ERROR) ||
+      message.includes(ES_EXCEPTION_SHARDS_FAILED))
+  );
+};
+
+export const parseSearchParams = (
+  search: string,
+  globalPageSize: number,
+  queryFilter?: Record<string, unknown>
+) => {
+  const parsedSearch = Qs.parse(
+    search.startsWith('?') ? search.substring(1) : search
+  );
+
+  const searchQueryParam = isString(parsedSearch.search)
+    ? parsedSearch.search
+    : '';
+
+  const sortValue = isString(parsedSearch.sort)
+    ? parsedSearch.sort
+    : INITIAL_SORT_FIELD;
+
+  const sortOrder = isString(parsedSearch.sortOrder)
+    ? parsedSearch.sortOrder
+    : SORT_ORDER.DESC;
+
+  const page =
+    isString(parsedSearch.page) && !isNaN(Number.parseInt(parsedSearch.page))
+      ? Number.parseInt(parsedSearch.page)
+      : 1;
+
+  const size =
+    isString(parsedSearch.size) && !isNaN(Number.parseInt(parsedSearch.size))
+      ? Number.parseInt(parsedSearch.size)
+      : globalPageSize;
+
+  const stringifiedQueryFilter = isEmpty(queryFilter)
+    ? ''
+    : JSON.stringify(queryFilter);
+  const queryFilterContainsDeleted =
+    stringifiedQueryFilter.includes('"deleted":');
+
+  const showDeleted = queryFilterContainsDeleted
+    ? undefined
+    : parsedSearch.showDeleted === 'true';
+
+  return {
+    parsedSearch,
+    searchQueryParam,
+    sortValue,
+    sortOrder,
+    page,
+    size,
+    showDeleted,
+  };
+};

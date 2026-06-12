@@ -10,10 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+export {
+  getMetricExpressionLanguageName,
+  getSortedOptions,
+} from './MetricPureUtils';
+
 import { lazy, Suspense } from 'react';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
+import type {
+  CustomPropertyProps,
+  ExtentionEntitiesKeys,
+} from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import Loader from '../../components/common/Loader/Loader';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
@@ -21,70 +30,28 @@ import { CommonWidgets } from '../../components/DataAssets/CommonWidgets/CommonW
 import MetricExpression from '../../components/Metric/MetricExpression/MetricExpression';
 import RelatedMetrics from '../../components/Metric/RelatedMetrics/RelatedMetrics';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
-import { CSMode } from '../../enums/codemirror.enum';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
-import {
-  Language,
-  Metric,
-  MetricGranularity,
-} from '../../generated/entity/data/metric';
 import { PageType } from '../../generated/system/ui/page';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import i18n from '../i18next/LocalUtil';
 import { MetricDetailPageTabProps } from './MetricDetailsClassBase';
+
+const CustomPropertyTable = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../components/common/CustomPropertyTable/CustomPropertyTable'
+    ).then((module) => ({ default: module.CustomPropertyTable }))
+  )
+) as <T extends ExtentionEntitiesKeys>(
+  props: CustomPropertyProps<T>
+) => JSX.Element;
+
 const EntityLineageTab = lazy(() =>
   import('../../components/Lineage/EntityLineageTab/EntityLineageTab').then(
     (module) => ({ default: module.EntityLineageTab })
   )
 );
-
-const granularityOrder = [
-  MetricGranularity.Second,
-  MetricGranularity.Minute,
-  MetricGranularity.Hour,
-  MetricGranularity.Day,
-  MetricGranularity.Week,
-  MetricGranularity.Month,
-  MetricGranularity.Quarter,
-  MetricGranularity.Year,
-];
-
-export const getSortedOptions = (
-  options: {
-    label: string;
-    value: string;
-    key: string;
-  }[],
-  value: string | undefined,
-  valueKey: keyof Metric
-) => {
-  return options.sort((a, b) => {
-    if (a.value === value) {
-      return -1;
-    }
-    if (b.value === value) {
-      return 1;
-    }
-
-    return valueKey === 'granularity'
-      ? granularityOrder.indexOf(a.value as MetricGranularity) -
-          granularityOrder.indexOf(b.value as MetricGranularity)
-      : 0;
-  });
-};
-
-export const getMetricExpressionLanguageName = (language?: Language) => {
-  if (!language) {
-    return CSMode.SQL;
-  }
-
-  if (language === Language.Java) {
-    return CSMode.CLIKE;
-  }
-
-  return language.toLowerCase() as CSMode;
-};
 
 export const getMetricDetailsPageTabs = ({
   feedCount,

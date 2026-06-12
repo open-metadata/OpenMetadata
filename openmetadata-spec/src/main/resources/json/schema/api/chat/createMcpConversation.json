@@ -1,0 +1,16 @@
+{
+  "$id": "https://open-metadata.org/schema/api/chat/createMcpConversation.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateMcpConversation",
+  "description": "Request to create a new MCP conversation.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.chat.CreateMcpConversation",
+  "properties": {
+    "title": {
+      "description": "Optional title for the conversation.",
+      "type": "string",
+      "maxLength": 100
+    }
+  },
+  "additionalProperties": false
+}

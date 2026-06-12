@@ -11,7 +11,6 @@
 
 clusterName: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
 
-
 swagger:
   resourcePackage: org.openmetadata.service.resources
 
@@ -281,6 +280,10 @@ logging:
           archivedFileCount: 7
           timeZone: UTC
           maxFileSize: 50MB
+    org.openmetadata.service.audit.AuditLogRepository:
+      # Audit entries are logged at INFO with the AUDIT marker (see AuditLogger) and routed to
+      # logs/audit.log. Pin the level so audit capture does not depend on the global LOG_LEVEL.
+      level: INFO
   appenders:
     - type: console
       threshold: TRACE
@@ -290,6 +293,8 @@ logging:
         format: ${LOG_FORMAT:-text}
         pattern: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
         appendLineSeparator: true
+      filterFactories:
+        - type: audit-exclude-filter-factory
     - type: file
       layout:
         type: om-event-layout
@@ -592,6 +597,38 @@ elasticsearch:
     djl:
       embeddingModel: ${DJL_EMBEDDING_MODEL:-"ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2"}
 
+# Platform-wide LLM provider configuration. Generic - consumed by any feature that needs
+# LLM completions (e.g. the MCP Chat application). Disabled by default; set provider + credentials to enable.
+llmConfiguration:
+  enabled: ${LLM_ENABLED:-false}
+  provider: ${LLM_PROVIDER:-noop}  # noop | openai | azureOpenAI | bedrock | google | anthropic
+  maxConcurrentRequests: ${LLM_MAX_CONCURRENT_REQUESTS:-5}
+  openai:
+    apiKey: ${LLM_OPENAI_API_KEY:-""}
+    modelId: ${LLM_OPENAI_MODEL_ID:-"gpt-4o-mini"}
+    endpoint: ${LLM_OPENAI_ENDPOINT:-""}          # Set with deploymentName for Azure OpenAI
+    deploymentName: ${LLM_OPENAI_DEPLOYMENT:-""}
+    apiVersion: ${LLM_OPENAI_API_VERSION:-"2024-02-01"}
+    maxTokens: ${LLM_OPENAI_MAX_TOKENS:-4096}
+  bedrock:
+    awsConfig:
+      enabled: ${BEDROCK_AWS_IAM_AUTH_ENABLED:-true}
+      region: ${AWS_BEDROCK_REGION:-""}
+      accessKeyId: ${AWS_BEDROCK_ACCESS_KEY:-""}
+      secretAccessKey: ${AWS_BEDROCK_SECRET_KEY:-""}
+      sessionToken: ${AWS_BEDROCK_SESSION_TOKEN:-""}
+    modelId: ${LLM_BEDROCK_MODEL_ID:-"eu.anthropic.claude-haiku-4-5-20251001-v1:0"}
+    maxTokens: ${LLM_BEDROCK_MAX_TOKENS:-4096}
+  google:
+    apiKey: ${LLM_GOOGLE_API_KEY:-""}
+    modelId: ${LLM_GOOGLE_MODEL_ID:-"gemini-2.5-flash"}
+    maxTokens: ${LLM_GOOGLE_MAX_TOKENS:-4096}
+  anthropic:
+    apiKey: ${LLM_ANTHROPIC_API_KEY:-""}
+    modelId: ${LLM_ANTHROPIC_MODEL_ID:-"claude-3-5-sonnet-20240620"}
+    baseUrl: ${LLM_ANTHROPIC_BASE_URL:-"https://api.anthropic.com"}
+    maxTokens: ${LLM_ANTHROPIC_MAX_TOKENS:-4096}
+
 eventMonitoringConfiguration:
   eventMonitor: ${EVENT_MONITOR:-prometheus}  # Possible values are "prometheus", "cloudwatch"
   batchSize: ${EVENT_MONITOR_BATCH_SIZE:-10}
@@ -800,7 +837,8 @@ rdf:
 
 # Cache Configuration
 # Caching layer for entity metadata, relationships, and tag usage to reduce database load
-# Default: Disabled (uses NoopCacheProvider)
+# Default: none (no external dependency). Set CACHE_PROVIDER=redis to enable the
+# Redis L2 cache; it falls back to NoopCacheProvider if Redis is unreachable at startup.
 cache:
   # Cache provider: none (default) or redis
   provider: ${CACHE_PROVIDER:-none}
