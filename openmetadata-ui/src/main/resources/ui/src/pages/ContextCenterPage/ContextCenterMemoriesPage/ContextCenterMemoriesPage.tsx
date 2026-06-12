@@ -58,7 +58,8 @@ import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const MEMORIES_PER_PAGE = 10;
-const MEMORY_FIELDS = 'owners,tags,domains,primaryEntity,relatedEntities';
+const MEMORY_FIELDS =
+  'owners,tags,domains,primaryEntity,relatedEntities,sourceFile';
 
 const FILTER_TABS = [
   { id: 'all', label: 'label.all' },
