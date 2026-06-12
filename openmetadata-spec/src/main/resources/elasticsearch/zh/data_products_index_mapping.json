@@ -219,6 +219,22 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "dataProductType": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "visibility": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "portfolioPriority": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "lifecycleStage": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
       "owners": {
         "type": "nested",
         "properties": {
@@ -486,7 +502,8 @@
                 "type": "text",
                 "analyzer": "om_analyzer"
               }
-            }
+            },
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"

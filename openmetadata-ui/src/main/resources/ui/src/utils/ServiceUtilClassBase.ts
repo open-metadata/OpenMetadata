@@ -69,7 +69,7 @@ import {
 } from '../interface/service.interface';
 import { getAPIConfig } from './APIServiceUtils';
 import { getDashboardConfig } from './DashboardServiceUtils';
-import { getDatabaseConfig } from './DatabaseServiceUtils';
+import { getDatabaseConfig } from './DatabaseServicePureUtils';
 import { getDriveConfig } from './DriveServiceUtils';
 import { getMessagingConfig } from './MessagingServiceUtils';
 import { getMetadataConfig } from './MetadataServiceUtils';
@@ -111,6 +111,8 @@ class ServiceUtilClassBase {
     DatabaseServiceType.Dremio,
     MetadataServiceType.Collibra,
     PipelineServiceType.Mulesoft,
+    DatabaseServiceType.MicrosoftFabric,
+    PipelineServiceType.MicrosoftFabricPipeline,
     DatabaseServiceType.MicrosoftAccess,
     DashboardServiceType.SapS4Hana,
     DatabaseServiceType.SapSuccessFactors,

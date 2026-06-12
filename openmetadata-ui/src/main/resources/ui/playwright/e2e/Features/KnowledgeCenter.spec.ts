@@ -74,15 +74,14 @@ const knowledgePageQuickLink = {
   tagFqn: 'KnowledgeCenter.QuickLink',
 };
 
-const dataAsset = new TopicClass();
-const tableAsset = new TableClass();
-const user = new UserClass();
-const domain = new Domain();
-const dataProduct = new DataProduct([domain]);
-
-const knowledgeCenter = new KnowledgeCenterClass({}, undefined, tableAsset);
-const knowledgeCenter1 = new KnowledgeCenterClass();
-const knowledgeCenter2 = new KnowledgeCenterClass();
+let dataAsset: TopicClass;
+let tableAsset: TableClass;
+let user: UserClass;
+let domain: Domain;
+let dataProduct: DataProduct;
+let knowledgeCenter: KnowledgeCenterClass;
+let knowledgeCenter1: KnowledgeCenterClass;
+let knowledgeCenter2: KnowledgeCenterClass;
 
 // use the admin user to login
 test.use({
@@ -92,6 +91,14 @@ test.use({
 test.describe('Knowledge Center', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
+    dataAsset = new TopicClass();
+    tableAsset = new TableClass();
+    user = new UserClass();
+    domain = new Domain();
+    dataProduct = new DataProduct([domain]);
+    knowledgeCenter = new KnowledgeCenterClass({}, undefined, tableAsset);
+    knowledgeCenter1 = new KnowledgeCenterClass();
+    knowledgeCenter2 = new KnowledgeCenterClass();
     await user.create(apiContext);
     await tableAsset.create(apiContext);
     await dataAsset.create(apiContext);
@@ -223,12 +230,14 @@ test.describe('Knowledge Center', () => {
       // verify the tag category
       await expect(
         page.locator(
-          `[data-testid="${knowledgePageQuickLink.updatedDisplayName}"]`
+          `[data-testid="knowledge-card-${knowledgePageQuickLink.updatedDisplayName}"]`
         )
       ).toBeVisible();
 
       await page
-        .locator(`[data-testid="${knowledgePageQuickLink.updatedDisplayName}"]`)
+        .locator(
+          `[data-testid="knowledge-card-${knowledgePageQuickLink.updatedDisplayName}"]`
+        )
         .locator('[data-testid="delete-quick-link-btn"]')
         .click();
       await deletePage(page, true);
@@ -503,7 +512,9 @@ test.describe('Knowledge Center', () => {
 
       // Get the first element content before scrolling
       const firstElementBeforeScroll = page
-        .locator('[data-testid="knowledge-pages-hierarchy"] .ant-tree-treenode')
+        .locator(
+          '[data-testid="knowledge-pages-hierarchy-container"] [role="row"]'
+        )
         .first();
       const paginationResponse = page.waitForResponse(
         (response) =>
@@ -516,12 +527,12 @@ test.describe('Knowledge Center', () => {
       );
 
       const scrollHeight = await page
-        .locator(
-          '[data-testid="knowledge-pages-hierarchy"] .ant-tree-list-holder > div'
-        )
+        .locator('[data-testid="knowledge-pages-hierarchy-container"]')
         .evaluate((element) => element.scrollHeight);
 
-      await page.locator('[data-testid="knowledge-pages-hierarchy"]').hover();
+      await page
+        .locator('[data-testid="knowledge-pages-hierarchy-container"]')
+        .hover();
       await page.mouse.wheel(0, scrollHeight);
       await paginationResponse;
 
@@ -530,7 +541,9 @@ test.describe('Knowledge Center', () => {
 
       // Get the first element content after scrolling
       const firstElementAfterScroll = await page
-        .locator('[data-testid="knowledge-pages-hierarchy"] .ant-tree-treenode')
+        .locator(
+          '[data-testid="knowledge-pages-hierarchy-container"] [role="row"]'
+        )
         .first()
         .textContent();
 

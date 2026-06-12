@@ -56,7 +56,7 @@ jest.mock('../../PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('testEntityName'),
 }));
 
@@ -128,7 +128,7 @@ jest.mock('../../../utils/DashboardDetailsClassBase', () => ({
   },
 }));
 
-jest.mock('../../../utils/CustomizePage/CustomizePageUtils', () => ({
+jest.mock('../../../utils/CustomizePage/CustomizePageEntityTabUtils', () => ({
   getTabLabelMapFromTabs: jest.fn().mockReturnValue({}),
   getDetailsTabWithNewLabel: jest.fn().mockReturnValue([]),
   checkIfExpandViewSupported: jest.fn().mockReturnValue(false),

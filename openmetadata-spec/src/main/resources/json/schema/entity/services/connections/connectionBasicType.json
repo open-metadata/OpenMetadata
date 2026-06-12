@@ -98,33 +98,23 @@
         "enabled": {
           "title": "Enabled",
           "description": "Enable policy agent extraction.",
-          "type": "boolean",
-          "default": false
+          "type": "boolean"
         },
         "supportsColumnAccess": {
           "title": "Supports Column Access",
           "description": "Supports column-level access policy extraction.",
-          "type": "boolean",
-          "default": false
+          "type": "boolean"
         },
         "supportsFullAccess": {
           "title": "Supports Full Access",
           "description": "Supports full access policy extraction.",
-          "type": "boolean",
-          "default": false
+          "type": "boolean"
         },
         "supportsMaskedAccess": {
           "title": "Supports Masked Access",
           "description": "Supports masked access policy extraction.",
-          "type": "boolean",
-          "default": false
+          "type": "boolean"
         }
-      },
-      "default": {
-        "enabled": false,
-        "supportsColumnAccess": false,
-        "supportsFullAccess": false,
-        "supportsMaskedAccess": false
       },
       "additionalProperties": false
     },

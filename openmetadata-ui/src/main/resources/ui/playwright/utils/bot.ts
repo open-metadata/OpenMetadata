@@ -32,10 +32,36 @@ export const BOT_DETAILS = {
   updatedDescription: `This is updated bot description for ${botName}`,
   updatedBotName: `updated-${botName}`,
   unlimitedExpiryTime: 'This token has no expiration date.',
-  JWTToken: 'OpenMetadata JWT',
+  JWTToken: /(OpenMetadata|Collate) JWT Token/,
 };
 
 const EXPIRATION_TIME = [1, 7, 30, 60, 90];
+
+export const searchBotFromSearchInput = async (
+  page: Page,
+  searchTerm: string
+) => {
+  const searchResponsePromise = page.waitForResponse((response) => {
+    const url = response.url();
+    const decodedUrl = decodeURIComponent(url);
+
+    return (
+      url.includes('/api/v1/search/query') &&
+      url.includes('index=user') &&
+      decodedUrl.includes('"isBot":true') &&
+      response.request().method() === 'GET'
+    );
+  });
+
+  const searchInput = page.getByTestId('searchbar');
+  await searchInput.clear();
+  await searchInput.fill(searchTerm);
+  await expect(searchInput).toHaveValue(searchTerm);
+
+  const searchResponse = await searchResponsePromise;
+
+  expect(searchResponse.status()).toBe(200);
+};
 
 export const getCreatedBot = async (
   page: Page,
@@ -95,7 +121,7 @@ export const createBot = async (page: Page) => {
   await expect(page.getByTestId('revoke-button')).toContainText('Revoke token');
 
   await expect(page.getByTestId('center-panel')).toContainText(
-    `${BOT_DETAILS.JWTToken} Token`
+    BOT_DETAILS.JWTToken
   );
 
   await expect(page.getByTestId('token-expiry')).toBeVisible();

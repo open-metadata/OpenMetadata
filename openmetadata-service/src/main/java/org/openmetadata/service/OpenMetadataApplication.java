@@ -54,6 +54,9 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import javax.naming.ConfigurationException;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -89,6 +92,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdent
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.audit.AuditLogEventPublisher;
 import org.openmetadata.service.audit.AuditLogRepository;
+import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
@@ -147,9 +151,9 @@ import org.openmetadata.service.security.AuthCallbackServlet;
 import org.openmetadata.service.security.AuthLoginServlet;
 import org.openmetadata.service.security.AuthLogoutServlet;
 import org.openmetadata.service.security.AuthRefreshServlet;
+import org.openmetadata.service.security.AuthServeletHandler;
 import org.openmetadata.service.security.AuthServeletHandlerFactory;
 import org.openmetadata.service.security.AuthServeletHandlerRegistry;
-import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ContainerRequestFilterManager;
 import org.openmetadata.service.security.CspNonceHandler;
@@ -173,6 +177,8 @@ import org.openmetadata.service.security.saml.SamlLogoutServlet;
 import org.openmetadata.service.security.saml.SamlMetadataServlet;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
 import org.openmetadata.service.security.saml.SamlTokenRefreshServlet;
+import org.openmetadata.service.security.session.SessionService;
+import org.openmetadata.service.security.session.SessionTimeoutResolver;
 import org.openmetadata.service.socket.FeedServlet;
 import org.openmetadata.service.socket.Jetty12WebSocketHandler;
 import org.openmetadata.service.socket.OpenMetadataAssetServlet;
@@ -219,6 +225,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   protected Jdbi jdbi;
   private Environment environment;
   private AuditLogRepository auditLogRepository;
+  private org.openmetadata.service.socket.SocketAddressFilter socketAddressFilter;
 
   @Override
   public void run(OpenMetadataApplicationConfig catalogConfig, Environment environment)
@@ -252,6 +259,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Initialize the IndexMapping class
     IndexMappingLoader.init(catalogConfig.getElasticSearchConfiguration());
+
+    // Publish the platform-wide LLM configuration for features that need completions
+    LlmConfigHolder.initialize(catalogConfig.getLlmConfiguration());
 
     // init for dataSourceFactory
     DatasourceConfig.initialize(catalogConfig.getDataSourceFactory().getDriverClass());
@@ -466,9 +476,21 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   private void registerAuthServlets(OpenMetadataApplicationConfig config, Environment environment) {
-    AuthServeletHandlerRegistry.setHandler(AuthServeletHandlerFactory.getHandler(config));
-    // Set up a Session Manager
     MutableServletContextHandler contextHandler = environment.getApplicationContext();
+    SessionService sessionService =
+        new SessionService(SecurityConfigurationManager.getCurrentAuthConfig());
+    wireSessionRevocationToWebSockets(sessionService);
+    if (socketAddressFilter != null) {
+      socketAddressFilter.setSessionService(sessionService);
+    }
+    environment.lifecycle().manage(sessionService);
+    environment.lifecycle().manage(new WebSocketSessionValidator(sessionService));
+    setAuthServletAttributes(
+        contextHandler,
+        AuthServeletHandlerFactory.getHandler(config, sessionService),
+        sessionService);
+    // Jetty HttpSession is still required by the OneLogin SAML library. OM_SESSION carries the
+    // application session state for the unified auth flows.
     SessionHandler sessionHandler = contextHandler.getSessionHandler();
     if (contextHandler.getSessionHandler() == null) {
       sessionHandler = new SessionHandler();
@@ -486,18 +508,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       sessionHandler.setSameSite(HttpCookie.SameSite.NONE);
     }
 
-    // Get session expiry - use OIDC config if available, otherwise default
-    int sessionExpiry = 604800; // Default 7 days in seconds
-    if (SecurityConfigurationManager.getCurrentAuthConfig().getOidcConfiguration() != null
-        && SecurityConfigurationManager.getCurrentAuthConfig()
-                .getOidcConfiguration()
-                .getSessionExpiry()
-            >= 3600) {
-      sessionExpiry =
-          SecurityConfigurationManager.getCurrentAuthConfig()
-              .getOidcConfiguration()
-              .getSessionExpiry();
-    }
+    int sessionExpiry =
+        SessionTimeoutResolver.resolveSessionExpirySeconds(
+            SecurityConfigurationManager.getCurrentAuthConfig());
 
     cookieConfig.setMaxAge(sessionExpiry);
     cookieConfig.setPath("/");
@@ -827,7 +840,22 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       OpenMetadataApplicationConfig config, Environment environment) {
     try {
       LOG.info("Starting authentication system reinitialization");
-      AuthServeletHandlerRegistry.setHandler(AuthServeletHandlerFactory.getHandler(config));
+      MutableServletContextHandler contextHandler = environment.getApplicationContext();
+      SessionService sessionService =
+          AuthServeletHandlerRegistry.getSessionService(contextHandler.getServletContext());
+      if (sessionService == null) {
+        sessionService = new SessionService(SecurityConfigurationManager.getCurrentAuthConfig());
+        wireSessionRevocationToWebSockets(sessionService);
+        environment.lifecycle().manage(sessionService);
+        sessionService.start();
+        WebSocketSessionValidator validator = new WebSocketSessionValidator(sessionService);
+        environment.lifecycle().manage(validator);
+        validator.start();
+      } else {
+        sessionService.updateConfiguration(SecurityConfigurationManager.getCurrentAuthConfig());
+      }
+      AuthServeletHandler handler = AuthServeletHandlerFactory.getHandler(config, sessionService);
+      setAuthServletAttributes(contextHandler, handler, sessionService);
 
       // Update JWT configuration first
       JWTTokenGenerator.getInstance()
@@ -840,16 +868,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       reRegisterAuthorizer(config, environment);
       config.setAuthenticationConfiguration(SecurityConfigurationManager.getCurrentAuthConfig());
       authenticatorHandler.init(config);
-
-      // Re-register servlets
-      if (AuthServeletHandlerFactory.getHandler(config) instanceof AuthenticationCodeFlowHandler) {
-        AuthenticationCodeFlowHandler.getInstance(
-                SecurityConfigurationManager.getCurrentAuthConfig(),
-                SecurityConfigurationManager.getCurrentAuthzConfig())
-            .updateConfiguration(
-                SecurityConfigurationManager.getCurrentAuthConfig(),
-                SecurityConfigurationManager.getCurrentAuthzConfig());
-      }
 
       // Reinitialize SAML settings if SAML is enabled
       if (SecurityConfigurationManager.getCurrentAuthConfig() != null
@@ -867,6 +885,50 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       // Rollback is handled internally by SecurityConfigurationManager
       throw new RuntimeException("Authentication system reinitialization failed", e);
     }
+  }
+
+  /**
+   * Hook session revocation up to WebSocket termination. On every successful local revocation we
+   * (1) close any Socket.IO connections this pod is holding for the user and (2) publish a
+   * cross-pod signal on the cache-invalidation channel so peer pods do the same. The second hop
+   * is a no-op when no Redis pub/sub is wired up (single-pod deployments).
+   */
+  private void wireSessionRevocationToWebSockets(SessionService sessionService) {
+    sessionService.registerRevocationListener(
+        session -> {
+          try {
+            if (session.getUserId() == null) {
+              return;
+            }
+            java.util.UUID id = java.util.UUID.fromString(session.getUserId());
+            org.openmetadata.service.socket.WebSocketManager wsManager =
+                org.openmetadata.service.socket.WebSocketManager.getInstance();
+            if (wsManager != null) {
+              wsManager.disconnectForSession(id, session.getId());
+            }
+            org.openmetadata.service.cache.CacheInvalidationPubSub pubSub =
+                org.openmetadata.service.cache.CacheBundle.getCacheInvalidationPubSub();
+            if (pubSub != null) {
+              pubSub.publish("session", id, session.getId(), "revoke");
+            }
+          } catch (IllegalArgumentException e) {
+            LOG.debug("Skipping revocation broadcast for non-UUID userId {}", session.getUserId());
+          } catch (Exception e) {
+            LOG.warn("Failed to propagate session revocation for {}", session.getUserId(), e);
+          }
+        });
+  }
+
+  private void setAuthServletAttributes(
+      MutableServletContextHandler contextHandler,
+      AuthServeletHandler handler,
+      SessionService sessionService) {
+    contextHandler.setAttribute(AuthServeletHandlerRegistry.AUTH_HANDLER_ATTRIBUTE, handler);
+    contextHandler.setAttribute(
+        AuthServeletHandlerRegistry.SESSION_SERVICE_ATTRIBUTE, sessionService);
+    AuthServeletHandlerRegistry.setHandler(contextHandler.getServletContext(), handler);
+    AuthServeletHandlerRegistry.setSessionService(
+        contextHandler.getServletContext(), sessionService);
   }
 
   private void registerAuthorizer(
@@ -1083,7 +1145,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
   private void initializeWebsockets(
       OpenMetadataApplicationConfig catalogConfig, Environment environment) {
-    SocketAddressFilter socketAddressFilter;
     String pathSpec = "/api/v1/push/feed/*";
 
     LOG.info("Initializing WebSockets");
@@ -1181,6 +1242,82 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       EntityLifecycleEventDispatcher.getInstance().shutdown();
       AppScheduler.shutDown();
       LOG.info("Stopping the application");
+    }
+  }
+
+  public static class WebSocketSessionValidator implements Managed {
+    private static final long DEFAULT_VALIDATION_INTERVAL_SECONDS = 60L;
+    private static final long MIN_VALIDATION_INTERVAL_SECONDS = 15L;
+    private static final String VALIDATION_INTERVAL_PROPERTY =
+        "openmetadata.websocketSessionValidationIntervalSeconds";
+    private static final String VALIDATION_INTERVAL_ENV =
+        "WEBSOCKET_SESSION_VALIDATION_INTERVAL_SECONDS";
+    private final SessionService sessionService;
+    private final long validationIntervalSeconds;
+    private ScheduledExecutorService scheduler;
+
+    public WebSocketSessionValidator(SessionService sessionService) {
+      this(sessionService, resolveValidationIntervalSeconds());
+    }
+
+    WebSocketSessionValidator(SessionService sessionService, long validationIntervalSeconds) {
+      this.sessionService = sessionService;
+      this.validationIntervalSeconds =
+          Math.max(MIN_VALIDATION_INTERVAL_SECONDS, validationIntervalSeconds);
+    }
+
+    @Override
+    public void start() {
+      scheduler =
+          Executors.newSingleThreadScheduledExecutor(
+              runnable -> {
+                Thread thread = new Thread(runnable, "om-websocket-session-validator");
+                thread.setDaemon(true);
+                return thread;
+              });
+      scheduler.scheduleWithFixedDelay(
+          this::validateSessions,
+          validationIntervalSeconds,
+          validationIntervalSeconds,
+          TimeUnit.SECONDS);
+    }
+
+    @Override
+    public void stop() {
+      if (scheduler != null) {
+        scheduler.shutdownNow();
+      }
+    }
+
+    private void validateSessions() {
+      try {
+        WebSocketManager wsManager = WebSocketManager.getInstance();
+        if (wsManager != null) {
+          wsManager.disconnectInactiveSessions(
+              sessionService, TimeUnit.SECONDS.toMillis(validationIntervalSeconds));
+        }
+      } catch (Exception e) {
+        LOG.debug("WebSocket session validation failed", e);
+      }
+    }
+
+    private static long resolveValidationIntervalSeconds() {
+      String configured = System.getProperty(VALIDATION_INTERVAL_PROPERTY);
+      if (configured == null || configured.isBlank()) {
+        configured = System.getenv(VALIDATION_INTERVAL_ENV);
+      }
+      if (configured == null || configured.isBlank()) {
+        return DEFAULT_VALIDATION_INTERVAL_SECONDS;
+      }
+      try {
+        return Long.parseLong(configured.trim());
+      } catch (NumberFormatException e) {
+        LOG.warn(
+            "Invalid WebSocket session validation interval '{}'; using default {} seconds",
+            configured,
+            DEFAULT_VALIDATION_INTERVAL_SECONDS);
+        return DEFAULT_VALIDATION_INTERVAL_SECONDS;
+      }
     }
   }
 }

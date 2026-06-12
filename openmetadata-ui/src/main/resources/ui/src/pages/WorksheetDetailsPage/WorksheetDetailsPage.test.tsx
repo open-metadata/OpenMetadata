@@ -232,7 +232,7 @@ jest.mock('../../utils/RecentActivityUtils', () => ({
   addToRecentViewed: jest.fn(),
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Test Worksheet'),
 }));
 

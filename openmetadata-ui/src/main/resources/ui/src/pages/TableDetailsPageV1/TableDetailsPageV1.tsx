@@ -76,11 +76,11 @@ import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../utils/CustomizePage/CustomizePageUtils';
+} from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { defaultFieldsWithColumns } from '../../utils/DatasetDetailsUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { mergeEntityStateUpdate } from '../../utils/EntityUpdateUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../utils/EntityUtils';
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
@@ -100,11 +100,12 @@ import {
   getTagsWithoutTier,
   getTierTags,
   updateColumnInNestedStructure,
-} from '../../utils/TableUtils';
+} from '../../utils/TablePureUtils';
 import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';
+import TableDetailsPageSkeleton from './TableDetailsPageSkeleton.component';
 
 const TableDetailsPageV1: React.FC = () => {
   const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
@@ -991,7 +992,7 @@ const TableDetailsPageV1: React.FC = () => {
   // a "no permission" placeholder during the brief window before the permissions endpoint
   // returns. Once permissions are in, this gate falls through naturally.
   if (permissionsLoading) {
-    return <Loader />;
+    return <TableDetailsPageSkeleton />;
   }
 
   if (!(isTourOpen || isTourPage) && !viewBasicPermission) {

@@ -49,7 +49,7 @@ import { Paging } from '../../generated/type/paging';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getAllAlerts } from '../../rest/alertsAPI';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {

@@ -1,5 +1,6 @@
 package org.openmetadata.service.migration.utils.v1130;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -9,9 +10,14 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.statement.PreparedBatch;
+import org.openmetadata.schema.api.search.Aggregation;
+import org.openmetadata.schema.api.search.AllowedSearchFields;
+import org.openmetadata.schema.api.search.AssetTypeConfiguration;
+import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -36,6 +42,20 @@ public class MigrationUtil {
   private static final String OLD_FIELD = "owners.name.keyword";
   private static final String NEW_FIELD = "ownerName";
   private static final String TABLE_COLUMN_ASSET_TYPE = "tableColumn";
+
+  // Highlight fields dropped from the searchSettings.json seed when the underlying mapping field
+  // was converted to flattened (PR #28214 flattened container dataModel.columns.children). On
+  // OpenSearch, highlighting a flattened field throws "no associated analyzer", failing the search.
+  // Upgraded clusters keep their stored asset config wholesale, so the seed fix never reaches them;
+  // this scrub removes exactly the seed-removed entries from the DB-stored settings.
+  private static final Set<String> STALE_FLATTENED_CHILDREN_FIELDS =
+      Set.of(
+          "columns.children.name",
+          "columns.children.description",
+          "dataModel.columns.children.name",
+          "messageSchema.schemaFields.children.name",
+          "requestSchema.schemaFields.children.name",
+          "responseSchema.schemaFields.children.name");
 
   public static void updateOwnerChartFormulas() {
     DataInsightSystemChartRepository repository = new DataInsightSystemChartRepository();
@@ -372,6 +392,146 @@ public class MigrationUtil {
       // so the migration step doesn't abort the rest of v1130's reprocessing.
       LOG.error("Error adding tableColumn search settings", e);
     }
+  }
+
+  /**
+   * Removes every reference to the now non-indexed {@code *.children} fields from the DB-stored
+   * SearchSettings on upgraded clusters. The recursive column/schema {@code children} subtree is
+   * mapped {@code object} with {@code "enabled": false} (stored for display, not indexed) so a
+   * single oversized leaf can no longer trip Lucene's per-term limit on the previous
+   * {@code flattened} representation. Its leaves ({@code columns.children.name},
+   * {@code dataModel.columns.children.name}, the schemaFields variants, etc.) therefore no longer
+   * resolve, yet the additive settings merge preserves a cluster's stored config, so these entries
+   * survive an upgrade — including the highlight entry that broke container search on OpenSearch
+   * ("no associated analyzer"). Scrubs them from highlightFields, searchFields, and the
+   * allowedFields catalog. Idempotent; safe to call on every reprocessing pass.
+   */
+  public static void removeFlattenedChildrenSearchSettings() {
+    try {
+      Settings searchSettings = SearchSettingsMergeUtil.getSearchSettingsFromDatabase();
+      if (searchSettings == null) {
+        LOG.warn("Search settings not found in database; skipping flattened-children scrub");
+      } else {
+        SearchSettings currentSettings = SearchSettingsMergeUtil.loadSearchSettings(searchSettings);
+        if (stripFlattenedChildrenReferences(currentSettings)) {
+          SearchSettingsMergeUtil.saveSearchSettings(searchSettings, currentSettings);
+          LOG.info("Removed stale flattened children references from search settings");
+        } else {
+          LOG.info("No stale flattened children references found in search settings");
+        }
+      }
+    } catch (Exception e) {
+      LOG.error("Error removing stale flattened children references from search settings", e);
+    }
+  }
+
+  public static boolean stripFlattenedChildrenReferences(SearchSettings settings) {
+    boolean changed = false;
+    if (settings != null) {
+      if (settings.getGlobalSettings() != null) {
+        changed = removeStaleHighlightFields(settings.getGlobalSettings().getHighlightFields());
+      }
+      for (AssetTypeConfiguration assetConfig :
+          listOrEmpty(settings.getAssetTypeConfigurations())) {
+        changed |= removeStaleHighlightFields(assetConfig.getHighlightFields());
+        changed |= removeStaleSearchFields(assetConfig.getSearchFields());
+      }
+      changed |= removeStaleAllowedFields(settings.getAllowedFields());
+    }
+    return changed;
+  }
+
+  private static boolean removeStaleHighlightFields(List<String> highlightFields) {
+    boolean removed = false;
+    if (!nullOrEmpty(highlightFields)) {
+      removed = highlightFields.removeIf(STALE_FLATTENED_CHILDREN_FIELDS::contains);
+    }
+    return removed;
+  }
+
+  private static boolean removeStaleSearchFields(List<FieldBoost> searchFields) {
+    boolean removed = false;
+    if (!nullOrEmpty(searchFields)) {
+      removed =
+          searchFields.removeIf(
+              field -> STALE_FLATTENED_CHILDREN_FIELDS.contains(field.getField()));
+    }
+    return removed;
+  }
+
+  private static boolean removeStaleAllowedFields(List<AllowedSearchFields> allowedFields) {
+    boolean removed = false;
+    for (AllowedSearchFields allowedField : listOrEmpty(allowedFields)) {
+      if (!nullOrEmpty(allowedField.getFields())) {
+        removed |=
+            allowedField
+                .getFields()
+                .removeIf(field -> STALE_FLATTENED_CHILDREN_FIELDS.contains(field.getName()));
+      }
+    }
+    return removed;
+  }
+
+  // PR #27080 renamed the file search field and aggregation from "extension" (flattened —
+  // unsupported for terms agg and multi_match on OpenSearch) to "fileExtension" (keyword). The
+  // seed was updated but the additive settings merge means upgraded clusters (1.11 → 1.13) still
+  // carry both stale entries, causing a 500 on every file search query.
+  private static final String STALE_FILE_EXTENSION_FIELD = "extension";
+  private static final String FILE_ASSET_TYPE = "file";
+
+  /**
+   * Removes the stale {@code extension} searchField and aggregation from the DB-stored file
+   * SearchSettings on upgraded clusters. PR #27080 renamed both to {@code fileExtension}, but the
+   * additive settings merge preserves a cluster's stored config — the old entries on a flattened
+   * field survive and cause {@code illegal_argument_exception} on OpenSearch. Idempotent.
+   */
+  public static void removeStaleFileExtensionAggregation() {
+    try {
+      Settings searchSettings = SearchSettingsMergeUtil.getSearchSettingsFromDatabase();
+      if (searchSettings == null) {
+        LOG.warn("Search settings not found in database; skipping stale file extension scrub");
+        return;
+      }
+      SearchSettings currentSettings = SearchSettingsMergeUtil.loadSearchSettings(searchSettings);
+      if (stripStaleFileExtensionSettings(currentSettings)) {
+        SearchSettingsMergeUtil.saveSearchSettings(searchSettings, currentSettings);
+        LOG.info("Removed stale 'extension' searchField and aggregation from file search settings");
+      } else {
+        LOG.info("No stale 'extension' entries found in file search settings");
+      }
+    } catch (Exception e) {
+      LOG.error("Error removing stale file extension settings", e);
+    }
+  }
+
+  public static boolean stripStaleFileExtensionSettings(SearchSettings settings) {
+    boolean changed = false;
+    if (settings == null) {
+      return false;
+    }
+    for (AssetTypeConfiguration assetConfig : listOrEmpty(settings.getAssetTypeConfigurations())) {
+      if (FILE_ASSET_TYPE.equals(assetConfig.getAssetType())) {
+        changed |= removeStaleAggregation(assetConfig.getAggregations());
+        changed |= removeStaleSearchField(assetConfig.getSearchFields());
+      }
+    }
+    return changed;
+  }
+
+  private static boolean removeStaleAggregation(List<Aggregation> aggregations) {
+    boolean removed = false;
+    if (!nullOrEmpty(aggregations)) {
+      removed = aggregations.removeIf(agg -> STALE_FILE_EXTENSION_FIELD.equals(agg.getField()));
+    }
+    return removed;
+  }
+
+  private static boolean removeStaleSearchField(List<FieldBoost> searchFields) {
+    boolean removed = false;
+    if (!nullOrEmpty(searchFields)) {
+      removed = searchFields.removeIf(field -> STALE_FILE_EXTENSION_FIELD.equals(field.getField()));
+    }
+    return removed;
   }
 
   // Entity tables that v1125 attempted to drain of inline certification into tag_usage.

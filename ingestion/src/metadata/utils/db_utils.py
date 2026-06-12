@@ -36,7 +36,6 @@ from metadata.ingestion.lineage.sql_lineage import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
-from metadata.utils.execution_time_tracker import calculate_execution_time_generator
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -53,7 +52,6 @@ def get_host_from_host_port(uri: str) -> str:
 
 
 #  pylint: disable=too-many-locals
-@calculate_execution_time_generator()
 def get_view_lineage(
     view: TableView,
     metadata: OpenMetadata,

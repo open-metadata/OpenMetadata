@@ -1175,7 +1175,10 @@ export interface ConfigObject {
     /**
      * Databricks compute resources URL.
      */
-    httpPath?:          string;
+    httpPath?: string;
+    /**
+     * Policy agent configuration for access control extraction.
+     */
     policyAgentConfig?: PolicyAgentConfig;
     /**
      * Table name to fetch the query history.
@@ -1972,6 +1975,9 @@ export interface ConfigObject {
     pipelineFilterPattern?: FilterPattern;
     /**
      * Underlying database connection
+     *
+     * Optional. Underlying SSISDB connection. When omitted, the connector runs in file-only
+     * mode and run history is not extracted.
      */
     databaseConnection?: DatabaseConnectionClass;
     /**
@@ -3755,7 +3761,6 @@ export interface ConfigConnection {
      * this.
      */
     ingestAllDatabases?: boolean;
-    policyAgentConfig?:  PolicyAgentConfig;
     /**
      * Fully qualified name of the view or table to use for query logs. If not provided,
      * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
@@ -3929,28 +3934,6 @@ export interface AuthTypeClass {
      * GCP credentials to use. If not provided, Application Default Credentials will be used.
      */
     gcpConfig?: GcpConfigClass;
-}
-
-/**
- * Policy agent configuration for access control extraction.
- */
-export interface PolicyAgentConfig {
-    /**
-     * Enable policy agent extraction.
-     */
-    enabled?: boolean;
-    /**
-     * Supports column-level access policy extraction.
-     */
-    supportsColumnAccess?: boolean;
-    /**
-     * Supports full access policy extraction.
-     */
-    supportsFullAccess?: boolean;
-    /**
-     * Supports masked access policy extraction.
-     */
-    supportsMaskedAccess?: boolean;
 }
 
 /**
@@ -4222,6 +4205,9 @@ export interface PurpleGCPCredentials {
  * Underlying database connection
  *
  * Mssql Database Connection Config
+ *
+ * Optional. Underlying SSISDB connection. When omitted, the connector runs in file-only
+ * mode and run history is not extracted.
  */
 export interface DatabaseConnectionClass {
     connectionArguments?: { [key: string]: any };
@@ -4460,7 +4446,6 @@ export interface HiveMetastoreConnectionDetails {
      * this.
      */
     ingestAllDatabases?: boolean;
-    policyAgentConfig?:  PolicyAgentConfig;
     /**
      * Fully qualified name of the view or table to use for query logs. If not provided,
      * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
@@ -4725,6 +4710,28 @@ export interface BucketDetails {
      * Path of the folder where the .pbit files are stored
      */
     objectPrefix?: string;
+}
+
+/**
+ * Policy agent configuration for access control extraction.
+ */
+export interface PolicyAgentConfig {
+    /**
+     * Enable policy agent extraction.
+     */
+    enabled?: boolean;
+    /**
+     * Supports column-level access policy extraction.
+     */
+    supportsColumnAccess?: boolean;
+    /**
+     * Supports full access policy extraction.
+     */
+    supportsFullAccess?: boolean;
+    /**
+     * Supports masked access policy extraction.
+     */
+    supportsMaskedAccess?: boolean;
 }
 
 /**
@@ -5564,9 +5571,21 @@ export enum StatusType {
  */
 export interface TestConnectionStepResult {
     /**
+     * Classified, actionable explanation of a failure, separate from the raw errorLog.
+     */
+    diagnosis?: Diagnosis;
+    /**
+     * Wall-clock time the step took, in milliseconds.
+     */
+    durationMs?: number;
+    /**
      * In case of failed step, this field would contain the actual error faced during the step.
      */
     errorLog?: string;
+    /**
+     * The command or statement the step actually ran, when applicable.
+     */
+    executedCommand?: string;
     /**
      * Is this step mandatory to be passed?
      */
@@ -5584,6 +5603,56 @@ export interface TestConnectionStepResult {
      * Did the step pass successfully?
      */
     passed: boolean;
+    /**
+     * Human-readable summary of what the step found on success.
+     */
+    resultSummary?: string;
+    /**
+     * Why a step did not run, when status is Skipped.
+     */
+    skipReason?: SkipReason;
+    /**
+     * Lifecycle state of this step.
+     */
+    status?: Status;
+}
+
+/**
+ * Classified, actionable explanation of a failure, separate from the raw errorLog.
+ */
+export interface Diagnosis {
+    /**
+     * Link to relevant documentation.
+     */
+    docUrl?: string;
+    /**
+     * What the user can do to fix it.
+     */
+    remediation?: string;
+    /**
+     * Short statement of what went wrong.
+     */
+    title?: string;
+}
+
+/**
+ * Why a step did not run, when status is Skipped.
+ */
+export enum SkipReason {
+    ConnectionNotEstablished = "ConnectionNotEstablished",
+    NotImplemented = "NotImplemented",
+}
+
+/**
+ * Lifecycle state of this step.
+ */
+export enum Status {
+    Failed = "Failed",
+    Passed = "Passed",
+    Queued = "Queued",
+    Running = "Running",
+    Skipped = "Skipped",
+    Warning = "Warning",
 }
 
 /**

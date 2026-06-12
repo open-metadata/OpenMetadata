@@ -61,7 +61,7 @@ export const CalendarCell = ({
         const isRoundedRight = isSelectionEnd || dayOfWeek === 6;
 
         return cx(
-          'tw:relative tw:size-10 tw:focus:outline-none',
+          'tw:relative tw:size-10 tw:focus:outline-hidden',
           isRoundedLeft && 'tw:rounded-l-full',
           isRoundedRight && 'tw:rounded-r-full',
           isInRange && isDisabled && 'tw:bg-active',

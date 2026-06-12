@@ -30,6 +30,7 @@ import {
   clickOutside,
   closeFirstPopupAlert,
   descriptionBox,
+  getEntityTypeSearchIndexMapping,
   readElementInListWithScroll,
   redirectToHomePage,
   toastNotification,
@@ -80,7 +81,16 @@ export const visitEntityPage = async (data: {
       response.url().includes('exclude_source_fields')
   );
 
-  await page.getByTestId(dataTestId).getByTestId('data-name').click();
+  // Adding a failsafe for the operation below to avoid a tooltip overlap issue.
+  // A tooltip over the option can cause Playwright click failures:
+  // 1) Hover over the option to move the mouse away from the tooltip trigger element.
+  // 2) If the tooltip is still present, force-click the option.
+  await page.getByTestId(dataTestId).getByTestId('data-name').hover();
+  await page
+    .getByTestId(dataTestId)
+    .getByTestId('data-name')
+    // eslint-disable-next-line playwright/no-force-option
+    .click({ force: true });
   await waitForAllLoadersToDisappear(page);
   await page.getByTestId('searchBox').clear();
 };
@@ -2052,7 +2062,7 @@ export const softDeleteEntity = async (
   await clickOutside(page);
 
   if (endPoint === EntityTypeEndpoint.Table) {
-    await page.click('[data-testid="breadcrumb-link"]:last-child');
+    await page.getByTestId('breadcrumb').getByRole('link').last().click();
     const deletedTableResponse = page.waitForResponse(
       '/api/v1/tables?*databaseSchema=*'
     );
@@ -2221,9 +2231,28 @@ export const checkExploreSearchFilter = async (
   filterLabel: string,
   filterKey: string,
   filterValue: string,
-  entity?: EntityClass
+  entity?: EntityClass,
+  searchEntityType = false
 ) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
+  if (entity?.type && searchEntityType) {
+    const entityTypeId = (
+      getEntityTypeSearchIndexMapping(entity.type) ?? entity.type
+    )
+      .toLocaleLowerCase()
+      .replaceAll(' ', '');
+    const entitySearchResponse = page.waitForResponse(
+      (req) =>
+        req.url().includes('/api/v1/search/query') &&
+        req.url().includes(`index=dataAsset`)
+    );
+
+    await page.getByTestId(`search-dropdown-Data Assets`).click();
+    await page.fill('[data-testid="search-input"]', entityTypeId);
+    await page.getByTestId(entityTypeId).click();
+    await entitySearchResponse;
+    await page.getByTestId('update-btn').click();
+  }
   await page.getByTestId(`search-dropdown-${filterLabel}`).click();
   await searchAndClickOnOption(
     page,

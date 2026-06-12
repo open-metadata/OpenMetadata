@@ -57,6 +57,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.handlers.IncidentTcrsSyncHandler;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -97,6 +98,18 @@ public class TaskRepository extends EntityRepository<Task> {
 
   public static final List<TaskEntityStatus> OPEN_TASK_STATUSES =
       List.of(TaskEntityStatus.Open, TaskEntityStatus.InProgress, TaskEntityStatus.Pending);
+
+  // Statuses for which an approval/grant workflow task is still live (not terminal) and therefore a
+  // candidate for supersession by a newer run. Approved and Granted are intermediate stages in
+  // multi-stage approval/grant workflows, not terminal states — mirrors
+  // CreateTask#isTerminalTaskStatus.
+  public static final List<TaskEntityStatus> NON_TERMINAL_TASK_STATUSES =
+      List.of(
+          TaskEntityStatus.Open,
+          TaskEntityStatus.InProgress,
+          TaskEntityStatus.Pending,
+          TaskEntityStatus.Approved,
+          TaskEntityStatus.Granted);
 
   public TaskRepository() {
     super(
@@ -315,6 +328,7 @@ public class TaskRepository extends EntityRepository<Task> {
     TaskFieldValidator.validateAssignees(task.getAssignees());
     TaskFieldValidator.validateReviewers(task.getReviewers());
     TaskFieldValidator.validatePayloadAgainstFormSchema(task);
+    TaskFieldValidator.validateDataAccessCapabilities(task);
 
     // Compute aboutFqnHash for efficient querying by target entity FQN
     computeAboutFqnHash(task);
@@ -1100,6 +1114,31 @@ public class TaskRepository extends EntityRepository<Task> {
       return null;
     }
     return hydrateStoredTask(JsonUtils.readValue(json, Task.class));
+  }
+
+  /**
+   * Reads the task straight from the database (bypassing the entity cache) so callers observe the
+   * latest committed state rather than a possibly-stale cached snapshot. Returns null if the task
+   * does not exist.
+   */
+  public Task findCommittedTask(UUID taskId) {
+    try {
+      return dao.findEntityById(taskId, Include.ALL);
+    } catch (EntityNotFoundException e) {
+      return null;
+    }
+  }
+
+  public List<Task> listNonTerminalTasksByEntityAndCategory(
+      String entityFqn, TaskCategory category) {
+    List<String> statuses =
+        NON_TERMINAL_TASK_STATUSES.stream().map(TaskEntityStatus::value).toList();
+    return daoCollection
+        .taskDAO()
+        .listByAboutAndCategoryAndStatuses(entityFqn, category.value(), statuses)
+        .stream()
+        .map(json -> hydrateStoredTask(JsonUtils.readValue(json, Task.class)))
+        .toList();
   }
 
   public Task hydrateStoredTask(Task task) {

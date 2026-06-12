@@ -97,9 +97,9 @@ export interface IngestionPipeline {
      */
     owners?: EntityReference[];
     /**
-     * Last of executions and status for the Pipeline.
+     * List of the most recent executions and status for the Pipeline.
      */
-    pipelineStatuses?: PipelineStatus;
+    pipelineStatuses?: PipelineStatus[];
     pipelineType:      PipelineType;
     /**
      * The processing engine responsible for executing the ingestion pipeline logic.
@@ -733,8 +733,6 @@ export enum VerifySSL {
 }
 
 /**
- * Last of executions and status for the Pipeline.
- *
  * This defines runtime status of Pipeline.
  */
 export interface PipelineStatus {
@@ -1617,6 +1615,10 @@ export interface Pipeline {
  * Cache Warmup Application Configuration.
  *
  * Configuration for the AutoPilot Application.
+ *
+ * Configuration for the MCP Chat Application. The LLM provider and credentials are
+ * configured at the platform level via `llmConfiguration`; this app only governs chat
+ * behavior.
  */
 export interface CollateAIAppConfig {
     /**
@@ -1821,6 +1823,10 @@ export interface CollateAIAppConfig {
      * Service Entity Link for which to trigger the application.
      */
     entityLink?: string;
+    /**
+     * The system prompt that guides the assistant behavior.
+     */
+    systemPrompt?: string;
     [property: string]: any;
 }
 
@@ -4980,7 +4986,10 @@ export interface ConfigObject {
     /**
      * Databricks compute resources URL.
      */
-    httpPath?:          string;
+    httpPath?: string;
+    /**
+     * Policy agent configuration for access control extraction.
+     */
     policyAgentConfig?: PolicyAgentConfig;
     /**
      * Table name to fetch the query history.
@@ -5672,6 +5681,9 @@ export interface ConfigObject {
     pipelineFilterPattern?: FilterPattern;
     /**
      * Underlying database connection
+     *
+     * Optional. Underlying SSISDB connection. When omitted, the connector runs in file-only
+     * mode and run history is not extracted.
      */
     databaseConnection?: DatabaseConnectionClass;
     /**
@@ -6904,7 +6916,6 @@ export interface ConfigConnection {
      * this.
      */
     ingestAllDatabases?: boolean;
-    policyAgentConfig?:  PolicyAgentConfig;
     /**
      * Fully qualified name of the view or table to use for query logs. If not provided,
      * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
@@ -7118,28 +7129,6 @@ export interface AuthTypeClass {
      * GCP credentials to use. If not provided, Application Default Credentials will be used.
      */
     gcpConfig?: GcpConfigClass;
-}
-
-/**
- * Policy agent configuration for access control extraction.
- */
-export interface PolicyAgentConfig {
-    /**
-     * Enable policy agent extraction.
-     */
-    enabled?: boolean;
-    /**
-     * Supports column-level access policy extraction.
-     */
-    supportsColumnAccess?: boolean;
-    /**
-     * Supports full access policy extraction.
-     */
-    supportsFullAccess?: boolean;
-    /**
-     * Supports masked access policy extraction.
-     */
-    supportsMaskedAccess?: boolean;
 }
 
 /**
@@ -7398,6 +7387,9 @@ export interface PurpleGCPCredentials {
  * Underlying database connection
  *
  * Mssql Database Connection Config
+ *
+ * Optional. Underlying SSISDB connection. When omitted, the connector runs in file-only
+ * mode and run history is not extracted.
  */
 export interface DatabaseConnectionClass {
     connectionArguments?: { [key: string]: any };
@@ -7647,7 +7639,6 @@ export interface HiveMetastoreConnectionDetails {
      * this.
      */
     ingestAllDatabases?: boolean;
-    policyAgentConfig?:  PolicyAgentConfig;
     /**
      * Fully qualified name of the view or table to use for query logs. If not provided,
      * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
@@ -7912,6 +7903,28 @@ export interface BucketDetails {
      * Path of the folder where the .pbit files are stored
      */
     objectPrefix?: string;
+}
+
+/**
+ * Policy agent configuration for access control extraction.
+ */
+export interface PolicyAgentConfig {
+    /**
+     * Enable policy agent extraction.
+     */
+    enabled?: boolean;
+    /**
+     * Supports column-level access policy extraction.
+     */
+    supportsColumnAccess?: boolean;
+    /**
+     * Supports full access policy extraction.
+     */
+    supportsFullAccess?: boolean;
+    /**
+     * Supports masked access policy extraction.
+     */
+    supportsMaskedAccess?: boolean;
 }
 
 /**

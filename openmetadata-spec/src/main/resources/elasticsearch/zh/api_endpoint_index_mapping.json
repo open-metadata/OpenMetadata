@@ -298,6 +298,14 @@
           }
         }
       },
+      "request_field_namesFuzzy": {
+        "type": "text",
+        "analyzer": "om_analyzer"
+      },
+      "response_field_namesFuzzy": {
+        "type": "text",
+        "analyzer": "om_analyzer"
+      },
       "requestSchema": {
         "properties": {
           "schemaFields": {
@@ -346,7 +354,8 @@
                 }
               },
               "children": {
-                "type": "flattened"
+                "type": "object",
+                "enabled": false
               }
             }
           }
@@ -400,7 +409,8 @@
                 }
               },
               "children": {
-                "type": "flattened"
+                "type": "object",
+                "enabled": false
               }
             }
           }
@@ -530,7 +540,8 @@
                 "type": "text",
                 "analyzer": "om_analyzer"
               }
-            }
+            },
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"
@@ -680,6 +691,26 @@
             }
           },
           "sqlQueryKey": {
+            "type": "keyword"
+          },
+          "createdAt": {
+            "type": "date",
+            "format": "epoch_millis"
+          },
+          "updatedAt": {
+            "type": "date",
+            "format": "epoch_millis"
+          },
+          "createdBy": {
+            "type": "keyword"
+          },
+          "updatedBy": {
+            "type": "keyword"
+          },
+          "source": {
+            "type": "keyword"
+          },
+          "docUniqueId": {
             "type": "keyword"
           }
         }

@@ -35,6 +35,8 @@ public class Migration extends MigrationProcessImpl {
       LOG.error("v1130 glossaryTerm version relatedTerms transform failed; re-run to retry.", e);
     }
     MigrationUtil.addTableColumnSearchSettings();
+    MigrationUtil.removeFlattenedChildrenSearchSettings();
+    MigrationUtil.removeStaleFileExtensionAggregation();
     addTriggerOperationToDefaultBotPolicies(collectionDAO);
     addTriggerRuleToDataStewardPolicy(collectionDAO);
     try {

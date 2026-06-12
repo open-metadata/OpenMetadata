@@ -39,6 +39,9 @@ public class FullyQualifiedName {
   // Quoted name of format "sss" or unquoted string sss
   private static final Pattern namePattern = Pattern.compile("^(\")([^\"]+)(\")$|^(.*)$");
 
+  // EntityLink-shaped input would bail the FQN ANTLR parser with no message; reject it explicitly.
+  private static final String ENTITY_LINK_PREFIX = "<#E::";
+
   private FullyQualifiedName() {
     /* Utility class with private constructor */
   }
@@ -66,6 +69,12 @@ public class FullyQualifiedName {
   }
 
   public static String buildHash(String fullyQualifiedName) {
+    if (fullyQualifiedName != null && fullyQualifiedName.startsWith(ENTITY_LINK_PREFIX)) {
+      throw new IllegalArgumentException(
+          "FullyQualifiedName.buildHash expects a plain FQN, got an EntityLink: "
+              + fullyQualifiedName
+              + ". Parse the EntityLink first via MessageParser.EntityLink.parse(...).getEntityFQN().");
+    }
     if (fullyQualifiedName != null && !fullyQualifiedName.isEmpty()) {
       String[] split = split(fullyQualifiedName);
       return buildHash(split);

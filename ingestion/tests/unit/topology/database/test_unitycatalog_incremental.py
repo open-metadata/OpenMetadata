@@ -13,6 +13,7 @@
 Unit tests for Unity Catalog incremental metadata extraction.
 """
 
+from threading import RLock
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -125,7 +126,30 @@ class TestUnityCatalogIncrementalSource:
         incremental, ...) that are assigned in __init__ and are therefore not
         part of the class spec.
         """
-        return Mock()
+        source = Mock()
+        source._state_lock = RLock()
+        return source
+
+    def test_init_configures_threads_from_source_config(self):
+        config = Mock()
+        config.sourceConfig.config.threads = 4
+        config.serviceConnection.root.config = Mock(spec=UnityCatalogConnection)
+        metadata = Mock()
+        incremental = SimpleNamespace(enabled=False)
+        previous_threads = UnitycatalogSource.context.threads
+
+        try:
+            with (
+                patch(f"{UC_METADATA_MODULE}.get_connection", return_value=Mock()),
+                patch(f"{UC_METADATA_MODULE}.DatabricksClient", return_value=Mock()),
+                patch(f"{UC_METADATA_MODULE}.get_sqlalchemy_connection", return_value=Mock()),
+                patch.object(UnitycatalogSource, "test_connection", return_value=None),
+            ):
+                source = UnitycatalogSource(config, metadata, incremental)
+
+            assert source.context.threads == 4
+        finally:
+            UnitycatalogSource.context.set_threads(previous_threads)
 
     def test_process_table_yields_regular_table(self):
         source = self._make_source()
@@ -200,6 +224,59 @@ class TestUnityCatalogIncrementalSource:
         assert source.context.get_global().deleted_tables == ["svc.cat.schema1.dropped"]
         source.client.tables.get.assert_called_once_with("cat.schema1.chg")
         source._process_table.assert_called_once_with(changed_table, "cat", "schema1")
+
+    def test_yield_database_schema_removes_handoff_cache_entry(self):
+        source = self._make_source()
+        source.context.get.return_value = SimpleNamespace(database="cat", database_service="svc")
+        schema = SimpleNamespace(name="schema1", comment="schema description", owner="owner@example.com")
+        source._schema_cache = {("cat", "schema1"): schema}
+        source.get_owner_ref.return_value = None
+        source.get_schema_tag_labels.return_value = []
+
+        with patch(f"{UC_METADATA_MODULE}.fqn") as fqn_mock:
+            fqn_mock.build.return_value = "svc.cat"
+            result = list(UnitycatalogSource.yield_database_schema(source, "schema1"))
+
+        assert len(result) == 1
+        assert result[0].right.description.root == "schema description"
+        assert ("cat", "schema1") not in source._schema_cache
+
+    def test_yield_database_schema_only_removes_current_schema_entry(self):
+        source = self._make_source()
+        source.context.get.return_value = SimpleNamespace(database="cat", database_service="svc")
+        schema1 = SimpleNamespace(name="schema1", comment="schema 1", owner="owner1@example.com")
+        schema2 = SimpleNamespace(name="schema2", comment="schema 2", owner="owner2@example.com")
+        source._schema_cache = {
+            ("cat", "schema1"): schema1,
+            ("cat", "schema2"): schema2,
+        }
+        source.get_owner_ref.return_value = None
+        source.get_schema_tag_labels.return_value = []
+
+        with patch(f"{UC_METADATA_MODULE}.fqn") as fqn_mock:
+            fqn_mock.build.return_value = "svc.cat"
+            list(UnitycatalogSource.yield_database_schema(source, "schema1"))
+
+        assert source._schema_cache == {
+            ("cat", "schema2"): schema2,
+        }
+
+    def test_get_database_schema_names_does_not_cache_filtered_schema(self):
+        source = self._make_source()
+        source.context.get.return_value = SimpleNamespace(database="cat", database_service="svc")
+        source.client.schemas.list.return_value = [SimpleNamespace(name="schema1")]
+        source.config.sourceConfig.config.useFqnForFiltering = False
+        source._schema_cache = {}
+
+        with (
+            patch(f"{UC_METADATA_MODULE}.fqn") as fqn_mock,
+            patch(f"{UC_METADATA_MODULE}.filter_by_schema", return_value=True),
+        ):
+            fqn_mock.build.return_value = "svc.cat.schema1"
+            result = list(UnitycatalogSource.get_database_schema_names(source))
+
+        assert result == []
+        assert source._schema_cache == {}
 
     def test_get_incremental_tables_excludes_recreated_from_deletes(self):
         """A table dropped AND recreated within the window exists now (it shows up
@@ -331,3 +408,20 @@ class TestUnityCatalogIncrementalSource:
         assert config in init_args
         assert metadata in init_args
         assert sentinel in init_args
+
+    def test_get_owner_ref_delegates_to_owner_resolver(self):
+        source = self._make_source()
+        source.owner_resolver.get_owner_ref.return_value = "owner-ref"
+
+        result = UnitycatalogSource.get_owner_ref(source, "owner@example.com")
+
+        assert result == "owner-ref"
+        source.owner_resolver.get_owner_ref.assert_called_once_with("owner@example.com")
+
+    def test_get_owner_ref_returns_none_when_resolver_fails(self):
+        source = self._make_source()
+        source.owner_resolver.get_owner_ref.side_effect = Exception("lookup failed")
+
+        result = UnitycatalogSource.get_owner_ref(source, "owner@example.com")
+
+        assert result is None
