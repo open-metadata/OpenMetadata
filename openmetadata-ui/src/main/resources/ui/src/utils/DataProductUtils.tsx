@@ -29,6 +29,9 @@ import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import { DataProductDomainWidget } from '../components/DataProducts/DataProductDomainWidget/DataProductDomainWidget';
+import { InputOutputPortsTab } from '../components/DataProducts/InputOutputPortsTab';
+import DataQualityDashboard from '../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component';
+import EntitySummaryPanel from '../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../components/Explore/ExplorePage.interface';
 import type { AssetsTabRef } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
@@ -346,6 +349,32 @@ export const getDataProductDetailTabs = ({
             ),
             key: EntityTabs.CONTRACT,
             children: <ContractTab />,
+          },
+          {
+            label: (
+              <TabsLabel
+                id={EntityTabs.DATA_OBSERVABILITY}
+                isActive={activeTab === EntityTabs.DATA_OBSERVABILITY}
+                name={
+                  labelMap?.[EntityTabs.DATA_OBSERVABILITY] ??
+                  t('label.data-observability')
+                }
+              />
+            ),
+            key: EntityTabs.DATA_OBSERVABILITY,
+            children: (
+              <DataQualityDashboard
+                isGovernanceView
+                hiddenFilters={['dataProducts']}
+                initialFilters={
+                  dataProduct.fullyQualifiedName
+                    ? {
+                        dataProductFqns: [dataProduct.fullyQualifiedName],
+                      }
+                    : undefined
+                }
+              />
+            ),
           },
         ]),
     {
