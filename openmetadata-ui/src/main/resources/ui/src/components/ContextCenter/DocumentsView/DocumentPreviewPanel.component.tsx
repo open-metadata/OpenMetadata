@@ -15,7 +15,6 @@ import {
   Box,
   ButtonUtility,
   Card,
-  FileIcon,
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -164,10 +163,9 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const { folderName, fileName, formattedFileSize } = useMemo(() => {
+  const { folderName, formattedFileSize } = useMemo(() => {
     return {
       folderName: getEntityName(file.folder),
-      fileName: getEntityName(file),
       formattedFileSize: formatBytes(file.fileSize),
     };
   }, [file]);
@@ -183,44 +181,24 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
       direction="col">
       <Box
         align="center"
-        className="tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:shrink-0"
-        gap={3}
-        justify="between">
-        <Box align="center" className="tw:max-w-[78%]" gap={2}>
-          <FileIcon
-            className="tw:size-6 tw:shrink-0"
-            theme="light"
-            type={file.fileExtension ?? ''}
-            variant="default"
-          />
-          <div className="tw:min-w-0">
-            <Typography
-              ellipsis
-              className="tw:flex-1"
-              data-testid="preview-file-name"
-              size="text-sm"
-              weight="semibold">
-              {fileName}
-            </Typography>
-          </div>
-        </Box>
-        <Box align="center" gap={2}>
-          <CopyLinkButton className="tw:w-7 tw:h-7" url={url}>
-            <Copy06 aria-hidden="true" size={17} strokeWidth={1.8} />
-          </CopyLinkButton>
-          <ButtonUtility
-            color="tertiary"
-            data-testid="close-preview-btn"
-            icon={XClose}
-            size="xs"
-            tooltip={t('label.close')}
-            onClick={onClose}
-          />
-        </Box>
+        className="tw:px-4 tw:pt-3 tw:shrink-0"
+        gap={2}
+        justify="end">
+        <CopyLinkButton className="tw:w-7 tw:h-7" url={url}>
+          <Copy06 aria-hidden="true" size={17} strokeWidth={1.8} />
+        </CopyLinkButton>
+        <ButtonUtility
+          color="tertiary"
+          data-testid="close-preview-btn"
+          icon={XClose}
+          size="xs"
+          tooltip={t('label.close')}
+          onClick={onClose}
+        />
       </Box>
 
       <Box
-        className="tw:flex-1 tw:overflow-y-auto tw:p-4 tw:bg-gray-50"
+        className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto tw:p-4 tw:bg-gray-50"
         direction="col"
         gap={4}>
         <Card className="tw:p-4">
