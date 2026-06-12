@@ -145,7 +145,10 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
                 self.service_connection.awsConfig
             ).get_glue_client()
             paginator = self.glue_client.get_paginator("get_databases")
-            for page in paginator.paginate():
+            paginate_params = {}
+            if self.service_connection.catalogId:
+                paginate_params["CatalogId"] = self.service_connection.catalogId
+            for page in paginator.paginate(**paginate_params):
                 database_page = DatabasePage(**page)
                 for database in database_page.DatabaseList or []:
                     if database.Description:
@@ -172,7 +175,10 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             try:
                 results = []
                 paginator = self.glue_client.get_paginator("get_tables")
-                for page in paginator.paginate(DatabaseName=schema_name):
+                paginate_params = {"DatabaseName": schema_name}
+                if self.service_connection.catalogId:
+                    paginate_params["CatalogId"] = self.service_connection.catalogId
+                for page in paginator.paginate(**paginate_params):
                     for table in page.get("TableList", []):
                         params = table.get("Parameters", {})
                         table_type = (
@@ -207,6 +213,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             schema=schema_name,
             only_partition_columns=True,
             glue_client=self.glue_client,
+            catalog_id=self.service_connection.catalogId,
         )
         if columns:
             partition_details = TablePartition(
@@ -366,6 +373,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             table_type=table_type,
             db_name=db_name,
             glue_client=self.glue_client,
+            catalog_id=self.service_connection.catalogId,
         )
 
     def get_table_extensions(self, table_name: str, table_type: TableType | None = None) -> dict[str, str] | None:

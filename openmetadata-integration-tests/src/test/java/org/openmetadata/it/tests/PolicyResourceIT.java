@@ -235,6 +235,37 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
     assertEquals("isOwner()", policy.getRules().get(0).getCondition());
   }
 
+  /**
+   * Regression for the Orsted-reported failure (#20262): creating or updating a policy whose rule
+   * condition uses the bare, parenthesis-less form of a boolean function (e.g. {@code !isOwner})
+   * failed with "disallowed SpEL construct: PropertyOrFieldReference ('isOwner')". The bare form is
+   * functionally identical to {@code !isOwner()} — SpEL resolves it to the same getter — and is
+   * documented as valid in RuleEvaluator's @Function examples. Both create and update must succeed.
+   */
+  @Test
+  void test_createAndUpdatePolicyWithBareReferenceCondition(TestNamespace ns) {
+    Rule rule =
+        new Rule()
+            .withName("bareOwnerRule")
+            .withResources(List.of(ALL_RESOURCES))
+            .withOperations(List.of(MetadataOperation.EDIT_ALL))
+            .withEffect(Effect.ALLOW)
+            .withCondition("!isOwner");
+
+    CreatePolicy create =
+        new CreatePolicy()
+            .withName(ns.prefix("bareConditionPolicy"))
+            .withRules(List.of(rule))
+            .withDescription("Policy with a bare-reference condition");
+
+    Policy policy = createEntity(create);
+    assertEquals("!isOwner", policy.getRules().get(0).getCondition());
+
+    policy.getRules().get(0).setCondition("noOwner() || isOwner");
+    Policy updated = patchEntity(policy.getId().toString(), policy);
+    assertEquals("noOwner() || isOwner", updated.getRules().get(0).getCondition());
+  }
+
   @Test
   void test_createPolicyWithDenyEffect(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();

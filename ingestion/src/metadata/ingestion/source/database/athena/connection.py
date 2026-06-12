@@ -71,6 +71,8 @@ def get_connection_url(connection: AthenaConnection) -> str:
         url += f"&work_group={connection.workgroup}"
     if aws_session_token:
         url += f"&aws_session_token={quote_plus(aws_session_token)}"
+    if connection.catalogId:
+        url += f"&catalog_name={quote_plus(connection.catalogId)}"
 
     return url
 
