@@ -19,6 +19,7 @@ import {
   Modal,
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
+import { v4 as uuidv4 } from 'uuid';
 import { FC, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DOCUMENT_MAX_FILE_SIZE } from '../../../constants/ContextCenter.constants';
@@ -32,6 +33,7 @@ import {
 
 const getFileExt = (name: string) =>
   name.split('.').pop()?.toLowerCase() ?? 'empty';
+
 
 const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   isOpen,
@@ -58,7 +60,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   const handleDropFiles = (dropped: FileList) => {
     const newEntries: QueuedFile[] = Array.from(dropped).map((file) => ({
       file,
-      id: crypto.randomUUID(),
+      id: uuidv4(),
       progress: 100,
       status: 'done',
     }));
@@ -69,7 +71,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   const handleSizeLimitExceed = (oversized: FileList) => {
     const newEntries: QueuedFile[] = Array.from(oversized).map((file) => ({
       file,
-      id: crypto.randomUUID(),
+      id: uuidv4(),
       progress: 0,
       sizeExceeded: true,
       status: 'error',
