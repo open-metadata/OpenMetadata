@@ -23,6 +23,12 @@
           "description": "Maximum seconds to wait for the Policy Agent pipeline to complete.",
           "type": "integer",
           "default": 600
+        },
+        "pollingIntervalSeconds": {
+          "title": "Polling Interval Seconds",
+          "description": "How often (in seconds) to poll the Policy Agent pipeline run for completion while waiting. Falls back to the server-wide default (workflowSettings.policyAgentConfiguration.pollingIntervalSeconds) when unset.",
+          "type": "integer",
+          "minimum": 1
         }
       },
       "additionalProperties": false,

@@ -385,6 +385,7 @@ public class CreateTask implements TaskListener {
         WorkflowVariableResolver.stringVariable(delegateTask, "taskDisplayName");
     String taskDescription =
         WorkflowVariableResolver.stringVariable(delegateTask, "taskDescription");
+    String manualGrantReason = resolveManualGrantReason(delegateTask);
     TaskPriority requestedPriority = resolveTaskPriority(delegateTask);
     Object requestedPayload =
         WorkflowVariableResolver.workflowObjectVariable(delegateTask, "taskPayload");
@@ -516,6 +517,7 @@ public class CreateTask implements TaskListener {
         updatedTask.setDueDate(effectiveDueDate);
       }
       updatedTask.setPayload(withGrantExpirationDate(stageStatus, updatedTask.getPayload()));
+      updatedTask.setPayload(mergeManualGrantReason(updatedTask.getPayload(), manualGrantReason));
       if (requestedExternalReference != null) {
         updatedTask.setExternalReference(
             JsonUtils.convertValue(requestedExternalReference, TaskExternalReference.class));
@@ -578,6 +580,7 @@ public class CreateTask implements TaskListener {
       task.setDueDate(effectiveDueDate);
     }
     task.setPayload(withGrantExpirationDate(stageStatus, task.getPayload()));
+    task.setPayload(mergeManualGrantReason(task.getPayload(), manualGrantReason));
     if (requestedExternalReference != null) {
       task.setExternalReference(
           JsonUtils.convertValue(requestedExternalReference, TaskExternalReference.class));
@@ -924,6 +927,53 @@ public class CreateTask implements TaskListener {
 
   private String buildTaskDescription(EntityInterface entity, TaskEntityType taskType) {
     return String.format("Approval required for %s", entity.getName());
+  }
+
+  /**
+   * Optional, workflow-supplied reason (only the Policy Agent DAR path sets it). Wrapped so a
+   * problem reading or typing it can never break task creation for the generic approval workflows
+   * (Glossary, etc.) that never set it — for those it returns null and {@link #mergeManualGrantReason}
+   * is a no-op.
+   */
+  private static String resolveManualGrantReason(DelegateTask delegateTask) {
+    try {
+      Object reason =
+          new WorkflowVariableHandler(delegateTask)
+              .getNamespacedVariable(GLOBAL_NAMESPACE, "manualGrantReason");
+      return reason instanceof String s ? s : null;
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  /**
+   * Attach a workflow-supplied reason (only the Policy Agent DAR path sets it) to the task payload
+   * as {@code manualGrantReason} — its own structured field, so the UI renders it separately from
+   * the description. Returns the payload unchanged for tasks/workflows that don't set one.
+   */
+  static Object mergeManualGrantReason(Object payload, String reason) {
+    if (reason == null || reason.isBlank()) {
+      return payload;
+    }
+    Map<String, Object> merged = new LinkedHashMap<>();
+    if (payload instanceof Map<?, ?> rawMap) {
+      // Copy entries directly (like withGrantExpirationDate) rather than JsonUtils.getMap, which
+      // would convertValue the whole payload and could re-type nested values or throw.
+      rawMap.forEach((k, v) -> merged.put(String.valueOf(k), v));
+    } else if (payload != null) {
+      // Non-Map payload is not expected on the DAR path; convert defensively so the reason is never
+      // dropped, but never let a conversion problem break task creation.
+      try {
+        merged.putAll(JsonUtils.getMap(payload));
+      } catch (Exception e) {
+        LOG.warn(
+            "[CreateTask] Could not merge manualGrantReason into payload of type {}",
+            payload.getClass().getSimpleName());
+        return payload;
+      }
+    }
+    merged.put("manualGrantReason", reason);
+    return merged;
   }
 
   private EntityReference resolveCreatedByReference(

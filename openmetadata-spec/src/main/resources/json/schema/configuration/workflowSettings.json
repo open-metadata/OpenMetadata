@@ -78,6 +78,37 @@
         }
       },
       "additionalProperties": false
+    },
+    "policyAgentConfiguration": {
+      "type": "object",
+      "description": "Settings for the Policy Agent batch coordinator that clubs concurrent Data Access Request grants into a single ingestion run per pipeline.",
+      "properties": {
+        "pollingIntervalSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 30,
+          "description": "Server-wide default for how often (seconds) to poll a Policy Agent batch run for completion. Overridden per-node by PolicyAgentTaskDefinition.config.pollingIntervalSeconds."
+        },
+        "batchWindowSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 60,
+          "description": "The batch window: how often (in seconds) the scheduler triggers the Policy Agent coordinator to drain accumulated grant requests and fire one clubbed ingestion run per pipeline. Typically 60-300 (1-5 minutes). All Data Access Requests that arrive within a window are clubbed into the next run. Lower = lower latency but more Argo runs; higher = fewer runs, more clubbing."
+        },
+        "batchMaxSize": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 200,
+          "description": "Maximum number of policies clubbed into a single Policy Agent ingestion run. Pending requests beyond this are picked up by the next window."
+        },
+        "batchWorkerThreads": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 4,
+          "description": "Size of the worker pool that runs clubbed Policy Agent batches. Each in-flight batch (one per distinct pipeline) holds one worker while it polls its run to completion, so this bounds how many distinct services can provision concurrently. Raise it for deployments with many services receiving Data Access Requests at once."
+        }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -92,6 +123,10 @@
     "runTimeCleanUpConfiguration": {
       "$ref": "#/definitions/runTimeCleanUpConfiguration",
       "description": "Used to set up the History CleanUp Settings."
+    },
+    "policyAgentConfiguration": {
+      "$ref": "#/definitions/policyAgentConfiguration",
+      "description": "Settings for the Policy Agent batch coordinator that clubs concurrent Data Access Request grants into a single ingestion run per pipeline."
     }
   },
   "required": [],
