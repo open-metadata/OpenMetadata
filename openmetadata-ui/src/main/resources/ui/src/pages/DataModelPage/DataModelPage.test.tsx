@@ -138,7 +138,7 @@ jest.mock('../../utils/DataModelsUtils', () => ({
   getSortedDataModelColumnTags: jest.fn().mockImplementation((tags) => tags),
 }));
 
-jest.mock('../../utils/TableUtils', () => {
+jest.mock('../../utils/TablePureUtils', () => {
   return {
     getTierTags: jest.fn().mockImplementation((tags) => tags),
   };

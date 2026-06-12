@@ -15,13 +15,7 @@ import { IncidentTimeMetricsType } from '../components/DataQuality/DataQuality.i
 import { TestCaseStatus } from '../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolutionStatus';
 import { DataQualityDashboardChartFilters } from '../pages/DataQuality/DataQualityPage.interface';
-import {
-  buildDataQualityDashboardFilters,
-  buildMustEsFilterForDataProducts,
-  buildMustEsFilterForOwner,
-  buildMustEsFilterForTags,
-  buildMustEsFilterForTier,
-} from '../utils/DataQuality/DataQualityUtils';
+import { buildDataQualityDashboardFilters, buildMustEsFilterForDataProducts, buildMustEsFilterForOwner, buildMustEsFilterForTags, buildMustEsFilterForTier } from '../utils/DataQuality/DataQualityPureUtils';;
 import { DataQualityReportParamsType, getDataQualityReport } from './testAPI';
 
 export const fetchEntityCoveredWithDQ = (

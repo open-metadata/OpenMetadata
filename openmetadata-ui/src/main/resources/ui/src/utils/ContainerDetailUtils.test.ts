@@ -13,10 +13,7 @@
 
 import { EntityType } from '../enums/entity.enum';
 import { Column, DataType } from '../generated/entity/data/container';
-import {
-  updateContainerColumnDescription,
-  updateContainerColumnTags,
-} from './ContainerDetailUtils';
+import { updateContainerColumnDescription, updateContainerColumnTags } from './ContainerDetailPureUtils';;
 import { getEntityDetailsPath } from './RouterUtils';
 
 const mockTagOptions = [

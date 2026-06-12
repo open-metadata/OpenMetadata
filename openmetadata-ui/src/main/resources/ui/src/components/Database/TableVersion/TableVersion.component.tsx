@@ -37,13 +37,7 @@ import {
   getTableColumnsByFQN,
   searchTableColumnsByFQN,
 } from '../../../rest/tableAPI';
-import {
-  getColumnsDataWithVersionChanges,
-  getCommonExtraInfoForVersionDetails,
-  getConstraintChanges,
-  getEntityVersionByField,
-  getEntityVersionTags,
-} from '../../../utils/EntityVersionUtils';
+import { getColumnsDataWithVersionChanges, getCommonExtraInfoForVersionDetails, getConstraintChanges, getEntityVersionByField, getEntityVersionTags } from '../../../utils/EntityVersionUtilsPure';;
 import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';

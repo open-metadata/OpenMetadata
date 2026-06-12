@@ -80,7 +80,7 @@ import {
   highlightSearchArrayElement,
   highlightSearchText,
 } from '../../../utils/EntitySearchUtils';
-import { getEntityColumnFQN } from '../../../utils/FeedUtils';
+import { getEntityColumnFQN } from '../../../utils/FeedUtilsPure';;
 import { stringToHTML } from '../../../utils/StringUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {

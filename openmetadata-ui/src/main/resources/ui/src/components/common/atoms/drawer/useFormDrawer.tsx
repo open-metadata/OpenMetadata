@@ -15,7 +15,7 @@ import classNames from 'classnames';
 import React, { ReactNode, useCallback, useMemo, useState } from 'react';
 import type { FieldValues, UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { createScrollToErrorHandler } from '../../../../utils/formUtils';
+import { createScrollToErrorHandler } from '../../../../utils/formPureUtils';;
 import {
   CompositeDrawerConfig,
   useCompositeDrawer,

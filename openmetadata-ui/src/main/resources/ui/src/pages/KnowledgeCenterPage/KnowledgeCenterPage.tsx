@@ -48,7 +48,7 @@ import {
   PageType,
 } from '../../interface/knowledge-center.interface';
 import { postKnowledgePage } from '../../rest/knowledgeCenterAPI';
-import { getKnowledgePagePath } from '../../utils/KnowledgePageUtils';
+import { getKnowledgePagePath } from '../../utils/KnowledgePagePureUtils';;
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';

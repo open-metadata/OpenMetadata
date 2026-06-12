@@ -38,7 +38,7 @@ import TagSuggestion from '../../pages/TasksPage/shared/TagSuggestion';
 import Fqn from '../Fqn';
 import { t } from '../i18next/LocalUtil';
 import { removeOuterEscapes } from '../StringUtils';
-import { getCustomPropertyEntityType } from './CSV.utils';
+import { getCustomPropertyEntityType } from './CSVPureUtils';;
 
 const ModalWithMarkdownEditor = withSuspenseFallback(
   lazy(() =>

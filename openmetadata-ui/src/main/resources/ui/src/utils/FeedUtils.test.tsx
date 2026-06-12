@@ -14,17 +14,8 @@ import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { CardStyle, FieldOperation } from '../generated/entity/feed/thread';
-import {
-  entityDisplayName,
-  getBackendFormat,
-  getEntityField,
-  getEntityFQN,
-  getEntityType,
-  getFeedHeaderTextFromCardStyle,
-  getFieldOperationIcon,
-  getFrontEndFormat,
-  suggestions,
-} from './FeedUtils';
+import { getFeedHeaderTextFromCardStyle, getFieldOperationIcon, suggestions } from './FeedUtils';
+import { entityDisplayName, getBackendFormat, getEntityFQN, getEntityField, getEntityType, getFrontEndFormat } from './FeedUtilsPure';;
 import { getPartialNameFromTableFQN } from './FqnUtils';
 
 jest.mock('../rest/searchAPI', () => ({

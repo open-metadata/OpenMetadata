@@ -24,12 +24,8 @@ import {
 } from '../../../generated/events/api/createEventSubscription';
 import { Destination } from '../../../generated/events/eventSubscription';
 import { testAlertDestination } from '../../../rest/alertsAPI';
-import {
-  getConnectionTimeoutField,
-  getFormattedDestinations,
-  getReadTimeoutField,
-  listLengthValidator,
-} from '../../../utils/Alerts/AlertsUtil';
+import { getConnectionTimeoutField, getReadTimeoutField } from '../../../utils/Alerts/AlertsUtil';
+import { getFormattedDestinations, listLengthValidator } from '../../../utils/Alerts/AlertsUtilPure';;
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './destination-form-item.less';
 import { DestinationFormItemProps } from './DestinationFormItem.interface';

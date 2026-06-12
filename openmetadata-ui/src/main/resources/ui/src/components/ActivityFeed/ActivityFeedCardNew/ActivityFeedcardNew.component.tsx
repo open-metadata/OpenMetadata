@@ -30,13 +30,8 @@ import {
 } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import {
-  entityDisplayName,
-  getActivityEventHeaderText,
-  getEntityFQN,
-  getEntityType,
-  getFeedHeaderTextFromCardStyle,
-} from '../../../utils/FeedUtils';
+import { getActivityEventHeaderText, getFeedHeaderTextFromCardStyle } from '../../../utils/FeedUtils';
+import { entityDisplayName, getEntityFQN, getEntityType } from '../../../utils/FeedUtilsPure';;
 import { getUserPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';

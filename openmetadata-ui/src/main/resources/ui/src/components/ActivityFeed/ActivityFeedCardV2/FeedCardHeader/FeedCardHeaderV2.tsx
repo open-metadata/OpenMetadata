@@ -22,12 +22,8 @@ import {
   getRelativeTime,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import {
-  entityDisplayName,
-  getEntityFQN,
-  getEntityType,
-  getFeedHeaderTextFromCardStyle,
-} from '../../../../utils/FeedUtils';
+import { getFeedHeaderTextFromCardStyle } from '../../../../utils/FeedUtils';
+import { entityDisplayName, getEntityFQN, getEntityType } from '../../../../utils/FeedUtilsPure';;
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 
 import { useTranslation } from 'react-i18next';

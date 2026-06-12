@@ -37,14 +37,12 @@ import {
   getTestDefinitionById,
   updateTestCaseById,
 } from '../../../rest/testAPI';
-import { createUpdatedTestCasePatch } from '../../../utils/DataQuality/DataQualityUtils';
+import { createUpdatedTestCasePatch } from '../../../utils/DataQuality/DataQualityPureUtils';;
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getColumnNameFromEntityLink } from '../../../utils/EntityPureUtils';
-import { getEntityFQN } from '../../../utils/FeedUtils';
-import {
-  generateFormFields,
-  getPopupContainer,
-} from '../../../utils/formUtils';
+import { getEntityFQN } from '../../../utils/FeedUtilsPure';;
+import { generateFormFields } from '../../../utils/formUtils';
+import { getPopupContainer } from '../../../utils/formPureUtils';;
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { isValidJSONString } from '../../../utils/StringUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';

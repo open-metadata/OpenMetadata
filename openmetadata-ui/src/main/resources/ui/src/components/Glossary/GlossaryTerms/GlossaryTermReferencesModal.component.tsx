@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { TermReference } from '../../../generated/entity/data/glossaryTerm';
-import { referenceURLValidator } from '../../../utils/GlossaryUtils';
+import { referenceURLValidator } from '../../../utils/GlossaryPureUtils';;
 
 interface GlossaryTermReferencesModalProps {
   references: TermReference[];

@@ -31,9 +31,9 @@ import {
   resolveTaskFormSchema,
   TaskFormSchema,
 } from '../rest/taskFormSchemasAPI';
+import { TaskAvailableTransition } from '../generated/entity/tasks/task';
 import {
   Task,
-  TaskAvailableTransition,
   TaskCategory,
   TaskEntityType,
   TaskPayload,

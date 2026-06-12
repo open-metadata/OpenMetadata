@@ -93,7 +93,7 @@ jest.mock('../../../utils/FeedUtils', () => ({
   getFeedCounts: jest.fn(),
 }));
 
-jest.mock('../../../utils/TableUtils', () => ({
+jest.mock('../../../utils/TablePureUtils', () => ({
   getTagsWithoutTier: jest.fn().mockReturnValue([]),
   getTierTags: jest.fn().mockReturnValue([]),
 }));

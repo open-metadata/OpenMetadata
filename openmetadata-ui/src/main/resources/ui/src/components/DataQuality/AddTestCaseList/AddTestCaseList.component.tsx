@@ -49,15 +49,10 @@ import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
 import { getAggregateFieldOptions } from '../../../rest/miscAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getListTestCaseBySearch } from '../../../rest/testAPI';
-import {
-  COLUMN_AGGREGATE_FIELD,
-  getColumnNameFromColumnFilterKey,
-  getSelectedOptionsFromKeys,
-  parseColumnAggregateBuckets,
-} from '../../../utils/DataQuality/DataQualityUtils';
+import { COLUMN_AGGREGATE_FIELD, getColumnNameFromColumnFilterKey, getSelectedOptionsFromKeys, parseColumnAggregateBuckets } from '../../../utils/DataQuality/DataQualityPureUtils';;
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getColumnNameFromEntityLink } from '../../../utils/EntityPureUtils';
-import { getEntityFQN } from '../../../utils/FeedUtils';
+import { getEntityFQN } from '../../../utils/FeedUtilsPure';;
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { replacePlus } from '../../../utils/StringUtils';

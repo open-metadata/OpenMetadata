@@ -11,11 +11,6 @@
  *  limitations under the License.
  */
 
-export {
-  getTextFromHtmlString,
-  isDescriptionContentEmpty,
-} from './BlockEditorPureUtils';
-
 import { EditorState } from '@tiptap/pm/state';
 import type { Editor } from '@tiptap/react';
 import { isString } from 'lodash';
@@ -28,7 +23,7 @@ import { FileType } from '../components/BlockEditor/BlockEditor.interface';
 import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
 import blockEditorExtensionsClassBase from './BlockEditorExtensionsClassBase';
 import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
-import { getEntityDetail, getHashTagList, getMentionList } from './FeedUtils';
+import { getEntityDetail, getHashTagList, getMentionList } from './FeedUtilsPure';;
 import { getSanitizeContent } from './sanitize.utils';
 
 export const getSelectedText = (state: EditorState) => {

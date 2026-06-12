@@ -28,7 +28,7 @@ import {
   UnitOfMeasurement,
 } from '../../../generated/entity/data/metric';
 import { getCustomUnitsOfMeasurement } from '../../../rest/metricsAPI';
-import { getSortedOptions } from '../../../utils/MetricEntityUtils/MetricUtils';
+import { getSortedOptions } from '../../../utils/MetricEntityUtils/MetricPureUtils';;
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './unit-of-measurement-header.less';
 

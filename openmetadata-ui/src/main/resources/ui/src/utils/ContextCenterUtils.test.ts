@@ -18,7 +18,7 @@ import {
   formatBytes,
   handleAssetDownload,
   knowledgePageToArticleItem,
-} from './ContextCenterUtils';
+} from './ContextCenterPureUtils';
 import { showErrorToast } from './ToastUtils';
 
 jest.mock('./ToastUtils', () => ({

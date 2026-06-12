@@ -48,10 +48,7 @@ import { useAuth } from '../../hooks/authHooks';
 import { useFqn } from '../../hooks/useFqn';
 import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { getKPIByName, patchKPI } from '../../rest/KpiAPI';
-import {
-  getDataInsightPathWithFqn,
-  getDisabledDates,
-} from '../../utils/DataInsightUtils';
+import { getDataInsightPathWithFqn, getDisabledDates } from '../../utils/DataInsightPureUtils';;
 import { getField } from '../../utils/formUtils';
 import {
   getKPIChartType,

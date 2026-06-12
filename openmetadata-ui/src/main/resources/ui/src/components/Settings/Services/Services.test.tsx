@@ -158,11 +158,14 @@ jest.mock('../../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
+jest.mock('../../../utils/ServicePureUtils', () => ({
+  getResourceEntityFromServiceCategory: jest.fn(),
+  getServiceTypesFromServiceCategory: jest.fn(),
+}));
+
 jest.mock('../../../utils/ServiceUtils', () => ({
   getOptionalFields: jest.fn(),
   getSearchIndexFromService: jest.fn(),
-  getResourceEntityFromServiceCategory: jest.fn(),
-  getServiceTypesFromServiceCategory: jest.fn(),
 }));
 
 jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {

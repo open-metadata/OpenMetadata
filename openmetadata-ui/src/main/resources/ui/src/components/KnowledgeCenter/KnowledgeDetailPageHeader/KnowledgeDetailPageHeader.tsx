@@ -60,11 +60,8 @@ import deleteWidgetClassBase from '../../../utils/DeleteWidget/DeleteWidgetClass
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
-import {
-  getKnowledgePageName,
-  getKnowledgeVersionsPath,
-  updateKnowledgeCenterRecentViewed,
-} from '../../../utils/KnowledgePageUtils';
+import { getKnowledgePageName, updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
+import { getKnowledgeVersionsPath } from '../../../utils/KnowledgePagePureUtils';;
 
 export interface KnowledgeDetailPageHeaderProps {
   isLoading: boolean;

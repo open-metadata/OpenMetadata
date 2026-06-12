@@ -42,7 +42,7 @@ import {
   getEntityDetailsPath,
   getGlossaryTermDetailsPath,
 } from '../../../utils/RouterUtils';
-import { getTermQuery } from '../../../utils/SearchUtils';
+import { getTermQuery } from '../../../utils/SearchPureUtils';;
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   DATA_MODE_ASSET_LOAD_PAGE_SIZE,

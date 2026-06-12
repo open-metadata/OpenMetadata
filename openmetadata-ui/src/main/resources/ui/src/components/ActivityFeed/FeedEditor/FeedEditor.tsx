@@ -41,11 +41,8 @@ import {
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getUserByName } from '../../../rest/userAPI';
-import {
-  HTMLToMarkdown,
-  suggestions,
-  userMentionItemWithAvatar,
-} from '../../../utils/FeedUtils';
+import { suggestions, userMentionItemWithAvatar } from '../../../utils/FeedUtils';
+import { HTMLToMarkdown } from '../../../utils/FeedUtilsPure';;
 import { LinkBlot } from '../../../utils/QuillLink/QuillLink';
 import { insertMention, insertRef } from '../../../utils/QuillUtils';
 import { getSanitizeContent } from '../../../utils/sanitize.utils';

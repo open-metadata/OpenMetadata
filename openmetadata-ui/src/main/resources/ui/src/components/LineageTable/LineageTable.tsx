@@ -58,15 +58,11 @@ import {
 import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { highlightSearchText } from '../../utils/EntitySearchUtils';
-import { getQuickFilterQuery } from '../../utils/ExploreUtils';
+import { getQuickFilterQuery } from '../../utils/ExplorePureUtils';;
 import Fqn from '../../utils/Fqn';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
-import {
-  getSearchNameEsQuery,
-  LINEAGE_IMPACT_OPTIONS,
-  prepareDownstreamColumnLevelNodesFromDownstreamEdges,
-  prepareUpstreamColumnLevelNodesFromUpstreamEdges,
-} from '../../utils/Lineage/LineageUtils';
+import { LINEAGE_IMPACT_OPTIONS } from '../../utils/Lineage/LineageUtils';
+import { getSearchNameEsQuery, prepareDownstreamColumnLevelNodesFromDownstreamEdges, prepareUpstreamColumnLevelNodesFromUpstreamEdges } from '../../utils/Lineage/LineagePureUtils';;
 import { stringToHTML } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';

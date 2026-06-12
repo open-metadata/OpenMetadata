@@ -14,11 +14,8 @@
 import { Col, Row } from 'antd';
 import { useMemo } from 'react';
 import { EntityField } from '../../../../../constants/Feeds.constants';
-import {
-  getFeedChangeFieldLabel,
-  getFieldOperationIcon,
-  getFrontEndFormat,
-} from '../../../../../utils/FeedUtils';
+import { getFieldOperationIcon } from '../../../../../utils/FeedUtils';
+import { getFeedChangeFieldLabel, getFrontEndFormat } from '../../../../../utils/FeedUtilsPure';;
 import RichTextEditorPreviewNew from '../../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import { DescriptionFeedProps } from './DescriptionFeed.interface';
 

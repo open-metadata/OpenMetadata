@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isMaskedEmail } from './Users.util';
+import { isMaskedEmail } from './UsersPureUtils';;
 
 describe('User Utils -- isMaskedEmail', () => {
   it('should return true for masked email', () => {

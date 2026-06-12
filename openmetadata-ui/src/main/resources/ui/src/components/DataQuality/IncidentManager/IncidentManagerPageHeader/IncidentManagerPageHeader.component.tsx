@@ -41,8 +41,8 @@ import {
 } from '../../../../rest/incidentManagerAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
-import { getCommonExtraInfoForVersionDetails } from '../../../../utils/EntityVersionUtils';
-import { getEntityFQN } from '../../../../utils/FeedUtils';
+import { getCommonExtraInfoForVersionDetails } from '../../../../utils/EntityVersionUtilsPure';;
+import { getEntityFQN } from '../../../../utils/FeedUtilsPure';;
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';

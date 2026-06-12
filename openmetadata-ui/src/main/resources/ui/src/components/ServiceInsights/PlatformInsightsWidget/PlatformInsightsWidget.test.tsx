@@ -16,7 +16,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { SystemChartType } from '../../../enums/DataInsight.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { getTitleByChartType } from '../../../utils/ServiceInsightsTabPureUtils';
-import { getReadableCountString } from '../../../utils/ServiceUtils';
+import { getReadableCountString } from '../../../utils/ServicePureUtils';;
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import PlatformInsightsWidget from './PlatformInsightsWidget';
 import { PlatformInsightsWidgetProps } from './PlatformInsightsWidget.interface';

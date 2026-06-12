@@ -23,7 +23,7 @@ import {
   useState,
 } from 'react';
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
-import { getBackendFormat, HTMLToMarkdown } from '../../../utils/FeedUtils';
+import { HTMLToMarkdown, getBackendFormat } from '../../../utils/FeedUtilsPure';;
 import { EditorContentRef } from '../../common/RichTextEditor/RichTextEditor.interface';
 import { KeyHelp } from './KeyHelp';
 import { SendButton } from './SendButton';

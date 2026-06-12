@@ -22,15 +22,8 @@ import {
   MOCK_GLOSSARY_TERM_CUSTOM_PROPERTIES_EXTENSION_CSV_STRING,
   MOCK_GLOSSARY_TERM_CUSTOM_PROPERTIES_EXTENSION_OBJECT,
 } from '../../mocks/CSV.mock';
-import {
-  convertCustomPropertyStringToEntityExtension,
-  convertEntityExtensionToCustomPropertyString,
-  getColumnConfig,
-  getCSVStringFromColumnsAndDataSource,
-  getEntityColumnsAndDataSourceFromCSV,
-  renderColumnDataEditor,
-  splitCSV,
-} from './CSV.utils';
+import { getColumnConfig, getEntityColumnsAndDataSourceFromCSV, renderColumnDataEditor } from './CSV.utils';
+import { convertCustomPropertyStringToEntityExtension, convertEntityExtensionToCustomPropertyString, getCSVStringFromColumnsAndDataSource, splitCSV } from './CSVPureUtils';;
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Tooltip: jest.fn().mockImplementation(({ children, title }) => (

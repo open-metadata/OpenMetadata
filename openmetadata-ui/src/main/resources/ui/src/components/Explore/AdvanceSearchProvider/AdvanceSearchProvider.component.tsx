@@ -33,11 +33,8 @@ import { SearchIndex } from '../../../enums/search.enum';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { TabsInfoData } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { getAllCustomProperties } from '../../../rest/metadataTypeAPI';
-import {
-  getEmptyJsonTree,
-  getTreeConfig,
-  processEntityTypeFields,
-} from '../../../utils/AdvancedSearchUtils';
+import { getTreeConfig, processEntityTypeFields } from '../../../utils/AdvancedSearchUtils';
+import { getEmptyJsonTree } from '../../../utils/AdvancedSearchPureUtils';;
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { useRequiredParams } from '../../../utils/useRequiredParams';

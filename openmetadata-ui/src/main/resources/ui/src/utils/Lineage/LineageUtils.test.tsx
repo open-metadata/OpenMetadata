@@ -19,15 +19,8 @@ import { EImpactLevel } from '../../components/LineageTable/LineageTable.interfa
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { TagSource } from '../../generated/type/tagLabel';
 import { TableSearchSource } from '../../interface/search.interface';
-import {
-  addBaseNodeDepthToNodes,
-  getSearchNameEsQuery,
-  LINEAGE_DEPENDENCY_OPTIONS,
-  LINEAGE_IMPACT_OPTIONS,
-  prepareColumnLevelNodesFromEdges,
-  prepareDownstreamColumnLevelNodesFromDownstreamEdges,
-  prepareUpstreamColumnLevelNodesFromUpstreamEdges,
-} from './LineageUtils';
+import { addBaseNodeDepthToNodes, LINEAGE_DEPENDENCY_OPTIONS, LINEAGE_IMPACT_OPTIONS } from './LineageUtils';
+import { getSearchNameEsQuery, prepareColumnLevelNodesFromEdges, prepareDownstreamColumnLevelNodesFromDownstreamEdges, prepareUpstreamColumnLevelNodesFromUpstreamEdges } from './LineagePureUtils';;
 
 describe('LineageUtils', () => {
   const mockNodes: Record<string, LineageNodeType> = {

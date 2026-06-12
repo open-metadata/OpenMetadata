@@ -36,7 +36,7 @@ import {
   MetricGranularity,
   MetricType,
 } from '../../../generated/entity/data/metric';
-import { getSortedOptions } from '../../../utils/MetricEntityUtils/MetricUtils';
+import { getSortedOptions } from '../../../utils/MetricEntityUtils/MetricPureUtils';;
 import './metric-header-info.less';
 import UnitOfMeasurementInfoItem from './UnitOfMeasurementInfoItem';
 

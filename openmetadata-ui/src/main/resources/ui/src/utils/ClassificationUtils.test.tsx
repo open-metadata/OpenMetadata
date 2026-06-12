@@ -15,7 +15,7 @@ import { EntityField } from '../constants/Feeds.constants';
 import { ProviderType } from '../generated/entity/bot';
 import { Classification } from '../generated/entity/classification/classification';
 import { ChangeDescription } from '../generated/entity/type';
-import { getClassificationInfo } from './ClassificationUtils';
+import { getClassificationInfo } from './ClassificationPureUtils';;
 import { getEntityVersionByField } from './EntityVersionUtilsPure';
 
 // Mock dependencies

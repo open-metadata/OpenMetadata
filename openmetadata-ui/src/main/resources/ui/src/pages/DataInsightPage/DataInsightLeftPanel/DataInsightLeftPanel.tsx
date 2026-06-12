@@ -16,7 +16,7 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LeftPanelCard from '../../../components/common/LeftPanelCard/LeftPanelCard';
 import { DataInsightTabs } from '../../../interface/data-insight.interface';
-import { getDataInsightPathWithFqn } from '../../../utils/DataInsightUtils';
+import { getDataInsightPathWithFqn } from '../../../utils/DataInsightPureUtils';;
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import DataInsightClassBase from '../DataInsightClassBase';
 

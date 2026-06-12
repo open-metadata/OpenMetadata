@@ -50,17 +50,10 @@ import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
-import {
-  getEmptyJsonTreeForQueryBuilder,
-  getTreeConfig,
-} from '../../../utils/AdvancedSearchUtils';
+import { getTreeConfig } from '../../../utils/AdvancedSearchUtils';
+import { getEmptyJsonTreeForQueryBuilder } from '../../../utils/AdvancedSearchPureUtils';;
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
-import {
-  addEntityTypeFilter,
-  getEntityTypeAggregationFilter,
-  getJsonTreeFromQueryFilter,
-  READONLY_SETTINGS,
-} from '../../../utils/QueryBuilderUtils';
+import { READONLY_SETTINGS, addEntityTypeFilter, getEntityTypeAggregationFilter, getJsonTreeFromQueryFilter } from '../../../utils/QueryBuilderPureUtils';;
 import { getExplorePath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { SearchOutputType } from '../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';

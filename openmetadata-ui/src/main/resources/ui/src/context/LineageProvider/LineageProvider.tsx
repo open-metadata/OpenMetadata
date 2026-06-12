@@ -97,37 +97,14 @@ import {
 } from '../../rest/lineageAPI';
 import { getCurrentISODate } from '../../utils/date-time/DateTimeUtils';
 import { getEntityBreadcrumbs } from '../../utils/EntityBreadcrumbPureUtils';
-import {
-  addLineageHandler,
-  centerNodePosition,
-  createColumnEdges,
-  createEdgesAndEdgeMaps,
-  createEntityEdgesAndMaps,
-  createNewEdge,
-  createNodes,
-  getAllDownstreamEdges,
-  getAllTracedColumnEdge,
-  getClassifiedEdge,
-  getConnectedNodesEdges,
-  getEdgeDataFromEdge,
-  getEntityTypeFromPlatformView,
-  getLineageEdge,
-  getLineageEdgeForAPI,
-  getLoadingStatusValue,
-  getModalBodyText,
-  getNewLineageConnectionDetails,
-  getNodeLineageData,
-  getUpdatedColumnsFromEdge,
-  getUpstreamDownstreamNodesEdges,
-  getViewportForLineageExport,
-  parseLineageData,
-  positionNodesUsingElk,
-  removeLineageHandler,
-  removeUnconnectedNodes,
-} from '../../utils/EntityLineageUtils';
+import { getAllTracedColumnEdge, getClassifiedEdge, getEdgeDataFromEdge, getLineageEdge, getLineageEdgeForAPI, getModalBodyText, getNewLineageConnectionDetails, getUpdatedColumnsFromEdge, createColumnEdges, createEdgesAndEdgeMaps, createEntityEdgesAndMaps, createNewEdge, getAllDownstreamEdges } from '../../utils/EntityLineageEdgeUtils';
+import { centerNodePosition, positionNodesUsingElk, getViewportForLineageExport } from '../../utils/EntityLineageLayoutUtils';
+import { createNodes, getConnectedNodesEdges, getEntityTypeFromPlatformView, getNodeLineageData, getUpstreamDownstreamNodesEdges, removeUnconnectedNodes } from '../../utils/EntityLineageNodeUtils';
+import { getLoadingStatusValue } from '../../utils/EntityLineageUtils';
+import { addLineageHandler, parseLineageData, removeLineageHandler } from '../../utils/EntityLineagePureUtils';;
 import { updateNodeType } from '../../utils/EntityPureUtils';
 import { getEntityReferenceFromEntity } from '../../utils/EntityReferenceUtils';
-import { getQuickFilterQuery } from '../../utils/ExploreUtils';
+import { getQuickFilterQuery } from '../../utils/ExplorePureUtils';;
 import { addBaseNodeDepthToNodes } from '../../utils/Lineage/LineageUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';

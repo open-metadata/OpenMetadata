@@ -17,7 +17,7 @@ import { ReactComponent as KPIIcon } from '../../assets/svg/kpi.svg';
 import AppAnalyticsTab from '../../components/DataInsight/AppAnalyticsTab/AppAnalyticsTab.component';
 import DataAssetsTab from '../../components/DataInsight/DataAssetsTab/DataAssetsTab.component';
 import { DataInsightTabs } from '../../interface/data-insight.interface';
-import { getDataInsightPathWithFqn } from '../../utils/DataInsightUtils';
+import { getDataInsightPathWithFqn } from '../../utils/DataInsightPureUtils';;
 import i18n from '../../utils/i18next/LocalUtil';
 import DataInsightLeftPanel from './DataInsightLeftPanel/DataInsightLeftPanel';
 import KPIList from './KPIList';

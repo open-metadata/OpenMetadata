@@ -37,10 +37,8 @@ import {
 } from '../../rest/announcementsAPI';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { updateUserDetail } from '../../rest/userAPI';
-import {
-  getConstrainedWidgetWidth,
-  getWidgetFromKey,
-} from '../../utils/CustomizableLandingPageUtils';
+import { getWidgetFromKey } from '../../utils/CustomizableLandingPageUtils';
+import { getConstrainedWidgetWidth } from '../../utils/CustomizableLandingPagePureUtils';;
 import customizePageClassBase from '../../utils/CustomizeMyDataPageClassBase';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';

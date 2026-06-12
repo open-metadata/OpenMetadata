@@ -26,7 +26,7 @@ import { ResourceEntity } from '../../../context/PermissionProvider/PermissionPr
 import { EntityType } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { DataInsightTabs } from '../../../interface/data-insight.interface';
-import { getOptionalDataInsightTabFlag } from '../../../utils/DataInsightUtils';
+import { getOptionalDataInsightTabFlag } from '../../../utils/DataInsightPureUtils';;
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';

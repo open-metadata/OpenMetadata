@@ -31,11 +31,7 @@ import { ChangeDescription } from '../../../generated/entity/data/dashboard';
 import { MlFeature } from '../../../generated/entity/data/mlmodel';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TagSource } from '../../../generated/type/tagLabel';
-import {
-  getCommonExtraInfoForVersionDetails,
-  getEntityVersionByField,
-  getEntityVersionTags,
-} from '../../../utils/EntityVersionUtils';
+import { getCommonExtraInfoForVersionDetails, getEntityVersionByField, getEntityVersionTags } from '../../../utils/EntityVersionUtilsPure';;
 import { getMlFeatureVersionData } from '../../../utils/MlModelVersionUtils';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';

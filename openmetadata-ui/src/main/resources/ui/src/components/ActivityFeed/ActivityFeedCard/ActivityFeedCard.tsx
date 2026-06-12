@@ -19,11 +19,7 @@ import { ReactionOperation } from '../../../enums/reactions.enum';
 import { Post } from '../../../generated/entity/feed/thread';
 import { Reaction, ReactionType } from '../../../generated/type/reaction';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import {
-  getEntityField,
-  getEntityFQN,
-  getEntityType,
-} from '../../../utils/FeedUtils';
+import { getEntityFQN, getEntityField, getEntityType } from '../../../utils/FeedUtilsPure';;
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import { ActivityFeedCardProp } from './ActivityFeedCard.interface';
 import FeedCardBody from './FeedCardBody/FeedCardBody';

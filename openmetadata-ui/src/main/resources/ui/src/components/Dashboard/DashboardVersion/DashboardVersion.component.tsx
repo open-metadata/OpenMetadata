@@ -29,11 +29,7 @@ import {
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import {
-  getCommonExtraInfoForVersionDetails,
-  getEntityVersionByField,
-  getEntityVersionTags,
-} from '../../../utils/EntityVersionUtils';
+import { getCommonExtraInfoForVersionDetails, getEntityVersionByField, getEntityVersionTags } from '../../../utils/EntityVersionUtilsPure';;
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { descriptionTableObject } from '../../../utils/TableColumn.util';

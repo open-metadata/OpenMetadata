@@ -42,10 +42,7 @@ import { ChartFilter } from '../../interface/data-insight.interface';
 import { getAggregateChartData } from '../../rest/DataInsightAPI';
 import { entityChartColor } from '../../utils/ColorUtils';
 import { CustomTooltip } from '../../utils/DataInsightChartUtils';
-import {
-  getGraphDataByEntityType,
-  sortEntityByValue,
-} from '../../utils/DataInsightUtils';
+import { getGraphDataByEntityType, sortEntityByValue } from '../../utils/DataInsightPureUtils';;
 import { showErrorToast } from '../../utils/ToastUtils';
 import PageHeader from '../PageHeader/PageHeader.component';
 import './data-insight-detail.less';

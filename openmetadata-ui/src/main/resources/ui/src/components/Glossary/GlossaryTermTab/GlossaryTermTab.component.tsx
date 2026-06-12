@@ -94,12 +94,7 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityBulkEditPath } from '../../../utils/EntityPureUtils';
 import { EntityStatusClass } from '../../../utils/EntityStatusUtils';
 import Fqn from '../../../utils/Fqn';
-import {
-  buildTree,
-  findExpandableKeysForArray,
-  glossaryTermTableColumnsWidth,
-  permissionForApproveOrReject,
-} from '../../../utils/GlossaryUtils';
+import { buildTree, findExpandableKeysForArray, glossaryTermTableColumnsWidth, permissionForApproveOrReject } from '../../../utils/GlossaryPureUtils';;
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { ownerTableObject } from '../../../utils/TableColumn.util';

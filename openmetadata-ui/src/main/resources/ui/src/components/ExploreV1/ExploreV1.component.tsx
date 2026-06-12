@@ -55,10 +55,7 @@ import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { parseExportErrorMessage } from '../../utils/APIUtils';
 import { highlightEntityNameAndDescription } from '../../utils/EntitySearchUtils';
 import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
-import {
-  getExploreQueryFilterMust,
-  getSelectedValuesFromQuickFilter,
-} from '../../utils/ExploreUtils';
+import { getExploreQueryFilterMust, getSelectedValuesFromQuickFilter } from '../../utils/ExplorePureUtils';;
 import searchClassBase from '../../utils/SearchClassBase';
 import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
 import FilterErrorPlaceHolder from '../common/ErrorWithPlaceholder/FilterErrorPlaceHolder';

@@ -54,7 +54,7 @@ import {
   getMarketPlaceAppDetailsPath,
   getSettingPath,
 } from '../../utils/RouterUtils';
-import { getCronDefaultValue } from '../../utils/SchedularUtils';
+import { getCronDefaultValue } from '../../utils/CronExpressionUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './app-install.less';
 

@@ -12,12 +12,8 @@
  */
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
-import {
-  getEntityTypeFromSearchIndex,
-  getGroupLabel,
-  getTermQuery,
-  parseBucketsData,
-} from './SearchUtils';
+import { getGroupLabel } from './SearchUtils';
+import { getEntityTypeFromSearchIndex, getTermQuery, parseBucketsData } from './SearchPureUtils';;
 
 // Add type definition for ESQueryClause to fix type errors
 type ESQueryClause = {

@@ -18,10 +18,7 @@ import Qs from 'qs';
 import { CURATED_ASSETS_LIST } from '../constants/AdvancedSearch.constants';
 import { EntityType } from '../enums/entity.enum';
 import type { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
-import {
-  getEntityTypeAggregationFilter,
-  getJsonTreeFromQueryFilter,
-} from './QueryBuilderUtils';
+import { getEntityTypeAggregationFilter, getJsonTreeFromQueryFilter } from './QueryBuilderPureUtils';;
 import { getExplorePath } from './RouterUtils';
 
 // Query filter strings that are considered empty

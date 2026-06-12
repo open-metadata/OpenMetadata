@@ -18,7 +18,7 @@ import { useNavigate } from 'react-router-dom';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { useFqn } from '../../../hooks/useFqn';
-import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
+import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';;
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import { t } from '../../../utils/i18next/LocalUtil';
 import {

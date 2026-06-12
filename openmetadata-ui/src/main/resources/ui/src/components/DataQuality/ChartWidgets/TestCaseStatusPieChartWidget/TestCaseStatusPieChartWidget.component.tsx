@@ -22,11 +22,8 @@ import {
 } from '../../../../constants/Color.constants';
 import { INITIAL_TEST_SUMMARY } from '../../../../constants/TestSuite.constant';
 import { fetchTestCaseSummary } from '../../../../rest/dataQualityDashboardAPI';
-import {
-  getPieChartLabel,
-  getTestCaseTabPath,
-  transformToTestCaseStatusObject,
-} from '../../../../utils/DataQuality/DataQualityUtils';
+import { getPieChartLabel } from '../../../../utils/DataQuality/DataQualityUtils';
+import { getTestCaseTabPath, transformToTestCaseStatusObject } from '../../../../utils/DataQuality/DataQualityPureUtils';;
 import type { CustomPieChartData } from '../../../Visualisations/Chart/Chart.interface';
 import CustomPieChart from '../../../Visualisations/Chart/CustomPieChart.component';
 import { PieChartWidgetCommonProps } from '../../DataQuality.interface';

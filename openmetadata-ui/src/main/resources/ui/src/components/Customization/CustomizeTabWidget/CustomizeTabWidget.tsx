@@ -32,10 +32,7 @@ import {
   WidgetConfig,
 } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
-import {
-  getLayoutWithEmptyWidgetPlaceholder,
-  getUniqueFilteredLayout,
-} from '../../../utils/CustomizableLandingPageUtils';
+import { getLayoutWithEmptyWidgetPlaceholder, getUniqueFilteredLayout } from '../../../utils/CustomizableLandingPagePureUtils';;
 import {
   getCustomizableWidgetByPage,
   getDefaultTabs,

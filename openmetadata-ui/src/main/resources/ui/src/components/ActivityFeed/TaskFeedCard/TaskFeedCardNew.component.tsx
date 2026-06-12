@@ -33,10 +33,7 @@ import {
   getRelativeTime,
 } from '../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../utils/EntityLink';
-import {
-  getEntityFQNFromAbout,
-  getEntityTypeFromAbout,
-} from '../../../utils/FeedUtils';
+import { getEntityFQNFromAbout, getEntityTypeFromAbout } from '../../../utils/FeedUtilsPure';;
 
 import { AxiosError } from 'axios';
 import { TASK_TYPES } from '../../../constants/Task.constant';

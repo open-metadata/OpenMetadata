@@ -47,7 +47,8 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
+  ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
   useGenericContext: jest.fn(() => ({
     data: {
       id: 'table-1',
@@ -425,7 +426,7 @@ describe('ContractTab', () => {
 
     it('should refetch contract when entity ID changes', async () => {
       const mockUseGenericContext = jest.requireMock(
-        '../../Customization/GenericProvider/GenericProvider'
+        '../../Customization/GenericProvider/GenericContext'
       ).useGenericContext;
 
       const { rerender } = render(<ContractTab />);
@@ -447,7 +448,7 @@ describe('ContractTab', () => {
   describe('Error Handling', () => {
     it('should handle missing entity context', () => {
       const mockUseGenericContext = jest.requireMock(
-        '../../Customization/GenericProvider/GenericProvider'
+        '../../Customization/GenericProvider/GenericContext'
       ).useGenericContext;
       mockUseGenericContext.mockReturnValue({
         data: undefined,

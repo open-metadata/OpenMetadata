@@ -52,11 +52,7 @@ import {
   getDatabaseSchemaVersions,
 } from '../../rest/databaseAPI';
 import { getTableList, TableListParams } from '../../rest/tableAPI';
-import {
-  getBasicEntityInfoFromVersionData,
-  getCommonDiffsFromVersionData,
-  getCommonExtraInfoForVersionDetails,
-} from '../../utils/EntityVersionUtils';
+import { getBasicEntityInfoFromVersionData, getCommonDiffsFromVersionData, getCommonExtraInfoForVersionDetails } from '../../utils/EntityVersionUtilsPure';;
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,

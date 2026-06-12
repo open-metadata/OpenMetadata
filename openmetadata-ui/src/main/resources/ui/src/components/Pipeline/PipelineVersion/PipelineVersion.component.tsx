@@ -26,11 +26,7 @@ import {
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TagSource } from '../../../generated/type/schema';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import {
-  getCommonExtraInfoForVersionDetails,
-  getEntityVersionByField,
-  getEntityVersionTags,
-} from '../../../utils/EntityVersionUtils';
+import { getCommonExtraInfoForVersionDetails, getEntityVersionByField, getEntityVersionTags } from '../../../utils/EntityVersionUtilsPure';;
 import { t } from '../../../utils/i18next/LocalUtil';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getUpdatedPipelineTasks } from '../../../utils/PipelineVersionUtils';

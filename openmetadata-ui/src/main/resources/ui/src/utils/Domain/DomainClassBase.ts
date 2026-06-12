@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 
-import { createElement } from 'react';
+import { createElement, lazy, Suspense } from 'react';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
-import DataQualityDashboard from '../../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component';
 import { DataProductsTabRef } from '../../components/Domain/DomainTabs/DataProductsTab/DataProductsTab.interface';
 import { EntityDetailsObjectInterface } from '../../components/Explore/ExplorePage.interface';
 import { AssetsTabRef } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
@@ -35,6 +34,13 @@ import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.inte
 import { getTabLabelFromId } from '../CustomizePage/CustomizePagePureUtils';
 import { getDomainDetailTabs, getDomainWidgetsFromKey } from '../DomainUtils';
 import i18n from '../i18next/LocalUtil';
+
+const DataQualityDashboard = lazy(
+  () =>
+    import(
+      '../../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component'
+    )
+);
 
 export interface DomainDetailPageTabProps {
   domain: Domain;
@@ -107,13 +113,17 @@ class DomainClassBase {
         name: i18n.t('label.data-observability'),
       }),
       key: EntityTabs.DATA_OBSERVABILITY,
-      children: createElement(DataQualityDashboard, {
-        isGovernanceView: true,
-        className: 'data-quality-governance-tab-wrapper',
-        initialFilters: domainDetailsPageProps.domain.fullyQualifiedName
-          ? { domainFqn: domainDetailsPageProps.domain.fullyQualifiedName }
-          : undefined,
-      }),
+      children: createElement(
+        Suspense,
+        { fallback: null },
+        createElement(DataQualityDashboard, {
+          isGovernanceView: true,
+          className: 'data-quality-governance-tab-wrapper',
+          initialFilters: domainDetailsPageProps.domain.fullyQualifiedName
+            ? { domainFqn: domainDetailsPageProps.domain.fullyQualifiedName }
+            : undefined,
+        })
+      ),
     };
 
     return [...baseTabs, dqTab];

@@ -18,7 +18,7 @@ import {
   Spreadsheet,
 } from '../../../../generated/entity/data/spreadsheet';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import WorkflowsTable from './WorkflowsTable';
 
 jest.mock('../../../../utils/RouterUtils');
@@ -54,7 +54,10 @@ jest.mock('../../../common/Table/Table', () =>
     </div>
   ))
 );
-jest.mock('../../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../../Customization/GenericProvider/GenericContext', () => ({
+  ...jest.requireActual(
+    '../../../Customization/GenericProvider/GenericContext'
+  ),
   useGenericContext: jest.fn(),
 }));
 

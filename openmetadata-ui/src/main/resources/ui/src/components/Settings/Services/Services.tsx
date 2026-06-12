@@ -51,11 +51,8 @@ import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getServiceDetailsPath } from '../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
-import {
-  getOptionalFields,
-  getResourceEntityFromServiceCategory,
-  getServiceTypesFromServiceCategory,
-} from '../../../utils/ServiceUtils';
+import { getOptionalFields } from '../../../utils/ServiceUtils';
+import { getResourceEntityFromServiceCategory, getServiceTypesFromServiceCategory } from '../../../utils/ServicePureUtils';;
 import { stringToHTML } from '../../../utils/StringUtils';
 import {
   columnFilterIcon,

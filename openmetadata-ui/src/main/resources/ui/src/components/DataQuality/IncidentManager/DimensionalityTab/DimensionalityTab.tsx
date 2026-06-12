@@ -30,7 +30,7 @@ import {
   getEndOfDayInMillis,
   getStartOfDayInMillis,
 } from '../../../../utils/date-time/DateTimeUtils';
-import { getEntityFQN } from '../../../../utils/FeedUtils';
+import { getEntityFQN } from '../../../../utils/FeedUtilsPure';;
 import {
   getEntityDetailsPath,
   getTestCaseDimensionsDetailPagePath,

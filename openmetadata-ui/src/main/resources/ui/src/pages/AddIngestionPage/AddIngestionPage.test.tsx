@@ -58,7 +58,7 @@ jest.mock('../../components/common/ServiceDocPanel/ServiceDocPanel', () =>
   jest.fn().mockImplementation(() => <div>ServiceDocPanel</div>)
 );
 
-jest.mock('../../utils/ServiceUtils', () => ({
+jest.mock('../../utils/ServicePureUtils', () => ({
   getServiceType: jest.fn(),
 }));
 

@@ -103,11 +103,7 @@ import {
   getEntityMissingError,
 } from '../../utils/EntityDisplayUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import {
-  fetchEntityActivityCountInto,
-  fetchEntityTaskCountsInto,
-  getFeedCounts,
-} from '../../utils/FeedUtils';
+import { fetchEntityActivityCountInto, fetchEntityTaskCountsInto, getFeedCounts } from '../../utils/FeedUtilsPure';;
 import { renderIcon } from '../../utils/IconUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
@@ -115,11 +111,7 @@ import {
   getClassificationTagPath,
 } from '../../utils/RouterUtils';
 import tagClassBase from '../../utils/TagClassBase';
-import {
-  getExcludedIndexesBasedOnEntityTypeEditTagPermission,
-  getQueryFilterToExcludeTermsAndEntities,
-  getTagAssetsQueryFilter,
-} from '../../utils/TagsUtils';
+import { getExcludedIndexesBasedOnEntityTypeEditTagPermission, getQueryFilterToExcludeTermsAndEntities, getTagAssetsQueryFilter } from '../../utils/TagsPureUtils';;
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './tag-page.less';

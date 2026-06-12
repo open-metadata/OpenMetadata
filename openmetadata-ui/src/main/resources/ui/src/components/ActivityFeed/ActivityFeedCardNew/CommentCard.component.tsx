@@ -23,10 +23,7 @@ import {
   getRelativeTime,
 } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import {
-  getFrontEndFormat,
-  MarkdownToHTMLConverter,
-} from '../../../utils/FeedUtils';
+import { MarkdownToHTMLConverter, getFrontEndFormat } from '../../../utils/FeedUtilsPure';;
 import { getUserPath } from '../../../utils/RouterUtils';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';

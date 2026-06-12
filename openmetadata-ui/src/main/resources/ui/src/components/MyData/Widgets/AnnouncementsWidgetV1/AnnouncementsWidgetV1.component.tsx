@@ -18,11 +18,7 @@ import { ReactComponent as MegaphoneIcon } from '../../../../assets/svg/announce
 import { DEFAULT_THEME } from '../../../../constants/Appearance.constants';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { AnnouncementEntity } from '../../../../rest/announcementsAPI';
-import {
-  getEntityFQN,
-  getEntityType,
-  prepareFeedLink,
-} from '../../../../utils/FeedUtils';
+import { getEntityFQN, getEntityType, prepareFeedLink } from '../../../../utils/FeedUtilsPure';;
 import WidgetWrapper from '../Common/WidgetWrapper/WidgetWrapper';
 import AnnouncementCardV1 from './AnnouncementCardV1/AnnouncementCardV1.component';
 import './announcements-widget-v1.less';

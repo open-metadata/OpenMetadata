@@ -34,11 +34,8 @@ import {
 } from '../../constants/Lineage.constants';
 import { useLineageProvider } from '../../context/LineageProvider/LineageProvider';
 import { useLineageStore } from '../../hooks/useLineageStore';
-import {
-  dragHandle,
-  nodeTypes,
-  onNodeContextMenu,
-} from '../../utils/EntityLineageUtils';
+import { nodeTypes } from '../../utils/EntityLineageUtils';
+import { dragHandle, onNodeContextMenu } from '../../utils/EntityLineagePureUtils';;
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
 import LineageControlButtons from '../Entity/EntityLineage/LineageControlButtons/LineageControlButtons';
 import LineageLayers from '../Entity/EntityLineage/LineageLayers/LineageLayers';

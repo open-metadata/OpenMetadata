@@ -24,11 +24,8 @@ import {
   getRelativeTime,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import {
-  entityDisplayName,
-  getEntityFieldDisplay,
-  prepareFeedLink,
-} from '../../../../utils/FeedUtils';
+import { getEntityFieldDisplay } from '../../../../utils/FeedUtils';
+import { entityDisplayName, prepareFeedLink } from '../../../../utils/FeedUtilsPure';;
 import { getUserPath } from '../../../../utils/RouterUtils';
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';

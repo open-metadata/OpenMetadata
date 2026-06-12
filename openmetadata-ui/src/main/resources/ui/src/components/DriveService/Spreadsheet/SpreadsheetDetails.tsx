@@ -44,11 +44,7 @@ import {
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
-import {
-  fetchEntityActivityCountInto,
-  fetchEntityTaskCountsInto,
-  getFeedCounts,
-} from '../../../utils/FeedUtils';
+import { fetchEntityActivityCountInto, fetchEntityTaskCountsInto, getFeedCounts } from '../../../utils/FeedUtilsPure';;
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
@@ -56,11 +52,7 @@ import {
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import spreadsheetClassBase from '../../../utils/SpreadsheetClassBase';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
-import {
-  createTagObject,
-  updateCertificationTag,
-  updateTierTag,
-} from '../../../utils/TagsUtils';
+import { createTagObject, updateCertificationTag, updateTierTag } from '../../../utils/TagsPureUtils';;
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';

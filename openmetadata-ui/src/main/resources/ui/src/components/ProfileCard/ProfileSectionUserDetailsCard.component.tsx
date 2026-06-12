@@ -18,7 +18,7 @@ import { ReactComponent as ChangePassword } from '../../assets/svg/ic-change-pw.
 import { ReactComponent as MenuDots } from '../../assets/svg/ic-menu-dots.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-trash.svg';
 import { User } from '../../generated/entity/teams/user';
-import { getUserOnlineStatus, isMaskedEmail } from '../../utils/Users.util';
+import { getUserOnlineStatus, isMaskedEmail } from '../../utils/UsersPureUtils';;
 
 import Icon from '@ant-design/icons';
 import { AxiosError } from 'axios';
