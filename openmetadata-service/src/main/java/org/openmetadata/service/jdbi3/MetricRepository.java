@@ -15,27 +15,50 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.csv.CsvUtil.addDomains;
+import static org.openmetadata.csv.CsvUtil.addEntityReferences;
+import static org.openmetadata.csv.CsvUtil.addField;
+import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
+import static org.openmetadata.csv.CsvUtil.addOwners;
+import static org.openmetadata.csv.CsvUtil.addReviewers;
+import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.METRIC;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.csv.CsvExportProgressCallback;
+import org.openmetadata.csv.CsvImportProgressCallback;
+import org.openmetadata.csv.EntityCsv;
+import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetricExpressionLanguage;
+import org.openmetadata.schema.type.MetricGranularity;
+import org.openmetadata.schema.type.MetricType;
 import org.openmetadata.schema.type.MetricUnitOfMeasurement;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.type.csv.CsvDocumentation;
+import org.openmetadata.schema.type.csv.CsvFile;
+import org.openmetadata.schema.type.csv.CsvHeader;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
@@ -43,6 +66,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.metrics.MetricResource;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
@@ -368,5 +392,222 @@ public class MetricRepository extends EntityRepository<Metric> {
         metric.getFullyQualifiedName(),
         new ArrayList<>(metric.getReviewers()),
         metric.getUpdatedBy());
+  }
+
+  // ---------------------------------------------------------------------------
+  // CSV Import/Export support (Issue #27474)
+  // ---------------------------------------------------------------------------
+
+  @Override
+  public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  @Override
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
+    List<Metric> metrics = getMetricsForExport(name);
+    return new MetricCsv(user).exportCsv(metrics, callback);
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(
+      String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
+    return new MetricCsv(user, resolveDomainScope(name)).importCsv(csv, dryRun);
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      CsvImportProgressCallback callback)
+      throws IOException {
+    return new MetricCsv(user, resolveDomainScope(name)).importCsv(csv, dryRun, callback);
+  }
+
+  private List<Metric> getMetricsForExport(String name) {
+    Fields fields = new Fields(allowedFields, "owners,reviewers,relatedMetrics,tags,domains");
+    EntityReference domain = resolveDomainScope(name);
+    if (domain == null) {
+      return listAll(fields, new ListFilter(NON_DELETED));
+    }
+    ListFilter filter =
+        new ListFilter(NON_DELETED).addQueryParam("domainId", domain.getId().toString());
+    return listAll(fields, filter);
+  }
+
+  /**
+   * Resolves the {name} path parameter passed to the CSV endpoints into a Domain reference, or
+   * null for platform-wide ("*", null, blank). Throws if the name does not match a known Domain
+   * so the caller fails fast with a clear error instead of silently returning everything.
+   */
+  private EntityReference resolveDomainScope(String name) {
+    if (name == null || name.isBlank() || "*".equals(name)) {
+      return null;
+    }
+    return Entity.getEntityReferenceByName(Entity.DOMAIN, name, NON_DELETED);
+  }
+
+  public static class MetricCsv extends EntityCsv<Metric> {
+    public static final List<CsvHeader> HEADERS;
+    public static final CsvDocumentation DOCUMENTATION;
+
+    static {
+      DOCUMENTATION = getCsvDocumentation(METRIC, false);
+      HEADERS = DOCUMENTATION.getHeaders();
+    }
+
+    private final EntityReference defaultDomain;
+
+    MetricCsv(String user) {
+      this(user, null);
+    }
+
+    MetricCsv(String user, EntityReference defaultDomain) {
+      super(METRIC, HEADERS, user);
+      this.defaultDomain = defaultDomain;
+    }
+
+    @Override
+    protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
+      while (recordIndex < csvRecords.size()) {
+        CSVRecord csvRecord = getNextRecord(printer, csvRecords);
+        if (csvRecord == null) {
+          continue;
+        }
+
+        String metricName = csvRecord.get(0);
+        // Metric FQN is just the name (no parent in current schema). Use a lightweight
+        // existence-check lookup; fields populated below from the CSV row are the source of truth.
+        Metric metric = findByNameOrNull(metricName, Include.NON_DELETED);
+        if (metric == null) {
+          metric = new Metric().withName(metricName).withFullyQualifiedName(metricName);
+        }
+
+        metric
+            .withDisplayName(nullOrEmpty(csvRecord.get(1)) ? null : csvRecord.get(1))
+            .withDescription(nullOrEmpty(csvRecord.get(2)) ? null : csvRecord.get(2))
+            .withMetricType(parseMetricType(printer, csvRecord, 3))
+            .withUnitOfMeasurement(parseUnitOfMeasurement(printer, csvRecord, 4))
+            .withCustomUnitOfMeasurement(nullOrEmpty(csvRecord.get(5)) ? null : csvRecord.get(5))
+            .withGranularity(parseGranularity(printer, csvRecord, 6))
+            .withMetricExpression(parseMetricExpression(printer, csvRecord, 7, 8))
+            .withRelatedMetrics(getEntityReferences(printer, csvRecord, 9, METRIC))
+            .withOwners(getOwners(printer, csvRecord, 10))
+            .withReviewers(getReviewers(printer, csvRecord, 11))
+            .withTags(
+                getTagLabels(
+                    printer,
+                    csvRecord,
+                    List.of(
+                        Pair.of(12, TagLabel.TagSource.CLASSIFICATION),
+                        Pair.of(13, TagLabel.TagSource.GLOSSARY))))
+            .withDomains(getDomains(printer, csvRecord, 14));
+
+        if (defaultDomain != null && nullOrEmpty(metric.getDomains())) {
+          metric.setDomains(List.of(defaultDomain));
+        }
+
+        if (processRecord) {
+          createEntity(printer, csvRecord, metric);
+        }
+      }
+    }
+
+    @Override
+    protected void addRecord(CsvFile csvFile, Metric entity) {
+      List<String> recordList = new ArrayList<>();
+      addField(recordList, entity.getName());
+      addField(recordList, entity.getDisplayName());
+      addField(recordList, entity.getDescription());
+      addField(recordList, entity.getMetricType() == null ? null : entity.getMetricType().value());
+      addField(
+          recordList,
+          entity.getUnitOfMeasurement() == null ? null : entity.getUnitOfMeasurement().value());
+      addField(recordList, entity.getCustomUnitOfMeasurement());
+      addField(
+          recordList, entity.getGranularity() == null ? null : entity.getGranularity().value());
+      MetricExpression expr = entity.getMetricExpression();
+      addField(
+          recordList,
+          expr == null || expr.getLanguage() == null ? null : expr.getLanguage().value());
+      addField(recordList, expr == null ? null : expr.getCode());
+      addEntityReferences(recordList, entity.getRelatedMetrics());
+      addOwners(recordList, entity.getOwners());
+      addReviewers(recordList, entity.getReviewers());
+      addTagLabels(recordList, entity.getTags());
+      addGlossaryTerms(recordList, entity.getTags());
+      addDomains(recordList, entity.getDomains());
+      addRecord(csvFile, recordList);
+    }
+
+    private MetricType parseMetricType(CSVPrinter printer, CSVRecord csvRecord, int field)
+        throws IOException {
+      String value = csvRecord.get(field);
+      if (nullOrEmpty(value)) {
+        return null;
+      }
+      try {
+        return MetricType.fromValue(value);
+      } catch (IllegalArgumentException ex) {
+        importFailure(printer, "Invalid metricType: " + value, csvRecord);
+        return null;
+      }
+    }
+
+    private MetricUnitOfMeasurement parseUnitOfMeasurement(
+        CSVPrinter printer, CSVRecord csvRecord, int field) throws IOException {
+      String value = csvRecord.get(field);
+      if (nullOrEmpty(value)) {
+        return null;
+      }
+      try {
+        return MetricUnitOfMeasurement.fromValue(value);
+      } catch (IllegalArgumentException ex) {
+        importFailure(printer, "Invalid unitOfMeasurement: " + value, csvRecord);
+        return null;
+      }
+    }
+
+    private MetricGranularity parseGranularity(CSVPrinter printer, CSVRecord csvRecord, int field)
+        throws IOException {
+      String value = csvRecord.get(field);
+      if (nullOrEmpty(value)) {
+        return null;
+      }
+      try {
+        return MetricGranularity.fromValue(value);
+      } catch (IllegalArgumentException ex) {
+        importFailure(printer, "Invalid granularity: " + value, csvRecord);
+        return null;
+      }
+    }
+
+    private MetricExpression parseMetricExpression(
+        CSVPrinter printer, CSVRecord csvRecord, int languageField, int codeField)
+        throws IOException {
+      String language = csvRecord.get(languageField);
+      String code = csvRecord.get(codeField);
+      if (nullOrEmpty(language) && nullOrEmpty(code)) {
+        return null;
+      }
+      MetricExpression expression = new MetricExpression();
+      if (!nullOrEmpty(language)) {
+        try {
+          expression.setLanguage(MetricExpressionLanguage.fromValue(language));
+        } catch (IllegalArgumentException ex) {
+          importFailure(printer, "Invalid expressionLanguage: " + language, csvRecord);
+          return null;
+        }
+      }
+      if (!nullOrEmpty(code)) {
+        expression.setCode(code);
+      }
+      return expression;
+    }
   }
 }

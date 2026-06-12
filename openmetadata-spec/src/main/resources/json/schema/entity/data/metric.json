@@ -20,6 +20,7 @@
             "Java",
             "JavaScript",
             "Python",
+            "DAX",
             "External"
           ],
           "javaEnums": [
@@ -34,6 +35,9 @@
             },
             {
               "name": "Python"
+            },
+            {
+              "name": "DAX"
             },
             {
               "name": "External"
