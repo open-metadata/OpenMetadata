@@ -507,7 +507,7 @@ a[href].link-text-grey,
 // Row highlight animation for direct URL navigation
 @keyframes highlight-fade {
   0% {
-    background-color: fade(@grey-100, 30%);
+    background-color: color-mix(in srgb, @grey-100 30%, transparent);
   }
   100% {
     background-color: transparent;

@@ -254,7 +254,7 @@
 @nlp-border-color: #b9e6fe;
 @active-color: #e8f4ff;
 @rdg-cell-range-selections-background-color: #e9effd;
-@background-color: #ffffff;
+@background-color: ~'var(--tw-color-bg-primary)';
 @announcement-background: @blue-28;
 @announcement-background-dark: #e1edff;
 @announcement-border: @blue-27;
@@ -436,17 +436,20 @@
 @checkbox-border-radius: 4px; // to override ant design default 2px
 
 //grey colors
-@grey-25: #fdfdfd;
-@grey-50: #fafafa;
-@grey-100: #f5f5f5;
-@grey-200: #e9eaeb;
-@grey-300: #d5d7da;
-@grey-400: #a4a7ae;
-@grey-500: #717680;
-@grey-600: #535862;
-@grey-700: #414651;
-@grey-800: #252b37;
-@grey-900: #181d27;
+// Standard neutral scale aliased to the shared design-token source of truth
+// (core-components globals.css --color-gray-*). Light values are identical to
+// the previous static hex, and these now follow dark mode automatically.
+@grey-25: ~'var(--tw-color-gray-25)';
+@grey-50: ~'var(--tw-color-gray-50)';
+@grey-100: ~'var(--tw-color-gray-100)';
+@grey-200: ~'var(--tw-color-gray-200)';
+@grey-300: ~'var(--tw-color-gray-300)';
+@grey-400: ~'var(--tw-color-gray-400)';
+@grey-500: ~'var(--tw-color-gray-500)';
+@grey-600: ~'var(--tw-color-gray-600)';
+@grey-700: ~'var(--tw-color-gray-700)';
+@grey-800: ~'var(--tw-color-gray-800)';
+@grey-900: ~'var(--tw-color-gray-900)';
 @tag-text: #404040;
 
 //Blue colors (based on design system)
@@ -468,7 +471,7 @@
 @border-light: #ebeef2;
 @border-secondary: #e2c6f2;
 
-@background-primary: #f8f9fa;
+@background-primary: ~'var(--tw-color-bg-secondary)';
 
 @primary-heading-color: @blue-9;
 @navigation-text-color: #787486;
