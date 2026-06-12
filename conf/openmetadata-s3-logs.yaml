@@ -34,8 +34,8 @@ pipelineServiceClientConfiguration:
       # No configuration needed, uses instance profile
       
       # Option 2: Use access keys (for local development)
-      awsAccessKeyId: ${AWS_ACCESS_KEY_ID:-}
-      awsSecretAccessKey: ${AWS_SECRET_ACCESS_KEY:-}
+      awsAccessKeyId: "${AWS_ACCESS_KEY_ID:-}"
+      awsSecretAccessKey: "${AWS_SECRET_ACCESS_KEY:-}"
       
       # Option 3: Assume role
       # assumeRoleArn: ${AWS_ASSUME_ROLE_ARN:-}
@@ -44,8 +44,8 @@ pipelineServiceClientConfiguration:
   
   # Default Airflow parameters
   parameters:
-    username: ${AIRFLOW_USERNAME:-admin}
-    password: ${AIRFLOW_PASSWORD:-admin}
+    username: "${AIRFLOW_USERNAME:-admin}"
+    password: "${AIRFLOW_PASSWORD:-admin}"
     timeout: ${AIRFLOW_TIMEOUT:-10}
     connection_timeout: ${AIRFLOW_CONNECTION_TIMEOUT:-30}
     truststorePath: ${AIRFLOW_TRUST_STORE_PATH:-""}
