@@ -134,7 +134,7 @@ jest.mock('../../../utils/TopicClassBase', () => ({
   },
 }));
 
-jest.mock('../../../utils/CustomizePage/CustomizePageUtils', () => ({
+jest.mock('../../../utils/CustomizePage/CustomizePageEntityTabUtils', () => ({
   getTabLabelMapFromTabs: jest.fn().mockReturnValue({}),
   getDetailsTabWithNewLabel: jest.fn().mockReturnValue([]),
   checkIfExpandViewSupported: jest.fn().mockReturnValue(false),

@@ -16,6 +16,7 @@ import {
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
 import { Check } from '@untitledui/icons';
+import classNames from 'classnames';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClipboard } from '../../hooks/useClipBoard';
@@ -24,10 +25,12 @@ interface CopyLinkButtonProps {
   children: ReactNode;
   url: string;
   tooltip?: string;
+  className?: string;
 }
 
 const CopyLinkButton: FC<CopyLinkButtonProps> = ({
   children,
+  className,
   url,
   tooltip,
 }) => {
@@ -40,11 +43,12 @@ const CopyLinkButton: FC<CopyLinkButtonProps> = ({
     <Tooltip isDisabled={hasCopied} title={resolvedTooltip}>
       <TooltipTrigger>
         <ButtonUtility
-          className={
-            hasCopied
-              ? 'tw:rounded-full tw:bg-success-600 tw:text-white tw:hover:bg-success-600 tw:hover:text-white'
-              : 'tw:rounded-full'
-          }
+          className={classNames(
+            'tw:rounded-full',
+            hasCopied &&
+              'tw:bg-success-600 tw:text-white tw:hover:bg-success-600 tw:hover:text-white',
+            className
+          )}
           color="tertiary"
           data-testid="copy-link-btn"
           icon={

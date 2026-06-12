@@ -16,14 +16,14 @@ import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, startCase } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import { usePageHeader } from '../../components/common/atoms/navigation/usePageHeader';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import SchemaEditor from '../../components/Database/SchemaEditor/SchemaEditor';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import AddCustomProperty from '../../components/Settings/CustomProperty/AddCustomProperty/AddCustomProperty';
 import { CustomPropertyTable } from '../../components/Settings/CustomProperty/CustomPropertyTable';
@@ -49,6 +49,10 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './custom-properties-pageV1.less';
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../../components/Database/SchemaEditor/SchemaEditor'))
+);
 
 const CustomEntityDetailV1 = () => {
   const { t } = useTranslation();

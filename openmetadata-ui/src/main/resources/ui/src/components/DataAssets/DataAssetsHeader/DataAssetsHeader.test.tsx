@@ -118,6 +118,9 @@ jest.mock('../../../utils/DataAssetsHeader.utils', () => ({
   })),
   getEntityExtraInfoLength: jest.fn().mockImplementation(() => 0),
   isDataAssetsWithServiceField: jest.fn().mockImplementation(() => true),
+  HeaderDotSeparator: jest
+    .fn()
+    .mockImplementation(() => <span data-testid="header-dot-separator" />),
   ExtraInfoLabel: jest
     .fn()
     .mockImplementation(({ label, value, dataTestId }) => (
@@ -140,13 +143,12 @@ jest.mock('../../common/CertificationTag/CertificationTag', () => {
   return jest.fn().mockImplementation(() => <div>CertificationTag</div>);
 });
 
-jest.mock(
-  '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(() => <div>TitleBreadcrumb.component</div>);
-  }
+jest.mock('../../common/HeaderBreadcrumb/HeaderBreadcrumb.component', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="breadcrumb">HeaderBreadcrumb.component</div>
+    ))
 );
 jest.mock(
   '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component',
@@ -453,6 +455,92 @@ describe('DataAssetsHeader component', () => {
     render(<DataAssetsHeader {...mockProps} />);
 
     expect(screen.queryByTestId('source-url-button')).not.toBeInTheDocument();
+  });
+
+  it('should render source URL button from endpointURL for API entities', () => {
+    const mockEndpointUrl = 'https://petstore3.swagger.io/#/pet';
+    const apiEndpointProps = {
+      ...mockProps,
+      dataAsset: {
+        ...mockProps.dataAsset,
+        sourceUrl: undefined,
+        endpointURL: mockEndpointUrl,
+      },
+    } as DataAssetsHeaderProps;
+
+    render(<DataAssetsHeader {...apiEndpointProps} />);
+
+    const sourceUrlButton = screen.getByTestId('source-url-button');
+
+    expect(sourceUrlButton).toBeInTheDocument();
+    expect(screen.getByRole('link')).toHaveAttribute('href', mockEndpointUrl);
+  });
+
+  it('should render the follow button in the stat bar and trigger onFollowClick', () => {
+    const onFollowClick = jest.fn();
+
+    render(<DataAssetsHeader {...mockProps} onFollowClick={onFollowClick} />);
+
+    const followButton = screen.getByTestId('entity-follow-button');
+
+    expect(followButton).toBeInTheDocument();
+    expect(followButton).toHaveTextContent('label.follow');
+
+    fireEvent.click(followButton);
+
+    expect(onFollowClick).toHaveBeenCalled();
+  });
+
+  it('should disable the up-vote button while the vote request is in flight', async () => {
+    let resolveVote: () => void = () => undefined;
+    const onUpdateVote = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveVote = resolve;
+        })
+    );
+
+    render(<DataAssetsHeader {...mockProps} onUpdateVote={onUpdateVote} />);
+
+    const upVoteButton = screen.getByTestId('up-vote-btn');
+
+    fireEvent.click(upVoteButton);
+
+    await waitFor(() => expect(upVoteButton).toBeDisabled());
+
+    fireEvent.click(upVoteButton);
+
+    expect(onUpdateVote).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveVote();
+    });
+  });
+
+  it('should disable the follow button while the follow request is in flight', async () => {
+    let resolveFollow: () => void = () => undefined;
+    const onFollowClick = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveFollow = resolve;
+        })
+    );
+
+    render(<DataAssetsHeader {...mockProps} onFollowClick={onFollowClick} />);
+
+    const followButton = screen.getByTestId('entity-follow-button');
+
+    fireEvent.click(followButton);
+
+    await waitFor(() => expect(followButton).toBeDisabled());
+
+    fireEvent.click(followButton);
+
+    expect(onFollowClick).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveFollow();
+    });
   });
 
   it('should render certification only when serviceCategory is undefined', () => {
@@ -1166,7 +1254,10 @@ describe('DataAssetsHeader component', () => {
       mockUseCustomPages.mockReturnValue({
         customizedPage: { tabs: [{ id: EntityTabs.CONTRACT }] },
       });
-      mockGetDataContractStatusIcon.mockReturnValue('TestIcon');
+      const TestIcon = (props: { className?: string }) => (
+        <svg {...props} data-testid="contract-status-icon" />
+      );
+      mockGetDataContractStatusIcon.mockReturnValue(TestIcon);
 
       (getContractByEntityId as jest.Mock).mockImplementation(() =>
         Promise.resolve({
@@ -1181,7 +1272,7 @@ describe('DataAssetsHeader component', () => {
 
       const button = screen.getByTestId('data-contract-latest-result-btn');
 
-      expect(button.querySelector('.anticon')).toBeInTheDocument();
+      expect(button.querySelector('[data-icon="leading"]')).toBeInTheDocument();
     });
 
     it('should render button without icon when getDataContractStatusIcon returns null', async () => {

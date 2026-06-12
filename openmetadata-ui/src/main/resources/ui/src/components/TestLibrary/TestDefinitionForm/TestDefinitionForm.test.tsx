@@ -113,7 +113,7 @@ describe('TestDefinitionForm Component', () => {
   });
 
   describe('Rendering', () => {
-    it('should render form in create mode with all required fields', () => {
+    it('should render form in create mode with all required fields', async () => {
       render(
         <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
       );
@@ -121,7 +121,9 @@ describe('TestDefinitionForm Component', () => {
       expect(screen.getByLabelText('label.name')).toBeInTheDocument();
       expect(screen.getByLabelText('label.display-name')).toBeInTheDocument();
       expect(screen.getByLabelText('label.description')).toBeInTheDocument();
-      expect(screen.getByTestId('code-editor')).toBeInTheDocument();
+
+      await screen.findByTestId('code-editor');
+
       expect(screen.getByLabelText('label.entity-type')).toBeInTheDocument();
       expect(
         screen.getByLabelText('label.test-platform-plural')
