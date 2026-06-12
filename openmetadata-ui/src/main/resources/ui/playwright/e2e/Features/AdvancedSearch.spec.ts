@@ -23,6 +23,8 @@ import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
+import { ClassificationClass } from '../../support/tag/ClassificationClass';
+import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -999,6 +1001,168 @@ test.describe(
         const searchRes = page.waitForResponse(
           '/api/v1/search/query?*index=dataAsset*'
         );
+
+        await page.getByTestId('apply-btn').click();
+
+        await searchRes;
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Verify count is visible', async () => {
+        await expect(page.getByTestId('search-results-count')).toBeVisible();
+      });
+
+      await test.step('Clear filters and verify count disappears', async () => {
+        await page.getByTestId('clear-filters').click();
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(
+          page.getByTestId('search-results-count')
+        ).not.toBeVisible();
+      });
+    });
+
+    test('Verify count shows with Quick Filters', async ({ page }) => {
+      await test.step('Apply a quick filter from left sidebar', async () => {
+        const searchRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+
+        await page.getByTestId('filter-checkbox-PersonalData.Personal').click();
+
+        await searchRes;
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Verify count is visible', async () => {
+        await expect(page.getByTestId('search-results-count')).toBeVisible();
+      });
+
+      await test.step('Remove filter and verify count disappears', async () => {
+        await page.getByTestId('filter-checkbox-PersonalData.Personal').click();
+
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(
+          page.getByTestId('search-results-count')
+        ).not.toBeVisible();
+      });
+    });
+
+    test('Verify browse mode has no count', async ({ page }) => {
+      await test.step('Verify no search and no filters are applied', async () => {
+        await expect(
+          page.getByTestId('advance-search-filter-container')
+        ).not.toBeVisible();
+      });
+
+      await test.step('Verify count is not visible', async () => {
+        await expect(
+          page.getByTestId('search-results-count')
+        ).not.toBeVisible();
+      });
+    });
+  }
+);
+
+const COLUMN_TAG_FIELD = {
+  id: 'Column Tags',
+  name: 'columns.tags.tagFQN',
+};
+
+let columnTagTable1: TableClass;
+let columnTagTable2: TableClass;
+let columnTagClassification: ClassificationClass;
+let columnTag1: TagClass;
+let columnTag2: TagClass;
+
+test.describe(
+  'Advanced Search – Column Tag filter',
+  { tag: ['@advanced-search'] },
+  () => {
+    test.beforeAll(
+      'Setup – create classification, tags, and two tables with column tags',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        columnTagClassification = new ClassificationClass();
+        await columnTagClassification.create(apiContext);
+
+        columnTag1 = new TagClass({
+          classification: columnTagClassification.responseData.name,
+        });
+        columnTag2 = new TagClass({
+          classification: columnTagClassification.responseData.name,
+        });
+        await Promise.all([
+          columnTag1.create(apiContext),
+          columnTag2.create(apiContext),
+        ]);
+
+        columnTagTable1 = new TableClass();
+        columnTagTable2 = new TableClass();
+        await Promise.all([
+          columnTagTable1.create(apiContext),
+          columnTagTable2.create(apiContext),
+        ]);
+
+        await columnTagTable1.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'add',
+              path: '/columns/0/tags/0',
+              value: {
+                tagFQN: columnTag1.responseData.fullyQualifiedName,
+                labelType: 'Manual',
+                state: 'Confirmed',
+              },
+            },
+          ],
+        });
+
+        await columnTagTable2.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'add',
+              path: '/columns/0/tags/0',
+              value: {
+                tagFQN: columnTag2.responseData.fullyQualifiedName,
+                labelType: 'Manual',
+                state: 'Confirmed',
+              },
+            },
+          ],
+        });
+
+        await afterAction();
+      }
+    );
+
+    test.beforeEach(async ({ page }) => {
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.EXPLORE);
+    });
+
+    test('Column Tags == tag1 returns table1 and hides table2', async ({
+      page,
+    }) => {
+      await test.step('Open advanced search dialog', async () => {
+        await showAdvancedSearchDialog(page);
+      });
+
+      await test.step('Apply Column Tags == tag1', async () => {
+        await fillRule(page, {
+          condition: '==',
+          field: COLUMN_TAG_FIELD,
+          searchCriteria: columnTag1.responseData.fullyQualifiedName,
+          index: 1,
+        });
+
+        const searchRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
         await page.getByTestId('apply-btn').click();
         await searchRes;
         await waitForAllLoadersToDisappear(page);
@@ -1113,32 +1277,6 @@ test.describe(
         await waitForAllLoadersToDisappear(page);
       });
 
-      await test.step('Verify count is visible', async () => {
-        await expect(page.getByTestId('search-results-count')).toBeVisible();
-      });
-
-      await test.step('Clear filters and verify count disappears', async () => {
-        await page.getByTestId('clear-filters').click();
-        await waitForAllLoadersToDisappear(page);
-
-        await expect(
-          page.getByTestId('search-results-count')
-        ).not.toBeVisible();
-      });
-    });
-
-    test('Verify browse mode has no count', async ({ page }) => {
-      await test.step('Verify no search and no filters are applied', async () => {
-        await expect(
-          page.getByTestId('advance-search-filter-container')
-        ).not.toBeVisible();
-      });
-
-      await test.step('Verify count is not visible', async () => {
-        await expect(
-          page.getByTestId('search-results-count')
-        ).not.toBeVisible();
-      });
       await test.step('table1 (excluded by != tag1) is NOT visible', async () => {
         await expect(
           page.getByTestId(
