@@ -2793,6 +2793,7 @@
     "discover-your-data-and-unlock-the-value-of-data-assets": "Откройте для себя ваши данные и раскройте ценность информационных ресурсов.",
     "distinct-profile-metric-description": "Процент различных значений в столбце",
     "documents-uploaded-successfully": "Документы успешно загружены",
+    "domain-access-restricted": "You only have access to your assigned domain(s).",
     "domain-change-asset-migration-warning": "Изменение домена приведет к перемещению _ 0 _ активов) из текущего домена в _1 __.Хотите продолжить?",
     "domain-description": "Организуйте и управляйте доменами данных в вашей организации.",
     "domain-does-not-have-assets": "Домен {{name}} не имеет объектов для добавления в продукт данных",

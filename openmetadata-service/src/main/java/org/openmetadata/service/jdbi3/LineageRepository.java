@@ -48,8 +48,10 @@ import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -107,6 +109,8 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
+import org.openmetadata.service.search.lineage.LineageDomainFilter;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
@@ -123,15 +127,124 @@ public class LineageRepository {
   }
 
   public EntityLineage get(String entityType, String id, int upstreamDepth, int downstreamDepth) {
+    return get(entityType, id, upstreamDepth, downstreamDepth, null);
+  }
+
+  public EntityLineage get(
+      String entityType,
+      String id,
+      int upstreamDepth,
+      int downstreamDepth,
+      SubjectContext subjectContext) {
     EntityReference ref =
         Entity.getEntityReferenceById(entityType, UUID.fromString(id), Include.NON_DELETED);
-    return getLineage(ref, upstreamDepth, downstreamDepth);
+    return pruneLineageByDomain(getLineage(ref, upstreamDepth, downstreamDepth), subjectContext);
   }
 
   public EntityLineage getByName(
       String entityType, String fqn, int upstreamDepth, int downstreamDepth) {
+    return getByName(entityType, fqn, upstreamDepth, downstreamDepth, null);
+  }
+
+  public EntityLineage getByName(
+      String entityType,
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      SubjectContext subjectContext) {
     EntityReference ref = Entity.getEntityReferenceByName(entityType, fqn, Include.NON_DELETED);
-    return getLineage(ref, upstreamDepth, downstreamDepth);
+    return pruneLineageByDomain(getLineage(ref, upstreamDepth, downstreamDepth), subjectContext);
+  }
+
+  private EntityLineage pruneLineageByDomain(EntityLineage lineage, SubjectContext subjectContext) {
+    if (LineageDomainFilter.shouldApply(subjectContext)
+        && lineage != null
+        && !nullOrEmpty(lineage.getNodes())) {
+      Set<UUID> visible = visibleNodeIds(lineage, subjectContext);
+      Set<UUID> keep = reachableNodeIds(lineage.getEntity().getId(), visible, lineage);
+      lineage.setNodes(filterNodes(lineage.getNodes(), keep));
+      lineage.setUpstreamEdges(filterEdges(lineage.getUpstreamEdges(), keep));
+      lineage.setDownstreamEdges(filterEdges(lineage.getDownstreamEdges(), keep));
+    }
+    return lineage;
+  }
+
+  private Set<UUID> visibleNodeIds(EntityLineage lineage, SubjectContext subjectContext) {
+    Set<UUID> visible = new HashSet<>();
+    List<EntityReference> allRefs = new ArrayList<>(lineage.getNodes());
+    allRefs.add(lineage.getEntity());
+    for (EntityReference ref : allRefs) {
+      if (subjectContext.hasDomains(resolveNodeDomains(ref))) {
+        visible.add(ref.getId());
+      }
+    }
+    return visible;
+  }
+
+  private List<EntityReference> resolveNodeDomains(EntityReference ref) {
+    List<EntityReference> domains = Collections.emptyList();
+    if (Entity.entityHasField(ref.getType(), FIELD_DOMAINS)) {
+      EntityInterface entity =
+          Entity.getEntity(ref.getType(), ref.getId(), FIELD_DOMAINS, Include.ALL);
+      domains = listOrEmpty(entity.getDomains());
+    }
+    return domains;
+  }
+
+  private Set<UUID> reachableNodeIds(UUID rootId, Set<UUID> visible, EntityLineage lineage) {
+    Set<UUID> reachable = new HashSet<>();
+    if (visible.contains(rootId)) {
+      Map<UUID, Set<UUID>> adjacency = buildDomainAdjacency(lineage, visible);
+      Deque<UUID> queue = new ArrayDeque<>();
+      queue.add(rootId);
+      reachable.add(rootId);
+      while (!queue.isEmpty()) {
+        for (UUID neighbor : adjacency.getOrDefault(queue.poll(), Set.of())) {
+          if (reachable.add(neighbor)) {
+            queue.add(neighbor);
+          }
+        }
+      }
+    }
+    return reachable;
+  }
+
+  private Map<UUID, Set<UUID>> buildDomainAdjacency(EntityLineage lineage, Set<UUID> visible) {
+    Map<UUID, Set<UUID>> adjacency = new HashMap<>();
+    List<Edge> edges = new ArrayList<>(listOrEmpty(lineage.getUpstreamEdges()));
+    edges.addAll(listOrEmpty(lineage.getDownstreamEdges()));
+    for (Edge edge : edges) {
+      linkVisibleNodes(adjacency, visible, edge.getFromEntity(), edge.getToEntity());
+    }
+    return adjacency;
+  }
+
+  private void linkVisibleNodes(
+      Map<UUID, Set<UUID>> adjacency, Set<UUID> visible, UUID from, UUID to) {
+    if (from != null && to != null && visible.contains(from) && visible.contains(to)) {
+      adjacency.computeIfAbsent(from, key -> new HashSet<>()).add(to);
+      adjacency.computeIfAbsent(to, key -> new HashSet<>()).add(from);
+    }
+  }
+
+  private List<EntityReference> filterNodes(List<EntityReference> nodes, Set<UUID> keep) {
+    List<EntityReference> filtered = new ArrayList<>();
+    for (EntityReference node : listOrEmpty(nodes)) {
+      if (keep.contains(node.getId())) {
+        filtered.add(node);
+      }
+    }
+    return filtered;
+  }
+
+  private List<Edge> filterEdges(List<Edge> edges, Set<UUID> keep) {
+    List<Edge> filtered = new ArrayList<>();
+    for (Edge edge : listOrEmpty(edges)) {
+      if (keep.contains(edge.getFromEntity()) && keep.contains(edge.getToEntity())) {
+        filtered.add(edge);
+      }
+    }
+    return filtered;
   }
 
   @Transaction
@@ -628,12 +741,30 @@ public class LineageRepository {
       boolean deleted,
       String entityType)
       throws IOException {
+    return exportCsv(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType, null);
+  }
+
+  public final String exportCsv(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      String entityType,
+      SubjectContext subjectContext)
+      throws IOException {
     CsvDocumentation documentation = getCsvDocumentation("lineage", false);
     List<CsvHeader> headers = documentation.getHeaders();
     SearchLineageResult result =
         Entity.getSearchRepository()
             .searchLineageForExport(
-                fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
+                fqn,
+                upstreamDepth,
+                downstreamDepth,
+                queryFilter,
+                deleted,
+                entityType,
+                subjectContext);
     CsvFile csvFile = new CsvFile().withHeaders(headers);
 
     addRecords(csvFile, result.getUpstreamEdges().values().stream().toList());
@@ -660,7 +791,7 @@ public class LineageRepository {
       String entityType,
       boolean deleted) {
     return exportCsvAsync(
-        fqn, upstreamDepth, downstreamDepth, queryFilter, entityType, deleted, null, null);
+        fqn, upstreamDepth, downstreamDepth, queryFilter, entityType, deleted, null, null, null);
   }
 
   public final String exportCsvAsync(
@@ -672,6 +803,28 @@ public class LineageRepository {
       boolean deleted,
       Long startTime,
       Long endTime) {
+    return exportCsvAsync(
+        fqn,
+        upstreamDepth,
+        downstreamDepth,
+        queryFilter,
+        entityType,
+        deleted,
+        startTime,
+        endTime,
+        null);
+  }
+
+  public final String exportCsvAsync(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      String entityType,
+      boolean deleted,
+      Long startTime,
+      Long endTime,
+      SubjectContext subjectContext) {
     try {
       SearchLineageResult response =
           Entity.getSearchRepository()
@@ -685,7 +838,8 @@ public class LineageRepository {
                       .withIsConnectedVia(isConnectedVia(entityType))
                       .withStartTime(startTime)
                       .withEndTime(endTime)
-                      .withDirection(null));
+                      .withDirection(null),
+                  subjectContext);
       String jsonResponse = JsonUtils.pojoToJson(response);
       JsonNode rootNode = JsonUtils.readTree(jsonResponse);
 
@@ -1722,6 +1876,7 @@ public class LineageRepository {
         entityType,
         includeSourceFields,
         null,
+        null,
         null);
   }
 
@@ -1738,6 +1893,36 @@ public class LineageRepository {
       String includeSourceFields,
       Long startTime,
       Long endTime) {
+    return exportByEntityCountCsvAsync(
+        fqn,
+        direction,
+        from,
+        size,
+        nodeDepth,
+        maxDepth,
+        queryFilter,
+        deleted,
+        entityType,
+        includeSourceFields,
+        startTime,
+        endTime,
+        null);
+  }
+
+  public final String exportByEntityCountCsvAsync(
+      String fqn,
+      LineageDirection direction,
+      int from,
+      int size,
+      Integer nodeDepth,
+      int maxDepth,
+      String queryFilter,
+      boolean deleted,
+      String entityType,
+      String includeSourceFields,
+      Long startTime,
+      Long endTime,
+      SubjectContext subjectContext) {
     try {
       SearchLineageResult response =
           Entity.getSearchRepository()
@@ -1756,7 +1941,8 @@ public class LineageRepository {
                       .withEndTime(endTime)
                       .withIncludeSourceFields(
                           org.openmetadata.service.search.SearchUtils.getRequiredLineageFields(
-                              includeSourceFields)));
+                              includeSourceFields)),
+                  subjectContext);
       String jsonResponse = JsonUtils.pojoToJson(response);
       JsonNode rootNode = JsonUtils.readTree(jsonResponse);
 
