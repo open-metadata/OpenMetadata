@@ -2928,6 +2928,7 @@
     "error-while-fetching-access-token": "アクセストークンの取得中にエラーが発生しました。",
     "events-matching-search-query": "検索クエリに一致するイベント",
     "example-value": "例: {{value}}",
+    "exclude-system-entity-description": "無効の場合、スキーマで定義されたデフォルトパターンが{{entity}}に自動的に適用されます。",
     "excludes-regex-line": "除外 += {{regex}}",
     "existing-contract-detected": "このエンティティには既に契約が存在します",
     "expected-a-number-got-type": "数値が必要ですが、{{type}} が指定されました",

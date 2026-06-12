@@ -2928,6 +2928,7 @@
     "error-while-fetching-access-token": "Erreur pendant la récupération du jeton d'accès.",
     "events-matching-search-query": "Événements correspondant à la requête de recherche",
     "example-value": "ex. {{value}}",
+    "exclude-system-entity-description": "Lorsqu'il est désactivé, les modèles par défaut définis dans le schéma pour {{entity}} sont appliqués automatiquement.",
     "excludes-regex-line": "exclut += {{regex}}",
     "existing-contract-detected": "Un contrat existe déjà pour cette entité",
     "expected-a-number-got-type": "nombre attendu, reçu {{type}}",

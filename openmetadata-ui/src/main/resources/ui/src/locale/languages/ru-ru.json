@@ -2928,6 +2928,7 @@
     "error-while-fetching-access-token": "Ошибка при получении токена доступа.",
     "events-matching-search-query": "События, соответствующие поисковому запросу",
     "example-value": "например: {{value}}",
+    "exclude-system-entity-description": "При отключении стандартные шаблоны, определённые в схеме для {{entity}}, применяются автоматически.",
     "excludes-regex-line": "исключает += {{regex}}",
     "existing-contract-detected": "Для этой сущности уже существует контракт",
     "expected-a-number-got-type": "ожидалось число, получено {{type}}",

@@ -2928,6 +2928,7 @@
     "error-while-fetching-access-token": "خطأ أثناء جلب رمز الوصول المميز.",
     "events-matching-search-query": "الأحداث المطابقة لاستعلام البحث",
     "example-value": "مثال: {{value}}",
+    "exclude-system-entity-description": "عند التعطيل، يتم تطبيق الأنماط الافتراضية المحددة في المخطط لـ {{entity}} تلقائيًا.",
     "excludes-regex-line": "يستثني += {{regex}}",
     "existing-contract-detected": "يحتوي هذا الكيان بالفعل على عقد موجود.",
     "expected-a-number-got-type": "كان من المتوقع رقم، تم الحصول على {{type}}",

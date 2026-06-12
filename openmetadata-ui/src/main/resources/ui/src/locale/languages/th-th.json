@@ -2928,6 +2928,7 @@
     "error-while-fetching-access-token": "เกิดข้อผิดพลาดขณะดึงโทเค็นการเข้าถึง",
     "events-matching-search-query": "เหตุการณ์ที่ตรงกับคำค้นหา",
     "example-value": "เช่น {{value}}",
+    "exclude-system-entity-description": "เมื่อปิดใช้งาน รูปแบบเริ่มต้นที่กำหนดไว้ในสคีมาสำหรับ {{entity}} จะถูกนำไปใช้โดยอัตโนมัติ",
     "excludes-regex-line": "ไม่รวม += {{regex}}",
     "existing-contract-detected": "มีสัญญาอยู่แล้วสำหรับเอนทิตีนี้",
     "expected-a-number-got-type": "ต้องการตัวเลข แต่ได้รับ {{type}}",

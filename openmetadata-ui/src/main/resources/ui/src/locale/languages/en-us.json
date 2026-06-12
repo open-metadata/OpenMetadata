@@ -2928,6 +2928,7 @@
     "error-while-fetching-access-token": "Error while fetching access token.",
     "events-matching-search-query": "Events matching search query",
     "example-value": "e.g. {{value}}",
+    "exclude-system-entity-description": "When disabled, the default schema-defined patterns for {{entity}} are automatically applied.",
     "excludes-regex-line": "excludes += {{regex}}",
     "existing-contract-detected": "This entity already has an existing contract.",
     "expected-a-number-got-type": "expected a number, got {{type}}",

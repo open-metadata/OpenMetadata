@@ -2928,6 +2928,7 @@
     "error-while-fetching-access-token": "Fout bij het ophalen van toegangstoken.",
     "events-matching-search-query": "Gebeurtenissen die overeenkomen met de zoekopdracht",
     "example-value": "bijv. {{value}}",
+    "exclude-system-entity-description": "Wanneer uitgeschakeld, worden de standaard in het schema gedefinieerde patronen voor {{entity}} automatisch toegepast.",
     "excludes-regex-line": "sluit uit += {{regex}}",
     "existing-contract-detected": "Er bestaat al een contract voor deze entiteit",
     "expected-a-number-got-type": "getal verwacht, kreeg {{type}}",

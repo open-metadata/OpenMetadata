@@ -2928,6 +2928,7 @@
     "error-while-fetching-access-token": "액세스 토큰을 가져오는 중 오류가 발생했습니다.",
     "events-matching-search-query": "검색 쿼리와 일치하는 이벤트",
     "example-value": "예: {{value}}",
+    "exclude-system-entity-description": "비활성화되면 스키마에 정의된 {{entity}}의 기본 패턴이 자동으로 적용됩니다.",
     "excludes-regex-line": "제외 += {{regex}}",
     "existing-contract-detected": "이 엔티티에 대한 계약이 이미 존재합니다",
     "expected-a-number-got-type": "숫자가 필요하지만 {{type}}이(가) 제공되었습니다",

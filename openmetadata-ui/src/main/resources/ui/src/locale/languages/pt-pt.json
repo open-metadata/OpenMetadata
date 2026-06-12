@@ -2928,6 +2928,7 @@
     "error-while-fetching-access-token": "Erro ao buscar token de acesso.",
     "events-matching-search-query": "Eventos correspondentes à consulta de pesquisa",
     "example-value": "ex. {{value}}",
+    "exclude-system-entity-description": "Quando desativado, os padrões predefinidos definidos no esquema para {{entity}} são aplicados automaticamente.",
     "excludes-regex-line": "exclui += {{regex}}",
     "existing-contract-detected": "Já existe um contrato para esta entidade.",
     "expected-a-number-got-type": "esperado um número, obtido {{type}}",

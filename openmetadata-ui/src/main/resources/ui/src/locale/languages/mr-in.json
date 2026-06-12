@@ -2928,6 +2928,7 @@
     "error-while-fetching-access-token": "प्रवेश टोकन मिळवताना त्रुटी.",
     "events-matching-search-query": "शोध क्वेरीशी जुळणारे इव्हेंट",
     "example-value": "उदा. {{value}}",
+    "exclude-system-entity-description": "अक्षम केल्यावर, स्कीमामध्ये परिभाषित {{entity}} साठी डीफॉल्ट नमुने आपोआप लागू केले जातात.",
     "excludes-regex-line": "वगळतो += {{regex}}",
     "existing-contract-detected": "या घटकासाठी आधीपासून करार अस्तित्वात आहे",
     "expected-a-number-got-type": "संख्या अपेक्षित होती, मिळाले {{type}}",

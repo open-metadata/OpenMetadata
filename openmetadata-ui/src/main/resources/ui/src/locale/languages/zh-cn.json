@@ -2928,6 +2928,7 @@
     "error-while-fetching-access-token": "获取访问令牌时出现错误",
     "events-matching-search-query": "与搜索查询匹配的事件",
     "example-value": "例如 {{value}}",
+    "exclude-system-entity-description": "禁用时，架构中为{{entity}}定义的默认模式将自动应用。",
     "excludes-regex-line": "排除 += {{regex}}",
     "existing-contract-detected": "此实体已存在合同",
     "expected-a-number-got-type": "应为数字，但收到 {{type}}",

@@ -2928,6 +2928,7 @@
     "error-while-fetching-access-token": "خطا در دریافت توکن دسترسی.",
     "events-matching-search-query": "رویدادهای مطابق با عبارت جستجو",
     "example-value": "مثال: {{value}}",
+    "exclude-system-entity-description": "هنگامی که غیرفعال است، الگوهای پیش‌فرض تعریف‌شده در طرح‌واره برای {{entity}} به‌صورت خودکار اعمال می‌شوند.",
     "excludes-regex-line": "استثنا می‌کند += {{regex}}",
     "existing-contract-detected": "A contract already exists for this entity",
     "expected-a-number-got-type": "عدد انتظار می‌رفت، {{type}} دریافت شد",

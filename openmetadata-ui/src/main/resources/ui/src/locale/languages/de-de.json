@@ -2928,6 +2928,7 @@
     "error-while-fetching-access-token": "Fehler beim Abrufen des Zugriffstokens.",
     "events-matching-search-query": "Ereignisse, die der Suchanfrage entsprechen",
     "example-value": "z.B. {{value}}",
+    "exclude-system-entity-description": "Wenn deaktiviert, werden die standardmäßig im Schema definierten Muster für {{entity}} automatisch angewendet.",
     "excludes-regex-line": "schließt aus += {{regex}}",
     "existing-contract-detected": "Dieses Unternehmen verfügt bereits über einen bestehenden Vertrag.",
     "expected-a-number-got-type": "Zahl erwartet, erhalten: {{type}}",

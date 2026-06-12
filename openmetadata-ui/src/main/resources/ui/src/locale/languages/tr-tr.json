@@ -2928,6 +2928,7 @@
     "error-while-fetching-access-token": "Erişim anahtarı alınırken hata oluştu.",
     "events-matching-search-query": "Arama sorgusuyla eşleşen olaylar",
     "example-value": "örn. {{value}}",
+    "exclude-system-entity-description": "Devre dışı bırakıldığında, şemada tanımlanan {{entity}} için varsayılan desenler otomatik olarak uygulanır.",
     "excludes-regex-line": "hariç tutar += {{regex}}",
     "existing-contract-detected": "Bu varlık için zaten bir sözleşme mevcut",
     "expected-a-number-got-type": "sayı bekleniyordu, {{type}} alındı",

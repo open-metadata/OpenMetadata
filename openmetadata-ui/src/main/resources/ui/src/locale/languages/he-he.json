@@ -2928,6 +2928,7 @@
     "error-while-fetching-access-token": "שגיאה בעת קבלת טוקן גישה.",
     "events-matching-search-query": "אירועים התואמים לשאילתת החיפוש",
     "example-value": "לדוגמה {{value}}",
+    "exclude-system-entity-description": "כאשר מושבת, הדפוסים המוגדרים כברירת מחדל בסכמה עבור {{entity}} מוחלים אוטומטית.",
     "excludes-regex-line": "מוציא += {{regex}}",
     "existing-contract-detected": "כבר קיים חוזה עבור ישות זו",
     "expected-a-number-got-type": "צפוי מספר, התקבל {{type}}",

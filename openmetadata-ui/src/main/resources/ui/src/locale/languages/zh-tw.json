@@ -2928,6 +2928,7 @@
     "error-while-fetching-access-token": "擷取存取權杖時發生錯誤。",
     "events-matching-search-query": "符合搜尋查詢的事件",
     "example-value": "例如 {{value}}",
+    "exclude-system-entity-description": "停用時，架構中為{{entity}}定義的預設模式將自動套用。",
     "excludes-regex-line": "排除 += {{regex}}",
     "existing-contract-detected": "此實體已存在合約",
     "expected-a-number-got-type": "應為數字，但收到 {{type}}",

@@ -11,16 +11,12 @@
  *  limitations under the License.
  */
 import { Button } from '@openmetadata/ui-core-components';
-import {
-  CheckCircle,
-  ChevronDown,
-  ChevronRight,
-  Eye,
-  Plus,
-} from '@untitledui/icons';
+import { FieldProps } from '@rjsf/utils';
+import { ChevronDown, ChevronRight, Eye } from '@untitledui/icons';
 import classNames from 'classnames';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import BooleanFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
 import { ConditionChip, PreviewRuleChip } from './FilterConditionChip';
 import { ConditionComposer } from './FilterConditionComposer';
 import { OPERATOR_LABEL_KEYS } from './FiltersConfigForm.constants';
@@ -280,9 +276,9 @@ export function FilterSectionCard({
               <button
                 className={classNames(
                   'tw:flex tw:min-h-10 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-[7px] tw:border tw:px-3 tw:py-2 tw:text-center tw:text-sm tw:leading-5 tw:transition-colors',
-                  !filter.restrict
-                    ? 'tw:border-primary tw:bg-primary tw:font-medium tw:text-primary tw:shadow-xs'
-                    : 'tw:border-transparent tw:font-medium tw:text-tertiary'
+                  filter.restrict
+                    ? 'tw:border-transparent tw:font-medium tw:text-tertiary'
+                    : 'tw:border-primary tw:bg-primary tw:font-medium tw:text-primary tw:shadow-xs'
                 )}
                 data-testid={`${section.fieldName}-scan-all-button`}
                 type="button"
@@ -354,34 +350,31 @@ export function FilterSectionCard({
           )}
 
           <div className="tw:border-t tw:border-dashed tw:border-primary tw:pt-1">
-            <div className="tw:my-3.5 tw:mb-2 tw:flex tw:items-center tw:gap-2.5">
+            <div className="tw:my-3.5 tw:mb-2 tw:flex tw:flex-col tw:gap-2 tw:relative">
+              {hasSystemExcludes && (
+                <BooleanFieldTemplate
+                  {...({
+                    formData: !hasSystemExcludesEnabled,
+                    idSchema: {
+                      $id: `${section.fieldName}-exclude-system-filters`,
+                    },
+                    name: `${section.fieldName}-exclude-system-filters`,
+                    schema: {
+                      description: t(
+                        'message.exclude-system-entity-description',
+                        { entity: section.label.toLowerCase() }
+                      ),
+                      title: t('label.exclude-system-entity', {
+                        entity: section.label.toLowerCase(),
+                      }),
+                    },
+                    onChange: toggleSystemExcludes,
+                  } as unknown as FieldProps)}
+                />
+              )}
               <span className="tw:text-xs tw:font-medium tw:text-utility-error-700">
                 {t('label.always-exclude')}
               </span>
-              {hasSystemExcludes && (
-                <Button
-                  className={classNames(
-                    'tw:ml-auto',
-                    hasSystemExcludesEnabled &&
-                      'tw:border-utility-brand-200 tw:bg-utility-brand-50 tw:text-utility-brand-700'
-                  )}
-                  color="secondary"
-                  data-testid={`${section.fieldName}-exclude-system-filters`}
-                  iconLeading={
-                    hasSystemExcludesEnabled ? (
-                      <CheckCircle size={13} />
-                    ) : (
-                      <Plus size={13} />
-                    )
-                  }
-                  size="sm"
-                  type="button"
-                  onPress={toggleSystemExcludes}>
-                  {t('label.exclude-system-entity', {
-                    entity: section.label.toLowerCase(),
-                  })}
-                </Button>
-              )}
             </div>
 
             {filter.excludes.length > 0 && (
