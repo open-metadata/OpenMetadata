@@ -727,7 +727,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   @Override
   protected void entitySpecificCleanup(Pipeline pipeline) {
-    // When a pipeline is removed , the linege needs to be removed
+    // Delete pipeline execution history from time series
+    daoCollection
+        .entityExtensionTimeSeriesDao()
+        .delete(pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION);
+
+    // When a pipeline is removed, the lineage needs to be removed
     daoCollection
         .relationshipDAO()
         .deleteLineageBySourcePipeline(
