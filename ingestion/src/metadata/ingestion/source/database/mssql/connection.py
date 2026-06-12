@@ -21,7 +21,7 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
-    MssqlConnection,
+    MssqlConnection as MssqlConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
@@ -31,6 +31,7 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
     get_connection_url_common,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.azuresql.connection import (
@@ -44,44 +45,41 @@ from metadata.ingestion.source.database.mssql.queries import (
 from metadata.utils.constants import THREE_MIN
 
 
-def get_connection_url(connection: MssqlConnection) -> str:
+def get_connection_url(connection: MssqlConnectionConfig) -> str:
     if connection.scheme.value == connection.scheme.mssql_pyodbc.value:
         return get_pyodbc_connection_url(connection)
     return get_connection_url_common(connection)
 
 
-def get_connection(connection: MssqlConnection) -> Engine:
-    """
-    Create connection
-    """
-    return create_generic_db_connection(
-        connection=connection,
-        get_connection_url_fn=get_connection_url,
-        get_connection_args_fn=get_connection_args_common,
-    )
+class MssqlConnection(BaseConnection[MssqlConnectionConfig, Engine]):
+    def _get_client(self) -> Engine:
+        return create_generic_db_connection(
+            connection=self.service_connection,
+            get_connection_url_fn=get_connection_url,
+            get_connection_args_fn=get_connection_args_common,
+        )
 
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        """
+        Test connection. This can be executed either as part
+        of a metadata workflow or during an Automation Workflow
+        """
+        service_connection = self.service_connection
+        queries = {
+            "GetQueries": MSSQL_TEST_GET_QUERIES,
+            "GetDatabases": MSSQL_GET_DATABASE if service_connection.ingestAllDatabases else MSSQL_GET_CURRENT_DATABASE,
+        }
 
-def test_connection(
-    metadata: OpenMetadata,
-    engine: Engine,
-    service_connection: MssqlConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
-) -> TestConnectionResult:
-    """
-    Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
-    """
-    queries = {
-        "GetQueries": MSSQL_TEST_GET_QUERIES,
-        "GetDatabases": MSSQL_GET_DATABASE if service_connection.ingestAllDatabases else MSSQL_GET_CURRENT_DATABASE,
-    }
-
-    return test_connection_db_common(
-        metadata=metadata,
-        engine=engine,
-        service_connection=service_connection,
-        automation_workflow=automation_workflow,
-        queries=queries,
-        timeout_seconds=timeout_seconds,
-    )
+        return test_connection_db_common(
+            metadata=metadata,
+            engine=self.client,
+            service_connection=service_connection,
+            automation_workflow=automation_workflow,
+            queries=queries,
+            timeout_seconds=timeout_seconds,
+        )
