@@ -283,6 +283,7 @@ export type GetTableColumnsParams = {
   include?: Include;
   sortBy?: 'name' | 'ordinalPosition';
   sortOrder?: 'asc' | 'desc';
+  tag?: string; // Comma-separated tag FQNs for server-side filtering
 };
 
 export const getTableColumnsById = async (

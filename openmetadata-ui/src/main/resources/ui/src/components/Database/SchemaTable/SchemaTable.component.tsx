@@ -23,7 +23,7 @@ import {
 } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ColumnsType } from 'antd/lib/table';
-import { ExpandableConfig } from 'antd/lib/table/interface';
+import { ExpandableConfig, FilterValue } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { groupBy, isEmpty, isEqual, isUndefined, omit } from 'lodash';
@@ -92,7 +92,6 @@ import {
 } from '../../../utils/TablePureUtils';
 import {
   getAllTags,
-  searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import {
   getTableExpandableConfig,
@@ -154,6 +153,8 @@ const SchemaTable = () => {
   const [tableColumns, setTableColumns] = useState<Column[]>([]);
   const [columnsLoading, setColumnsLoading] = useState(true); // Start with loading state
   const [hasInitialLoad, setHasInitialLoad] = useState(false);
+  const [activeTagFilter, setActiveTagFilter] = useState<string[]>([]);
+  const [allColumnTags, setAllColumnTags] = useState<TagFilterOptions[]>([]);
   const [prevTableColumns, setPrevTableColumns] = useState<
     Column[] | undefined
   >();
@@ -239,6 +240,11 @@ const SchemaTable = () => {
         const sortByParam = columnSortBy ?? sortBy;
         const sortOrderParam = columnSortOrder ?? sortOrder;
 
+        const tagParam =
+          activeTagFilter.length > 0
+            ? activeTagFilter.join(',')
+            : undefined;
+
         const response = await searchTableColumnsByFQN(tableFqn, {
           q: searchQuery,
           limit: pageSize,
@@ -246,6 +252,7 @@ const SchemaTable = () => {
           fields: 'tags,customMetrics,extension',
           sortBy: sortByParam,
           sortOrder: sortOrderParam,
+          tag: tagParam,
         });
 
         setTableColumns(pruneEmptyChildren(response.data) || []);
@@ -261,7 +268,7 @@ const SchemaTable = () => {
         setColumnsLoading(false);
       }
     },
-    [tableFqn, pageSize, handlePagingChange, sortBy, sortOrder]
+    [tableFqn, pageSize, handlePagingChange, sortBy, sortOrder, activeTagFilter]
   );
 
   const fetchTableColumns = useCallback(
@@ -279,6 +286,10 @@ const SchemaTable = () => {
         const offset = (page - 1) * pageSize;
         const sortByParam = columnSortBy ?? sortBy;
         const sortOrderParam = columnSortOrder ?? sortOrder;
+        const tagParam =
+          activeTagFilter.length > 0
+            ? activeTagFilter.join(',')
+            : undefined;
 
         const response = await getTableColumnsByFQN(tableFqn, {
           limit: pageSize,
@@ -286,6 +297,7 @@ const SchemaTable = () => {
           fields: 'tags,customMetrics,extension',
           sortBy: sortByParam,
           sortOrder: sortOrderParam,
+          tag: tagParam,
         });
 
         setTableColumns(pruneEmptyChildren(response.data) || []);
@@ -301,7 +313,7 @@ const SchemaTable = () => {
         setColumnsLoading(false);
       }
     },
-    [tableFqn, pageSize, handlePagingChange, sortBy, sortOrder]
+    [tableFqn, pageSize, handlePagingChange, sortBy, sortOrder, activeTagFilter]
   );
 
   const handleColumnsPageChange = useCallback(
@@ -591,14 +603,53 @@ const SchemaTable = () => {
     }
   };
 
-  const tagFilter = useMemo(() => {
-    const tags = getAllTags(tableColumns);
+  // Fetch all column tags on mount for the filter dropdown
+  // This ensures the dropdown shows ALL tags across all pages
+  useEffect(() => {
+    const fetchAllColumnTags = async () => {
+      if (!tableFqn) {
+        return;
+      }
+      try {
+        const response = await getTableColumnsByFQN(tableFqn, {
+          limit: 1000,
+          fields: 'tags',
+        });
+        const tags = getAllTags(response.data || []);
+        setAllColumnTags(tags);
+      } catch {
+        setAllColumnTags([]);
+      }
+    };
+    fetchAllColumnTags();
+  }, [tableFqn]);
 
-    return groupBy(tags, (tag) => tag.source) as Record<
+  const tagFilter = useMemo(() => {
+    return groupBy(uniqBy(allColumnTags, 'value'), (tag) => tag.source) as Record<
       TagSource,
       TagFilterOptions[]
     >;
-  }, [tableColumns]);
+  }, [allColumnTags]);
+
+  const handleTableChange = useCallback(
+    (
+      _pagination: unknown,
+      filters: Record<string, FilterValue | null>
+    ) => {
+      const classificationTags =
+        (filters[TABLE_COLUMNS_KEYS.TAGS] as string[]) || [];
+      const glossaryTags =
+        (filters[TABLE_COLUMNS_KEYS.GLOSSARY] as string[]) || [];
+      const allTags = [...classificationTags, ...glossaryTags];
+
+      setActiveTagFilter(allTags);
+      handlePageChange(INITIAL_PAGING_VALUE, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
+    },
+    [handlePageChange]
+  );
 
   const handleColumnClick = useCallback(
     (column: Column, event: React.MouseEvent) => {
@@ -813,7 +864,10 @@ const SchemaTable = () => {
         ),
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: activeTagFilter.filter(
+          (tag) =>
+            tagFilter.Classification?.some((t) => t.value === tag)
+        ),
       },
       {
         title: t('label.glossary-term-plural'),
@@ -836,7 +890,9 @@ const SchemaTable = () => {
         ),
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: activeTagFilter.filter(
+          (tag) => tagFilter.Glossary?.some((t) => t.value === tag)
+        ),
       },
       {
         title: t('label.data-quality'),
@@ -988,6 +1044,7 @@ const SchemaTable = () => {
           searchProps={searchProps}
           size="middle"
           staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+          onChange={handleTableChange}
         />
       </Col>
       {editColumn && (
