@@ -524,6 +524,13 @@
           },
           "state": {
             "type": "keyword"
+          },
+          "appliedAt": {
+            "type": "date",
+            "format": "epoch_millis||strict_date_optional_time"
+          },
+          "appliedBy": {
+            "type": "keyword"
           }
         }
       },
