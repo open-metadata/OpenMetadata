@@ -227,8 +227,10 @@ describe('MyDataPage component', () => {
 
     expect(screen.getByText('MyDataPageSkeleton')).toBeInTheDocument();
     expect(screen.queryByTestId('react-grid-layout')).toBeNull();
-
     expect(screen.queryByText('WelcomeScreen')).toBeNull();
+    expect(
+      screen.getByTestId('customise-landing-page-header')
+    ).toBeInTheDocument();
   });
 
   it('MyDataPage should render CustomiseLandingPageHeader component', async () => {

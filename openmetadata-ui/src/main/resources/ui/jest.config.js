@@ -77,6 +77,8 @@ module.exports = {
       '<rootDir>/src/test/unit/mocks/elkLayout.mock.js',
     '^codemirror(/.*)?$': '<rootDir>/src/test/unit/mocks/file.mock.js',
     '^react-codemirror2$': '<rootDir>/src/test/unit/mocks/file.mock.js',
+    '^.*/AppRouter/withSuspenseFallback$':
+      '<rootDir>/src/test/unit/mocks/withSuspenseFallback.mock.tsx',
     // Force every `require('react')` / `require('react-dom')` to resolve to the consumer's
     // copy. The `openmetadata-ui-core-components` package has its own `node_modules/react`
     // (for its own dev/test) — without these mappings the CJS bundle loaded from
