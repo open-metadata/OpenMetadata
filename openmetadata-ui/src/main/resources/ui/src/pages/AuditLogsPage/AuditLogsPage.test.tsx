@@ -29,6 +29,15 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children, 'data-testid': testId }) => (
       <span data-testid={testId}>{children}</span>
     )),
+  Breadcrumbs: jest
+    .fn()
+    .mockImplementation(({ items }) => (
+      <nav data-testid="breadcrumbs">
+        {items?.map((item: { id: string; label?: string }) => (
+          <span key={item.id}>{item.label}</span>
+        ))}
+      </nav>
+    )),
   Button: jest
     .fn()
     .mockImplementation(
