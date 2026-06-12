@@ -623,10 +623,17 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                 raise ValueError("No Database found in the context. We cannot run the table deletion.")
             if self.source_config.markDeletedTables:
                 logger.info(f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]")  # pyright: ignore[reportAttributeAccessIssue]
+                # Drain the global list so it stays bounded to one catalog's
+                # deletions instead of growing across the whole run.
+                with self._state_lock:
+                    deleted_tables = list(
+                        self.context.get_global().deleted_tables  # pyright: ignore[reportAttributeAccessIssue]
+                    )
+                    self.context.get_global().deleted_tables.clear()  # pyright: ignore[reportAttributeAccessIssue]
                 yield from delete_entity_by_name(
                     self.metadata,
                     entity_type=Table,
-                    entity_names=self.context.get_global().deleted_tables,  # pyright: ignore[reportAttributeAccessIssue]
+                    entity_names=deleted_tables,
                     recursive=self.source_config.markDeletedTables,
                 )
         else:
