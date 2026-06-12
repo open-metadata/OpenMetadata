@@ -182,36 +182,31 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
       data-testid="document-preview-panel"
       direction="col">
       <Box
-        align="center"
-        className="tw:px-4 tw:pt-3 tw:shrink-0"
-        gap={2}
-        justify="end">
-        <CopyLinkButton className="tw:w-7 tw:h-7" url={url}>
-          <Copy06 aria-hidden="true" size={17} strokeWidth={1.8} />
-        </CopyLinkButton>
-        <ButtonUtility
-          color="tertiary"
-          data-testid="close-preview-btn"
-          icon={XClose}
-          size="xs"
-          tooltip={t('label.close')}
-          onClick={onClose}
-        />
-      </Box>
-
-      <Box
         className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto tw:p-4 tw:bg-gray-50"
         direction="col"
         gap={4}>
         <Card className="tw:p-4 tw:shrink-0">
-          <div className="tw:mb-3">
+          <Box align="center" className="tw:mb-3" justify="between">
             <Typography
               className="tw:text-gray-500 tw:uppercase"
               size="text-xs"
               weight="semibold">
               {t('label.status')}
             </Typography>
-          </div>
+            <Box align="center" gap={2}>
+              <CopyLinkButton className="tw:w-7 tw:h-7" url={url}>
+                <Copy06 aria-hidden="true" size={17} strokeWidth={1.8} />
+              </CopyLinkButton>
+              <ButtonUtility
+                color="tertiary"
+                data-testid="close-preview-btn"
+                icon={XClose}
+                size="xs"
+                tooltip={t('label.close')}
+                onClick={onClose}
+              />
+            </Box>
+          </Box>
           <Box align="center" className="tw:py-1.5" justify="between">
             <Typography className="tw:text-gray-500" size="text-sm">
               {t('label.status')}
