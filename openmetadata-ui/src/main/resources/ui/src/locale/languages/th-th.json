@@ -2904,6 +2904,7 @@
     "exporting": "กำลังส่งออก...",
     "external-destination-selection": "สามารถทดสอบได้เฉพาะปลายทางภายนอกเท่านั้น",
     "external-test-cannot-be-toggled": "คำจำกัดความการทดสอบภายนอกได้รับการจัดการนอก {{brandName}} และไม่สามารถเปิดหรือปิดใช้งานที่นี่ได้ การทดสอบเหล่านี้ดำเนินการโดยแพลตฟอร์มที่เกี่ยวข้อง (เช่น dbt, Great Expectations)",
+    "extracted-from-chunk-count": "Extracted from {{processed}} of {{total}} document sections",
     "failed-events-description": "จำนวนเหตุการณ์ที่ล้มเหลวสำหรับการแจ้งเตือนเฉพาะ",
     "failed-status-for-entity-deploy": "<0>{{entity}}</0>  มีสถานะ {{entityStatus}} แต่ล้มเหลวในการเรียกใช้งาน",
     "failed-to-load-article": "ไม่สามารถโหลดบทความได้",

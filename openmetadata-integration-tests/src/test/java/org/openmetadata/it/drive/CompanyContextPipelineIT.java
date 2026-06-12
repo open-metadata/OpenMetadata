@@ -122,7 +122,18 @@ class CompanyContextPipelineIT {
 
     if (stubLlm) {
       assertStubPillsPresent(pills);
+      assertExtractionStats(file.getId(), memoryCount);
     }
+  }
+
+  private void assertExtractionStats(UUID fileId, int expectedPills) throws Exception {
+    ContextFile processed = fetchFile(fileId);
+    assertNotNull(processed.getExtractionStats(), "extraction stats must be recorded");
+    assertEquals(expectedPills, processed.getExtractionStats().getPillsCreated());
+    assertEquals(
+        processed.getExtractionStats().getChunksTotal(),
+        processed.getExtractionStats().getChunksProcessed(),
+        "stub extraction should cover every chunk");
   }
 
   /**
@@ -198,19 +209,18 @@ class CompanyContextPipelineIT {
         .getById("v1/contextCenter/drive/files", fileId, "memoryCount", ContextFile.class);
   }
 
+  /** Lists pills through the server-side {@code sourceFileId} filter the file panel UI uses. */
   private List<ContextMemory> pillsForFile(UUID fileId) throws Exception {
     List<ContextMemory> pills = new ArrayList<>();
     try (Response response =
-        RestClient.admin().rawGet("v1/contextCenter/memories?fields=sourceFile&limit=1000")) {
+        RestClient.admin()
+            .rawGet(
+                "v1/contextCenter/memories?fields=sourceFile&limit=1000&sourceFileId=" + fileId)) {
       JsonNode data =
           JsonUtils.getObjectMapper().readTree(response.readEntity(String.class)).get("data");
       if (data != null) {
         for (JsonNode node : data) {
-          ContextMemory memory =
-              JsonUtils.getObjectMapper().convertValue(node, ContextMemory.class);
-          if (memory.getSourceFile() != null && fileId.equals(memory.getSourceFile().getId())) {
-            pills.add(memory);
-          }
+          pills.add(JsonUtils.getObjectMapper().convertValue(node, ContextMemory.class));
         }
       }
     }

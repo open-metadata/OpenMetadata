@@ -19,6 +19,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.llm.KnowledgePill;
 import org.openmetadata.service.llm.LLMCompletionClient;
+import org.openmetadata.service.llm.LLMCompletionException;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -47,28 +48,45 @@ public class ContextMemoryExtractor {
     this.llmClient = llmClient;
   }
 
+  /** Result of an LLM derive pass, carrying chunk-level stats for the file's extractionStats. */
+  public record DeriveResult(List<ContextMemory> memories, int chunksTotal, int chunksProcessed) {}
+
   public int extract(ContextFile file) {
-    return persist(file, derive(file, file.getExtractedText()));
+    return persist(file, derive(file, file.getExtractedText()).memories());
   }
 
   /**
    * Derives memories from {@code text} (typically the content snapshot's canonical extracted text,
    * which is longer than the file's indexed text) without persisting anything. Long documents are
    * processed in paragraph-aligned chunks, one LLM call per chunk, with pills deduplicated across
-   * chunks. Kept side-effect free so callers can replace the file's previous pills only after the
-   * LLM pass succeeded.
+   * chunks. Chunk failures are tolerated as long as at least one chunk succeeds — the stats in the
+   * result expose partial coverage; if every chunk fails the run fails. Kept side-effect free so
+   * callers can replace the file's previous pills only after the LLM pass succeeded.
    */
-  public List<ContextMemory> derive(ContextFile file, String text) {
+  public DeriveResult derive(ContextFile file, String text) {
+    ChunkPlan plan = chunkText(text, file);
     List<KnowledgePill> collected = new ArrayList<>();
-    for (String chunk : chunkText(text, file)) {
-      collected.addAll(callLlm(chunk));
+    int processed = 0;
+    RuntimeException firstFailure = null;
+    for (String chunk : plan.chunks()) {
+      try {
+        collected.addAll(callLlm(chunk));
+        processed++;
+      } catch (RuntimeException e) {
+        LOG.warn("Knowledge pill extraction failed for a chunk of file {}", file.getId(), e);
+        firstFailure = firstFailure == null ? e : firstFailure;
+      }
+    }
+    if (processed == 0 && firstFailure != null) {
+      throw new LLMCompletionException(
+          "All " + plan.chunks().size() + " chunks failed knowledge pill extraction", firstFailure);
     }
     List<ContextMemory> memories = new ArrayList<>();
     EntityReference fileRef = file.getEntityReference();
     for (KnowledgePill pill : dedupe(collected)) {
       memories.add(toMemory(pill, fileRef));
     }
-    return memories;
+    return new DeriveResult(memories, plan.totalChunks(), processed);
   }
 
   public int persist(ContextFile file, List<ContextMemory> memories) {
@@ -79,8 +97,12 @@ public class ContextMemoryExtractor {
     return memories.size();
   }
 
-  private List<String> chunkText(String text, ContextFile file) {
+  /** The chunks submitted to the LLM plus the count the document would need without the cap. */
+  private record ChunkPlan(List<String> chunks, int totalChunks) {}
+
+  private ChunkPlan chunkText(String text, ContextFile file) {
     List<String> chunks = new ArrayList<>();
+    int skippedChunks = 0;
     if (text != null && !text.isBlank()) {
       int position = 0;
       while (position < text.length() && chunks.size() < MAX_CHUNKS) {
@@ -89,15 +111,17 @@ public class ContextMemoryExtractor {
         position = end;
       }
       if (position < text.length()) {
+        int remaining = text.length() - position;
+        skippedChunks = (remaining + MAX_PROMPT_CHARS - 1) / MAX_PROMPT_CHARS;
         LOG.warn(
             "File {} text exceeds {} chunks of {} chars; skipping the remaining {} chars",
             file.getId(),
             MAX_CHUNKS,
             MAX_PROMPT_CHARS,
-            text.length() - position);
+            remaining);
       }
     }
-    return chunks;
+    return new ChunkPlan(chunks, chunks.size() + skippedChunks);
   }
 
   /** Ends the chunk at the last paragraph (or line, or word) boundary inside the size budget. */

@@ -2904,6 +2904,7 @@
     "exporting": "Exporting...",
     "external-destination-selection": "Only external destinations can be tested.",
     "external-test-cannot-be-toggled": "External test definitions are managed outside {{brandName}} and cannot be enabled or disabled here. These tests are executed by their respective platforms (e.g., dbt, Great Expectations).",
+    "extracted-from-chunk-count": "Extracted from {{processed}} of {{total}} document sections",
     "failed-events-description": "Count of failed events for specific alert.",
     "failed-status-for-entity-deploy": "<0>{{entity}}</0>  has been {{entityStatus}}, but failed to deploy",
     "failed-to-load-article": "Failed to Load Article",

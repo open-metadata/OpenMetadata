@@ -21,6 +21,16 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       <span data-color={color}>{children}</span>
     )
   ),
+  Tooltip: jest.fn(
+    ({ children, title }: { children: React.ReactNode; title: string }) => (
+      <span data-testid="tooltip" data-tooltip-title={title}>
+        {children}
+      </span>
+    )
+  ),
+  TooltipTrigger: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <span>{children}</span>
+  )),
 }));
 
 jest.mock('react-i18next', () => ({
@@ -40,6 +50,48 @@ describe('DocumentStatusBadge', () => {
     );
 
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it('shows the processing error as a tooltip on a Failed badge', () => {
+    render(
+      <DocumentStatusBadge
+        error="provider exploded"
+        status={ProcessingStatus.Failed}
+      />
+    );
+
+    expect(screen.getByTestId('tooltip')).toHaveAttribute(
+      'data-tooltip-title',
+      'provider exploded'
+    );
+  });
+
+  it('shows partial chunk coverage as a tooltip on a Processed badge', () => {
+    render(
+      <DocumentStatusBadge
+        stats={{ chunksProcessed: 8, chunksTotal: 12 }}
+        status={ProcessingStatus.Processed}
+      />
+    );
+
+    expect(screen.getByTestId('tooltip')).toHaveAttribute(
+      'data-tooltip-title',
+      'message.extracted-from-chunk-count'
+    );
+  });
+
+  it('renders no tooltip when extraction covered every chunk', () => {
+    render(
+      <DocumentStatusBadge
+        stats={{ chunksProcessed: 12, chunksTotal: 12 }}
+        status={ProcessingStatus.Processed}
+      />
+    );
+
+    expect(screen.queryByTestId('tooltip')).not.toBeInTheDocument();
+    expect(screen.getByTestId('document-status-badge')).toHaveTextContent(
+      'label.processed'
+    );
   });
 
   it.each([

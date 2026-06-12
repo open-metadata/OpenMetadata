@@ -2904,6 +2904,7 @@
     "exporting": "正在导出...",
     "external-destination-selection": "只能测试外部目标。",
     "external-test-cannot-be-toggled": "外部测试定义在{{brandName}}外部管理，无法在此处启用或禁用。这些测试由各自的平台执行（例如 dbt、Great Expectations）。",
+    "extracted-from-chunk-count": "Extracted from {{processed}} of {{total}} document sections",
     "failed-events-description": "特定告警的失败事件计数。",
     "failed-status-for-entity-deploy": "<0>{{entity}}</0>已{{entityStatus}}, 但无法部署",
     "failed-to-load-article": "文章加载失败",

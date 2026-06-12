@@ -2904,6 +2904,7 @@
     "exporting": "エクスポート中...",
     "external-destination-selection": "外部の宛先のみテストできます。",
     "external-test-cannot-be-toggled": "外部テスト定義は{{brandName}}外で管理されており、ここで有効化・無効化することはできません。これらのテストはそれぞれのプラットフォーム (dbt、Great Expectationsなど)によって実行されます。",
+    "extracted-from-chunk-count": "Extracted from {{processed}} of {{total}} document sections",
     "failed-events-description": "特定アラートに対して失敗したイベントの件数",
     "failed-status-for-entity-deploy": "<0>{{entity}}</0> は {{entityStatus}} されましたが、デプロイに失敗しました",
     "failed-to-load-article": "記事の読み込みに失敗しました",

@@ -392,7 +392,11 @@ const FileRow: FC<FileRowProps> = ({
             weight="medium">
             {fileName}
           </Typography>
-          <DocumentStatusBadge status={file.processingStatus} />
+          <DocumentStatusBadge
+            error={file.processingError}
+            stats={file.extractionStats}
+            status={file.processingStatus}
+          />
         </Box>
         <Box align="center" gap={2}>
           <Typography
@@ -401,6 +405,17 @@ const FileRow: FC<FileRowProps> = ({
             size="text-xs">
             {formattedFileSize}
           </Typography>
+          {Boolean(file.memoryCount) && (
+            <>
+              <Dot className="tw:text-gray-500" size="micro" />
+              <Typography
+                className="tw:text-gray-500"
+                data-testid="document-memory-count"
+                size="text-xs">
+                {file.memoryCount} {t('label.memory-plural').toLowerCase()}
+              </Typography>
+            </>
+          )}
           {file.updatedBy && (
             <>
               <Dot className="tw:text-gray-500" size="micro" />

@@ -2904,6 +2904,7 @@
     "exporting": "Экспорт...",
     "external-destination-selection": "Можно тестировать только внешние назначения.",
     "external-test-cannot-be-toggled": "Внешние определения тестов управляются вне {{brandName}} и не могут быть включены или выключены здесь. Эти тесты выполняются соответствующими платформами (например, dbt, Great Expectations).",
+    "extracted-from-chunk-count": "Extracted from {{processed}} of {{total}} document sections",
     "failed-events-description": "Количество неудачных событий для конкретного оповещения.",
     "failed-status-for-entity-deploy": "Объект «<0>{{entity}}</0>» был {{entityStatus}}, но не удалось развернуть",
     "failed-to-load-article": "Не удалось загрузить статью",

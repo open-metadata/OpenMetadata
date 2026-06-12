@@ -2904,6 +2904,7 @@
     "exporting": "एक्सपोर्ट करत आहे...",
     "external-destination-selection": "फक्त बाह्य गंतव्ये चाचणी केली जाऊ शकतात.",
     "external-test-cannot-be-toggled": "बाह्य चाचणी व्याख्या {{brandName}} च्या बाहेर व्यवस्थापित केल्या जातात आणि येथे सक्षम किंवा अक्षम केल्या जाऊ शकत नाहीत. या चाचण्या त्यांच्या संबंधित प्लॅटफॉर्मद्वारे (उदा., dbt, Great Expectations) कार्यान्वित केल्या जातात.",
+    "extracted-from-chunk-count": "Extracted from {{processed}} of {{total}} document sections",
     "failed-events-description": "विशिष्ट सूचनेसाठी अयशस्वी घटनांची संख्या.",
     "failed-status-for-entity-deploy": "<0>{{entity}}</0>  {{entityStatus}} केले गेले आहे, परंतु उपयोजन अयशस्वी झाले",
     "failed-to-load-article": "लेख लोड करण्यात अयशस्वी",

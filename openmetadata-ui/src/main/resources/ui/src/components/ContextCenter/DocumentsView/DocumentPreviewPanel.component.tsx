@@ -16,15 +16,19 @@ import {
   ButtonUtility,
   Card,
   FileIcon,
+  Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Copy06, XClose } from '@untitledui/icons';
-import { FC, useMemo } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ContextMemory } from '../../../generated/entity/context/contextMemory';
+import { getListContextMemories } from '../../../rest/contextMemoryAPI';
 import { formatBytes } from '../../../utils/ContextCenterUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
+import DocumentStatusBadge from '../DocumentStatusBadge/DocumentStatusBadge.component';
 import {
   DocumentPreviewPanelProps,
   MetaRowProps,
@@ -40,6 +44,93 @@ const MetaRow: FC<MetaRowProps> = ({ label, value }) => (
     </Typography>
   </Box>
 );
+
+const ExtractedMemoriesCard: FC<{ fileId: string }> = ({ fileId }) => {
+  const { t } = useTranslation();
+  const [memories, setMemories] = useState<ContextMemory[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isStale = false;
+
+    const fetchMemories = async () => {
+      try {
+        setIsLoading(true);
+        const response = await getListContextMemories({
+          sourceFileId: fileId,
+          limit: 50,
+        });
+        if (!isStale) {
+          setMemories(response.data);
+        }
+      } catch {
+        if (!isStale) {
+          setMemories([]);
+        }
+      } finally {
+        if (!isStale) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchMemories();
+
+    return () => {
+      isStale = true;
+    };
+  }, [fileId]);
+
+  return (
+    <Card className="tw:p-4" data-testid="extracted-memories-card">
+      <div className="tw:mb-3">
+        <Typography
+          className="tw:text-gray-500 tw:uppercase"
+          size="text-xs"
+          weight="semibold">
+          {t('label.memory-plural')}
+          {!isLoading && memories.length > 0 ? ` (${memories.length})` : ''}
+        </Typography>
+      </div>
+      {isLoading ? (
+        <Box direction="col" gap={2}>
+          <Skeleton height="14px" variant="rounded" width="80%" />
+          <Skeleton height="14px" variant="rounded" width="60%" />
+        </Box>
+      ) : memories.length === 0 ? (
+        <Typography className="tw:text-gray-400" size="text-sm">
+          {t('label.no-entity', { entity: t('label.memory-plural') })}
+        </Typography>
+      ) : (
+        <Box direction="col">
+          {memories.map((memory) => (
+            <Box
+              className="tw:py-1.5"
+              data-testid={`extracted-memory-${memory.id}`}
+              direction="col"
+              key={memory.id}>
+              <Typography
+                ellipsis
+                className="tw:text-gray-900"
+                size="text-sm"
+                weight="medium">
+                {memory.title ?? getEntityName(memory)}
+              </Typography>
+              {memory.question && (
+                <Typography
+                  ellipsis
+                  className="tw:text-gray-500"
+                  size="text-xs">
+                  {memory.question}
+                </Typography>
+              )}
+            </Box>
+          ))}
+        </Box>
+      )}
+    </Card>
+  );
+};
 
 const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
   file,
@@ -116,6 +207,16 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
               {t('label.status')}
             </Typography>
           </div>
+          <Box align="center" className="tw:py-1.5" justify="between">
+            <Typography className="tw:text-gray-500" size="text-sm">
+              {t('label.status')}
+            </Typography>
+            <DocumentStatusBadge
+              error={file.processingError}
+              stats={file.extractionStats}
+              status={file.processingStatus}
+            />
+          </Box>
           {folderName && (
             <MetaRow label={t('label.folder')} value={folderName} />
           )}
@@ -129,7 +230,22 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
               value={getShortRelativeTime(file.updatedAt)}
             />
           )}
+          {file.processingError && (
+            <Box className="tw:py-1.5" direction="col" gap={1}>
+              <Typography className="tw:text-gray-500" size="text-sm">
+                {t('label.error')}
+              </Typography>
+              <Typography
+                className="tw:text-error-600 tw:break-words"
+                data-testid="processing-error"
+                size="text-sm">
+                {file.processingError}
+              </Typography>
+            </Box>
+          )}
         </Card>
+
+        <ExtractedMemoriesCard fileId={file.id} />
       </Box>
     </Box>
   );

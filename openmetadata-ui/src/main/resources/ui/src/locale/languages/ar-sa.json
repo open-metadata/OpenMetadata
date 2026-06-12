@@ -2904,6 +2904,7 @@
     "exporting": "جاري التصدير...",
     "external-destination-selection": "يمكن اختبار الوجهات الخارجية فقط.",
     "external-test-cannot-be-toggled": "تتم إدارة تعريفات الاختبار الخارجية خارج {{brandName}} ولا يمكن تمكينها أو تعطيلها هنا. يتم تنفيذ هذه الاختبارات بواسطة منصاتها المعنية (على سبيل المثال، dbt، Great Expectations).",
+    "extracted-from-chunk-count": "Extracted from {{processed}} of {{total}} document sections",
     "failed-events-description": "عدد الأحداث الفاشلة لتنبيه محدد.",
     "failed-status-for-entity-deploy": "تم {{entityStatus}} لـ <0>{{entity}}</0>، ولكنه فشل في النشر",
     "failed-to-load-article": "فشل تحميل المقال",

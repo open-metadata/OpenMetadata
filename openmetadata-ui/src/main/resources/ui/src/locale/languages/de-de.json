@@ -2904,6 +2904,7 @@
     "exporting": "Exportieren...",
     "external-destination-selection": "Es können nur externe Ziele getestet werden.",
     "external-test-cannot-be-toggled": "Externe Testdefinitionen werden außerhalb von {{brandName}} verwaltet und können hier nicht aktiviert oder deaktiviert werden. Diese Tests werden von ihren jeweiligen Plattformen ausgeführt (z. B. dbt, Great Expectations).",
+    "extracted-from-chunk-count": "Extracted from {{processed}} of {{total}} document sections",
     "failed-events-description": "Anzahl fehlgeschlagener Ereignisse für einen bestimmten Alert.",
     "failed-status-for-entity-deploy": "<0>{{entity}}</0> wurde {{entityStatus}}, aber das Bereitstellen ist fehlgeschlagen.",
     "failed-to-load-article": "Artikel konnte nicht geladen werden",

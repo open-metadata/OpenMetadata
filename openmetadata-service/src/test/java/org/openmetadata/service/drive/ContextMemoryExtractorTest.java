@@ -1,6 +1,7 @@
 package org.openmetadata.service.drive;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -23,6 +24,7 @@ import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.llm.KnowledgePill;
 import org.openmetadata.service.llm.LLMCompletionClient;
+import org.openmetadata.service.llm.LLMCompletionException;
 
 @ExtendWith(MockitoExtension.class)
 class ContextMemoryExtractorTest {
@@ -75,10 +77,12 @@ class ContextMemoryExtractorTest {
     when(llmClient.completeStructured(any(), any(), eq(KnowledgePill.class)))
         .thenReturn(List.of(new KnowledgePill("T", "Q", "A", "S", "Faq")));
 
-    List<ContextMemory> memories =
+    ContextMemoryExtractor.DeriveResult result =
         new ContextMemoryExtractor(memoryRepository, llmClient).derive(file, "text");
 
-    assertEquals(1, memories.size());
+    assertEquals(1, result.memories().size());
+    assertEquals(1, result.chunksTotal());
+    assertEquals(1, result.chunksProcessed());
     verify(memoryRepository, never()).create(any(), any());
   }
 
@@ -91,11 +95,41 @@ class ContextMemoryExtractorTest {
         .thenReturn(List.of(new KnowledgePill("T", "Q", "A", "S", "Faq")));
 
     List<ContextMemory> memories =
-        new ContextMemoryExtractor(memoryRepository, llmClient).derive(file, "text");
+        new ContextMemoryExtractor(memoryRepository, llmClient).derive(file, "text").memories();
 
     String name = memories.getFirst().getName();
     assertTrue(name.length() <= 256, "memory name must fit the entityName limit");
     assertTrue(name.startsWith("f".repeat(ContextMemoryExtractor.MAX_NAME_BASE_LENGTH) + "-"));
+  }
+
+  @Test
+  void partialChunkFailureStillYieldsPillsAndStats() {
+    String paragraph = "Lorem ipsum dolor sit amet consectetur adipiscing elit. ".repeat(200);
+    String text = (paragraph + "\n\n").repeat(12); // > 60k chars => several chunks
+    ContextFile file =
+        new ContextFile().withId(UUID.randomUUID()).withName("report").withExtractedText(text);
+    when(llmClient.completeStructured(any(), any(), eq(KnowledgePill.class)))
+        .thenThrow(new LLMCompletionException("provider exploded"))
+        .thenReturn(List.of(new KnowledgePill("T", "Q", "A", "S", "Faq")));
+
+    ContextMemoryExtractor.DeriveResult result =
+        new ContextMemoryExtractor(memoryRepository, llmClient).derive(file, text);
+
+    assertEquals(1, result.memories().size(), "pills from surviving chunks must be kept");
+    assertTrue(result.chunksTotal() >= 2);
+    assertEquals(result.chunksTotal() - 1, result.chunksProcessed());
+  }
+
+  @Test
+  void allChunksFailingThrows() {
+    ContextFile file =
+        new ContextFile().withId(UUID.randomUUID()).withName("report").withExtractedText("text");
+    when(llmClient.completeStructured(any(), any(), eq(KnowledgePill.class)))
+        .thenThrow(new LLMCompletionException("provider exploded"));
+
+    ContextMemoryExtractor extractor = new ContextMemoryExtractor(memoryRepository, llmClient);
+
+    assertThrows(LLMCompletionException.class, () -> extractor.derive(file, "text"));
   }
 
   @Test

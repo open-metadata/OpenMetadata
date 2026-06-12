@@ -2904,6 +2904,7 @@
     "exporting": "Exporteren...",
     "external-destination-selection": "Alleen externe bestemmingen kunnen worden getest.",
     "external-test-cannot-be-toggled": "Externe testdefinities worden buiten {{brandName}} beheerd en kunnen hier niet worden in- of uitgeschakeld. Deze tests worden uitgevoerd door hun respectievelijke platforms (bijv. dbt, Great Expectations).",
+    "extracted-from-chunk-count": "Extracted from {{processed}} of {{total}} document sections",
     "failed-events-description": "Aantal mislukte gebeurtenissen voor specifieke alert.",
     "failed-status-for-entity-deploy": "<0>{{entity}}</0> is {{entityStatus}}, maar het deployen is mislukt",
     "failed-to-load-article": "Kan artikel niet laden",

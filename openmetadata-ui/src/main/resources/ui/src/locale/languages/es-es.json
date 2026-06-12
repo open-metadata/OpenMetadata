@@ -2904,6 +2904,7 @@
     "exporting": "Exportando...",
     "external-destination-selection": "Sólo se puede comprobar los destinos externos.",
     "external-test-cannot-be-toggled": "Las definiciones de prueba externas se gestionan fuera de {{brandName}} y no se pueden habilitar o deshabilitar aquí. Estas pruebas son ejecutadas por sus respectivas plataformas (por ejemplo, dbt, Great Expectations).",
+    "extracted-from-chunk-count": "Extracted from {{processed}} of {{total}} document sections",
     "failed-events-description": "Conteo de los eventos fallidos para alertas específicas.",
     "failed-status-for-entity-deploy": "<0>{{entity}}</0> se {{entityStatus}}, pero no se pudo implementar",
     "failed-to-load-article": "No se pudo cargar el artículo",

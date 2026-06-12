@@ -2904,6 +2904,7 @@
     "exporting": "در حال صدور...",
     "external-destination-selection": "فقط مقاصد خارجی قابل آزمایش هستند.",
     "external-test-cannot-be-toggled": "تعاریف تست خارجی خارج از {{brandName}} مدیریت می‌شوند و در اینجا نمی‌توان آنها را فعال یا غیرفعال کرد. این تست‌ها توسط پلتفرم‌های مربوطه (مثلاً dbt، Great Expectations) اجرا می‌شوند.",
+    "extracted-from-chunk-count": "Extracted from {{processed}} of {{total}} document sections",
     "failed-events-description": "تعداد رویدادهای ناموفق برای هشدار خاص.",
     "failed-status-for-entity-deploy": "<0>{{entity}}</0>  با موفقیت {{entityStatus}} شد، اما پیاده‌سازی ناموفق بود.",
     "failed-to-load-article": "بارگذاری مقاله ناموفق بود",

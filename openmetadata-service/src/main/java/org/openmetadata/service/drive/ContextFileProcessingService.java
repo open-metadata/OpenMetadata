@@ -16,9 +16,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.attachments.Asset;
-import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
+import org.openmetadata.schema.entity.data.ExtractionStats;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -194,6 +194,7 @@ public class ContextFileProcessingService {
           }
           ContextFile updated = JsonUtils.deepCopy(current, ContextFile.class);
           updated.setProcessingStatus(ProcessingStatus.Analyzing);
+          updated.setProcessingError(null);
           return updated;
         });
     updateContent(
@@ -258,10 +259,11 @@ public class ContextFileProcessingService {
       // successful pass replaces them. Hard-delete: stale machine-generated pills are
       // replaced wholesale on every re-extraction, so soft-deleted rows would only
       // accumulate with no restore path.
-      List<ContextMemory> memories = extractor.derive(file, canonicalText(contentId, file));
+      ContextMemoryExtractor.DeriveResult derived =
+          extractor.derive(file, canonicalText(contentId, file));
       repository.deleteExtractedMemories(file, true);
-      extractor.persist(file, memories);
-      setFileStatus(fileId, contentId, ProcessingStatus.Processed);
+      int pillsCreated = extractor.persist(file, derived.memories());
+      finishExtraction(fileId, contentId, derived, pillsCreated);
     } catch (Exception e) {
       LOG.error("Knowledge pill extraction failed for file {}", fileId, e);
       applyFailure(fileId, contentId, describeFailure(e), false);
@@ -306,6 +308,7 @@ public class ContextFileProcessingService {
           }
           ContextFile updated = JsonUtils.deepCopy(current, ContextFile.class);
           updated.setProcessingStatus(fileStatus);
+          updated.setProcessingError(result.processingError());
           updated.setExtractedText(result.indexedText());
           updated.setPageCount(result.pageCount());
           return updated;
@@ -320,7 +323,8 @@ public class ContextFileProcessingService {
     return result;
   }
 
-  private void setFileStatus(UUID fileId, UUID contentId, ProcessingStatus status) {
+  private void finishExtraction(
+      UUID fileId, UUID contentId, ContextMemoryExtractor.DeriveResult derived, int pillsCreated) {
     updateFile(
         fileId,
         current -> {
@@ -328,7 +332,14 @@ public class ContextFileProcessingService {
             return null;
           }
           ContextFile updated = JsonUtils.deepCopy(current, ContextFile.class);
-          updated.setProcessingStatus(status);
+          updated.setProcessingStatus(ProcessingStatus.Processed);
+          updated.setProcessingError(null);
+          updated.setExtractionStats(
+              new ExtractionStats()
+                  .withChunksTotal(derived.chunksTotal())
+                  .withChunksProcessed(derived.chunksProcessed())
+                  .withPillsCreated(pillsCreated)
+                  .withLastExtractedAt(System.currentTimeMillis()));
           return updated;
         });
   }
@@ -365,6 +376,7 @@ public class ContextFileProcessingService {
           }
           ContextFile updated = JsonUtils.deepCopy(current, ContextFile.class);
           updated.setProcessingStatus(ProcessingStatus.Failed);
+          updated.setProcessingError(reason);
           if (clearExtractedText) {
             updated.setExtractedText(null);
             updated.setPageCount(null);

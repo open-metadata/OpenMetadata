@@ -226,6 +226,9 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
       recordChange("fileType", original.getFileType(), updated.getFileType());
       recordChange(
           "processingStatus", original.getProcessingStatus(), updated.getProcessingStatus());
+      recordChange("processingError", original.getProcessingError(), updated.getProcessingError());
+      recordChange(
+          "extractionStats", original.getExtractionStats(), updated.getExtractionStats(), true);
       recordChange("extractedText", original.getExtractedText(), updated.getExtractedText());
       recordChange("pageCount", original.getPageCount(), updated.getPageCount());
       updateFolder();

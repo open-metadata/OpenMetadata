@@ -2904,6 +2904,7 @@
     "exporting": "מייצא...",
     "external-destination-selection": "רק יעדים חיצוניים ניתנים לבדיקה.",
     "external-test-cannot-be-toggled": "הגדרות בדיקה חיצוניות מנוהלות מחוץ ל-{{brandName}} ולא ניתן להפעיל או להשבית אותן כאן. בדיקות אלה מבוצעות על ידי הפלטפורמות המתאימות שלהן (למשל, dbt, Great Expectations).",
+    "extracted-from-chunk-count": "Extracted from {{processed}} of {{total}} document sections",
     "failed-events-description": "ספירת אירועים שנכשלו עבור התראה ספציפית.",
     "failed-status-for-entity-deploy": "<0>{{entity}}</0> נוצרה בהצלחה, אך נכשלה בפרסום",
     "failed-to-load-article": "טעינת מאמר נכשלה",

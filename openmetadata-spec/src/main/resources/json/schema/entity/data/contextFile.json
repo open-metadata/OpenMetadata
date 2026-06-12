@@ -52,6 +52,30 @@
         { "name": "Notion" }
       ],
       "default": "Upload"
+    },
+    "extractionStats": {
+      "javaType": "org.openmetadata.schema.entity.data.ExtractionStats",
+      "description": "Statistics from the most recent knowledge-pill extraction run.",
+      "type": "object",
+      "properties": {
+        "chunksTotal": {
+          "description": "Number of chunks the document text splits into.",
+          "type": "integer"
+        },
+        "chunksProcessed": {
+          "description": "Number of chunks the LLM successfully processed.",
+          "type": "integer"
+        },
+        "pillsCreated": {
+          "description": "Number of knowledge pills persisted by the run.",
+          "type": "integer"
+        },
+        "lastExtractedAt": {
+          "description": "Time of the last extraction run in Unix epoch time milliseconds.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -104,6 +128,14 @@
     "processingStatus": {
       "description": "Current processing state after upload.",
       "$ref": "#/definitions/processingStatus"
+    },
+    "processingError": {
+      "description": "Reason the most recent processing attempt failed. Cleared when a new attempt starts.",
+      "type": "string"
+    },
+    "extractionStats": {
+      "description": "Statistics from the most recent knowledge-pill extraction run.",
+      "$ref": "#/definitions/extractionStats"
     },
     "extractedText": {
       "description": "Full text extracted from the file for search and AI context.",

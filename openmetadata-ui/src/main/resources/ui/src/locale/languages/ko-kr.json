@@ -2904,6 +2904,7 @@
     "exporting": "내보내는 중...",
     "external-destination-selection": "외부 대상만 테스트할 수 있습니다.",
     "external-test-cannot-be-toggled": "외부 테스트 정의는 {{brandName}} 외부에서 관리되며 여기에서 활성화하거나 비활성화할 수 없습니다. 이러한 테스트는 각 플랫폼(예: dbt, Great Expectations)에서 실행됩니다.",
+    "extracted-from-chunk-count": "Extracted from {{processed}} of {{total}} document sections",
     "failed-events-description": "특정 알림에 대한 실패 이벤트 수입니다.",
     "failed-status-for-entity-deploy": "<0>{{entity}}</0>이(가) {{entityStatus}}되었지만 배포에 실패했습니다",
     "failed-to-load-article": "문서를 불러오지 못함",

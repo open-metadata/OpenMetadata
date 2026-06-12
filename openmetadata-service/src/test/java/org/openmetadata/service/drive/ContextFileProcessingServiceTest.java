@@ -136,8 +136,11 @@ class ContextFileProcessingServiceTest {
     when(textExtractor.extract(any(InputStream.class), same(file)))
         .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
     content.setExtractedText("Quarterly results canonical");
-    List<ContextMemory> derived = List.of(new ContextMemory().withId(UUID.randomUUID()));
+    List<ContextMemory> derivedMemories = List.of(new ContextMemory().withId(UUID.randomUUID()));
+    ContextMemoryExtractor.DeriveResult derived =
+        new ContextMemoryExtractor.DeriveResult(derivedMemories, 2, 1);
     when(memoryExtractor.derive(same(file), eq("Quarterly results canonical"))).thenReturn(derived);
+    when(memoryExtractor.persist(same(file), same(derivedMemories))).thenReturn(1);
 
     service(Runnable::run, () -> assetService, true).process(fileId, contentId);
 
@@ -147,11 +150,14 @@ class ContextFileProcessingServiceTest {
     assertEquals(ProcessingStatus.Analyzing, fileUpdates.get(0).getProcessingStatus());
     assertEquals(ProcessingStatus.ExtractingContext, fileUpdates.get(1).getProcessingStatus());
     assertEquals(ProcessingStatus.Processed, fileUpdates.get(2).getProcessingStatus());
+    assertEquals(2, fileUpdates.get(2).getExtractionStats().getChunksTotal());
+    assertEquals(1, fileUpdates.get(2).getExtractionStats().getChunksProcessed());
+    assertEquals(1, fileUpdates.get(2).getExtractionStats().getPillsCreated());
 
     InOrder inOrder = inOrder(memoryExtractor, repository);
     inOrder.verify(memoryExtractor).derive(same(file), eq("Quarterly results canonical"));
     inOrder.verify(repository).deleteExtractedMemories(same(file), eq(true));
-    inOrder.verify(memoryExtractor).persist(same(file), same(derived));
+    inOrder.verify(memoryExtractor).persist(same(file), same(derivedMemories));
   }
 
   @Test
@@ -208,6 +214,7 @@ class ContextFileProcessingServiceTest {
         .update(isNull(), same(file), updatedFileCaptor.capture(), anyString());
     List<ContextFile> fileUpdates = updatedFileCaptor.getAllValues();
     assertEquals(ProcessingStatus.Failed, fileUpdates.get(2).getProcessingStatus());
+    assertEquals("provider exploded", fileUpdates.get(2).getProcessingError());
     assertEquals("indexed text", fileUpdates.get(2).getExtractedText());
 
     verify(contentRepository, times(3))
@@ -310,6 +317,7 @@ class ContextFileProcessingServiceTest {
     List<ContextFile> fileUpdates = updatedFileCaptor.getAllValues();
     assertEquals(ProcessingStatus.Analyzing, fileUpdates.get(0).getProcessingStatus());
     assertEquals(ProcessingStatus.Failed, fileUpdates.get(1).getProcessingStatus());
+    assertEquals(expectedReason, fileUpdates.get(1).getProcessingError());
     assertNull(fileUpdates.get(1).getExtractedText());
     assertNull(fileUpdates.get(1).getPageCount());
 

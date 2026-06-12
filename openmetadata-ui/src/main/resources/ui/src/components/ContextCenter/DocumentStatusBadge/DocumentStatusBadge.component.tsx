@@ -11,10 +11,17 @@
  *  limitations under the License.
  */
 
-import { Badge } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Tooltip,
+  TooltipTrigger,
+} from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ProcessingStatus } from '../../../generated/entity/data/contextFile';
+import {
+  ExtractionStats,
+  ProcessingStatus,
+} from '../../../generated/entity/data/contextFile';
 import { DocumentStatusBadgeProps } from './DocumentStatusBadge.interface';
 
 type BadgeColor = 'gray' | 'blue' | 'indigo' | 'success' | 'error' | 'warning';
@@ -40,7 +47,19 @@ const STATUS_CONFIG: Record<
   },
 };
 
-const DocumentStatusBadge: FC<DocumentStatusBadgeProps> = ({ status }) => {
+const isPartialExtraction = (stats?: ExtractionStats): boolean =>
+  Boolean(
+    stats &&
+      stats.chunksTotal &&
+      stats.chunksProcessed !== undefined &&
+      stats.chunksProcessed < stats.chunksTotal
+  );
+
+const DocumentStatusBadge: FC<DocumentStatusBadgeProps> = ({
+  error,
+  stats,
+  status,
+}) => {
   const { t } = useTranslation();
 
   if (!status) {
@@ -55,11 +74,33 @@ const DocumentStatusBadge: FC<DocumentStatusBadgeProps> = ({ status }) => {
     return null;
   }
 
+  let tooltipTitle: string | undefined;
+  if (status === ProcessingStatus.Failed && error) {
+    tooltipTitle = error;
+  } else if (isPartialExtraction(stats)) {
+    tooltipTitle = t('message.extracted-from-chunk-count', {
+      processed: stats?.chunksProcessed,
+      total: stats?.chunksTotal,
+    });
+  }
+
+  const badge = (
+    <Badge color={config.color} size="sm">
+      {t(config.labelKey)}
+    </Badge>
+  );
+
   return (
     <span className="tw:shrink-0" data-testid="document-status-badge">
-      <Badge color={config.color} size="sm">
-        {t(config.labelKey)}
-      </Badge>
+      {tooltipTitle ? (
+        <Tooltip title={tooltipTitle}>
+          <TooltipTrigger data-testid="document-status-tooltip-trigger">
+            {badge}
+          </TooltipTrigger>
+        </Tooltip>
+      ) : (
+        badge
+      )}
     </span>
   );
 };

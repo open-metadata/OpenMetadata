@@ -2904,6 +2904,7 @@
     "exporting": "Exporterar...",
     "external-destination-selection": "Endast externa destinationer kan testas.",
     "external-test-cannot-be-toggled": "Externa testdefinitioner hanteras utanför {{brandName}} och kan inte aktiveras eller inaktiveras här. Dessa tester körs av sina respektive plattformar (t.ex. dbt, Great Expectations).",
+    "extracted-from-chunk-count": "Extracted from {{processed}} of {{total}} document sections",
     "failed-events-description": "Antal misslyckade händelser för en specifik avisering.",
     "failed-status-for-entity-deploy": "<0>{{entity}}</0>  har {{entityStatus}}, men kunde inte driftsättas",
     "failed-to-load-article": "Det gick inte att läsa in artikeln",
