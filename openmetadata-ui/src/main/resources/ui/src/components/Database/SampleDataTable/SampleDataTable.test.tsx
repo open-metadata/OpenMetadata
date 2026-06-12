@@ -80,6 +80,31 @@ describe('Test SampleDataTable Component', () => {
     expect(table).toBeInTheDocument();
   });
 
+  it('Renders sample data when a column is named children', async () => {
+    (getSampleDataByTableId as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        ...MOCK_TABLE,
+        columns: [
+          { ...MOCK_TABLE.columns[0], name: 'id' },
+          { ...MOCK_TABLE.columns[1], name: 'children' },
+          { ...MOCK_TABLE.columns[2], name: 'active' },
+        ],
+        sampleData: {
+          columns: ['id', 'children', 'active'],
+          rows: [['1', false, true]],
+        },
+      })
+    );
+
+    await act(async () => {
+      render(<SampleDataTable {...mockProps} />);
+    });
+
+    expect(screen.getByText('children')).toBeInTheDocument();
+    expect(screen.getByText('false')).toBeInTheDocument();
+    expect(screen.getByText('true')).toBeInTheDocument();
+  });
+
   it('Sample Data menu dropdown should not be present when not have permission', async () => {
     await act(async () => {
       render(
