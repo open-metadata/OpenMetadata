@@ -21,6 +21,13 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
   }));
 });
 
+jest.mock('../../Database/SchemaEditor/SchemaEditor', () => ({
+  __esModule: true,
+  default: ({ value }: { value?: string }) => (
+    <div data-testid="code-mirror-container">{value}</div>
+  ),
+}));
+
 describe('CustomMetricForm', () => {
   it('component should render', async () => {
     render(<CustomMetricForm isColumnMetric={false} onFinish={jest.fn()} />);

@@ -193,10 +193,11 @@ const AddMetricPage = () => {
 
   const handleFieldFocus = useCallback((event: FocusEvent<HTMLFormElement>) => {
     let activeField = '';
-    const isDescription = event.target.classList.contains('ProseMirror');
+    const targetEl = event.target as Element;
+    const isDescription = targetEl.classList.contains('ProseMirror');
     const isMetricExpression =
-      event.target.classList.contains('CodeMirror') ||
-      event.target.id === 'root/language';
+      targetEl.closest('.cm-editor') !== null ||
+      (targetEl as HTMLElement).id === 'root/language';
 
     if (isDescription) {
       activeField = 'root/description';

@@ -89,8 +89,10 @@ test.describe(
 
         await clickOutside(page);
 
-        await page.locator("pre[role='presentation']").last().click();
-        await page.keyboard.type('SELECT SUM(amount) FROM sales');
+        const cmEditor = page.locator('.cm-content').last();
+        await expect(cmEditor).toBeVisible();
+        await cmEditor.click();
+        await page.keyboard.insertText('SELECT SUM(amount) FROM sales');
 
         // Save the metric
         const postPromise = page.waitForResponse(

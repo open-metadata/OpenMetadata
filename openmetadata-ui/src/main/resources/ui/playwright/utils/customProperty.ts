@@ -161,7 +161,7 @@ export const setValueForProperty = async (data: {
       break;
 
     case 'sqlQuery':
-      await container.locator("pre[role='presentation']").last().click();
+      await container.locator('.cm-content').last().click();
       await page.keyboard.type(value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
@@ -319,7 +319,7 @@ export const validateValueForProperty = async (data: {
       endValue
     );
   } else if (propertyType === 'sqlQuery') {
-    await expect(container.locator('.CodeMirror-scroll')).toContainText(value);
+    await expect(container.locator('.cm-editor')).toContainText(value);
   } else if (propertyType === 'table-cp') {
     const values = value.split(',');
 
@@ -994,10 +994,10 @@ export const editColumnCustomProperty = async (
     await page.getByTestId('save').click();
   } else if (propertyType === 'sqlQuery') {
     const codeMirror = page.locator(
-      '.custom-properties-section-container .CodeMirror'
+      '.custom-properties-section-container .cm-editor'
     );
     await expect(codeMirror).toBeVisible();
-    await codeMirror.click();
+    await codeMirror.locator('.cm-content').click();
     await page.keyboard.type(testValue);
   } else if (propertyType === 'timeInterval') {
     const [start, end] = testValue.split(',');
@@ -1062,13 +1062,13 @@ export const editColumnCustomProperty = async (
       await page.keyboard.press('Escape');
     }
   } else if (['date-cp', 'time-cp', 'dateTime-cp'].includes(propertyType)) {
-    // Ant Design Pickers
     const picker = page.getByTestId(
       propertyType === 'time-cp' ? 'time-picker' : 'date-time-picker'
     );
+    await expect(picker).toBeVisible();
     await picker.click();
-    await page.keyboard.type(testValue);
-    await page.keyboard.press('Enter');
+    await picker.fill(testValue);
+    await picker.press('Enter');
   } else if (['string', 'integer', 'number'].includes(propertyType)) {
     const valueInput = page.getByTestId('value-input');
     await expect(valueInput).toBeVisible();
@@ -1445,7 +1445,7 @@ export const updateCustomPropertyInRightPanel = async (data: {
     }
 
     case 'sqlQuery':
-      await page.locator("pre[role='presentation']").last().click();
+      await page.locator('.cm-content').last().click();
       await page.keyboard.type(value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 

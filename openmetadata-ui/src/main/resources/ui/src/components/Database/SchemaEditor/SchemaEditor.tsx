@@ -14,116 +14,71 @@
 import Icon from '@ant-design/icons';
 import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
-import { Editor, EditorChange } from 'codemirror';
-import 'codemirror/addon/edit/closebrackets.js';
-import 'codemirror/addon/edit/matchbrackets.js';
-import 'codemirror/addon/fold/brace-fold';
-import 'codemirror/addon/fold/foldgutter.css';
-import 'codemirror/addon/fold/foldgutter.js';
-import 'codemirror/addon/selection/active-line';
-import 'codemirror/lib/codemirror.css';
-import 'codemirror/mode/clike/clike';
-import 'codemirror/mode/javascript/javascript';
-import 'codemirror/mode/python/python';
-import 'codemirror/mode/sql/sql';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Controlled as CodeMirror } from 'react-codemirror2';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/ic-duplicate.svg';
 import { JSON_TAB_SIZE } from '../../../constants/constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
+import { useCodeMirror } from '../../../hooks/useCodeMirror';
 import { getSchemaEditorValue } from '../../../utils/SchemaEditor.utils';
 import './schema-editor.less';
-import { SchemaEditorProps } from './SchemaEditor.interface';
+import { Mode, SchemaEditorProps } from './SchemaEditor.interface';
+
+const DEFAULT_MODE: Mode = { name: CSMode.JAVASCRIPT, json: true };
 
 const SchemaEditor = ({
   value = '',
   className = '',
-  mode = {
-    name: CSMode.JAVASCRIPT,
-    json: true,
-  },
+  mode = DEFAULT_MODE,
   options,
   editorClass,
   showCopyButton = true,
+  readOnly,
   onChange,
   onFocus,
   refreshEditor,
 }: SchemaEditorProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const wrapperRef = useRef<CodeMirror | null>(null);
   const { t } = useTranslation();
-  const defaultOptions = {
-    tabSize: JSON_TAB_SIZE,
-    indentUnit: JSON_TAB_SIZE,
-    indentWithTabs: false,
-    lineNumbers: true,
-    lineWrapping: true,
-    styleActiveLine: true,
-    matchBrackets: true,
-    autoCloseBrackets: true,
-    foldGutter: true,
-    gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
-    mode,
-    readOnly: false,
-    ...options,
-  };
   const [internalValue, setInternalValue] = useState<string>(
     getSchemaEditorValue(value)
   );
-  const editorInstance = useRef<Editor | null>(null);
   const wasHiddenRef = useRef(false);
   const { onCopyToClipBoard, hasCopied } = useClipboard(internalValue);
 
-  const handleEditorInputBeforeChange = (
-    _editor: Editor,
-    _data: EditorChange,
-    value: string
-  ): void => {
-    setInternalValue(getSchemaEditorValue(value));
-  };
-  const handleEditorInputChange = (
-    _editor: Editor,
-    _data: EditorChange,
-    value: string
-  ): void => {
-    if (!isUndefined(onChange)) {
-      onChange(getSchemaEditorValue(value));
-    }
-  };
-
-  const refreshAndResetScroll = useCallback(() => {
-    if (!editorInstance.current) {
-      return;
-    }
-    editorInstance.current.scrollTo(0, 0);
-    editorInstance.current.refresh();
-    requestAnimationFrame(() => {
-      editorInstance.current?.scrollTo(0, 0);
-    });
-  }, []);
-
-  const editorWillUnmount = useCallback(() => {
-    if (editorInstance.current) {
-      const editorWrapper = editorInstance.current.getWrapperElement();
-      if (editorWrapper) {
-        editorWrapper.remove();
+  const handleChange = useCallback(
+    (val: string) => {
+      const processed = getSchemaEditorValue(val);
+      setInternalValue(processed);
+      if (!isUndefined(onChange)) {
+        onChange(processed);
       }
-    }
-    if (wrapperRef.current) {
-      (wrapperRef.current as unknown as { hydrated: boolean }).hydrated = false;
-    }
-  }, [editorInstance, wrapperRef]);
+    },
+    [onChange]
+  );
+
+  const { editorRef, requestRefresh } = useCodeMirror({
+    value: internalValue,
+    mode,
+    readOnly: readOnly ?? options?.readOnly === true,
+    showLineNumbers: options?.lineNumbers !== false,
+    lineWrapping: options?.lineWrapping !== false,
+    showFoldGutter: options?.foldGutter !== false,
+    styleActiveLine: options?.styleActiveLine !== false,
+    matchBrackets: options?.matchBrackets !== false,
+    autoCloseBrackets: options?.autoCloseBrackets !== false,
+    tabSize:
+      typeof options?.tabSize === 'number' ? options.tabSize : JSON_TAB_SIZE,
+    onChange: handleChange,
+    onFocus,
+  });
 
   useEffect(() => {
     setInternalValue(getSchemaEditorValue(value));
   }, [value]);
 
-  // Auto-detect display:none → visible transitions (e.g. Ant Design tab switches).
-  // When a parent sets display:none, boundingClientRect collapses to 0.
-  // When it becomes visible again, we refresh CodeMirror and reset scroll.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) {
@@ -139,7 +94,7 @@ const SchemaEditor = ({
           wasHiddenRef.current = true;
         } else if (wasHiddenRef.current) {
           wasHiddenRef.current = false;
-          refreshAndResetScroll();
+          requestRefresh();
         }
       },
       { threshold: 0 }
@@ -148,19 +103,18 @@ const SchemaEditor = ({
     observer.observe(el);
 
     return () => observer.disconnect();
-  }, [refreshAndResetScroll]);
+  }, [requestRefresh]);
 
-  // Explicit refresh via prop (kept for backwards compatibility).
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     if (refreshEditor) {
       timer = setTimeout(() => {
-        refreshAndResetScroll();
+        requestRefresh();
       }, 50);
     }
 
     return () => clearTimeout(timer);
-  }, [refreshEditor, refreshAndResetScroll]);
+  }, [refreshEditor, requestRefresh]);
 
   return (
     <div
@@ -183,19 +137,7 @@ const SchemaEditor = ({
         </div>
       )}
 
-      <CodeMirror
-        className={editorClass}
-        editorDidMount={(editor) => {
-          editorInstance.current = editor;
-        }}
-        editorWillUnmount={editorWillUnmount}
-        options={defaultOptions}
-        ref={wrapperRef}
-        value={internalValue}
-        onBeforeChange={handleEditorInputBeforeChange}
-        onChange={handleEditorInputChange}
-        {...(onFocus && { onFocus })}
-      />
+      <div className={editorClass} ref={editorRef} />
     </div>
   );
 };
