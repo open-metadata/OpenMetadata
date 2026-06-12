@@ -207,7 +207,79 @@ export const getServiceOptions = (
     : option.text;
 };
 
-export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
+const getTopHitsSource = (
+  bucket: Bucket
+): Record<string, unknown> | undefined => {
+  const topHits = (bucket as Record<string, unknown>)['top_hits#top'] as
+    | { hits?: { hits?: Array<{ _source?: Record<string, unknown> }> } }
+    | undefined;
+
+  return topHits?.hits?.hits?.[0]?._source;
+};
+
+const findValueInSource = (
+  current: unknown,
+  parts: string[],
+  bucketKey: string
+): string | undefined => {
+  if (parts.length === 0) {
+    if (typeof current === 'string') {
+      return current;
+    }
+    if (Array.isArray(current)) {
+      return (current as unknown[]).find(
+        (item): item is string =>
+          typeof item === 'string' &&
+          item.toLowerCase() === bucketKey.toLowerCase()
+      );
+    }
+
+    return undefined;
+  }
+
+  if (!current || typeof current !== 'object') {
+    return undefined;
+  }
+
+  if (Array.isArray(current)) {
+    for (const item of current as unknown[]) {
+      const result = findValueInSource(item, parts, bucketKey);
+      if (
+        result !== undefined &&
+        result.toLowerCase() === bucketKey.toLowerCase()
+      ) {
+        return result;
+      }
+    }
+
+    return undefined;
+  }
+
+  const [head, ...tail] = parts;
+
+  return findValueInSource(
+    (current as Record<string, unknown>)[head],
+    tail,
+    bucketKey
+  );
+};
+
+const extractSourceFieldLabel = (
+  bucket: Bucket,
+  sourceFields: string
+): string | undefined => {
+  const source = getTopHitsSource(bucket);
+  if (!source) {
+    return undefined;
+  }
+
+  return findValueInSource(source, sourceFields.split('.'), bucket.key);
+};
+
+export const getOptionsFromAggregationBucket = (
+  buckets: Bucket[],
+  sourceFields?: string
+) => {
   if (!buckets) {
     return [];
   }
@@ -219,7 +291,10 @@ export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
     )
     .map((option) => ({
       key: option.key,
-      label: option.key,
+      label:
+        (sourceFields
+          ? extractSourceFieldLabel(option, sourceFields)
+          : undefined) ?? option.key,
       count: option.doc_count ?? 0,
     }));
 };
