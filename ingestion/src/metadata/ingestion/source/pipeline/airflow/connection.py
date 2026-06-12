@@ -36,7 +36,7 @@ from metadata.generated.schema.entity.services.connections.database.postgresConn
     PostgresConnection as PostgresConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
-    SQLiteConnection,
+    SQLiteConnection as SQLiteConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.airflowConnection import (
     AirflowConnection,
@@ -180,12 +180,12 @@ def _(airflow_connection: PostgresConnectionConfig) -> Engine:
 
 
 @_get_connection.register
-def _(airflow_connection: SQLiteConnection) -> Engine:
+def _(airflow_connection: SQLiteConnectionConfig) -> Engine:
     from metadata.ingestion.source.database.sqlite.connection import (  # noqa: PLC0415
-        get_connection as get_sqlite_connection,
+        SQLiteConnection,
     )
 
-    return get_sqlite_connection(airflow_connection)
+    return SQLiteConnection(airflow_connection)._get_client()
 
 
 def get_connection(connection: AirflowConnection):

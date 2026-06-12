@@ -20,7 +20,7 @@ import type { OperationPermission } from '../context/PermissionProvider/Permissi
 import { EntityType } from '../enums/entity.enum';
 import LimitWrapper from '../hoc/LimitWrapper';
 import { exportDatabaseSchemaDetailsInCSV } from '../rest/databaseAPI';
-import { getEntityImportPath } from './EntityUtils';
+import { getEntityImportPath } from './EntityPureUtils';
 import { t } from './i18next/LocalUtil';
 
 export const ExtraDatabaseSchemaDropdownOptions = (

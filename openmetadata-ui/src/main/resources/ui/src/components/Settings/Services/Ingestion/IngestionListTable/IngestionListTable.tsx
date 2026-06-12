@@ -34,11 +34,9 @@ import {
 import { IngestionPipeline } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { deleteIngestionPipelineById } from '../../../../../rest/ingestionPipelineAPI';
-import {
-  getColumnSorter,
-  getEntityName,
-  highlightSearchText,
-} from '../../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
+import { highlightSearchText } from '../../../../../utils/EntitySearchUtils';
+import { getColumnSorter } from '../../../../../utils/EntitySortUtils';
 import { Transi18next } from '../../../../../utils/i18next/LocalUtil';
 import {
   renderNameField,

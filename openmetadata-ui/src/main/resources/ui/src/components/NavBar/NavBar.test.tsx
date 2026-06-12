@@ -173,7 +173,7 @@ jest.mock('../../utils/EntityUtilClassBase', () => ({
   })),
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('MockedEntityName'),
   getDomainDisplayName: jest.fn().mockReturnValue('All Domains'),
 }));
@@ -255,14 +255,16 @@ describe('Test NavBar Component', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('should hide global search bar and domain dropdown on customize-page route', () => {
+  it('should hide global search bar and domain dropdown on customize-page route', async () => {
     mockUseCustomLocation.pathname = '/customize-page/test-domain/test-page';
     mockUseCustomLocation.search = 'search';
 
     render(<NavBarComponent />);
 
     expect(screen.getByTestId('global-search-bar')).toBeInTheDocument();
-    expect(screen.getByTestId('domain-selectable-list')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('domain-selectable-list')
+    ).toBeInTheDocument();
   });
 
   it('should show global search bar and domain dropdown on other routes', () => {

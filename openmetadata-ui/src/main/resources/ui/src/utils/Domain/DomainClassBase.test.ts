@@ -44,10 +44,6 @@ jest.mock('../i18next/LocalUtil', () => ({
   default: { t: jest.fn((key: string) => key) },
 }));
 
-jest.mock('../CustomizePage/CustomizePageUtils', () => ({
-  getTabLabelFromId: jest.fn((tab: string) => tab),
-}));
-
 const mockProps = {
   domain: { fullyQualifiedName: 'Finance' },
   isVersionsView: false,
