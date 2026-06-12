@@ -19,9 +19,9 @@ import {
   Modal,
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
-import { v4 as uuidv4 } from 'uuid';
 import { FC, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { v4 as uuidv4 } from 'uuid';
 import { DOCUMENT_MAX_FILE_SIZE } from '../../../constants/ContextCenter.constants';
 import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { uploadDriveFile } from '../../../rest/assetAPI';
@@ -33,7 +33,6 @@ import {
 
 const getFileExt = (name: string) =>
   name.split('.').pop()?.toLowerCase() ?? 'empty';
-
 
 const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   isOpen,
