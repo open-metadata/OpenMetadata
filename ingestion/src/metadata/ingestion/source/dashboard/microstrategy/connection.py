@@ -65,4 +65,5 @@ class MicroStrategyConnection(BaseConnection[MicroStrategyConnectionConfig, Micr
             test_fn=test_fn,
             service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
             automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
         )
