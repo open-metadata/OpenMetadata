@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Theme } from '@mui/material';
 import { RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import type { Edge } from 'reactflow';
 import { Position, useNodes, useReactFlow, useViewport } from 'reactflow';
@@ -38,7 +37,6 @@ interface UseCanvasEdgeRendererProps {
   edges: Edge[];
   hoverEdge?: Edge | null;
   dqHighlightedEdges: Set<string>;
-  theme: Theme;
   containerWidth: number;
   containerHeight: number;
 }
@@ -58,7 +56,6 @@ export function useCanvasEdgeRenderer({
   dqHighlightedEdges,
   edges,
   hoverEdge,
-  theme,
   containerWidth,
   containerHeight,
 }: UseCanvasEdgeRendererProps) {
@@ -156,7 +153,6 @@ export function useCanvasEdgeRenderer({
         tracedColumns,
         dqHighlightedEdges,
         selectedColumn,
-        theme,
         edge.data?.isColumnLineage ?? false,
         edge.sourceHandle,
         edge.targetHandle,
@@ -199,7 +195,6 @@ export function useCanvasEdgeRenderer({
       tracedColumns,
       dqHighlightedEdges,
       selectedColumn,
-      theme,
       columnsInCurrentPages,
       hoverEdge,
       selectedEdge,
@@ -453,7 +448,6 @@ export function useCanvasEdgeRenderer({
     selectedEdge,
     selectedColumn,
     dqHighlightedEdges,
-    theme,
   ]);
 
   useEffect(() => {

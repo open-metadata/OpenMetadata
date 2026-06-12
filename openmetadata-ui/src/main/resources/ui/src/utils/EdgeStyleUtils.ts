@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Theme } from '@mui/material';
-import type { Edge } from 'reactflow';
+import { Edge } from 'reactflow';
+import { getCSSVar } from './CSSUtils';
+
+const EDGE_COLOR_BRAND = getCSSVar('--tw-color-brand-600');
+const EDGE_COLOR_INDIGO = getCSSVar('--tw-color-indigo-600');
+const EDGE_COLOR_ERROR = getCSSVar('--tw-color-error-600');
+const EDGE_COLOR_DEFAULT = 'rgb(177, 177, 183)';
 
 export interface EdgeStyle {
   stroke: string;
@@ -27,32 +32,27 @@ function calculateEdgeStyle(
   hasTracedContext: boolean,
   dqHighlightedEdges: Set<string>,
   selectedColumn: string | undefined,
-  theme: Theme,
   isColumnLineage: boolean,
   isColumnHighlighted: boolean,
   isEdgeHovered?: boolean
 ): EdgeStyle {
-  let stroke = isEdgeHovered
-    ? theme.palette.primary.main
-    : 'rgba(177, 177, 183)';
+  let stroke = isEdgeHovered ? EDGE_COLOR_BRAND : EDGE_COLOR_DEFAULT;
   let opacity = 1;
   const strokeWidth = 2;
 
   if (isNodeTraced) {
-    stroke = theme.palette.primary.main;
+    stroke = EDGE_COLOR_BRAND;
   } else if (hasTracedContext) {
     opacity = 0.3;
   }
 
   if (isColumnLineage && isColumnHighlighted) {
-    stroke = selectedColumn
-      ? theme.palette.allShades.indigo[600]
-      : theme.palette.primary.main;
+    stroke = selectedColumn ? EDGE_COLOR_INDIGO : EDGE_COLOR_BRAND;
     opacity = 1;
   }
 
   if (dqHighlightedEdges.has(edge.id)) {
-    stroke = theme.palette.allShades.error[600];
+    stroke = EDGE_COLOR_ERROR;
     opacity = 1;
   }
 
@@ -81,7 +81,6 @@ export function computeEdgeStyle(
   tracedColumns: Set<string>,
   dqHighlightedEdges: Set<string>,
   selectedColumn: string | undefined,
-  theme: Theme,
   isColumnLineage: boolean,
   sourceHandle?: string | null,
   targetHandle?: string | null,
@@ -128,7 +127,6 @@ export function computeEdgeStyle(
     hasTracedContext,
     dqHighlightedEdges,
     selectedColumn,
-    theme,
     isColumnLineage,
     isColumnHighlighted,
     isEdgeHovered

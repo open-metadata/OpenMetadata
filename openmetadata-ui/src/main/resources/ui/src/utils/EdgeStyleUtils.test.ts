@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Theme } from '@mui/material';
 import { Edge } from 'reactflow';
 import {
   clearEdgeStyleCache,
@@ -18,16 +17,13 @@ import {
   invalidateEdgeStyles,
 } from './EdgeStyleUtils';
 
-const createMockTheme = (): Theme =>
-  ({
-    palette: {
-      primary: { main: '#1890ff' },
-      allShades: {
-        indigo: { 600: '#3F51B5' },
-        error: { 600: '#F44336' },
-      },
-    },
-  } as unknown as Theme);
+jest.mock('./CSSUtils', () => ({
+  getCSSVar: (name: string) => `var(${name})`,
+}));
+
+const EDGE_COLOR_BRAND = 'var(--tw-color-brand-600)';
+const EDGE_COLOR_INDIGO = 'var(--tw-color-indigo-600)';
+const EDGE_COLOR_ERROR = 'var(--tw-color-error-600)';
 
 const createMockEdge = (
   id: string,
@@ -46,10 +42,7 @@ const createMockEdge = (
 });
 
 describe('EdgeStyleUtils', () => {
-  let theme: Theme;
-
   beforeEach(() => {
-    theme = createMockTheme();
     clearEdgeStyleCache();
   });
 
@@ -66,12 +59,11 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
         false
       );
 
       expect(style).toEqual({
-        stroke: 'rgba(177, 177, 183)',
+        stroke: 'rgb(177, 177, 183)',
         opacity: 1,
         strokeWidth: 2,
       });
@@ -89,11 +81,10 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
         false
       );
 
-      expect(style.stroke).toBe(theme.palette.primary.main);
+      expect(style.stroke).toBe(EDGE_COLOR_BRAND);
       expect(style.opacity).toBe(1);
     });
 
@@ -109,7 +100,6 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
         false
       );
 
@@ -128,13 +118,12 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
         true,
         'col1',
         'col2'
       );
 
-      expect(style.stroke).toBe(theme.palette.primary.main);
+      expect(style.stroke).toBe(EDGE_COLOR_BRAND);
       expect(style.opacity).toBe(1);
     });
 
@@ -150,13 +139,12 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         'col1',
-        theme,
         true,
         'col1',
         'col2'
       );
 
-      expect(style.stroke).toBe(theme.palette.allShades.indigo[600]);
+      expect(style.stroke).toBe(EDGE_COLOR_INDIGO);
     });
 
     it('highlights DQ edges with error color', () => {
@@ -171,11 +159,10 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
         false
       );
 
-      expect(style.stroke).toBe(theme.palette.allShades.error[600]);
+      expect(style.stroke).toBe(EDGE_COLOR_ERROR);
       expect(style.opacity).toBe(1);
     });
 
@@ -191,14 +178,13 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
         false,
         undefined,
         undefined,
         true
       );
 
-      expect(style.stroke).toBe(theme.palette.primary.main);
+      expect(style.stroke).toBe(EDGE_COLOR_BRAND);
     });
 
     it('caches edge styles', () => {
@@ -213,7 +199,6 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
         false
       );
 
@@ -223,7 +208,6 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
         false
       );
 
@@ -243,7 +227,6 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
         false
       );
 
@@ -253,7 +236,6 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
         false
       );
 
@@ -278,12 +260,11 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
         false
       );
 
       expect(style).toBeDefined();
-      expect(style.stroke).toBe('rgba(177, 177, 183)');
+      expect(style.stroke).toBe('rgb(177, 177, 183)');
     });
 
     it('requires both source and target columns for column lineage highlighting', () => {
@@ -298,7 +279,6 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
         true,
         'col1',
         'col3'
@@ -319,7 +299,6 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
         false
       );
 
@@ -338,11 +317,10 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
         false
       );
 
-      expect(style.stroke).toBe(theme.palette.allShades.error[600]);
+      expect(style.stroke).toBe(EDGE_COLOR_ERROR);
     });
 
     it('maintains consistent strokeWidth', () => {
@@ -357,7 +335,6 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
         false
       );
 
@@ -378,7 +355,6 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
         false
       );
 
@@ -390,7 +366,6 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
         false
       );
 
@@ -413,7 +388,6 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
         false
       );
 
@@ -423,7 +397,6 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
         false
       );
 
@@ -435,7 +408,6 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
         false
       );
 
@@ -445,7 +417,6 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
         false
       );
 
@@ -467,7 +438,6 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
         false
       );
 
@@ -477,7 +447,6 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
         false
       );
 
@@ -487,7 +456,6 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
         false
       );
 
@@ -499,7 +467,6 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
         false
       );
 
@@ -518,7 +485,6 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
         false
       );
 
@@ -530,7 +496,6 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
         false
       );
 
@@ -549,7 +514,6 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
         false
       );
 
@@ -561,7 +525,6 @@ describe('EdgeStyleUtils', () => {
         tracedColumns,
         dqHighlightedEdges,
         undefined,
-        theme,
         false
       );
 
