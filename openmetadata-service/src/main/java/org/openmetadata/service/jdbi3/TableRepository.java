@@ -309,6 +309,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void clearFields(Table table, Fields fields) {
+    table.setColumns(fields.contains(COLUMN_FIELD) ? table.getColumns() : null);
     table.setTableConstraints(
         fields.contains(TABLE_CONSTRAINTS_FIELD) ? table.getTableConstraints() : null);
     table.setUsageSummary(fields.contains("usageSummary") ? table.getUsageSummary() : null);
