@@ -116,6 +116,58 @@ test.describe('search dropdown quick filters - index readiness', () => {
   });
 });
 
+test.describe('Quick filter proper casing via sourceFields', () => {
+  test('domain filter options should display original-cased display names', async ({
+    page,
+  }) => {
+    const domainDisplayName = domain.responseData.displayName as string;
+
+    await test.step('Open Domains quick filter dropdown and wait for aggregate API with sourceFields', async () => {
+      const aggregateRes = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/aggregate') &&
+          response.url().includes('field=domains.displayName.keyword') &&
+          response.url().includes('sourceFields=domains.displayName')
+      );
+      await page.getByTestId('search-dropdown-Domains').click();
+      await aggregateRes;
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Verify option label has original casing, not all lowercase', async () => {
+      const optionTestId = domainDisplayName.toLowerCase();
+      const optionItem = page.getByTestId(optionTestId);
+
+      await expect(optionItem).toBeVisible();
+
+      const labelText = await optionItem
+        .locator('.dropdown-option-label')
+        .textContent();
+
+      expect(labelText?.trim()).toBe(domainDisplayName);
+      expect(labelText?.trim()).not.toBe(domainDisplayName.toLowerCase());
+    });
+
+    await clickOutside(page);
+  });
+
+  test('owner filter aggregate request should include sourceFields=ownerDisplayName', async ({
+    page,
+  }) => {
+    const aggregateRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/aggregate') &&
+        response.url().includes('field=ownerDisplayName') &&
+        response.url().includes('sourceFields=ownerDisplayName')
+    );
+
+    await page.getByTestId('search-dropdown-Owners').click();
+    await aggregateRes;
+
+    await clickOutside(page);
+  });
+});
+
 test('should search for empty or null filters', async ({ page }) => {
   const items = [
     { label: 'Owners', key: 'ownerDisplayName' },

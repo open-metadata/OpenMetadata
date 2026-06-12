@@ -322,13 +322,110 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          'pets'
+          'pets',
+          undefined
         );
       });
     });
   });
 
   describe('Options fetching - Aggregations', () => {
+    it('should bypass pre-loaded aggregations and call API when sourceFields is set in non-independent mode', async () => {
+      mockGetAggregationOptions.mockResolvedValue(
+        mockAdvancedFieldDefaultOptions
+      );
+
+      const fieldsWithSource: ExploreQuickFilterField[] = [
+        {
+          label: 'Database',
+          key: 'database.name',
+          value: undefined,
+          sourceFields: 'database.displayName',
+        },
+      ];
+
+      render(
+        <ExploreQuickFilters
+          {...mockProps}
+          aggregations={mockAggregations}
+          fields={fieldsWithSource}
+        />
+      );
+
+      const initialButton = screen.getByTestId(
+        'onGetInitialOptions-database.name'
+      );
+
+      await act(async () => {
+        userEvent.click(initialButton);
+      });
+
+      await waitFor(() => {
+        expect(getAggregationOptions).toHaveBeenCalledWith(
+          SearchIndex.TABLE,
+          'database.name',
+          '',
+          expect.any(String),
+          false,
+          false,
+          undefined,
+          false,
+          '',
+          'database.displayName'
+        );
+      });
+    });
+
+    it('should use pre-loaded aggregations without API call in independent mode even when sourceFields is set', async () => {
+      const fieldsWithSource: ExploreQuickFilterField[] = [
+        {
+          label: 'Database',
+          key: 'database.name',
+          value: undefined,
+          sourceFields: 'database.displayName',
+        },
+      ];
+
+      render(
+        <ExploreQuickFilters
+          independent
+          {...mockProps}
+          aggregations={mockAggregations}
+          fields={fieldsWithSource}
+        />
+      );
+
+      const initialButton = screen.getByTestId(
+        'onGetInitialOptions-database.name'
+      );
+
+      await act(async () => {
+        userEvent.click(initialButton);
+      });
+
+      await waitFor(() => {
+        expect(getAggregationOptions).not.toHaveBeenCalled();
+      });
+    });
+
+    it('should use pre-loaded aggregations without API call when sourceFields is not set', async () => {
+      render(
+        <ExploreQuickFilters {...mockProps} aggregations={mockAggregations} />
+      );
+
+      const initialButton = screen.getByTestId(
+        'onGetInitialOptions-database.name'
+      );
+
+      await act(async () => {
+        userEvent.click(initialButton);
+      });
+
+      await waitFor(() => {
+        expect(getAggregationOptions).not.toHaveBeenCalled();
+      });
+    });
+
     it('should use aggregations when available', async () => {
       render(<ExploreQuickFilters {...mockProps} />);
 
@@ -347,7 +444,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -377,7 +475,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -413,7 +512,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           50,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -443,7 +543,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -481,7 +582,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -529,7 +631,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -558,7 +661,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           true,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -685,7 +789,8 @@ describe('ExploreQuickFilters component', () => {
           expect.anything(),
           undefined,
           expect.anything(),
-          expect.any(String)
+          expect.any(String),
+          undefined
         );
       });
     });
@@ -720,7 +825,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -844,7 +950,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -874,7 +981,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -905,7 +1013,8 @@ describe('ExploreQuickFilters component', () => {
           true,
           undefined,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -929,6 +1038,122 @@ describe('ExploreQuickFilters component', () => {
       expect(
         screen.getByTestId('single-select-database.name')
       ).toHaveTextContent('true');
+    });
+  });
+
+  describe('sourceFields propagation', () => {
+    it('should pass sourceFields from field config to getAggregationOptions', async () => {
+      mockGetAggregationOptions.mockResolvedValue(
+        mockAdvancedFieldDefaultOptions
+      );
+
+      const fieldsWithSourceFields: ExploreQuickFilterField[] = [
+        {
+          label: 'Domain',
+          key: 'domains.displayName.keyword',
+          value: undefined,
+          sourceFields: 'domains.displayName',
+        },
+      ];
+
+      render(
+        <ExploreQuickFilters
+          {...mockProps}
+          aggregations={undefined}
+          fields={fieldsWithSourceFields}
+        />
+      );
+
+      const searchButton = screen.getByTestId(
+        'onSearch-domains.displayName.keyword'
+      );
+
+      await act(async () => {
+        userEvent.click(searchButton);
+      });
+
+      await waitFor(() => {
+        expect(getAggregationOptions).toHaveBeenCalledWith(
+          SearchIndex.TABLE,
+          'domains.displayName.keyword',
+          'test',
+          expect.any(String),
+          false,
+          false,
+          undefined,
+          false,
+          '',
+          'domains.displayName'
+        );
+      });
+    });
+
+    it('should pass sourceFields to getAggregationOptions on initial options fetch', async () => {
+      mockGetAggregationOptions.mockResolvedValue({
+        data: {
+          aggregations: {
+            'sterms#ownerDisplayName': {
+              buckets: [
+                {
+                  key: 'john doe',
+                  doc_count: 3,
+                  'top_hits#top': {
+                    hits: {
+                      hits: [
+                        {
+                          _source: {
+                            ownerDisplayName: ['John Doe', 'Jane Smith'],
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      });
+
+      const ownerField: ExploreQuickFilterField[] = [
+        {
+          label: 'Owners',
+          key: 'ownerDisplayName',
+          value: undefined,
+          sourceFields: 'ownerDisplayName',
+        },
+      ];
+
+      render(
+        <ExploreQuickFilters
+          {...mockProps}
+          aggregations={undefined}
+          fields={ownerField}
+        />
+      );
+
+      const initialButton = screen.getByTestId(
+        'onGetInitialOptions-ownerDisplayName'
+      );
+
+      await act(async () => {
+        userEvent.click(initialButton);
+      });
+
+      await waitFor(() => {
+        expect(getAggregationOptions).toHaveBeenCalledWith(
+          SearchIndex.TABLE,
+          'ownerDisplayName',
+          '',
+          expect.any(String),
+          false,
+          false,
+          undefined,
+          false,
+          '',
+          'ownerDisplayName'
+        );
+      });
     });
   });
 

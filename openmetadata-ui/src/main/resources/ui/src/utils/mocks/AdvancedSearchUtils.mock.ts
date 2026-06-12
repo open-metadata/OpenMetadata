@@ -433,3 +433,88 @@ export const mockBucketOptions: Bucket[] = [
     label: 'chart',
   },
 ];
+
+export const mockBucketsWithTopHitsScalar: Bucket[] = [
+  {
+    key: 'my service',
+    doc_count: 5,
+    'top_hits#top': {
+      hits: {
+        hits: [{ _source: { service: { displayName: 'My Service' } } }],
+      },
+    },
+  },
+  {
+    key: 'another service',
+    doc_count: 3,
+    'top_hits#top': {
+      hits: {
+        hits: [{ _source: { service: { displayName: 'Another Service' } } }],
+      },
+    },
+  },
+];
+
+export const mockBucketsWithTopHitsArray: Bucket[] = [
+  {
+    key: 'finance',
+    doc_count: 10,
+    'top_hits#top': {
+      hits: {
+        hits: [
+          {
+            _source: {
+              domains: [
+                { displayName: 'Operations' },
+                { displayName: 'Finance' },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  },
+  {
+    key: 'operations',
+    doc_count: 7,
+    'top_hits#top': {
+      hits: {
+        hits: [
+          {
+            _source: {
+              domains: [
+                { displayName: 'Operations' },
+                { displayName: 'Finance' },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  },
+];
+
+export const mockBucketsWithFlatStringArray: Bucket[] = [
+  {
+    key: 'john doe',
+    doc_count: 4,
+    'top_hits#top': {
+      hits: {
+        hits: [
+          {
+            _source: {
+              ownerDisplayName: ['Jane Smith', 'John Doe'],
+            },
+          },
+        ],
+      },
+    },
+  },
+];
+
+export const mockBucketsWithoutTopHits: Bucket[] = [
+  {
+    key: 'my database',
+    doc_count: 2,
+  },
+];

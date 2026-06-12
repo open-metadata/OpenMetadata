@@ -175,10 +175,10 @@ def custom_column_compare(self, other):
 
 class CouchbaseUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.couchbase.metadata.CouchbaseSource.test_connection")
-    @patch("metadata.ingestion.source.database.couchbase.connection.CouchbaseConnection._get_client")
-    def __init__(self, methodName, get_client, test_connection) -> None:  # noqa: N803
+    @patch("metadata.ingestion.source.database.couchbase.connection.get_connection")
+    def __init__(self, methodName, get_connection, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
-        get_client.return_value = False
+        get_connection.return_value = False
         test_connection.return_value = False
 
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_couch_config)
