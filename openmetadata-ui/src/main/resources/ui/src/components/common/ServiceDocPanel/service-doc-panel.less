@@ -15,6 +15,10 @@
 @markdown-bg-color: #f8f8fa;
 
 .service-doc-panel {
+  .service-doc-panel-focused {
+    padding: 14px 16px 20px;
+  }
+
   .service-doc-content {
     font-size: 14px;
     word-break: break-word;
@@ -40,28 +44,28 @@
     h1 {
       font-size: 24px;
       line-height: 48px;
-      font-weight: 600;
+      font-weight: 500;
     }
 
     h2 {
       font-size: 20px;
       line-height: 32px;
-      font-weight: 600;
+      font-weight: 500;
     }
 
     h3 {
       font-size: 18px;
-      font-weight: 600;
+      font-weight: 500;
     }
 
     h4 {
       font-size: 16px;
-      font-weight: 600;
+      font-weight: 500;
     }
 
     h5 {
       font-size: 14px;
-      font-weight: 600;
+      font-weight: 500;
     }
 
     p {
@@ -228,6 +232,366 @@
         border-left-color: @info-color;
         background: @primary-1;
       }
+    }
+  }
+
+  .service-doc-content-focused {
+    .ProseMirror > *:not(section),
+    section > * {
+      padding-right: 0;
+      padding-left: 0;
+    }
+
+    h1 {
+      display: none;
+    }
+
+    h2 {
+      padding-top: 0 !important;
+      font-size: 16px;
+      line-height: 24px;
+    }
+
+    h3 {
+      padding-top: @padding-sm !important;
+      font-size: 14px;
+      line-height: 22px;
+    }
+
+    p,
+    li {
+      color: var(--tw-color-text-tertiary);
+      font-size: 13px;
+      line-height: 20px;
+    }
+
+    ul,
+    ol {
+      padding-inline-start: 24px;
+    }
+
+    pre code {
+      max-height: 220px;
+      font-size: 12px;
+      line-height: 18px;
+    }
+
+    section[data-highlighted='true'] {
+      margin-top: 0;
+      padding-bottom: 0;
+      border-left: none;
+      background-color: transparent;
+    }
+  }
+
+  .focused-service-docs {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    color: var(--tw-color-text-primary);
+  }
+
+  .focused-service-docs-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .focused-service-docs-logo-wrap {
+    display: grid;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    place-items: center;
+    border: 1px solid var(--tw-color-border-secondary);
+    border-radius: 50%;
+    background: var(--tw-color-bg-primary);
+    box-shadow: var(--tw-shadow-xs);
+  }
+
+  .focused-service-docs-logo {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+  }
+
+  .focused-service-docs-title-wrap {
+    min-width: 0;
+  }
+
+  .focused-service-docs-title {
+    color: var(--tw-color-text-primary);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+  }
+
+  .focused-service-docs-subtitle {
+    color: var(--tw-color-text-tertiary);
+    font-size: 11px;
+    line-height: 16px;
+  }
+
+  .focused-service-docs-intro {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .focused-service-docs-eyebrow {
+    color: var(--tw-color-text-brand-secondary);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    line-height: 14px;
+    text-transform: uppercase;
+  }
+
+  .focused-service-docs-intro h1,
+  .focused-service-docs-section > h1 {
+    margin: 0;
+    color: var(--tw-color-text-primary);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 22px;
+  }
+
+  .focused-service-docs-intro p,
+  .focused-service-docs-link-section p {
+    margin: 0;
+    color: var(--tw-color-text-tertiary);
+    font-size: 12px;
+    line-height: 18px;
+  }
+
+  .focused-service-docs-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 4px;
+    padding-top: 14px;
+    border-top: 1px solid var(--tw-color-border-secondary);
+  }
+
+  .focused-doc-auth-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .focused-doc-auth-card {
+    padding: 10px;
+    border: 1px solid var(--tw-color-border-secondary);
+    border-radius: 10px;
+  }
+
+  .focused-doc-auth-card-password {
+    border-color: var(--tw-color-border-brand);
+    background: var(--tw-color-bg-brand-primary_alt);
+  }
+
+  .focused-doc-auth-card-keypair {
+    border-color: var(--tw-color-utility-success-200);
+    background: var(--tw-color-bg-success-secondary);
+  }
+
+  .focused-doc-auth-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    color: var(--tw-color-text-primary);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 18px;
+  }
+
+  .focused-doc-auth-card p {
+    margin: 0;
+    color: var(--tw-color-text-tertiary);
+    font-size: 11px;
+    line-height: 16px;
+  }
+
+  .focused-doc-markdown {
+    margin-top: 6px;
+
+    .block-editor-wrapper .tiptap.ProseMirror {
+      h1 {
+        display: none !important;
+      }
+
+      h2,
+      h3 {
+        padding: 10px 0 4px !important;
+        color: var(--tw-color-text-primary) !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        line-height: 18px !important;
+      }
+
+      h2:first-child,
+      h3:first-child,
+      section:first-child h2:first-child,
+      section:first-child h3:first-child {
+        padding-top: 0 !important;
+      }
+
+      h4,
+      h5,
+      h6 {
+        padding: 4px 0 2px !important;
+        color: var(--tw-color-text-primary) !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        line-height: 18px !important;
+      }
+
+      p,
+      li {
+        color: var(--tw-color-text-tertiary) !important;
+        font-size: 12px !important;
+        line-height: 18px !important;
+      }
+
+      p {
+        margin: 3px 0 !important;
+      }
+
+      ul,
+      ol {
+        margin: 3px 0 !important;
+        padding-inline-start: 16px !important;
+      }
+
+      pre {
+        margin: 8px 0 !important;
+      }
+
+      pre code {
+        max-height: 180px;
+        border-radius: 10px;
+        font-size: 11px !important;
+        line-height: 16px !important;
+      }
+    }
+
+    .ProseMirror > *:not(section),
+    section > * {
+      padding-right: 0;
+      padding-left: 0;
+    }
+
+    h1 {
+      display: none;
+    }
+
+    h2,
+    h3 {
+      padding: 10px 0 4px !important;
+      color: var(--tw-color-text-primary);
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 18px;
+    }
+
+    h2:first-child,
+    h3:first-child,
+    section:first-child h2:first-child,
+    section:first-child h3:first-child {
+      padding-top: 0 !important;
+    }
+
+    h4,
+    h5,
+    h6 {
+      padding: 4px 0 2px !important;
+      color: var(--tw-color-text-primary);
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 18px;
+    }
+
+    p,
+    li {
+      color: var(--tw-color-text-tertiary);
+      font-size: 12px;
+      line-height: 18px;
+    }
+
+    p {
+      margin: 3px 0;
+    }
+
+    ul,
+    ol {
+      margin: 3px 0;
+      padding-inline-start: 16px;
+    }
+
+    pre code {
+      max-height: 180px;
+      border-radius: 10px;
+      font-size: 11px;
+      line-height: 16px;
+    }
+  }
+
+  .focused-service-docs-field-markdown {
+    margin-top: 10px;
+  }
+
+  .focused-service-docs-requirements-markdown {
+    margin-top: 0;
+
+    .block-editor-wrapper .tiptap.ProseMirror {
+      h2,
+      h3 {
+        padding-top: 14px !important;
+        font-size: 13px !important;
+        line-height: 18px !important;
+      }
+
+      h2:first-child,
+      h3:first-child,
+      section:first-child h2:first-child,
+      section:first-child h3:first-child {
+        padding-top: 0 !important;
+      }
+    }
+  }
+
+  .focused-service-docs-link-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-top: 12px;
+    border-top: 1px solid var(--tw-color-border-secondary);
+  }
+
+  .focused-service-docs-link {
+    display: flex;
+    min-height: 38px;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--tw-color-border-secondary);
+    border-radius: 8px;
+    background: var(--tw-color-bg-primary);
+    box-shadow: var(--tw-shadow-xs);
+    color: var(--tw-color-text-brand-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 18px;
+
+    span {
+      flex: 1;
+      min-width: 0;
+    }
+
+    &:hover {
+      color: var(--tw-color-text-brand-secondary_hover);
+      text-decoration: none;
     }
   }
 

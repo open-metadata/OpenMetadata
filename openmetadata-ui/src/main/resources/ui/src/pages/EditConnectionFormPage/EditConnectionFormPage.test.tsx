@@ -72,11 +72,6 @@ jest.mock('../../components/common/ServiceDocPanel/ServiceDocPanel', () =>
   ))
 );
 
-jest.mock(
-  '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
-  () => jest.fn(() => <div>TitleBreadcrumb</div>)
-);
-
 jest.mock('../../components/common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
@@ -189,7 +184,7 @@ describe('EditConnectionFormPage component', () => {
     });
 
     expect(mockGetServiceByFQN).toHaveBeenCalled();
-    expect(screen.getByText('TitleBreadcrumb')).toBeInTheDocument();
+    expect(screen.getByText('Database Services')).toBeInTheDocument();
     expect(
       screen.getByText('message.edit-service-entity-connection')
     ).toBeInTheDocument();

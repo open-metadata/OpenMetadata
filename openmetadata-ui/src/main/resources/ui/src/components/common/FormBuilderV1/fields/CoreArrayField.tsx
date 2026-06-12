@@ -14,12 +14,13 @@
 import { HintText, Label, Tooltip } from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
 import { Copy01, XClose } from '@untitledui/icons';
-import { isEmpty, startCase } from 'lodash';
+import { isEmpty } from 'lodash';
 import { useCallback, useState } from 'react';
 import { Input as AriaInput } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useClipboard } from '../../../../hooks/useClipBoard';
 import { splitCSV } from '../../../../utils/CSV/CSV.utils';
+import { getFormDisplayLabel } from '../formBuilderV1LabelUtils';
 
 const CoreArrayField = (props: FieldProps) => {
   const {
@@ -109,7 +110,7 @@ const CoreArrayField = (props: FieldProps) => {
     ? t('message.filter-pattern-placeholder')
     : '';
 
-  const fieldLabel = label || schema.title || startCase(fieldName);
+  const fieldLabel = label || schema.title || getFormDisplayLabel(fieldName);
 
   return (
     <div className="tw:flex tw:flex-col tw:gap-1.5">

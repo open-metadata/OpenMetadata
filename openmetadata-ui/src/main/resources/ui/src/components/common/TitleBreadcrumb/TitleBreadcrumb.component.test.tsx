@@ -12,6 +12,7 @@
  */
 
 import {
+  fireEvent,
   getAllByTestId,
   getByTestId,
   render,
@@ -95,5 +96,32 @@ describe('Test Breadcrumb Component', () => {
     const serviceLink = screen.getByText('services');
 
     expect(serviceLink).toHaveAttribute('href', '/services');
+  });
+
+  it('Should call link onClick when a linked breadcrumb is clicked', () => {
+    const onClick = jest.fn();
+
+    render(
+      <TitleBreadcrumb
+        titleLinks={[
+          {
+            name: 'home',
+            url: '/',
+            onClick,
+          },
+          {
+            name: 'database',
+            url: '',
+          },
+        ]}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    fireEvent.click(screen.getByText('home'));
+
+    expect(onClick).toHaveBeenCalled();
   });
 });

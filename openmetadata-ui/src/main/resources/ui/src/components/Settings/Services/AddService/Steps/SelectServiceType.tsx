@@ -11,13 +11,21 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Badge, Button, Col, Row, Select, Typography } from 'antd';
+import {
+  Badge,
+  Box,
+  Input,
+  Select,
+  SelectItem,
+  Typography,
+  type SelectItemType,
+} from '@openmetadata/ui-core-components';
+import { SearchLg } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isEmpty, startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
+import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconCheckboxPrimary } from '../../../../../assets/svg/checkbox-primary.svg';
 import {
   BETA_SERVICES,
   excludedService,
@@ -36,9 +44,11 @@ import {
 } from '../../../../../utils/EntityDisplayUtils';
 import ServiceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
-import './select-service-type.less';
 import { SelectServiceTypeProps } from './Steps.interface';
+
+const categorySelectItems: SelectItemType[] = SERVICE_CATEGORY_OPTIONS.map(
+  ({ label, value }) => ({ id: value, label })
+);
 
 const SelectServiceType = ({
   serviceCategory,
@@ -46,8 +56,6 @@ const SelectServiceType = ({
   showError,
   serviceCategoryHandler,
   handleServiceTypeClick,
-  onCancel,
-  onNext,
 }: SelectServiceTypeProps) => {
   const { t } = useTranslation();
   const [category, setCategory] = useState('');
@@ -97,29 +105,33 @@ const SelectServiceType = ({
   };
 
   return (
-    <Row>
-      <Col span={24}>
+    <div>
+      <div>
         <Select
-          className="w-full"
+          className="tw:w-full"
           data-testid="service-category"
           id="serviceCategory"
-          options={SERVICE_CATEGORY_OPTIONS}
-          value={category}
-          onChange={(value) => {
+          items={categorySelectItems}
+          selectedKey={category}
+          size="md"
+          onSelectionChange={(key: Key | null) => {
+            if (key === null) {
+              return;
+            }
             setConnectorSearchTerm('');
-            serviceCategoryHandler(value as ServiceCategory);
-          }}
-        />
-      </Col>
-      <Col className="m-t-lg" span={24}>
-        <Searchbar
-          removeMargin
-          placeholder={t('label.search-for-type', {
-            type: t('label.connector'),
-          })}
-          searchValue={connectorSearchTerm}
-          typingInterval={500}
-          onSearch={handleConnectorSearchTerm}
+            serviceCategoryHandler(key as ServiceCategory);
+          }}>
+          {(item) => <SelectItem id={item.id} label={item.label} />}
+        </Select>
+      </div>
+
+      <div className="tw:mt-[14px]">
+        <Input
+          icon={SearchLg}
+          placeholder={t('label.search-for-a-connector')}
+          size="md"
+          value={connectorSearchTerm}
+          onChange={(value: string) => handleConnectorSearchTerm(value)}
         />
 
         {isEmpty(filteredConnectors) && (
@@ -127,44 +139,53 @@ const SelectServiceType = ({
             <ErrorPlaceHolder
               className="border-none"
               type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-              <Typography.Paragraph>
+              <Typography>
                 {t('message.no-connectors-available-for-service')}
-              </Typography.Paragraph>
+              </Typography>
             </ErrorPlaceHolder>
           </div>
         )}
-        <Row className="service-list-container" data-testid="select-service">
+
+        <div
+          className="tw:mt-4 tw:grid tw:grid-cols-5 tw:gap-3"
+          data-testid="select-service">
           {filteredConnectors.map((type) => (
-            <Button
-              className={classNames('service-box', {
-                'selected-service': type === selectServiceType,
-              })}
+            <button
+              className={classNames(
+                'tw:relative tw:flex tw:h-[100px] tw:w-full tw:cursor-pointer tw:flex-col tw:items-center tw:justify-center',
+                'tw:gap-3 tw:rounded-lg tw:border tw:bg-primary tw:px-2.5 tw:py-4',
+                'tw:shadow-xs tw:transition-[border-color,background-color,box-shadow] tw:duration-[120ms]',
+                'tw:whitespace-normal hover:tw:bg-utility-brand-50 hover:tw:border-utility-brand-300',
+                type === selectServiceType
+                  ? 'tw:border-2 tw:border-utility-brand-300'
+                  : 'tw:border tw:border-secondary'
+              )}
               data-testid={type}
               key={type}
+              type="button"
               onClick={() => handleServiceTypeClick(type)}>
-              <div data-testid="service-icon">
-                {getServiceLogo(type || '', 'h-9')}
+              <div
+                className="tw:flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:border tw:border-secondary tw:bg-secondary"
+                data-testid="service-icon">
+                <div className="tw:flex tw:size-6 tw:items-center tw:justify-center">
+                  {getServiceLogo(type || '', 'tw:size-6 tw:object-contain')}
+                </div>
               </div>
-              <div className="absolute" style={{ right: '4px', top: '0px' }}>
-                {type === selectServiceType && (
-                  <Icon
-                    className="align-middle"
-                    component={IconCheckboxPrimary}
-                    style={{ fontSize: '14px' }}
-                  />
-                )}
-              </div>
-              <p className="w-full text-center m-t-md">
-                {getServiceName(type)}
+              <Box align="center" gap={2} justify="center">
+                <Typography size="text-xs" weight="semibold">
+                  {getServiceName(type)}
+                </Typography>
                 {BETA_SERVICES.includes(
                   type as DatabaseServiceType | PipelineServiceType
                 ) ? (
-                  <Badge className="service-beta-tag" count={t('label.beta')} />
+                  <Badge color="brand" size="xs" type="pill-color">
+                    {t('label.beta')}
+                  </Badge>
                 ) : null}
-              </p>
-            </Button>
+              </Box>
+            </button>
           ))}
-        </Row>
+        </div>
 
         {showError &&
           errorMsg(
@@ -172,26 +193,8 @@ const SelectServiceType = ({
               fieldText: t('label.service'),
             })
           )}
-      </Col>
-
-      <Col className="d-flex justify-end mt-12" span={24}>
-        <Button
-          className="m-r-xs"
-          data-testid="previous-button"
-          type="link"
-          onClick={onCancel}>
-          {t('label.cancel')}
-        </Button>
-
-        <Button
-          className="font-medium p-x-md p-y-xxs h-auto rounded-6"
-          data-testid="next-button"
-          type="primary"
-          onClick={onNext}>
-          {t('label.next')}
-        </Button>
-      </Col>
-    </Row>
+      </div>
+    </div>
   );
 };
 

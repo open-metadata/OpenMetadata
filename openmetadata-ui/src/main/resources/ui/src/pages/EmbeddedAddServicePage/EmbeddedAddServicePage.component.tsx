@@ -11,19 +11,18 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
+import { Breadcrumbs, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
-import { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
-import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import ConfigureService from '../../components/Settings/Services/AddService/Steps/ConfigureService';
+import ServiceFlowStepper from '../../components/Settings/Services/AddService/ServiceFlowStepper/ServiceFlowStepper';
+import ServiceNameCard from '../../components/Settings/Services/AddService/ServiceNameCard/ServiceNameCard';
 import SelectServiceType from '../../components/Settings/Services/AddService/Steps/SelectServiceType';
-import IngestionStepper from '../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
 import EmbeddedConnectionConfigForm from '../../components/Settings/Services/ServiceConfig/EmbeddedConnectionConfigForm';
 import FiltersConfigForm from '../../components/Settings/Services/ServiceConfig/FiltersConfigForm';
 import { AUTO_PILOT_APP_NAME } from '../../constants/Applications.constant';
@@ -52,6 +51,7 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { ServiceConfig } from '../AddServicePage/AddServicePage.interface';
+import { useServiceNameValidation } from '../AddServicePage/useServiceNameValidation';
 
 const EmbeddedAddServicePage = () => {
   const navigate = useNavigate();
@@ -76,18 +76,61 @@ const EmbeddedAddServicePage = () => {
   const [saveServiceState, setSaveServiceState] =
     useState<LoadingState>('initial');
   const [activeField, setActiveField] = useState<string>('');
+  const {
+    isServiceNameChecking,
+    nameError,
+    resetNameValidation,
+    setNameError,
+    validateServiceName,
+  } = useServiceNameValidation({
+    enabled: activeServiceStep === 2 && Boolean(serviceConfig.serviceType),
+    serviceCategory,
+    serviceName: serviceConfig.name,
+  });
 
-  const slashedBreadcrumb = useMemo(() => {
-    const crumbs = getAddServiceEntityBreadcrumb(serviceCategory);
-
-    return [
-      {
-        ...crumbs[0],
-        url: `/askCollate/connections/settings/services/${serviceCategory}`,
+  const handleConnectorChangeClick = useCallback(() => {
+    resetNameValidation();
+    setActiveField('');
+    setActiveServiceStep(1);
+    setServiceConfig({
+      name: '',
+      description: '',
+      serviceType: '',
+      connection: {
+        config: {} as ConfigData,
       },
-      ...crumbs.slice(1),
-    ];
-  }, [serviceCategory]);
+    });
+  }, [resetNameValidation]);
+
+  const slashedBreadcrumb = useMemo(
+    () => getAddServiceEntityBreadcrumb(serviceCategory),
+    [serviceCategory]
+  );
+
+  const serviceBreadcrumb = useMemo(
+    () =>
+      serviceConfig.serviceType
+        ? [
+            {
+              label: t('label.add-new-entity', {
+                entity: t('label.service'),
+              }),
+              id: 'add-service',
+            },
+            {
+              label: serviceConfig.serviceType,
+              id: serviceConfig.serviceType,
+            },
+          ]
+        : slashedBreadcrumb,
+    [
+      handleConnectorChangeClick,
+      serviceCategory,
+      serviceConfig.serviceType,
+      slashedBreadcrumb,
+      t,
+    ]
+  );
 
   const translatedSteps = useMemo(
     () =>
@@ -99,7 +142,7 @@ const EmbeddedAddServicePage = () => {
   );
 
   const handleServiceTypeClick = (type: string) => {
-    setShowErrorMessage({ ...showErrorMessage, serviceType: false });
+    resetNameValidation();
     setServiceConfig({
       name: '',
       description: '',
@@ -108,6 +151,7 @@ const EmbeddedAddServicePage = () => {
         config: {} as ConfigData,
       },
     });
+    setActiveServiceStep(2);
   };
 
   const handleServiceCategoryChange = (category: ServiceCategory) => {
@@ -119,35 +163,29 @@ const EmbeddedAddServicePage = () => {
     navigate(connectionsRouterClassBase.getAddServicePath(category));
   };
 
-  const handleSelectServiceCancel = () => {
-    navigate(
-      connectionsRouterClassBase.getSettingsServicesPath(serviceCategory)
-    );
-  };
+  const handleConnectionDetailsBackClick = () => setActiveServiceStep(1);
 
-  const handleSelectServiceNextClick = () => {
-    if (serviceConfig.serviceType) {
-      setActiveServiceStep(2);
-    } else {
-      setShowErrorMessage({ ...showErrorMessage, serviceType: true });
+  const handleConfigUpdate = async (newConfigData: ConfigData) => {
+    const serviceName = serviceConfig.name.trim();
+
+    if (!serviceName) {
+      setNameError(
+        t('message.field-text-is-required', {
+          fieldText: t('label.service-name'),
+        })
+      );
+
+      return;
     }
-  };
 
-  const handleConfigureServiceBackClick = () => setActiveServiceStep(1);
-  const handleConfigureServiceNextClick = (
-    value: Pick<ServiceConfig, 'name' | 'description'>
-  ) => {
-    setServiceConfig((prev) => ({
-      ...prev,
-      ...value,
-    }));
-    setActiveServiceStep(3);
-  };
+    const isServiceNameAvailable = await validateServiceName(serviceName);
 
-  const handleConnectionDetailsBackClick = () => setActiveServiceStep(2);
-  const handleConfigUpdate = (newConfigData: ConfigData) => {
+    if (!isServiceNameAvailable) {
+      return;
+    }
+
     const data = serviceUtilClassBase.getServiceConfigData({
-      serviceName: serviceConfig.name,
+      serviceName,
       serviceType: serviceConfig.serviceType,
       description: serviceConfig.description,
       userId: currentUser?.id ?? '',
@@ -158,7 +196,7 @@ const EmbeddedAddServicePage = () => {
       ...prev,
       ...data,
     }));
-    setActiveServiceStep(4);
+    setActiveServiceStep(3);
   };
 
   const triggerTheAutoPilotApplication = async (
@@ -179,7 +217,7 @@ const EmbeddedAddServicePage = () => {
     }
   };
 
-  const handleFiltersInputBackClick = () => setActiveServiceStep(3);
+  const handleFiltersInputBackClick = () => setActiveServiceStep(2);
   const handleFiltersInputNextClick = async (config: ConfigData) => {
     const configData = {
       ...serviceConfig,
@@ -239,34 +277,62 @@ const EmbeddedAddServicePage = () => {
     () =>
       !(
         serviceConfig.serviceType &&
-        (activeServiceStep === 3 || activeServiceStep === 4)
+        (activeServiceStep === 2 || activeServiceStep === 3)
       ),
     [activeServiceStep, serviceConfig.serviceType]
   );
 
+  const handleBreadcrumbAction = useCallback(
+    (id: React.Key) => {
+      if (id === 'add-service') {
+        handleConnectorChangeClick();
+      } else if (id === 'category') {
+        navigate(
+          `/askCollate/connections/settings/services/${serviceCategory}`
+        );
+      }
+    },
+    [handleConnectorChangeClick, navigate, serviceCategory]
+  );
+
   const firstPanelChildren = (
     <>
-      <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
-      <div className="m-t-md">
+      <Breadcrumbs
+        items={serviceBreadcrumb}
+        onAction={handleBreadcrumbAction}
+      />
+      <div className="tw:mt-[22px]">
         <div data-testid="add-new-service-container">
           {serviceConfig.serviceType ? (
-            <Space className="p-b-xs">
-              {getServiceLogo(serviceConfig.serviceType || '', 'h-6')}{' '}
-              <Typography className="text-base" data-testid="header">
+            <div className="tw:flex tw:items-center tw:gap-3 tw:pb-0">
+              {getServiceLogo(
+                serviceConfig.serviceType || '',
+                'tw:size-10 tw:max-w-10 tw:max-h-10 tw:object-contain'
+              )}
+              <Typography
+                className="tw:m-0"
+                data-testid="header"
+                size="text-xl"
+                weight="semibold">
                 {`${serviceConfig.serviceType} ${t('label.service')}`}
               </Typography>
-            </Space>
+            </div>
           ) : (
-            <Typography className="text-base p-b-xs" data-testid="header">
+            <Typography
+              className="tw:m-0"
+              data-testid="header"
+              size="text-xl"
+              weight="semibold">
               {t('label.add-new-entity', { entity: t('label.service') })}
             </Typography>
           )}
 
-          <IngestionStepper
+          <ServiceFlowStepper
             activeStep={activeServiceStep}
+            className="tw:mt-6"
             steps={translatedSteps}
           />
-          <div className="m-t-lg">
+          <div className="tw:mt-[30px]">
             {activeServiceStep === 1 && (
               <SelectServiceType
                 handleServiceTypeClick={handleServiceTypeClick}
@@ -274,38 +340,52 @@ const EmbeddedAddServicePage = () => {
                 serviceCategory={serviceCategory}
                 serviceCategoryHandler={handleServiceCategoryChange}
                 showError={showErrorMessage.serviceType}
-                onCancel={handleSelectServiceCancel}
-                onNext={handleSelectServiceNextClick}
               />
             )}
 
             {activeServiceStep === 2 && (
-              <ConfigureService
-                serviceName={serviceConfig.name}
-                onBack={handleConfigureServiceBackClick}
-                onNext={handleConfigureServiceNextClick}
-              />
+              <div className="tw:flex tw:flex-col tw:gap-4">
+                <ServiceNameCard
+                  description={serviceConfig.description}
+                  name={serviceConfig.name}
+                  nameError={nameError}
+                  serviceType={serviceConfig.serviceType}
+                  onDescriptionChange={(description) =>
+                    setServiceConfig((prev) => ({ ...prev, description }))
+                  }
+                  onFocus={handleFieldFocus}
+                  onNameChange={(name) => {
+                    resetNameValidation();
+                    setServiceConfig((prev) => ({ ...prev, name }));
+                  }}
+                />
+                <EmbeddedConnectionConfigForm
+                  requireTestConnection
+                  cancelText={t('label.back')}
+                  data={serviceConfig as ServicesType}
+                  isSubmitDisabled={
+                    !serviceConfig.name.trim() ||
+                    Boolean(nameError) ||
+                    isServiceNameChecking
+                  }
+                  okText={t('label.next-what-to-ingest')}
+                  serviceCategory={serviceCategory}
+                  serviceType={serviceConfig.serviceType}
+                  status={saveServiceState}
+                  onCancel={handleConnectionDetailsBackClick}
+                  onFocus={handleFieldFocus}
+                  onSave={async (e) => {
+                    e.formData && (await handleConfigUpdate(e.formData));
+                  }}
+                />
+              </div>
             )}
 
             {activeServiceStep === 3 && (
-              <EmbeddedConnectionConfigForm
-                cancelText={t('label.back')}
-                data={serviceConfig as ServicesType}
-                okText={t('label.next')}
-                serviceCategory={serviceCategory}
-                serviceType={serviceConfig.serviceType}
-                status={saveServiceState}
-                onCancel={handleConnectionDetailsBackClick}
-                onFocus={handleFieldFocus}
-                onSave={async (e) => {
-                  e.formData && handleConfigUpdate(e.formData);
-                }}
-              />
-            )}
-
-            {activeServiceStep === 4 && (
               <FiltersConfigForm
                 cancelText={t('label.back')}
+                data={serviceConfig as ServicesType}
+                okText={t('label.create-and-deploy')}
                 serviceCategory={serviceCategory}
                 serviceType={serviceConfig.serviceType}
                 status={saveServiceState}
@@ -328,13 +408,13 @@ const EmbeddedAddServicePage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel tw:!bg-transparent"
+      className="add-service-page content-height-with-resizable-panel tw:!bg-transparent"
       firstPanel={{
         children: firstPanelChildren,
         minWidth: 700,
         flex: 0.7,
         className: 'content-resizable-panel-container',
-        cardClassName: 'max-width-md m-x-auto tw:my-4',
+        cardClassName: 'add-service-page-card max-width-md m-x-auto',
         allowScroll: true,
       }}
       hideSecondPanel={hideSecondPanel}
@@ -342,6 +422,7 @@ const EmbeddedAddServicePage = () => {
       secondPanel={{
         children: (
           <ServiceDocPanel
+            focusedMode
             activeField={activeField}
             serviceName={serviceConfig.serviceType}
             serviceType={getServiceType(serviceCategory)}

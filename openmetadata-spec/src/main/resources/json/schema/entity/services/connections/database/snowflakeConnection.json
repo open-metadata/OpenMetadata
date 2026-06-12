@@ -88,25 +88,25 @@
     },
     "includeTransientTables": {
       "title": "Include Transient Tables",
-      "description": "Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the TRANSIENT tables.",
+      "description": "Ingest transient tables alongside permanent ones.",
       "type": "boolean",
       "default": true
     },
     "includeStreams": {
       "title": "Include Streams",
-      "description": "Optional configuration for ingestion of streams, By default, it will skip the streams.",
+      "description": "Ingest Snowflake streams as data assets.",
       "type": "boolean",
       "default": false
     },
     "includeStages": {
       "title": "Include Stages",
-      "description": "Optional configuration for ingestion of Snowflake stages (internal and external). By default, stages are not ingested.",
+      "description": "Ingest external and internal stages.",
       "type": "boolean",
       "default": false
     },
     "clientSessionKeepAlive": {
       "title": "Client Session Keep Alive",
-      "description": "Optional configuration for ingestion to keep the client session active in case the ingestion process runs for longer durations.",
+      "description": "Keep the session alive for long-running scans.",
       "type": "boolean",
       "default": false
     },

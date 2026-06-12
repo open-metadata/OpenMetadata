@@ -13,7 +13,9 @@
 
 import { Input } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
-import { getWidgetHint, getWidgetLabel } from './coreWidgetUtils';
+import { getWidgetLabel } from './coreWidgetUtils';
+
+const HINT_TOOLTIP_THRESHOLD = 100;
 
 const CoreInputWidget = ({
   id,
@@ -61,22 +63,39 @@ const CoreInputWidget = ({
     onChange(nextValue);
   };
 
+  const description = schema.description ?? options.help;
+  const isLongHint =
+    typeof description === 'string' &&
+    description.length > HINT_TOOLTIP_THRESHOLD;
+  const hint = rawErrors?.[0] ?? (isLongHint ? undefined : description);
+  const tooltip = isLongHint && !rawErrors?.length ? description : undefined;
+
   return (
-    <Input
-      autoFocus={autofocus}
-      hint={getWidgetHint({ rawErrors, schema, options })}
-      id={id}
-      isDisabled={disabled || readonly}
-      isInvalid={!!rawErrors?.length}
-      isRequired={required}
-      label={getWidgetLabel({ hideLabel, label })}
-      placeholder={placeholder}
-      type={inputType}
-      value={value ?? ''}
-      onBlur={() => onBlur(id, value)}
-      onChange={handleChange}
-      onFocus={() => onFocus(id, value)}
-    />
+    <div>
+      <Input
+        autoFocus={autofocus}
+        hint={hint}
+        hintClassName="tw:text-xs"
+        id={id}
+        isDisabled={disabled || readonly}
+        isInvalid={!!rawErrors?.length}
+        isRequired={required}
+        label={getWidgetLabel({ hideLabel, label })}
+        placeholder={placeholder}
+        tooltip={tooltip}
+        tooltipClassName="tw:h-4"
+        type={inputType}
+        value={value ?? ''}
+        onBlur={() => onBlur(id, value)}
+        onChange={handleChange}
+        onFocus={() => onFocus(id, value)}
+      />
+      {options.suffix && (
+        <span className="tw:mt-1 tw:block tw:text-xs tw:font-medium tw:text-quaternary">
+          {options.suffix as string}
+        </span>
+      )}
+    </div>
   );
 };
 

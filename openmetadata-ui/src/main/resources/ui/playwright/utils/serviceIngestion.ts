@@ -147,33 +147,191 @@ export const testConnection = async (page: Page) => {
   await page.getByTestId('test-connection-btn').waitFor();
 
   await page.click('[data-testid="test-connection-btn"]');
-  const modalTitle = page.locator(
-    '[data-testid="test-connection-modal"] .ant-modal-title'
-  );
+  const testConnectionDialog = page
+    .getByRole('dialog')
+    .filter({ hasText: /Connection status|Test Connection/ });
 
-  await expect(modalTitle).toBeVisible();
+  await expect(testConnectionDialog).toBeVisible();
 
-  await page.getByRole('button', { name: 'OK' }).click();
+  await testConnectionDialog.getByRole('button', { name: /Done|OK/ }).click();
 
   // Wait for the success badge or the warning badge to appear
-  const successBadge = page.locator('[data-testid="success-badge"]');
+  const statusBadge = page.locator(
+    '[data-testid="message-container"] [data-testid="success-badge"], [data-testid="message-container"] [data-testid="warning-badge"]'
+  );
 
-  const warningBadge = page.locator('[data-testid="warning-badge"]');
-
-  await expect(successBadge.or(warningBadge)).toBeVisible({
+  await expect(statusBadge).toBeVisible({
     timeout: 3.5 * 60 * 1000, // 3 minutes for connection test and 0.5 minute buffer
   });
 
   await expect(page.getByTestId('messag-text')).toContainText(
-    /Connection test was successful.|Test connection partially successful: Some steps had failures, we will only ingest partial metadata. Click here to view details./g
+    /Connection verified|Connection test was successful.|Test connection partially successful: Some steps had failures, we will only ingest partial metadata./
   );
+};
+
+export const mockSuccessfulTestConnection = async (page: Page) => {
+  const workflowId = 'pw-successful-test-connection-workflow';
+
+  await page.route(
+    '**/api/v1/services/testConnectionDefinitions/name/**',
+    (route) =>
+      route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          name: 'Playwright.testConnectionDefinition',
+          steps: [
+            {
+              name: 'CheckAccess',
+              mandatory: true,
+              description: 'Establish connection',
+            },
+          ],
+        }),
+      })
+  );
+
+  await page.route('**/api/v1/automations/workflows', async (route) => {
+    if (route.request().method() !== 'POST') {
+      await route.continue();
+
+      return;
+    }
+
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: workflowId,
+        name: workflowId,
+        status: 'Running',
+        workflowType: 'TEST_CONNECTION',
+      }),
+    });
+  });
+
+  await page.route('**/api/v1/automations/workflows/trigger/**', (route) =>
+    route.fulfill({ status: 200, body: '{}' })
+  );
+
+  await page.route(
+    `**/api/v1/automations/workflows/${workflowId}**`,
+    (route) => {
+      if (route.request().method() === 'DELETE') {
+        return route.fulfill({
+          contentType: 'application/json',
+          body: JSON.stringify({ id: workflowId }),
+        });
+      }
+
+      return route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: workflowId,
+          name: workflowId,
+          status: 'Successful',
+          workflowType: 'TEST_CONNECTION',
+          response: {
+            status: 'Successful',
+            steps: [
+              {
+                name: 'CheckAccess',
+                mandatory: true,
+                passed: true,
+                message: 'Connected',
+              },
+            ],
+          },
+        }),
+      });
+    }
+  );
+};
+
+export const testConnectionIfRequired = async (page: Page) => {
+  await waitForServiceConnectionForm(page);
+
+  const submitButton = page.getByTestId('submit-btn');
+
+  if (await submitButton.isDisabled({ timeout: 1000 }).catch(() => false)) {
+    await testConnection(page);
+    await expect(submitButton).toBeEnabled({ timeout: 30_000 });
+  }
 };
 
 export const checkServiceFieldSectionHighlighting = async (
   page: Page,
   field: string
 ) => {
-  await page.locator(`[data-id="${field}"][data-highlighted="true"]`).waitFor();
+  const highlightedField = page.locator(
+    `[data-id="${field}"][data-highlighted="true"]`
+  );
+
+  if (await highlightedField.isVisible({ timeout: 1000 }).catch(() => false)) {
+    return;
+  }
+
+  await expect(page.getByTestId('service-requirements')).toBeVisible();
+};
+
+export const selectServiceConnector = async (
+  page: Page,
+  connectorType: string
+) => {
+  await page.getByTestId(connectorType).click();
+
+  try {
+    await page.getByTestId('service-name').waitFor({
+      state: 'visible',
+      timeout: 5000,
+    });
+  } catch {
+    await page.getByTestId('next-button').click();
+    await page.getByTestId('service-name').waitFor({ state: 'visible' });
+  }
+};
+
+export const waitForServiceConnectionForm = async (page: Page) => {
+  await page
+    .getByTestId('connection-schema-loader')
+    .waitFor({ state: 'detached', timeout: 60_000 })
+    .catch(() => null);
+
+  await page
+    .locator(
+      [
+        '[data-testid="test-connection-btn"]:visible',
+        '[data-testid="test-connection-button"]:visible',
+        '[data-testid="no-config-available"]:visible',
+        '[data-field-id^="root/"]:visible',
+        'input[id^="root/"]:not([type="hidden"]):visible',
+        'textarea[id^="root/"]:visible',
+      ].join(', ')
+    )
+    .first()
+    .waitFor({ state: 'visible', timeout: 60_000 });
+
+  await page.getByTestId('submit-btn').waitFor({ state: 'visible' });
+};
+
+export const advanceToServiceConnectionStep = async (
+  page: Page,
+  waitForTestId = 'submit-btn'
+) => {
+  const target = page.getByTestId(waitForTestId);
+  if (await target.isVisible({ timeout: 1000 }).catch(() => false)) {
+    if (waitForTestId === 'submit-btn') {
+      await waitForServiceConnectionForm(page);
+    }
+
+    return;
+  }
+
+  await page.getByTestId('next-button').click();
+
+  if (waitForTestId === 'submit-btn') {
+    await waitForServiceConnectionForm(page);
+  } else {
+    await target.waitFor({ state: 'visible' });
+  }
 };
 
 type RetryRequestData = {

@@ -16,7 +16,13 @@ import { customizeValidator } from '@rjsf/validator-ajv8';
 import { Button, Space } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, omit, omitBy } from 'lodash';
-import { FC, useMemo, useState } from 'react';
+import {
+  forwardRef,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA,
@@ -29,34 +35,53 @@ import {
 } from '../../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
   IngestionWorkflowData,
+  IngestionWorkflowFormHandle,
   IngestionWorkflowFormProps,
 } from '../../../../../interface/service.interface';
 import ProfilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { transformErrors } from '../../../../../utils/formUtils';
 import { getSchemaByWorkflowType } from '../../../../../utils/IngestionWorkflowUtils';
 import BooleanFieldTemplate from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
-import DescriptionFieldTemplate from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';
-import { FieldErrorTemplate } from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
-import { ObjectFieldTemplate } from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/ObjectFieldTemplate';
 import WorkflowArrayFieldTemplate from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate';
 import CodeWidget from '../../../../common/Form/JSONSchema/JsonSchemaWidgets/CodeWidget/CodeWidget';
 import ManifestJsonWidget from '../../../../common/Form/JSONSchema/JsonSchemaWidgets/ManifestJsonWidget/ManifestJsonWidget';
+import CoreOneOfField from '../../../../common/FormBuilderV1/fields/CoreOneOfField';
+import { CoreArrayFieldTemplate } from '../../../../common/FormBuilderV1/templates/CoreArrayFieldTemplate';
+import { CoreFieldErrorTemplate } from '../../../../common/FormBuilderV1/templates/CoreFieldErrorTemplate';
+import { CoreFieldTemplate } from '../../../../common/FormBuilderV1/templates/CoreFieldTemplate';
+import { CoreWrapIfAdditionalTemplate } from '../../../../common/FormBuilderV1/templates/CoreWrapIfAdditionalTemplate';
+import CoreCheckboxWidget from '../../../../common/FormBuilderV1/widgets/CoreCheckboxWidget';
+import CoreInputWidget from '../../../../common/FormBuilderV1/widgets/CoreInputWidget';
+import CorePasswordWidget from '../../../../common/FormBuilderV1/widgets/CorePasswordWidget';
+import CoreRadioWidget from '../../../../common/FormBuilderV1/widgets/CoreRadioWidget';
+import CoreSelectWidget from '../../../../common/FormBuilderV1/widgets/CoreSelectWidget';
+import CoreTextAreaWidget from '../../../../common/FormBuilderV1/widgets/CoreTextAreaWidget';
+import { IngestionObjectFieldTemplate } from '../../AddIngestion/IngestionObjectFieldTemplate/IngestionObjectFieldTemplate';
+import { FilterPatternField } from '../../ServiceConfig/FilterPatternField';
 import ProfileSampleConfigField from './ProfileSampleConfigField';
 
-const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
-  pipeLineType,
-  className,
-  okText,
-  cancelText,
-  serviceCategory,
-  workflowData,
-  operationType,
-  onCancel,
-  onFocus,
-  onSubmit,
-  onChange,
-  serviceData,
-}) => {
+const IngestionWorkflowForm = forwardRef<
+  IngestionWorkflowFormHandle,
+  IngestionWorkflowFormProps
+>(function IngestionWorkflowForm(
+  {
+    pipeLineType,
+    className,
+    okText,
+    cancelText,
+    hideFooter = false,
+    serviceCategory,
+    workflowData,
+    operationType,
+    onCancel,
+    onFocus,
+    onSubmit,
+    onChange,
+    serviceData,
+  }: Readonly<IngestionWorkflowFormProps>,
+  ref
+) {
+  const formRef = useRef<Form<IngestionWorkflowData>>(null);
   const [internalData, setInternalData] =
     useState<IngestionWorkflowData>(workflowData);
   const { t } = useTranslation();
@@ -141,8 +166,11 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
 
   const customFields = useMemo(() => {
     const fields: RegistryFieldsType = {
-      BooleanField: BooleanFieldTemplate,
+      AnyOfField: CoreOneOfField,
       ArrayField: WorkflowArrayFieldTemplate,
+      BooleanField: BooleanFieldTemplate,
+      FilterPatternField,
+      OneOfField: CoreOneOfField,
     };
 
     const SparkAgentField = ProfilerConfigurationClassBase.getSparkAgentField();
@@ -160,6 +188,13 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
 
     return fields;
   }, [pipeLineType]);
+
+  // Exposes submit to the parent card footer, which triggers the form when hideFooter is true.
+  useImperativeHandle(
+    ref,
+    () => ({ submit: () => formRef.current?.submit() }),
+    []
+  );
 
   const handleSubmit = (e: IChangeEvent<IngestionWorkflowData>) => {
     if (e.formData) {
@@ -200,36 +235,54 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
       formContext={{ handleFocus: onFocus }}
       formData={internalData}
       idSeparator="/"
+      ref={formRef}
       schema={schema}
       showErrorList={false}
       templates={{
-        DescriptionFieldTemplate: DescriptionFieldTemplate,
-        FieldErrorTemplate: FieldErrorTemplate,
-        ObjectFieldTemplate: ObjectFieldTemplate,
+        ArrayFieldTemplate: CoreArrayFieldTemplate,
+        FieldErrorTemplate: CoreFieldErrorTemplate,
+        FieldTemplate: CoreFieldTemplate,
+        ObjectFieldTemplate: IngestionObjectFieldTemplate,
+        WrapIfAdditionalTemplate: CoreWrapIfAdditionalTemplate,
       }}
       transformErrors={transformErrors}
       uiSchema={uiSchema}
       validator={validator}
       widgets={{
+        CheckboxWidget: CoreCheckboxWidget,
+        EmailWidget: CoreInputWidget,
+        PasswordWidget: CorePasswordWidget,
+        RadioWidget: CoreRadioWidget,
+        SelectWidget: CoreSelectWidget,
+        TextWidget: CoreInputWidget,
+        TextareaWidget: CoreTextAreaWidget,
+        URLWidget: CoreInputWidget,
+        UpDownWidget: CoreInputWidget,
         code: CodeWidget,
         manifestJson: ManifestJsonWidget,
       }}
       onChange={handleOnChange}
       onFocus={onFocus}
       onSubmit={handleSubmit}>
-      <div className="d-flex w-full justify-end">
-        <Space>
-          <Button type="link" onClick={onCancel}>
-            {cancelText ?? t('label.cancel')}
-          </Button>
+      {/* When hideFooter is true, the parent card renders the footer to span full width
+       * and keep the card's bottom border-radius visible during scroll. */}
+      {!hideFooter && (
+        <div className="d-flex w-full justify-end">
+          <Space>
+            <Button type="link" onClick={onCancel}>
+              {cancelText ?? t('label.cancel')}
+            </Button>
 
-          <Button data-testid="submit-btn" htmlType="submit" type="primary">
-            {okText ?? t('label.save')}
-          </Button>
-        </Space>
-      </div>
+            <Button data-testid="submit-btn" htmlType="submit" type="primary">
+              {okText ?? t('label.save')}
+            </Button>
+          </Space>
+        </div>
+      )}
     </Form>
   );
-};
+});
+
+IngestionWorkflowForm.displayName = 'IngestionWorkflowForm';
 
 export default IngestionWorkflowForm;

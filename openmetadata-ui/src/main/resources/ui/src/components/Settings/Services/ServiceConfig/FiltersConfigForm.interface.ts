@@ -22,10 +22,15 @@ export interface FiltersConfigFormProps {
   data?: ServicesType;
   okText?: string;
   cancelText?: string;
+  hideFooter?: boolean;
   serviceType: string;
   serviceCategory: ServiceCategory;
   status: LoadingState;
   onFocus: (id: string) => void;
   onSave: (data: IChangeEvent<ConfigData>) => Promise<void>;
   onCancel?: () => void;
+}
+
+export interface FiltersConfigFormHandle {
+  submit: () => Promise<void>;
 }

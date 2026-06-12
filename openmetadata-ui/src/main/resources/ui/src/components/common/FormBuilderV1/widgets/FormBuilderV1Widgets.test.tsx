@@ -61,261 +61,311 @@ jest.mock('react-aria-components', () => ({
   ),
 }));
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  Box: jest.fn(({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  )),
-  Button: jest.fn(
-    ({
-      children,
-      isDisabled,
-      onClick,
-    }: {
-      children: React.ReactNode;
-      isDisabled?: boolean;
-      onClick?: () => void;
-    }) => (
-      <button disabled={isDisabled} type="button" onClick={onClick}>
-        {children}
-      </button>
-    )
-  ),
-  FileTrigger: jest.fn(
-    ({
-      children,
-      onSelect,
-    }: {
-      children: React.ReactNode;
-      onSelect?: (files: FileList | null) => void;
-    }) => (
+jest.mock('@openmetadata/ui-core-components', () => {
+  const { useState } = jest.requireActual('react') as typeof import('react');
+
+  function MockPasswordInput({
+    allowUpload,
+    hint,
+    isRequired,
+    label,
+  }: {
+    allowUpload?: boolean;
+    hint?: string;
+    isRequired?: boolean;
+    label?: string;
+  }) {
+    const [showPassword, setShowPassword] = useState(false);
+    const [showUpload, setShowUpload] = useState(Boolean(allowUpload));
+
+    if (showUpload) {
+      return (
+        <div>
+          <input data-testid="file-input" type="file" />
+          <button type="button" onClick={() => setShowUpload(false)}>
+            select-radio
+          </button>
+        </div>
+      );
+    }
+
+    return (
       <div>
-        {children}
-        <input
-          data-testid="file-input"
-          type="file"
-          onChange={(e) => onSelect?.(e.target.files)}
-        />
-      </div>
-    )
-  ),
-  HintText: jest.fn(
-    ({
-      children,
-      isInvalid,
-    }: {
-      children: React.ReactNode;
-      isInvalid?: boolean;
-    }) => <div data-invalid={String(Boolean(isInvalid))}>{children}</div>
-  ),
-  Label: jest.fn(
-    ({
-      children,
-      isRequired,
-    }: {
-      children: React.ReactNode;
-      isRequired?: boolean;
-    }) => (
-      <div>
-        {children}
-        {isRequired ? '*' : ''}
-      </div>
-    )
-  ),
-  RadioButton: jest.fn(
-    ({
-      hint,
-      label,
-      value,
-    }: {
-      hint?: string;
-      label: string;
-      value: string;
-    }) => (
-      <label>
-        <input type="radio" value={value} />
-        {label}
-        {hint ? <span>{hint}</span> : null}
-      </label>
-    )
-  ),
-  RadioGroup: jest.fn(
-    ({
-      children,
-      className,
-      isDisabled,
-      onChange,
-    }: {
-      children: React.ReactNode;
-      className?: string;
-      isDisabled?: boolean;
-      onChange?: (value: string) => void;
-    }) => (
-      <div className={className} data-disabled={String(Boolean(isDisabled))}>
-        {children}
-        <button type="button" onClick={() => onChange?.('2')}>
-          select-radio
+        {label && (
+          <label>
+            {label}
+            {isRequired ? '*' : ''}
+          </label>
+        )}
+        {hint && <span>{hint}</span>}
+        <button type="button" onClick={() => setShowPassword(!showPassword)}>
+          {showPassword ? <span>eye-off-icon</span> : <span>eye-icon</span>}
         </button>
       </div>
-    )
-  ),
-  Typography: jest.fn(({ children }: { children: React.ReactNode }) => (
-    <span>{children}</span>
-  )),
-  Checkbox: jest.fn(
-    ({
-      hint,
-      isDisabled,
-      isSelected,
-      label,
-      onChange,
-    }: {
-      hint?: string;
-      isDisabled?: boolean;
-      isSelected?: boolean;
-      label?: string;
-      onChange?: (value: boolean) => void;
-    }) => (
-      <button
-        data-disabled={String(Boolean(isDisabled))}
-        data-selected={String(Boolean(isSelected))}
-        type="button"
-        onClick={() => onChange?.(!isSelected)}>
-        {label}
-        {hint ? <span>{hint}</span> : null}
-      </button>
-    )
-  ),
-  Input: jest.fn(
-    ({
-      autoFocus,
-      hint,
-      id,
-      isDisabled,
-      isInvalid,
-      isRequired,
-      label,
-      onBlur,
-      onChange,
-      onFocus,
-      placeholder,
-      type,
-      value,
-    }: Record<string, unknown>) => (
-      <div>
-        {label ? <label htmlFor={id as string}>{label as string}</label> : null}
-        {hint ? <span>{hint as string}</span> : null}
-        <input
-          aria-invalid={isInvalid as boolean}
-          autoFocus={autoFocus as boolean}
-          data-required={String(Boolean(isRequired))}
-          disabled={isDisabled as boolean}
-          id={id as string}
-          placeholder={placeholder as string}
-          type={type as string}
-          value={value as string}
-          onBlur={() => (onBlur as (() => void) | undefined)?.()}
-          onChange={(event) =>
-            (onChange as ((v: string) => void) | undefined)?.(
-              event.target.value
-            )
-          }
-          onFocus={() => (onFocus as (() => void) | undefined)?.()}
-        />
-      </div>
-    )
-  ),
-  Select: Object.assign(
-    jest.fn(
+    );
+  }
+
+  return {
+    Box: jest.fn(({ children }: { children: React.ReactNode }) => (
+      <div>{children}</div>
+    )),
+    Button: jest.fn(
       ({
         children,
+        isDisabled,
+        onClick,
+      }: {
+        children: React.ReactNode;
+        isDisabled?: boolean;
+        onClick?: () => void;
+      }) => (
+        <button disabled={isDisabled} type="button" onClick={onClick}>
+          {children}
+        </button>
+      )
+    ),
+    FileTrigger: jest.fn(
+      ({
+        children,
+        onSelect,
+      }: {
+        children: React.ReactNode;
+        onSelect?: (files: FileList | null) => void;
+      }) => (
+        <div>
+          {children}
+          <input
+            data-testid="file-input"
+            type="file"
+            onChange={(e) => onSelect?.(e.target.files)}
+          />
+        </div>
+      )
+    ),
+    HintText: jest.fn(
+      ({
+        children,
+        isInvalid,
+      }: {
+        children: React.ReactNode;
+        isInvalid?: boolean;
+      }) => <div data-invalid={String(Boolean(isInvalid))}>{children}</div>
+    ),
+    Label: jest.fn(
+      ({
+        children,
+        isRequired,
+      }: {
+        children: React.ReactNode;
+        isRequired?: boolean;
+      }) => (
+        <div>
+          {children}
+          {isRequired ? '*' : ''}
+        </div>
+      )
+    ),
+    RadioButton: jest.fn(
+      ({
+        hint,
+        label,
+        value,
+      }: {
+        hint?: string;
+        label: string;
+        value: string;
+      }) => (
+        <label>
+          <input type="radio" value={value} />
+          {label}
+          {hint ? <span>{hint}</span> : null}
+        </label>
+      )
+    ),
+    RadioGroup: jest.fn(
+      ({
+        children,
+        className,
+        isDisabled,
+        onChange,
+      }: {
+        children: React.ReactNode;
+        className?: string;
+        isDisabled?: boolean;
+        onChange?: (value: string) => void;
+      }) => (
+        <div className={className} data-disabled={String(Boolean(isDisabled))}>
+          {children}
+          <button type="button" onClick={() => onChange?.('2')}>
+            select-radio
+          </button>
+        </div>
+      )
+    ),
+    Typography: jest.fn(({ children }: { children: React.ReactNode }) => (
+      <span>{children}</span>
+    )),
+    Checkbox: jest.fn(
+      ({
+        hint,
+        isDisabled,
+        isSelected,
+        label,
+        onChange,
+      }: {
+        hint?: string;
+        isDisabled?: boolean;
+        isSelected?: boolean;
+        label?: string;
+        onChange?: (value: boolean) => void;
+      }) => (
+        <button
+          data-disabled={String(Boolean(isDisabled))}
+          data-selected={String(Boolean(isSelected))}
+          type="button"
+          onClick={() => onChange?.(!isSelected)}>
+          {label}
+          {hint ? <span>{hint}</span> : null}
+        </button>
+      )
+    ),
+    Input: jest.fn(
+      ({
+        autoFocus,
+        hint,
+        id,
+        isDisabled,
+        isInvalid,
+        isRequired,
+        label,
+        onBlur,
+        onChange,
+        onFocus,
+        placeholder,
+        type,
+        value,
+      }: Record<string, unknown>) => (
+        <div>
+          {label ? (
+            <label htmlFor={id as string}>{label as string}</label>
+          ) : null}
+          {hint ? <span>{hint as string}</span> : null}
+          <input
+            aria-invalid={isInvalid as boolean}
+            autoFocus={autoFocus as boolean}
+            data-required={String(Boolean(isRequired))}
+            disabled={isDisabled as boolean}
+            id={id as string}
+            placeholder={placeholder as string}
+            type={type as string}
+            value={value as string}
+            onBlur={() => (onBlur as (() => void) | undefined)?.()}
+            onChange={(event) =>
+              (onChange as ((v: string) => void) | undefined)?.(
+                event.target.value
+              )
+            }
+            onFocus={() => (onFocus as (() => void) | undefined)?.()}
+          />
+        </div>
+      )
+    ),
+    Select: Object.assign(
+      jest.fn(
+        ({
+          children,
+          hint,
+          isDisabled,
+          isInvalid,
+          isRequired,
+          items,
+          label,
+          onSelectionChange,
+          placeholder,
+          selectedKey,
+        }: Record<string, unknown>) => (
+          <div>
+            {label ? <label>{label as string}</label> : null}
+            {hint ? <span>{hint as string}</span> : null}
+            <div
+              data-disabled={String(Boolean(isDisabled))}
+              data-invalid={String(Boolean(isInvalid))}
+              data-required={String(Boolean(isRequired))}>
+              {placeholder as string}
+            </div>
+            <div data-testid="selected-key">{String(selectedKey)}</div>
+            <button
+              type="button"
+              onClick={() =>
+                (onSelectionChange as ((v: unknown) => void) | undefined)?.('2')
+              }>
+              choose-option
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                (onSelectionChange as ((v: unknown) => void) | undefined)?.(
+                  null
+                )
+              }>
+              clear-option
+            </button>
+            {(items as Array<Record<string, string>>).map((item) => (
+              <div key={item.id}>
+                {(
+                  children as (item: Record<string, string>) => React.ReactNode
+                )(item)}
+              </div>
+            ))}
+          </div>
+        )
+      ),
+      {
+        Item: ({ children }: { children: React.ReactNode }) => (
+          <span>{children}</span>
+        ),
+      }
+    ),
+    TextArea: jest.fn(
+      ({
+        autoFocus,
         hint,
         isDisabled,
         isInvalid,
         isRequired,
-        items,
         label,
-        onSelectionChange,
+        onBlur,
+        onChange,
+        onFocus,
         placeholder,
-        selectedKey,
+        rows,
+        value,
       }: Record<string, unknown>) => (
         <div>
           {label ? <label>{label as string}</label> : null}
           {hint ? <span>{hint as string}</span> : null}
-          <div
+          <textarea
+            aria-invalid={isInvalid as boolean}
+            autoFocus={autoFocus as boolean}
             data-disabled={String(Boolean(isDisabled))}
-            data-invalid={String(Boolean(isInvalid))}
-            data-required={String(Boolean(isRequired))}>
-            {placeholder as string}
-          </div>
-          <div data-testid="selected-key">{String(selectedKey)}</div>
-          <button
-            type="button"
-            onClick={() =>
-              (onSelectionChange as ((v: unknown) => void) | undefined)?.('2')
-            }>
-            choose-option
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              (onSelectionChange as ((v: unknown) => void) | undefined)?.(null)
-            }>
-            clear-option
-          </button>
-          {(items as Array<Record<string, string>>).map((item) => (
-            <div key={item.id}>
-              {(children as (item: Record<string, string>) => React.ReactNode)(
-                item
-              )}
-            </div>
-          ))}
+            data-required={String(Boolean(isRequired))}
+            placeholder={placeholder as string}
+            rows={rows as number}
+            value={value as string}
+            onBlur={() => (onBlur as (() => void) | undefined)?.()}
+            onChange={(event) =>
+              (onChange as ((v: string) => void) | undefined)?.(
+                event.target.value
+              )
+            }
+            onFocus={() => (onFocus as (() => void) | undefined)?.()}
+          />
         </div>
       )
     ),
-    {
-      Item: ({ children }: { children: React.ReactNode }) => (
-        <span>{children}</span>
-      ),
-    }
-  ),
-  TextArea: jest.fn(
-    ({
-      autoFocus,
-      hint,
-      isDisabled,
-      isInvalid,
-      isRequired,
-      label,
-      onBlur,
-      onChange,
-      onFocus,
-      placeholder,
-      rows,
-      value,
-    }: Record<string, unknown>) => (
-      <div>
-        {label ? <label>{label as string}</label> : null}
-        {hint ? <span>{hint as string}</span> : null}
-        <textarea
-          aria-invalid={isInvalid as boolean}
-          autoFocus={autoFocus as boolean}
-          data-disabled={String(Boolean(isDisabled))}
-          data-required={String(Boolean(isRequired))}
-          placeholder={placeholder as string}
-          rows={rows as number}
-          value={value as string}
-          onBlur={() => (onBlur as (() => void) | undefined)?.()}
-          onChange={(event) =>
-            (onChange as ((v: string) => void) | undefined)?.(
-              event.target.value
-            )
-          }
-          onFocus={() => (onFocus as (() => void) | undefined)?.()}
-        />
-      </div>
-    )
-  ),
-}));
+    PasswordInput: jest.fn(MockPasswordInput),
+  };
+});
 
 describe('FormBuilderV1 widgets', () => {
   const widgetBaseProps = {

@@ -71,6 +71,18 @@ export interface AlertProps
   children?: ReactNode;
   /** Override the default variant icon */
   icon?: FC<{ className?: string }>;
+  /** Size forwarded to FeaturedIcon — defaults to 'md' */
+  iconSize?: 'sm' | 'md' | 'lg' | 'xl';
+  /** 'square' renders the icon in a rounded-rect container instead of a circle */
+  iconShape?: 'circle' | 'square';
+  /** Corner radius for a square icon container */
+  iconRadius?: 'sm' | 'md' | 'lg' | 'xl';
+  /** Adds a variant-coloured border around the icon container */
+  iconOutlined?: boolean;
+  /** 'white' overrides the coloured icon background with a plain white fill */
+  iconBgColor?: 'colored' | 'white';
+  /** Node rendered on the far right, always vertically centred */
+  rightContent?: ReactNode;
   /** Shows the × close button when true. */
   closable?: boolean;
   /** Called when the × close button is clicked. */
@@ -82,6 +94,12 @@ export const Alert = ({
   title,
   children,
   icon,
+  iconSize = 'md',
+  iconShape,
+  iconRadius,
+  iconOutlined,
+  iconBgColor,
+  rightContent,
   closable = false,
   onClose,
   className,
@@ -101,10 +119,14 @@ export const Alert = ({
       )}
       role="alert">
       <FeaturedIcon
+        bgColor={iconBgColor}
         className={cx('tw:shrink-0', children && 'tw:self-start')}
         color={styles.iconColor}
         icon={Icon}
-        size="md"
+        outlined={iconOutlined}
+        radius={iconRadius}
+        shape={iconShape}
+        size={iconSize}
         theme="light"
       />
 
@@ -113,6 +135,10 @@ export const Alert = ({
 
         {children && <div className="tw:text-tertiary">{children}</div>}
       </div>
+
+      {rightContent && (
+        <div className="tw:shrink-0 tw:self-center">{rightContent}</div>
+      )}
 
       {closable && (
         <CloseButton

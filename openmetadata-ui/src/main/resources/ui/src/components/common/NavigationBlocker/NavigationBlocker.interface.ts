@@ -20,4 +20,9 @@ export interface NavigationBlockerProps {
   cancelText?: string;
   onConfirm?: () => Promise<void>;
   onCancel?: () => void;
+  renderModal?: (props: {
+    isOpen: boolean;
+    onLeave: () => void;
+    onStay: () => void;
+  }) => React.ReactNode;
 }
