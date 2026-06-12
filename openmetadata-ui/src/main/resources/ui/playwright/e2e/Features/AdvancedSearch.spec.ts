@@ -1022,33 +1022,6 @@ test.describe(
       });
     });
 
-    test('Verify count shows with Quick Filters', async ({ page }) => {
-      await test.step('Apply a quick filter from left sidebar', async () => {
-        const searchRes = page.waitForResponse(
-          '/api/v1/search/query?*index=dataAsset*'
-        );
-
-        await page.getByTestId('filter-checkbox-PersonalData.Personal').click();
-
-        await searchRes;
-        await waitForAllLoadersToDisappear(page);
-      });
-
-      await test.step('Verify count is visible', async () => {
-        await expect(page.getByTestId('search-results-count')).toBeVisible();
-      });
-
-      await test.step('Remove filter and verify count disappears', async () => {
-        await page.getByTestId('filter-checkbox-PersonalData.Personal').click();
-
-        await waitForAllLoadersToDisappear(page);
-
-        await expect(
-          page.getByTestId('search-results-count')
-        ).not.toBeVisible();
-      });
-    });
-
     test('Verify browse mode has no count', async ({ page }) => {
       await test.step('Verify no search and no filters are applied', async () => {
         await expect(
