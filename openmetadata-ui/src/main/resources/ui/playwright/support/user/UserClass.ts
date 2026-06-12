@@ -56,13 +56,33 @@ export class UserClass {
       data: this.data,
     });
 
-    if (!response.ok()) {
-      throw new Error(
-        `UserClass.create() failed with status ${response.status()}: ${await response.text()}`
-      );
-    }
+    if (response.ok()) {
+      this.responseData = await response.json();
+    } else {
+      const body = await response.text();
 
-    this.responseData = await response.json();
+      if (
+        response.status() === 400 &&
+        body.includes('User with Email Already Exists')
+      ) {
+        const userName = this.data.email.split('@')[0];
+        const existing = await apiContext.get(
+          `/api/v1/users/name/${userName}?fields=id,name,email,displayName,isAdmin,roles`
+        );
+
+        if (!existing.ok()) {
+          throw new Error(
+            `UserClass.create() fallback fetch failed with status ${existing.status()}: ${await existing.text()}`
+          );
+        }
+
+        this.responseData = await existing.json();
+      } else {
+        throw new Error(
+          `UserClass.create() failed with status ${response.status()}: ${body}`
+        );
+      }
+    }
     if (assignRole) {
       if (this.isAdmin) {
         const { entity } = await this.patch({
