@@ -37,11 +37,7 @@ describe('DocumentStatusBadge', () => {
   it.each([
     [ProcessingStatus.Uploaded, 'label.uploaded', 'gray'],
     [ProcessingStatus.Analyzing, 'label.analyzing', 'blue'],
-    [
-      ProcessingStatus.ExtractingContext,
-      'label.extracting-context',
-      'indigo',
-    ],
+    [ProcessingStatus.ExtractingContext, 'label.extracting-context', 'indigo'],
     [ProcessingStatus.Processed, 'label.processed', 'success'],
     [ProcessingStatus.Failed, 'label.failed', 'error'],
     [ProcessingStatus.Unsupported, 'label.unsupported', 'warning'],
