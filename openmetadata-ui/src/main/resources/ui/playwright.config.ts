@@ -204,11 +204,6 @@ export default defineConfig({
       dependencies: ['setup', 'chromium'],
       fullyParallel: false,
     },
-    // IntakeForm tests enable a global, singleton-per-entityType intake form for
-    // dataProduct that gates ALL data product creation while it is active. Running
-    // them in parallel makes any concurrent spec that creates a data product fail
-    // with a 400 (missing intake-form required field). Isolate after chromium so no
-    // other data-product-creating test runs alongside them.
     {
       name: 'IntakeForm',
       testMatch: '**/IntakeForm.spec.ts',
