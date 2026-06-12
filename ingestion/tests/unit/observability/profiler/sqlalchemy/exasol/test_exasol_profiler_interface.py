@@ -2,7 +2,7 @@
 Test Exasol profiler interface overrides.
 """
 
-from unittest.mock import Mock
+from unittest.mock import Mock, call
 
 import pytest
 
@@ -48,12 +48,9 @@ class TestExasolProfilerInterface:
         result = profiler_interface._compute_system_metrics(metrics, runner)
 
         assert result == ["profile"]
-        assert profiler_interface.system_metrics_class.call_count == 1
-        assert profiler_interface.system_metrics_class.call_args.args == (
+        profiler_interface.system_metrics_class.assert_called_once()
+        assert profiler_interface.system_metrics_class.call_args == call(
             profiler_interface.session,
             runner,
-        ) or profiler_interface.system_metrics_class.call_args.kwargs == {
-            "session": profiler_interface.session,
-            "runner": runner,
-        }
+        )
         system_metrics_instance.get_system_metrics.assert_called_once_with()
