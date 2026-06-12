@@ -91,6 +91,22 @@ class GetCompanyContextToolTest {
   }
 
   @Test
+  void unquotedDottedFqnResolvesToQuotedPill() throws Exception {
+    stubMemory(
+        "\"report.md_hash\"",
+        memory("report.md_hash", ContextMemorySourceType.FILE_EXTRACTION, MemoryVisibility.SHARED));
+
+    Map<String, Object> result =
+        tool.execute(
+            mock(Authorizer.class),
+            mock(CatalogSecurityContext.class),
+            Map.of("fqn", "report.md_hash"));
+
+    assertEquals("Q", result.get("question"));
+    assertEquals("A", result.get("answer"));
+  }
+
+  @Test
   void nonFileMemoryReturnsError() throws Exception {
     stubMemory(
         "chat-fqn",

@@ -22,14 +22,14 @@
     },
     {
       "name": "get_company_context",
-      "description": "Fetch a single Company Context knowledge pill by its fullyQualifiedName, returning its full title, question, answer, summary, and source file. Use the 'fullyQualifiedName' from a search_company_context result.",
+      "description": "Fetch a single Company Context knowledge pill, returning its full title, question, answer, summary, and source file. Pass the 'fullyQualifiedName' (or 'name') from a search_company_context result, exactly as returned.",
       "parameters": {
-        "description": "Provide the 'fqn' (fullyQualifiedName) of the knowledge pill to fetch.",
+        "description": "Provide the 'fqn' of the knowledge pill to fetch.",
         "type": "object",
         "properties": {
           "fqn": {
             "type": "string",
-            "description": "fullyQualifiedName of the knowledge pill, taken from a search_company_context result."
+            "description": "The 'fullyQualifiedName' or 'name' of the knowledge pill from a search_company_context result. Pass it verbatim; surrounding quotes are optional and handled for you."
           }
         },
         "required": ["fqn"]

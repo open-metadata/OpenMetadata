@@ -15,6 +15,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /** Fetches a single Company Context knowledge pill (a {@link ContextMemory}) by FQN. */
 @Slf4j
@@ -33,16 +34,27 @@ public class GetCompanyContextTool implements McpTool {
     if (fqn == null || fqn.isBlank()) {
       result = Map.of("error", "'fqn' parameter is required");
     } else {
-      LOG.info("Getting company context pill: {}", fqn);
-      ContextMemory memory =
-          Entity.getEntityByName(
-              Entity.CONTEXT_MEMORY, fqn, "sourceFile,owners,tags,domains", null);
+      ContextMemory memory = fetchPill(fqn);
       result =
           isExposablePill(memory)
               ? projectPill(memory)
               : Map.of("error", "Requested entity is not a shared Company Context knowledge pill");
     }
     return result;
+  }
+
+  /**
+   * A {@link ContextMemory} FQN is a single name part, so a file-extracted pill name (e.g. {@code
+   * report.md_<hash>}) carries dots and is stored quoted ({@code "report.md_<hash>"}). MCP clients
+   * routinely hand the value back unquoted; {@link FullyQualifiedName#quoteName(String)} restores
+   * the canonical quoting (and is a no-op when the value is already correctly quoted), so the
+   * by-name lookup resolves whichever form the client supplies.
+   */
+  private static ContextMemory fetchPill(String fqn) {
+    String normalizedFqn = FullyQualifiedName.quoteName(fqn);
+    LOG.info("Getting company context pill: {} (normalized fqn: {})", fqn, normalizedFqn);
+    return Entity.getEntityByName(
+        Entity.CONTEXT_MEMORY, normalizedFqn, "sourceFile,owners,tags,domains", null);
   }
 
   /** Mirrors the search tool's scope: file-extracted pills with Shared visibility only. */
