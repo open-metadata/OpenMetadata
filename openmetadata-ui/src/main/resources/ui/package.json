@@ -155,7 +155,7 @@
     "react-markdown": "^10.1.0",
     "react-papaparse": "^4.1.0",
     "react-quill-new": "^3.4.0",
-    "react-reflex": "^4.1.0",
+    "react-reflex": "^5.0.5",
     "react-resizable": "^3.1.3",
     "react-router-dom": "^6.30.4",
     "reactflow": "^11.10.2",
