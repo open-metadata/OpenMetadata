@@ -93,6 +93,33 @@ class AutoClassificationProcessor(Processor, ABC):
         adapter = adapter_for(entity)
         return adapter.get_columns(entity) if adapter else None
 
+    @staticmethod
+    def _find_column_by_dotted_path(
+        columns: list[Column], dotted_path: str, depth: int = 0, max_depth: int = 10
+    ) -> Column | None:
+        """
+        Recursively search for a column using dotted path notation (e.g., 'parent.child.field').
+        Uniquely identifies columns in nested RECORD structures without collisions.
+        Compatible with the sampler's dotted-path column naming scheme.
+        """
+        if depth > max_depth:
+            return None
+
+        parts = dotted_path.split(".", 1)
+        first_part = parts[0]
+
+        for col in columns:
+            if col.name.root == first_part:
+                if len(parts) == 1:
+                    return col
+                if col.children:
+                    found = AutoClassificationProcessor._find_column_by_dotted_path(
+                        [c for c in col.children if c], parts[1], depth=depth + 1, max_depth=max_depth
+                    )
+                    if found:
+                        return found
+        return None
+
     @final
     def _run(self, record: SamplerResponse) -> Either[SamplerResponse]:
         """
@@ -112,7 +139,8 @@ class AutoClassificationProcessor(Processor, ABC):
         column_tags = []
 
         for idx, column_name in enumerate(record.sample_data.data.columns):
-            column = next((c for c in columns if c.name == column_name), None)
+            col_lookup = column_name.root
+            column = self._find_column_by_dotted_path(columns, col_lookup)
             if not column:
                 continue
 

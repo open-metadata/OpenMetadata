@@ -245,6 +245,8 @@ export interface SourceConfig {
  *
  * MessagingService Metadata Pipeline Configuration.
  *
+ * MessagingService AutoClassification Pipeline Configuration.
+ *
  * DatabaseService Profiler Pipeline Configuration.
  *
  * DatabaseService AutoClassification & Auto Classification Pipeline Configuration.
@@ -427,6 +429,10 @@ export interface Pipeline {
      * Regex will be applied on fully qualified name (e.g
      * service_name.db_name.schema_name.table_name) instead of raw name (e.g. table_name)
      *
+     * Regex will be applied on fully qualified name (e.g
+     * service_name.db_name.schema_name.table_name) instead of on the short name (e.g.
+     * table_name). Short name is used as default.
+     *
      * Regex will be applied on fully qualified name (e.g service_name.container_name) instead
      * of raw name (e.g. container_name)
      *
@@ -569,6 +575,8 @@ export interface Pipeline {
      */
     topicFilterPattern?: FilterPattern;
     /**
+     * Regex to only compute metrics for entities that match the pattern
+     *
      * Regex to only compute metrics for table that matches the given tag, tiers, gloassary
      * pattern.
      *
@@ -576,6 +584,49 @@ export interface Pipeline {
      * pattern.
      */
     classificationFilterPattern?: FilterPattern;
+    /**
+     * Language used for classification. Supported languages include: en (English).
+     *
+     * Language to use for auto classification recognizers. Use 'any' to run all recognizers
+     * regardless of their configured language. For specific languages, only recognizers that
+     * support that language will be used.
+     */
+    classificationLanguage?: ClassificationLanguage;
+    /**
+     * Set the Confidence value for which you want the column to be tagged as PII. Confidence
+     * value ranges from 0 to 100. A higher number will tag less columns as PII, whereas a lower
+     * number will tag more columns as PII.
+     *
+     * Set the Confidence value for which you want the column to be tagged as PII. Confidence
+     * value ranges from 0 to 100. A higher number will yield less false positives but more
+     * false negatives. A lower number will yield more false positives but less false negatives.
+     */
+    confidence?: number;
+    /**
+     * Optional configuration to automatically tag columns that might contain sensitive
+     * information.
+     *
+     * Optional configuration to automatically tag columns that might contain sensitive
+     * information
+     */
+    enableAutoClassification?: boolean;
+    /**
+     * No. of messages to fetch during sample data ingestion.
+     *
+     * Number of sample rows to ingest when 'Generate Sample Data' is enabled
+     */
+    sampleDataCount?: number;
+    /**
+     * Option to turn on/off storing sample data. If enabled, we will ingest sample data for
+     * each topic.
+     *
+     * Option to turn on/off storing sample data. If enabled, we will ingest sample data for
+     * each table.
+     *
+     * Option to turn on/off storing sample data. If enabled, we will ingest sample data for
+     * each structured container.
+     */
+    storeSampleData?: boolean;
     /**
      * Option to turn on/off column metric computation. If enabled, profiler will compute column
      * level metrics.
@@ -612,35 +663,6 @@ export interface Pipeline {
      * https://docs.openmetadata.org/latest/profler
      */
     useStatistics?: boolean;
-    /**
-     * Language to use for auto classification recognizers. Use 'any' to run all recognizers
-     * regardless of their configured language. For specific languages, only recognizers that
-     * support that language will be used.
-     */
-    classificationLanguage?: ClassificationLanguage;
-    /**
-     * Set the Confidence value for which you want the column to be tagged as PII. Confidence
-     * value ranges from 0 to 100. A higher number will yield less false positives but more
-     * false negatives. A lower number will yield more false positives but less false negatives.
-     */
-    confidence?: number;
-    /**
-     * Optional configuration to automatically tag columns that might contain sensitive
-     * information
-     */
-    enableAutoClassification?: boolean;
-    /**
-     * Number of sample rows to ingest when 'Generate Sample Data' is enabled
-     */
-    sampleDataCount?: number;
-    /**
-     * Option to turn on/off storing sample data. If enabled, we will ingest sample data for
-     * each table.
-     *
-     * Option to turn on/off storing sample data. If enabled, we will ingest sample data for
-     * each structured container.
-     */
-    storeSampleData?: boolean;
     /**
      * Optional configuration to turn off fetching lineage from pipelines.
      */
@@ -929,6 +951,8 @@ export interface Pipeline {
  * Regex to exclude or include projects that matches the pattern.
  *
  * Regex to only fetch topics that matches the pattern.
+ *
+ * Regex to only compute metrics for entities that match the pattern
  *
  * Regex to only compute metrics for table that matches the given tag, tiers, gloassary
  * pattern.
@@ -2203,12 +2227,14 @@ export interface AppLimitsConfig {
 }
 
 /**
- * Language to use for auto classification recognizers. Use 'any' to run all recognizers
- * regardless of their configured language. For specific languages, only recognizers that
- * support that language will be used.
+ * Language used for classification. Supported languages include: en (English).
  *
  * Supported languages for auto classification recognizers (ISO 639-1 codes). Use 'any' to
  * apply all recognizers regardless of their configured language.
+ *
+ * Language to use for auto classification recognizers. Use 'any' to run all recognizers
+ * regardless of their configured language. For specific languages, only recognizers that
+ * support that language will be used.
  */
 export enum ClassificationLanguage {
     AF = "af",
@@ -7966,6 +7992,8 @@ export interface StorageMetadataBucketDetails {
  * Dashboard Source Config Metadata Pipeline type
  *
  * Messaging Source Config Metadata Pipeline type
+ *
+ * Messaging Service Auto Classification Pipeline type
  *
  * Profiler Source Config Pipeline type
  *

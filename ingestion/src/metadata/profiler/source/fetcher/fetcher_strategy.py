@@ -21,6 +21,7 @@ from pydantic import BaseModel
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -44,6 +45,7 @@ from metadata.utils.filters import (
     filter_by_container,
     filter_by_schema,
     filter_by_table,
+    filter_by_topic,
     validate_regex,
 )
 from metadata.utils.fqn import split
@@ -442,6 +444,68 @@ class StorageFetcherStrategy(FetcherStrategy):
                 left=StackTraceError(
                     name=self.config.source.serviceName,
                     error=f"Error listing source and entities for storage service due to [{exc}]",
+                    stackTrace=traceback.format_exc(),
+                ),
+                right=None,
+            )
+
+
+class MessagingFetcherStrategy(FetcherStrategy):
+    """Messaging fetcher strategy for Topic entities"""
+
+    def __init__(
+        self,
+        config: OpenMetadataWorkflowConfig,
+        metadata: OpenMetadata,
+        global_profiler_config: Optional[Settings],  # noqa: UP045
+        status: Status,
+    ) -> None:
+        super().__init__(config, metadata, global_profiler_config, status)
+
+    def _get_topic_entities(self) -> Iterable[Topic]:
+        """Get topic entities for the service, applying topicFilterPattern and skipping schema-less topics."""
+        service_name = self.config.source.serviceName
+        topics = self.metadata.list_all_entities(
+            entity=Topic,
+            fields=["messageSchema", "tags"],
+            params={"service": service_name} if service_name else None,
+        )
+        source_config = self.config.source.sourceConfig.config
+        topic_filter = getattr(source_config, "topicFilterPattern", None)
+        use_fqn = getattr(source_config, "useFqnForFiltering", False)
+        for topic in cast(Iterable[Topic], topics):  # noqa: TC006
+            if not (topic.messageSchema and topic.messageSchema.schemaFields):
+                continue
+            name = topic.fullyQualifiedName.root if use_fqn and topic.fullyQualifiedName else topic.name.root
+            if topic_filter and filter_by_topic(topic_filter, name):
+                self.status.filter(name, "Topic pattern not allowed")
+                continue
+            yield topic
+
+    def fetch(self) -> Iterator[Either[ProfilerSourceAndEntity]]:
+        """Fetch topic entities from messaging service"""
+        try:
+            profiler_source = profiler_source_factory.create(
+                self.config.source.type.lower(),
+                self.config,
+                None,
+                self.metadata,
+                self.global_profiler_config,
+            )
+
+            for topic in self._get_topic_entities():
+                yield Either(
+                    left=None,
+                    right=ProfilerSourceAndEntity(
+                        profiler_source=profiler_source,
+                        entity=topic,
+                    ),
+                )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=self.config.source.serviceName or "unknown",
+                    error=f"Error listing source and entities for messaging service due to [{exc}]",
                     stackTrace=traceback.format_exc(),
                 ),
                 right=None,

@@ -64,3 +64,12 @@ class StorageSamplerConfig(SamplerConfig):
     Storage samplers only need the base fields — no SQL partitions,
     no user queries, no column filters.
     """
+
+
+@dataclass
+class MessagingSamplerConfig(SamplerConfig):
+    """Config for messaging-family samplers (Kafka, Redpanda, Kinesis, Pub/Sub).
+
+    Messaging samplers only need the base fields — no SQL partitions,
+    no column filters, no database-specific config.
+    """
