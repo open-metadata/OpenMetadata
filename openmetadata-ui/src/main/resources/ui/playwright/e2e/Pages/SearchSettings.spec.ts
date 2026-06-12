@@ -20,7 +20,6 @@ import {
   getApiContext,
   redirectToHomePage,
   toastNotification,
-  uuid,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
