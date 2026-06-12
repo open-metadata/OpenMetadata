@@ -14,8 +14,6 @@ import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useMemo } from 'react';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
-import { DomainLabelV2 } from '../../../components/DataAssets/DomainLabelV2/DomainLabelV2';
-import { OwnerLabelV2 } from '../../../components/DataAssets/OwnerLabelV2/OwnerLabelV2';
 import { ReviewerLabelV2 } from '../../../components/DataAssets/ReviewerLabelV2/ReviewerLabelV2';
 import DataProductsContainer from '../../../components/DataProducts/DataProductsContainer/DataProductsContainer.component';
 import TagsContainerV2 from '../../../components/Tag/TagsContainerV2/TagsContainerV2';
@@ -74,22 +72,6 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
     [data, onUpdate]
   );
 
-  const handleDomainSave = useCallback(
-    async (selectedDomain: EntityReference | EntityReference[]) => {
-      try {
-        const updatedEntity = { ...data };
-        updatedEntity.domains = Array.isArray(selectedDomain)
-          ? selectedDomain
-          : [selectedDomain];
-
-        await onUpdate(updatedEntity);
-      } catch (err) {
-        showErrorToast(err as AxiosError);
-      }
-    },
-    [data, onUpdate]
-  );
-
   const hasDataProductsPermission = useMemo(() => {
     return genericPermissions?.EditAll && !data?.deleted;
   }, [genericPermissions?.EditAll, data?.deleted]);
@@ -99,13 +81,6 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
       className="knowledge-page-right-panel"
       data-testid="knowledge-page-right-panel">
       <Row gutter={[0, 24]}>
-        <Col span={24}>
-          <DomainLabelV2
-            showDomainHeading
-            multiple={entityRules?.canAddMultipleDomains}
-            onUpdate={handleDomainSave}
-          />
-        </Col>
         <Col span={24}>
           <div data-testid="KnowledgePanel.DataProducts">
             <DataProductsContainer
@@ -117,9 +92,6 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
               onSave={handleDataProductsSave}
             />
           </div>
-        </Col>
-        <Col span={24}>
-          <OwnerLabelV2 />
         </Col>
         <Col span={24}>
           <ReviewerLabelV2 />
