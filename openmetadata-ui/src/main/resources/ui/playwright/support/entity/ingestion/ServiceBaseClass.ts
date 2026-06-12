@@ -388,7 +388,7 @@ class ServiceBaseClass {
       `/api/v1/services/ingestionPipelines?**`
     );
     const statusPromise = page.waitForRequest(
-      `/api/v1/services/ingestionPipelines/**/pipelineStatus?**`
+      `/api/v1/services/ingestionPipelines?fields=**pipelineStatuses**`
     );
 
     await page.reload();

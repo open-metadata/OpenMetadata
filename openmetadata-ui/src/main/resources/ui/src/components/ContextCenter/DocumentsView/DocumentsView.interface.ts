@@ -11,24 +11,7 @@
  *  limitations under the License.
  */
 
-export interface DocFile {
-  id: string;
-  driveFileId?: string;
-  name: string;
-  fileExtension?: string;
-  sizeLabel: string;
-  updatedBy?: string;
-  updatedAt?: number;
-  folderId?: string;
-  folderFqn?: string;
-  folderName?: string;
-}
-
-export interface DocFolder {
-  id: string;
-  name: string;
-  files: DocFile[];
-}
+import type { ContextFile } from '../../../generated/entity/data/contextFile';
 
 export interface FolderOption {
   id: string;
@@ -37,16 +20,15 @@ export interface FolderOption {
 
 export interface DocumentsViewProps {
   canDelete?: boolean;
-  data: DocFile[];
+  data: ContextFile[];
   folders?: FolderOption[];
   isLoading: boolean;
   previewFileId?: string;
   selectedIds?: Set<string>;
-  onDownload?: (file: DocFile) => void;
-  onShareFile?: (file: DocFile) => void;
-  onDeleteFile?: (file: DocFile) => void;
-  onFileMoved?: (file: DocFile, targetFolderId: string) => void;
-  onPreview?: (file: DocFile | undefined) => void;
+  onDownload?: (file: ContextFile) => void;
+  onDeleteFile?: (file: ContextFile) => void;
+  onFileMoved?: (file: ContextFile, targetFolderId: string) => void;
+  onPreview?: (file: ContextFile | undefined) => void;
   onSelectFile?: (fileId: string) => void;
   onBulkDelete?: () => void;
   onBulkMove?: (folderId: string) => void;
@@ -59,7 +41,7 @@ export interface MetaRowProps {
 }
 
 export interface DocumentPreviewPanelProps {
-  file: DocFile;
+  file: ContextFile;
   url: string;
   onClose: () => void;
 }
@@ -70,11 +52,10 @@ export interface FolderPickerMenuProps {
 }
 export interface FileActionsProps {
   canDelete?: boolean;
-  file: DocFile;
+  file: ContextFile;
   folders?: FolderOption[];
-  onShareFile?: (file: DocFile) => void;
-  onDeleteFile?: (file: DocFile) => void;
-  onFileMoved?: (file: DocFile, targetFolderId: string) => void;
+  onDeleteFile?: (file: ContextFile) => void;
+  onFileMoved?: (file: ContextFile, targetFolderId: string) => void;
 }
 export interface ListHeaderProps {
   count: number;
@@ -88,14 +69,13 @@ export interface ListHeaderProps {
 
 export interface FileRowProps {
   canDelete?: boolean;
-  file: DocFile;
+  file: ContextFile;
   folders?: FolderOption[];
   isActive?: boolean;
   isSelected?: boolean;
-  onDownload?: (file: DocFile) => void;
-  onShareFile?: (file: DocFile) => void;
-  onDeleteFile?: (file: DocFile) => void;
-  onFileMoved?: (file: DocFile, targetFolderId: string) => void;
-  onPreview?: (file: DocFile) => void;
+  onDownload?: (file: ContextFile) => void;
+  onDeleteFile?: (file: ContextFile) => void;
+  onFileMoved?: (file: ContextFile, targetFolderId: string) => void;
+  onPreview?: (file: ContextFile) => void;
   onSelectFile?: (fileId: string) => void;
 }

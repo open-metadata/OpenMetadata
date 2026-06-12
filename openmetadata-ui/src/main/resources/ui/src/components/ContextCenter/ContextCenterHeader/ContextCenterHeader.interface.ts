@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
+import { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import React from 'react';
-import { TitleLink } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
 export interface ContextCenterHeaderProps {
-  breadcrumbs: TitleLink[];
+  /** Crumb items after the implicit home crumb. Last item is the current page (no href). */
+  breadcrumbs: Omit<BreadcrumbItemType, 'id'>[];
   title: string;
   subtitle?: string;
   hasPermission?: boolean;

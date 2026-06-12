@@ -22,7 +22,7 @@ import { usePermissionProvider } from '../../../../context/PermissionProvider/Pe
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import AppBadge from '../../../common/Badge/Badge.component';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';

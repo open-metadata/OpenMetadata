@@ -212,10 +212,8 @@ export interface EntityReference {
  */
 export interface TestConnectionStep {
     /**
-     * Phase of the connection test this step belongs to. `ConnectionGate` establishes
-     * connectivity (resolve host, open socket, authenticate, open session) and always emits a
-     * diagnostic log even on failure; `Capability` steps (listing schemas, tables, lineage,
-     * ...) run only after the gate passes.
+     * Whether the step gates connectivity (ConnectionGate) or verifies an optional capability
+     * (Capability). When a gate fails, later steps are skipped as ConnectionNotEstablished.
      */
     category?: Category;
     /**
@@ -243,10 +241,8 @@ export interface TestConnectionStep {
 }
 
 /**
- * Phase of the connection test this step belongs to. `ConnectionGate` establishes
- * connectivity (resolve host, open socket, authenticate, open session) and always emits a
- * diagnostic log even on failure; `Capability` steps (listing schemas, tables, lineage,
- * ...) run only after the gate passes.
+ * Whether the step gates connectivity (ConnectionGate) or verifies an optional capability
+ * (Capability). When a gate fails, later steps are skipped as ConnectionNotEstablished.
  */
 export enum Category {
     Capability = "Capability",

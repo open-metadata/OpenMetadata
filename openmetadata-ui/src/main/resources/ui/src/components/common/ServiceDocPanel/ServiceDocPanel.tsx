@@ -15,6 +15,7 @@ import { Col, Row } from 'antd';
 import { first, last, noop, startCase } from 'lodash';
 import {
   FC,
+  lazy,
   ReactNode,
   useCallback,
   useEffect,
@@ -36,11 +37,18 @@ import {
   getActiveFieldNameForAppDocs,
   processDocMarkdown,
 } from '../../../utils/ServiceUtils';
-import EntitySummaryPanel from '../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import Loader from '../Loader/Loader';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import './service-doc-panel.less';
+
+const EntitySummaryPanel = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../Explore/EntitySummaryPanel/EntitySummaryPanel.component')
+  )
+);
 interface ServiceDocPanelProp {
   serviceName: string;
   serviceType: string;

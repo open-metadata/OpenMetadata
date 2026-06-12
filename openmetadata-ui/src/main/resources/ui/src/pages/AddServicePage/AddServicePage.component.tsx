@@ -55,7 +55,7 @@ import { triggerOnDemandApp } from '../../rest/applicationAPI';
 import { postService } from '../../rest/serviceAPI';
 import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import { getServiceLogo } from '../../utils/EntityDisplayUtils';
-import { getEntityFeedLink } from '../../utils/EntityUtils';
+import { getEntityFeedLink } from '../../utils/EntityPureUtils';
 import { handleEntityCreationError } from '../../utils/formUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../utils/RouterUtils';

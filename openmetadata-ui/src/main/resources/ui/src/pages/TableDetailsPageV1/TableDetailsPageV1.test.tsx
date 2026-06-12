@@ -139,8 +139,8 @@ jest.mock('../../rest/suggestionsAPI', () => ({
   getSuggestionsList: jest.fn().mockImplementation(() => Promise.resolve([])),
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
-  ...jest.requireActual('../../utils/EntityUtils'),
+jest.mock('../../utils/RecentActivityUtils', () => ({
+  ...jest.requireActual('../../utils/RecentActivityUtils'),
   addToRecentViewed: jest.fn(),
 }));
 jest.mock('../../utils/FeedUtils', () => ({
