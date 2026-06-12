@@ -53,15 +53,15 @@ import {
   getTableList,
   searchTableColumnsByFQN,
 } from '../rest/tableAPI';
+import { getEntityName } from './EntityNameUtils';
 import {
   filterItemsBySearchText,
   filterNestedFields,
 } from './EntitySummaryPanelPureUtilsV1';
 import type { GenericNestedField } from './EntitySummaryPanelUtilsV1.interface';
-import { getEntityName } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 
-import { pruneEmptyChildren } from './TableUtils';
+import { pruneEmptyChildren } from './TablePureUtils';
 const { Text } = AntTypography;
 
 // Recursive component to render nested columns

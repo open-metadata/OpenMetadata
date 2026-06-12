@@ -29,7 +29,6 @@ import {
   DotsVertical,
   File06,
   Globe01,
-  Home02,
   MessageChatSquare,
   ThumbsDown,
   ThumbsUp,
@@ -50,7 +49,6 @@ import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.sv
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import Loader from '../../../components/common/Loader/Loader';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
-import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
 import { EntityStatusBadge } from '../../../components/Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -72,6 +70,7 @@ import {
   updateKnowledgeCenterRecentViewed,
 } from '../../../utils/KnowledgePageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { ArticleDetailHeaderProps } from './ArticleDetailHeader.interface';
 
@@ -106,26 +105,18 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   const recentlyViewed =
     recentlyViewedQuickLinks as unknown as RecentlyViewedQuickLinks['data'];
 
-  const breadcrumbs = useMemo(
+  const breadcrumbItems = useMemo(
     () => [
       {
-        name: '',
-        icon: <Home02 size={14} />,
-        url: contextCenterClassBase.getHomePath(),
-        activeTitle: true,
+        label: t('label.context-center'),
+        href: contextCenterClassBase.getContextCenterPath(),
       },
       {
-        name: t('label.context-center'),
-        url: contextCenterClassBase.getContextCenterPath(),
+        label: t('label.article-plural'),
+        href: contextCenterClassBase.getArticlesListPath(),
       },
       {
-        name: t('label.article-plural'),
-        url: contextCenterClassBase.getArticlesListPath(),
-      },
-      {
-        activeTitle: true,
-        name: getKnowledgePageName(knowledgePage, t),
-        url: '',
+        label: getKnowledgePageName(knowledgePage, t),
       },
     ],
     [knowledgePage?.displayName, t]
@@ -285,6 +276,14 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   const cardStyle = contextCenterClassBase.getCardStyle();
   const breadcrumbClassName = contextCenterClassBase.getBreadcrumbClassName();
 
+  const breadcrumbEl = (
+    <HeaderBreadcrumb
+      showHome
+      className={breadcrumbClassName}
+      items={breadcrumbItems}
+    />
+  );
+
   if (!knowledgePage && !tabs) {
     return (
       <div
@@ -308,26 +307,12 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
 
   return (
     <div
-      className="tw:flex tw:flex-col tw:gap-3 tw:mb-5"
+      className="tw:flex tw:flex-col tw:mb-5"
       data-testid="article-detail-header">
-      {!breadcrumbInsideCard && (
-        <TitleBreadcrumb
-          useCustomArrow
-          className={breadcrumbClassName}
-          titleLinks={breadcrumbs}
-        />
-      )}
+      {!breadcrumbInsideCard && breadcrumbEl}
 
       <Card className="tw:mb-0 tw:p-6 tw:pb-0 tw:pr-3" style={cardStyle}>
-        {breadcrumbInsideCard && (
-          <div className="tw:mb-4">
-            <TitleBreadcrumb
-              useCustomArrow
-              className={breadcrumbClassName}
-              titleLinks={breadcrumbs}
-            />
-          </div>
-        )}
+        {breadcrumbInsideCard && <div className="tw:mb-4">{breadcrumbEl}</div>}
         {/* Row 1: title + meta + actions */}
         <div className="tw:flex tw:items-center tw:justify-between tw:mb-6">
           <div className="tw:flex tw:gap-4 tw:items-stretch tw:w-full tw:max-w-[60%] tw:pr-3">

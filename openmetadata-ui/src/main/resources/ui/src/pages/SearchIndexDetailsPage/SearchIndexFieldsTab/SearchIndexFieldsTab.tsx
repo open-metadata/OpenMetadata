@@ -11,15 +11,19 @@
  *  limitations under the License.
  */
 
-import { useCallback, useMemo } from 'react';
+import { lazy, useCallback, useMemo } from 'react';
+import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
 import {
   SearchIndex,
   SearchIndexField,
 } from '../../../generated/entity/data/searchIndex';
 import { useFqn } from '../../../hooks/useFqn';
-import { getAllRowKeysByKeyName } from '../../../utils/TableUtils';
-import SearchIndexFieldsTable from '../SearchIndexFieldsTable/SearchIndexFieldsTable';
+import { getAllRowKeysByKeyName } from '../../../utils/TablePureUtils';
+
+const SearchIndexFieldsTable = withSuspenseFallback(
+  lazy(() => import('../SearchIndexFieldsTable/SearchIndexFieldsTable'))
+);
 
 function SearchIndexFieldsTab() {
   const { fqn: entityFqn } = useFqn();

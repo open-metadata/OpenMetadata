@@ -201,6 +201,12 @@ import org.slf4j.LoggerFactory;
 
 public interface CollectionDAO {
   @CreateSqlObject
+  McpConversationDAO mcpConversationDAO();
+
+  @CreateSqlObject
+  McpMessageDAO mcpMessageDAO();
+
+  @CreateSqlObject
   DatabaseDAO databaseDAO();
 
   @CreateSqlObject
@@ -4475,6 +4481,17 @@ public interface CollectionDAO {
         @BindFQN("aboutFqnHash") String aboutFqn,
         @Bind("category") String category,
         @Bind("status") String status);
+
+    @SqlQuery(
+        "SELECT json FROM task_entity "
+            + "WHERE aboutFqnHash = :aboutFqnHash AND category = :category "
+            + "AND status IN (<statuses>) "
+            + "AND (deleted = false OR deleted IS NULL) "
+            + "ORDER BY createdAt DESC")
+    List<String> listByAboutAndCategoryAndStatuses(
+        @BindFQN("aboutFqnHash") String aboutFqn,
+        @Bind("category") String category,
+        @BindList("statuses") List<String> statuses);
 
     @SqlUpdate(
         "DELETE FROM task_entity " + "WHERE createdById = :createdById AND category = :category")
@@ -15366,5 +15383,71 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM asset_entity WHERE id = :id")
     void delete(@Bind("id") String id);
+  }
+
+  interface McpConversationDAO {
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO mcp_conversation (json) VALUES (:json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO mcp_conversation (json) VALUES (:json::jsonb)",
+        connectionType = POSTGRES)
+    void insert(@Bind("json") String json);
+
+    @SqlQuery("SELECT json FROM mcp_conversation WHERE id = :id")
+    String getById(@BindUUID("id") UUID id);
+
+    @SqlQuery(
+        "SELECT json FROM mcp_conversation WHERE userId = :userId "
+            + "ORDER BY updatedAt DESC LIMIT :limit OFFSET :offset")
+    List<String> listByUser(
+        @BindUUID("userId") UUID userId, @Bind("limit") int limit, @Bind("offset") int offset);
+
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE mcp_conversation SET json = :json WHERE id = :id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE mcp_conversation SET json = :json::jsonb WHERE id = :id",
+        connectionType = POSTGRES)
+    void update(@BindUUID("id") UUID id, @Bind("json") String json);
+
+    @SqlQuery("SELECT COUNT(*) FROM mcp_conversation WHERE userId = :userId")
+    int countByUser(@BindUUID("userId") UUID userId);
+
+    @SqlUpdate("DELETE FROM mcp_conversation WHERE id = :id")
+    void delete(@BindUUID("id") UUID id);
+  }
+
+  interface McpMessageDAO {
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO mcp_message (json) VALUES (:json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO mcp_message (json) VALUES (:json::jsonb)",
+        connectionType = POSTGRES)
+    void insert(@Bind("json") String json);
+
+    @SqlQuery(
+        "SELECT json FROM mcp_message WHERE conversationId = :conversationId "
+            + "ORDER BY messageIndex ASC LIMIT :limit OFFSET :offset")
+    List<String> listByConversation(
+        @BindUUID("conversationId") UUID conversationId,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset);
+
+    @SqlQuery(
+        "SELECT json FROM mcp_message WHERE conversationId = :conversationId "
+            + "ORDER BY messageIndex DESC LIMIT :limit")
+    List<String> listRecentByConversation(
+        @BindUUID("conversationId") UUID conversationId, @Bind("limit") int limit);
+
+    @SqlQuery("SELECT COUNT(*) FROM mcp_message WHERE conversationId = :conversationId")
+    int countByConversation(@BindUUID("conversationId") UUID conversationId);
+
+    @SqlUpdate("DELETE FROM mcp_message WHERE id = :id")
+    void delete(@BindUUID("id") UUID id);
+
+    @SqlUpdate("DELETE FROM mcp_message WHERE conversationId = :conversationId")
+    void deleteByConversation(@BindUUID("conversationId") UUID conversationId);
   }
 }
