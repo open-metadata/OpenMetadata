@@ -98,11 +98,11 @@ export function ConditionComposer({
       <Button
         color={tone === 'exclude' ? 'primary-destructive' : 'primary'}
         data-testid={`${tone}-add-button`}
+        iconLeading={<Plus size={14} />}
         isDisabled={!trimmedValue}
         size="sm"
         type="button"
         onPress={commit}>
-        <Plus size={14} />
         {t('label.add')}
       </Button>
     </div>

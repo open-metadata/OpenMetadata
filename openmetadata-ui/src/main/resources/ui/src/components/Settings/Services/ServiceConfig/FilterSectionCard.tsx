@@ -123,16 +123,18 @@ function RegexDisclosure({
       <Button
         className="tw:text-utility-brand-700"
         color="link-color"
+        iconLeading={
+          <ChevronRight
+            className={classNames(
+              'tw:transition-transform tw:duration-150',
+              isOpen && 'tw:rotate-90'
+            )}
+            size={13}
+          />
+        }
         size="sm"
         type="button"
         onPress={() => setIsOpen((v) => !v)}>
-        <ChevronRight
-          className={classNames(
-            'tw:transition-transform tw:duration-150',
-            isOpen && 'tw:rotate-90'
-          )}
-          size={13}
-        />
         {isOpen
           ? t('label.hide-equivalent-regex')
           : t('label.show-equivalent-regex')}
