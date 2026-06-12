@@ -189,6 +189,8 @@
     "assume-role-session-name": "ชื่อเซสชันบทบาทสำหรับการถือบทบาท",
     "assume-role-source-identity": "เอกลักษณ์ต้นทางสำหรับการถือบทบาท",
     "attach-file-plural": "แนบไฟล์",
+    "attachment": "ไฟล์แนบ",
+    "attachment-plural": "ไฟล์แนบ",
     "attention": "ความสนใจ",
     "audience": "ผู้ฟัง",
     "audio": "เสียง",

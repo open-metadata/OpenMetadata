@@ -19,11 +19,11 @@ import {
   RecentViewedKnowledgePage,
 } from '../interface/knowledge-center.interface';
 
+import { File06 } from '@untitledui/icons';
 import { Space } from 'antd';
 import { RecentlyViewedData } from 'Models';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ExternalLinkIcon } from '../assets/svg/external-links.svg';
-import { ReactComponent as IconArticle } from '../assets/svg/ic-articles.svg';
 import { usePersistentStorage } from '../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../hooks/useApplicationStore';
 import contextCenterClassBase from './ContextCenterClassBase';
@@ -145,11 +145,7 @@ export const getLink = (knowledgePage: KnowledgePage, testIdPrefix: string) => {
             width={16}
           />
         ) : (
-          <IconArticle
-            height={16}
-            style={{ verticalAlign: 'middle' }}
-            width={16}
-          />
+          <File06 size={16} strokeWidth={1.5} />
         )}
 
         <span>{getKnowledgePageName(knowledgePage, t)}</span>

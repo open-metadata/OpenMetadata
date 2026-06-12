@@ -189,6 +189,8 @@
     "assume-role-session-name": "اسم جلسة الدور لدور الافتراض",
     "assume-role-source-identity": "هوية المصدر لدور الافتراض",
     "attach-file-plural": "إرفاق ملفات",
+    "attachment": "مرفق",
+    "attachment-plural": "المرفقات",
     "attention": "انتباه",
     "audience": "الجمهور",
     "audio": "صوت",

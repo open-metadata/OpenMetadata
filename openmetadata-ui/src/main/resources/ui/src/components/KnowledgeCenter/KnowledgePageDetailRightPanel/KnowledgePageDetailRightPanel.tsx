@@ -28,6 +28,7 @@ import { TagSource } from '../../../generated/type/tagLabel';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import { EntityTags } from '../../../Models';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import AttachmentWidget from '../AttachmentWidget/AttachmentWidget';
 import RelatedDataAssets from '../RelatedDataAssets/RelatedDataAssets';
 import './knowledge-page.less';
 interface KnowledgePageDetailRightPanelProps {
@@ -152,6 +153,9 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
             relatedDataAssets={knowledgePage?.['relatedEntities']}
             onRelatedDataAssetsUpdate={handleRelatedEntitiesUpdate}
           />
+        </Col>
+        <Col span={24}>
+          <AttachmentWidget hasPermission={permissions.EditAll} />
         </Col>
       </Row>
     </div>

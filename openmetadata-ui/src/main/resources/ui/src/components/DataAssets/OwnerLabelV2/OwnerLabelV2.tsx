@@ -22,19 +22,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
-import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
-import {
-  EditIconButton,
-  PlusIconButton,
-} from '../../common/IconButtons/EditIconButton';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
+import {
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../../common/WidgetActionButton/WidgetActionButton';
+import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 interface OwnerLabelV2Props {
   dataTestId?: string;
@@ -61,60 +60,48 @@ export const OwnerLabelV2 = <
       props?.hasPermission ?? (permissions?.EditOwners || permissions?.EditAll)
     );
   }, [permissions?.EditOwners, permissions?.EditAll, props?.hasPermission]);
-  const header = useMemo(
-    () => (
-      <div className="d-flex items-center gap-2">
-        <Typography.Text className="text-sm font-medium">
-          {t('label.owner-plural')}
-        </Typography.Text>
-        {!isVersionView && hasPermission && (
-          <UserTeamSelectableList
-            hasPermission={hasPermission}
-            listHeight={200}
-            multiple={{
-              user: entityRules.canAddMultipleUserOwners,
-              team: entityRules.canAddMultipleTeamOwner,
-            }}
-            owner={data.owners}
-            onUpdate={handleUpdatedOwner}>
-            {isEmpty(data.owners) ? (
-              <PlusIconButton
-                data-testid="add-owner"
-                size="small"
-                title={t('label.add-entity', {
-                  entity: t('label.owner-plural'),
-                })}
-              />
-            ) : (
-              <EditIconButton
-                newLook
-                data-testid="edit-owner"
-                size="small"
-                title={t('label.edit-entity', {
-                  entity: t('label.owner-plural'),
-                })}
-              />
-            )}
-          </UserTeamSelectableList>
-        )}
-      </div>
-    ),
+  const headerExtra = useMemo(
+    () =>
+      !isVersionView && hasPermission ? (
+        <UserTeamSelectableList
+          hasPermission={hasPermission}
+          listHeight={200}
+          multiple={{
+            user: entityRules.canAddMultipleUserOwners,
+            team: entityRules.canAddMultipleTeamOwner,
+          }}
+          owner={data.owners}
+          onUpdate={handleUpdatedOwner}>
+          {isEmpty(data.owners) ? (
+            <WidgetPlusButton
+              data-testid="add-owner"
+              title={t('label.add-entity', { entity: t('label.owner-plural') })}
+            />
+          ) : (
+            <WidgetEditButton
+              data-testid="edit-owner"
+              title={t('label.edit-entity', {
+                entity: t('label.owner-plural'),
+              })}
+            />
+          )}
+        </UserTeamSelectableList>
+      ) : null,
     [data, hasPermission, handleUpdatedOwner, isVersionView, entityRules]
   );
 
   return (
-    <ExpandableCard
-      cardProps={{
-        title: header,
-      }}
+    <WidgetCard
       dataTestId={dataTestId}
-      isExpandDisabled={isEmpty(data.owners)}>
+      headerExtra={headerExtra}
+      isExpandDisabled={isEmpty(data.owners)}
+      title={t('label.owner-plural')}>
       {getOwnerVersionLabel(
         data,
         isVersionView ?? false,
         TabSpecificField.OWNERS,
         hasPermission
       )}
-    </ExpandableCard>
+    </WidgetCard>
   );
 };

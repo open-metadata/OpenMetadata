@@ -189,6 +189,8 @@
     "assume-role-session-name": "Nom de Session du Rôle à Assumer",
     "assume-role-source-identity": "Source d'Identité pour Assumer le Rôle",
     "attach-file-plural": "Joindre des fichiers",
+    "attachment": "Pièce jointe",
+    "attachment-plural": "Pièces jointes",
     "attention": "Attention",
     "audience": "Public",
     "audio": "Audio",
