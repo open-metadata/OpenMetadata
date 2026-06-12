@@ -8,12 +8,3 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""
-MCP Service Spec
-"""
-
-from metadata.ingestion.source.mcp.connection import McpConnection
-from metadata.ingestion.source.mcp.metadata import McpSource
-from metadata.utils.service_spec import BaseSpec
-
-ServiceSpec = BaseSpec(metadata_source_class=McpSource, connection_class=McpConnection)  # pyright: ignore[reportArgumentType]
