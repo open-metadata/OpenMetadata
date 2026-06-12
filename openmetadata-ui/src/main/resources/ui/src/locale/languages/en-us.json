@@ -901,6 +901,7 @@
     "extend-open-meta-data": "Extend {{brandName}}",
     "extension": "Extension",
     "external": "External",
+    "extracted-from": "Extracted from",
     "extracting-context": "Extracting Context",
     "factor": "Factor",
     "fail-on-conflict": "Fail on Conflict",

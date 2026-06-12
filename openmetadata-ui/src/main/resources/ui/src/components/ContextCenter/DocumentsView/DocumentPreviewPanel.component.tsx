@@ -20,14 +20,16 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Copy06, XClose } from '@untitledui/icons';
-import { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ContextMemory } from '../../../generated/entity/context/contextMemory';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getListContextMemories } from '../../../rest/contextMemoryAPI';
 import { formatBytes } from '../../../utils/ContextCenterUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
+import CreateMemoryModal from '../CreateMemoryModal/CreateMemoryModal.component';
 import DocumentStatusBadge from '../DocumentStatusBadge/DocumentStatusBadge.component';
 import {
   DocumentPreviewPanelProps,
@@ -47,39 +49,40 @@ const MetaRow: FC<MetaRowProps> = ({ label, value }) => (
 
 const ExtractedMemoriesCard: FC<{ fileId: string }> = ({ fileId }) => {
   const { t } = useTranslation();
+  const { currentUser } = useApplicationStore();
   const [memories, setMemories] = useState<ContextMemory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [memoryToView, setMemoryToView] = useState<ContextMemory>();
+
+  const fetchMemories = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await getListContextMemories({
+        sourceFileId: fileId,
+        fields: 'owners,sourceFile',
+        limit: 50,
+      });
+      setMemories(response.data);
+    } catch {
+      setMemories([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fileId]);
 
   useEffect(() => {
-    let isStale = false;
-
-    const fetchMemories = async () => {
-      try {
-        setIsLoading(true);
-        const response = await getListContextMemories({
-          sourceFileId: fileId,
-          limit: 50,
-        });
-        if (!isStale) {
-          setMemories(response.data);
-        }
-      } catch {
-        if (!isStale) {
-          setMemories([]);
-        }
-      } finally {
-        if (!isStale) {
-          setIsLoading(false);
-        }
-      }
-    };
-
     fetchMemories();
+  }, [fetchMemories]);
 
-    return () => {
-      isStale = true;
-    };
-  }, [fileId]);
+  const handleMemoryDeleted = useCallback(() => {
+    setMemoryToView(undefined);
+    fetchMemories();
+  }, [fetchMemories]);
+
+  const canDeleteMemory =
+    (memoryToView?.owners?.some((o) => o.name === currentUser?.name) ??
+      false) ||
+    Boolean(currentUser?.isAdmin);
 
   return (
     <Card className="tw:p-4" data-testid="extracted-memories-card">
@@ -105,10 +108,18 @@ const ExtractedMemoriesCard: FC<{ fileId: string }> = ({ fileId }) => {
         <Box direction="col">
           {memories.map((memory) => (
             <Box
-              className="tw:py-1.5"
+              className="tw:py-1.5 tw:-mx-2 tw:px-2 tw:rounded-md tw:cursor-pointer hover:tw:bg-gray-50"
               data-testid={`extracted-memory-${memory.id}`}
               direction="col"
-              key={memory.id}>
+              key={memory.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => setMemoryToView(memory)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  setMemoryToView(memory);
+                }
+              }}>
               <Typography
                 ellipsis
                 className="tw:text-gray-900"
@@ -127,6 +138,20 @@ const ExtractedMemoriesCard: FC<{ fileId: string }> = ({ fileId }) => {
             </Box>
           ))}
         </Box>
+      )}
+
+      {memoryToView && (
+        <CreateMemoryModal
+          viewOnly
+          canDelete={canDeleteMemory}
+          currentUserName={currentUser?.name}
+          isOpen={Boolean(memoryToView)}
+          memoryToEdit={memoryToView}
+          onClose={() => setMemoryToView(undefined)}
+          onCreated={() => setMemoryToView(undefined)}
+          onDeleted={handleMemoryDeleted}
+          onUpdated={handleMemoryDeleted}
+        />
       )}
     </Card>
   );

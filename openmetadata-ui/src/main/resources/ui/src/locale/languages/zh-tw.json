@@ -901,6 +901,7 @@
     "extend-open-meta-data": "擴充 {{brandName}}",
     "extension": "擴充功能",
     "external": "外部",
+    "extracted-from": "Extracted from",
     "extracting-context": "Extracting Context",
     "factor": "因素",
     "fail-on-conflict": "冲突时失败",

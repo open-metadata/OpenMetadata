@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import {
   ContextFile,
   ProcessingStatus,
@@ -30,6 +30,20 @@ jest.mock('../../CopyLinkButton/CopyLinkButton.component', () =>
 jest.mock('../DocumentStatusBadge/DocumentStatusBadge.component', () =>
   jest.fn(() => <span data-testid="status-badge" />)
 );
+
+jest.mock('../CreateMemoryModal/CreateMemoryModal.component', () =>
+  jest.fn(({ isOpen, memoryToEdit, viewOnly }) =>
+    isOpen && viewOnly ? (
+      <div data-testid="view-memory-modal">{memoryToEdit?.title}</div>
+    ) : null
+  )
+);
+
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: () => ({
+    currentUser: { name: 'admin', isAdmin: true },
+  }),
+}));
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -74,8 +88,21 @@ describe('DocumentPreviewPanel', () => {
     expect(screen.getByText('Refund window')).toBeInTheDocument();
     expect(mockGetListContextMemories).toHaveBeenCalledWith({
       sourceFileId: 'file-1',
+      fields: 'owners,sourceFile',
       limit: 50,
     });
+  });
+
+  it('opens the view-only memory modal when a memory is clicked', async () => {
+    render(
+      <DocumentPreviewPanel file={file} url="http://x" onClose={jest.fn()} />
+    );
+
+    fireEvent.click(await screen.findByTestId('extracted-memory-m1'));
+
+    expect(screen.getByTestId('view-memory-modal')).toHaveTextContent(
+      'VAT policy'
+    );
   });
 
   it('shows an empty message when the file has no memories', async () => {

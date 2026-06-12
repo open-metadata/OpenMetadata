@@ -901,6 +901,7 @@
     "extend-open-meta-data": "Расширить {{brandName}}",
     "extension": "Дополнение",
     "external": "Внешний",
+    "extracted-from": "Extracted from",
     "extracting-context": "Extracting Context",
     "factor": "Фактор",
     "fail-on-conflict": "Ошибка при конфликте",

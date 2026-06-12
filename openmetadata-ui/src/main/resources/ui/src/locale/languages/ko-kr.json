@@ -901,6 +901,7 @@
     "extend-open-meta-data": "{{brandName}} 확장",
     "extension": "확장",
     "external": "외부",
+    "extracted-from": "Extracted from",
     "extracting-context": "Extracting Context",
     "factor": "요인",
     "fail-on-conflict": "충돌 시 실패",

@@ -901,6 +901,7 @@
     "extend-open-meta-data": "{{brandName}}を拡張",
     "extension": "拡張機能",
     "external": "外部",
+    "extracted-from": "Extracted from",
     "extracting-context": "Extracting Context",
     "factor": "要因",
     "fail-on-conflict": "競合時に失敗",
