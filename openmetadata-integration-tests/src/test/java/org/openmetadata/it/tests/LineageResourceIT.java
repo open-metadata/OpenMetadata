@@ -2537,21 +2537,19 @@ public class LineageResourceIT {
         "Space-name table FQN should NOT be quoted (spaces are literal): "
             + spaceTable.getFullyQualifiedName());
 
-    assertFQNLineageRoundtrip(client, dotTable, targetTable);
-    assertFQNLineageRoundtrip(client, spaceTable, targetTable);
-
-    cleanupTable(client, dotTable);
-    cleanupTable(client, spaceTable);
-    cleanupTable(client, targetTable);
+    try {
+      assertFQNLineageRoundtrip(client, dotTable, targetTable);
+      assertFQNLineageRoundtrip(client, spaceTable, targetTable);
+    } finally {
+      cleanupTable(client, dotTable);
+      cleanupTable(client, spaceTable);
+      cleanupTable(client, targetTable);
+    }
   }
 
   private void assertFQNLineageRoundtrip(OpenMetadataClient client, Table from, Table to)
       throws Exception {
-    String path =
-        "/table/name/"
-            + encodePathSegment(from.getFullyQualifiedName())
-            + "/table/name/"
-            + encodePathSegment(to.getFullyQualifiedName());
+    String path = lineageEdgeByNamePath(from, to);
 
     String putResult =
         client
