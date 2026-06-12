@@ -74,17 +74,35 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </button>
     )
   ),
-  ButtonUtility: jest.fn(({ onClick, ...rest }: { onClick?: () => void; [key: string]: unknown }) => (
-    <button onClick={onClick} {...rest} />
-  )),
+  ButtonUtility: jest.fn(
+    ({
+      onClick,
+      ...rest
+    }: {
+      onClick?: () => void;
+      [key: string]: unknown;
+    }) => <button onClick={onClick} {...rest} />
+  ),
   Card: Object.assign(
-    jest.fn(({ children, className }: { children?: React.ReactNode; className?: string }) => (
-      <div className={className}>{children}</div>
-    )),
+    jest.fn(
+      ({
+        children,
+        className,
+      }: {
+        children?: React.ReactNode;
+        className?: string;
+      }) => <div className={className}>{children}</div>
+    ),
     {
-      Content: jest.fn(({ children }: { children: React.ReactNode }) => <div>{children}</div>),
-      Footer: jest.fn(({ children }: { children: React.ReactNode }) => <div>{children}</div>),
-      Header: jest.fn(({ children }: { children: React.ReactNode }) => <div>{children}</div>),
+      Content: jest.fn(({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      )),
+      Footer: jest.fn(({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      )),
+      Header: jest.fn(({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      )),
     }
   ),
   FileUploadDropZone: jest.fn(

@@ -81,9 +81,15 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </button>
     )
   ),
-  ButtonUtility: jest.fn(({ onClick, ...rest }: { onClick?: () => void; [key: string]: unknown }) => (
-    <button onClick={onClick} {...rest} />
-  )),
+  ButtonUtility: jest.fn(
+    ({
+      onClick,
+      ...rest
+    }: {
+      onClick?: () => void;
+      [key: string]: unknown;
+    }) => <button onClick={onClick} {...rest} />
+  ),
   Card: Object.assign(
     jest.fn(
       ({
@@ -123,7 +129,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       <div
         className={className}
         role="separator"
-        {...(orientation ? { 'aria-orientation': orientation as 'horizontal' | 'vertical' } : {})}
+        {...(orientation
+          ? { 'aria-orientation': orientation as 'horizontal' | 'vertical' }
+          : {})}
       />
     )
   ),

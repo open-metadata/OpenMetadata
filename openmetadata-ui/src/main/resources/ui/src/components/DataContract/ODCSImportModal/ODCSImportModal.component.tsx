@@ -500,13 +500,13 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
           data-testid="contract-preview-card">
           <Typography
             as="p"
-            className='tw:text-gray-700'
+            className="tw:text-gray-700"
             size="text-md"
             weight="semibold">
             {t('label.contract-preview')}
           </Typography>
           <Box className="tw:mb-2 tw:mt-3">
-            <div className='tw:w-17.5'>
+            <div className="tw:w-17.5">
               <Typography className="tw:shrink-0 tw:text-secondary">
                 {t('label.name')}
               </Typography>
@@ -516,24 +516,22 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
             </Typography>
           </Box>
           <Box className="tw:mb-2">
-            <div className='tw:w-17.5'>
-              <Typography className="tw:shrink-0 tw:text-secondary" size="text-sm">
+            <div className="tw:w-17.5">
+              <Typography
+                className="tw:shrink-0 tw:text-secondary"
+                size="text-sm">
                 {t('label.version')}
               </Typography>
             </div>
-            <Typography weight="medium">
-              {odcsContract.version}
-            </Typography>
+            <Typography weight="medium">{odcsContract.version}</Typography>
           </Box>
           <Box className="tw:mb-2">
-            <div className='tw:w-17.5'>
+            <div className="tw:w-17.5">
               <Typography className="tw:shrink-0 tw:text-secondary">
                 {t('label.status')}
               </Typography>
             </div>
-            <Typography weight="medium">
-              {odcsContract.status}
-            </Typography>
+            <Typography weight="medium">{odcsContract.status}</Typography>
           </Box>
           {includedFeatures.length > 0 && (
             <Box className="tw:mt-3" gap={2} wrap="wrap">
@@ -572,7 +570,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
           {t('label.contract-preview')}
         </Typography>
         <Box className="tw:mb-2 tw:mt-3">
-          <div className='tw:w-17.5'>
+          <div className="tw:w-17.5">
             <Typography className="tw:shrink-0 tw:text-gray-700" size="text-sm">
               {t('label.name')}
             </Typography>
@@ -583,8 +581,10 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
         </Box>
         {omContract.displayName && (
           <Box className="tw:mb-2">
-            <div className='tw:w-17.5'>
-              <Typography className="tw:shrink-0 tw:text-gray-700" size="text-sm">
+            <div className="tw:w-17.5">
+              <Typography
+                className="tw:shrink-0 tw:text-gray-700"
+                size="text-sm">
                 {t('label.display-name')}
               </Typography>
             </div>
@@ -612,39 +612,40 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
         <Card
           className="tw:h-full tw:flex tw:flex-col tw:p-4"
           data-testid="parse-error-panel">
-          <Box align='center' className="tw:mb-4 tw:pb-4 tw:border-b tw:border-utility-error-100" justify='between'>
-            <Typography weight="semibold">
-              {t('label.parse-error')}
-            </Typography>
-            <BadgeWithIcon color="error" iconLeading={XClose} size="sm" type="pill-color">
+          <Box
+            align="center"
+            className="tw:mb-4 tw:pb-4 tw:border-b tw:border-utility-error-100"
+            justify="between">
+            <Typography weight="semibold">{t('label.parse-error')}</Typography>
+            <BadgeWithIcon
+              color="error"
+              iconLeading={XClose}
+              size="sm"
+              type="pill-color">
               {t('label.failed')}
             </BadgeWithIcon>
           </Box>
           <div className="tw:flex-1 tw:min-h-50 tw:mb-4">
-            <Typography
-              className="tw:text-secondary"
-             >
+            <Typography className="tw:text-secondary">
               {isODCSFormat
                 ? t('message.invalid-odcs-contract-format-required-fields')
                 : t(
                     'message.invalid-openmetadata-contract-format-required-fields'
                   )}
             </Typography>
-            <Box className="tw:mt-3" direction='col' gap={2}>
+            <Box className="tw:mt-3" direction="col" gap={2}>
               {(isODCSFormat ? ['APIVersion', 'Kind', 'Status'] : ['name']).map(
                 (field) => (
-                  <Box align='center' gap={2} key={field}>
+                  <Box align="center" gap={2} key={field}>
                     <div className="tw:w-1.5 tw:h-1.5 tw:rounded-full tw:bg-utility-error-600 tw:shrink-0" />
-                    <Typography>
-                      {field}
-                    </Typography>
+                    <Typography>{field}</Typography>
                   </Box>
                 )
               )}
             </Box>
           </div>
-          <div className="tw:mt-auto tw:t-4 tw:border-t tw:border-utility-error-100">
-            <Box align='center' gap={2}>
+          <div className="tw:mt-auto tw:pt-4 tw:border-t tw:border-utility-error-100">
+            <Box align="center" gap={2}>
               <XCircle className="tw:text-utility-error-600" size={16} />
               <Typography as="span" size="text-sm">
                 {t('label.syntax')} : <strong>{t('label.invalid')}</strong>
@@ -657,7 +658,11 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
 
     if (isValidating) {
       return (
-        <Box align='center' className="tw:bg-bg-secondary tw:rounded-lg tw:h-full" direction='col' justify='center'>
+        <Box
+          align="center"
+          className="tw:bg-bg-secondary tw:rounded-lg tw:h-full"
+          direction="col"
+          justify="center">
           <Loader size="small" style={{ marginBottom: '12px' }} />
           <Typography as="p" className="tw:text-secondary" size="text-sm">
             {t('message.validating-contract-schema')}
@@ -671,12 +676,19 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
         <Box
           className="tw:bg-bg-secondary tw:rounded-lg tw:h-full"
           data-testid="server-validation-error-panel"
-          direction='col'>
-          <Box align='center' className="tw:mb-4 tw:pb-4 tw:border-b tw:border-secondary" justify='between'>
+          direction="col">
+          <Box
+            align="center"
+            className="tw:mb-4 tw:pb-4 tw:border-b tw:border-secondary"
+            justify="between">
             <Typography as="span" size="text-sm" weight="semibold">
               {t('label.schema-validation')}
             </Typography>
-            <BadgeWithIcon color="error" iconLeading={XClose} size="sm" type="pill-color">
+            <BadgeWithIcon
+              color="error"
+              iconLeading={XClose}
+              size="sm"
+              type="pill-color">
               {t('label.failed')}
             </BadgeWithIcon>
           </Box>
@@ -686,13 +698,13 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
             </Typography>
           </div>
           <div className="tw:mt-auto tw:pt-4 tw:border-t tw:border-secondary">
-            <Box align='center' className="tw:mb-2" gap={2}>
+            <Box align="center" className="tw:mb-2" gap={2}>
               <CheckCircle className="tw:text-utility-success-500" size={16} />
               <Typography>
                 {t('label.syntax')} : <strong>{t('label.valid')}</strong>
               </Typography>
             </Box>
-            <Box align='center' gap={2}>
+            <Box align="center" gap={2}>
               <XCircle className="tw:text-utility-error-600" size={16} />
               <Typography>
                 {t('label.schema')} : <strong>{t('label.error')}</strong>
@@ -711,7 +723,10 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
         <div
           className="tw:bg-bg-secondary tw:rounded-lg tw:h-full tw:flex tw:flex-col"
           data-testid="server-validation-failed-error-panel">
-          <Box align="center" className="tw:mb-4 tw:pb-4 tw:border-b tw:border-secondary" justify="between">
+          <Box
+            align="center"
+            className="tw:mb-4 tw:pb-4 tw:border-b tw:border-secondary"
+            justify="between">
             <Typography as="span" size="text-sm" weight="semibold">
               {t('label.schema-validation')}
             </Typography>
@@ -721,16 +736,10 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
             </Badge>
           </Box>
           <div className="tw:flex-1 tw:min-h-50 tw:overflow-y-auto">
-            <Box
-              data-testid="failed-fields-list"
-              direction="col"
-              gap={2}>
+            <Box data-testid="failed-fields-list" direction="col" gap={2}>
               {serverValidation.schemaValidation?.failedFields?.map(
                 (field, index) => (
-                  <Box
-                    align="center"
-                    gap={2}
-                    key={`notfound-${index}`}>
+                  <Box align="center" gap={2} key={`notfound-${index}`}>
                     <div className="tw:w-1.5 tw:h-1.5 tw:rounded-full tw:bg-utility-error-600 tw:shrink-0" />
                     <Typography
                       as="span"
@@ -743,10 +752,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
               )}
               {serverValidation.schemaValidation?.duplicateFields?.map(
                 (field, index) => (
-                  <Box
-                    align="center"
-                    gap={2}
-                    key={`duplicate-${index}`}>
+                  <Box align="center" gap={2} key={`duplicate-${index}`}>
                     <div className="tw:w-1.5 tw:h-1.5 tw:rounded-full tw:bg-utility-error-600 tw:shrink-0" />
                     <Typography
                       as="span"
@@ -759,10 +765,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
               )}
               {serverValidation.schemaValidation?.typeMismatchFields?.map(
                 (field, index) => (
-                  <Box
-                    align="center"
-                    gap={2}
-                    key={`typemismatch-${index}`}>
+                  <Box align="center" gap={2} key={`typemismatch-${index}`}>
                     <div className="tw:w-1.5 tw:h-1.5 tw:rounded-full tw:bg-utility-error-600 tw:shrink-0" />
                     <Typography
                       as="span"
@@ -826,10 +829,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
             </Badge>
           </Box>
           <div className="tw:flex-1 tw:min-h-50 tw:mb-4">
-            <Box
-              data-testid="entity-errors-list"
-              direction="col"
-              gap={2}>
+            <Box data-testid="entity-errors-list" direction="col" gap={2}>
               {allErrors.map((error, index) => (
                 <Box
                   align="start"
@@ -969,7 +969,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
     }
 
     return (
-      <Box className="tw:mt-4" direction='col' gap={3}>
+      <Box className="tw:mt-4" direction="col" gap={3}>
         <Card
           className="tw:flex tw:items-start tw:gap-3 tw:p-3"
           color="warning"
@@ -984,10 +984,13 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
           </Typography>
         </Card>
 
-        <RadioGroup className='tw:gap-0' value={importMode} onChange={handleImportModeChange}>
+        <RadioGroup
+          className="tw:gap-0"
+          value={importMode}
+          onChange={handleImportModeChange}>
           <Card
             className="tw:p-3 tw:mb-2 tw:cursor-pointer tw:transition-colors tw:hover:border-utility-brand-200"
-            color={importMode === 'merge' ? "brand": "default"}
+            color={importMode === 'merge' ? 'brand' : 'default'}
             role="button"
             tabIndex={0}
             onClick={() => setImportMode('merge')}
@@ -1009,7 +1012,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
           </Card>
           <Card
             className="tw:p-3 tw:transition-colors tw:cursor-pointer tw:hover:border-utility-brand-200"
-            color={importMode === 'replace' ? "brand" : "default"}
+            color={importMode === 'replace' ? 'brand' : 'default'}
             role="button"
             tabIndex={0}
             onClick={() => setImportMode('replace')}
@@ -1126,14 +1129,19 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                 {yamlContent ? (
                   <>
                     <Box
-                      align='center'
+                      align="center"
                       className="tw:mb-4 tw:px-4 tw:py-3 tw:rounded tw:bg-gray-50"
                       data-testid="file-info-card"
-                      justify='between'>
+                      justify="between">
                       <Box align="center" gap={2}>
                         <File06 className="tw:text-gray-500" size={24} />
                         <div className="tw:max-w-70">
-                          <Typography ellipsis as="p" className="tw:text-gray-700" size="text-md" weight='medium'>
+                          <Typography
+                            ellipsis
+                            as="p"
+                            className="tw:text-gray-700"
+                            size="text-md"
+                            weight="medium">
                             {fileName}
                           </Typography>
                         </div>
@@ -1148,7 +1156,8 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                         title={t('label.delete-entity', {
                           entity: t('label.file'),
                         })}
-                        onClick={handleRemoveFile} />
+                        onClick={handleRemoveFile}
+                      />
                     </Box>
 
                     {renderObjectSelector()}
@@ -1158,7 +1167,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                 ) : (
                   <FileUploadDropZone
                     accept=".yaml,.yml"
-                    className='tw:w-full'
+                    className="tw:w-full"
                     clickToUploadLabel={t('label.click-to-upload')}
                     hint={t('label.supports-yaml-format')}
                     input-data-testid="file-upload-input"
@@ -1179,8 +1188,8 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
             </Box>
           </Dialog.Content>
 
-          <Dialog.Footer className="tw:sm:block">
-            <Box className="tw:px-4 tw:sm:px-6" gap={3} justify="end">
+          <Dialog.Footer>
+            <Box className="tw:col-span-2" gap={3} justify="end">
               <Button
                 color="secondary"
                 data-testid="cancel-button"
