@@ -287,6 +287,45 @@ class TestExasolTableMetricComputer:
     def test_exasol_registration(self):
         assert table_metric_computer_factory._constructs.get(Dialects.Exasol) is ExasolTableMetricComputer
 
+    def test_compute_uses_view_metrics_for_views(self):
+        session = _build_mock_session()
+        computer = _build_computer(session, ExasolTableMetricComputer, table_type=TableType.View)
+
+        with patch.object(ExasolTableMetricComputer, "_compute_view_metrics", return_value="view-metrics") as mock_view:
+            result = computer.compute()
+
+        assert result == "view-metrics"
+        mock_view.assert_called_once_with()
+
+    def test_compute_uses_view_metrics_for_materialized_views(self):
+        session = _build_mock_session()
+        computer = _build_computer(session, ExasolTableMetricComputer, table_type=TableType.MaterializedView)
+
+        with patch.object(ExasolTableMetricComputer, "_compute_view_metrics", return_value="view-metrics") as mock_view:
+            result = computer.compute()
+
+        assert result == "view-metrics"
+        mock_view.assert_called_once_with()
+
+    def test_compute_view_metrics_falls_back_to_base_compute(self):
+        session = _build_mock_session()
+        computer = _build_computer(session, ExasolTableMetricComputer, table_type=TableType.View)
+
+        with patch.object(BaseTableMetricComputer, "compute", return_value="fallback") as mock_base:
+            result = computer._compute_view_metrics()
+
+        assert result == "fallback"
+        mock_base.assert_called_once_with()
+
+    def test_compute_table_metrics_returns_none_when_no_result(self):
+        session = _build_mock_session()
+        session.execute.return_value.first.return_value = None
+        computer = _build_computer(session, ExasolTableMetricComputer)
+
+        result = computer._compute_table_metrics()
+
+        assert result is None
+
     def test_compute_returns_result(self):
         session = _build_mock_session()
         mock_result = MagicMock()
@@ -323,6 +362,32 @@ class TestExasolTableMetricComputer:
         with patch.object(BaseTableMetricComputer, "compute", return_value="fallback"):
             result = computer.compute()
             assert result == "fallback"
+
+    def test_compute_table_metrics_falls_back_on_none_row_count(self):
+        session = _build_mock_session()
+        mock_result = MagicMock()
+        mock_result.rowCount = None
+        session.execute.return_value.first.return_value = mock_result
+        computer = _build_computer(session, ExasolTableMetricComputer)
+
+        with patch.object(BaseTableMetricComputer, "compute", return_value="fallback") as mock_base:
+            result = computer._compute_table_metrics()
+
+        assert result == "fallback"
+        mock_base.assert_called_once_with()
+
+    def test_compute_table_metrics_falls_back_on_zero_row_count_for_view(self):
+        session = _build_mock_session()
+        mock_result = MagicMock()
+        mock_result.rowCount = 0
+        session.execute.return_value.first.return_value = mock_result
+        computer = _build_computer(session, ExasolTableMetricComputer, table_type=TableType.View)
+
+        with patch.object(BaseTableMetricComputer, "compute", return_value="fallback") as mock_base:
+            result = computer._compute_table_metrics()
+
+        assert result == "fallback"
+        mock_base.assert_called_once_with()
 
 
 class TestTeradataTableMetricComputer:
