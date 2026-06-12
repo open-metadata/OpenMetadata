@@ -1,0 +1,71 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/kestraConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "KestraConnection",
+  "description": "Kestra Metadata Pipeline Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.KestraConnection",
+  "definitions": {
+    "KestraType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Kestra"],
+      "default": "Kestra"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/KestraType",
+      "default": "Kestra"
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host And Port",
+      "description": "Kestra host and port (scheme required, e.g. http://localhost:8080).",
+      "type": "string",
+      "format": "uri",
+      "default": "http://localhost:8080"
+    },
+    "tenantId": {
+      "title": "Tenant Id",
+      "description": "Kestra tenant id. OSS default 'main'.",
+      "type": "string",
+      "default": "main"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username for Basic authentication. Leave empty for no-auth or token auth.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password for Basic authentication.",
+      "type": "string",
+      "format": "password"
+    },
+    "token": {
+      "title": "API Token",
+      "description": "Bearer token for Kestra EE/Cloud.",
+      "type": "string",
+      "format": "password"
+    },
+    "verifySSL": {
+      "title": "Verify SSL",
+      "type": "boolean",
+      "default": true
+    },
+    "pipelineFilterPattern": {
+      "title": "Default Pipeline Filter Pattern",
+      "description": "Regex include/exclude on flow FQN (namespace.flowId).",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort"]
+}

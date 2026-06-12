@@ -239,6 +239,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["geoalchemy2"],
         "dagster_graphql>=1.8.0",
     },
+    "kestra": set(),  # Uses base requests; no extra deps
     "dbt": {
         "google-cloud",
         VERSIONS["boto3"],

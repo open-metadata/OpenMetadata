@@ -40,7 +40,8 @@
         "SSIS",
         "Snowplow",
         "Mulesoft",
-        "MicrosoftFabricPipeline"
+        "MicrosoftFabricPipeline",
+        "Kestra"
       ],
       "javaEnums": [
         {
@@ -114,6 +115,9 @@
         },
         {
           "name": "MicrosoftFabricPipeline"
+        },
+        {
+          "name": "Kestra"
         }
       ]
     },
@@ -199,6 +203,9 @@
             },
             {
               "$ref": "./connections/pipeline/microsoftFabricPipelineConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/kestraConnection.json"
             }
           ]
         }
