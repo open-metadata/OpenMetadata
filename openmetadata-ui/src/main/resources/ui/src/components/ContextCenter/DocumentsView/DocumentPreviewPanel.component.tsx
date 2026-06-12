@@ -84,7 +84,9 @@ const ExtractedMemoriesCard: FC<{ fileId: string }> = ({ fileId }) => {
     Boolean(currentUser?.isAdmin);
 
   return (
-    <Card className="tw:p-4" data-testid="extracted-memories-card">
+    // shrink-0: Card sets overflow-hidden, which lets flexbox shrink it to fit
+    // the scroll container and clip the list instead of letting the body scroll
+    <Card className="tw:p-4 tw:shrink-0" data-testid="extracted-memories-card">
       <div className="tw:mb-3">
         <Typography
           className="tw:text-gray-500 tw:uppercase"
@@ -201,7 +203,7 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
         className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto tw:p-4 tw:bg-gray-50"
         direction="col"
         gap={4}>
-        <Card className="tw:p-4">
+        <Card className="tw:p-4 tw:shrink-0">
           <div className="tw:mb-3">
             <Typography
               className="tw:text-gray-500 tw:uppercase"
