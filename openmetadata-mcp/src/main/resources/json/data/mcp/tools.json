@@ -829,7 +829,7 @@
     {
       "name": "run_ingestion",
       "description": "Triggers an OpenMetadata ingestion pipeline to run immediately. Returns the run id and the pipeline's new state. Use this when a user asks to run, execute, start, kick off, or re-run a named ingestion pipeline or connector.",
-      "inputSchema": {
+      "parameters": {
         "type": "object",
         "properties": {
           "ingestionPipelineFqn": {
@@ -845,7 +845,7 @@
     {
       "name": "get_ingestion_status",
       "description": "Returns the most recent ingestion pipeline runs for a named pipeline. Use this when a user asks about status, latest run, did it succeed, recent failures, or history of an ingestion.",
-      "inputSchema": {
+      "parameters": {
         "type": "object",
         "properties": {
           "ingestionPipelineFqn": {
@@ -868,7 +868,7 @@
     {
       "name": "create_alert",
       "description": "Creates an OpenMetadata alert (EventSubscription) that POSTs to a webhook when a specified ingestion pipeline fails. Use this when a user asks to set up monitoring, notify me, alert on failure, watch for changes, or create a rule.",
-      "inputSchema": {
+      "parameters": {
         "type": "object",
         "properties": {
           "alertName": {
