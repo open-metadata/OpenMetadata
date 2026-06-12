@@ -19,6 +19,7 @@ export enum DataQualityPageTabs {
   TEST_SUITES = 'test-suites',
   TEST_CASES = 'test-cases',
   DASHBOARD = 'dashboard',
+  IMPACT = 'impact',
 }
 
 export enum DataQualitySubTabs {

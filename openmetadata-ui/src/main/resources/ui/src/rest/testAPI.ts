@@ -492,3 +492,31 @@ export const deleteTestCaseFailedSampleData = async (id: string) => {
 
   return response.data;
 };
+
+export type DataQualityCheckImpactParams = {
+  limit?: number;
+  testCaseStatus?: TestCaseStatus;
+};
+
+export interface DataQualityCheckImpact {
+  testCaseId: string;
+  testCaseFullyQualifiedName: string;
+  entityFullyQualifiedName: string;
+  testCaseStatus: TestCaseStatus;
+  timestamp: number;
+  downstreamUsage: number;
+  consumerCount: number;
+  recentIncidents: number;
+  impactScore: number;
+}
+
+export const getDataQualityCheckImpact = async (
+  params?: DataQualityCheckImpactParams
+): Promise<DataQualityCheckImpact[]> => {
+  const response = await APIClient.get<DataQualityCheckImpact[]>(
+    `${testSuiteUrl}/dataQualityCheckImpact`,
+    { params }
+  );
+
+  return response.data;
+};

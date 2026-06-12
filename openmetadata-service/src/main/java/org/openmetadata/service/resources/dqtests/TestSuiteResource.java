@@ -542,8 +542,51 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     if (nullOrEmpty(aggregationQuery) || nullOrEmpty(index)) {
       throw new IllegalArgumentException("aggregationQuery and index are required parameters");
     }
-    SubjectContext subjectContext = getSubjectContext(securityContext);
+SubjectContext subjectContext = getSubjectContext(securityContext);
     return repository.getDataQualityReport(query, aggregationQuery, index, domain, subjectContext);
+  }
+
+  @GET
+  @Path("/dataQualityCheckImpact")
+  @Operation(
+      operationId = "getDataQualityCheckImpact",
+      summary = "Get Data Quality Check Impact Ranking",
+      description =
+          """
+            Get data quality checks ranked by impact score. The impact score is calculated based on:
+            - Downstream usage (number of downstream entities using the data)
+            - Consumer count (number of direct consumers)
+            - Recent incidents (failed test results in the last 30 days)
+            This helps prioritize which data quality checks are most critical to fix.
+            """,
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of data quality checks ranked by impact",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = List.class)))
+      })
+  public List<?> getDataQualityCheckImpact(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Number of results to return",
+              schema = @Schema(type = "integer", defaultValue = "10"))
+          @QueryParam("limit")
+          @DefaultValue("10")
+          int limit,
+      @Parameter(
+              description = "Filter by test case status (e.g., Failed, Success)",
+              schema = @Schema(type = "string"))
+          @QueryParam("testCaseStatus")
+          String testCaseStatus)
+      throws IOException {
+    List<AuthRequest> authRequests = getAuthRequestsForListOps();
+    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    return repository.getDataQualityCheckImpact(limit, testCaseStatus, subjectContext);
   }
 
   @POST
