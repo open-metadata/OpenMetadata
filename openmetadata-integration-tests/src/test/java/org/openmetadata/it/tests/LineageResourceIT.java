@@ -2513,4 +2513,87 @@ public class LineageResourceIT {
     }
     return out;
   }
+
+  // ====================================================================================
+  // Special-character FQN tests — quoted identifiers (dots, spaces)
+  // ====================================================================================
+
+  @Test
+  void testSpecialCharFQNLineageRoundtrip() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table dotTable = createTableWithSpecialName(client, namespace, "special.dot.table");
+    Table spaceTable = createTableWithSpecialName(client, namespace, "space name table");
+    Table targetTable = createTable(client, namespace, "special_char_normal_target");
+
+    // OM quotes only segments containing dots (the FQN separator).
+    // Spaces are stored as literal characters in the FQN with no double-quote wrapping.
+    assertTrue(
+        dotTable.getFullyQualifiedName().contains("\""),
+        "Dot-name table FQN should be quoted by OM: " + dotTable.getFullyQualifiedName());
+    assertFalse(
+        spaceTable.getFullyQualifiedName().contains("\""),
+        "Space-name table FQN should NOT be quoted (spaces are literal): "
+            + spaceTable.getFullyQualifiedName());
+
+    assertFQNLineageRoundtrip(client, dotTable, targetTable);
+    assertFQNLineageRoundtrip(client, spaceTable, targetTable);
+
+    cleanupTable(client, dotTable);
+    cleanupTable(client, spaceTable);
+    cleanupTable(client, targetTable);
+  }
+
+  private void assertFQNLineageRoundtrip(OpenMetadataClient client, Table from, Table to)
+      throws Exception {
+    String path =
+        "/table/name/"
+            + encodePathSegment(from.getFullyQualifiedName())
+            + "/table/name/"
+            + encodePathSegment(to.getFullyQualifiedName());
+
+    String putResult =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PUT,
+                LINEAGE_PATH + path,
+                new LineageDetails().withDescription("special char FQN roundtrip"));
+    assertNotNull(putResult, "PUT by FQN returned null for: " + from.getFullyQualifiedName());
+
+    EntityLineage lineage = getLineage(client, "table", from.getId().toString(), "0", "1");
+    assertTrue(
+        lineage.getDownstreamEdges().stream()
+            .anyMatch(
+                e -> e.getFromEntity().equals(from.getId()) && e.getToEntity().equals(to.getId())),
+        "Edge not in graph after PUT by FQN: " + from.getFullyQualifiedName());
+
+    JsonNode edgeResponse = getLineageEdgeByName(client, from, to);
+    assertNotNull(
+        edgeResponse.get("edge"),
+        "GET by FQN returned no edge field for: " + from.getFullyQualifiedName());
+
+    client.getHttpClient().executeForString(HttpMethod.DELETE, LINEAGE_PATH + path, null);
+
+    EntityLineage lineageAfter = getLineage(client, "table", from.getId().toString(), "0", "1");
+    assertTrue(
+        lineageAfter.getDownstreamEdges().stream()
+            .noneMatch(
+                e -> e.getFromEntity().equals(from.getId()) && e.getToEntity().equals(to.getId())),
+        "Edge still in graph after DELETE by FQN: " + from.getFullyQualifiedName());
+  }
+
+  private Table createTableWithSpecialName(
+      OpenMetadataClient client, TestNamespace namespace, String specialName) throws Exception {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(namespace);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(namespace, service);
+
+    CreateTable createTable = new CreateTable();
+    createTable.setName(namespace.prefix(specialName));
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setColumns(
+        List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build()));
+    return client.tables().create(createTable);
+  }
 }
