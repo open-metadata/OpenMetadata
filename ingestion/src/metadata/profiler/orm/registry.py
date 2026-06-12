@@ -124,6 +124,14 @@ class Dialects(metaclass=EnumAdapter):
 # Note that not mapped types are set to NULL by default.
 NOT_COMPUTE = {
     sqlalchemy.types.NullType.__name__,
+    CustomTypes.UNDETERMINED.value.__name__,
+}
+
+# Complex types that support only a safe subset of metrics
+# (e.g., nullCount, valuesCount). These were previously in NOT_COMPUTE
+# but can safely be profiled for null-related metrics.
+# See: https://github.com/open-metadata/OpenMetadata/issues/15627
+COMPLEX_TYPES = {
     sqlalchemy.ARRAY.__name__,
     sqlalchemy.JSON.__name__,
     sqa_types.SQAMap.__name__,
@@ -132,13 +140,23 @@ NOT_COMPUTE = {
     sqa_types.SQAUnion.__name__,
     sqa_types.SQASGeography.__name__,
     DataType.GEOMETRY.value,
+    DataType.GEOGRAPHY.value,
     DataType.ARRAY.value,
     DataType.JSON.value,
     CustomTypes.ARRAY.value.__name__,
     CustomTypes.SQADATETIMERANGE.value.__name__,
     DataType.XML.value,
-    CustomTypes.UNDETERMINED.value.__name__,
 }
+
+# Metric names that are safe to compute on complex types
+COMPLEX_TYPE_METRICS = {"nullCount", "valuesCount"}
+
+
+def is_complex_type(type_name: str) -> bool:
+    """Check if a type name belongs to a complex data type."""
+    return type_name in COMPLEX_TYPES
+
+
 FLOAT_SET = {sqlalchemy.types.DECIMAL, sqlalchemy.types.FLOAT}
 
 QUANTIFIABLE_SET = {
