@@ -65,7 +65,6 @@ import {
   ParsedODCSContract,
   ParsedOpenMetadataContract,
 } from './ODCSImportModal.interface';
-import './ODCSImportModal.less';
 
 type ParsedContract = ParsedODCSContract | ParsedOpenMetadataContract;
 
@@ -1048,8 +1047,8 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
     }));
 
     return (
-      <div className="object-selector-section">
-        <div className="object-selector-header">
+      <div className="tw:rounded-xl tw:bg-gray-50 tw:p-3.5 tw:mb-4">
+        <Box align="center" className="tw:mb-2.5" gap={2}>
           <Typography
             as="span"
             data-testid="multi-object-contract-detected"
@@ -1057,8 +1056,8 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
             weight="semibold">
             {t('message.multi-object-contract-detected')}
           </Typography>
-        </div>
-        <div className="object-selector-content">
+        </Box>
+        <Box direction="col" gap={2}>
           <Select
             data-testid="schema-object-select"
             items={selectItems}
@@ -1074,7 +1073,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
               </Select.Item>
             )}
           </Select>
-        </div>
+        </Box>
       </div>
     );
   }, [
@@ -1148,7 +1147,6 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                       </Box>
 
                       <ButtonUtility
-                        className="remove-button"
                         color="tertiary"
                         data-testid="remove-file-button"
                         icon={<Trash01 size={16} />}

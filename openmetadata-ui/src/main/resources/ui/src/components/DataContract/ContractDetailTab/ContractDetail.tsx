@@ -649,7 +649,7 @@ const ContractDetail: React.FC<{
         onClose={handleImportModalClose}
         onSuccess={handleImportSuccess}
       />
-      <Card className="contract-card-container" style={{ marginBottom: 16 }}>
+      <Card className="tw:mb-4">
         {renderDataContractHeader}
         <Card.Content>
           {mode === DataContractMode.YAML ? (
