@@ -112,14 +112,16 @@ class FetcherStrategy(ABC):
             return False
 
         use_fqn_for_filtering = getattr(self.source_config, "useFqnForFiltering", False)
-        tag_names = [(tag.tagFQN.root if use_fqn_for_filtering else tag.name) for tag in (entity.tags or [])]
+        tag_names = [
+            name
+            for name in (tag.tagFQN.root if use_fqn_for_filtering else tag.name for tag in (entity.tags or []))
+            if name
+        ]
 
         is_filtered = filter_by_classifications(classification_filter_pattern, tag_names)
         if is_filtered:
-            self.status.filter(
-                entity.fullyQualifiedName.root,
-                "Classification pattern not allowed",
-            )  # type: ignore
+            entity_fqn = entity.fullyQualifiedName.root if entity.fullyQualifiedName else ""
+            self.status.filter(entity_fqn, "Classification pattern not allowed")
         return is_filtered
 
     @abstractmethod
