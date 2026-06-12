@@ -3,6 +3,8 @@ package org.openmetadata.service.drive;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
 import java.io.InputStream;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Executor;
@@ -14,6 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.attachments.Asset;
+import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
@@ -24,6 +27,7 @@ import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.llm.LLMClientHolder;
 
 /**
@@ -81,6 +85,12 @@ public class ContextFileProcessingService {
   /** Separate network-bound pool for LLM completion so slow calls never starve text extraction. */
   private static final Executor LLM_EXECUTOR = createBoundedExecutor("context-memory-extraction-");
 
+  private static final Set<ProcessingStatus> TRANSIENT_STATUSES =
+      Set.of(
+          ProcessingStatus.Uploaded,
+          ProcessingStatus.Analyzing,
+          ProcessingStatus.ExtractingContext);
+
   private static Executor createBoundedExecutor(String threadPrefix) {
     int threads = Math.max(2, Runtime.getRuntime().availableProcessors() / 2);
     ThreadFactory threadFactory =
@@ -118,6 +128,36 @@ public class ContextFileProcessingService {
       LOG.warn("Skipping processing for file {} because the async executor rejected it", fileId, e);
       applyFailure(fileId, contentId, "Processing queue is full. Please retry later.");
     }
+  }
+
+  /**
+   * Requeues files a previous server shutdown left in a transient processing state. Without this,
+   * a file interrupted mid-pipeline stays Uploaded/Analyzing/ExtractingContext forever, since
+   * processing only ever starts at upload time.
+   */
+  public int recoverInterruptedProcessing() {
+    int resubmitted = 0;
+    try {
+      List<ContextFile> files =
+          repository.listAll(repository.getFields(""), new ListFilter(Include.NON_DELETED));
+      for (ContextFile file : files) {
+        if (isInterrupted(file)) {
+          submit(file.getId(), UUID.fromString(file.getHeadContentId()));
+          resubmitted++;
+        }
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to recover interrupted context file processing", e);
+    }
+    if (resubmitted > 0) {
+      LOG.info("Resubmitted {} context files interrupted by a previous shutdown", resubmitted);
+    }
+    return resubmitted;
+  }
+
+  private boolean isInterrupted(ContextFile file) {
+    return file.getHeadContentId() != null
+        && TRANSIENT_STATUSES.contains(file.getProcessingStatus());
   }
 
   void process(UUID fileId, UUID contentId) {
@@ -213,10 +253,14 @@ public class ContextFileProcessingService {
       return;
     }
     try {
-      // Hard-delete: stale machine-generated pills are replaced wholesale on every
-      // re-extraction, so soft-deleted rows would only accumulate with no restore path.
+      ContextMemoryExtractor extractor = memoryExtractorSupplier.get();
+      // Derive first so a failed LLM pass leaves the previous pills untouched; only a
+      // successful pass replaces them. Hard-delete: stale machine-generated pills are
+      // replaced wholesale on every re-extraction, so soft-deleted rows would only
+      // accumulate with no restore path.
+      List<ContextMemory> memories = extractor.derive(file, canonicalText(contentId, file));
       repository.deleteExtractedMemories(file, true);
-      memoryExtractorSupplier.get().extract(file, canonicalText(contentId, file));
+      extractor.persist(file, memories);
       setFileStatus(fileId, contentId, ProcessingStatus.Processed);
     } catch (Exception e) {
       LOG.error("Knowledge pill extraction failed for file {}", fileId, e);

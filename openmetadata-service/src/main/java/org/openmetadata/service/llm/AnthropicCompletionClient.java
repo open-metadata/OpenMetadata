@@ -94,14 +94,14 @@ public final class AnthropicCompletionClient extends LLMCompletionClient {
     return result;
   }
 
-  private String parseContent(String responseBody) {
+  static String parseContent(String responseBody) {
     String result;
     try {
-      JsonNode content = MAPPER.readTree(responseBody).get("content");
-      if (content == null || !content.isArray() || content.isEmpty()) {
-        throw new LLMCompletionException("Invalid Anthropic response: no content returned");
+      JsonNode text = MAPPER.readTree(responseBody).path("content").path(0).path("text");
+      if (!text.isTextual()) {
+        throw new LLMCompletionException("Invalid Anthropic response: no text content returned");
       }
-      result = content.get(0).get("text").asText();
+      result = text.asText();
     } catch (IOException e) {
       throw new LLMCompletionException("Failed to parse Anthropic response", e);
     }

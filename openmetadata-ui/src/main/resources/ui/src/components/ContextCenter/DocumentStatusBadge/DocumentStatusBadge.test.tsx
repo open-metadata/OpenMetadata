@@ -34,6 +34,14 @@ describe('DocumentStatusBadge', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  it('renders nothing for an unknown status value', () => {
+    const { container } = render(
+      <DocumentStatusBadge status={'FutureStatus' as ProcessingStatus} />
+    );
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
   it.each([
     [ProcessingStatus.Uploaded, 'label.uploaded', 'gray'],
     [ProcessingStatus.Analyzing, 'label.analyzing', 'blue'],

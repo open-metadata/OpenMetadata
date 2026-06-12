@@ -117,14 +117,15 @@ public final class OpenAICompletionClient extends LLMCompletionClient {
     return result;
   }
 
-  private String parseContent(String responseBody) {
+  static String parseContent(String responseBody) {
     String result;
     try {
-      JsonNode choices = MAPPER.readTree(responseBody).get("choices");
-      if (choices == null || !choices.isArray() || choices.isEmpty()) {
-        throw new LLMCompletionException("Invalid OpenAI response: no choices returned");
+      JsonNode content =
+          MAPPER.readTree(responseBody).path("choices").path(0).path("message").path("content");
+      if (!content.isTextual()) {
+        throw new LLMCompletionException("Invalid OpenAI response: no message content returned");
       }
-      result = choices.get(0).get("message").get("content").asText();
+      result = content.asText();
     } catch (IOException e) {
       throw new LLMCompletionException("Failed to parse OpenAI response", e);
     }

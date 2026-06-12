@@ -90,6 +90,7 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
     if (config.getObjectStorage() != null) {
       maxFileSize = config.getObjectStorage().getMaxFileSize();
     }
+    extractionService.recoverInterruptedProcessing();
   }
 
   public static class ContextFileList extends ResultList<ContextFile> {}

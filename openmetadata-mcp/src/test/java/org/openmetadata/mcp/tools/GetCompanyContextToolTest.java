@@ -23,6 +23,7 @@ import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
@@ -104,6 +105,22 @@ class GetCompanyContextToolTest {
 
     assertEquals("Q", result.get("question"));
     assertEquals("A", result.get("answer"));
+  }
+
+  @Test
+  void missingPillReturnsErrorInsteadOfThrowing() throws Exception {
+    entityMock
+        .when(
+            () ->
+                Entity.getEntityByName(
+                    eq(Entity.CONTEXT_MEMORY), anyString(), anyString(), isNull()))
+        .thenThrow(new EntityNotFoundException("contextMemory instance for ghost not found"));
+
+    Map<String, Object> result =
+        tool.execute(
+            mock(Authorizer.class), mock(CatalogSecurityContext.class), Map.of("fqn", "ghost"));
+
+    assertEquals("No Company Context knowledge pill found for 'ghost'", result.get("error"));
   }
 
   @Test

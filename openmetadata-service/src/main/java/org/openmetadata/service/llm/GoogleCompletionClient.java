@@ -44,7 +44,9 @@ public final class GoogleCompletionClient extends LLMCompletionClient {
         cfg.getEndpoint() == null || cfg.getEndpoint().isBlank()
             ? DEFAULT_BASE
             : cfg.getEndpoint().replaceAll("/+$", "");
-    this.endpoint = String.format("%s/%s:generateContent?key=%s", base, modelId, apiKey);
+    // API key travels in a header, never the URL, so it can't leak via logged URIs or
+    // exception messages that include the endpoint.
+    this.endpoint = String.format("%s/%s:generateContent", base, modelId);
     this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build();
   }
 
@@ -56,6 +58,7 @@ public final class GoogleCompletionClient extends LLMCompletionClient {
           HttpRequest.newBuilder()
               .uri(URI.create(endpoint))
               .header("Content-Type", "application/json")
+              .header("x-goog-api-key", apiKey)
               .timeout(Duration.ofSeconds(timeoutSeconds))
               .POST(HttpRequest.BodyPublishers.ofString(buildRequestBody(systemPrompt, userPrompt)))
               .build();
@@ -95,14 +98,22 @@ public final class GoogleCompletionClient extends LLMCompletionClient {
     return result;
   }
 
-  private String parseContent(String responseBody) {
+  static String parseContent(String responseBody) {
     String result;
     try {
-      JsonNode candidates = MAPPER.readTree(responseBody).get("candidates");
-      if (candidates == null || !candidates.isArray() || candidates.isEmpty()) {
-        throw new LLMCompletionException("Invalid Google response: no candidates returned");
+      JsonNode text =
+          MAPPER
+              .readTree(responseBody)
+              .path("candidates")
+              .path(0)
+              .path("content")
+              .path("parts")
+              .path(0)
+              .path("text");
+      if (!text.isTextual()) {
+        throw new LLMCompletionException("Invalid Google response: no text content returned");
       }
-      result = candidates.get(0).get("content").get("parts").get(0).get("text").asText();
+      result = text.asText();
     } catch (IOException e) {
       throw new LLMCompletionException("Failed to parse Google response", e);
     }

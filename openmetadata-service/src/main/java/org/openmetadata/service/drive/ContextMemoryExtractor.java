@@ -31,6 +31,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class ContextMemoryExtractor {
   static final int MAX_PROMPT_CHARS = 60_000;
   static final int MAX_CHUNKS = 8;
+  static final int MAX_NAME_BASE_LENGTH = 200;
   static final String SYSTEM_PROMPT =
       "You extract reusable company knowledge from a document as a JSON array. Each element is an "
           + "object with keys: title, question, answer, summary, memoryType (one of Faq, Note, "
@@ -47,26 +48,35 @@ public class ContextMemoryExtractor {
   }
 
   public int extract(ContextFile file) {
-    return extract(file, file.getExtractedText());
+    return persist(file, derive(file, file.getExtractedText()));
   }
 
   /**
-   * Extracts pills from {@code text} (typically the content snapshot's canonical extracted text,
-   * which is longer than the file's indexed text). Long documents are processed in
-   * paragraph-aligned chunks, one LLM call per chunk, with pills deduplicated across chunks.
+   * Derives memories from {@code text} (typically the content snapshot's canonical extracted text,
+   * which is longer than the file's indexed text) without persisting anything. Long documents are
+   * processed in paragraph-aligned chunks, one LLM call per chunk, with pills deduplicated across
+   * chunks. Kept side-effect free so callers can replace the file's previous pills only after the
+   * LLM pass succeeded.
    */
-  public int extract(ContextFile file, String text) {
+  public List<ContextMemory> derive(ContextFile file, String text) {
     List<KnowledgePill> collected = new ArrayList<>();
     for (String chunk : chunkText(text, file)) {
       collected.addAll(callLlm(chunk));
     }
-    List<KnowledgePill> pills = dedupe(collected);
+    List<ContextMemory> memories = new ArrayList<>();
     EntityReference fileRef = file.getEntityReference();
-    for (KnowledgePill pill : pills) {
-      memoryRepository.create(null, toMemory(pill, fileRef));
+    for (KnowledgePill pill : dedupe(collected)) {
+      memories.add(toMemory(pill, fileRef));
     }
-    LOG.info("Extracted {} knowledge pills from file {}", pills.size(), file.getId());
-    return pills.size();
+    return memories;
+  }
+
+  public int persist(ContextFile file, List<ContextMemory> memories) {
+    for (ContextMemory memory : memories) {
+      memoryRepository.create(null, memory);
+    }
+    LOG.info("Extracted {} knowledge pills from file {}", memories.size(), file.getId());
+    return memories.size();
   }
 
   private List<String> chunkText(String text, ContextFile file) {
@@ -141,7 +151,7 @@ public class ContextMemoryExtractor {
   }
 
   private ContextMemory toMemory(KnowledgePill pill, EntityReference fileRef) {
-    String name = fileRef.getName() + "-" + UUID.randomUUID();
+    String name = memoryName(fileRef);
     return new ContextMemory()
         .withId(UUID.randomUUID())
         .withName(name)
@@ -159,12 +169,22 @@ public class ContextMemoryExtractor {
         .withUpdatedAt(System.currentTimeMillis());
   }
 
+  /** Keeps the generated memory name within the 256-char entityName limit (UUID suffix included). */
+  private String memoryName(EntityReference fileRef) {
+    String base = fileRef.getName();
+    if (base.length() > MAX_NAME_BASE_LENGTH) {
+      base = base.substring(0, MAX_NAME_BASE_LENGTH);
+    }
+    return base + "-" + UUID.randomUUID();
+  }
+
   private ContextMemoryType parseType(String raw) {
     ContextMemoryType result = ContextMemoryType.NOTE;
     if (raw != null) {
       for (ContextMemoryType type : ContextMemoryType.values()) {
         if (type.value().equalsIgnoreCase(raw.trim())) {
           result = type;
+          break;
         }
       }
     }

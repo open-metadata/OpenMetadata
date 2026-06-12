@@ -4,10 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.same;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -16,6 +18,7 @@ import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -27,9 +30,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.attachments.Asset;
+import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
 import org.openmetadata.schema.entity.data.ContextFileType;
@@ -86,7 +91,8 @@ class ContextFileProcessingServiceTest {
 
     lenient().when(repository.getContentRepository()).thenReturn(contentRepository);
     lenient().when(repository.getAssetRepository()).thenReturn(assetRepository);
-    when(repository.get(isNull(), eq(fileId), any(), eq(Include.NON_DELETED), eq(false)))
+    lenient()
+        .when(repository.get(isNull(), eq(fileId), any(), eq(Include.NON_DELETED), eq(false)))
         .thenReturn(file);
     lenient().when(contentRepository.getById(contentId)).thenReturn(content);
     lenient().when(assetRepository.getById("asset-1")).thenReturn(asset);
@@ -130,7 +136,8 @@ class ContextFileProcessingServiceTest {
     when(textExtractor.extract(any(InputStream.class), same(file)))
         .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
     content.setExtractedText("Quarterly results canonical");
-    when(memoryExtractor.extract(same(file), eq("Quarterly results canonical"))).thenReturn(2);
+    List<ContextMemory> derived = List.of(new ContextMemory().withId(UUID.randomUUID()));
+    when(memoryExtractor.derive(same(file), eq("Quarterly results canonical"))).thenReturn(derived);
 
     service(Runnable::run, () -> assetService, true).process(fileId, contentId);
 
@@ -141,8 +148,10 @@ class ContextFileProcessingServiceTest {
     assertEquals(ProcessingStatus.ExtractingContext, fileUpdates.get(1).getProcessingStatus());
     assertEquals(ProcessingStatus.Processed, fileUpdates.get(2).getProcessingStatus());
 
-    verify(repository).deleteExtractedMemories(same(file), eq(true));
-    verify(memoryExtractor).extract(same(file), eq("Quarterly results canonical"));
+    InOrder inOrder = inOrder(memoryExtractor, repository);
+    inOrder.verify(memoryExtractor).derive(same(file), eq("Quarterly results canonical"));
+    inOrder.verify(repository).deleteExtractedMemories(same(file), eq(true));
+    inOrder.verify(memoryExtractor).persist(same(file), same(derived));
   }
 
   @Test
@@ -190,7 +199,7 @@ class ContextFileProcessingServiceTest {
         .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
     file.setExtractedText("indexed text");
     content.setExtractedText("Quarterly results canonical");
-    when(memoryExtractor.extract(same(file), eq("Quarterly results canonical")))
+    when(memoryExtractor.derive(same(file), eq("Quarterly results canonical")))
         .thenThrow(new RuntimeException("provider exploded"));
 
     service(Runnable::run, () -> assetService, true).process(fileId, contentId);
@@ -207,6 +216,36 @@ class ContextFileProcessingServiceTest {
     assertEquals(ProcessingStatus.Failed, failedContent.getProcessingStatus());
     assertEquals("provider exploded", failedContent.getProcessingError());
     assertEquals("Quarterly results canonical", failedContent.getExtractedText());
+
+    verify(repository, never()).deleteExtractedMemories(any(), anyBoolean());
+    verify(memoryExtractor, never()).persist(any(), any());
+  }
+
+  @Test
+  void recoverInterruptedProcessingResubmitsTransientFiles() {
+    ContextFile analyzing = transientFile(ProcessingStatus.Analyzing);
+    ContextFile extracting = transientFile(ProcessingStatus.ExtractingContext);
+    ContextFile uploaded = transientFile(ProcessingStatus.Uploaded);
+    ContextFile processed = transientFile(ProcessingStatus.Processed);
+    ContextFile noContent =
+        new ContextFile()
+            .withId(UUID.randomUUID())
+            .withProcessingStatus(ProcessingStatus.Analyzing);
+    when(repository.listAll(any(), any()))
+        .thenReturn(List.of(analyzing, extracting, uploaded, processed, noContent));
+    List<Runnable> queued = new ArrayList<>();
+
+    int resubmitted = service(queued::add, () -> assetService).recoverInterruptedProcessing();
+
+    assertEquals(3, resubmitted);
+    assertEquals(3, queued.size());
+  }
+
+  private ContextFile transientFile(ProcessingStatus status) {
+    return new ContextFile()
+        .withId(UUID.randomUUID())
+        .withHeadContentId(UUID.randomUUID().toString())
+        .withProcessingStatus(status);
   }
 
   @Test

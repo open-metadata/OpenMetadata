@@ -1,9 +1,11 @@
 package org.openmetadata.service.drive;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -64,6 +66,36 @@ class ContextMemoryExtractorTest {
 
     assertEquals(1, created);
     verify(memoryRepository, times(1)).create(isNull(), any());
+  }
+
+  @Test
+  void deriveDoesNotPersist() {
+    ContextFile file =
+        new ContextFile().withId(UUID.randomUUID()).withName("report").withExtractedText("text");
+    when(llmClient.completeStructured(any(), any(), eq(KnowledgePill.class)))
+        .thenReturn(List.of(new KnowledgePill("T", "Q", "A", "S", "Faq")));
+
+    List<ContextMemory> memories =
+        new ContextMemoryExtractor(memoryRepository, llmClient).derive(file, "text");
+
+    assertEquals(1, memories.size());
+    verify(memoryRepository, never()).create(any(), any());
+  }
+
+  @Test
+  void truncatesLongFileNamesToFitEntityNameLimit() {
+    String longName = "f".repeat(256);
+    ContextFile file =
+        new ContextFile().withId(UUID.randomUUID()).withName(longName).withExtractedText("text");
+    when(llmClient.completeStructured(any(), any(), eq(KnowledgePill.class)))
+        .thenReturn(List.of(new KnowledgePill("T", "Q", "A", "S", "Faq")));
+
+    List<ContextMemory> memories =
+        new ContextMemoryExtractor(memoryRepository, llmClient).derive(file, "text");
+
+    String name = memories.getFirst().getName();
+    assertTrue(name.length() <= 256, "memory name must fit the entityName limit");
+    assertTrue(name.startsWith("f".repeat(ContextMemoryExtractor.MAX_NAME_BASE_LENGTH) + "-"));
   }
 
   @Test

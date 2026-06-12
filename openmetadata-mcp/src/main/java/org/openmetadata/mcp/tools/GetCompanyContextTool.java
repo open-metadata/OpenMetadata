@@ -10,6 +10,7 @@ import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -20,6 +21,9 @@ import org.openmetadata.service.util.FullyQualifiedName;
 /** Fetches a single Company Context knowledge pill (a {@link ContextMemory}) by FQN. */
 @Slf4j
 public class GetCompanyContextTool implements McpTool {
+
+  private static final String NOT_A_SHARED_PILL_ERROR =
+      "Requested entity is not a shared Company Context knowledge pill";
 
   @Override
   public Map<String, Object> execute(
@@ -34,11 +38,19 @@ public class GetCompanyContextTool implements McpTool {
     if (fqn == null || fqn.isBlank()) {
       result = Map.of("error", "'fqn' parameter is required");
     } else {
+      result = lookupPill(fqn);
+    }
+    return result;
+  }
+
+  private static Map<String, Object> lookupPill(String fqn) {
+    Map<String, Object> result;
+    try {
       ContextMemory memory = fetchPill(fqn);
       result =
-          isExposablePill(memory)
-              ? projectPill(memory)
-              : Map.of("error", "Requested entity is not a shared Company Context knowledge pill");
+          isExposablePill(memory) ? projectPill(memory) : Map.of("error", NOT_A_SHARED_PILL_ERROR);
+    } catch (EntityNotFoundException e) {
+      result = Map.of("error", "No Company Context knowledge pill found for '" + fqn + "'");
     }
     return result;
   }
@@ -52,7 +64,7 @@ public class GetCompanyContextTool implements McpTool {
    */
   private static ContextMemory fetchPill(String fqn) {
     String normalizedFqn = FullyQualifiedName.quoteName(fqn);
-    LOG.info("Getting company context pill: {} (normalized fqn: {})", fqn, normalizedFqn);
+    LOG.debug("Getting company context pill: {} (normalized fqn: {})", fqn, normalizedFqn);
     return Entity.getEntityByName(
         Entity.CONTEXT_MEMORY, normalizedFqn, "sourceFile,owners,tags,domains", null);
   }

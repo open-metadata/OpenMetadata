@@ -47,7 +47,13 @@ const DocumentStatusBadge: FC<DocumentStatusBadgeProps> = ({ status }) => {
     return null;
   }
 
-  const config = STATUS_CONFIG[status];
+  // A backend newer than this UI can report a status we don't know yet
+  const config: { color: BadgeColor; labelKey: string } | undefined =
+    STATUS_CONFIG[status];
+
+  if (!config) {
+    return null;
+  }
 
   return (
     <span className="tw:shrink-0" data-testid="document-status-badge">

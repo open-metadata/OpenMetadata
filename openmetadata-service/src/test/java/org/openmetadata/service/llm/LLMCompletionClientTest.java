@@ -66,4 +66,52 @@ class LLMCompletionClientTest {
   void rejectsNonPositiveConcurrency() {
     assertThrows(IllegalArgumentException.class, ZeroPermitClient::new);
   }
+
+  @Test
+  void anthropicParseExtractsText() {
+    assertEquals(
+        "hello",
+        AnthropicCompletionClient.parseContent(
+            "{\"content\":[{\"type\":\"text\",\"text\":\"hello\"}]}"));
+  }
+
+  @Test
+  void anthropicParseRejectsContentWithoutText() {
+    assertThrows(
+        LLMCompletionException.class,
+        () -> AnthropicCompletionClient.parseContent("{\"content\":[{\"type\":\"thinking\"}]}"));
+  }
+
+  @Test
+  void openAiParseExtractsContent() {
+    assertEquals(
+        "hi",
+        OpenAICompletionClient.parseContent("{\"choices\":[{\"message\":{\"content\":\"hi\"}}]}"));
+  }
+
+  @Test
+  void openAiParseRejectsNullMessageContent() {
+    assertThrows(
+        LLMCompletionException.class,
+        () ->
+            OpenAICompletionClient.parseContent(
+                "{\"choices\":[{\"message\":{\"content\":null,\"tool_calls\":[]}}]}"));
+  }
+
+  @Test
+  void googleParseExtractsText() {
+    assertEquals(
+        "ok",
+        GoogleCompletionClient.parseContent(
+            "{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"ok\"}]}}]}"));
+  }
+
+  @Test
+  void googleParseRejectsCandidateWithoutContent() {
+    assertThrows(
+        LLMCompletionException.class,
+        () ->
+            GoogleCompletionClient.parseContent(
+                "{\"candidates\":[{\"finishReason\":\"SAFETY\"}]}"));
+  }
 }
