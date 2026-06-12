@@ -81,6 +81,7 @@ import org.openmetadata.service.util.UserUtil;
 @Collection(name = "bots", order = 4, requiredForOps = true) // initialize after user resource
 public class BotResource extends EntityResource<Bot, BotRepository> {
   public static final String COLLECTION_PATH = "/v1/bots/";
+  public static final String FIELDS = "botUser";
   private final BotMapper mapper = new BotMapper();
 
   public BotResource(Authorizer authorizer, Limits limits) {
@@ -156,6 +157,11 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   public ResultList<Bot> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
       @DefaultValue("10")
           @Min(value = 0, message = "must be greater than or equal to 0")
           @Max(value = 1000000, message = "must be less than or equal to 1000000")
@@ -178,7 +184,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
           @DefaultValue("non-deleted")
           Include include) {
     return listInternal(
-        uriInfo, securityContext, "", new ListFilter(include), limitParam, before, after);
+        uriInfo, securityContext, fieldsParam, new ListFilter(include), limitParam, before, after);
   }
 
   @GET
@@ -202,8 +208,13 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       @Context SecurityContext securityContext,
       @QueryParam("include") @DefaultValue("non-deleted") Include include,
       @Parameter(description = "Id of the bot", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id) {
-    return getInternal(uriInfo, securityContext, id, "", include);
+          UUID id,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam) {
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -229,13 +240,18 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
           @PathParam("name")
           String name,
       @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
     return getByNameInternal(
-        uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), "", include);
+        uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
   }
 
   @GET
