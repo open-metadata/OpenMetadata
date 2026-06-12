@@ -21,11 +21,19 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { LoadingState, ServicesUpdateRequest, ServiceTypes } from 'Models';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
+import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
+import { NavigationGuardModal } from '../../components/common/NavigationGuardModal/NavigationGuardModal';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
 import ServiceFlowStepper from '../../components/Settings/Services/AddService/ServiceFlowStepper/ServiceFlowStepper';
@@ -60,7 +68,7 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 
-type BreadcrumbItem = { label: string; id: string; href: string };
+type BreadcrumbItem = { label: string; id: string; href?: string };
 
 function EditConnectionFormPage() {
   const { serviceCategory } = useRequiredParams<{
@@ -86,6 +94,7 @@ function EditConnectionFormPage() {
   );
   const [activeField, setActiveField] = useState<string>('');
   const [serviceConfig, setServiceConfig] = useState<ServicesType>();
+  const [showBackStepConfirm, setShowBackStepConfirm] = useState(false);
 
   const translatedSteps = useMemo(
     () =>
@@ -169,23 +178,14 @@ function EditConnectionFormPage() {
         {
           label: startCase(serviceCategory),
           id: 'service-category',
-          href: getSettingPath(
-            GlobalSettingsMenuCategory.SERVICES,
-            getServiceRouteFromServiceType(serviceCategory as ServiceTypes)
-          ),
         },
         {
           label: getEntityName(response),
           id: 'service-name',
-          href: getPathByServiceFQN(
-            serviceCategory as ServiceCategory,
-            serviceFQN
-          ),
         },
         {
           label: t('label.edit-entity', { entity: t('label.connection') }),
           id: 'edit-connection',
-          href: '',
         },
       ]);
     } catch (err) {
@@ -206,6 +206,11 @@ function EditConnectionFormPage() {
 
   const handleFiltersInputBackClick = () => setActiveServiceStep(1);
 
+  const handleConfirmedStepBack = () => {
+    setShowBackStepConfirm(false);
+    handleFiltersInputBackClick();
+  };
+
   const handleFieldFocus = (fieldName: string) => {
     if (isEmpty(fieldName)) {
       return;
@@ -214,6 +219,24 @@ function EditConnectionFormPage() {
       setActiveField(fieldName);
     }, 50);
   };
+
+  const handleBreadcrumbAction = useCallback(
+    (id: React.Key) => {
+      if (id === 'service-category') {
+        navigate(
+          getSettingPath(
+            GlobalSettingsMenuCategory.SERVICES,
+            getServiceRouteFromServiceType(serviceCategory as ServiceTypes)
+          )
+        );
+      } else if (id === 'service-name') {
+        navigate(
+          getPathByServiceFQN(serviceCategory as ServiceCategory, serviceFQN)
+        );
+      }
+    },
+    [navigate, serviceCategory, serviceFQN]
+  );
 
   useEffect(() => {
     fetchServiceDetail();
@@ -241,7 +264,7 @@ function EditConnectionFormPage() {
     if (activeServiceStep === 1) {
       onCancel();
     } else {
-      handleFiltersInputBackClick();
+      setShowBackStepConfirm(true);
     }
   };
 
@@ -261,7 +284,10 @@ function EditConnectionFormPage() {
   const firstPanelChildren = (
     <Card className="add-service-page-card max-width-lg m-x-auto tw:p-0 tw:h-full tw:flex tw:flex-col tw:overflow-hidden">
       <div className="tw:flex-1 tw:overflow-y-auto tw:p-5">
-        <Breadcrumbs items={slashedBreadcrumb} />
+        <Breadcrumbs
+          items={slashedBreadcrumb}
+          onAction={handleBreadcrumbAction}
+        />
         <div className="tw:mt-[22px]">
           <div className="tw:flex tw:items-center tw:gap-3 tw:pb-0">
             {getServiceLogo(
@@ -340,32 +366,49 @@ function EditConnectionFormPage() {
   );
 
   return (
-    <ResizablePanels
-      className="edit-connection-page content-height-with-resizable-panel"
-      firstPanel={{
-        children: firstPanelChildren,
-        minWidth: 700,
-        flex: 0.7,
-        className: 'content-resizable-panel-container',
-        // Renders our own Card above; built-in AntD card would cause a double card and break the h-full layout.
-        wrapInCard: false,
-      }}
-      hideSecondPanel={!serviceDetails?.serviceType}
-      pageTitle={t('label.edit-entity', { entity: t('label.connection') })}
-      secondPanel={{
-        children: (
-          <ServiceDocPanel
-            focusedMode
-            activeField={activeField}
-            serviceName={serviceDetails?.serviceType ?? ''}
-            serviceType={getServiceType(serviceCategory as ServiceCategory)}
-          />
-        ),
-        className: 'service-doc-panel content-resizable-panel-container',
-        minWidth: 400,
-        flex: 0.3,
-      }}
-    />
+    <NavigationBlocker
+      enabled={!isSavingService}
+      renderModal={({ isOpen, onLeave, onStay }) => (
+        <NavigationGuardModal
+          isOpen={isOpen}
+          onLeave={onLeave}
+          onStay={onStay}
+        />
+      )}>
+      <>
+        <ResizablePanels
+          className="edit-connection-page content-height-with-resizable-panel"
+          firstPanel={{
+            children: firstPanelChildren,
+            minWidth: 700,
+            flex: 0.7,
+            className: 'content-resizable-panel-container',
+            // Renders our own Card above; built-in AntD card would cause a double card and break the h-full layout.
+            wrapInCard: false,
+          }}
+          hideSecondPanel={!serviceDetails?.serviceType}
+          pageTitle={t('label.edit-entity', { entity: t('label.connection') })}
+          secondPanel={{
+            children: (
+              <ServiceDocPanel
+                focusedMode
+                activeField={activeField}
+                serviceName={serviceDetails?.serviceType ?? ''}
+                serviceType={getServiceType(serviceCategory as ServiceCategory)}
+              />
+            ),
+            className: 'service-doc-panel content-resizable-panel-container',
+            minWidth: 400,
+            flex: 0.3,
+          }}
+        />
+        <NavigationGuardModal
+          isOpen={showBackStepConfirm}
+          onLeave={handleConfirmedStepBack}
+          onStay={() => setShowBackStepConfirm(false)}
+        />
+      </>
+    </NavigationBlocker>
   );
 }
 

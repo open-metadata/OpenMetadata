@@ -29,6 +29,8 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
+import { NavigationGuardModal } from '../../components/common/NavigationGuardModal/NavigationGuardModal';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
 import ServiceFlowStepper from '../../components/Settings/Services/AddService/ServiceFlowStepper/ServiceFlowStepper';
@@ -92,6 +94,8 @@ const AddServicePage = () => {
   const [saveServiceState, setSaveServiceState] =
     useState<LoadingState>('initial');
   const [activeField, setActiveField] = useState<string>('');
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showBackStepConfirm, setShowBackStepConfirm] = useState(false);
   const connectionFormRef = useRef<ConnectionConfigFormHandle>(null);
   const filtersFormRef = useRef<FiltersConfigFormHandle>(null);
   const {
@@ -302,7 +306,11 @@ const AddServicePage = () => {
   const handleBreadcrumbAction = useCallback(
     (id: React.Key) => {
       if (id === 'add-service') {
-        handleConnectorChangeClick();
+        if (activeServiceStep > 1) {
+          setShowResetConfirm(true);
+        } else {
+          handleConnectorChangeClick();
+        }
       } else if (id === 'category') {
         navigate(
           getSettingPath(
@@ -312,7 +320,7 @@ const AddServicePage = () => {
         );
       }
     },
-    [handleConnectorChangeClick, navigate, serviceCategory]
+    [activeServiceStep, handleConnectorChangeClick, navigate, serviceCategory]
   );
 
   const isStep2NextDisabled =
@@ -321,6 +329,11 @@ const AddServicePage = () => {
   const showFooter = activeServiceStep === 2 || activeServiceStep === 3;
 
   const handleFooterBack = () => {
+    setShowBackStepConfirm(true);
+  };
+
+  const handleConfirmedStepBack = () => {
+    setShowBackStepConfirm(false);
     if (activeServiceStep === 2) {
       handleConnectionDetailsBackClick();
     } else {
@@ -474,32 +487,57 @@ const AddServicePage = () => {
   }, []);
 
   return (
-    <ResizablePanels
-      className="add-service-page content-height-with-resizable-panel"
-      firstPanel={{
-        children: firstPanelChildren,
-        minWidth: 700,
-        flex: 0.7,
-        className: 'content-resizable-panel-container',
-        // Renders our own Card below; built-in AntD card would cause a double card and break the h-full layout.
-        wrapInCard: false,
-      }}
-      hideSecondPanel={hideSecondPanel}
-      pageTitle={t('label.add-entity', { entity: t('label.service') })}
-      secondPanel={{
-        children: (
-          <ServiceDocPanel
-            focusedMode
-            activeField={activeField}
-            serviceName={serviceConfig.serviceType}
-            serviceType={getServiceType(serviceCategory)}
-          />
-        ),
-        className: 'service-doc-panel content-resizable-panel-container',
-        minWidth: 400,
-        flex: 0.3,
-      }}
-    />
+    <NavigationBlocker
+      enabled={activeServiceStep > 1 && !isSavingService}
+      renderModal={({ isOpen, onLeave, onStay }) => (
+        <NavigationGuardModal
+          isOpen={isOpen}
+          onLeave={onLeave}
+          onStay={onStay}
+        />
+      )}>
+      <>
+        <ResizablePanels
+          className="add-service-page content-height-with-resizable-panel"
+          firstPanel={{
+            children: firstPanelChildren,
+            minWidth: 700,
+            flex: 0.7,
+            className: 'content-resizable-panel-container',
+            // Renders our own Card below; built-in AntD card would cause a double card and break the h-full layout.
+            wrapInCard: false,
+          }}
+          hideSecondPanel={hideSecondPanel}
+          pageTitle={t('label.add-entity', { entity: t('label.service') })}
+          secondPanel={{
+            children: (
+              <ServiceDocPanel
+                focusedMode
+                activeField={activeField}
+                serviceName={serviceConfig.serviceType}
+                serviceType={getServiceType(serviceCategory)}
+              />
+            ),
+            className: 'service-doc-panel content-resizable-panel-container',
+            minWidth: 400,
+            flex: 0.3,
+          }}
+        />
+        <NavigationGuardModal
+          isOpen={showResetConfirm}
+          onLeave={() => {
+            setShowResetConfirm(false);
+            handleConnectorChangeClick();
+          }}
+          onStay={() => setShowResetConfirm(false)}
+        />
+        <NavigationGuardModal
+          isOpen={showBackStepConfirm}
+          onLeave={handleConfirmedStepBack}
+          onStay={() => setShowBackStepConfirm(false)}
+        />
+      </>
+    </NavigationBlocker>
   );
 };
 

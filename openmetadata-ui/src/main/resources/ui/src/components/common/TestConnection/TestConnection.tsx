@@ -24,8 +24,8 @@ import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
 import {
-  FETCH_INTERVAL,
   FETCHING_EXPIRY_TIME,
+  FETCH_INTERVAL,
   TEST_CONNECTION_FAILURE_MESSAGE,
   TEST_CONNECTION_INITIAL_MESSAGE,
   TEST_CONNECTION_PROGRESS_PERCENTAGE,

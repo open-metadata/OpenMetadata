@@ -169,7 +169,9 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
               isDisabled={isSubmitting || isLoading || isSubmitDisabled}
               size="sm"
               type="submit">
-              {isSubmitting ? t('label.submitting') : okText ?? t('label.submit')}
+              {isSubmitting
+                ? t('label.submitting')
+                : okText ?? t('label.submit')}
             </Button>
           </div>
         )}

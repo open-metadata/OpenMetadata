@@ -277,7 +277,6 @@ const EditIngestionPage = () => {
         <div className="tw:mt-4">
           <AddIngestion
             hideFooter
-            ref={addIngestionRef}
             activeIngestionStep={activeIngestionStep}
             data={ingestionData}
             handleCancelClick={handleCancelClick}
@@ -291,6 +290,7 @@ const EditIngestionPage = () => {
             isIngestionCreated={isIngestionCreated}
             isIngestionDeployed={isIngestionDeployed}
             pipelineType={ingestionType as PipelineType}
+            ref={addIngestionRef}
             serviceCategory={serviceCategory as ServiceCategory}
             serviceData={serviceData as DataObj}
             setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
