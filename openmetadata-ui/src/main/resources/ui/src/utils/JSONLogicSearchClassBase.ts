@@ -780,11 +780,7 @@ class JSONLogicSearchClassBase {
           Record<string, unknown>
         ];
 
-        if (
-          condition &&
-          condition['!'] &&
-          typeof condition['!'] === 'object'
-        ) {
+        if (condition && condition['!'] && typeof condition['!'] === 'object') {
           const negated = condition['!'] as Record<string, unknown>;
 
           if (negated.contains) {
