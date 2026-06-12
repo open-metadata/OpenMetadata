@@ -69,6 +69,8 @@ export const getAggregationOptions = async (
   size = 10,
   isNLPEnabled = false,
   queryText?: string,
+  // sourceFields is only supported in non-independent mode; postAggregateFieldOptions
+  // (independent mode) uses SearchRequest which does not have a sourceFields field.
   sourceFields?: string
 ) => {
   return isIndependent
