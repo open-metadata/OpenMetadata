@@ -35,7 +35,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 concurrency:
   group: playwright-ci-pr-postgresql-${{ github.event.pull_request.number || github.run_id }}
@@ -101,6 +100,9 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !cancelled() && needs.build.result == 'success' }}
     environment: test
+    permissions:
+      contents: read
+      id-token: write # Required for GitHub OIDC (Flakiness.io reporter)
     env:
       # Playwright logs the admin user in many times (performAdminLogin per test, parallel
       # workers, retries). The production default of 5 active sessions per user would evict the
@@ -263,6 +265,9 @@ jobs:
     if: ${{ !cancelled() && github.event_name == 'pull_request_target' }}
     needs: playwright-ci-postgresql
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # Posts the consolidated PR comment
     steps:
       - name: Download all results JSON
         uses: actions/download-artifact@v4
