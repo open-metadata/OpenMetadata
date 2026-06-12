@@ -8,16 +8,3 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
-"""
-Google Drive service specification
-"""
-
-from metadata.ingestion.source.drive.googledrive.connection import GoogleDriveConnection
-from metadata.ingestion.source.drive.googledrive.metadata import GoogleDriveSource
-from metadata.utils.service_spec.service_spec import BaseSpec
-
-ServiceSpec = BaseSpec(
-    metadata_source_class=GoogleDriveSource,
-    connection_class=GoogleDriveConnection,  # pyright: ignore[reportArgumentType]
-)
