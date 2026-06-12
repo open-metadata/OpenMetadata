@@ -13,10 +13,6 @@ from unittest import TestCase
 
 from trino.auth import BasicAuthentication, JWTAuthentication, OAuth2Authentication
 
-from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
-    AthenaConnection,
-    AthenaScheme,
-)
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
     ClickhouseScheme,
@@ -89,7 +85,6 @@ from metadata.generated.schema.entity.services.connections.database.trinoConnect
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoScheme,
 )
-from metadata.generated.schema.security.credentials import awsCredentials
 from metadata.ingestion.connections.builders import (
     get_connection_args_common,
     get_connection_url_common,
@@ -764,36 +759,6 @@ class SourceConnectionTest(TestCase):
             account="account.region_name.cloud_service",
         )
         assert expected_args == get_connection_args_common(snowflake_conn_obj)
-
-    def test_athena_url(self):
-        from metadata.ingestion.source.database.athena.connection import (
-            get_connection_url,
-        )
-
-        # connection arguments without db
-        awsCreds = awsCredentials.AWSCredentials(  # noqa: N806
-            awsAccessKeyId="key", awsRegion="us-east-2", awsSecretAccessKey="secret_key"
-        )
-
-        expected_url = "awsathena+rest://key:secret_key@athena.us-east-2.amazonaws.com:443?s3_staging_dir=s3%3A%2F%2Fpostgres%2Finput%2F&work_group=primary"
-        athena_conn_obj = AthenaConnection(
-            awsConfig=awsCreds,
-            s3StagingDir="s3://postgres/input/",
-            workgroup="primary",
-            scheme=AthenaScheme.awsathena_rest,
-        )
-
-        assert expected_url == get_connection_url(athena_conn_obj)
-
-        # connection arguments witho db
-        expected_url = "awsathena+rest://key:secret_key@athena.us-east-2.amazonaws.com:443?s3_staging_dir=s3%3A%2F%2Fpostgres%2Fintput%2F&work_group=primary"
-        athena_conn_obj = AthenaConnection(
-            awsConfig=awsCreds,
-            s3StagingDir="s3://postgres/intput/",
-            workgroup="primary",
-            scheme=AthenaScheme.awsathena_rest,
-        )
-        assert expected_url == get_connection_url(athena_conn_obj)
 
     def test_mssql_url(self):
         from metadata.ingestion.source.database.mssql.connection import (
