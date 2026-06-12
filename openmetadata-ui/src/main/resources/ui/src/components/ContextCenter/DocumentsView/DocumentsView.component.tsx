@@ -33,7 +33,6 @@ import {
   Trash01,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { FC, useMemo, useState } from 'react';
 import { SubmenuTrigger } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -524,10 +523,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
 
   return (
     <Card
-      className={classNames(
-        'tw:flex tw:overflow-hidden tw:h-full tw:flex-1 tw:min-w-0',
-        { 'tw:rounded-tr-none tw:rounded-br-none': previewFileId }
-      )}
+      className="tw:flex tw:overflow-hidden tw:h-full tw:flex-1 tw:min-w-0"
       data-testid="documents-view">
       {data.length > 0 || isLoading ? (
         <Box

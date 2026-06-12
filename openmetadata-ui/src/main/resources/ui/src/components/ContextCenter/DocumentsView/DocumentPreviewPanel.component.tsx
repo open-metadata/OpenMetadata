@@ -173,16 +173,14 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
   }, [file]);
 
   return (
-    <Box
+    <Card
       className={
-        'tw:w-100 tw:shrink-0 tw:h-full ' +
-        'tw:border tw:border-l-0 tw:border-secondary tw:bg-primary ' +
-        'tw:animate-in tw:slide-in-from-right tw:duration-300 tw:rounded-tr-xl tw:rounded-br-xl'
+        'tw:w-100 tw:shrink-0 tw:h-full tw:flex tw:flex-col ' +
+        'tw:animate-in tw:slide-in-from-right tw:duration-300'
       }
-      data-testid="document-preview-panel"
-      direction="col">
+      data-testid="document-preview-panel">
       <Box
-        className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto tw:p-4 tw:bg-gray-50"
+        className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto tw:p-4"
         direction="col"
         gap={4}>
         <Card className="tw:p-4 tw:shrink-0">
@@ -247,7 +245,7 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
 
         <ExtractedMemoriesCard fileId={file.id} />
       </Box>
-    </Box>
+    </Card>
   );
 };
 
