@@ -31,6 +31,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual, isNil, isUndefined, pick, startCase } from 'lodash';
 import {
+  lazy,
   Reducer,
   useCallback,
   useEffect,
@@ -67,15 +68,19 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
+import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
 import Loader from '../../../../common/Loader/Loader';
 import SliderWithInput from '../../../../common/SliderWithInput/SliderWithInput';
-import SchemaEditor from '../../../SchemaEditor/SchemaEditor';
 import '../table-profiler.less';
 import {
   ProfilerForm,
   ProfilerSettingModalState,
   ProfilerSettingsModalProps,
 } from '../TableProfiler.interface';
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../../../SchemaEditor/SchemaEditor'))
+);
 
 const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   tableId,

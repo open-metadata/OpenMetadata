@@ -201,7 +201,7 @@ const SignInPage = () => {
           className={classNames('login-box', {
             'sso-container': !isAuthProviderBasic,
           })}>
-          <BrandImage isMonoGram height="auto" width={50} />
+          <BrandImage isMonoGram height={50} width={50} />
           <Typography.Title className="header-text display-sm" level={3}>
             {t('label.welcome-to')} {brandName}
           </Typography.Title>
