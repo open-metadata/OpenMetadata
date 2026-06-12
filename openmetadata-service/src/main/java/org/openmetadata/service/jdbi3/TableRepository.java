@@ -35,7 +35,7 @@ import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.monitoring.RequestLatencyContext.phase;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.mergeTagsWithIncomingPrecedence;
-import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchClient.COLUMN_LINEAGE_SEARCH_INDICES;
 import static org.openmetadata.service.util.EntityUtil.getLocalColumnName;
 import static org.openmetadata.service.util.FullyQualifiedName.getColumnName;
 import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparator;
@@ -56,6 +56,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -2318,6 +2319,10 @@ public class TableRepository extends EntityRepository<Table> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class TableUpdater extends ColumnEntityUpdater {
+    private final Set<String> pendingDeletedColumnFqns = new LinkedHashSet<>();
+    private final HashMap<String, String> pendingRenameColumnFqns = new HashMap<>();
+    private boolean columnLineageUpdateDeferred = false;
+
     public TableUpdater(
         Table original, Table updated, Operation operation, ChangeSource changeSource) {
       super(original, updated, operation, changeSource);
@@ -2325,6 +2330,8 @@ public class TableRepository extends EntityRepository<Table> {
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      pendingDeletedColumnFqns.clear();
+      pendingRenameColumnFqns.clear();
       Table origTable = original;
       Table updatedTable = updated;
       if (updatedTable.getDataModel() == null && origTable.getDataModel() != null) {
@@ -2487,21 +2494,35 @@ public class TableRepository extends EntityRepository<Table> {
         }
       }
 
-      if (hasRenames) {
-        HashMap<String, String> renames = new HashMap<>(originalUpdatedColumnFqnMap);
-        deferReactOperation(
-            () ->
-                searchRepository
-                    .getSearchClient()
-                    .updateColumnsInUpstreamLineage(GLOBAL_SEARCH_ALIAS, renames));
-      }
+      // Accumulate within this pass. entitySpecificUpdate() clears both collections at the
+      // start of each updateInternal() pass, so stale data from a prior consolidation pass
+      // never leaks into the flush. Using addAll/putAll (not clear+replace) here means nested
+      // column levels all contribute their deletes/renames to the same deferred flush.
       if (hasDeletes) {
-        List<String> deletedColumnsCopy = List.copyOf(deletedColumns);
-        deferReactOperation(
-            () ->
-                searchRepository
-                    .getSearchClient()
-                    .deleteColumnsInUpstreamLineage(GLOBAL_SEARCH_ALIAS, deletedColumnsCopy));
+        pendingDeletedColumnFqns.addAll(deletedColumns);
+      }
+      if (hasRenames) {
+        pendingRenameColumnFqns.putAll(originalUpdatedColumnFqnMap);
+      }
+
+      if (!columnLineageUpdateDeferred && (hasDeletes || hasRenames)) {
+        columnLineageUpdateDeferred = true;
+        deferReactOperation(this::flushPendingColumnLineageSearchUpdates);
+      }
+    }
+
+    private void flushPendingColumnLineageSearchUpdates() {
+      if (!pendingRenameColumnFqns.isEmpty()) {
+        searchRepository
+            .getSearchClient()
+            .updateColumnsInUpstreamLineage(
+                COLUMN_LINEAGE_SEARCH_INDICES, new HashMap<>(pendingRenameColumnFqns));
+      }
+      if (!pendingDeletedColumnFqns.isEmpty()) {
+        searchRepository
+            .getSearchClient()
+            .deleteColumnsInUpstreamLineage(
+                COLUMN_LINEAGE_SEARCH_INDICES, List.copyOf(pendingDeletedColumnFqns));
       }
     }
   }
