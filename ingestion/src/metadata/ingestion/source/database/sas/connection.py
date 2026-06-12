@@ -19,11 +19,12 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.database.sasConnection import (
-    SASConnection,
+    SASConnection as SASConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.sas.client import SASClient
@@ -33,22 +34,24 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-def get_connection(connection: SASConnection) -> SASClient:
-    return SASClient(connection)
+class SASConnection(BaseConnection[SASConnectionConfig, SASClient]):
+    def _get_client(self) -> SASClient:
+        connection = self.service_connection
+        return SASClient(connection)
 
-
-def test_connection(
-    metadata: OpenMetadata,
-    client: SASClient,
-    service_connection: SASConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
-) -> TestConnectionResult:
-    test_fn = {"CheckAccess": client.check_connection}
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        client = self.client
+        service_connection = self.service_connection
+        test_fn = {"CheckAccess": client.check_connection}
+        return test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
+            automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
+        )
