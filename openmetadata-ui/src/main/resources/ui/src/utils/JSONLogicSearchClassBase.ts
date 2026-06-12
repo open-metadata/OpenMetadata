@@ -780,25 +780,28 @@ class JSONLogicSearchClassBase {
           Record<string, unknown>
         ];
 
-        // Check if the condition has a negated contains (indicating array_not_contains was used)
         if (
           condition &&
           condition['!'] &&
-          typeof condition['!'] === 'object' &&
-          (condition['!'] as Record<string, unknown>).contains
+          typeof condition['!'] === 'object'
         ) {
-          // Transform to NOT around the entire some operation
-          return {
-            '!': {
-              some: [
-                variable,
-                {
-                  contains: (condition['!'] as Record<string, unknown>)
-                    .contains,
-                },
-              ],
-            },
-          };
+          const negated = condition['!'] as Record<string, unknown>;
+
+          if (negated.contains) {
+            return {
+              '!': {
+                some: [variable, { contains: negated.contains }],
+              },
+            };
+          }
+
+          if (negated.in) {
+            return {
+              '!': {
+                some: [variable, { in: negated.in }],
+              },
+            };
+          }
         }
       }
 
