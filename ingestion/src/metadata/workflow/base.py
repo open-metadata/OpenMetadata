@@ -12,10 +12,12 @@
 Base workflow definition.
 """
 
+import json
 import traceback
 import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime
+from pathlib import Path
 from statistics import mean
 from typing import Any, Dict, List, Optional, TypeVar, Union  # noqa: UP035
 
@@ -259,13 +261,17 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
     def workflow_steps(self) -> List[Step]:  # noqa: UP006
         """Steps to report status from"""
 
+    def _step_meets_success_threshold(self, step: Step) -> bool:
+        """True iff the step has no failures or its success ratio meets the workflow's successThreshold."""
+        status = step.get_status()
+        if not status.failures:
+            return True
+        return status.calculate_success() >= self.workflow_config.successThreshold  # pyright: ignore[reportOperatorIssue]
+
     def raise_from_status_internal(self, raise_warnings=False) -> None:
         """Based on the internal workflow status, raise a WorkflowExecutionError"""
         for step in self.workflow_steps():
-            if (
-                step.get_status().failures
-                and step.get_status().calculate_success() < self.workflow_config.successThreshold
-            ):
+            if not self._step_meets_success_threshold(step):
                 raise WorkflowExecutionError(f"{step.name} reported errors: {Summary.from_step(step)}")
 
             if raise_warnings and step.status.warnings:
@@ -472,3 +478,20 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             start_time,
             self._is_debug_enabled(),
         )
+
+    def write_status_file(self, path: Path) -> None:
+        """Write per-step status as JSON to `path`.
+
+        `success` is True iff every step meets its success threshold.
+        Shape: {"pipeline_type": str | None, "ingestion_pipeline_fqn": str | None, "success": bool, "steps": list}
+        """
+        ingestion_status = self.build_ingestion_status()
+        success = all(self._step_meets_success_threshold(step) for step in self.workflow_steps())
+        source = getattr(self.config, "source", None)
+        payload = {
+            "pipeline_type": getattr(source, "type", None) or getattr(self.config, "sourcePythonClass", None),
+            "ingestion_pipeline_fqn": getattr(self.config, "ingestionPipelineFQN", None),
+            "success": success,
+            "steps": ingestion_status.model_dump(),
+        }
+        path.write_text(json.dumps(payload, indent=2, default=str))

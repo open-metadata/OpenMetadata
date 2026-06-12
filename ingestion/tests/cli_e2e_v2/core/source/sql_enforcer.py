@@ -1,0 +1,266 @@
+#  Copyright 2026 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+"""Dialect-agnostic SQL baseline enforcer; introspection and DDL via SQLAlchemy; stored-procedure DDL is subclass responsibility."""
+
+from __future__ import annotations
+
+import logging
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Any, TypedDict
+
+from sqlalchemy import bindparam, inspect, text
+
+from .sql import (
+    SqlSourceBaseline,
+    StoredProcedureDefinition,
+    TableSeed,
+    ViewDefinition,
+)
+from .types import BaselineSpec, Diff, DiffKind
+
+if TYPE_CHECKING:
+    from sqlalchemy.engine import Connection, Engine
+    from sqlalchemy.schema import Table
+
+logger = logging.getLogger(__name__)
+
+
+class _TableSnapshot(TypedDict):
+    """Per-table metadata collected by the Inspector snapshot."""
+
+    columns: dict[str, dict[str, Any]]
+
+
+class _SqlSnapshot(TypedDict):
+    """Typed shape of `_snapshot()`'s return payload."""
+
+    schemas: set[str]
+    tables: dict[tuple[str, str], _TableSnapshot]
+    views: set[tuple[str, str]]
+    stored_procedures: set[tuple[str, str]]
+
+
+_TYPE_ALIASES: dict[str, str] = {
+    "INTEGER": "INT",
+    "NUMERIC": "DECIMAL",
+}
+
+_INTEGER_TYPES: frozenset[str] = frozenset({"TINYINT", "SMALLINT", "MEDIUMINT", "INT", "BIGINT"})
+
+
+class SqlBaselineEnforcer(ABC):
+    """SQL-family SourceBaselineEnforcer via SQLAlchemy Inspector + Core.
+
+    Subclasses must:
+      - Set `_stored_procedure_query_sql` to a raw SQL string returning
+        `(schema, name)` rows with a `:schemas` IN-list bind, or leave it
+        `None` if the baseline declares no stored procedures.
+      - Implement `_apply_stored_procedure(conn, sp)` (abstract); implement
+        as a `pass` no-op if no stored procedures are declared.
+      - Override `_apply_view` only if the dialect needs special handling
+        beyond running `view.definition_sql` verbatim.
+    """
+
+    _stored_procedure_query_sql: str | None = None
+
+    def __init__(self, engine: Engine, baseline: SqlSourceBaseline) -> None:
+        self._engine = engine
+        self._baseline = baseline
+
+    # --- internal snapshot ----------------------------------------------
+
+    def _snapshot(self, conn: Connection) -> _SqlSnapshot:
+        inspector = inspect(conn)
+        wanted = set(self._baseline.schemas)
+        logger.debug("[sql] snapshotting schemas=%s", sorted(wanted))
+
+        schemas = {s for s in inspector.get_schema_names() if s in wanted}
+
+        tables: dict[tuple[str, str], _TableSnapshot] = {}
+        for schema in schemas:
+            for table in inspector.get_table_names(schema=schema):
+                pk_cols = set(inspector.get_pk_constraint(table, schema=schema).get("constrained_columns", []))
+                tables[(schema, table)] = {
+                    "columns": {
+                        col["name"]: {
+                            "sql_type": str(col["type"]).upper(),
+                            "nullable": col["nullable"],
+                            "primary_key": col["name"] in pk_cols,
+                        }
+                        for col in inspector.get_columns(table, schema=schema)
+                    }
+                }
+
+        views = {(s, v) for s in schemas for v in inspector.get_view_names(schema=s)}
+
+        stored_procedures = self._query_stored_procedures(conn, schemas)
+
+        return {
+            "schemas": schemas,
+            "tables": tables,
+            "views": views,
+            "stored_procedures": stored_procedures,
+        }
+
+    def _query_stored_procedures(self, conn: Connection, schemas: set[str]) -> set[tuple[str, str]]:
+        if not self._stored_procedure_query_sql or not schemas:
+            return set()
+        query = text(self._stored_procedure_query_sql).bindparams(bindparam("schemas", expanding=True))
+        return {(row[0], row[1]) for row in conn.execute(query, {"schemas": sorted(schemas)})}
+
+    # --- compare --------------------------------------------------------
+
+    def compare(self, expected: BaselineSpec) -> list[Diff]:
+        assert isinstance(expected, SqlSourceBaseline), f"expected SqlSourceBaseline, got {type(expected).__name__}"
+        if not expected.schemas:
+            return []
+
+        drifts: list[Diff] = []
+        with self._engine.connect() as conn:
+            state = self._snapshot(conn)
+            drifts.extend(self._diff_schemas(expected, state))
+            drifts.extend(self._diff_tables(expected, state))
+            drifts.extend(self._diff_seeds(expected, state, conn))
+            drifts.extend(self._diff_views(expected, state))
+            drifts.extend(self._diff_stored_procedures(expected, state))
+
+        logger.debug("[sql] compare produced %d drifts", len(drifts))
+        return drifts
+
+    @staticmethod
+    def _diff_schemas(expected: SqlSourceBaseline, state: _SqlSnapshot) -> list[Diff]:
+        return [Diff(path=f"schema[{s}]", kind=DiffKind.MISSING) for s in expected.schemas if s not in state["schemas"]]
+
+    def _diff_tables(self, expected: SqlSourceBaseline, state: _SqlSnapshot) -> list[Diff]:
+        drifts: list[Diff] = []
+        actual_tables = state["tables"]
+        for tbl in expected.metadata.sorted_tables:
+            fqn = tbl.fullname
+            actual_tbl = actual_tables.get((tbl.schema, tbl.name))
+            if actual_tbl is None:
+                drifts.append(Diff(path=f"table[{fqn}]", kind=DiffKind.MISSING))
+                continue
+            drifts.extend(self._diff_columns(tbl, actual_tbl["columns"], fqn))
+        return drifts
+
+    @staticmethod
+    def _diff_columns(tbl: Table, actual_cols: dict[str, dict[str, Any]], fqn: str) -> list[Diff]:
+        drifts: list[Diff] = []
+        for col in tbl.columns:
+            actual_col = actual_cols.get(col.name)
+            col_path = f"table[{fqn}].column[{col.name}]"
+            if actual_col is None:
+                drifts.append(Diff(path=col_path, kind=DiffKind.MISSING))
+                continue
+            expected_type_str = str(col.type).upper()
+            if _normalize_type(actual_col["sql_type"]) != _normalize_type(expected_type_str):
+                drifts.append(
+                    Diff(
+                        path=f"{col_path}.type",
+                        expected=expected_type_str,
+                        actual=actual_col["sql_type"],
+                    )
+                )
+            if actual_col["primary_key"] != col.primary_key:
+                drifts.append(
+                    Diff(
+                        path=f"{col_path}.primary_key",
+                        expected=col.primary_key,
+                        actual=actual_col["primary_key"],
+                    )
+                )
+        return drifts
+
+    def _diff_seeds(self, expected: SqlSourceBaseline, state: _SqlSnapshot, conn: Connection) -> list[Diff]:
+        """Compare seed row counts for tables that already exist.
+
+        Skips seeds whose target table isn't in the snapshot — the missing
+        table is already flagged by `_diff_tables`.
+        """
+        drifts: list[Diff] = []
+        actual_tables = state["tables"]
+        schema = expected.metadata.schema
+        for seed in expected.seeds:
+            if (schema, seed.table_name) not in actual_tables:
+                continue
+            fqn = self._seed_fqn(seed)
+            count = conn.execute(text(f"SELECT COUNT(*) FROM {fqn}")).scalar_one()
+            if count != seed.expected_row_count:
+                drifts.append(
+                    Diff(
+                        path=f"table[{fqn}].seed.row_count",
+                        expected=seed.expected_row_count,
+                        actual=count,
+                    )
+                )
+        return drifts
+
+    @staticmethod
+    def _diff_views(expected: SqlSourceBaseline, state: _SqlSnapshot) -> list[Diff]:
+        return [
+            Diff(path=f"view[{v.schema}.{v.name}]", kind=DiffKind.MISSING)
+            for v in expected.views
+            if (v.schema, v.name) not in state["views"]
+        ]
+
+    @staticmethod
+    def _diff_stored_procedures(expected: SqlSourceBaseline, state: _SqlSnapshot) -> list[Diff]:
+        return [
+            Diff(path=f"procedure[{sp.schema}.{sp.name}]", kind=DiffKind.MISSING)
+            for sp in expected.stored_procedures
+            if (sp.schema, sp.name) not in state["stored_procedures"]
+        ]
+
+    # --- apply orchestration --------------------------------------------
+
+    def apply(self, drifts: list[Diff]) -> None:
+        logger.debug("[sql] applying %d drifts", len(drifts))
+        with self._engine.begin() as conn:
+            for schema_name in self._baseline.schemas:
+                conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema_name}"))
+            self._baseline.metadata.create_all(conn)
+            for seed in self._baseline.seeds:
+                self._apply_seed(conn, seed)
+            for view in self._baseline.views:
+                self._apply_view(conn, view)
+            for sp in self._baseline.stored_procedures:
+                self._apply_stored_procedure(conn, sp)
+
+    def _apply_seed(self, conn: Connection, seed: TableSeed) -> None:
+        fqn = self._seed_fqn(seed)
+        count = conn.execute(text(f"SELECT COUNT(*) FROM {fqn}")).scalar_one()
+        if count == seed.expected_row_count:
+            return
+        logger.info(
+            "[seed] %s: inserting (current=%d, expected=%d)",
+            fqn,
+            count,
+            seed.expected_row_count,
+        )
+        conn.execute(text(seed.insert_sql), seed.rows)
+
+    def _seed_fqn(self, seed: TableSeed) -> str:
+        schema = self._baseline.metadata.schema
+        return f"{schema}.{seed.table_name}" if schema else seed.table_name
+
+    @staticmethod
+    def _apply_view(conn: Connection, view: ViewDefinition) -> None:
+        """Default: run `view.definition_sql` verbatim."""
+        conn.execute(text(view.definition_sql))
+
+    @abstractmethod
+    def _apply_stored_procedure(self, conn: Connection, sp: StoredProcedureDefinition) -> None:
+        """Dialect-specific procedure DDL. Implement as a `pass` no-op
+        if the connector's baseline declares no stored procedures."""
+
+
+def _normalize_type(t: str) -> str:
+    """Canonicalize a SQL native-type string for cross-dialect comparison."""
+    raw = " ".join(t.upper().replace("UNSIGNED", "").split())
+    raw = raw.replace(", ", ",").replace("'", "")
+    head, paren, rest = raw.partition("(")
+    head = _TYPE_ALIASES.get(head, head)
+    if head in _INTEGER_TYPES:
+        return head
+    return f"{head}({rest}" if paren else head
