@@ -184,14 +184,20 @@ public class CreateAlertTool implements McpTool {
             .withPrefixCondition(ArgumentsInput.PrefixCondition.AND)
             .withArguments(
                 List.of(new Argument().withName(FQN_FILTER_ARG).withInput(List.of(resourceFqn))));
-    ArgumentsInput stateFilter =
+    ArgumentsInput stateAction =
         new ArgumentsInput()
             .withName(STATUS_FILTER_NAME)
             .withEffect(ArgumentsInput.Effect.INCLUDE)
             .withPrefixCondition(ArgumentsInput.PrefixCondition.AND)
             .withArguments(
                 List.of(new Argument().withName(STATUS_FILTER_ARG).withInput(List.of(state))));
-    return new AlertFilteringInput().withFilters(List.of(fqnFilter, stateFilter));
+    // GetIngestionPipelineStatusUpdates is a supportedAction (not a supportedFilter) in
+    // EntityObservabilityFilterDescriptor.json, and observability alerts evaluate their
+    // actions list. filterByFqn is a supportedFilter. AlertUtil validates each list against
+    // its own descriptor map, so the two must go in their respective slots.
+    return new AlertFilteringInput()
+        .withFilters(List.of(fqnFilter))
+        .withActions(List.of(stateAction));
   }
 
   private static String mapEventTypeToState(String eventType) {
