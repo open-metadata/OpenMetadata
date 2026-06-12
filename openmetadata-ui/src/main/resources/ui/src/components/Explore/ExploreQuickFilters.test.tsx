@@ -330,7 +330,7 @@ describe('ExploreQuickFilters component', () => {
   });
 
   describe('Options fetching - Aggregations', () => {
-    it('should bypass pre-loaded aggregations and call API when sourceFields is set', async () => {
+    it('should bypass pre-loaded aggregations and call API when sourceFields is set in non-independent mode', async () => {
       mockGetAggregationOptions.mockResolvedValue(
         mockAdvancedFieldDefaultOptions
       );
@@ -373,6 +373,38 @@ describe('ExploreQuickFilters component', () => {
           '',
           'database.displayName'
         );
+      });
+    });
+
+    it('should use pre-loaded aggregations without API call in independent mode even when sourceFields is set', async () => {
+      const fieldsWithSource: ExploreQuickFilterField[] = [
+        {
+          label: 'Database',
+          key: 'database.name',
+          value: undefined,
+          sourceFields: 'database.displayName',
+        },
+      ];
+
+      render(
+        <ExploreQuickFilters
+          independent
+          {...mockProps}
+          aggregations={mockAggregations}
+          fields={fieldsWithSource}
+        />
+      );
+
+      const initialButton = screen.getByTestId(
+        'onGetInitialOptions-database.name'
+      );
+
+      await act(async () => {
+        userEvent.click(initialButton);
+      });
+
+      await waitFor(() => {
+        expect(getAggregationOptions).not.toHaveBeenCalled();
       });
     });
 

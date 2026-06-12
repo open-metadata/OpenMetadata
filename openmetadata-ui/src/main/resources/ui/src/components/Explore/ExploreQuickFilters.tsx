@@ -105,7 +105,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     const searchIndexToUse = fieldSearchIndex ?? index;
     const searchKeyToUse = fieldSearchKey ?? key;
 
-    let buckets = sourceFields ? undefined : aggregations?.[key]?.buckets;
+    let buckets =
+      sourceFields && !independent ? undefined : aggregations?.[key]?.buckets;
     if (!buckets) {
       const res = await getAggregationOptions(
         searchIndexToUse,
