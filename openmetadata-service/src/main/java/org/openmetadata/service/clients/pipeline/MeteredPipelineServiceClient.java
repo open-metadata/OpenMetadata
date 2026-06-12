@@ -1,32 +1,16 @@
 package org.openmetadata.service.clients.pipeline;
 
-import io.micrometer.core.instrument.Metrics;
-import jakarta.ws.rs.core.Response;
-import java.net.URL;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Supplier;
-import org.openmetadata.schema.ServiceEntityInterface;
-import org.openmetadata.schema.entity.app.App;
-import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
-import org.openmetadata.schema.entity.automations.Workflow;
-import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.sdk.PipelineServiceClientInterface;
-import org.openmetadata.sdk.exception.PipelineServiceClientException;
+import static org.openmetadata.service.util.MicrometerBundleUtil.recordMetrics;
 
+import java.util.function.Supplier;
+import javax.ws.rs.core.Response;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientStatus;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
+
+@Slf4j
 public class MeteredPipelineServiceClient implements PipelineServiceClientInterface {
-  private final String DEPLOY = "deploy";
-  private final String RUN = "run";
-  private final String DELETE = "delete";
-  private final String TOGGLE = "toggle";
-  private final String KILL = "kill";
-  private final String GET_LOGS = "get_logs";
-  private final String GET_STATUS = "get_status";
-  private final String RUN_AUTOMATIONS_WORKFLOW = "run_automations_workflow";
-  private final String RUN_APPLICATION_FLOW = "run_application_flow";
-  private final String VALIDATE_APP_REGISTRATION = "validate_app_registration";
 
   private final PipelineServiceClientInterface decoratedClient;
 
@@ -34,182 +18,101 @@ public class MeteredPipelineServiceClient implements PipelineServiceClientInterf
     this.decoratedClient = decoratedClient;
   }
 
-  /** Get the underlying decorated client. Used for testing to check the actual client type. */
-  @com.google.common.annotations.VisibleForTesting
-  public PipelineServiceClientInterface getDecoratedClient() {
-    return decoratedClient;
-  }
-
-  private <T> T executeWithMetering(String name, Supplier<T> operation) {
-    try {
-      T result = operation.get();
-      Metrics.counter("pipeline_client_request_status", "operation", name, "status", "200")
-          .increment();
-      return result;
-    } catch (PipelineServiceClientException e) {
-      Metrics.counter(
-              "pipeline_client_request_status",
-              "operation",
-              name,
-              "status",
-              Integer.toString(e.getResponse().getStatus()))
-          .increment();
-      throw e;
-    } catch (Exception e) {
-      Metrics.counter("pipeline_client_request_status", "operation", name, "status", "unknown")
-          .increment();
-      throw e;
-    }
-  }
-
-  private PipelineServiceClientResponse respondWithMetering(
-      String name, Supplier<PipelineServiceClientResponse> operation) {
-    try {
-      PipelineServiceClientResponse result = operation.get();
-      Metrics.counter(
-              "pipeline_client_request_status",
-              "operation",
-              name,
-              "status",
-              Integer.toString(result.getCode()))
-          .increment();
-      return result;
-    } catch (PipelineServiceClientException e) {
-      Metrics.counter(
-              "pipeline_client_request_status",
-              "operation",
-              name,
-              "status",
-              Integer.toString(e.getResponse().getStatus()))
-          .increment();
-      throw e;
-    } catch (Exception e) {
-      Metrics.counter("pipeline_client_request_status", "operation", name, "status", "unknown")
-          .increment();
-      throw e;
-    }
+  @Override
+  public PipelineServiceClientResponse getServiceStatus() {
+    return respondWithMetering(decoratedClient::getServiceStatus);
   }
 
   @Override
-  public PipelineServiceClientResponse deployPipeline(
-      IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
-    return this.respondWithMetering(
-        DEPLOY, () -> this.decoratedClient.deployPipeline(ingestionPipeline, service));
+  public PipelineServiceClientResponse runAutomationFlow(String clusterName) {
+    return respondWithMetering(() -> decoratedClient.runAutomationFlow(clusterName));
   }
 
   @Override
-  public PipelineServiceClientResponse runPipeline(
-      IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
-    return this.respondWithMetering(
-        RUN, () -> this.decoratedClient.runPipeline(ingestionPipeline, service));
+  public Response getLastOperatorLogs(String ingestionPipelineFQN, String taskId) {
+    return decoratedClient.getLastOperatorLogs(ingestionPipelineFQN, taskId);
   }
 
   @Override
-  public PipelineServiceClientResponse runPipeline(
-      IngestionPipeline ingestionPipeline,
-      ServiceEntityInterface service,
-      Map<String, Object> config) {
-    return this.respondWithMetering(
-        RUN, () -> this.decoratedClient.runPipeline(ingestionPipeline, service, config));
+  public Response getLogs(String pipelineName, String pipelineType, Long start, Long end) {
+    return decoratedClient.getLogs(pipelineName, pipelineType, start, end);
   }
 
   @Override
-  public PipelineServiceClientResponse deletePipeline(IngestionPipeline ingestionPipeline) {
-    return this.respondWithMetering(
-        DELETE, () -> this.decoratedClient.deletePipeline(ingestionPipeline));
+  public Response uploadLogs(String pipelineName, String pipelineType) {
+    return decoratedClient.uploadLogs(pipelineName, pipelineType);
   }
 
   @Override
-  public List<PipelineStatus> getQueuedPipelineStatusInternal(IngestionPipeline ingestionPipeline) {
-    return this.decoratedClient.getQueuedPipelineStatusInternal(ingestionPipeline);
-  }
-
-  public PipelineServiceClientResponse toggleIngestion(IngestionPipeline ingestionPipeline) {
-    return this.respondWithMetering(
-        TOGGLE, () -> this.decoratedClient.toggleIngestion(ingestionPipeline));
+  public Response deleteLogs(String pipelineName) {
+    return decoratedClient.deleteLogs(pipelineName);
   }
 
   @Override
-  public Map<String, String> getLastIngestionLogs(
-      IngestionPipeline ingestionPipeline, String after) {
-    return executeWithMetering(
-        GET_LOGS, () -> this.decoratedClient.getLastIngestionLogs(ingestionPipeline, after));
+  public void updateServiceEndpoint() {
+    decoratedClient.updateServiceEndpoint();
   }
 
   @Override
-  public Map<String, String> getIngestionLogs(
-      IngestionPipeline ingestionPipeline, String after, String runId) {
-    return executeWithMetering(
-        GET_LOGS, () -> this.decoratedClient.getIngestionLogs(ingestionPipeline, after, runId));
-  }
-
-  public PipelineServiceClientResponse killIngestion(IngestionPipeline ingestionPipeline) {
-    return this.respondWithMetering(
-        KILL, () -> this.decoratedClient.killIngestion(ingestionPipeline));
-  }
-
-  @Override
-  public PipelineServiceClientResponse killIngestionRun(
-      IngestionPipeline ingestionPipeline, String runId) {
-    return this.respondWithMetering(
-        KILL, () -> this.decoratedClient.killIngestionRun(ingestionPipeline, runId));
-  }
-
-  @Override
-  public String getPlatform() {
-    return this.decoratedClient.getPlatform();
-  }
-
-  @Override
-  public URL validateServiceURL(String serviceURL) {
-    return decoratedClient.validateServiceURL(serviceURL);
-  }
-
-  @Override
-  public String getBasicAuthenticationHeader(String username, String password) {
-    return decoratedClient.getBasicAuthenticationHeader(username, password);
-  }
-
-  @Override
-  public Boolean validServerClientVersions(String clientVersion, String serverVersion) {
-    return decoratedClient.validServerClientVersions(clientVersion, serverVersion);
-  }
-
-  @Override
-  public Response getHostIp() {
+  public String getHostIp() {
     return decoratedClient.getHostIp();
   }
 
   @Override
-  public String getServiceStatusBackoff() {
-    return executeWithMetering(GET_STATUS, decoratedClient::getServiceStatusBackoff);
+  public void validateHostIp() {
+    decoratedClient.validateHostIp();
   }
 
   @Override
-  public PipelineServiceClientResponse getServiceStatus() {
-    return this.respondWithMetering(GET_STATUS, this.decoratedClient::getServiceStatus);
+  public boolean isPipelineServiceClientReady() {
+    return decoratedClient.isPipelineServiceClientReady();
   }
 
   @Override
-  public List<PipelineStatus> getQueuedPipelineStatus(IngestionPipeline ingestionPipeline) {
-    return this.decoratedClient.getQueuedPipelineStatus(ingestionPipeline);
+  public void deployPipeline(String pipelineName, PipelineServiceClientResponse response) {
+    decoratedClient.deployPipeline(pipelineName, response);
   }
 
   @Override
-  public PipelineServiceClientResponse runAutomationsWorkflow(Workflow workflow) {
-    return this.respondWithMetering(
-        RUN_AUTOMATIONS_WORKFLOW, () -> this.decoratedClient.runAutomationsWorkflow(workflow));
+  public void runPipeline(String pipelineName, String pipelineType, Long start, Long end) {
+    decoratedClient.runPipeline(pipelineName, pipelineType, start, end);
   }
 
   @Override
-  public PipelineServiceClientResponse runApplicationFlow(App application) {
-    return this.respondWithMetering(
-        RUN_APPLICATION_FLOW, () -> this.decoratedClient.runApplicationFlow(application));
+  public void stopPipeline(String pipelineName) {
+    decoratedClient.stopPipeline(pipelineName);
   }
 
   @Override
-  public PipelineServiceClientResponse validateAppRegistration(AppMarketPlaceDefinition app) {
-    return this.respondWithMetering(
-        VALIDATE_APP_REGISTRATION, () -> this.decoratedClient.validateAppRegistration(app));
+  public void deletePipeline(String pipelineName) {
+    decoratedClient.deletePipeline(pipelineName);
+  }
+
+  @Override
+  public PipelineServiceClientResponse getAutomationFlowStatus() {
+    return decoratedClient.getAutomationFlowStatus();
+  }
+
+  private PipelineServiceClientResponse respondWithMetering(
+      Supplier<PipelineServiceClientResponse> responseSupplier) {
+    PipelineServiceClientResponse result = responseSupplier.get();
+    if (result == null) {
+      return new PipelineServiceClientResponse()
+          .withCode(200)
+          .withTimestamp(System.currentTimeMillis());
+    }
+    long elapsedTime = System.currentTimeMillis() - result.getTimestamp();
+    long statusCode = result.getCode();
+    String requestType = extractRequestType();
+    recordMetrics(requestType, statusCode, elapsedTime);
+    return result;
+  }
+
+  private String extractRequestType() {
+    StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+    if (stackTrace.length > 2) {
+      return stackTrace[2].getMethodName();
+    }
+    return "unknown";
   }
 }
