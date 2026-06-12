@@ -112,6 +112,7 @@ export default defineConfig({
         '**/SystemCertificationTags.spec.ts',
         '**/SearchRBAC.spec.ts',
         '**/SSOLogin.spec.ts',
+        '**/IntakeForm.spec.ts',
       ],
     },
     // Only register the h2 project when explicitly opted in. Always-on registration would force
@@ -199,6 +200,18 @@ export default defineConfig({
     {
       name: 'SystemCertificationTags',
       testMatch: '**/SystemCertificationTags.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup', 'chromium'],
+      fullyParallel: false,
+    },
+    // IntakeForm tests enable a global, singleton-per-entityType intake form for
+    // dataProduct that gates ALL data product creation while it is active. Running
+    // them in parallel makes any concurrent spec that creates a data product fail
+    // with a 400 (missing intake-form required field). Isolate after chromium so no
+    // other data-product-creating test runs alongside them.
+    {
+      name: 'IntakeForm',
+      testMatch: '**/IntakeForm.spec.ts',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup', 'chromium'],
       fullyParallel: false,
