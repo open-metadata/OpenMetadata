@@ -176,9 +176,11 @@ jest.mock(
   () => jest.fn().mockImplementation(() => <div>ManageButton.component</div>)
 );
 jest.mock(
-  '../../../components/common/EntityPageInfos/AnnouncementCard/AnnouncementCard',
+  '../../../components/common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component',
   () =>
-    jest.fn().mockImplementation(() => <div>AnnouncementCard.component</div>)
+    jest
+      .fn()
+      .mockImplementation(() => <div>AnnouncementsWidgetV3Body.component</div>)
 );
 jest.mock(
   '../../../components/common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer',
