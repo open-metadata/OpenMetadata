@@ -719,6 +719,7 @@ export const DataAssetsHeader = ({
           <div className="tw:min-w-0 tw:flex-1">
             <TitleBreadcrumbSkeleton loading={isBreadcrumbLoading}>
               <HeaderBreadcrumb
+                className="tw:mb-0"
                 items={[
                   ...breadcrumbs.map((link) => ({
                     label: link.name,
@@ -729,6 +730,7 @@ export const DataAssetsHeader = ({
                   })),
                   { label: entityName },
                 ]}
+                showHome={false}
                 size="sm"
               />
             </TitleBreadcrumbSkeleton>
