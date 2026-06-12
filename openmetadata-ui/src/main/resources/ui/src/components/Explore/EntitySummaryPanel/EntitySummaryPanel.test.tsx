@@ -34,7 +34,15 @@ import { mockTopicEntityDetails } from './mocks/TopicSummary.mock';
 
 const mockHandleClosePanel = jest.fn();
 
-jest.mock('../../../utils/EntityUtils', () => {
+jest.mock('../../../utils/EntityBreadcrumbUtils', () => ({
+  getEntityLinkFromType: jest.fn().mockImplementation(() => 'link'),
+}));
+
+jest.mock('../../../utils/EntityNameUtils', () => ({
+  getEntityName: jest.fn().mockImplementation(() => 'displayName'),
+}));
+
+jest.mock('../../../utils/EntityPermissionUtils', () => {
   const LINEAGE_TABS_SET = new Set([
     'apiEndpoint',
     'chart',
@@ -87,17 +95,20 @@ jest.mock('../../../utils/EntityUtils', () => {
   ]);
 
   return {
-    getEntityLinkFromType: jest.fn().mockImplementation(() => 'link'),
-    getEntityName: jest.fn().mockImplementation(() => 'displayName'),
     hasLineageTab: jest.fn((entityType) => LINEAGE_TABS_SET.has(entityType)),
     hasSchemaTab: jest.fn((entityType) => SCHEMA_TABS_SET.has(entityType)),
-    getEntityOverview: jest.fn().mockImplementation(() => []),
     hasCustomPropertiesTab: jest.fn((entityType) =>
       CUSTOM_PROPERTIES_TABS_SET.has(entityType)
     ),
-    DRAWER_NAVIGATION_OPTIONS: [],
   };
 });
+
+jest.mock('../../../utils/DataAssetSummaryPanelUtils', () => ({
+  getEntityOverview: jest.fn().mockImplementation(() => []),
+}));
+jest.mock('../../../utils/EntityPureUtils', () => ({
+  DRAWER_NAVIGATION_OPTIONS: [],
+}));
 jest.mock('../../../utils/StringUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
   stringToHTML: jest.fn(),

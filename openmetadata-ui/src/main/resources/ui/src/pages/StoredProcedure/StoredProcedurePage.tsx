@@ -64,8 +64,8 @@ import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../utils/CustomizePage/CustomizePageUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+} from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
@@ -81,7 +81,7 @@ import {
   getStoredProcedureDetailsPageTabs,
   STORED_PROCEDURE_DEFAULT_FIELDS,
 } from '../../utils/StoredProceduresUtils';
-import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../utils/TablePureUtils';
 import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';

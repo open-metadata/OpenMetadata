@@ -21,7 +21,7 @@ import { Plus, SearchMd, UploadCloud02 } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
+import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { ContextCenterHeaderProps } from './ContextCenterHeader.interface';
 
 const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
@@ -40,7 +40,6 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
   const { t } = useTranslation();
   const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();
   const cardStyle = contextCenterClassBase.getCardStyle();
-  const breadcrumbClassName = contextCenterClassBase.getBreadcrumbClassName();
 
   const defaultActions = (
     <div className="tw:flex tw:items-center tw:gap-3 tw:shrink-0">
@@ -65,28 +64,22 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
     </div>
   );
 
+  const breadcrumbEl = (
+    <HeaderBreadcrumb
+      showHome
+      className={contextCenterClassBase.getBreadcrumbClassName()}
+      items={breadcrumbs}
+    />
+  );
+
   return (
     <div
       className="tw:flex tw:flex-col tw:gap-3"
       data-testid="context-center-header">
-      {!breadcrumbInsideCard && (
-        <TitleBreadcrumb
-          useCustomArrow
-          className={breadcrumbClassName}
-          titleLinks={breadcrumbs}
-        />
-      )}
+      {!breadcrumbInsideCard && breadcrumbEl}
 
       <Card className={`tw:mb-5 tw:p-5 ${className}`} style={cardStyle}>
-        {breadcrumbInsideCard && (
-          <div className="tw:mb-4">
-            <TitleBreadcrumb
-              useCustomArrow
-              className={breadcrumbClassName}
-              titleLinks={breadcrumbs}
-            />
-          </div>
-        )}
+        {breadcrumbInsideCard && <div className="tw:mb-4">{breadcrumbEl}</div>}
         <div className="tw:flex tw:items-center tw:justify-between tw:gap-4">
           <div>
             <div className="tw:mb-0.5 tw:flex tw:items-center tw:gap-2">

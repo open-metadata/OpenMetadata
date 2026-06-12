@@ -71,7 +71,7 @@ jest.mock('react-router-dom', () => ({
     ),
   useNavigate: jest.fn(() => mockNavigate),
 }));
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation(({ displayName, name }) => displayName || name || ''),

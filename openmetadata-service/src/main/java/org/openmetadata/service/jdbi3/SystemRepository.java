@@ -18,10 +18,12 @@ import jakarta.json.JsonPatch;
 import jakarta.json.JsonValue;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -66,8 +68,11 @@ import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.bundles.searchIndex.OrphanedIndexCleaner;
+import org.openmetadata.service.events.scheduled.ServicesStatusJobHandler;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.fernet.Fernet;
@@ -77,6 +82,9 @@ import org.openmetadata.service.logstorage.LogStorageFactory;
 import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.search.IndexMappingVersionTracker;
+import org.openmetadata.service.search.IndexMappingVersionTracker.MappingDriftState;
+import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -108,6 +116,7 @@ public class SystemRepository {
   private static final String FAILED_TO_UPDATE_SETTINGS = "Failed to Update Settings {}";
   public static final String INTERNAL_SERVER_ERROR_WITH_REASON = "Internal Server Error. Reason :";
   private static final String VECTOR_EMBEDDING_INDEX_KEY = "vectorEmbedding";
+  private static final String REINDEX_STATUS_VALIDATION_KEY = "Search Reindex Status";
   private final SystemDAO dao;
   private final MigrationValidationClient migrationValidationClient;
 
@@ -116,7 +125,10 @@ public class SystemRepository {
     SEARCH("Validate that the search client is available."),
     PIPELINE_SERVICE_CLIENT("Validate that the pipeline service client is available."),
     JWT_TOKEN("Validate that the ingestion-bot JWT token can be properly decoded."),
-    MIGRATION("Validate that all the necessary migrations have been properly executed.");
+    MIGRATION("Validate that all the necessary migrations have been properly executed."),
+    SEARCH_REINDEX(
+        "Validate that every deployed search index was built from the current code mapping "
+            + "(i.e. no reindex is pending).");
 
     public final String key;
 
@@ -555,6 +567,8 @@ public class SystemRepository {
           "Semantic Search", getEmbeddingsValidation(applicationConfig));
     }
 
+    validation.setAdditionalProperty(REINDEX_STATUS_VALIDATION_KEY, getReindexStatusValidation());
+
     addExtraValidations(applicationConfig, validation);
 
     return validation;
@@ -809,19 +823,13 @@ public class SystemRepository {
     SearchRepository searchRepository = Entity.getSearchRepository();
     if (searchRepository.getSearchClient().isClientAvailable()) {
       if (validateDataInsights()) {
-        List<String> missingIndexes = findMissingIndexes(searchRepository);
-        String message =
-            String.format(
-                "Connected to %s", applicationConfig.getElasticSearchConfiguration().getHost());
-        if (!missingIndexes.isEmpty()) {
-          message +=
-              String.format(
-                  ". WARNING: %d missing indexes: %s", missingIndexes.size(), missingIndexes);
-        }
         return new StepValidation()
             .withDescription(ValidationStepDescription.SEARCH.key)
-            .withPassed(missingIndexes.isEmpty())
-            .withMessage(message);
+            .withPassed(Boolean.TRUE)
+            .withMessage(
+                String.format(
+                    "Connected to %s",
+                    applicationConfig.getElasticSearchConfiguration().getHost()));
       } else {
         return new StepValidation()
             .withDescription(ValidationStepDescription.SEARCH.key)
@@ -837,14 +845,132 @@ public class SystemRepository {
     }
   }
 
+  public record ReindexStatus(List<String> stalePending, int untrackedCount) {}
+
+  public record SearchReindexStatus(
+      List<String> stalePending,
+      int untrackedCount,
+      List<String> missingIndexes,
+      List<String> orphanIndexes,
+      boolean clusterHealthy,
+      boolean driftComputed) {
+    boolean reindexNeeded() {
+      return !stalePending.isEmpty() || !missingIndexes.isEmpty();
+    }
+  }
+
+  static ReindexStatus classifyReindexStatus(
+      Map<String, MappingDriftState> drift, Set<String> existingIndexes) {
+    List<String> stalePending = new ArrayList<>();
+    int untrackedCount = 0;
+    for (Map.Entry<String, MappingDriftState> entry : drift.entrySet()) {
+      if (existingIndexes.contains(entry.getKey())) {
+        if (entry.getValue() == MappingDriftState.STALE) {
+          stalePending.add(entry.getKey());
+        } else if (entry.getValue() == MappingDriftState.UNTRACKED) {
+          untrackedCount++;
+        }
+      }
+    }
+    Collections.sort(stalePending);
+    return new ReindexStatus(stalePending, untrackedCount);
+  }
+
+  static String buildReindexStatusMessage(SearchReindexStatus status) {
+    StringBuilder message = new StringBuilder();
+    appendReindexState(message, status);
+    appendOrphanState(message, status.orphanIndexes());
+    appendClusterState(message, status.clusterHealthy());
+    return message.toString();
+  }
+
+  private static void appendReindexState(StringBuilder message, SearchReindexStatus status) {
+    if (status.reindexNeeded()) {
+      appendReindexNeeded(message, status);
+    } else if (!status.driftComputed()) {
+      message.append(
+          "Could not determine reindex status: drift computation failed (see server logs).");
+    } else {
+      appendUpToDate(message, status.untrackedCount());
+    }
+  }
+
+  private static void appendReindexNeeded(StringBuilder message, SearchReindexStatus status) {
+    message.append("A reindex is required.");
+    if (!status.stalePending().isEmpty()) {
+      message.append(
+          String.format(
+              " %d index(es) built from an older code mapping: %s.",
+              status.stalePending().size(), status.stalePending()));
+    }
+    if (!status.missingIndexes().isEmpty()) {
+      message.append(
+          String.format(
+              " %d expected index(es) missing: %s.",
+              status.missingIndexes().size(), status.missingIndexes()));
+    }
+  }
+
+  private static void appendUpToDate(StringBuilder message, int untrackedCount) {
+    message.append("All deployed indexes were built from the current code mappings.");
+    if (untrackedCount > 0) {
+      message.append(
+          String.format(
+              " %d index(es) are not yet version-tracked; run a reindex to enable drift detection.",
+              untrackedCount));
+    }
+  }
+
+  private static void appendOrphanState(StringBuilder message, List<String> orphanIndexes) {
+    if (orphanIndexes.isEmpty()) {
+      message.append(" No orphan indexes.");
+    } else {
+      message.append(
+          String.format(
+              " %d orphan index(es) with no alias (safe to clean): %s.",
+              orphanIndexes.size(), orphanIndexes));
+    }
+  }
+
+  private static void appendClusterState(StringBuilder message, boolean clusterHealthy) {
+    message.append(
+        clusterHealthy ? " Cluster healthy." : " WARNING: search cluster health is degraded.");
+  }
+
+  @VisibleForTesting
+  List<String> findOrphanIndexes(SearchRepository searchRepository) {
+    List<String> orphans = new ArrayList<>();
+    try {
+      OrphanedIndexCleaner cleaner = new OrphanedIndexCleaner();
+      for (OrphanedIndexCleaner.OrphanedIndex orphan :
+          cleaner.findOrphanedRebuildIndices(searchRepository.getSearchClient())) {
+        orphans.add(orphan.indexName());
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to check for orphan indexes: {}", e.getMessage());
+    }
+    return orphans;
+  }
+
+  private boolean isSearchClusterHealthy(SearchRepository searchRepository) {
+    boolean healthy = true;
+    try {
+      SearchHealthStatus status = searchRepository.getSearchClient().getSearchHealthStatus();
+      healthy =
+          status != null && ServicesStatusJobHandler.HEALTHY_STATUS.equals(status.getStatus());
+    } catch (Exception e) {
+      LOG.warn("Failed to check search cluster health: {}", e.getMessage());
+    }
+    return healthy;
+  }
+
   @VisibleForTesting
   List<String> findMissingIndexes(SearchRepository searchRepository) {
     List<String> missing = new ArrayList<>();
     boolean semanticSearchEnabled = searchRepository.isVectorEmbeddingEnabled();
     try {
-      Map<String, org.openmetadata.search.IndexMapping> indexMap =
-          searchRepository.getEntityIndexMap();
-      for (Map.Entry<String, org.openmetadata.search.IndexMapping> entry : indexMap.entrySet()) {
+      Map<String, IndexMapping> indexMap = searchRepository.getEntityIndexMap();
+      for (Map.Entry<String, IndexMapping> entry : indexMap.entrySet()) {
         if (!semanticSearchEnabled && VECTOR_EMBEDDING_INDEX_KEY.equals(entry.getKey())) {
           continue;
         }
@@ -856,6 +982,65 @@ public class SystemRepository {
       LOG.warn("Failed to check for missing indexes: {}", e.getMessage());
     }
     return missing;
+  }
+
+  private StepValidation getReindexStatusValidation() {
+    StepValidation step =
+        new StepValidation().withDescription(ValidationStepDescription.SEARCH_REINDEX.key);
+    SearchRepository searchRepository = Entity.getSearchRepository();
+    StepValidation result;
+    if (searchRepository.getSearchClient().isClientAvailable()) {
+      SearchReindexStatus status = computeSearchReindexStatus(searchRepository);
+      boolean healthy = status.driftComputed() && !status.reindexNeeded();
+      result = step.withPassed(healthy).withMessage(buildReindexStatusMessage(status));
+    } else {
+      result =
+          step.withPassed(Boolean.TRUE).withMessage("Skipped: search instance is not reachable.");
+    }
+    return result;
+  }
+
+  private SearchReindexStatus computeSearchReindexStatus(SearchRepository searchRepository) {
+    List<String> missingIndexes = findMissingIndexes(searchRepository);
+    List<String> orphanIndexes = findOrphanIndexes(searchRepository);
+    boolean clusterHealthy = isSearchClusterHealthy(searchRepository);
+    DriftResult drift = computeMappingDrift(searchRepository, missingIndexes);
+    return new SearchReindexStatus(
+        drift.status().stalePending(),
+        drift.status().untrackedCount(),
+        missingIndexes,
+        orphanIndexes,
+        clusterHealthy,
+        drift.computed());
+  }
+
+  private record DriftResult(ReindexStatus status, boolean computed) {}
+
+  private DriftResult computeMappingDrift(
+      SearchRepository searchRepository, List<String> missingIndexes) {
+    ReindexStatus status = new ReindexStatus(new ArrayList<>(), 0);
+    boolean computed = false;
+    try {
+      IndexMappingVersionTracker tracker =
+          IndexMappingVersionTracker.create(Entity.getCollectionDAO());
+      Set<String> existingIndexes = existingTrackedIndexes(searchRepository, missingIndexes);
+      status = classifyReindexStatus(tracker.computeDrift(), existingIndexes);
+      computed = true;
+    } catch (Exception e) {
+      LOG.warn("Failed to compute search mapping drift: {}", e.getMessage());
+    }
+    return new DriftResult(status, computed);
+  }
+
+  @VisibleForTesting
+  static Set<String> existingTrackedIndexes(
+      SearchRepository searchRepository, List<String> missingIndexes) {
+    Set<String> existingIndexes = new HashSet<>(searchRepository.getEntityIndexMap().keySet());
+    existingIndexes.removeAll(missingIndexes);
+    if (!searchRepository.isVectorEmbeddingEnabled()) {
+      existingIndexes.remove(VECTOR_EMBEDDING_INDEX_KEY);
+    }
+    return existingIndexes;
   }
 
   private boolean validateDataInsights() {
