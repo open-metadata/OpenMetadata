@@ -22,7 +22,9 @@ import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.media.multipart.FormDataMultiPart;
@@ -32,6 +34,8 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.openmetadata.it.bootstrap.LlmStubServer;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.data.ContextFile;
@@ -90,7 +94,8 @@ class CompanyContextPipelineIT {
     String text =
         "Our refund policy allows customers to return any product within 30 days for a full "
             + "refund. The primary data warehouse is Google BigQuery. The support team SLA is to "
-            + "respond to all tickets within 24 hours.";
+            + "respond to all tickets within 24 hours. "
+            + LlmStubServer.PILL_TRIGGER;
 
     ContextFile file = upload(ns.prefix("company-policy") + ".txt", text);
 
@@ -102,13 +107,8 @@ class CompanyContextPipelineIT {
                 assertEquals(
                     ProcessingStatus.Processed, fetchFile(file.getId()).getProcessingStatus()));
 
-    ContextFile processed = fetchFile(file.getId());
-    int memoryCount = processed.getMemoryCount() == null ? 0 : processed.getMemoryCount();
-
-    assumeTrue(
-        memoryCount > 0,
-        "Server has no LLM provider configured (llmConfiguration.enabled=false); "
-            + "skipping knowledge-pill assertions.");
+    boolean stubLlm = TestSuiteBootstrap.isLlmStubEnabled();
+    int memoryCount = awaitMemoryCount(file.getId(), stubLlm);
 
     List<ContextMemory> pills = pillsForFile(file.getId());
     assertEquals(memoryCount, pills.size(), "memoryCount should match the linked pills");
@@ -118,6 +118,57 @@ class CompanyContextPipelineIT {
       assertEquals(file.getId(), pill.getSourceFile().getId());
       assertTrue(pill.getQuestion() != null && !pill.getQuestion().isBlank());
       assertTrue(pill.getAnswer() != null && !pill.getAnswer().isBlank());
+    }
+
+    if (stubLlm) {
+      assertStubPillsPresent(pills);
+    }
+  }
+
+  /**
+   * Resolves the file's derived {@code memoryCount}. With the embedded LLM stub active the pipeline
+   * is deterministic, so this hard-asserts the exact canned pill count (polling defensively for the
+   * derived field); otherwise it preserves the legacy lenient skip for servers without an LLM.
+   */
+  private int awaitMemoryCount(UUID fileId, boolean stubLlm) throws Exception {
+    int result;
+    if (stubLlm) {
+      int expected = LlmStubServer.EXPECTED_PILLS.size();
+      await()
+          .pollInterval(Duration.ofMillis(500))
+          .atMost(Duration.ofSeconds(20))
+          .untilAsserted(
+              () ->
+                  assertEquals(
+                      expected,
+                      memoryCountOf(fetchFile(fileId)),
+                      "embedded LLM stub should produce exactly the canned knowledge pills"));
+      result = expected;
+    } else {
+      int memoryCount = memoryCountOf(fetchFile(fileId));
+      assumeTrue(
+          memoryCount > 0,
+          "Server has no LLM provider configured (llmConfiguration.enabled=false); "
+              + "skipping knowledge-pill assertions.");
+      result = memoryCount;
+    }
+    return result;
+  }
+
+  private static int memoryCountOf(ContextFile file) {
+    return file.getMemoryCount() == null ? 0 : file.getMemoryCount();
+  }
+
+  private void assertStubPillsPresent(List<ContextMemory> pills) {
+    Map<String, String> answersByQuestion = new HashMap<>();
+    for (ContextMemory pill : pills) {
+      answersByQuestion.put(pill.getQuestion(), pill.getAnswer());
+    }
+    for (LlmStubServer.ExpectedPill expected : LlmStubServer.EXPECTED_PILLS) {
+      assertEquals(
+          expected.answer(),
+          answersByQuestion.get(expected.question()),
+          "stub pill answer mismatch for question: " + expected.question());
     }
   }
 
