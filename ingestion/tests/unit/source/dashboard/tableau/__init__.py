@@ -8,8 +8,3 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from metadata.ingestion.source.dashboard.ssrs.connection import SsrsConnection
-from metadata.ingestion.source.dashboard.ssrs.metadata import SsrsSource
-from metadata.utils.service_spec import BaseSpec
-
-ServiceSpec = BaseSpec(metadata_source_class=SsrsSource, connection_class=SsrsConnection)  # pyright: ignore[reportArgumentType]
