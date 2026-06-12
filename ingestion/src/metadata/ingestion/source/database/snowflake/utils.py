@@ -664,6 +664,43 @@ def get_unique_constraints(self, connection, table_name, schema, **kw):
     )
 
 
+def _get_schema_unique_constraints(self, connection, schema, **kw):
+    result = connection.execute(
+        text(
+            f"SHOW /* sqlalchemy:_get_schema_unique_constraints */ "
+            f"UNIQUE KEYS IN SCHEMA {schema}"
+        )
+    )
+    unique_constraints = {}
+    for row in result:
+        name = self.normalize_name(row._mapping["constraint_name"])
+        table_name = self.normalize_name(row._mapping["table_name"])
+
+        # OpenMetadata Patch: Append the table_name into the uniqueness dictionary
+        # to support DBs that allow duplicate constraint names across tables
+        constraint_key = (name, table_name)
+
+        if constraint_key not in unique_constraints:
+            unique_constraints[constraint_key] = {
+                "column_names": [self.normalize_name(row._mapping["column_name"])],
+                "name": name,
+                "table_name": table_name,
+            }
+        else:
+            unique_constraints[constraint_key]["column_names"].append(
+                self.normalize_name(row._mapping["column_name"])
+            )
+
+    ans = {}
+    for constraint in unique_constraints.values():
+        t_name = constraint.pop("table_name")
+        if t_name not in ans:
+            ans[t_name] = []
+        ans[t_name].append(constraint)
+
+    return ans
+
+
 @reflection.cache
 def get_columns(self, connection, table_name, schema=None, **kw):
     """
