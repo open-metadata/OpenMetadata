@@ -45,6 +45,12 @@ import org.openmetadata.service.security.Authorizer;
  * request <b>server-side</b> from a validated index/alias name. There is no caller-controlled
  * request path or HTTP method, so no mutating engine operation (e.g. {@code _doc}, {@code _bulk},
  * {@code _delete_by_query}) can be reached through this resource. Every method requires admin.
+ *
+ * <p><b>Disabled by default.</b> This is a test-only surface, so it does not register unless {@code
+ * OM_TEST_SUPPORT_SEARCH_ENABLED=true} (env var or system property) — a production deployment never
+ * exposes it. The constructor throws when disabled; {@code CollectionRegistry} catches that and
+ * simply skips registration. To run the external integration suites against a cluster, set the flag
+ * on that <b>server's</b> deployment (not on the CI runner).
  */
 @Path("/v1/test-support/search")
 @Collection(name = "testSupportSearch")
@@ -58,10 +64,25 @@ public class TestSupportSearchResource {
 
   private static final Pattern SAFE_PATTERN = Pattern.compile("[a-zA-Z0-9][a-zA-Z0-9._-]*\\*?");
 
+  private static final String ENABLED_FLAG = "OM_TEST_SUPPORT_SEARCH_ENABLED";
+
   private final Authorizer authorizer;
 
   public TestSupportSearchResource(Authorizer authorizer) {
+    if (!isEnabled()) {
+      throw new IllegalStateException(
+          "TestSupportSearchResource is disabled. Set "
+              + ENABLED_FLAG
+              + "=true (env var or system property) on the server to expose the test-support search"
+              + " introspection endpoints; production deployments must leave it unset.");
+    }
     this.authorizer = authorizer;
+  }
+
+  private static boolean isEnabled() {
+    final String env = System.getenv(ENABLED_FLAG);
+    final String value = env != null ? env : System.getProperty(ENABLED_FLAG);
+    return Boolean.parseBoolean(value);
   }
 
   @GET

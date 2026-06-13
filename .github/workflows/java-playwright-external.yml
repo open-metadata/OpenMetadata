@@ -29,9 +29,12 @@
 #
 # Search engine access: the search/scale ITs would normally talk to OpenSearch directly on :9200,
 # which a remote cluster doesn't expose. In external mode SearchClient routes index introspection
-# through the server's admin-only /v1/test-support/search passthrough (TestSupportSearchResource,
-# auto-registered via @Collection). The deployed image on the target cluster MUST therefore
-# include that resource (i.e. be built from this branch or later).
+# through the server's admin-only, typed /v1/test-support/search endpoints (TestSupportSearchResource,
+# auto-registered via @Collection). The deployed image on the target cluster MUST therefore (a) be
+# built from this branch or later, AND (b) set OM_TEST_SUPPORT_SEARCH_ENABLED=true in the SERVER's
+# environment — the resource is disabled by default so it never ships enabled in production, and
+# without the flag every external search assertion fails. The flag belongs on the cluster
+# deployment, not on this CI runner.
 #
 # Auth: the target cluster uses basic auth, so we exchange username/password for a JWT via
 # POST /api/v1/users/login (password base64-encoded) and feed the accessToken as OM_ADMIN_TOKEN.
