@@ -443,7 +443,7 @@ test.describe('Data Contract Inheritance', () => {
 
       // Verify the inherited icon is shown next to contract name
       await expect(
-        page.locator('.contract-header-container .inherit-icon')
+        page.getByTestId('contract-header-container').locator('.inherit-icon')
       ).toBeVisible();
 
       // Verify Terms of Service has inherited icon
@@ -568,7 +568,7 @@ test.describe('Data Contract Inheritance', () => {
 
       // Contract itself should NOT show inherited icon (asset has its own contract)
       await expect(
-        page.locator('.contract-header-container .inherit-icon')
+        page.getByTestId('contract-header-container').locator('.inherit-icon')
       ).not.toBeVisible();
 
       // Verify Terms of Service section exists with inherited icon (from Data Product)
@@ -848,7 +848,7 @@ test.describe('Data Contract Inheritance', () => {
 
       // Verify the inherited icon is shown
       await expect(
-        page.locator('.contract-header-container .inherit-icon')
+        page.getByTestId('contract-header-container').locator('.inherit-icon')
       ).toBeVisible();
     });
 
@@ -904,7 +904,7 @@ test.describe('Data Contract Inheritance', () => {
 
       // Verify the inherited icon is NOT shown (asset has its own contract now)
       await expect(
-        page.locator('.contract-header-container .inherit-icon')
+        page.getByTestId('contract-header-container').locator('.inherit-icon')
       ).not.toBeVisible();
     });
 
@@ -985,7 +985,7 @@ test.describe('Data Contract Inheritance', () => {
 
       // Verify the inherited icon is shown
       await expect(
-        page.locator('.contract-header-container .inherit-icon')
+        page.getByTestId('contract-header-container').locator('.inherit-icon')
       ).toBeVisible();
 
       // Open the contract actions menu
@@ -1135,7 +1135,7 @@ test.describe('Data Contract Inheritance', () => {
 
       // Verify the inherited icon is shown
       await expect(
-        page.locator('.contract-header-container .inherit-icon')
+        page.getByTestId('contract-header-container').locator('.inherit-icon')
       ).toBeVisible();
     });
 
@@ -1263,7 +1263,7 @@ test.describe('Data Contract Inheritance', () => {
 
       // Verify no inherited icon on contract header (asset has its own contract)
       await expect(
-        page.locator('.contract-header-container .inherit-icon')
+        page.getByTestId('contract-header-container').locator('.inherit-icon')
       ).not.toBeVisible();
     });
 
@@ -1310,7 +1310,7 @@ test.describe('Data Contract Inheritance', () => {
 
       // Verify the inherited icon is shown on the contract header
       await expect(
-        page.locator('.contract-header-container .inherit-icon')
+        page.getByTestId('contract-header-container').locator('.inherit-icon')
       ).toBeVisible();
 
       // Verify Terms of Service from Data Product is shown
