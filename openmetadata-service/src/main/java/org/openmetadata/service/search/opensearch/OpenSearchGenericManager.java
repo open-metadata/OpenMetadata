@@ -36,12 +36,14 @@ public class OpenSearchGenericManager implements GenericClient {
   private final OpenSearchTransport transport;
   private final boolean isClientAvailable;
   private final boolean isTransportAvailable;
+  private final boolean isAoss;
 
-  public OpenSearchGenericManager(OpenSearchClient client, OpenSearchTransport transport) {
+  public OpenSearchGenericManager(OpenSearchClient client, OpenSearchTransport transport, boolean isAoss) {
     this.client = client;
     this.isClientAvailable = client != null;
     this.transport = transport;
     this.isTransportAvailable = transport != null;
+    this.isAoss = isAoss;
   }
 
   @Override
@@ -274,6 +276,10 @@ public class OpenSearchGenericManager implements GenericClient {
       LOG.error("OpenSearch client is not available. Cannot fetch cluster stats.");
       throw new IOException("OpenSearch client is not available");
     }
+    if (isAoss) {
+      LOG.debug("Skipping cluster stats fetch — AWS OpenSearch Serverless does not support /_cluster/stats");
+      return null;
+    }
     try {
       return client.cluster().stats();
     } catch (Exception e) {
@@ -286,6 +292,10 @@ public class OpenSearchGenericManager implements GenericClient {
     if (!isClientAvailable) {
       LOG.error("OpenSearch client is not available. Cannot fetch nodes stats.");
       throw new IOException("OpenSearch client is not available");
+    }
+    if (isAoss) {
+      LOG.debug("Skipping nodes stats fetch — AWS OpenSearch Serverless does not support /_nodes/stats");
+      return null;
     }
     try {
       return client.nodes().stats();
@@ -402,6 +412,15 @@ public class OpenSearchGenericManager implements GenericClient {
     if (!isClientAvailable) {
       LOG.error("OpenSearch client is not available. Cannot fetch cluster health.");
       throw new IOException("OpenSearch client is not available");
+    }
+    if (isAoss) {
+      try {
+        client.info(); // GET / - supported by AOSS
+        return new SearchHealthStatus(HEALTHY_STATUS);
+      } catch (Exception e) {
+        LOG.error("Failed to fetch AOSS info", e);
+        return new SearchHealthStatus(UNHEALTHY_STATUS);
+      }
     }
     try {
       HealthResponse response = client.cluster().health();

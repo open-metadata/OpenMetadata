@@ -73,24 +73,32 @@ public class SearchIndexClusterValidator {
   }
 
   private ClusterCapacity getOpenSearchCapacity(OpenSearchClient client) {
+    if (client.isAoss()) {
+      LOG.debug("AWS OpenSearch Serverless detected, using conservative capacity estimate");
+      return getConservativeEstimate();
+    }
     try {
       var clusterStats = client.clusterStats();
 
-      int totalNodes = clusterStats.nodes().count().total();
-      int totalShards =
-          clusterStats.indices().shards().total() != null
-              ? clusterStats.indices().shards().total().intValue()
-              : 0;
+      int totalNodes = clusterStats != null && clusterStats.nodes() != null && clusterStats.nodes().count() != null
+          ? clusterStats.nodes().count().total()
+          : 1;
+      int totalShards = clusterStats != null && clusterStats.indices() != null && clusterStats.indices().shards() != null && clusterStats.indices().shards().total() != null
+          ? clusterStats.indices().shards().total().intValue()
+          : 0;
 
       int maxShardsPerNode = getMaxShardsPerNode(client);
       int maxShards = totalNodes * maxShardsPerNode;
-
       double usagePercent = maxShards > 0 ? (double) totalShards / maxShards : 0;
       int availableShards = maxShards - totalShards;
 
       LOG.debug(
           "OpenSearch cluster capacity: {} current shards, {} max shards ({} nodes x {} per node), {:.1f}% used",
-          totalShards, maxShards, totalNodes, maxShardsPerNode, usagePercent * 100);
+          totalShards,
+          maxShards,
+          totalNodes,
+          maxShardsPerNode,
+          usagePercent * 100);
 
       return new ClusterCapacity(totalShards, maxShards, usagePercent, availableShards);
     } catch (Exception e) {
@@ -127,6 +135,9 @@ public class SearchIndexClusterValidator {
   }
 
   private int getMaxShardsPerNode(OpenSearchClient client) {
+    if (client.isAoss()) {
+      return DEFAULT_MAX_SHARDS_PER_NODE;
+    }
     try {
       var settings = client.clusterSettings();
       if (settings != null && settings.persistent() != null) {
