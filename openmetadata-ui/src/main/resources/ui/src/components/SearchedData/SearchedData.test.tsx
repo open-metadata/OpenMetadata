@@ -16,10 +16,12 @@ import {
   getAllByTestId,
   getByTestId,
   getByText,
+  queryByTestId,
   render,
 } from '@testing-library/react';
 import { PropsWithChildren } from 'react';
 import { MemoryRouter } from 'react-router';
+import { MAX_RESULT_HITS } from '../../constants/explore.constants';
 import { TAG_CONSTANT } from '../../constants/Tag.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import SearchedData from './SearchedData';
@@ -236,5 +238,50 @@ describe('Test SearchedData Component', () => {
     expect(getByTestId(container, 'matches-stats')).toHaveTextContent(
       'label.matches:1 label.in-lowercase Name,1 label.in-lowercase Display Name'
     );
+  });
+
+  it('Should not show result count when showResultCount is false', () => {
+    const { container } = render(
+      <SearchedData {...MOCK_PROPS} isFilterSelected showResultCount={false} />,
+      { wrapper: TestWrapper }
+    );
+
+    expect(
+      queryByTestId(container, 'search-results-count')
+    ).not.toBeInTheDocument();
+  });
+
+  it('Should show result count when showResultCount is true and isFilterSelected is true', () => {
+    const { container } = render(
+      <SearchedData
+        {...MOCK_PROPS}
+        isFilterSelected
+        showResultCount
+        totalValue={42}
+      />,
+      { wrapper: TestWrapper }
+    );
+
+    const countEl = getByTestId(container, 'search-results-count');
+
+    expect(countEl).toBeInTheDocument();
+    expect(countEl).toHaveTextContent('42 results');
+  });
+
+  it('Should show "About X results" when totalValue equals MAX_RESULT_HITS', () => {
+    const { container } = render(
+      <SearchedData
+        {...MOCK_PROPS}
+        isFilterSelected
+        showResultCount
+        totalValue={MAX_RESULT_HITS}
+      />,
+      { wrapper: TestWrapper }
+    );
+
+    const countEl = getByTestId(container, 'search-results-count');
+
+    expect(countEl).toBeInTheDocument();
+    expect(countEl).toHaveTextContent(`About ${MAX_RESULT_HITS} results`);
   });
 });

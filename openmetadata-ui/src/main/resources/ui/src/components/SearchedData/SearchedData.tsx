@@ -86,9 +86,15 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   const resultCount = useMemo(() => {
     if (isFilterSelected || filter?.quickFilter) {
       if (MAX_RESULT_HITS === totalValue) {
-        return <div>{`About ${totalValue} results`}</div>;
+        return (
+          <div data-testid="search-results-count">{`About ${totalValue} results`}</div>
+        );
       } else {
-        return <div>{pluralize(totalValue, 'result')}</div>;
+        return (
+          <div data-testid="search-results-count">
+            {pluralize(totalValue, 'result')}
+          </div>
+        );
       }
     } else {
       return null;

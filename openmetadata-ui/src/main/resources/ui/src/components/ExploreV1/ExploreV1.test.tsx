@@ -18,6 +18,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import { SearchIndex } from '../../enums/search.enum';
 import {
   exportSearchResultsCsvStream,
@@ -29,6 +30,7 @@ import {
 } from '../Explore/Explore.mock';
 import { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
 import ExploreTree from '../Explore/ExploreTree/ExploreTree';
+import SearchedData from '../SearchedData/SearchedData';
 import ExploreV1 from './ExploreV1.component';
 
 jest.mock('@openmetadata/ui-core-components', () => {
@@ -567,5 +569,55 @@ describe('ExploreV1', () => {
       await within(modal).findByText('message.export-assets-limit-exceeded')
     ).toBeInTheDocument();
     expect(exportButton).toBeDisabled();
+  });
+
+  it('passes showResultCount=true to SearchedData when quickFilters is active', () => {
+    render(<ExploreV1 {...props} />, { wrapper: Wrapper });
+
+    const lastCall = (SearchedData as jest.Mock).mock.calls.at(-1)?.[0];
+
+    expect(lastCall).toEqual(
+      expect.objectContaining({ showResultCount: true })
+    );
+  });
+
+  it('passes showResultCount=false to SearchedData when no filters are active', () => {
+    (useAdvanceSearch as jest.Mock).mockReturnValueOnce({
+      toggleModal: jest.fn(),
+      sqlQuery: '',
+      queryFilter: undefined,
+      onResetAllFilters: jest.fn(),
+    });
+
+    render(<ExploreV1 {...props} quickFilters={undefined} />, {
+      wrapper: Wrapper,
+    });
+
+    const lastCall = (SearchedData as jest.Mock).mock.calls.at(-1)?.[0];
+
+    expect(lastCall).toEqual(
+      expect.objectContaining({ showResultCount: false })
+    );
+  });
+
+  it('passes showResultCount=true to SearchedData when advanced search queryFilter is active', () => {
+    (useAdvanceSearch as jest.Mock).mockImplementation(() => ({
+      toggleModal: jest.fn(),
+      sqlQuery: '',
+      queryFilter: {
+        query: { bool: { must: [{ term: { 'owner.name': 'alice' } }] } },
+      },
+      onResetAllFilters: jest.fn(),
+    }));
+
+    render(<ExploreV1 {...props} quickFilters={undefined} />, {
+      wrapper: Wrapper,
+    });
+
+    const lastCall = (SearchedData as jest.Mock).mock.calls.at(-1)?.[0];
+
+    expect(lastCall).toEqual(
+      expect.objectContaining({ showResultCount: true })
+    );
   });
 });
