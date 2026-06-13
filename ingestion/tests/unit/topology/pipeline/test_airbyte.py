@@ -54,6 +54,7 @@ from metadata.ingestion.source.pipeline.airbyte.models import (
     AirbyteWorkspace,
 )
 from metadata.utils.constants import UTF_8
+from metadata.generated.schema.entity.data.container import Container
 
 mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/airbyte_dataset.json"
 with open(mock_file_path, encoding=UTF_8) as file:  # noqa: PTH123
@@ -452,6 +453,8 @@ MOCK_CLOUD_PIPELINE = Pipeline(
 )
 
 
+
+
 class AirbyteCloudUnitTest(TestCase):
     """Test class for Airbyte Cloud source module."""
 
@@ -501,3 +504,79 @@ class AirbyteCloudUnitTest(TestCase):
     def test_pipeline_status(self):
         status = [either.right for either in self.airbyte.yield_pipeline_status(EXPECTED_CLOUD_AIRBYTE_DETAILS)]
         assert status == EXPECTED_CLOUD_PIPELINE_STATUS
+
+    @patch.object(AirbyteSource, "_get_container_fqn")
+    @patch.object(AirbyteSource, "_get_table_fqn")
+    def test_missing_lineage_api_to_s3_bug(self, mock_get_table_fqn, mock_get_container_fqn):
+        """
+        Issue #28591: Missing lineage for API -> S3.
+
+        Verifies not only that a lineage edge is produced, but that the
+        source resolves to a Table entity and the destination resolves
+        to a Container entity with the expected FQNs.
+        """
+        mock_get_table_fqn.return_value = "mock_api_service.api_endpoint_data"
+        mock_get_container_fqn.return_value = "mock_s3_service.openmetadata-test-bucket"
+
+        self.client.get_source.return_value = AirbyteSourceResponse(
+            sourceName="API Source",
+            connectionConfiguration={"url": "https://api.example.com"},
+        )
+
+        self.client.get_destination.return_value = AirbyteDestinationResponse(
+            destinationName="S3",
+            connectionConfiguration={
+                "s3_bucket_name": "openmetadata-test-bucket",
+                "s3_bucket_path": "airbyte_syncs",
+            },
+        )
+
+        test_connection = AirbyteConnectionModel(
+            connectionId="test-api-s3-connection",
+            sourceId="test-api-source-id",
+            destinationId="test-s3-destination-id",
+            name="API to S3 Pipeline Bug Replication",
+            syncCatalog={
+                "streams": [{"stream": {"name": "api_endpoint_data", "namespace": None, "jsonSchema": {}}}]
+            },
+        )
+
+        test_workspace = AirbyteWorkspace(workspaceId="test-workspace-id")
+        test_pipeline_details = AirbytePipelineDetails(workspace=test_workspace, connection=test_connection)
+
+        mock_container = Container(
+            id="79fc8906-4a4a-45ab-9a54-9cc2d399e10f",
+            name="openmetadata-test-bucket",
+            fullyQualifiedName="mock_s3_service.openmetadata-test-bucket",
+            service=EntityReference(id="85811038-099a-11ed-861d-0242ac120002", type="storageService"),
+        )
+
+        def mock_get_by_name_api_s3(entity, fqn):
+            if entity == Table and fqn == "mock_api_service.api_endpoint_data":
+                return MOCK_POSTGRES_SOURCE_TABLE
+            if entity == Container and fqn == "mock_s3_service.openmetadata-test-bucket":
+                return mock_container
+            if entity == Pipeline:
+                return MOCK_PIPELINE
+            return None
+
+        with patch.object(self.airbyte, "metadata") as mock_metadata:
+            mock_metadata.get_by_name.side_effect = mock_get_by_name_api_s3
+
+            lineage_results = list(self.airbyte.yield_pipeline_lineage_details(test_pipeline_details))
+
+            assert len(lineage_results) == 1, f"BUG CONFIRMED: Expected 1 lineage edge, got {len(lineage_results)}"
+
+            edge = lineage_results[0].right.edge
+
+            assert edge.fromEntity.type == "table"
+            assert edge.fromEntity.id == MOCK_POSTGRES_SOURCE_TABLE.id
+
+            assert edge.toEntity.type == "container"
+            assert edge.toEntity.id == mock_container.id
+
+            assert edge.lineageDetails.pipeline.id.root == MOCK_PIPELINE.id.root
+            assert edge.lineageDetails.source == LineageSource.PipelineLineage
+
+            mock_get_container_fqn.assert_called_once_with("openmetadata-test-bucket")
+            mock_get_table_fqn.assert_called_once()
