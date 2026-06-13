@@ -32,6 +32,14 @@ def get_source_table_details(stream: AirbyteStream, source_connection: AirbyteSo
     source_database = (source_connection.connectionConfiguration or {}).get("database")
     source_schema = stream.namespace
 
+    # Allow API sources to pass through
+    if source_name and "api" in source_name.lower():
+        return TableDetails(
+            name=stream.name,
+            schema=None,
+            database=None,
+        )
+
     if source_name not in [
         AirbyteSource.POSTGRES.value,
         AirbyteSource.MSSQL.value,
@@ -64,6 +72,15 @@ def get_destination_table_details(
     destination_name = destination_connection.destinationName
     destination_database = (destination_connection.connectionConfiguration or {}).get("database")
     destination_schema = (destination_connection.connectionConfiguration or {}).get("schema")
+
+    # Allow S3 destinations and extract the bucket name
+    if destination_name and "s3" in destination_name.lower():
+        bucket_name = (destination_connection.connectionConfiguration or {}).get("s3_bucket_name")
+        return TableDetails(
+            name=stream.name,
+            schema=bucket_name,
+            database=None,
+        )
 
     if destination_name not in [
         AirbyteDestination.POSTGRES.value,

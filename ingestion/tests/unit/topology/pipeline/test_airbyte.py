@@ -452,6 +452,8 @@ MOCK_CLOUD_PIPELINE = Pipeline(
 )
 
 
+
+
 class AirbyteCloudUnitTest(TestCase):
     """Test class for Airbyte Cloud source module."""
 
@@ -501,3 +503,42 @@ class AirbyteCloudUnitTest(TestCase):
     def test_pipeline_status(self):
         status = [either.right for either in self.airbyte.yield_pipeline_status(EXPECTED_CLOUD_AIRBYTE_DETAILS)]
         assert status == EXPECTED_CLOUD_PIPELINE_STATUS
+
+    @patch.object(AirbyteSource, "_get_table_fqn")
+    def test_missing_lineage_api_to_s3_bug(self, mock_get_table_fqn):
+        """Reproducing Issue #28591: Missing lineage for API to S3."""
+        
+        mock_get_table_fqn.return_value = "mock_api_service.api_endpoint_data"
+        
+        self.client.get_source.return_value = AirbyteSourceResponse(
+            sourceName="API Source",
+            connectionConfiguration={"url": "https://api.example.com"},
+        )
+
+        self.client.get_destination.return_value = AirbyteDestinationResponse(
+            destinationName="S3",
+            connectionConfiguration={
+                "s3_bucket_name": "openmetadata-test-bucket",
+                "s3_bucket_path": "airbyte_syncs",
+            },
+        )
+
+        test_connection = AirbyteConnectionModel(
+            connectionId="test-api-s3-connection",
+            sourceId="test-api-source-id",
+            destinationId="test-s3-destination-id",
+            name="API to S3 Pipeline Bug Replication",
+            syncCatalog={
+                "streams": [{"stream": {"name": "api_endpoint_data", "namespace": None, "jsonSchema": {}}}]
+            },
+        )
+
+        test_workspace = AirbyteWorkspace(workspaceId="test-workspace-id")
+        test_pipeline_details = AirbytePipelineDetails(workspace=test_workspace, connection=test_connection)
+
+        with patch.object(self.airbyte, "metadata") as mock_metadata:
+            mock_metadata.get_by_name.return_value = MOCK_POSTGRES_SOURCE_TABLE 
+            
+            lineage_results = list(self.airbyte.yield_pipeline_lineage_details(test_pipeline_details))
+
+            assert len(lineage_results) == 1, f"BUG CONFIRMED: Expected 1 lineage edge, got {len(lineage_results)}"

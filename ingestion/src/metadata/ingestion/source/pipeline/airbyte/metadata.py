@@ -58,6 +58,7 @@ from metadata.utils import fqn
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.time_utils import datetime_to_timestamp
+from metadata.generated.schema.entity.data.container import Container
 
 from .utils import get_destination_table_details, get_source_table_details  # noqa: TID252
 
@@ -334,42 +335,38 @@ class AirbyteSource(PipelineServiceSource):
             if not source_table_details or not destination_table_details:
                 continue
 
-            from_fqn = self._get_table_fqn(source_table_details)
-            to_fqn = self._get_table_fqn(destination_table_details)
+            if source_name and "s3" in source_name.lower():
+                from_entity_class = Container
+                from_type_str = "container"
+                from_fqn = source_table_details.schema
+            elif source_name and "api" in source_name.lower():
+                # Defaulting API to Table to maintain standard streams logic unless explicitly mapping an APIEndpoint
+                from_entity_class = Table
+                from_type_str = "table"
+                from_fqn = self._get_table_fqn(source_table_details)
+            else:
+                from_entity_class = Table
+                from_type_str = "table"
+                from_fqn = self._get_table_fqn(source_table_details)
 
-            if not from_fqn:
-                logger.warning(
-                    f"While extracting lineage: [{pipeline_name}],"
-                    f" source table: [{source_table_details.database or '*'}]"
-                    f".[{source_table_details.schema}].[{source_table_details.name}]"
-                    f" (type: {source_name}) not found in openmetadata"
-                )
-                continue
-            if not to_fqn:
-                logger.warning(
-                    f"While extracting lineage: [{pipeline_name}],"
-                    f" destination table: [{destination_table_details.database or '*'}]"
-                    f".[{destination_table_details.schema}].[{destination_table_details.name}]"
-                    f" (type: {destination_name}) not found in openmetadata"
-                )
+            if destination_name and "s3" in destination_name.lower():
+                to_entity_class = Container
+                to_type_str = "container"
+                to_fqn = destination_table_details.schema 
+            else:
+                to_entity_class = Table
+                to_type_str = "table"
+                to_fqn = self._get_table_fqn(destination_table_details)
+
+            if not from_fqn or not to_fqn:
+                logger.warning(f"Could not build FQN for lineage in pipeline [{pipeline_name}]")
                 continue
 
-            from_entity = self.metadata.get_by_name(entity=Table, fqn=from_fqn)
-            to_entity = self.metadata.get_by_name(entity=Table, fqn=to_fqn)
+            from_entity = self.metadata.get_by_name(entity=from_entity_class, fqn=from_fqn)
+            to_entity = self.metadata.get_by_name(entity=to_entity_class, fqn=to_fqn)
 
-            if not from_entity:
-                logger.warning(
-                    f"While extracting lineage: [{pipeline_name}],"
-                    f" source table (fqn: [{from_fqn}], type: {source_name}) not found"
-                    " in openmetadata"
-                )
-                continue
-            if not to_entity:
-                logger.warning(
-                    f"While extracting lineage: [{pipeline_name}],"
-                    f" destination table (fqn: [{to_fqn}], type: {destination_name}) not found"
-                    " in openmetadata"
-                )
+            if not from_entity or not to_entity:
+                logger.warning(f"Entities not found in OpenMetadata for pipeline [{pipeline_name}]")
                 continue
 
             pipeline_fqn = fqn.build(
@@ -388,8 +385,8 @@ class AirbyteSource(PipelineServiceSource):
             yield Either(
                 right=AddLineageRequest(
                     edge=EntitiesEdge(
-                        fromEntity=EntityReference(id=from_entity.id, type="table"),
-                        toEntity=EntityReference(id=to_entity.id, type="table"),
+                        fromEntity=EntityReference(id=from_entity.id, type=from_type_str),
+                        toEntity=EntityReference(id=to_entity.id, type=to_type_str),
                         lineageDetails=lineage_details,
                     )
                 )
