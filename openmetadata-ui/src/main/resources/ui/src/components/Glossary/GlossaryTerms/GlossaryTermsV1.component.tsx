@@ -37,7 +37,7 @@ import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import {
   fetchEntityActivityCountInto,

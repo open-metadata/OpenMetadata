@@ -111,12 +111,15 @@ jest.mock('../../../rest/tasksAPI', () => ({
   },
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../rest/incidentManagerAPI', () => ({
   getListTestCaseIncidentByStateId: jest.fn(),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityPureUtils', () => ({
   getEntityFeedLink: jest.fn(),
+}));
+
+jest.mock('../../../utils/EntityReferenceUtils', () => ({
   getEntityReferenceListFromEntities: jest.fn(),
 }));
 

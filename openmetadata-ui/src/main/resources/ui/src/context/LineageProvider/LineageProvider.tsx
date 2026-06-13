@@ -21,6 +21,7 @@ import QueryString from 'qs';
 import {
   createContext,
   DragEvent,
+  lazy,
   useCallback,
   useContext,
   useEffect,
@@ -42,6 +43,7 @@ import {
   ReactFlowInstance,
   useKeyPress,
 } from 'reactflow';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { CSVExportResponse } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
@@ -53,7 +55,6 @@ import {
 } from '../../components/Entity/EntityLineage/EntityLineage.interface';
 import EntityLineageSidebar from '../../components/Entity/EntityLineage/EntityLineageSidebar.component';
 import NodeSuggestions from '../../components/Entity/EntityLineage/NodeSuggestions.component';
-import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { ExploreQuickFilterField } from '../../components/Explore/ExplorePage.interface';
 import {
   EdgeDetails,
@@ -95,6 +96,7 @@ import {
   updateLineageEdge,
 } from '../../rest/lineageAPI';
 import { getCurrentISODate } from '../../utils/date-time/DateTimeUtils';
+import { getEntityBreadcrumbs } from '../../utils/EntityBreadcrumbPureUtils';
 import {
   addLineageHandler,
   centerNodePosition,
@@ -123,12 +125,10 @@ import {
   removeLineageHandler,
   removeUnconnectedNodes,
 } from '../../utils/EntityLineageUtils';
-import {
-  getEntityBreadcrumbs,
-  getEntityReferenceFromEntity,
-  updateNodeType,
-} from '../../utils/EntityUtils';
+import { updateNodeType } from '../../utils/EntityPureUtils';
+import { getEntityReferenceFromEntity } from '../../utils/EntityReferenceUtils';
 import { getQuickFilterQuery } from '../../utils/ExploreUtils';
+import { addBaseNodeDepthToNodes } from '../../utils/Lineage/LineageUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useTourProvider } from '../TourProvider/TourProvider';
@@ -141,6 +141,15 @@ import {
 
 const LINEAGE_START_TIME_PARAM = 'lineageStartTime';
 const LINEAGE_END_TIME_PARAM = 'lineageEndTime';
+
+const EntitySummaryPanel = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component'
+      )
+  )
+);
 
 const parseEpochParam = (value: string | null): number | undefined => {
   if (!value) {
@@ -534,7 +543,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         // else fallback to rootNode
         const nodeToFocus =
           typeof recenter === 'string'
-            ? visibleNodes.find((n) => n.data.fullyQualifiedName === recenter)
+            ? visibleNodes.find(
+                (n) => n.data.node.fullyQualifiedName === recenter
+              )
             : visibleNodes.find((n) => n.data.isRootNode);
 
         if (nodeToFocus) {
@@ -765,7 +776,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   );
 
   const loadChildNodesHandler = useCallback(
-    async (node: SourceType, direction: LineageDirection, depth = 1) => {
+    async (node: LineageNodeType, direction: LineageDirection, depth = 1) => {
       try {
         const res = await getLineageDataByFQN({
           fqn: node.fullyQualifiedName ?? '',
@@ -793,10 +804,16 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             },
           };
         }
+
+        const updatedNodes = addBaseNodeDepthToNodes(
+          node.nodeDepth ?? 0,
+          res.nodes
+        );
+
         const concatenatedLineageData = {
           nodes: {
             ...currentNodes,
-            ...res.nodes,
+            ...updatedNodes,
           },
           downstreamEdges: {
             ...lineageData?.downstreamEdges,

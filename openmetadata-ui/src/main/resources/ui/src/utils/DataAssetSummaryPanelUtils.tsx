@@ -18,8 +18,9 @@ export {
 export type { ColumnSearchResult } from './DataAssetSummaryPanelPureUtils';
 
 import { isEmpty, isNil, isObject, isUndefined } from 'lodash';
+import { lazy } from 'react';
+import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import { DomainLabel } from '../components/common/DomainLabel/DomainLabel.component';
-import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import QueryCount from '../components/common/QueryCount/QueryCount.component';
 import { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
 import { ProfilerTabPath } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
@@ -60,14 +61,23 @@ import {
   getTableFieldsFromTableDetails,
   getUsageData,
 } from './DataAssetSummaryPanelPureUtils';
-import { DRAWER_NAVIGATION_OPTIONS, getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
+import { DRAWER_NAVIGATION_OPTIONS } from './EntityPureUtils';
 import { BasicEntityOverviewInfo } from './EntityUtils.interface';
 import { getPartialNameFromTableFQN } from './FqnUtils';
 import i18n from './i18next/LocalUtil';
 import { formatNumberWithComma } from './NumberUtils';
 import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
 import { bytesToSize, stringToHTML } from './StringUtils';
-import { getTierTags } from './TableUtils';
+import { getTierTags } from './TablePureUtils';
+
+const OwnerLabel = withSuspenseFallback(
+  lazy(() =>
+    import('../components/common/OwnerLabel/OwnerLabel.component').then(
+      (m) => ({ default: m.OwnerLabel })
+    )
+  )
+);
 
 const entityTierRenderer = (tier?: TagLabel) => {
   return tier ? (

@@ -14,7 +14,7 @@
 import { render } from '@testing-library/react';
 import Avatar from './Avatar';
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/ColorUtils', () => ({
   getRandomColor: jest.fn().mockImplementation(() => ({
     color: '#fff',
     character: 'a',

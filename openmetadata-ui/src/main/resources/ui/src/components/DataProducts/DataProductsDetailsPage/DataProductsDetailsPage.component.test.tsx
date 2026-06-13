@@ -45,9 +45,15 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
     permissions: { task: { Create: true } },
   }),
 }));
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Test Data Product'),
+}));
+
+jest.mock('../../../utils/EntityVoteUtils', () => ({
   getEntityVoteStatus: jest.fn().mockReturnValue('unVoted'),
+}));
+
+jest.mock('../../../utils/EntityPureUtils', () => ({
   getEntityFeedLink: jest.fn().mockReturnValue(''),
 }));
 

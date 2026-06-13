@@ -13,7 +13,7 @@
 
 import { GitMerge, X } from '@untitledui/icons';
 import { Button, Tooltip, Typography } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
 import DescriptionSection from '../../../components/common/DescriptionSection/DescriptionSection';
@@ -30,15 +30,33 @@ import {
   getColumnFunctionValue,
   getLineageDetailsObject,
 } from '../../../utils/EntityLineageUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import Loader from '../../common/Loader/Loader';
-import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
-import { ModalWithFunctionEditor } from '../../Modals/ModalWithFunctionEditor/ModalWithFunctionEditor';
-import { ModalWithQueryEditor } from '../../Modals/ModalWithQueryEditor/ModalWithQueryEditor';
 import './entity-info-drawer.less';
 import { EdgeInfoDrawerInfo } from './EntityInfoDrawer.interface';
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
+);
+
+const ModalWithFunctionEditor = withSuspenseFallback(
+  lazy(() =>
+    import('../../Modals/ModalWithFunctionEditor/ModalWithFunctionEditor').then(
+      (m) => ({ default: m.ModalWithFunctionEditor })
+    )
+  )
+);
+
+const ModalWithQueryEditor = withSuspenseFallback(
+  lazy(() =>
+    import('../../Modals/ModalWithQueryEditor/ModalWithQueryEditor').then(
+      (m) => ({ default: m.ModalWithQueryEditor })
+    )
+  )
+);
 
 const getUserTimeValue = (user?: string, timestamp?: number) => {
   const valueParts = [user, getRelativeTime(timestamp)].filter(Boolean);
