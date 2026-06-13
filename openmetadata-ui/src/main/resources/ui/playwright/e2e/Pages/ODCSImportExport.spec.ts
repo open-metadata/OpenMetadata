@@ -1699,7 +1699,9 @@ version: "1.0.0"`;
       await page.getByTestId('file-info-card').waitFor();
 
       // Verify object selector is NOT visible for single-object contract
-      await expect(page.getByTestId('object-selector-section')).not.toBeVisible();
+      await expect(
+        page.getByTestId('object-selector-section')
+      ).not.toBeVisible();
 
       // Close modal
       await page
