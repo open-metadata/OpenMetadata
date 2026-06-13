@@ -745,12 +745,8 @@ test.describe('ODCS Import/Export', () => {
 
       // Verify merge/replace options are shown
       await expect(page.getByTestId('existing-contract-warning')).toBeVisible();
-      await expect(
-        page.locator('input[type="radio"][value="merge"]')
-      ).toBeVisible();
-      await expect(
-        page.locator('input[type="radio"][value="replace"]')
-      ).toBeVisible();
+      await expect(page.getByTestId('import-mode-merge')).toBeVisible();
+      await expect(page.getByTestId('import-mode-replace')).toBeVisible();
 
       // Verify merge is selected by default
       await expect(
@@ -789,12 +785,12 @@ test.describe('ODCS Import/Export', () => {
       });
 
       // Wait for preview
-      await page.locator('.file-info-card, .contract-preview-card').waitFor({
+      await page.getByTestId('file-info-card').waitFor({
         state: 'visible',
       });
 
       // Verify preview shows contract details
-      await expect(page.locator('text=CONTRACT PREVIEW')).toBeVisible();
+      await expect(page.locator('text=Contract Preview')).toBeVisible();
       await expect(
         page.locator('text=Customer Analytics Full Contract')
       ).toBeVisible();
@@ -1531,7 +1527,7 @@ version: "1.0.0"`;
       await page.getByTestId('file-info-card').waitFor();
 
       // Verify object selector section is visible for multi-object contract
-      await expect(page.locator('.object-selector-section')).toBeVisible({
+      await expect(page.getByTestId('object-selector-section')).toBeVisible({
         timeout: 10000,
       });
 
@@ -1577,7 +1573,7 @@ version: "1.0.0"`;
       });
 
       // Wait for object selector to appear
-      await expect(page.locator('.object-selector-section')).toBeVisible({
+      await expect(page.getByTestId('object-selector-section')).toBeVisible({
         timeout: 10000,
       });
 
@@ -1643,7 +1639,7 @@ version: "1.0.0"`;
       });
 
       await page.getByTestId('file-info-card').waitFor({ timeout: 30000 });
-      await expect(page.locator('.object-selector-section')).toBeVisible({
+      await expect(page.getByTestId('object-selector-section')).toBeVisible({
         timeout: 30000,
       });
 
@@ -1703,7 +1699,7 @@ version: "1.0.0"`;
       await page.getByTestId('file-info-card').waitFor();
 
       // Verify object selector is NOT visible for single-object contract
-      await expect(page.locator('.object-selector-section')).not.toBeVisible();
+      await expect(page.getByTestId('object-selector-section')).not.toBeVisible();
 
       // Close modal
       await page
@@ -1742,7 +1738,7 @@ version: "1.0.0"`;
 
       // Step 2: Edit the contract via UI - add SLA
       await page.getByTestId('manage-contract-actions').click();
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
       await page.getByTestId('contract-edit-button').click();
@@ -1831,7 +1827,7 @@ version: "1.0.0"`;
 
       // Step 2: Edit the contract via UI - modify SLA values
       await page.getByTestId('manage-contract-actions').click();
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
       await page.getByTestId('contract-edit-button').click();
@@ -2020,7 +2016,7 @@ version: "1.0.0"`;
       await test.step('Export as OM format and modify description', async () => {
         const downloadPromise = page.waitForEvent('download');
         await page.getByTestId('manage-contract-actions').click();
-        await page.locator('.contract-action-dropdown').waitFor({
+        await page.getByTestId('contract-action-dropdown').waitFor({
           state: 'visible',
         });
         await page.getByTestId('export-contract-button').click();
@@ -2042,7 +2038,7 @@ version: "1.0.0"`;
 
       await test.step('Import modified OM YAML with merge option', async () => {
         await page.getByTestId('manage-contract-actions').click();
-        await page.locator('.contract-action-dropdown').waitFor({
+        await page.getByTestId('contract-action-dropdown').waitFor({
           state: 'visible',
         });
         await page.getByTestId('import-openmetadata-contract-button').click();
@@ -2149,7 +2145,7 @@ version: "1.0.0"`;
       // Step 2: Export as OpenMetadata (OM) format
       const omDownloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
       await page.getByTestId('export-contract-button').click();

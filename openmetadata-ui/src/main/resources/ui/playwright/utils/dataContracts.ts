@@ -450,7 +450,7 @@ export const navigateToContractTab = async (page: Page) => {
 
 export const openContractActionsDropdown = async (page: Page) => {
   await page.getByTestId('manage-contract-actions').click();
-  await page.locator('.contract-action-dropdown').waitFor({
+  await page.getByTestId('contract-action-dropdown').waitFor({
     state: 'visible',
   });
 };

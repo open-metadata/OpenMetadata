@@ -357,6 +357,7 @@ const ContractDetail: React.FC<{
                 <Dropdown.Popover placement="bottom right">
                   <Dropdown.Menu
                     className="tw:min-w-45"
+                    data-testid="contract-action-dropdown"
                     onAction={(key) => handleContractAction(String(key))}>
                     {hasEditPermission && (
                       <>
