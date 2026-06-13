@@ -283,6 +283,50 @@ class AirbyteSource(PipelineServiceSource):
         except FQNNotFoundException:
             return None
 
+    def _get_container_fqn(self, container_name: Optional[str]) -> Optional[str]:  # noqa: UP045
+        """
+        Get the FQN of a Container entity (e.g. an S3 bucket) using a
+        wildcard service match, mirroring `_get_table_fqn`.
+
+        :param container_name: name of the bucket/container to resolve
+        :return: container FQN if found, else None
+        """
+        if not container_name:
+            return None
+
+        try:
+            return fqn.build(
+                metadata=self.metadata,
+                entity_type=Container,
+                service_name="*",
+                container_name=container_name,
+            )
+        except FQNNotFoundException:
+            return None
+
+    def _resolve_lineage_entity(self, connector_name: Optional[str], table_details: Optional[TableDetails]):  # noqa: UP045
+        """
+        Map a source/destination connector to the corresponding OpenMetadata
+        entity class, type string, and FQN.
+
+        S3-based connectors resolve to `Container` entities. API and
+        relational connectors resolve to `Table` entities, looked up via
+        `_get_table_fqn`.
+
+        :param connector_name: the Airbyte source/destination name
+                                (e.g. "Postgres", "S3", "API Source")
+        :param table_details: parsed stream/table details for this connector
+        :return: tuple of (entity_class, entity_type_str, fqn or None)
+        """
+        if not table_details:
+            return Table, "table", None
+
+        if connector_name and "s3" in connector_name.lower():
+            return Container, "container", self._get_container_fqn(table_details.schema)
+
+        # API sources and relational sources both resolve to Table entities.
+        return Table, "table", self._get_table_fqn(table_details)
+
     # pylint: disable=too-many-locals
     def yield_pipeline_lineage_details(
         self, pipeline_details: AirbytePipelineDetails
@@ -333,40 +377,49 @@ class AirbyteSource(PipelineServiceSource):
             destination_table_details = get_destination_table_details(stream, destination_connection)
 
             if not source_table_details or not destination_table_details:
+                logger.warning(
+                    f"Could not parse source/destination table details for stream "
+                    f"[{stream.name}] in pipeline [{pipeline_name}] "
+                    f"(source: {source_name}, destination: {destination_name})"
+                )
                 continue
 
-            if source_name and "s3" in source_name.lower():
-                from_entity_class = Container
-                from_type_str = "container"
-                from_fqn = source_table_details.schema
-            elif source_name and "api" in source_name.lower():
-                # Defaulting API to Table to maintain standard streams logic unless explicitly mapping an APIEndpoint
-                from_entity_class = Table
-                from_type_str = "table"
-                from_fqn = self._get_table_fqn(source_table_details)
-            else:
-                from_entity_class = Table
-                from_type_str = "table"
-                from_fqn = self._get_table_fqn(source_table_details)
+            from_entity_class, from_type_str, from_fqn = self._resolve_lineage_entity(
+                source_name, source_table_details
+            )
+            to_entity_class, to_type_str, to_fqn = self._resolve_lineage_entity(
+                destination_name, destination_table_details
+            )
 
-            if destination_name and "s3" in destination_name.lower():
-                to_entity_class = Container
-                to_type_str = "container"
-                to_fqn = destination_table_details.schema 
-            else:
-                to_entity_class = Table
-                to_type_str = "table"
-                to_fqn = self._get_table_fqn(destination_table_details)
+            if not from_fqn:
+                logger.warning(
+                    f"Could not build source FQN for stream [{stream.name}] in pipeline "
+                    f"[{pipeline_name}] (source connector: {source_name})"
+                )
+                continue
 
-            if not from_fqn or not to_fqn:
-                logger.warning(f"Could not build FQN for lineage in pipeline [{pipeline_name}]")
+            if not to_fqn:
+                logger.warning(
+                    f"Could not build destination FQN for stream [{stream.name}] in pipeline "
+                    f"[{pipeline_name}] (destination connector: {destination_name})"
+                )
                 continue
 
             from_entity = self.metadata.get_by_name(entity=from_entity_class, fqn=from_fqn)
             to_entity = self.metadata.get_by_name(entity=to_entity_class, fqn=to_fqn)
 
-            if not from_entity or not to_entity:
-                logger.warning(f"Entities not found in OpenMetadata for pipeline [{pipeline_name}]")
+            if not from_entity:
+                logger.warning(
+                    f"Source entity not found in OpenMetadata for FQN [{from_fqn}] "
+                    f"(stream [{stream.name}], pipeline [{pipeline_name}])"
+                )
+                continue
+
+            if not to_entity:
+                logger.warning(
+                    f"Destination entity not found in OpenMetadata for FQN [{to_fqn}] "
+                    f"(stream [{stream.name}], pipeline [{pipeline_name}])"
+                )
                 continue
 
             pipeline_fqn = fqn.build(
