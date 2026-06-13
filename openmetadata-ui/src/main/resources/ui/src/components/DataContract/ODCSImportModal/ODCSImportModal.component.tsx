@@ -990,6 +990,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
           <Card
             className="tw:p-3 tw:mb-2 tw:cursor-pointer tw:transition-colors tw:hover:border-utility-brand-200"
             color={importMode === 'merge' ? 'brand' : 'default'}
+            data-testid="import-mode-merge"
             role="button"
             tabIndex={0}
             onClick={() => setImportMode('merge')}
@@ -1012,6 +1013,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
           <Card
             className="tw:p-3 tw:transition-colors tw:cursor-pointer tw:hover:border-utility-brand-200"
             color={importMode === 'replace' ? 'brand' : 'default'}
+            data-testid="import-mode-replace"
             role="button"
             tabIndex={0}
             onClick={() => setImportMode('replace')}
@@ -1047,7 +1049,9 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
     }));
 
     return (
-      <div className="tw:rounded-xl tw:bg-gray-50 tw:p-3.5 tw:mb-4">
+      <div
+        className="tw:rounded-xl tw:bg-gray-50 tw:p-3.5 tw:mb-4"
+        data-testid="object-selector-section">
         <Box align="center" className="tw:mb-2.5" gap={2}>
           <Typography
             as="span"
@@ -1164,7 +1168,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                   </>
                 ) : (
                   <FileUploadDropZone
-                    accept=".yaml,.yml"
+                    accept=".yaml,.yml,.json"
                     className="tw:w-full"
                     clickToUploadLabel={t('label.click-to-upload')}
                     hint={t('label.supports-yaml-format')}

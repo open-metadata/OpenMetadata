@@ -679,7 +679,7 @@ test.describe('Data Contract Inheritance', () => {
 
       // Click edit to add asset's own contract
       await page.getByTestId('manage-contract-actions').click();
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
       await page.getByTestId('contract-edit-button').click();
@@ -727,7 +727,7 @@ test.describe('Data Contract Inheritance', () => {
     await test.step('Edit contract again to ADD its own SLA', async () => {
       // Click edit to modify contract
       await page.getByTestId('manage-contract-actions').click();
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
       await page.getByTestId('contract-edit-button').click();
@@ -854,7 +854,7 @@ test.describe('Data Contract Inheritance', () => {
 
     await test.step('Click Edit on inherited contract - should open ADD form, not EDIT', async () => {
       await page.getByTestId('manage-contract-actions').click();
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
       await page.getByTestId('contract-edit-button').click();
@@ -990,7 +990,7 @@ test.describe('Data Contract Inheritance', () => {
 
       // Open the contract actions menu
       await page.getByTestId('manage-contract-actions').click();
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -998,11 +998,8 @@ test.describe('Data Contract Inheritance', () => {
       const deleteButton = page.getByTestId('delete-contract-button');
       await expect(deleteButton).toBeVisible();
 
-      // The delete button should have the 'disabled' class or be visually disabled
-      const deleteMenuItem = page
-        .locator('.contract-action-dropdown .ant-dropdown-menu-item')
-        .filter({ hasText: 'Delete' });
-      await expect(deleteMenuItem).toHaveAttribute('aria-disabled', 'true');
+      // The delete button should be disabled for inherited contracts
+      await expect(deleteButton).toBeDisabled();
     });
   });
 
@@ -1057,7 +1054,7 @@ test.describe('Data Contract Inheritance', () => {
 
       // Open the contract actions menu
       await page.getByTestId('manage-contract-actions').click();
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -1230,7 +1227,7 @@ test.describe('Data Contract Inheritance', () => {
 
       // Click edit to add asset's own contract
       await page.getByTestId('manage-contract-actions').click();
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
       await page.getByTestId('contract-edit-button').click();
@@ -1272,7 +1269,7 @@ test.describe('Data Contract Inheritance', () => {
 
     await test.step('Delete asset own contract', async () => {
       await page.getByTestId('manage-contract-actions').click();
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
