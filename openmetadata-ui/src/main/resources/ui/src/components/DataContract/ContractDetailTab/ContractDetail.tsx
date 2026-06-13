@@ -297,7 +297,11 @@ const ContractDetail: React.FC<{
     }
 
     return (
-      <Box align="center" className="tw:w-full tw:px-6 tw:py-4" gap={4}>
+      <Box
+        align="center"
+        className="tw:w-full tw:px-6 tw:py-4"
+        data-testid="contract-header-container"
+        gap={4}>
         <img
           alt={t('label.approved-entity', {
             entity: t('label.contract'),
