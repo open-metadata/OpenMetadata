@@ -6,6 +6,7 @@ import java.util.Set;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.openmetadata.it.server.ServerHandle;
+import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -29,7 +30,8 @@ public final class ReindexHelpers {
       Set.of("success", "failed", "completed", "stopped", "activeError");
   private static final Set<String> SUCCESS_STATUSES = Set.of("success", "completed");
   private static final String REINDEX_TIMEOUT_MIN_PROP = "jpw.reindex.timeoutMin";
-  private static final int DEFAULT_TIMEOUT_MINUTES = 60;
+  private static final int EXTERNAL_TIMEOUT_MINUTES = 60;
+  private static final int EMBEDDED_TIMEOUT_MINUTES = 15;
   private static final String PROPAGATION_TIMEOUT_MIN_PROP = "jpw.search.propagationTimeoutMin";
   private static final int DEFAULT_PROPAGATION_MINUTES = 5;
   // A stopped run leaves the server in a post-stop window (reindex lock still held by the
@@ -46,13 +48,16 @@ public final class ReindexHelpers {
    * Max wait for a reindex run to reach a terminal status — and for the singleton SearchIndexApp
    * lock to free so a fresh trigger is accepted. Reindex duration scales with catalog size and
    * cluster load: on a large shared/external cluster a single run can take ~20 minutes, and a
-   * concurrent test's run holds the lock for that whole window. So this defaults high and is
-   * overridable via {@code -Djpw.reindex.timeoutMin}. The waits poll run status and return the
-   * instant it goes terminal, so a large cap never slows a fast run — it only bounds the failure.
+   * concurrent test's run holds the lock for that whole window, so external mode defaults to 60
+   * minutes. Embedded/PR runs have a small catalog and a private cluster, so they default to 15 —
+   * a wedged run fails the build in minutes rather than burning the external cap. Override either
+   * with {@code -Djpw.reindex.timeoutMin}. The waits poll run status and return the instant it goes
+   * terminal, so a large cap never slows a fast run — it only bounds the failure.
    */
   public static Duration reindexTimeout() {
-    return Duration.ofMinutes(
-        Integer.getInteger(REINDEX_TIMEOUT_MIN_PROP, DEFAULT_TIMEOUT_MINUTES));
+    final int fallback =
+        OssTestServer.isExternalMode() ? EXTERNAL_TIMEOUT_MINUTES : EMBEDDED_TIMEOUT_MINUTES;
+    return Duration.ofMinutes(Integer.getInteger(REINDEX_TIMEOUT_MIN_PROP, fallback));
   }
 
   /**
@@ -199,6 +204,9 @@ public final class ReindexHelpers {
    * #BASELINE_RECREATE_MAX_WAIT}: after a stop, fresh runs fast-fail until the stopped job's
    * wind-down releases the server-side reindex lock, so only spaced retries can outlast that
    * window. The budget only bounds the failure — the first successful run returns immediately.
+   *
+   * <p>Throws {@link IllegalStateException} if the baseline never succeeds within the budget, so no
+   * caller silently proceeds against a cluster whose indices are still half-dropped or unswapped.
    */
   public static AppRunRecord recreateAllAndWait(final ServerHandle server, final Duration timeout) {
     final long deadlineMillis = System.currentTimeMillis() + BASELINE_RECREATE_MAX_WAIT.toMillis();
@@ -211,6 +219,15 @@ public final class ReindexHelpers {
       triggerSearchIndexWithConfigWhenIdle(server, Map.of("recreateIndex", true), reindexTimeout());
       run = waitForRunAfter(server, SEARCH_INDEX_APP, triggeredAtMillis, timeout);
       logBaselineRecreateAttempt(run, attempt);
+    }
+    if (!isSuccess(run)) {
+      throw new IllegalStateException(
+          "Baseline recreate never succeeded after retrying for "
+              + BASELINE_RECREATE_MAX_WAIT
+              + "; final status '"
+              + statusOf(run)
+              + "'"
+              + failureSummary(run));
     }
     return run;
   }

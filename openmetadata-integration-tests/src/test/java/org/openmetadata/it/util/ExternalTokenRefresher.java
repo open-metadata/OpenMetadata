@@ -92,7 +92,8 @@ public final class ExternalTokenRefresher implements AutoCloseable {
   }
 
   private String login() {
-    final String body = "{\"email\":\"" + email + "\",\"password\":\"" + passwordB64 + "\"}";
+    final String body =
+        mapper.createObjectNode().put("email", email).put("password", passwordB64).toString();
     try {
       final HttpResponse<String> response =
           http.send(

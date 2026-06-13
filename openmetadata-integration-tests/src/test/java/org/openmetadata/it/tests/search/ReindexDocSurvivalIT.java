@@ -253,7 +253,7 @@ class ReindexDocSurvivalIT {
             + "\"}},\"_source\":[\""
             + sourceField
             + "\"]}";
-    final JsonNode hits = search.post("/" + index + "/_search", query).path("hits").path("hits");
+    final JsonNode hits = search.search(index, query).path("hits").path("hits");
     assertThat(hits.size()).as("exactly one indexed doc for %s", id).isEqualTo(1);
     assertThat(extract.apply(hits.get(0).path("_source"))).isEqualTo(expected);
   }

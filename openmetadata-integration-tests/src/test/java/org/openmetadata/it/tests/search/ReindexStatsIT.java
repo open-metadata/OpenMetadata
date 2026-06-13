@@ -83,7 +83,7 @@ class ReindexStatsIT {
   @Test
   void orphanedSchemaDoesNotFailReindex(final TestNamespace ns) {
     Assumptions.assumeTrue(
-        System.getenv("OM_URL") == null,
+        !OssTestServer.isExternalMode(),
         "Creating an orphan (schema row hard-deleted without cascading to its table) needs the "
             + "in-JVM DAO; the REST API would reject or cascade, so this case is embedded-only");
     final DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);

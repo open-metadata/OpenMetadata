@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.factories.StorageServiceTestFactory;
+import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -59,7 +60,7 @@ class ExtensionHighlightSearchIT {
   void highlightOnFlattenedExtensionFieldDoesNotFailTheShard(final TestNamespace ns)
       throws Exception {
     Assumptions.assumeTrue(
-        System.getenv("OM_URL") == null,
+        !OssTestServer.isExternalMode(),
         "Mutates the in-JVM SearchSettings cache — embedded only, skipped in external mode");
     Assumptions.assumeTrue(
         "opensearch".equalsIgnoreCase(System.getProperty("searchType", "elasticsearch")),

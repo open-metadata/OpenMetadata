@@ -100,7 +100,7 @@ public final class IndexAliasInspector {
    * Resolves the server's configured cluster alias (the index-name prefix). Embedded mode reads it
    * from the in-JVM {@link SearchRepository}. External mode (where the SearchRepository isn't
    * initialized in the test JVM) fetches it from the server's {@code /v1/test-support/search}
-   * passthrough, so assertions query the alias that actually exists on the remote cluster rather
+   * endpoints, so assertions query the alias that actually exists on the remote cluster rather
    * than a bare name that would 404 under a cluster alias.
    */
   private static String resolveClusterAlias(final ServerHandle server) {
@@ -148,10 +148,10 @@ public final class IndexAliasInspector {
   /** List of backing indices for an alias (typically one; empty if the alias does not exist). */
   public List<String> indicesForAlias(final String alias) {
     final List<String> indices = new ArrayList<>();
-    if (!client.exists("/_alias/" + alias)) {
+    if (!client.aliasExists(alias)) {
       return indices;
     }
-    final JsonNode body = client.get("/_alias/" + alias);
+    final JsonNode body = client.alias(alias);
     final Iterator<Map.Entry<String, JsonNode>> fields = body.fields();
     while (fields.hasNext()) {
       indices.add(fields.next().getKey());
@@ -161,7 +161,7 @@ public final class IndexAliasInspector {
 
   /** Live mapping JSON for the alias (the {@code properties} node). */
   public JsonNode mapping(final String alias) {
-    final JsonNode body = client.get("/" + alias + "/_mapping");
+    final JsonNode body = client.mapping(alias);
     final Iterator<Map.Entry<String, JsonNode>> fields = body.fields();
     if (!fields.hasNext()) {
       throw new IllegalStateException("No mapping returned for alias: " + alias);

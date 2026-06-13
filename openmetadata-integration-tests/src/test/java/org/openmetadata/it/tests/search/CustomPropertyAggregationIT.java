@@ -48,7 +48,7 @@ class CustomPropertyAggregationIT {
             + "\"aggs\":{\"strVals\":{\"value_count\":{\"field\":\"customPropertiesTyped.stringValue\"}}}}}}";
 
     final JsonNode[] holder = new JsonNode[1];
-    assertThatCode(() -> holder[0] = search.post("/" + index + "/_search", nestedValueCount))
+    assertThatCode(() -> holder[0] = search.search(index, nestedValueCount))
         .as("value_count on customPropertiesTyped.stringValue must not fail the shard")
         .doesNotThrowAnyException();
 
@@ -68,7 +68,7 @@ class CustomPropertyAggregationIT {
         "{\"size\":0,\"aggs\":{\"cp\":{\"nested\":{\"path\":\"customPropertiesTyped\"},"
             + "\"aggs\":{\"byName\":{\"terms\":{\"field\":\"customPropertiesTyped.name\",\"size\":10}}}}}}";
 
-    assertThatCode(() -> search.post("/" + index + "/_search", nestedTerms))
+    assertThatCode(() -> search.search(index, nestedTerms))
         .as("terms agg (Group By) on a custom-property keyword must not fail the shard")
         .doesNotThrowAnyException();
   }

@@ -87,7 +87,7 @@ class PipelineOwnerIndexUIIT {
       final String ownerId) {
     final String query =
         "{\"query\":{\"term\":{\"id.keyword\":\"" + pipelineId + "\"}},\"_source\":[\"owners\"]}";
-    final JsonNode hits = search.post("/" + index + "/_search", query).path("hits").path("hits");
+    final JsonNode hits = search.search(index, query).path("hits").path("hits");
     assertThat(hits.size()).as("exactly one indexed doc for pipeline %s", pipelineId).isEqualTo(1);
     final JsonNode owners = hits.get(0).path("_source").path("owners");
     assertThat(owners.isArray() && !owners.isEmpty())

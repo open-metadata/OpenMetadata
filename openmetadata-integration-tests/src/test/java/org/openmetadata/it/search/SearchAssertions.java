@@ -23,17 +23,17 @@ public final class SearchAssertions {
   }
 
   public boolean indexExists(final String indexOrAlias) {
-    return search.exists("/" + indexOrAlias);
+    return search.indexExists(indexOrAlias);
   }
 
   public long count(final String indexOrAlias) {
-    final JsonNode body = search.get("/" + indexOrAlias + "/_count");
+    final JsonNode body = search.count(indexOrAlias);
     return body.path("count").asLong();
   }
 
   public long countByEntityType(final String alias, final String entityType) {
     final String body = "{\"query\":{\"term\":{\"entityType\":\"" + entityType + "\"}}}";
-    final JsonNode response = search.post("/" + alias + "/_count", body);
+    final JsonNode response = search.count(alias, body);
     return response.path("count").asLong();
   }
 
@@ -47,12 +47,12 @@ public final class SearchAssertions {
   public long countByNamePrefix(final String indexOrAlias, final String namePrefix) {
     final String prefix = escape(namePrefix.toLowerCase(java.util.Locale.ROOT));
     final String body = "{\"query\":{\"prefix\":{\"name.keyword\":\"" + prefix + "\"}}}";
-    final JsonNode response = search.post("/" + indexOrAlias + "/_count", body);
+    final JsonNode response = search.count(indexOrAlias, body);
     return response.path("count").asLong();
   }
 
   public List<String> indicesForAlias(final String alias) {
-    final JsonNode body = search.get("/_alias/" + alias);
+    final JsonNode body = search.alias(alias);
     final List<String> indices = new ArrayList<>();
     final Iterator<Map.Entry<String, JsonNode>> fields = body.fields();
     while (fields.hasNext()) {
@@ -62,7 +62,7 @@ public final class SearchAssertions {
   }
 
   public List<String> listIndices(final String pattern) {
-    final JsonNode body = search.get("/_cat/indices/" + pattern + "?format=json&h=index");
+    final JsonNode body = search.indices(pattern);
     final List<String> result = new ArrayList<>();
     body.forEach(node -> result.add(node.path("index").asText()));
     return result;
@@ -85,7 +85,7 @@ public final class SearchAssertions {
     final String body =
         "{\"size\":0,\"aggs\":{\"dupes\":{\"terms\":{\"field\":\"id.keyword\","
             + "\"min_doc_count\":2,\"size\":1}}}}";
-    final JsonNode response = search.post("/" + alias + "/_search", body);
+    final JsonNode response = search.search(alias, body);
     return !response.path("aggregations").path("dupes").path("buckets").isEmpty();
   }
 
@@ -113,7 +113,7 @@ public final class SearchAssertions {
             + escape(fqn)
             + "\"}}"
             + "]}}}";
-    final JsonNode response = search.post("/" + alias + "/_count", body);
+    final JsonNode response = search.count(alias, body);
     final long count = response.path("count").asLong();
     assertThat(count).as("%s '%s' should be indexed in %s", entityType, fqn, alias).isEqualTo(1);
   }
@@ -129,7 +129,7 @@ public final class SearchAssertions {
             + escape(fqn)
             + "\"}}"
             + "]}}}";
-    final JsonNode response = search.post("/" + alias + "/_count", body);
+    final JsonNode response = search.count(alias, body);
     final long count = response.path("count").asLong();
     assertThat(count).as("%s '%s' should NOT be indexed in %s", entityType, fqn, alias).isZero();
   }

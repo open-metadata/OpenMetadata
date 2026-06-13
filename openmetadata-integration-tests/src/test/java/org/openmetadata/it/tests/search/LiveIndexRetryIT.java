@@ -62,7 +62,7 @@ class LiveIndexRetryIT {
   @BeforeAll
   static void setup() {
     Assumptions.assumeTrue(
-        System.getenv("OM_URL") == null,
+        !OssTestServer.isExternalMode(),
         "LiveIndexRetryIT pauses the ES container (EsOutageInjector) and reads the retry queue via "
             + "the in-JVM DAO — both require the embedded stack, so it is skipped in external mode");
     server = OssTestServer.defaultHandle();

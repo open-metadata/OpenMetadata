@@ -27,8 +27,8 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.service.Entity;
@@ -37,23 +37,26 @@ import org.openmetadata.service.search.SearchClient.RawSearchResponse;
 import org.openmetadata.service.security.Authorizer;
 
 /**
- * Admin-only, read-only passthrough to the search engine for integration tests that run against a
- * remote cluster (where {@code :9200} isn't reachable). Auto-registered via {@link Collection}.
+ * Admin-only, read-only search-engine introspection for integration tests that run against a remote
+ * cluster (where {@code :9200} isn't reachable). Auto-registered via {@link Collection}.
  *
- * <p>Forwards a whitelisted set of read-only operations ({@code _count}, {@code _search},
- * {@code _alias}, {@code _cat/indices}) to {@link
- * org.openmetadata.service.search.SearchClient#rawSearchRequest}. Mutating paths are rejected and
- * every method requires admin.
+ * <p>Exposes a fixed, typed set of read-only operations — {@code count}, {@code search},
+ * {@code alias}, {@code mapping}, {@code indices}, {@code exists} — each of which builds the engine
+ * request <b>server-side</b> from a validated index/alias name. There is no caller-controlled
+ * request path or HTTP method, so no mutating engine operation (e.g. {@code _doc}, {@code _bulk},
+ * {@code _delete_by_query}) can be reached through this resource. Every method requires admin.
  */
 @Path("/v1/test-support/search")
 @Collection(name = "testSupportSearch")
-@Tag(name = "TestSupport", description = "Admin-only read-only search passthrough for tests")
+@Tag(name = "TestSupport", description = "Admin-only read-only search introspection for tests")
 @Produces(MediaType.APPLICATION_JSON)
 @Slf4j
 public class TestSupportSearchResource {
 
-  private static final List<String> ALLOWED_TOKENS =
-      List.of("_count", "_search", "_alias", "_cat/indices", "_mapping");
+  /** Index/alias names are interpolated into the engine path, so restrict to a safe charset. */
+  private static final Pattern SAFE_NAME = Pattern.compile("[a-zA-Z0-9][a-zA-Z0-9._-]*");
+
+  private static final Pattern SAFE_PATTERN = Pattern.compile("[a-zA-Z0-9][a-zA-Z0-9._-]*\\*?");
 
   private final Authorizer authorizer;
 
@@ -62,28 +65,76 @@ public class TestSupportSearchResource {
   }
 
   @GET
-  @Path("/passthrough")
+  @Path("/count")
   @Operation(
-      operationId = "testSupportSearchGet",
-      summary = "Read-only GET passthrough to the search engine",
-      responses = {@ApiResponse(responseCode = "200", description = "Raw engine response")})
-  public Response passthroughGet(
-      @Context SecurityContext securityContext, @QueryParam("path") String path)
+      operationId = "testSupportSearchCount",
+      summary = "Document count for an index/alias",
+      responses = {@ApiResponse(responseCode = "200", description = "Raw engine count response")})
+  public Response count(@Context SecurityContext securityContext, @QueryParam("index") String index)
       throws IOException {
-    return forward(securityContext, "GET", path, null);
+    return engineGet(securityContext, "/" + safeName(index) + "/_count");
   }
 
   @POST
-  @Path("/passthrough")
+  @Path("/count")
   @Consumes(MediaType.APPLICATION_JSON)
   @Operation(
-      operationId = "testSupportSearchPost",
-      summary = "Read-only POST passthrough to the search engine",
-      responses = {@ApiResponse(responseCode = "200", description = "Raw engine response")})
-  public Response passthroughPost(
-      @Context SecurityContext securityContext, @QueryParam("path") String path, String body)
+      operationId = "testSupportSearchCountWithQuery",
+      summary = "Document count for an index/alias matching a query",
+      responses = {@ApiResponse(responseCode = "200", description = "Raw engine count response")})
+  public Response countWithQuery(
+      @Context SecurityContext securityContext, @QueryParam("index") String index, String query)
       throws IOException {
-    return forward(securityContext, "POST", path, body);
+    return enginePost(securityContext, "/" + safeName(index) + "/_count", query);
+  }
+
+  @POST
+  @Path("/search")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "testSupportSearchQuery",
+      summary = "Search an index/alias with a query body",
+      responses = {@ApiResponse(responseCode = "200", description = "Raw engine search response")})
+  public Response search(
+      @Context SecurityContext securityContext, @QueryParam("index") String index, String query)
+      throws IOException {
+    return enginePost(securityContext, "/" + safeName(index) + "/_search", query);
+  }
+
+  @GET
+  @Path("/alias")
+  @Operation(
+      operationId = "testSupportSearchAlias",
+      summary = "Backing indices for an alias",
+      responses = {@ApiResponse(responseCode = "200", description = "Raw engine alias response")})
+  public Response alias(@Context SecurityContext securityContext, @QueryParam("name") String name)
+      throws IOException {
+    return engineGet(securityContext, "/_alias/" + safeName(name));
+  }
+
+  @GET
+  @Path("/mapping")
+  @Operation(
+      operationId = "testSupportSearchMapping",
+      summary = "Mapping for an index/alias",
+      responses = {@ApiResponse(responseCode = "200", description = "Raw engine mapping response")})
+  public Response mapping(
+      @Context SecurityContext securityContext, @QueryParam("index") String index)
+      throws IOException {
+    return engineGet(securityContext, "/" + safeName(index) + "/_mapping");
+  }
+
+  @GET
+  @Path("/indices")
+  @Operation(
+      operationId = "testSupportSearchIndices",
+      summary = "Index names matching a pattern (_cat/indices)",
+      responses = {@ApiResponse(responseCode = "200", description = "Raw engine _cat response")})
+  public Response indices(
+      @Context SecurityContext securityContext, @QueryParam("pattern") String pattern)
+      throws IOException {
+    return engineGet(
+        securityContext, "/_cat/indices/" + safePattern(pattern) + "?format=json&h=index");
   }
 
   @GET
@@ -104,45 +155,66 @@ public class TestSupportSearchResource {
       operationId = "testSupportSearchExists",
       summary = "Whether an index or alias exists",
       responses = {@ApiResponse(responseCode = "200", description = "{\"exists\": boolean}")})
-  public Response exists(@Context SecurityContext securityContext, @QueryParam("path") String path)
+  public Response exists(
+      @Context SecurityContext securityContext,
+      @QueryParam("index") String index,
+      @QueryParam("alias") String alias)
       throws IOException {
     authorizer.authorizeAdmin(securityContext);
-    validateReadOnly(path);
     RawSearchResponse response =
         Entity.getSearchRepository()
             .getSearchClient()
-            .rawSearchRequest("GET", normalize(path), null);
+            .rawSearchRequest("GET", existsPath(index, alias), null);
     boolean exists = response.statusCode() >= 200 && response.statusCode() < 300;
     return Response.ok(Map.of("exists", exists)).build();
   }
 
-  private Response forward(SecurityContext securityContext, String method, String path, String body)
+  private Response engineGet(SecurityContext securityContext, String enginePath)
+      throws IOException {
+    return forward(securityContext, "GET", enginePath, null);
+  }
+
+  private Response enginePost(SecurityContext securityContext, String enginePath, String body)
+      throws IOException {
+    return forward(securityContext, "POST", enginePath, body);
+  }
+
+  private Response forward(
+      SecurityContext securityContext, String method, String enginePath, String body)
       throws IOException {
     authorizer.authorizeAdmin(securityContext);
-    validateReadOnly(path);
     RawSearchResponse response =
-        Entity.getSearchRepository()
-            .getSearchClient()
-            .rawSearchRequest(method, normalize(path), body);
+        Entity.getSearchRepository().getSearchClient().rawSearchRequest(method, enginePath, body);
     return Response.status(response.statusCode())
         .type(MediaType.APPLICATION_JSON)
         .entity(response.body())
         .build();
   }
 
-  private static String normalize(String path) {
-    if (CommonUtil.nullOrEmpty(path)) {
-      throw new BadRequestException("path query parameter is required");
+  private static String existsPath(String index, String alias) {
+    final String path;
+    if (!CommonUtil.nullOrEmpty(index) && CommonUtil.nullOrEmpty(alias)) {
+      path = "/" + safeName(index);
+    } else if (CommonUtil.nullOrEmpty(index) && !CommonUtil.nullOrEmpty(alias)) {
+      path = "/_alias/" + safeName(alias);
+    } else {
+      throw new BadRequestException(
+          "exactly one of 'index' or 'alias' query parameters is required");
     }
-    return path.startsWith("/") ? path : "/" + path;
+    return path;
   }
 
-  private static void validateReadOnly(String path) {
-    String value = normalize(path);
-    boolean allowed = ALLOWED_TOKENS.stream().anyMatch(value::contains);
-    if (!allowed) {
-      throw new BadRequestException(
-          "Only read-only search introspection paths are permitted: " + ALLOWED_TOKENS);
+  private static String safeName(String name) {
+    if (CommonUtil.nullOrEmpty(name) || !SAFE_NAME.matcher(name).matches()) {
+      throw new BadRequestException("invalid index/alias name: " + name);
     }
+    return name;
+  }
+
+  private static String safePattern(String pattern) {
+    if (CommonUtil.nullOrEmpty(pattern) || !SAFE_PATTERN.matcher(pattern).matches()) {
+      throw new BadRequestException("invalid index pattern: " + pattern);
+    }
+    return pattern;
   }
 }

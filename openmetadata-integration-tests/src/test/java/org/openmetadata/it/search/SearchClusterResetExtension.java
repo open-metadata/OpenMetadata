@@ -5,7 +5,6 @@ import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.openmetadata.it.server.ServerHandle;
 import org.openmetadata.it.util.OssTestServer;
-import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,20 +46,12 @@ public final class SearchClusterResetExtension implements BeforeEachCallback {
    * non-recreate reindex won't rebuild a missing index or re-promote a swapped alias. A full
    * recreate restores a clean, queryable baseline regardless of the prior test's end state.
    *
-   * <p>Fails fast when the recreate never succeeds (even after {@code recreateAllAndWait}'s
-   * spaced retries): letting the test proceed against a broken cluster just converts this one
-   * clear infrastructure error into a misleading per-test assertion failure.
+   * <p>{@link ReindexHelpers#recreateAllAndWait} throws if the baseline never succeeds, so a
+   * still-broken cluster fails the test fast with a clear cause rather than as a misleading
+   * per-test assertion failure.
    */
   private void rebuildBaseline(final ServerHandle server) {
     LOG.info("Recreating all search indices to restore a clean baseline before test");
-    final AppRunRecord run = ReindexHelpers.recreateAllAndWait(server, REBUILD_TIMEOUT);
-    if (!ReindexHelpers.isSuccess(run)) {
-      throw new IllegalStateException(
-          "Search cluster baseline could not be restored before the test: every recreate reindex"
-              + " attempt ended in status '"
-              + ReindexHelpers.statusOf(run)
-              + "' — the cluster is likely still inside a stopped-run's post-stop window or"
-              + " otherwise unhealthy; failing fast instead of asserting against broken state.");
-    }
+    ReindexHelpers.recreateAllAndWait(server, REBUILD_TIMEOUT);
   }
 }

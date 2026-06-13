@@ -17,6 +17,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.openmetadata.it.factories.EntityLoadSpec.EntityKind;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -808,9 +809,11 @@ public final class EntityLoader {
               final String name = namePrefix + index;
               final String email =
                   "u" + UUID.randomUUID().toString().replace("-", "") + EMAIL_DOMAIN;
-              SdkClients.adminClient()
-                  .users()
-                  .create(new CreateUser().withName(name).withEmail(email));
+              ns.trackRoot(
+                  Entity.USER,
+                  SdkClients.adminClient()
+                      .users()
+                      .create(new CreateUser().withName(name).withEmail(email)));
             });
     summary.recordCreated(EntityKind.USER, createdCount);
   }
@@ -884,13 +887,15 @@ public final class EntityLoader {
             count,
             EntityKind.DATA_PRODUCT,
             index ->
-                SdkClients.adminClient()
-                    .dataProducts()
-                    .create(
-                        new CreateDataProduct()
-                            .withName(namePrefix + index)
-                            .withDomains(List.of(domainFqns.get(index % domainFqns.size())))
-                            .withDescription("Loader data product " + index)));
+                ns.trackRoot(
+                    Entity.DATA_PRODUCT,
+                    SdkClients.adminClient()
+                        .dataProducts()
+                        .create(
+                            new CreateDataProduct()
+                                .withName(namePrefix + index)
+                                .withDomains(List.of(domainFqns.get(index % domainFqns.size())))
+                                .withDescription("Loader data product " + index))));
     summary.recordCreated(EntityKind.DATA_PRODUCT, createdCount);
   }
 
@@ -1260,10 +1265,16 @@ public final class EntityLoader {
       } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();
         throw new IllegalStateException("Interrupted while loading " + kind, e);
-      } catch (final ExecutionException | java.util.concurrent.TimeoutException e) {
+      } catch (final ExecutionException e) {
         failed++;
         if (firstFailure == null) {
-          firstFailure = (e instanceof ExecutionException) ? e.getCause() : e;
+          firstFailure = e.getCause();
+        }
+      } catch (final TimeoutException e) {
+        f.cancel(true);
+        failed++;
+        if (firstFailure == null) {
+          firstFailure = e;
         }
       }
     }

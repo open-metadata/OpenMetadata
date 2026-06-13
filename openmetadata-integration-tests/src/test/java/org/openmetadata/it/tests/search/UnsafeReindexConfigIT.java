@@ -59,7 +59,7 @@ class UnsafeReindexConfigIT {
   @BeforeAll
   static void setup() {
     Assumptions.assumeTrue(
-        System.getenv("OM_URL") == null,
+        !OssTestServer.isExternalMode(),
         "UnsafeReindexConfigIT drives the in-JVM reindex app and asserts on in-JVM server liveness — "
             + "embedded only, skipped in external mode");
     server = OssTestServer.defaultHandle();

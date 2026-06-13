@@ -14,7 +14,7 @@ import org.openmetadata.it.server.ServerHandle;
  * <p>When {@code OM_URL} + {@code OM_ADMIN_TOKEN} are set, this delegates to {@link
  * UiTestServer#get()} so the {@code tests/search/*IT} and scale suites run against the same
  * external cluster as the UI scenarios (no embedded bootstrap). {@code SearchClient} then routes
- * index introspection through the server's {@code /v1/test-support/search} passthrough.
+ * index introspection through the server's typed {@code /v1/test-support/search} endpoints.
  */
 public final class OssTestServer {
 
@@ -22,7 +22,7 @@ public final class OssTestServer {
 
   public static ServerHandle defaultHandle() {
     final ServerHandle handle;
-    if (hasExternalConfig()) {
+    if (isExternalMode()) {
       handle = UiTestServer.get();
     } else {
       handle =
@@ -36,7 +36,13 @@ public final class OssTestServer {
     return handle;
   }
 
-  private static boolean hasExternalConfig() {
+  /**
+   * Whether the suite is wired to a remote cluster — both {@code OM_URL} and {@code OM_ADMIN_TOKEN}
+   * present, via env var <b>or</b> system property. Tests that are embedded-only must gate on this
+   * (not a bare {@code System.getenv("OM_URL")}) so they skip correctly when external mode is
+   * selected with {@code -DOM_URL=...}.
+   */
+  public static boolean isExternalMode() {
     return lookup("OM_URL") != null && lookup("OM_ADMIN_TOKEN") != null;
   }
 

@@ -59,7 +59,7 @@ class ReindexOutageRecoveryIT {
   @BeforeAll
   static void setup() {
     Assumptions.assumeTrue(
-        System.getenv("OM_URL") == null,
+        !OssTestServer.isExternalMode(),
         "ReindexOutageRecoveryIT pauses the ES container (EsOutageInjector) — embedded only, "
             + "skipped in external mode");
     server = OssTestServer.defaultHandle();
