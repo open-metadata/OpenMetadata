@@ -26,11 +26,12 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.storage.s3Connection import (
-    S3Connection,
+    S3Connection as S3ConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
@@ -43,7 +44,7 @@ class S3ObjectStoreClient:
     session: Any = None
 
 
-def get_connection(connection: S3Connection) -> S3ObjectStoreClient:
+def get_connection(connection: S3ConnectionConfig) -> S3ObjectStoreClient:
     """
     Returns 2 clients - the s3 client and the cloudwatch client needed for total nr of objects and total size
     """
@@ -58,34 +59,39 @@ def get_connection(connection: S3Connection) -> S3ObjectStoreClient:
     )
 
 
-def test_connection(
-    metadata: OpenMetadata,
-    client: S3ObjectStoreClient,
-    service_connection: S3Connection,
-    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
-) -> TestConnectionResult:
-    """
-    Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
-    """
+class S3Connection(BaseConnection[S3ConnectionConfig, S3ObjectStoreClient]):
+    def _get_client(self) -> S3ObjectStoreClient:
+        return get_connection(self.service_connection)
 
-    def test_buckets(connection: S3Connection, client: S3ObjectStoreClient):
-        if connection.bucketNames:
-            for bucket_name in connection.bucketNames:
-                client.s3_client.list_objects(Bucket=bucket_name)
-            return
-        client.s3_client.list_buckets()
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        """
+        Test connection. This can be executed either as part
+        of a metadata workflow or during an Automation Workflow
+        """
+        client = self.client
+        service_connection = self.service_connection
 
-    test_fn = {
-        "ListBuckets": partial(test_buckets, client=client, connection=service_connection),
-        "GetMetrics": partial(client.cloudwatch_client.list_metrics, Namespace="AWS/S3"),
-    }
+        def test_buckets(connection: S3ConnectionConfig, client: S3ObjectStoreClient):
+            if connection.bucketNames:
+                for bucket_name in connection.bucketNames:
+                    client.s3_client.list_objects(Bucket=bucket_name)  # pyright: ignore[reportAttributeAccessIssue]
+                return
+            client.s3_client.list_buckets()  # pyright: ignore[reportAttributeAccessIssue]
 
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
+        test_fn = {
+            "ListBuckets": partial(test_buckets, client=client, connection=service_connection),
+            "GetMetrics": partial(client.cloudwatch_client.list_metrics, Namespace="AWS/S3"),  # pyright: ignore[reportAttributeAccessIssue]
+        }
+
+        return test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
+            automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
+        )
