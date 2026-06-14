@@ -28,10 +28,10 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as ExportIcon } from '../../assets/svg/ic-download.svg';
 import { AuditLogFilters, AuditLogList } from '../../components/AuditLog';
 import '../../components/common/atoms/filters/FilterSelection.less';
-import { useBreadcrumbs } from '../../components/common/atoms/navigation/useBreadcrumbs';
 import { useSearch } from '../../components/common/atoms/navigation/useSearch';
 import Banner from '../../components/common/Banner/Banner';
 import DatePicker from '../../components/common/DatePicker/DatePicker';
+import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import { CSVExportWebsocketResponse } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
@@ -301,18 +301,6 @@ const AuditLogsPage = () => {
     }
   }, [exportDateRange, searchTerm, filterParams]);
 
-  const { breadcrumbs } = useBreadcrumbs({
-    home: { show: false },
-    items: [
-      { name: t('label.setting-plural'), url: getSettingPath() },
-      {
-        name: t('label.access-control'),
-        url: getSettingPath(GlobalSettingsMenuCategory.ACCESS),
-      },
-      { name: t('label.audit-log-plural'), isActive: true },
-    ],
-  });
-
   const handleExportModalClose = useCallback(() => {
     if (!isExporting) {
       setIsExportModalOpen(false);
@@ -333,7 +321,19 @@ const AuditLogsPage = () => {
       <div
         className="tw:flex tw:flex-col tw:h-full tw:min-h-0 tw:overflow-hidden"
         data-testid="audit-logs-page">
-        <div className="tw:shrink-0 tw:mb-2">{breadcrumbs}</div>
+        <div className="tw:shrink-0">
+          <HeaderBreadcrumb
+            items={[
+              { label: t('label.setting-plural'), href: getSettingPath() },
+              {
+                label: t('label.access-control'),
+                href: getSettingPath(GlobalSettingsMenuCategory.ACCESS),
+              },
+              { label: t('label.audit-log-plural') },
+            ]}
+            showHome={false}
+          />
+        </div>
         {/* Header */}
         <Card
           className="tw:flex tw:justify-between tw:items-center tw:mt-1 tw:mb-2 tw:px-6 tw:py-4"
