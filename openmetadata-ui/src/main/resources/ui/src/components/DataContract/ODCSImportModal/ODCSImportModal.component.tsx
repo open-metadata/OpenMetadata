@@ -719,9 +719,10 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
       serverValidation.schemaValidation.failed > 0
     ) {
       return (
-        <div
-          className="tw:bg-bg-secondary tw:rounded-lg tw:h-full tw:flex tw:flex-col"
-          data-testid="server-validation-failed-error-panel">
+        <Box
+          className="tw:bg-bg-secondary tw:rounded-lg tw:h-full"
+          data-testid="server-validation-failed-error-panel"
+          direction="col">
           <Box
             align="center"
             className="tw:mb-4 tw:pb-4 tw:border-b tw:border-secondary"
@@ -793,7 +794,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
               </Typography>
             </Box>
           </div>
-        </div>
+        </Box>
       );
     }
 

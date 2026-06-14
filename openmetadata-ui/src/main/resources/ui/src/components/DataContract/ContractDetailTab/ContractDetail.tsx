@@ -314,7 +314,7 @@ const ContractDetail: React.FC<{
         />
         <Box className="tw:w-full" direction="col" gap={1}>
           <Box align="center" className="tw:w-full" gap={1} justify="between">
-            <Box align="center" gap={2}>
+            <Box align="center" gap={1}>
               <div className="tw:max-w-125">
                 <Typography
                   ellipsis
@@ -603,7 +603,6 @@ const ContractDetail: React.FC<{
                 />
                 <Dropdown.Item
                   data-testid="import-openmetadata-contract-button"
-                  icon={ImportIconContract}
                   id={DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_OPENMETADATA}>
                   <Box align="center" gap={2}>
                     <ImportIconContract
@@ -620,8 +619,7 @@ const ContractDetail: React.FC<{
                 </Dropdown.Item>
                 <Dropdown.Item
                   data-testid="import-odcs-contract-button"
-                  id={DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_ODCS}
-                  label={t('label.import-odcs')}>
+                  id={DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_ODCS}>
                   <Box align="center" gap={2}>
                     <ImportIconContract
                       aria-hidden="true"
@@ -709,24 +707,30 @@ const ContractDetail: React.FC<{
                     title={t('label.inherited-entity', {
                       entity: t('label.terms-of-service'),
                     })}>
-                    <button className="tw:flex tw:items-center tw:border-none tw:bg-transparent tw:p-0 tw:cursor-pointer">
-                      <InheritIcon
-                        className="inherit-icon cursor-pointer"
-                        width={14}
+                    <TooltipTrigger>
+                      <ButtonUtility
+                        color="tertiary"
+                        icon={
+                          <InheritIcon
+                            className="inherit-icon cursor-pointer"
+                            width={16}
+                          />
+                        }
+                        size="sm"
                       />
-                    </button>
+                    </TooltipTrigger>
                   </Tooltip>
                 ) : null;
 
                 return (
                   <div className="contract-card-items">
                     <div className="contract-card-header-container">
-                      <div className="d-flex items-center gap-1">
+                      <Box align="center" gap={1}>
                         <Typography as="span" className="contract-card-header">
                           {t('label.terms-of-service')}
                         </Typography>
                         {inheritedIcon}
-                      </div>
+                      </Box>
                       <Divider className="tw:border-b-2 tw:border-dotted tw:border-gray-200 tw:bg-transparent" />
                     </div>
 
@@ -768,12 +772,18 @@ const ContractDetail: React.FC<{
                       title={t('label.inherited-entity', {
                         entity: t('label.security'),
                       })}>
-                      <button className="tw:flex tw:items-center tw:border-none tw:bg-transparent tw:p-0 tw:cursor-pointer">
-                        <InheritIcon
-                          className="inherit-icon cursor-pointer"
-                          width={14}
+                      <TooltipTrigger>
+                        <ButtonUtility
+                          color="tertiary"
+                          icon={
+                            <InheritIcon
+                              className="inherit-icon cursor-pointer"
+                              width={16}
+                            />
+                          }
+                          size="sm"
                         />
-                      </button>
+                      </TooltipTrigger>
                     </Tooltip>
                   ) : null;
 
@@ -782,14 +792,14 @@ const ContractDetail: React.FC<{
                       className="contract-card-items"
                       data-testid="security-card">
                       <div className="contract-card-header-container">
-                        <div className="d-flex items-center gap-1">
+                        <Box align="center" gap={1}>
                           <Typography
                             as="span"
                             className="contract-card-header">
                             {t('label.security')}
                           </Typography>
                           {inheritedIcon}
-                        </div>
+                        </Box>
                         <Divider className="tw:border-b-2 tw:border-dotted tw:border-gray-200 tw:bg-transparent" />
                       </div>
 
