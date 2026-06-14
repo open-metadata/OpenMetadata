@@ -29,7 +29,7 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
+import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import Loader from '../../common/Loader/Loader';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import './contract-tab.less';
@@ -198,14 +198,13 @@ export const ContractTab = () => {
   ) : (
     <div className="contract-tab-container">
       {content}
-      <DeleteWidgetModal
-        allowSoftDelete={false}
-        entityName={contract?.name ?? ''}
-        entityType={EntityType.DATA_CONTRACT}
-        visible={isDeleteModalVisible}
-        onCancel={() => {
-          setIsDeleteModalVisible(false);
-        }}
+      <DeleteModal
+        entityTitle={contract?.name ?? ''}
+        message={t('message.are-you-sure-you-want-to-delete-this-entity', {
+          entity: t('label.contract'),
+        })}
+        open={isDeleteModalVisible}
+        onCancel={() => setIsDeleteModalVisible(false)}
         onDelete={handleContractDeleteConfirm}
       />
     </div>
