@@ -20,10 +20,8 @@ import { ExportTypes } from '../constants/Export.constants';
 import type { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
 import { exportDatabaseServiceDetailsInCSV } from '../rest/serviceAPI';
-import { getEntityImportPath } from './EntityUtils';
+import { getEntityImportPath } from './EntityPureUtils';
 import { t } from './i18next/LocalUtil';
-
-export { getDatabaseConfig } from './DatabaseServicePureUtils';
 
 export const ExtraDatabaseServiceDropdownOptions = (
   fqn: string,

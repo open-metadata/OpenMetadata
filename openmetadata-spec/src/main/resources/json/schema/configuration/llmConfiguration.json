@@ -1,0 +1,98 @@
+{
+  "$id": "https://open-metadata.org/schema/configuration/llmConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LLMConfiguration",
+  "description": "Platform-wide configuration for LLM chat/completion providers. Generic - usable by any feature that needs structured LLM completions.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.configuration.LLMConfiguration",
+  "definitions": {
+    "llmProvider": {
+      "javaType": "org.openmetadata.schema.configuration.LLMProvider",
+      "description": "Supported LLM completion providers.",
+      "type": "string",
+      "enum": ["bedrock", "openai", "azureOpenAI", "google", "anthropic", "noop"],
+      "javaEnums": [
+        { "name": "BEDROCK" },
+        { "name": "OPENAI" },
+        { "name": "AZURE_OPENAI" },
+        { "name": "GOOGLE" },
+        { "name": "ANTHROPIC" },
+        { "name": "NOOP" }
+      ],
+      "default": "noop"
+    }
+  },
+  "properties": {
+    "enabled": {
+      "description": "Whether LLM completion features are enabled.",
+      "type": "boolean",
+      "default": false
+    },
+    "provider": {
+      "$ref": "#/definitions/llmProvider"
+    },
+    "maxConcurrentRequests": {
+      "description": "Maximum number of concurrent LLM completion requests.",
+      "type": "integer",
+      "default": 5,
+      "minimum": 1
+    },
+    "bedrock": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.configuration.LLMBedrockConfig",
+      "properties": {
+        "awsConfig": {
+          "description": "AWS credentials configuration for Bedrock service.",
+          "$ref": "../security/credentials/awsBaseConfig.json"
+        },
+        "modelId": { "type": "string", "default": "anthropic.claude-3-5-sonnet-20240620-v1:0" },
+        "temperature": { "type": "number", "default": 0.0 },
+        "maxTokens": { "type": "integer", "default": 4096 },
+        "timeoutSeconds": { "type": "integer", "default": 60 }
+      },
+      "additionalProperties": false
+    },
+    "openai": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.configuration.LLMOpenAIConfig",
+      "properties": {
+        "apiKey": { "type": "string", "mask": true },
+        "modelId": { "type": "string", "default": "gpt-4o-mini" },
+        "endpoint": { "type": "string" },
+        "deploymentName": { "type": "string" },
+        "apiVersion": { "type": "string", "default": "2024-02-01" },
+        "temperature": { "type": "number", "default": 0.0 },
+        "maxTokens": { "type": "integer", "default": 4096 },
+        "timeoutSeconds": { "type": "integer", "default": 60 }
+      },
+      "additionalProperties": false
+    },
+    "google": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.configuration.LLMGoogleConfig",
+      "properties": {
+        "apiKey": { "type": "string", "mask": true },
+        "modelId": { "type": "string", "default": "gemini-2.5-flash" },
+        "endpoint": { "type": "string" },
+        "temperature": { "type": "number", "default": 0.0 },
+        "maxTokens": { "type": "integer", "default": 4096 },
+        "timeoutSeconds": { "type": "integer", "default": 60 }
+      },
+      "additionalProperties": false
+    },
+    "anthropic": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.configuration.LLMAnthropicConfig",
+      "properties": {
+        "apiKey": { "type": "string", "mask": true },
+        "modelId": { "type": "string", "default": "claude-3-5-sonnet-20240620" },
+        "baseUrl": { "type": "string", "default": "https://api.anthropic.com" },
+        "temperature": { "type": "number", "default": 0.0 },
+        "maxTokens": { "type": "integer", "default": 4096 },
+        "timeoutSeconds": { "type": "integer", "default": 60 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

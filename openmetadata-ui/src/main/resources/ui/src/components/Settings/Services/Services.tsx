@@ -45,11 +45,9 @@ import { ServicesType } from '../../../interface/service.interface';
 import { getServices, searchService } from '../../../rest/serviceAPI';
 import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import { getServiceLogo } from '../../../utils/EntityDisplayUtils';
-import {
-  getColumnSorter,
-  getEntityName,
-  highlightSearchText,
-} from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { highlightSearchText } from '../../../utils/EntitySearchUtils';
+import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getServiceDetailsPath } from '../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
