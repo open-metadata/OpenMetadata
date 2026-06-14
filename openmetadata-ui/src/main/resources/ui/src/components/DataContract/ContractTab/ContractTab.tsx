@@ -61,6 +61,7 @@ export const ContractTab = () => {
     useState<OperationPermission>();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { id, name: entityName } = entityData ?? {};
 
@@ -122,6 +123,7 @@ export const ContractTab = () => {
     if (!contract?.id) {
       return;
     }
+    setIsDeleting(true);
     try {
       await deleteContractById(contract.id);
       showSuccessToast(
@@ -131,11 +133,12 @@ export const ContractTab = () => {
       );
       fetchContract();
       setTabMode(DataContractTabMode.VIEW);
+      setIsDeleteModalVisible(false);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsDeleting(false);
     }
-
-    setIsDeleteModalVisible(false);
   };
 
   useEffect(() => {
@@ -200,6 +203,7 @@ export const ContractTab = () => {
       {content}
       <DeleteModal
         entityTitle={contract?.name ?? ''}
+        isDeleting={isDeleting}
         message={t('message.are-you-sure-you-want-to-delete-this-entity', {
           entity: t('label.contract'),
         })}
