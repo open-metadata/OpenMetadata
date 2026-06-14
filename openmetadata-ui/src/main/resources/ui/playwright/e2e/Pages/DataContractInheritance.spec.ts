@@ -1283,11 +1283,7 @@ test.describe('Data Contract Inheritance', () => {
 
       await page.getByTestId('delete-contract-button').click();
 
-      // Confirm deletion in modal - must type DELETE to enable confirm button
-      await expect(page.locator('.ant-modal-title')).toBeVisible();
-      await page.getByTestId('confirmation-text-input').click();
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
-      await expect(page.getByTestId('confirm-button')).toBeEnabled();
+      await expect(page.getByTestId('modal-header')).toBeVisible();
       await page.getByTestId('confirm-button').click();
 
       await deleteResponse;
