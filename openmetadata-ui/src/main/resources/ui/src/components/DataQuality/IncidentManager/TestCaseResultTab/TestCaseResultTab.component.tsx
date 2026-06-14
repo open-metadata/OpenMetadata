@@ -18,7 +18,6 @@ import { compare } from 'fast-json-patch';
 import chunk from 'lodash/chunk';
 import isEmpty from 'lodash/isEmpty';
 import isUndefined from 'lodash/isUndefined';
-import startCase from 'lodash/startCase';
 import toString from 'lodash/toString';
 import React, { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -109,7 +108,10 @@ const TestCaseResultTab = () => {
     if (testCaseData?.testDefinition?.id) {
       try {
         const definition = await getTestDefinitionById(
-          testCaseData.testDefinition.id
+          testCaseData.testDefinition.id,
+          {
+            fields: ['parameterDefinition', 'sqlExpression'],
+          }
         );
         setTestDefinition(definition);
       } catch (error) {
@@ -187,6 +189,30 @@ const TestCaseResultTab = () => {
       }
     );
   }, [testCaseData?.parameterValues]);
+
+  const sqlExpressionItems = useMemo(() => {
+    if (!isEmpty(withSqlParams)) {
+      return withSqlParams.map((param) => ({
+        isEditable: true,
+        key: param.name ?? 'sqlExpression',
+        label: t('label.sql-expression'),
+        value: param.value ?? '',
+      }));
+    }
+
+    if (!isEmpty(testDefinition?.sqlExpression)) {
+      return [
+        {
+          isEditable: false,
+          key: 'test-definition-sql-expression',
+          label: t('label.sql-expression'),
+          value: testDefinition?.sqlExpression ?? '',
+        },
+      ];
+    }
+
+    return [];
+  }, [testDefinition?.sqlExpression, t, withSqlParams]);
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
     if (!testCaseData) {
@@ -496,21 +522,21 @@ const TestCaseResultTab = () => {
             </div>
           </div>
 
-          {!isUndefined(withSqlParams) && !isVersionPage ? (
+          {!isEmpty(sqlExpressionItems) && !isVersionPage ? (
             <div className="tw:w-full">
-              {withSqlParams.map((param) => (
+              {sqlExpressionItems.map((param) => (
                 <div
                   className="sql-expression-container"
                   data-testid="sql-expression-container"
-                  key={param.name}>
+                  key={param.key}>
                   <div className="tw:flex tw:w-full tw:flex-col tw:gap-1">
                     <div className="tw:flex tw:flex-row tw:items-center tw:gap-1">
                       <Typography
                         as="span"
                         className="parameter-title tw:text-body">
-                        {startCase(param.name)}
+                        {param.label}
                       </Typography>
-                      {hasEditPermission && (
+                      {hasEditPermission && param.isEditable && (
                         <EditIconButton
                           newLook
                           data-testid="edit-sql-param-icon"
@@ -530,7 +556,7 @@ const TestCaseResultTab = () => {
                         styleActiveLine: false,
                         readOnly: true,
                       }}
-                      value={param.value ?? ''}
+                      value={param.value}
                     />
                   </div>
                 </div>
