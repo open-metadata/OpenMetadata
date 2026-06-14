@@ -482,9 +482,7 @@ export const deleteContract = async (
 
   if (contractName) {
     await expect(
-      page
-        .getByTestId('modal-header')
-        .getByText(contractName)
+      page.getByTestId('modal-header').getByText(contractName)
     ).toBeVisible();
   } else {
     await expect(page.getByTestId('modal-header')).toBeVisible();
