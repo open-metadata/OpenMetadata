@@ -152,7 +152,6 @@
     "react-latex-next": "^3.0.0",
     "react-markdown": "^10.1.0",
     "react-oidc": "^1.0.3",
-    "react-markdown": "^10.1.0",
     "react-papaparse": "^4.1.0",
     "react-quill-new": "^3.4.0",
     "react-reflex": "^4.1.0",
@@ -301,6 +300,7 @@
     "lodash": "4.18.1",
     "lodash-es": "4.18.1",
     "markdown-it": ">=14.1.1",
-    "uuid": "^14.0.0"
+    "uuid": "^14.0.0",
+    "esbuild": "^0.28.1"
   }
 }
