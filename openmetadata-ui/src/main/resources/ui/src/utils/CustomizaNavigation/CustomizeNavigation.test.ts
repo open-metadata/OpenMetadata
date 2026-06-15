@@ -433,7 +433,11 @@ describe('CustomizeNavigation Utils', () => {
           icon: 'home-icon',
           children: [
             { key: 'dashboard', title: 'Dashboard', icon: 'dashboard-icon' },
-            { key: 'new-feature', title: 'New Feature', icon: 'new-feature-icon' },
+            {
+              key: 'new-feature',
+              title: 'New Feature',
+              icon: 'new-feature-icon',
+            },
           ],
         },
         { key: 'explore', title: 'Explore', icon: 'explore-icon' },
@@ -446,7 +450,12 @@ describe('CustomizeNavigation Utils', () => {
           isHidden: false,
           pageId: 'home',
           children: [
-            { id: 'dashboard', title: 'Dashboard', isHidden: true, pageId: 'dashboard' },
+            {
+              id: 'dashboard',
+              title: 'Dashboard',
+              isHidden: true,
+              pageId: 'dashboard',
+            },
           ],
         },
         { id: 'explore', title: 'Explore', isHidden: false, pageId: 'explore' },
@@ -470,7 +479,11 @@ describe('CustomizeNavigation Utils', () => {
           ],
         },
         { key: 'explore', title: 'Explore', icon: 'explore-icon' },
-        { key: 'ontology-explorer', title: 'Ontology Explorer', icon: 'ontology-icon' },
+        {
+          key: 'ontology-explorer',
+          title: 'Ontology Explorer',
+          icon: 'ontology-icon',
+        },
       ]);
 
       const savedNav: NavigationItem[] = [
@@ -480,7 +493,12 @@ describe('CustomizeNavigation Utils', () => {
           isHidden: false,
           pageId: 'home',
           children: [
-            { id: 'dashboard', title: 'Dashboard', isHidden: false, pageId: 'dashboard' },
+            {
+              id: 'dashboard',
+              title: 'Dashboard',
+              isHidden: false,
+              pageId: 'dashboard',
+            },
           ],
         },
         { id: 'explore', title: 'Explore', isHidden: false, pageId: 'explore' },
@@ -488,25 +506,38 @@ describe('CustomizeNavigation Utils', () => {
 
       const result = filterHiddenNavigationItems(savedNav);
 
-      expect(result.some((item) => item.key === 'ontology-explorer')).toBe(true);
+      expect(result.some((item) => item.key === 'ontology-explorer')).toBe(
+        true
+      );
     });
 
     it('should not show a new top-level item that is explicitly hidden in the saved persona nav', () => {
       (leftSidebarClassBase.getSidebarItems as jest.Mock).mockReturnValueOnce([
         { key: 'home', title: 'Home', icon: 'home-icon', children: [] },
         { key: 'explore', title: 'Explore', icon: 'explore-icon' },
-        { key: 'ontology-explorer', title: 'Ontology Explorer', icon: 'ontology-icon' },
+        {
+          key: 'ontology-explorer',
+          title: 'Ontology Explorer',
+          icon: 'ontology-icon',
+        },
       ]);
 
       const savedNav: NavigationItem[] = [
         { id: 'home', title: 'Home', isHidden: false, pageId: 'home' },
         { id: 'explore', title: 'Explore', isHidden: false, pageId: 'explore' },
-        { id: 'ontology-explorer', title: 'Ontology Explorer', isHidden: true, pageId: 'ontology-explorer' },
+        {
+          id: 'ontology-explorer',
+          title: 'Ontology Explorer',
+          isHidden: true,
+          pageId: 'ontology-explorer',
+        },
       ];
 
       const result = filterHiddenNavigationItems(savedNav);
 
-      expect(result.some((item) => item.key === 'ontology-explorer')).toBe(false);
+      expect(result.some((item) => item.key === 'ontology-explorer')).toBe(
+        false
+      );
     });
 
     it('should not show a new child item that is explicitly hidden in the saved persona nav', () => {
@@ -517,7 +548,11 @@ describe('CustomizeNavigation Utils', () => {
           icon: 'home-icon',
           children: [
             { key: 'dashboard', title: 'Dashboard', icon: 'dashboard-icon' },
-            { key: 'new-feature', title: 'New Feature', icon: 'new-feature-icon' },
+            {
+              key: 'new-feature',
+              title: 'New Feature',
+              icon: 'new-feature-icon',
+            },
           ],
         },
         { key: 'explore', title: 'Explore', icon: 'explore-icon' },
@@ -530,8 +565,18 @@ describe('CustomizeNavigation Utils', () => {
           isHidden: false,
           pageId: 'home',
           children: [
-            { id: 'dashboard', title: 'Dashboard', isHidden: false, pageId: 'dashboard' },
-            { id: 'new-feature', title: 'New Feature', isHidden: true, pageId: 'new-feature' },
+            {
+              id: 'dashboard',
+              title: 'Dashboard',
+              isHidden: false,
+              pageId: 'dashboard',
+            },
+            {
+              id: 'new-feature',
+              title: 'New Feature',
+              isHidden: true,
+              pageId: 'new-feature',
+            },
           ],
         },
         { id: 'explore', title: 'Explore', isHidden: false, pageId: 'explore' },
@@ -540,7 +585,9 @@ describe('CustomizeNavigation Utils', () => {
       const result = filterHiddenNavigationItems(savedNav);
       const homeItem = result.find((item) => item.key === 'home');
 
-      expect(homeItem?.children?.some((c) => c.key === 'new-feature')).toBeFalsy();
+      expect(
+        homeItem?.children?.some((c) => c.key === 'new-feature')
+      ).toBeFalsy();
     });
   });
 
