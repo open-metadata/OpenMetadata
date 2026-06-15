@@ -16,6 +16,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.net.URI;
+import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
@@ -88,6 +89,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ContainerDataModel;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.Include;
@@ -118,6 +120,9 @@ import org.openmetadata.service.jdbi3.TaskRepository;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
+  private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
+  private static final String CHANGE_HEADER = "X-OpenMetadata-Change";
+  private static final String API_PREFIX = "/api";
 
   private static String entityLink(String entityType, String entityFqn) {
     return String.format("<#E::%s::%s>", entityType, entityFqn);
@@ -3655,7 +3660,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         sendDirectJson("POST", String.format("/v1/tasks/%s/resolve", task.getId()), body);
 
     assertEquals(200, response.statusCode());
-    assertChangeHeader(response, "taskResolved");
+    assertChangeHeader(response, EventType.TASK_RESOLVED.value());
   }
 
   @Test
@@ -3676,7 +3681,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             "");
 
     assertEquals(200, response.statusCode());
-    assertChangeHeader(response, "taskClosed");
+    assertChangeHeader(response, EventType.TASK_CLOSED.value());
   }
 
   @Test
@@ -3714,7 +3719,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         sendDirectJson("PUT", String.format("/v1/tasks/%s/suggestion/apply", task.getId()), "");
 
     assertEquals(200, response.statusCode());
-    assertChangeHeader(response, "taskResolved");
+    assertChangeHeader(response, EventType.TASK_RESOLVED.value());
   }
 
   @Test
@@ -4014,7 +4019,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
   private static HttpResponse<String> sendDirectJson(String method, String path, String body)
       throws Exception {
-    String url = SdkClients.getServerUrl() + "/api" + path;
+    String url = SdkClients.getServerUrl() + normalizeApiPath(path);
     HttpRequest.Builder builder =
         HttpRequest.newBuilder()
             .uri(URI.create(url))
@@ -4026,13 +4031,19 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             ? HttpRequest.BodyPublishers.noBody()
             : HttpRequest.BodyPublishers.ofString(body);
     HttpRequest request = builder.method(method, publisher).build();
-    return java.net.http.HttpClient.newHttpClient()
-        .send(request, HttpResponse.BodyHandlers.ofString());
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
-  private static void assertChangeHeader(HttpResponse<String> response, String expectedHeaderValue) {
-    assertEquals(
-        expectedHeaderValue, response.headers().firstValue("X-OpenMetadata-Change").orElse(null));
+  private static String normalizeApiPath(String path) {
+    String normalizedPath = path.startsWith("/") ? path : "/" + path;
+    return normalizedPath.startsWith(API_PREFIX + "/")
+        ? normalizedPath
+        : API_PREFIX + normalizedPath;
+  }
+
+  private static void assertChangeHeader(
+      HttpResponse<String> response, String expectedHeaderValue) {
+    assertEquals(expectedHeaderValue, response.headers().firstValue(CHANGE_HEADER).orElse(null));
   }
 
   private void awaitSuggestionTaskDeleted(UUID creatorId, String aboutEntity, UUID taskId) {
