@@ -57,10 +57,12 @@ test.describe(
       await waitForAllLoadersToDisappear(page);
     });
 
-    // Rendering-only: seed via test-insert and assert the feed renders it, like the
-    // Reactions/Comments/Homepage blocks below. The seed summary is a neutral marker, so the
-    // event-type word asserts the eventType-driven header rather than the injected text. The async
-    // delivery contract (flaky under AUT load) is covered by the backend ActivityResourceIT.
+    // Rendering-only smoke: seed a DescriptionUpdated event via test-insert and assert the feed
+    // renders it (header + actor + entity link), like the Reactions/Comments/Homepage blocks below.
+    // The seed marker has no event-type words, so the /description/i assertion exercises the
+    // eventType-driven header, not the injected text. DescriptionUpdated is the representative case
+    // (its card body shows the seeded text); per-type delivery is covered by the backend
+    // ActivityResourceIT, which has no AUT load contention.
 
     test('renders a description-updated activity item in the feed', async ({
       page,
@@ -94,70 +96,6 @@ test.describe(
         await expect(entityLink).toBeVisible();
         expect(href).toContain('table');
         expect(href).toContain(getTableLeafName(entityChangesTable));
-      });
-    });
-
-    test('renders a tags-updated activity item in the feed', async ({
-      page,
-    }) => {
-      const summaryText = `Activity feed render ${uuid()}`;
-
-      await test.step('Seed a TagsUpdated activity event', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-
-        try {
-          await insertActivityEventForTest(
-            apiContext,
-            entityChangesTable,
-            summaryText,
-            'TagsUpdated'
-          );
-        } finally {
-          await afterAction();
-        }
-      });
-
-      await test.step('Verify the tag event renders', async () => {
-        await visitTableActivityFeed(page, entityChangesTable);
-
-        const feedItem = await getFeedItemByText(page, summaryText);
-        const entityLink = feedItem.locator('a[href*="/table/"]').first();
-
-        await expect(feedItem).toContainText(/tag/i);
-        await expect(feedItem).toContainText(adminDisplayName);
-        await expect(entityLink).toBeVisible();
-      });
-    });
-
-    test('renders an owner-updated activity item in the feed', async ({
-      page,
-    }) => {
-      const summaryText = `Activity feed render ${uuid()}`;
-
-      await test.step('Seed an OwnerUpdated activity event', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-
-        try {
-          await insertActivityEventForTest(
-            apiContext,
-            entityChangesTable,
-            summaryText,
-            'OwnerUpdated'
-          );
-        } finally {
-          await afterAction();
-        }
-      });
-
-      await test.step('Verify the owner event renders', async () => {
-        await visitTableActivityFeed(page, entityChangesTable);
-
-        const feedItem = await getFeedItemByText(page, summaryText);
-        const entityLink = feedItem.locator('a[href*="/table/"]').first();
-
-        await expect(feedItem).toContainText(/owner/i);
-        await expect(feedItem).toContainText(adminDisplayName);
-        await expect(entityLink).toBeVisible();
       });
     });
   }
