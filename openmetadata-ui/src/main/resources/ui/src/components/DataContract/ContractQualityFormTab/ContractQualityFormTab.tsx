@@ -16,7 +16,7 @@ import { Button, Card, Dropdown, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
 import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
@@ -38,16 +38,23 @@ import {
   ListTestCaseParamsBySearch,
 } from '../../../rest/testAPI';
 import { ContractTestTypeLabelMap } from '../../../utils/DataContract/DataContractUtils';
-import { generateEntityLink } from '../../../utils/TableUtils';
+import { generateEntityLink } from '../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
 import Table from '../../common/Table/Table';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
-import TestCaseFormV1 from '../../DataQuality/AddDataQualityTest/components/TestCaseFormV1';
 import { TestLevel } from '../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
 import './contract-quality-form-tab.less';
+
+const TestCaseFormV1 = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../DataQuality/AddDataQualityTest/components/TestCaseFormV1')
+  )
+);
 
 export const ContractQualityFormTab: React.FC<{
   selectedQuality: string[];

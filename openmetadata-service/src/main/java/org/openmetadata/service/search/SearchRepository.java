@@ -455,7 +455,6 @@ public class SearchRepository {
                   .parentAliases(parentAliases)
                   .build();
           recreateIndexHandler.finalizeReindex(entityReindexContext, true);
-
         } catch (Exception ex) {
           LOG.error("Failed to recreate index for entity {}", entityType, ex);
         }

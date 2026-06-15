@@ -99,11 +99,16 @@ jest.mock('../../../rest/contractAPI', () => ({
   getContractByEntityId: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockImplementation(() => 'name'),
+}));
+
+jest.mock('../../../utils/EntityPureUtils', () => ({
   getEntityFeedLink: jest.fn().mockImplementation(() => 'entityFeedLink'),
+}));
+
+jest.mock('../../../utils/EntityVoteUtils', () => ({
   getEntityVoteStatus: jest.fn().mockImplementation(() => 'unVoted'),
-  hasEditAccess: jest.fn().mockReturnValue(false),
 }));
 
 jest.mock('../../../utils/DataAssetsHeader.utils', () => ({
@@ -113,6 +118,9 @@ jest.mock('../../../utils/DataAssetsHeader.utils', () => ({
   })),
   getEntityExtraInfoLength: jest.fn().mockImplementation(() => 0),
   isDataAssetsWithServiceField: jest.fn().mockImplementation(() => true),
+  HeaderDotSeparator: jest
+    .fn()
+    .mockImplementation(() => <span data-testid="header-dot-separator" />),
   ExtraInfoLabel: jest
     .fn()
     .mockImplementation(({ label, value, dataTestId }) => (
@@ -135,13 +143,12 @@ jest.mock('../../common/CertificationTag/CertificationTag', () => {
   return jest.fn().mockImplementation(() => <div>CertificationTag</div>);
 });
 
-jest.mock(
-  '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(() => <div>TitleBreadcrumb.component</div>);
-  }
+jest.mock('../../common/HeaderBreadcrumb/HeaderBreadcrumb.component', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="breadcrumb">HeaderBreadcrumb.component</div>
+    ))
 );
 jest.mock(
   '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component',
@@ -450,6 +457,92 @@ describe('DataAssetsHeader component', () => {
     expect(screen.queryByTestId('source-url-button')).not.toBeInTheDocument();
   });
 
+  it('should render source URL button from endpointURL for API entities', () => {
+    const mockEndpointUrl = 'https://petstore3.swagger.io/#/pet';
+    const apiEndpointProps = {
+      ...mockProps,
+      dataAsset: {
+        ...mockProps.dataAsset,
+        sourceUrl: undefined,
+        endpointURL: mockEndpointUrl,
+      },
+    } as DataAssetsHeaderProps;
+
+    render(<DataAssetsHeader {...apiEndpointProps} />);
+
+    const sourceUrlButton = screen.getByTestId('source-url-button');
+
+    expect(sourceUrlButton).toBeInTheDocument();
+    expect(screen.getByRole('link')).toHaveAttribute('href', mockEndpointUrl);
+  });
+
+  it('should render the follow button in the stat bar and trigger onFollowClick', () => {
+    const onFollowClick = jest.fn();
+
+    render(<DataAssetsHeader {...mockProps} onFollowClick={onFollowClick} />);
+
+    const followButton = screen.getByTestId('entity-follow-button');
+
+    expect(followButton).toBeInTheDocument();
+    expect(followButton).toHaveTextContent('label.follow');
+
+    fireEvent.click(followButton);
+
+    expect(onFollowClick).toHaveBeenCalled();
+  });
+
+  it('should disable the up-vote button while the vote request is in flight', async () => {
+    let resolveVote: () => void = () => undefined;
+    const onUpdateVote = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveVote = resolve;
+        })
+    );
+
+    render(<DataAssetsHeader {...mockProps} onUpdateVote={onUpdateVote} />);
+
+    const upVoteButton = screen.getByTestId('up-vote-btn');
+
+    fireEvent.click(upVoteButton);
+
+    await waitFor(() => expect(upVoteButton).toBeDisabled());
+
+    fireEvent.click(upVoteButton);
+
+    expect(onUpdateVote).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveVote();
+    });
+  });
+
+  it('should disable the follow button while the follow request is in flight', async () => {
+    let resolveFollow: () => void = () => undefined;
+    const onFollowClick = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveFollow = resolve;
+        })
+    );
+
+    render(<DataAssetsHeader {...mockProps} onFollowClick={onFollowClick} />);
+
+    const followButton = screen.getByTestId('entity-follow-button');
+
+    fireEvent.click(followButton);
+
+    await waitFor(() => expect(followButton).toBeDisabled());
+
+    fireEvent.click(followButton);
+
+    expect(onFollowClick).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveFollow();
+    });
+  });
+
   it('should render certification only when serviceCategory is undefined', () => {
     const mockCertification: AssetCertification = {
       tagLabel: {
@@ -690,7 +783,7 @@ describe('DataAssetsHeader component', () => {
     expect(button).toBeEnabled();
   });
 
-  it('should not render the request data access button on OSS', () => {
+  it('should not render the request data access button when getShowRequestDataAccess is false', () => {
     render(<DataAssetsHeader {...mockProps} />);
 
     expect(
@@ -740,10 +833,20 @@ describe('DataAssetsHeader component', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('should not render when user is an owner', async () => {
-      const { hasEditAccess } = jest.requireMock('../../../utils/EntityUtils');
-      (hasEditAccess as jest.Mock).mockReturnValue(true);
+    it('should not render on OSS (getShowRequestDataAccess returns false)', () => {
+      const { getShowRequestDataAccess } = jest.requireMock(
+        '../../../utils/TableClassBase'
+      );
+      (getShowRequestDataAccess as jest.Mock).mockReturnValue(false);
 
+      render(<DataAssetsHeader {...tableProps} />);
+
+      expect(
+        screen.queryByTestId('request-data-access-button')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should render for owner with canCreateTask permission', async () => {
       render(
         <DataAssetsHeader
           {...tableProps}
@@ -754,33 +857,21 @@ describe('DataAssetsHeader component', () => {
         />
       );
 
-      expect(
-        screen.queryByTestId('request-data-access-button')
-      ).not.toBeInTheDocument();
-
-      (hasEditAccess as jest.Mock).mockReturnValue(false);
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('request-data-access-button')
+        ).toBeInTheDocument();
+      });
     });
 
-    it('should not render when user belongs to an owner team', async () => {
-      const { useApplicationStore } = jest.requireMock(
-        '../../../hooks/useApplicationStore'
-      );
-      const { hasEditAccess } = jest.requireMock('../../../utils/EntityUtils');
-      (hasEditAccess as jest.Mock).mockReturnValue(true);
-      (useApplicationStore as jest.Mock).mockReturnValue({
-        currentUser: {
-          id: 'user-2',
-          name: 'team.member',
-          teams: [{ id: 'team-1', type: 'team' }],
-        },
-      });
-
+    it('should not render for owner without canCreateTask permission', async () => {
       render(
         <DataAssetsHeader
           {...tableProps}
+          canCreateTask={false}
           dataAsset={{
             ...tableProps.dataAsset,
-            owners: [{ id: 'team-1', type: 'team' }],
+            owners: [{ id: 'user-1', type: 'user' }],
           }}
         />
       );
@@ -788,11 +879,6 @@ describe('DataAssetsHeader component', () => {
       expect(
         screen.queryByTestId('request-data-access-button')
       ).not.toBeInTheDocument();
-
-      (hasEditAccess as jest.Mock).mockReturnValue(false);
-      (useApplicationStore as jest.Mock).mockReturnValue({
-        currentUser: { id: 'user-1', name: 'test.user' },
-      });
     });
 
     it('should render enabled button when no existing DAR task', async () => {
@@ -972,80 +1058,15 @@ describe('DataAssetsHeader component', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('should render when user is admin even without canCreateTask permission', async () => {
-      const { useApplicationStore } = jest.requireMock(
-        '../../../hooks/useApplicationStore'
-      );
-
-      (useApplicationStore as jest.Mock).mockReturnValue({
-        currentUser: { id: 'user-1', name: 'test.user', isAdmin: true },
-      });
-
+    it('should not render when admin has no canCreateTask permission', () => {
       render(<DataAssetsHeader {...tableProps} canCreateTask={false} />);
-
-      await waitFor(() => {
-        expect(
-          screen.getByTestId('request-data-access-button')
-        ).toBeInTheDocument();
-      });
-
-      (useApplicationStore as jest.Mock).mockReturnValue({
-        currentUser: { id: 'user-1', name: 'test.user' },
-      });
-    });
-
-    it('should render when user is admin with canCreateTask permission', async () => {
-      const { useApplicationStore } = jest.requireMock(
-        '../../../hooks/useApplicationStore'
-      );
-      (useApplicationStore as jest.Mock).mockReturnValue({
-        currentUser: { id: 'user-1', name: 'test.user', isAdmin: true },
-      });
-
-      render(<DataAssetsHeader {...tableProps} />);
-
-      await waitFor(() => {
-        expect(
-          screen.getByTestId('request-data-access-button')
-        ).toBeInTheDocument();
-      });
-
-      (useApplicationStore as jest.Mock).mockReturnValue({
-        currentUser: { id: 'user-1', name: 'test.user' },
-      });
-    });
-
-    it('should not render when user is admin and is also the owner', async () => {
-      const { useApplicationStore } = jest.requireMock(
-        '../../../hooks/useApplicationStore'
-      );
-      const { hasEditAccess } = jest.requireMock('../../../utils/EntityUtils');
-      (useApplicationStore as jest.Mock).mockReturnValue({
-        currentUser: { id: 'user-1', name: 'test.user', isAdmin: true },
-      });
-      (hasEditAccess as jest.Mock).mockReturnValue(true);
-
-      render(
-        <DataAssetsHeader
-          {...tableProps}
-          dataAsset={{
-            ...tableProps.dataAsset,
-            owners: [{ id: 'user-1', type: 'user' }],
-          }}
-        />
-      );
 
       expect(
         screen.queryByTestId('request-data-access-button')
       ).not.toBeInTheDocument();
-
-      (useApplicationStore as jest.Mock).mockReturnValue({
-        currentUser: { id: 'user-1', name: 'test.user' },
-      });
-      (hasEditAccess as jest.Mock).mockReturnValue(false);
     });
 
-    it('should render for non-admin user with canCreateTask permission who is not owner', async () => {
+    it('should render for non-admin user with canCreateTask permission', async () => {
       render(<DataAssetsHeader {...tableProps} />);
 
       await waitFor(() => {
@@ -1233,7 +1254,10 @@ describe('DataAssetsHeader component', () => {
       mockUseCustomPages.mockReturnValue({
         customizedPage: { tabs: [{ id: EntityTabs.CONTRACT }] },
       });
-      mockGetDataContractStatusIcon.mockReturnValue('TestIcon');
+      const TestIcon = (props: { className?: string }) => (
+        <svg {...props} data-testid="contract-status-icon" />
+      );
+      mockGetDataContractStatusIcon.mockReturnValue(TestIcon);
 
       (getContractByEntityId as jest.Mock).mockImplementation(() =>
         Promise.resolve({
@@ -1248,7 +1272,7 @@ describe('DataAssetsHeader component', () => {
 
       const button = screen.getByTestId('data-contract-latest-result-btn');
 
-      expect(button.querySelector('.anticon')).toBeInTheDocument();
+      expect(button.querySelector('[data-icon="leading"]')).toBeInTheDocument();
     });
 
     it('should render button without icon when getDataContractStatusIcon returns null', async () => {

@@ -15,6 +15,7 @@ import { isUndefined } from 'lodash';
 import { DateTime } from 'luxon';
 import {
   createContext,
+  lazy,
   useCallback,
   useContext,
   useEffect,
@@ -52,9 +53,9 @@ import {
 } from '../../../../utils/DataQuality/DataQualityUtils';
 import { formatNumberWithComma } from '../../../../utils/NumberUtils';
 import { bytesToSize } from '../../../../utils/StringUtils';
-import { generateEntityLink } from '../../../../utils/TableUtils';
+import { generateEntityLink } from '../../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import TestCaseFormV1 from '../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import { TestLevel } from '../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
 import { ProfilerTabPath } from '../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerSettingsModal from './ProfilerSettingsModal/ProfilerSettingsModal';
@@ -63,6 +64,15 @@ import {
   TableProfilerContextInterface,
   TableProfilerProviderProps,
 } from './TableProfiler.interface';
+
+const TestCaseFormV1 = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1'
+      )
+  )
+);
 
 export const TableProfilerContext =
   createContext<TableProfilerContextInterface>(

@@ -11,9 +11,14 @@
  *  limitations under the License.
  */
 
+export {
+  getTextFromHtmlString,
+  isDescriptionContentEmpty,
+} from './BlockEditorPureUtils';
+
 import { EditorState } from '@tiptap/pm/state';
 import type { Editor } from '@tiptap/react';
-import { isEmpty, isString } from 'lodash';
+import { isString } from 'lodash';
 import Showdown from 'showdown';
 import { ReactComponent as IconFormatAttachment } from '../assets/svg/ic-format-attachment.svg';
 import { ReactComponent as IconFormatAudio } from '../assets/svg/ic-format-audio.svg';
@@ -22,7 +27,7 @@ import { ReactComponent as IconFormatVideo } from '../assets/svg/ic-format-video
 import { FileType } from '../components/BlockEditor/BlockEditor.interface';
 import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
 import blockEditorExtensionsClassBase from './BlockEditorExtensionsClassBase';
-import { ENTITY_LINK_SEPARATOR } from './EntityUtils';
+import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
 import { getEntityDetail, getHashTagList, getMentionList } from './FeedUtils';
 import { getSanitizeContent } from './sanitize.utils';
 
@@ -313,48 +318,6 @@ export const setEditorContent = (editor: Editor, newContent: string) => {
     storedMarks: editor.state.storedMarks,
   });
   editor.view.updateState(newEditorState);
-};
-
-/**
- *
- * @param content The content to check
- * @returns Whether the content is empty or not
- */
-export const isDescriptionContentEmpty = (content: string) => {
-  // Treat null/undefined/empty string as empty
-  if (isEmpty(content)) {
-    return true;
-  }
-
-  // Trim the content
-  const trimmedContent = content.trim();
-
-  // Check if it's an empty string after trimming
-  if (trimmedContent === '') {
-    return true;
-  }
-
-  // Match a single <p>...</p> where the inner content is only common whitespace
-  // (space, tab, newline, carriage return) and non-breaking space (\u00A0)
-  // Note: We intentionally do NOT match other unicode whitespace like em space (\u2003)
-  // or thin space (\u2009) as those are considered content
-  const emptyPRegex =
-    /^[ \t\r\n]*<p(?:\s[^>]*)?>[ \t\r\n\u00A0]*<\/p>[ \t\r\n]*$/i;
-
-  return emptyPRegex.test(trimmedContent);
-};
-
-/**
- *
- * @param description HTML string
- * @returns Text from HTML string
- */
-export const getTextFromHtmlString = (description?: string): string => {
-  if (!description) {
-    return '';
-  }
-
-  return description.replace(/<[^>]{1,1000}>/g, '').trim();
 };
 
 export const getAcceptedFileTypes = (fileType: FileType) => {

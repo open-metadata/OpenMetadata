@@ -112,6 +112,7 @@ export default defineConfig({
         '**/SystemCertificationTags.spec.ts',
         '**/SearchRBAC.spec.ts',
         '**/SSOLogin.spec.ts',
+        '**/IntakeForm.spec.ts',
         '**/DomainIsolation/**',
       ],
     },
@@ -211,6 +212,13 @@ export default defineConfig({
     {
       name: 'SystemCertificationTags',
       testMatch: '**/SystemCertificationTags.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup', 'chromium'],
+      fullyParallel: false,
+    },
+    {
+      name: 'IntakeForm',
+      testMatch: '**/IntakeForm.spec.ts',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup', 'chromium'],
       fullyParallel: false,
