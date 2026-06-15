@@ -49,11 +49,11 @@ export const DomainExpertWidget = () => {
   );
 
   const handleExpertsUpdate = async (data: Array<EntityReference>) => {
-    if (domain && !isEqual(data, domain.experts)) {
+    if (!isEqual(data, domain.experts)) {
       let updatedDomain = cloneDeep(domain);
-      const oldExperts = data.filter((d) => includes(domain?.experts, d));
+      const oldExperts = data.filter((d) => includes(domain.experts, d));
       const newExperts = data
-        .filter((d) => !includes(domain?.experts, d))
+        .filter((d) => !includes(domain.experts, d))
         .map((d) => ({
           id: d.id,
           type: d.type,
@@ -79,9 +79,9 @@ export const DomainExpertWidget = () => {
         <UserSelectableList
           hasPermission
           popoverProps={{ placement: 'topLeft' }}
-          selectedUsers={domain?.experts ?? []}
+          selectedUsers={domain.experts ?? []}
           onUpdate={handleExpertsUpdate}>
-          {isEmpty(domain?.experts) ? (
+          {isEmpty(domain.experts) ? (
             <PlusIconButton
               data-testid="Add"
               size="small"
@@ -104,7 +104,7 @@ export const DomainExpertWidget = () => {
     </div>
   );
 
-  const content = isEmpty(domain?.experts) ? null : (
+  const content = isEmpty(domain.experts) ? null : (
     <div>
       {getOwnerVersionLabel(
         domain,
@@ -121,7 +121,7 @@ export const DomainExpertWidget = () => {
         title: header,
       }}
       dataTestId="domain-expert-name"
-      isExpandDisabled={isEmpty(domain?.experts)}>
+      isExpandDisabled={isEmpty(domain.experts)}>
       {content}
     </ExpandableCard>
   );

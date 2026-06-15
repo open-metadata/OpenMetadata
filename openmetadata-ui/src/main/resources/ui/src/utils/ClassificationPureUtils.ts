@@ -27,7 +27,7 @@ export const getDeleteButtonData = (
   let disabledDeleteMessage: string = t('message.no-permission-for-action');
   const disableDeleteButton =
     record.provider === ProviderType.System ||
-    !classificationPermissions?.EditAll ||
+    !classificationPermissions.EditAll ||
     isClassificationDisabled;
 
   if (isClassificationDisabled) {

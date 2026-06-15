@@ -226,7 +226,7 @@ export const getGlossaryTermDetailPageTabs = (
                 entityType={EntityType.GLOSSARY_TERM}
                 hasEditAccess={
                   !isVersionView &&
-                  (permissions?.EditAll || permissions?.EditCustomFields)
+                  (permissions.EditAll || permissions.EditCustomFields)
                 }
                 hasPermission={viewCustomPropertiesPermission}
                 isVersionView={isVersionView}
