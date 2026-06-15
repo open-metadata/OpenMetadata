@@ -44,7 +44,6 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -62,7 +61,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.FunctionList;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.ResourceRegistry;
-import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.limits.Limits;
@@ -86,9 +84,6 @@ import org.openmetadata.service.security.policyevaluator.RuleEvaluator;
 public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   private final PolicyMapper mapper = new PolicyMapper();
   public static final String COLLECTION_PATH = "/v1/policies/";
-  private static final String BOT_IMPERSONATION_POLICY = "BotImpersonationPolicy";
-  private static final Set<String> LEGACY_IMPERSONATION_DENY_RULES =
-      Set.of("BotImpersonationPolicy-DenyAdminUsers", "BotImpersonationPolicy-DenyBotUsers");
   public static final String FIELDS = "owners,location,teams,roles";
 
   @Override
@@ -117,11 +112,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
 
   @Override
   public void upgrade() {
-    addAllOperationToOrganizationPolicyOwnerRule();
-    makeBotImpersonationPolicyPermissive();
-  }
-
-  private void addAllOperationToOrganizationPolicyOwnerRule() {
     // 1.2.0 upgrade only - Add Create operation to OrganizationPolicy Owner Rule
     try {
       Policy organizationPolicy = repository.findByName("OrganizationPolicy", Include.NON_DELETED);
@@ -138,34 +128,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       repository.patch(null, organizationPolicy.getId(), "admin", patch);
     } catch (Exception e) {
       LOG.error("Failed to update OrganizationPolicy", e);
-    }
-  }
-
-  /**
-   * Earlier builds seeded BotImpersonationPolicy with deny rules for admin/bot targets. The
-   * shipped default is now unrestricted (admin impersonation stays allowed for backward
-   * compatibility; restriction is opt-in via BotNonAdminImpersonationPolicy). Strip those leftover
-   * deny rules so existing instances converge to the permissive default. Admin-authored deny rules
-   * use different names and are left untouched.
-   */
-  private void makeBotImpersonationPolicyPermissive() {
-    try {
-      Policy policy = repository.findByName(BOT_IMPERSONATION_POLICY, Include.NON_DELETED);
-      String originalJson = JsonUtils.pojoToJson(policy);
-      boolean removed =
-          policy
-              .getRules()
-              .removeIf(rule -> LEGACY_IMPERSONATION_DENY_RULES.contains(rule.getName()));
-      if (removed) {
-        String updatedJson = JsonUtils.pojoToJson(policy);
-        JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
-        repository.patch(null, policy.getId(), "admin", patch);
-        LOG.info("Removed legacy deny rules from {}", BOT_IMPERSONATION_POLICY);
-      }
-    } catch (EntityNotFoundException e) {
-      LOG.debug("{} not found, skipping reconciliation", BOT_IMPERSONATION_POLICY);
-    } catch (Exception e) {
-      LOG.error("Failed to reconcile {}", BOT_IMPERSONATION_POLICY, e);
     }
   }
 

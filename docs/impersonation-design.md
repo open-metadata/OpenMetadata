@@ -349,7 +349,7 @@ The `Impersonate` operation is registered as a `user`-resource operation, so the
 
 Restriction is therefore **opt-in**, not default — the "configurable policy control" Collate #3581 asks for, delivered without breaking any bot that currently impersonates admins. The `isAdminUser()` / `isBotUser()` condition functions and deny-overrides-allow semantics let admins author any narrower scope (per-team, per-domain, deny-bot, etc.).
 
-**Upgrade reconciliation.** Seed data is insert-if-missing, so changing a seed JSON does not update an already-seeded policy. `PolicyResource.upgrade()` (which runs on every startup, like the existing `OrganizationPolicy` reconciliation) strips the legacy deny rules (`BotImpersonationPolicy-DenyAdminUsers` / `-DenyBotUsers`) from an existing `BotImpersonationPolicy`, converging instances that ran an earlier deny-by-default build onto the permissive default. Admin-authored deny rules use other names and are left untouched. Real deployments upgrading from a release without this policy simply get the permissive version seeded fresh.
+**No migration needed.** All four impersonation seeds (`BotImpersonationPolicy`, `BotNonAdminImpersonationPolicy`, and their roles) are new in this change — no released version has them. Seed loading is insert-if-missing, so a fresh install and any upgrade from a prior release both get the current (permissive) JSON seeded directly. There is no prior on-disk state to convert, so no Flyway migration or startup reconciliation is required.
 
 #### 4.4.5 Threat-Model Delta
 
@@ -1683,5 +1683,5 @@ components:
 **Document Version**: 1.1
 **Last Updated**: 2026-06-12
 **Authors**: OpenMetadata Engineering
-**v1.1**: Custom-bot impersonation grants via `createBot.json`, RBAC target scoping (`isAdminUser()`/`isBotUser()` conditions), read-only `User.allowImpersonation` on user APIs, `Impersonate` excluded from `ALL` subsumption. Default `BotImpersonationPolicy` is **permissive/backward-compatible** (admin impersonation stays allowed); admin restriction is opt-in via `BotNonAdminImpersonationPolicy`/`BotNonAdminImpersonationRole`. `PolicyResource.upgrade()` reconciles legacy deny-by-default instances. See section 4.4.
+**v1.1**: Custom-bot impersonation grants via `createBot.json`, RBAC target scoping (`isAdminUser()`/`isBotUser()` conditions), read-only `User.allowImpersonation` on user APIs, `Impersonate` excluded from `ALL` subsumption. Default `BotImpersonationPolicy` is **permissive/backward-compatible** (admin impersonation stays allowed); admin restriction is opt-in via `BotNonAdminImpersonationPolicy`/`BotNonAdminImpersonationRole`. All seeds are new, so no migration is needed. See section 4.4.
 **Status**: Draft for Review
