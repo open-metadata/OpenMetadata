@@ -36,10 +36,10 @@ from metadata.generated.schema.entity.services.connections.database.postgresConn
     PostgresConnection as PostgresConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
-    SQLiteConnection,
+    SQLiteConnection as SQLiteConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.airflowConnection import (
-    AirflowConnection,
+    AirflowConnection as AirflowConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.backendConnection import (
     BackendConnection,
@@ -47,6 +47,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.backendConne
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.query_logger import attach_query_tracker
 from metadata.ingestion.connections.test_connections import (
     SourceConnectionException,
@@ -180,15 +181,15 @@ def _(airflow_connection: PostgresConnectionConfig) -> Engine:
 
 
 @_get_connection.register
-def _(airflow_connection: SQLiteConnection) -> Engine:
+def _(airflow_connection: SQLiteConnectionConfig) -> Engine:
     from metadata.ingestion.source.database.sqlite.connection import (  # noqa: PLC0415
-        get_connection as get_sqlite_connection,
+        SQLiteConnection,
     )
 
-    return get_sqlite_connection(airflow_connection)
+    return SQLiteConnection(airflow_connection)._get_client()
 
 
-def get_connection(connection: AirflowConnection):
+def get_connection(connection: AirflowConnectionConfig):
     """
     Create connection
     """
@@ -254,7 +255,7 @@ def _test_task_detail_access(session) -> Optional[Any]:  # noqa: UP045
         raise AirflowTaskDetailsAccessError(f"Task details access error : {e}") from e
 
 
-def _decorated_check_access(client, host, auth_config, verify: bool) -> Any:
+def _decorated_check_access(client, host, auth_config, verify: bool) -> Any:  # pyright: ignore[reportMissingParameterType]
     """
     Call client.get_version(); on failure, attempt a managed-flavor-specific
     diagnostic and raise SourceConnectionException with a combined message
@@ -279,7 +280,7 @@ def _decorated_check_access(client, host, auth_config, verify: bool) -> Any:
 def _test_api_connection(
     metadata: OpenMetadata,
     client,
-    service_connection: AirflowConnection,
+    service_connection: AirflowConnectionConfig,
     automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
     timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
@@ -305,7 +306,7 @@ def _test_api_connection(
 def test_connection(
     metadata: OpenMetadata,
     connection_obj,
-    service_connection: AirflowConnection,
+    service_connection: AirflowConnectionConfig,
     automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
     timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
@@ -350,3 +351,22 @@ def test_connection(
         automation_workflow=automation_workflow,
         timeout_seconds=timeout_seconds,
     )
+
+
+class AirflowConnection(BaseConnection[AirflowConnectionConfig, Any]):
+    def _get_client(self) -> Any:
+        return get_connection(self.service_connection)
+
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        return test_connection(
+            metadata,
+            self.client,
+            self.service_connection,
+            automation_workflow,
+            timeout_seconds,
+        )

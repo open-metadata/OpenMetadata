@@ -423,7 +423,7 @@ const ContextCenterDocumentsPage: FC = () => {
         </ReflexSplitter>
 
         <ReflexElement flex={0.75} minSize={400}>
-          <Box className="tw:h-full tw:overflow-hidden">
+          <Box className="tw:h-full tw:overflow-hidden" gap={4}>
             <DocumentsView
               canDelete={hasDeletePermission}
               data={documents}

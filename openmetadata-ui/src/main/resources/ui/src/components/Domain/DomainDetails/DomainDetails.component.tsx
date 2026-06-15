@@ -114,7 +114,13 @@ import {
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer';
 import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumbs';
-import { useBreadcrumbs } from '../../common/atoms/navigation/useBreadcrumbs';
+import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import { Avatar } from '@openmetadata/ui-core-components';
+import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
+import { FeedCounts } from '../../../interface/feed.interface';
+import { getIsErrorMatch } from '../../../utils/APIUtils';
+import { getEntityAvatarProps } from '../../../utils/IconUtils';
+import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
@@ -449,14 +455,14 @@ const DomainDetails = ({
     loading: isDataProductLoading,
   });
 
-  const breadcrumbItems = useMemo<BreadcrumbItem[]>(() => {
-    const marketplaceRoot: BreadcrumbItem[] = isMarketplace
-      ? [{ name: t('label.data-marketplace'), url: ROUTES.DATA_MARKETPLACE }]
+  const breadcrumbItems = useMemo(() => {
+    const marketplaceRoot: { label: string; href?: string }[] = isMarketplace
+      ? [{ label: t('label.data-marketplace'), href: ROUTES.DATA_MARKETPLACE }]
       : [];
 
-    const rootCrumb: BreadcrumbItem = fromMarketplace
-      ? { name: t('label.data-marketplace'), url: ROUTES.DATA_MARKETPLACE }
-      : { name: t('label.domain-plural'), url: getDomainPath() };
+    const rootCrumb: { label: string; href?: string } = fromMarketplace
+      ? { label: t('label.data-marketplace'), href: ROUTES.DATA_MARKETPLACE }
+      : { label: t('label.domain-plural'), href: getDomainPath() };
 
     if (!domainFqn) {
       return [...marketplaceRoot, rootCrumb];
@@ -472,14 +478,12 @@ const DomainDetails = ({
         dataFQN.push(d);
 
         return {
-          name: d,
-          url: getDomainPath(dataFQN.join(FQN_SEPARATOR_CHAR)),
+          label: d,
+          href: getDomainPath(dataFQN.join(FQN_SEPARATOR_CHAR)),
         };
       }),
     ];
   }, [domainFqn, isMarketplace, fromMarketplace, t]);
-
-  const { breadcrumbs } = useBreadcrumbs({ items: breadcrumbItems });
 
   // Asset selection drawer state
   const [isAssetDrawerOpen, setIsAssetDrawerOpen] = useState(false);
@@ -1199,7 +1203,7 @@ const DomainDetails = ({
 
   return (
     <>
-      {breadcrumbs}
+      <HeaderBreadcrumb items={breadcrumbItems} />
       <div
         className={classNames('domain-page-container', {
           'domain-tree-view-variant': isTreeView,

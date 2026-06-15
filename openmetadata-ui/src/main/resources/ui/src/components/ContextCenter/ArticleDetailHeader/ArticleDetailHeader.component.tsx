@@ -305,7 +305,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
 
   return (
     <div
-      className="tw:flex tw:flex-col tw:gap-3 tw:mb-5"
+      className="tw:flex tw:flex-col tw:mb-5"
       data-testid="article-detail-header">
       {!breadcrumbInsideCard && breadcrumbEl}
 
