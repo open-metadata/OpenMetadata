@@ -126,7 +126,6 @@ import org.openmetadata.service.jdbi3.TaskRepository;
 public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
   private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
   private static final String CHANGE_HEADER = "X-OpenMetadata-Change";
-  private static final String API_PREFIX = "/api";
 
   private static String entityLink(String entityType, String entityFqn) {
     return String.format("<#E::%s::%s>", entityType, entityFqn);
@@ -3807,12 +3806,26 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
   @Test
   void testResolveTaskEmitsTaskResolvedChangeEventHeader(TestNamespace ns) throws Exception {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+    String newDescription = "emit-change-event " + ns.shortPrefix();
+
+    org.openmetadata.schema.type.DescriptionUpdatePayload payload =
+        new org.openmetadata.schema.type.DescriptionUpdatePayload()
+            .withFieldPath("description")
+            .withCurrentDescription(table.getDescription())
+            .withNewDescription(newDescription);
+
     Task task =
         createEntity(
             new CreateTask()
                 .withName(ns.prefix("resolve-emits-event"))
-                .withCategory(TaskCategory.Approval)
-                .withType(TaskEntityType.GlossaryApproval));
+                .withDescription("Resolve endpoint should emit change event")
+                .withCategory(TaskCategory.MetadataUpdate)
+                .withType(TaskEntityType.DescriptionUpdate)
+                .withAbout(entityLink("table", table.getFullyQualifiedName()))
+                .withPayload(payload));
 
     awaitTaskReadyForWorkflowResolution(task.getId());
 
@@ -3820,6 +3833,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         JsonUtils.pojoToJson(
             new ResolveTask()
                 .withResolutionType(TaskResolutionType.Approved)
+                .withNewValue(newDescription)
                 .withComment("emit-change-event"));
 
     HttpResponse<String> response =
@@ -3835,10 +3849,9 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         createEntity(
             new CreateTask()
                 .withName(ns.prefix("close-emits-event"))
+                .withDescription("Close endpoint should emit change event")
                 .withCategory(TaskCategory.Approval)
                 .withType(TaskEntityType.GlossaryApproval));
-
-    awaitTaskReadyForWorkflowResolution(task.getId());
 
     HttpResponse<String> response =
         sendDirectJson(
@@ -4185,7 +4198,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
   private static HttpResponse<String> sendDirectJson(String method, String path, String body)
       throws Exception {
-    String url = SdkClients.getServerUrl() + normalizeApiPath(path);
+    String url = SdkClients.getServerUrl() + normalizePath(path);
     HttpRequest.Builder builder =
         HttpRequest.newBuilder()
             .uri(URI.create(url))
@@ -4200,11 +4213,8 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
-  private static String normalizeApiPath(String path) {
-    String normalizedPath = path.startsWith("/") ? path : "/" + path;
-    return normalizedPath.startsWith(API_PREFIX + "/")
-        ? normalizedPath
-        : API_PREFIX + normalizedPath;
+  private static String normalizePath(String path) {
+    return path.startsWith("/") ? path : "/" + path;
   }
 
   private static void assertChangeHeader(
