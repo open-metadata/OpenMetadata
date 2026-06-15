@@ -6,6 +6,7 @@ import com.microsoft.playwright.Page;
 import com.microsoft.playwright.assertions.PlaywrightAssertions;
 import com.microsoft.playwright.options.WaitForSelectorState;
 import java.time.Duration;
+import org.openmetadata.it.search.ReindexHelpers;
 import org.openmetadata.playwright.ui.UiSession;
 
 /**
@@ -24,6 +25,9 @@ public final class SearchIndexAppPage extends PageObject {
   private static final String TESTID_RUN_NOW = "run-now-button";
   private static final String TESTID_PIPELINE_STATUS = "pipeline-status";
   private static final String TESTID_DEPLOY = "deploy-button";
+  // An accepted trigger registers its run record within seconds; this only bounds the failure
+  // (e.g. the trigger was rejected because another run still holds the app's execution lock).
+  private static final Duration RUN_REGISTER_TIMEOUT = Duration.ofMinutes(2);
 
   private SearchIndexAppPage(final Page page, final UiSession session) {
     super(page, session);
@@ -57,9 +61,19 @@ public final class SearchIndexAppPage extends PageObject {
   /**
    * Triggers a run via the {@code Run Now} button and blocks until the status badge
    * reads the given label. Use {@code "Success"} for the happy-path assertion.
+   *
+   * <p>The runs-history top row still shows the <em>previous</em> run's status at click time,
+   * so a bare contains-text wait can match a stale {@code Success} instantly and never observe
+   * the run just triggered. Guard the wait: confirm via the API that a run registered after the
+   * click, then reload so the table is rendering that fresh run before asserting on its badge.
    */
   public void triggerAndWaitForStatus(final String label, final Duration timeout) {
+    final long clickedAtMillis = System.currentTimeMillis();
     runNowButton().click();
+    ReindexHelpers.waitForRunStartedSince(
+        session.server(), ReindexHelpers.SEARCH_INDEX_APP, clickedAtMillis, RUN_REGISTER_TIMEOUT);
+    page.reload();
+    waitForLoaded();
     waitForLatestRunStatus(label, timeout);
   }
 

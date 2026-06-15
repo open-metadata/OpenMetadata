@@ -1101,10 +1101,10 @@
                   <includes>
                     <include>**/tests/search/scale/*IT.java</include>
                   </includes>
+                  <includedGroups>scale</includedGroups>
                   <systemPropertyVariables>
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
-                    <includedGroups>scale</includedGroups>
                   </systemPropertyVariables>
                   <trimStackTrace>false</trimStackTrace>
                   <reportFormat>plain</reportFormat>
@@ -1147,11 +1147,108 @@
                   </includes>
                   <excludes>
                     <exclude>**/tests/search/scale/**</exclude>
+                    <!-- StaticDatasetSeedIT (@Tag("seed")) and ClusterPurgeIT (@Tag("purge")) match
+                         the include glob but must NEVER run in a normal search-it pass — the former
+                         seeds the full bulk cohort, the latter hard-deletes data. Excluded by path
+                         here AND by tag below; run them explicitly via the seed-it / purge-it profiles. -->
+                    <exclude>**/tests/search/StaticDatasetSeedIT.java</exclude>
+                    <exclude>**/tests/search/ClusterPurgeIT.java</exclude>
                   </excludes>
+                  <!-- excludedGroups must be a direct <configuration> child: nested inside
+                       <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
+                       JUnit Platform tag filter). See ui-it profile for the same correct placement. -->
+                  <excludedGroups>scale,seed,purge</excludedGroups>
                   <systemPropertyVariables>
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
-                    <excludedGroups>scale</excludedGroups>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <!-- One-time loader for the static dataset the scale/search suites reuse when run with
+         -Djpw.data.mode=static (or ensure). Runs only StaticDatasetSeedIT (@Tag("seed")), which
+         creates a bulk cohort and deliberately leaves it on the cluster (no namespace cleanup).
+         Invoke once against the external cluster, then run the suites in static/ensure mode:
+         `mvn verify -P seed-it -Dskip.embedded.bootstrap=true -Djpw.scale.tables=100000`. -->
+    <profile>
+      <id>seed-it</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>${maven.failsafe.version}</version>
+            <executions>
+              <execution>
+                <id>seed-dataset</id>
+                <goals>
+                  <goal>integration-test</goal>
+                  <goal>verify</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <!-- The wide-table seed builds ~1M Column objects and serializes the whole create
+                       payload in memory in one shot, so this fork needs more heap than the others. -->
+                  <argLine>-Xmx8192m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/tests/search/StaticDatasetSeedIT.java</include>
+                  </includes>
+                  <includedGroups>seed</includedGroups>
+                  <systemPropertyVariables>
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <!-- On-demand maintenance task that hard-deletes orphaned test entities (mainly the bulk
+         cohorts StaticDatasetSeedIT leaves behind, and data from cancelled runs) from a shared /
+         external cluster. Runs only ClusterPurgeIT (@Tag("purge")). Invoke explicitly with the
+         marker(s) to match:
+         `mvn verify -P purge-it -Dskip.embedded.bootstrap=true -Djpw.purge.markers=StaticDatasetSeed`. -->
+    <profile>
+      <id>purge-it</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>${maven.failsafe.version}</version>
+            <executions>
+              <execution>
+                <id>purge-orphans</id>
+                <goals>
+                  <goal>integration-test</goal>
+                  <goal>verify</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx2048m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/tests/search/ClusterPurgeIT.java</include>
+                  </includes>
+                  <includedGroups>purge</includedGroups>
+                  <systemPropertyVariables>
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
                   </systemPropertyVariables>
                   <trimStackTrace>false</trimStackTrace>
                   <reportFormat>plain</reportFormat>

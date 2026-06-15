@@ -5,6 +5,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.Users;
+import org.openmetadata.service.Entity;
 
 /**
  * Factory for creating User entities in integration tests using fluent API.
@@ -31,7 +32,9 @@ public class UserTestFactory {
     }
 
     try {
-      return Users.create().name(name).withEmail(email).withDescription("Test user").execute();
+      return ns.trackRoot(
+          Entity.USER,
+          Users.create().name(name).withEmail(email).withDescription("Test user").execute());
     } catch (OpenMetadataException e) {
       throw new RuntimeException("Failed to create user: " + email, e);
     }

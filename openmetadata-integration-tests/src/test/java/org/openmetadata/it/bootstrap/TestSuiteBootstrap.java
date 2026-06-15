@@ -174,6 +174,10 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     rdfEnabled = Boolean.parseBoolean(System.getProperty("enableRdf", "false"));
     cacheProvider = System.getProperty("cacheProvider", "none");
 
+    // The test-support search resource is disabled by default (it must never ship enabled in
+    // production); the embedded test server opts in so the resource is available to tests.
+    System.setProperty("OM_TEST_SUPPORT_SEARCH_ENABLED", "true");
+
     LOG.info("=== TestSuiteBootstrap: Starting test infrastructure ===");
     LOG.info("Database type: {}", databaseType);
     LOG.info("Search type: {}", searchType);

@@ -81,6 +81,7 @@ import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobKey;
 import org.quartz.SchedulerException;
@@ -853,10 +854,8 @@ public class SearchResource {
 
                   for (EntityReference ref : entities) {
                     try {
-                      EntityInterface entity = Entity.getEntity(ref, "*", Include.ALL);
-
-                      String entityId = entity.getId().toString();
-                      String entityType = entity.getEntityReference().getType();
+                      String entityId = ref.getId().toString();
+                      String entityType = ref.getType();
                       IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
 
                       if (indexMapping == null) {
@@ -868,6 +867,10 @@ public class SearchResource {
                         skippedCount++;
                         continue;
                       }
+
+                      String fields =
+                          String.join(",", ReindexingUtil.getSearchIndexFields(entityType));
+                      EntityInterface entity = Entity.getEntity(ref, fields, Include.ALL);
 
                       String indexName =
                           indexMapping.getIndexName(searchRepository.getClusterAlias());
