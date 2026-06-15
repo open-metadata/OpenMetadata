@@ -55,6 +55,8 @@ from metadata.ingestion.source.pipeline.airbyte.models import (
     AirbyteWorkspace,
 )
 from metadata.utils.constants import UTF_8
+from metadata.ingestion.source.pipeline.openlineage.models import TableDetails
+from metadata.ingestion.source.pipeline.openlineage.utils import FQNNotFoundException
 
 mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/airbyte_dataset.json"
 with open(mock_file_path, encoding=UTF_8) as file:  # noqa: PTH123
@@ -290,8 +292,6 @@ class AirbyteUnitTest(TestCase):
             mock_fqn_build.assert_called_once()
 
         # Test FQNNotFoundException catch block
-        from metadata.ingestion.source.pipeline.openlineage.utils import FQNNotFoundException
-
         with patch("metadata.ingestion.source.pipeline.airbyte.metadata.fqn.build") as mock_fqn_build:
             mock_fqn_build.side_effect = FQNNotFoundException()
             assert self.airbyte._get_container_fqn("my-bucket") is None
@@ -305,8 +305,6 @@ class AirbyteUnitTest(TestCase):
         assert fqn_str is None
 
         # Test S3 Container resolution
-        from metadata.ingestion.source.pipeline.openlineage.models import TableDetails
-
         with patch.object(self.airbyte, "_get_container_fqn") as mock_get_container:
             mock_get_container.return_value = "mock_s3_service.bucket"
             table_details = TableDetails(name="test", schema="bucket", database=None)
