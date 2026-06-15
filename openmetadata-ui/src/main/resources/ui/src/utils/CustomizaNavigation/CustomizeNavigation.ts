@@ -227,9 +227,17 @@ const enhanceNavigationItem = (
     return null;
   }
 
-  const childrenItems = navItem.children
-    ?.map((child) => enhanceNavigationItem(child, sidebarMap))
+  const savedChildIds = new Set(navItem.children?.map((c) => c.id) ?? []);
+
+  const savedChildrenItems = (navItem.children ?? [])
+    .map((child) => enhanceNavigationItem(child, sidebarMap))
     .filter((item): item is LeftSidebarItem => item !== null);
+
+  const newSidebarChildren = (sidebarItem.children ?? []).filter(
+    (child) => !savedChildIds.has(child.key)
+  );
+
+  const childrenItems = [...savedChildrenItems, ...newSidebarChildren];
 
   return {
     ...sidebarItem,
@@ -247,16 +255,23 @@ export const filterHiddenNavigationItems = (
 
   const baseSidebarItems = getBaseSidebarItems();
   const sidebarMap = createSidebarMap(baseSidebarItems);
+  const savedNavIds = new Set(navigationItems.map((n) => n.id));
 
   const filteredItems = navigationItems
     .map((navItem) => enhanceNavigationItem(navItem, sidebarMap))
     .filter((item): item is LeftSidebarItem => item !== null);
 
+  const newTopLevelItems = baseSidebarItems.filter(
+    (item) => !savedNavIds.has(item.key)
+  );
+
+  const allItems = [...filteredItems, ...newTopLevelItems];
+
   if (plugins?.length) {
     const pluginItems = extractPluginSidebarItems(plugins);
 
-    return mergePluginSidebarItems(filteredItems, pluginItems, navigationItems);
+    return mergePluginSidebarItems(allItems, pluginItems, navigationItems);
   }
 
-  return filteredItems;
+  return allItems;
 };
