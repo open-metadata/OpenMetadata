@@ -281,8 +281,6 @@
     "micromatch": "4.0.8",
     "minimatch": "3.1.5",
     "rollup": "4.59.0",
-    "@storybook/react-vite/minimatch": "9.0.7",
-    "vite-plugin-dts/minimatch": "10.2.3",
     "semver": "7.5.2",
     "d3-color": "3.1.0",
     "tough-cookie": "4.1.3",
