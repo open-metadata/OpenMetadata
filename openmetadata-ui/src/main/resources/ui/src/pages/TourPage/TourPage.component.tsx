@@ -119,8 +119,9 @@ const TourPage = () => {
     updateTourSearch('');
   }, [updateTourSearch]);
 
-  // Seed mock data synchronously so tour-aware pages read from provider
-  // instead of racing react-tour's stepWaitTimer with a dynamic import.
+  // Seed mock data on mount so tour-aware pages read it from the provider
+  // instead of each one fetching the chunk via a dynamic import that races
+  // react-tour's stepWaitTimer.
   useEffect(() => {
     updateTourMockData?.({
       searchResults:
