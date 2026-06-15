@@ -22,7 +22,7 @@ import { RolesClass } from '../access-control/RolesClass';
 import { UserResponseDataType } from '../entity/Entity.interface';
 import { TeamClass } from '../team/TeamClass';
 
-type UserData = {
+export type UserData = {
   email: string;
   firstName: string;
   lastName: string;
@@ -33,13 +33,16 @@ export class UserClass {
   data: UserData;
 
   responseData: UserResponseDataType = {} as UserResponseDataType;
+  private isExistingUser = false;
   isUserDataSteward = false;
   private readonly dataStewardPolicy = new PolicyClass();
   private readonly dataStewardRoles = new RolesClass();
   private dataStewardTeam: TeamClass | undefined;
+  isAdmin: boolean;
 
-  constructor(data?: UserData) {
-    this.data = data ? data : generateRandomUsername();
+  constructor(data?: UserData, isAdmin = false) {
+    this.data = data ?? generateRandomUsername();
+    this.isAdmin = isAdmin;
   }
 
   async create(apiContext: APIRequestContext, assignRole = true) {
@@ -53,30 +56,66 @@ export class UserClass {
       data: this.data,
     });
 
-    if (!response.ok()) {
-      throw new Error(
-        `UserClass.create() failed with status ${response.status()}: ${await response.text()}`
-      );
+    if (response.ok()) {
+      this.responseData = await response.json();
+    } else {
+      const body = await response.text();
+
+      if (
+        response.status() === 400 &&
+        body.includes('User with Email Already Exists')
+      ) {
+        const userName = this.data.email.split('@')[0];
+        const existing = await apiContext.get(
+          `/api/v1/users/name/${userName}?fields=id,name,email,displayName,isAdmin,roles`
+        );
+
+        if (!existing.ok()) {
+          throw new Error(
+            `UserClass.create() fallback fetch failed with status ${existing.status()}: ${await existing.text()}`
+          );
+        }
+
+        this.responseData = await existing.json();
+        this.isExistingUser = true;
+      } else {
+        throw new Error(
+          `UserClass.create() failed with status ${response.status()}: ${body}`
+        );
+      }
     }
-
-    this.responseData = await response.json();
-    if (assignRole) {
-      const { entity } = await this.patch({
-        apiContext,
-        patchData: [
-          {
-            op: 'add',
-            path: '/roles/0',
-            value: {
-              id: dataConsumerRole.id,
-              type: 'role',
-              name: dataConsumerRole.name,
+    if (assignRole && !this.isExistingUser) {
+      if (this.isAdmin) {
+        const { entity } = await this.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'replace',
+              path: '/isAdmin',
+              value: true,
             },
-          },
-        ],
-      });
+          ],
+        });
 
-      return entity;
+        return entity;
+      } else {
+        const { entity } = await this.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'add',
+              path: '/roles/0',
+              value: {
+                id: dataConsumerRole.id,
+                type: 'role',
+                name: dataConsumerRole.name,
+              },
+            },
+          ],
+        });
+
+        return entity;
+      }
     }
 
     return this.responseData;
