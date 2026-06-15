@@ -47,6 +47,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -314,11 +315,11 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateBot create) {
-    Bot bot = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    String updatedBy = securityContext.getUserPrincipal().getName();
+    Bot bot = mapper.createToEntity(create, updatedBy);
     ImpersonationChange impersonationChange = resolveImpersonationChange(securityContext, create);
-    Response response = create(uriInfo, securityContext, bot);
-    applyImpersonationChange(impersonationChange);
-    return response;
+    return persistWithImpersonation(
+        impersonationChange, updatedBy, () -> create(uriInfo, securityContext, bot));
   }
 
   @PUT
@@ -338,11 +339,11 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateBot create) {
-    Bot bot = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    String updatedBy = securityContext.getUserPrincipal().getName();
+    Bot bot = mapper.createToEntity(create, updatedBy);
     ImpersonationChange impersonationChange = resolveImpersonationChange(securityContext, create);
-    Response response = createOrUpdate(uriInfo, securityContext, bot);
-    applyImpersonationChange(impersonationChange);
-    return response;
+    return persistWithImpersonation(
+        impersonationChange, updatedBy, () -> createOrUpdate(uriInfo, securityContext, bot));
   }
 
   @PATCH
@@ -504,24 +505,66 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       SecurityContext securityContext, CreateBot create) {
     ImpersonationChange result = null;
     Boolean requested = create.getAllowImpersonation();
-    User botUser = requested == null ? null : findBotUser(create.getBotUser());
-    if (requested != null && botUser != null && requested != isImpersonationEnabled(botUser)) {
-      authorizer.authorizeAdmin(securityContext);
-      if (requested && botExists(create.getName())) {
-        throw new IllegalArgumentException(IMPERSONATION_GRANT_AT_CREATION_ONLY);
+    if (requested != null) {
+      User botUser = findBotUser(create.getBotUser());
+      if (botUser == null) {
+        throw new IllegalArgumentException(
+            "Cannot resolve bot user '"
+                + create.getBotUser()
+                + "' to apply the requested impersonation change");
       }
-      result = new ImpersonationChange(botUser.getId(), requested);
+      if (requested != isImpersonationEnabled(botUser)) {
+        authorizer.authorizeAdmin(securityContext);
+        if (requested && botExists(create.getName())) {
+          throw new IllegalArgumentException(IMPERSONATION_GRANT_AT_CREATION_ONLY);
+        }
+        result = new ImpersonationChange(botUser.getId(), requested);
+      }
     }
     return result;
   }
 
-  private void applyImpersonationChange(ImpersonationChange change) {
+  /**
+   * Applies the impersonation grant before persisting the bot so the two stay consistent: if the
+   * grant fails the bot is never created, and if bot persistence fails the grant is compensated
+   * (reverted). A bare retry is also safe - the grant is idempotent, so re-creating the bot after a
+   * partial failure converges.
+   */
+  private Response persistWithImpersonation(
+      ImpersonationChange change, String updatedBy, Supplier<Response> persistBot) {
+    applyImpersonationChange(change, updatedBy);
+    Response response;
+    try {
+      response = persistBot.get();
+    } catch (RuntimeException e) {
+      revertImpersonationChange(change, updatedBy);
+      throw e;
+    }
+    return response;
+  }
+
+  private void applyImpersonationChange(ImpersonationChange change, String updatedBy) {
     if (change != null) {
       EntityReference impersonationRole =
           Entity.getEntityReferenceByName(Entity.ROLE, BOT_IMPERSONATION_ROLE, Include.NON_DELETED);
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       userRepository.updateBotImpersonation(
           change.botUserId(), change.allowImpersonation(), impersonationRole);
+      LOG.info(
+          "Bot impersonation {} for bot user {} by {}",
+          change.allowImpersonation() ? "granted" : "revoked",
+          change.botUserId(),
+          updatedBy);
+    }
+  }
+
+  private void revertImpersonationChange(ImpersonationChange change, String updatedBy) {
+    if (change != null) {
+      LOG.warn(
+          "Compensating bot impersonation change for bot user {} after bot persistence failed",
+          change.botUserId());
+      applyImpersonationChange(
+          new ImpersonationChange(change.botUserId(), !change.allowImpersonation()), updatedBy);
     }
   }
 
