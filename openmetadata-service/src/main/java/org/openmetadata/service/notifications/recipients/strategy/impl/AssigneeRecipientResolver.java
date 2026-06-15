@@ -23,8 +23,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
@@ -51,18 +53,21 @@ public class AssigneeRecipientResolver implements RecipientResolutionStrategy {
   public Set<Recipient> resolve(
       ChangeEvent event, SubscriptionAction action, SubscriptionDestination destination) {
 
-    if (!Entity.THREAD.equalsIgnoreCase(event.getEntityType())) {
-      LOG.warn(
-          "AssigneeRecipientResolver called with non-thread entity: {}", event.getEntityType());
-      return Collections.emptySet();
-    }
-
     try {
-      Thread thread = AlertsRuleEvaluator.getThread(event);
-      return resolveAssigneesFromThread(thread, destination);
+      if (Entity.TASK.equalsIgnoreCase(event.getEntityType())) {
+        Task task = AlertsRuleEvaluator.getTask(event);
+        return resolveAssignees(task == null ? null : task.getAssignees(), destination);
+      }
+      if (Entity.THREAD.equalsIgnoreCase(event.getEntityType())) {
+        Thread thread = AlertsRuleEvaluator.getThread(event);
+        return resolveAssigneesFromThread(thread, destination);
+      }
+      LOG.warn(
+          "AssigneeRecipientResolver called with unsupported entity: {}", event.getEntityType());
+      return Collections.emptySet();
 
     } catch (Exception e) {
-      LOG.error("Failed to resolve assignees for thread {}", event.getEntityId(), e);
+      LOG.error("Failed to resolve assignees for {}", event.getEntityId(), e);
       return Collections.emptySet();
     }
   }
@@ -74,17 +79,20 @@ public class AssigneeRecipientResolver implements RecipientResolutionStrategy {
       SubscriptionAction action,
       SubscriptionDestination destination) {
 
-    if (!Entity.THREAD.equalsIgnoreCase(entityType)) {
-      LOG.warn("AssigneeRecipientResolver called with non-thread entity: {}", entityType);
-      return Collections.emptySet();
-    }
-
     try {
-      Thread thread = Entity.getFeedRepository().get(entityId);
-      return resolveAssigneesFromThread(thread, destination);
+      if (Entity.TASK.equalsIgnoreCase(entityType)) {
+        Task task = Entity.getEntity(Entity.TASK, entityId, "assignees", Include.NON_DELETED);
+        return resolveAssignees(task == null ? null : task.getAssignees(), destination);
+      }
+      if (Entity.THREAD.equalsIgnoreCase(entityType)) {
+        Thread thread = Entity.getFeedRepository().get(entityId);
+        return resolveAssigneesFromThread(thread, destination);
+      }
+      LOG.warn("AssigneeRecipientResolver called with unsupported entity: {}", entityType);
+      return Collections.emptySet();
 
     } catch (Exception e) {
-      LOG.error("Failed to resolve assignees for thread {}", entityId, e);
+      LOG.error("Failed to resolve assignees for {}", entityId, e);
       return Collections.emptySet();
     }
   }
@@ -94,8 +102,11 @@ public class AssigneeRecipientResolver implements RecipientResolutionStrategy {
     if (thread == null || thread.getTask() == null) {
       return Collections.emptySet();
     }
+    return resolveAssignees(thread.getTask().getAssignees(), destination);
+  }
 
-    List<EntityReference> assignees = thread.getTask().getAssignees();
+  private Set<Recipient> resolveAssignees(
+      List<EntityReference> assignees, SubscriptionDestination destination) {
     if (assignees == null || assignees.isEmpty()) {
       return Collections.emptySet();
     }

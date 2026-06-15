@@ -586,16 +586,25 @@ public class TaskRepository extends EntityRepository<Task> {
    * Anyone who can view the task can add comments.
    */
   public Task addComment(Task task, org.openmetadata.schema.type.TaskComment comment) {
+    Task original = JsonUtils.deepCopy(task, Task.class);
     List<org.openmetadata.schema.type.TaskComment> comments =
         new java.util.ArrayList<>(listOrEmpty(task.getComments()));
     comments.add(comment);
     task.setComments(comments);
     task.setCommentCount(comments.size());
     task.setUpdatedAt(System.currentTimeMillis());
+    if (comment.getAuthor() != null && comment.getAuthor().getName() != null) {
+      task.setUpdatedBy(comment.getAuthor().getName());
+    }
     storeEntity(task, true);
 
     // Store mentions from the comment message
     storeMentions(task, comment.getMessage());
+
+    // storeEntity is the raw persistence path; fire postUpdate so search/lifecycle
+    // handlers stay consistent. The task/entityUpdated change event that drives
+    // mention notifications is emitted from the resource response header.
+    postUpdate(original, task);
 
     return task;
   }

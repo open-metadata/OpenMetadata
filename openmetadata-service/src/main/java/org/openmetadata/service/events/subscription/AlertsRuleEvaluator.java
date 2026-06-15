@@ -10,12 +10,14 @@ import static org.openmetadata.schema.type.Function.ParameterType.SPECIFIC_INDEX
 import static org.openmetadata.service.Entity.DATA_CONTRACT;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 import static org.openmetadata.service.Entity.PIPELINE;
+import static org.openmetadata.service.Entity.TASK;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.Entity.USER;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -27,6 +29,7 @@ import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.ResultSummary;
@@ -40,6 +43,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.StatusType;
+import org.openmetadata.schema.type.TaskComment;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -557,8 +561,9 @@ public class AlertsRuleEvaluator {
       return false;
     }
 
-    // Filter does not apply to Thread Change Events
-    if (!changeEvent.getEntityType().equals(THREAD)) {
+    boolean isTask = TASK.equals(changeEvent.getEntityType());
+    // Filter applies to conversation (Thread) and incident/task (Task) change events
+    if (!THREAD.equals(changeEvent.getEntityType()) && !isTask) {
       return false;
     }
 
@@ -566,8 +571,12 @@ public class AlertsRuleEvaluator {
       return true;
     }
 
-    Thread thread = getThread(changeEvent);
+    List<MessageParser.EntityLink> mentions =
+        isTask ? getTaskMentions(getTask(changeEvent)) : getThreadMentions(getThread(changeEvent));
+    return matchesMentionedUserOrTeam(mentions, usersOrTeamName);
+  }
 
+  private List<MessageParser.EntityLink> getThreadMentions(Thread thread) {
     List<MessageParser.EntityLink> mentions;
     if (thread.getPostsCount() == 0) {
       mentions = MessageParser.getEntityLinks(thread.getMessage());
@@ -575,6 +584,26 @@ public class AlertsRuleEvaluator {
       Post latestPost = thread.getPosts().get(thread.getPostsCount() - 1);
       mentions = MessageParser.getEntityLinks(latestPost.getMessage());
     }
+    return mentions;
+  }
+
+  private List<MessageParser.EntityLink> getTaskMentions(Task task) {
+    List<MessageParser.EntityLink> mentions = new ArrayList<>();
+    if (task.getDescription() != null) {
+      mentions.addAll(MessageParser.getEntityLinks(task.getDescription()));
+    }
+    if (task.getComments() != null) {
+      for (TaskComment comment : task.getComments()) {
+        if (comment.getMessage() != null) {
+          mentions.addAll(MessageParser.getEntityLinks(comment.getMessage()));
+        }
+      }
+    }
+    return mentions;
+  }
+
+  private boolean matchesMentionedUserOrTeam(
+      List<MessageParser.EntityLink> mentions, List<String> usersOrTeamName) {
     for (MessageParser.EntityLink entityLink : mentions) {
       String fqn = entityLink.getEntityFQN();
       if (USER.equals(entityLink.getEntityType())) {
@@ -606,6 +635,22 @@ public class AlertsRuleEvaluator {
           String.format(
               "Change Event Data Asset is not an Thread %s",
               JsonUtils.pojoToJson(event.getEntity())));
+    }
+  }
+
+  public static Task getTask(ChangeEvent event) {
+    try {
+      Task task;
+      if (event.getEntity() instanceof String str) {
+        task = JsonUtils.readValue(str, Task.class);
+      } else {
+        task = JsonUtils.convertValue(event.getEntity(), Task.class);
+      }
+      return task;
+    } catch (Exception ex) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Change Event Data Asset is not a Task %s", JsonUtils.pojoToJson(event.getEntity())));
     }
   }
 
