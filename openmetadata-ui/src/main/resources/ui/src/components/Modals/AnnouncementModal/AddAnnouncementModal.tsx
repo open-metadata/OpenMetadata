@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import { createAnnouncement } from '../../../rest/announcementsAPI';
 import { getTimeZone } from '../../../utils/date-time/DateTimeUtils';
-import { getEntityFeedLink } from '../../../utils/EntityUtils';
+import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 import { useSnackbar } from 'notistack';

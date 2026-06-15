@@ -134,18 +134,21 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description =
+                  "Only return knowledge pills extracted from the context file with this id",
+              schema = @Schema(type = "string", format = "uuid"))
+          @QueryParam("sourceFileId")
+          UUID sourceFileId) {
+    ListFilter filter = new ListFilter(include);
+    if (sourceFileId != null) {
+      filter.addQueryParam("sourceFileId", sourceFileId.toString());
+    }
     ResultList<ContextMemory> memories =
         addHref(
             uriInfo,
-            listInternal(
-                uriInfo,
-                securityContext,
-                fieldsParam,
-                new ListFilter(include),
-                limitParam,
-                before,
-                after));
+            listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
     List<ContextMemory> visible =
         ContextMemoryVisibility.filterByVisibility(memories.getData(), securityContext);
     if (visible.size() == memories.getData().size()) {

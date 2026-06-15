@@ -24,7 +24,6 @@ import {
   ChevronDown,
   ChevronRight,
   FilterFunnel02,
-  Home02,
   Pin01,
   Plus,
 } from '@untitledui/icons';
@@ -59,7 +58,8 @@ import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const MEMORIES_PER_PAGE = 10;
-const MEMORY_FIELDS = 'owners,tags,domains,primaryEntity,relatedEntities';
+const MEMORY_FIELDS =
+  'owners,tags,domains,primaryEntity,relatedEntities,sourceFile';
 
 const FILTER_TABS = [
   { id: 'all', label: 'label.all' },
@@ -450,19 +450,11 @@ const ContextCenterMemoriesPage: FC = () => {
         actionsSlot={headerActions}
         breadcrumbs={[
           {
-            name: '',
-            icon: <Home02 size={14} />,
-            url: contextCenterClassBase.getHomePath(),
-            activeTitle: true,
+            label: t('label.context-center'),
+            href: contextCenterClassBase.getContextCenterPath(),
           },
           {
-            name: t('label.context-center'),
-            url: contextCenterClassBase.getContextCenterPath(),
-          },
-          {
-            activeTitle: true,
-            name: t('label.memory-plural'),
-            url: '',
+            label: t('label.memory-plural'),
           },
         ]}
         searchPlaceholder={t('label.search-memories')}

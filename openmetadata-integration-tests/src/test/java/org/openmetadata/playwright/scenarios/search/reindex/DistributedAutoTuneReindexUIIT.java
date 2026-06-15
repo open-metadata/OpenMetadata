@@ -7,6 +7,7 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
@@ -37,6 +38,7 @@ import org.slf4j.LoggerFactory;
  */
 @ExtendWith({UiSessionExtension.class, TestNamespaceExtension.class})
 @ResourceLock(value = "SEARCH_INDEX_APP", mode = ResourceAccessMode.READ_WRITE)
+@Tag("search-direct")
 class DistributedAutoTuneReindexUIIT {
 
   private static final Logger LOG = LoggerFactory.getLogger(DistributedAutoTuneReindexUIIT.class);
@@ -50,7 +52,7 @@ class DistributedAutoTuneReindexUIIT {
   private static final int COLUMNS_PER_TABLE = 5;
   private static final int PARALLEL_INGEST_WORKERS = 16;
 
-  private static final Duration REINDEX_TIMEOUT = Duration.ofMinutes(10);
+  private static final Duration REINDEX_TIMEOUT = ReindexHelpers.reindexTimeout();
   private static final Duration POST_REINDEX_REFRESH_GRACE = Duration.ofSeconds(3);
   private static final int PROBE_PAGE_SIZE = 1;
 

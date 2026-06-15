@@ -10,15 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
- * Backward-compatible re-export barrel.
- *
- * Implementations have been split into focused modules:
- *   - DatabaseDropdownOptions.tsx — ExtraDatabaseDropdownOptions
- *   - DatabaseTabsUtils.tsx       — getDatabasePageBaseTabs, getDatabaseWidgetsFromKey
- *
- * Import directly from those modules for new code.
- */
 import { toLower } from 'lodash';
 import { TabSpecificField } from '../../enums/entity.enum';
 
@@ -46,9 +37,3 @@ export const getQueryFilterForDatabase = (
   });
 
 export const DatabaseFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNERS}, ${TabSpecificField.DOMAINS},${TabSpecificField.DATA_PRODUCTS}`;
-
-export { ExtraDatabaseDropdownOptions } from './DatabaseDropdownOptions';
-export {
-  getDatabasePageBaseTabs,
-  getDatabaseWidgetsFromKey,
-} from './DatabaseTabsUtils';
