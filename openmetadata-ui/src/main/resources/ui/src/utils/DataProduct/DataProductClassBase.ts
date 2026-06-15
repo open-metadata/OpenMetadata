@@ -244,6 +244,14 @@ class DataProductClassBase {
     return false;
   }
 
+  public getRequestDataAccessButton(): ReactNode {
+    return null;
+  }
+
+  public getRequestDataAccessBanner(): ReactNode {
+    return null;
+  }
+
   public getRequestDataAccessDrawer(
     _isOpen: boolean,
     _onClose: () => void,
