@@ -88,7 +88,10 @@ class LLMCompletionClientTest {
   void openAiParseExtractsContent() {
     assertEquals(
         "hi",
-        OpenAICompletionClient.parseContent("{\"choices\":[{\"message\":{\"content\":\"hi\"}}]}"));
+        OpenAICompletionClient.parseResult(
+                "{\"choices\":[{\"message\":{\"content\":\"hi\"}}],"
+                    + "\"usage\":{\"prompt_tokens\":0,\"completion_tokens\":0}}")
+            .text());
   }
 
   @Test
@@ -96,7 +99,7 @@ class LLMCompletionClientTest {
     assertThrows(
         LLMCompletionException.class,
         () ->
-            OpenAICompletionClient.parseContent(
+            OpenAICompletionClient.parseResult(
                 "{\"choices\":[{\"message\":{\"content\":null,\"tool_calls\":[]}}]}"));
   }
 
