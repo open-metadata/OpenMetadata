@@ -55,6 +55,8 @@ export default defineConfig({
       {
         useDetails: true,
         showError: true,
+        includeResults: ['skipped', 'fail', 'flaky'], // skip pass to reduce noice
+        showArtifactsLink: true,
       },
     ],
     ['blob'],
