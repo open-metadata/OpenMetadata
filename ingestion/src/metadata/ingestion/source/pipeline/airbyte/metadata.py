@@ -401,8 +401,8 @@ class AirbyteSource(PipelineServiceSource):
                 )
                 continue
 
-            from_entity = self.metadata.get_by_name(entity=from_entity_class, fqn=from_fqn)  # pyright: ignore[reportCallIssue]
-            to_entity = self.metadata.get_by_name(entity=to_entity_class, fqn=to_fqn)  # pyright: ignore[reportCallIssue]
+            from_entity = self.metadata.get_by_name(entity=from_entity_class, fqn=from_fqn)
+            to_entity = self.metadata.get_by_name(entity=to_entity_class, fqn=to_fqn)
 
             if not from_entity:
                 logger.warning(
@@ -434,8 +434,8 @@ class AirbyteSource(PipelineServiceSource):
             yield Either(
                 right=AddLineageRequest(
                     edge=EntitiesEdge(
-                        fromEntity=EntityReference(id=from_entity.id, type=from_type_str),
-                        toEntity=EntityReference(id=to_entity.id, type=to_type_str),
+                        fromEntity=EntityReference(id=from_entity.id, type=from_type_str),  # pyright: ignore[reportCallIssue]
+                        toEntity=EntityReference(id=to_entity.id, type=to_type_str),  # pyright: ignore[reportCallIssue]
                         lineageDetails=lineage_details,
                     )
                 )
