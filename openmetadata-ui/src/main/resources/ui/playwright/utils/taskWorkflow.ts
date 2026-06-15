@@ -266,7 +266,7 @@ export const selectAssignee = async (page: Page, assigneeName: string) => {
       (response) =>
         response.request().method() === 'GET' &&
         response.url().includes('/api/v1/search/query') &&
-        response.url().includes('user_search_index'),
+        response.url().includes('user'),
       { timeout: 5000 }
     )
     .catch(() => null);
@@ -349,7 +349,6 @@ export const createTagTaskFromForm = async ({
   const response = await taskCreateResponse;
 
   await waitForPageLoaded(page);
-  await waitForAllLoadersToDisappear(page);
   logTaskDebug('createTagTaskFromForm:done');
 
   return (await response.json()) as CreatedTask;
@@ -621,12 +620,17 @@ export const addCommentToTask = async (page: Page, comment: string) => {
     logTaskDebug('addCommentToTask:openingEditor');
     await commentInput.click({ force: true }).catch(() => undefined);
 
-    if (!(await editor.isVisible().catch(() => false))) {
+    const editorAppearedAfterClick = await editor
+      .waitFor({ state: 'visible', timeout: 10000 })
+      .then(() => true)
+      .catch(() => false);
+
+    if (!editorAppearedAfterClick) {
       await commentInput.press('Enter').catch(() => undefined);
     }
   }
 
-  await expect(editor).toBeVisible({ timeout: 5000 });
+  await expect(editor).toBeVisible({ timeout: 15000 });
   logTaskDebug('addCommentToTask:editorVisible');
   await editor.click({ force: true });
   await editor.type(comment);

@@ -159,7 +159,10 @@ export const DeferredWidget = ({
       className={className}
       data-testid={dataTestId}
       ref={ref}
-      style={minHeight !== undefined ? { minHeight } : undefined}>
+      style={{
+        height: '100%',
+        ...(minHeight !== undefined ? { minHeight } : {}),
+      }}>
       {shouldRender ? children : placeholder ?? null}
     </div>
   );
