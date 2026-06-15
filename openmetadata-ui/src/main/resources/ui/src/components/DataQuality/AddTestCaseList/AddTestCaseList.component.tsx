@@ -55,10 +55,8 @@ import {
   getSelectedOptionsFromKeys,
   parseColumnAggregateBuckets,
 } from '../../../utils/DataQuality/DataQualityUtils';
-import {
-  getColumnNameFromEntityLink,
-  getEntityName,
-} from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getColumnNameFromEntityLink } from '../../../utils/EntityPureUtils';
 import { getEntityFQN } from '../../../utils/FeedUtils';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
@@ -615,11 +613,7 @@ export const AddTestCaseList = ({
     if (!isLoading && isEmpty(source)) {
       return (
         <Col span={24}>
-          <Space
-            align="center"
-            className="w-full"
-            direction="vertical"
-            prefixCls="w-full">
+          <Space align="center" className="w-full" direction="vertical">
             <ErrorPlaceHolder
               className="mt-0-important p-b-sm"
               type={ERROR_PLACEHOLDER_TYPE.FILTER}

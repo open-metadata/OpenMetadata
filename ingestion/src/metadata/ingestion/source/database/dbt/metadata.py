@@ -62,7 +62,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
+from metadata.ingestion.models.ometa_lineage import LineageRequest, OMetaLineageRequest
 from metadata.ingestion.models.patch_request import PatchedEntity, PatchRequest
 from metadata.ingestion.models.table_metadata import ColumnDescription
 from metadata.ingestion.ometa.client import APIError
@@ -1139,7 +1139,7 @@ class DbtSource(DbtServiceSource):
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Failed to parse the node {upstream_node} to capture lineage: {exc}")
 
-    def create_dbt_query_lineage(self, data_model_link: DataModelLink) -> Iterable[Either[AddLineageRequest]]:
+    def create_dbt_query_lineage(self, data_model_link: DataModelLink) -> Iterable[Either[LineageRequest]]:
         """
         Method to process DBT lineage from queries
         """

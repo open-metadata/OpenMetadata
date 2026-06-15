@@ -23,7 +23,7 @@ import { EntityTabs } from '../../enums/entity.enum';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { Tab } from '../../generated/system/ui/uiCustomization';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
-import { getTabLabelFromId } from '../CustomizePage/CustomizePageUtils';
+import { getTabLabelFromId } from '../CustomizePage/CustomizePagePureUtils';
 import {
   DataProductDetailPageTabProps,
   getDataProductDetailTabs,
@@ -240,18 +240,11 @@ class DataProductClassBase {
     }
   }
 
-  public getShowRequestDataAccess(): boolean {
-    return false;
+  public getRequestDataAccessButton(): ReactNode {
+    return null;
   }
 
-  public getRequestDataAccessDrawer(
-    _isOpen: boolean,
-    _onClose: () => void,
-    _entityFqn: string,
-    _entityName: string,
-    _entityType: string,
-    _onCreated?: () => void
-  ): ReactNode {
+  public getRequestDataAccessBanner(): ReactNode {
     return null;
   }
 

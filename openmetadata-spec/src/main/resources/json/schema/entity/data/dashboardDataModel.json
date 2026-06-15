@@ -29,6 +29,7 @@
         "QuickSightDataModel",
         "SigmaDataModel",
         "PowerBIDataFlow",
+        "PowerBIDatamart",
         "MicroStrategyDataset",
         "ThoughtSpotDataModel",
         "SapS4HanaCdsView",
@@ -71,6 +72,9 @@
         },
         {
           "name": "PowerBIDataFlow"
+        },
+        {
+          "name": "PowerBIDatamart"
         },
         {
           "name": "MicroStrategyDataset"

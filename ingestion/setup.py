@@ -499,6 +499,7 @@ test = {
     VERSIONS["cockroach"],
     # pydoris-custom pre-installed with --no-deps in Dockerfiles (SA<2 metadata constraint).
     VERSIONS["starrocks"],
+    *plugins["vertica"],
     "testcontainers~=4.8.0",
     "minio==7.2.5",
     *plugins["mlflow"],

@@ -17,9 +17,6 @@ import serviceUtilClassBase, {
   ServiceUtilClassBase,
 } from './ServiceUtilClassBase';
 
-jest.mock('./EntityUtils', () => ({
-  getEntityName: jest.fn(),
-}));
 jest.mock('./ServiceIconUtils', () => ({
   getServiceLogo: jest.fn(),
 }));

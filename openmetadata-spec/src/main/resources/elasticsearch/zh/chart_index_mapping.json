@@ -320,7 +320,8 @@
                 "type": "keyword",
                 "ignore_above": 256
               }
-            }
+            },
+            "normalizer": "lowercase_normalizer"
           },
           "displayName": {
             "type": "keyword",
@@ -392,7 +393,8 @@
                 "type": "text",
                 "analyzer": "om_analyzer"
               }
-            }
+            },
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"
@@ -584,7 +586,8 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
-                "ignore_above": 256
+                "ignore_above": 256,
+                "normalizer": "lowercase_normalizer"
               }
             }
           },

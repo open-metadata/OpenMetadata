@@ -18,7 +18,7 @@ import {
   RowFilter,
 } from '../../../generated/entity/data/dataContract';
 import { DataType, Table } from '../../../generated/entity/data/table';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import ContractSecurityCard from './ContractSecurityCard.component';
 
@@ -28,7 +28,7 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn(),
 }));
 
