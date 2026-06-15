@@ -245,4 +245,19 @@ class BuildEntityUrlHelperTest {
 
     assertEquals(BASE_URL + "/test-case/service.db.schema.tc1/test-case-results", url);
   }
+
+  @Test
+  void nullableEntityUrl_withView_doesNotEmitLiteralNull() throws IOException {
+    // A query without an id makes buildEntityUrl return null; the view suffix must not turn that
+    // into the literal "null/activity_feed/...".
+    Template t =
+        handlebars.compileInline(
+            "<a href=\"{{buildEntityUrl event.entityType entity 'tasks'}}\">link</a>");
+    Map<String, Object> entity = Map.of("fullyQualifiedName", "DWH.q", "name", "q");
+    String href =
+        extractHref(t.apply(Map.of("event", Map.of("entityType", Entity.QUERY), "entity", entity)));
+
+    assertFalse(href.contains("null"), () -> "URL must not contain literal 'null': " + href);
+    assertFalse(href.contains("/activity_feed/"), () -> "no feed suffix on a null URL: " + href);
+  }
 }

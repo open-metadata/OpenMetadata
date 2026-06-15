@@ -218,7 +218,7 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
           buildUrl(baseUrl, entityType, fqn, "");
         };
 
-    if (!nullOrEmpty(view)) {
+    if (!nullOrEmpty(view) && !nullOrEmpty(url)) {
       String feed = "tasks".equals(view) ? "tasks" : "all";
       url = String.format("%s/activity_feed/%s", url, feed);
     }
