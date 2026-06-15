@@ -36,7 +36,7 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 from metadata.generated.schema.security.credentials.awsCredentials import (
     AWSCredentials,
 )
-from metadata.ingestion.source.database.mysql.connection import MySQLConnection
+from metadata.ingestion.source.database.mysql.connection import _IamStrategy
 
 HOST = "myrds.abc.us-east-2.rds.amazonaws.com"
 PORT = "3306"
@@ -52,12 +52,6 @@ def _iam_connection() -> MysqlConnection:
     )
 
 
-def _make_mysql_connection(connection: MysqlConnection) -> MySQLConnection:
-    mysql_conn = MySQLConnection.__new__(MySQLConnection)
-    mysql_conn.service_connection = connection
-    return mysql_conn
-
-
 def _presigned_token(issued_at: datetime.datetime, expires_seconds: int = 900) -> str:
     amz_date = issued_at.strftime("%Y%m%dT%H%M%SZ")
     return f"{HOST}:{PORT}/?Action=connect&DBUser={USERNAME}&X-Amz-Date={amz_date}&X-Amz-Expires={expires_seconds}"
@@ -71,12 +65,12 @@ class TestMySQLIamEngine:
     @patch.object(connection_module, "create_generic_db_connection")
     def test_iam_token_is_not_baked_into_url(self, mock_create, mock_listen, mock_token_manager):
         mock_token_manager.return_value.get_token.return_value = "FRESH_TOKEN"
-        mysql_conn = _make_mysql_connection(_iam_connection())
+        connection = _iam_connection()
 
-        mysql_conn._get_iam_engine(mysql_conn.service_connection)
+        _IamStrategy(connection).build()
 
         url_fn = mock_create.call_args.kwargs["get_connection_url_fn"]
-        url = url_fn(mysql_conn.service_connection)
+        url = url_fn(connection)
         assert "FRESH_TOKEN" not in url
         assert "Action=connect" not in url
         assert url.startswith(f"mysql+pymysql://{USERNAME}:@{HOST}:{PORT}")
@@ -90,9 +84,8 @@ class TestMySQLIamEngine:
             hostPort=f"{HOST}:{PORT}",
             authType=IamAuthConfigurationSource(awsConfig=AWSCredentials(awsRegion=REGION)),
         )
-        mysql_conn = _make_mysql_connection(connection)
 
-        mysql_conn._get_iam_engine(connection)
+        _IamStrategy(connection).build()
 
         url_fn = mock_create.call_args.kwargs["get_connection_url_fn"]
         url = url_fn(connection)
@@ -110,9 +103,8 @@ class TestMySQLIamEngine:
             connectionOptions={"charset": "utf8mb4"},
             authType=IamAuthConfigurationSource(awsConfig=AWSCredentials(awsRegion=REGION)),
         )
-        mysql_conn = _make_mysql_connection(connection)
 
-        mysql_conn._get_iam_engine(connection)
+        _IamStrategy(connection).build()
 
         url_fn = mock_create.call_args.kwargs["get_connection_url_fn"]
         url = url_fn(connection)
@@ -125,9 +117,9 @@ class TestMySQLIamEngine:
     @patch.object(connection_module, "create_generic_db_connection")
     def test_do_connect_listener_is_registered(self, mock_create, mock_listen, mock_token_manager):
         mock_token_manager.return_value.get_token.return_value = "FRESH_TOKEN"
-        mysql_conn = _make_mysql_connection(_iam_connection())
+        connection = _iam_connection()
 
-        mysql_conn._get_iam_engine(mysql_conn.service_connection)
+        _IamStrategy(connection).build()
 
         event_name = mock_listen.call_args.args[1]
         assert event_name == "do_connect"
@@ -137,9 +129,9 @@ class TestMySQLIamEngine:
     @patch.object(connection_module, "create_generic_db_connection")
     def test_listener_injects_fresh_token_per_connection(self, mock_create, mock_listen, mock_token_manager):
         mock_token_manager.return_value.get_token.return_value = "FRESH_TOKEN"
-        mysql_conn = _make_mysql_connection(_iam_connection())
+        connection = _iam_connection()
 
-        mysql_conn._get_iam_engine(mysql_conn.service_connection)
+        _IamStrategy(connection).build()
         listener = mock_listen.call_args.args[2]
 
         first_cparams = {}
@@ -156,9 +148,9 @@ class TestMySQLIamEngine:
     @patch.object(connection_module, "create_generic_db_connection")
     def test_listener_enables_ssl_required_by_pymysql_for_iam(self, mock_create, mock_listen, mock_token_manager):
         mock_token_manager.return_value.get_token.return_value = "FRESH_TOKEN"
-        mysql_conn = _make_mysql_connection(_iam_connection())
+        connection = _iam_connection()
 
-        mysql_conn._get_iam_engine(mysql_conn.service_connection)
+        _IamStrategy(connection).build()
         listener = mock_listen.call_args.args[2]
 
         cparams = {}
@@ -179,8 +171,8 @@ class TestMySQLIamEngine:
         import pymysql
 
         mock_token_manager.return_value.get_token.return_value = "FRESH_TOKEN"
-        mysql_conn = _make_mysql_connection(_iam_connection())
-        mysql_conn._get_iam_engine(mysql_conn.service_connection)
+        connection = _iam_connection()
+        _IamStrategy(connection).build()
         listener = mock_listen.call_args.args[2]
 
         cparams = {}
@@ -196,9 +188,9 @@ class TestMySQLIamEngine:
     @patch.object(connection_module, "create_generic_db_connection")
     def test_listener_preserves_existing_ssl_config(self, mock_create, mock_listen, mock_token_manager):
         mock_token_manager.return_value.get_token.return_value = "FRESH_TOKEN"
-        mysql_conn = _make_mysql_connection(_iam_connection())
+        connection = _iam_connection()
 
-        mysql_conn._get_iam_engine(mysql_conn.service_connection)
+        _IamStrategy(connection).build()
         listener = mock_listen.call_args.args[2]
 
         existing_ssl = {"ssl_ca": "/path/to/ca.pem"}
@@ -211,9 +203,9 @@ class TestMySQLIamEngine:
     @patch.object(connection_module, "create_generic_db_connection")
     def test_listener_does_not_overwrite_explicit_empty_ssl(self, mock_create, mock_listen, mock_token_manager):
         mock_token_manager.return_value.get_token.return_value = "FRESH_TOKEN"
-        mysql_conn = _make_mysql_connection(_iam_connection())
+        connection = _iam_connection()
 
-        mysql_conn._get_iam_engine(mysql_conn.service_connection)
+        _IamStrategy(connection).build()
         listener = mock_listen.call_args.args[2]
 
         sentinel_ssl = {}
@@ -225,9 +217,9 @@ class TestMySQLIamEngine:
     @patch.object(connection_module, "listen")
     @patch.object(connection_module, "create_generic_db_connection")
     def test_token_manager_built_with_split_host_and_port(self, mock_create, mock_listen, mock_token_manager):
-        mysql_conn = _make_mysql_connection(_iam_connection())
+        connection = _iam_connection()
 
-        mysql_conn._get_iam_engine(mysql_conn.service_connection)
+        _IamStrategy(connection).build()
 
         assert mock_token_manager.call_args.kwargs["host"] == HOST
         assert mock_token_manager.call_args.kwargs["port"] == PORT
