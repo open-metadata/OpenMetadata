@@ -14,28 +14,42 @@
 package org.openmetadata.service.llm;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
+import software.amazon.awssdk.services.bedrockruntime.model.ContentBlock;
+import software.amazon.awssdk.services.bedrockruntime.model.ConversationRole;
+import software.amazon.awssdk.services.bedrockruntime.model.ConverseOutput;
+import software.amazon.awssdk.services.bedrockruntime.model.ConverseRequest;
+import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
+import software.amazon.awssdk.services.bedrockruntime.model.Message;
+import software.amazon.awssdk.services.bedrockruntime.model.TokenUsage;
 
 class BedrockCompletionClientTest {
 
-  private static final String RESPONSE =
-      "{\"content\":[{\"type\":\"text\",\"text\":\"ok\"}],"
-          + "\"usage\":{\"input_tokens\":30,\"output_tokens\":9}}";
-
   @Test
   void parsesTextAndUsage() {
-    CompletionResult result = BedrockCompletionClient.parseResult(RESPONSE);
+    ConverseResponse response =
+        ConverseResponse.builder()
+            .output(
+                ConverseOutput.fromMessage(
+                    Message.builder()
+                        .role(ConversationRole.ASSISTANT)
+                        .content(ContentBlock.fromText("ok"))
+                        .build()))
+            .usage(TokenUsage.builder().inputTokens(30).outputTokens(9).build())
+            .build();
+    CompletionResult result = BedrockCompletionClient.toResult(response);
     assertEquals("ok", result.text());
     assertEquals(30, result.inputTokens());
     assertEquals(9, result.outputTokens());
   }
 
   @Test
-  void requestBodyHonorsOverrides() {
-    String body = BedrockCompletionClient.buildRequestBody("sys", "user", 256, 0.0);
-    assertTrue(body.contains("\"max_tokens\":256"));
-    assertTrue(body.contains("\"anthropic_version\""));
+  void requestHonorsOverrides() {
+    ConverseRequest request =
+        BedrockCompletionClient.buildRequest("override-model", "sys", "user", 256, 0.0, 15);
+    assertEquals("override-model", request.modelId());
+    assertEquals(256, request.inferenceConfig().maxTokens());
+    assertEquals(0.0f, request.inferenceConfig().temperature(), 0.0001f);
   }
 }

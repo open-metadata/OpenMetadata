@@ -1,10 +1,18 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.service.llm;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.io.IOException;
 import java.time.Duration;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.configuration.LLMBedrockConfig;
@@ -12,18 +20,21 @@ import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.security.credentials.AWSBaseConfig;
 import org.openmetadata.service.util.AwsCredentialsUtil;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
-import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
-import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
-import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
+import software.amazon.awssdk.services.bedrockruntime.model.ContentBlock;
+import software.amazon.awssdk.services.bedrockruntime.model.ConversationRole;
+import software.amazon.awssdk.services.bedrockruntime.model.ConverseRequest;
+import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
+import software.amazon.awssdk.services.bedrockruntime.model.InferenceConfiguration;
+import software.amazon.awssdk.services.bedrockruntime.model.Message;
+import software.amazon.awssdk.services.bedrockruntime.model.SystemContentBlock;
+import software.amazon.awssdk.services.bedrockruntime.model.TokenUsage;
 
-/** AWS Bedrock chat-completion client (Anthropic messages API). Mirrors BedrockEmbeddingClient. */
+/** AWS Bedrock chat-completion client (Converse API — works with all Bedrock model families). */
 @Slf4j
 public final class BedrockCompletionClient extends LLMCompletionClient implements AutoCloseable {
-  private static final ObjectMapper MAPPER = new ObjectMapper();
-  private static final String ANTHROPIC_VERSION = "bedrock-2023-05-31";
 
   private final BedrockRuntimeClient bedrockClient;
   private final String modelId;
@@ -61,59 +72,62 @@ public final class BedrockCompletionClient extends LLMCompletionClient implement
     int timeout = options.timeoutSecondsOr(this.timeoutSeconds);
     CompletionResult result;
     try {
-      InvokeModelRequest request =
-          InvokeModelRequest.builder()
-              .modelId(model)
-              .contentType("application/json")
-              .accept("application/json")
-              .body(
-                  SdkBytes.fromUtf8String(buildRequestBody(systemPrompt, userPrompt, tokens, temp)))
-              .overrideConfiguration(c -> c.apiCallTimeout(Duration.ofSeconds(timeout)))
-              .build();
-      InvokeModelResponse response = bedrockClient.invokeModel(request);
-      result = parseResult(response.body().asUtf8String());
+      ConverseResponse response =
+          bedrockClient.converse(
+              buildRequest(model, systemPrompt, userPrompt, tokens, temp, timeout));
+      result = toResult(response);
     } catch (AwsServiceException | SdkClientException e) {
       throw new LLMCompletionException("Bedrock completion failed", e);
     }
     return result;
   }
 
-  static String buildRequestBody(
-      String systemPrompt, String userPrompt, int maxTokens, double temperature) {
-    String result;
-    try {
-      ObjectNode payload = MAPPER.createObjectNode();
-      payload.put("anthropic_version", ANTHROPIC_VERSION);
-      payload.put("max_tokens", maxTokens);
-      payload.put("temperature", temperature);
-      payload.put("system", systemPrompt);
-      ArrayNode messages = payload.putArray("messages");
-      messages.addObject().put("role", "user").put("content", userPrompt);
-      result = MAPPER.writeValueAsString(payload);
-    } catch (IOException e) {
-      throw new LLMCompletionException("Failed to build Bedrock request body", e);
-    }
-    return result;
+  static ConverseRequest buildRequest(
+      String model,
+      String systemPrompt,
+      String userPrompt,
+      int maxTokens,
+      double temperature,
+      int timeoutSeconds) {
+    return ConverseRequest.builder()
+        .modelId(model)
+        .system(SystemContentBlock.fromText(systemPrompt))
+        .messages(
+            Message.builder()
+                .role(ConversationRole.USER)
+                .content(ContentBlock.fromText(userPrompt))
+                .build())
+        .inferenceConfig(
+            InferenceConfiguration.builder()
+                .maxTokens(maxTokens)
+                .temperature((float) temperature)
+                .build())
+        .overrideConfiguration(c -> c.apiCallTimeout(Duration.ofSeconds(timeoutSeconds)))
+        .build();
   }
 
-  static CompletionResult parseResult(String responseBody) {
-    CompletionResult result;
-    try {
-      JsonNode root = MAPPER.readTree(responseBody);
-      JsonNode content = root.get("content");
-      if (content == null || !content.isArray() || content.isEmpty()) {
-        throw new LLMCompletionException("Invalid Bedrock response: no content returned");
-      }
-      JsonNode usage = root.path("usage");
-      result =
-          new CompletionResult(
-              content.get(0).get("text").asText(),
-              usage.path("input_tokens").asInt(0),
-              usage.path("output_tokens").asInt(0));
-    } catch (IOException e) {
-      throw new LLMCompletionException("Failed to parse Bedrock response", e);
+  static CompletionResult toResult(ConverseResponse response) {
+    String text = extractText(response);
+    if (text.isEmpty()) {
+      throw new LLMCompletionException("Invalid Bedrock response: no text content returned");
     }
-    return result;
+    TokenUsage usage = response.usage();
+    int inputTokens = usage != null && usage.inputTokens() != null ? usage.inputTokens() : 0;
+    int outputTokens = usage != null && usage.outputTokens() != null ? usage.outputTokens() : 0;
+    return new CompletionResult(text, inputTokens, outputTokens);
+  }
+
+  private static String extractText(ConverseResponse response) {
+    String text = "";
+    if (response.output() != null && response.output().message() != null) {
+      for (ContentBlock block : response.output().message().content()) {
+        if (block.text() != null) {
+          text = block.text();
+          break;
+        }
+      }
+    }
+    return text;
   }
 
   @Override
