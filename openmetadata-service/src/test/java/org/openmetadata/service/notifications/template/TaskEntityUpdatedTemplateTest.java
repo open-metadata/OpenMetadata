@@ -106,7 +106,9 @@ class TaskEntityUpdatedTemplateTest {
     assertTrue(out.contains("tc1"), out);
     assertTrue(out.contains("Reply:"), out);
     assertTrue(out.contains("please look at this incident"), out);
-    assertTrue(out.contains("/test-case/svc.db.sch.tc1"), out);
+    // With the buildEntityUrl view arg integrated, a testCase 'tasks' link resolves to the
+    // incident (issues) tab rather than overflowing the flat test-case route.
+    assertTrue(out.contains("/test-case/svc.db.sch.tc1/issues"), out);
     assertTrue(out.contains("Adria Estivill"), out);
     assertFalse(out.contains("updated the assignees"), out);
   }
