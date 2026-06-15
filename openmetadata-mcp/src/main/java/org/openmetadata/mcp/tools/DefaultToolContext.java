@@ -85,6 +85,12 @@ public class DefaultToolContext {
           tool = new GetEntityTool();
           result = tool.execute(authorizer, securityContext, params);
           break;
+        case "search_company_context":
+          result = new SearchCompanyContextTool().execute(authorizer, securityContext, params);
+          break;
+        case "get_company_context":
+          result = new GetCompanyContextTool().execute(authorizer, securityContext, params);
+          break;
         case "create_glossary":
           tool = new GlossaryTool();
           result = tool.execute(authorizer, limits, securityContext, params);

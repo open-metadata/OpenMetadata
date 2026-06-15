@@ -271,13 +271,16 @@ public class McpChatResourceIT extends McpTestBase {
   }
 
   @Test
-  void testChatWhenLlmDisabled() throws Exception {
+  void testChatSucceedsWhenLlmConfigured() throws Exception {
     Map<String, Object> chatRequest = new HashMap<>();
     chatRequest.put("message", "Hello");
 
     HttpResponse<String> resp = postResponse(MCP_CLIENT_PATH + "/chat", chatRequest, authToken);
 
-    assertThat(resp.statusCode()).isEqualTo(500);
+    // The embedded suite configures an in-JVM stub LLM (see TestSuiteBootstrap / LlmStubServer),
+    // so chat is enabled end to end and returns a completion, rather than the 500 raised by
+    // requireChatEnabled() when llmConfiguration is absent.
+    assertThat(resp.statusCode()).isEqualTo(200);
   }
 
   @Test
