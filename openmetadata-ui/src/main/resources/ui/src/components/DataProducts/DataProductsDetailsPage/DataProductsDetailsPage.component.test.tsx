@@ -17,7 +17,7 @@ import DataProductsDetailsPage from './DataProductsDetailsPage.component';
 import { DataProductsDetailsPageProps } from './DataProductsDetailsPage.interface';
 
 jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
-  GenericProvider: jest.fn().mockReturnValue(null),
+  GenericProvider: jest.fn().mockImplementation(({ children }) => children ?? null),
 }));
 
 jest.mock('react-router-dom', () => ({
