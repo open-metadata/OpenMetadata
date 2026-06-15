@@ -112,8 +112,9 @@ class LLMCompletionClientTest {
   void googleParseExtractsText() {
     assertEquals(
         "ok",
-        GoogleCompletionClient.parseContent(
-            "{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"ok\"}]}}]}"));
+        GoogleCompletionClient.parseResult(
+                "{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"ok\"}]}}]}")
+            .text());
   }
 
   @Test
@@ -121,7 +122,6 @@ class LLMCompletionClientTest {
     assertThrows(
         LLMCompletionException.class,
         () ->
-            GoogleCompletionClient.parseContent(
-                "{\"candidates\":[{\"finishReason\":\"SAFETY\"}]}"));
+            GoogleCompletionClient.parseResult("{\"candidates\":[{\"finishReason\":\"SAFETY\"}]}"));
   }
 }
