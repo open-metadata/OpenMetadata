@@ -15,17 +15,19 @@ import { EntityTabs } from '../../enums/entity.enum';
 import { PageType, Tab } from '../../generated/system/ui/page';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import glossaryTermClassBase from '../Glossary/GlossaryTermClassBase';
-import { getTabLabelFromId } from './CustomizePagePureUtils';
 import {
-  checkIfExpandViewSupported,
   getDefaultTabs,
   getGlossaryDefaultTabs,
   getGlossaryTermDefaultTabs,
+} from './CustomizePageDispatchUtils';
+import {
+  checkIfExpandViewSupported,
   getTabDisplayName,
   getTabLabelMapFromTabs,
   sortTabs,
-  updateWidgetHeightRecursively,
-} from './CustomizePageUtils';
+} from './CustomizePageEntityTabUtils';
+import { getTabLabelFromId } from './CustomizePagePureUtils';
+import { updateWidgetHeightRecursively } from './CustomizePageWidgetUtils';
 
 describe('CustomizePageUtils', () => {
   describe('getTabDisplayName', () => {

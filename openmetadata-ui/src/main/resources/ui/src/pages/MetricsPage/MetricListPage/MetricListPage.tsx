@@ -87,7 +87,7 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   getEntityBulkEditPath,
   getEntityImportPath,
-} from '../../../utils/EntityUtils';
+} from '../../../utils/EntityPureUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getErrorText } from '../../../utils/StringUtils';

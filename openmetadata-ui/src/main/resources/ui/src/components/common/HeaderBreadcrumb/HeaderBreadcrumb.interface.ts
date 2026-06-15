@@ -26,7 +26,7 @@ export interface HeaderBreadcrumbProps {
   items: Omit<BreadcrumbItemType, 'id'>[];
   /**
    * When true, prepends a home crumb that navigates to ROUTES.HOME.
-   * Defaults to false.
+   * Defaults to true.
    */
   showHome?: boolean;
   /** Visual style of the crumbs. Defaults to 'text'. */

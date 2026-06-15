@@ -15,7 +15,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { METRICS_DOCS } from '../../../constants/docs.constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { getEntityBulkEditPath } from '../../../utils/EntityUtils';
+import { getEntityBulkEditPath } from '../../../utils/EntityPureUtils';
 
 import MetricListPage from './MetricListPage';
 

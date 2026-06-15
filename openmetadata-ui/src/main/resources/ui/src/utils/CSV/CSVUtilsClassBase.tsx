@@ -34,6 +34,7 @@ import {
   CSSProperties,
   FocusEvent,
   KeyboardEvent,
+  lazy,
   MouseEvent,
   ReactNode,
   useEffect,
@@ -43,6 +44,7 @@ import {
 } from 'react';
 import type { RenderEditCellProps } from 'react-data-grid';
 import { createPortal } from 'react-dom';
+import { withSuspenseFallback } from '../../components/AppRouter/withSuspenseFallback';
 import Certification from '../../components/Certification/Certification.component';
 import TreeAsyncSelectList from '../../components/common/AsyncSelectList/TreeAsyncSelectList';
 import { lazyTextEditor } from '../../components/common/DataGrid/LazyDataGrid';
@@ -62,7 +64,6 @@ import {
   ExtensionDataProps,
   ExtensionDataTypes,
 } from '../../components/Modals/ModalWithCustomProperty/ModalWithMarkdownEditor.interface';
-import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import SchemaModal from '../../components/Modals/SchemaModal/SchemaModal';
 import { ENTITY_TYPE_OPTIONS } from '../../constants/BulkImport.constant';
 import {
@@ -86,7 +87,7 @@ import { getMetrics } from '../../rest/metricsAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getAllClassifications, getTags } from '../../rest/tagAPI';
 import { formatTeamsResponse, formatUsersResponse } from '../APIUtils';
-import { getEntityName } from '../EntityUtils';
+import { getEntityName } from '../EntityNameUtils';
 import Fqn from '../Fqn';
 import { t } from '../i18next/LocalUtil';
 import { getTermQuery } from '../SearchUtils';
@@ -1906,6 +1907,14 @@ const InlineDescriptionEditor = ({
     </KeyDownStopPropagationWrapper>
   );
 };
+
+const ModalWithMarkdownEditor = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor'
+    ).then((m) => ({ default: m.ModalWithMarkdownEditor }))
+  )
+);
 
 class CSVUtilsClassBase {
   public hideImportsColumnList() {

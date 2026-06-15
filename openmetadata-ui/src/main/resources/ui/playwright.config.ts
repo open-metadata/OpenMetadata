@@ -55,6 +55,8 @@ export default defineConfig({
       {
         useDetails: true,
         showError: true,
+        includeResults: ['skipped', 'fail', 'flaky'], // skip pass to reduce noice
+        showArtifactsLink: true,
       },
     ],
     ['blob'],
@@ -112,6 +114,7 @@ export default defineConfig({
         '**/SystemCertificationTags.spec.ts',
         '**/SearchRBAC.spec.ts',
         '**/SSOLogin.spec.ts',
+        '**/IntakeForm.spec.ts',
       ],
     },
     // Only register the h2 project when explicitly opted in. Always-on registration would force
@@ -199,6 +202,13 @@ export default defineConfig({
     {
       name: 'SystemCertificationTags',
       testMatch: '**/SystemCertificationTags.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup', 'chromium'],
+      fullyParallel: false,
+    },
+    {
+      name: 'IntakeForm',
+      testMatch: '**/IntakeForm.spec.ts',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup', 'chromium'],
       fullyParallel: false,

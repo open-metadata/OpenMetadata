@@ -99,6 +99,10 @@ export interface ContextMemory {
      */
     sourceConversation?: string;
     /**
+     * The Context Center file this memory was extracted from.
+     */
+    sourceFile?: EntityReference;
+    /**
      * Human message identifier used to produce this memory.
      */
     sourceHumanMessage?: string;
@@ -221,6 +225,8 @@ export interface FieldChange {
  * Root memory in an append-style memory thread.
  *
  * Principal receiving access. Supported principal types are user, team, and domain.
+ *
+ * The Context Center file this memory was extracted from.
  */
 export interface EntityReference {
     /**
@@ -370,6 +376,7 @@ export enum ShareVisibility {
  */
 export enum SourceType {
     ChatPromotion = "ChatPromotion",
+    FileExtraction = "FileExtraction",
     Manual = "Manual",
     RememberRequest = "RememberRequest",
 }
