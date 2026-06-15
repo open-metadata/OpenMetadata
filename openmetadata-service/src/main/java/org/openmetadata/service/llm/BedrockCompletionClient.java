@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
+import java.time.Duration;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.configuration.LLMBedrockConfig;
 import org.openmetadata.schema.configuration.LLMConfiguration;
@@ -28,6 +29,7 @@ public final class BedrockCompletionClient extends LLMCompletionClient implement
   private final String modelId;
   private final double temperature;
   private final int maxTokens;
+  private final int timeoutSeconds;
 
   public BedrockCompletionClient(LLMConfiguration config) {
     super(resolveMaxConcurrent(config));
@@ -42,6 +44,7 @@ public final class BedrockCompletionClient extends LLMCompletionClient implement
     this.modelId = cfg.getModelId();
     this.temperature = cfg.getTemperature() == null ? 0.0 : cfg.getTemperature();
     this.maxTokens = cfg.getMaxTokens() == null ? 4096 : cfg.getMaxTokens();
+    this.timeoutSeconds = cfg.getTimeoutSeconds() == null ? 60 : cfg.getTimeoutSeconds();
     this.bedrockClient =
         BedrockRuntimeClient.builder()
             .credentialsProvider(AwsCredentialsUtil.buildCredentialsProvider(awsConfig))
@@ -52,24 +55,31 @@ public final class BedrockCompletionClient extends LLMCompletionClient implement
   @Override
   protected CompletionResult doComplete(
       String systemPrompt, String userPrompt, CompletionOptions options) {
-    String text;
+    String model = options.modelIdOr(this.modelId);
+    int tokens = options.maxTokensOr(this.maxTokens);
+    double temp = options.temperatureOr(this.temperature);
+    int timeout = options.timeoutSecondsOr(this.timeoutSeconds);
+    CompletionResult result;
     try {
       InvokeModelRequest request =
           InvokeModelRequest.builder()
-              .modelId(modelId)
+              .modelId(model)
               .contentType("application/json")
               .accept("application/json")
-              .body(SdkBytes.fromUtf8String(buildRequestBody(systemPrompt, userPrompt)))
+              .body(
+                  SdkBytes.fromUtf8String(buildRequestBody(systemPrompt, userPrompt, tokens, temp)))
+              .overrideConfiguration(c -> c.apiCallTimeout(Duration.ofSeconds(timeout)))
               .build();
       InvokeModelResponse response = bedrockClient.invokeModel(request);
-      text = parseContent(response.body().asUtf8String());
+      result = parseResult(response.body().asUtf8String());
     } catch (AwsServiceException | SdkClientException e) {
       throw new LLMCompletionException("Bedrock completion failed", e);
     }
-    return new CompletionResult(text, 0, 0);
+    return result;
   }
 
-  private String buildRequestBody(String systemPrompt, String userPrompt) {
+  static String buildRequestBody(
+      String systemPrompt, String userPrompt, int maxTokens, double temperature) {
     String result;
     try {
       ObjectNode payload = MAPPER.createObjectNode();
@@ -86,14 +96,20 @@ public final class BedrockCompletionClient extends LLMCompletionClient implement
     return result;
   }
 
-  private String parseContent(String responseBody) {
-    String result;
+  static CompletionResult parseResult(String responseBody) {
+    CompletionResult result;
     try {
-      JsonNode content = MAPPER.readTree(responseBody).get("content");
+      JsonNode root = MAPPER.readTree(responseBody);
+      JsonNode content = root.get("content");
       if (content == null || !content.isArray() || content.isEmpty()) {
         throw new LLMCompletionException("Invalid Bedrock response: no content returned");
       }
-      result = content.get(0).get("text").asText();
+      JsonNode usage = root.path("usage");
+      result =
+          new CompletionResult(
+              content.get(0).get("text").asText(),
+              usage.path("input_tokens").asInt(0),
+              usage.path("output_tokens").asInt(0));
     } catch (IOException e) {
       throw new LLMCompletionException("Failed to parse Bedrock response", e);
     }
