@@ -727,8 +727,7 @@ public class UserRepository extends EntityRepository<User> {
   private void updateImpersonationRole(
       User user, boolean allowImpersonation, EntityReference impersonationRole) {
     if (allowImpersonation) {
-      addRelationship(
-          user.getId(), impersonationRole.getId(), USER, Entity.ROLE, Relationship.HAS);
+      addRelationship(user.getId(), impersonationRole.getId(), USER, Entity.ROLE, Relationship.HAS);
     } else {
       deleteRelationship(
           user.getId(), USER, impersonationRole.getId(), Entity.ROLE, Relationship.HAS);

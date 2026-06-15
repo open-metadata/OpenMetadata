@@ -174,8 +174,7 @@ public class DefaultAuthorizer implements Authorizer {
       throw new AuthorizationException("Only bot users can impersonate");
     }
     if (!Boolean.TRUE.equals(botContext.user().getAllowImpersonation())) {
-      throw new AuthorizationException(
-          "Bot " + botName + " does not have impersonation enabled");
+      throw new AuthorizationException("Bot " + botName + " does not have impersonation enabled");
     }
 
     OperationContext operationContext =
@@ -291,7 +290,7 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   @SuppressWarnings("unchecked")
-  private static ResourceContextInterface targetUserResourceContext(User targetUser) {
+  private ResourceContextInterface targetUserResourceContext(User targetUser) {
     EntityRepository<User> userRepository =
         (EntityRepository<User>) Entity.getEntityRepository(Entity.USER);
     return new ResourceContext<>(Entity.USER, targetUser, userRepository);

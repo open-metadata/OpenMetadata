@@ -332,8 +332,7 @@ class DefaultAuthorizerTest {
           assertThrows(
               AuthorizationException.class,
               () -> authorizer.authorize(securityContext, operationContext, resourceContext));
-      assertTrue(
-          exception.getMessage().contains("not authorized to impersonate user target-user"));
+      assertTrue(exception.getMessage().contains("not authorized to impersonate user target-user"));
     }
   }
 

@@ -83,7 +83,8 @@ public class BotImpersonationIT {
                     .execute(HttpMethod.POST, "/v1/bots", request, Bot.class),
             "Non-admin must not be able to create a bot with impersonation enabled");
     assertTrue(
-        exception.getMessage().contains("admin") || exception.getMessage().contains("Authorization"),
+        exception.getMessage().contains("admin")
+            || exception.getMessage().contains("Authorization"),
         "Error should mention admin or authorization: " + exception.getMessage());
   }
 
@@ -302,7 +303,8 @@ public class BotImpersonationIT {
             () -> putBot(SdkClients.user1Client(), botName, botUser, true),
             "Non-admin must not grant impersonation via PUT");
     assertTrue(
-        exception.getMessage().contains("admin") || exception.getMessage().contains("Authorization"),
+        exception.getMessage().contains("admin")
+            || exception.getMessage().contains("Authorization"),
         "Error should mention admin or authorization: " + exception.getMessage());
 
     User refreshed = getBotUser(botUser.getName());
@@ -323,7 +325,8 @@ public class BotImpersonationIT {
             () -> putBot(SdkClients.user1Client(), botName, botUser, false),
             "Non-admin must not revoke impersonation");
     assertTrue(
-        exception.getMessage().contains("admin") || exception.getMessage().contains("Authorization"),
+        exception.getMessage().contains("admin")
+            || exception.getMessage().contains("Authorization"),
         "Error should mention admin or authorization: " + exception.getMessage());
 
     User refreshed = getBotUser(botUser.getName());
@@ -351,8 +354,10 @@ public class BotImpersonationIT {
   }
 
   private User createBotUser(TestNamespace ns, String suffix) {
-    String uniqueId = UUID.randomUUID().toString().substring(0, 8);
-    String userName = ns.prefix("impbotuser_" + suffix + "_" + uniqueId);
+    // The bot authenticates with its own JWT, and JwtFilter resolves the bot's username from the
+    // email local-part. The stored name must equal that local-part so impersonation lookups (by the
+    // resolved bot name) resolve. Keep it short and alphanumeric for a valid email.
+    String localPart = "impbot" + suffix + ns.shortPrefix();
 
     AuthenticationMechanism authMechanism =
         new AuthenticationMechanism()
@@ -361,8 +366,8 @@ public class BotImpersonationIT {
 
     CreateUser request =
         new CreateUser()
-            .withName(userName)
-            .withEmail("impbotuser" + suffix + uniqueId + "@test.com")
+            .withName(localPart)
+            .withEmail(localPart + "@test.com")
             .withDescription("Bot user for impersonation tests")
             .withIsBot(true)
             .withAuthenticationMechanism(authMechanism);

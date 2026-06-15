@@ -88,8 +88,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public static final String COLLECTION_PATH = "/v1/policies/";
   private static final String BOT_IMPERSONATION_POLICY = "BotImpersonationPolicy";
   private static final Set<String> LEGACY_IMPERSONATION_DENY_RULES =
-      Set.of(
-          "BotImpersonationPolicy-DenyAdminUsers", "BotImpersonationPolicy-DenyBotUsers");
+      Set.of("BotImpersonationPolicy-DenyAdminUsers", "BotImpersonationPolicy-DenyBotUsers");
   public static final String FIELDS = "owners,location,teams,roles";
 
   @Override
@@ -154,7 +153,9 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       Policy policy = repository.findByName(BOT_IMPERSONATION_POLICY, Include.NON_DELETED);
       String originalJson = JsonUtils.pojoToJson(policy);
       boolean removed =
-          policy.getRules().removeIf(rule -> LEGACY_IMPERSONATION_DENY_RULES.contains(rule.getName()));
+          policy
+              .getRules()
+              .removeIf(rule -> LEGACY_IMPERSONATION_DENY_RULES.contains(rule.getName()));
       if (removed) {
         String updatedJson = JsonUtils.pojoToJson(policy);
         JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
