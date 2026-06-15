@@ -1,0 +1,9 @@
+{
+  "name": "system-notification-task-entity-updated",
+  "fullyQualifiedName": "system-notification-task-entity-updated",
+  "displayName": "Task Updated Notification",
+  "description": "System default template for task update notifications (incident comments, assignee changes).",
+  "provider": "system",
+  "templateSubject": "[{{publisherName}}] - New activity on a {{#if entity.category}}{{camelCaseToTitle entity.category}} {{/if}}task",
+  "templateBody": "{{#with (groupEventChanges event.changeDescription) as |changes|}}<strong>@{{entity.updatedBy}}</strong> {{#if (hasFieldInChanges changes 'assignees')}}updated the assignees of{{else}}commented on{{/if}} the {{#if entity.category}}<strong>{{camelCaseToTitle entity.category}}</strong> {{/if}}task{{#if entity.about}} for <strong>{{camelCaseToTitle entity.about.type}}</strong> <a href=\"{{buildEntityUrl entity.about.type entity.about.fullyQualifiedName 'tasks'}}\">{{#if entity.about.displayName}}{{entity.about.displayName}}{{else}}{{entity.about.fullyQualifiedName}}{{/if}}</a>{{/if}}.{{#unless (hasFieldInChanges changes 'assignees')}}{{#each entity.comments}}{{#if @last}}<br><br><strong>\ud83d\udcac Reply:</strong><br><blockquote>{{{processMentions message}}}</blockquote>{{/if}}{{/each}}{{/unless}}{{#if entity.assignees}}<br><br><strong>Assignees:</strong> {{#each entity.assignees}}@{{#if displayName}}{{displayName}}{{else}}{{name}}{{/if}}{{#unless @last}}, {{/unless}}{{/each}}{{/if}}{{/with}}"
+}
