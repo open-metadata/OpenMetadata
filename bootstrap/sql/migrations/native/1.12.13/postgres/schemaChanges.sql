@@ -1,0 +1,4 @@
+-- PII recognizer context keyword cleanup: remove overly broad context keywords
+-- (e.g. "code", "security", "address", "name", "call", "check", "save", "social")
+-- that caused false-positive PII classification on non-PII columns.
+-- Handled by Java data migration in v11213.MigrationUtil.removeBroadPiiContextKeywords.
