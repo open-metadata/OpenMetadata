@@ -357,7 +357,7 @@ describe('CustomizeNavigation Utils', () => {
       expect(result).toEqual(leftSidebarClassBase.getSidebarItems());
     });
 
-    it('should return null for items not found in sidebar map', () => {
+    it('should omit nav items whose id has no matching sidebar entry, but still show sidebar items absent from the saved nav', () => {
       const items = [
         {
           id: 'non-existent',
@@ -368,7 +368,9 @@ describe('CustomizeNavigation Utils', () => {
       ];
       const result = filterHiddenNavigationItems(items);
 
-      expect(result).toEqual([]);
+      expect(result.some((item) => item.key === 'non-existent')).toBe(false);
+      expect(result.some((item) => item.key === 'home')).toBe(true);
+      expect(result.some((item) => item.key === 'explore')).toBe(true);
     });
 
     it('should merge plugin items when plugins are provided', () => {
@@ -421,6 +423,124 @@ describe('CustomizeNavigation Utils', () => {
       expect(result[0].key).toBe('home');
       expect(result[1].key).toBe('explore');
       expect(result[2].key).toBe('plugin-item');
+    });
+
+    it('should show a new child sidebar item that is absent from the saved persona nav', () => {
+      (leftSidebarClassBase.getSidebarItems as jest.Mock).mockReturnValueOnce([
+        {
+          key: 'home',
+          title: 'Home',
+          icon: 'home-icon',
+          children: [
+            { key: 'dashboard', title: 'Dashboard', icon: 'dashboard-icon' },
+            { key: 'new-feature', title: 'New Feature', icon: 'new-feature-icon' },
+          ],
+        },
+        { key: 'explore', title: 'Explore', icon: 'explore-icon' },
+      ]);
+
+      const savedNav: NavigationItem[] = [
+        {
+          id: 'home',
+          title: 'Home',
+          isHidden: false,
+          pageId: 'home',
+          children: [
+            { id: 'dashboard', title: 'Dashboard', isHidden: true, pageId: 'dashboard' },
+          ],
+        },
+        { id: 'explore', title: 'Explore', isHidden: false, pageId: 'explore' },
+      ];
+
+      const result = filterHiddenNavigationItems(savedNav);
+      const homeItem = result.find((item) => item.key === 'home');
+
+      expect(homeItem?.children).toHaveLength(1);
+      expect(homeItem?.children?.[0].key).toBe('new-feature');
+    });
+
+    it('should show a new top-level sidebar item that is absent from the saved persona nav', () => {
+      (leftSidebarClassBase.getSidebarItems as jest.Mock).mockReturnValueOnce([
+        {
+          key: 'home',
+          title: 'Home',
+          icon: 'home-icon',
+          children: [
+            { key: 'dashboard', title: 'Dashboard', icon: 'dashboard-icon' },
+          ],
+        },
+        { key: 'explore', title: 'Explore', icon: 'explore-icon' },
+        { key: 'ontology-explorer', title: 'Ontology Explorer', icon: 'ontology-icon' },
+      ]);
+
+      const savedNav: NavigationItem[] = [
+        {
+          id: 'home',
+          title: 'Home',
+          isHidden: false,
+          pageId: 'home',
+          children: [
+            { id: 'dashboard', title: 'Dashboard', isHidden: false, pageId: 'dashboard' },
+          ],
+        },
+        { id: 'explore', title: 'Explore', isHidden: false, pageId: 'explore' },
+      ];
+
+      const result = filterHiddenNavigationItems(savedNav);
+
+      expect(result.some((item) => item.key === 'ontology-explorer')).toBe(true);
+    });
+
+    it('should not show a new top-level item that is explicitly hidden in the saved persona nav', () => {
+      (leftSidebarClassBase.getSidebarItems as jest.Mock).mockReturnValueOnce([
+        { key: 'home', title: 'Home', icon: 'home-icon', children: [] },
+        { key: 'explore', title: 'Explore', icon: 'explore-icon' },
+        { key: 'ontology-explorer', title: 'Ontology Explorer', icon: 'ontology-icon' },
+      ]);
+
+      const savedNav: NavigationItem[] = [
+        { id: 'home', title: 'Home', isHidden: false, pageId: 'home' },
+        { id: 'explore', title: 'Explore', isHidden: false, pageId: 'explore' },
+        { id: 'ontology-explorer', title: 'Ontology Explorer', isHidden: true, pageId: 'ontology-explorer' },
+      ];
+
+      const result = filterHiddenNavigationItems(savedNav);
+
+      expect(result.some((item) => item.key === 'ontology-explorer')).toBe(false);
+    });
+
+    it('should not show a new child item that is explicitly hidden in the saved persona nav', () => {
+      (leftSidebarClassBase.getSidebarItems as jest.Mock).mockReturnValueOnce([
+        {
+          key: 'home',
+          title: 'Home',
+          icon: 'home-icon',
+          children: [
+            { key: 'dashboard', title: 'Dashboard', icon: 'dashboard-icon' },
+            { key: 'new-feature', title: 'New Feature', icon: 'new-feature-icon' },
+          ],
+        },
+        { key: 'explore', title: 'Explore', icon: 'explore-icon' },
+      ]);
+
+      const savedNav: NavigationItem[] = [
+        {
+          id: 'home',
+          title: 'Home',
+          isHidden: false,
+          pageId: 'home',
+          children: [
+            { id: 'dashboard', title: 'Dashboard', isHidden: false, pageId: 'dashboard' },
+            { id: 'new-feature', title: 'New Feature', isHidden: true, pageId: 'new-feature' },
+          ],
+        },
+        { id: 'explore', title: 'Explore', isHidden: false, pageId: 'explore' },
+      ];
+
+      const result = filterHiddenNavigationItems(savedNav);
+      const homeItem = result.find((item) => item.key === 'home');
+
+      expect(homeItem?.children?.some((c) => c.key === 'new-feature')).toBeFalsy();
     });
   });
 
