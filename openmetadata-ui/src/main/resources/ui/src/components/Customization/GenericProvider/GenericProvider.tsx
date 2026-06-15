@@ -56,9 +56,7 @@ import {
   ColumnOrTask,
 } from '../../Database/ColumnDetailPanel/ColumnDetailPanel.interface';
 import { createGenericContext } from './GenericContext';
-import {
-  GenericProviderProps,
-} from './GenericProvider.interface';
+import { GenericProviderProps } from './GenericProvider.interface';
 
 const ColumnDetailPanel = withSuspenseFallback(
   lazy(() =>

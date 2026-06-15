@@ -21,7 +21,8 @@ export const createGenericContext = once(<
 >() =>
   createContext({
     permissions: DEFAULT_ENTITY_PERMISSION,
-  } as GenericContextType<T>));
+  } as GenericContextType<T>)
+);
 
 export const useGenericContext = <T extends Omit<EntityReference, 'type'>>() =>
   useContext(createGenericContext<T>());
