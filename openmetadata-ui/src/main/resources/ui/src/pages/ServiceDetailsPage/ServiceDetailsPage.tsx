@@ -149,20 +149,25 @@ import {
   getServiceVersionPath,
   getSettingPath,
 } from '../../utils/RouterUtils';
+import {
+  getCountLabel,
+  getEntityTypeFromServiceCategory,
+  getResourceEntityFromServiceCategory,
+  getServiceDisplayNameQueryFilter,
+  getServiceRouteFromServiceType,
+  shouldTestConnection,
+} from '../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
-import { getServiceRouteFromServiceType } from '../../utils/ServiceUtils';
-import { getCountLabel, getEntityTypeFromServiceCategory, getResourceEntityFromServiceCategory, getServiceDisplayNameQueryFilter, shouldTestConnection } from '../../utils/ServicePureUtils';;
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../../utils/StringUtils';
-import { updateTierTag } from '../../utils/TagsPureUtils';;
+import { updateTierTag } from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './service-details-page.less';
 import { ServicePageData } from './ServiceDetailsPage.interface';
 import ServiceMainTabContent from './ServiceMainTabContent';
-
 const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();

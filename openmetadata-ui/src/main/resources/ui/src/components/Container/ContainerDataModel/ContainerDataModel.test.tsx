@@ -97,8 +97,8 @@ jest.mock('../../../utils/GlossaryUtils', () => ({
   getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
-  ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+  ...jest.requireActual('../../Customization/GenericProvider/GenericProvider'),
   useGenericContext: jest.fn().mockReturnValue({
     type: 'container',
     setDisplayedColumns: jest.fn(),

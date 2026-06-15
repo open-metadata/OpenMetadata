@@ -64,13 +64,16 @@ import {
   callServicePatchAPI,
   getServiceMainTabColumns,
 } from '../../utils/ServiceMainTabContentUtils';
-import { getCountLabel, getEntityTypeFromServiceCategory, getSearchIndexForService } from '../../utils/ServicePureUtils';;
+import {
+  getCountLabel,
+  getEntityTypeFromServiceCategory,
+  getSearchIndexForService,
+} from '../../utils/ServicePureUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TablePureUtils';
-import { createTagObject } from '../../utils/TagsPureUtils';;
+import { createTagObject } from '../../utils/TagsPureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { ServicePageData } from './ServiceDetailsPage.interface';
-
 interface ServiceMainTabContentProps {
   serviceName: string;
   servicePermission: OperationPermission;

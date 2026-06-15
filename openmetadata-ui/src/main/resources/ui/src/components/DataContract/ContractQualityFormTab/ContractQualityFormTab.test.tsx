@@ -46,8 +46,7 @@ jest.mock('../../../hooks/paging/usePaging', () => ({
   })),
 }));
 
-jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
-  ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   useGenericContext: jest.fn(() => ({
     data: {
       id: 'table-1',
@@ -247,7 +246,7 @@ describe('ContractQualityFormTab', () => {
 
     it('should not fetch data when table FQN is missing', () => {
       const mockUseGenericContext = jest.requireMock(
-        '../../Customization/GenericProvider/GenericContext'
+        '../../Customization/GenericProvider/GenericProvider'
       ).useGenericContext;
       mockUseGenericContext.mockReturnValueOnce({
         data: { fullyQualifiedName: undefined },
@@ -429,7 +428,7 @@ describe('ContractQualityFormTab', () => {
   describe('Error Handling', () => {
     it('should handle missing table context', () => {
       const mockUseGenericContext = jest.requireMock(
-        '../../Customization/GenericProvider/GenericContext'
+        '../../Customization/GenericProvider/GenericProvider'
       ).useGenericContext;
       mockUseGenericContext.mockReturnValue({ data: undefined });
 

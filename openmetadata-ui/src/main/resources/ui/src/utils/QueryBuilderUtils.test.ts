@@ -16,8 +16,14 @@ import {
   QueryFieldInterface,
   QueryFilterInterface,
 } from '../pages/ExplorePage/ExplorePage.interface';
-import { addEntityTypeFilter, buildExploreUrlParams, getEntityTypeAggregationFilter, getJsonTreeFromQueryFilter, jsonLogicToElasticsearch, resolveFieldType } from './QueryBuilderPureUtils';;
-
+import {
+  addEntityTypeFilter,
+  buildExploreUrlParams,
+  getEntityTypeAggregationFilter,
+  getJsonTreeFromQueryFilter,
+  jsonLogicToElasticsearch,
+  resolveFieldType,
+} from './QueryBuilderPureUtils';
 jest.mock('./StringUtils', () => ({
   generateUUID: jest.fn(),
 }));

@@ -12,7 +12,16 @@
  */
 import { mockWidget } from '../mocks/AddWidgetTabContent.mock';
 import { mockCurrentAddWidget } from '../mocks/CustomizablePage.mock';
-import { getAddWidgetHandler, getLandingPageLayoutWithEmptyWidgetPlaceholder, getLayoutUpdateHandler, getLayoutWithEmptyWidgetPlaceholder, getNewWidgetPlacement, getRemoveWidgetHandler, getUniqueFilteredLayout, getWidgetWidthLabelFromKey } from './CustomizableLandingPagePureUtils';;
+import {
+  getAddWidgetHandler,
+  getLandingPageLayoutWithEmptyWidgetPlaceholder,
+  getLayoutUpdateHandler,
+  getLayoutWithEmptyWidgetPlaceholder,
+  getNewWidgetPlacement,
+  getRemoveWidgetHandler,
+  getUniqueFilteredLayout,
+  getWidgetWidthLabelFromKey,
+} from './CustomizableLandingPagePureUtils';
 
 describe('CustomizableLandingPageUtils', () => {
   describe('getNewWidgetPlacement', () => {
@@ -62,7 +71,7 @@ describe('CustomizableLandingPageUtils', () => {
 
     it('should handle null widget data', () => {
       const result = getAddWidgetHandler(
-        null as any,
+        null as unknown as Document,
         'ExtraWidget.EmptyWidgetPlaceholder',
         1,
         3

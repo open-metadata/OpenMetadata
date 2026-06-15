@@ -33,8 +33,7 @@ import {
 } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-import { getUserCreationErrorMessage } from '../../utils/UsersPureUtils';;
-
+import { getUserCreationErrorMessage } from '../../utils/UsersPureUtils';
 const CreateUserPage = () => {
   const {
     state,

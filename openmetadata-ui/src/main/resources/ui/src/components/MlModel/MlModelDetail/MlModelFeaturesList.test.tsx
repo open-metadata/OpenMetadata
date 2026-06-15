@@ -151,6 +151,15 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   })),
 }));
 
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
+  useGenericContext: jest.fn().mockImplementation(() => ({
+    data: mockData,
+    permissions: DEFAULT_ENTITY_PERMISSION,
+    onUpdate: mockHandleFeaturesUpdate,
+    setDisplayedColumns: jest.fn(),
+  })),
+}));
+
 describe('Test MlModel feature list', () => {
   it('Should render MlModel feature list component', async () => {
     render(<MlModelFeaturesList />, {

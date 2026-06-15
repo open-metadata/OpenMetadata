@@ -15,12 +15,14 @@ import { Button } from 'antd';
 import classNames from 'classnames';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MarkdownToHTMLConverter, getFrontEndFormat } from '../../../../utils/FeedUtilsPure';;
+import {
+  getFrontEndFormat,
+  MarkdownToHTMLConverter,
+} from '../../../../utils/FeedUtilsPure';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ActivityFeedEditor from '../../ActivityFeedEditor/ActivityFeedEditor';
 import Reactions from '../../Reactions/Reactions';
 import { FeedBodyProp } from '../ActivityFeedCard.interface';
-
 const FeedCardBody: FC<FeedBodyProp> = ({
   message,
   className,

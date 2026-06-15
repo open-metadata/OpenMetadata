@@ -42,7 +42,7 @@ import {
   getEntityDetailsPath,
   getGlossaryTermDetailsPath,
 } from '../../../utils/RouterUtils';
-import { getTermQuery } from '../../../utils/SearchPureUtils';;
+import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   DATA_MODE_ASSET_LOAD_PAGE_SIZE,
@@ -76,7 +76,6 @@ import {
   searchHitSourceToEntityRef,
 } from '../utils/graphBuilders';
 import { useOntologyGraphDerived } from './useOntologyGraphDerived';
-
 const MODEL_TERM_FIELDS = [
   TabSpecificField.RELATED_TERMS,
   TabSpecificField.CHILDREN,

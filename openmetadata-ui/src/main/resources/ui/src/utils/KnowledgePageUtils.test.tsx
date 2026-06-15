@@ -14,13 +14,21 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import {
+  Article,
   KnowledgePage,
   PageHierarchy,
   PageType,
   QuickLink,
 } from '../interface/knowledge-center.interface';
-import { getKnowledgePageName, getLink } from './KnowledgePageUtils';
-import { extractKnowledgePageParentFQN, findPageAndParentInTreeData, findPageInTreeData, getUpdatePageHierarchy, integrateNodesIntoHierarchy } from './KnowledgePagePureUtils';;
+import {
+  extractKnowledgePageParentFQN,
+  findPageAndParentInTreeData,
+  findPageInTreeData,
+  getKnowledgePageName,
+  getUpdatePageHierarchy,
+  integrateNodesIntoHierarchy,
+} from './KnowledgePagePureUtils';
+import { getLink } from './KnowledgePageUtils';
 
 describe('getKnowledgePageName', () => {
   it('returns displayName when present', () => {
@@ -221,7 +229,7 @@ describe('KnowledgePageUtils', () => {
         version: 1,
         updatedAt: 123456789,
         updatedBy: 'test-user',
-        page: {} as any,
+        page: {} as unknown as Article,
         href: '/api/v1/knowledgePages/456',
         deleted: false,
       };
@@ -252,7 +260,7 @@ describe('KnowledgePageUtils', () => {
         version: 1,
         updatedAt: 123456789,
         updatedBy: 'test-user',
-        page: {} as any,
+        page: {} as unknown as Article,
         href: '/api/v1/knowledgePages/789',
         deleted: false,
       };
@@ -278,7 +286,7 @@ describe('KnowledgePageUtils', () => {
         version: 1,
         updatedAt: 123456789,
         updatedBy: 'test-user',
-        page: {} as any,
+        page: {} as unknown as Article,
         href: '/api/v1/knowledgePages/789',
         deleted: false,
       };

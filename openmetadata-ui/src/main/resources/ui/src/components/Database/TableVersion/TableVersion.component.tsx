@@ -37,7 +37,13 @@ import {
   getTableColumnsByFQN,
   searchTableColumnsByFQN,
 } from '../../../rest/tableAPI';
-import { getColumnsDataWithVersionChanges, getCommonExtraInfoForVersionDetails, getConstraintChanges, getEntityVersionByField, getEntityVersionTags } from '../../../utils/EntityVersionUtilsPure';;
+import {
+  getColumnsDataWithVersionChanges,
+  getCommonExtraInfoForVersionDetails,
+  getConstraintChanges,
+  getEntityVersionByField,
+  getEntityVersionTags,
+} from '../../../utils/EntityVersionUtilsPure';
 import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
@@ -55,7 +61,6 @@ import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVers
 import VersionTable from '../../Entity/VersionTable/VersionTable.component';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { TableVersionProp } from './TableVersion.interface';
-
 const TableVersion: React.FC<TableVersionProp> = ({
   version,
   currentVersionData,

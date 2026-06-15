@@ -42,15 +42,21 @@ import {
   getTestDefinitionById,
   updateTestCaseById,
 } from '../../../../rest/testAPI';
-import { getComputeRowCountDiffDisplay, getParameterValueDiffDisplay } from '../../../../utils/EntityVersionUtils';
-import { getEntityVersionByField, getEntityVersionTags } from '../../../../utils/EntityVersionUtilsPure';;
+import {
+  getComputeRowCountDiffDisplay,
+  getParameterValueDiffDisplay,
+} from '../../../../utils/EntityVersionUtils';
 import { VersionEntityTypes } from '../../../../utils/EntityVersionUtils.interface';
+import {
+  getEntityVersionByField,
+  getEntityVersionTags,
+} from '../../../../utils/EntityVersionUtilsPure';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import {
   getTagsWithoutTier,
   getTierTags,
 } from '../../../../utils/TablePureUtils';
-import { createTagObject } from '../../../../utils/TagsPureUtils';;
+import { createTagObject } from '../../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
@@ -62,7 +68,6 @@ import EditTestCaseModal from '../../AddDataQualityTest/EditTestCaseModal';
 import '../incident-manager.style.less';
 import './test-case-result-tab.style.less';
 import testCaseResultTabClassBase from './TestCaseResultTabClassBase';
-
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../../Database/SchemaEditor/SchemaEditor'))
 );

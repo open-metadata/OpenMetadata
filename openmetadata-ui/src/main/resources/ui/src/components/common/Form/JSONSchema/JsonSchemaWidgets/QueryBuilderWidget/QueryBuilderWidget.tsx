@@ -38,16 +38,25 @@ import { EntityType } from '../../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import { QueryFilterInterface } from '../../../../../../pages/ExplorePage/ExplorePage.interface';
 import { searchQuery } from '../../../../../../rest/searchAPI';
-import { getEmptyJsonTree, getEmptyJsonTreeForQueryBuilder } from '../../../../../../utils/AdvancedSearchPureUtils';;
+import {
+  getEmptyJsonTree,
+  getEmptyJsonTreeForQueryBuilder,
+} from '../../../../../../utils/AdvancedSearchPureUtils';
 import { elasticSearchFormat } from '../../../../../../utils/QueryBuilderElasticsearchFormatUtils';
-import { READONLY_SETTINGS, addEntityTypeFilter, buildExploreUrlParams, getEntityTypeAggregationFilter, getJsonTreeFromQueryFilter, migrateJsonLogic } from '../../../../../../utils/QueryBuilderPureUtils';;
+import {
+  addEntityTypeFilter,
+  buildExploreUrlParams,
+  getEntityTypeAggregationFilter,
+  getJsonTreeFromQueryFilter,
+  migrateJsonLogic,
+  READONLY_SETTINGS,
+} from '../../../../../../utils/QueryBuilderPureUtils';
 import { getExplorePath } from '../../../../../../utils/RouterUtils';
 import searchClassBase from '../../../../../../utils/SearchClassBase';
 import { withAdvanceSearch } from '../../../../../AppRouter/withAdvanceSearch';
 import { useAdvanceSearch } from '../../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import { SearchOutputType } from '../../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import './query-builder-widget.less';
-
 const QueryBuilderWidget: FC<
   WidgetProps & {
     fields?: Config['fields'];

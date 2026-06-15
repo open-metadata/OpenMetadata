@@ -48,7 +48,11 @@ import {
   getDatabaseVersionData,
   getDatabaseVersions,
 } from '../../rest/databaseAPI';
-import { getBasicEntityInfoFromVersionData, getCommonDiffsFromVersionData, getCommonExtraInfoForVersionDetails } from '../../utils/EntityVersionUtilsPure';;
+import {
+  getBasicEntityInfoFromVersionData,
+  getCommonDiffsFromVersionData,
+  getCommonExtraInfoForVersionDetails,
+} from '../../utils/EntityVersionUtilsPure';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,

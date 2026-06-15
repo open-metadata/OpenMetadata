@@ -12,7 +12,7 @@
  */
 
 import { TabSpecificField } from '../enums/entity.enum';
-import { getTermQuery } from './SearchPureUtils';;
+import { getTermQuery } from './SearchPureUtils';
 
 export const defaultFields = `${TabSpecificField.TAGS},${TabSpecificField.OWNERS},${TabSpecificField.USAGE_SUMMARY},${TabSpecificField.DOMAINS},${TabSpecificField.DATA_PRODUCTS}`;
 

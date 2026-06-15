@@ -40,15 +40,6 @@ import { EntityReference } from '../generated/entity/type';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { DomainDetailPageTabProps } from './Domain/DomainClassBase';
-import {
-  domainBuildESQuery,
-  getQueryFilterForDataProducts,
-  getQueryFilterForDomain,
-  getQueryFilterToExcludeDomainTerms,
-  getQueryFilterToIncludeDomain,
-  initializeDomainEntityRef,
-  isDomainExist,
-} from './DomainFilterUtils';
 import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
 import { renderIcon } from './IconUtils';

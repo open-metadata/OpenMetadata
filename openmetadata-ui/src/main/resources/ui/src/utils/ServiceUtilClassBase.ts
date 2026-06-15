@@ -75,8 +75,10 @@ import { getPipelineConfig } from './PipelineServiceUtils';
 import { getSearchServiceConfig } from './SearchServiceUtils';
 import { getSecurityConfig } from './SecurityServiceUtils';
 import { getServiceIcon } from './ServiceIconUtils';
-import { getTestConnectionName } from './ServicePureUtils';
-import { getSearchIndexFromService } from './ServiceUtils';
+import {
+  getSearchIndexFromService,
+  getTestConnectionName,
+} from './ServicePureUtils';
 import { getStorageConfig } from './StorageServiceUtils';
 import { customServiceComparator } from './StringUtils';
 
@@ -502,7 +504,7 @@ class ServiceUtilClassBase {
   }
 
   public getInsightsTabWidgets(_: ServiceTypes) {
-    return {} as Record<string, React.ComponentType<any>>;
+    return {} as Record<string, React.ComponentType<Record<string, unknown>>>;
   }
 
   public getExtraInfo(): Promise<void> {
@@ -542,7 +544,7 @@ class ServiceUtilClassBase {
   }
 
   public getAgentsTabWidgets() {
-    return {} as Record<string, React.ComponentType<any>>;
+    return {} as Record<string, React.ComponentType<Record<string, unknown>>>;
   }
 
   public getExtraIngestionMenuItems(

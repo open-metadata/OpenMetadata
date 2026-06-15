@@ -38,14 +38,21 @@ import {
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import dashboardDetailsClassBase from '../../../utils/DashboardDetailsClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { fetchEntityActivityCountInto, fetchEntityTaskCountsInto, getFeedCounts } from '../../../utils/FeedUtilsPure';;
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtilsPure';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
 } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import { updateCertificationTag, updateTierTag } from '../../../utils/TagsPureUtils';;
+import {
+  updateCertificationTag,
+  updateTierTag,
+} from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
@@ -56,7 +63,6 @@ import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHe
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { DashboardDetailsProps } from './DashboardDetails.interface';
-
 const DashboardDetails = ({
   updateDashboardDetailsState,
   dashboardDetails,

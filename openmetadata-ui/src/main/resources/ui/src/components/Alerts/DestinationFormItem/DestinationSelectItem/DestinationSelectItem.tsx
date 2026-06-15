@@ -41,8 +41,15 @@ import {
 } from '../../../../generated/events/eventSubscription';
 import { useFqn } from '../../../../hooks/useFqn';
 import { ModifiedDestination } from '../../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import { getDestinationConfigField, getDestinationStatusAlertData } from '../../../../utils/Alerts/AlertsUtil';
-import { getFilteredDestinationOptions, getSubscriptionTypeOptions, normalizeDestinationConfig } from '../../../../utils/Alerts/AlertsUtilPure';;
+import {
+  getDestinationConfigField,
+  getDestinationStatusAlertData,
+} from '../../../../utils/Alerts/AlertsUtil';
+import {
+  getFilteredDestinationOptions,
+  getSubscriptionTypeOptions,
+  normalizeDestinationConfig,
+} from '../../../../utils/Alerts/AlertsUtilPure';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { checkIfDestinationIsInternal } from '../../../../utils/ObservabilityUtils';
 import { DestinationSelectItemProps } from './DestinationSelectItem.interface';

@@ -32,8 +32,8 @@ import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import { getTierTags } from '../../../utils/TablePureUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import tagClassBase from '../../../utils/TagClassBase';
+import { getTagPlaceholder } from '../../../utils/TagsPureUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
-import { getTagPlaceholder } from '../../../utils/TagsPureUtils';;
 import {
   getRequestTagsPath,
   getUpdateTagsPath,
@@ -56,7 +56,6 @@ import TagsViewer from '../TagsViewer/TagsViewer';
 import { LayoutType } from '../TagsViewer/TagsViewer.interface';
 import './tags-container.style.less';
 import { TagsContainerV2Props } from './TagsContainerV2.interface';
-
 const TagSelectForm = withSuspenseFallback(
   lazy(() => import('../TagsSelectForm/TagsSelectForm.component'))
 );

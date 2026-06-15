@@ -37,12 +37,12 @@ import {
   getTestDefinitionById,
   updateTestCaseById,
 } from '../../../rest/testAPI';
-import { createUpdatedTestCasePatch } from '../../../utils/DataQuality/DataQualityPureUtils';;
+import { createUpdatedTestCasePatch } from '../../../utils/DataQuality/DataQualityPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getColumnNameFromEntityLink } from '../../../utils/EntityPureUtils';
-import { getEntityFQN } from '../../../utils/FeedUtilsPure';;
+import { getEntityFQN } from '../../../utils/FeedUtilsPure';
+import { getPopupContainer } from '../../../utils/formPureUtils';
 import { generateFormFields } from '../../../utils/formUtils';
-import { getPopupContainer } from '../../../utils/formPureUtils';;
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { isValidJSONString } from '../../../utils/StringUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
@@ -52,7 +52,6 @@ import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityA
 import Loader from '../../common/Loader/Loader';
 import { EditTestCaseModalProps } from './AddDataQualityTest.interface';
 import ParameterForm from './components/ParameterForm';
-
 const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
   visible,
   testCase,

@@ -30,8 +30,15 @@ import {
 } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getActivityEventHeaderText, getFeedHeaderTextFromCardStyle } from '../../../utils/FeedUtils';
-import { entityDisplayName, getEntityFQN, getEntityType } from '../../../utils/FeedUtilsPure';;
+import {
+  getActivityEventHeaderText,
+  getFeedHeaderTextFromCardStyle,
+} from '../../../utils/FeedUtils';
+import {
+  entityDisplayName,
+  getEntityFQN,
+  getEntityType,
+} from '../../../utils/FeedUtilsPure';
 import { getUserPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
@@ -43,7 +50,6 @@ import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFoot
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import '../ActivityFeedTab/activity-feed-tab.less';
 import CommentCard from './CommentCard.component';
-
 const ActivityFeedEditorNew = withSuspenseFallback(
   lazy(() => import('../ActivityFeedEditor/ActivityFeedEditorNew'))
 );

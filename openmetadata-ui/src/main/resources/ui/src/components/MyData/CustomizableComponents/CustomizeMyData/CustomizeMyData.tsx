@@ -31,8 +31,14 @@ import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection
 import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import '../../../../pages/MyDataPage/my-data.less';
+import {
+  getAddWidgetHandler,
+  getLandingPageLayoutWithEmptyWidgetPlaceholder,
+  getLayoutUpdateHandler,
+  getRemoveWidgetHandler,
+  getUniqueFilteredLayout,
+} from '../../../../utils/CustomizableLandingPagePureUtils';
 import { getWidgetFromKey } from '../../../../utils/CustomizableLandingPageUtils';
-import { getAddWidgetHandler, getLandingPageLayoutWithEmptyWidgetPlaceholder, getLayoutUpdateHandler, getRemoveWidgetHandler, getUniqueFilteredLayout } from '../../../../utils/CustomizableLandingPagePureUtils';;
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { NavigationBlocker } from '../../../common/NavigationBlocker/NavigationBlocker';
@@ -43,7 +49,6 @@ import CustomiseLandingPageHeader from '../CustomiseLandingPageHeader/CustomiseL
 import { CustomizablePageHeader } from '../CustomizablePageHeader/CustomizablePageHeader';
 import './customize-my-data.less';
 import { CustomizeMyDataProps } from './CustomizeMyData.interface';
-
 const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
   ReactGridLayoutProps & { children?: React.ReactNode }
 >;

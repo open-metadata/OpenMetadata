@@ -32,7 +32,10 @@ import {
   WidgetConfig,
 } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
-import { getLayoutWithEmptyWidgetPlaceholder, getUniqueFilteredLayout } from '../../../utils/CustomizableLandingPagePureUtils';;
+import {
+  getLayoutWithEmptyWidgetPlaceholder,
+  getUniqueFilteredLayout,
+} from '../../../utils/CustomizableLandingPagePureUtils';
 import {
   getCustomizableWidgetByPage,
   getDefaultTabs,
@@ -46,7 +49,6 @@ import AddDetailsPageWidgetModal from '../../MyData/CustomizableComponents/AddDe
 import EmptyWidgetPlaceholder from '../../MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import { LeftPanelContainer } from '../GenericTab/LeftPanelContainer';
 import { GenericWidget } from '../GenericWidget/GenericWidget';
-
 // Create a properly typed ReactGridLayout component
 const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
   ReactGridLayout.ReactGridLayoutProps & { children?: React.ReactNode }

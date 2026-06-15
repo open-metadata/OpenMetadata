@@ -55,6 +55,8 @@ jest.mock('../../../../utils/FqnUtils', () => ({
 }));
 jest.mock('../../../../utils/TablePureUtils', () => ({
   pruneEmptyChildren: jest.fn((columns) => columns),
+  getTagsWithoutTier: jest.fn((tags) => tags),
+  getTierTags: jest.fn(() => []),
 }));
 jest.mock('../../../common/CustomPropertyTable/CustomPropertyTable', () => ({
   CustomPropertyTable: jest.fn(() => (

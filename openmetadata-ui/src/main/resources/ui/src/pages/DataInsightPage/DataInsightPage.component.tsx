@@ -27,14 +27,13 @@ import { DataInsightChartType } from '../../generated/dataInsight/dataInsightCha
 import { Operation } from '../../generated/entity/policies/policy';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { DataInsightTabs } from '../../interface/data-insight.interface';
-import { getDataInsightPathWithFqn } from '../../utils/DataInsightPureUtils';;
+import { getDataInsightPathWithFqn } from '../../utils/DataInsightPureUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './data-insight.less';
 import { default as dataInsightClassBase } from './DataInsightClassBase';
 import DataInsightHeader from './DataInsightHeader/DataInsightHeader.component';
 import DataInsightProvider from './DataInsightProvider';
-
 const DataInsightPage = () => {
   const { tab } = useRequiredParams<{ tab: DataInsightTabs }>();
   const { t } = useTranslation();

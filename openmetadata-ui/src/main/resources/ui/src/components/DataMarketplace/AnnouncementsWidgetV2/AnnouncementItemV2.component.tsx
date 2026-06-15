@@ -13,10 +13,9 @@
 
 import { useMemo } from 'react';
 import { AnnouncementEntity } from '../../../rest/announcementsAPI';
-import { getEntityFQN, getEntityType } from '../../../utils/FeedUtilsPure';;
+import { getEntityFQN, getEntityType } from '../../../utils/FeedUtilsPure';
 import { getEntityIcon } from '../../../utils/TableUtils';
 import AnnouncementCardV1Content from '../../MyData/Widgets/AnnouncementsWidgetV1/AnnouncementCardV1/AnnouncementCardV1Content.component';
-
 interface AnnouncementItemV2Props {
   announcement: AnnouncementEntity;
   onClick: () => void;

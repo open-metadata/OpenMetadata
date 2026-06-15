@@ -14,7 +14,15 @@ import { ExploreQuickFilterField } from '../components/Explore/ExplorePage.inter
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import { QueryFieldInterface } from '../pages/ExplorePage/ExplorePage.interface';
-import { extractTermKeys, getExploreQueryFilterMust, getQuickFilterObjectForEntities, getQuickFilterQuery, getSelectedValuesFromQuickFilter, getSubLevelHierarchyKey, updateTreeData } from './ExplorePureUtils';;
+import {
+  extractTermKeys,
+  getExploreQueryFilterMust,
+  getQuickFilterObjectForEntities,
+  getQuickFilterQuery,
+  getSelectedValuesFromQuickFilter,
+  getSubLevelHierarchyKey,
+  updateTreeData,
+} from './ExplorePureUtils';
 
 describe('Explore Utils', () => {
   it('should return undefined if data is empty', () => {

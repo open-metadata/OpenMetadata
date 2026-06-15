@@ -36,8 +36,15 @@ import {
 } from '../../../../generated/events/api/typedEvent';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { getAlertEventsFromId } from '../../../../rest/alertsAPI';
-import { getAlertEventsFilterLabels, getAlertRecentEventsFilterOptions, getAlertStatusIcon } from '../../../../utils/Alerts/AlertsUtil';
-import { getChangeEventDataFromTypedEvent, getLabelsForEventDetails } from '../../../../utils/Alerts/AlertsUtilPure';;
+import {
+  getAlertRecentEventsFilterOptions,
+  getAlertStatusIcon,
+} from '../../../../utils/Alerts/AlertsUtil';
+import {
+  getAlertEventsFilterLabels,
+  getChangeEventDataFromTypedEvent,
+  getLabelsForEventDetails,
+} from '../../../../utils/Alerts/AlertsUtilPure';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';

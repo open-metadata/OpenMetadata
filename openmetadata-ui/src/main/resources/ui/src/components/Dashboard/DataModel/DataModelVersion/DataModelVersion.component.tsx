@@ -27,7 +27,12 @@ import {
 } from '../../../../generated/entity/data/dashboardDataModel';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { TagSource } from '../../../../generated/type/schema';
-import { getColumnsDataWithVersionChanges, getCommonExtraInfoForVersionDetails, getEntityVersionByField, getEntityVersionTags } from '../../../../utils/EntityVersionUtilsPure';;
+import {
+  getColumnsDataWithVersionChanges,
+  getCommonExtraInfoForVersionDetails,
+  getEntityVersionByField,
+  getEntityVersionTags,
+} from '../../../../utils/EntityVersionUtilsPure';
 import { getPartialNameFromTableFQN } from '../../../../utils/FqnUtils';
 import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../../utils/RouterUtils';
@@ -43,7 +48,6 @@ import EntityVersionTimeLine from '../../../Entity/EntityVersionTimeLine/EntityV
 import VersionTable from '../../../Entity/VersionTable/VersionTable.component';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { DataModelVersionProp } from './DataModelVersion.interface';
-
 const DataModelVersion: FC<DataModelVersionProp> = ({
   version,
   currentVersionData,

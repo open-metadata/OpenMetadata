@@ -33,12 +33,12 @@ import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { ChangeDescription, Type } from '../../../generated/entity/type';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
-import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   getChangedEntityNewValue,
   getDiffByFieldName,
 } from '../../../utils/EntityDiffPureUtils';
 import { getUpdatedExtensionDiffFields } from '../../../utils/EntityDiffUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';

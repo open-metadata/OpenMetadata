@@ -41,8 +41,11 @@ import {
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getUserByName } from '../../../rest/userAPI';
-import { suggestions, userMentionItemWithAvatar } from '../../../utils/FeedUtils';
-import { HTMLToMarkdown } from '../../../utils/FeedUtilsPure';;
+import {
+  suggestions,
+  userMentionItemWithAvatar,
+} from '../../../utils/FeedUtils';
+import { HTMLToMarkdown } from '../../../utils/FeedUtilsPure';
 import { LinkBlot } from '../../../utils/QuillLink/QuillLink';
 import { insertMention, insertRef } from '../../../utils/QuillUtils';
 import { getSanitizeContent } from '../../../utils/sanitize.utils';
@@ -51,7 +54,6 @@ import { EditorContentRef } from '../../common/RichTextEditor/RichTextEditor.int
 import './feed-editor.less';
 import { FeedEditorProp, MentionSuggestionsItem } from './FeedEditor.interface';
 import './quill-emoji.css';
-
 Quill.register('modules/markdownOptions', QuillMarkdown);
 Quill.register(LinkBlot as unknown as Parchment.RegistryDefinition);
 Quill.register('modules/emoji-textarea', TextAreaEmoji, true);

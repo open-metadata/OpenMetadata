@@ -31,7 +31,7 @@ import {
   putDatabaseProfileConfig,
   putDatabaseSchemaProfileConfig,
 } from '../../../../rest/databaseAPI';
-import { transformErrors } from '../../../../utils/formPureUtils';;
+import { transformErrors } from '../../../../utils/formPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import BooleanFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
 import DescriptionFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';

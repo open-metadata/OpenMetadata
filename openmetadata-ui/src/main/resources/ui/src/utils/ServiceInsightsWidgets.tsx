@@ -13,7 +13,6 @@
 
 import { Typography } from 'antd';
 import React from 'react';
-import MetadataAgentsWidget from '../components/Settings/Services/Ingestion/MetadataAgentsWidget/MetadataAgentsWidget';
 import { ReactComponent as DescriptionPlaceholderIcon } from '../assets/svg/ic-flat-doc.svg';
 import { ReactComponent as TablePlaceholderIcon } from '../assets/svg/ic-large-table.svg';
 import { ReactComponent as NoDataPlaceholderIcon } from '../assets/svg/ic-no-records.svg';
@@ -21,6 +20,7 @@ import { ReactComponent as OwnersPlaceholderIcon } from '../assets/svg/key-hand.
 import { ReactComponent as TierPlaceholderIcon } from '../assets/svg/no-tier.svg';
 import { ReactComponent as PiiPlaceholderIcon } from '../assets/svg/security-safe.svg';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import MetadataAgentsWidget from '../components/Settings/Services/Ingestion/MetadataAgentsWidget/MetadataAgentsWidget';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../enums/common.enum';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { ServiceInsightsWidgetType } from '../enums/ServiceInsights.enum';
@@ -153,7 +153,7 @@ export const getServiceInsightsWidgetPlaceholder = ({
 
 export const getDefaultAgentsTabWidgets = (): Record<
   string,
-  React.ComponentType<any>
+  React.ComponentType<Record<string, unknown>>
 > => ({
   MetadataAgentsWidget,
 });

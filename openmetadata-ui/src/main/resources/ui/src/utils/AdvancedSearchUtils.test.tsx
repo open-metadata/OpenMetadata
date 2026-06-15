@@ -29,8 +29,24 @@ import {
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
-import { getSearchDropdownLabels, getSearchLabel, processCustomPropertyField, processEntityTypeFields } from './AdvancedSearchUtils';
-import { getAssetsPageQuickFilters, getChartsOptions, getColumnsOptions, getEmptyJsonTree, getEmptyJsonTreeForQueryBuilder, getOptionsFromAggregationBucket, getSchemaFieldOptions, getSelectedOptionLabelString, getServiceOptions, getTasksOptions } from './AdvancedSearchPureUtils';;
+import {
+  getAssetsPageQuickFilters,
+  getChartsOptions,
+  getColumnsOptions,
+  getEmptyJsonTree,
+  getEmptyJsonTreeForQueryBuilder,
+  getOptionsFromAggregationBucket,
+  getSchemaFieldOptions,
+  getSearchLabel,
+  getSelectedOptionLabelString,
+  getServiceOptions,
+  getTasksOptions,
+} from './AdvancedSearchPureUtils';
+import {
+  getSearchDropdownLabels,
+  processCustomPropertyField,
+  processEntityTypeFields,
+} from './AdvancedSearchUtils';
 import {
   highlightedItemLabel,
   mockBucketOptions,

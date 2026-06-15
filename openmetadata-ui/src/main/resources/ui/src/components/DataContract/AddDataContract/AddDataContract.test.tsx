@@ -55,8 +55,7 @@ jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
   getContractTabLabel: jest.fn(),
 }));
 
-jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
-  ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   useGenericContext: jest.fn(() => ({
     data: {
       id: 'table-id',

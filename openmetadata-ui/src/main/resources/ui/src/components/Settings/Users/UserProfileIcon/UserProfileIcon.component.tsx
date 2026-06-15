@@ -35,11 +35,10 @@ import {
   getTeamAndUserDetailsPath,
   getUserPath,
 } from '../../../../utils/RouterUtils';
-import { getEmptyTextFromUserProfileItem } from '../../../../utils/UsersPureUtils';;
+import { getEmptyTextFromUserProfileItem } from '../../../../utils/UsersPureUtils';
 import { useAuthProvider } from '../../../Auth/AuthProviders/AuthProvider';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import './user-profile-icon.less';
-
 type ListMenuItemProps = {
   listItems: EntityReference[];
   labelRenderer: (item: EntityReference) => ReactNode;

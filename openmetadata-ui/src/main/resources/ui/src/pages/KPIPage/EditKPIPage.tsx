@@ -48,7 +48,10 @@ import { useAuth } from '../../hooks/authHooks';
 import { useFqn } from '../../hooks/useFqn';
 import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { getKPIByName, patchKPI } from '../../rest/KpiAPI';
-import { getDataInsightPathWithFqn, getDisabledDates } from '../../utils/DataInsightPureUtils';;
+import {
+  getDataInsightPathWithFqn,
+  getDisabledDates,
+} from '../../utils/DataInsightPureUtils';
 import { getField } from '../../utils/formUtils';
 import {
   getKPIChartType,
@@ -58,7 +61,6 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import './kpi-page.less';
 import { KPIFormValues } from './KPIPage.interface';
-
 const EditKPIPage = () => {
   const { isAdminUser } = useAuth();
   const { fqn: kpiName } = useFqn();

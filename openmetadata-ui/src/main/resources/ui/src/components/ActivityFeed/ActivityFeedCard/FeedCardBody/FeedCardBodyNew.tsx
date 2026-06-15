@@ -20,7 +20,12 @@ import withSuspenseFallback from '../../../../components/AppRouter/withSuspenseF
 import { ASSET_CARD_STYLES } from '../../../../constants/Feeds.constants';
 import { ActivityEventType } from '../../../../generated/entity/activity/activityEvent';
 import { CardStyle } from '../../../../generated/entity/feed/thread';
-import { MarkdownToHTMLConverter, getEntityFQN, getEntityType, getFrontEndFormat } from '../../../../utils/FeedUtilsPure';;
+import {
+  getEntityFQN,
+  getEntityType,
+  getFrontEndFormat,
+  MarkdownToHTMLConverter,
+} from '../../../../utils/FeedUtilsPure';
 import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import ActivityDescriptionFeed from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/ActivityDescriptionFeed';
 import DescriptionFeedNew from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/DescriptionFeedNew';
@@ -30,7 +35,6 @@ import ActivityTagsFeed from '../../ActivityFeedCardV2/FeedCardBody/TagsFeed/Act
 import TagsFeed from '../../ActivityFeedCardV2/FeedCardBody/TagsFeed/TagsFeed';
 import './feed-card-body-v1.less';
 import { FeedCardBodyV1Props } from './FeedCardBodyV1.interface';
-
 const ActivityFeedEditor = withSuspenseFallback(
   lazy(() => import('../../ActivityFeedEditor/ActivityFeedEditor'))
 );

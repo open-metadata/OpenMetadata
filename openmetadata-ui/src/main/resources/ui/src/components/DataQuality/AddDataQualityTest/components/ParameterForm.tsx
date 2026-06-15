@@ -55,7 +55,7 @@ import {
 } from '../../../../interface/search.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { getPopupContainer } from '../../../../utils/formPureUtils';;
+import { getPopupContainer } from '../../../../utils/formPureUtils';
 import {
   getSelectedColumnsSet,
   validateEquals,
@@ -66,7 +66,6 @@ import {
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import '../../../Database/Profiler/TableProfiler/table-profiler.less';
 import { ParameterFormProps } from '../AddDataQualityTest.interface';
-
 const CodeEditor = withSuspenseFallback(
   lazy(() => import('../../../Database/SchemaEditor/CodeEditor'))
 );

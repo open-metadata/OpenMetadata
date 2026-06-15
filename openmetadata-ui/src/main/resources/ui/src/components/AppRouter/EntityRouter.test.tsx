@@ -26,6 +26,7 @@ jest.mock('../../utils/ApplicationRoutesClassBase', () => {
 });
 
 jest.mock('../../utils/EntityUtilClassBase', () => ({
+  __esModule: true,
   default: {
     getEntityDetailComponent: jest.fn().mockImplementation((entityType) => {
       if (entityType === 'table') {

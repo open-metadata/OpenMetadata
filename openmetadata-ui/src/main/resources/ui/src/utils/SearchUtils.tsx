@@ -43,7 +43,6 @@ import i18n from './i18next/LocalUtil';
 import searchClassBase from './SearchClassBase';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 
-
 export const getGroupLabel = (index: string) => {
   let label = '';
   let GroupIcon;

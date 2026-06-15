@@ -26,8 +26,7 @@ import {
   FieldChange,
 } from '../generated/entity/services/databaseService';
 import { getComputeRowCountDiffDisplay } from './EntityVersionUtils';
-import { getStringEntityDiff } from './EntityVersionUtilsPure';;
-
+import { getStringEntityDiff } from './EntityVersionUtilsPure';
 // Mock data for testing
 const createMockTableColumn = (
   name: string,

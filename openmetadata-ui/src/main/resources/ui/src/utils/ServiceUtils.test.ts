@@ -12,8 +12,10 @@
  */
 import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory } from '../enums/service.enum';
-import { getActiveFieldNameForAppDocs } from './ServicePureUtils';
-import { getSearchIndexFromService } from './ServiceUtils';
+import {
+  getActiveFieldNameForAppDocs,
+  getSearchIndexFromService,
+} from './ServicePureUtils';
 
 describe('getSearchIndexFromService', () => {
   it.each([

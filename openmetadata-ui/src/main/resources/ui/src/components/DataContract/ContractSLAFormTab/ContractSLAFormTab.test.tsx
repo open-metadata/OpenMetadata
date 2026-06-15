@@ -21,8 +21,7 @@ import {
 import { mockTableData } from '../../../mocks/TableVersion.mock';
 import { ContractSLAFormTab } from './ContractSLAFormTab';
 
-jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
-  ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   useGenericContext: jest.fn().mockImplementation(() => ({
     data: mockTableData,
   })),

@@ -11,8 +11,18 @@
  *  limitations under the License.
  */
 import { Editor } from '@tiptap/react';
-import { formatContent, formatValueBasedOnContent, getHtmlStringFromMarkdownString, isHTMLString, setEditorContent, transformImgTagsToFileAttachment } from './BlockEditorUtils';
-import { getTextFromHtmlString, isDescriptionContentEmpty } from './BlockEditorPureUtils';;
+import {
+  getTextFromHtmlString,
+  isDescriptionContentEmpty,
+} from './BlockEditorPureUtils';
+import {
+  formatContent,
+  formatValueBasedOnContent,
+  getHtmlStringFromMarkdownString,
+  isHTMLString,
+  setEditorContent,
+  transformImgTagsToFileAttachment,
+} from './BlockEditorUtils';
 
 describe('getTextFromHtmlString', () => {
   it('should return empty string when input is undefined', () => {

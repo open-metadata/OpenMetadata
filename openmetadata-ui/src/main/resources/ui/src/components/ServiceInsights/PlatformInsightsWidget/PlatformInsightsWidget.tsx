@@ -23,7 +23,7 @@ import { PLATFORM_INSIGHTS_CHARTS } from '../../../constants/ServiceInsightsTab.
 import { SystemChartType } from '../../../enums/DataInsight.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { getTitleByChartType } from '../../../utils/ServiceInsightsTabPureUtils';
-import { getReadableCountString } from '../../../utils/ServicePureUtils';;
+import { getReadableCountString } from '../../../utils/ServicePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import './platform-insights-widget.less';
 import { PlatformInsightsWidgetProps } from './PlatformInsightsWidget.interface';

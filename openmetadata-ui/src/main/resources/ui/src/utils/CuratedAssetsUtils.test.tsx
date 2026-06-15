@@ -64,7 +64,7 @@ jest.mock('@ant-design/icons', () => ({
 describe('CuratedAssetsUtils', () => {
   beforeEach(() => {
     (useTranslation as jest.Mock).mockReturnValue({
-      t: (key: string, params?: any) => {
+      t: (key: string, params?: Record<string, unknown>) => {
         if (key === 'message.search-entity-count') {
           return `${params?.count} entities found`;
         }

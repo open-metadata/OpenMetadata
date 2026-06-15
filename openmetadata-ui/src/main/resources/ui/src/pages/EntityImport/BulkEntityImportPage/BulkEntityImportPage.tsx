@@ -42,7 +42,7 @@ import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import { useGridEditController } from '../../../hooks/useGridEditController';
 import { getEntityColumnsAndDataSourceFromCSV } from '../../../utils/CSV/CSV.utils';
-import { getCSVStringFromColumnsAndDataSource } from '../../../utils/CSV/CSVPureUtils';;
+import { getCSVStringFromColumnsAndDataSource } from '../../../utils/CSV/CSVPureUtils';
 import csvUtilsClassBase from '../../../utils/CSV/CSVUtilsClassBase';
 import {
   getBulkEntityNavigationPath,
@@ -68,7 +68,6 @@ import {
   CSVImportAsyncWebsocketResponse,
   CSVImportJobType,
 } from './BulkEntityImportPage.interface';
-
 const BulkEntityImportPage = () => {
   const location = useLocation();
   const { socket } = useWebSocketConnector();

@@ -18,11 +18,10 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { updateActiveChartFilter } from '../../utils/ChartUtils';
 import { entityChartColor } from '../../utils/ColorUtils';
-import { sortEntityByValue } from '../../utils/DataInsightPureUtils';;
+import { sortEntityByValue } from '../../utils/DataInsightPureUtils';
 import Searchbar from '../common/SearchBarComponent/SearchBar.component';
 import CustomStatistic from './CustomStatistic';
 import EntitySummaryProgressBar from './EntitySummaryProgressBar.component';
-
 type TotalEntityInsightSummaryProps = {
   total: string | number;
   relativePercentage: number;

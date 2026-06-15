@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { getDataInsightPathWithFqn } from '../utils/DataInsightPureUtils';;
+import { getDataInsightPathWithFqn } from '../utils/DataInsightPureUtils';
 import { getPath, getSettingPath } from '../utils/RouterUtils';
 import { ROUTES } from './constants';
 import { GlobalSettingOptions } from './GlobalSettings.constants';

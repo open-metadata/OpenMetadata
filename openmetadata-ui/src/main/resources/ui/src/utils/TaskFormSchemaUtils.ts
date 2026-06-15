@@ -25,13 +25,13 @@
  */
 
 import { cloneDeep, uniqBy } from 'lodash';
+import { TaskAvailableTransition } from '../generated/entity/tasks/task';
 import { TagLabel } from '../generated/type/tagLabel';
 import {
   JsonSchemaObject,
   resolveTaskFormSchema,
   TaskFormSchema,
 } from '../rest/taskFormSchemasAPI';
-import { TaskAvailableTransition } from '../generated/entity/tasks/task';
 import {
   Task,
   TaskCategory,

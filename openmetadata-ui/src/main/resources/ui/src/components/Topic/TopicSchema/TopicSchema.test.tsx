@@ -156,8 +156,8 @@ const mockTopicDetails = {
   messageSchema: MESSAGE_SCHEMA as Topic['messageSchema'],
 };
 
-jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
-  ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+  ...jest.requireActual('../../Customization/GenericProvider/GenericProvider'),
   useGenericContext: jest.fn().mockImplementation(() => ({
     data: mockTopicDetails,
     isVersionView: false,

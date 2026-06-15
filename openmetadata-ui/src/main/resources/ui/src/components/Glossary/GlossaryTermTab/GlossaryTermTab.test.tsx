@@ -89,8 +89,8 @@ jest.mock('../../../utils/TableUtils', () => ({
 }));
 
 // Mock where the component actually imports this util
-jest.mock('../../../utils/GlossaryUtils', () => ({
-  ...jest.requireActual('../../../utils/GlossaryUtils'),
+jest.mock('../../../utils/GlossaryPureUtils', () => ({
+  buildTree: jest.fn((data) => data),
   findExpandableKeysForArray: jest.fn().mockReturnValue([]),
   glossaryTermTableColumnsWidth: jest.fn().mockReturnValue({
     name: 250,
@@ -175,8 +175,7 @@ jest.mock('../useGlossary.store', () => ({
   useGlossaryStore: jest.fn().mockImplementation(() => mockUseGlossaryStore),
 }));
 
-jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
-  ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   useGenericContext: jest.fn().mockImplementation(() => ({
     permissions: MOCK_PERMISSIONS,
     type: 'glossary',
@@ -566,7 +565,7 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       const { useGenericContext } = jest.requireMock(
-        '../../Customization/GenericProvider/GenericContext'
+        '../../Customization/GenericProvider/GenericProvider'
       );
       useGenericContext.mockImplementation(mockGenericContext);
 

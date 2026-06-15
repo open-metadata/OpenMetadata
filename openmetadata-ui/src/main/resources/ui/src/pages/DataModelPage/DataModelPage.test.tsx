@@ -144,7 +144,7 @@ jest.mock('../../utils/TablePureUtils', () => {
   };
 });
 
-jest.mock('../../utils/TagsUtils', () => ({
+jest.mock('../../utils/TagsPureUtils', () => ({
   updateTierTag: () => mockUpdateTierTag(),
 }));
 

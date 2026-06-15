@@ -17,10 +17,9 @@ import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React, { useEffect, useState } from 'react';
 import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getTermQuery } from '../../../utils/SearchPureUtils';;
+import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { AsyncSelect } from '../../common/AsyncSelect/AsyncSelect';
 import { AsyncSelectListProps } from '../../common/AsyncSelect/AsyncSelectList.interface';
-
 interface FQNListSelectProps
   extends SelectProps,
     Pick<AsyncSelectListProps, 'api'> {

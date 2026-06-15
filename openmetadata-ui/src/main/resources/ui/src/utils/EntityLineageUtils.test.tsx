@@ -23,11 +23,31 @@ import { AddLineage, ColumnLineage } from '../generated/api/lineage/addLineage';
 import { LineageDirection } from '../generated/api/lineage/lineageDirection';
 import { MOCK_NODES_AND_EDGES } from '../mocks/Lineage.mock';
 import { addLineage } from '../rest/miscAPI';
-import { createNewEdge, getAllTracedEdges, getColumnLineageData, getLineageDetailsObject, getLineageEdge, getLineageEdgeForAPI, getUpdatedColumnsFromEdge } from './EntityLineageEdgeUtils';
-import { centerNodePosition, getNodesBoundsReactFlow, getViewportForBoundsReactFlow } from './EntityLineageLayoutUtils';
-import { getConnectedNodesEdges, getEntityChildrenAndLabel, getUpstreamDownstreamNodesEdges } from './EntityLineageNodeUtils';
+import {
+  createNewEdge,
+  getAllTracedEdges,
+  getColumnLineageData,
+  getLineageDetailsObject,
+  getLineageEdge,
+  getLineageEdgeForAPI,
+  getUpdatedColumnsFromEdge,
+} from './EntityLineageEdgeUtils';
+import {
+  centerNodePosition,
+  getNodesBoundsReactFlow,
+  getViewportForBoundsReactFlow,
+} from './EntityLineageLayoutUtils';
+import {
+  getConnectedNodesEdges,
+  getEntityChildrenAndLabel,
+  getUpstreamDownstreamNodesEdges,
+} from './EntityLineageNodeUtils';
+import {
+  addLineageHandler,
+  getColumnFunctionValue,
+  parseLineageData,
+} from './EntityLineagePureUtils';
 import { getLineageTableConfig } from './EntityLineageUtils';
-import { addLineageHandler, getColumnFunctionValue, parseLineageData } from './EntityLineagePureUtils';;
 jest.mock('../rest/miscAPI', () => ({
   addLineage: jest.fn(),
 }));

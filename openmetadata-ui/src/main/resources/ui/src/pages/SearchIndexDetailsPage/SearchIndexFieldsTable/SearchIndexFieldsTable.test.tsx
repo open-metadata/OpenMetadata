@@ -48,10 +48,10 @@ jest.mock(
 );
 
 jest.mock(
-  '../../../components/Customization/GenericProvider/GenericContext',
+  '../../../components/Customization/GenericProvider/GenericProvider',
   () => ({
     ...jest.requireActual(
-      '../../../components/Customization/GenericProvider/GenericContext'
+      '../../../components/Customization/GenericProvider/GenericProvider'
     ),
     useGenericContext: jest.fn().mockReturnValue({
       type: 'searchIndex',

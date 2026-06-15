@@ -52,7 +52,10 @@ import {
   SecurityValidationResponse,
   validateSecurityConfiguration,
 } from '../../../rest/securityConfigAPI';
-import { createScrollToErrorHandler, transformErrors } from '../../../utils/formPureUtils';;
+import {
+  createScrollToErrorHandler,
+  transformErrors,
+} from '../../../utils/formPureUtils';
 import {
   applySamlConfiguration,
   cleanupProviderSpecificFields,
@@ -96,7 +99,6 @@ import {
 } from './SSOConfigurationForm.interface';
 import SsoConfigurationFormArrayFieldTemplate from './SsoConfigurationFormArrayFieldTemplate';
 import SsoRolesSelectField from './SsoRolesSelectField';
-
 interface MetadataUploadStatusCardProps {
   status: 'success' | 'error';
   fileName: string;

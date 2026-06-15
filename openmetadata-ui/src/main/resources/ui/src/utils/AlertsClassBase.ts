@@ -28,7 +28,13 @@ import type {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
 } from '../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import { getConfigHeaderArrayFromObject, getConfigHeaderObjectFromArray, getConfigQueryParamsArrayFromObject, getConfigQueryParamsObjectFromArray, getRandomizedAlertName } from './Alerts/AlertsUtilPure';;
+import {
+  getConfigHeaderArrayFromObject,
+  getConfigHeaderObjectFromArray,
+  getConfigQueryParamsArrayFromObject,
+  getConfigQueryParamsObjectFromArray,
+  getRandomizedAlertName,
+} from './Alerts/AlertsUtilPure';
 import type { HandleAlertSaveProps } from './AlertsClassBase.interface';
 import { getEntityName } from './EntityNameUtils';
 import { handleEntityCreationError } from './formUtils';

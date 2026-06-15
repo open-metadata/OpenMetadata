@@ -66,7 +66,11 @@ import {
 import { getCustomPropertyEntityPathname } from '../../utils/CustomProperty.utils';
 import { getDomainDisplayName } from '../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityFQN, getEntityType, prepareFeedLink } from '../../utils/FeedUtilsPure';;
+import {
+  getEntityFQN,
+  getEntityType,
+  prepareFeedLink,
+} from '../../utils/FeedUtilsPure';
 import { languageSelectOptions } from '../../utils/i18next/i18nextUtil';
 import i18n from '../../utils/i18next/LocalUtil';
 import localUtilClassBase from '../../utils/i18next/LocalUtilClassBase';
@@ -83,7 +87,6 @@ import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { UserProfileIcon } from '../Settings/Users/UserProfileIcon/UserProfileIcon.component';
 import './nav-bar.less';
 import popupAlertsCardsClassBase from './PopupAlertClassBase';
-
 const DomainSelectableList = withSuspenseFallback(
   lazy(
     () =>

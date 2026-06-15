@@ -20,7 +20,7 @@ import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { AnnouncementEntity } from '../../../rest/announcementsAPI';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
-import { getEntityFQN } from '../../../utils/FeedUtilsPure';;
+import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';

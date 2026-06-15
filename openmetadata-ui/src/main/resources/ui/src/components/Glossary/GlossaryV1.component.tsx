@@ -38,7 +38,7 @@ import {
   patchGlossaryTerm,
 } from '../../rest/glossaryAPI';
 import { getEntityDeleteMessage } from '../../utils/EntityDisplayUtils';
-import { updateGlossaryTermByFqn } from '../../utils/GlossaryPureUtils';;
+import { updateGlossaryTermByFqn } from '../../utils/GlossaryPureUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getGlossaryTermDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -54,7 +54,6 @@ import GlossaryTermsV1 from './GlossaryTerms/GlossaryTermsV1.component';
 import { GlossaryV1Props } from './GlossaryV1.interfaces';
 import './glossaryV1.less';
 import { ModifiedGlossary, useGlossaryStore } from './useGlossary.store';
-
 const GlossaryV1 = ({
   isGlossaryActive,
   selectedData,

@@ -60,6 +60,9 @@ jest.mock('../../components/common/ServiceDocPanel/ServiceDocPanel', () =>
 
 jest.mock('../../utils/ServicePureUtils', () => ({
   getServiceType: jest.fn(),
+  getServiceRouteFromServiceType: jest
+    .fn()
+    .mockReturnValue('/services/databases'),
 }));
 
 jest.mock(

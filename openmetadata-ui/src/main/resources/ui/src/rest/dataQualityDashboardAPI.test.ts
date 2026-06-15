@@ -15,7 +15,12 @@ import { IncidentTimeMetricsType } from '../components/DataQuality/DataQuality.i
 import { EntityType } from '../enums/entity.enum';
 import { TestCaseStatus } from '../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolutionStatus';
-import { buildDataQualityDashboardFilters, buildMustEsFilterForOwner, buildMustEsFilterForTags, buildMustEsFilterForTier } from '../utils/DataQuality/DataQualityPureUtils';;
+import {
+  buildDataQualityDashboardFilters,
+  buildMustEsFilterForOwner,
+  buildMustEsFilterForTags,
+  buildMustEsFilterForTier,
+} from '../utils/DataQuality/DataQualityPureUtils';
 import {
   fetchCountOfIncidentStatusTypeByDays,
   fetchEntityCoveredWithDQ,
@@ -27,16 +32,16 @@ import {
   fetchTotalEntityCount,
 } from './dataQualityDashboardAPI';
 import { getDataQualityReport } from './testAPI';
-
 jest.mock('./testAPI', () => ({
   getDataQualityReport: jest.fn(),
 }));
 
-jest.mock('../utils/DataQuality/DataQualityUtils', () => ({
+jest.mock('../utils/DataQuality/DataQualityPureUtils', () => ({
   buildMustEsFilterForOwner: jest.fn(),
   buildMustEsFilterForTags: jest.fn(),
   buildMustEsFilterForTier: jest.fn(),
   buildDataQualityDashboardFilters: jest.fn().mockReturnValue([]),
+  buildMustEsFilterForDataProducts: jest.fn(),
 }));
 
 describe('dataQualityDashboardAPI', () => {

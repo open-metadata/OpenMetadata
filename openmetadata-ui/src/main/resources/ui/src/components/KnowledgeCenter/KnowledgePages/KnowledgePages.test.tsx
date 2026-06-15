@@ -25,10 +25,7 @@ const mockProps = {
 
 jest.mock('rest/knowledgeCenterAPI');
 
-jest.mock('components/Customization/GenericProvider/GenericProvider', () => ({
-  GenericProvider: ({ children }: { children: React.ReactNode }) => (
-    <>{children}</>
-  ),
+jest.mock('components/Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn().mockImplementation(() => ({
     data: { id: mockProps.entityId },
     type: mockProps.entityType,

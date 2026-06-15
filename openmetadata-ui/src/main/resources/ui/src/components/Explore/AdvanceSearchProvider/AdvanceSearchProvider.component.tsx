@@ -33,8 +33,11 @@ import { SearchIndex } from '../../../enums/search.enum';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { TabsInfoData } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { getAllCustomProperties } from '../../../rest/metadataTypeAPI';
-import { getTreeConfig, processEntityTypeFields } from '../../../utils/AdvancedSearchUtils';
-import { getEmptyJsonTree } from '../../../utils/AdvancedSearchPureUtils';;
+import { getEmptyJsonTree } from '../../../utils/AdvancedSearchPureUtils';
+import {
+  getTreeConfig,
+  processEntityTypeFields,
+} from '../../../utils/AdvancedSearchUtils';
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -46,7 +49,6 @@ import {
   AdvanceSearchProviderProps,
   SearchOutputType,
 } from './AdvanceSearchProvider.interface';
-
 const AdvancedSearchContext = createContext<AdvanceSearchContext>(
   {} as AdvanceSearchContext
 );

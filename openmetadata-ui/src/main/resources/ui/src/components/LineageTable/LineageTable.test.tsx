@@ -27,7 +27,10 @@ import {
   getLineageDataByFQN,
   getLineagePagingData,
 } from '../../rest/lineageAPI';
-import { prepareDownstreamColumnLevelNodesFromDownstreamEdges, prepareUpstreamColumnLevelNodesFromUpstreamEdges } from '../../utils/Lineage/LineagePureUtils';;
+import {
+  prepareDownstreamColumnLevelNodesFromDownstreamEdges,
+  prepareUpstreamColumnLevelNodesFromUpstreamEdges,
+} from '../../utils/Lineage/LineagePureUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
 import { LineageConfig } from '../Entity/EntityLineage/EntityLineage.interface';
@@ -35,7 +38,6 @@ import { ColumnLevelLineageNode } from '../Lineage/Lineage.interface';
 import LineageTable from './LineageTable';
 import { EImpactLevel } from './LineageTable.interface';
 import { useLineageTableState } from './useLineageTableState';
-
 // Mock dependencies
 jest.mock('../../context/LineageProvider/LineageProvider');
 jest.mock('../../hooks/paging/usePaging');
@@ -49,6 +51,7 @@ jest.mock('../../utils/StringUtils', () => ({
 }));
 jest.mock('../../hooks/useLineageStore');
 jest.mock('../../utils/Lineage/LineageUtils');
+jest.mock('../../utils/Lineage/LineagePureUtils');
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));

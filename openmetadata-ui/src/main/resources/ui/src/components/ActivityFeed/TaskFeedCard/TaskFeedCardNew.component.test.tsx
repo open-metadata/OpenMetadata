@@ -110,6 +110,8 @@ jest.mock('../../../utils/EntityLink', () => {
     __esModule: true,
     default: {
       getTableColumnName: jest.fn().mockReturnValue(null),
+      getEntityType: jest.fn().mockReturnValue('table'),
+      getEntityFqn: jest.fn().mockReturnValue('test.entity.fqn'),
     },
   };
 });

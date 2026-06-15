@@ -22,7 +22,11 @@ import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription } from '../../../generated/entity/data/topic';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TagSource } from '../../../generated/type/tagLabel';
-import { getCommonExtraInfoForVersionDetails, getEntityVersionByField, getEntityVersionTags } from '../../../utils/EntityVersionUtilsPure';;
+import {
+  getCommonExtraInfoForVersionDetails,
+  getEntityVersionByField,
+  getEntityVersionTags,
+} from '../../../utils/EntityVersionUtilsPure';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { stringToHTML } from '../../../utils/StringUtils';
@@ -38,7 +42,6 @@ import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVers
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import TopicSchemaFields from '../TopicSchema/TopicSchema';
 import { TopicVersionProp } from './TopicVersion.interface';
-
 const TopicVersion: FC<TopicVersionProp> = ({
   version,
   currentVersionData,

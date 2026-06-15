@@ -22,12 +22,14 @@ import {
   fetchTestCaseSummaryByDimension,
   fetchTestCaseSummaryByNoDimension,
 } from '../../../../rest/dataQualityDashboardAPI';
-import { getDimensionIcon, transformToTestCaseStatusByDimension } from '../../../../utils/DataQuality/DataQualityPureUtils';;
+import {
+  getDimensionIcon,
+  transformToTestCaseStatusByDimension,
+} from '../../../../utils/DataQuality/DataQualityPureUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { PieChartWidgetCommonProps } from '../../DataQuality.interface';
 import StatusByDimensionWidget from '../StatusCardWidget/StatusCardWidget.component';
 import './status-by-dimension-card-widget.less';
-
 const StatusByDimensionCardWidget = ({
   chartFilter,
 }: PieChartWidgetCommonProps) => {

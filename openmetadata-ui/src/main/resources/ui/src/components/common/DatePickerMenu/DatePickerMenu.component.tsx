@@ -33,11 +33,10 @@ import {
   getDaysCount,
   getTimestampLabel,
 } from '../../../utils/DatePickerMenuUtils';
-import { getPopupContainer } from '../../../utils/formPureUtils';;
+import { getPopupContainer } from '../../../utils/formPureUtils';
 import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import MyDatePicker from '../DatePicker/DatePicker';
 import './date-picker-menu.less';
-
 interface DatePickerMenuProps {
   defaultDateRange?: Partial<DateRangeObject>;
   showSelectedCustomRange?: boolean;

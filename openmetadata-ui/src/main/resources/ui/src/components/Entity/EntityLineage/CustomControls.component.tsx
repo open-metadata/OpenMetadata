@@ -58,8 +58,8 @@ import { useFqn } from '../../../hooks/useFqn';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { QueryFieldInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { exportLineageByEntityCountAsync } from '../../../rest/lineageAPI';
-import { getQuickFilterQuery } from '../../../utils/ExplorePureUtils';;
-import { getSearchNameEsQuery } from '../../../utils/Lineage/LineagePureUtils';;
+import { getQuickFilterQuery } from '../../../utils/ExplorePureUtils';
+import { getSearchNameEsQuery } from '../../../utils/Lineage/LineagePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
@@ -70,7 +70,6 @@ import { LineageConfig } from './EntityLineage.interface';
 import LineageConfigModal from './LineageConfigModal';
 import LineageSearchSelect from './LineageSearchSelect/LineageSearchSelect';
 import LineageTimeFilter from './LineageTimeFilter.component';
-
 const CustomControls: FC<{
   nodeDepthOptions?: number[];
   onSearchValueChange?: (value: string) => void;

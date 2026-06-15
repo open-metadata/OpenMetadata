@@ -616,7 +616,7 @@ describe('ClassificationDetails', () => {
 
   it('should pass currentClassification directly to GenericProvider', async () => {
     const { GenericProvider } = jest.requireMock(
-      '../../Customization/GenericProvider/GenericContext'
+      '../../Customization/GenericProvider/GenericProvider'
     );
 
     await act(async () => {

@@ -309,8 +309,8 @@ jest.mock('../../../rest/metadataTypeAPI', () => ({
   }),
 }));
 
-jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
-  ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+  ...jest.requireActual('../../Customization/GenericProvider/GenericProvider'),
   useGenericContext: jest.fn().mockReturnValue({
     permissions: {
       EditTags: true,

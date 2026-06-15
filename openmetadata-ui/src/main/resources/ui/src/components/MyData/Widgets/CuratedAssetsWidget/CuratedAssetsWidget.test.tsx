@@ -37,7 +37,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 // Mock utility functions
-jest.mock('../../../../utils/CuratedAssetsUtils', () => ({
+jest.mock('../../../../utils/CuratedAssetsPureUtils', () => ({
   getExploreURLForAdvancedFilter: jest
     .fn()
     .mockReturnValue('/explore?filter=test'),
@@ -72,13 +72,19 @@ jest.mock('../../../../utils/EntityNameUtils', () => ({
 }));
 
 jest.mock('../../../../utils/SearchClassBase', () => ({
-  getEntityIcon: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="entity-icon">Icon</div>),
+  __esModule: true,
+  default: {
+    getEntityIcon: jest
+      .fn()
+      .mockImplementation(() => <div data-testid="entity-icon">Icon</div>),
+  },
 }));
 
 jest.mock('../../../../utils/ServiceUtilClassBase', () => ({
-  getServiceTypeLogo: jest.fn().mockReturnValue('test-logo.png'),
+  __esModule: true,
+  default: {
+    getServiceTypeLogo: jest.fn().mockReturnValue('test-logo.png'),
+  },
 }));
 
 jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
@@ -110,14 +116,16 @@ jest.mock(
 jest.mock(
   '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component',
   () => ({
+    AdvanceSearchProvider: jest.fn().mockImplementation(({ children }) => children),
     useAdvanceSearch: jest.fn().mockReturnValue({
       config: {},
     }),
   })
 );
 
-jest.mock('./CuratedAssetsModal/CuratedAssetsModal', () =>
-  jest
+jest.mock('./CuratedAssetsModal/CuratedAssetsModal', () => ({
+  __esModule: true,
+  default: jest
     .fn()
     .mockImplementation(({ isOpen, onCancel, onSave, curatedAssetsConfig }) => {
       if (!isOpen) {
@@ -140,8 +148,8 @@ jest.mock('./CuratedAssetsModal/CuratedAssetsModal', () =>
           </button>
         </div>
       );
-    })
-);
+    }),
+}));
 
 jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
   jest.fn().mockImplementation(({ markdown }) => <div>{markdown}</div>)

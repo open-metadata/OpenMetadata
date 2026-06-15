@@ -21,9 +21,8 @@ import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { AdvancedSearchClassBase } from './AdvancedSearchClassBase';
-import { getCustomPropertyAdvanceSearchEnumOptions } from './AdvancedSearchPureUtils';;
+import { getCustomPropertyAdvanceSearchEnumOptions } from './AdvancedSearchPureUtils';
 import { getEntityName } from './EntityNameUtils';
-
 jest.mock('../rest/miscAPI', () => ({
   getAggregateFieldOptions: jest.fn().mockImplementation(() =>
     Promise.resolve({
@@ -40,7 +39,7 @@ jest.mock('./EntityNameUtils', () => ({
   getEntityName: jest.fn(),
 }));
 
-jest.mock('./AdvancedSearchUtils', () => ({
+jest.mock('./AdvancedSearchPureUtils', () => ({
   getCustomPropertyAdvanceSearchEnumOptions: jest.fn(),
 }));
 

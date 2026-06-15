@@ -40,7 +40,6 @@ jest.mock('../../../utils/Alerts/AlertsUtil', () => ({
     .fn()
     .mockReturnValue(<div data-testid="destination-field" />),
   getSubscriptionTypeOptions: jest.fn().mockReturnValue([]),
-  listLengthValidator: jest.fn().mockImplementation(() => Promise.resolve()),
   getFilteredDestinationOptions: jest
     .fn()
     .mockImplementation((key) => DESTINATION_SOURCE_ITEMS[key]),
@@ -50,6 +49,10 @@ jest.mock('../../../utils/Alerts/AlertsUtil', () => ({
   getReadTimeoutField: jest
     .fn()
     .mockReturnValue(<div data-testid="read-timeout" />),
+}));
+
+jest.mock('../../../utils/Alerts/AlertsUtilPure', () => ({
+  listLengthValidator: jest.fn().mockImplementation(() => Promise.resolve()),
   getFormattedDestinations: (...args: unknown[]) =>
     mockGetFormattedDestinations(...args),
 }));

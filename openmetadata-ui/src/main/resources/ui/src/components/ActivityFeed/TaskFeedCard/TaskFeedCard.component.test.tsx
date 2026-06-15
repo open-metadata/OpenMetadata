@@ -66,6 +66,10 @@ jest.mock('../../../utils/FeedUtils', () => ({
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
   formatDateTime: jest.fn().mockReturnValue('formatDateTime'),
   getRelativeTime: jest.fn().mockReturnValue('getRelativeTime'),
+  getEpochMillisForPastDays: jest.fn().mockImplementation((days) => days),
+  getStartOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getCurrentMillis: jest.fn().mockReturnValue(0),
 }));
 
 jest.mock('../../../utils/FqnUtils', () => ({
@@ -77,6 +81,8 @@ jest.mock('../../../utils/EntityLink', () => {
     __esModule: true,
     default: {
       getTableColumnName: jest.fn().mockReturnValue('getTableColumnName'),
+      getEntityType: jest.fn().mockReturnValue('table'),
+      getEntityFqn: jest.fn().mockReturnValue('db.schema.table'),
     },
   };
 });

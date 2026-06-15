@@ -21,8 +21,11 @@ import { ActivityEvent } from '../../../generated/entity/activity/activityEvent'
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getActivityEventHeaderText } from '../../../utils/FeedUtils';
-import { entityDisplayName, getEntityFQN, getEntityType } from '../../../utils/FeedUtilsPure';;
-
+import {
+  entityDisplayName,
+  getEntityFQN,
+  getEntityType,
+} from '../../../utils/FeedUtilsPure';
 interface ActivityPanelHeaderProps {
   activity: ActivityEvent;
   className?: string;

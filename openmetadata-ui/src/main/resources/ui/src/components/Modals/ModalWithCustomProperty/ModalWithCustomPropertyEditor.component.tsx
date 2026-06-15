@@ -18,7 +18,10 @@ import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { Table } from '../../../generated/entity/data/table';
 import { Type } from '../../../generated/entity/type';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
-import { convertCustomPropertyStringToEntityExtension, convertEntityExtensionToCustomPropertyString } from '../../../utils/CSV/CSVPureUtils';;
+import {
+  convertCustomPropertyStringToEntityExtension,
+  convertEntityExtensionToCustomPropertyString,
+} from '../../../utils/CSV/CSVPureUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';

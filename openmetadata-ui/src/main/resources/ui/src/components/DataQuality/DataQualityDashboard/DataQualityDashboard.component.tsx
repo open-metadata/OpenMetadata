@@ -46,7 +46,7 @@ import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCase
 import { EntityReference } from '../../../generated/type/entityReference';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getSelectedOptionLabelString } from '../../../utils/AdvancedSearchPureUtils';;
+import { getSelectedOptionLabelString } from '../../../utils/AdvancedSearchPureUtils';
 import {
   formatDate,
   getCurrentMillis,
@@ -66,7 +66,6 @@ import TestCaseStatusPieChartWidget from '../ChartWidgets/TestCaseStatusPieChart
 import { IncidentTimeMetricsType } from '../DataQuality.interface';
 import './data-quality-dashboard.style.less';
 import { DqDashboardChartFilters } from './DataQualityDashboard.interface';
-
 const DataQualityDashboard = ({
   initialFilters,
   hideFilterBar = false,

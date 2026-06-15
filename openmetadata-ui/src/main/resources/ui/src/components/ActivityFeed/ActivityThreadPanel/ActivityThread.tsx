@@ -21,12 +21,11 @@ import {
   ThreadType,
 } from '../../../generated/entity/feed/thread';
 import { getFeedById } from '../../../rest/feedsAPI';
-import { getReplyText } from '../../../utils/FeedUtilsPure';;
+import { getReplyText } from '../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import { ActivityThreadProp } from './ActivityThreadPanel.interface';
-
 const ActivityThread: FC<ActivityThreadProp> = ({
   className,
   selectedThread,

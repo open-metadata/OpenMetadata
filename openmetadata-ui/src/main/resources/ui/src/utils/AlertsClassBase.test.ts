@@ -26,19 +26,24 @@ import {
   ModifiedCreateEventSubscription,
   ModifiedDestination,
 } from '../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import { getConfigHeaderArrayFromObject, getConfigHeaderObjectFromArray, getConfigQueryParamsArrayFromObject, getConfigQueryParamsObjectFromArray, getRandomizedAlertName } from './Alerts/AlertsUtilPure';;
+import {
+  getConfigHeaderArrayFromObject,
+  getConfigHeaderObjectFromArray,
+  getConfigQueryParamsArrayFromObject,
+  getConfigQueryParamsObjectFromArray,
+  getRandomizedAlertName,
+} from './Alerts/AlertsUtilPure';
 import alertsClassBase, { AlertsClassBase } from './AlertsClassBase';
 import { getEntityName } from './EntityNameUtils';
 import { handleEntityCreationError } from './formUtils';
 import { showSuccessToast } from './ToastUtils';
-
 interface MockHeaderParam {
   key: string;
   value: string;
 }
 
 // Mock dependencies
-jest.mock('./Alerts/AlertsUtil', () => ({
+jest.mock('./Alerts/AlertsUtilPure', () => ({
   getRandomizedAlertName: jest.fn(() => 'openMetadata_alert_abc123456'),
   getConfigHeaderObjectFromArray: jest.fn(
     (headers?: MockHeaderParam[]) =>

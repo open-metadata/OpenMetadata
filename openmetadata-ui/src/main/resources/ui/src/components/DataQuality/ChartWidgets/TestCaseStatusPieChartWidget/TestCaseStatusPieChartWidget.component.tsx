@@ -22,14 +22,16 @@ import {
 } from '../../../../constants/Color.constants';
 import { INITIAL_TEST_SUMMARY } from '../../../../constants/TestSuite.constant';
 import { fetchTestCaseSummary } from '../../../../rest/dataQualityDashboardAPI';
+import {
+  getTestCaseTabPath,
+  transformToTestCaseStatusObject,
+} from '../../../../utils/DataQuality/DataQualityPureUtils';
 import { getPieChartLabel } from '../../../../utils/DataQuality/DataQualityUtils';
-import { getTestCaseTabPath, transformToTestCaseStatusObject } from '../../../../utils/DataQuality/DataQualityPureUtils';;
 import type { CustomPieChartData } from '../../../Visualisations/Chart/Chart.interface';
 import CustomPieChart from '../../../Visualisations/Chart/CustomPieChart.component';
 import { PieChartWidgetCommonProps } from '../../DataQuality.interface';
 import '../chart-widgets.less';
 import { TEST_CASE_STATUS_PIE_SEGMENT_ORDER } from '../ChartWidgets.constants';
-
 const TestCaseStatusPieChartWidget = ({
   className = '',
   chartFilter,

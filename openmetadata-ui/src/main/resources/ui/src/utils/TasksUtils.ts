@@ -85,7 +85,7 @@ import {
   TaskEntityType,
 } from '../rest/tasksAPI';
 import { getTopicByFqn } from '../rest/topicsAPI';
-import { ContainerFields } from './ContainerDetailPureUtils';;
+import { ContainerFields } from './ContainerDetailPureUtils';
 import {
   defaultFields as DashboardFields,
   fetchCharts,
@@ -97,9 +97,9 @@ import { defaultFieldsWithColumns as TableFields } from './DatasetDetailsUtils';
 import { getEntityName } from './EntityNameUtils';
 import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
-import { getEntityFQNFromAbout, getEntityTypeFromAbout } from './FeedUtilsPure';;
+import { getEntityFQNFromAbout, getEntityTypeFromAbout } from './FeedUtilsPure';
 import { getPartialNameFromTableFQN } from './FqnUtils';
-import { getGlossaryBreadcrumbs } from './GlossaryPureUtils';;
+import { getGlossaryBreadcrumbs } from './GlossaryPureUtils';
 import { t } from './i18next/LocalUtil';
 import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
 import { defaultFields as PipelineFields } from './PipelineDetailsUtils';

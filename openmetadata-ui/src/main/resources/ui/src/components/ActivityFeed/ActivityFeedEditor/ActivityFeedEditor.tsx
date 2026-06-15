@@ -23,11 +23,10 @@ import {
   useState,
 } from 'react';
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
-import { HTMLToMarkdown, getBackendFormat } from '../../../utils/FeedUtilsPure';;
+import { getBackendFormat, HTMLToMarkdown } from '../../../utils/FeedUtilsPure';
 import { EditorContentRef } from '../../common/RichTextEditor/RichTextEditor.interface';
 import { KeyHelp } from './KeyHelp';
 import { SendButton } from './SendButton';
-
 const FeedEditor = withSuspenseFallback(
   lazy(() =>
     import('../FeedEditor/FeedEditor').then((m) => ({

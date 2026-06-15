@@ -37,8 +37,12 @@ import { useExploreCache } from '../../hooks/useExploreCache';
 import { useSearchStore } from '../../hooks/useSearchStore';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
-import { fetchEntityData, findActiveSearchIndex, generateTabItems } from '../../utils/ExploreUtils';
-import { extractTermKeys, parseSearchParams } from '../../utils/ExplorePureUtils';;
+import {
+  extractTermKeys,
+  findActiveSearchIndex,
+  parseSearchParams,
+} from '../../utils/ExplorePureUtils';
+import { fetchEntityData, generateTabItems } from '../../utils/ExploreUtils';
 import { getExplorePath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { useRequiredParams } from '../../utils/useRequiredParams';

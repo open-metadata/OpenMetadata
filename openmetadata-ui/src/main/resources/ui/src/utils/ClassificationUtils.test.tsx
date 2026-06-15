@@ -15,9 +15,8 @@ import { EntityField } from '../constants/Feeds.constants';
 import { ProviderType } from '../generated/entity/bot';
 import { Classification } from '../generated/entity/classification/classification';
 import { ChangeDescription } from '../generated/entity/type';
-import { getClassificationInfo } from './ClassificationPureUtils';;
+import { getClassificationInfo } from './ClassificationPureUtils';
 import { getEntityVersionByField } from './EntityVersionUtilsPure';
-
 // Mock dependencies
 jest.mock('./EntityVersionUtilsPure', () => ({
   getEntityVersionByField: jest.fn(),
@@ -338,7 +337,7 @@ describe('ClassificationUtils', () => {
 
       it('should handle null values correctly', () => {
         // TypeScript would normally prevent this, but testing runtime behavior
-        const result = getClassificationInfo(null as any);
+        const result = getClassificationInfo(null as unknown as Classification);
 
         expect(result).toEqual({
           currentVersion: '0.1',

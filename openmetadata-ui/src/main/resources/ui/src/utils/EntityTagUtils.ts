@@ -16,7 +16,7 @@ import { EntityType } from '../enums/entity.enum';
 import { Table } from '../generated/entity/data/table';
 import { TagLabel } from '../generated/type/tagLabel';
 import { getTagsWithoutTier } from './TablePureUtils';
-import { getTableTags } from './TagsPureUtils';;
+import { getTableTags } from './TagsPureUtils';
 
 export const getEntityTags = (
   type: string,

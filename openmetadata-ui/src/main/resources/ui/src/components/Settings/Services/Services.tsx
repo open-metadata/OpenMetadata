@@ -50,9 +50,12 @@ import { highlightSearchText } from '../../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getServiceDetailsPath } from '../../../utils/RouterUtils';
+import {
+  getResourceEntityFromServiceCategory,
+  getServiceTypesFromServiceCategory,
+} from '../../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getOptionalFields } from '../../../utils/ServiceUtils';
-import { getResourceEntityFromServiceCategory, getServiceTypesFromServiceCategory } from '../../../utils/ServicePureUtils';;
 import { stringToHTML } from '../../../utils/StringUtils';
 import {
   columnFilterIcon,
@@ -67,7 +70,6 @@ import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEdit
 import ButtonSkeleton from '../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import PageHeader from '../../PageHeader/PageHeader.component';
-
 interface ServicesProps {
   serviceName: ServiceCategory;
 }

@@ -20,8 +20,10 @@ import { EntityReference } from '../../../../../generated/entity/type';
 import { TagLabel } from '../../../../../generated/type/tagLabel';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../../../../utils/IconUtils';
-import { getClassificationTags } from '../../../../../utils/TagsPureUtils';
-import { getGlossaryTags } from '../../../../../utils/TagsPureUtils';;
+import {
+  getClassificationTags,
+  getGlossaryTags,
+} from '../../../../../utils/TagsPureUtils';
 import { DomainTypeChip } from '../../../../DomainListing/components/DomainTypeChip';
 import { OwnerLabel } from '../../../OwnerLabel/OwnerLabel.component';
 import TagBadgeList from '../../../TagBadgeList/TagBadgeList.component';

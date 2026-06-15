@@ -37,9 +37,34 @@ import {
 } from '../../mocks/AlertUtil.mock';
 import { ModifiedDestination } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { searchQuery } from '../../rest/searchAPI';
-import { getTermQuery } from '../SearchPureUtils';;
-import { getAlertEventsFilterLabels, getAlertExtraInfo, getAlertRecentEventsFilterOptions, getAlertsActionTypeIcon, getAlertStatusIcon, getConnectionTimeoutField, getDestinationConfigField, getFieldByArgumentType, getFqnSearchIndexes, searchEntity } from './AlertsUtil';
-import { getAlertActionTypeDisplayName, getChangeEventDataFromTypedEvent, getConfigHeaderArrayFromObject, getConfigHeaderObjectFromArray, getConfigQueryParamsArrayFromObject, getConfigQueryParamsObjectFromArray, getDisplayNameForEntities, getFilteredDestinationOptions, getFormattedDestinations, getFunctionDisplayName, getLabelsForEventDetails, listLengthValidator, normalizeDestinationConfig } from './AlertsUtilPure';;
+import { getTermQuery } from '../SearchPureUtils';
+import {
+  getAlertExtraInfo,
+  getAlertRecentEventsFilterOptions,
+  getAlertsActionTypeIcon,
+  getAlertStatusIcon,
+  getConnectionTimeoutField,
+  getDestinationConfigField,
+  getFieldByArgumentType,
+  getFqnSearchIndexes,
+  searchEntity,
+} from './AlertsUtil';
+import {
+  getAlertActionTypeDisplayName,
+  getAlertEventsFilterLabels,
+  getChangeEventDataFromTypedEvent,
+  getConfigHeaderArrayFromObject,
+  getConfigHeaderObjectFromArray,
+  getConfigQueryParamsArrayFromObject,
+  getConfigQueryParamsObjectFromArray,
+  getDisplayNameForEntities,
+  getFilteredDestinationOptions,
+  getFormattedDestinations,
+  getFunctionDisplayName,
+  getLabelsForEventDetails,
+  listLengthValidator,
+  normalizeDestinationConfig,
+} from './AlertsUtilPure';
 
 jest.mock('antd', () => ({
   ...jest.requireActual('antd'),

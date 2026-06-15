@@ -80,7 +80,7 @@ import {
   highlightSearchArrayElement,
   highlightSearchText,
 } from '../../../utils/EntitySearchUtils';
-import { getEntityColumnFQN } from '../../../utils/FeedUtilsPure';;
+import { getEntityColumnFQN } from '../../../utils/FeedUtilsPure';
 import { stringToHTML } from '../../../utils/StringUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
@@ -116,7 +116,6 @@ import { ColumnFilter } from '../ColumnFilter/ColumnFilter.component';
 import TableDescription from '../TableDescription/TableDescription.component';
 import TableTags from '../TableTags/TableTags.component';
 import { TableCellRendered } from './SchemaTable.interface';
-
 const ModalWithMarkdownEditor = withSuspenseFallback(
   lazy(() =>
     import('../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor').then(

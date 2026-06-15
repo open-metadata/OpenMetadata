@@ -37,14 +37,13 @@ import {
 } from '../../rest/announcementsAPI';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { updateUserDetail } from '../../rest/userAPI';
+import { getConstrainedWidgetWidth } from '../../utils/CustomizableLandingPagePureUtils';
 import { getWidgetFromKey } from '../../utils/CustomizableLandingPageUtils';
-import { getConstrainedWidgetWidth } from '../../utils/CustomizableLandingPagePureUtils';;
 import customizePageClassBase from '../../utils/CustomizeMyDataPageClassBase';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './my-data.less';
 import MyDataPageSkeleton from './MyDataPageSkeleton.component';
-
 const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
   ReactGridLayoutProps & { children?: React.ReactNode }
 >;
