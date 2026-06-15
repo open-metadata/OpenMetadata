@@ -54,7 +54,7 @@ import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.attachments.AzureAssetService;
 import org.openmetadata.service.attachments.S3AssetService;
-import org.openmetadata.service.drive.ContextFileExtractionService;
+import org.openmetadata.service.drive.ContextFileProcessingService;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -76,12 +76,12 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
   public static final String COLLECTION_PATH = "v1/contextCenter/drive/files/";
   public static final String FIELDS = "owners,tags,folder,domains,followers,votes";
   private final ContextFileMapper mapper = new ContextFileMapper();
-  private final ContextFileExtractionService extractionService;
+  private final ContextFileProcessingService extractionService;
   private long maxFileSize = 5 * 1024 * 1024L;
 
   public ContextFileResource(Authorizer authorizer, Limits limits) {
     super(CONTEXT_FILE_ENTITY, authorizer, limits);
-    this.extractionService = new ContextFileExtractionService(repository);
+    this.extractionService = new ContextFileProcessingService(repository);
   }
 
   @Override
@@ -90,6 +90,7 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
     if (config.getObjectStorage() != null) {
       maxFileSize = config.getObjectStorage().getMaxFileSize();
     }
+    extractionService.recoverInterruptedProcessing();
   }
 
   public static class ContextFileList extends ResultList<ContextFile> {}

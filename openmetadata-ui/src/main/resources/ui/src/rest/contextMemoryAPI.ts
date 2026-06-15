@@ -20,7 +20,13 @@ import APIClient from '../rest/index';
 
 const BASE_URL = '/contextCenter/memories';
 
-export const getListContextMemories = async (params?: ListParams) => {
+export type ContextMemoryListParams = ListParams & {
+  sourceFileId?: string;
+};
+
+export const getListContextMemories = async (
+  params?: ContextMemoryListParams
+) => {
   const response = await APIClient.get<PagingResponse<ContextMemory[]>>(
     BASE_URL,
     { params }
