@@ -194,17 +194,15 @@ const collectHiddenKeys = (
   }
 
   if (navItem && item.children) {
-    const savedChildIds = new Set(navItem.children?.map((c) => c.id) ?? []);
+    const savedChildMap = new Map(
+      navItem.children?.map((c) => [c.id, c]) ?? []
+    );
 
     item.children.forEach((child) => {
-      if (!savedChildIds.has(child.key)) {
-        keys.push(child.key);
-      }
-    });
+      const navChild = savedChildMap.get(child.key);
 
-    navItem.children?.forEach((child) => {
-      if (child.isHidden) {
-        keys.push(child.id);
+      if (!navChild || navChild.isHidden) {
+        keys.push(child.key);
       }
     });
   }
