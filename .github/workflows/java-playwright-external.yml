@@ -14,7 +14,13 @@
 #   - ui-it-external      : *UIIT.java (Playwright) via the `ui-it` profile
 #   - search-it-external  : tests/search/*IT.java via the `search-it` profile
 #   - scale-it-external   : tests/search/scale/*IT.java via `scale-it`, matrixed over cohort
-#                           sizes (default 100k, 500k) to find the cluster's breaking point
+#                           sizes (scaleSeeds, default [100000]).
+#
+# All three jobs share ONE cluster, so each starts with a "Purge orphaned test data" step
+# (purge-it profile) to clear any bulk cohort a cancelled prior run left behind. Scale runs in
+# jpw.data.mode=ingest: it creates AND cleans up its own 100k (TestNamespaceExtension), so the
+# cluster stays clean for ui-it/search-it — whose own reindexes then only ever process their small
+# per-test fixtures. (Persistent static-100k reuse is for a SEPARATE scale-only cluster, not here.)
 #
 # The harness switches to external mode automatically when OM_URL + OM_ADMIN_TOKEN are set (see
 # UiTestServer.get / ExternalServer.fromEnv / OssTestServer.defaultHandle): no Docker image is
@@ -23,9 +29,12 @@
 #
 # Search engine access: the search/scale ITs would normally talk to OpenSearch directly on :9200,
 # which a remote cluster doesn't expose. In external mode SearchClient routes index introspection
-# through the server's admin-only /v1/test-support/search passthrough (TestSupportSearchResource,
-# auto-registered via @Collection). The deployed image on the target cluster MUST therefore
-# include that resource (i.e. be built from this branch or later).
+# through the server's admin-only, typed /v1/test-support/search endpoints (TestSupportSearchResource,
+# auto-registered via @Collection). The deployed image on the target cluster MUST therefore (a) be
+# built from this branch or later, AND (b) set OM_TEST_SUPPORT_SEARCH_ENABLED=true in the SERVER's
+# environment — the resource is disabled by default so it never ships enabled in production, and
+# without the flag every external search assertion fails. The flag belongs on the cluster
+# deployment, not on this CI runner.
 #
 # Auth: the target cluster uses basic auth, so we exchange username/password for a JWT via
 # POST /api/v1/users/login (password base64-encoded) and feed the accessToken as OM_ADMIN_TOKEN.
@@ -43,16 +52,6 @@ name: Java Integration Tests (External Cluster)
 on:
   workflow_dispatch:
     inputs:
-      excludedGroups:
-        description: 'JUnit @Tag groups to exclude from the ui-it run'
-        required: false
-        type: string
-        default: 'sso-bootstrap,search-direct'
-      itTest:
-        description: 'Optional single class/glob to run for ui-it (failsafe -Dit.test). Empty = full suite.'
-        required: false
-        type: string
-        default: ''
       runUiIt:
         description: 'Run the ui-it (Playwright) job'
         required: false
@@ -68,16 +67,31 @@ on:
         required: false
         type: boolean
         default: false
-      scaleSeeds:
-        description: 'JSON array of table cohort sizes for the scale matrix'
+      itTest:
+        description: 'Optional single class/glob to run for ui-it (failsafe -Dit.test). Empty = full suite.'
         required: false
         type: string
-        default: '[100000, 500000]'
+        default: ''
+      scaleSeeds:
+        description: 'JSON array of scale table cohort sizes (matrix). E.g. [100000] or [100000, 500000].'
+        required: false
+        type: string
+        default: '[100000]'
       scaleTimeoutMin:
         description: 'Per-run reindex timeout (minutes) for scale tests'
         required: false
         type: string
         default: '300'
+      reindexTimeoutMin:
+        description: 'Per-run reindex completion/acceptance timeout (minutes) for ui-it & search-it'
+        required: false
+        type: string
+        default: '60'
+      entityLoaderMaxWorkers:
+        description: 'Cap on EntityLoader create concurrency (keep low for a shared/proxied cluster to avoid 504s)'
+        required: false
+        type: string
+        default: '8'
 
 permissions:
   contents: read
@@ -160,11 +174,28 @@ jobs:
           echo "OM_ADMIN_TOKEN=$TOKEN" >> "$GITHUB_ENV"
           echo "OM_URL=${OM_EXTERNAL_URL%/}" >> "$GITHUB_ENV"
 
+      - name: Purge orphaned test data (clean cluster before run)
+        # Functional suites must start on a cluster free of leftover bulk cohorts — a cancelled prior
+        # run skips per-test cleanup, and a stale 100k makes every reindex reprocess it (~20m each).
+        # purge-it hard-deletes every test-namespace root (matched by the __<run-id>__ signature), so
+        # reindexes here only ever process this run's own small fixtures.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OM_URL: ${{ env.OM_URL }}
+          OM_ADMIN_TOKEN: ${{ env.OM_ADMIN_TOKEN }}
+          OM_EXTERNAL_USERNAME: ${{ secrets.OM_EXTERNAL_USERNAME }}
+          OM_EXTERNAL_PASSWORD: ${{ secrets.OM_EXTERNAL_PASSWORD }}
+        run: |
+          mvn verify -P purge-it -pl :openmetadata-integration-tests -Dskip.embedded.bootstrap=true
+
       - name: Run UI integration tests (external cluster)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OM_URL: ${{ env.OM_URL }}
           OM_ADMIN_TOKEN: ${{ env.OM_ADMIN_TOKEN }}
+          # Credentials so the harness can re-login and auto-renew the token on long runs.
+          OM_EXTERNAL_USERNAME: ${{ secrets.OM_EXTERNAL_USERNAME }}
+          OM_EXTERNAL_PASSWORD: ${{ secrets.OM_EXTERNAL_PASSWORD }}
           PW_VIDEO: 'true'
         run: |
           STRESS_PROPS="-Djpw.simpleReindex.tables=${{ github.event.inputs.simpleReindexTables || '5000' }} \
@@ -177,7 +208,9 @@ jobs:
             IT_TEST_PROP="-Dit.test=${{ github.event.inputs.itTest }}"
           fi
           mvn verify -P ui-it -pl :openmetadata-integration-tests $STRESS_PROPS $IT_TEST_PROP \
-            -Dui.it.excludedGroups="${{ github.event.inputs.excludedGroups || 'sso-bootstrap,search-direct' }}"
+            -Djpw.loader.maxWorkers=${{ github.event.inputs.entityLoaderMaxWorkers || '8' }} \
+            -Djpw.reindex.timeoutMin=${{ github.event.inputs.reindexTimeoutMin || '60' }} \
+            -Dui.it.excludedGroups="sso-bootstrap,search-direct"
 
       - name: Upload Playwright traces
         if: ${{ always() }}
@@ -226,7 +259,12 @@ jobs:
           SLACK_JAVA_PLAYWRIGHT_URL: ${{ secrets.SLACK_JAVA_PLAYWRIGHT_URL }}
 
   search-it-external:
-    if: ${{ github.event.inputs.runSearchIt != 'false' }}
+    # These suites trigger the server-global SearchIndexingApplication, which is a singleton per
+    # instance (one run at a time). Since all external jobs hit the SAME cluster, they must run
+    # serially or they collide with "Job is already running". `needs` enforces ordering; `always()`
+    # keeps each job's own toggle independent (so it still runs if ui-it was skipped/failed).
+    needs: [ui-it-external]
+    if: ${{ always() && github.event.inputs.runSearchIt != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -295,13 +333,31 @@ jobs:
           echo "OM_ADMIN_TOKEN=$TOKEN" >> "$GITHUB_ENV"
           echo "OM_URL=${OM_EXTERNAL_URL%/}" >> "$GITHUB_ENV"
 
+      - name: Purge orphaned test data (clean cluster before run)
+        # search-it does ~14 full reindexes; on a cluster carrying a stale 100k each is ~20m and the
+        # job blows its cap. Purge every test-namespace root first so reindexes only process this
+        # run's own small per-test fixtures.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OM_URL: ${{ env.OM_URL }}
+          OM_ADMIN_TOKEN: ${{ env.OM_ADMIN_TOKEN }}
+          OM_EXTERNAL_USERNAME: ${{ secrets.OM_EXTERNAL_USERNAME }}
+          OM_EXTERNAL_PASSWORD: ${{ secrets.OM_EXTERNAL_PASSWORD }}
+        run: |
+          mvn verify -P purge-it -pl :openmetadata-integration-tests -Dskip.embedded.bootstrap=true
+
       - name: Run search integration tests (external cluster)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OM_URL: ${{ env.OM_URL }}
           OM_ADMIN_TOKEN: ${{ env.OM_ADMIN_TOKEN }}
+          # Credentials so the harness can re-login and auto-renew the token on long runs.
+          OM_EXTERNAL_USERNAME: ${{ secrets.OM_EXTERNAL_USERNAME }}
+          OM_EXTERNAL_PASSWORD: ${{ secrets.OM_EXTERNAL_PASSWORD }}
         run: |
-          mvn verify -P search-it -pl :openmetadata-integration-tests -Dskip.embedded.bootstrap=true
+          mvn verify -P search-it -pl :openmetadata-integration-tests -Dskip.embedded.bootstrap=true \
+            -Djpw.loader.maxWorkers=${{ github.event.inputs.entityLoaderMaxWorkers || '8' }} \
+            -Djpw.reindex.timeoutMin=${{ github.event.inputs.reindexTimeoutMin || '60' }}
 
       - name: Upload Failsafe Reports
         if: ${{ always() }}
@@ -332,11 +388,16 @@ jobs:
           SLACK_JAVA_PLAYWRIGHT_URL: ${{ secrets.SLACK_JAVA_PLAYWRIGHT_URL }}
 
   scale-it-external:
-    if: ${{ github.event.inputs.runScaleIt == 'true' }}
+    # Runs after search-it (shared instance, singleton reindex app). max-parallel: 1 so the matrix
+    # entries (e.g. 100k then 500k) seed + reindex one at a time — two concurrent reindexes on one
+    # cluster collide and the db/es counts would mix cohorts.
+    needs: [search-it-external]
+    if: ${{ always() && github.event.inputs.runScaleIt == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         seed: ${{ fromJSON(github.event.inputs.scaleSeeds || '[100000, 500000]') }}
     steps:
@@ -405,15 +466,35 @@ jobs:
           echo "OM_ADMIN_TOKEN=$TOKEN" >> "$GITHUB_ENV"
           echo "OM_URL=${OM_EXTERNAL_URL%/}" >> "$GITHUB_ENV"
 
-      - name: Run scale test (${{ matrix.seed }} tables, external cluster)
+      - name: Purge orphaned test data (clean cluster before run)
+        # Clear any bulk cohort a cancelled prior run left behind. The scale test (ingest mode)
+        # creates and then cleans up its own 100k, so the cluster returns to clean; this purge just
+        # guarantees a clean starting point.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OM_URL: ${{ env.OM_URL }}
           OM_ADMIN_TOKEN: ${{ env.OM_ADMIN_TOKEN }}
+          OM_EXTERNAL_USERNAME: ${{ secrets.OM_EXTERNAL_USERNAME }}
+          OM_EXTERNAL_PASSWORD: ${{ secrets.OM_EXTERNAL_PASSWORD }}
+        run: |
+          mvn verify -P purge-it -pl :openmetadata-integration-tests -Dskip.embedded.bootstrap=true
+
+      - name: Run scale test (${{ matrix.seed }} tables, external cluster)
+        # Self-contained: ingest mode creates the cohort and cleans it up afterwards
+        # (TestNamespaceExtension), so the cluster returns to clean for the next run.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OM_URL: ${{ env.OM_URL }}
+          OM_ADMIN_TOKEN: ${{ env.OM_ADMIN_TOKEN }}
+          # Credentials so the harness can re-login and auto-renew the token on long runs.
+          OM_EXTERNAL_USERNAME: ${{ secrets.OM_EXTERNAL_USERNAME }}
+          OM_EXTERNAL_PASSWORD: ${{ secrets.OM_EXTERNAL_PASSWORD }}
         run: |
           mvn verify -P scale-it -pl :openmetadata-integration-tests -Dskip.embedded.bootstrap=true \
             -Djpw.scale.tables=${{ matrix.seed }} \
-            -Djpw.scale.timeoutMin=${{ github.event.inputs.scaleTimeoutMin || '300' }}
+            -Djpw.scale.timeoutMin=${{ github.event.inputs.scaleTimeoutMin || '300' }} \
+            -Djpw.data.mode=ingest \
+            -Djpw.loader.maxWorkers=${{ github.event.inputs.entityLoaderMaxWorkers || '8' }}
 
       - name: Upload scale metrics
         if: ${{ always() }}
