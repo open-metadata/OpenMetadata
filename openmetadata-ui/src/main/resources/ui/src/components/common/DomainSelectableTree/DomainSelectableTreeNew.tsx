@@ -43,8 +43,10 @@ import {
 } from '../../../rest/domainAPI';
 import {
   convertDomainsToTreeOptions,
-  isDomainExist,
 } from '../../../utils/DomainUtils';
+import {
+  isDomainExist,
+} from '../../../utils/DomainFilterUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import {
   escapeESReservedCharacters,
