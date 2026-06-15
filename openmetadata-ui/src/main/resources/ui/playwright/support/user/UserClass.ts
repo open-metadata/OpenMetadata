@@ -34,6 +34,7 @@ export class UserClass {
   data: UserData;
 
   responseData: UserResponseDataType = {} as UserResponseDataType;
+  private isExistingUser = false;
   isUserDataSteward = false;
   private readonly dataStewardPolicy = new PolicyClass();
   private readonly dataStewardRoles = new RolesClass();
@@ -77,13 +78,14 @@ export class UserClass {
         }
 
         this.responseData = await existing.json();
+        this.isExistingUser = true;
       } else {
         throw new Error(
           `UserClass.create() failed with status ${response.status()}: ${body}`
         );
       }
     }
-    if (assignRole) {
+    if (assignRole && !this.isExistingUser) {
       if (this.isAdmin) {
         const { entity } = await this.patch({
           apiContext,

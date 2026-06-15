@@ -28,12 +28,10 @@ test.describe('Verify RTL Layout for landing page', () => {
     await redirectToHomePage(page);
 
     await page.getByTestId('language-selector-button').click();
-    await page
-      .locator('.ant-dropdown:visible [data-menu-id*="-he-HE"]')
-      .click();
-
-    // After language change UI will reload the page hence need to validate load event with language change
-    await page.waitForEvent('load');
+    await Promise.all([
+      page.waitForEvent('load'),
+      page.locator('.ant-dropdown:visible [data-menu-id*="-he-HE"]').click(),
+    ]);
     await expect(page.getByTestId('domain-selector')).toBeVisible();
     // wait for translation to reflect in the UI
     await expect(page.getByTestId('domain-selector')).toHaveText(
