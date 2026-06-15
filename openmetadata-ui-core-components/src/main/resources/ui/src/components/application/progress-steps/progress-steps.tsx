@@ -29,6 +29,12 @@ export type ProgressStepsOrientation = 'horizontal' | 'vertical';
 export type ProgressStepsSize = 'sm' | 'md' | 'lg';
 
 export interface ProgressStepItem {
+  /**
+   * Stable identifier for the step. Used as the React key so that reordering,
+   * inserting, or removing steps preserves the correct DOM nodes and
+   * transitions. Falls back to the title, then the index, when omitted.
+   */
+  id?: string;
   /** Step title rendered as the primary label. */
   title?: ReactNode;
   /** Optional supporting text rendered below the title. */
@@ -49,7 +55,9 @@ export interface ProgressStepsProps
   /**
    * Zero-based index of the active step. Steps before it become `complete`,
    * the step at the index becomes `current`, and steps after it stay
-   * `incomplete`. Ignored for any step that defines its own `status`.
+   * `incomplete`. The value is clamped to `[0, steps.length - 1]` so an
+   * out-of-range index still resolves to a valid `current` step. Ignored for
+   * any step that defines its own `status`.
    */
   currentStep?: number;
   /** Visual style of the step indicator. */
@@ -128,6 +136,18 @@ const resolveStatus = (
   }
 
   return status;
+};
+
+const getStepKey = (step: ProgressStepItem, index: number): string => {
+  let key = String(index);
+
+  if (step.id) {
+    key = step.id;
+  } else if (typeof step.title === 'string' || typeof step.title === 'number') {
+    key = String(step.title);
+  }
+
+  return key;
 };
 
 interface StepIndicatorProps {
@@ -319,7 +339,7 @@ const HorizontalSteps = ({
       <li
         aria-current={status === 'current' ? 'step' : undefined}
         className="tw:flex tw:flex-1 tw:flex-col tw:items-center tw:gap-3"
-        key={index}>
+        key={getStepKey(step, index)}>
         <div className="tw:flex tw:w-full tw:items-center tw:gap-2">
           {showConnector && (
             <StepConnector
@@ -363,7 +383,7 @@ const VerticalSteps = ({
       <li
         aria-current={status === 'current' ? 'step' : undefined}
         className="tw:flex tw:gap-3"
-        key={index}>
+        key={getStepKey(step, index)}>
         <div className="tw:flex tw:flex-col tw:items-center tw:gap-1">
           <StepIndicator
             icon={step.icon}
@@ -398,7 +418,7 @@ const LineSteps = ({ steps, statuses, size }: RenderArgs) =>
           'tw:flex tw:flex-1 tw:flex-col tw:gap-2 tw:border-t-2 tw:pt-3',
           isActive ? 'tw:border-brand-solid' : 'tw:border-secondary'
         )}
-        key={index}>
+        key={getStepKey(step, index)}>
         <StepText align="left" size={size} status={status} step={step} />
       </li>
     );
@@ -434,8 +454,13 @@ export const ProgressSteps = ({
   className,
   ...props
 }: ProgressStepsProps) => {
+  const clampedStep =
+    currentStep === undefined
+      ? undefined
+      : Math.min(Math.max(currentStep, 0), steps.length - 1);
+
   const statuses = steps.map((step, index) =>
-    resolveStatus(step, index, currentStep)
+    resolveStatus(step, index, clampedStep)
   );
 
   const renderArgs: RenderArgs = { steps, statuses, type, size, showConnector };
