@@ -600,7 +600,6 @@ elasticsearch:
         accessKeyId: ${AWS_BEDROCK_ACCESS_KEY:-""}
         secretAccessKey: ${AWS_BEDROCK_SECRET_KEY:-""}
         sessionToken: ${AWS_BEDROCK_SESSION_TOKEN:-""}
-      modelId: ${AWS_BEDROCK_MODEL_ID:-""}
       embeddingModelId: ${AWS_BEDROCK_EMBED_MODEL_ID:-""}
       embeddingDimension: ${AWS_BEDROCK_EMBEDDING_DIMENSION:-""}
     openai:
