@@ -73,15 +73,20 @@ class LLMCompletionClientTest {
   void anthropicParseExtractsText() {
     assertEquals(
         "hello",
-        AnthropicCompletionClient.parseContent(
-            "{\"content\":[{\"type\":\"text\",\"text\":\"hello\"}]}"));
+        AnthropicCompletionClient.parseResult(
+                "{\"content\":[{\"type\":\"text\",\"text\":\"hello\"}],"
+                    + "\"usage\":{\"input_tokens\":0,\"output_tokens\":0}}")
+            .text());
   }
 
   @Test
   void anthropicParseRejectsContentWithoutText() {
     assertThrows(
         LLMCompletionException.class,
-        () -> AnthropicCompletionClient.parseContent("{\"content\":[{\"type\":\"thinking\"}]}"));
+        () ->
+            AnthropicCompletionClient.parseResult(
+                "{\"content\":[{\"type\":\"thinking\"}],"
+                    + "\"usage\":{\"input_tokens\":0,\"output_tokens\":0}}"));
   }
 
   @Test
