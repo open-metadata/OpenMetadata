@@ -25,6 +25,10 @@ import LinkIcon from '../assets/svg/ic-link.svg';
 import DatabaseSchemaIcon from '../assets/svg/ic-schema.svg';
 import MetricIcon from '../assets/svg/metric.svg';
 import TagIcon from '../assets/svg/tag-grey.svg';
+import AgentsStatusWidget from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget';
+import PlatformInsightsWidget from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget';
+import TotalDataAssetsWidget from '../components/ServiceInsights/TotalDataAssetsWidget/TotalDataAssetsWidget';
+import MetadataAgentsWidget from '../components/Settings/Services/Ingestion/MetadataAgentsWidget/MetadataAgentsWidget';
 import { EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import {
@@ -504,7 +508,14 @@ class ServiceUtilClassBase {
   }
 
   public getInsightsTabWidgets(_: ServiceTypes) {
-    return {} as Record<string, React.ComponentType<Record<string, unknown>>>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const widgets: Record<string, React.ComponentType<any>> = {
+      AgentsStatusWidget,
+      PlatformInsightsWidget,
+      TotalDataAssetsWidget,
+    };
+
+    return widgets;
   }
 
   public getExtraInfo(): Promise<void> {
@@ -544,7 +555,12 @@ class ServiceUtilClassBase {
   }
 
   public getAgentsTabWidgets() {
-    return {} as Record<string, React.ComponentType<Record<string, unknown>>>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const widgets: Record<string, React.ComponentType<any>> = {
+      MetadataAgentsWidget,
+    };
+
+    return widgets;
   }
 
   public getExtraIngestionMenuItems(
