@@ -81,8 +81,12 @@ jest.mock('../../../utils/SearchClassBase', () => ({
     getEntityIcon: jest.fn().mockReturnValue(null),
   },
 }));
-jest.mock('../../../utils/EntityUtils', () => ({
+
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Test'),
+}));
+
+jest.mock('../../../utils/EntityReferenceUtils', () => ({
   getEntityReferenceFromEntity: jest
     .fn()
     .mockImplementation((entity, type) => ({

@@ -15,24 +15,20 @@ import { InfoCircle } from '@untitledui/icons';
 import { Divider, Space, Tooltip as AntDTooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined, noop } from 'lodash';
-import { Fragment, ReactNode } from 'react';
+import { Fragment, lazy, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as SubDomainIcon } from '../assets/svg/ic-subdomain.svg';
-import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
+import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import type {
+  CustomPropertyProps,
+  ExtentionEntitiesKeys,
+} from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import { TreeListItem } from '../components/common/DomainSelectableTree/DomainSelectableTree.interface';
-import ResizablePanels from '../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import { DomainExpertWidget } from '../components/Domain/DomainExpertsWidget/DomainExpertWidget';
-import DataProductsTab from '../components/Domain/DomainTabs/DataProductsTab/DataProductsTab.component';
-import { DomainTypeWidget } from '../components/Domain/DomainTypeWidget/DomainTypeWidget';
-import SubDomainsTable from '../components/Domain/SubDomainsTable/SubDomainsTable.component';
-import EntitySummaryPanel from '../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
-import AssetsTabs from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { DE_ACTIVE_COLOR } from '../constants/constants';
 import { DOMAIN_TYPE_DATA } from '../constants/Domain.constants';
@@ -53,7 +49,7 @@ import {
   initializeDomainEntityRef,
   isDomainExist,
 } from './DomainFilterUtils';
-import { getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
 import { renderIcon } from './IconUtils';
 import {
@@ -61,6 +57,76 @@ import {
   getPrioritizedViewPermission,
 } from './PermissionsUtils';
 import { getDomainPath } from './RouterUtils';
+
+const CustomPropertyTable = withSuspenseFallback(
+  lazy(() =>
+    import('../components/common/CustomPropertyTable/CustomPropertyTable').then(
+      (module) => ({ default: module.CustomPropertyTable })
+    )
+  )
+) as <T extends ExtentionEntitiesKeys>(
+  props: CustomPropertyProps<T>
+) => JSX.Element;
+
+const ActivityFeedTab = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component'
+    ).then((module) => ({ default: module.ActivityFeedTab }))
+  )
+);
+
+const DataProductsTab = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/Domain/DomainTabs/DataProductsTab/DataProductsTab.component'
+      )
+  )
+);
+
+const SubDomainsTable = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../components/Domain/SubDomainsTable/SubDomainsTable.component')
+  )
+);
+
+const AssetsTabs = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component')
+  )
+);
+
+const EntitySummaryPanel = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component'
+      )
+  )
+);
+
+const DomainExpertWidget = withSuspenseFallback(
+  lazy(() =>
+    import('../components/Domain/DomainExpertsWidget/DomainExpertWidget').then(
+      (module) => ({ default: module.DomainExpertWidget })
+    )
+  )
+);
+
+const DomainTypeWidget = withSuspenseFallback(
+  lazy(() =>
+    import('../components/Domain/DomainTypeWidget/DomainTypeWidget').then(
+      (module) => ({ default: module.DomainTypeWidget })
+    )
+  )
+);
+
+const ResizablePanels = withSuspenseFallback(
+  lazy(() => import('../components/common/ResizablePanels/ResizablePanels'))
+);
 
 export {
   domainBuildESQuery,

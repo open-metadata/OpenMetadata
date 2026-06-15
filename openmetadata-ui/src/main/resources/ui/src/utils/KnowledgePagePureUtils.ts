@@ -31,7 +31,7 @@ import type {
   PageHierarchy,
   PageSearchResult,
 } from '../interface/knowledge-center.interface';
-import { getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
 import Fqn from './Fqn';
 import { t } from './i18next/LocalUtil';
 

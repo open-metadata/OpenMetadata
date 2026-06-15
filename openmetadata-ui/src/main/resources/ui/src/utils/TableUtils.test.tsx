@@ -18,14 +18,13 @@ import { Column, DataType, Table } from '../generated/entity/data/table';
 import { EntityReference } from '../generated/type/entityReference';
 import { LabelType, State, TagSource } from '../generated/type/tagLabel';
 import { MOCK_TABLE, MOCK_TABLE_DBT } from '../mocks/TableData.mock';
+import { ExtraTableDropdownOptions } from '../utils/TableDropdownOptions';
 import {
   extractColumnsFromData,
-  ExtraTableDropdownOptions,
   fieldExistsByFQN,
   findColumnByEntityLink,
   getCertificationTag,
   getColumnOptionsFromTableColumn,
-  getEntityIcon,
   getExpandAllKeysToDepth,
   getHighlightedRowClassName,
   getNestedSectionTitle,
@@ -33,7 +32,6 @@ import {
   getSafeExpandAllKeys,
   getSchemaDepth,
   getSchemaFieldCount,
-  getTableDetailPageBaseTabs,
   getTagsWithoutCertification,
   getTagsWithoutTier,
   getTierTags,
@@ -44,10 +42,12 @@ import {
   shouldCollapseSchema,
   updateColumnInNestedStructure,
   updateFieldExtension,
-} from '../utils/TableUtils';
+} from '../utils/TablePureUtils';
+import { getTableDetailPageBaseTabs } from '../utils/TableTabsUtils';
+import { getEntityIcon } from '../utils/TableUtils';
 import EntityLink from './EntityLink';
 import { TableDetailPageTabProps } from './TableClassBase';
-import { extractTableColumns } from './TableUtils';
+import { extractTableColumns } from './TablePureUtils';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 
 type ParentFieldObject = {

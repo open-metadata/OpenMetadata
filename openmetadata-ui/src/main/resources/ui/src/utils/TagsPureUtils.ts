@@ -27,7 +27,7 @@ import type {
 import { TagSource } from '../generated/entity/data/table';
 import { Operation } from '../generated/entity/policies/policy';
 import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
-import { getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
 import i18n from './i18next/LocalUtil';
 import { checkPermissionEntityResource } from './PermissionsUtils';
 import {
@@ -36,7 +36,7 @@ import {
   getGlossaryPath,
 } from './RouterUtils';
 import { getTermQuery } from './SearchPureUtils';
-import { getTagsWithoutTier } from './TableUtils';
+import { getTagsWithoutTier } from './TablePureUtils';
 
 export const getTableTags = (
   columns: Array<Partial<Column>>

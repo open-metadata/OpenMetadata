@@ -3304,9 +3304,6 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           );
 
           await waitForAllLoadersToDisappear(page);
-          await page.locator('[data-testid="loader"]').waitFor({
-            state: 'detached',
-          });
 
           await page.getByTestId('add-field-btn').click();
 
