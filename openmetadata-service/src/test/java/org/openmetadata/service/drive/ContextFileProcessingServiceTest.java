@@ -4,18 +4,21 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.same;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.same;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -27,9 +30,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.attachments.Asset;
+import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
 import org.openmetadata.schema.entity.data.ContextFileType;
@@ -41,13 +46,14 @@ import org.openmetadata.service.jdbi3.ContextFileContentRepository;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
 
 @ExtendWith(MockitoExtension.class)
-class ContextFileExtractionServiceTest {
+class ContextFileProcessingServiceTest {
 
   @Mock private ContextFileRepository repository;
   @Mock private ContextFileContentRepository contentRepository;
   @Mock private AssetRepository assetRepository;
   @Mock private AssetService assetService;
   @Mock private ContextFileTextExtractor textExtractor;
+  @Mock private ContextMemoryExtractor memoryExtractor;
 
   @Captor private ArgumentCaptor<ContextFile> updatedFileCaptor;
   @Captor private ArgumentCaptor<ContextFileContent> updatedContentCaptor;
@@ -85,7 +91,8 @@ class ContextFileExtractionServiceTest {
 
     lenient().when(repository.getContentRepository()).thenReturn(contentRepository);
     lenient().when(repository.getAssetRepository()).thenReturn(assetRepository);
-    when(repository.get(isNull(), eq(fileId), any(), eq(Include.NON_DELETED), eq(false)))
+    lenient()
+        .when(repository.get(isNull(), eq(fileId), any(), eq(Include.NON_DELETED), eq(false)))
         .thenReturn(file);
     lenient().when(contentRepository.getById(contentId)).thenReturn(content);
     lenient().when(assetRepository.getById("asset-1")).thenReturn(asset);
@@ -121,6 +128,134 @@ class ContextFileExtractionServiceTest {
   }
 
   @Test
+  void processWithLlmEnabledRunsExtractionThenProcessed() throws Exception {
+    when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream("Quarterly results".getBytes())));
+    when(textExtractor.extract(any(InputStream.class), same(file)))
+        .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
+    content.setExtractedText("Quarterly results canonical");
+    List<ContextMemory> derivedMemories = List.of(new ContextMemory().withId(UUID.randomUUID()));
+    ContextMemoryExtractor.DeriveResult derived =
+        new ContextMemoryExtractor.DeriveResult(derivedMemories, 2, 1);
+    when(memoryExtractor.derive(same(file), eq("Quarterly results canonical"))).thenReturn(derived);
+    when(memoryExtractor.persist(same(file), same(derivedMemories))).thenReturn(1);
+
+    service(Runnable::run, () -> assetService, true).process(fileId, contentId);
+
+    verify(repository, times(3))
+        .update(isNull(), same(file), updatedFileCaptor.capture(), anyString());
+    List<ContextFile> fileUpdates = updatedFileCaptor.getAllValues();
+    assertEquals(ProcessingStatus.Analyzing, fileUpdates.get(0).getProcessingStatus());
+    assertEquals(ProcessingStatus.ExtractingContext, fileUpdates.get(1).getProcessingStatus());
+    assertEquals(ProcessingStatus.Processed, fileUpdates.get(2).getProcessingStatus());
+    assertEquals(2, fileUpdates.get(2).getExtractionStats().getChunksTotal());
+    assertEquals(1, fileUpdates.get(2).getExtractionStats().getChunksProcessed());
+    assertEquals(1, fileUpdates.get(2).getExtractionStats().getPillsCreated());
+
+    InOrder inOrder = inOrder(memoryExtractor, repository);
+    inOrder.verify(memoryExtractor).derive(same(file), eq("Quarterly results canonical"));
+    inOrder.verify(repository).deleteExtractedMemories(same(file), eq(true));
+    inOrder.verify(memoryExtractor).persist(same(file), same(derivedMemories));
+  }
+
+  @Test
+  void llmRejectionMarksFailureAndKeepsExtractedText() throws Exception {
+    when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream("Quarterly results".getBytes())));
+    when(textExtractor.extract(any(InputStream.class), same(file)))
+        .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
+    file.setExtractedText("indexed text");
+    content.setExtractedText("Quarterly results canonical");
+    Executor rejectingLlmExecutor =
+        task -> {
+          throw new RejectedExecutionException("queue full");
+        };
+
+    service(Runnable::run, () -> assetService, rejectingLlmExecutor, true)
+        .process(fileId, contentId);
+
+    verify(repository, times(3))
+        .update(isNull(), same(file), updatedFileCaptor.capture(), anyString());
+    List<ContextFile> fileUpdates = updatedFileCaptor.getAllValues();
+    assertEquals(ProcessingStatus.ExtractingContext, fileUpdates.get(1).getProcessingStatus());
+    assertEquals(ProcessingStatus.Failed, fileUpdates.get(2).getProcessingStatus());
+    assertEquals("indexed text", fileUpdates.get(2).getExtractedText());
+
+    verify(contentRepository, times(3))
+        .update(isNull(), same(content), updatedContentCaptor.capture(), anyString());
+    ContextFileContent failedContent = updatedContentCaptor.getAllValues().get(2);
+    assertEquals(ProcessingStatus.Failed, failedContent.getProcessingStatus());
+    assertEquals(
+        "Knowledge pill extraction queue is full. Please retry later.",
+        failedContent.getProcessingError());
+    assertEquals("Quarterly results canonical", failedContent.getExtractedText());
+  }
+
+  @Test
+  void llmFailureRecordsProcessingErrorAndKeepsExtractedText() throws Exception {
+    when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream("Quarterly results".getBytes())));
+    when(textExtractor.extract(any(InputStream.class), same(file)))
+        .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
+    file.setExtractedText("indexed text");
+    content.setExtractedText("Quarterly results canonical");
+    when(memoryExtractor.derive(same(file), eq("Quarterly results canonical")))
+        .thenThrow(new RuntimeException("provider exploded"));
+
+    service(Runnable::run, () -> assetService, true).process(fileId, contentId);
+
+    verify(repository, times(3))
+        .update(isNull(), same(file), updatedFileCaptor.capture(), anyString());
+    List<ContextFile> fileUpdates = updatedFileCaptor.getAllValues();
+    assertEquals(ProcessingStatus.Failed, fileUpdates.get(2).getProcessingStatus());
+    assertEquals("provider exploded", fileUpdates.get(2).getProcessingError());
+    assertEquals("indexed text", fileUpdates.get(2).getExtractedText());
+
+    verify(contentRepository, times(3))
+        .update(isNull(), same(content), updatedContentCaptor.capture(), anyString());
+    ContextFileContent failedContent = updatedContentCaptor.getAllValues().get(2);
+    assertEquals(ProcessingStatus.Failed, failedContent.getProcessingStatus());
+    assertEquals("provider exploded", failedContent.getProcessingError());
+    assertEquals("Quarterly results canonical", failedContent.getExtractedText());
+
+    verify(repository, never()).deleteExtractedMemories(any(), anyBoolean());
+    verify(memoryExtractor, never()).persist(any(), any());
+  }
+
+  @Test
+  void recoverInterruptedProcessingResubmitsTransientFiles() {
+    ContextFile analyzing = transientFile(ProcessingStatus.Analyzing);
+    ContextFile extracting = transientFile(ProcessingStatus.ExtractingContext);
+    ContextFile uploaded = transientFile(ProcessingStatus.Uploaded);
+    ContextFile processed = transientFile(ProcessingStatus.Processed);
+    ContextFile noContent =
+        new ContextFile()
+            .withId(UUID.randomUUID())
+            .withProcessingStatus(ProcessingStatus.Analyzing);
+    when(repository.listAll(any(), any()))
+        .thenReturn(List.of(analyzing, extracting, uploaded, processed, noContent));
+    List<Runnable> queued = new ArrayList<>();
+
+    int resubmitted = service(queued::add, () -> assetService).recoverInterruptedProcessing();
+
+    assertEquals(3, resubmitted);
+    assertEquals(3, queued.size());
+  }
+
+  private ContextFile transientFile(ProcessingStatus status) {
+    return new ContextFile()
+        .withId(UUID.randomUUID())
+        .withHeadContentId(UUID.randomUUID().toString())
+        .withProcessingStatus(status);
+  }
+
+  @Test
   void processMarksFailureWhenObjectStorageIsUnavailable() {
     service(Runnable::run, () -> null).process(fileId, contentId);
 
@@ -145,7 +280,7 @@ class ContextFileExtractionServiceTest {
 
     service(rejectingExecutor, () -> assetService).submit(fileId, contentId);
 
-    verifyImmediateFailureWith("Text extraction queue is full. Please retry later.");
+    verifyImmediateFailureWith("Processing queue is full. Please retry later.");
     verify(assetService, never()).read(any());
   }
 
@@ -182,6 +317,7 @@ class ContextFileExtractionServiceTest {
     List<ContextFile> fileUpdates = updatedFileCaptor.getAllValues();
     assertEquals(ProcessingStatus.Analyzing, fileUpdates.get(0).getProcessingStatus());
     assertEquals(ProcessingStatus.Failed, fileUpdates.get(1).getProcessingStatus());
+    assertEquals(expectedReason, fileUpdates.get(1).getProcessingError());
     assertNull(fileUpdates.get(1).getExtractedText());
     assertNull(fileUpdates.get(1).getPageCount());
 
@@ -208,9 +344,28 @@ class ContextFileExtractionServiceTest {
     assertNull(contentUpdate.getExtractedText());
   }
 
-  private ContextFileExtractionService service(
+  private ContextFileProcessingService service(
       Executor executor, Supplier<AssetService> assetServiceSupplier) {
-    return new ContextFileExtractionService(
-        repository, assetServiceSupplier, executor, textExtractor);
+    return service(executor, assetServiceSupplier, false);
+  }
+
+  private ContextFileProcessingService service(
+      Executor executor, Supplier<AssetService> assetServiceSupplier, boolean llmEnabled) {
+    return service(executor, assetServiceSupplier, Runnable::run, llmEnabled);
+  }
+
+  private ContextFileProcessingService service(
+      Executor executor,
+      Supplier<AssetService> assetServiceSupplier,
+      Executor llmExecutor,
+      boolean llmEnabled) {
+    return new ContextFileProcessingService(
+        repository,
+        assetServiceSupplier,
+        executor,
+        textExtractor,
+        llmExecutor,
+        () -> memoryExtractor,
+        () -> llmEnabled);
   }
 }

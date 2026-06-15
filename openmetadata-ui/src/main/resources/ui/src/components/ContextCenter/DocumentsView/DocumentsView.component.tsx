@@ -33,7 +33,6 @@ import {
   Trash01,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { FC, useMemo, useState } from 'react';
 import { SubmenuTrigger } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -46,6 +45,7 @@ import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
+import DocumentStatusBadge from '../DocumentStatusBadge/DocumentStatusBadge.component';
 import {
   DocumentsViewProps,
   FileActionsProps,
@@ -383,13 +383,20 @@ const FileRow: FC<FileRowProps> = ({
       />
 
       <Box className="tw:min-w-0 tw:flex-1" direction="col">
-        <Typography
-          className="tw:truncate"
-          data-testid="document-name"
-          size="text-sm"
-          weight="medium">
-          {fileName}
-        </Typography>
+        <Box align="center" className="tw:min-w-0" gap={2}>
+          <Typography
+            className="tw:truncate"
+            data-testid="document-name"
+            size="text-sm"
+            weight="medium">
+            {fileName}
+          </Typography>
+          <DocumentStatusBadge
+            error={file.processingError}
+            stats={file.extractionStats}
+            status={file.processingStatus}
+          />
+        </Box>
         <Box align="center" gap={2}>
           <Typography
             className="tw:text-gray-500"
@@ -397,6 +404,17 @@ const FileRow: FC<FileRowProps> = ({
             size="text-xs">
             {formattedFileSize}
           </Typography>
+          {Boolean(file.memoryCount) && (
+            <>
+              <Dot className="tw:text-gray-500" size="micro" />
+              <Typography
+                className="tw:text-gray-500"
+                data-testid="document-memory-count"
+                size="text-xs">
+                {file.memoryCount} {t('label.memory-plural').toLowerCase()}
+              </Typography>
+            </>
+          )}
           {file.updatedBy && (
             <>
               <Dot className="tw:text-gray-500" size="micro" />
@@ -505,10 +523,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
 
   return (
     <Card
-      className={classNames(
-        'tw:flex tw:overflow-hidden tw:h-full tw:flex-1 tw:min-w-0',
-        { 'tw:rounded-tr-none tw:rounded-br-none': previewFileId }
-      )}
+      className="tw:flex tw:overflow-hidden tw:h-full tw:flex-1 tw:min-w-0"
       data-testid="documents-view">
       {data.length > 0 || isLoading ? (
         <Box
