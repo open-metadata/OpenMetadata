@@ -462,7 +462,9 @@ describe('CustomizeNavigation Utils', () => {
       const result = filterHiddenNavigationItems(savedNav);
       const homeItem = result.find((item) => item.key === 'home');
 
-      expect(homeItem?.children?.some((c) => c.key === 'new-feature')).toBeFalsy();
+      expect(
+        homeItem?.children?.some((c) => c.key === 'new-feature')
+      ).toBeFalsy();
     });
 
     it('should not show a new top-level sidebar item that is absent from the saved persona nav', () => {
@@ -503,7 +505,9 @@ describe('CustomizeNavigation Utils', () => {
 
       const result = filterHiddenNavigationItems(savedNav);
 
-      expect(result.some((item) => item.key === 'ontology-explorer')).toBe(false);
+      expect(result.some((item) => item.key === 'ontology-explorer')).toBe(
+        false
+      );
     });
 
     it('should not show a top-level item that is explicitly hidden in the saved persona nav', () => {
@@ -530,7 +534,9 @@ describe('CustomizeNavigation Utils', () => {
 
       const result = filterHiddenNavigationItems(savedNav);
 
-      expect(result.some((item) => item.key === 'ontology-explorer')).toBe(false);
+      expect(result.some((item) => item.key === 'ontology-explorer')).toBe(
+        false
+      );
     });
 
     it('should not show a child item that is explicitly hidden in the saved persona nav', () => {
@@ -578,7 +584,9 @@ describe('CustomizeNavigation Utils', () => {
       const result = filterHiddenNavigationItems(savedNav);
       const homeItem = result.find((item) => item.key === 'home');
 
-      expect(homeItem?.children?.some((c) => c.key === 'new-feature')).toBeFalsy();
+      expect(
+        homeItem?.children?.some((c) => c.key === 'new-feature')
+      ).toBeFalsy();
     });
   });
 
