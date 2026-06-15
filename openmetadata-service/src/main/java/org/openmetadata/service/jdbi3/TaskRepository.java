@@ -119,8 +119,8 @@ public class TaskRepository extends EntityRepository<Task> {
         Entity.TASK,
         Task.class,
         Entity.getCollectionDAO().taskDAO(),
-        "assignees,reviewers,watchers,about,createdBy",
-        "assignees,reviewers,watchers,about,createdBy");
+        "assignees,reviewers,watchers,about,createdBy,comments",
+        "assignees,reviewers,watchers,about,createdBy,comments");
     supportsSearch = true;
     quoteFqn = false;
     this.allowedFields.add(FIELD_ASSIGNEES);
@@ -140,8 +140,8 @@ public class TaskRepository extends EntityRepository<Task> {
         Entity.TASK,
         Task.class,
         initializeTaskDao(jdbi),
-        "assignees,reviewers,watchers,about,createdBy",
-        "assignees,reviewers,watchers,about,createdBy");
+        "assignees,reviewers,watchers,about,createdBy,comments",
+        "assignees,reviewers,watchers,about,createdBy,comments");
     supportsSearch = true;
     quoteFqn = false;
     this.allowedFields.add(FIELD_ASSIGNEES);
@@ -606,7 +606,9 @@ public class TaskRepository extends EntityRepository<Task> {
             .withPreviousVersion(task.getVersion())
             .withFieldsAdded(
                 List.of(
-                    new FieldChange().withName("comments").withNewValue(comment.getMessage()))));
+                    new FieldChange()
+                        .withName(FIELD_COMMENTS)
+                        .withNewValue(comment.getMessage()))));
     storeEntity(task, true);
 
     // Store mentions from the comment message
@@ -1433,6 +1435,7 @@ public class TaskRepository extends EntityRepository<Task> {
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      preserveComments();
       updateAssignees();
       updateTaskReviewers();
       updateWorkflowMetadata();
@@ -1441,6 +1444,12 @@ public class TaskRepository extends EntityRepository<Task> {
       updatePayload();
       updateResolution();
       updateWorkflowFields();
+    }
+
+    // Comments are mutated only via the comment endpoints; a generic PATCH/PUT must preserve them.
+    private void preserveComments() {
+      updated.setComments(original.getComments());
+      updated.setCommentCount(original.getCommentCount());
     }
 
     private void updateAssignees() {
