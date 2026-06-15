@@ -23,6 +23,21 @@ import leftSidebarClassBase from '../LeftSidebarClassBase';
 const getBaseSidebarItems = (): LeftSidebarItem[] =>
   leftSidebarClassBase.getSidebarItems();
 
+const createSidebarMap = (
+  items: LeftSidebarItem[]
+): Map<string, LeftSidebarItem> => {
+  const map = new Map<string, LeftSidebarItem>();
+
+  const addToMap = (item: LeftSidebarItem): void => {
+    map.set(item.key, item);
+    item.children?.forEach(addToMap);
+  };
+
+  items.forEach(addToMap);
+
+  return map;
+};
+
 const DEFAULT_INDEX = 999;
 
 const sortPluginItemsByIndex = (
@@ -174,14 +189,27 @@ const collectHiddenKeys = (
 
   if (navigationMap && (!navItem || navItem.isHidden)) {
     keys.push(item.key);
+
+    return keys;
   }
 
-  const hiddenChildKeys =
-    navItem?.children
-      ?.filter((child) => child.isHidden)
-      .map((child) => child.id) ?? [];
+  if (navItem && item.children) {
+    const savedChildIds = new Set(navItem.children?.map((c) => c.id) ?? []);
 
-  return [...keys, ...hiddenChildKeys];
+    item.children.forEach((child) => {
+      if (!savedChildIds.has(child.key)) {
+        keys.push(child.key);
+      }
+    });
+
+    navItem.children?.forEach((child) => {
+      if (child.isHidden) {
+        keys.push(child.id);
+      }
+    });
+  }
+
+  return keys;
 };
 
 export const getHiddenKeysFromNavigationItems = (
@@ -199,18 +227,21 @@ export const getHiddenKeysFromNavigationItems = (
   );
 };
 
-const enhanceWithNavigationMap = (
-  sidebarItem: LeftSidebarItem,
-  navigationMap: Map<string, NavigationItem>
+const enhanceNavigationItem = (
+  navItem: NavigationItem,
+  sidebarMap: Map<string, LeftSidebarItem>
 ): LeftSidebarItem | null => {
-  const navItem = navigationMap.get(sidebarItem.key);
-
-  if (navItem?.isHidden) {
+  if (navItem.isHidden) {
     return null;
   }
 
-  const childrenItems = (sidebarItem.children ?? [])
-    .map((child) => enhanceWithNavigationMap(child, navigationMap))
+  const sidebarItem = sidebarMap.get(navItem.id);
+  if (!sidebarItem) {
+    return null;
+  }
+
+  const childrenItems = navItem.children
+    ?.map((child) => enhanceNavigationItem(child, sidebarMap))
     .filter((item): item is LeftSidebarItem => item !== null);
 
   return {
@@ -228,10 +259,10 @@ export const filterHiddenNavigationItems = (
   }
 
   const baseSidebarItems = getBaseSidebarItems();
-  const navigationMap = createNavigationMap(navigationItems);
+  const sidebarMap = createSidebarMap(baseSidebarItems);
 
-  const filteredItems = baseSidebarItems
-    .map((sidebarItem) => enhanceWithNavigationMap(sidebarItem, navigationMap))
+  const filteredItems = navigationItems
+    .map((navItem) => enhanceNavigationItem(navItem, sidebarMap))
     .filter((item): item is LeftSidebarItem => item !== null);
 
   if (plugins?.length) {

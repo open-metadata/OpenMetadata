@@ -357,7 +357,7 @@ describe('CustomizeNavigation Utils', () => {
       expect(result).toEqual(leftSidebarClassBase.getSidebarItems());
     });
 
-    it('should omit nav items whose id has no matching sidebar entry, but still show sidebar items absent from the saved nav', () => {
+    it('should return null for items not found in sidebar map', () => {
       const items = [
         {
           id: 'non-existent',
@@ -368,9 +368,7 @@ describe('CustomizeNavigation Utils', () => {
       ];
       const result = filterHiddenNavigationItems(items);
 
-      expect(result.some((item) => item.key === 'non-existent')).toBe(false);
-      expect(result.some((item) => item.key === 'home')).toBe(true);
-      expect(result.some((item) => item.key === 'explore')).toBe(true);
+      expect(result).toEqual([]);
     });
 
     it('should merge plugin items when plugins are provided', () => {
@@ -425,7 +423,7 @@ describe('CustomizeNavigation Utils', () => {
       expect(result[2].key).toBe('plugin-item');
     });
 
-    it('should show a new child sidebar item that is absent from the saved persona nav', () => {
+    it('should not show a new child sidebar item that is absent from the saved persona nav', () => {
       (leftSidebarClassBase.getSidebarItems as jest.Mock).mockReturnValueOnce([
         {
           key: 'home',
@@ -453,7 +451,7 @@ describe('CustomizeNavigation Utils', () => {
             {
               id: 'dashboard',
               title: 'Dashboard',
-              isHidden: true,
+              isHidden: false,
               pageId: 'dashboard',
             },
           ],
@@ -464,11 +462,10 @@ describe('CustomizeNavigation Utils', () => {
       const result = filterHiddenNavigationItems(savedNav);
       const homeItem = result.find((item) => item.key === 'home');
 
-      expect(homeItem?.children).toHaveLength(1);
-      expect(homeItem?.children?.[0].key).toBe('new-feature');
+      expect(homeItem?.children?.some((c) => c.key === 'new-feature')).toBeFalsy();
     });
 
-    it('should show a new top-level sidebar item that is absent from the saved persona nav', () => {
+    it('should not show a new top-level sidebar item that is absent from the saved persona nav', () => {
       (leftSidebarClassBase.getSidebarItems as jest.Mock).mockReturnValueOnce([
         {
           key: 'home',
@@ -506,12 +503,10 @@ describe('CustomizeNavigation Utils', () => {
 
       const result = filterHiddenNavigationItems(savedNav);
 
-      expect(result.some((item) => item.key === 'ontology-explorer')).toBe(
-        true
-      );
+      expect(result.some((item) => item.key === 'ontology-explorer')).toBe(false);
     });
 
-    it('should not show a new top-level item that is explicitly hidden in the saved persona nav', () => {
+    it('should not show a top-level item that is explicitly hidden in the saved persona nav', () => {
       (leftSidebarClassBase.getSidebarItems as jest.Mock).mockReturnValueOnce([
         { key: 'home', title: 'Home', icon: 'home-icon', children: [] },
         { key: 'explore', title: 'Explore', icon: 'explore-icon' },
@@ -535,12 +530,10 @@ describe('CustomizeNavigation Utils', () => {
 
       const result = filterHiddenNavigationItems(savedNav);
 
-      expect(result.some((item) => item.key === 'ontology-explorer')).toBe(
-        false
-      );
+      expect(result.some((item) => item.key === 'ontology-explorer')).toBe(false);
     });
 
-    it('should not show a new child item that is explicitly hidden in the saved persona nav', () => {
+    it('should not show a child item that is explicitly hidden in the saved persona nav', () => {
       (leftSidebarClassBase.getSidebarItems as jest.Mock).mockReturnValueOnce([
         {
           key: 'home',
@@ -585,9 +578,7 @@ describe('CustomizeNavigation Utils', () => {
       const result = filterHiddenNavigationItems(savedNav);
       const homeItem = result.find((item) => item.key === 'home');
 
-      expect(
-        homeItem?.children?.some((c) => c.key === 'new-feature')
-      ).toBeFalsy();
+      expect(homeItem?.children?.some((c) => c.key === 'new-feature')).toBeFalsy();
     });
   });
 
