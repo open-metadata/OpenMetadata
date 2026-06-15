@@ -54,6 +54,7 @@ import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.ResultList;
@@ -81,6 +82,10 @@ import org.openmetadata.service.util.UserUtil;
 @Collection(name = "bots", order = 4, requiredForOps = true) // initialize after user resource
 public class BotResource extends EntityResource<Bot, BotRepository> {
   public static final String COLLECTION_PATH = "/v1/bots/";
+  public static final String BOT_IMPERSONATION_ROLE = "BotImpersonationRole";
+  static final String IMPERSONATION_GRANT_AT_CREATION_ONLY =
+      "Bot impersonation can only be enabled when the bot is created. "
+          + "Delete and re-create the bot with allowImpersonation set to true.";
   private final BotMapper mapper = new BotMapper();
 
   public BotResource(Authorizer authorizer, Limits limits) {
@@ -310,7 +315,10 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateBot create) {
     Bot bot = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, bot);
+    ImpersonationChange impersonationChange = resolveImpersonationChange(securityContext, create);
+    Response response = create(uriInfo, securityContext, bot);
+    applyImpersonationChange(impersonationChange);
+    return response;
   }
 
   @PUT
@@ -331,7 +339,10 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateBot create) {
     Bot bot = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, bot);
+    ImpersonationChange impersonationChange = resolveImpersonationChange(securityContext, create);
+    Response response = createOrUpdate(uriInfo, securityContext, bot);
+    applyImpersonationChange(impersonationChange);
+    return response;
   }
 
   @PATCH
@@ -479,5 +490,53 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
+  }
+
+  private record ImpersonationChange(UUID botUserId, boolean allowImpersonation) {}
+
+  /**
+   * Impersonation is an admin-granted capability stored on the bot user. It can only be enabled
+   * while the bot is being created - enabling it on an existing bot would silently upgrade every
+   * holder of its already-distributed token. Revoking is allowed at any time. An absent {@code
+   * allowImpersonation} keeps the current value, so plain upserts never change the grant.
+   */
+  private ImpersonationChange resolveImpersonationChange(
+      SecurityContext securityContext, CreateBot create) {
+    ImpersonationChange result = null;
+    Boolean requested = create.getAllowImpersonation();
+    User botUser = requested == null ? null : findBotUser(create.getBotUser());
+    if (requested != null && botUser != null && requested != isImpersonationEnabled(botUser)) {
+      authorizer.authorizeAdmin(securityContext);
+      if (requested && botExists(create.getName())) {
+        throw new IllegalArgumentException(IMPERSONATION_GRANT_AT_CREATION_ONLY);
+      }
+      result = new ImpersonationChange(botUser.getId(), requested);
+    }
+    return result;
+  }
+
+  private void applyImpersonationChange(ImpersonationChange change) {
+    if (change != null) {
+      EntityReference impersonationRole =
+          Entity.getEntityReferenceByName(Entity.ROLE, BOT_IMPERSONATION_ROLE, Include.NON_DELETED);
+      UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+      userRepository.updateBotImpersonation(
+          change.botUserId(), change.allowImpersonation(), impersonationRole);
+    }
+  }
+
+  private boolean isImpersonationEnabled(User botUser) {
+    return Boolean.TRUE.equals(botUser.getAllowImpersonation());
+  }
+
+  private User findBotUser(String botUserName) {
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+    return userRepository.findByNameOrNull(
+        EntityInterfaceUtil.quoteName(botUserName), Include.NON_DELETED);
+  }
+
+  private boolean botExists(String botName) {
+    return repository.findByNameOrNull(EntityInterfaceUtil.quoteName(botName), Include.NON_DELETED)
+        != null;
   }
 }

@@ -57,6 +57,10 @@ public class SdkClients {
       System.getProperty(
           "IT_BASE_URL", System.getenv().getOrDefault("IT_BASE_URL", "http://localhost:8585"));
 
+  public static String baseUrl() {
+    return BASE_URL;
+  }
+
   // Cached clients to avoid creating new HTTP connections for each test
   private static volatile CachedClient ADMIN_CLIENT;
   private static volatile CachedClient TEST_USER_CLIENT;

@@ -43,6 +43,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
@@ -127,6 +128,7 @@ public class UserRepository extends EntityRepository<User> {
   static final String ROLES_FIELD = "roles";
   static final String TEAMS_FIELD = "teams";
   public static final String AUTH_MECHANISM_FIELD = "authenticationMechanism";
+  public static final String ALLOW_IMPERSONATION_FIELD = "allowImpersonation";
   static final String USER_PATCH_FIELDS =
       "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,domains,personaPreferences";
   static final String USER_UPDATE_FIELDS =
@@ -704,6 +706,32 @@ public class UserRepository extends EntityRepository<User> {
     roles = listOrEmpty(roles);
     for (EntityReference role : roles) {
       addRelationship(user.getId(), role.getId(), USER, Entity.ROLE, Relationship.HAS);
+    }
+  }
+
+  /**
+   * Internal-only mutation of the bot impersonation grant. {@code allowImpersonation} is read-only
+   * on the user APIs (see {@link UserUpdater}); bots receive or lose the grant through {@code
+   * BotResource}, which delegates here.
+   */
+  public void updateBotImpersonation(
+      UUID botUserId, boolean allowImpersonation, EntityReference impersonationRole) {
+    User user = find(botUserId, Include.NON_DELETED, false);
+    user.setAllowImpersonation(allowImpersonation);
+    dao.update(user.getId(), user.getFullyQualifiedName(), JsonUtils.pojoToJson(user));
+    invalidateCacheForEntity(USER, user.getId(), user.getFullyQualifiedName());
+    updateImpersonationRole(user, allowImpersonation, impersonationRole);
+    SubjectCache.invalidateUser(user.getName());
+  }
+
+  private void updateImpersonationRole(
+      User user, boolean allowImpersonation, EntityReference impersonationRole) {
+    if (allowImpersonation) {
+      addRelationship(
+          user.getId(), impersonationRole.getId(), USER, Entity.ROLE, Relationship.HAS);
+    } else {
+      deleteRelationship(
+          user.getId(), USER, impersonationRole.getId(), Entity.ROLE, Relationship.HAS);
     }
   }
 
@@ -1442,17 +1470,22 @@ public class UserRepository extends EntityRepository<User> {
           () ->
               recordChange(
                   "isEmailVerified", original.getIsEmailVerified(), updated.getIsEmailVerified()));
-      compareAndUpdate(
-          "allowImpersonation",
-          () ->
-              recordChange(
-                  "allowImpersonation",
-                  original.getAllowImpersonation(),
-                  updated.getAllowImpersonation()));
+      compareAndUpdate(ALLOW_IMPERSONATION_FIELD, this::updateAllowImpersonation);
       compareAndUpdate("personaPreferences", () -> updatePersonaPreferences(original, updated));
       compareAndUpdate(
           "authenticationMechanism", () -> updateAuthenticationMechanism(original, updated));
       compareAndUpdateAny(() -> SubjectCache.invalidateUser(updated.getName()), "roles", "teams");
+    }
+
+    private void updateAllowImpersonation() {
+      if (operation.isPut()) {
+        // CreateUser does not carry allowImpersonation; PUT must not wipe the stored grant
+        updated.setAllowImpersonation(original.getAllowImpersonation());
+      } else if (!Objects.equals(
+          original.getAllowImpersonation(), updated.getAllowImpersonation())) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.readOnlyAttribute(USER, ALLOW_IMPERSONATION_FIELD));
+      }
     }
 
     private void updateRoles(User original, User updated) {
