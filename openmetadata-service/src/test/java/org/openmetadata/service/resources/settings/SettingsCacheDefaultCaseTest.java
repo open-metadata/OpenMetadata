@@ -1,7 +1,7 @@
 package org.openmetadata.service.resources.settings;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -9,8 +9,10 @@ import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.SystemRepository;
 
@@ -42,7 +44,7 @@ class SettingsCacheDefaultCaseTest {
   }
 
   @Test
-  void testDefaultCaseWithNullResult() {
+  void testDefaultCaseWithNullResult() throws Exception {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       SystemRepository mockSystemRepo = mock(SystemRepository.class);
       String key = SettingsType.MCP_CONFIGURATION.toString();
@@ -51,7 +53,16 @@ class SettingsCacheDefaultCaseTest {
 
       SettingsCache.CACHE.invalidate(key);
 
-      assertThrows(Exception.class, () -> SettingsCache.CACHE.get(key));
+      Settings result = SettingsCache.CACHE.get(key);
+
+      assertNotNull(result);
+      assertEquals(SettingsType.MCP_CONFIGURATION, result.getConfigType());
+
+      MCPConfiguration mcpConfig =
+          JsonUtils.convertValue(result.getConfigValue(), MCPConfiguration.class);
+      assertNotNull(mcpConfig);
+      assertEquals("openmetadata-mcp-server", mcpConfig.getMcpServerName());
+      assertEquals("/api/v1/mcp", mcpConfig.getPath());
     }
   }
 }
