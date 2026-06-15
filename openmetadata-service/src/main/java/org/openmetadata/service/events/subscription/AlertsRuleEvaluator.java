@@ -17,7 +17,6 @@ import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.Entity.USER;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -37,6 +36,7 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
@@ -587,19 +587,39 @@ public class AlertsRuleEvaluator {
     return mentions;
   }
 
-  private List<MessageParser.EntityLink> getTaskMentions(Task task) {
-    List<MessageParser.EntityLink> mentions = new ArrayList<>();
-    if (task.getDescription() != null) {
-      mentions.addAll(MessageParser.getEntityLinks(task.getDescription()));
+  // A mention notification must fire only for the comment that triggered this event. addComment
+  // records the newly-added comment in the change delta, so we parse exactly that text — never
+  // earlier comments (which would re-notify their mentionees on every reply). Non-comment task
+  // updates (assignees/status) carry no comment delta, so nobody is newly mentioned.
+  public static List<MessageParser.EntityLink> getTaskMentions(Task task) {
+    String addedComment = addedCommentMessage(task.getChangeDescription());
+    if (addedComment != null) {
+      return MessageParser.getEntityLinks(addedComment);
     }
-    if (task.getComments() != null) {
-      for (TaskComment comment : task.getComments()) {
-        if (comment.getMessage() != null) {
-          mentions.addAll(MessageParser.getEntityLinks(comment.getMessage()));
-        }
+    if (task.getChangeDescription() != null) {
+      return List.of();
+    }
+    // No change delta (legacy/unknown event): fall back to the latest comment, else the
+    // description.
+    List<TaskComment> comments = task.getComments();
+    if (!nullOrEmpty(comments) && comments.get(comments.size() - 1).getMessage() != null) {
+      return MessageParser.getEntityLinks(comments.get(comments.size() - 1).getMessage());
+    }
+    return task.getDescription() == null
+        ? List.of()
+        : MessageParser.getEntityLinks(task.getDescription());
+  }
+
+  private static String addedCommentMessage(ChangeDescription change) {
+    if (change == null) {
+      return null;
+    }
+    for (FieldChange field : listOrEmpty(change.getFieldsAdded())) {
+      if ("comments".equals(field.getName()) && field.getNewValue() != null) {
+        return field.getNewValue().toString();
       }
     }
-    return mentions;
+    return null;
   }
 
   private boolean matchesMentionedUserOrTeam(

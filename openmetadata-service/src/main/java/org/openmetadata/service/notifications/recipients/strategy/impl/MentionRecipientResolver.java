@@ -29,7 +29,6 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Post;
-import org.openmetadata.schema.type.TaskComment;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
@@ -66,7 +65,7 @@ public class MentionRecipientResolver implements RecipientResolutionStrategy {
 
       if (Entity.TASK.equalsIgnoreCase(event.getEntityType())) {
         Task task = AlertsRuleEvaluator.getTask(event);
-        return task == null ? Collections.emptySet() : resolveTaskMentions(task, destination);
+        return resolveTaskMentions(task, destination);
       }
 
       LOG.warn(
@@ -102,7 +101,7 @@ public class MentionRecipientResolver implements RecipientResolutionStrategy {
 
       if (Entity.TASK.equalsIgnoreCase(entityType)) {
         Task task = Entity.getEntity(Entity.TASK, entityId, "comments", Include.NON_DELETED);
-        return task == null ? Collections.emptySet() : resolveTaskMentions(task, destination);
+        return resolveTaskMentions(task, destination);
       }
 
       LOG.warn("MentionRecipientResolver called with unsupported entity type: {}", entityType);
@@ -172,26 +171,10 @@ public class MentionRecipientResolver implements RecipientResolutionStrategy {
   }
 
   private Set<Recipient> resolveTaskMentions(Task task, SubscriptionDestination destination) {
-    Set<Recipient> recipients = new HashSet<>();
-    SubscriptionDestination.SubscriptionType notificationType = destination.getType();
-
-    if (task.getDescription() != null) {
-      recipients.addAll(
-          resolveEntityLinks(
-              MessageParser.getEntityLinks(task.getDescription()), notificationType));
-    }
-
-    if (task.getComments() != null) {
-      for (TaskComment comment : task.getComments()) {
-        if (comment.getMessage() != null) {
-          recipients.addAll(
-              resolveEntityLinks(
-                  MessageParser.getEntityLinks(comment.getMessage()), notificationType));
-        }
-      }
-    }
-
-    return recipients;
+    // Single source of truth with the filter side (AlertsRuleEvaluator.getTaskMentions): resolve
+    // only the latest comment's mentions so earlier comments aren't re-notified on each
+    // comment-add.
+    return resolveEntityLinks(AlertsRuleEvaluator.getTaskMentions(task), destination.getType());
   }
 
   private Set<Recipient> resolveAnnouncementMentions(

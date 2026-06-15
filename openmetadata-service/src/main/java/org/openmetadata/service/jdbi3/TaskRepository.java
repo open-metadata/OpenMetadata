@@ -41,7 +41,9 @@ import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
@@ -596,6 +598,15 @@ public class TaskRepository extends EntityRepository<Task> {
     if (comment.getAuthor() != null && comment.getAuthor().getName() != null) {
       task.setUpdatedBy(comment.getAuthor().getName());
     }
+    // Record the new comment in the change delta so the event is self-describing: the notification
+    // pipeline resolves mentions from this comment only, and the email template renders it as a
+    // reply rather than treating every task update as a comment.
+    task.setChangeDescription(
+        new ChangeDescription()
+            .withPreviousVersion(task.getVersion())
+            .withFieldsAdded(
+                List.of(
+                    new FieldChange().withName("comments").withNewValue(comment.getMessage()))));
     storeEntity(task, true);
 
     // Store mentions from the comment message

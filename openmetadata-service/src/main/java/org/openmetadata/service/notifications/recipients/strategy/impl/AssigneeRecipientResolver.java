@@ -56,7 +56,7 @@ public class AssigneeRecipientResolver implements RecipientResolutionStrategy {
     try {
       if (Entity.TASK.equalsIgnoreCase(event.getEntityType())) {
         Task task = AlertsRuleEvaluator.getTask(event);
-        return resolveAssignees(task == null ? null : task.getAssignees(), destination);
+        return resolveAssignees(task.getAssignees(), destination);
       }
       if (Entity.THREAD.equalsIgnoreCase(event.getEntityType())) {
         Thread thread = AlertsRuleEvaluator.getThread(event);
@@ -82,7 +82,7 @@ public class AssigneeRecipientResolver implements RecipientResolutionStrategy {
     try {
       if (Entity.TASK.equalsIgnoreCase(entityType)) {
         Task task = Entity.getEntity(Entity.TASK, entityId, "assignees", Include.NON_DELETED);
-        return resolveAssignees(task == null ? null : task.getAssignees(), destination);
+        return resolveAssignees(task.getAssignees(), destination);
       }
       if (Entity.THREAD.equalsIgnoreCase(entityType)) {
         Thread thread = Entity.getFeedRepository().get(entityId);

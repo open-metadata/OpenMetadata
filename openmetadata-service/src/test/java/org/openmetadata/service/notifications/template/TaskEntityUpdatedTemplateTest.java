@@ -95,9 +95,18 @@ class TaskEntityUpdatedTemplateTest {
 
   @Test
   void commentEvent_rendersReplyWithAboutLink() throws Exception {
-    // A comment-add carries no changeDescription → the "commented on" branch.
+    // A comment-add stamps a 'comments' change → the "commented on" branch + the reply.
+    ChangeDescription cd =
+        new ChangeDescription()
+            .withFieldsAdded(
+                List.of(
+                    new FieldChange()
+                        .withName("comments")
+                        .withNewValue("please look at this incident")));
     Map<String, Object> ctx =
-        Map.of("event", Map.of(), "entity", incidentTask("please look at this incident"));
+        Map.of(
+            "event", Map.of("changeDescription", cd),
+            "entity", incidentTask("please look at this incident"));
 
     String out = unescape(template.apply(ctx));
 
@@ -111,6 +120,29 @@ class TaskEntityUpdatedTemplateTest {
     assertTrue(out.contains("/test-case/svc.db.sch.tc1/issues"), out);
     assertTrue(out.contains("Adria Estivill"), out);
     assertFalse(out.contains("updated the assignees"), out);
+  }
+
+  @Test
+  void nonCommentUpdate_rendersPlainUpdateWithoutReply() throws Exception {
+    // A status/resolution change carries neither a 'comments' nor an 'assignees' delta, so the
+    // template must not claim "commented on" nor re-surface a pre-existing comment as a new reply.
+    ChangeDescription cd =
+        new ChangeDescription()
+            .withFieldsUpdated(
+                List.of(new FieldChange().withName("status").withNewValue("Closed")));
+    Map<String, Object> ctx =
+        Map.of(
+            "event", Map.of("changeDescription", cd),
+            "entity", incidentTask("an older comment"));
+
+    String out = unescape(template.apply(ctx));
+
+    assertTrue(out.contains("updated the"), out);
+    assertTrue(out.contains("Incident"), out);
+    assertFalse(out.contains("commented on"), out);
+    assertFalse(out.contains("updated the assignees"), out);
+    assertFalse(out.contains("Reply:"), out);
+    assertFalse(out.contains("an older comment"), out);
   }
 
   @Test
