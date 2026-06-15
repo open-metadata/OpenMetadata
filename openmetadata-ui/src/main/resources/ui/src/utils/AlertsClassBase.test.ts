@@ -34,7 +34,7 @@ import {
   getRandomizedAlertName,
 } from './Alerts/AlertsUtil';
 import alertsClassBase, { AlertsClassBase } from './AlertsClassBase';
-import { getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
 import { handleEntityCreationError } from './formUtils';
 import { showSuccessToast } from './ToastUtils';
 

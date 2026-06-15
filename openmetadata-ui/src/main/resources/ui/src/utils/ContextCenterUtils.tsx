@@ -12,9 +12,6 @@
  */
 
 export {
-  assetToDocumentItem,
-  contextFileToDocumentItem,
-  contextFileToUploadedDocumentItem,
   CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK,
   CONTEXT_CENTER_DOCUMENTS_FQN,
   createArticleKnowledgePage,

@@ -1124,6 +1124,31 @@ class AdvancedSearchClassBase {
       : {};
   };
 
+  // columns.tags.tagFQN is only present in indices that have a columns field,
+  // so we gate it the same way as getColumnConfig
+  public getColumnTagConfig = (entitySearchIndex: SearchIndex[]) => {
+    const shouldAddField = entitySearchIndex.every((index) =>
+      SEARCH_INDICES_WITH_COLUMNS_FIELD.includes(index)
+    );
+
+    return shouldAddField
+      ? {
+          [EntityFields.COLUMN_TAG]: {
+            label: t('label.column-tag-plural'),
+            type: 'select',
+            mainWidgetProps: this.mainWidgetProps,
+            fieldSettings: {
+              asyncFetch: this.autocomplete({
+                searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY_TERM],
+                entityField: EntityFields.FULLY_QUALIFIED_NAME,
+              }),
+              useAsyncSearch: true,
+            },
+          },
+        }
+      : {};
+  };
+
   /**
    * Get entity specific fields for the query builder
    */
@@ -1238,6 +1263,7 @@ class AdvancedSearchClassBase {
       ...(shouldAddServiceField ? serviceQueryBuilderFields : {}),
       ...this.getEntitySpecificQueryBuilderFields(entitySearchIndex),
       ...this.getColumnConfig(entitySearchIndex),
+      ...this.getColumnTagConfig(entitySearchIndex),
     };
 
     // Sort the fields according to the label

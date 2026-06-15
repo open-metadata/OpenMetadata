@@ -18,10 +18,12 @@ import {
   FileIcon,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Link04, XClose } from '@untitledui/icons';
-import { FC } from 'react';
+import { Copy06, XClose } from '@untitledui/icons';
+import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatBytes } from '../../../utils/ContextCenterUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import {
   DocumentPreviewPanelProps,
@@ -46,6 +48,14 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
 }) => {
   const { t } = useTranslation();
 
+  const { folderName, fileName, formattedFileSize } = useMemo(() => {
+    return {
+      folderName: getEntityName(file.folder),
+      fileName: getEntityName(file),
+      formattedFileSize: formatBytes(file.fileSize),
+    };
+  }, [file]);
+
   return (
     <Box
       className={
@@ -60,30 +70,27 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
         className="tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:shrink-0"
         gap={3}
         justify="between">
-        <Box align="center" gap={2}>
+        <Box align="center" className="tw:max-w-[78%]" gap={2}>
           <FileIcon
             className="tw:size-6 tw:shrink-0"
             theme="light"
             type={file.fileExtension ?? ''}
             variant="default"
           />
-          <Typography
-            ellipsis
-            className="tw:truncate tw:flex-1"
-            data-testid="preview-file-name"
-            size="text-sm"
-            weight="semibold">
-            {file.name}
-          </Typography>
+          <div className="tw:min-w-0">
+            <Typography
+              ellipsis
+              className="tw:flex-1"
+              data-testid="preview-file-name"
+              size="text-sm"
+              weight="semibold">
+              {fileName}
+            </Typography>
+          </div>
         </Box>
         <Box align="center" gap={2}>
-          <CopyLinkButton url={url}>
-            <Link04
-              aria-hidden="true"
-              className="tw:-rotate-45"
-              size={17}
-              strokeWidth={1.8}
-            />
+          <CopyLinkButton className="tw:w-7 tw:h-7" url={url}>
+            <Copy06 aria-hidden="true" size={17} strokeWidth={1.8} />
           </CopyLinkButton>
           <ButtonUtility
             color="tertiary"
@@ -109,10 +116,10 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
               {t('label.status')}
             </Typography>
           </div>
-          {file.folderName && (
-            <MetaRow label={t('label.folder')} value={file.folderName} />
+          {folderName && (
+            <MetaRow label={t('label.folder')} value={folderName} />
           )}
-          <MetaRow label={t('label.size')} value={file.sizeLabel} />
+          <MetaRow label={t('label.size')} value={formattedFileSize} />
           {file.updatedBy && (
             <MetaRow label={t('label.updated-by')} value={file.updatedBy} />
           )}

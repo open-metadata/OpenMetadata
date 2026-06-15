@@ -22,12 +22,15 @@ jest.mock('../SelectableList/SelectableList.component', () => {
   };
 });
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityDisplayUtils', () => ({
   getCountBadge: jest.fn().mockReturnValue(<div>CountBadge</div>),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('getEntityName'),
+}));
+
+jest.mock('../../../utils/EntityReferenceUtils', () => ({
   getEntityReferenceListFromEntities: jest.fn().mockReturnValue([]),
 }));
 

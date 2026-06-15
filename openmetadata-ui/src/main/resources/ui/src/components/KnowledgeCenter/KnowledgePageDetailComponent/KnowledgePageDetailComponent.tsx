@@ -84,7 +84,7 @@ import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
   getFeedCounts,
-} from '../../../utils/FeedUtils';
+} from '../../../utils/FeedUtilsPure';
 import i18n from '../../../utils/i18next/LocalUtil';
 import {
   addToKnowledgeCenterRecentViewed,
@@ -92,7 +92,7 @@ import {
   updateKnowledgeCenterRecentViewed,
 } from '../../../utils/KnowledgePageUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { getTagsWithoutTier } from '../../../utils/TableUtils';
+import { getTagsWithoutTier } from '../../../utils/TablePureUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { createTagObject } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';

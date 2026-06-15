@@ -51,11 +51,9 @@ import { searchQuery } from '../../../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../../../utils/DatabaseSchemaDetailsUtils';
 import { commonTableFields } from '../../../../utils/DatasetDetailsUtils';
 import { getBulkEditButton } from '../../../../utils/EntityBulkEdit/EntityBulkEditUtils';
-import {
-  getColumnSorter,
-  getEntityBulkEditPath,
-  highlightSearchText,
-} from '../../../../utils/EntityUtils';
+import { getEntityBulkEditPath } from '../../../../utils/EntityPureUtils';
+import { highlightSearchText } from '../../../../utils/EntitySearchUtils';
+import { getColumnSorter } from '../../../../utils/EntitySortUtils';
 import { t } from '../../../../utils/i18next/LocalUtil';
 import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
@@ -69,7 +67,7 @@ import {
   tagTableObject,
   tierTableObject,
 } from '../../../../utils/TableColumn.util';
-import { getUsagePercentile } from '../../../../utils/TableUtils';
+import { getUsagePercentile } from '../../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DisplayName from '../../../common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
