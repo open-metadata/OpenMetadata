@@ -474,6 +474,13 @@ class JSONLogicSearchClassBase {
         },
       },
 
+      [EntityReferenceFields.TEST_SUITE]: {
+        label: t('label.test-suite'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: ['is_null', 'is_not_null'],
+      },
+
       [EntityReferenceFields.REVIEWERS]: {
         label: t('label.reviewer-plural'),
         type: '!group',
