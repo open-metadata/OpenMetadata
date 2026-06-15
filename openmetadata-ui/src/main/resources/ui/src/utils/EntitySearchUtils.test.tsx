@@ -12,6 +12,11 @@
  */
 import { render } from '@testing-library/react';
 import {
+  highlightEntityNameAndDescription,
+  highlightSearchArrayElement,
+  highlightSearchText,
+} from './EntitySearchUtils';
+import {
   entityWithoutNameAndDescHighlight,
   highlightedEntityDescription,
   highlightedEntityDisplayName,
@@ -20,11 +25,6 @@ import {
   mockSearchText,
   mockText,
 } from './mocks/EntityUtils.mock';
-import {
-  highlightEntityNameAndDescription,
-  highlightSearchArrayElement,
-  highlightSearchText,
-} from './EntitySearchUtils';
 
 jest.mock('./StringUtils', () => ({
   bytesToSize: jest.fn(),

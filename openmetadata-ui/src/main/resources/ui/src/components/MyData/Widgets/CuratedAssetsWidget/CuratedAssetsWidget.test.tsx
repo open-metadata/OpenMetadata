@@ -116,7 +116,9 @@ jest.mock(
 jest.mock(
   '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component',
   () => ({
-    AdvanceSearchProvider: jest.fn().mockImplementation(({ children }) => children),
+    AdvanceSearchProvider: jest
+      .fn()
+      .mockImplementation(({ children }) => children),
     useAdvanceSearch: jest.fn().mockReturnValue({
       config: {},
     }),

@@ -21,10 +21,10 @@ import {
 import { Copy06, XClose } from '@untitledui/icons';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { formatBytes } from '../../../utils/ContextCenterPureUtils';
 import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getListContextMemories } from '../../../rest/contextMemoryAPI';
+import { formatBytes } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';

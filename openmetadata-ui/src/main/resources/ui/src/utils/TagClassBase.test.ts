@@ -375,6 +375,7 @@ describe('TagClassBase', () => {
       const element = tagClassBase.getWidgetsFromKey(widgetConfig);
 
       expect(React.isValidElement(element)).toBe(true);
+
       const innerElement = element.props.children as React.ReactElement;
 
       expect(innerElement.props).toMatchObject({

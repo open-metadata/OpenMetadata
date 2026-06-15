@@ -82,7 +82,7 @@ import {
   getQueryFilterForDataProducts,
   getQueryFilterForDomain,
   getQueryFilterToExcludeDomainTerms,
-} from '../../../utils/DomainUtils';
+} from '../../../utils/DomainFilterUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
@@ -113,18 +113,11 @@ import {
 } from '../../../utils/StringUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer';
-import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumbs';
-import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { Avatar } from '@openmetadata/ui-core-components';
-import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
-import { FeedCounts } from '../../../interface/feed.interface';
-import { getIsErrorMatch } from '../../../utils/APIUtils';
-import { getEntityAvatarProps } from '../../../utils/IconUtils';
-import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
+import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
