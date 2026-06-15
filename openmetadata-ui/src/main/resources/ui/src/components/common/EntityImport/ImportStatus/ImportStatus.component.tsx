@@ -31,24 +31,26 @@ export const ImportStatus = ({ csvImportResult }: ImportStatusProps) => {
           {csvImportResult.numberOfRowsProcessed}
         </span>
       </div>
-      <span data-testid="passed-row">
-        <BadgeWithIcon
-          className="csv-import-status-chip csv-import-status-chip-success"
-          color="success"
-          iconLeading={CheckCircle}
-          type="pill-color">
-          {`${csvImportResult.numberOfRowsPassed} ${t('label.passed')}`}
-        </BadgeWithIcon>
-      </span>
-      <span data-testid="failed-row">
-        <BadgeWithIcon
-          className="csv-import-status-chip csv-import-status-chip-error"
-          color="error"
-          iconLeading={XCircle}
-          type="pill-color">
-          {`${csvImportResult.numberOfRowsFailed} ${t('label.failed')}`}
-        </BadgeWithIcon>
-      </span>
+      <BadgeWithIcon
+        className="csv-import-status-chip csv-import-status-chip-success"
+        color="success"
+        iconLeading={CheckCircle}
+        type="pill-color">
+        <span data-testid="passed-row">
+          {csvImportResult.numberOfRowsPassed}
+        </span>
+        {` ${t('label.passed')}`}
+      </BadgeWithIcon>
+      <BadgeWithIcon
+        className="csv-import-status-chip csv-import-status-chip-error"
+        color="error"
+        iconLeading={XCircle}
+        type="pill-color">
+        <span data-testid="failed-row">
+          {csvImportResult.numberOfRowsFailed}
+        </span>
+        {` ${t('label.failed')}`}
+      </BadgeWithIcon>
     </div>
   );
 };

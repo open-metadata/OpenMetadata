@@ -38,14 +38,19 @@ describe('ImportStatus component', () => {
     expect(
       await screen.findByText('label.number-of-rows:')
     ).toBeInTheDocument();
+
+    // The row testids wrap only the count so Playwright's validateImportStatus
+    // can assert the exact number; the label renders alongside in the badge.
     expect(processed.textContent).toStrictEqual(
       `${mockCsvImportResult.numberOfRowsProcessed}`
     );
-    expect(pass).toHaveTextContent(
-      `${mockCsvImportResult.numberOfRowsPassed} label.passed`
+    expect(pass.textContent).toStrictEqual(
+      `${mockCsvImportResult.numberOfRowsPassed}`
     );
-    expect(failed).toHaveTextContent(
-      `${mockCsvImportResult.numberOfRowsFailed} label.failed`
+    expect(failed.textContent).toStrictEqual(
+      `${mockCsvImportResult.numberOfRowsFailed}`
     );
+    expect(screen.getByText('label.passed')).toBeInTheDocument();
+    expect(screen.getByText('label.failed')).toBeInTheDocument();
   });
 });
