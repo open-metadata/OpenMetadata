@@ -13,7 +13,6 @@
 import { expect } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../constant/config';
 import { TableClass } from '../../support/entity/TableClass';
-import { TagClass } from '../../support/tag/TagClass';
 import {
   createConversationThread,
   FEED_ITEM_TIMEOUT,
@@ -35,18 +34,15 @@ test.describe(
   { tag: [DOMAIN_TAGS.DISCOVERY] },
   () => {
     let entityChangesTable: TableClass;
-    let entityChangesTag: TagClass;
     let adminDisplayName: string;
 
-    test.beforeAll('Setup: create table and tag', async () => {
+    test.beforeAll('Setup: create table', async () => {
       const { apiContext, afterAction } = await createAdminApiContext();
 
       entityChangesTable = new TableClass();
-      entityChangesTag = new TagClass({});
 
       try {
         await entityChangesTable.create(apiContext);
-        await entityChangesTag.create(apiContext);
 
         const userResponse = await apiContext.get('/api/v1/users/loggedInUser');
         const adminUser = await userResponse.json();
@@ -61,14 +57,15 @@ test.describe(
       await waitForAllLoadersToDisappear(page);
     });
 
-    // Rendering-only: seed the event via test-insert and assert the feed renders it, like the
-    // Reactions/Comments/Homepage blocks below. The async delivery contract (flaky under AUT load)
-    // is covered deterministically by the backend ActivityResourceIT.
+    // Rendering-only: seed via test-insert and assert the feed renders it, like the
+    // Reactions/Comments/Homepage blocks below. The seed summary is a neutral marker, so the
+    // event-type word asserts the eventType-driven header rather than the injected text. The async
+    // delivery contract (flaky under AUT load) is covered by the backend ActivityResourceIT.
 
     test('renders a description-updated activity item in the feed', async ({
       page,
     }) => {
-      const summaryText = `Description updated ${uuid()}`;
+      const summaryText = `Activity feed render ${uuid()}`;
 
       await test.step('Seed a DescriptionUpdated activity event', async () => {
         const { apiContext, afterAction } = await getApiContext(page);
@@ -103,8 +100,7 @@ test.describe(
     test('renders a tags-updated activity item in the feed', async ({
       page,
     }) => {
-      const tagDisplayName = entityChangesTag.getTagDisplayName();
-      const summaryText = `Added tag ${tagDisplayName} ${uuid()}`;
+      const summaryText = `Activity feed render ${uuid()}`;
 
       await test.step('Seed a TagsUpdated activity event', async () => {
         const { apiContext, afterAction } = await getApiContext(page);
@@ -125,17 +121,18 @@ test.describe(
         await visitTableActivityFeed(page, entityChangesTable);
 
         const feedItem = await getFeedItemByText(page, summaryText);
+        const entityLink = feedItem.locator('a[href*="/table/"]').first();
 
         await expect(feedItem).toContainText(/tag/i);
-        await expect(feedItem).toContainText(tagDisplayName);
         await expect(feedItem).toContainText(adminDisplayName);
+        await expect(entityLink).toBeVisible();
       });
     });
 
     test('renders an owner-updated activity item in the feed', async ({
       page,
     }) => {
-      const summaryText = `Owner updated ${uuid()}`;
+      const summaryText = `Activity feed render ${uuid()}`;
 
       await test.step('Seed an OwnerUpdated activity event', async () => {
         const { apiContext, afterAction } = await getApiContext(page);
@@ -156,9 +153,11 @@ test.describe(
         await visitTableActivityFeed(page, entityChangesTable);
 
         const feedItem = await getFeedItemByText(page, summaryText);
+        const entityLink = feedItem.locator('a[href*="/table/"]').first();
 
         await expect(feedItem).toContainText(/owner/i);
         await expect(feedItem).toContainText(adminDisplayName);
+        await expect(entityLink).toBeVisible();
       });
     });
   }
