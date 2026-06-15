@@ -36,7 +36,7 @@ def get_source_table_details(stream: AirbyteStream, source_connection: AirbyteSo
     if source_name and "api" in source_name.lower():
         return TableDetails(
             name=stream.name,
-            schema=None,
+            schema=stream.namespace or "",
             database=None,
         )
 
@@ -78,7 +78,7 @@ def get_destination_table_details(
         bucket_name = (destination_connection.connectionConfiguration or {}).get("s3_bucket_name")
         return TableDetails(
             name=stream.name,
-            schema=bucket_name,
+            schema=str(bucket_name) if bucket_name else "",
             database=None,
         )
 

@@ -19,6 +19,7 @@ from pydantic import BaseModel
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
     PipelineStatus,
@@ -58,7 +59,6 @@ from metadata.utils import fqn
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.time_utils import datetime_to_timestamp
-from metadata.generated.schema.entity.data.container import Container
 
 from .utils import get_destination_table_details, get_source_table_details  # noqa: TID252
 
@@ -157,23 +157,12 @@ class AirbyteSource(PipelineServiceSource):
         for job in self.client.list_jobs(pipeline_details.connection.connectionId):
             if not job or not job.attempts:
                 continue
+
             for attempt in job.attempts:
-                created_at = (
-                    datetime_to_timestamp(
-                        datetime.fromtimestamp(attempt.createdAt, tz=timezone.utc),
-                        milliseconds=True,
-                    )
-                    if attempt.createdAt is not None
-                    else None
-                )
-                ended_at = (
-                    datetime_to_timestamp(
-                        datetime.fromtimestamp(attempt.endedAt, tz=timezone.utc),
-                        milliseconds=True,
-                    )
-                    if attempt.endedAt is not None
-                    else None
-                )
+                # Use the new helper method here!
+                created_at = self._parse_timestamp(attempt.createdAt)
+                ended_at = self._parse_timestamp(attempt.endedAt)
+
                 task_status = [
                     TaskStatus(
                         name=str(pipeline_details.connection.connectionId),
@@ -200,6 +189,15 @@ class AirbyteSource(PipelineServiceSource):
                         pipeline_status=pipeline_status,
                     )
                 )
+
+    def _parse_timestamp(self, timestamp_val: int | None) -> int | None:
+        """Helper to parse timestamps and reduce cognitive complexity"""
+        if timestamp_val is None:
+            return None
+        return datetime_to_timestamp(
+            datetime.fromtimestamp(timestamp_val, tz=timezone.utc),
+            milliseconds=True,
+        )
 
     def _yield_pipeline_status_cloud(
         self, pipeline_details: AirbytePipelineDetails
@@ -384,9 +382,7 @@ class AirbyteSource(PipelineServiceSource):
                 )
                 continue
 
-            from_entity_class, from_type_str, from_fqn = self._resolve_lineage_entity(
-                source_name, source_table_details
-            )
+            from_entity_class, from_type_str, from_fqn = self._resolve_lineage_entity(source_name, source_table_details)
             to_entity_class, to_type_str, to_fqn = self._resolve_lineage_entity(
                 destination_name, destination_table_details
             )

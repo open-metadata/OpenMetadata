@@ -20,6 +20,7 @@ from unittest.mock import patch
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
     PipelineStatus,
@@ -54,7 +55,6 @@ from metadata.ingestion.source.pipeline.airbyte.models import (
     AirbyteWorkspace,
 )
 from metadata.utils.constants import UTF_8
-from metadata.generated.schema.entity.data.container import Container
 
 mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/airbyte_dataset.json"
 with open(mock_file_path, encoding=UTF_8) as file:  # noqa: PTH123
@@ -277,6 +277,46 @@ class AirbyteUnitTest(TestCase):
         status = [either.right for either in self.airbyte.yield_pipeline_status(EXPECTED_AIRBYTE_DETAILS)]
         assert status == EXPECTED_PIPELINE_STATUS
 
+    def test_get_container_fqn(self):
+        """Test _get_container_fqn execution for SonarCloud coverage"""
+        # Test None case
+        assert self.airbyte._get_container_fqn(None) is None
+
+        # Test valid container
+        with patch("metadata.ingestion.source.pipeline.airbyte.metadata.fqn.build") as mock_fqn_build:
+            mock_fqn_build.return_value = "mock_s3_service.my-bucket"
+            result = self.airbyte._get_container_fqn("my-bucket")
+            assert result == "mock_s3_service.my-bucket"
+            mock_fqn_build.assert_called_once()
+
+        # Test FQNNotFoundException catch block
+        from metadata.ingestion.source.pipeline.openlineage.utils import FQNNotFoundException
+
+        with patch("metadata.ingestion.source.pipeline.airbyte.metadata.fqn.build") as mock_fqn_build:
+            mock_fqn_build.side_effect = FQNNotFoundException()
+            assert self.airbyte._get_container_fqn("my-bucket") is None
+
+    def test_resolve_lineage_entity(self):
+        """Test _resolve_lineage_entity execution for SonarCloud coverage"""
+        # Test missing table details
+        cls, type_str, fqn_str = self.airbyte._resolve_lineage_entity("S3", None)
+        assert cls == Table
+        assert type_str == "table"
+        assert fqn_str is None
+
+        # Test S3 Container resolution
+        from metadata.ingestion.source.pipeline.openlineage.models import TableDetails
+
+        with patch.object(self.airbyte, "_get_container_fqn") as mock_get_container:
+            mock_get_container.return_value = "mock_s3_service.bucket"
+            table_details = TableDetails(name="test", schema="bucket", database=None)
+
+            cls, type_str, fqn_str = self.airbyte._resolve_lineage_entity("S3", table_details)
+
+            assert cls == Container
+            assert type_str == "container"
+            assert fqn_str == "mock_s3_service.bucket"
+
     @patch.object(AirbyteSource, "_get_table_fqn", mock_get_table_fqn)
     def test_yield_pipeline_lineage_details(self):
         """Test the Airbyte lineage generation functionality."""
@@ -453,8 +493,6 @@ MOCK_CLOUD_PIPELINE = Pipeline(
 )
 
 
-
-
 class AirbyteCloudUnitTest(TestCase):
     """Test class for Airbyte Cloud source module."""
 
@@ -536,9 +574,7 @@ class AirbyteCloudUnitTest(TestCase):
             sourceId="test-api-source-id",
             destinationId="test-s3-destination-id",
             name="API to S3 Pipeline Bug Replication",
-            syncCatalog={
-                "streams": [{"stream": {"name": "api_endpoint_data", "namespace": None, "jsonSchema": {}}}]
-            },
+            syncCatalog={"streams": [{"stream": {"name": "api_endpoint_data", "namespace": None, "jsonSchema": {}}}]},
         )
 
         test_workspace = AirbyteWorkspace(workspaceId="test-workspace-id")
