@@ -683,9 +683,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       // Capture the descendants so the post-write pass can re-evict any entry a racing reader
       // re-populated with the pre-rename row between this call and glossaryTermDAO.updateFqn.
       // The pass below runs after updateFqn but inside this transaction — see
-      // EntityCacheInvalidator.invalidateCacheForRenameCascade for the residual pre-commit window.
+      // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit window.
       List<EntityDAO.EntityIdFqnPair> renamedTerms =
-          EntityCacheInvalidator.invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
+          EntityRepository.invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
       daoCollection.glossaryTermDAO().updateFqn(oldFqn, newFqn);
       daoCollection.tagUsageDAO().updateTagPrefix(TagSource.GLOSSARY.ordinal(), oldFqn, newFqn);
       recordChange("name", FullyQualifiedName.unquoteName(oldFqn), updated.getName());
@@ -706,13 +706,12 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
               PolicyConditionUpdater.renamePrefixInCondition(
                   condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
 
-      EntityCacheInvalidator.finishInvalidateCacheForRenameCascade(
-          Entity.GLOSSARY_TERM, renamedTerms);
+      EntityRepository.finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
     }
 
     public void invalidateGlossary(UUID classificationId) {
       // Glossary name changed. Invalidate the glossary and its children terms
-      EntityCaches.CACHE_WITH_ID.invalidate(new ImmutablePair<>(GLOSSARY, classificationId));
+      EntityRepository.CACHE_WITH_ID.invalidate(new ImmutablePair<>(GLOSSARY, classificationId));
       List<EntityRelationshipRecord> tags =
           findToRecords(classificationId, GLOSSARY, Relationship.CONTAINS, GLOSSARY_TERM);
       for (EntityRelationshipRecord tagRecord : tags) {
@@ -725,7 +724,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       // children from the cache
       List<EntityRelationshipRecord> tagRecords =
           findToRecords(termId, GLOSSARY_TERM, Relationship.CONTAINS, GLOSSARY_TERM);
-      EntityCaches.CACHE_WITH_ID.invalidate(new ImmutablePair<>(GLOSSARY_TERM, termId));
+      EntityRepository.CACHE_WITH_ID.invalidate(new ImmutablePair<>(GLOSSARY_TERM, termId));
       for (EntityRelationshipRecord tagRecord : tagRecords) {
         invalidateTerms(tagRecord.getId());
       }

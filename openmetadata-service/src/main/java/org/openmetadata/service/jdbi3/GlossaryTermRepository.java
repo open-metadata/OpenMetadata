@@ -2232,13 +2232,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       // Capture the descendants so the post-write pass can re-evict any entry a racing reader
       // re-populated with the pre-rename row between this call and glossaryTermDAO.updateFqn.
       // The pass below runs after updateFqn but inside this transaction — see
-      // EntityCacheInvalidator.invalidateCacheForRenameCascade for the residual pre-commit window.
+      // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit window.
       List<EntityDAO.EntityIdFqnPair> renamedTerms =
-          EntityCacheInvalidator.invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
+          EntityRepository.invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
       // Drop cached entity JSON / bundle for every entity tagged with this term (or any
       // descendant). Done BEFORE the DB rename so the search lookup still matches by old FQN.
-      EntityCacheInvalidator.invalidateCacheForTaggedEntitiesAndDescendants(
-          Entity.GLOSSARY_TERM, oldFqn);
+      EntityRepository.invalidateCacheForTaggedEntitiesAndDescendants(Entity.GLOSSARY_TERM, oldFqn);
       daoCollection.glossaryTermDAO().updateFqn(oldFqn, newFqn);
       daoCollection.tagUsageDAO().rename(TagSource.GLOSSARY.ordinal(), oldFqn, newFqn);
 
@@ -2280,8 +2279,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         updateAssetIndexes(oldFqn, newFqn);
       }
 
-      EntityCacheInvalidator.finishInvalidateCacheForRenameCascade(
-          Entity.GLOSSARY_TERM, renamedTerms);
+      EntityRepository.finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
     }
 
     /**
@@ -2310,13 +2308,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       // Capture the descendants so the post-write pass can re-evict any entry a racing reader
       // re-populated with the pre-rename row between this call and glossaryTermDAO.updateFqn.
       // The pass below runs after updateFqn but inside this transaction — see
-      // EntityCacheInvalidator.invalidateCacheForRenameCascade for the residual pre-commit window.
+      // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit window.
       List<EntityDAO.EntityIdFqnPair> renamedTerms =
-          EntityCacheInvalidator.invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
+          EntityRepository.invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
       // Drop cached entity JSON / bundle for every entity tagged with this term (or any
       // descendant). Done BEFORE the DB rename so the search lookup still matches by old FQN.
-      EntityCacheInvalidator.invalidateCacheForTaggedEntitiesAndDescendants(
-          Entity.GLOSSARY_TERM, oldFqn);
+      EntityRepository.invalidateCacheForTaggedEntitiesAndDescendants(Entity.GLOSSARY_TERM, oldFqn);
       daoCollection.glossaryTermDAO().updateFqn(oldFqn, newFqn);
       daoCollection.tagUsageDAO().rename(TagSource.GLOSSARY.ordinal(), oldFqn, newFqn);
 
@@ -2348,8 +2345,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       }
       updateAssetIndexes(oldFqn, newFqn);
 
-      EntityCacheInvalidator.finishInvalidateCacheForRenameCascade(
-          Entity.GLOSSARY_TERM, renamedTerms);
+      EntityRepository.finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
     }
 
     private void validateParent() {
@@ -2429,7 +2425,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       visited.add(termId);
       List<EntityRelationshipRecord> tagRecords =
           findToRecords(termId, GLOSSARY_TERM, Relationship.CONTAINS, GLOSSARY_TERM);
-      EntityCaches.CACHE_WITH_ID.invalidate(new ImmutablePair<>(GLOSSARY_TERM, termId));
+      EntityRepository.CACHE_WITH_ID.invalidate(new ImmutablePair<>(GLOSSARY_TERM, termId));
       for (EntityRelationshipRecord tagRecord : tagRecords) {
         invalidateTerm(tagRecord.getId(), visited);
       }

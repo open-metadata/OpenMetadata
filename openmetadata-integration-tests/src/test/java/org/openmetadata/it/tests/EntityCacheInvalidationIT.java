@@ -31,7 +31,7 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityCaches;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.RequestEntityCache;
 
 /**
@@ -124,11 +124,11 @@ class EntityCacheInvalidationIT {
     UUID domainId = domain.getId();
 
     // Force a cache load
-    EntityCaches.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.DOMAIN, domainId));
+    EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.DOMAIN, domainId));
 
     // Verify cache has the entity
     String cachedJson =
-        EntityCaches.CACHE_WITH_ID.getIfPresent(new ImmutablePair<>(Entity.DOMAIN, domainId));
+        EntityRepository.CACHE_WITH_ID.getIfPresent(new ImmutablePair<>(Entity.DOMAIN, domainId));
     assertNotNull(cachedJson, "Cache should contain the entity after get()");
     Domain cachedEntity = JsonUtils.readValue(cachedJson, Domain.class);
     assertEquals("before update", cachedEntity.getDescription());
@@ -138,7 +138,8 @@ class EntityCacheInvalidationIT {
     SdkClients.adminClient().domains().update(domainId.toString(), domain);
 
     // After update, re-loading from cache should get fresh data
-    String freshJson = EntityCaches.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.DOMAIN, domainId));
+    String freshJson =
+        EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.DOMAIN, domainId));
     Domain freshEntity = JsonUtils.readValue(freshJson, Domain.class);
     assertEquals(
         "after update",

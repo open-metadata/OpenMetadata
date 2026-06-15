@@ -74,7 +74,6 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
-import org.openmetadata.service.util.CustomPropertyValidator;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
@@ -367,7 +366,7 @@ public class ColumnRepository {
         .ifPresent(
             ext -> {
               Object transformedExtension =
-                  CustomPropertyValidator.validateAndTransformExtension(ext, columnEntityType);
+                  EntityRepository.validateAndTransformExtension(ext, columnEntityType);
               column.setExtension(transformedExtension);
             });
   }

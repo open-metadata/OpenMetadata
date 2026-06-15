@@ -11,19 +11,23 @@
  *  limitations under the License.
  */
 import { Button, Popover } from 'antd';
-import { useCallback, useMemo, useState } from 'react';
+import { lazy, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
 import { getVisiblePopupContainer } from '../../../utils/LandingPageWidget/WidgetsUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
-import DomainSelectablTree from '../DomainSelectableTree/DomainSelectableTree';
 import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import './domain-select-dropdown.less';
 import { DomainSelectableListProps } from './DomainSelectableList.interface';
+
+const DomainSelectablTree = withSuspenseFallback(
+  lazy(() => import('../DomainSelectableTree/DomainSelectableTree'))
+);
 
 const DomainSelectableList = ({
   children,

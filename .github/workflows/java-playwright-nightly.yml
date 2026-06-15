@@ -64,6 +64,11 @@ on:
         required: false
         type: string
         default: '5000'
+      reindexTimeoutMin:
+        description: 'Per-run reindex completion/acceptance timeout (minutes) for ui-it & search-it'
+        required: false
+        type: string
+        default: '60'
 
 permissions:
   contents: read
@@ -257,11 +262,16 @@ jobs:
           # Nightly bumps the per-test cohort sizes up to the historical stress numbers.
           # PR runs use the smaller defaults baked into each test so `mvn verify` is fast.
           # Sizes are workflow_dispatch inputs (defaults below) so they're tunable per run.
+          # Embedded nightly recreates a fresh stack each run, so data never persists — these
+          # small-footprint suites always create on the fly (jpw.data.mode=ingest). Static/ensure
+          # reuse is only for the persistent external cluster (see java-playwright-external.yml).
           STRESS_PROPS="-Djpw.simpleReindex.tables=${{ github.event.inputs.simpleReindexTables || '5000' }} \
             -Djpw.simpleReindex.topics=${{ github.event.inputs.simpleReindexTopics || '1500' }} \
             -Djpw.simpleReindex.dashboards=${{ github.event.inputs.simpleReindexDashboards || '1500' }} \
             -Djpw.simpleReindex.pipelines=${{ github.event.inputs.simpleReindexPipelines || '2000' }} \
-            -Djpw.searchAvailable.tables=${{ github.event.inputs.searchAvailableTables || '5000' }}"
+            -Djpw.searchAvailable.tables=${{ github.event.inputs.searchAvailableTables || '5000' }} \
+            -Djpw.data.mode=ingest \
+            -Djpw.reindex.timeoutMin=${{ github.event.inputs.reindexTimeoutMin || '60' }}"
           # Opt-in for SSO bootstrap UIITs (second OM lifecycle); default off.
           if [ "${{ github.event.inputs.includeSsoBootstrap }}" = "true" ]; then
             SSO_PROPS="-Dui.it.excludedGroups="
@@ -380,7 +390,9 @@ jobs:
       - name: Run isolated search ITs (postgres + opensearch)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn verify -P search-it -pl :openmetadata-integration-tests -DdatabaseType=postgres -DsearchType=opensearch
+        # Embedded bootstrap = fresh stack each run; these search ITs create their cohorts on the
+        # fly (jpw.data.mode=ingest). Static/ensure reuse is for the external cluster only.
+        run: mvn verify -P search-it -pl :openmetadata-integration-tests -DdatabaseType=postgres -DsearchType=opensearch -Djpw.data.mode=ingest -Djpw.reindex.timeoutMin=${{ github.event.inputs.reindexTimeoutMin || '60' }}
 
       - name: Upload Failsafe Reports
         if: ${{ always() }}

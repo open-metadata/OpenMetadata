@@ -111,14 +111,15 @@ public class PersonaRepository extends EntityRepository<Persona> {
   private void unsetExistingDefaultPersona(String newDefaultPersonaId) {
     // Capture both id and FQN *before* the bulk update. The bulk update rewrites JSON directly —
     // bypassing invalidateCachesAfterStore — so every affected persona would keep stale
-    // "default=true" in both EntityCaches.CACHE_WITH_ID and EntityCaches.CACHE_WITH_NAME variants.
+    // "default=true" in both EntityRepository.CACHE_WITH_ID and EntityRepository.CACHE_WITH_NAME
+    // variants.
     // Passing fqn lets
     // invalidateCacheForEntity drop the by-name cache alongside the by-id one.
     List<EntityDAO.EntityIdFqnPair> affected =
         daoCollection.personaDAO().findOtherDefaultPersonaIdsWithFqn(newDefaultPersonaId);
     daoCollection.personaDAO().unsetOtherDefaultPersonas(newDefaultPersonaId);
     for (EntityDAO.EntityIdFqnPair persona : affected) {
-      EntityCacheInvalidator.invalidateCacheForEntity(Entity.PERSONA, persona.id, persona.fqn);
+      EntityRepository.invalidateCacheForEntity(Entity.PERSONA, persona.id, persona.fqn);
     }
   }
 
@@ -155,15 +156,13 @@ public class PersonaRepository extends EntityRepository<Persona> {
     // Users/teams that had this persona cached embed the persona reference in their serialized
     // JSON. Drop their cached entries so the next read rebuilds without the now-deleted persona.
     for (EntityReference user : listOrEmpty(users)) {
-      EntityCacheInvalidator.invalidateCacheForEntity(
-          USER, user.getId(), user.getFullyQualifiedName());
+      EntityRepository.invalidateCacheForEntity(USER, user.getId(), user.getFullyQualifiedName());
     }
     for (EntityReference user : listOrEmpty(defaultUsers)) {
-      EntityCacheInvalidator.invalidateCacheForEntity(
-          USER, user.getId(), user.getFullyQualifiedName());
+      EntityRepository.invalidateCacheForEntity(USER, user.getId(), user.getFullyQualifiedName());
     }
     for (EntityReference team : listOrEmpty(teams)) {
-      EntityCacheInvalidator.invalidateCacheForEntity(
+      EntityRepository.invalidateCacheForEntity(
           Entity.TEAM, team.getId(), team.getFullyQualifiedName());
     }
   }

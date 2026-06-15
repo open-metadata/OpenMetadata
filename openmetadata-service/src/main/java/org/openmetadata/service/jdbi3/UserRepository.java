@@ -131,6 +131,8 @@ public class UserRepository extends EntityRepository<User> {
       "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,domains,personaPreferences";
   static final String USER_UPDATE_FIELDS =
       "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,domains,personaPreferences";
+  private static final String OWNS_ENTITY_TYPE_PARAM = "ownsEntityType";
+  private static final String DIRECT_OWNS_ONLY_PARAM = "directOwnsOnly";
   private volatile EntityReference organization;
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
@@ -882,61 +884,85 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   private void fetchAndSetOwns(List<User> users, Fields fields) {
+    fetchAndSetOwns(users, fields, null);
+  }
+
+  private void fetchAndSetOwns(List<User> users, Fields fields, ListFilter filter) {
     if (!fields.contains("owns") || users == null || users.isEmpty()) {
       return;
     }
 
     List<String> userIds = users.stream().map(User::getId).map(UUID::toString).distinct().toList();
+    String ownsEntityType = filter == null ? null : filter.getQueryParam(OWNS_ENTITY_TYPE_PARAM);
+    boolean directOwnsOnly =
+        filter != null && Boolean.parseBoolean(filter.getQueryParam(DIRECT_OWNS_ONLY_PARAM));
 
     // Get entities owned by users
     List<CollectionDAO.EntityRelationshipObject> ownsRecords =
-        daoCollection
-            .relationshipDAO()
-            .findToBatchAllTypes(userIds, Relationship.OWNS.ordinal(), Include.ALL);
+        nullOrEmpty(ownsEntityType)
+            ? daoCollection
+                .relationshipDAO()
+                .findToBatchAllTypes(userIds, Relationship.OWNS.ordinal(), Include.ALL)
+            : daoCollection
+                .relationshipDAO()
+                .findToBatch(userIds, Relationship.OWNS.ordinal(), ownsEntityType, Include.ALL);
 
     // Also get entities owned by teams that users belong to
     // First get all teams for all users
     Map<UUID, List<EntityReference>> userTeams = new HashMap<>();
-    if (!fields.contains(TEAMS_FIELD)) {
-      // If teams weren't already fetched, we need to get them
-      List<CollectionDAO.EntityRelationshipObject> teamRecords =
-          daoCollection
-              .relationshipDAO()
-              .findFromBatch(userIds, Relationship.HAS.ordinal(), Entity.TEAM, USER);
-      Map<UUID, EntityReference> teamRefsById =
-          batchResolveRefs(
-              Entity.TEAM, teamRecords.stream().map(r -> UUID.fromString(r.getFromId())).toList());
-      for (CollectionDAO.EntityRelationshipObject record : teamRecords) {
-        UUID userId = UUID.fromString(record.getToId());
-        EntityReference teamRef = teamRefsById.get(UUID.fromString(record.getFromId()));
-        if (teamRef != null) {
-          userTeams.computeIfAbsent(userId, k -> new ArrayList<>()).add(teamRef);
+    if (!directOwnsOnly) {
+      if (!fields.contains(TEAMS_FIELD)) {
+        // If teams weren't already fetched, we need to get them
+        List<CollectionDAO.EntityRelationshipObject> teamRecords =
+            daoCollection
+                .relationshipDAO()
+                .findFromBatch(userIds, Relationship.HAS.ordinal(), Entity.TEAM, USER);
+        Map<UUID, EntityReference> teamRefsById =
+            batchResolveRefs(
+                Entity.TEAM,
+                teamRecords.stream().map(r -> UUID.fromString(r.getFromId())).toList());
+        for (CollectionDAO.EntityRelationshipObject record : teamRecords) {
+          UUID userId = UUID.fromString(record.getToId());
+          EntityReference teamRef = teamRefsById.get(UUID.fromString(record.getFromId()));
+          if (teamRef != null) {
+            userTeams.computeIfAbsent(userId, k -> new ArrayList<>()).add(teamRef);
+          }
         }
-      }
-    } else {
-      // Use already fetched teams
-      for (User user : users) {
-        if (user.getTeams() != null) {
-          userTeams.put(user.getId(), user.getTeams());
+      } else {
+        // Use already fetched teams
+        for (User user : users) {
+          if (user.getTeams() != null) {
+            userTeams.put(user.getId(), user.getTeams());
+          }
         }
       }
     }
 
     // Get entities owned by teams
     Set<String> allTeamIds =
-        userTeams.values().stream()
-            .flatMap(List::stream)
-            .map(EntityReference::getId)
-            .map(UUID::toString)
-            .collect(Collectors.toSet());
+        directOwnsOnly
+            ? Collections.emptySet()
+            : userTeams.values().stream()
+                .flatMap(List::stream)
+                .map(EntityReference::getId)
+                .map(UUID::toString)
+                .collect(Collectors.toSet());
 
     List<CollectionDAO.EntityRelationshipObject> teamOwnsRecords = new ArrayList<>();
     if (!allTeamIds.isEmpty()) {
       teamOwnsRecords =
-          daoCollection
-              .relationshipDAO()
-              .findToBatchAllTypes(
-                  new ArrayList<>(allTeamIds), Relationship.OWNS.ordinal(), Include.ALL);
+          nullOrEmpty(ownsEntityType)
+              ? daoCollection
+                  .relationshipDAO()
+                  .findToBatchAllTypes(
+                      new ArrayList<>(allTeamIds), Relationship.OWNS.ordinal(), Include.ALL)
+              : daoCollection
+                  .relationshipDAO()
+                  .findToBatch(
+                      new ArrayList<>(allTeamIds),
+                      Relationship.OWNS.ordinal(),
+                      ownsEntityType,
+                      Include.ALL);
     }
 
     // Map user to owned entities
@@ -984,6 +1010,23 @@ public class UserRepository extends EntityRepository<User> {
       }
       user.setOwns(ownedEntities);
     }
+  }
+
+  @Override
+  public void setFieldsInBulk(Fields fields, List<User> users, ListFilter filter) {
+    if (fields.contains("owns")
+        && filter != null
+        && (!nullOrEmpty(filter.getQueryParam(OWNS_ENTITY_TYPE_PARAM))
+            || Boolean.parseBoolean(filter.getQueryParam(DIRECT_OWNS_ONLY_PARAM)))) {
+      fetchAndSetFieldsExcept(users, fields, Set.of("owns"));
+      fetchAndSetOwns(users, fields, filter);
+      setInheritedFields(users, fields);
+      for (User user : users) {
+        clearFieldsInternal(user, fields);
+      }
+      return;
+    }
+    super.setFieldsInBulk(fields, users);
   }
 
   private void fetchAndSetFollows(List<User> users, Fields fields) {
@@ -1344,8 +1387,9 @@ public class UserRepository extends EntityRepository<User> {
     // and its cache-invalidate hook — without explicit eviction the next GET on a
     // previously-read task returns the stale cached row even though the DB row is gone.
     // FQN is required because tasks expose both GET /v1/tasks/{id}
-    // (EntityCaches.CACHE_WITH_ID-keyed) and
-    // GET /v1/tasks/name/{taskId} (EntityCaches.CACHE_WITH_NAME-keyed); dropping only by id would
+    // (EntityRepository.CACHE_WITH_ID-keyed) and
+    // GET /v1/tasks/name/{taskId} (EntityRepository.CACHE_WITH_NAME-keyed); dropping only by id
+    // would
     // leave a
     // by-name reader pinned to a stale entry.
     List<EntityDAO.EntityIdFqnPair> tasksToInvalidate =
@@ -1369,7 +1413,7 @@ public class UserRepository extends EntityRepository<User> {
       if (task.id == null) {
         continue;
       }
-      EntityCacheInvalidator.invalidateCacheForEntity(Entity.TASK, task.id, task.fqn);
+      EntityRepository.invalidateCacheForEntity(Entity.TASK, task.id, task.fqn);
       if (pubsub != null) {
         pubsub.publish(Entity.TASK, task.id, task.fqn, "bot-task-cleanup");
       }

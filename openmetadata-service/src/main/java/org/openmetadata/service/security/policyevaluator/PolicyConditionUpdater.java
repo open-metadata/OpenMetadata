@@ -27,7 +27,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityCacheInvalidator;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -226,7 +225,7 @@ public final class PolicyConditionUpdater {
   private static boolean casWritePolicy(EntityDAO<Policy> dao, Policy policy, String expectedJson) {
     boolean written = dao.updateIfMatches(policy, expectedJson) == 1;
     if (written) {
-      EntityCacheInvalidator.invalidateCacheForEntity(
+      EntityRepository.invalidateCacheForEntity(
           Entity.POLICY, policy.getId(), policy.getFullyQualifiedName());
       LOG.info("Updated policy conditions for '{}'", policy.getFullyQualifiedName());
     }

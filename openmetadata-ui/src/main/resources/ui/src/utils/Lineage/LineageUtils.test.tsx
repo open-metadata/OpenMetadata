@@ -11,12 +11,16 @@
  *  limitations under the License.
  */
 
-import { LineageNodeType } from '../../components/Lineage/Lineage.interface';
+import {
+  LineageNodeType,
+  NodeData,
+} from '../../components/Lineage/Lineage.interface';
 import { EImpactLevel } from '../../components/LineageTable/LineageTable.interface';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { TagSource } from '../../generated/type/tagLabel';
 import { TableSearchSource } from '../../interface/search.interface';
 import {
+  addBaseNodeDepthToNodes,
   getSearchNameEsQuery,
   LINEAGE_DEPENDENCY_OPTIONS,
   LINEAGE_IMPACT_OPTIONS,
@@ -984,6 +988,63 @@ describe('LineageUtils', () => {
       expect(result).toHaveLength(1);
       // Column not found in map, should return empty array
       expect(result[0].tags).toStrictEqual([]);
+    });
+  });
+
+  describe('addBaseNodeDepthToNodes', () => {
+    it('should offset nodeDepth by baseNodeDepth for each node', () => {
+      const nodes: Record<string, NodeData> = {
+        table1: {
+          entity: { id: 'e1', type: 'table', name: 'table1' },
+          paging: {},
+          nodeDepth: 1,
+        },
+        table2: {
+          entity: { id: 'e2', type: 'table', name: 'table2' },
+          paging: {},
+          nodeDepth: 2,
+        },
+      };
+
+      const result = addBaseNodeDepthToNodes(3, nodes);
+
+      expect(result['table1'].nodeDepth).toBe(4);
+      expect(result['table2'].nodeDepth).toBe(5);
+    });
+
+    it('should treat undefined nodeDepth as 0 when adding baseNodeDepth', () => {
+      const nodes: Record<string, NodeData> = {
+        table1: {
+          entity: { id: 'e1', type: 'table', name: 'table1' },
+          paging: {},
+        },
+      };
+
+      const result = addBaseNodeDepthToNodes(2, nodes);
+
+      expect(result['table1'].nodeDepth).toBe(2);
+    });
+
+    it('should return a new object and not mutate the original nodes', () => {
+      const nodes: Record<string, NodeData> = {
+        table1: {
+          entity: { id: 'e1', type: 'table', name: 'table1' },
+          paging: {},
+          nodeDepth: 1,
+        },
+      };
+
+      const result = addBaseNodeDepthToNodes(5, nodes);
+
+      expect(result).not.toBe(nodes);
+      expect(nodes['table1'].nodeDepth).toBe(1);
+      expect(result['table1'].nodeDepth).toBe(6);
+    });
+
+    it('should handle empty nodes record', () => {
+      const result = addBaseNodeDepthToNodes(3, {});
+
+      expect(result).toStrictEqual({});
     });
   });
 });

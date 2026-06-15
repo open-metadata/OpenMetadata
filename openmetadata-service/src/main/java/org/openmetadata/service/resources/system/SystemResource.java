@@ -74,7 +74,6 @@ import org.openmetadata.service.cache.CacheProvider;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.SystemSettingsException;
 import org.openmetadata.service.exception.UnhandledServerException;
-import org.openmetadata.service.jdbi3.EntityCacheInvalidator;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -1138,10 +1137,10 @@ public class SystemResource {
     //   2. Guava L1 caches (CACHE_WITH_ID, CACHE_WITH_NAME) — the hot path on every entity
     //      GET; without explicit eviction here, an admin force-invalidate wouldn't actually
     //      take effect on the originating pod's in-memory cache. The static
-    //      EntityCacheInvalidator.invalidateCacheForEntity also propagates over the pub-sub channel
+    //      EntityRepository.invalidateCacheForEntity also propagates over the pub-sub channel
     //      to other pods so multi-replica deploys all evict simultaneously.
     CacheBundle.invalidateEntity(type, id, normalizedFqn);
-    EntityCacheInvalidator.invalidateCacheForEntity(type, id, normalizedFqn);
+    EntityRepository.invalidateCacheForEntity(type, id, normalizedFqn);
     return Response.ok(Map.of("invalidated", true, "type", type)).build();
   }
 

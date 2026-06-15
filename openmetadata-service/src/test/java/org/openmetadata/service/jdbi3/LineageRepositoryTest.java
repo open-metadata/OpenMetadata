@@ -834,7 +834,7 @@ class LineageRepositoryTest {
     LineageRepository lineageRepository = new LineageRepository();
     UUID entityId = UUID.randomUUID();
     lineageRepository.deleteLineageBySource(
-        entityId, "table", LineageDetails.Source.OPEN_LINEAGE.value(), "admin");
+        entityId, "table", LineageDetails.Source.OPEN_LINEAGE.value(), "test-user");
 
     org.mockito.Mockito.verify(relationshipDAO)
         .findLineageBySourcePipeline(

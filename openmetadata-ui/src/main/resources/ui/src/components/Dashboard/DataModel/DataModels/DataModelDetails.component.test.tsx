@@ -114,11 +114,14 @@ jest.mock('../../../../utils/DashboardDataModelClassBase', () => ({
   },
 }));
 
-jest.mock('../../../../utils/CustomizePage/CustomizePageUtils', () => ({
-  getTabLabelMapFromTabs: jest.fn().mockReturnValue({}),
-  getDetailsTabWithNewLabel: jest.fn().mockReturnValue([]),
-  checkIfExpandViewSupported: jest.fn().mockReturnValue(false),
-}));
+jest.mock(
+  '../../../../utils/CustomizePage/CustomizePageEntityTabUtils',
+  () => ({
+    getTabLabelMapFromTabs: jest.fn().mockReturnValue({}),
+    getDetailsTabWithNewLabel: jest.fn().mockReturnValue([]),
+    checkIfExpandViewSupported: jest.fn().mockReturnValue(false),
+  })
+);
 
 describe('DataModelDetails component', () => {
   it('should render successfully', () => {

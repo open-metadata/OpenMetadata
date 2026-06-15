@@ -262,7 +262,8 @@ public class ContainerRepository extends EntityRepository<Container> {
     // De-dupe service IDs before resolving them to references. In any practical paged
     // listing the children are all under the same storage service, so the naive loop
     // below would call getEntityReferenceById N times for the same service id —
-    // each call hits EntityCaches.CACHE_WITH_ID (or DB) for the full StorageService JSON. Cache one
+    // each call hits EntityRepository.CACHE_WITH_ID (or DB) for the full StorageService JSON. Cache
+    // one
     // ref per unique service id and fan it back out to every child.
     Map<UUID, EntityReference> serviceRefById = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : records) {
@@ -1346,8 +1347,8 @@ public class ContainerRepository extends EntityRepository<Container> {
       validateSubtreeSize(oldFqn, descendantCount, maxAllowed);
 
       List<EntityDAO.EntityIdFqnPair> renamedContainers =
-          EntityCacheInvalidator.invalidateCacheForRenameCascade(CONTAINER, oldFqn);
-      EntityCacheInvalidator.invalidateCacheForTaggedEntitiesAndDescendants(CONTAINER, oldFqn);
+          EntityRepository.invalidateCacheForRenameCascade(CONTAINER, oldFqn);
+      EntityRepository.invalidateCacheForTaggedEntitiesAndDescendants(CONTAINER, oldFqn);
 
       daoCollection.containerDAO().updateFqn(oldFqn, newFqn);
 
@@ -1377,7 +1378,7 @@ public class ContainerRepository extends EntityRepository<Container> {
           FIELD_PARENT, original.getParent(), updated.getParent(), true, entityReferenceMatch);
 
       updateAssetIndexes(oldFqn, newFqn);
-      EntityCacheInvalidator.finishInvalidateCacheForRenameCascade(CONTAINER, renamedContainers);
+      EntityRepository.finishInvalidateCacheForRenameCascade(CONTAINER, renamedContainers);
     }
 
     private void updateParentRelationship(Container orig, Container updated) {

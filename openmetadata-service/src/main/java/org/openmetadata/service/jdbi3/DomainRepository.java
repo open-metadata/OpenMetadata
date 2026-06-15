@@ -318,7 +318,7 @@ public class DomainRepository extends EntityRepository<Domain> {
       // the asset's cached entity bundle and the per-field domains/owners hash entry both
       // hold the previous-domain view. Drop every cached variant so the next read rebuilds
       // it from the freshly-written relationships.
-      EntityCacheInvalidator.invalidateCacheForEntity(
+      EntityRepository.invalidateCacheForEntity(
           ref.getType(), ref.getId(), ref.getFullyQualifiedName());
 
       success.add(new BulkResponse().withRequest(ref));
@@ -607,11 +607,11 @@ public class DomainRepository extends EntityRepository<Domain> {
       // Capture the descendants so the post-write pass can re-evict any entry a racing reader
       // re-populated with the pre-rename row between this call and the DAO updateFqn below.
       // The pass below runs after updateFqn but inside this transaction — see
-      // EntityCacheInvalidator.invalidateCacheForRenameCascade for the residual pre-commit window.
+      // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit window.
       List<EntityDAO.EntityIdFqnPair> renamedDomains =
-          EntityCacheInvalidator.invalidateCacheForRenameCascade(Entity.DOMAIN, oldFqn);
+          EntityRepository.invalidateCacheForRenameCascade(Entity.DOMAIN, oldFqn);
       List<EntityDAO.EntityIdFqnPair> renamedDataProducts =
-          EntityCacheInvalidator.invalidateCacheForRenameCascade(Entity.DATA_PRODUCT, oldFqn);
+          EntityRepository.invalidateCacheForRenameCascade(Entity.DATA_PRODUCT, oldFqn);
 
       // Update all child domains' FQNs and FQN hashes
       daoCollection.domainDAO().updateFqn(oldFqn, newFqn);
@@ -633,8 +633,8 @@ public class DomainRepository extends EntityRepository<Domain> {
         invalidateDomainReferencers(child.getId());
       }
 
-      EntityCacheInvalidator.finishInvalidateCacheForRenameCascade(Entity.DOMAIN, renamedDomains);
-      EntityCacheInvalidator.finishInvalidateCacheForRenameCascade(
+      EntityRepository.finishInvalidateCacheForRenameCascade(Entity.DOMAIN, renamedDomains);
+      EntityRepository.finishInvalidateCacheForRenameCascade(
           Entity.DATA_PRODUCT, renamedDataProducts);
     }
 
@@ -647,7 +647,7 @@ public class DomainRepository extends EntityRepository<Domain> {
               .relationshipDAO()
               .findTo(domainId, Entity.DOMAIN, Relationship.HAS.ordinal());
       for (CollectionDAO.EntityRelationshipRecord record : referencers) {
-        EntityCacheInvalidator.invalidateCacheForReferencedEntity(record);
+        EntityRepository.invalidateCacheForReferencedEntity(record);
       }
     }
 

@@ -43,9 +43,18 @@ import { ConfigProvider } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  FC,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
+import { Link } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import {
   getCustomMarkdownComponents,
@@ -54,7 +63,7 @@ import {
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import DataAssetSelectList from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetSelectList';
-import TagSelectForm from '../../../components/Tag/TagsSelectForm/TagsSelectForm.component';
+import { ROUTES } from '../../../constants/constants';
 import {
   MEMORY_TYPE_OPTIONS,
   VISIBILITY_OPTIONS,
@@ -78,11 +87,20 @@ import {
   formatDate,
   getShortRelativeTime,
 } from '../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { getErrorText } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showSuccessToast } from '../../../utils/ToastUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { CreateMemoryModalProps } from './CreateMemoryModal.interface';
+
+const TagSelectForm = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../../components/Tag/TagsSelectForm/TagsSelectForm.component')
+  )
+);
 
 const LinkedAssetCard: FC<{
   asset: DataAssetOption;
@@ -523,6 +541,24 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                         <Typography className="tw:text-gray-500" size="text-xs">
                           {formatDate(memoryToEdit.updatedAt)}
                         </Typography>
+                      </div>
+                    )}
+                    {memoryToEdit?.sourceFile && (
+                      <div className="tw:flex tw:items-center tw:gap-1">
+                        <FileLock02
+                          className="tw:shrink-0 tw:text-gray-400"
+                          size={12}
+                          strokeWidth={2}
+                        />
+                        <Typography className="tw:text-gray-500" size="text-xs">
+                          {t('label.extracted-from')}
+                        </Typography>
+                        <Link
+                          className="tw:text-xs tw:font-medium tw:text-brand-600 tw:hover:underline tw:truncate"
+                          data-testid="memory-source-file-link"
+                          to={`${ROUTES.CONTEXT_CENTER_DOCUMENTS}?document=${memoryToEdit.sourceFile.id}`}>
+                          {getEntityName(memoryToEdit.sourceFile)}
+                        </Link>
                       </div>
                     )}
                   </div>

@@ -39,7 +39,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityCaches;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
@@ -72,7 +72,7 @@ public class CachedPermissionEvaluationTest {
         .thenAnswer(
             i ->
                 JsonUtils.readValue(
-                    EntityCaches.CACHE_WITH_NAME.get(
+                    EntityRepository.CACHE_WITH_NAME.get(
                         new ImmutablePair<>(Entity.USER, i.getArgument(1))),
                     User.class));
 
@@ -84,7 +84,7 @@ public class CachedPermissionEvaluationTest {
         .thenAnswer(
             i ->
                 JsonUtils.readValue(
-                    EntityCaches.CACHE_WITH_ID.get(
+                    EntityRepository.CACHE_WITH_ID.get(
                         new ImmutablePair<>(Entity.TEAM, i.getArgument(1))),
                     Team.class));
 
@@ -96,7 +96,7 @@ public class CachedPermissionEvaluationTest {
         .thenAnswer(
             i ->
                 JsonUtils.readValue(
-                    EntityCaches.CACHE_WITH_ID.get(
+                    EntityRepository.CACHE_WITH_ID.get(
                         new ImmutablePair<>(Entity.ROLE, i.getArgument(1))),
                     Role.class));
 
@@ -108,7 +108,7 @@ public class CachedPermissionEvaluationTest {
         .thenAnswer(
             i ->
                 JsonUtils.readValue(
-                    EntityCaches.CACHE_WITH_ID.get(
+                    EntityRepository.CACHE_WITH_ID.get(
                         new ImmutablePair<>(Entity.POLICY, i.getArgument(1))),
                     Policy.class));
   }
@@ -139,7 +139,7 @@ public class CachedPermissionEvaluationTest {
             .withName("testUser")
             .withRoles(toEntityReferences(userRoles))
             .withTeams(List.of(teamA.getEntityReference(), teamB.getEntityReference()));
-    EntityCaches.CACHE_WITH_NAME.put(
+    EntityRepository.CACHE_WITH_NAME.put(
         new ImmutablePair<>(Entity.USER, "testUser"), JsonUtils.pojoToJson(testUser));
   }
 
@@ -277,7 +277,7 @@ public class CachedPermissionEvaluationTest {
       String name = prefix + "_role_" + i;
       List<EntityReference> policies = toEntityReferences(createPolicies(name));
       Role role = new Role().withName(name).withId(UUID.randomUUID()).withPolicies(policies);
-      EntityCaches.CACHE_WITH_ID.put(
+      EntityRepository.CACHE_WITH_ID.put(
           new ImmutablePair<>(Entity.ROLE, role.getId()), JsonUtils.pojoToJson(role));
       roles.add(role);
     }
@@ -291,7 +291,7 @@ public class CachedPermissionEvaluationTest {
       Policy policy =
           new Policy().withName(name).withId(UUID.randomUUID()).withRules(createRules(name));
       policies.add(policy);
-      EntityCaches.CACHE_WITH_ID.put(
+      EntityRepository.CACHE_WITH_ID.put(
           new ImmutablePair<>(Entity.POLICY, policy.getId()), JsonUtils.pojoToJson(policy));
     }
     return policies;
@@ -324,7 +324,7 @@ public class CachedPermissionEvaluationTest {
             .withDefaultRoles(toEntityReferences(roles))
             .withPolicies(toEntityReferences(policies))
             .withParents(parentList);
-    EntityCaches.CACHE_WITH_ID.put(
+    EntityRepository.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.TEAM, team.getId()), JsonUtils.pojoToJson(team));
     return team;
   }

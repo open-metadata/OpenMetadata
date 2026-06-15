@@ -1,0 +1,62 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/chat/content/messageBlock.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MessageBlock",
+  "description": "A content block for a chat message supporting text and tool tracking.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.chat.content.MessageBlock",
+  "definitions": {
+    "textMessageType": {
+      "type": "string",
+      "enum": ["plain", "markdown"],
+      "default": "markdown"
+    },
+    "textMessage": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.chat.content.TextMessage",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/textMessageType",
+          "default": "markdown"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "toolCall": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.chat.content.ToolCall",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "input": {
+          "existingJavaType": "java.lang.Object",
+          "type": "object"
+        },
+        "result": {
+          "existingJavaType": "java.lang.Object",
+          "type": "object"
+        }
+      },
+      "required": ["name"]
+    }
+  },
+  "properties": {
+    "type": {
+      "$ref": "./chatContentType.json",
+      "default": "Generic"
+    },
+    "textMessage": {
+      "$ref": "#/definitions/textMessage"
+    },
+    "tools": {
+      "description": "Tool calls made during message generation.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/toolCall"
+      }
+    }
+  }
+}
