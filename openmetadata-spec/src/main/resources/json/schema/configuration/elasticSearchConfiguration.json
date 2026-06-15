@@ -172,11 +172,6 @@
               "description": "AWS credentials configuration for Bedrock service",
               "$ref": "../security/credentials/awsBaseConfig.json"
             },
-            "modelId": {
-              "description": "Bedrock model identifier to use for query transformation",
-              "type": "string",
-              "default": "anthropic.claude-v2"
-            },
             "embeddingModelId": {
               "description": "Bedrock embedding model identifier to use for vector search",
               "type": "string",
@@ -186,25 +181,6 @@
               "description": "Dimension of the embedding vector",
               "type": "integer",
               "default": 512
-            },
-            "timeoutSeconds": {
-              "description": "Bedrock InvokeModel API call timeout in seconds.",
-              "type": "integer",
-              "minimum": 1,
-              "default": 15
-            },
-            "maxTokens": {
-              "description": "Maximum tokens the Bedrock model is allowed to generate.",
-              "type": "integer",
-              "minimum": 1,
-              "default": 256
-            },
-            "temperature": {
-              "description": "Sampling temperature for Bedrock requests.",
-              "type": "number",
-              "minimum": 0.0,
-              "maximum": 2.0,
-              "default": 0.0
             }
           },
           "additionalProperties": false
@@ -229,11 +205,6 @@
               "description": "API key for authenticating with OpenAI or Azure OpenAI.",
               "type": "string"
             },
-            "modelId": {
-              "description": "OpenAI model identifier to use for query transformation (chat completions).",
-              "type": "string",
-              "default": "gpt-4o-mini"
-            },
             "embeddingModelId": {
               "description": "OpenAI embedding model identifier (e.g., text-embedding-3-small, text-embedding-ada-002).",
               "type": "string",
@@ -256,25 +227,6 @@
               "description": "Azure OpenAI API version. Only used with Azure OpenAI.",
               "type": "string",
               "default": "2024-02-01"
-            },
-            "timeoutSeconds": {
-              "description": "OpenAI HTTP request and connect timeout in seconds.",
-              "type": "integer",
-              "minimum": 1,
-              "default": 30
-            },
-            "maxTokens": {
-              "description": "Maximum tokens the OpenAI model is allowed to generate.",
-              "type": "integer",
-              "minimum": 1,
-              "default": 256
-            },
-            "temperature": {
-              "description": "Sampling temperature for OpenAI requests.",
-              "type": "number",
-              "minimum": 0.0,
-              "maximum": 2.0,
-              "default": 0.0
             }
           },
           "additionalProperties": false
@@ -301,6 +253,29 @@
               "type": "integer",
               "minimum": 1,
               "default": 10
+            },
+            "modelId": {
+              "description": "Optional model override for NLQ filter extraction. Leave empty to use the model from llmConfiguration.",
+              "type": "string"
+            },
+            "maxTokens": {
+              "description": "Maximum tokens the model may generate for NLQ filter extraction.",
+              "type": "integer",
+              "minimum": 1,
+              "default": 256
+            },
+            "temperature": {
+              "description": "Sampling temperature for NLQ filter extraction.",
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 2.0,
+              "default": 0.0
+            },
+            "timeoutSeconds": {
+              "description": "Per-call timeout in seconds for NLQ filter extraction completion.",
+              "type": "integer",
+              "minimum": 1,
+              "default": 15
             }
           },
           "additionalProperties": false
@@ -351,11 +326,6 @@
             "apiKey": {
               "description": "API key from Google AI Studio for authenticating with the Generative Language API.",
               "type": "string"
-            },
-            "modelId": {
-              "description": "Gemini chat model identifier for query transformation (e.g., gemini-2.5-flash, gemini-1.5-flash).",
-              "type": "string",
-              "default": "gemini-2.5-flash"
             },
             "embeddingModelId": {
               "description": "Gemini embedding model identifier (e.g., gemini-embedding-001, text-embedding-004).",
