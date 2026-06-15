@@ -12,8 +12,6 @@
  */
 
 import { expect, Page } from '@playwright/test';
-import * as fs from 'fs';
-import * as path from 'path';
 import { VIEW_ONLY_RULE } from '../../constant/permission';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
@@ -846,26 +844,11 @@ test.describe('Context Center', () => {
   // ─── Documents Page ───────────────────────────────────────────────────────────
 
   test.describe('Documents Page', () => {
-    const uploadFilePath = path.join(
-      __dirname,
-      '..',
-      'output',
-      'context-center-upload.txt'
-    );
-
-    test.beforeAll(() => {
-      const dir = path.dirname(uploadFilePath);
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
-      fs.writeFileSync(uploadFilePath, 'context center upload test file');
-    });
-
-    test.afterAll(() => {
-      if (fs.existsSync(uploadFilePath)) {
-        fs.unlinkSync(uploadFilePath);
-      }
-    });
+    const uploadFile = {
+      name: 'context-center-upload.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from('context center upload test file'),
+    };
 
     test('shows header with Upload File button', async ({ page }) => {
       await navigateToDocuments(page);
@@ -922,73 +905,14 @@ test.describe('Context Center', () => {
 
       // Set file on the input via testId; wait for attached (not visible)
       const fileInput = page.getByTestId('file-upload-input');
-      console.log('[upload-test] resolved file path:', uploadFilePath);
 
       await fileInput.waitFor({ state: 'attached' });
-      console.log('[upload-test] file input is attached to DOM');
 
-      // Snapshot the input's attributes before we touch it
-      const inputAttrs = await fileInput.evaluate((el: HTMLInputElement) => ({
-        accept: el.accept,
-        disabled: el.disabled,
-        isConnected: el.isConnected,
-        multiple: el.multiple,
-        parentTag: el.parentElement?.tagName,
-        type: el.type,
-      }));
-      console.log(
-        '[upload-test] input attrs before setInputFiles:',
-        JSON.stringify(inputAttrs)
-      );
+      await fileInput.setInputFiles(uploadFile);
 
-      // Bridge: browser calls this Node function synchronously from the change
-      // handler, so the log is guaranteed to arrive before setInputFiles resolves.
-      // exposeFunction throws if already registered (e.g. test retry), so we guard.
-      const bridgeFn = '__uploadTestChangeEvent';
-      if (!(page as unknown as Record<string, unknown>)[bridgeFn]) {
-        await page.exposeFunction(
-          bridgeFn,
-          (info: { filesLength: number; name: string; size: number }) => {
-            console.log(
-              '[upload-test][browser→node] change event fired —',
-              'files.length:',
-              info.filesLength,
-              '| name:',
-              info.name,
-              '| size:',
-              info.size
-            );
-          }
-        );
-      }
-
-      // Register the change listener *then* call setInputFiles in one evaluate
-      // so there is no round-trip gap between the two.
-      await fileInput.evaluate((el: HTMLInputElement, fn: string) => {
-        el.addEventListener(
-          'change',
-          (e) => {
-            const t = e.target as HTMLInputElement;
-            (window as unknown as Record<string, (arg: unknown) => void>)[fn]({
-              filesLength: t.files?.length ?? -1,
-              name: t.files?.[0]?.name ?? '(none)',
-              size: t.files?.[0]?.size ?? -1,
-            });
-          },
-          { once: true }
-        );
-      }, bridgeFn);
-
-      await fileInput.setInputFiles(uploadFilePath);
-
-      // File appears in staged list
-      console.log(
-        '[upload-test] waiting for filename to appear in staged list'
-      );
       await expect(
         modal.getByText('context-center-upload.txt').first()
       ).toBeVisible();
-      console.log('[upload-test] filename visible in staged list');
 
       // Attach the file
       const uploadResPromise = page.waitForResponse(

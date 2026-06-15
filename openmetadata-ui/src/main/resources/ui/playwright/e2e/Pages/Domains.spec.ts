@@ -3163,9 +3163,9 @@ test.describe('Domain Tree View Functionality', () => {
     ).toBeVisible();
     await expect(
       page
+        .getByTestId('breadcrumb')
         .getByRole('listitem')
         .filter({ hasText: domain.responseData.fullyQualifiedName })
-        .getByTestId('breadcrumb-link')
     ).toBeVisible();
     await expect(page.getByTestId('entity-header-display-name')).toContainText(
       domainDisplayName
