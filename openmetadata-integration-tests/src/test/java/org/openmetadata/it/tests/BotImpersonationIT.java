@@ -43,6 +43,8 @@ public class BotImpersonationIT {
 
   private static final String BOT_IMPERSONATION_ROLE = "BotImpersonationRole";
   private static final String BOT_NON_ADMIN_IMPERSONATION_ROLE = "BotNonAdminImpersonationRole";
+  private static final String APPLICATION_BOT_IMPERSONATION_ROLE =
+      "ApplicationBotImpersonationRole";
   private static final String USER_FIELDS = "roles,allowImpersonation";
   private static final String IMPERSONATE_HEADER = "X-Impersonate-User";
 
@@ -237,6 +239,32 @@ public class BotImpersonationIT {
     assertTrue(
         adminDenied.getMessage().contains("not authorized to impersonate"),
         "Error should state the target is not allowed: " + adminDenied.getMessage());
+  }
+
+  @Test
+  void test_applicationBotRole_impersonatesIncludingAdmin(TestNamespace ns) {
+    // Backward compatibility: existing application bots use ApplicationBotImpersonationRole
+    // (ApplicationBotImpersonationPolicy = allow Impersonate on All, no deny rules). The new
+    // policy-evaluation path must keep allowing them to impersonate any user, including admins.
+    User target = createRegularUser(ns, "appbottarget");
+    User botUser = createBotUser(ns, "appbot");
+    createBot(ns.prefix("imp_appbot_bot"), botUser, true);
+    swapImpersonationRole(botUser, APPLICATION_BOT_IMPERSONATION_ROLE);
+    String botToken = generateBotToken(botUser);
+
+    OpenMetadataClient asTarget = impersonationClient(botToken, target.getName());
+    User seen =
+        assertDoesNotThrow(
+            () -> asTarget.users().getByName(target.getName()),
+            "Application bot role must still allow impersonating regular users");
+    assertEquals(target.getName().toLowerCase(), seen.getName().toLowerCase());
+
+    OpenMetadataClient asAdmin = impersonationClient(botToken, "admin");
+    User adminSeen =
+        assertDoesNotThrow(
+            () -> asAdmin.users().getByName("admin"),
+            "ApplicationBotImpersonationPolicy (All/allow) must still permit impersonating admins");
+    assertEquals("admin", adminSeen.getName());
   }
 
   @Test
