@@ -96,8 +96,8 @@ Special Cases:
 
 Test Coverage:
 -------------
-- Total Tests: 28
-- Dialects: Snowflake, BigQuery, MySQL, ClickHouse, PostgreSQL, T-SQL, Oracle
+- Total Tests: 31
+- Dialects: Snowflake, BigQuery, MySQL, ClickHouse, PostgreSQL, T-SQL, Oracle, StarRocks
 - Parsers: SqlGlot, SqlFluff, SqlParse
 - All tests validate both table lineage AND column lineage
 """
@@ -111,7 +111,10 @@ from ingestion.tests.unit.lineage.queries.helpers import (
     assert_column_lineage_equal,
     assert_table_lineage_equal,
 )
-from metadata.ingestion.lineage.models import Dialect
+from metadata.generated.schema.entity.services.connections.database.starrocksConnection import (
+    StarrocksType,
+)
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 
 
 class TestSpecificDialectQueries(TestCase):
@@ -1319,6 +1322,54 @@ ON_ERROR = CONTINUE"""
             [],
             dialect=Dialect.SNOWFLAKE.value,
             skip_graph_check=True,
+        )
+
+    # -----------------------------------------------------------------------
+    # StarRocks dialect tests
+    # Regression for https://github.com/open-metadata/OpenMetadata/issues/28934
+    # StarRocks queries (e.g. from Metabase) use StarRocks-specific functions
+    # and optimizer hints and must be parsed with the StarRocks dialect, not
+    # MySQL, for lineage extraction to succeed.
+    # -----------------------------------------------------------------------
+
+    def test_starrocks_connection_type_maps_to_starrocks_dialect(self):
+        """StarRocks connection type resolves to the StarRocks dialect, not MySQL."""
+        assert ConnectionTypeDialectMapper.dialect_of(StarrocksType.StarRocks.value) == Dialect.STARROCKS
+        assert Dialect.STARROCKS.value == "starrocks"
+
+    def test_starrocks_bitmap_functions_with_set_var_hint(self):
+        """Test StarRocks SELECT with to_bitmap/bitmap_union_count and a SET_VAR optimizer hint.
+
+        These StarRocks-specific functions and the /*+ SET_VAR(...) */ hint previously
+        failed lineage extraction when parsed with the MySQL dialect.
+        """
+        query = """SELECT /*+ SET_VAR(query_timeout = 60) */
+            region,
+            bitmap_union_count(to_bitmap(user_id)) AS uv
+        FROM analytics.user_events
+        GROUP BY region"""
+
+        assert_table_lineage_equal(
+            query,
+            {"analytics.user_events"},
+            set(),  # No target table for SELECT query
+            dialect=Dialect.STARROCKS.value,
+        )
+
+    def test_starrocks_ctas_bitmap_union(self):
+        """Test StarRocks CREATE TABLE AS SELECT with bitmap aggregation."""
+        query = """CREATE TABLE analytics.uv_daily AS
+        SELECT
+            dt,
+            bitmap_union(to_bitmap(user_id)) AS uv
+        FROM analytics.user_events
+        GROUP BY dt"""
+
+        assert_table_lineage_equal(
+            query,
+            {"analytics.user_events"},
+            {"analytics.uv_daily"},
+            dialect=Dialect.STARROCKS.value,
         )
 
     def test_snowflake_copy_into_stage_subpath_date_partitioned(self):
