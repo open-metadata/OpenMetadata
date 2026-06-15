@@ -150,8 +150,7 @@ const DataProductsDetailsPage = ({
   const fromMarketplace =
     (location.state as { fromMarketplace?: boolean } | null)?.fromMarketplace ??
     false;
-  const { getEntityPermission } =
-    usePermissionProvider();
+  const { getEntityPermission } = usePermissionProvider();
   const { tab: activeTab, version } = useRequiredParams<{
     tab: string;
     version: string;
@@ -863,7 +862,9 @@ const DataProductsDetailsPage = ({
                 isFollowing={isFollowing}
                 isFollowingLoading={isFollowingLoading}
                 serviceName=""
-                suffix={<LearningIcon pageId={LEARNING_PAGE_IDS.DATA_PRODUCT} />}
+                suffix={
+                  <LearningIcon pageId={LEARNING_PAGE_IDS.DATA_PRODUCT} />
+                }
                 titleColor={dataProduct.style?.color}
               />
             </div>
@@ -1077,7 +1078,6 @@ const DataProductsDetailsPage = ({
           setIsMetadataEditing(false);
         }}
       />
-
     </>
   );
 
