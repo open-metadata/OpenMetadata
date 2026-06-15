@@ -54,9 +54,9 @@ from metadata.ingestion.source.pipeline.airbyte.models import (
     AirbyteSourceResponse,
     AirbyteWorkspace,
 )
-from metadata.utils.constants import UTF_8
 from metadata.ingestion.source.pipeline.openlineage.models import TableDetails
 from metadata.ingestion.source.pipeline.openlineage.utils import FQNNotFoundException
+from metadata.utils.constants import UTF_8
 
 mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/airbyte_dataset.json"
 with open(mock_file_path, encoding=UTF_8) as file:  # noqa: PTH123

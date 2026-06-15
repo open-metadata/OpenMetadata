@@ -401,8 +401,8 @@ class AirbyteSource(PipelineServiceSource):
                 )
                 continue
 
-            from_entity = self.metadata.get_by_name(entity=from_entity_class, fqn=from_fqn) # type: ignore
-            to_entity = self.metadata.get_by_name(entity=to_entity_class, fqn=to_fqn) # type: ignore
+            from_entity = self.metadata.get_by_name(entity=from_entity_class, fqn=from_fqn)  # pyright: ignore[reportCallIssue]
+            to_entity = self.metadata.get_by_name(entity=to_entity_class, fqn=to_fqn)  # pyright: ignore[reportCallIssue]
 
             if not from_entity:
                 logger.warning(
