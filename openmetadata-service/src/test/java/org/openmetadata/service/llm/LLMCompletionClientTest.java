@@ -17,8 +17,9 @@ class LLMCompletionClientTest {
     }
 
     @Override
-    protected String doComplete(String systemPrompt, String userPrompt) {
-      return response;
+    protected CompletionResult doComplete(
+        String systemPrompt, String userPrompt, CompletionOptions options) {
+      return new CompletionResult(response, 0, 0);
     }
 
     @Override
@@ -33,8 +34,9 @@ class LLMCompletionClientTest {
     }
 
     @Override
-    protected String doComplete(String systemPrompt, String userPrompt) {
-      return "[]";
+    protected CompletionResult doComplete(
+        String systemPrompt, String userPrompt, CompletionOptions options) {
+      return new CompletionResult("[]", 0, 0);
     }
 
     @Override

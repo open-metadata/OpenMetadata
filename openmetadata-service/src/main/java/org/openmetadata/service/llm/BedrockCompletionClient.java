@@ -50,8 +50,9 @@ public final class BedrockCompletionClient extends LLMCompletionClient implement
   }
 
   @Override
-  protected String doComplete(String systemPrompt, String userPrompt) {
-    String result;
+  protected CompletionResult doComplete(
+      String systemPrompt, String userPrompt, CompletionOptions options) {
+    String text;
     try {
       InvokeModelRequest request =
           InvokeModelRequest.builder()
@@ -61,11 +62,11 @@ public final class BedrockCompletionClient extends LLMCompletionClient implement
               .body(SdkBytes.fromUtf8String(buildRequestBody(systemPrompt, userPrompt)))
               .build();
       InvokeModelResponse response = bedrockClient.invokeModel(request);
-      result = parseContent(response.body().asUtf8String());
+      text = parseContent(response.body().asUtf8String());
     } catch (AwsServiceException | SdkClientException e) {
       throw new LLMCompletionException("Bedrock completion failed", e);
     }
-    return result;
+    return new CompletionResult(text, 0, 0);
   }
 
   private String buildRequestBody(String systemPrompt, String userPrompt) {

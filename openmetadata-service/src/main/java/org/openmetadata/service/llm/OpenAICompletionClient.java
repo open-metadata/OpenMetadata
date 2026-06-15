@@ -65,8 +65,9 @@ public final class OpenAICompletionClient extends LLMCompletionClient {
   }
 
   @Override
-  protected String doComplete(String systemPrompt, String userPrompt) {
-    String result;
+  protected CompletionResult doComplete(
+      String systemPrompt, String userPrompt, CompletionOptions options) {
+    String text;
     try {
       HttpRequest request = buildRequest(buildRequestBody(systemPrompt, userPrompt));
       HttpResponse<String> response =
@@ -75,14 +76,14 @@ public final class OpenAICompletionClient extends LLMCompletionClient {
         throw new LLMCompletionException(
             "OpenAI API returned status " + response.statusCode() + ": " + response.body());
       }
-      result = parseContent(response.body());
+      text = parseContent(response.body());
     } catch (IOException e) {
       throw new LLMCompletionException("OpenAI completion failed due to IO error", e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new LLMCompletionException("OpenAI completion was interrupted", e);
     }
-    return result;
+    return new CompletionResult(text, 0, 0);
   }
 
   private HttpRequest buildRequest(String body) {

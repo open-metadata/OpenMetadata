@@ -51,8 +51,9 @@ public final class GoogleCompletionClient extends LLMCompletionClient {
   }
 
   @Override
-  protected String doComplete(String systemPrompt, String userPrompt) {
-    String result;
+  protected CompletionResult doComplete(
+      String systemPrompt, String userPrompt, CompletionOptions options) {
+    String text;
     try {
       HttpRequest request =
           HttpRequest.newBuilder()
@@ -68,14 +69,14 @@ public final class GoogleCompletionClient extends LLMCompletionClient {
         throw new LLMCompletionException(
             "Google API returned status " + response.statusCode() + ": " + response.body());
       }
-      result = parseContent(response.body());
+      text = parseContent(response.body());
     } catch (IOException e) {
       throw new LLMCompletionException("Google completion failed due to IO error", e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new LLMCompletionException("Google completion was interrupted", e);
     }
-    return result;
+    return new CompletionResult(text, 0, 0);
   }
 
   private String buildRequestBody(String systemPrompt, String userPrompt) {
