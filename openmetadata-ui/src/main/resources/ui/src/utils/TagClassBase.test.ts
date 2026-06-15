@@ -40,10 +40,6 @@ jest.mock('./SearchUtils', () => ({
   })),
 }));
 
-jest.mock('./CustomizePage/CustomizePageUtils', () => ({
-  getTabLabelFromId: jest.fn().mockReturnValue('Tab Label'),
-}));
-
 jest.mock('../components/DataAssets/CommonWidgets/CommonWidgets', () => ({
   CommonWidgets: 'CommonWidgets',
 }));

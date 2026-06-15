@@ -10,14 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { lazy } from 'react';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
+import type {
+  CustomPropertyProps,
+  ExtentionEntitiesKeys,
+} from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
-import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import AssetsTabs from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import GlossaryTermTab from '../../components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
 import OntologyExplorer from '../../components/OntologyExplorer/OntologyExplorer';
@@ -26,6 +30,25 @@ import { PageType } from '../../generated/system/ui/page';
 import { getCountBadge } from '../../utils/EntityDisplayUtils';
 import i18n from '../i18next/LocalUtil';
 import { GlossaryTermDetailPageTabProps } from './GlossaryTermClassBase';
+
+const CustomPropertyTable = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../components/common/CustomPropertyTable/CustomPropertyTable'
+    ).then((module) => ({ default: module.CustomPropertyTable }))
+  )
+) as <T extends ExtentionEntitiesKeys>(
+  props: CustomPropertyProps<T>
+) => JSX.Element;
+
+const EntitySummaryPanel = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component'
+      )
+  )
+);
 
 export const getGlossaryTermDetailPageTabs = (
   props: GlossaryTermDetailPageTabProps

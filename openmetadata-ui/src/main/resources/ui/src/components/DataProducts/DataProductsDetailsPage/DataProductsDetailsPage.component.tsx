@@ -81,18 +81,16 @@ import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBase';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
 import { getEntityDeleteMessage } from '../../../utils/EntityDisplayUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import {
-  getEntityFeedLink,
-  getEntityName,
-  getEntityVoteStatus,
-} from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import { downloadFile } from '../../../utils/Export/ExportUtils';
 import {
   fetchEntityActivityCountInto,
@@ -114,11 +112,10 @@ import { getTermQuery } from '../../../utils/SearchUtils';
 import { getDarButtonTooltip } from '../../../utils/TasksUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumbs';
-import { useBreadcrumbs } from '../../common/atoms/navigation/useBreadcrumbs';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
+import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
@@ -283,32 +280,32 @@ const DataProductsDetailsPage = ({
     fetchActiveAnnouncement();
   };
 
-  const breadcrumbItems = useMemo<BreadcrumbItem[]>(() => {
-    const items: BreadcrumbItem[] = [];
+  const breadcrumbItems = useMemo(() => {
+    const items: { label: string; href?: string }[] = [];
 
     if (isMarketplace) {
       items.push({
-        name: t('label.data-marketplace'),
-        url: ROUTES.DATA_MARKETPLACE,
+        label: t('label.data-marketplace'),
+        href: ROUTES.DATA_MARKETPLACE,
       });
     }
 
     items.push(
       fromMarketplace
         ? {
-            name: t('label.data-marketplace'),
-            url: ROUTES.DATA_MARKETPLACE,
+            label: t('label.data-marketplace'),
+            href: ROUTES.DATA_MARKETPLACE,
           }
         : {
-            name: t('label.data-product-plural'),
-            url: dataProductBasePath,
+            label: t('label.data-product-plural'),
+            href: dataProductBasePath,
           }
     );
 
     if (dataProduct.domains && dataProduct.domains.length > 0) {
       items.push({
-        name: getEntityName(dataProduct.domains[0]),
-        url: getDomainPath(dataProduct.domains[0].fullyQualifiedName),
+        label: getEntityName(dataProduct.domains[0]),
+        href: getDomainPath(dataProduct.domains[0].fullyQualifiedName),
       });
     }
 
@@ -320,8 +317,6 @@ const DataProductsDetailsPage = ({
     dataProductBasePath,
     t,
   ]);
-
-  const { breadcrumbs } = useBreadcrumbs({ items: breadcrumbItems });
 
   const [name, displayName] = useMemo(() => {
     const defaultName = dataProduct.name;
@@ -1143,7 +1138,7 @@ const DataProductsDetailsPage = ({
 
   return (
     <>
-      {breadcrumbs}
+      <HeaderBreadcrumb items={breadcrumbItems} />
       <div className="domain-page-container">{content}</div>
     </>
   );

@@ -47,8 +47,8 @@ jest.mock('../../../utils/StringUtils', () => ({
   stringToHTML: jest.fn((text) => text),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
-  ...jest.requireActual('../../../utils/EntityUtils'),
+jest.mock('../../../utils/EntitySearchUtils', () => ({
+  ...jest.requireActual('../../../utils/EntitySearchUtils'),
   highlightSearchText: jest.fn((text) => text),
 }));
 

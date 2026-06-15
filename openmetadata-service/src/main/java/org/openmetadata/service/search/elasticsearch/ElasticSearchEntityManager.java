@@ -601,6 +601,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
                       .query(prefixQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.source(ss -> ss.scriptString(UPDATE_FQN_PREFIX_SCRIPT))
