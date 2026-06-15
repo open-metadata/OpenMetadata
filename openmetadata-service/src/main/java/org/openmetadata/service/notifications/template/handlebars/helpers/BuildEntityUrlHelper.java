@@ -82,9 +82,13 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
           }
 
           String fqn = fqnOpt.get();
+          String view =
+              (options.params != null && options.params.length > 1)
+                  ? str(options.params[1]).trim()
+                  : null;
 
           try {
-            return buildEntityUrl(parsed.entityType, fqn, parsed.entityMap);
+            return buildEntityUrl(parsed.entityType, fqn, parsed.entityMap, view);
           } catch (Exception e) {
             LOG.error("Error building entity URL for type={}, fqn={}", parsed.entityType, fqn, e);
             return null;
@@ -133,10 +137,24 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
    * Handles special cases for different entity types.
    */
   private String buildEntityUrl(String entityType, String fqn, Map<String, Object> entityMap) {
+    return buildEntityUrl(entityType, fqn, entityMap, null);
+  }
+
+  /**
+   * Builds the entity URL. When {@code view} is set ("tasks" or "all"), returns the deep link to
+   * that entity's task / conversation feed. Test cases are special: incidents live on the flat
+   * "issues" tab and the route has no activity_feed sub-route, so a generic feed suffix would 404.
+   */
+  private String buildEntityUrl(
+      String entityType, String fqn, Map<String, Object> entityMap, String view) {
     String baseUrl = getBaseUrl();
     if (nullOrEmpty(baseUrl)) {
       LOG.warn("Base URL is null or empty, cannot build entity URL");
       return null;
+    }
+
+    if (!nullOrEmpty(view) && Entity.TEST_CASE.equals(entityType)) {
+      return buildUrl(baseUrl, "test-case", fqn, "issues");
     }
 
     String url =
@@ -199,6 +217,11 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
           // DEFAULT: /{entityType}/{fqn}
           buildUrl(baseUrl, entityType, fqn, "");
         };
+
+    if (!nullOrEmpty(view)) {
+      String feed = "tasks".equals(view) ? "tasks" : "all";
+      url = String.format("%s/activity_feed/%s", url, feed);
+    }
 
     LOG.debug("Built entity URL for type={}, fqn={}: {}", entityType, fqn, url);
     return url;
