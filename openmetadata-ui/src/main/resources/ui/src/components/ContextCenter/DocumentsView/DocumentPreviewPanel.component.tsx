@@ -53,24 +53,38 @@ const ExtractedMemoriesCard: FC<{ fileId: string }> = ({ fileId }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [memoryToView, setMemoryToView] = useState<ContextMemory>();
 
-  const fetchMemories = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const response = await getListContextMemories({
-        sourceFileId: fileId,
-        fields: 'owners,sourceFile',
-        limit: 50,
-      });
-      setMemories(response.data);
-    } catch {
-      setMemories([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [fileId]);
+  const fetchMemories = useCallback(
+    async (isCancelled?: () => boolean) => {
+      try {
+        setIsLoading(true);
+        const response = await getListContextMemories({
+          sourceFileId: fileId,
+          fields: 'owners,sourceFile',
+          limit: 50,
+        });
+        if (!isCancelled?.()) {
+          setMemories(response.data);
+        }
+      } catch {
+        if (!isCancelled?.()) {
+          setMemories([]);
+        }
+      } finally {
+        if (!isCancelled?.()) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [fileId]
+  );
 
   useEffect(() => {
-    fetchMemories();
+    let isStale = false;
+    fetchMemories(() => isStale);
+
+    return () => {
+      isStale = true;
+    };
   }, [fetchMemories]);
 
   const handleMemoryDeleted = useCallback(() => {
@@ -189,7 +203,7 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
               className="tw:text-gray-500 tw:uppercase"
               size="text-xs"
               weight="semibold">
-              {t('label.status')}
+              {t('label.detail-plural')}
             </Typography>
             <Box align="center" gap={2}>
               <CopyLinkButton className="tw:w-7 tw:h-7" url={url}>
