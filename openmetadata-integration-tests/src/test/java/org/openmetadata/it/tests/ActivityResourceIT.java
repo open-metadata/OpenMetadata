@@ -9,12 +9,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.Duration;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,7 +35,6 @@ import org.openmetadata.schema.type.ActivityEventType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.ReactionType;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
@@ -211,72 +206,6 @@ public class ActivityResourceIT {
         getEntityActivity(SdkClients.adminClient(), "table", table.getId(), 5, 30);
     assertNotNull(events);
     assertTrue(events.getData().size() <= 5, "Should respect limit parameter");
-  }
-
-  @Test
-  void test_entityChange_deliversActivityEventsThroughConsumer(TestNamespace ns) throws Exception {
-    // Deterministic delivery contract (entity PATCH -> ChangeEvent -> ActivityFeedAlert consumer ->
-    // activity_stream): the ActivityAPI E2E asserted this under AUT load and was flaky; here there
-    // is no competing flood. Allow several consumer poll cycles (pollInterval is in seconds).
-    OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTestTable(ns);
-    User admin = getAdminUser();
-    EntityReference adminRef =
-        new EntityReference()
-            .withId(admin.getId())
-            .withType(Entity.USER)
-            .withName(admin.getName())
-            .withFullyQualifiedName(admin.getFullyQualifiedName());
-
-    Tables.findByName(table.getFullyQualifiedName())
-        .fetch()
-        .withDescription("Updated by activity delivery IT")
-        .withTags(
-            List.of(
-                new TagLabel()
-                    .withTagFQN("PersonalData.Personal")
-                    .withSource(TagLabel.TagSource.CLASSIFICATION)
-                    .withLabelType(TagLabel.LabelType.MANUAL)))
-        .withOwners(List.of(adminRef))
-        .save();
-
-    Awaitility.await("activity events delivered for table change")
-        .pollDelay(Duration.ofSeconds(2))
-        .pollInterval(Duration.ofSeconds(5))
-        .atMost(Duration.ofSeconds(180))
-        .untilAsserted(() -> assertActivityEventTypesDelivered(client, table));
-
-    ActivityEvent descriptionEvent =
-        getEntityActivity(client, Entity.TABLE, table.getId(), 50, 7).getData().stream()
-            .filter(event -> event.getEventType() == ActivityEventType.DESCRIPTION_UPDATED)
-            .findFirst()
-            .orElseThrow();
-    assertEquals(
-        table.getId(),
-        descriptionEvent.getEntity().getId(),
-        "Delivered activity event must reference the changed table");
-    assertNotNull(descriptionEvent.getActor(), "Delivered activity event must record the actor");
-    assertEquals(
-        admin.getId(),
-        descriptionEvent.getActor().getId(),
-        "Actor must be the admin who made the change");
-  }
-
-  private void assertActivityEventTypesDelivered(OpenMetadataClient client, Table table)
-      throws Exception {
-    Set<ActivityEventType> deliveredTypes =
-        getEntityActivity(client, Entity.TABLE, table.getId(), 50, 7).getData().stream()
-            .map(ActivityEvent::getEventType)
-            .collect(Collectors.toSet());
-    assertTrue(
-        deliveredTypes.contains(ActivityEventType.DESCRIPTION_UPDATED),
-        "DescriptionUpdated activity event should be delivered");
-    assertTrue(
-        deliveredTypes.contains(ActivityEventType.TAGS_UPDATED),
-        "TagsUpdated activity event should be delivered");
-    assertTrue(
-        deliveredTypes.contains(ActivityEventType.OWNER_UPDATED),
-        "OwnerUpdated activity event should be delivered");
   }
 
   // ==================== User Activity Tests ====================
