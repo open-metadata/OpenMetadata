@@ -671,7 +671,12 @@ export const checkStewardServicesPermissions = async (page: Page) => {
   await clickUpdateButtonIfVisible(page);
 
   await getSearchResultResponse;
-  await page.keyboard.press('Escape');
+  await waitForAllLoadersToDisappear(page);
+
+  // Close the dropdown by toggling its trigger — pressing Escape would also
+  // close the auto-opened summary panel (ExploreV1 has a document-level
+  // Escape handler), removing the entity-link this step needs to click.
+  await page.click('[data-testid="search-dropdown-Data Assets"]');
 
   // Click on the entity link in the drawer title
   await page.click('.summary-panel-container [data-testid="entity-link"]');

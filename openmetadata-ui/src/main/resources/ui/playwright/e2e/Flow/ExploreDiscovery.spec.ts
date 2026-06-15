@@ -20,6 +20,7 @@ import {
   getEncodedFqn,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { clickUpdateButtonIfVisible } from '../../utils/explore';
 import { getJsonTreeObject } from '../../utils/exploreDiscovery';
 import { sidebarClick } from '../../utils/sidebar';
 
@@ -335,18 +336,22 @@ test.describe('Explore Assets Discovery', () => {
       page.getByTestId('drop-down-menu').getByTestId(ownerSearchText)
     ).toBeAttached();
 
+    // Arm before the option click: immediate-apply fires the query on the click
+    const fetchWithOwner = page.waitForResponse(
+      `/api/v1/search/query?*deleted=true*ownerDisplayName*${ownerSearchText}*`
+    );
     await page
       .getByTestId('drop-down-menu')
       .getByTestId(ownerSearchText)
       .click();
-
-    const fetchWithOwner = page.waitForResponse(
-      `/api/v1/search/query?*deleted=true*ownerDisplayName*${ownerSearchText}*`
-    );
-    await page.getByTestId('update-btn').click();
+    await clickUpdateButtonIfVisible(page);
     await fetchWithOwner;
 
     await waitForAllLoadersToDisappear(page);
+
+    // Close the Owners dropdown before opening the next — immediate-apply keeps
+    // it open after selection, and a stale open menu has its own search-input
+    await page.keyboard.press('Escape');
 
     // The domain should be visible in the domains filter when the deleted switch is on
     const domainSearchText = domain.responseData.displayName.toLowerCase();
@@ -365,21 +370,24 @@ test.describe('Explore Assets Discovery', () => {
       page.getByTestId('drop-down-menu').getByTestId(domainSearchText)
     ).toBeAttached();
 
-    await page
-      .getByTestId('drop-down-menu')
-      .getByTestId(domainSearchText)
-      .click();
-
+    // Arm before the option click: immediate-apply fires the query on the click
     const fetchWithDomain = page.waitForResponse(
       `/api/v1/search/query?*deleted=true*domains.displayName.keyword*${getEncodedFqn(
         domainSearchText,
         true
       )}*`
     );
-    await page.getByTestId('update-btn').click();
+    await page
+      .getByTestId('drop-down-menu')
+      .getByTestId(domainSearchText)
+      .click();
+    await clickUpdateButtonIfVisible(page);
     await fetchWithDomain;
 
     await waitForAllLoadersToDisappear(page);
+
+    // Close the Domains dropdown before opening the Data Assets one
+    await page.keyboard.press('Escape');
 
     // Only the table option should be visible for the data assets filter when the deleted switch is on
     // with the owner and domain filter applied
