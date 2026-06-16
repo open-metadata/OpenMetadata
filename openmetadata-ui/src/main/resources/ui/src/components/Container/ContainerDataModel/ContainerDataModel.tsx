@@ -45,7 +45,7 @@ import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import {
   updateContainerColumnDescription,
   updateContainerColumnTags,
-} from '../../../utils/ContainerDetailUtils';
+} from '../../../utils/ContainerDetailPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
@@ -67,7 +67,6 @@ import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
 import { ContainerDataModelProps } from './ContainerDataModel.interface';
-
 const ModalWithMarkdownEditor = withSuspenseFallback(
   lazy(() =>
     import('../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor').then(

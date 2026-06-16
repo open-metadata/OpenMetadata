@@ -41,7 +41,7 @@ const mockFetchEntityActivityCountInto = jest.fn();
 jest.mock('../../../utils/EntityDisplayUtils', () => ({
   getEntityMissingError: jest.fn(),
 }));
-jest.mock('../../../utils/FeedUtils', () => ({
+jest.mock('../../../utils/FeedUtilsPure', () => ({
   fetchEntityActivityCountInto: (
     ...args: [EntityType, string, (data: FeedCounts) => void]
   ) => mockFetchEntityActivityCountInto(...args),
