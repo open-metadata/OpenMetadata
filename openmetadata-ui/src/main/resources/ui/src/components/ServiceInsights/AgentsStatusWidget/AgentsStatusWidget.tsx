@@ -20,9 +20,9 @@ import { ReactComponent as ArrowSvg } from '../../../assets/svg/ic-arrow-down.sv
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import {
   getAgentRunningStatusMessage,
-  getAgentStatusSummary,
   getIconFromStatus,
 } from '../../../utils/AgentsStatusWidgetUtils';
+import { getAgentStatusSummary } from '../../../utils/AgentsStatusWidgetPureUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import './agents-status-widget.less';
 import { AgentsStatusWidgetProps } from './AgentsStatusWidget.interface';
