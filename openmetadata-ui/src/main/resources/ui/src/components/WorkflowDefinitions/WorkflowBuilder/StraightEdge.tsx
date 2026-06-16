@@ -14,6 +14,7 @@
 import { Button, Typography } from '@openmetadata/ui-core-components';
 import { XClose } from '@untitledui/icons';
 import classNames from 'classnames';
+import { capitalize, startCase } from 'lodash';
 import React, { useState } from 'react';
 import { BaseEdge, EdgeLabelRenderer, EdgeProps, Position } from 'reactflow';
 import { ConditionValue } from '../../../constants/WorkflowBuilder.constants';
@@ -65,6 +66,9 @@ const getCleanStraightPath = (
   return [path, labelX, labelY] as const;
 };
 
+const formatEdgeLabel = (label: string): string =>
+  startCase(label).split(' ').map(capitalize).join(' ');
+
 export const StraightEdge = (props: EdgeProps) => {
   const {
     id,
@@ -102,18 +106,23 @@ export const StraightEdge = (props: EdgeProps) => {
   );
   const isConditionLabel =
     label === ConditionValue.TRUE || label === ConditionValue.FALSE;
+  const displayLabel =
+    typeof label === 'string' && label.length > 0
+      ? formatEdgeLabel(label)
+      : label;
   const labelClassName = classNames(
     'tw:flex tw:items-center tw:rounded tw:border tw:border-border-secondary tw:bg-primary tw:px-2 tw:py-1 tw:shadow-sm',
     { 'tw:cursor-pointer': isConditionLabel }
   );
-  const labelStyleOverrides = isConditionLabel
-    ? {
-        backgroundColor: labelBgStyle?.fill,
-        borderColor: labelBgStyle?.stroke,
-        color: labelStyle?.color,
-        ...labelStyle,
-      }
-    : undefined;
+  const labelStyleOverrides =
+    labelBgStyle?.fill ?? labelStyle?.color
+      ? {
+          backgroundColor: labelBgStyle?.fill,
+          borderColor: labelBgStyle?.stroke,
+          color: labelStyle?.color,
+          ...labelStyle,
+        }
+      : undefined;
 
   return (
     <>
@@ -140,7 +149,7 @@ export const StraightEdge = (props: EdgeProps) => {
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}>
             <Typography size="text-xs" weight="semibold">
-              {label}
+              {displayLabel}
             </Typography>
           </div>
         )}

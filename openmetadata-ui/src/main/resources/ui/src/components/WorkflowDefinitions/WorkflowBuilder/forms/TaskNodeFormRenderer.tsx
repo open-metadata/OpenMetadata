@@ -21,6 +21,7 @@ import { CheckConditionForm } from './CheckConditionForm';
 import { DataCompletenessForm } from './DataCompletenessForm';
 import { EndNodeForm } from './EndNodeForm';
 import { RevertBackForm } from './RevertBackForm';
+import { SchemaBasedNodeForm } from './SchemaBasedNodeForm';
 import { SetActionForm } from './SetActionForm';
 import { SinkTaskForm } from './SinkTaskForm';
 import { UserApprovalForm } from './UserApprovalForm';
@@ -132,6 +133,11 @@ export const TaskNodeFormRenderer: React.FC<TaskNodeFormRendererProps> = ({
       );
 
     default:
-      return null;
+      return (
+        <SchemaBasedNodeForm
+          node={node}
+          onClose={onClose}
+        />
+      );
   }
 };
