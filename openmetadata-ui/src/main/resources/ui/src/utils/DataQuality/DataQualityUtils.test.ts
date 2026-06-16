@@ -81,7 +81,11 @@ jest.mock('../TablePureUtils', () => ({
 }));
 
 jest.mock('../FeedUtilsPure', () => ({
-  getEntityFQN: jest.fn((link: string) => link),
+  getEntityFQN: jest.fn((link: string) => {
+    const match = link?.match(/^<#E::table::(.+?)(?:::columns::[^>]+)?>$/);
+
+    return match ? match[1] : link;
+  }),
 }));
 
 jest.mock('../EntityPureUtils', () => ({
