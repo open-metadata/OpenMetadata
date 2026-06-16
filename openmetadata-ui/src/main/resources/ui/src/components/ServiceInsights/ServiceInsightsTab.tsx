@@ -59,7 +59,7 @@ import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
   getEntityTypeFromServiceCategory,
   getServiceNameQueryFilter,
-} from '../../utils/ServiceUtils';
+} from '../../utils/ServicePureUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';

@@ -44,13 +44,13 @@ import {
   getGlossaryTermRelationSettings,
   searchGlossaryTermsPaginated,
 } from '../../../../rest/glossaryAPI';
-import { getTextFromHtmlString } from '../../../../utils/BlockEditorUtils';
-import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getTextFromHtmlString } from '../../../../utils/BlockEditorPureUtils';
 import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
-} from '../../../../utils/EntityVersionUtils';
+} from '../../../../utils/EntityDiffPureUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../../../utils/RouterUtils';
@@ -67,7 +67,6 @@ import {
   TermsRowEditorProps,
 } from './RelatedTerms.interface';
 import TermsRowEditor from './TermsRowEditor.component';
-
 const MAX_VISIBLE_BADGES = 5;
 
 const BadgeList: React.FC<{ items: ReactNode[] }> = ({ items }) => {

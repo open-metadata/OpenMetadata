@@ -86,7 +86,7 @@ import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
-import { getEntityTypeFromServiceCategory } from '../../../utils/ServiceUtils';
+import { getEntityTypeFromServiceCategory } from '../../../utils/ServicePureUtils';
 import tableClassBase from '../../../utils/TableClassBase';
 import { getTierTags } from '../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';

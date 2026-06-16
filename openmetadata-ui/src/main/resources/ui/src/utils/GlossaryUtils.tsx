@@ -33,26 +33,6 @@ import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interfa
 import { getEntityName } from './EntityNameUtils';
 import { VersionStatus } from './EntityVersionUtils.interface';
 
-export {
-  buildTree,
-  filterTreeNodeOptions,
-  findAndUpdateNested,
-  findExpandableKeys,
-  findExpandableKeysForArray,
-  findItemByFqn,
-  getGlossaryBreadcrumbs,
-  getGlossaryEntityLink,
-  getQueryFilterToExcludeTerm,
-  getQueryFilterToIncludeApprovedTerm,
-  glossaryTermTableColumnsWidth,
-  permissionForApproveOrReject,
-  referenceURLValidator,
-  StatusClass,
-  StatusFilters,
-  updateGlossaryTermByFqn,
-  validateReferenceURL,
-} from './GlossaryPureUtils';
-
 const CommonWidgets = withSuspenseFallback(
   lazy(() =>
     import('../components/DataAssets/CommonWidgets/CommonWidgets').then(

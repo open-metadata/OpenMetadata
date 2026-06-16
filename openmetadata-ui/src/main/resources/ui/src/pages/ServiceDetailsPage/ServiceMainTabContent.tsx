@@ -74,6 +74,7 @@ import { createTagObject } from '../../utils/TagsPureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { ServicePageData } from './ServiceDetailsPage.interface';
+
 interface ServiceMainTabContentProps {
   serviceName: string;
   servicePermission: OperationPermission;

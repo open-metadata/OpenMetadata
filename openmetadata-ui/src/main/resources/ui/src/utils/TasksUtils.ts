@@ -99,7 +99,7 @@ import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
 import { getEntityFQNFromAbout, getEntityTypeFromAbout } from './FeedUtils';
 import { getPartialNameFromTableFQN } from './FqnUtils';
-import { getGlossaryBreadcrumbs } from './GlossaryUtils';
+import { getGlossaryBreadcrumbs } from './GlossaryPureUtils';
 import { t } from './i18next/LocalUtil';
 import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
 import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
