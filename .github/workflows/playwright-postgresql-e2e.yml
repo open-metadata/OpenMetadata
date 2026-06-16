@@ -260,7 +260,7 @@ jobs:
           sudo rm -rf ${PWD}/docker-volume
 
   playwright-summary:
-    if: ${{ !cancelled() && github.event_name == 'pull_request_target' }}
+    if: ${{ !cancelled() && github.event_name == 'pull_request_target' && (github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
     needs: playwright-ci-postgresql
     runs-on: ubuntu-latest
     steps:
