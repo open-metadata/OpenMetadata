@@ -943,8 +943,6 @@ class ExasolTableMetricComputer(BaseTableMetricComputer):
             return None
         if res.rowCount is None:
             return super().compute()
-        if res.rowCount == 0 and self._entity.tableType == TableType.View:
-            return super().compute()
         return res
 
     def _compute_view_metrics(self):
