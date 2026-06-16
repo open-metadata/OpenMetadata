@@ -34,6 +34,9 @@ jest.mock('../../../../rest/dataQualityDashboardAPI', () => ({
 
 jest.mock('../../../../utils/DataQuality/DataQualityUtils', () => ({
   getPieChartLabel: jest.fn().mockReturnValue(<div>Test Label</div>),
+}));
+
+jest.mock('../../../../utils/DataQuality/DataQualityPureUtils', () => ({
   getTestCaseTabPath: jest.fn((status: TestCaseStatus) => ({
     pathname: '/data-quality/test-cases',
     search: `testCaseStatus=${status}`,
@@ -108,7 +111,7 @@ describe('EntityHealthStatusPieChartWidget', () => {
 
   it('should pass onSegmentClick to CustomPieChart and navigate on segment click', async () => {
     const { getTestCaseTabPath } = jest.requireMock(
-      '../../../../utils/DataQuality/DataQualityUtils'
+      '../../../../utils/DataQuality/DataQualityPureUtils'
     ) as { getTestCaseTabPath: jest.Mock };
     const mockNavigate = (
       jest.requireMock('react-router-dom') as {
