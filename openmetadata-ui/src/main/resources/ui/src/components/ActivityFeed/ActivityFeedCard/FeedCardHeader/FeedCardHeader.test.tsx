@@ -34,6 +34,7 @@ const mockProps2 = {
 
 jest.mock('../../../../utils/RouterUtils', () => ({
   getUserPath: jest.fn().mockReturnValue('user-profile-path'),
+  getEntityDetailsPath: jest.fn().mockReturnValue('/entity/path'),
 }));
 
 jest.mock('../../../../hooks/user-profile/useUserProfile', () => ({
@@ -43,6 +44,10 @@ jest.mock('../../../../hooks/user-profile/useUserProfile', () => ({
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   formatDateTime: jest.fn().mockImplementation((date) => date),
   getRelativeTime: jest.fn().mockImplementation((date) => date),
+  getEpochMillisForPastDays: jest.fn().mockImplementation((days) => days),
+  getStartOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getCurrentMillis: jest.fn().mockReturnValue(0),
 }));
 
 jest.mock('../../../../utils/EntityNameUtils', () => ({

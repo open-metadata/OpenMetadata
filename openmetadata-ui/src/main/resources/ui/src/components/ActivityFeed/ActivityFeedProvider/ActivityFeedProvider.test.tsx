@@ -109,6 +109,22 @@ jest.mock('../../../rest/tasksAPI', () => ({
     Open: 'Open',
     Completed: 'Completed',
   },
+  TaskEntityType: {
+    CustomTask: 'CustomTask',
+    DataAccessRequest: 'DataAccessRequest',
+    DataQualityReview: 'DataQualityReview',
+    DescriptionUpdate: 'DescriptionUpdate',
+    DomainUpdate: 'DomainUpdate',
+    GlossaryApproval: 'GlossaryApproval',
+    IncidentResolution: 'IncidentResolution',
+    OwnershipUpdate: 'OwnershipUpdate',
+    PipelineReview: 'PipelineReview',
+    RequestApproval: 'RequestApproval',
+    Suggestion: 'Suggestion',
+    TagUpdate: 'TagUpdate',
+    TestCaseResolution: 'TestCaseResolution',
+    TierUpdate: 'TierUpdate',
+  },
 }));
 
 jest.mock('../../../rest/incidentManagerAPI', () => ({
@@ -128,6 +144,14 @@ jest.mock('../../../utils/ToastUtils', () => ({
 }));
 
 jest.mock('../../../utils/FeedUtils', () => ({
+  getUpdatedThread: jest.fn().mockResolvedValue({
+    id: '123',
+    posts: [],
+    postsCount: 0,
+  }),
+}));
+
+jest.mock('../../../utils/FeedUtilsPure', () => ({
   getUpdatedThread: jest.fn().mockResolvedValue({
     id: '123',
     posts: [],
