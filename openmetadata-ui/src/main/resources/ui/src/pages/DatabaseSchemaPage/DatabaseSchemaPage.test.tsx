@@ -121,13 +121,13 @@ jest.mock('../../rest/tableAPI', () => ({
 jest.mock('../../utils/EntityDisplayUtils', () => ({
   getEntityMissingError: jest.fn().mockImplementation((error) => error),
 }));
-jest.mock('../../utils/FeedUtils', () => ({
-  getFeedCounts: jest.fn().mockImplementation(() => FEED_COUNT_INITIAL_DATA),
-}));
+
 jest.mock('../../utils/FeedUtilsPure', () => ({
   fetchEntityActivityCountInto: jest.fn(),
   fetchEntityTaskCountsInto: jest.fn(),
+  getFeedCounts: jest.fn().mockImplementation(() => FEED_COUNT_INITIAL_DATA),
 }));
+
 jest.mock('../../utils/TagsUtils', () => ({
   sortTagsCaseInsensitive: jest.fn(),
 }));
