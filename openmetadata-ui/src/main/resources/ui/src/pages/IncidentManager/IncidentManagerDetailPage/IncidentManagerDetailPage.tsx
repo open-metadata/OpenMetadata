@@ -67,7 +67,7 @@ import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
-} from '../../../utils/FeedUtils';
+} from '../../../utils/FeedUtilsPure';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';

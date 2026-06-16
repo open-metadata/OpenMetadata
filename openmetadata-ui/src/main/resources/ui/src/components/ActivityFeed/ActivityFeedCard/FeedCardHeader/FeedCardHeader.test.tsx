@@ -55,10 +55,12 @@ jest.mock('../../../../utils/EntityNameUtils', () => ({
 }));
 
 jest.mock('../../../../utils/FeedUtils', () => ({
-  entityDisplayName: jest.fn().mockReturnValue('database.schema.table'),
   getEntityFieldDisplay: jest
     .fn()
     .mockImplementation((entityField) => entityField),
+}));
+jest.mock('../../../../utils/FeedUtilsPure', () => ({
+  entityDisplayName: jest.fn().mockReturnValue('database.schema.table'),
   prepareFeedLink: jest.fn().mockReturnValue('entity-link'),
 }));
 

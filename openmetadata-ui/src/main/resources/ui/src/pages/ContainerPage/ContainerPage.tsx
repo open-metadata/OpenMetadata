@@ -80,7 +80,7 @@ import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
   getFeedCounts,
-} from '../../utils/FeedUtils';
+} from '../../utils/FeedUtilsPure';
 import Fqn from '../../utils/Fqn';
 import {
   DEFAULT_ENTITY_PERMISSION,

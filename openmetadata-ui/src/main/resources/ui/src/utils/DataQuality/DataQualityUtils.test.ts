@@ -81,7 +81,7 @@ jest.mock('../TablePureUtils', () => ({
   getTierTags: jest.fn().mockReturnValue(undefined),
 }));
 
-jest.mock('../FeedUtils', () => ({
+jest.mock('../FeedUtilsPure', () => ({
   getEntityFQN: jest.fn((link: string) => link),
 }));
 

@@ -50,7 +50,7 @@ import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
   getFeedCounts,
-} from '../../../utils/FeedUtils';
+} from '../../../utils/FeedUtilsPure';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,

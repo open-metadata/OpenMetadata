@@ -43,7 +43,7 @@ import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
   getFeedCounts,
-} from '../../../utils/FeedUtils';
+} from '../../../utils/FeedUtilsPure';
 import glossaryTermClassBase from '../../../utils/Glossary/GlossaryTermClassBase';
 import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';

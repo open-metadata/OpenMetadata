@@ -60,7 +60,7 @@ import {
 import { createUpdatedTestCasePatch } from '../../../../utils/DataQuality/DataQualityUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
-import { getEntityFQN } from '../../../../utils/FeedUtils';
+import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import {
   createScrollToErrorHandler,
   generateFormFields,

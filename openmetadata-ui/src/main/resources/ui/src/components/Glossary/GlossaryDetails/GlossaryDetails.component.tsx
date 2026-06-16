@@ -30,7 +30,7 @@ import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
   getFeedCounts,
-} from '../../../utils/FeedUtils';
+} from '../../../utils/FeedUtilsPure';
 import { getGlossaryTermDetailsPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';

@@ -87,7 +87,7 @@ jest.mock('../../../utils/TasksUtils', () => ({
   isDescriptionTask: jest.fn().mockReturnValue(false),
 }));
 
-jest.mock('../../../utils/FeedUtils', () => ({
+jest.mock('../../../utils/FeedUtilsPure', () => ({
   getEntityFQNFromAbout: jest.fn().mockReturnValue('entityFQN'),
   getEntityTypeFromAbout: jest.fn().mockReturnValue('table'),
 }));
