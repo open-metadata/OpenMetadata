@@ -331,6 +331,135 @@ describe('CustomizeNavigation Utils', () => {
       expect(result).toContain('dashboard');
       expect(result).toContain('plugin-item');
     });
+
+    it('new child should be in hidden keys when absent from saved nav', () => {
+      (leftSidebarClassBase.getSidebarItems as jest.Mock).mockReturnValueOnce([
+        {
+          key: 'home',
+          title: 'Home',
+          icon: 'home-icon',
+          children: [
+            { key: 'dashboard', title: 'Dashboard', icon: 'dashboard-icon' },
+            {
+              key: 'new-feature',
+              title: 'New Feature',
+              icon: 'new-feature-icon',
+            },
+          ],
+        },
+        { key: 'explore', title: 'Explore', icon: 'explore-icon' },
+      ]);
+
+      const savedNav: NavigationItem[] = [
+        {
+          id: 'home',
+          title: 'Home',
+          isHidden: false,
+          pageId: 'home',
+          children: [
+            {
+              id: 'dashboard',
+              title: 'Dashboard',
+              isHidden: false,
+              pageId: 'dashboard',
+            },
+          ],
+        },
+        { id: 'explore', title: 'Explore', isHidden: false, pageId: 'explore' },
+      ];
+
+      const result = getHiddenKeysFromNavigationItems(savedNav);
+
+      expect(result).toContain('new-feature');
+    });
+
+    it('new top-level item should be in hidden keys when absent from saved nav', () => {
+      (leftSidebarClassBase.getSidebarItems as jest.Mock).mockReturnValueOnce([
+        {
+          key: 'home',
+          title: 'Home',
+          icon: 'home-icon',
+          children: [
+            { key: 'dashboard', title: 'Dashboard', icon: 'dashboard-icon' },
+          ],
+        },
+        { key: 'explore', title: 'Explore', icon: 'explore-icon' },
+        {
+          key: 'ontology-explorer',
+          title: 'Ontology Explorer',
+          icon: 'ontology-icon',
+        },
+      ]);
+
+      const savedNav: NavigationItem[] = [
+        {
+          id: 'home',
+          title: 'Home',
+          isHidden: false,
+          pageId: 'home',
+          children: [
+            {
+              id: 'dashboard',
+              title: 'Dashboard',
+              isHidden: false,
+              pageId: 'dashboard',
+            },
+          ],
+        },
+        { id: 'explore', title: 'Explore', isHidden: false, pageId: 'explore' },
+      ];
+
+      const result = getHiddenKeysFromNavigationItems(savedNav);
+
+      expect(result).toContain('ontology-explorer');
+    });
+
+    it('child item should be in hidden keys when explicitly hidden in saved nav', () => {
+      (leftSidebarClassBase.getSidebarItems as jest.Mock).mockReturnValueOnce([
+        {
+          key: 'home',
+          title: 'Home',
+          icon: 'home-icon',
+          children: [
+            { key: 'dashboard', title: 'Dashboard', icon: 'dashboard-icon' },
+            {
+              key: 'new-feature',
+              title: 'New Feature',
+              icon: 'new-feature-icon',
+            },
+          ],
+        },
+        { key: 'explore', title: 'Explore', icon: 'explore-icon' },
+      ]);
+
+      const savedNav: NavigationItem[] = [
+        {
+          id: 'home',
+          title: 'Home',
+          isHidden: false,
+          pageId: 'home',
+          children: [
+            {
+              id: 'dashboard',
+              title: 'Dashboard',
+              isHidden: false,
+              pageId: 'dashboard',
+            },
+            {
+              id: 'new-feature',
+              title: 'New Feature',
+              isHidden: true,
+              pageId: 'new-feature',
+            },
+          ],
+        },
+        { id: 'explore', title: 'Explore', isHidden: false, pageId: 'explore' },
+      ];
+
+      const result = getHiddenKeysFromNavigationItems(savedNav);
+
+      expect(result).toContain('new-feature');
+    });
   });
 
   describe('filterHiddenNavigationItems', () => {
@@ -421,6 +550,172 @@ describe('CustomizeNavigation Utils', () => {
       expect(result[0].key).toBe('home');
       expect(result[1].key).toBe('explore');
       expect(result[2].key).toBe('plugin-item');
+    });
+
+    it('new child should be disabled when it is absent from the saved persona nav', () => {
+      (leftSidebarClassBase.getSidebarItems as jest.Mock).mockReturnValueOnce([
+        {
+          key: 'home',
+          title: 'Home',
+          icon: 'home-icon',
+          children: [
+            { key: 'dashboard', title: 'Dashboard', icon: 'dashboard-icon' },
+            {
+              key: 'new-feature',
+              title: 'New Feature',
+              icon: 'new-feature-icon',
+            },
+          ],
+        },
+        { key: 'explore', title: 'Explore', icon: 'explore-icon' },
+      ]);
+
+      const savedNav: NavigationItem[] = [
+        {
+          id: 'home',
+          title: 'Home',
+          isHidden: false,
+          pageId: 'home',
+          children: [
+            {
+              id: 'dashboard',
+              title: 'Dashboard',
+              isHidden: false,
+              pageId: 'dashboard',
+            },
+          ],
+        },
+        { id: 'explore', title: 'Explore', isHidden: false, pageId: 'explore' },
+      ];
+
+      const result = filterHiddenNavigationItems(savedNav);
+      const homeItem = result.find((item) => item.key === 'home');
+
+      expect(
+        homeItem?.children?.some((c) => c.key === 'new-feature')
+      ).toBeFalsy();
+    });
+
+    it('new top-level item should be disabled when it is absent from the saved persona nav', () => {
+      (leftSidebarClassBase.getSidebarItems as jest.Mock).mockReturnValueOnce([
+        {
+          key: 'home',
+          title: 'Home',
+          icon: 'home-icon',
+          children: [
+            { key: 'dashboard', title: 'Dashboard', icon: 'dashboard-icon' },
+          ],
+        },
+        { key: 'explore', title: 'Explore', icon: 'explore-icon' },
+        {
+          key: 'ontology-explorer',
+          title: 'Ontology Explorer',
+          icon: 'ontology-icon',
+        },
+      ]);
+
+      const savedNav: NavigationItem[] = [
+        {
+          id: 'home',
+          title: 'Home',
+          isHidden: false,
+          pageId: 'home',
+          children: [
+            {
+              id: 'dashboard',
+              title: 'Dashboard',
+              isHidden: false,
+              pageId: 'dashboard',
+            },
+          ],
+        },
+        { id: 'explore', title: 'Explore', isHidden: false, pageId: 'explore' },
+      ];
+
+      const result = filterHiddenNavigationItems(savedNav);
+
+      expect(result.some((item) => item.key === 'ontology-explorer')).toBe(
+        false
+      );
+    });
+
+    it('top-level item should be disabled when explicitly hidden in the saved persona nav', () => {
+      (leftSidebarClassBase.getSidebarItems as jest.Mock).mockReturnValueOnce([
+        { key: 'home', title: 'Home', icon: 'home-icon', children: [] },
+        { key: 'explore', title: 'Explore', icon: 'explore-icon' },
+        {
+          key: 'ontology-explorer',
+          title: 'Ontology Explorer',
+          icon: 'ontology-icon',
+        },
+      ]);
+
+      const savedNav: NavigationItem[] = [
+        { id: 'home', title: 'Home', isHidden: false, pageId: 'home' },
+        { id: 'explore', title: 'Explore', isHidden: false, pageId: 'explore' },
+        {
+          id: 'ontology-explorer',
+          title: 'Ontology Explorer',
+          isHidden: true,
+          pageId: 'ontology-explorer',
+        },
+      ];
+
+      const result = filterHiddenNavigationItems(savedNav);
+
+      expect(result.some((item) => item.key === 'ontology-explorer')).toBe(
+        false
+      );
+    });
+
+    it('child item should be disabled when explicitly hidden in the saved persona nav', () => {
+      (leftSidebarClassBase.getSidebarItems as jest.Mock).mockReturnValueOnce([
+        {
+          key: 'home',
+          title: 'Home',
+          icon: 'home-icon',
+          children: [
+            { key: 'dashboard', title: 'Dashboard', icon: 'dashboard-icon' },
+            {
+              key: 'new-feature',
+              title: 'New Feature',
+              icon: 'new-feature-icon',
+            },
+          ],
+        },
+        { key: 'explore', title: 'Explore', icon: 'explore-icon' },
+      ]);
+
+      const savedNav: NavigationItem[] = [
+        {
+          id: 'home',
+          title: 'Home',
+          isHidden: false,
+          pageId: 'home',
+          children: [
+            {
+              id: 'dashboard',
+              title: 'Dashboard',
+              isHidden: false,
+              pageId: 'dashboard',
+            },
+            {
+              id: 'new-feature',
+              title: 'New Feature',
+              isHidden: true,
+              pageId: 'new-feature',
+            },
+          ],
+        },
+        { id: 'explore', title: 'Explore', isHidden: false, pageId: 'explore' },
+      ];
+
+      const result = filterHiddenNavigationItems(savedNav);
+      const homeItem = result.find((item) => item.key === 'home');
+
+      expect(
+        homeItem?.children?.some((c) => c.key === 'new-feature')
+      ).toBeFalsy();
     });
   });
 
