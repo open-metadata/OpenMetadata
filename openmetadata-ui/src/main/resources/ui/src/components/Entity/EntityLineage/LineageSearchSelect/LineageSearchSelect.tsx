@@ -46,7 +46,7 @@ const LineageSearchSelect = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const generateNodeOptions = useCallback(() => {
-    const options: DefaultOptionType[] = [];
+    const optionsMap: Map<string, DefaultOptionType> = new Map();
 
     nodes.forEach((nodeObj) => {
       const { node } = nodeObj.data;
@@ -70,7 +70,7 @@ const LineageSearchSelect = () => {
         value: node.fullyQualifiedName,
         dataLabel: getEntityName(node),
       };
-      options.push(nodeOption);
+      optionsMap.set(nodeOption.value, nodeOption);
 
       const { children: childrenFlatten } = getEntityChildrenAndLabel(node);
 
@@ -103,11 +103,11 @@ const LineageSearchSelect = () => {
           value: column.fullyQualifiedName,
           dataLabel: getEntityName(column),
         };
-        options.push(columnOption);
+        optionsMap.set(columnOption.value, columnOption);
       });
     });
 
-    return options;
+    return Array.from(optionsMap.values());
   }, [nodes]);
 
   useEffect(() => {
