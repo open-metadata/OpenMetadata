@@ -56,7 +56,7 @@ import {
   getTagsWithoutTier,
   getTierTags,
 } from '../../../../utils/TablePureUtils';
-import { createTagObject } from '../../../../utils/TagsUtils';
+import { createTagObject } from '../../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
@@ -68,7 +68,6 @@ import EditTestCaseModal from '../../AddDataQualityTest/EditTestCaseModal';
 import '../incident-manager.style.less';
 import './test-case-result-tab.style.less';
 import testCaseResultTabClassBase from './TestCaseResultTabClassBase';
-
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../../Database/SchemaEditor/SchemaEditor'))
 );
