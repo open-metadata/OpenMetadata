@@ -20,10 +20,15 @@ import {
   useMemo,
   useState,
 } from 'react';
+import {
+  ExploreSearchIndex,
+  SearchHitCounts,
+} from '../../components/Explore/ExplorePage.interface';
 import { ROUTES } from '../../constants/constants';
 import { EntityTabs } from '../../enums/entity.enum';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import { SearchResponse } from '../../interface/search.interface';
 
 interface Props {
   children: ReactNode;
@@ -35,10 +40,18 @@ export interface TourProviderContextProps {
   currentTourPage: CurrentTourPageType;
   activeTabForTourDatasetPage: EntityTabs;
   tourSearchValue: string;
+  tourMockSearchResults?: SearchResponse<ExploreSearchIndex>;
+  tourMockSearchHitCounts?: SearchHitCounts;
+  tourMockDatasetData?: unknown;
   updateIsTourOpen: (value: boolean) => void;
   updateTourPage: (value: CurrentTourPageType) => void;
   updateActiveTab: (value: EntityTabs) => void;
   updateTourSearch: (value: string) => void;
+  updateTourMockData?: (payload: {
+    searchResults: SearchResponse<ExploreSearchIndex>;
+    searchHitCounts: SearchHitCounts;
+    datasetData: unknown;
+  }) => void;
 }
 
 export const TourContext = createContext({} as TourProviderContextProps);
@@ -56,6 +69,11 @@ const TourProvider: FC<Props> = ({ children }) => {
   const [activeTabForTourDatasetPage, setActiveTabForTourDatasetPage] =
     useState<EntityTabs>(EntityTabs.SCHEMA);
   const [searchValue, setSearchValue] = useState('');
+  const [tourMockSearchResults, setTourMockSearchResults] =
+    useState<SearchResponse<ExploreSearchIndex>>();
+  const [tourMockSearchHitCounts, setTourMockSearchHitCounts] =
+    useState<SearchHitCounts>();
+  const [tourMockDatasetData, setTourMockDatasetData] = useState<unknown>();
 
   useEffect(() => {
     if (isTourPage) {
@@ -82,6 +100,19 @@ const TourProvider: FC<Props> = ({ children }) => {
     []
   );
 
+  const handleUpdateTourMockData = useCallback(
+    (payload: {
+      searchResults: SearchResponse<ExploreSearchIndex>;
+      searchHitCounts: SearchHitCounts;
+      datasetData: unknown;
+    }) => {
+      setTourMockSearchResults(payload.searchResults);
+      setTourMockSearchHitCounts(payload.searchHitCounts);
+      setTourMockDatasetData(payload.datasetData);
+    },
+    []
+  );
+
   return (
     <TourContext.Provider
       value={{
@@ -90,10 +121,14 @@ const TourProvider: FC<Props> = ({ children }) => {
         currentTourPage,
         tourSearchValue: searchValue,
         activeTabForTourDatasetPage,
+        tourMockSearchResults,
+        tourMockSearchHitCounts,
+        tourMockDatasetData,
         updateActiveTab: handleActiveTabChange,
         updateIsTourOpen: handleIsTourOpen,
         updateTourPage: handleTourPageChange,
         updateTourSearch: handleUpdateTourSearch,
+        updateTourMockData: handleUpdateTourMockData,
       }}>
       {children}
     </TourContext.Provider>
