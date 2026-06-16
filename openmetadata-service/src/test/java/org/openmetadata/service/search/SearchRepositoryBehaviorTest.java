@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -48,6 +49,9 @@ import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.configuration.LLMConfiguration;
+import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
+import org.openmetadata.schema.configuration.LLMEmbeddingsConfig.Provider;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Pipeline;
@@ -2503,22 +2507,25 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void createEmbeddingClientRejectsUnsupportedOrIncompleteConfigurations() {
-    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
-    config.setNaturalLanguageSearch(
-        new NaturalLanguageSearchConfiguration().withEmbeddingProvider("bedrock"));
-    assertThrows(IllegalStateException.class, () -> repository.createEmbeddingClient(config));
+    assertThrows(
+        IllegalStateException.class,
+        () -> repository.createEmbeddingClient(embeddingConfigWithProvider(Provider.BEDROCK)));
 
-    config.setNaturalLanguageSearch(
-        new NaturalLanguageSearchConfiguration().withEmbeddingProvider("openai"));
-    assertThrows(IllegalStateException.class, () -> repository.createEmbeddingClient(config));
+    assertThrows(
+        IllegalStateException.class,
+        () -> repository.createEmbeddingClient(embeddingConfigWithProvider(Provider.OPENAI)));
 
-    config.setNaturalLanguageSearch(
-        new NaturalLanguageSearchConfiguration().withEmbeddingProvider("djl"));
-    assertThrows(IllegalStateException.class, () -> repository.createEmbeddingClient(config));
+    assertThrows(
+        IllegalStateException.class,
+        () -> repository.createEmbeddingClient(embeddingConfigWithProvider(Provider.GOOGLE)));
 
-    config.setNaturalLanguageSearch(
-        new NaturalLanguageSearchConfiguration().withEmbeddingProvider("unknown"));
-    assertThrows(IllegalArgumentException.class, () -> repository.createEmbeddingClient(config));
+    assertThrows(
+        IllegalStateException.class,
+        () -> repository.createEmbeddingClient(embeddingConfigWithProvider(Provider.DJL)));
+  }
+
+  private LLMConfiguration embeddingConfigWithProvider(Provider provider) {
+    return new LLMConfiguration().withEmbeddings(new LLMEmbeddingsConfig().withProvider(provider));
   }
 
   @Test
@@ -2556,7 +2563,7 @@ class SearchRepositoryBehaviorTest {
     doReturn(true).when(spyRepository).isVectorEmbeddingEnabled();
     doReturn(embeddingClient)
         .when(spyRepository)
-        .createEmbeddingClient(any(ElasticSearchConfiguration.class));
+        .createEmbeddingClient(nullable(LLMConfiguration.class));
     setPrivateField(spyRepository, "searchClient", openSearchClient);
 
     try (var settingsCacheMock = mockStatic(SettingsCache.class);
