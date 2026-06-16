@@ -292,8 +292,18 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   }
 
   @Override
-  protected String getCsvImportContainerName(TestNamespace ns, Table entity) {
+  protected String getCsvImportContainerName(
+      TestNamespace ns, org.openmetadata.schema.EntityInterface entity) {
     return entity.getFullyQualifiedName();
+  }
+
+  @Override
+  protected Table prepareCsvImportRegressionUpdate(TestNamespace ns, Table entity) {
+    entity
+        .getColumns()
+        .get(0)
+        .setDescription("Updated by CSV import regression - " + ns.shortPrefix());
+    return entity;
   }
 
   // ===================================================================

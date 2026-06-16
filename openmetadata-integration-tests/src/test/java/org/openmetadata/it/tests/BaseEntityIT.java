@@ -5993,12 +5993,40 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     return null; // Override in subclasses that support import/export
   }
 
-  protected String getCsvImportContainerName(TestNamespace ns, T entity) {
+  protected String getCsvImportContainerName(TestNamespace ns, EntityInterface entity) {
     return getImportExportContainerName(ns);
   }
 
   protected String importCsvForEntity(String containerName, String csvData, boolean dryRun) {
     return getEntityService().importCsv(containerName, csvData, dryRun);
+  }
+
+  protected EntityInterface createCsvImportRegressionEntity(TestNamespace ns) {
+    return createEntity(createRequest(ns.prefix("csvNullChangeDescription"), ns));
+  }
+
+  @SuppressWarnings("unchecked")
+  protected EntityInterface patchCsvImportRegressionEntity(EntityInterface entity) {
+    return patchEntity(entity.getId().toString(), (T) entity);
+  }
+
+  protected String getCsvImportRegressionEntityType() {
+    return getEntityType();
+  }
+
+  protected EntityInterface getCsvImportRegressionEntityByName(String fqn) {
+    return getEntityByName(fqn);
+  }
+
+  @SuppressWarnings("unchecked")
+  protected String generateCsvImportRegressionData(TestNamespace ns, EntityInterface entity) {
+    T csvUpdate = prepareCsvImportRegressionUpdate(ns, (T) entity);
+    return generateValidCsvData(ns, List.of(csvUpdate));
+  }
+
+  protected T prepareCsvImportRegressionUpdate(TestNamespace ns, T entity) {
+    entity.setDescription("Updated by CSV import regression - " + ns.shortPrefix());
+    return entity;
   }
 
   // ===================================================================
@@ -6230,12 +6258,14 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   }
 
   @SuppressWarnings("unchecked")
-  private void persistEntityWithoutChangeDescription(T entity) {
-    EntityRepository<T> repository =
-        (EntityRepository<T>) Entity.getEntityRepository(getEntityType());
+  private void persistEntityWithoutChangeDescription(String entityType, EntityInterface entity) {
+    // These integration tests run in-process with the OpenMetadata server, so this can seed
+    // persisted state that is not reachable through public APIs.
+    EntityRepository<EntityInterface> repository =
+        (EntityRepository<EntityInterface>) Entity.getEntityRepository(entityType);
     repository.getDao().update(entity);
     EntityRepository.invalidateCacheForEntity(
-        getEntityType(), entity.getId(), entity.getFullyQualifiedName());
+        entityType, entity.getId(), entity.getFullyQualifiedName());
     RequestEntityCache.clear();
   }
 
@@ -6404,16 +6434,20 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
     Assumptions.assumeTrue(service != null, "Entity service not provided");
 
-    T entity = createEntity(createRequest(ns.prefix("csvNullChangeDescription"), ns));
+    EntityInterface entity = createCsvImportRegressionEntity(ns);
     entity.setDescription("Versioned for CSV import regression");
-    T versioned = patchEntity(entity.getId().toString(), entity);
-    String csvData = generateValidCsvData(ns, List.of(versioned));
-    Assumptions.assumeTrue(
-        csvData != null && !csvData.isBlank(), "Entity does not provide CSV data generation");
+    EntityInterface versioned = patchCsvImportRegressionEntity(entity);
+    Double versionBeforeImport = versioned.getVersion();
+    String fqn = versioned.getFullyQualifiedName();
+    String entityType = getCsvImportRegressionEntityType();
 
     versioned.setChangeDescription(null);
     versioned.setIncrementalChangeDescription(null);
-    persistEntityWithoutChangeDescription(versioned);
+    persistEntityWithoutChangeDescription(entityType, versioned);
+
+    String csvData = generateCsvImportRegressionData(ns, versioned);
+    Assumptions.assumeTrue(
+        csvData != null && !csvData.isBlank(), "Entity does not provide CSV data generation");
 
     String containerName = getCsvImportContainerName(ns, versioned);
     Assumptions.assumeTrue(containerName != null, "Container name not provided");
@@ -6427,6 +6461,16 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
         importResult.getStatus(),
         "Import should succeed: " + importResult.getImportResultsCsv());
     assertEquals(0, importResult.getNumberOfRowsFailed());
+
+    EntityInterface updated = getCsvImportRegressionEntityByName(fqn);
+    assertTrue(
+        updated.getVersion() > versionBeforeImport, "CSV import should create a new version");
+    assertNotNull(updated.getChangeDescription(), "CSV import should record a changeDescription");
+    assertEquals(
+        versionBeforeImport,
+        updated.getChangeDescription().getPreviousVersion(),
+        0.001,
+        "CSV import should skip consolidation and use the null-changeDescription version as the previous version");
   }
 
   // ===================================================================
