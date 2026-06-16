@@ -108,6 +108,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
@@ -1512,6 +1513,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   public void postUpdate(GlossaryTerm original, GlossaryTerm updated) {
     super.postUpdate(original, updated);
+    updateWorkflowRelatedEntitiesAfterFqnChange(
+        original.getFullyQualifiedName(), updated.getFullyQualifiedName());
     if (original.getEntityStatus() == EntityStatus.IN_REVIEW) {
       if (updated.getEntityStatus() == EntityStatus.APPROVED) {
         closeApprovalTask(updated, "Approved the glossary term");
@@ -2054,14 +2057,21 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     /**
      * Move a glossary term to a new parent or glossary. Only parent or glossary can be changed.
+     *
+     * <p>The FQN cascade rewrite and the entity-row store run inside a single JDBI transaction
+     * (mirroring the standard update flush) so a mid-move failure — e.g. a tag rename that hits a DB
+     * constraint — rolls back completely instead of leaving the term half-moved (FQN rewritten but
+     * relationships/tag usages not). ES + cache writes are deferred and {@code postUpdate} runs
+     * post-commit.
      */
-    @Transaction
     public void moveAndStore() {
-      changeDescription = new ChangeDescription().withPreviousVersion(original.getVersion());
-      // Now updated from previous/original to updated one
       validateParent();
-      updateParent(original, updated); // Only update parent/glossary and FQN/relationships
-      storeUpdate();
+      flushInOneTransaction(
+          () -> {
+            changeDescription = new ChangeDescription().withPreviousVersion(original.getVersion());
+            updateParent(original, updated); // Only update parent/glossary and FQN/relationships
+            storeUpdate();
+          });
       postUpdate(original, updated);
     }
 
@@ -2711,6 +2721,34 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       }
     }
     return updated;
+  }
+
+  /**
+   * A move OR rename rewrites the FQN of the term and every descendant. Any in-flight governance
+   * workflow (e.g. an open Glossary Approval) keeps its {@code relatedEntity} pinned to the
+   * pre-change FQN and would fail to resolve the term on resolution. Repoint those running instances
+   * to the new FQNs. Driven from {@code postUpdate} (post-commit) so the new FQNs are already
+   * durable, covering both the move path ({@code moveAndStore}) and the rename path
+   * ({@code updateNameAndParent}).
+   */
+  private void updateWorkflowRelatedEntitiesAfterFqnChange(String oldFqn, String newFqn) {
+    if (!oldFqn.equals(newFqn) && WorkflowHandler.isInitialized()) {
+      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
+      rewriteWorkflowRelatedEntity(workflowHandler, oldFqn, newFqn);
+      List<EntityDAO.EntityIdFqnPair> descendants =
+          daoCollection.glossaryTermDAO().listDescendantIdFqnByPrefix(newFqn);
+      for (EntityDAO.EntityIdFqnPair descendant : descendants) {
+        String oldDescendantFqn = oldFqn + descendant.fqn.substring(newFqn.length());
+        rewriteWorkflowRelatedEntity(workflowHandler, oldDescendantFqn, descendant.fqn);
+      }
+    }
+  }
+
+  private void rewriteWorkflowRelatedEntity(
+      WorkflowHandler workflowHandler, String oldTermFqn, String newTermFqn) {
+    String oldLink = new EntityLink(GLOSSARY_TERM, oldTermFqn).getLinkString();
+    String newLink = new EntityLink(GLOSSARY_TERM, newTermFqn).getLinkString();
+    workflowHandler.updateRelatedEntityLink(oldLink, newLink);
   }
 
   @Override

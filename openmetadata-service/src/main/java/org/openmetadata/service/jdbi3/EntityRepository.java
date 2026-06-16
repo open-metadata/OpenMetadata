@@ -4907,7 +4907,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * the request returns. A rolled-back attempt clears its collector so a replay never double-enqueues.
    * The collectors are (re-)opened inside the transactional runnable so each replay starts empty.
    */
-  private void flushInOneTransaction(Runnable flushBody) {
+  protected void flushInOneTransaction(Runnable flushBody) {
     DeferralScope scope = new DeferralScope();
     boolean committed = false;
     try {

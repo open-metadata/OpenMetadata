@@ -1,5 +1,7 @@
 package org.openmetadata.service.governance.workflows;
 
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
@@ -657,6 +659,32 @@ public class WorkflowHandler {
       LOG.warn(
           "[WorkflowHandler] setProcessVariable: no Flowable task for customTaskId='{}'",
           customTaskId);
+    }
+  }
+
+  /**
+   * Repoint the {@code relatedEntity} variable on every RUNNING workflow instance that references
+   * {@code oldEntityLink} to {@code newEntityLink}. Invoked when an entity's FQN changes (e.g. a
+   * glossary term move) so in-flight governance workflows keep resolving the entity by its current
+   * FQN instead of failing on the stale pre-move FQN.
+   */
+  public void updateRelatedEntityLink(String oldEntityLink, String newEntityLink) {
+    RuntimeService runtimeService = processEngine.getRuntimeService();
+    String variableName = getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE);
+    List<ProcessInstance> instances =
+        runtimeService
+            .createProcessInstanceQuery()
+            .variableValueEquals(variableName, oldEntityLink)
+            .list();
+    for (ProcessInstance instance : instances) {
+      runtimeService.setVariable(instance.getId(), variableName, newEntityLink);
+    }
+    if (!instances.isEmpty()) {
+      LOG.info(
+          "[WorkflowHandler] Repointed relatedEntity on {} running instance(s): {} -> {}",
+          instances.size(),
+          oldEntityLink,
+          newEntityLink);
     }
   }
 
