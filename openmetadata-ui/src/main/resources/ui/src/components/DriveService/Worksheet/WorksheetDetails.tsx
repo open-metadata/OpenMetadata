@@ -14,12 +14,12 @@ import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { EntityTags } from 'Models';
 import {
-  lazy,
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
+    lazy,
+    Suspense,
+    useCallback,
+    useEffect,
+    useMemo,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -37,28 +37,27 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
 import {
-  checkIfExpandViewSupported,
-  getDetailsTabWithNewLabel,
-  getTabLabelMapFromTabs,
+    checkIfExpandViewSupported,
+    getDetailsTabWithNewLabel,
+    getTabLabelMapFromTabs
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import {
-  fetchEntityActivityCountInto,
-  fetchEntityTaskCountsInto,
-  getFeedCounts,
+    fetchEntityActivityCountInto,
+    fetchEntityTaskCountsInto,
+    getFeedCounts
 } from '../../../utils/FeedUtils';
 import {
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
+    getPrioritizedEditPermission,
+    getPrioritizedViewPermission
 } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
-  createTagObject,
-  updateCertificationTag,
-  updateTierTag,
-} from '../../../utils/TagsUtils';
+    createTagObject, updateCertificationTag,
+    updateTierTag
+} from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import worksheetClassBase from '../../../utils/WorksheetClassBase';

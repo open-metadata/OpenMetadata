@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 import {
-  Autocomplete,
-  Button,
-  Dialog,
-  FieldProp,
-  FieldTypes,
-  FormSelectItem,
-  getField,
-  HookForm,
-  Modal,
-  ModalOverlay,
+    Autocomplete,
+    Button,
+    Dialog,
+    FieldProp,
+    FieldTypes,
+    FormSelectItem,
+    getField,
+    HookForm,
+    Modal,
+    ModalOverlay
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -29,8 +29,8 @@ import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
-  KNOWLEDGE_CENTER_CLASSIFICATION,
-  PAGE_SIZE,
+    KNOWLEDGE_CENTER_CLASSIFICATION,
+    PAGE_SIZE
 } from '../../../constants/constants';
 import { getKnowledgePageFields } from '../../../constants/KnowledgeCenter.constant';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -38,20 +38,20 @@ import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import {
-  LabelType,
-  State,
-  TagLabel,
-  TagSource,
+    LabelType,
+    State,
+    TagLabel,
+    TagSource
 } from '../../../generated/type/tagLabel';
 import {
-  CreateKnowledgePage,
-  KnowledgePage,
-  QuickLink,
+    CreateKnowledgePage,
+    KnowledgePage,
+    QuickLink
 } from '../../../interface/knowledge-center.interface';
 import { searchGlossaryTerms } from '../../../rest/glossaryAPI';
 import {
-  getKnowledgePageByFqn,
-  patchKnowledgePage,
+    getKnowledgePageByFqn,
+    patchKnowledgePage
 } from '../../../rest/knowledgeCenterAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -62,7 +62,7 @@ import { escapeESReservedCharacters } from '../../../utils/StringUtils';
 import { getTagsWithoutTier } from '../../../utils/TablePureUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import tagClassBase from '../../../utils/TagClassBase';
-import { getTagDisplay } from '../../../utils/TagsUtils';
+import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 export interface QuickLinkFormModalFormData

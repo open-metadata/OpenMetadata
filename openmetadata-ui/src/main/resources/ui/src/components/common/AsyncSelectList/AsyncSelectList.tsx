@@ -12,15 +12,15 @@
  */
 import { CloseOutlined } from '@ant-design/icons';
 import {
-  Button,
-  Empty,
-  Form,
-  Select,
-  SelectProps,
-  Space,
-  TagProps,
-  Tooltip,
-  Typography,
+    Button,
+    Empty,
+    Form,
+    Select,
+    SelectProps,
+    Space,
+    TagProps,
+    Tooltip,
+    Typography
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -35,14 +35,15 @@ import { LabelType } from '../../../generated/entity/data/table';
 import { Paging } from '../../../generated/type/paging';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import Fqn from '../../../utils/Fqn';
-import { getTagDisplay, tagRender } from '../../../utils/TagsUtils';
+import { getTagDisplay } from '../../../utils/TagsPureUtils';
+import { tagRender } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import Loader from '../Loader/Loader';
 import './async-select-list.less';
 import {
-  AsyncSelectListProps,
-  SelectOption,
+    AsyncSelectListProps,
+    SelectOption
 } from './AsyncSelectList.interface';
 
 const AsyncSelectList: FC<

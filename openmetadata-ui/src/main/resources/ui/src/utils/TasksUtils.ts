@@ -22,17 +22,17 @@ import { ReactComponent as CheckIcon } from '../assets/svg/ic-tick-circle.svg';
 import { ActivityFeedTabs } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
-  PLACEHOLDER_ROUTE_ENTITY_TYPE,
-  PLACEHOLDER_ROUTE_FQN,
-  ROUTES,
+    PLACEHOLDER_ROUTE_ENTITY_TYPE,
+    PLACEHOLDER_ROUTE_FQN,
+    ROUTES
 } from '../constants/constants';
 import { EntityField } from '../constants/Feeds.constants';
 import { TASK_SANITIZE_VALUE_REGEX } from '../constants/regex.constants';
 import {
-  EntityTabs,
-  EntityType,
-  FqnPart,
-  TabSpecificField,
+    EntityTabs,
+    EntityType,
+    FqnPart,
+    TabSpecificField
 } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
@@ -43,8 +43,8 @@ import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel'
 import { Glossary } from '../generated/entity/data/glossary';
 import { MlFeature, Mlmodel } from '../generated/entity/data/mlmodel';
 import {
-  Pipeline,
-  Task as PipelineTask,
+    Pipeline,
+    Task as PipelineTask
 } from '../generated/entity/data/pipeline';
 import { SearchIndex } from '../generated/entity/data/searchIndex';
 import { Column, Table } from '../generated/entity/data/table';
@@ -56,17 +56,17 @@ import { useMarketplaceStore } from '../hooks/useMarketplaceStore';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import {
-  EntityData,
-  Option,
-  TaskAction,
-  TaskActionMode,
+    EntityData,
+    Option,
+    TaskAction,
+    TaskActionMode
 } from '../pages/TasksPage/TasksPage.interface';
 import { getApiCollectionByFQN } from '../rest/apiCollectionsAPI';
 import { getApiEndPointByFQN } from '../rest/apiEndpointsAPI';
 import { getDashboardByFqn } from '../rest/dashboardAPI';
 import {
-  getDatabaseDetailsByFQN,
-  getDatabaseSchemaDetailsByFQN,
+    getDatabaseDetailsByFQN,
+    getDatabaseSchemaDetailsByFQN
 } from '../rest/databaseAPI';
 import { getDataModelByFqn } from '../rest/dataModelsAPI';
 import { getDataProductByName } from '../rest/dataProductAPI';
@@ -80,15 +80,15 @@ import { getContainerByFQN } from '../rest/storageAPI';
 import { getStoredProceduresByFqn } from '../rest/storedProceduresAPI';
 import { getTableDetailsByFQN } from '../rest/tableAPI';
 import {
-  Task as TaskEntity,
-  TaskEntityStatus,
-  TaskEntityType,
+    Task as TaskEntity,
+    TaskEntityStatus,
+    TaskEntityType
 } from '../rest/tasksAPI';
 import { getTopicByFqn } from '../rest/topicsAPI';
 import { ContainerFields } from './ContainerDetailUtils';
 import {
-  defaultFields as DashboardFields,
-  fetchCharts,
+    defaultFields as DashboardFields,
+    fetchCharts
 } from './DashboardDetailsUtils';
 import { DatabaseFields } from './Database/Database.util';
 import { defaultFields as DatabaseSchemaFields } from './DatabaseSchemaDetailsUtils';
@@ -99,16 +99,16 @@ import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
 import { getEntityFQNFromAbout, getEntityTypeFromAbout } from './FeedUtils';
 import { getPartialNameFromTableFQN } from './FqnUtils';
-import { getGlossaryBreadcrumbs } from './GlossaryUtils';
+import { getGlossaryBreadcrumbs } from './GlossaryPureUtils';
 import { t } from './i18next/LocalUtil';
 import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
 import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
 import {
-  getEntityDetailsPath,
-  getGlossaryTermDetailsPath,
-  getServiceDetailsPath,
-  getTestCaseDetailPagePath,
-  getUserPath,
+    getEntityDetailsPath,
+    getGlossaryTermDetailsPath,
+    getServiceDetailsPath,
+    getTestCaseDetailPagePath,
+    getUserPath
 } from './RouterUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { STORED_PROCEDURE_DEFAULT_FIELDS } from './StoredProceduresUtils';

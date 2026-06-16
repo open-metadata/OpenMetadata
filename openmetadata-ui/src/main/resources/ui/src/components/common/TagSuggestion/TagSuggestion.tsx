@@ -12,10 +12,10 @@
  */
 
 import {
-  Autocomplete,
-  BadgeWithButton,
-  Dot,
-  type SelectItemType,
+    Autocomplete,
+    BadgeWithButton,
+    Dot,
+    type SelectItemType
 } from '@openmetadata/ui-core-components';
 import { debounce } from 'lodash';
 import { EntityTags } from 'Models';
@@ -26,7 +26,7 @@ import { TagSource } from '../../../generated/entity/data/container';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import tagClassBase from '../../../utils/TagClassBase';
-import { getTagDisplay } from '../../../utils/TagsUtils';
+import { getTagDisplay } from '../../../utils/TagsPureUtils';
 
 type TagSelectItem = SelectItemType & { labelColor?: string };
 

@@ -32,27 +32,27 @@ import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDashboard } from '../../../rest/dashboardAPI';
 import {
-  checkIfExpandViewSupported,
-  getDetailsTabWithNewLabel,
-  getTabLabelMapFromTabs,
+    checkIfExpandViewSupported,
+    getDetailsTabWithNewLabel,
+    getTabLabelMapFromTabs
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import dashboardDetailsClassBase from '../../../utils/DashboardDetailsClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
-  fetchEntityActivityCountInto,
-  fetchEntityTaskCountsInto,
-  getFeedCounts,
+    fetchEntityActivityCountInto,
+    fetchEntityTaskCountsInto,
+    getFeedCounts
 } from '../../../utils/FeedUtils';
 import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
+    DEFAULT_ENTITY_PERMISSION,
+    getPrioritizedEditPermission,
+    getPrioritizedViewPermission
 } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import {
-  updateCertificationTag,
-  updateTierTag,
-} from '../../../utils/TagsUtils';
+    updateCertificationTag,
+    updateTierTag
+} from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';

@@ -33,8 +33,8 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
-  OperationPermission,
-  ResourceEntity,
+    OperationPermission,
+    ResourceEntity
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
@@ -48,38 +48,38 @@ import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
-  searchIndexQueryFn,
-  searchIndexQueryKey,
+    searchIndexQueryFn,
+    searchIndexQueryKey
 } from '../../rest/queries/searchIndexQuery';
 import {
-  addFollower,
-  patchSearchIndexDetails,
-  removeFollower,
-  restoreSearchIndex,
-  updateSearchIndexVotes,
+    addFollower,
+    patchSearchIndexDetails,
+    removeFollower,
+    restoreSearchIndex,
+    updateSearchIndexVotes
 } from '../../rest/SearchIndexAPI';
 import {
-  checkIfExpandViewSupported,
-  getDetailsTabWithNewLabel,
-  getTabLabelMapFromTabs,
+    checkIfExpandViewSupported,
+    getDetailsTabWithNewLabel,
+    getTabLabelMapFromTabs
 } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
-  fetchEntityActivityCountInto,
-  fetchEntityTaskCountsInto,
-  getFeedCounts,
+    fetchEntityActivityCountInto,
+    fetchEntityTaskCountsInto,
+    getFeedCounts
 } from '../../utils/FeedUtils';
 import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
+    DEFAULT_ENTITY_PERMISSION,
+    getPrioritizedEditPermission,
+    getPrioritizedViewPermission
 } from '../../utils/PermissionsUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import searchIndexClassBase from '../../utils/SearchIndexDetailsClassBase';
 import { defaultFields } from '../../utils/SearchIndexUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TablePureUtils';
-import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
+import { updateCertificationTag, updateTierTag } from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 

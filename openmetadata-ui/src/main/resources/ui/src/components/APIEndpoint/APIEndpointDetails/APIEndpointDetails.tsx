@@ -30,23 +30,23 @@ import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreApiEndPoint } from '../../../rest/apiEndpointsAPI';
 import apiEndpointClassBase from '../../../utils/APIEndpoints/APIEndpointClassBase';
 import {
-  checkIfExpandViewSupported,
-  getDetailsTabWithNewLabel,
-  getTabLabelMapFromTabs,
+    checkIfExpandViewSupported,
+    getDetailsTabWithNewLabel,
+    getTabLabelMapFromTabs
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
-  fetchEntityActivityCountInto,
-  fetchEntityTaskCountsInto,
-  getFeedCounts,
+    fetchEntityActivityCountInto,
+    fetchEntityTaskCountsInto,
+    getFeedCounts
 } from '../../../utils/FeedUtils';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
-  updateCertificationTag,
-  updateTierTag,
-} from '../../../utils/TagsUtils';
+    updateCertificationTag,
+    updateTierTag
+} from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';

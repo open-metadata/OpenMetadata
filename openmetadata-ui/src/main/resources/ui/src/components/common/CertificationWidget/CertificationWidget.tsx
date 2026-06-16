@@ -20,7 +20,7 @@ import { Tag } from '../../../generated/entity/classification/tag';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
-import { updateCertificationTag } from '../../../utils/TagsUtils';
+import { updateCertificationTag } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Certification from '../../Certification/Certification.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';

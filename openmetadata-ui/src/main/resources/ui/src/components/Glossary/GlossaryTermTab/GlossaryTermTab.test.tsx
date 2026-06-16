@@ -90,6 +90,7 @@ jest.mock('../../../utils/TableUtils', () => ({
 
 // Mock where the component actually imports this util
 jest.mock('../../../utils/GlossaryPureUtils', () => ({
+  ...jest.requireActual('../../../utils/GlossaryPureUtils'),
   buildTree: jest.fn((data) => data),
   findExpandableKeysForArray: jest.fn().mockReturnValue([]),
   glossaryTermTableColumnsWidth: jest.fn().mockReturnValue({
