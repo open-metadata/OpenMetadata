@@ -12,7 +12,7 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Input, Row, Typography } from 'antd';
+import { Button, Card, Col, Input, Row, Tag, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -192,6 +192,16 @@ const BotDetails: FC<BotsDetailProps> = ({
                     </>
                   )}
                 </div>
+                {botUserData.allowImpersonation && (
+                  <Tooltip title={t('message.allow-impersonation-help')}>
+                    <Tag
+                      className="w-fit-content"
+                      color="blue"
+                      data-testid="impersonation-enabled-badge">
+                      {t('label.impersonation-enabled')}
+                    </Tag>
+                  </Tooltip>
+                )}
                 <DescriptionV1
                   description={botData.description}
                   entityName={getEntityName(botData)}
