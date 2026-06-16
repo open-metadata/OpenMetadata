@@ -58,6 +58,9 @@ import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.services.policies.PolicyService;
 import org.openmetadata.sdk.services.teams.RoleService;
 import org.openmetadata.sdk.services.teams.UserService;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.util.RequestEntityCache;
 import org.openmetadata.service.util.TestUtils;
 
 /**
@@ -5990,6 +5993,14 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     return null; // Override in subclasses that support import/export
   }
 
+  protected String getCsvImportContainerName(TestNamespace ns, T entity) {
+    return getImportExportContainerName(ns);
+  }
+
+  protected String importCsvForEntity(String containerName, String csvData, boolean dryRun) {
+    return getEntityService().importCsv(containerName, csvData, dryRun);
+  }
+
   // ===================================================================
   // ABSTRACT CSV HELPER METHODS - Override in subclasses
   // Each entity type has different CSV structure and fields
@@ -6218,6 +6229,16 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     }
   }
 
+  @SuppressWarnings("unchecked")
+  private void persistEntityWithoutChangeDescription(T entity) {
+    EntityRepository<T> repository =
+        (EntityRepository<T>) Entity.getEntityRepository(getEntityType());
+    repository.getDao().update(entity);
+    EntityRepository.invalidateCacheForEntity(
+        getEntityType(), entity.getId(), entity.getFullyQualifiedName());
+    RequestEntityCache.clear();
+  }
+
   /**
    * Validate CSV structure and headers.
    *
@@ -6373,6 +6394,39 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     } catch (org.openmetadata.sdk.exceptions.OpenMetadataException e) {
       fail("Import/export round-trip failed: " + e.getMessage());
     }
+  }
+
+  @Test
+  void test_importCsv_skipsSessionConsolidationWhenChangeDescriptionIsMissing(TestNamespace ns) {
+    Assumptions.assumeTrue(supportsImportExport, "Entity does not support import/export");
+    Assumptions.assumeTrue(supportsPatch, "Entity does not support patch operations");
+
+    org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
+    Assumptions.assumeTrue(service != null, "Entity service not provided");
+
+    T entity = createEntity(createRequest(ns.prefix("csvNullChangeDescription"), ns));
+    entity.setDescription("Versioned for CSV import regression");
+    T versioned = patchEntity(entity.getId().toString(), entity);
+    String csvData = generateValidCsvData(ns, List.of(versioned));
+    Assumptions.assumeTrue(
+        csvData != null && !csvData.isBlank(), "Entity does not provide CSV data generation");
+
+    versioned.setChangeDescription(null);
+    versioned.setIncrementalChangeDescription(null);
+    persistEntityWithoutChangeDescription(versioned);
+
+    String containerName = getCsvImportContainerName(ns, versioned);
+    Assumptions.assumeTrue(containerName != null, "Container name not provided");
+
+    CsvImportResult importResult =
+        JsonUtils.readValue(
+            importCsvForEntity(containerName, csvData, false), CsvImportResult.class);
+
+    assertEquals(
+        ApiStatus.SUCCESS,
+        importResult.getStatus(),
+        "Import should succeed: " + importResult.getImportResultsCsv());
+    assertEquals(0, importResult.getNumberOfRowsFailed());
   }
 
   // ===================================================================

@@ -291,6 +291,11 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     return lastCreatedTable.getFullyQualifiedName();
   }
 
+  @Override
+  protected String getCsvImportContainerName(TestNamespace ns, Table entity) {
+    return entity.getFullyQualifiedName();
+  }
+
   // ===================================================================
   // COLUMN VALIDATION TESTS
   // ===================================================================
