@@ -19,7 +19,7 @@ import {
 } from '../../../../generated/entity/data/directory';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { descriptionTableObject } from '../../../../utils/TableColumn.util';
-import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import DirectoryChildrenTable from './DirectoryChildrenTable';
 
 jest.mock('../../../../utils/RouterUtils');

@@ -31,7 +31,7 @@ import {
 } from '../../../../../utils/date-time/DateTimeUtils';
 import { createGlossaryTermEntityLink } from '../../../../../utils/GlossaryTerm/GlossaryTermUtil';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
-import { useGenericContext } from '../../../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../../Customization/GenericProvider/GenericContext';
 
 // Mock dependencies
 jest.mock('../../../../Customization/GenericProvider/GenericProvider');

@@ -28,7 +28,7 @@ import {
   getTagTooltip,
 } from '../../../utils/TagsUtils';
 import TagChip from '../../common/atoms/TagChip/TagChip';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import TagsV1 from '../TagsV1/TagsV1.component';
 import './tags-viewer.less';
 import { DisplayType, TagsViewerProps } from './TagsViewer.interface';

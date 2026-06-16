@@ -400,7 +400,7 @@ jest.mock('../../components/DataAssets/OwnerLabelV2/OwnerLabelV2', () => ({
 }));
 
 jest.mock(
-  '../../components/Customization/GenericProvider/GenericProvider',
+  '../../components/Customization/GenericProvider/GenericContext',
   () => ({
     useGenericContext: jest.fn().mockReturnValue({
       data: {
@@ -449,8 +449,13 @@ jest.mock(
       onUpdate: jest.fn(),
       filterWidgets: jest.fn(),
     }),
+  })
+);
+
+jest.mock(
+  '../../components/Customization/GenericProvider/GenericProvider',
+  () => ({
     GenericProvider: jest.fn().mockImplementation(({ children }) => children),
-    _esModule: true,
   })
 );
 

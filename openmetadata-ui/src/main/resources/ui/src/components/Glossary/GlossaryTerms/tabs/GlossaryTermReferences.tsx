@@ -33,7 +33,7 @@ import {
   EditIconButton,
   PlusIconButton,
 } from '../../../common/IconButtons/EditIconButton';
-import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import GlossaryTermReferencesModal from '../GlossaryTermReferencesModal.component';
 
 const GlossaryTermReferences = () => {

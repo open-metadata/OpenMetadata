@@ -43,7 +43,7 @@ jest.mock('../TagsV1/TagsV1.component', () =>
   jest.fn().mockImplementation(() => <div data-testid="tags-v1" />)
 );
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: () => ({
     onThreadLinkSelect: jest.fn(),
     activeTagDropdownKey: null,

@@ -42,7 +42,7 @@ import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import ErrorPlaceHolder from '../ErrorWithPlaceholder/ErrorPlaceHolder';
 import ExpandableCard from '../ExpandableCard/ExpandableCard';
 import './custom-property-table.less';
