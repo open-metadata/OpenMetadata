@@ -548,11 +548,8 @@ test.describe('Data Products', () => {
     });
 
     await test.step('Clicking Data Observability tab loads DQ dashboard', async () => {
-      const dqReportResponse = page.waitForResponse(
-        (r) =>
-          r
-            .url()
-            .includes('/api/v1/dataQuality/testSuites/dataQualityReport')
+      const dqReportResponse = page.waitForResponse((r) =>
+        r.url().includes('/api/v1/dataQuality/testSuites/dataQualityReport')
       );
       await page.getByRole('tab', { name: /data observability/i }).click();
       expect((await dqReportResponse).ok()).toBeTruthy();
