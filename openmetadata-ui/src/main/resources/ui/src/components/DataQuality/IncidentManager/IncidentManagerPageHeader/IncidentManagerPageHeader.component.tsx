@@ -41,7 +41,7 @@ import {
 } from '../../../../rest/incidentManagerAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
-import { getCommonExtraInfoForVersionDetails } from '../../../../utils/EntityVersionUtils';
+import { getCommonExtraInfoForVersionDetails } from '../../../../utils/EntityVersionUtilsPure';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
@@ -57,7 +57,6 @@ import Severity from '../Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import './incident-manager.less';
 import { IncidentManagerPageHeaderProps } from './IncidentManagerPageHeader.interface';
-
 const IncidentManagerPageHeader = ({
   onOwnerUpdate,
   fetchTaskCount,

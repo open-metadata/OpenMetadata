@@ -54,7 +54,7 @@ import {
   getColumnNameFromColumnFilterKey,
   getSelectedOptionsFromKeys,
   parseColumnAggregateBuckets,
-} from '../../../utils/DataQuality/DataQualityUtils';
+} from '../../../utils/DataQuality/DataQualityPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getColumnNameFromEntityLink } from '../../../utils/EntityPureUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';

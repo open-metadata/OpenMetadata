@@ -108,8 +108,12 @@ import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/u
 import TableDetailsPageSkeleton from './TableDetailsPageSkeleton.component';
 
 const TableDetailsPageV1: React.FC = () => {
-  const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
-    useTourProvider();
+  const {
+    isTourOpen,
+    activeTabForTourDatasetPage,
+    isTourPage,
+    tourMockDatasetData,
+  } = useTourProvider();
   const { currentUser } = useApplicationStore();
   const { setDqLineageData } = useTestCaseStore();
   const queryClient = useQueryClient();
@@ -911,15 +915,10 @@ const TableDetailsPageV1: React.FC = () => {
 
   useEffect(() => {
     if (isTourOpen || isTourPage) {
-      // Seed the cache with the tour mock so the rest of the page reads through the same
-      // useQuery slot. The {@link useQuery} hook is {@code enabled: false} in tour mode, so
-      // this manual write is the only thing that populates the slot. The tour mock data is
-      // ~113 KB so we lazy-load it only when actually in tour mode.
-      import('../../constants/mockTourData.constants').then(
-        ({ mockDatasetData }) => {
-          setTableDetails(mockDatasetData.tableDetails as unknown as Table);
-        }
-      );
+      const mock = tourMockDatasetData as { tableDetails: unknown } | undefined;
+      if (mock?.tableDetails) {
+        setTableDetails(mock.tableDetails as Table);
+      }
     } else if (viewBasicPermission) {
       // Don't manually clear the cache to {@code undefined} here — that would flash a Loader
       // on every navigation between tables even when the destination is already cached.
@@ -928,7 +927,13 @@ const TableDetailsPageV1: React.FC = () => {
       fetchTaskCounts();
       fetchActivityCount();
     }
-  }, [tableFqn, isTourOpen, isTourPage, viewBasicPermission]);
+  }, [
+    tableFqn,
+    isTourOpen,
+    isTourPage,
+    viewBasicPermission,
+    tourMockDatasetData,
+  ]);
 
   // P1.2: getTestCaseFailureCount drives the global red-alert badge in the page chrome,
   // so it must run as soon as tableDetails resolves — deferring would mean the user could
