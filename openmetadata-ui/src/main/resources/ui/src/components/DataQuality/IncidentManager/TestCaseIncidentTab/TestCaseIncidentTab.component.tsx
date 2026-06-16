@@ -32,10 +32,11 @@ import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentMana
 import { getTaskCounts, Task } from '../../../../rest/tasksAPI';
 import TaskListV1 from '../../../ActivityFeed/ActivityFeedList/TaskListV1.component';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { TaskFilter } from '../../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import Loader from '../../../common/Loader/Loader';
 import './test-case-incident-tab.style.less';
+
+type TaskFilter = 'open' | 'close';
 
 const TaskTabNew = withSuspenseFallback(
   lazy(() =>
