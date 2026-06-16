@@ -147,159 +147,137 @@ test.describe(
   'Persona navigation — new sidebar items hidden by default',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
-    test(
-      'new sidebar items absent from saved persona nav are toggled OFF in admin settings and hidden in sidebar',
-      async ({ adminPage, userPage }) => {
-        test.slow();
+    test('new sidebar items absent from saved persona nav are toggled OFF in admin settings and hidden in sidebar', async ({
+      adminPage,
+      userPage,
+    }) => {
+      test.slow();
 
-        await test.step(
-          'admin: Ontology Explorer toggle is OFF for items absent from saved nav',
-          async () => {
-            await redirectToHomePage(adminPage);
+      await test.step('admin: Ontology Explorer toggle is OFF for items absent from saved nav', async () => {
+        await redirectToHomePage(adminPage);
 
-            const personaListResponse = adminPage.waitForResponse(
-              '/api/v1/personas?*'
-            );
-            await settingClick(adminPage, GlobalSettingOptions.PERSONA);
-            await personaListResponse;
+        const personaListResponse =
+          adminPage.waitForResponse('/api/v1/personas?*');
+        await settingClick(adminPage, GlobalSettingOptions.PERSONA);
+        await personaListResponse;
 
-            await navigateToPersonaWithPagination(
-              adminPage,
-              persona.data.name,
-              true
-            );
-
-            await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
-            await adminPage.getByText('Navigation').click();
-
-            // Ontology Explorer was not in the saved nav (shipped after persona
-            // was created) — its toggle must be OFF, not ON.
-            await expect(
-              adminPage
-                .getByTestId('page-layout-v1')
-                .getByText('Ontology Explorer')
-                .first()
-                .getByRole('switch')
-            ).not.toBeChecked();
-
-            // Metrics was also not in the saved nav — toggle must be OFF.
-            await expect(
-              adminPage
-                .getByTestId('page-layout-v1')
-                .getByText('Metrics')
-                .first()
-                .getByRole('switch')
-            ).not.toBeChecked();
-
-            // Glossary IS in the saved nav with isHidden: false — toggle must be ON.
-            await expect(
-              adminPage
-                .getByTestId('page-layout-v1')
-                .getByText('Glossary')
-                .first()
-                .getByRole('switch')
-            ).toBeChecked();
-          }
+        await navigateToPersonaWithPagination(
+          adminPage,
+          persona.data.name,
+          true
         );
 
-        await test.step('user: switch to the test persona', async () => {
-          await redirectToHomePage(userPage);
+        await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
+        await adminPage.getByText('Navigation').click();
 
-          await userPage.getByTestId('dropdown-profile').click();
+        // Ontology Explorer was not in the saved nav (shipped after persona
+        // was created) — its toggle must be OFF, not ON.
+        await expect(
+          adminPage
+            .getByTestId('page-layout-v1')
+            .getByText('Ontology Explorer')
+            .first()
+            .getByRole('switch')
+        ).not.toBeChecked();
 
-          const personaMenuItem = userPage.getByRole('menuitem', {
-            name: persona.responseData.displayName,
-          });
+        // Metrics was also not in the saved nav — toggle must be OFF.
+        await expect(
+          adminPage
+            .getByTestId('page-layout-v1')
+            .getByText('Metrics')
+            .first()
+            .getByRole('switch')
+        ).not.toBeChecked();
 
-          await expect(personaMenuItem).toBeVisible();
+        // Glossary IS in the saved nav with isHidden: false — toggle must be ON.
+        await expect(
+          adminPage
+            .getByTestId('page-layout-v1')
+            .getByText('Glossary')
+            .first()
+            .getByRole('switch')
+        ).toBeChecked();
+      });
 
-          const personaDocStoreResponse = userPage.waitForResponse(
-            `/api/v1/docStore/name/persona.${getEncodedFqn(
-              persona.responseData.fullyQualifiedName ?? ''
-            )}*`
-          );
+      await test.step('user: switch to the test persona', async () => {
+        await redirectToHomePage(userPage);
 
-          await personaMenuItem.click();
-          await personaDocStoreResponse;
-          await waitForAllLoadersToDisappear(userPage);
-          await clickOutside(userPage);
+        await userPage.getByTestId('dropdown-profile').click();
+
+        const personaMenuItem = userPage.getByRole('menuitem', {
+          name: persona.responseData.displayName,
         });
 
-        await test.step(
-          'sidebar: top-level item absent from saved nav is hidden',
-          async () => {
-            await expect(
-              userPage.getByTestId(`app-bar-item-${SidebarItem.DATA_INSIGHT}`)
-            ).not.toBeVisible();
-          }
+        await expect(personaMenuItem).toBeVisible();
+
+        const personaDocStoreResponse = userPage.waitForResponse(
+          `/api/v1/docStore/name/persona.${getEncodedFqn(
+            persona.responseData.fullyQualifiedName ?? ''
+          )}*`
         );
 
-        await test.step(
-          'sidebar: top-level item explicitly set isHidden is not visible',
-          async () => {
-            await expect(
-              userPage.getByTestId(`app-bar-item-${SidebarItem.EXPLORE}`)
-            ).not.toBeVisible();
-          }
-        );
+        await personaMenuItem.click();
+        await personaDocStoreResponse;
+        await waitForAllLoadersToDisappear(userPage);
+        await clickOutside(userPage);
+      });
 
-        await test.step(
-          'sidebar: governance children — present item visible, absent and hidden items not visible',
-          async () => {
-            await userPage.hover('[data-testid="left-sidebar"]');
-            await userPage.click('[data-testid="governance"]');
+      await test.step('sidebar: top-level item absent from saved nav is hidden', async () => {
+        await expect(
+          userPage.getByTestId(`app-bar-item-${SidebarItem.DATA_INSIGHT}`)
+        ).not.toBeVisible();
+      });
 
-            // Wait for the governance dropdown to fully expand before checking children
-            const anyGovernanceChild = userPage
-              .locator('[data-testid="left-sidebar"]')
-              .locator('[data-testid^="app-bar-item-"]')
-              .first();
+      await test.step('sidebar: top-level item explicitly set isHidden is not visible', async () => {
+        await expect(
+          userPage.getByTestId(`app-bar-item-${SidebarItem.EXPLORE}`)
+        ).not.toBeVisible();
+      });
 
-            await expect(anyGovernanceChild).toBeVisible();
+      await test.step('sidebar: governance children — present item visible, absent and hidden items not visible', async () => {
+        await userPage.hover('[data-testid="left-sidebar"]');
+        await userPage.click('[data-testid="governance"]');
 
-            // Glossary is in saved nav with isHidden: false — must be visible
-            await expect(
-              userPage
-                .locator(`[data-testid="app-bar-item-${SidebarItem.GLOSSARY}"]`)
-                .first()
-            ).toBeVisible();
+        // Wait for the governance dropdown to fully expand before checking children
+        const anyGovernanceChild = userPage
+          .locator('[data-testid="left-sidebar"]')
+          .locator('[data-testid^="app-bar-item-"]')
+          .first();
 
-            // Tags is in saved nav with isHidden: true — must not be visible
-            const tagsItem = userPage
-              .locator(`[data-testid="app-bar-item-${SidebarItem.TAGS}"]`)
-              .first();
-            const tagsCount = await tagsItem.count();
+        await expect(anyGovernanceChild).toBeVisible();
 
-            if (tagsCount > 0) {
-              await expect(tagsItem).not.toBeVisible();
-            }
+        // Glossary is in saved nav with isHidden: false — must be visible
+        await expect(
+          userPage
+            .locator(`[data-testid="app-bar-item-${SidebarItem.GLOSSARY}"]`)
+            .first()
+        ).toBeVisible();
 
-            // Metrics is absent from saved nav's governance children — must not be visible
-            const metricsItem = userPage
-              .locator(`[data-testid="app-bar-item-${SidebarItem.METRICS}"]`)
-              .first();
-            const metricsCount = await metricsItem.count();
+        // Tags is in saved nav with isHidden: true — must not be visible
+        await expect(
+          userPage
+            .locator(`[data-testid="app-bar-item-${SidebarItem.TAGS}"]`)
+            .first()
+        ).not.toBeVisible();
 
-            if (metricsCount > 0) {
-              await expect(metricsItem).not.toBeVisible();
-            }
+        // Metrics is absent from saved nav's governance children — must not be visible
+        await expect(
+          userPage
+            .locator(`[data-testid="app-bar-item-${SidebarItem.METRICS}"]`)
+            .first()
+        ).not.toBeVisible();
 
-            // Ontology Explorer is absent from saved nav's governance children — must not be visible
-            const ontologyItem = userPage
-              .locator(
-                `[data-testid="app-bar-item-${SidebarItem.ONTOLOGY_EXPLORER}"]`
-              )
-              .first();
-            const ontologyCount = await ontologyItem.count();
+        // Ontology Explorer is absent from saved nav's governance children — must not be visible
+        await expect(
+          userPage
+            .locator(
+              `[data-testid="app-bar-item-${SidebarItem.ONTOLOGY_EXPLORER}"]`
+            )
+            .first()
+        ).not.toBeVisible();
 
-            if (ontologyCount > 0) {
-              await expect(ontologyItem).not.toBeVisible();
-            }
-
-            await userPage.click('[data-testid="governance"]');
-          }
-        );
-      }
-    );
+        await userPage.click('[data-testid="governance"]');
+      });
+    });
   }
 );
