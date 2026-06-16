@@ -25,7 +25,7 @@ import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { getTierTags } from '../../../utils/TablePureUtils';
 import { updateTierTag } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import ExpandableCard from '../ExpandableCard/ExpandableCard';
 import { EditIconButton } from '../IconButtons/EditIconButton';

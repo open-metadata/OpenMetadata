@@ -112,7 +112,7 @@ import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEdit
 import StatusAction from '../../common/StatusAction/StatusAction';
 import Table from '../../common/Table/Table';
 import TagButton from '../../common/TagButton/TagButton.component';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 import {
   GlossaryTermTabProps,
