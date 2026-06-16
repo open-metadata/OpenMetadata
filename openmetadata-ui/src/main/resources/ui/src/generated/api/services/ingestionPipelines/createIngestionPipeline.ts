@@ -3511,8 +3511,6 @@ export interface ConfigObject {
      *
      * To Connect to Dagster Cloud
      *
-     * Generated Token to connect to Databricks.
-     *
      * Generated Token to connect to DBTCloud.
      *
      * Token to connect to Stitch api doc
