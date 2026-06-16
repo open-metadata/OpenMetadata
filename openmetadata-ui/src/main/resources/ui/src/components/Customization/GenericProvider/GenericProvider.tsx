@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { isEmpty, omit, once } from 'lodash';
+import { isEmpty, omit } from 'lodash';
 import {
-  createContext,
   lazy,
   useCallback,
   useContext,
@@ -56,10 +55,8 @@ import {
   ColumnFieldUpdate,
   ColumnOrTask,
 } from '../../Database/ColumnDetailPanel/ColumnDetailPanel.interface';
-import {
-  GenericContextType,
-  GenericProviderProps,
-} from './GenericProvider.interface';
+import { createGenericContext } from './GenericContext';
+import { GenericProviderProps } from './GenericProvider.interface';
 
 const ColumnDetailPanel = withSuspenseFallback(
   lazy(() =>
@@ -67,10 +64,6 @@ const ColumnDetailPanel = withSuspenseFallback(
       (module) => ({ default: module.ColumnDetailPanel })
     )
   )
-);
-
-const createGenericContext = once(<T extends Omit<EntityReference, 'type'>>() =>
-  createContext({} as GenericContextType<T>)
 );
 
 export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({

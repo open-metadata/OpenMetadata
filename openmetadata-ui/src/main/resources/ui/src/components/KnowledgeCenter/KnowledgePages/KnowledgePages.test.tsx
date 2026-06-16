@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
 import { MOCK_KNOWLEDGE_PAGES } from '../../../pages/KnowledgePage/KnowledgePage.mock';
@@ -25,10 +24,7 @@ const mockProps = {
 
 jest.mock('rest/knowledgeCenterAPI');
 
-jest.mock('components/Customization/GenericProvider/GenericProvider', () => ({
-  GenericProvider: ({ children }: { children: React.ReactNode }) => (
-    <>{children}</>
-  ),
+jest.mock('components/Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn().mockImplementation(() => ({
     data: { id: mockProps.entityId },
     type: mockProps.entityType,
