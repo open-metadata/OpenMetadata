@@ -268,6 +268,14 @@ public final class CatalogExceptionMessage {
     return String.format("%s is not empty", entityType);
   }
 
+  public static String testDefinitionHasTestCases(String testDefinitionName, int testCaseCount) {
+    return String.format(
+        "Test definition '%s' is used by %d test case(s). Deleting it will also delete "
+            + "those test case(s). Retry with 'recursive=true' to confirm and delete them along "
+            + "with the test definition.",
+        testDefinitionName, testCaseCount);
+  }
+
   public static String unknownCustomField(String fieldName) {
     return String.format("Unknown custom field %s", fieldName);
   }

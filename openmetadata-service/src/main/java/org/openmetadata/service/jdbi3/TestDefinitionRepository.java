@@ -3,14 +3,17 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 
 import jakarta.ws.rs.BadRequestException;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.dqtests.TestDefinitionResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -111,6 +114,34 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
     if (entity.getProvider() == ProviderType.SYSTEM) {
       throw new BadRequestException(
           "System test definitions cannot be deleted. They can only be disabled by setting enabled=false.");
+    }
+  }
+
+  /**
+   * Guard a non-recursive delete: a test case must have a test definition
+   * ({@code mustHaveRelationship=true}), so deleting the definition necessarily deletes every test
+   * case that uses it. Surface that as an explicit, counted confirmation instead of the generic
+   * "not empty" error. With {@code recursive=true} the cascade proceeds via
+   * {@link EntityRepository#deleteChildren}.
+   */
+  @Override
+  protected void deleteChildren(UUID id, boolean recursive, boolean hardDelete, String updatedBy) {
+    if (!recursive) {
+      requireNoDependentTestCases(id);
+    }
+    super.deleteChildren(id, recursive, hardDelete, updatedBy);
+  }
+
+  private void requireNoDependentTestCases(UUID testDefinitionId) {
+    int testCaseCount =
+        daoCollection
+            .relationshipDAO()
+            .findTo(testDefinitionId, TEST_DEFINITION, Relationship.CONTAINS.ordinal())
+            .size();
+    if (testCaseCount > 0) {
+      String testDefinitionName = find(testDefinitionId, Include.ALL).getFullyQualifiedName();
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.testDefinitionHasTestCases(testDefinitionName, testCaseCount));
     }
   }
 
