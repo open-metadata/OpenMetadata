@@ -157,19 +157,22 @@ export const PipelineTaskTab = () => {
     [pipelineDetails.tasks]
   );
 
+  const { tagFilterState, filteredData, handleTableChange } =
+    useTreeTagFilter(allTasksInternal);
+
   useEffect(() => {
-    handlePagingChange({ total: allTasksInternal.length });
-    const maxPage = Math.max(1, Math.ceil(allTasksInternal.length / pageSize));
+    handlePagingChange({ total: filteredData.length });
+    const maxPage = Math.max(1, Math.ceil(filteredData.length / pageSize));
     if (currentPage > maxPage) {
       handlePageChange(maxPage, { cursorType: null, cursorValue: undefined });
     }
-  }, [allTasksInternal.length, pageSize]);
+  }, [filteredData.length, pageSize]);
 
   const tasksInternal = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
 
-    return allTasksInternal.slice(start, start + pageSize);
-  }, [allTasksInternal, currentPage, pageSize]);
+    return filteredData.slice(start, start + pageSize);
+  }, [filteredData, currentPage, pageSize]);
 
   const handleTasksPageChange = useCallback(
     ({ currentPage: page }: PagingHandlerParams) => {
@@ -267,9 +270,6 @@ export const PipelineTaskTab = () => {
     const updatedPipeline = { ...pipelineDetails, tasks: updatedTasks };
     await onUpdate(updatedPipeline);
   };
-
-  const { tagFilterState, filteredData, handleTableChange } =
-    useTreeTagFilter(tasksInternal);
 
   const taskColumns: ColumnsType<Task> = useMemo(
     () => [
@@ -425,7 +425,7 @@ export const PipelineTaskTab = () => {
             onShowSizeChange: handlePageSizeChange,
           }}
           data-testid="task-table"
-          dataSource={filteredData}
+          dataSource={tasksInternal}
           defaultVisibleColumns={DEFAULT_PIPELINE_VISIBLE_COLUMNS}
           pagination={false}
           rowKey="name"
