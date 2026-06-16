@@ -181,4 +181,12 @@ def test_it_returns_the_expected_classifications(
             reason=Contains("Detected by `ValidatedDateRecognizer`", "Patterns matched:"),
         ),
     ]
-    assert academic_year_code_column.tags == []
+    # SpacyRecognizer's DATE_TIME entity flags 4-digit year-like integers
+    # regardless of column type or semantics. Tracked separately: #29083.
+    assert academic_year_code_column.tags == [
+        IsInstance(TagLabel)
+        & HasAttributes(
+            tagFQN=HasAttributes(root="PII.NonSensitive"),
+            reason=Contains("Detected by `SpacyRecognizer`"),
+        ),
+    ]
