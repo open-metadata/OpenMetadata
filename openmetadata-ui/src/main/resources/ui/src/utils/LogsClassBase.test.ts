@@ -47,7 +47,7 @@ jest.mock('./i18next/LocalUtil', () => ({
   t: jest.fn((key: string) => key),
 }));
 
-jest.mock('./IngestionUtils', () => ({
+jest.mock('./IngestionConfigUtils', () => ({
   getSettingsPathFromPipelineType: jest.fn(
     (type: string) => `/settings/${type}`
   ),
@@ -60,6 +60,9 @@ jest.mock('./RouterUtils', () => ({
     (path: string, serviceType: string) => `/${serviceType}/${path}`
   ),
   getSettingPath: jest.fn((option: string) => `/settings/${option}`),
+  getSettingsPathWithFqn: jest.fn(
+    (...args: string[]) => `/settings/${args.join('/')}`
+  ),
 }));
 
 jest.mock('./TestSuiteUtils', () => ({
