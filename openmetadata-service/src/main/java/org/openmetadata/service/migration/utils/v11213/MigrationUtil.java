@@ -7,6 +7,6 @@ public class MigrationUtil {
   private MigrationUtil() {}
 
   public static void removeBroadPiiContextKeywords(Handle handle) {
-    PiiRecognizerMigrationUtil.removeBroadPiiContextKeywords(handle);
+    PiiRecognizerMigrationUtil.removeBroadPiiContextKeywords(handle, "v11213");
   }
 }

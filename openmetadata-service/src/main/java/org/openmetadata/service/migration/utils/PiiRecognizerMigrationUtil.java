@@ -53,29 +53,35 @@ public class PiiRecognizerMigrationUtil {
 
   private static final Set<String> SPACY_PERSON_BROAD_KEYWORDS = Set.of("name");
 
-  public static void removeBroadPiiContextKeywords(Handle handle) {
-    LOG.info("Removing overly broad context keywords from PII recognizers");
+  public static void removeBroadPiiContextKeywords(Handle handle, String version) {
+    LOG.info("{}: removing overly broad context keywords from PII recognizers", version);
     boolean isMySQL = Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL());
-    migrateTag(handle, PII_SENSITIVE_FQN, isMySQL);
-    migrateTag(handle, PII_NON_SENSITIVE_FQN, isMySQL);
-    LOG.info("PII recognizer context keyword cleanup complete");
+    migrateTag(handle, PII_SENSITIVE_FQN, isMySQL, version);
+    migrateTag(handle, PII_NON_SENSITIVE_FQN, isMySQL, version);
+    LOG.info("{}: PII recognizer context keyword cleanup complete", version);
   }
 
-  private static void migrateTag(Handle handle, String tagFqn, boolean isMySQL) {
+  private static void migrateTag(Handle handle, String tagFqn, boolean isMySQL, String version) {
     String fqnHash = FullyQualifiedName.buildHash(tagFqn);
     String selectSql = isMySQL ? SELECT_TAG : SELECT_TAG_POSTGRES;
     List<Map<String, Object>> rows =
         handle.createQuery(selectSql).bind(FQN_HASH_COLUMN, fqnHash).mapToMap().list();
     if (nullOrEmpty(rows)) {
-      LOG.warn("Tag '{}' not found, skipping PII recognizer keyword cleanup", tagFqn);
+      LOG.warn("{}: tag '{}' not found, skipping PII recognizer keyword cleanup", version, tagFqn);
       return;
     }
-    String jsonStr = rows.getFirst().get(JSON_COLUMN).toString();
+    Object jsonValue = rows.getFirst().get(JSON_COLUMN);
+    if (jsonValue == null) {
+      LOG.warn(
+          "{}: tag '{}' has null json, skipping PII recognizer keyword cleanup", version, tagFqn);
+      return;
+    }
+    String jsonStr = jsonValue.toString();
     ObjectNode root;
     try {
       root = (ObjectNode) JsonUtils.readTree(jsonStr);
     } catch (Exception e) {
-      LOG.warn("Failed to parse tag '{}' JSON, skipping: {}", tagFqn, e.getMessage());
+      LOG.warn("{}: failed to parse tag '{}' JSON, skipping: {}", version, tagFqn, e.getMessage());
       return;
     }
     boolean modified = processRecognizers(root);
@@ -86,9 +92,9 @@ public class PiiRecognizerMigrationUtil {
           .bind(JSON_COLUMN, root.toString())
           .bind(FQN_HASH_COLUMN, fqnHash)
           .execute();
-      LOG.info("Updated PII recognizer context keywords for tag '{}'", tagFqn);
+      LOG.info("{}: updated PII recognizer context keywords for tag '{}'", version, tagFqn);
     } else {
-      LOG.info("No broad PII context keywords found in tag '{}'", tagFqn);
+      LOG.info("{}: no broad PII context keywords found in tag '{}'", version, tagFqn);
     }
   }
 

@@ -17,10 +17,6 @@ from metadata.generated.schema.configuration.profilerConfiguration import (
     ProfilerConfiguration,
     SampleDataIngestionConfig,
 )
-from metadata.generated.schema.entity.classification.classification import (
-    Classification,
-)
-from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
@@ -176,9 +172,6 @@ def _set_global_profiler_config(metadata: OpenMetadata, store: bool):
 def test_store_sample_data_when_global_config_enabled(
     db_service: DatabaseService,
     metadata: OpenMetadata,
-    pii_classification: Classification,
-    sensitive_pii_tag: Tag,
-    non_sensitive_pii_tag: Tag,
     load_metadata: MetadataWorkflow,
     run_workflow,
     autoclassification_config,
@@ -201,9 +194,6 @@ def test_store_sample_data_when_global_config_enabled(
 def test_no_sample_data_when_global_config_disabled(
     db_service: DatabaseService,
     metadata: OpenMetadata,
-    pii_classification: Classification,
-    sensitive_pii_tag: Tag,
-    non_sensitive_pii_tag: Tag,
     load_metadata: MetadataWorkflow,
     run_workflow,
     autoclassification_config,
