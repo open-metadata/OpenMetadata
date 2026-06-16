@@ -12,7 +12,7 @@
  */
 
 import { Typography } from 'antd';
-import React from 'react';
+import React, { Suspense } from 'react';
 import { ReactComponent as DescriptionPlaceholderIcon } from '../assets/svg/ic-flat-doc.svg';
 import { ReactComponent as TablePlaceholderIcon } from '../assets/svg/ic-large-table.svg';
 import { ReactComponent as NoDataPlaceholderIcon } from '../assets/svg/ic-no-records.svg';
@@ -20,13 +20,31 @@ import { ReactComponent as OwnersPlaceholderIcon } from '../assets/svg/key-hand.
 import { ReactComponent as TierPlaceholderIcon } from '../assets/svg/no-tier.svg';
 import { ReactComponent as PiiPlaceholderIcon } from '../assets/svg/security-safe.svg';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import MetadataAgentsWidget from '../components/Settings/Services/Ingestion/MetadataAgentsWidget/MetadataAgentsWidget';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../enums/common.enum';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { ServiceInsightsWidgetType } from '../enums/ServiceInsights.enum';
 import type { ThemeConfiguration } from '../generated/configuration/uiThemePreference';
 import documentationLinksClassBase from './DocumentationLinksClassBase';
 import { Transi18next } from './i18next/LocalUtil';
+
+const MetadataAgentsWidgetLazy = React.lazy(
+  () =>
+    import(
+      '../components/Settings/Services/Ingestion/MetadataAgentsWidget/MetadataAgentsWidget'
+    )
+);
+
+const MetadataAgentsWidget = (props: Record<string, unknown>) => {
+  const widgetProps = props as React.ComponentProps<
+    typeof MetadataAgentsWidgetLazy
+  >;
+
+  return (
+    <Suspense fallback={null}>
+      <MetadataAgentsWidgetLazy {...widgetProps} />
+    </Suspense>
+  );
+};
 
 export const getServiceInsightsWidgetPlaceholder = ({
   chartType,

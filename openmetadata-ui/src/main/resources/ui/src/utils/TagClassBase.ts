@@ -30,23 +30,13 @@ import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interfa
 import { searchQuery } from '../rest/searchAPI';
 import { getTabLabelFromId } from './CustomizePage/CustomizePagePureUtils';
 import i18n from './i18next/LocalUtil';
+import {
+  LazyCommonWidgets,
+  LazyDomainLabelV2,
+  LazyOwnerLabelV2,
+} from './LazyTagComponents';
 import { getTermQuery } from './SearchPureUtils';
 import { escapeESReservedCharacters, getEncodedFqn } from './StringUtils';
-const CommonWidgets = React.lazy(() =>
-  import('../components/DataAssets/CommonWidgets/CommonWidgets').then((m) => ({
-    default: m.CommonWidgets,
-  }))
-);
-const DomainLabelV2 = React.lazy(() =>
-  import('../components/DataAssets/DomainLabelV2/DomainLabelV2').then((m) => ({
-    default: m.DomainLabelV2,
-  }))
-);
-const OwnerLabelV2 = React.lazy(() =>
-  import('../components/DataAssets/OwnerLabelV2/OwnerLabelV2').then((m) => ({
-    default: m.OwnerLabelV2,
-  }))
-);
 
 export interface TagRightPanelParams {
   editOwnerPermission: boolean;
@@ -134,21 +124,17 @@ class TagClassBase {
     const { editOwnerPermission, editDomainPermission } = params;
 
     return React.createElement(
-      React.Suspense,
-      { fallback: null },
-      React.createElement(
-        'div',
-        { className: 'd-flex flex-column gap-5' },
-        React.createElement(DomainLabelV2, {
-          multiple: true,
-          showDomainHeading: true,
-          hasPermission: editDomainPermission,
-        }),
-        React.createElement(OwnerLabelV2, {
-          dataTestId: 'tag-owner-name',
-          hasPermission: editOwnerPermission,
-        })
-      )
+      'div',
+      { className: 'd-flex flex-column gap-5' },
+      React.createElement(LazyDomainLabelV2, {
+        multiple: true,
+        showDomainHeading: true,
+        hasPermission: editDomainPermission,
+      }),
+      React.createElement(LazyOwnerLabelV2, {
+        dataTestId: 'tag-owner-name',
+        hasPermission: editOwnerPermission,
+      })
     );
   }
 
@@ -233,15 +219,11 @@ class TagClassBase {
   }
 
   public getWidgetsFromKey(widgetConfig: WidgetConfig): React.ReactElement {
-    return React.createElement(
-      React.Suspense,
-      { fallback: null },
-      React.createElement(CommonWidgets, {
-        entityType: EntityType.TAG,
-        showTaskHandler: false,
-        widgetConfig,
-      })
-    );
+    return React.createElement(LazyCommonWidgets, {
+      entityType: EntityType.TAG,
+      showTaskHandler: false,
+      widgetConfig,
+    });
   }
 
   public getWidgetHeight(widgetName: string) {

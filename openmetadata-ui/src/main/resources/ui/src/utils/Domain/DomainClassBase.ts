@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { createElement, lazy, Suspense } from 'react';
+import { createElement } from 'react';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import { DataProductsTabRef } from '../../components/Domain/DomainTabs/DataProductsTab/DataProductsTab.interface';
@@ -34,13 +34,7 @@ import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.inte
 import { getTabLabelFromId } from '../CustomizePage/CustomizePagePureUtils';
 import { getDomainDetailTabs, getDomainWidgetsFromKey } from '../DomainUtils';
 import i18n from '../i18next/LocalUtil';
-
-const DataQualityDashboard = lazy(
-  () =>
-    import(
-      '../../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component'
-    )
-);
+import { LazyDataQualityDashboard } from './LazyDomainComponents';
 
 export interface DomainDetailPageTabProps {
   domain: Domain;
@@ -113,17 +107,13 @@ class DomainClassBase {
         name: i18n.t('label.data-observability'),
       }),
       key: EntityTabs.DATA_OBSERVABILITY,
-      children: createElement(
-        Suspense,
-        { fallback: null },
-        createElement(DataQualityDashboard, {
-          isGovernanceView: true,
-          className: 'data-quality-governance-tab-wrapper',
-          initialFilters: domainDetailsPageProps.domain.fullyQualifiedName
-            ? { domainFqn: domainDetailsPageProps.domain.fullyQualifiedName }
-            : undefined,
-        })
-      ),
+      children: createElement(LazyDataQualityDashboard, {
+        isGovernanceView: true,
+        className: 'data-quality-governance-tab-wrapper',
+        initialFilters: domainDetailsPageProps.domain.fullyQualifiedName
+          ? { domainFqn: domainDetailsPageProps.domain.fullyQualifiedName }
+          : undefined,
+      }),
     };
 
     return [...baseTabs, dqTab];

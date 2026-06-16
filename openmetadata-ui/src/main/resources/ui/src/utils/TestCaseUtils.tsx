@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { lowerCase } from 'lodash';
 import { NavigateFunction } from 'react-router-dom';
+import { TestCaseStatus } from '../generated/entity/feed/thread';
 import { ReactComponent as IconEdit } from '../assets/svg/edit-new.svg';
 import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../assets/svg/ic-import.svg';
@@ -24,6 +27,21 @@ import LimitWrapper from '../hoc/LimitWrapper';
 import { exportTestCasesInCSV } from '../rest/testAPI';
 import { getEntityBulkEditPath, getEntityImportPath } from './EntityPureUtils';
 import { t } from './i18next/LocalUtil';
+
+export const getTestCaseResultCount = (
+  count: number,
+  status: TestCaseStatus
+) => (
+  <div
+    className={`test-result-container ${lowerCase(status)}`}
+    data-testid={`test-${status}`}>
+    <Typography.Text
+      className="font-medium text-md"
+      data-testid={`test-${status}-value`}>
+      {count}
+    </Typography.Text>
+  </div>
+);
 
 interface TestCasePermission {
   ViewAll: boolean;
