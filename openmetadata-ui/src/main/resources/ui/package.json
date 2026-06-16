@@ -278,8 +278,6 @@
     "micromatch": "4.0.8",
     "minimatch": "3.1.5",
     "rollup": "4.59.0",
-    "@storybook/react-vite/minimatch": "9.0.7",
-    "vite-plugin-dts/minimatch": "10.2.3",
     "semver": "7.5.2",
     "d3-color": "3.1.0",
     "fast-uri": "3.1.2",
@@ -298,6 +296,8 @@
     "js-yaml": "4.1.1",
     "lodash": "4.18.1",
     "lodash-es": "4.18.1",
-    "markdown-it": ">=14.1.1"
+    "markdown-it": ">=14.1.1",
+    "uuid": "^14.0.0",
+    "esbuild": "^0.28.1"
   }
 }

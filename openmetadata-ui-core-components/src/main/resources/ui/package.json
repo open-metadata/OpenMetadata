@@ -157,7 +157,8 @@
     "minimatch": "10.2.3",
     "postcss": "8.5.10",
     "rollup": "4.59.0",
-    "uuid": "^14.0.0"
+    "uuid": "^14.0.0",
+    "esbuild": "^0.28.1"
   },
   "publishConfig": {
     "access": "restricted",
