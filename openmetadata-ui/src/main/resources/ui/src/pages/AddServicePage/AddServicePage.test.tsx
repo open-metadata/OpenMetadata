@@ -20,8 +20,8 @@ import { triggerOnDemandApp } from '../../rest/applicationAPI';
 import { postService } from '../../rest/serviceAPI';
 import { getServiceLogo } from '../../utils/EntityDisplayUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
-import * as serviceUtilClassBaseModule from '../../utils/ServiceUtilClassBase';
 import { getServiceRouteFromServiceType } from '../../utils/ServicePureUtils';
+import * as serviceUtilClassBaseModule from '../../utils/ServiceUtilClassBase';
 import { getEntityTypeFromServiceCategory } from '../../utils/ServiceUtils';
 import AddServicePage from './AddServicePage.component';
 
