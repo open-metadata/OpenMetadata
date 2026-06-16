@@ -244,7 +244,7 @@ class McpServerRepositoryTest {
   void testConsolidateChangesSkipsVersionedEntityWithMissingPreviousVersion() {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       McpServerRepository repo = createRepo(entityMock);
-      ChangeDescription changeDescription = mock(ChangeDescription.class);
+      ChangeDescription changeDescription = new ChangeDescription().withPreviousVersion(null);
       McpServer original = mcpServerForConsolidation().withChangeDescription(changeDescription);
       McpServer updated = mcpServerForConsolidation().withUpdatedAt(original.getUpdatedAt() + 1);
       McpServerRepository.McpServerUpdater updater =
