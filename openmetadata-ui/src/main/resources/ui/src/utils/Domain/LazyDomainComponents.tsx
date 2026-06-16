@@ -16,7 +16,7 @@ import { ComponentProps, lazy, Suspense } from 'react';
 const DataQualityDashboard = lazy(
   () =>
     import(
-      /* webpackChunkName: "DataQualityDashboard" */ '../../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component'
+      '../../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component'
     )
 );
 
