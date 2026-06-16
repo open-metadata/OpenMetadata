@@ -186,9 +186,7 @@ public final class DataQualityListPage extends PageObject {
 
   /** Open the page-size dropdown and assert the standard 3 options render. */
   public DataQualityListPage assertPageSizeOptionsCount(final int expected) {
-    byTestId("page-size-selection-dropdown").click();
-    page.locator(".ant-dropdown-menu")
-        .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
+    openMenu(byTestId("page-size-selection-dropdown"), page.locator(".ant-dropdown-menu"));
     PlaywrightAssertions.assertThat(page.locator(".ant-dropdown-menu-item")).hasCount(expected);
     return this;
   }

@@ -57,6 +57,12 @@ public class SdkClients {
       System.getProperty(
           "IT_BASE_URL", System.getenv().getOrDefault("IT_BASE_URL", "http://localhost:8585"));
 
+  // When an admin token is supplied out-of-band (external mode's OM_ADMIN_TOKEN, or the
+  // containerized TokenRefresher), adminClient() must keep using THAT token and never self-mint a
+  // replacement with the harness key — an external cluster doesn't trust the harness keyId and
+  // would reject the minted token with SigningKeyNotFoundException once the 15-min cache expired.
+  private static volatile String OVERRIDDEN_ADMIN_TOKEN;
+
   // Cached clients to avoid creating new HTTP connections for each test
   private static volatile CachedClient ADMIN_CLIENT;
   private static volatile CachedClient TEST_USER_CLIENT;
@@ -82,6 +88,22 @@ public class SdkClients {
   }
 
   public static OpenMetadataClient adminClient() {
+    // An explicitly supplied token (external operator token / refresher) pins the admin client:
+    // keep using it verbatim, never self-mint a harness-signed replacement on cache expiry.
+    final String overridden = OVERRIDDEN_ADMIN_TOKEN;
+    if (overridden != null) {
+      CachedClient cached = ADMIN_CLIENT;
+      if (cached == null) {
+        synchronized (SdkClients.class) {
+          if (ADMIN_CLIENT == null) {
+            ADMIN_CLIENT =
+                new CachedClient(buildAdminClientWithToken(overridden), System.currentTimeMillis());
+          }
+          cached = ADMIN_CLIENT;
+        }
+      }
+      return cached.client;
+    }
     CachedClient cached = ADMIN_CLIENT;
     long nowMillis = System.currentTimeMillis();
     if (cached == null || cached.isExpired(nowMillis)) {
@@ -271,6 +293,29 @@ public class SdkClients {
    * next refresh of those rebuilds against current state.
    */
   public static synchronized void overrideAdminToken(String accessToken) {
+    OVERRIDDEN_ADMIN_TOKEN = accessToken;
+    ADMIN_CLIENT =
+        new CachedClient(buildAdminClientWithToken(accessToken), System.currentTimeMillis());
+    TEST_USER_CLIENT = null;
+    BOT_CLIENT = null;
+    DATA_STEWARD_CLIENT = null;
+    DATA_CONSUMER_CLIENT = null;
+    USER1_CLIENT = null;
+    USER2_CLIENT = null;
+    USER3_CLIENT = null;
+  }
+
+  /**
+   * Whether an admin token has been supplied out-of-band (external operator token, or a
+   * refresher's re-login). When true, {@link #adminClient()} is the single source of truth for
+   * the current token and is rebuilt on every {@link #overrideAdminToken(String)} — callers must
+   * fetch it fresh rather than capturing a client reference that goes stale on the next refresh.
+   */
+  public static boolean hasAdminOverride() {
+    return OVERRIDDEN_ADMIN_TOKEN != null;
+  }
+
+  private static OpenMetadataClient buildAdminClientWithToken(String accessToken) {
     OpenMetadataConfig cfg =
         OpenMetadataConfig.builder()
             .serverUrl(BASE_URL)
@@ -281,14 +326,7 @@ public class SdkClients {
             .build();
     OpenMetadataClient client = new OpenMetadataClient(cfg);
     initializeFluentAPIs(client);
-    ADMIN_CLIENT = new CachedClient(client, System.currentTimeMillis());
-    TEST_USER_CLIENT = null;
-    BOT_CLIENT = null;
-    DATA_STEWARD_CLIENT = null;
-    DATA_CONSUMER_CLIENT = null;
-    USER1_CLIENT = null;
-    USER2_CLIENT = null;
-    USER3_CLIENT = null;
+    return client;
   }
 
   private static void flushCachedClients() {

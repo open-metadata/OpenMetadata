@@ -581,6 +581,12 @@ export interface PipelineServiceClientConfiguration {
      */
     namespaceToServiceMapping?: { [key: string]: string };
     /**
+     * Set how owners from OpenLineage job ownership facets update Pipeline owners. In replace
+     * mode, resolved owners from the current event replace existing owners. In append mode,
+     * resolved owners are appended to active existing Pipeline owners.
+     */
+    ownershipUpdateMode?: OwnershipUpdateMode;
+    /**
      * List of allowed origins for CORS on OAuth endpoints. Use specific origins for production
      * security. Wildcard (*) is NOT recommended.
      */
@@ -2601,6 +2607,16 @@ export interface TitleSection {
      */
     title?: string;
     [property: string]: any;
+}
+
+/**
+ * Set how owners from OpenLineage job ownership facets update Pipeline owners. In replace
+ * mode, resolved owners from the current event replace existing owners. In append mode,
+ * resolved owners are appended to active existing Pipeline owners.
+ */
+export enum OwnershipUpdateMode {
+    Append = "append",
+    Replace = "replace",
 }
 
 /**
