@@ -537,7 +537,16 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     try {
       response = persistBot.get();
     } catch (RuntimeException e) {
-      revertImpersonationChange(change, updatedBy);
+      try {
+        revertImpersonationChange(change, updatedBy);
+      } catch (RuntimeException compensationFailure) {
+        LOG.error(
+            "Failed to revert impersonation change for bot user {} after bot persistence failed;"
+                + " manual cleanup may be required",
+            change != null ? change.botUserId() : null,
+            compensationFailure);
+        e.addSuppressed(compensationFailure);
+      }
       throw e;
     }
     return response;
