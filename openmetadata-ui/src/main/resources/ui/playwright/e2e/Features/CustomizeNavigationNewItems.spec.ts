@@ -13,6 +13,7 @@
 
 import { expect, Page, test as base } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
+import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { AdminClass } from '../../support/user/AdminClass';
@@ -23,14 +24,23 @@ import {
   getEncodedFqn,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { navigateToPersonaWithPagination } from '../../utils/persona';
+import { settingClick } from '../../utils/sidebar';
 
 const persona = new PersonaClass();
 const adminUser = new AdminClass();
 const user = new UserClass();
 
 const test = base.extend<{
+  adminPage: Page;
   userPage: Page;
 }>({
+  adminPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await adminUser.login(page);
+    await use(page);
+    await page.close();
+  },
   userPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     await user.login(page);
@@ -56,6 +66,10 @@ test.beforeAll('Setup', async ({ browser }) => {
   // values (e.g. 'glossary'). Using the wrong ID causes sidebarMap.get() to
   // return undefined and the item is silently dropped from the rendered nav.
   // governance is the sole exception — its key is the literal string 'governance'.
+  //
+  // This saved nav simulates a persona created before Ontology Explorer and
+  // Metrics existed: governance only has Glossary and Tags (Tags is hidden).
+  // Ontology Explorer and Metrics are entirely absent — new items shipped later.
   const savedNavigation = [
     {
       id: '/explore',
@@ -81,10 +95,12 @@ test.beforeAll('Setup', async ({ browser }) => {
           isHidden: true,
           pageId: '/tags',
         },
-        // '/metrics' deliberately absent — tests the bug fix (new child hidden by default)
+        // '/metrics' and '/governance/ontology' (Ontology Explorer) are
+        // deliberately absent — they simulate new items shipped after this
+        // persona's nav snapshot was saved.
       ],
     },
-    // '/data-insights' deliberately absent — tests top-level hidden by default
+    // '/data-insights' deliberately absent — top-level new item test
   ];
 
   await apiContext.post('/api/v1/docStore', {
@@ -132,13 +148,63 @@ test.describe(
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
     test(
-      'sidebar items absent from saved persona nav are hidden, explicitly hidden items are also hidden',
-      async ({ userPage }) => {
+      'new sidebar items absent from saved persona nav are toggled OFF in admin settings and hidden in sidebar',
+      async ({ adminPage, userPage }) => {
         test.slow();
 
-        await redirectToHomePage(userPage);
+        await test.step(
+          'admin: Ontology Explorer toggle is OFF for items absent from saved nav',
+          async () => {
+            await redirectToHomePage(adminPage);
 
-        await test.step('switch to the test persona', async () => {
+            const personaListResponse = adminPage.waitForResponse(
+              '/api/v1/personas?*'
+            );
+            await settingClick(adminPage, GlobalSettingOptions.PERSONA);
+            await personaListResponse;
+
+            await navigateToPersonaWithPagination(
+              adminPage,
+              persona.data.name,
+              true
+            );
+
+            await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
+            await adminPage.getByText('Navigation').click();
+
+            // Ontology Explorer was not in the saved nav (shipped after persona
+            // was created) — its toggle must be OFF, not ON.
+            await expect(
+              adminPage
+                .getByTestId('page-layout-v1')
+                .getByText('Ontology Explorer')
+                .first()
+                .getByRole('switch')
+            ).not.toBeChecked();
+
+            // Metrics was also not in the saved nav — toggle must be OFF.
+            await expect(
+              adminPage
+                .getByTestId('page-layout-v1')
+                .getByText('Metrics')
+                .first()
+                .getByRole('switch')
+            ).not.toBeChecked();
+
+            // Glossary IS in the saved nav with isHidden: false — toggle must be ON.
+            await expect(
+              adminPage
+                .getByTestId('page-layout-v1')
+                .getByText('Glossary')
+                .first()
+                .getByRole('switch')
+            ).toBeChecked();
+          }
+        );
+
+        await test.step('user: switch to the test persona', async () => {
+          await redirectToHomePage(userPage);
+
           await userPage.getByTestId('dropdown-profile').click();
 
           const personaMenuItem = userPage.getByRole('menuitem', {
@@ -160,7 +226,7 @@ test.describe(
         });
 
         await test.step(
-          'top-level item absent from saved nav is hidden',
+          'sidebar: top-level item absent from saved nav is hidden',
           async () => {
             await expect(
               userPage.getByTestId(`app-bar-item-${SidebarItem.DATA_INSIGHT}`)
@@ -169,7 +235,7 @@ test.describe(
         );
 
         await test.step(
-          'top-level item explicitly set isHidden is not visible',
+          'sidebar: top-level item explicitly set isHidden is not visible',
           async () => {
             await expect(
               userPage.getByTestId(`app-bar-item-${SidebarItem.EXPLORE}`)
@@ -178,7 +244,7 @@ test.describe(
         );
 
         await test.step(
-          'governance children: present item visible, absent and hidden items not visible',
+          'sidebar: governance children — present item visible, absent and hidden items not visible',
           async () => {
             await userPage.hover('[data-testid="left-sidebar"]');
             await userPage.click('[data-testid="governance"]');
@@ -216,6 +282,18 @@ test.describe(
 
             if (metricsCount > 0) {
               await expect(metricsItem).not.toBeVisible();
+            }
+
+            // Ontology Explorer is absent from saved nav's governance children — must not be visible
+            const ontologyItem = userPage
+              .locator(
+                `[data-testid="app-bar-item-${SidebarItem.ONTOLOGY_EXPLORER}"]`
+              )
+              .first();
+            const ontologyCount = await ontologyItem.count();
+
+            if (ontologyCount > 0) {
+              await expect(ontologyItem).not.toBeVisible();
             }
 
             await userPage.click('[data-testid="governance"]');
