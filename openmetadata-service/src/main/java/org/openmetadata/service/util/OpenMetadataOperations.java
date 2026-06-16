@@ -1355,6 +1355,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
                   "Enable automatic performance tuning based on cluster capabilities and database entity count. When enabled, overrides manual parameter settings.")
           boolean autoTune,
       @Option(
+              names = {"--recreate-indexes"},
+              defaultValue = "true",
+              description = "Flag to determine if indexes should be recreated.")
+          boolean recreateIndexes,
+      @Option(
               names = {"--force"},
               defaultValue = "false",
               description = "Force reindexing even if no index mapping changes are detected.")
