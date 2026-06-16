@@ -21,6 +21,7 @@ import { getTrimmedContent } from '../../../utils/StringUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './rich-text-editor-previewerV1.less';
 import { PreviewerProp } from './RichTextEditor.interface';
+
 const BlockEditor = withSuspenseFallback(
   lazy(() => import('../../BlockEditor/BlockEditor'))
 );
