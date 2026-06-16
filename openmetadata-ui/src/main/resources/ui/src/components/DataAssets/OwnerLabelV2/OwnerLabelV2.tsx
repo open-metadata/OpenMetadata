@@ -35,8 +35,9 @@ import {
   PlusIconButton,
 } from '../../common/IconButtons/EditIconButton';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
-interface OwnerLabelV2Props {
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+
+export interface OwnerLabelV2Props {
   dataTestId?: string;
   hasPermission?: boolean;
 }
