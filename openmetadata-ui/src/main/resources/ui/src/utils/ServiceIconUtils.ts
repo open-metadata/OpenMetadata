@@ -126,10 +126,13 @@ import searchdefault from '../assets/svg/ic-custom-search.svg';
 import storagedefault from '../assets/svg/ic-custom-storage.svg';
 import drivedefault from '../assets/svg/ic-drive-service.svg';
 import restservice from '../assets/svg/ic-service-rest-api.svg';
-import logo from '../assets/svg/logo-monogram.svg';
+import openMetadataLogo from '../assets/svg/logo-monogram.svg';
 import pipelinedefault from '../assets/svg/pipeline.svg';
 import securitydefault from '../assets/svg/security-safe.svg';
 import topicdefault from '../assets/svg/topic.svg';
+import brandClassBase from './BrandData/BrandClassBase';
+
+const { src: LogoSrc } = brandClassBase.getMonogram();
 
 const SERVICE_ICON_LOADERS: Record<string, string> = {
   // Database services
@@ -242,7 +245,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   amundsen: amundsen,
   atlas: atlas,
   alationsink: alationsink,
-  openmetadata: logo,
+  openmetadata: openMetadataLogo,
 
   // Drive services
   googledrive: googledrive,
@@ -275,7 +278,8 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   securitydefault: securitydefault,
   securityservice: securitydefault,
   restservice: restservice,
-  logo: logo,
+  // Dynamic logo based on build
+  logo: LogoSrc,
   synapse: synapse,
 };
 
