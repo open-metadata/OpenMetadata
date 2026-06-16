@@ -1357,7 +1357,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       @Option(
               names = {"--recreate-indexes"},
               defaultValue = "true",
-              description = "Flag to determine if indexes should be recreated.")
+              description = "Deprecated only here for backward compatibilty, won't have any effect.")
           boolean recreateIndexes,
       @Option(
               names = {"--force"},
