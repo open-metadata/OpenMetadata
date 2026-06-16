@@ -393,7 +393,9 @@ public class FeedResource {
           String entityLink) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     boolean applyDomainFilter =
-        !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE);
+        !subjectContext.isAdmin()
+            && !subjectContext.isBot()
+            && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE);
     List<UUID> domains =
         subjectContext.getUserDomains().stream().map(EntityReference::getId).toList();
     return new ResultList<>(dao.getThreadsCount(entityLink, applyDomainFilter, domains));

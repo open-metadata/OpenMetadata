@@ -173,22 +173,42 @@ public class LineageRepository {
     Set<UUID> visible = new HashSet<>();
     List<EntityReference> allRefs = new ArrayList<>(lineage.getNodes());
     allRefs.add(lineage.getEntity());
+    Map<UUID, List<EntityReference>> domainsByNode = batchResolveDomains(allRefs);
     for (EntityReference ref : allRefs) {
-      if (subjectContext.hasDomains(resolveNodeDomains(ref))) {
+      if (subjectContext.hasDomains(domainsByNode.getOrDefault(ref.getId(), List.of()))) {
         visible.add(ref.getId());
       }
     }
     return visible;
   }
 
-  private List<EntityReference> resolveNodeDomains(EntityReference ref) {
-    List<EntityReference> domains = Collections.emptyList();
-    if (Entity.entityHasField(ref.getType(), FIELD_DOMAINS)) {
-      EntityInterface entity =
-          Entity.getEntity(ref.getType(), ref.getId(), FIELD_DOMAINS, Include.ALL);
-      domains = listOrEmpty(entity.getDomains());
+  /**
+   * Batch-resolves the domains of every lineage node in two queries (the domain HAS relationships
+   * for all node ids, then the domain references) instead of one entity fetch per node, avoiding an
+   * N+1 on wide graphs.
+   */
+  private Map<UUID, List<EntityReference>> batchResolveDomains(List<EntityReference> refs) {
+    Map<UUID, List<EntityReference>> domainsByNode = new HashMap<>();
+    List<String> ids = refs.stream().map(ref -> ref.getId().toString()).distinct().toList();
+    List<CollectionDAO.EntityRelationshipObject> records =
+        dao.relationshipDAO()
+            .findFromBatch(ids, Relationship.HAS.ordinal(), Entity.DOMAIN, Include.ALL);
+    List<UUID> domainIds =
+        records.stream().map(rec -> UUID.fromString(rec.getFromId())).distinct().toList();
+    Map<UUID, EntityReference> domainRefs = new HashMap<>();
+    for (EntityReference domainRef :
+        Entity.getEntityReferencesByIds(Entity.DOMAIN, domainIds, Include.ALL)) {
+      domainRefs.put(domainRef.getId(), domainRef);
     }
-    return domains;
+    for (CollectionDAO.EntityRelationshipObject rec : records) {
+      EntityReference domainRef = domainRefs.get(UUID.fromString(rec.getFromId()));
+      if (domainRef != null) {
+        domainsByNode
+            .computeIfAbsent(UUID.fromString(rec.getToId()), key -> new ArrayList<>())
+            .add(domainRef);
+      }
+    }
+    return domainsByNode;
   }
 
   private Set<UUID> reachableNodeIds(UUID rootId, Set<UUID> visible, EntityLineage lineage) {

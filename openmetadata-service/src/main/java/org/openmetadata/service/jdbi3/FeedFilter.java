@@ -69,10 +69,16 @@ public class FeedFilter {
    * {@code RBACConditionEvaluator.hasDomain()} semantics: own-domain threads, or domainless threads
    * when the user has no domains.
    */
-  public static String buildDomainCondition(
+  static String buildDomainCondition(
       String domainsColumn, List<UUID> domains, boolean applyDomainFilter) {
     String domainCondition = "";
     if (applyDomainFilter) {
+      // domainsColumn is spliced directly into SQL; only ever a caller-controlled column reference.
+      // Reject anything that is not a plain (optionally qualified) identifier to close the door on
+      // a future caller passing a request/user-supplied value and opening a SQL injection vector.
+      if (!domainsColumn.matches("[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)?")) {
+        throw new IllegalArgumentException("Invalid domain column reference: " + domainsColumn);
+      }
       if (domains != null && !domains.isEmpty()) {
         // Domain UUIDs are inlined into JSON/ARRAY literals because bind parameters cannot be used
         // inside JSON_TABLE('...') or ARRAY[...] syntax. This is safe because `domains` is
