@@ -225,7 +225,7 @@ jobs:
           sudo rm -rf ${PWD}/docker-volume
 
   sso-summary:
-    if: ${{ !cancelled() && github.event_name == 'pull_request_target' }}
+    if: ${{ !cancelled() && github.event_name == 'pull_request_target' && (github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
     needs: sso-auth-tests
     runs-on: ubuntu-latest
     steps:
