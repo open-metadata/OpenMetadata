@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -45,19 +45,24 @@ export const useTreeTagFilter = <T extends TagsData>(data: T[]) => {
     []
   );
 
-  const selectedTags = useMemo(
-    () => [
-      ...(tagFilterState[TABLE_COLUMNS_KEYS.TAGS] ?? []),
-      ...(tagFilterState[TABLE_COLUMNS_KEYS.GLOSSARY] ?? []),
-    ],
-    [tagFilterState]
-  );
+  const filteredData = useMemo(() => {
+    const classificationTags = tagFilterState[TABLE_COLUMNS_KEYS.TAGS] ?? [];
+    const glossaryTags = tagFilterState[TABLE_COLUMNS_KEYS.GLOSSARY] ?? [];
 
-  const filteredData = useMemo(
-    () =>
-      isEmpty(selectedTags) ? data : getFilteredTagsData(data, selectedTags),
-    [data, selectedTags]
-  );
+    // Prune per column and chain the results so a row must satisfy BOTH the
+    // Classification and Glossary filters (AND across columns, matching Antd's
+    // original per-column filter semantics). Within a single column the tag
+    // list is still OR'd by getFilteredTagsData.
+    let result = data;
+    if (!isEmpty(classificationTags)) {
+      result = getFilteredTagsData(result, classificationTags);
+    }
+    if (!isEmpty(glossaryTags)) {
+      result = getFilteredTagsData(result, glossaryTags);
+    }
+
+    return result;
+  }, [data, tagFilterState]);
 
   return { tagFilterState, filteredData, handleTableChange };
 };
