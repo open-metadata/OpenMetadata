@@ -15,12 +15,12 @@ import { Card, Col, Divider, Row, Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import {
-    Fragment,
-    lazy,
-    useCallback,
-    useEffect,
-    useMemo,
-    useState
+  Fragment,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';

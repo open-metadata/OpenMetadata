@@ -26,8 +26,8 @@ import { QueryVote } from '../../components/Database/TableQueries/TableQueries.i
 import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
-    OperationPermission,
-    ResourceEntity
+  OperationPermission,
+  ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -37,14 +37,14 @@ import { DashboardDataModel } from '../../generated/entity/data/dashboardDataMod
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
-    addDataModelFollower,
-    patchDataModelDetails,
-    removeDataModelFollower,
-    updateDataModelVotes
+  addDataModelFollower,
+  patchDataModelDetails,
+  removeDataModelFollower,
+  updateDataModelVotes,
 } from '../../rest/dataModelsAPI';
 import {
-    dashboardDataModelQueryFn,
-    dashboardDataModelQueryKey
+  dashboardDataModelQueryFn,
+  dashboardDataModelQueryKey,
 } from '../../rest/queries/dashboardDataModelQuery';
 import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';

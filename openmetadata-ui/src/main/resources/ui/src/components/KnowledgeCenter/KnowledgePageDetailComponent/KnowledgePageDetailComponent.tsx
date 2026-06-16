@@ -15,13 +15,13 @@ import { compare } from 'fast-json-patch';
 import { cloneDeep, debounce, isEqual, isNil, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
 import {
-    FC,
-    KeyboardEvent,
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
+  FC,
+  KeyboardEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useActivityFeedProvider } from '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -37,28 +37,28 @@ import { GenericProvider } from '../../../components/Customization/GenericProvid
 import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
 import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
 import {
-    CREATE_PAGE_HASH,
-    KNOWLEDGE_CENTER_CLASSIFICATION,
-    LONG_DELAY,
-    SHORT_DELAY
+  CREATE_PAGE_HASH,
+  KNOWLEDGE_CENTER_CLASSIFICATION,
+  LONG_DELAY,
+  SHORT_DELAY,
 } from '../../../constants/constants';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import {
-    getKnowledgePageFields,
-    KNOWLEDGE_PAGE_FIELDS,
-    KNOWLEDGE_PAGE_UN_SAVED_CHANGE_STATE
+  getKnowledgePageFields,
+  KNOWLEDGE_PAGE_FIELDS,
+  KNOWLEDGE_PAGE_UN_SAVED_CHANGE_STATE,
 } from '../../../constants/KnowledgeCenter.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
-    OperationPermission,
-    ResourceEntity
+  OperationPermission,
+  ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import {
-    CreateThread,
-    ThreadType
+  CreateThread,
+  ThreadType,
 } from '../../../generated/api/feed/createThread';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
@@ -66,30 +66,30 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { FeedCounts } from '../../../interface/feed.interface';
 import {
-    ContentChangeState,
-    KnowledgeCenterPageProps,
-    KnowledgePage,
-    RecentlyViewedQuickLinks
+  ContentChangeState,
+  KnowledgeCenterPageProps,
+  KnowledgePage,
+  RecentlyViewedQuickLinks,
 } from '../../../interface/knowledge-center.interface';
 import { postThread } from '../../../rest/feedsAPI';
 import {
-    followKnowledgePage,
-    getKnowledgePageByFqn,
-    patchKnowledgePage,
-    unFollowKnowledgePage,
-    updateKnowledgePageVote
+  followKnowledgePage,
+  getKnowledgePageByFqn,
+  patchKnowledgePage,
+  unFollowKnowledgePage,
+  updateKnowledgePageVote,
 } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import {
-    fetchEntityActivityCountInto,
-    fetchEntityTaskCountsInto,
-    getFeedCounts
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
 import i18n from '../../../utils/i18next/LocalUtil';
 import {
-    addToKnowledgeCenterRecentViewed,
-    getKnowledgePageName,
-    updateKnowledgeCenterRecentViewed
+  addToKnowledgeCenterRecentViewed,
+  getKnowledgePageName,
+  updateKnowledgeCenterRecentViewed,
 } from '../../../utils/KnowledgePageUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getTagsWithoutTier } from '../../../utils/TablePureUtils';

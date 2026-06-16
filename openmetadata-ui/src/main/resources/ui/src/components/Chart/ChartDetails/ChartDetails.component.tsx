@@ -32,24 +32,24 @@ import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreChart } from '../../../rest/chartsAPI';
 import chartDetailsClassBase from '../../../utils/ChartDetailsClassBase';
 import {
-    checkIfExpandViewSupported,
-    getDetailsTabWithNewLabel,
-    getTabLabelMapFromTabs
+  checkIfExpandViewSupported,
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
-    fetchEntityActivityCountInto,
-    fetchEntityTaskCountsInto,
-    getFeedCounts
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
 } from '../../../utils/FeedUtils';
 import {
-    DEFAULT_ENTITY_PERMISSION,
-    getPrioritizedViewPermission
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedViewPermission,
 } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import {
-    updateCertificationTag,
-    updateTierTag
+  updateCertificationTag,
+  updateTierTag,
 } from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';

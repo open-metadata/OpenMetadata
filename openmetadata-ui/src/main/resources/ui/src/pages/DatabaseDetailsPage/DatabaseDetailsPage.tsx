@@ -17,12 +17,12 @@ import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined, toString } from 'lodash';
 import {
-    FunctionComponent,
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -42,15 +42,15 @@ import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
-    OperationPermission,
-    ResourceEntity
+  OperationPermission,
+  ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
-    EntityTabs,
-    EntityType,
-    TabSpecificField
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Database } from '../../generated/entity/data/database';
@@ -63,23 +63,23 @@ import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
-    addFollowers,
-    getDatabaseDetailsByFQN,
-    getDatabaseSchemas,
-    patchDatabaseDetails,
-    removeFollowers,
-    restoreDatabase,
-    updateDatabaseVotes
+  addFollowers,
+  getDatabaseDetailsByFQN,
+  getDatabaseSchemas,
+  patchDatabaseDetails,
+  removeFollowers,
+  restoreDatabase,
+  updateDatabaseVotes,
 } from '../../rest/databaseAPI';
 import {
-    databaseQueryFn,
-    databaseQueryKey,
-    DATABASE_DEFAULT_FIELDS
+  databaseQueryFn,
+  databaseQueryKey,
+  DATABASE_DEFAULT_FIELDS,
 } from '../../rest/queries/databaseQuery';
 import {
-    checkIfExpandViewSupported,
-    getDetailsTabWithNewLabel,
-    getTabLabelMapFromTabs
+  checkIfExpandViewSupported,
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getQueryFilterForDatabase } from '../../utils/Database/Database.util';
 import databaseClassBase from '../../utils/Database/DatabaseClassBase';
@@ -87,22 +87,25 @@ import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import {
-    fetchEntityActivityCountInto,
-    fetchEntityTaskCountsInto,
-    getFeedCounts
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
 } from '../../utils/FeedUtils';
 import {
-    DEFAULT_ENTITY_PERMISSION,
-    getPrioritizedEditPermission,
-    getPrioritizedViewPermission
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
 } from '../../utils/PermissionsUtils';
 import {
-    getEntityDetailsPath,
-    getExplorePath,
-    getVersionPath
+  getEntityDetailsPath,
+  getExplorePath,
+  getVersionPath,
 } from '../../utils/RouterUtils';
 import { getTierTags } from '../../utils/TablePureUtils';
-import { updateCertificationTag, updateTierTag } from '../../utils/TagsPureUtils';
+import {
+  updateCertificationTag,
+  updateTierTag,
+} from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 

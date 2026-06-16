@@ -12,15 +12,15 @@
  */
 import { CloseOutlined } from '@ant-design/icons';
 import {
-    Button,
-    Empty,
-    Form,
-    Select,
-    SelectProps,
-    Space,
-    TagProps,
-    Tooltip,
-    Typography
+  Button,
+  Empty,
+  Form,
+  Select,
+  SelectProps,
+  Space,
+  TagProps,
+  Tooltip,
+  Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -42,8 +42,8 @@ import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import Loader from '../Loader/Loader';
 import './async-select-list.less';
 import {
-    AsyncSelectListProps,
-    SelectOption
+  AsyncSelectListProps,
+  SelectOption,
 } from './AsyncSelectList.interface';
 
 const AsyncSelectList: FC<

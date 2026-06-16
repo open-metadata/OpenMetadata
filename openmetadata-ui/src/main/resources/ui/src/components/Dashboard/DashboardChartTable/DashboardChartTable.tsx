@@ -22,8 +22,8 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { INITIAL_CHART_FILTERS } from '../../../constants/constants';
 import {
-    DEFAULT_DASHBOARD_CHART_VISIBLE_COLUMNS,
-    TABLE_COLUMNS_KEYS
+  DEFAULT_DASHBOARD_CHART_VISIBLE_COLUMNS,
+  TABLE_COLUMNS_KEYS,
 } from '../../../constants/TableKeys.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -41,8 +41,8 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getChartDetailsPath } from '../../../utils/RouterUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
-    getAllTags,
-    searchTagInData
+  getAllTags,
+  searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import { createTagObject } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';

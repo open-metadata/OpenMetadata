@@ -32,27 +32,27 @@ import { EntityField } from '../../../../constants/Feeds.constants';
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import {
-    ChangeDescription,
-    TagLabel,
-    TestCaseParameterValue
+  ChangeDescription,
+  TagLabel,
+  TestCaseParameterValue,
 } from '../../../../generated/tests/testCase';
 import { TestDefinition } from '../../../../generated/tests/testDefinition';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import {
-    getTestDefinitionById,
-    updateTestCaseById
+  getTestDefinitionById,
+  updateTestCaseById,
 } from '../../../../rest/testAPI';
 import {
-    getComputeRowCountDiffDisplay,
-    getEntityVersionByField,
-    getEntityVersionTags,
-    getParameterValueDiffDisplay
+  getComputeRowCountDiffDisplay,
+  getEntityVersionByField,
+  getEntityVersionTags,
+  getParameterValueDiffDisplay,
 } from '../../../../utils/EntityVersionUtils';
 import { VersionEntityTypes } from '../../../../utils/EntityVersionUtils.interface';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import {
-    getTagsWithoutTier,
-    getTierTags
+  getTagsWithoutTier,
+  getTierTags,
 } from '../../../../utils/TablePureUtils';
 import { createTagObject } from '../../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';

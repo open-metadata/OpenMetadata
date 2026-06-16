@@ -17,11 +17,11 @@ import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import {
-    FunctionComponent,
-    useCallback,
-    useEffect,
-    useMemo,
-    useState
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -39,8 +39,8 @@ import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
-    OperationPermission,
-    ResourceEntity
+  OperationPermission,
+  ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -55,37 +55,40 @@ import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
-    patchApiCollection,
-    restoreApiCollection,
-    updateApiCollectionVote
+  patchApiCollection,
+  restoreApiCollection,
+  updateApiCollectionVote,
 } from '../../rest/apiCollectionsAPI';
 import { getApiEndPoints } from '../../rest/apiEndpointsAPI';
 import {
-    apiCollectionQueryFn,
-    apiCollectionQueryKey,
-    API_COLLECTION_DEFAULT_FIELDS
+  apiCollectionQueryFn,
+  apiCollectionQueryKey,
+  API_COLLECTION_DEFAULT_FIELDS,
 } from '../../rest/queries/apiCollectionQuery';
 import apiCollectionClassBase from '../../utils/APICollection/APICollectionClassBase';
 import {
-    checkIfExpandViewSupported,
-    getDetailsTabWithNewLabel,
-    getTabLabelMapFromTabs
+  checkIfExpandViewSupported,
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import {
-    fetchEntityActivityCountInto,
-    fetchEntityTaskCountsInto,
-    getFeedCounts
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
 } from '../../utils/FeedUtils';
 import {
-    DEFAULT_ENTITY_PERMISSION,
-    getPrioritizedEditPermission,
-    getPrioritizedViewPermission
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
 } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
-import { updateCertificationTag, updateTierTag } from '../../utils/TagsPureUtils';
+import {
+  updateCertificationTag,
+  updateTierTag,
+} from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 

@@ -28,21 +28,21 @@ import { useFqn } from '../../../../hooks/useFqn';
 import { FeedCounts } from '../../../../interface/feed.interface';
 import { restoreDataModel } from '../../../../rest/dataModelsAPI';
 import {
-    checkIfExpandViewSupported,
-    getDetailsTabWithNewLabel,
-    getTabLabelMapFromTabs
+  checkIfExpandViewSupported,
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
 } from '../../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import dashboardDataModelClassBase from '../../../../utils/DashboardDataModelClassBase';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
-    fetchEntityActivityCountInto,
-    fetchEntityTaskCountsInto,
-    getFeedCounts
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
 } from '../../../../utils/FeedUtils';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import {
-    getEntityDetailsPath,
-    getVersionPath
+  getEntityDetailsPath,
+  getVersionPath,
 } from '../../../../utils/RouterUtils';
 import { updateCertificationTag } from '../../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';

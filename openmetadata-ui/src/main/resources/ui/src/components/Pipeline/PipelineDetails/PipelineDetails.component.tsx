@@ -31,27 +31,28 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restorePipeline } from '../../../rest/pipelineAPI';
 import {
-    checkIfExpandViewSupported,
-    getDetailsTabWithNewLabel,
-    getTabLabelMapFromTabs
+  checkIfExpandViewSupported,
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
-    fetchEntityActivityCountInto,
-    fetchEntityTaskCountsInto,
-    getFeedCounts
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
 } from '../../../utils/FeedUtils';
 import {
-    DEFAULT_ENTITY_PERMISSION,
-    getPrioritizedEditPermission,
-    getPrioritizedViewPermission
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
 } from '../../../utils/PermissionsUtils';
 import pipelineClassBase from '../../../utils/PipelineClassBase';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
-    createTagObject, updateCertificationTag,
-    updateTierTag
+  createTagObject,
+  updateCertificationTag,
+  updateTierTag,
 } from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';

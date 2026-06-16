@@ -12,10 +12,10 @@
  */
 
 import {
-    Autocomplete,
-    BadgeWithButton,
-    Dot,
-    type SelectItemType
+  Autocomplete,
+  BadgeWithButton,
+  Dot,
+  type SelectItemType,
 } from '@openmetadata/ui-core-components';
 import { debounce } from 'lodash';
 import { EntityTags } from 'Models';

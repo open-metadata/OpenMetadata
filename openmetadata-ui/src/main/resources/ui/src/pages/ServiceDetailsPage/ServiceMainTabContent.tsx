@@ -19,12 +19,12 @@ import { isEmpty, isUndefined } from 'lodash';
 import { EntityTags, ServiceTypes } from 'Models';
 import QueryString from 'qs';
 import {
-    Dispatch,
-    SetStateAction,
-    useCallback,
-    useEffect,
-    useMemo,
-    useState
+  Dispatch,
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -41,8 +41,8 @@ import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
 import {
-    COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
-    DEFAULT_SERVICE_TAB_VISIBLE_COLUMNS
+  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+  DEFAULT_SERVICE_TAB_VISIBLE_COLUMNS,
 } from '../../constants/TableKeys.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -57,17 +57,17 @@ import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import { getBulkEditButton } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { getEntityBulkEditPath } from '../../utils/EntityPureUtils';
 import {
-    getPrioritizedEditPermission,
-    getPrioritizedViewPermission
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
 } from '../../utils/PermissionsUtils';
 import {
-    callServicePatchAPI,
-    getServiceMainTabColumns
+  callServicePatchAPI,
+  getServiceMainTabColumns,
 } from '../../utils/ServiceMainTabContentUtils';
 import {
-    getCountLabel,
-    getEntityTypeFromServiceCategory,
-    getSearchIndexForService
+  getCountLabel,
+  getEntityTypeFromServiceCategory,
+  getSearchIndexForService,
 } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TablePureUtils';
 import { createTagObject } from '../../utils/TagsPureUtils';

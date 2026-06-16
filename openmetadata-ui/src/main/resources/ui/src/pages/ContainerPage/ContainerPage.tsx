@@ -34,15 +34,15 @@ import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
-    OperationPermission,
-    ResourceEntity
+  OperationPermission,
+  ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
-    EntityTabs,
-    EntityType,
-    TabSpecificField
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Container } from '../../generated/entity/data/container';
@@ -55,42 +55,45 @@ import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
-    containerQueryFn,
-    containerQueryKey,
-    CONTAINER_DEFAULT_FIELDS
+  containerQueryFn,
+  containerQueryKey,
+  CONTAINER_DEFAULT_FIELDS,
 } from '../../rest/queries/containerQuery';
 import {
-    addContainerFollower,
-    getContainerByName,
-    getContainerChildrenByName,
-    patchContainerDetails,
-    removeContainerFollower,
-    restoreContainer,
-    updateContainerVotes
+  addContainerFollower,
+  getContainerByName,
+  getContainerChildrenByName,
+  patchContainerDetails,
+  removeContainerFollower,
+  restoreContainer,
+  updateContainerVotes,
 } from '../../rest/storageAPI';
 import containerDetailsClassBase from '../../utils/ContainerDetailsClassBase';
 import {
-    checkIfExpandViewSupported,
-    getDetailsTabWithNewLabel,
-    getTabLabelMapFromTabs
+  checkIfExpandViewSupported,
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
-    fetchEntityActivityCountInto,
-    fetchEntityTaskCountsInto,
-    getFeedCounts
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
 } from '../../utils/FeedUtils';
 import Fqn from '../../utils/Fqn';
 import {
-    DEFAULT_ENTITY_PERMISSION,
-    getPrioritizedEditPermission,
-    getPrioritizedViewPermission
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
 } from '../../utils/PermissionsUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { flattenColumns } from '../../utils/TablePureUtils';
-import { updateCertificationTag, updateTierTag } from '../../utils/TagsPureUtils';
+import {
+  updateCertificationTag,
+  updateTierTag,
+} from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 

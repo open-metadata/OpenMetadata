@@ -16,31 +16,31 @@ import { ColumnsType } from 'antd/lib/table';
 import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import {
-    lazy,
-    Suspense,
-    useCallback,
-    useEffect,
-    useMemo,
-    useState
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
 import {
-    DATA_ASSET_ICON_DIMENSION,
-    NO_DATA_PLACEHOLDER
+  DATA_ASSET_ICON_DIMENSION,
+  NO_DATA_PLACEHOLDER,
 } from '../../../constants/constants';
 import { PIPELINE_TASK_TABS } from '../../../constants/pipeline.constants';
 import {
-    COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
-    DEFAULT_PIPELINE_VISIBLE_COLUMNS,
-    TABLE_COLUMNS_KEYS
+  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+  DEFAULT_PIPELINE_VISIBLE_COLUMNS,
+  TABLE_COLUMNS_KEYS,
 } from '../../../constants/TableKeys.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import {
-    Pipeline,
-    PipelineStatus,
-    Task
+  Pipeline,
+  PipelineStatus,
+  Task,
 } from '../../../generated/entity/data/pipeline';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { usePaging } from '../../../hooks/paging/usePaging';
@@ -49,12 +49,12 @@ import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import {
-    columnFilterIcon,
-    ownerTableObject
+  columnFilterIcon,
+  ownerTableObject,
 } from '../../../utils/TableColumn.util';
 import {
-    getAllTags,
-    searchTagInData
+  getAllTags,
+  searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import { createTagObject } from '../../../utils/TagsPureUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';

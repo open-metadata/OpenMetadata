@@ -36,16 +36,16 @@ import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
-    OperationPermission,
-    ResourceEntity
+  OperationPermission,
+  ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
-    EntityTabs,
-    EntityType,
-    TabSpecificField
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Table, TableType } from '../../generated/entity/data/table';
@@ -65,43 +65,46 @@ import { getDataQualityLineage } from '../../rest/lineageAPI';
 import { tableQueryFn, tableQueryKey } from '../../rest/queries/tableQuery';
 import { getQueriesList } from '../../rest/queryAPI';
 import {
-    addFollower,
-    patchTableDetails,
-    removeFollower,
-    restoreTable,
-    updateTablesVotes
+  addFollower,
+  patchTableDetails,
+  removeFollower,
+  restoreTable,
+  updateTablesVotes,
 } from '../../rest/tableAPI';
 import { Suggestion, SuggestionType } from '../../types/taskSuggestion';
 import {
-    checkIfExpandViewSupported,
-    getDetailsTabWithNewLabel,
-    getTabLabelMapFromTabs
+  checkIfExpandViewSupported,
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { defaultFieldsWithColumns } from '../../utils/DatasetDetailsUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { mergeEntityStateUpdate } from '../../utils/EntityUpdateUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import {
-    fetchEntityActivityCountInto,
-    fetchEntityTaskCountsInto,
-    getFeedCounts
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
 } from '../../utils/FeedUtils';
 import {
-    DEFAULT_ENTITY_PERMISSION,
-    getPrioritizedEditPermission,
-    getPrioritizedViewPermission
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
 } from '../../utils/PermissionsUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import {
-    findColumnByEntityLink,
-    getJoinsFromTableJoins,
-    getTagsWithoutTier,
-    getTierTags,
-    updateColumnInNestedStructure
+  findColumnByEntityLink,
+  getJoinsFromTableJoins,
+  getTagsWithoutTier,
+  getTierTags,
+  updateColumnInNestedStructure,
 } from '../../utils/TablePureUtils';
-import { updateCertificationTag, updateTierTag } from '../../utils/TagsPureUtils';
+import {
+  updateCertificationTag,
+  updateTierTag,
+} from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';

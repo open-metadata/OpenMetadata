@@ -38,7 +38,10 @@ import { createEntityWithCoverImage } from '../../utils/CoverImageUploadUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { submitAndClose } from '../../utils/FormDrawerUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
-import { getClassificationTags, getGlossaryTags } from '../../utils/TagsPureUtils';
+import {
+  getClassificationTags,
+  getGlossaryTags,
+} from '../../utils/TagsPureUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';

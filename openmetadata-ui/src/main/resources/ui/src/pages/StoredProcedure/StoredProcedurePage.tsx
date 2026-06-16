@@ -31,16 +31,16 @@ import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
-    OperationPermission,
-    ResourceEntity
+  OperationPermission,
+  ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import {
-    StoredProcedure,
-    StoredProcedureCodeObject
+  StoredProcedure,
+  StoredProcedureCodeObject,
 } from '../../generated/entity/data/storedProcedure';
 import { Operation } from '../../generated/entity/policies/policy';
 import { PageType } from '../../generated/system/ui/page';
@@ -50,39 +50,42 @@ import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
-    storedProcedureQueryFn,
-    storedProcedureQueryKey
+  storedProcedureQueryFn,
+  storedProcedureQueryKey,
 } from '../../rest/queries/storedProcedureQuery';
 import {
-    addStoredProceduresFollower,
-    patchStoredProceduresDetails,
-    removeStoredProceduresFollower,
-    restoreStoredProcedures,
-    updateStoredProcedureVotes
+  addStoredProceduresFollower,
+  patchStoredProceduresDetails,
+  removeStoredProceduresFollower,
+  restoreStoredProcedures,
+  updateStoredProcedureVotes,
 } from '../../rest/storedProceduresAPI';
 import {
-    checkIfExpandViewSupported,
-    getDetailsTabWithNewLabel,
-    getTabLabelMapFromTabs
+  checkIfExpandViewSupported,
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
-    fetchEntityActivityCountInto,
-    fetchEntityTaskCountsInto,
-    getFeedCounts
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
 } from '../../utils/FeedUtils';
 import {
-    DEFAULT_ENTITY_PERMISSION,
-    getPrioritizedViewPermission
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedViewPermission,
 } from '../../utils/PermissionsUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import {
-    getStoredProcedureDetailsPageTabs,
-    STORED_PROCEDURE_DEFAULT_FIELDS
+  getStoredProcedureDetailsPageTabs,
+  STORED_PROCEDURE_DEFAULT_FIELDS,
 } from '../../utils/StoredProceduresUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TablePureUtils';
-import { updateCertificationTag, updateTierTag } from '../../utils/TagsPureUtils';
+import {
+  updateCertificationTag,
+  updateTierTag,
+} from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 
