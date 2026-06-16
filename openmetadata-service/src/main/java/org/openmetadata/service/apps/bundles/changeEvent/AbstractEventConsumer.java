@@ -170,16 +170,6 @@ public abstract class AbstractEventConsumer
             source.toString());
   }
 
-  private void recordSuccessfulChangeEvent(UUID eventSubscriptionId, ChangeEvent event) {
-    Entity.getCollectionDAO()
-        .eventSubscriptionDAO()
-        .upsertSuccessfulChangeEvent(
-            event.getId().toString(),
-            eventSubscriptionId.toString(),
-            JsonUtils.pojoToJson(event),
-            System.currentTimeMillis());
-  }
-
   private EventSubscriptionOffset loadInitialOffset(JobExecutionContext context) {
     Object offsetValue = jobDetail.getJobDataMap().get(ALERT_OFFSET_KEY);
     if (offsetValue != null) {
@@ -232,54 +222,68 @@ public abstract class AbstractEventConsumer
     if (events.isEmpty()) {
       return;
     }
-
-    // Filter events based on subscription configuration (entity type, conditions, etc.)
     Map<ChangeEvent, Set<UUID>> filteredEvents = getFilteredEvents(eventSubscription, events);
     RecipientResolver resolver = new RecipientResolver();
+    int successDeliveries = 0;
+    int failedDeliveries = 0;
+    for (Map.Entry<ChangeEvent, Set<UUID>> eventWithReceivers : filteredEvents.entrySet()) {
+      EventDeliveryResult result =
+          publishEvent(eventWithReceivers.getKey(), eventWithReceivers.getValue(), resolver);
+      // Record once per (event, subscription): the table has no destination dimension, so
+      // recording per type would duplicate rows and break Postgres ON CONFLICT.
+      if (result.delivered()) {
+        successfulEvents.add(eventWithReceivers.getKey());
+      }
+      successDeliveries += result.successCount();
+      failedDeliveries += result.failedCount();
+    }
+    alertMetrics.withSuccessEvents(alertMetrics.getSuccessEvents() + successDeliveries);
+    alertMetrics.withFailedEvents(alertMetrics.getFailedEvents() + failedDeliveries);
+  }
 
-    for (var eventWithReceivers : filteredEvents.entrySet()) {
-      ChangeEvent event = eventWithReceivers.getKey();
-      Set<UUID> destinationIds = eventWithReceivers.getValue();
-
-      // Group destinations by type to enable cross-destination recipient deduplication
-      Map<SubscriptionType, List<Destination<ChangeEvent>>> destinationsByType =
-          groupDestinationsByType(destinationIds);
-
-      for (var entry : destinationsByType.entrySet()) {
-        List<Destination<ChangeEvent>> destinations = entry.getValue();
-        Destination<ChangeEvent> publisher = destinations.getFirst();
-
-        // Resolve recipients from all destinations of this type for deduplication
-        Set<Recipient> recipients = Set.of();
-        if (publisher.requiresRecipients()) {
-          List<SubscriptionDestination> subDestinations =
-              destinations.stream().map(Destination::getSubscriptionDestination).toList();
-          recipients = resolver.resolveRecipients(event, subDestinations);
-        }
-
-        // Send via primary destination only, with deduplicated recipients (one send per type)
-        boolean status = true;
-        if (!publisher.requiresRecipients() || !recipients.isEmpty()) {
-          try {
-            publisher.sendMessage(event, recipients);
-          } catch (EventPublisherException e) {
-            LOG.error("Failed to send alert: {}", e.getMessage());
-            handleFailedEvent(e, true);
-            status = false;
-          }
-        }
-
-        if (status) {
-          // Collect successful events instead of writing immediately
-          // Batch write happens in commit() to reduce connection pool contention
-          // Note: Empty recipients is treated as successful (no-op send)
-          successfulEvents.add(eventWithReceivers.getKey());
-          alertMetrics.withSuccessEvents(alertMetrics.getSuccessEvents() + 1);
-        } else {
-          alertMetrics.withFailedEvents(alertMetrics.getFailedEvents() + 1);
-        }
+  private EventDeliveryResult publishEvent(
+      ChangeEvent event, Set<UUID> destinationIds, RecipientResolver resolver) {
+    // Group destinations by type to enable cross-destination recipient deduplication
+    Map<SubscriptionType, List<Destination<ChangeEvent>>> destinationsByType =
+        groupDestinationsByType(destinationIds);
+    int successCount = 0;
+    int failedCount = 0;
+    for (Map.Entry<SubscriptionType, List<Destination<ChangeEvent>>> entry :
+        destinationsByType.entrySet()) {
+      if (sendToDestinationType(event, entry.getValue(), resolver)) {
+        successCount++;
+      } else {
+        failedCount++;
       }
     }
+    return new EventDeliveryResult(successCount > 0, successCount, failedCount);
+  }
+
+  private record EventDeliveryResult(boolean delivered, int successCount, int failedCount) {}
+
+  private boolean sendToDestinationType(
+      ChangeEvent event, List<Destination<ChangeEvent>> destinations, RecipientResolver resolver) {
+    Destination<ChangeEvent> publisher = destinations.getFirst();
+    // Resolve recipients from all destinations of this type for deduplication
+    Set<Recipient> recipients = Set.of();
+    if (publisher.requiresRecipients()) {
+      List<SubscriptionDestination> subDestinations =
+          destinations.stream().map(Destination::getSubscriptionDestination).toList();
+      recipients = resolver.resolveRecipients(event, subDestinations);
+    }
+    // Send via primary destination only, with deduplicated recipients (one send per type).
+    // Empty recipients is treated as successful (no-op send).
+    boolean status = true;
+    if (!publisher.requiresRecipients() || !recipients.isEmpty()) {
+      try {
+        publisher.sendMessage(event, recipients);
+      } catch (EventPublisherException e) {
+        LOG.error("Failed to send alert: {}", e.getMessage());
+        handleFailedEvent(e, true);
+        status = false;
+      }
+    }
+    return status;
   }
 
   private Map<SubscriptionType, List<Destination<ChangeEvent>>> groupDestinationsByType(
