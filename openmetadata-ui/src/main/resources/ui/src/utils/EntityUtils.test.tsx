@@ -138,7 +138,7 @@ jest.mock('./FqnUtils', () => ({
 jest.mock('./NumberUtils', () => ({
   formatNumberWithComma: jest.fn().mockImplementation((value) => value),
 }));
-jest.mock('./DataInsightUtils', () => ({
+jest.mock('./DataInsightPureUtils', () => ({
   getDataInsightPathWithFqn: jest.fn(),
 }));
 jest.mock('./EntityLink', () => ({
