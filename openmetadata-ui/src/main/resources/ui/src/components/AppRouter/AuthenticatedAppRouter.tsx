@@ -30,124 +30,233 @@ import withSuspenseFallback from './withSuspenseFallback';
 // Previously statically imported — lazify so they stay out of the main chunk
 const AddCustomMetricPage = withSuspenseFallback(
   React.lazy(
-    () => import('../../pages/AddCustomMetricPage/AddCustomMetricPage')
+    () =>
+      import(
+        /* webpackChunkName: "AddCustomMetricPage" */ '../../pages/AddCustomMetricPage/AddCustomMetricPage'
+      )
   )
 );
 
 const CustomizablePage = withSuspenseFallback(
   React.lazy(() =>
-    import('../../pages/CustomizablePage/CustomizablePage').then((m) => ({
+    import(
+      /* webpackChunkName: "CustomizablePage" */ '../../pages/CustomizablePage/CustomizablePage'
+    ).then((m) => ({
       default: m.CustomizablePage,
     }))
   )
 );
 
 const DataQualityPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/DataQuality/DataQualityPage'))
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "DataQualityPage" */ '../../pages/DataQuality/DataQualityPage'
+      )
+  )
 );
 
 const ForbiddenPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/ForbiddenPage/ForbiddenPage'))
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "ForbiddenPage" */ '../../pages/ForbiddenPage/ForbiddenPage'
+      )
+  )
 );
 
 const PlatformLineage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/PlatformLineage/PlatformLineage'))
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "PlatformLineage" */ '../../pages/PlatformLineage/PlatformLineage'
+      )
+  )
 );
 
 const TagPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/TagPage/TagPage'))
+  React.lazy(
+    () =>
+      import(/* webpackChunkName: "TagPage" */ '../../pages/TagPage/TagPage')
+  )
 );
 
 const DomainRouter = withSuspenseFallback(
-  React.lazy(() => import('./DomainRouter'))
+  React.lazy(
+    () => import(/* webpackChunkName: "DomainRouter" */ './DomainRouter')
+  )
 );
+
 const DataProductListPage = withSuspenseFallback(
-  React.lazy(() => import('../DataProduct/DataProductListPage'))
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "DataProductListPage" */ '../DataProduct/DataProductListPage'
+      )
+  )
 );
+
 const SettingsRouter = withSuspenseFallback(
-  React.lazy(() => import('./SettingsRouter'))
+  React.lazy(
+    () =>
+      import(/* webpackChunkName: "SettingsRouter" */ './SettingsRouter')
+  )
 );
+
 const EntityRouter = withSuspenseFallback(
-  React.lazy(() => import('./EntityRouter'))
+  React.lazy(
+    () => import(/* webpackChunkName: "EntityRouter" */ './EntityRouter')
+  )
 );
+
 const ClassificationRouter = withSuspenseFallback(
-  React.lazy(() => import('./ClassificationRouter'))
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "ClassificationRouter" */ './ClassificationRouter'
+      )
+  )
 );
+
 const GlossaryRouter = withSuspenseFallback(
-  React.lazy(() => import('./GlossaryRouter/GlossaryRouter'))
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "GlossaryRouter" */ './GlossaryRouter/GlossaryRouter'
+      )
+  )
 );
 
 const GlossaryTermRouter = withSuspenseFallback(
-  React.lazy(() => import('./GlossaryTermRouter/GlossaryTermRouter'))
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "GlossaryTermRouter" */ './GlossaryTermRouter/GlossaryTermRouter'
+      )
+  )
 );
 
 const MyDataPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/MyDataPage/MyDataPage.component'))
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "MyDataPage" */ '../../pages/MyDataPage/MyDataPage.component'
+      )
+  )
 );
 
 const TestSuiteIngestionPage = withSuspenseFallback(
   React.lazy(
-    () => import('../../pages/TestSuiteIngestionPage/TestSuiteIngestionPage')
+    () =>
+      import(
+        /* webpackChunkName: "TestSuiteIngestionPage" */ '../../pages/TestSuiteIngestionPage/TestSuiteIngestionPage'
+      )
   )
 );
 
 const TestSuiteDetailsPage = withSuspenseFallback(
   React.lazy(
     () =>
-      import('../../pages/TestSuiteDetailsPage/TestSuiteDetailsPage.component')
+      import(
+        /* webpackChunkName: "TestSuiteDetailsPage" */ '../../pages/TestSuiteDetailsPage/TestSuiteDetailsPage.component'
+      )
   )
 );
 
 const AddCustomProperty = withSuspenseFallback(
   React.lazy(
     () =>
-      import('../Settings/CustomProperty/AddCustomProperty/AddCustomProperty')
+      import(
+        /* webpackChunkName: "AddCustomProperty" */ '../Settings/CustomProperty/AddCustomProperty/AddCustomProperty'
+      )
   )
 );
 
 const MarketPlacePage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/MarketPlacePage/MarketPlacePage'))
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "MarketPlacePage" */ '../../pages/MarketPlacePage/MarketPlacePage'
+      )
+  )
 );
 
 const DataMarketplacePage = withSuspenseFallback(
   React.lazy(
     () =>
-      import('../../pages/DataMarketplacePage/DataMarketplacePage.component')
+      import(
+        /* webpackChunkName: "DataMarketplacePage" */ '../../pages/DataMarketplacePage/DataMarketplacePage.component'
+      )
   )
 );
 
 const BotDetailsPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/BotDetailsPage/BotDetailsPage'))
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "BotDetailsPage" */ '../../pages/BotDetailsPage/BotDetailsPage'
+      )
+  )
 );
+
 const ServicePage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/ServiceDetailsPage/ServiceDetailsPage'))
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "ServiceDetailsPage" */ '../../pages/ServiceDetailsPage/ServiceDetailsPage'
+      )
+  )
 );
 
 const SwaggerPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/SwaggerPage'))
+  React.lazy(
+    () =>
+      import(/* webpackChunkName: "SwaggerPage" */ '../../pages/SwaggerPage')
+  )
 );
+
 const TourPageComponent = withSuspenseFallback(
-  React.lazy(() => import('../../pages/TourPage/TourPage.component'))
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "TourPage" */ '../../pages/TourPage/TourPage.component'
+      )
+  )
 );
+
 const UserPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/UserPage/UserPage.component'))
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "UserPage" */ '../../pages/UserPage/UserPage.component'
+      )
+  )
 );
 
 const DomainVersionPage = withSuspenseFallback(
   React.lazy(
     () =>
-      import('../../components/Domain/DomainVersion/DomainVersion.component')
+      import(
+        /* webpackChunkName: "DomainVersionPage" */ '../../components/Domain/DomainVersion/DomainVersion.component'
+      )
   )
 );
 
 const AddIngestionPage = withSuspenseFallback(
   React.lazy(
-    () => import('../../pages/AddIngestionPage/AddIngestionPage.component')
+    () =>
+      import(
+        /* webpackChunkName: "AddIngestionPage" */ '../../pages/AddIngestionPage/AddIngestionPage.component'
+      )
   )
 );
+
 const AddServicePage = withSuspenseFallback(
   React.lazy(
-    () => import('../../pages/AddServicePage/AddServicePage.component')
+    () =>
+      import(
+        /* webpackChunkName: "AddServicePage" */ '../../pages/AddServicePage/AddServicePage.component'
+      )
   )
 );
 
@@ -155,58 +264,89 @@ const MarketPlaceAppDetails = withSuspenseFallback(
   React.lazy(
     () =>
       import(
-        '../Settings/Applications/MarketPlaceAppDetails/MarketPlaceAppDetails.component'
+        /* webpackChunkName: "MarketPlaceAppDetails" */ '../Settings/Applications/MarketPlaceAppDetails/MarketPlaceAppDetails.component'
       )
   )
 );
 
 const AppInstallPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/AppInstall/AppInstall.component'))
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "AppInstallPage" */ '../../pages/AppInstall/AppInstall.component'
+      )
+  )
 );
 
 const EditConnectionFormPage = withSuspenseFallback(
   React.lazy(
     () =>
       import(
-        '../../pages/EditConnectionFormPage/EditConnectionFormPage.component'
+        /* webpackChunkName: "EditConnectionFormPage" */ '../../pages/EditConnectionFormPage/EditConnectionFormPage.component'
       )
   )
 );
 
 const CreateUserPage = withSuspenseFallback(
   React.lazy(
-    () => import('../../pages/CreateUserPage/CreateUserPage.component')
+    () =>
+      import(
+        /* webpackChunkName: "CreateUserPage" */ '../../pages/CreateUserPage/CreateUserPage.component'
+      )
   )
 );
+
 const EditIngestionPage = withSuspenseFallback(
   React.lazy(
-    () => import('../../pages/EditIngestionPage/EditIngestionPage.component')
+    () =>
+      import(
+        /* webpackChunkName: "EditIngestionPage" */ '../../pages/EditIngestionPage/EditIngestionPage.component'
+      )
   )
 );
+
 const ServiceVersionPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/ServiceVersionPage/ServiceVersionPage'))
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "ServiceVersionPage" */ '../../pages/ServiceVersionPage/ServiceVersionPage'
+      )
+  )
 );
 
 const ExplorePageV1 = withSuspenseFallback(
-  React.lazy(() => import('../../pages/ExplorePage/ExplorePageV1.component'))
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "ExplorePageV1" */ '../../pages/ExplorePage/ExplorePageV1.component'
+      )
+  )
 );
 
 const OntologyExplorerPage = withSuspenseFallback(
   React.lazy(
-    () => import('../../pages/OntologyExplorerPage/OntologyExplorerPage')
+    () =>
+      import(
+        /* webpackChunkName: "OntologyExplorerPage" */ '../../pages/OntologyExplorerPage/OntologyExplorerPage'
+      )
   )
 );
 
 const WorkflowsListPage = withSuspenseFallback(
   React.lazy(
-    () => import('../../pages/WorkflowDefinitions/WorkflowsPage/WorkflowsPage')
+    () =>
+      import(
+        /* webpackChunkName: "WorkflowsListPage" */ '../../pages/WorkflowDefinitions/WorkflowsPage/WorkflowsPage'
+      )
   )
 );
 
 const WorkflowBuilderPage = withSuspenseFallback(
   React.lazy(
     () =>
-      import('../../pages/WorkflowDefinitions/WorkflowBuilder/WorkflowBuilder')
+      import(
+        /* webpackChunkName: "WorkflowBuilderPage" */ '../../pages/WorkflowDefinitions/WorkflowBuilder/WorkflowBuilder'
+      )
   )
 );
 
@@ -214,14 +354,17 @@ const RequestDescriptionPage = withSuspenseFallback(
   React.lazy(
     () =>
       import(
-        '../../pages/TasksPage/RequestDescriptionPage/RequestDescriptionPage'
+        /* webpackChunkName: "RequestDescriptionPage" */ '../../pages/TasksPage/RequestDescriptionPage/RequestDescriptionPage'
       )
   )
 );
 
 const RequestTagsPage = withSuspenseFallback(
   React.lazy(
-    () => import('../../pages/TasksPage/RequestTagPage/RequestTagPage')
+    () =>
+      import(
+        /* webpackChunkName: "RequestTagsPage" */ '../../pages/TasksPage/RequestTagPage/RequestTagPage'
+      )
   )
 );
 
@@ -229,104 +372,178 @@ const UpdateDescriptionPage = withSuspenseFallback(
   React.lazy(
     () =>
       import(
-        '../../pages/TasksPage/UpdateDescriptionPage/UpdateDescriptionPage'
+        /* webpackChunkName: "UpdateDescriptionPage" */ '../../pages/TasksPage/UpdateDescriptionPage/UpdateDescriptionPage'
       )
   )
 );
 
 const UpdateTagsPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/TasksPage/UpdateTagPage/UpdateTagPage'))
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "UpdateTagsPage" */ '../../pages/TasksPage/UpdateTagPage/UpdateTagPage'
+      )
+  )
 );
 
 const LogsViewerPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/LogsViewerPage/LogsViewerPage'))
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "LogsViewerPage" */ '../../pages/LogsViewerPage/LogsViewerPage'
+      )
+  )
 );
 
 const DataInsightPage = withSuspenseFallback(
   React.lazy(
-    () => import('../../pages/DataInsightPage/DataInsightPage.component')
+    () =>
+      import(
+        /* webpackChunkName: "DataInsightPage" */ '../../pages/DataInsightPage/DataInsightPage.component'
+      )
   )
 );
 
 const AddKPIPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/KPIPage/AddKPIPage'))
+  React.lazy(
+    () =>
+      import(/* webpackChunkName: "AddKPIPage" */ '../../pages/KPIPage/AddKPIPage')
+  )
 );
 
 const EditKPIPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/KPIPage/EditKPIPage'))
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "EditKPIPage" */ '../../pages/KPIPage/EditKPIPage'
+      )
+  )
 );
 
 const QueryPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/QueryPage/QueryPage.component'))
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "QueryPage" */ '../../pages/QueryPage/QueryPage.component'
+      )
+  )
 );
+
 const AddQueryPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/AddQueryPage/AddQueryPage.component'))
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "AddQueryPage" */ '../../pages/AddQueryPage/AddQueryPage.component'
+      )
+  )
 );
 
 const IncidentManagerPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/IncidentManager/IncidentManagerPage'))
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "IncidentManagerPage" */ '../../pages/IncidentManager/IncidentManagerPage'
+      )
+  )
 );
 
 const TestLibraryPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/TestLibrary/TestLibraryPage'))
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "TestLibraryPage" */ '../../pages/TestLibrary/TestLibraryPage'
+      )
+  )
 );
 
 const IncidentManagerDetailPage = withSuspenseFallback(
   React.lazy(
     () =>
       import(
-        '../../pages/IncidentManager/IncidentManagerDetailPage/IncidentManagerDetailPage'
+        /* webpackChunkName: "IncidentManagerDetailPage" */ '../../pages/IncidentManager/IncidentManagerDetailPage/IncidentManagerDetailPage'
       )
   )
 );
 
 const TestCaseVersionPage = withSuspenseFallback(
   React.lazy(
-    () => import('../../pages/TestCaseVersionPage/TestCaseVersionPage')
+    () =>
+      import(
+        /* webpackChunkName: "TestCaseVersionPage" */ '../../pages/TestCaseVersionPage/TestCaseVersionPage'
+      )
   )
 );
 
 const ObservabilityAlertsPage = withSuspenseFallback(
   React.lazy(
-    () => import('../../pages/ObservabilityAlertsPage/ObservabilityAlertsPage')
+    () =>
+      import(
+        /* webpackChunkName: "ObservabilityAlertsPage" */ '../../pages/ObservabilityAlertsPage/ObservabilityAlertsPage'
+      )
   )
 );
 
 const AlertDetailsPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/AlertDetailsPage/AlertDetailsPage'))
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "AlertDetailsPage" */ '../../pages/AlertDetailsPage/AlertDetailsPage'
+      )
+  )
 );
 
 const AddObservabilityPage = withSuspenseFallback(
   React.lazy(
-    () => import('../../pages/AddObservabilityPage/AddObservabilityPage')
+    () =>
+      import(
+        /* webpackChunkName: "AddObservabilityPage" */ '../../pages/AddObservabilityPage/AddObservabilityPage'
+      )
   )
 );
 
 const ContextCenterRouter = withSuspenseFallback(
-  React.lazy(() => import('./ContextCenterRouter/ContextCenterRouter'))
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "ContextCenterRouter" */ './ContextCenterRouter/ContextCenterRouter'
+      )
+  )
 );
 
 const MetricListPage = withSuspenseFallback(
   React.lazy(
-    () => import('../../pages/MetricsPage/MetricListPage/MetricListPage')
+    () =>
+      import(
+        /* webpackChunkName: "MetricListPage" */ '../../pages/MetricsPage/MetricListPage/MetricListPage'
+      )
   )
 );
 
 const AddMetricPage = withSuspenseFallback(
   React.lazy(
-    () => import('../../pages/MetricsPage/AddMetricPage/AddMetricPage')
+    () =>
+      import(
+        /* webpackChunkName: "AddMetricPage" */ '../../pages/MetricsPage/AddMetricPage/AddMetricPage'
+      )
   )
 );
 
 const ColumnBulkOperationsPage = withSuspenseFallback(
   React.lazy(
     () =>
-      import('../../pages/ColumnBulkOperations/ColumnBulkOperations.component')
+      import(
+        /* webpackChunkName: "ColumnBulkOperationsPage" */ '../../pages/ColumnBulkOperations/ColumnBulkOperations.component'
+      )
   )
 );
 
 const McpChatPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/McpChatPage/McpChatPage'))
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "McpChatPage" */ '../../pages/McpChatPage/McpChatPage'
+      )
+  )
 );
 
 const AuthenticatedAppRouter: FunctionComponent = () => {
