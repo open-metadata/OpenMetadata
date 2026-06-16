@@ -98,8 +98,7 @@ const DataProductListPage = withSuspenseFallback(
 
 const SettingsRouter = withSuspenseFallback(
   React.lazy(
-    () =>
-      import(/* webpackChunkName: "SettingsRouter" */ './SettingsRouter')
+    () => import(/* webpackChunkName: "SettingsRouter" */ './SettingsRouter')
   )
 );
 
@@ -407,7 +406,9 @@ const DataInsightPage = withSuspenseFallback(
 const AddKPIPage = withSuspenseFallback(
   React.lazy(
     () =>
-      import(/* webpackChunkName: "AddKPIPage" */ '../../pages/KPIPage/AddKPIPage')
+      import(
+        /* webpackChunkName: "AddKPIPage" */ '../../pages/KPIPage/AddKPIPage'
+      )
   )
 );
 
