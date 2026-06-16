@@ -83,7 +83,7 @@ export const TableProfilerProvider = ({
 }: TableProfilerProviderProps) => {
   const { t } = useTranslation();
   const { fqn: datasetFQN } = useFqn();
-  const { isTourOpen } = useTourProvider();
+  const { isTourOpen, tourMockDatasetData } = useTourProvider();
   const testCasePaging = usePaging();
   const { subTab } = useParams<{ subTab: ProfilerTabPath }>();
   // profiler has its own api but sent's the data in Table type
@@ -304,13 +304,12 @@ export const TableProfilerProvider = ({
       setIsProfilerDataLoading(false);
     }
     if (isTourOpen) {
-      import('../../../../constants/mockTourData.constants').then(
-        ({ mockDatasetData }) => {
-          setTableProfiler(mockDatasetData.tableDetails as unknown as Table);
-        }
-      );
+      const mock = tourMockDatasetData as { tableDetails: unknown } | undefined;
+      if (mock?.tableDetails) {
+        setTableProfiler(mock.tableDetails as Table);
+      }
     }
-  }, [datasetFQN, isTourOpen, activeTab]);
+  }, [datasetFQN, isTourOpen, activeTab, tourMockDatasetData]);
 
   useEffect(() => {
     const fetchTest =

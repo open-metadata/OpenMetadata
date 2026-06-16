@@ -12,6 +12,7 @@
  */
 
 import { ComponentProps, lazy, Suspense } from 'react';
+import Loader from '../../components/common/Loader/Loader';
 
 const DataQualityDashboard = lazy(
   () =>
@@ -23,7 +24,12 @@ const DataQualityDashboard = lazy(
 export const LazyDataQualityDashboard = (
   props: ComponentProps<typeof DataQualityDashboard>
 ) => (
-  <Suspense fallback={null}>
+  <Suspense
+    fallback={
+      <div className="data-quality-governance-tab-wrapper flex-center">
+        <Loader />
+      </div>
+    }>
     <DataQualityDashboard {...props} />
   </Suspense>
 );

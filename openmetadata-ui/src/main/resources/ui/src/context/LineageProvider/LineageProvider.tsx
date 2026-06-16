@@ -190,7 +190,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const { t } = useTranslation();
   const { fqn: decodedFqn } = useFqn();
   const location = useCustomLocation();
-  const { isTourOpen, isTourPage } = useTourProvider();
+  const { isTourOpen, isTourPage, tourMockDatasetData } = useTourProvider();
   const { appPreferences } = useApplicationStore();
   const { preferences } = useCurrentUserPreferences();
   const defaultLineageConfig = appPreferences?.lineageConfig as LineageSettings;
@@ -2014,15 +2014,14 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     if (isTourOpen || isTourPage) {
       setInit(true);
       setLoading(false);
-      import('../../constants/mockTourData.constants').then(
-        ({ mockDatasetData }) => {
-          setEntityLineage(
-            mockDatasetData.entityLineage as unknown as EntityLineageResponse
-          );
-        }
-      );
+      const mock = tourMockDatasetData as
+        | { entityLineage: unknown }
+        | undefined;
+      if (mock?.entityLineage) {
+        setEntityLineage(mock.entityLineage as EntityLineageResponse);
+      }
     }
-  }, [isTourOpen, isTourPage]);
+  }, [isTourOpen, isTourPage, tourMockDatasetData]);
 
   useEffect(() => {
     if (lineageLayer) {

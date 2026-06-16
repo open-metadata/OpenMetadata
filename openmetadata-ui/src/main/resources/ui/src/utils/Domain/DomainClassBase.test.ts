@@ -75,12 +75,8 @@ describe('DomainClassBase', () => {
     it('DQ tab passes isGovernanceView as true', () => {
       const tabs = instance.getDomainDetailPageTabs(mockProps);
       const dqTab = tabs.at(-1);
-      const suspenseProps = (
-        dqTab?.children as ReturnType<typeof createElement>
-      ).props as Record<string, unknown>;
-      const childProps = (
-        suspenseProps.children as ReturnType<typeof createElement>
-      ).props as Record<string, unknown>;
+      const childProps = (dqTab?.children as ReturnType<typeof createElement>)
+        .props as Record<string, unknown>;
 
       expect(childProps.isGovernanceView).toBe(true);
     });
@@ -89,9 +85,6 @@ describe('DomainClassBase', () => {
       const tabs = instance.getDomainDetailPageTabs(mockProps);
       const suspenseProps = (
         tabs.at(-1)?.children as ReturnType<typeof createElement>
-      ).props as Record<string, unknown>;
-      const childProps = (
-        suspenseProps.children as ReturnType<typeof createElement>
       ).props as Record<string, unknown>;
 
       expect(
@@ -109,9 +102,6 @@ describe('DomainClassBase', () => {
       const suspenseProps = (
         tabs.at(-1)?.children as ReturnType<typeof createElement>
       ).props as Record<string, unknown>;
-      const childProps = (
-        suspenseProps.children as ReturnType<typeof createElement>
-      ).props as Record<string, unknown>;
 
       expect(childProps.initialFilters).toBeUndefined();
     });
@@ -120,9 +110,6 @@ describe('DomainClassBase', () => {
       const tabs = instance.getDomainDetailPageTabs(mockProps);
       const suspenseProps = (
         tabs.at(-1)?.children as ReturnType<typeof createElement>
-      ).props as Record<string, unknown>;
-      const childProps = (
-        suspenseProps.children as ReturnType<typeof createElement>
       ).props as Record<string, unknown>;
 
       expect(childProps.className).toBe('data-quality-governance-tab-wrapper');

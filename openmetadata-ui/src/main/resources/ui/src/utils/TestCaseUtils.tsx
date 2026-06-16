@@ -23,6 +23,7 @@ import { ManageButtonItemLabel } from '../components/common/ManageButtonContentI
 import { ExportData } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { ExportTypes } from '../constants/Export.constants';
 import { EntityType } from '../enums/entity.enum';
+import { TestCaseStatus } from '../generated/entity/feed/thread';
 import LimitWrapper from '../hoc/LimitWrapper';
 import { exportTestCasesInCSV } from '../rest/testAPI';
 import { getEntityBulkEditPath, getEntityImportPath } from './EntityPureUtils';

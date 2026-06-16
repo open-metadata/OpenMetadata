@@ -24,6 +24,7 @@ import {
 import { getTestCaseResultCount } from '../../../../../utils/TestCaseUtils';
 import { formatTestStatusData } from '../../../../../utils/FeedUtilsPure';
 import { translateWithNestedKeys } from '../../../../../utils/i18next/LocalUtil';
+import { getTestCaseResultCount } from '../../../../../utils/TestCaseUtils';
 import TestSummaryGraph from '../../../../Database/Profiler/TestSummary/TestSummaryGraph';
 import './test-case-feed.less';
 import { TestCaseFeedProps } from './TestCaseFeed.interface';
