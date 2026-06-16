@@ -56,6 +56,7 @@ import org.openmetadata.service.cache.AncestorsCache;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.ChildrenPageCache;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
@@ -271,13 +272,26 @@ public class ContainerRepository extends EntityRepository<Container> {
       }
       UUID containerId = UUID.fromString(record.getToId());
       UUID serviceId = UUID.fromString(record.getFromId());
-      EntityReference serviceRef =
-          serviceRefById.computeIfAbsent(
-              serviceId, id -> getEntityReferenceById(STORAGE_SERVICE, id, NON_DELETED));
-      serviceMap.put(containerId, serviceRef);
+      EntityReference serviceRef = serviceRefById.get(serviceId);
+      if (serviceRef == null && !serviceRefById.containsKey(serviceId)) {
+        serviceRef = resolveStorageServiceRef(serviceId);
+        serviceRefById.put(serviceId, serviceRef);
+      }
+      if (serviceRef != null) {
+        serviceMap.put(containerId, serviceRef);
+      }
     }
 
     return serviceMap;
+  }
+
+  private EntityReference resolveStorageServiceRef(UUID serviceId) {
+    try {
+      return getEntityReferenceById(STORAGE_SERVICE, serviceId, NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      LOG.info("Skipping deleted storage service reference {}", serviceId);
+      return null;
+    }
   }
 
   @Override
@@ -353,7 +367,7 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   private void setDefaultFields(Container container) {
     EntityReference parentServiceRef =
-        getFromEntityRef(container.getId(), Relationship.CONTAINS, STORAGE_SERVICE, true);
+        getFromEntityRef(container.getId(), Relationship.CONTAINS, STORAGE_SERVICE, false);
     container.withService(parentServiceRef);
   }
 

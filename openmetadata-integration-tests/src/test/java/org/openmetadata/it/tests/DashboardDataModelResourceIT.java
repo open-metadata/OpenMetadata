@@ -31,11 +31,13 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.DataModelType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelResource;
 
 /**
@@ -761,6 +763,52 @@ public class DashboardDataModelResourceIT
       assertNotNull(column1.getTags(), "Column tags should be present");
       assertEquals(1, column1.getTags().size());
       assertEquals(columnTagLabel.getTagFQN(), column1.getTags().get(0).getTagFQN());
+    }
+  }
+
+  @Test
+  void test_listEntities_orphanWithMissingServiceRelationship_200(TestNamespace ns) {
+    DashboardService service = DashboardServiceTestFactory.createLooker(ns);
+    CreateDashboardDataModel request =
+        new CreateDashboardDataModel()
+            .withName(ns.prefix("dm_orphan_service"))
+            .withService(service.getFullyQualifiedName())
+            .withDataModelType(DataModelType.LookMlView)
+            .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+
+    DashboardDataModel dataModel = createEntity(request);
+    int relation = Relationship.CONTAINS.ordinal();
+    int rowsRemoved =
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .delete(
+                service.getId(),
+                Entity.DASHBOARD_SERVICE,
+                dataModel.getId(),
+                Entity.DASHBOARD_DATA_MODEL,
+                relation);
+    assertEquals(1, rowsRemoved, "Setup: should have dropped exactly one CONTAINS row");
+
+    try {
+      ListParams params = new ListParams();
+      params.setLimit(20);
+      params.setService(service.getFullyQualifiedName());
+
+      ListResponse<DashboardDataModel> list = listEntities(params);
+      assertNotNull(list);
+      assertNotNull(list.getData());
+      assertTrue(
+          list.getData().stream().anyMatch(dm -> dm.getId().equals(dataModel.getId())),
+          "Listing should still return the orphaned data model");
+    } finally {
+      Entity.getCollectionDAO()
+          .relationshipDAO()
+          .insert(
+              service.getId(),
+              dataModel.getId(),
+              Entity.DASHBOARD_SERVICE,
+              Entity.DASHBOARD_DATA_MODEL,
+              relation);
     }
   }
 

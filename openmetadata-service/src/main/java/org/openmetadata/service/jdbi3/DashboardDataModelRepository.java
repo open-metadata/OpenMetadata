@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
+import static org.openmetadata.service.Entity.DASHBOARD_SERVICE;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
@@ -222,7 +223,9 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   private void setDefaultFields(DashboardDataModel dashboardDataModel) {
-    EntityReference service = getContainer(dashboardDataModel.getId());
+    EntityReference service =
+        getFromEntityRef(
+            dashboardDataModel.getId(), Relationship.CONTAINS, DASHBOARD_SERVICE, false);
     dashboardDataModel.withService(service);
   }
 
