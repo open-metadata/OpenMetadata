@@ -16,11 +16,9 @@ import { DEFAULT_DOMAIN_VALUE } from '../constants/constants';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { TestSuite } from '../generated/tests/testCase';
-import {
-  getBreadcrumbForTestSuite,
-  getEntityBreadcrumbs,
-  getEntityLinkFromType,
-} from './EntityBreadcrumbUtils';
+import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
+import { getBreadcrumbForTestSuite } from './EntityGovernanceBreadcrumbUtils';
+import { getEntityLinkFromType } from './EntityLinkUtils';
 import { getDomainDisplayName } from './EntityNameUtils';
 import {
   hasCustomPropertiesTab,

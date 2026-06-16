@@ -38,7 +38,7 @@ import { listTestCases } from '../../../rest/testAPI';
 import { calculateTestCaseStatusCounts } from '../../../utils/DataQuality/DataQualityUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { toEntityData } from '../../../utils/EntitySummaryPanelUtils';
+import { toEntityData } from '../../../utils/EntitySummaryPanelPureUtils';
 import { getErrorText, stringToHTML } from '../../../utils/StringUtils';
 import {
   buildColumnBreadcrumbPath,
