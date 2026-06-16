@@ -3,6 +3,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 
 import jakarta.ws.rs.BadRequestException;
+import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -136,8 +137,8 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
     int testCaseCount =
         daoCollection
             .relationshipDAO()
-            .findTo(testDefinitionId, TEST_DEFINITION, Relationship.CONTAINS.ordinal())
-            .size();
+            .countFindTo(
+                testDefinitionId, TEST_DEFINITION, List.of(Relationship.CONTAINS.ordinal()));
     if (testCaseCount > 0) {
       String testDefinitionName = find(testDefinitionId, Include.ALL).getFullyQualifiedName();
       throw new IllegalArgumentException(

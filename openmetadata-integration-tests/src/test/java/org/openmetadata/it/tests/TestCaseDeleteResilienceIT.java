@@ -142,13 +142,36 @@ public class TestCaseDeleteResilienceIT {
             () -> client.testDefinitions().delete(testDefinition.getId().toString()));
 
     assertEquals(400, error.getStatusCode());
-    assertTrue(error.getMessage().contains("is used by"), error.getMessage());
+    assertTrue(error.getMessage().contains("depend on it"), error.getMessage());
     assertTrue(error.getMessage().contains("1 test case"), error.getMessage());
     assertTrue(error.getMessage().contains("recursive=true"), error.getMessage());
 
     assertNotNull(
         client.testDefinitions().get(testDefinition.getId().toString()),
         "test definition must survive a blocked non-recursive delete");
+  }
+
+  @Test
+  void deleteTestDefinition_withSoftDeletedDependentTestCase_stillBlocked(TestNamespace ns) {
+    // A soft-deleted test case still references its definition and would be hard-deleted by a
+    // recursive delete, so it intentionally still counts toward the dependent guard. The count
+    // reflects the recursive-delete blast radius, matching what EntityRepository.deleteChildren
+    // would cascade — filtering it to only live test cases would desync the guard from the cascade.
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestDefinition testDefinition = createCustomTableTestDefinition(ns);
+    Table table = createTable(ns, "tdSoft");
+    TestCase testCase =
+        createCustomTestCase(
+            table, "tdSoftCase_" + ns.uniqueShortId(), testDefinition.getFullyQualifiedName());
+    client.testCases().delete(testCase.getId().toString()); // soft delete
+
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> client.testDefinitions().delete(testDefinition.getId().toString()));
+
+    assertEquals(400, error.getStatusCode());
+    assertTrue(error.getMessage().contains("1 test case"), error.getMessage());
   }
 
   @Test

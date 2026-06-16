@@ -241,8 +241,8 @@ import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityLockedException;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.EntityRelationshipNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
-import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
@@ -4614,7 +4614,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private void setFieldsForDelete(final T entity) {
     try {
       setFieldsInternal(entity, putFields);
-    } catch (EntityNotFoundException | UnhandledServerException e) {
+    } catch (EntityNotFoundException | EntityRelationshipNotFoundException e) {
       LOG.warn(
           "Proceeding with delete of {} {} despite a dangling reference while resolving fields: {}",
           entityType,
@@ -4633,7 +4633,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     T entity;
     try {
       entity = get(null, id, putFields, ALL, false);
-    } catch (EntityNotFoundException | UnhandledServerException e) {
+    } catch (EntityNotFoundException | EntityRelationshipNotFoundException e) {
       LOG.warn(
           "Loading {} {} with stored fields only for delete due to a dangling reference: {}",
           entityType,
@@ -7198,7 +7198,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       boolean mustHaveRelationship) {
     // An entity can have only one relationship
     if (mustHaveRelationship && relations.isEmpty()) {
-      throw new UnhandledServerException(
+      throw new EntityRelationshipNotFoundException(
           CatalogExceptionMessage.entityRelationshipNotFound(
               entityType, id, relationshipName, toEntityType));
     }
