@@ -2,9 +2,11 @@ package org.openmetadata.it.tests.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -76,6 +78,26 @@ class DbToEsCountReconciliationIT {
     final AppRunRecord run = ReindexHelpers.triggerSearchIndexAndWait(server);
     assertThat(run.getStatus().value()).isIn("success", "completed");
 
+    // The reindex app reports success once the final bulk write is acknowledged, but the OS/ES
+    // refresh that makes those docs countable is asynchronous — a count read immediately after can
+    // undercount by a doc or two (e.g. table db=2 es=1). Poll the whole reconciliation until the
+    // counts settle, so refresh lag (or a brief external-cluster churn window) cannot masquerade as
+    // an indexer regression; a genuine, persistent drift still fails once the window elapses.
+    Awaitility.await("DB <-> ES entity counts reconcile post-reindex")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(3))
+        .untilAsserted(
+            () -> {
+              final List<String> mismatches = collectCountMismatches();
+              assertThat(mismatches)
+                  .as(
+                      "entity-type counts must reconcile DB ↔ ES post-reindex:%n%s",
+                      String.join("\n", mismatches))
+                  .isEmpty();
+            });
+  }
+
+  private List<String> collectCountMismatches() {
     final List<String> mismatches = new ArrayList<>();
     for (final String entityType : inspector.declaredEntityTypes()) {
       if (!db.canCount(entityType) || CONTENTION_PRONE_TYPES.contains(entityType)) {
@@ -93,12 +115,7 @@ class DbToEsCountReconciliationIT {
                 "  %-25s db=%d  es=%d  diff=%+d", entityType, dbCount, esCount, esCount - dbCount));
       }
     }
-
-    assertThat(mismatches)
-        .as(
-            "entity-type counts must reconcile DB ↔ ES post-reindex:%n%s",
-            String.join("\n", mismatches))
-        .isEmpty();
+    return mismatches;
   }
 
   private static void seedRepresentativeCohort(final TestNamespace ns) {
