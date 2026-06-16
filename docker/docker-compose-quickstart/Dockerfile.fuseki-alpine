@@ -23,7 +23,7 @@ USER fuseki
 WORKDIR ${FUSEKI_HOME}
 
 # Download and install Fuseki
-RUN wget -q https://archive.apache.org/dist/jena/binaries/apache-jena-fuseki-${FUSEKI_VERSION}.tar.gz && \
+RUN wget -q https://repo1.maven.org/maven2/org/apache/jena/apache-jena-fuseki/${FUSEKI_VERSION}/apache-jena-fuseki-${FUSEKI_VERSION}.tar.gz && \
     tar -xzf apache-jena-fuseki-${FUSEKI_VERSION}.tar.gz --strip-components=1 && \
     rm apache-jena-fuseki-${FUSEKI_VERSION}.tar.gz && \
     mkdir -p ${FUSEKI_HOME}/run ${FUSEKI_HOME}/databases
