@@ -12,6 +12,7 @@
  */
 import { ChevronRight, DotsHorizontal } from '@untitledui/icons';
 import type { FC, Key, ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   Breadcrumb as AriaBreadcrumb,
   Breadcrumbs as AriaBreadcrumbs,
@@ -50,9 +51,16 @@ export interface BreadcrumbsProps {
   /**
    * Maximum number of crumbs to render inline. When the list is longer, the
    * middle crumbs collapse into a `…` menu, keeping the first and last crumbs
-   * visible. Omit to always render every crumb.
+   * visible. Omit to always render every crumb. Ignored when `autoCollapse`
+   * is enabled.
    */
   maxItems?: number;
+  /**
+   * Keep the trail on a single line and automatically collapse the middle
+   * crumbs into a `…` menu when the container is too narrow to fit them all.
+   * Overrides `maxItems`.
+   */
+  autoCollapse?: boolean;
   /** Accessible label for the navigation landmark. */
   'aria-label'?: string;
   /** Class name for the root navigation element. */
@@ -172,7 +180,11 @@ const CrumbLabel = ({
   const Icon = item.icon;
 
   return (
-    <span className={cx('tw:flex tw:items-center', sizes[size].gap)}>
+    <span
+      className={cx(
+        'tw:flex tw:items-center tw:whitespace-nowrap',
+        sizes[size].gap
+      )}>
       {Icon && <Icon className={cx('tw:shrink-0', sizes[size].icon)} />}
       {item.label}
     </span>
@@ -222,59 +234,102 @@ export const Breadcrumbs = ({
   divider = 'chevron',
   size = 'sm',
   maxItems,
+  autoCollapse = false,
   className,
   onAction,
   ...props
 }: BreadcrumbsProps) => {
-  const displayItems = collapseItems(items, maxItems);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [fittedCount, setFittedCount] = useState(items.length);
+
   const padding = type === 'text' ? '' : sizes[size].padding;
+  const displayItems = collapseItems(
+    items,
+    autoCollapse ? fittedCount : maxItems
+  );
+
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (
+      autoCollapse &&
+      el &&
+      el.scrollWidth > el.clientWidth + 1 &&
+      fittedCount > 2
+    ) {
+      setFittedCount(fittedCount - 1);
+    }
+  }, [autoCollapse, fittedCount, items]);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!autoCollapse || !el) {
+      return undefined;
+    }
+
+    setFittedCount(items.length);
+    const observer = new ResizeObserver(() => setFittedCount(items.length));
+    observer.observe(el);
+
+    return () => observer.disconnect();
+  }, [autoCollapse, items.length]);
 
   return (
-    <AriaBreadcrumbs
-      aria-label={props['aria-label'] ?? 'Breadcrumb'}
+    <div
       className={cx(
-        'tw:flex tw:items-center',
-        sizes[size].gap,
-        sizes[size].text,
+        'tw:min-w-0',
+        autoCollapse && 'tw:w-full tw:overflow-hidden',
         className
       )}
-      items={displayItems}>
-      {(item) => (
-        <AriaBreadcrumb
-          className={cx('tw:flex tw:items-center', sizes[size].gap)}>
-          {({ isCurrent }) => (
-            <>
-              {isEllipsis(item) ? (
-                <EllipsisMenu
-                  hidden={item.hidden}
-                  padding={padding}
-                  size={size}
-                  type={type}
-                  onAction={onAction}
-                />
-              ) : !isCurrent && (item.href || onAction) ? (
-                <AriaLink
-                  className={cx(linkClassName, styles[type].link, padding)}
-                  href={onAction ? undefined : item.href}
-                  onPress={() => onAction?.(item.id)}>
-                  <CrumbLabel item={item} size={size} />
-                </AriaLink>
-              ) : (
-                <span
-                  aria-current={isCurrent ? 'page' : undefined}
-                  className={cx(
-                    'tw:flex tw:items-center',
-                    padding,
-                    isCurrent ? styles[type].current : 'tw:text-quaternary'
-                  )}>
-                  <CrumbLabel item={item} size={size} />
-                </span>
-              )}
-              {!isCurrent && <Divider divider={divider} size={size} />}
-            </>
-          )}
-        </AriaBreadcrumb>
-      )}
-    </AriaBreadcrumbs>
+      ref={containerRef}>
+      <AriaBreadcrumbs
+        aria-label={props['aria-label'] ?? 'Breadcrumb'}
+        className={cx(
+          'tw:flex tw:flex-nowrap tw:items-center',
+          autoCollapse && 'tw:w-max',
+          sizes[size].gap,
+          sizes[size].text
+        )}
+        items={displayItems}>
+        {(item) => (
+          <AriaBreadcrumb
+            className={cx(
+              'tw:flex tw:shrink-0 tw:items-center',
+              sizes[size].gap
+            )}>
+            {({ isCurrent }) => (
+              <>
+                {isEllipsis(item) ? (
+                  <EllipsisMenu
+                    hidden={item.hidden}
+                    padding={padding}
+                    size={size}
+                    type={type}
+                    onAction={onAction}
+                  />
+                ) : !isCurrent && (item.href || onAction) ? (
+                  <AriaLink
+                    className={cx(linkClassName, styles[type].link, padding)}
+                    href={onAction ? undefined : item.href}
+                    onPress={() => onAction?.(item.id)}>
+                    <CrumbLabel item={item} size={size} />
+                  </AriaLink>
+                ) : (
+                  <span
+                    aria-current={isCurrent ? 'page' : undefined}
+                    className={cx(
+                      'tw:flex tw:items-center',
+                      padding,
+                      isCurrent ? styles[type].current : 'tw:text-quaternary'
+                    )}>
+                    <CrumbLabel item={item} size={size} />
+                  </span>
+                )}
+                {!isCurrent && <Divider divider={divider} size={size} />}
+              </>
+            )}
+          </AriaBreadcrumb>
+        )}
+      </AriaBreadcrumbs>
+    </div>
   );
 };
