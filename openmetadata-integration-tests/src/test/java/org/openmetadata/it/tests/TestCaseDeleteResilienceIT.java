@@ -259,10 +259,12 @@ public class TestCaseDeleteResilienceIT {
   }
 
   private void insertTestCaseResult(String testCaseFqn) {
+    // The data_quality_data_time_series.id column is derived from json -> '$.id', so the seeded
+    // result must carry an id (the repository assigns one on the normal create path).
     String json =
         String.format(
-            "{\"timestamp\":%d,\"testCaseStatus\":\"Success\",\"result\":\"ok\"}",
-            System.currentTimeMillis());
+            "{\"id\":\"%s\",\"timestamp\":%d,\"testCaseStatus\":\"Success\",\"result\":\"ok\"}",
+            UUID.randomUUID(), System.currentTimeMillis());
     Entity.getCollectionDAO()
         .dataQualityDataTimeSeriesDao()
         .insert(
