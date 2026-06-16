@@ -55,6 +55,8 @@ export default defineConfig({
       {
         useDetails: true,
         showError: true,
+        includeResults: ['skipped', 'fail', 'flaky'], // skip pass to reduce noice
+        showArtifactsLink: true,
       },
     ],
     ['blob'],
@@ -91,15 +93,10 @@ export default defineConfig({
       dependencies: ['setup'],
     },
     {
-      name: 'activity-feed-config',
-      testMatch: '**/activity-config.setup.ts',
-      dependencies: ['setup'],
-    },
-    {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
       // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
-      dependencies: ['setup', 'entity-data-setup', 'activity-feed-config'],
+      dependencies: ['setup', 'entity-data-setup'],
       grepInvert: [/@data-insight/, /@basic/, /@knowledge-graph/],
       teardown: 'entity-data-teardown',
       testIgnore: [
