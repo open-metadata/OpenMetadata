@@ -112,7 +112,6 @@ import {
   getNewLineageConnectionDetails,
   getUpdatedColumnsFromEdge,
 } from '../../utils/EntityLineageEdgeUtils';
-import { getLoadingStatusValue } from '../../utils/EntityLineageUtils';
 import {
   centerNodePosition,
   getViewportForLineageExport,
@@ -131,6 +130,7 @@ import {
   parseLineageData,
   removeLineageHandler,
 } from '../../utils/EntityLineagePureUtils';
+import { getLoadingStatusValue } from '../../utils/EntityLineageUtils';
 import { updateNodeType } from '../../utils/EntityPureUtils';
 import { getEntityReferenceFromEntity } from '../../utils/EntityReferenceUtils';
 import { getQuickFilterQuery } from '../../utils/ExploreUtils';
