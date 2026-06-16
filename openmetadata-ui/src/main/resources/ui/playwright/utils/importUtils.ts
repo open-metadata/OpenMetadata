@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -41,6 +41,42 @@ import { settingClick, SettingOptionsType } from './sidebar';
 const IMPORT_GRID_LOAD_MASK_SELECTOR =
   '.om-rdg .inovua-react-toolkit-load-mask__background-layer';
 
+const waitForVisibleLocator = async (locator: Locator, timeout = 1500) => {
+  try {
+    await locator.waitFor({ state: 'visible', timeout });
+
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const getActiveTextEditor = async (page: Page) => {
+  const activeCellEditor = page
+    .locator(`${RDG_ACTIVE_CELL_SELECTOR} input`)
+    .first();
+  const textboxLocator = page
+    .locator('.ant-layout-content')
+    .getByRole('textbox')
+    .first();
+
+  if (await waitForVisibleLocator(activeCellEditor)) {
+    return activeCellEditor;
+  }
+
+  if (await waitForVisibleLocator(textboxLocator)) {
+    return textboxLocator;
+  }
+
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).dblclick();
+
+  if (await waitForVisibleLocator(activeCellEditor, 5000)) {
+    return activeCellEditor;
+  }
+
+  return textboxLocator;
+};
+
 export const waitForImportGridLoadMaskToDisappear = async (
   page: Page,
   timeout = 30000
@@ -66,9 +102,7 @@ export const createGlossaryTermRowDetails = () => {
 export const fillTextInputDetails = async (page: Page, text: string) => {
   await page.keyboard.press('Enter', { delay: 100 });
 
-  const textboxLocator = page
-    .locator('.ant-layout-content')
-    .getByRole('textbox');
+  const textboxLocator = await getActiveTextEditor(page);
 
   await expect(textboxLocator).toBeVisible();
 
@@ -81,6 +115,11 @@ export const fillDescriptionDetails = async (
   description: string
 ) => {
   await page.keyboard.press('Enter');
+
+  if (!(await waitForVisibleLocator(page.locator(descriptionBox).first()))) {
+    await page.locator(RDG_ACTIVE_CELL_SELECTOR).dblclick();
+  }
+
   await page.click(descriptionBox);
 
   await page.fill(descriptionBox, description);
