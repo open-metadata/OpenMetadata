@@ -384,13 +384,19 @@ public class FeedResource {
       })
   public ResultList<ThreadCount> getThreadCount(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @Parameter(
               description = "Filter threads by entity link",
               schema =
                   @Schema(type = "string", example = "<E#/{entityType}/{entityFQN}/{fieldName}>"))
           @QueryParam("entityLink")
           String entityLink) {
-    return new ResultList<>(dao.getThreadsCount(entityLink));
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    boolean applyDomainFilter =
+        !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE);
+    List<UUID> domains =
+        subjectContext.getUserDomains().stream().map(EntityReference::getId).toList();
+    return new ResultList<>(dao.getThreadsCount(entityLink, applyDomainFilter, domains));
   }
 
   @POST

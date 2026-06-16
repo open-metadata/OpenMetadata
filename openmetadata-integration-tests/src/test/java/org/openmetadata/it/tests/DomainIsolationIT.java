@@ -209,6 +209,77 @@ public class DomainIsolationIT {
     }
   }
 
+  @Test
+  void test_tasks_restrictedUserSeesOnlyOwnDomainTasks(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain d1 = createDomain(admin, p + "_d1", cleanup);
+      Domain d2 = createDomain(admin, p + "_d2", cleanup);
+      DatabaseSchema schema = createSchema(ns, cleanup);
+      Table t1 = createTable(admin, p + "_t1", schema, d1, cleanup);
+      Table t2 = createTable(admin, p + "_t2", schema, d2, cleanup);
+      createTask(admin, p + "_taskA", t1.getFullyQualifiedName());
+      createTask(admin, p + "_taskB", t2.getFullyQualifiedName());
+
+      OpenMetadataClient restricted = createRestrictedUserClient(admin, p, d1, cleanup);
+
+      assertTrue(
+          tasksReference(restricted, t1.getFullyQualifiedName()),
+          "Restricted user sees a task about their own-domain table");
+      assertFalse(
+          tasksReference(restricted, t2.getFullyQualifiedName()),
+          "Restricted user must NOT see a task about a foreign-domain table");
+
+      assertTrue(
+          tasksReference(admin, t1.getFullyQualifiedName())
+              && tasksReference(admin, t2.getFullyQualifiedName()),
+          "Admin sees tasks from both domains");
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  private void createTask(OpenMetadataClient admin, String name, String aboutTableFqn)
+      throws Exception {
+    Map<String, Object> task =
+        Map.of(
+            "name",
+            name,
+            "about",
+            "<#E::table::" + aboutTableFqn + ">",
+            "type",
+            "DescriptionUpdate",
+            "category",
+            "MetadataUpdate",
+            "assignees",
+            List.of("admin"));
+    admin
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST,
+            "/v1/tasks",
+            MAPPER.writeValueAsString(task),
+            RequestOptions.builder().build());
+  }
+
+  private boolean tasksReference(OpenMetadataClient client, String aboutTableFqn) throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET, "/v1/tasks?limit=1000", null, RequestOptions.builder().build());
+    JsonNode root = MAPPER.readTree(response);
+    boolean referenced = false;
+    for (JsonNode task : root.path("data")) {
+      if (task.toString().contains(aboutTableFqn)) {
+        referenced = true;
+      }
+    }
+    return referenced;
+  }
+
   private Domain createDomain(OpenMetadataClient admin, String name, Deque<Runnable> cleanup) {
     CreateDomain create =
         new CreateDomain()
