@@ -12,14 +12,7 @@
  */
 import { AxiosError } from 'axios';
 import { isEmpty, omit } from 'lodash';
-import {
-  lazy,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ENTITY_PAGE_TYPE_MAP } from '../../../constants/Customize.constants';
