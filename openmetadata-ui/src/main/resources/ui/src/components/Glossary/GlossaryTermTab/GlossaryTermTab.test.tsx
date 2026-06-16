@@ -24,10 +24,9 @@ import {
   mockedGlossaryTerms,
   MOCK_PERMISSIONS,
 } from '../../../mocks/Glossary.mock';
-import { findExpandableKeysForArray } from '../../../utils/GlossaryUtils';
+import { findExpandableKeysForArray } from '../../../utils/GlossaryPureUtils';
 import GlossaryTermTab from './GlossaryTermTab.component';
 import { ModifiedGlossaryTerm } from './GlossaryTermTab.interface';
-
 const mockOnAddGlossaryTerm = jest.fn();
 const mockRefreshGlossaryTerms = jest.fn();
 const mockOnEditGlossaryTerm = jest.fn();
@@ -90,8 +89,8 @@ jest.mock('../../../utils/TableUtils', () => ({
 }));
 
 // Mock where the component actually imports this util
-jest.mock('../../../utils/GlossaryUtils', () => ({
-  ...jest.requireActual('../../../utils/GlossaryUtils'),
+jest.mock('../../../utils/GlossaryPureUtils', () => ({
+  buildTree: jest.fn((data) => data),
   findExpandableKeysForArray: jest.fn().mockReturnValue([]),
   glossaryTermTableColumnsWidth: jest.fn().mockReturnValue({
     name: 250,
