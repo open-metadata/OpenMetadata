@@ -44,10 +44,12 @@ import {
 } from '../../../../rest/testAPI';
 import {
   getComputeRowCountDiffDisplay,
-  getEntityVersionByField,
-  getEntityVersionTags,
   getParameterValueDiffDisplay,
 } from '../../../../utils/EntityVersionUtils';
+import {
+  getEntityVersionByField,
+  getEntityVersionTags,
+} from '../../../../utils/EntityVersionUtilsPure';
 import { VersionEntityTypes } from '../../../../utils/EntityVersionUtils.interface';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import {

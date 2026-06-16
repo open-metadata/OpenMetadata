@@ -24,7 +24,7 @@ import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
-} from '../../../../utils/EntityVersionUtils';
+} from '../../../../utils/EntityDiffPureUtils';
 import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
 import {
   EditIconButton,

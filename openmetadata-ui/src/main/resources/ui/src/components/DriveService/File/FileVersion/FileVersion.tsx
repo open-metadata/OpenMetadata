@@ -28,7 +28,7 @@ import {
   getConstraintChanges,
   getEntityVersionByField,
   getEntityVersionTags,
-} from '../../../../utils/EntityVersionUtils';
+} from '../../../../utils/EntityVersionUtilsPure';
 import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';

@@ -50,7 +50,7 @@ import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
-} from '../../../../utils/EntityVersionUtils';
+} from '../../../../utils/EntityDiffPureUtils';
 import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../../../utils/RouterUtils';

@@ -26,7 +26,7 @@ import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
-} from '../../../../utils/EntityVersionUtils';
+} from '../../../../utils/EntityDiffPureUtils';
 import { renderReferenceElement } from '../../../../utils/GlossaryUtils';
 import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
 import {

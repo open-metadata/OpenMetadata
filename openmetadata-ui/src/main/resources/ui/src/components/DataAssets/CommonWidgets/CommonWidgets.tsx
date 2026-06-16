@@ -46,7 +46,7 @@ import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtil
 import {
   getEntityVersionByField,
   getEntityVersionTags,
-} from '../../../utils/EntityVersionUtils';
+} from '../../../utils/EntityVersionUtilsPure';
 import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';

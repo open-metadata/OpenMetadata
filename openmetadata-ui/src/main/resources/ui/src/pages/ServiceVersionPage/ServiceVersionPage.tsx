@@ -60,7 +60,7 @@ import {
   getBasicEntityInfoFromVersionData,
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
-} from '../../utils/EntityVersionUtils';
+} from '../../utils/EntityVersionUtilsPure';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
