@@ -2543,8 +2543,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void initializeVectorSearchServiceInitializesOpenSearchVectorSupport() throws Exception {
-    NaturalLanguageSearchConfiguration nlConfig =
-        new NaturalLanguageSearchConfiguration().withEmbeddingProvider("openai");
+    NaturalLanguageSearchConfiguration nlConfig = new NaturalLanguageSearchConfiguration();
     SearchRepository openSearchRepository =
         newRepository(
             Map.of(Entity.TABLE, TABLE_MAPPING),
