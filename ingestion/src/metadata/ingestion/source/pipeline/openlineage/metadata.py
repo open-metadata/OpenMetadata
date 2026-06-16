@@ -723,7 +723,11 @@ class OpenlineageSource(PipelineServiceSource):
         return f"{namespace}-{name}"
 
     @classmethod
-    def _filter_event_by_types(cls, event: OpenLineageEvent, event_types: List[EventType]) -> Optional[Dict]:  # noqa: UP006, UP045
+    def _filter_event_by_types(
+        cls,
+        event: OpenLineageEvent,
+        event_types: List[EventType],  # noqa: UP006
+    ) -> Optional[OpenLineageEvent]:  # noqa: UP045
         """
         returns event if it's of one of the particular event_types.
         for example - for lineage events we will be only looking for EventType.COMPLETE event type.
@@ -732,7 +736,7 @@ class OpenlineageSource(PipelineServiceSource):
         :param event_types: list of event types we are looking for.
         :return: Open Lineage event if matches one of the event_types, otherwise None
         """
-        return event if event.event_type in event_types else {}
+        return event if event.event_type in event_types else None
 
     @classmethod
     def _get_ol_table_name(cls, table: Dict) -> str:  # noqa: UP006
