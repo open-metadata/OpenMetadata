@@ -118,16 +118,15 @@ public final class BedrockCompletionClient extends LLMCompletionClient implement
   }
 
   private static String extractText(ConverseResponse response) {
-    String text = "";
+    StringBuilder text = new StringBuilder();
     if (response.output() != null && response.output().message() != null) {
       for (ContentBlock block : response.output().message().content()) {
         if (block.text() != null) {
-          text = block.text();
-          break;
+          text.append(block.text());
         }
       }
     }
-    return text;
+    return text.toString();
   }
 
   @Override

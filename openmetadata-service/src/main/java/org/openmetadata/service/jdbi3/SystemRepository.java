@@ -730,7 +730,7 @@ public class SystemRepository {
           .withPassed(false);
     }
 
-    String configMessage = getEmbeddingConfigurationMessage(applicationConfig);
+    String configMessage = getEmbeddingConfigurationMessage();
 
     if (searchRepository.getVectorIndexService() == null) {
       return retryInitAndReportError(
@@ -884,7 +884,7 @@ public class SystemRepository {
         .withPassed(true);
   }
 
-  private String getEmbeddingConfigurationMessage(OpenMetadataApplicationConfig applicationConfig) {
+  private String getEmbeddingConfigurationMessage() {
     try {
       LLMConfiguration llmConfig = LlmConfigHolder.get();
       LLMEmbeddingsConfig embeddings = llmConfig != null ? llmConfig.getEmbeddings() : null;
