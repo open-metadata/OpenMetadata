@@ -13,7 +13,7 @@
 
 import { useCallback, useEffect } from 'react';
 import { SearchIndex } from '../../../../enums/search.enum';
-import { getAggregations } from '../../../../utils/ExploreUtils';
+import { getAggregations } from '../../../../utils/ExplorePureUtils';
 import { ExploreQuickFilterField } from '../../../Explore/ExplorePage.interface';
 import { useDataFetching } from '../data/useDataFetching';
 import { useSelectionState } from '../data/useSelectionState';

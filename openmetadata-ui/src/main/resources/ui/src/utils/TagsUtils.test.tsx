@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { render } from '@testing-library/react';
-import { getTermQuery } from './SearchUtils';
+import { getTermQuery } from './SearchPureUtils';
 import {
   getDeleteIcon,
   getTagAssetsQueryFilter,

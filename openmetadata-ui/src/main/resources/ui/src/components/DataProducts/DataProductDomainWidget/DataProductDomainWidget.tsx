@@ -19,7 +19,7 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getTermQuery } from '../../../utils/SearchUtils';
+import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { DomainLabelV2 } from '../../DataAssets/DomainLabelV2/DomainLabelV2';
 

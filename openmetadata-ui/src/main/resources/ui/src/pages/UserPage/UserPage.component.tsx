@@ -30,7 +30,7 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { getUserByName, updateUserDetail } from '../../rest/userAPI';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
-import { getTermQuery } from '../../utils/SearchUtils';
+import { getTermQuery } from '../../utils/SearchPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const UserPage = () => {

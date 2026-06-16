@@ -74,7 +74,7 @@ import {
 } from '../../../../rest/glossaryAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getTagByFqn, removeAssetsFromTags } from '../../../../rest/tagAPI';
-import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchUtils';
+import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchPureUtils';
 import { getEntityTypeString } from '../../../../utils/Assets/AssetsUtils';
 import { getDomainDryRunImpacts } from '../../../../utils/Domain/DomainDryRunUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
@@ -83,9 +83,9 @@ import { getCombinedQueryFilterObject } from '../../../../utils/ExplorePage/Expl
 import {
   getAggregations,
   getQuickFilterQuery,
-} from '../../../../utils/ExploreUtils';
+} from '../../../../utils/ExplorePureUtils';
 import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
-import { getTermQuery } from '../../../../utils/SearchUtils';
+import { getTermQuery } from '../../../../utils/SearchPureUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,

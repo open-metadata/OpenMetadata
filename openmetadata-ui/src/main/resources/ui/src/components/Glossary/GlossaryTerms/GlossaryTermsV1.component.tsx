@@ -51,7 +51,7 @@ import {
   getGlossaryTermDetailsPath,
   getGlossaryTermsVersionsPath,
 } from '../../../utils/RouterUtils';
-import { getTermQuery } from '../../../utils/SearchUtils';
+import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';

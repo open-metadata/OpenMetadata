@@ -100,7 +100,7 @@ import {
   getDomainPath,
   getDomainVersionsPath,
 } from '../../../utils/RouterUtils';
-import { getTermQuery } from '../../../utils/SearchUtils';
+import { getTermQuery } from '../../../utils/SearchPureUtils';
 import {
   escapeESReservedCharacters,
   getDecodedFqn,

@@ -29,7 +29,7 @@ import { getUsers } from '../../../rest/userAPI';
 import { formatUsersResponse } from '../../../utils/APIUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
-import { getTermQuery } from '../../../utils/SearchUtils';
+import { getTermQuery } from '../../../utils/SearchPureUtils';
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { SelectableList } from '../SelectableList/SelectableList.component';

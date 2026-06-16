@@ -102,7 +102,7 @@ import {
   getDomainPath,
   getVersionPath,
 } from '../../../utils/RouterUtils';
-import { getTermQuery } from '../../../utils/SearchUtils';
+import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';

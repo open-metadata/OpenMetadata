@@ -69,7 +69,7 @@ jest.mock('../../../../../utils/QueryBuilderElasticsearchFormatUtils', () => ({
   elasticSearchFormat: jest.fn().mockReturnValue({}),
 }));
 
-jest.mock('../../../../../utils/QueryBuilderUtils', () => ({
+jest.mock('../../../../../utils/QueryBuilderPureUtils', () => ({
   getJsonTreeFromQueryFilter: jest.fn().mockReturnValue({}),
 }));
 

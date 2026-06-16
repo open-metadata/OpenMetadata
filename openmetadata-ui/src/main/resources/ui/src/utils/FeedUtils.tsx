@@ -38,7 +38,7 @@ import {
   getImageWithResolutionAndFallback,
   ImageQuality,
 } from './ProfilerUtils';
-import { getTermQuery } from './SearchUtils';
+import { getTermQuery } from './SearchPureUtils';
 
 // Re-exports from FeedUtilsPure (backward compat)
 export {

@@ -88,7 +88,7 @@ import { getTopicByFqn, patchTopicDetails } from '../../rest/topicsAPI';
 import { getUserByName, updateUserDetail } from '../../rest/userAPI';
 import { getServiceCategoryFromEntityType } from '../../utils/ServiceUtils';
 import { t } from '../i18next/LocalUtil';
-import { getTermQuery } from '../SearchUtils';
+import { getTermQuery } from '../SearchPureUtils';
 
 export const getAPIfromSource = (
   source: keyof MapPatchAPIResponse
