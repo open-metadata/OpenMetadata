@@ -21,10 +21,8 @@ import { postService } from '../../rest/serviceAPI';
 import { getServiceLogo } from '../../utils/EntityDisplayUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import * as serviceUtilClassBaseModule from '../../utils/ServiceUtilClassBase';
-import {
-  getEntityTypeFromServiceCategory,
-  getServiceRouteFromServiceType,
-} from '../../utils/ServiceUtils';
+import { getServiceRouteFromServiceType } from '../../utils/ServicePureUtils';
+import { getEntityTypeFromServiceCategory } from '../../utils/ServiceUtils';
 import AddServicePage from './AddServicePage.component';
 
 const mockParam = {
@@ -174,8 +172,11 @@ jest.mock('../../utils/RouterUtils', () => ({
     .mockImplementation(() => '/service/details/path'),
 }));
 
-jest.mock('../../utils/ServiceUtils', () => ({
+jest.mock('../../utils/ServicePureUtils', () => ({
   getServiceRouteFromServiceType: jest.fn(),
+}));
+
+jest.mock('../../utils/ServiceUtils', () => ({
   getAddServiceEntityBreadcrumb: jest.fn().mockReturnValue([]),
   getEntityTypeFromServiceCategory: jest.fn(),
   getServiceType: jest.fn(),

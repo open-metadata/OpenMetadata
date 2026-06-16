@@ -11,14 +11,19 @@
  *  limitations under the License.
  */
 
-import { lazy } from 'react';
-import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
+import { ComponentProps, lazy, Suspense } from 'react';
 
-export const LazyDataQualityDashboard = withSuspenseFallback(
-  lazy(
-    () =>
-      import(
-        /* webpackChunkName: "DataQualityDashboard" */ '../../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component'
-      )
-  )
+const DataQualityDashboard = lazy(
+  () =>
+    import(
+      /* webpackChunkName: "DataQualityDashboard" */ '../../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component'
+    )
+);
+
+export const LazyDataQualityDashboard = (
+  props: ComponentProps<typeof DataQualityDashboard>
+) => (
+  <Suspense fallback={null}>
+    <DataQualityDashboard {...props} />
+  </Suspense>
 );

@@ -341,8 +341,7 @@ describe('TagClassBase', () => {
         editDomainPermission: true,
       });
 
-      const divElement = element.props.children as React.ReactElement;
-      const divChildren = divElement.props.children as React.ReactElement[];
+      const divChildren = element.props.children as React.ReactElement[];
       const domainChild = divChildren[0];
 
       expect(domainChild.props.hasPermission).toBe(true);
@@ -354,8 +353,7 @@ describe('TagClassBase', () => {
         editDomainPermission: false,
       });
 
-      const divElement = element.props.children as React.ReactElement;
-      const divChildren = divElement.props.children as React.ReactElement[];
+      const divChildren = element.props.children as React.ReactElement[];
       const ownerChild = divChildren[1];
 
       expect(ownerChild.props.hasPermission).toBe(true);
@@ -376,9 +374,7 @@ describe('TagClassBase', () => {
 
       expect(React.isValidElement(element)).toBe(true);
 
-      const innerElement = element.props.children as React.ReactElement;
-
-      expect(innerElement.props).toMatchObject({
+      expect(element.props).toMatchObject({
         entityType: EntityType.TAG,
         showTaskHandler: false,
         widgetConfig,
