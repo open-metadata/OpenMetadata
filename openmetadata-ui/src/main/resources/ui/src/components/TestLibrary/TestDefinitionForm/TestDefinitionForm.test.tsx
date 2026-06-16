@@ -110,6 +110,7 @@ describe('TestDefinitionForm Component', () => {
     jest.clearAllMocks();
     (createTestDefinition as jest.Mock).mockResolvedValue({});
     (patchTestDefinition as jest.Mock).mockResolvedValue({});
+    window.HTMLElement.prototype.scrollIntoView = jest.fn();
   });
 
   describe('Rendering', () => {
