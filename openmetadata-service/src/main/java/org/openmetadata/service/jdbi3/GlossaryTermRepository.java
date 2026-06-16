@@ -2726,29 +2726,16 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   /**
    * A move OR rename rewrites the FQN of the term and every descendant. Any in-flight governance
    * workflow (e.g. an open Glossary Approval) keeps its {@code relatedEntity} pinned to the
-   * pre-change FQN and would fail to resolve the term on resolution. Repoint those running instances
-   * to the new FQNs. Driven from {@code postUpdate} (post-commit) so the new FQNs are already
-   * durable, covering both the move path ({@code moveAndStore}) and the rename path
+   * pre-change FQN and would fail to resolve the term on resolution. Repoint the moved/renamed
+   * subtree's running instances to the new FQNs — the WorkflowHandler resolves the term plus every
+   * descendant in a single query. Driven from {@code postUpdate} (post-commit) so the new FQNs are
+   * already durable, covering both the move path ({@code moveAndStore}) and the rename path
    * ({@code updateNameAndParent}).
    */
   private void updateWorkflowRelatedEntitiesAfterFqnChange(String oldFqn, String newFqn) {
     if (!oldFqn.equals(newFqn) && WorkflowHandler.isInitialized()) {
-      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
-      rewriteWorkflowRelatedEntity(workflowHandler, oldFqn, newFqn);
-      List<EntityDAO.EntityIdFqnPair> descendants =
-          daoCollection.glossaryTermDAO().listDescendantIdFqnByPrefix(newFqn);
-      for (EntityDAO.EntityIdFqnPair descendant : descendants) {
-        String oldDescendantFqn = oldFqn + descendant.fqn.substring(newFqn.length());
-        rewriteWorkflowRelatedEntity(workflowHandler, oldDescendantFqn, descendant.fqn);
-      }
+      WorkflowHandler.getInstance().updateRelatedEntityFqnForSubtree(GLOSSARY_TERM, oldFqn, newFqn);
     }
-  }
-
-  private void rewriteWorkflowRelatedEntity(
-      WorkflowHandler workflowHandler, String oldTermFqn, String newTermFqn) {
-    String oldLink = new EntityLink(GLOSSARY_TERM, oldTermFqn).getLinkString();
-    String newLink = new EntityLink(GLOSSARY_TERM, newTermFqn).getLinkString();
-    workflowHandler.updateRelatedEntityLink(oldLink, newLink);
   }
 
   @Override
