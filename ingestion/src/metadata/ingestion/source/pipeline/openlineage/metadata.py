@@ -160,6 +160,8 @@ def deaggregate_kinesis_record(data: bytes) -> list[bytes]:
     """Return the user payload(s) of a Kinesis record, de-aggregating KPL records when present."""
     if not data.startswith(KPL_AGGREGATED_MAGIC):
         return [data]
+    if len(data) < len(KPL_AGGREGATED_MAGIC) + KPL_MD5_DIGEST_SIZE:
+        raise ValueError("Truncated KPL-aggregated Kinesis record: missing protobuf body or checksum")
     protobuf = data[len(KPL_AGGREGATED_MAGIC) : -KPL_MD5_DIGEST_SIZE]
     payloads = []
     for field_number, record in _iter_protobuf_fields(protobuf):

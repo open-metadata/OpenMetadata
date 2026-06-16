@@ -2536,6 +2536,14 @@ class TestKplDeaggregation:
         with pytest.raises(ValueError):
             deaggregate_kinesis_record(record)
 
+    def test_truncated_aggregated_record_raises(self):
+        # Magic header present but the record is too short to hold a protobuf body
+        # plus the trailing md5 checksum -- must raise rather than silently drop.
+        record = KPL_AGGREGATED_MAGIC + b"\x1a\x05hello"
+
+        with pytest.raises(ValueError):
+            deaggregate_kinesis_record(record)
+
 
 if __name__ == "__main__":
     unittest.main()
