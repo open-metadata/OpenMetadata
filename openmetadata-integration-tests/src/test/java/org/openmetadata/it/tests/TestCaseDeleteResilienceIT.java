@@ -116,8 +116,13 @@ public class TestCaseDeleteResilienceIT {
     TestCase testCase = createSystemTestCase(table, "orphTblCase_" + ns.uniqueShortId());
     UUID testCaseId = testCase.getId();
 
-    // Delete the entityLink target table row out from under the test case, mirroring a service /
-    // database deletion that left the test case behind.
+    // Orphan the test case the way a service/database deletion does: drop its basic test suite row
+    // and its entityLink target table. Remove the suite BEFORE the table so we never leave a basic
+    // suite whose table is gone — that transient state would break concurrent GET /testSuites
+    // listings, since TestSuiteRepository.setInheritedFields resolves each basic suite's table.
+    UUID basicSuiteId =
+        client.testCases().get(testCaseId.toString(), "testSuite").getTestSuite().getId();
+    Entity.getCollectionDAO().testSuiteDAO().delete(basicSuiteId);
     Entity.getCollectionDAO().tableDAO().delete(table.getId());
 
     client
