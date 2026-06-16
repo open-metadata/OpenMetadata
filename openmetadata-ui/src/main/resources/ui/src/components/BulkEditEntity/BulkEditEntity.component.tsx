@@ -67,6 +67,17 @@ const BULK_EDIT_COLUMN_WIDTHS: Record<string, number> = {
 const BULK_EDIT_OPERATION_KEY = '__bulkEditOperation';
 const BULK_EDIT_ORIGINAL_NAME_KEY = '__bulkEditOriginalName';
 
+// Plain-text columns select on single click and enter edit mode on typing or
+// Enter (standard spreadsheet behaviour). Picker/dropdown columns open their
+// editor on a single click. Opening a text editor on the first click conflicts
+// with keyboard-driven edit flows that press Enter to begin editing — the Enter
+// would instead commit-and-close the just-opened editor.
+const SELECT_ONLY_ON_CLICK_COLUMNS = new Set([
+  'name',
+  'displayName',
+  'description',
+]);
+
 const getBulkEditRowName = (row?: Record<string, string>) =>
   String(row?.name ?? row?.['name*'] ?? '');
 
@@ -427,7 +438,12 @@ const BulkEditEntity = ({
           rowHeight={52}
           rows={dataSourceWithOperations}
           onCellClick={(args: CellClickArgs<Record<string, string>>) => {
-            args.selectCell(true);
+            const colType = (args.column.key.split('.').pop() ?? '').replace(
+              /\*$/,
+              ''
+            );
+
+            args.selectCell(!SELECT_ONLY_ON_CLICK_COLUMNS.has(colType));
           }}
           onCopy={handleCopy}
           onPaste={handlePaste}
@@ -567,6 +583,10 @@ const BulkEditEntity = ({
                             dataSource.length
                           } ${entityPluralDisplayName.toLowerCase()}`,
                         })}
+                        // role searchbox (not textbox) so it does not collide
+                        // with the grid cell text editors when tests/automation
+                        // resolve the active editor via getByRole('textbox').
+                        type="search"
                         value={searchText}
                         wrapperClassName="bulk-edit-search-wrapper"
                         onChange={setSearchText}

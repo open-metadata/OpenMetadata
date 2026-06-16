@@ -560,7 +560,10 @@ export const getColumnConfig = (
   const isRichGrid = useMetricRichGrid && Boolean(bulkEditConfig?.richGrid);
   const isEnumColumn =
     isRichGrid && Boolean(bulkEditConfig?.enumColumns[colType]);
-  const shouldUsePlainTextEditor = isRichGrid;
+  // Bulk edit uses the synchronous inline text editor for text columns. The
+  // lazy (Suspense) text editor does not mount reliably in the bulk-edit grid,
+  // leaving text cells non-editable for non-metric entities.
+  const shouldUsePlainTextEditor = isRichGrid || isBulkEdit;
   const isLockedColumn =
     isBulkEdit && Boolean(bulkEditConfig?.lockedColumns.includes(colType));
   const columnDisplayName =
