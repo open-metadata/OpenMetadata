@@ -85,7 +85,7 @@ import {
   TaskEntityType,
 } from '../rest/tasksAPI';
 import { getTopicByFqn } from '../rest/topicsAPI';
-import { ContainerFields } from './ContainerDetailUtils';
+import { ContainerFields } from './ContainerDetailPureUtils';
 import {
   defaultFields as DashboardFields,
   fetchCharts,
