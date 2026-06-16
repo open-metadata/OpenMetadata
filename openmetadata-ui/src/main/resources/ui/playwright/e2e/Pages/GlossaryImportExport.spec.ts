@@ -281,7 +281,7 @@ test.describe('Glossary Bulk Import Export', () => {
 
   test('Check for Circular Reference in Glossary Import', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
-    const circularRefGlossary = new Glossary('Test CSV');
+    const circularRefGlossary = new Glossary(`TestCSV-${uuid()}`);
 
     try {
       await test.step('Create glossary for circular reference test', async () => {
@@ -393,7 +393,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
           .textContent();
 
         expect(errorText).toContain(
-          "Invalid hierarchy: Term 'Test CSV.name1' cannot be its own parent"
+          `Invalid hierarchy: Term '${circularRefGlossary.data.name}.name1' cannot be its own parent`
         );
       });
     } finally {
@@ -405,7 +405,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
   // IE-I05: Import validation - missing required fields
   test('Import validation - missing required fields', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
-    const validationGlossary = new Glossary('ValidationTest');
+    const validationGlossary = new Glossary(`ValidationTest-${uuid()}`);
 
     try {
       await test.step('Create glossary for validation test', async () => {
@@ -460,7 +460,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
   // IE-I06: Import validation - invalid parent reference
   test('Import validation - invalid parent reference', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
-    const parentRefGlossary = new Glossary('ParentRefTest');
+    const parentRefGlossary = new Glossary(`ParentRefTest-${uuid()}`);
 
     try {
       await test.step('Create glossary for parent ref test', async () => {
@@ -519,7 +519,7 @@ ${parentRefGlossary.data.name}.NonExistentParent,childTerm,childTerm,<p>Child wi
     page,
   }) => {
     const { apiContext, afterAction } = await getApiContext(page);
-    const partialGlossary = new Glossary('PartialSuccess');
+    const partialGlossary = new Glossary(`PartialSuccess-${uuid()}`);
 
     try {
       await test.step('Create glossary for partial success test', async () => {
@@ -584,7 +584,7 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
     test.slow(true);
 
     const { apiContext, afterAction } = await getApiContext(page);
-    const largeGlossary = new Glossary('LargeExport');
+    const largeGlossary = new Glossary(`LargeExport-${uuid()}`);
     const terms: GlossaryTerm[] = [];
 
     try {
@@ -630,7 +630,7 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
   // IE-E05: Export maintains hierarchy in CSV
   test('Export maintains hierarchy structure in CSV', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
-    const hierarchyGlossary = new Glossary('HierarchyExport');
+    const hierarchyGlossary = new Glossary(`HierarchyExport-${uuid()}`);
     let parentTerm: GlossaryTerm;
     let childTerm: GlossaryTerm;
     let grandchildTerm: GlossaryTerm;

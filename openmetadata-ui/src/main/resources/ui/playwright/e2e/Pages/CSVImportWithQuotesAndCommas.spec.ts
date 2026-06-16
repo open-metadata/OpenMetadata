@@ -115,9 +115,11 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
             response.url().includes('dryRun=false') &&
             response.request().method() === 'PUT'
         );
+        const importCompletedPromise = createCsvImportPromise();
 
         await page.getByRole('button', { name: 'Update' }).click();
         await importResponse;
+        await importCompletedPromise;
         await waitForImportGridLoadMaskToDisappear(page);
       } finally {
         cleanupTempFile(tempFilePath);
@@ -196,9 +198,11 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
             response.url().includes('dryRun=false') &&
             response.request().method() === 'PUT'
         );
+        const importCompletedPromise = createCsvImportPromise();
 
         await page.getByRole('button', { name: 'Update' }).click();
         await importResponse;
+        await importCompletedPromise;
         await waitForImportGridLoadMaskToDisappear(page);
       } finally {
         if (exportedCsvPath && fs.existsSync(exportedCsvPath)) {

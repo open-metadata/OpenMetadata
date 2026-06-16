@@ -51,30 +51,95 @@ const waitForVisibleLocator = async (locator: Locator, timeout = 1500) => {
   }
 };
 
+const getTextEditorCandidates = (page: Page) => {
+  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR).first();
+
+  return [
+    page.getByTestId('bulk-edit-text-cell-editor').first(),
+    activeCell.locator('input, textarea').first(),
+    page.locator('.bulk-edit-text-cell-editor, .rdg-text-editor').first(),
+    page.locator('.ant-layout-content').getByRole('textbox').first(),
+  ];
+};
+
+const findVisibleTextEditor = async (page: Page, timeout = 1500) => {
+  for (const editor of getTextEditorCandidates(page)) {
+    if (await waitForVisibleLocator(editor, timeout)) {
+      return editor;
+    }
+  }
+
+  return undefined;
+};
+
 const getActiveTextEditor = async (page: Page) => {
-  const activeCellEditor = page
-    .locator(`${RDG_ACTIVE_CELL_SELECTOR} input`)
-    .first();
-  const textboxLocator = page
-    .locator('.ant-layout-content')
-    .getByRole('textbox')
-    .first();
+  const activeEditor = await findVisibleTextEditor(page);
 
-  if (await waitForVisibleLocator(activeCellEditor)) {
-    return activeCellEditor;
+  if (activeEditor) {
+    return activeEditor;
   }
 
-  if (await waitForVisibleLocator(textboxLocator)) {
-    return textboxLocator;
+  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR).first();
+  // eslint-disable-next-line playwright/no-force-option -- RDG can leave an overlay above the active cell editor trigger.
+  await activeCell.click({ force: true });
+  await page.keyboard.press('Enter', { delay: 100 });
+
+  const keyboardOpenedEditor = await findVisibleTextEditor(page, 5000);
+
+  if (keyboardOpenedEditor) {
+    return keyboardOpenedEditor;
   }
 
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).dblclick();
+  await page.keyboard.press('F2');
 
-  if (await waitForVisibleLocator(activeCellEditor, 5000)) {
-    return activeCellEditor;
+  const functionKeyOpenedEditor = await findVisibleTextEditor(page, 5000);
+
+  if (functionKeyOpenedEditor) {
+    return functionKeyOpenedEditor;
   }
 
-  return textboxLocator;
+  // eslint-disable-next-line playwright/no-force-option -- RDG can leave an overlay above the active cell editor trigger.
+  await activeCell.dblclick({ force: true });
+
+  const doubleClickOpenedEditor = await findVisibleTextEditor(page, 5000);
+
+  if (doubleClickOpenedEditor) {
+    return doubleClickOpenedEditor;
+  }
+
+  throw new Error('Unable to open the active grid text editor');
+};
+
+const getActiveDescriptionEditor = async (page: Page) => {
+  const editor = page.locator(descriptionBox).first();
+
+  if (await waitForVisibleLocator(editor)) {
+    return editor;
+  }
+
+  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR).first();
+  // eslint-disable-next-line playwright/no-force-option -- RDG can leave an overlay above the active cell editor trigger.
+  await activeCell.click({ force: true });
+  await page.keyboard.press('Enter');
+
+  if (await waitForVisibleLocator(editor, 5000)) {
+    return editor;
+  }
+
+  await page.keyboard.press('F2');
+
+  if (await waitForVisibleLocator(editor, 5000)) {
+    return editor;
+  }
+
+  // eslint-disable-next-line playwright/no-force-option -- RDG can leave an overlay above the active cell editor trigger.
+  await activeCell.dblclick({ force: true });
+
+  if (await waitForVisibleLocator(editor, 5000)) {
+    return editor;
+  }
+
+  throw new Error('Unable to open the active grid description editor');
 };
 
 export const waitForImportGridLoadMaskToDisappear = async (
@@ -114,15 +179,11 @@ export const fillDescriptionDetails = async (
   page: Page,
   description: string
 ) => {
-  await page.keyboard.press('Enter');
+  const editor = await getActiveDescriptionEditor(page);
 
-  if (!(await waitForVisibleLocator(page.locator(descriptionBox).first()))) {
-    await page.locator(RDG_ACTIVE_CELL_SELECTOR).dblclick();
-  }
-
-  await page.click(descriptionBox);
-
-  await page.fill(descriptionBox, description);
+  // eslint-disable-next-line playwright/no-force-option -- markdown editor can be partially covered by the modal toolbar.
+  await editor.click({ force: true });
+  await editor.fill(description);
 
   await page.click('[data-testid="save"]');
 
@@ -553,7 +614,7 @@ export const validateImportStatus = async (
   await expect(page.getByTestId('passed-row')).toHaveText(status.passed);
   await expect(page.getByTestId('failed-row')).toHaveText(status.failed);
 
-  await page.locator('.rdg-header-row').waitFor({ state: 'visible' });
+  await waitForVisibleLocator(page.locator('.rdg-header-row').first(), 5000);
 };
 
 export const startCsvPreview = async (page: Page, timeout = 90000) => {

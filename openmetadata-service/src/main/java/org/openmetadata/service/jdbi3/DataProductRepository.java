@@ -92,13 +92,19 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
   public DataProductRepository() {
+    this(true);
+  }
+
+  protected DataProductRepository(boolean registerEntity) {
     super(
         DataProductResource.COLLECTION_PATH,
         Entity.DATA_PRODUCT,
         DataProduct.class,
         Entity.getCollectionDAO().dataProductDAO(),
         UPDATE_FIELDS,
-        UPDATE_FIELDS);
+        UPDATE_FIELDS,
+        Set.of(),
+        registerEntity);
     supportsSearch = true;
     renameAllowed = true;
 
