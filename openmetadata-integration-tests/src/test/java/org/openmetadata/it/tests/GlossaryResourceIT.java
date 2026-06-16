@@ -27,11 +27,8 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.CreateGlossary;
-import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.entity.data.Glossary;
-import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -1300,66 +1297,6 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
           approvedTerm.getFullyQualifiedName(),
           createdTerm.getRelatedTerms().getFirst().getTerm().getFullyQualifiedName());
     }
-  }
-
-  // ===================================================================
-  // CSV IMPORT REGRESSION SUPPORT
-  // ===================================================================
-
-  @Override
-  protected EntityInterface createCsvImportRegressionEntity(TestNamespace ns) {
-    lastCreatedGlossary = createEntity(createRequest(ns.prefix("csvRegressionGlossary"), ns));
-    CreateGlossaryTerm createTerm =
-        new CreateGlossaryTerm()
-            .withName(ns.prefix("csvRegressionTerm"))
-            .withGlossary(lastCreatedGlossary.getFullyQualifiedName())
-            .withDescription("Initial CSV import regression term");
-    return SdkClients.adminClient().glossaryTerms().create(createTerm);
-  }
-
-  @Override
-  protected EntityInterface patchCsvImportRegressionEntity(EntityInterface entity) {
-    return SdkClients.adminClient().glossaryTerms().update(entity.getId(), (GlossaryTerm) entity);
-  }
-
-  @Override
-  protected String getCsvImportRegressionEntityType() {
-    return org.openmetadata.service.Entity.GLOSSARY_TERM;
-  }
-
-  @Override
-  protected EntityInterface getCsvImportRegressionEntityByName(String fqn) {
-    return SdkClients.adminClient().glossaryTerms().getByName(fqn);
-  }
-
-  @Override
-  protected String getCsvImportContainerName(TestNamespace ns, EntityInterface entity) {
-    return lastCreatedGlossary.getFullyQualifiedName();
-  }
-
-  @Override
-  protected String generateCsvImportRegressionData(TestNamespace ns, EntityInterface entity) {
-    GlossaryTerm term = (GlossaryTerm) entity;
-    StringBuilder csv = new StringBuilder();
-    csv.append(
-        "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension\n");
-    csv.append(escapeCSVValue("")).append(",");
-    csv.append(escapeCSVValue(term.getName())).append(",");
-    csv.append(escapeCSVValue(term.getDisplayName())).append(",");
-    csv.append(escapeCSVValue("Updated by CSV import regression - " + ns.shortPrefix()))
-        .append(",");
-    csv.append(escapeCSVValue("")).append(",");
-    csv.append(escapeCSVValue("")).append(",");
-    csv.append(escapeCSVValue("")).append(",");
-    csv.append(escapeCSVValue("")).append(",");
-    csv.append(escapeCSVValue("")).append(",");
-    csv.append(escapeCSVValue("")).append(",");
-    csv.append(escapeCSVValue("Approved")).append(",");
-    csv.append(escapeCSVValue("")).append(",");
-    csv.append(escapeCSVValue("")).append(",");
-    csv.append(escapeCSVValue(""));
-    csv.append("\n");
-    return csv.toString();
   }
 
   // ===================================================================
