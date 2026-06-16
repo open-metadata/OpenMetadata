@@ -92,12 +92,12 @@ import Fqn from '../Fqn';
 import { t } from '../i18next/LocalUtil';
 import { getTermQuery } from '../SearchUtils';
 import { removeOuterEscapes } from '../StringUtils';
+import { isSystemClassificationTagFqn } from './CSV.utils';
 import {
   convertCustomPropertyStringToEntityExtension,
   convertEntityExtensionToCustomPropertyString,
   getCustomPropertyEntityType,
-  isSystemClassificationTagFqn,
-} from './CSV.utils';
+} from './CSVPureUtils';
 import entityBulkEditConfigClassBase from './EntityBulkEditConfigClassBase';
 
 export interface CSVEditorOptions {
