@@ -57,6 +57,7 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
+import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   highlightSearchArrayElement,
@@ -65,16 +66,14 @@ import {
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { makeData } from '../../../utils/SearchIndexUtils';
 import { stringToHTML } from '../../../utils/StringUtils';
+import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   getHighlightedRowClassName,
   searchInFields,
   updateFieldDescription,
   updateFieldTags,
 } from '../../../utils/TablePureUtils';
-import {
-  getAllTags,
-  searchTagInData,
-} from '../../../utils/TableTags/TableTags.utils';
+import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import {
   SearchIndexCellRendered,
@@ -284,6 +283,9 @@ const SearchIndexFieldsTable = ({
     [entityFqn, hasDescriptionEditAccess, isReadOnly, handleUpdate]
   );
 
+  const { tagFilterState, filteredData, handleTableChange } =
+    useTreeTagFilter(data);
+
   const fields: ColumnsType<SearchIndexField> = useMemo(
     () => [
       {
@@ -334,9 +336,10 @@ const SearchIndexFieldsTable = ({
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
         key: TABLE_COLUMNS_KEYS.TAGS,
         width: 250,
+        filterIcon: columnFilterIcon,
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.TAGS] ?? null,
         render: (tags: TagLabel[], record: SearchIndexField, index: number) => (
           <TableTags<SearchIndexField>
             entityFqn={entityFqn}
@@ -356,9 +359,10 @@ const SearchIndexFieldsTable = ({
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
         key: TABLE_COLUMNS_KEYS.GLOSSARY,
         width: 250,
+        filterIcon: columnFilterIcon,
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.GLOSSARY] ?? null,
         render: (tags: TagLabel[], record: SearchIndexField, index: number) => (
           <TableTags<SearchIndexField>
             entityFqn={entityFqn}
@@ -386,6 +390,7 @@ const SearchIndexFieldsTable = ({
       tagFilter,
       handleFieldClick,
       hasViewPermission,
+      tagFilterState,
     ]
   );
 
@@ -440,7 +445,7 @@ const SearchIndexFieldsTable = ({
         className="align-table-filter-left"
         columns={fields}
         data-testid="search-index-fields-table"
-        dataSource={data}
+        dataSource={filteredData}
         defaultVisibleColumns={DEFAULT_SEARCH_INDEX_VISIBLE_COLUMNS}
         expandable={expandableConfig}
         extraTableFilters={
@@ -465,6 +470,7 @@ const SearchIndexFieldsTable = ({
         }}
         size="middle"
         staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+        onChange={handleTableChange}
       />
       {editField && (
         <EntityAttachmentProvider

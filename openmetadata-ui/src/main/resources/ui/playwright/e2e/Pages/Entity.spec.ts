@@ -52,11 +52,13 @@ import {
 import { getCurrentMillis } from '../../utils/dateTime';
 import {
   addMultiOwner,
+  assignTagToChildren,
   closeColumnDetailPanel,
   copyAndGetClipboardText,
   openColumnDetailPanel,
   removeOwner,
   removeOwnersFromList,
+  removeTagsFromChildren,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { clickDataQualityStatCard } from '../../utils/entityPanel';
@@ -1305,6 +1307,221 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           }
         });
       });
+
+      if (entity.type === 'Table') {
+        /**
+         * Tests the schema/column Tags column header filter on a nested tree.
+         * @description Regression for the bug where filtering nested columns by a
+         * tag showed every child of a matched parent. Verifies only the matching
+         * subtree (and its ancestor path) is shown, and non-matching siblings are
+         * pruned.
+         */
+        test('Filter columns by tag prunes non-matching nested rows', async ({
+          page,
+        }) => {
+          test.slow();
+
+          const tableClass = entity as TableClass;
+          const tableResponse = entity.entityResponseData as Table;
+          const tableFQN = tableResponse?.fullyQualifiedName ?? '';
+          const columns = tableResponse?.columns ?? [];
+          const filterTag = 'PersonalData.Personal';
+
+          const simpleColumnFQN = `${tableFQN}.${tableClass.columnsName[0]}`;
+          const nestedParent = columns.find(
+            (col: Column) => col.name === tableClass.columnsName[2]
+          );
+          const nestedChild = nestedParent?.children?.find(
+            (col: Column) => col.name === tableClass.columnsName[3]
+          );
+          const nestedParentFQN = nestedParent?.fullyQualifiedName ?? '';
+          const nestedChildFQN = nestedChild?.fullyQualifiedName ?? '';
+
+          await page.getByTestId(entity.childrenTabId ?? '').click();
+          await waitForAllLoadersToDisappear(page);
+
+          await test.step('Tag a nested child column', async () => {
+            await page
+              .locator(`[data-row-key="${nestedChildFQN}"]`)
+              .scrollIntoViewIfNeeded();
+            await assignTagToChildren({
+              page,
+              tag: filterTag,
+              rowId: nestedChildFQN,
+              rowSelector: 'data-row-key',
+              entityEndpoint: entity.endpoint,
+            });
+          });
+
+          const toggleTagFilter = async () => {
+            await page
+              .getByTestId('entity-table')
+              .getByRole('columnheader', { name: 'Tags', exact: true })
+              .getByTestId('filter-icon')
+              .click();
+
+            await expect(
+              page.locator('.ant-table-filter-dropdown:visible')
+            ).toBeVisible();
+
+            await page
+              .locator('.ant-table-filter-dropdown:visible')
+              .locator(`.ant-checkbox-wrapper:has(input[value="${filterTag}"])`)
+              .click();
+
+            await expect(
+              page.locator('.ant-table-filter-dropdown:visible')
+            ).toBeHidden();
+          };
+
+          await test.step('Apply tag filter and verify only matching subtree shows', async () => {
+            await toggleTagFilter();
+
+            await expect(
+              page.locator(`[data-row-key="${nestedChildFQN}"]`)
+            ).toBeVisible();
+            await expect(
+              page.locator(`[data-row-key="${nestedParentFQN}"]`)
+            ).toBeVisible();
+            await expect(
+              page.locator(`[data-row-key="${simpleColumnFQN}"]`)
+            ).toHaveCount(0);
+          });
+
+          await test.step('Clear filter and verify all rows return', async () => {
+            await toggleTagFilter();
+
+            await expect(
+              page.locator(`[data-row-key="${simpleColumnFQN}"]`)
+            ).toBeVisible();
+          });
+
+          await test.step('Cleanup tag', async () => {
+            await removeTagsFromChildren({
+              page,
+              tags: [filterTag],
+              rowId: nestedChildFQN,
+              rowSelector: 'data-row-key',
+              entityEndpoint: entity.endpoint,
+            });
+          });
+        });
+      }
+
+      // Entities whose child table exposes the Tags column header filter
+      const TAG_FILTER_ENTITIES = [
+        'ApiEndpoint',
+        'Container',
+        'Dashboard',
+        'DashboardDataModel',
+        'File',
+        'Pipeline',
+        'SearchIndex',
+        'Table',
+        'Topic',
+        'Worksheet',
+      ];
+
+      if (TAG_FILTER_ENTITIES.includes(entity.type)) {
+        /**
+         * Tests the Tags column header filter across every entity whose child
+         * table supports it.
+         * @description Verifies each entity's table wiring prunes non-matching
+         * rows when a tag filter is applied (regression for the bug where every
+         * row stayed visible).
+         */
+        test('Filter columns by tag prunes non-matching rows', async ({
+          page,
+        }) => {
+          test.slow();
+
+          const taggedKey = entity.childrenSelectorId ?? '';
+          const filterTag = 'PersonalData.Personal';
+
+          await page.getByTestId(entity.childrenTabId ?? '').click();
+          await waitForAllLoadersToDisappear(page);
+
+          const taggedRow = page.locator(`[${rowSelector}="${taggedKey}"]`);
+          const childTable = page
+            .locator('.ant-table')
+            .filter({ has: taggedRow });
+          const rows = childTable.locator(`[${rowSelector}]`);
+
+          await test.step('Tag a child row', async () => {
+            await taggedRow.scrollIntoViewIfNeeded();
+            await assignTagToChildren({
+              page,
+              tag: filterTag,
+              rowId: taggedKey,
+              rowSelector,
+              entityEndpoint: entity.endpoint,
+            });
+          });
+
+          const rowKeys = await rows.evaluateAll((elements) =>
+            elements.map((element) => element.getAttribute('data-row-key'))
+          );
+          const nonMatchingKey = rowKeys.find(
+            (key) =>
+              key &&
+              key !== taggedKey &&
+              !key.startsWith(`${taggedKey}.`) &&
+              !taggedKey.startsWith(`${key}.`)
+          );
+
+          const toggleTagFilter = async () => {
+            await page
+              .getByRole('columnheader', { name: 'Tags', exact: true })
+              .getByTestId('filter-icon')
+              .click();
+
+            await expect(
+              page.locator('.ant-table-filter-dropdown:visible')
+            ).toBeVisible();
+
+            await page
+              .locator('.ant-table-filter-dropdown:visible')
+              .locator(`.ant-checkbox-wrapper:has(input[value="${filterTag}"])`)
+              .click();
+
+            await expect(
+              page.locator('.ant-table-filter-dropdown:visible')
+            ).toBeHidden();
+          };
+
+          await test.step('Apply tag filter and verify pruning', async () => {
+            await toggleTagFilter();
+
+            await expect(taggedRow).toBeVisible();
+
+            if (nonMatchingKey) {
+              await expect(
+                page.locator(`[${rowSelector}="${nonMatchingKey}"]`)
+              ).toBeHidden();
+            }
+          });
+
+          await test.step('Clear filter and verify rows return', async () => {
+            await toggleTagFilter();
+
+            if (nonMatchingKey) {
+              await expect(
+                page.locator(`[${rowSelector}="${nonMatchingKey}"]`)
+              ).toBeVisible();
+            }
+          });
+
+          await test.step('Cleanup tag', async () => {
+            await removeTagsFromChildren({
+              page,
+              tags: [filterTag],
+              rowId: taggedKey,
+              rowSelector,
+              entityEndpoint: entity.endpoint,
+            });
+          });
+        });
+      }
     }
 
     /**

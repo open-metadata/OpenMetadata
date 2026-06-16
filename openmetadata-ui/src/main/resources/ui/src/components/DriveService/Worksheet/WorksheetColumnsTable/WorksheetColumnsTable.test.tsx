@@ -29,7 +29,7 @@ jest.mock('../../../../utils/EntityNameUtils', () => ({
 }));
 jest.mock('../../../../utils/TableTags/TableTags.utils', () => ({
   getAllTags: jest.fn(() => []),
-  searchTagInData: jest.fn(() => true),
+  getFilteredTagsData: jest.fn((data) => data),
 }));
 jest.mock('../../../../utils/TableUtils', () => ({
   ...jest.requireActual('../../../../utils/TableUtils'),

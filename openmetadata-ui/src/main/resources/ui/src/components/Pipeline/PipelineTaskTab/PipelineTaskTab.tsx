@@ -46,16 +46,14 @@ import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
+import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import {
   columnFilterIcon,
   ownerTableObject,
 } from '../../../utils/TableColumn.util';
-import {
-  getAllTags,
-  searchTagInData,
-} from '../../../utils/TableTags/TableTags.utils';
+import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import { createTagObject } from '../../../utils/TagsUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
@@ -270,6 +268,9 @@ export const PipelineTaskTab = () => {
     await onUpdate(updatedPipeline);
   };
 
+  const { tagFilterState, filteredData, handleTableChange } =
+    useTreeTagFilter(tasksInternal);
+
   const taskColumns: ColumnsType<Task> = useMemo(
     () => [
       {
@@ -361,7 +362,7 @@ export const PipelineTaskTab = () => {
         ),
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.TAGS] ?? null,
       },
       {
         title: t('label.glossary-term-plural'),
@@ -371,7 +372,7 @@ export const PipelineTaskTab = () => {
         filterIcon: columnFilterIcon,
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.GLOSSARY] ?? null,
         render: (tags, record, index) => (
           <TableTags<Task>
             entityFqn={pipelineFQN}
@@ -396,6 +397,7 @@ export const PipelineTaskTab = () => {
       editDescriptionPermission,
       currentPage,
       pageSize,
+      tagFilterState,
     ]
   );
 
@@ -423,13 +425,14 @@ export const PipelineTaskTab = () => {
             onShowSizeChange: handlePageSizeChange,
           }}
           data-testid="task-table"
-          dataSource={tasksInternal}
+          dataSource={filteredData}
           defaultVisibleColumns={DEFAULT_PIPELINE_VISIBLE_COLUMNS}
           pagination={false}
           rowKey="name"
           scroll={{ x: 1200 }}
           size="small"
           staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+          onChange={handleTableChange}
         />
       ) : (
         tasksDAGView
