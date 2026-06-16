@@ -14,9 +14,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Tour from '../../components/AppTour/Tour';
+import {
+  ExploreSearchIndex,
+  SearchHitCounts,
+} from '../../components/Explore/ExplorePage.interface';
 import { TOUR_SEARCH_TERM } from '../../constants/constants';
+import {
+  mockDatasetData,
+  mockSearchData,
+  MOCK_EXPLORE_PAGE_COUNT,
+} from '../../constants/mockTourData.constants';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
+import { EntityTabs } from '../../enums/entity.enum';
 import { CurrentTourPageType } from '../../enums/tour.enum';
+import { SearchResponse } from '../../interface/search.interface';
 import { getTourSteps } from '../../utils/TourUtils';
 import ExplorePageV1Component from '../ExplorePage/ExplorePageV1.component';
 import MyDataPage from '../MyDataPage/MyDataPage.component';
@@ -99,6 +110,7 @@ const TourPage = () => {
     updateActiveTab,
     updateTourPage,
     updateTourSearch,
+    updateTourMockData,
   } = useTourProvider();
   const { t } = useTranslation();
   const [isTourReady, setIsTourReady] = useState(false);
@@ -106,6 +118,25 @@ const TourPage = () => {
   const clearSearchTerm = useCallback(() => {
     updateTourSearch('');
   }, [updateTourSearch]);
+
+  // Seed mock data on mount so tour-aware pages read it from the provider
+  // instead of each one fetching the chunk via a dynamic import that races
+  // react-tour's stepWaitTimer.
+  useEffect(() => {
+    updateTourMockData?.({
+      searchResults:
+        mockSearchData as unknown as SearchResponse<ExploreSearchIndex>,
+      searchHitCounts: MOCK_EXPLORE_PAGE_COUNT as SearchHitCounts,
+      datasetData: mockDatasetData,
+    });
+  }, [updateTourMockData]);
+
+  // Reset on /tour entry — react-tour's stepIndex resets on remount but
+  // TourProvider state persists across the SPA session; keep them in sync.
+  useEffect(() => {
+    updateTourPage(CurrentTourPageType.MY_DATA_PAGE);
+    updateActiveTab(EntityTabs.SCHEMA);
+  }, [updateTourPage, updateActiveTab]);
 
   useEffect(() => {
     let tourMountFrameId = 0;
