@@ -81,7 +81,7 @@ import {
 } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
-import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
 import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import {
   fetchEntityActivityCountInto,

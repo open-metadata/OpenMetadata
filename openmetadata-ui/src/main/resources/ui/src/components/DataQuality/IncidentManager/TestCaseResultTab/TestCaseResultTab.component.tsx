@@ -46,11 +46,11 @@ import {
   getComputeRowCountDiffDisplay,
   getParameterValueDiffDisplay,
 } from '../../../../utils/EntityVersionUtils';
+import { VersionEntityTypes } from '../../../../utils/EntityVersionUtils.interface';
 import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../../utils/EntityVersionUtilsPure';
-import { VersionEntityTypes } from '../../../../utils/EntityVersionUtils.interface';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import {
   getTagsWithoutTier,

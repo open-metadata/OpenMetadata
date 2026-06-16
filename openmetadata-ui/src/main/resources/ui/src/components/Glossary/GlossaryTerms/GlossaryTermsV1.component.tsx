@@ -38,7 +38,7 @@ import {
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
-import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,

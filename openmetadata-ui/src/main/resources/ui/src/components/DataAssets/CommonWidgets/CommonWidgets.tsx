@@ -43,11 +43,11 @@ import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.i
 import commonWidgetClassBase from '../../../utils/CommonWidget/CommonWidgetClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
+import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtilsPure';
-import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import { createTagObject } from '../../../utils/TagsUtils';
