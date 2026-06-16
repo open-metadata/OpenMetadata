@@ -7,10 +7,6 @@ from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
-from metadata.generated.schema.entity.classification.classification import (
-    Classification,
-)
-from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
 )
@@ -118,9 +114,6 @@ def autoclassification_config(db_service, bot_workflow_config, sink_config):
 
 @pytest.fixture(scope="module")
 def run_autoclassification(
-    pii_classification: Classification,
-    sensitive_pii_tag: Tag,
-    non_sensitive_pii_tag: Tag,
     run_workflow,
     load_metadata: MetadataWorkflow,
     autoclassification_config,
@@ -134,6 +127,7 @@ def test_it_returns_the_expected_classifications(
     run_autoclassification: AutoClassificationWorkflow,
 ) -> None:
     (
+        academic_year_code_column,
         address_column,
         customer_id_column,
         dwh_x10_column,
@@ -187,3 +181,4 @@ def test_it_returns_the_expected_classifications(
             reason=Contains("Detected by `ValidatedDateRecognizer`", "Patterns matched:"),
         ),
     ]
+    assert academic_year_code_column.tags == []
