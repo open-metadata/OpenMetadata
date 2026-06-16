@@ -53,10 +53,11 @@ class BuildEntityUrlHelperTest {
       "<a href=\"{{buildEntityUrl event.entityType entity}}\">link</a>";
 
   private Template template;
+  private Handlebars handlebars;
 
   @BeforeEach
   void setUp() throws IOException {
-    Handlebars handlebars = new Handlebars().with(EscapingStrategy.HTML_ENTITY);
+    handlebars = new Handlebars().with(EscapingStrategy.HTML_ENTITY);
     new BuildEntityUrlHelper() {
       @Override
       protected String getBaseUrl() {
@@ -64,6 +65,14 @@ class BuildEntityUrlHelperTest {
       }
     }.register(handlebars);
     template = handlebars.compileInline(TEMPLATE_SRC);
+  }
+
+  /** Renders {@code {{buildEntityUrl event.entityType fqn '<view>'}}} (the task/feed deep link). */
+  private String renderFeedLink(String entityType, String fqn, String view) throws IOException {
+    Template t =
+        handlebars.compileInline(
+            "<a href=\"{{buildEntityUrl event.entityType fqn '" + view + "'}}\">link</a>");
+    return t.apply(Map.of("event", Map.of("entityType", entityType), "fqn", fqn));
   }
 
   private String render(String entityType, Map<String, Object> entity) throws IOException {
@@ -196,5 +205,59 @@ class BuildEntityUrlHelperTest {
     String url = extractHref(render("table", entity));
 
     assertEquals(BASE_URL + "/table/service.db.schema.users", url);
+  }
+
+  @Test
+  void testCaseTaskLink_pointsToIssuesTab() throws IOException {
+    String url = extractHref(renderFeedLink(Entity.TEST_CASE, "service.db.schema.tc1", "tasks"));
+
+    assertEquals(BASE_URL + "/test-case/service.db.schema.tc1/issues", url);
+    assertFalse(
+        url.contains("activity_feed"), () -> "test case has no activity_feed route: " + url);
+    assertFalse(
+        url.contains("test-case-results"),
+        () -> "incident link must target the issues tab, not results: " + url);
+  }
+
+  @Test
+  void testCaseConversationLink_pointsToIssuesTab() throws IOException {
+    String url = extractHref(renderFeedLink(Entity.TEST_CASE, "service.db.schema.tc1", "all"));
+
+    assertEquals(BASE_URL + "/test-case/service.db.schema.tc1/issues", url);
+  }
+
+  @Test
+  void regularEntityTaskLink_appendsActivityFeedTasks() throws IOException {
+    String url = extractHref(renderFeedLink("table", "service.db.schema.users", "tasks"));
+
+    assertEquals(BASE_URL + "/table/service.db.schema.users/activity_feed/tasks", url);
+  }
+
+  @Test
+  void testCaseResultLink_keepsResultsTabWithoutView() throws IOException {
+    Map<String, Object> entity =
+        Map.of(
+            "id", UUID.randomUUID().toString(),
+            "fullyQualifiedName", "service.db.schema.tc1",
+            "name", "tc1");
+
+    String url = extractHref(render(Entity.TEST_CASE, entity));
+
+    assertEquals(BASE_URL + "/test-case/service.db.schema.tc1/test-case-results", url);
+  }
+
+  @Test
+  void nullableEntityUrl_withView_doesNotEmitLiteralNull() throws IOException {
+    // A query without an id makes buildEntityUrl return null; the view suffix must not turn that
+    // into the literal "null/activity_feed/...".
+    Template t =
+        handlebars.compileInline(
+            "<a href=\"{{buildEntityUrl event.entityType entity 'tasks'}}\">link</a>");
+    Map<String, Object> entity = Map.of("fullyQualifiedName", "DWH.q", "name", "q");
+    String href =
+        extractHref(t.apply(Map.of("event", Map.of("entityType", Entity.QUERY), "entity", entity)));
+
+    assertFalse(href.contains("null"), () -> "URL must not contain literal 'null': " + href);
+    assertFalse(href.contains("/activity_feed/"), () -> "no feed suffix on a null URL: " + href);
   }
 }
