@@ -61,6 +61,8 @@ logger = ingestion_logger()
 
 TABLE_RESOLUTION_CACHE_SIZE = 1000
 
+EDGE_DEDUP_CACHE_SIZE = 1000
+
 DEFAULT_LINEAGE_CHUNK_DAYS = 7
 
 
@@ -90,6 +92,7 @@ class UnitycatalogLineageSource(Source):
         self.connection_obj = get_connection(self.service_connection)
         self.engine = get_sqlalchemy_connection(self.service_connection)
         self._table_cache: LRUCache = LRUCache(maxsize=TABLE_RESOLUTION_CACHE_SIZE)
+        self._seen_edges: LRUCache = LRUCache(maxsize=EDGE_DEDUP_CACHE_SIZE)
         self._chunk_days = self._resolve_chunk_days()
         self.test_connection()
 
@@ -273,17 +276,18 @@ class UnitycatalogLineageSource(Source):
         """
         Stream table/column lineage one day-window at a time, emitting one
         request per resolved edge. Per-row and per-window failures both surface
-        as Either(left) instead of being swallowed. Edges dropped by
-        `databaseFilterPattern` and edges whose tables are absent from
-        OpenMetadata are counted separately so the summary distinguishes
+        as Either(left) instead of being swallowed. Edges dropped by the
+        database/schema/table filter patterns and edges whose tables are absent
+        from OpenMetadata are counted separately so the summary distinguishes
         intentional filtering from missing metadata.
         """
-        stats = {"emitted": 0, "filtered": 0, "unresolved": 0, "failed": 0}
+        stats = {"emitted": 0, "duplicate": 0, "filtered": 0, "unresolved": 0, "failed": 0}
         for window_start, window_end in self._iter_date_windows():
             yield from self._yield_window_lineage(window_start, window_end, stats)
         logger.info(
-            f"Table lineage: emitted {stats['emitted']} edges, filtered {stats['filtered']} "
-            f"(databaseFilterPattern), unresolved {stats['unresolved']} (tables not in OpenMetadata), "
+            f"Table lineage: emitted {stats['emitted']} edges, deduplicated {stats['duplicate']} "
+            f"cross-window duplicates, filtered {stats['filtered']} (database/schema/table filter "
+            f"patterns), unresolved {stats['unresolved']} (tables not in OpenMetadata), "
             f"failed {stats['failed']} (row/window errors)"
         )
 
@@ -310,6 +314,23 @@ class UnitycatalogLineageSource(Source):
             )
 
     def _yield_row_lineage(self, row: Any, stats: dict) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Skip edges already streamed in an earlier window so an edge whose events
+        span multiple windows is emitted once instead of once per window. The
+        dedup set is a bounded LRU, so only recently-seen edges are suppressed;
+        edges past the cache window may re-emit (lineage adds are idempotent).
+        """
+        edge_key = (
+            row.source_table_full_name.lower(),
+            row.target_table_full_name.lower(),
+        )
+        if edge_key in self._seen_edges:
+            stats["duplicate"] += 1
+        else:
+            self._seen_edges[edge_key] = True
+            yield from self._process_unseen_row(row, stats)
+
+    def _process_unseen_row(self, row: Any, stats: dict) -> Iterable[Either[AddLineageRequest]]:
         if self._is_filtered_table(row.source_table_full_name) or self._is_filtered_table(row.target_table_full_name):
             stats["filtered"] += 1
         else:

@@ -276,6 +276,20 @@ class TestYieldTableLineage:
         assert len(results) == 1
         assert isinstance(results[0].right, AddLineageRequest)
 
+    def test_dedupes_edges_across_windows(self, lineage_source):
+        source_table = _make_table("source", "local_unitycatalog.cat.schema.source")
+        target_table = _make_table("target", "local_unitycatalog.cat.schema.target")
+        lineage_source.metadata.get_by_name.side_effect = [source_table, target_table]
+
+        rows = [LineageRow("cat.schema.source", "cat.schema.target", None)]
+        with patch.object(lineage_source, "_iter_date_windows", return_value=[("s1", "e1"), ("s2", "e2")]):
+            _mock_query_rows(lineage_source, rows)
+            results = list(lineage_source._yield_table_lineage())
+
+        assert len(results) == 1
+        assert isinstance(results[0].right, AddLineageRequest)
+        assert lineage_source.metadata.get_by_name.call_count == 2
+
     def test_skips_unresolved_edges(self, lineage_source):
         lineage_source.metadata.get_by_name.return_value = None
 
