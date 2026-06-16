@@ -423,7 +423,7 @@ describe('CustomizeNavigation Utils', () => {
       expect(result[2].key).toBe('plugin-item');
     });
 
-    it('should not show a new child sidebar item that is absent from the saved persona nav', () => {
+    it('new child should be disabled when it is absent from the saved persona nav', () => {
       (leftSidebarClassBase.getSidebarItems as jest.Mock).mockReturnValueOnce([
         {
           key: 'home',
@@ -467,7 +467,7 @@ describe('CustomizeNavigation Utils', () => {
       ).toBeFalsy();
     });
 
-    it('should not show a new top-level sidebar item that is absent from the saved persona nav', () => {
+    it('new top-level item should be disabled when it is absent from the saved persona nav', () => {
       (leftSidebarClassBase.getSidebarItems as jest.Mock).mockReturnValueOnce([
         {
           key: 'home',
@@ -510,7 +510,7 @@ describe('CustomizeNavigation Utils', () => {
       );
     });
 
-    it('should not show a top-level item that is explicitly hidden in the saved persona nav', () => {
+    it('top-level item should be disabled when explicitly hidden in the saved persona nav', () => {
       (leftSidebarClassBase.getSidebarItems as jest.Mock).mockReturnValueOnce([
         { key: 'home', title: 'Home', icon: 'home-icon', children: [] },
         { key: 'explore', title: 'Explore', icon: 'explore-icon' },
@@ -539,7 +539,7 @@ describe('CustomizeNavigation Utils', () => {
       );
     });
 
-    it('should not show a child item that is explicitly hidden in the saved persona nav', () => {
+    it('child item should be disabled when explicitly hidden in the saved persona nav', () => {
       (leftSidebarClassBase.getSidebarItems as jest.Mock).mockReturnValueOnce([
         {
           key: 'home',
