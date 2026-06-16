@@ -18,43 +18,56 @@ import { NodeSubType } from '../../../../generated/governance/workflows/elements
 import { SchemaBasedNodeForm } from './SchemaBasedNodeForm';
 
 jest.mock('@openmetadata/ui-core-components', () => {
-  const Input = (props: { value?: string; label?: string; isDisabled?: boolean }) => (
+  const Input = (props: {
+    value?: string;
+    label?: string;
+    isDisabled?: boolean;
+  }) => (
     <div>
       {props.label && <label>{props.label}</label>}
       <input
-        disabled={props.isDisabled}
         readOnly
+        disabled={props.isDisabled}
         value={props.value ?? ''}
-        onChange={() => { return; }}
+        onChange={() => {
+          return;
+        }}
       />
     </div>
   );
 
-  const TextArea = (props: { value?: string; label?: string; isDisabled?: boolean }) => (
+  const TextArea = (props: {
+    value?: string;
+    label?: string;
+    isDisabled?: boolean;
+  }) => (
     <div>
       {props.label && <label>{props.label}</label>}
       <textarea
-        disabled={props.isDisabled}
         readOnly
+        disabled={props.isDisabled}
         value={props.value ?? ''}
-        onChange={() => { return; }}
+        onChange={() => {
+          return;
+        }}
       />
     </div>
   );
 
   const Toggle = (props: { isSelected?: boolean; isDisabled?: boolean }) => (
     <input
+      readOnly
       checked={props.isSelected ?? false}
       data-testid="toggle"
       disabled={props.isDisabled}
-      readOnly
       type="checkbox"
     />
   );
 
-  const Typography = (props: { children?: React.ReactNode; className?: string }) => (
-    <span className={props.className}>{props.children}</span>
-  );
+  const Typography = (props: {
+    children?: React.ReactNode;
+    className?: string;
+  }) => <span className={props.className}>{props.children}</span>;
 
   return { Input, TextArea, Toggle, Typography };
 });
@@ -72,14 +85,12 @@ jest.mock('../../../../contexts/WorkflowModeContext', () => ({
 }));
 
 jest.mock('./MetadataFormSection', () => ({
-  MetadataFormSection: jest
-    .fn()
-    .mockImplementation(({ name, description }) => (
-      <div data-testid="metadata-form-section">
-        <span data-testid="node-name">{name}</span>
-        <span data-testid="node-description">{description}</span>
-      </div>
-    )),
+  MetadataFormSection: jest.fn().mockImplementation(({ name, description }) => (
+    <div data-testid="metadata-form-section">
+      <span data-testid="node-name">{name}</span>
+      <span data-testid="node-description">{description}</span>
+    </div>
+  )),
 }));
 
 jest.mock('./FormActionButtons', () => ({
@@ -90,9 +101,7 @@ jest.mock('./FormActionButtons', () => ({
         <button data-testid="cancel-button" onClick={onCancel}>
           {cancelLabel ?? 'Cancel'}
         </button>
-        {showSave !== false && (
-          <button data-testid="save-button">Save</button>
-        )}
+        {showSave !== false && <button data-testid="save-button">Save</button>}
       </div>
     )),
 }));
@@ -137,10 +146,14 @@ describe('SchemaBasedNodeForm', () => {
     });
 
     it('falls back to label when displayName is missing', () => {
-      const node = makeNode(NodeSubType.RunAppTask, {}, {
-        displayName: undefined,
-        label: 'Fallback Label',
-      });
+      const node = makeNode(
+        NodeSubType.RunAppTask,
+        {},
+        {
+          displayName: undefined,
+          label: 'Fallback Label',
+        }
+      );
 
       render(<SchemaBasedNodeForm node={node} onClose={mockOnClose} />);
 
@@ -192,6 +205,7 @@ describe('SchemaBasedNodeForm', () => {
       );
 
       expect(screen.getByText('Wait for Completion')).toBeInTheDocument();
+
       const toggle = screen.getByTestId('toggle');
 
       expect(toggle).toBeChecked();
@@ -215,7 +229,11 @@ describe('SchemaBasedNodeForm', () => {
 
   describe('Config field rendering — object value', () => {
     it('renders object config value as disabled TextArea with JSON', () => {
-      const assignees = { addReviewers: true, addOwners: false, candidates: [] };
+      const assignees = {
+        addReviewers: true,
+        addOwners: false,
+        candidates: [],
+      };
 
       render(
         <SchemaBasedNodeForm
@@ -227,6 +245,7 @@ describe('SchemaBasedNodeForm', () => {
       );
 
       expect(screen.getByText('Assignees')).toBeInTheDocument();
+
       const textarea = screen.getByRole('textbox');
 
       expect(textarea).toHaveValue(JSON.stringify(assignees, null, 2));

@@ -17,7 +17,6 @@ import classNames from 'classnames';
 import { capitalize, startCase } from 'lodash';
 import React, { useState } from 'react';
 import { BaseEdge, EdgeLabelRenderer, EdgeProps, Position } from 'reactflow';
-import { ConditionValue } from '../../../constants/WorkflowBuilder.constants';
 import { useWorkflowModeContext } from '../../../contexts/WorkflowModeContext';
 
 const getCleanStraightPath = (
@@ -104,25 +103,23 @@ export const StraightEdge = (props: EdgeProps) => {
     targetY,
     targetPosition
   );
-  const isConditionLabel =
-    label === ConditionValue.TRUE || label === ConditionValue.FALSE;
   const displayLabel =
     typeof label === 'string' && label.length > 0
       ? formatEdgeLabel(label)
       : label;
+  const hasStyleOverrides = !!(labelBgStyle?.fill || labelStyle?.color);
   const labelClassName = classNames(
     'tw:flex tw:items-center tw:rounded tw:border tw:border-border-secondary tw:bg-primary tw:px-2 tw:py-1 tw:shadow-sm',
-    { 'tw:cursor-pointer': isConditionLabel }
+    { 'tw:cursor-pointer': hasStyleOverrides }
   );
-  const labelStyleOverrides =
-    labelBgStyle?.fill ?? labelStyle?.color
-      ? {
-          backgroundColor: labelBgStyle?.fill,
-          borderColor: labelBgStyle?.stroke,
-          color: labelStyle?.color,
-          ...labelStyle,
-        }
-      : undefined;
+  const labelStyleOverrides = hasStyleOverrides
+    ? {
+        backgroundColor: labelBgStyle?.fill,
+        borderColor: labelBgStyle?.stroke,
+        color: labelStyle?.color,
+        ...labelStyle,
+      }
+    : undefined;
 
   return (
     <>

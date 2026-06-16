@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Input, TextArea, Toggle, Typography } from '@openmetadata/ui-core-components';
+import {
+  Input,
+  TextArea,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
@@ -44,19 +49,20 @@ interface NodeSchemaDefinition {
   definitions?: Record<string, unknown>;
 }
 
-const WORKFLOW_NODE_SCHEMAS: Partial<Record<NodeSubType, NodeSchemaDefinition>> =
-  {
-    [NodeSubType.RunAppTask]: runAppTaskSchema,
-    [NodeSubType.SetGlossaryTermStatusTask]: setGlossaryTermStatusSchema,
-    [NodeSubType.SetEntityCertificationTask]: setEntityCertificationSchema,
-    [NodeSubType.ApplyRecognizerFeedbackTask]: applyRecognizerFeedbackSchema,
-    [NodeSubType.RejectRecognizerFeedbackTask]: rejectRecognizerFeedbackSchema,
-    [NodeSubType.CreateAndRunIngestionPipelineTask]:
-      createAndRunIngestionPipelineSchema,
-    [NodeSubType.PolicyAgentTask]: policyAgentSchema,
-    [NodeSubType.CreateRecognizerFeedbackApprovalTask]:
-      createRecognizerFeedbackApprovalSchema,
-  };
+const WORKFLOW_NODE_SCHEMAS: Partial<
+  Record<NodeSubType, NodeSchemaDefinition>
+> = {
+  [NodeSubType.RunAppTask]: runAppTaskSchema,
+  [NodeSubType.SetGlossaryTermStatusTask]: setGlossaryTermStatusSchema,
+  [NodeSubType.SetEntityCertificationTask]: setEntityCertificationSchema,
+  [NodeSubType.ApplyRecognizerFeedbackTask]: applyRecognizerFeedbackSchema,
+  [NodeSubType.RejectRecognizerFeedbackTask]: rejectRecognizerFeedbackSchema,
+  [NodeSubType.CreateAndRunIngestionPipelineTask]:
+    createAndRunIngestionPipelineSchema,
+  [NodeSubType.PolicyAgentTask]: policyAgentSchema,
+  [NodeSubType.CreateRecognizerFeedbackApprovalTask]:
+    createRecognizerFeedbackApprovalSchema,
+};
 
 const getConfigProperties = (
   schema: NodeSchemaDefinition
@@ -78,6 +84,7 @@ const getConfigProperties = (
     const def = schema.definitions?.[defKey] as
       | { properties?: Record<string, SchemaFieldDefinition> }
       | undefined;
+
     return def?.properties ?? {};
   }
 
@@ -180,8 +187,8 @@ export const SchemaBasedNodeForm: React.FC<SchemaBasedNodeFormProps> = ({
         ))}
       </div>
       <FormActionButtons
-        showSave={false}
         cancelLabel={t('label.close')}
+        showSave={false}
         onCancel={onClose}
         onSave={() => {
           return;

@@ -133,11 +133,6 @@ export const TaskNodeFormRenderer: React.FC<TaskNodeFormRendererProps> = ({
       );
 
     default:
-      return (
-        <SchemaBasedNodeForm
-          node={node}
-          onClose={onClose}
-        />
-      );
+      return <SchemaBasedNodeForm node={node} onClose={onClose} />;
   }
 };
