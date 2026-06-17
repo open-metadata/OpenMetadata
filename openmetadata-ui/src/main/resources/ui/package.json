@@ -273,7 +273,7 @@
     "prosemirror-state": "1.4.1",
     "prosemirror-transform": "1.7.0",
     "prosemirror-view": "1.28.2",
-    "ws": "8.20.1",
+    "ws": "8.21.0",
     "axios": "1.16.1",
     "micromatch": "4.0.8",
     "minimatch": "3.1.5",
