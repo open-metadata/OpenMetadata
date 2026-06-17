@@ -44,7 +44,7 @@ import { generateSelectOptionsFromString } from '../../../utils/DataContract/Dat
 import { filterSelectOptions } from '../../../utils/FilterQueryUtils';
 import { getPopupContainer } from '../../../utils/formPureUtils';
 import { getColumnOptionsFromTableColumn } from '../../../utils/TablePureUtils';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import './contract-sla-form-tab.less';
 
 export const ContractSLAFormTab: React.FC<{

@@ -22,7 +22,6 @@ import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
 import { getDescriptionDiff } from '../../../utils/TasksUtils';
 import DiffView from './DiffView/DiffView';
-
 const RichTextEditor = withSuspenseFallback(
   lazy(() => import('../../../components/common/RichTextEditor/RichTextEditor'))
 );
