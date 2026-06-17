@@ -97,7 +97,6 @@ import {
 } from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-
 const DatabaseDetails: FunctionComponent = () => {
   const { t } = useTranslation();
 

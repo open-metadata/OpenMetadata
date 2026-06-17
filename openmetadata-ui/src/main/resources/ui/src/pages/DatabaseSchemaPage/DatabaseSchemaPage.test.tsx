@@ -25,7 +25,6 @@ import {
   mockPatchDatabaseSchemaDetailsData,
   mockPostThreadData,
 } from './mocks/DatabaseSchemaPage.mock';
-
 const mockEntityPermissionByFqn = jest
   .fn()
   .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
@@ -122,9 +121,13 @@ jest.mock('../../utils/CommonUtils', () => ({
   getEntityMissingError: jest.fn().mockImplementation((error) => error),
   getFeedCounts: jest.fn().mockImplementation(() => FEED_COUNT_INITIAL_DATA),
 }));
+
 jest.mock('../../utils/FeedUtilsPure', () => ({
   fetchEntityActivityCountInto: jest.fn(),
   fetchEntityTaskCountsInto: jest.fn(),
+}));
+
+jest.mock('../../utils/TagsUtils', () => ({
   sortTagsCaseInsensitive: jest.fn(),
 }));
 
@@ -132,7 +135,7 @@ jest.mock('../../utils/RouterUtils', () => ({
   getDatabaseSchemaVersionPath: jest.fn().mockImplementation((path) => path),
 }));
 
-jest.mock('../../utils/TableUtils', () => ({
+jest.mock('../../utils/TablePureUtils', () => ({
   getTierTags: jest.fn(),
   getTagsWithoutTier: jest.fn(),
   extractColumnsFromData: jest.fn().mockReturnValue([]),

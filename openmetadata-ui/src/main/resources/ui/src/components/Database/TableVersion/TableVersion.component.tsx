@@ -34,7 +34,7 @@ import {
   getConstraintChanges,
   getEntityVersionByField,
   getEntityVersionTags,
-} from '../../../utils/EntityVersionUtils';
+} from '../../../utils/EntityVersionUtilsPure';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { pruneEmptyChildren } from '../../../utils/TablePureUtils';
@@ -50,7 +50,6 @@ import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVers
 import VersionTable from '../../Entity/VersionTable/VersionTable.component';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { TableVersionProp } from './TableVersion.interface';
-
 const TableVersion: React.FC<TableVersionProp> = ({
   version,
   currentVersionData,
