@@ -276,8 +276,8 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
               } else if (objects.length > 1) {
                 const matchingObject = entityName
                   ? objects.find(
-                    (obj) => obj.toLowerCase() === entityName.toLowerCase()
-                  )
+                      (obj) => obj.toLowerCase() === entityName.toLowerCase()
+                    )
                   : undefined;
                 setSelectedObjectName(matchingObject ?? '');
               }
@@ -374,7 +374,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
         if (typeof mergedForPatch.termsOfUse === 'string') {
           mergedForPatch.termsOfUse = {
             ...(existingContract?.termsOfUse &&
-              typeof existingContract.termsOfUse === 'object'
+            typeof existingContract.termsOfUse === 'object'
               ? existingContract.termsOfUse
               : {}),
             content: mergedForPatch.termsOfUse,
@@ -621,8 +621,8 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
               {isODCSFormat
                 ? t('message.invalid-odcs-contract-format-required-fields')
                 : t(
-                  'message.invalid-openmetadata-contract-format-required-fields'
-                )}
+                    'message.invalid-openmetadata-contract-format-required-fields'
+                  )}
             </Typography>
             <Box className="tw:mt-3" direction="col" gap={2}>
               {(isODCSFormat ? ['APIVersion', 'Kind', 'Status'] : ['name']).map(
@@ -725,7 +725,11 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
             <Typography weight="medium">
               {t('label.schema-validation')}
             </Typography>
-            <BadgeWithIcon color="error" iconLeading={XClose} size="sm" type="pill-color">
+            <BadgeWithIcon
+              color="error"
+              iconLeading={XClose}
+              size="sm"
+              type="pill-color">
               {t('label.failed')}
             </BadgeWithIcon>
           </Box>
@@ -736,7 +740,6 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                   <Box align="center" gap={2} key={`notfound-${index}`}>
                     <div className="tw:w-1.5 tw:h-1.5 tw:rounded-full tw:bg-utility-error-600 tw:shrink-0" />
                     <Typography
-
                       data-testid={`failed-field-${index}`}
                       size="text-sm">
                       {field} - {t('label.not-found-lowercase')}
@@ -749,7 +752,6 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                   <Box align="center" gap={2} key={`duplicate-${index}`}>
                     <div className="tw:w-1.5 tw:h-1.5 tw:rounded-full tw:bg-utility-error-600 tw:shrink-0" />
                     <Typography
-
                       data-testid={`duplicate-field-${index}`}
                       size="text-sm">
                       {field} - {t('label.duplicate')}
@@ -762,7 +764,6 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                   <Box align="center" gap={2} key={`typemismatch-${index}`}>
                     <div className="tw:w-1.5 tw:h-1.5 tw:rounded-full tw:bg-utility-error-600 tw:shrink-0" />
                     <Typography
-
                       data-testid={`type-mismatch-field-${index}`}
                       size="text-sm">
                       {field}
@@ -818,7 +819,11 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
             <Typography size="text-sm" weight="semibold">
               {t('label.contract-validation')}
             </Typography>
-            <BadgeWithIcon color="error" iconLeading={XClose} size="sm" type="pill-color" >
+            <BadgeWithIcon
+              color="error"
+              iconLeading={XClose}
+              size="sm"
+              type="pill-color">
               {t('label.failed')}
             </BadgeWithIcon>
           </Box>
@@ -831,7 +836,6 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                   key={`error-${index}-${error.substring(0, 20)}`}>
                   <div className="tw:w-1.5 tw:h-1.5 tw:rounded-full tw:bg-utility-error-600 tw:shrink-0 tw:mt-[6px]" />
                   <Typography
-
                     className="tw:wrap-break-word"
                     data-testid={`entity-error-${index}`}
                     size="text-sm">
@@ -892,10 +896,10 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
         <div className="tw:flex-1 tw:min-h-50 tw:overflow-y-auto tw:mb-4">
           <Typography as="p" className="tw:text-secondary" size="text-sm">
             {serverValidation?.schemaValidation?.total &&
-              serverValidation.schemaValidation.total > 0
+            serverValidation.schemaValidation.total > 0
               ? t('message.schema-validation-passed', {
-                count: serverValidation.schemaValidation?.passed,
-              })
+                  count: serverValidation.schemaValidation?.passed,
+                })
               : t('message.contract-syntax-valid')}
           </Typography>
           {hasTypeMismatches && (
@@ -922,7 +926,6 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                         size={14}
                       />
                       <Typography
-
                         data-testid={`type-mismatch-warning-${index}`}
                         size="text-sm">
                         {field}
@@ -1055,7 +1058,6 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
         data-testid="object-selector-section">
         <Box align="center" className="tw:mb-2.5" gap={2}>
           <Typography
-
             data-testid="multi-object-contract-detected"
             size="text-sm"
             weight="semibold">
@@ -1181,8 +1183,9 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
 
               {yamlContent && (
                 <Card
-                  className={`tw:w-[320px] tw:shrink-0 tw:flex tw:flex-col tw:self-start tw:p-4 tw:overflow-auto ${parseError ? 'tw:bg-utility-error-50' : 'tw:bg-bg-secondary'
-                    }`}>
+                  className={`tw:w-[320px] tw:shrink-0 tw:flex tw:flex-col tw:self-start tw:p-4 tw:overflow-auto ${
+                    parseError ? 'tw:bg-utility-error-50' : 'tw:bg-bg-secondary'
+                  }`}>
                   {renderValidationPanel()}
                 </Card>
               )}
