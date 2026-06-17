@@ -267,7 +267,7 @@ confluent-kafka==2.14.0
 crcmod-plus==2.3.1
 cron_descriptor==2.0.8
 croniter==6.2.2
-cryptography==46.0.7
+cryptography==48.0.1
 curlify==3.0.0
 darabonba-core==1.0.5
 databricks-sql-connector==4.2.5
