@@ -412,7 +412,7 @@
   resolved "https://registry.yarnpkg.com/@azure/msal-react/-/msal-react-2.2.0.tgz#c8928e0f33bf7a88827a1c9488b62a4bd4c92e34"
   integrity sha512-2V+9JXeXyyjYNF92y5u0tU4el9px/V1+vkRuN+DtoxyiMHCtYQpJoaFdGWArh43zhz5aqQqiGW/iajPDSu3QsQ==
 
-"@babel/code-frame@^7.0.0", "@babel/code-frame@^7.10.4", "@babel/code-frame@^7.12.13", "@babel/code-frame@^7.27.1", "@babel/code-frame@^7.29.0", "@babel/code-frame@^7.29.7":
+"@babel/code-frame@^7.0.0", "@babel/code-frame@^7.10.4", "@babel/code-frame@^7.12.13", "@babel/code-frame@^7.27.1", "@babel/code-frame@^7.28.6", "@babel/code-frame@^7.29.0", "@babel/code-frame@^7.29.7":
   version "7.29.7"
   resolved "https://registry.yarnpkg.com/@babel/code-frame/-/code-frame-7.29.7.tgz#f2fbbfea87c44a21590ec515b778b2c26d8866e7"
   integrity sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw==
@@ -597,7 +597,7 @@
     "@babel/traverse" "^7.27.1"
     "@babel/types" "^7.27.1"
 
-"@babel/helper-string-parser@^7.29.7":
+"@babel/helper-string-parser@^7.27.1", "@babel/helper-string-parser@^7.29.7":
   version "7.29.7"
   resolved "https://registry.yarnpkg.com/@babel/helper-string-parser/-/helper-string-parser-7.29.7.tgz#7f0871d99824d23137d60f86fcf6130fd5a1b51f"
   integrity sha512-Pb5ijPrZ89GDH8223L4UP8i6QApWxs04RbPQJTeWDV0/keR2E36MeKnyr6LYmUUvqRRI+Iv87SuF1W6ErINzYw==
@@ -634,7 +634,7 @@
     "@babel/template" "^7.29.7"
     "@babel/types" "^7.29.7"
 
-"@babel/parser@^7.1.0", "@babel/parser@^7.14.7", "@babel/parser@^7.20.7", "@babel/parser@^7.23.9", "@babel/parser@^7.29.0", "@babel/parser@^7.29.3", "@babel/parser@^7.29.7", "@babel/parser@^7.7.0":
+"@babel/parser@^7.1.0", "@babel/parser@^7.14.7", "@babel/parser@^7.20.7", "@babel/parser@^7.23.9", "@babel/parser@^7.28.6", "@babel/parser@^7.29.0", "@babel/parser@^7.29.3", "@babel/parser@^7.29.7", "@babel/parser@^7.7.0":
   version "7.29.7"
   resolved "https://registry.yarnpkg.com/@babel/parser/-/parser-7.29.7.tgz#837b87387cbf5ec5530cb634b3c622f68edb9334"
   integrity sha512-hnORnjP/1P/zFEndoeX+n+t1RwWRJiJpM/jO7FW32Kn9r5+sJB2JWOdYo4L6k78j15eCwY3Gm/7364B1EMwtNg==
@@ -7715,10 +7715,10 @@ dompurify@3.3.2:
   optionalDependencies:
     "@types/trusted-types" "^2.0.7"
 
-dompurify@^3.4.0:
-  version "3.4.0"
-  resolved "https://registry.yarnpkg.com/dompurify/-/dompurify-3.4.0.tgz#b1fc33ebdadb373241621e0a30e4ad81573dfd0b"
-  integrity sha512-nolgK9JcaUXMSmW+j1yaSvaEaoXYHwWyGJlkoCTghc97KgGDDSnpoU/PlEnw63Ah+TGKFOyY+X5LnxaWbCSfXg==
+dompurify@^3.4.9:
+  version "3.4.9"
+  resolved "https://registry.yarnpkg.com/dompurify/-/dompurify-3.4.9.tgz#b036637b2df8997126b58837bc90f85dbcad6b2f"
+  integrity sha512-4dPSRMRDqHvs0V4YDFCsaIZo4if5u0xM+llyxiM2fwuZFdKArUBAF3VtI2+n8NKg9P870WMdYk0UhqQNoWXbfQ==
   optionalDependencies:
     "@types/trusted-types" "^2.0.7"
 
@@ -10441,7 +10441,7 @@ makeerror@1.0.12:
   dependencies:
     tmpl "1.0.5"
 
-markdown-it@>=14.1.1, markdown-it@^14.0.0:
+markdown-it@>=14.2.0, markdown-it@^14.0.0:
   version "14.2.0"
   resolved "https://registry.yarnpkg.com/markdown-it/-/markdown-it-14.2.0.tgz#06d48d9035e77d5b1c85adb315482fc8240289ef"
   integrity sha512-1TGiQiJVRQ3NPmZH6sx5Cfnmg6GQm9jvC1ch4TK511NjSJvjzKLzn5pPfZRNZkRPZP0HqCioSndqH8v2nRaWVQ==
