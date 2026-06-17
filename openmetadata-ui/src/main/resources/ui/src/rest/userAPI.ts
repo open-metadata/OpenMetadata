@@ -33,10 +33,13 @@ const MAX_PROFILE_ENTRIES = 200;
 
 const userProfileCache = makeLruCache<User>(MAX_PROFILE_ENTRIES);
 const userProfileRequests = new Map<string, Promise<User>>();
+let userProfileCacheEpoch = 0;
 
 /** Drop all cached user profiles. Call on logout / user switch. */
 export function clearUserProfileCache(): void {
+  userProfileCacheEpoch++;
   userProfileCache.clear();
+  userProfileRequests.clear();
 }
 
 export interface UsersQueryParams {
@@ -108,13 +111,17 @@ export const getUserByName = async (name: string, params?: ListParams) => {
     return cachedUser;
   }
 
+  const epoch = userProfileCacheEpoch;
+
   let request = userProfileRequests.get(name);
 
   if (!request) {
     request = APIClient.get<User>(`/users/name/${getEncodedFqn(name)}`, {
       params,
     }).then((response) => {
-      userProfileCache.set(name, response.data);
+      if (epoch === userProfileCacheEpoch) {
+        userProfileCache.set(name, response.data);
+      }
 
       return response.data;
     });

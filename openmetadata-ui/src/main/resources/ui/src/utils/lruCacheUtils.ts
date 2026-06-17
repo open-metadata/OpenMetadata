@@ -34,7 +34,16 @@ export function makeLruCache<T>(maxSize: number): LruCache<T> {
   const store = new Map<string, T>();
 
   return {
-    get: (key) => store.get(key),
+    get: (key) => {
+      if (!store.has(key)) {
+        return undefined;
+      }
+      const value = store.get(key) as T;
+      store.delete(key);
+      store.set(key, value);
+
+      return value;
+    },
     has: (key) => store.has(key),
     set: (key, value) => {
       store.delete(key);

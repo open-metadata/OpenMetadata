@@ -20,9 +20,11 @@ const MAX_WIDGET_CACHE_ENTRIES = 50;
 
 const dashboardWidgetCache = makeLruCache<unknown>(MAX_WIDGET_CACHE_ENTRIES);
 const dashboardWidgetRequests = new Map<string, Promise<unknown>>();
+let dashboardWidgetCacheEpoch = 0;
 
 /** Drop all dashboard widget cache entries and in-flight requests. Call on logout / user switch or between tests. */
 export function clearDashboardWidgetCache(): void {
+  dashboardWidgetCacheEpoch++;
   dashboardWidgetCache.clear();
   dashboardWidgetRequests.clear();
 }
@@ -69,6 +71,8 @@ export const useDashboardWidgetData = <T>({
     setIsLoading(!hasCachedData);
     setIsRefreshing(hasCachedData);
 
+    const epoch = dashboardWidgetCacheEpoch;
+
     let request = dashboardWidgetRequests.get(cacheKey) as
       | Promise<T>
       | undefined;
@@ -84,7 +88,10 @@ export const useDashboardWidgetData = <T>({
       // Don't cache undefined — fetchers that return undefined on error would
       // otherwise write a sentinel that has() treats as a hit but get() returns
       // as undefined, making the loading/refreshing state inconsistent.
-      if (response !== undefined) {
+      // Also guard against a logout/clear that happened while the request was
+      // in flight: if the epoch changed the cache was intentionally cleared and
+      // we must not re-populate it with the previous user's data.
+      if (response !== undefined && epoch === dashboardWidgetCacheEpoch) {
         dashboardWidgetCache.set(cacheKey, response);
       }
       setData(response);

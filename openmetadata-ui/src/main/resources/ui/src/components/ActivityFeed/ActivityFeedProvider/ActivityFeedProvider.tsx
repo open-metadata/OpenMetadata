@@ -91,9 +91,11 @@ const myActivityFeedCache = makeLruCache<ActivityEvent[]>(
   MAX_FEED_CACHE_ENTRIES
 );
 const myActivityFeedRequests = new Map<string, Promise<ActivityEvent[]>>();
+let activityFeedCacheEpoch = 0;
 
 /** Drop all cached activity feed entries and in-flight requests. Call on logout / user switch or between tests. */
 export function clearActivityFeedCache(): void {
+  activityFeedCacheEpoch++;
   myActivityFeedCache.clear();
   myActivityFeedRequests.clear();
 }
@@ -804,13 +806,17 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
 
       setIsActivityLoading(!cachedActivityEvents);
 
+      const epoch = activityFeedCacheEpoch;
+
       try {
         let request = myActivityFeedRequests.get(cacheKey);
 
         if (!request) {
           request = getMyActivityFeed({ ...params, domain }).then(
             ({ data }) => {
-              myActivityFeedCache.set(cacheKey, data);
+              if (epoch === activityFeedCacheEpoch) {
+                myActivityFeedCache.set(cacheKey, data);
+              }
 
               return data;
             }
