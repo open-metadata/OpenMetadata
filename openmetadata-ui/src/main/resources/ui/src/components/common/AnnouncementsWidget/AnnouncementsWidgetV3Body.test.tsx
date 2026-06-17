@@ -54,11 +54,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       onClick={onClick}
     />
   ),
-}));
-
-jest.mock('../Loader/Loader', () => ({
-  __esModule: true,
-  default: () => <div data-testid="loader">Loader</div>,
+  Skeleton: () => <span data-testid="skeleton" />,
 }));
 
 jest.mock('./AnnouncementItemV3.component', () => ({
@@ -213,7 +209,7 @@ describe('AnnouncementsWidgetV3Body', () => {
     expect(screen.queryByTestId('view-all-btn')).not.toBeInTheDocument();
   });
 
-  it('renders only the loader while loading, suppressing the header and item', () => {
+  it('renders only the skeleton while loading, suppressing the header and item', () => {
     render(
       <AnnouncementsWidgetV3Body
         loading
@@ -224,7 +220,8 @@ describe('AnnouncementsWidgetV3Body', () => {
       />
     );
 
-    expect(screen.getByTestId('loader')).toBeInTheDocument();
+    expect(screen.getByTestId('custom-widget-loading')).toBeInTheDocument();
+    expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
     expect(screen.getByTestId('custom-widget')).toBeInTheDocument();
     expect(screen.queryAllByTestId('mock-announcement-item')).toHaveLength(0);
     expect(

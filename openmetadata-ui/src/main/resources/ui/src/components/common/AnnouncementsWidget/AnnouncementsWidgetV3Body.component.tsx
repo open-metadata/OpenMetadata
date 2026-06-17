@@ -14,13 +14,13 @@
 import {
   Button,
   ButtonUtility,
+  Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Announcement02, ChevronLeft, ChevronRight } from '@untitledui/icons';
 import classNames from 'classnames';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import Loader from '../Loader/Loader';
 import AnnouncementItemV3 from './AnnouncementItemV3.component';
 import { AnnouncementsWidgetV3BodyProps } from './AnnouncementsWidgetV3Body.interface';
 
@@ -47,7 +47,26 @@ const AnnouncementsWidgetV3Body = ({
       <div
         className={classNames(CARD_CLASSNAME, className)}
         data-testid={testId}>
-        <Loader size="small" />
+        <div
+          className="tw:flex tw:flex-col tw:gap-[9px] tw:pl-[3px]"
+          data-testid={`${testId}-loading`}>
+          <div className="tw:flex tw:items-center tw:gap-[9px]">
+            <Skeleton
+              className="tw:shrink-0 tw:rounded-[1px]"
+              height={35}
+              variant="rectangular"
+              width={4}
+            />
+            <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-[4px]">
+              <Skeleton height={14} variant="text" width="55%" />
+              <Skeleton height={12} variant="text" width="90%" />
+            </div>
+          </div>
+          <div className="tw:flex tw:items-center tw:gap-1.5">
+            <Skeleton variant="circular" width={14} />
+            <Skeleton height={12} variant="text" width={120} />
+          </div>
+        </div>
       </div>
     );
   }
