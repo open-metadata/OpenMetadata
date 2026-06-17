@@ -30,6 +30,7 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.EntityRelationshipCleanupUtil;
 import org.openmetadata.service.util.OrphanTestCaseCleanup;
+import org.openmetadata.service.util.OrphanTestCaseRelationshipCleanup;
 import org.openmetadata.service.util.TagUsageCleanup;
 import org.quartz.JobExecutionContext;
 
@@ -123,6 +124,13 @@ public class DataRetention extends AbstractNativeApplication {
     entityStats.withAdditionalProperty("broken_search_entities", new StepStats());
     entityStats.withAdditionalProperty("orphaned_tag_usages", new StepStats());
     entityStats.withAdditionalProperty("orphaned_test_cases", new StepStats());
+    entityStats.withAdditionalProperty("test_cases_missing_test_definition", new StepStats());
+    entityStats.withAdditionalProperty("test_cases_missing_executable_suite", new StepStats());
+    entityStats.withAdditionalProperty("orphan_test_case_resolution_status", new StepStats());
+    entityStats.withAdditionalProperty("orphan_agent_execution", new StepStats());
+    entityStats.withAdditionalProperty("orphan_mcp_execution", new StepStats());
+    entityStats.withAdditionalProperty("orphan_profile_data", new StepStats());
+    entityStats.withAdditionalProperty("orphan_query_cost_time_series", new StepStats());
     entityStats.withAdditionalProperty("audit_logs", new StepStats());
 
     retentionStats.setEntityStats(entityStats);
@@ -148,6 +156,18 @@ public class DataRetention extends AbstractNativeApplication {
     // delete a test case whose suite has just been restored from a relationship row.
     LOG.info("Starting cleanup for orphan test cases.");
     cleanOrphanTestCases();
+
+    // Clean up test cases whose core relationship rows are gone: no testDefinition link (breaks
+    // search indexing) or no live executable test suite ("No executable test suite was found").
+    // Runs after the relationship/hierarchy cleanup above so a suite relationship that was just
+    // repaired is not mistaken for missing.
+    LOG.info("Starting cleanup for test cases with missing relationships.");
+    cleanTestCasesWithMissingRelationships();
+
+    // Run after orphan test case cleanup so resolution-status rows for deleted test cases
+    // also get swept up.
+    LOG.info("Starting cleanup for orphaned time-series rows.");
+    cleanOrphanedTimeSeriesRows();
 
     int retentionPeriod = config.getChangeEventRetentionPeriod();
     LOG.info("Starting cleanup for change events with retention period: {} days.", retentionPeriod);
@@ -305,6 +325,64 @@ public class DataRetention extends AbstractNativeApplication {
     }
   }
 
+  private void cleanTestCasesWithMissingRelationships() {
+    try {
+      OrphanTestCaseRelationshipCleanup cleanup =
+          new OrphanTestCaseRelationshipCleanup(collectionDAO, false);
+      OrphanTestCaseRelationshipCleanup.Result result = cleanup.performCleanup(BATCH_SIZE);
+      updateStats(
+          "test_cases_missing_test_definition",
+          result.getMissingTestDefinitionDeleted(),
+          result.getMissingTestDefinitionFailures());
+      updateStats(
+          "test_cases_missing_executable_suite",
+          result.getMissingExecutableSuiteDeleted(),
+          result.getMissingExecutableSuiteFailures());
+      LOG.info(
+          "Test case relationship cleanup completed - Scanned: {}, Missing-definition deleted: {}, "
+              + "failed: {}, Missing-executable-suite deleted: {}, failed: {}",
+          result.getTotalScanned(),
+          result.getMissingTestDefinitionDeleted(),
+          result.getMissingTestDefinitionFailures(),
+          result.getMissingExecutableSuiteDeleted(),
+          result.getMissingExecutableSuiteFailures());
+    } catch (Exception ex) {
+      LOG.error("Failed to clean test cases with missing relationships", ex);
+      internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
+      if (failureDetails == null) {
+        failureDetails = new HashMap<>();
+        failureDetails.put("message", ex.getMessage());
+        failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
+      }
+    }
+  }
+
+  private void cleanOrphanedTimeSeriesRows() {
+    LOG.info("Initiating orphaned time-series rows cleanup.");
+
+    CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO resolutionStatusDao =
+        collectionDAO.testCaseResolutionStatusTimeSeriesDao();
+    CollectionDAO.AgentExecutionDAO agentExecutionDao = collectionDAO.agentExecutionDAO();
+    CollectionDAO.McpExecutionDAO mcpExecutionDao = collectionDAO.mcpExecutionDAO();
+    CollectionDAO.ProfilerDataTimeSeriesDAO profilerDao = collectionDAO.profilerDataTimeSeriesDao();
+    CollectionDAO.QueryCostTimeSeriesDAO queryCostDao =
+        collectionDAO.queryCostRecordTimeSeriesDAO();
+
+    executeOrphanCleanup(
+        "orphan_test_case_resolution_status",
+        () -> resolutionStatusDao.deleteOrphanedRecords(BATCH_SIZE));
+    executeOrphanCleanup(
+        "orphan_agent_execution", () -> agentExecutionDao.deleteOrphanedRecords(BATCH_SIZE));
+    executeOrphanCleanup(
+        "orphan_mcp_execution", () -> mcpExecutionDao.deleteOrphanedRecords(BATCH_SIZE));
+    executeOrphanCleanup(
+        "orphan_profile_data", () -> profilerDao.deleteOrphanedRecords(BATCH_SIZE));
+    executeOrphanCleanup(
+        "orphan_query_cost_time_series", () -> queryCostDao.deleteOrphanedRecords(BATCH_SIZE));
+
+    LOG.info("Orphaned time-series rows cleanup complete.");
+  }
+
   @Transaction
   private void cleanTestCaseResults(int retentionPeriod) {
     LOG.info("Initiating test case results cleanup: Retention = {} days.", retentionPeriod);
@@ -337,6 +415,52 @@ public class DataRetention extends AbstractNativeApplication {
         "audit_logs", () -> auditLogDAO.deleteInBatches(cutoffMillis, BATCH_SIZE));
 
     LOG.info("Audit logs cleanup complete.");
+  }
+
+  // Safety cap on the orphan-cleanup loop. With BATCH_SIZE=10k this allows up to 10M
+  // rows per entity per run — well above any healthy catalog's orphan count. A buggy
+  // delete query that always returns a non-zero count (e.g., rows it can't actually
+  // delete due to FK constraints) would otherwise spin forever and block the rest of
+  // the DataRetention job.
+  private static final int MAX_ORPHAN_CLEANUP_ITERATIONS = 1000;
+
+  private void executeOrphanCleanup(String entity, Supplier<Integer> deleteFunction) {
+    int totalDeleted = 0;
+    int totalFailed = 0;
+    boolean stoppedByCondition = false;
+
+    for (int iteration = 0; iteration < MAX_ORPHAN_CLEANUP_ITERATIONS; iteration++) {
+      try {
+        int deleted = deleteFunction.get();
+        totalDeleted += deleted;
+        if (deleted == 0) {
+          stoppedByCondition = true;
+          break;
+        }
+      } catch (Exception ex) {
+        LOG.error("Failed to clean orphan time-series rows for {}", entity, ex);
+        totalFailed += BATCH_SIZE;
+        internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
+
+        if (failureDetails == null) {
+          failureDetails = new HashMap<>();
+          failureDetails.put("message", ex.getMessage());
+          failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
+        }
+        stoppedByCondition = true;
+        break;
+      }
+    }
+
+    if (!stoppedByCondition) {
+      LOG.warn(
+          "Orphan cleanup for {} hit the iteration cap ({}) before draining; "
+              + "remaining rows will be retried on the next DataRetention run.",
+          entity,
+          MAX_ORPHAN_CLEANUP_ITERATIONS);
+    }
+
+    updateStats(entity, totalDeleted, totalFailed);
   }
 
   private void executeWithStatsTracking(String entity, Supplier<Integer> deleteFunction) {
