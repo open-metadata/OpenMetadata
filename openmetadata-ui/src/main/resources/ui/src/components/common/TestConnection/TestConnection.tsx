@@ -56,7 +56,7 @@ import {
   getServiceType,
   getTestConnectionName,
   shouldTestConnection,
-} from '../../../utils/ServiceUtils';
+} from '../../../utils/ServicePureUtils';
 import { getErrorText } from '../../../utils/StringUtils';
 import Loader from '../Loader/Loader';
 import './test-connection.style.less';
