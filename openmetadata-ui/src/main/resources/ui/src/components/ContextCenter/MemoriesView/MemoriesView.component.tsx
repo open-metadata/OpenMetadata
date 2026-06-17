@@ -27,7 +27,11 @@ import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditNewIcon } from '../../../assets/svg/edit-new.svg';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
-import { ContextMemory } from '../../../generated/entity/context/contextMemory';
+import { ENTITY_ICON_MAPPER } from '../../../constants/Assets.constants';
+import {
+  ContextMemory,
+  EntityReference,
+} from '../../../generated/entity/context/contextMemory';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { stripMarkdown } from '../../../utils/StringUtils';
@@ -167,6 +171,20 @@ const MemoryRow: FC<MemoryRowProps> = ({
     [memory.name]
   );
 
+  const linkedEntities = useMemo(() => {
+    const entities = [memory.primaryEntity, ...(memory.relatedEntities ?? [])];
+    const seenIds = new Set<string>();
+
+    return entities.filter((entity): entity is EntityReference => {
+      if (!entity || seenIds.has(entity.id)) {
+        return false;
+      }
+      seenIds.add(entity.id);
+
+      return true;
+    });
+  }, [memory.primaryEntity, memory.relatedEntities]);
+
   return (
     <Box
       align="start"
@@ -244,27 +262,26 @@ const MemoryRow: FC<MemoryRowProps> = ({
             {stripMarkdown(memory.summary ?? memory.answer ?? '')}
           </Typography>
 
-          {memory.tags && memory.tags.length > 0 && (
+          {linkedEntities.length > 0 && (
             <Box align="center" className="tw:mt-0.5" gap={2} wrap="wrap">
-              {memory.tags.map((tag) => (
+              {linkedEntities.map((entity) => (
                 <Badge
-                  className="tw:max-w-60 tw:min-w-0"
-                  key={tag.tagFQN}
+                  className="tw:max-w-90 tw:min-w-0"
+                  key={entity.id}
                   size="md"
                   type="color">
-                  {tag.style?.color && (
-                    <div className="tw:shrink-0">
-                      <Dot
-                        size="sm"
-                        style={{ color: tag.style?.color, marginRight: '6px' }}
-                      />
-                    </div>
-                  )}
+                  <div className="tw:shrink-0">
+                    <Dot
+                      className={ENTITY_ICON_MAPPER[entity.type].iconClass}
+                      size="sm"
+                      style={{ marginRight: '6px' }}
+                    />
+                  </div>
                   <Typography
                     ellipsis
                     className="tw:text-secondary"
                     size="text-xs">
-                    {getEntityName(tag)}
+                    {getEntityName(entity)}
                   </Typography>
                 </Badge>
               ))}

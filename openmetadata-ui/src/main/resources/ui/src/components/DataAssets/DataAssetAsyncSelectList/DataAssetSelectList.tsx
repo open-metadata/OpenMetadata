@@ -21,6 +21,7 @@ import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getEntityIconWithBg } from 'src/utils/Assets/AssetsUtils';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -29,7 +30,6 @@ import { Paging } from '../../../generated/type/paging';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
-import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   DataAssetAsyncSelectListProps,
@@ -278,17 +278,14 @@ const DataAssetSelectList: FC<DataAssetAsyncSelectListProps> = ({
                       key={fqn}
                       type="button"
                       onClick={() => handleToggle(opt)}>
-                      {searchClassBase.getEntityIcon(
-                        reference.type ?? '',
-                        'tw:h-8 tw:w-8 tw:text-gray-500'
-                      )}
+                      {getEntityIconWithBg(reference.type)}
 
                       <div className="tw:flex tw:flex-1 tw:justify-between tw:items-center">
                         <div className="tw:max-w-75">
                           <Typography
                             ellipsis
                             className="tw:truncate tw:text-gray-800"
-                            size="text-sm"
+                            size="text-xs"
                             weight="medium">
                             {displayName}
                           </Typography>
@@ -301,7 +298,7 @@ const DataAssetSelectList: FC<DataAssetAsyncSelectListProps> = ({
                         </div>
                         {reference.type && (
                           <Badge
-                            className="tw:shrink-0 tw:uppercase"
+                            className="tw:shrink-0 tw:capitalize tw:font-medium"
                             color="gray"
                             size="sm"
                             type="color">
