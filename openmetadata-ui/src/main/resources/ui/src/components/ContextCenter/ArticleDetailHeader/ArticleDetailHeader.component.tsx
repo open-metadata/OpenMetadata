@@ -59,6 +59,7 @@ import { EntityReference } from '../../../generated/entity/type';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useClipboard } from '../../../hooks/useClipBoard';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   ContentChangeState,
@@ -96,6 +97,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { fqn } = useFqn();
+  const { entityRules } = useEntityRules(EntityType.KNOWLEDGE_PAGE);
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
   const [copyTooltip, setCopyTooltip] = useState<string>('');
@@ -382,6 +384,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                     className={
                       firstDomain ? 'tw:text-primary-900' : 'tw:text-gray-400'
                     }
+                    data-testid="domain-link"
                     size="text-sm"
                     weight="regular">
                     {firstDomain
@@ -396,26 +399,19 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                   {permissions.EditAll && (
                     <DomainSelectableList
                       isClearable
-                      multiple
                       hasPermission={permissions.EditAll}
+                      multiple={entityRules.canAddMultipleDomains}
                       selectedDomain={knowledgePage?.domains ?? []}
                       onUpdate={handleDomainSave}>
-                      <Tooltip
-                        title={t('label.edit-entity', {
+                      <ButtonUtility
+                        className="tw:p-1"
+                        color="secondary"
+                        data-testid="edit-domain-btn"
+                        icon={<EditIcon height={11} width={11} />}
+                        tooltip={t('label.edit-entity', {
                           entity: t('label.domain'),
-                        })}>
-                        <TooltipTrigger>
-                          <ButtonUtility
-                            className="tw:p-1"
-                            color="secondary"
-                            data-testid="edit-domain-btn"
-                            icon={<EditIcon height={11} width={11} />}
-                            title={t('label.edit-entity', {
-                              entity: t('label.domain'),
-                            })}
-                          />
-                        </TooltipTrigger>
-                      </Tooltip>
+                        })}
+                      />
                     </DomainSelectableList>
                   )}
                 </div>
@@ -452,28 +448,26 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                       {t('label.no-entity', { entity: t('label.owner') })}
                     </Typography>
                   )}
-                  {permissions.EditAll && (
+                  {(permissions.EditAll || permissions.EditOwners) && (
                     <UserTeamSelectableList
-                      hasPermission={permissions.EditAll}
-                      multiple={{ user: true, team: true }}
+                      hasPermission={
+                        permissions.EditAll || permissions.EditOwners
+                      }
+                      multiple={{
+                        user: entityRules.canAddMultipleUserOwners,
+                        team: entityRules.canAddMultipleTeamOwner,
+                      }}
                       owner={knowledgePage?.owners}
                       onUpdate={handleOwnerSave}>
-                      <Tooltip
-                        title={t('label.edit-entity', {
-                          entity: t('label.owner'),
-                        })}>
-                        <TooltipTrigger>
-                          <ButtonUtility
-                            className="tw:p-1"
-                            color="secondary"
-                            data-testid="edit-owner-btn"
-                            icon={<EditIcon height={11} width={11} />}
-                            title={t('label.edit-entity', {
-                              entity: t('label.owner-plural'),
-                            })}
-                          />
-                        </TooltipTrigger>
-                      </Tooltip>
+                      <ButtonUtility
+                        className="tw:p-1"
+                        color="secondary"
+                        data-testid="edit-owner-btn"
+                        icon={<EditIcon height={11} width={11} />}
+                        tooltip={t('label.edit-entity', {
+                          entity: t('label.owner-plural'),
+                        })}
+                      />
                     </UserTeamSelectableList>
                   )}
                 </div>

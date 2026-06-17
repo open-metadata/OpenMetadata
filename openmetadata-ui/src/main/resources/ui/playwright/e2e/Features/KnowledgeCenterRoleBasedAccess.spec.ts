@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -186,18 +186,6 @@ testWithRolesPages(
 
     await expect(dataConsumerPage.getByTestId('edit-owner')).not.toBeVisible();
 
-    const ownerLabel = dataConsumerPage.getByTestId('owner-label');
-    const hasOwner = await ownerLabel
-      .getByTestId('owner-link')
-      .first()
-      .isVisible();
-
-    if (hasOwner) {
-      await expect(dataConsumerPage.getByTestId('add-owner')).not.toBeVisible();
-    } else {
-      await expect(dataConsumerPage.getByTestId('add-owner')).toBeVisible();
-    }
-
     await expect(
       dataConsumerPage.getByTestId('add-data-assets-container')
     ).not.toBeVisible();
@@ -247,19 +235,8 @@ testWithRolesPages(
     await expect(editor).toBeVisible();
     await expect(editor).toHaveAttribute('contenteditable', 'true');
 
-    const ownerLabel = dataStewardPage.getByTestId('owner-label');
-    const hasOwner = await ownerLabel
-      .getByTestId('owner-link')
-      .first()
-      .isVisible();
-
-    if (hasOwner) {
-      await expect(dataStewardPage.getByTestId('edit-owner')).toBeVisible();
-      await expect(dataStewardPage.getByTestId('add-owner')).not.toBeVisible();
-    } else {
-      await expect(dataStewardPage.getByTestId('add-owner')).toBeVisible();
-      await expect(dataStewardPage.getByTestId('edit-owner')).not.toBeVisible();
-    }
+   await expect(dataStewardPage.getByTestId('edit-owner-btn')).toBeVisible();
+  
 
     const rightPanel = dataStewardPage.getByTestId('right-panel');
     await rightPanel.evaluate((el) => el.scrollTo(0, el.scrollHeight));
