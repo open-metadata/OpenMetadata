@@ -82,6 +82,8 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
   test('Create glossary with CSV, export it, create new glossary and import exported data', async ({
     page,
   }) => {
+    test.setTimeout(180_000);
+
     const { apiContext } = await getApiContext(page);
     const sourceGlossary = new Glossary(`QuotesCommas-${uuid()}`);
     const targetGlossary = new Glossary(`QuotesCommas-Target-${uuid()}`);

@@ -6580,13 +6580,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private void bulkDeleteReferencesAndRows(List<T> entities) {
-    Entity.getJdbi()
-        .inTransaction(
-            handle -> {
-              bulkCleanupReferences(entities);
-              bulkDeleteEntityRows(entities);
-              return null;
-            });
+    var jdbi = Entity.getJdbi();
+    if (jdbi == null) {
+      bulkCleanupReferences(entities);
+      bulkDeleteEntityRows(entities);
+      return;
+    }
+    jdbi.inTransaction(
+        handle -> {
+          bulkCleanupReferences(entities);
+          bulkDeleteEntityRows(entities);
+          return null;
+        });
   }
 
   private void bulkCleanupReferences(List<T> entities) {

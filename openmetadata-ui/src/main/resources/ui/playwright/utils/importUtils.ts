@@ -40,6 +40,8 @@ import { settingClick, SettingOptionsType } from './sidebar';
 
 const IMPORT_GRID_LOAD_MASK_SELECTOR =
   '.om-rdg .inovua-react-toolkit-load-mask__background-layer';
+const EDITOR_OPEN_TIMEOUT = 1500;
+const TEXT_EDITOR_FILL_TIMEOUT = 2000;
 
 const waitForVisibleLocator = async (locator: Locator, timeout = 1500) => {
   try {
@@ -55,81 +57,83 @@ const getTextEditorCandidates = (page: Page) => {
   const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR).first();
 
   return [
-    page.getByTestId('bulk-edit-text-cell-editor').first(),
+    activeCell.getByTestId('bulk-edit-text-cell-editor').first(),
     activeCell.locator('input, textarea').first(),
+    page.getByTestId('bulk-edit-text-cell-editor').first(),
     page.locator('.bulk-edit-text-cell-editor, .rdg-text-editor').first(),
     page.locator('.ant-layout-content').getByRole('textbox').first(),
   ];
 };
 
-const findVisibleTextEditor = async (page: Page, timeout = 1500) => {
+const fillVisibleTextEditor = async (page: Page, text: string) => {
   for (const editor of getTextEditorCandidates(page)) {
-    if (await waitForVisibleLocator(editor, timeout)) {
-      return editor;
+    if (!(await waitForVisibleLocator(editor, EDITOR_OPEN_TIMEOUT))) {
+      continue;
+    }
+
+    try {
+      await editor.evaluate((element) =>
+        element.scrollIntoView({ block: 'center', inline: 'nearest' })
+      );
+      await editor.fill(text, { timeout: TEXT_EDITOR_FILL_TIMEOUT });
+      await editor.press('Enter', { delay: 100 });
+
+      return true;
+    } catch {
+      await page.keyboard.press('Escape').catch(() => undefined);
     }
   }
 
-  return undefined;
+  return false;
 };
 
-const getActiveTextEditor = async (page: Page) => {
-  const activeEditor = await findVisibleTextEditor(page);
-
-  if (activeEditor) {
-    return activeEditor;
-  }
-
+const clickActiveGridCell = async (page: Page) => {
   const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR).first();
   // eslint-disable-next-line playwright/no-force-option -- RDG can leave an overlay above the active cell editor trigger.
   await activeCell.click({ force: true });
-  await page.keyboard.press('Enter', { delay: 100 });
+};
 
-  const keyboardOpenedEditor = await findVisibleTextEditor(page, 5000);
-
-  if (keyboardOpenedEditor) {
-    return keyboardOpenedEditor;
-  }
-
-  await page.keyboard.press('F2');
-
-  const functionKeyOpenedEditor = await findVisibleTextEditor(page, 5000);
-
-  if (functionKeyOpenedEditor) {
-    return functionKeyOpenedEditor;
-  }
-
+const doubleClickActiveGridCell = async (page: Page) => {
+  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR).first();
   // eslint-disable-next-line playwright/no-force-option -- RDG can leave an overlay above the active cell editor trigger.
   await activeCell.dblclick({ force: true });
+};
 
-  const doubleClickOpenedEditor = await findVisibleTextEditor(page, 5000);
-
-  if (doubleClickOpenedEditor) {
-    return doubleClickOpenedEditor;
-  }
-
-  throw new Error('Unable to open the active grid text editor');
+const getTextEditorOpenActions = (page: Page) => {
+  return [
+    async () => undefined,
+    async () => page.keyboard.press('Enter', { delay: 100 }),
+    async () => {
+      await clickActiveGridCell(page);
+      await page.keyboard.press('Enter', { delay: 100 });
+    },
+    async () => page.keyboard.press('F2'),
+    async () => doubleClickActiveGridCell(page),
+  ];
 };
 
 const fillAndCommitTextEditor = async (
   page: Page,
   text: string,
-  maxAttempts = 3
+  maxAttempts = 2
 ) => {
   let lastError: unknown;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    try {
-      await page.keyboard.press('Enter', { delay: 100 });
+    for (const openTextEditor of getTextEditorOpenActions(page)) {
+      try {
+        await openTextEditor();
 
-      const textboxLocator = await getActiveTextEditor(page);
-      await textboxLocator.fill(text, { timeout: 10000 });
-      await textboxLocator.press('Enter', { delay: 100 });
-
-      return;
-    } catch (error) {
-      lastError = error;
-      await page.keyboard.press('Escape').catch(() => undefined);
+        if (await fillVisibleTextEditor(page, text)) {
+          return;
+        }
+      } catch (error) {
+        lastError = error;
+        await page.keyboard.press('Escape').catch(() => undefined);
+      }
     }
+
+    await page.keyboard.press('Escape').catch(() => undefined);
   }
 
   if (lastError instanceof Error) {
@@ -139,36 +143,73 @@ const fillAndCommitTextEditor = async (
   throw new Error('Unable to fill the active grid text editor');
 };
 
-const getActiveDescriptionEditor = async (page: Page) => {
-  const editor = page.locator(descriptionBox).first();
+const getDescriptionEditorCandidates = (page: Page) => {
+  return [
+    page.getByTestId('markdown-editor').locator(descriptionBox).first(),
+    page.locator(descriptionBox).first(),
+  ];
+};
 
-  if (await waitForVisibleLocator(editor)) {
-    return editor;
+const findVisibleDescriptionEditor = async (page: Page) => {
+  for (const editor of getDescriptionEditorCandidates(page)) {
+    if (await waitForVisibleLocator(editor, EDITOR_OPEN_TIMEOUT)) {
+      return editor;
+    }
   }
 
-  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR).first();
-  // eslint-disable-next-line playwright/no-force-option -- RDG can leave an overlay above the active cell editor trigger.
-  await activeCell.click({ force: true });
-  await page.keyboard.press('Enter');
+  return undefined;
+};
 
-  if (await waitForVisibleLocator(editor, 5000)) {
-    return editor;
+const clickMarkdownEditorSave = async (page: Page) => {
+  const markdownSaveButton = page
+    .getByTestId('markdown-editor')
+    .getByTestId('save');
+
+  if (await waitForVisibleLocator(markdownSaveButton, EDITOR_OPEN_TIMEOUT)) {
+    await markdownSaveButton.click();
+  } else {
+    await page.getByTestId('save').click();
   }
 
-  await page.keyboard.press('F2');
+  await page.getByTestId('markdown-editor').waitFor({ state: 'detached' });
+};
 
-  if (await waitForVisibleLocator(editor, 5000)) {
-    return editor;
+const fillVisibleDescriptionEditor = async (
+  page: Page,
+  description: string
+) => {
+  const editor = await findVisibleDescriptionEditor(page);
+
+  if (!editor) {
+    return false;
   }
 
-  // eslint-disable-next-line playwright/no-force-option -- RDG can leave an overlay above the active cell editor trigger.
-  await activeCell.dblclick({ force: true });
+  try {
+    await editor.evaluate((element) =>
+      element.scrollIntoView({ block: 'center', inline: 'nearest' })
+    );
+    await editor.fill(description, { timeout: 10000 });
+    await clickMarkdownEditorSave(page);
 
-  if (await waitForVisibleLocator(editor, 5000)) {
-    return editor;
+    return true;
+  } catch {
+    await page.keyboard.press('Escape').catch(() => undefined);
+
+    return false;
   }
+};
 
-  throw new Error('Unable to open the active grid description editor');
+const getDescriptionEditorOpenActions = (page: Page) => {
+  return [
+    async () => undefined,
+    async () => page.keyboard.press('Enter', { delay: 100 }),
+    async () => {
+      await clickActiveGridCell(page);
+      await page.keyboard.press('Enter', { delay: 100 });
+    },
+    async () => page.keyboard.press('F2'),
+    async () => doubleClickActiveGridCell(page),
+  ];
 };
 
 export const waitForImportGridLoadMaskToDisappear = async (
@@ -199,18 +240,33 @@ export const fillTextInputDetails = async (page: Page, text: string) => {
 
 export const fillDescriptionDetails = async (
   page: Page,
-  description: string
+  description: string,
+  maxAttempts = 2
 ) => {
-  const editor = await getActiveDescriptionEditor(page);
+  let lastError: unknown;
 
-  await editor.evaluate((element) =>
-    element.scrollIntoView({ block: 'center', inline: 'nearest' })
-  );
-  await editor.fill(description, { timeout: 10000 });
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    for (const openDescriptionEditor of getDescriptionEditorOpenActions(page)) {
+      try {
+        await openDescriptionEditor();
 
-  await page.click('[data-testid="save"]');
+        if (await fillVisibleDescriptionEditor(page, description)) {
+          return;
+        }
+      } catch (error) {
+        lastError = error;
+        await page.keyboard.press('Escape').catch(() => undefined);
+      }
+    }
 
-  await page.getByTestId('markdown-editor').waitFor({ state: 'detached' });
+    await page.keyboard.press('Escape').catch(() => undefined);
+  }
+
+  if (lastError instanceof Error) {
+    throw lastError;
+  }
+
+  throw new Error('Unable to fill the active grid description editor');
 };
 
 const clickInlineSave = async (page: Page) => {
