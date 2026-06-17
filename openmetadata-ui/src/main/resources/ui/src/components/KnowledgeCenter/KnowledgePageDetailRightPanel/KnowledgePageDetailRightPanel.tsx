@@ -13,7 +13,7 @@
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useMemo } from 'react';
-import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
 import { DomainLabelV2 } from '../../../components/DataAssets/DomainLabelV2/DomainLabelV2';
 import { OwnerLabelV2 } from '../../../components/DataAssets/OwnerLabelV2/OwnerLabelV2';
 import { ReviewerLabelV2 } from '../../../components/DataAssets/ReviewerLabelV2/ReviewerLabelV2';
