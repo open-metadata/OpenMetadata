@@ -88,6 +88,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getEntityStatusCondition(tableName));
     conditions.add(getServerIdCondition(tableName));
     conditions.add(getNameFilterCondition());
+    conditions.add(getSourceFileCondition());
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -125,6 +126,23 @@ public class ListFilter extends Filter<ListFilter> {
       return new ResourceContext<>(parentEntityType, java.util.UUID.fromString(entityId), null);
     }
     return null;
+  }
+
+  /** Filters context memories down to the knowledge pills extracted from a given context file. */
+  private String getSourceFileCondition() {
+    String sourceFileId = queryParams.get("sourceFileId");
+    String result = "";
+    if (!nullOrEmpty(sourceFileId)) {
+      queryParams.put("sourceFileIdParam", sourceFileId);
+      result =
+          String.format(
+              "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
+                  + "WHERE entity_relationship.fromEntity = 'contextFile' "
+                  + "AND entity_relationship.fromId = :sourceFileIdParam "
+                  + "AND entity_relationship.relation = %d))",
+              Relationship.MENTIONED_IN.ordinal());
+    }
+    return result;
   }
 
   private String getAssignee() {

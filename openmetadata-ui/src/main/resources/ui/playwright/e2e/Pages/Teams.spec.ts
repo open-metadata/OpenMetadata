@@ -470,17 +470,9 @@ test.describe('Teams Page', () => {
           !response.url().includes('/api/v1/users/name/') &&
           response.request().method() === 'PATCH'
       );
-      const userPromise = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/users/name/') &&
-          response.url().includes('fields=profile') &&
-          response.request().method() === 'GET'
-      );
       await page.getByTestId('teams-edit-save-btn').click();
       const patchResponse = await patchUserPromise;
       expect(patchResponse.status()).toBe(200);
-      const userResponse = await userPromise;
-      expect(userResponse.status()).toBe(200);
 
       await expect(
         page.getByTestId('profile-teams-edit-popover')

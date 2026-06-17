@@ -76,7 +76,7 @@ describe('DomainClassBase', () => {
       const tabs = instance.getDomainDetailPageTabs(mockProps);
       const dqTab = tabs.at(-1);
       const childProps = (dqTab?.children as ReturnType<typeof createElement>)
-        .props;
+        .props as Record<string, unknown>;
 
       expect(childProps.isGovernanceView).toBe(true);
     });
@@ -85,9 +85,12 @@ describe('DomainClassBase', () => {
       const tabs = instance.getDomainDetailPageTabs(mockProps);
       const childProps = (
         tabs.at(-1)?.children as ReturnType<typeof createElement>
-      ).props;
+      ).props as Record<string, unknown>;
 
-      expect(childProps.initialFilters?.domainFqn).toBe('Finance');
+      expect(
+        (childProps.initialFilters as Record<string, unknown> | undefined)
+          ?.domainFqn
+      ).toBe('Finance');
     });
 
     it('DQ tab passes undefined initialFilters when domain.fullyQualifiedName is absent', () => {
@@ -98,7 +101,7 @@ describe('DomainClassBase', () => {
       const tabs = instance.getDomainDetailPageTabs(props);
       const childProps = (
         tabs.at(-1)?.children as ReturnType<typeof createElement>
-      ).props;
+      ).props as Record<string, unknown>;
 
       expect(childProps.initialFilters).toBeUndefined();
     });
@@ -107,7 +110,7 @@ describe('DomainClassBase', () => {
       const tabs = instance.getDomainDetailPageTabs(mockProps);
       const childProps = (
         tabs.at(-1)?.children as ReturnType<typeof createElement>
-      ).props;
+      ).props as Record<string, unknown>;
 
       expect(childProps.className).toBe('data-quality-governance-tab-wrapper');
     });

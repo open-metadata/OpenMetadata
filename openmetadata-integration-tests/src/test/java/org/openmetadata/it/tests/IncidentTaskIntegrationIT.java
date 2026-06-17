@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -103,6 +104,28 @@ public class IncidentTaskIntegrationIT {
         JsonUtils.convertValue(task.getPayload(), TestCaseResolutionPayload.class);
     assertEquals(task.getId(), payload.getTestCaseResolutionStatusId());
     assertTcrsStatusEventually(client, task.getId(), TestCaseResolutionStatusTypes.New);
+  }
+
+  @Test
+  void testPatch_PreservesComments(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    TestCase testCase = createTestCase(client, ns, "incident-comment-patch");
+    createFailedTestResult(client, testCase);
+    Task task = awaitIncidentTaskForTestCase(client, testCase);
+
+    client.tasks().addComment(task.getId().toString(), "keep me across a patch");
+
+    // A generic PATCH that does not touch comments must not drop them (they live in the task JSON).
+    JsonNode patch =
+        JsonUtils.readTree(
+            "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"investigating\"}]");
+    client.tasks().patch(task.getId().toString(), patch);
+
+    Task afterPatch = client.tasks().get(task.getId().toString(), "comments");
+    assertNotNull(afterPatch.getComments(), "comments must not be dropped by a task patch");
+    assertEquals(1, afterPatch.getComments().size(), "the comment must survive the patch");
+    assertEquals("keep me across a patch", afterPatch.getComments().get(0).getMessage());
   }
 
   @Test
