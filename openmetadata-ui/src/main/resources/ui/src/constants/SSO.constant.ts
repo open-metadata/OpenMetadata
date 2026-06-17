@@ -810,23 +810,6 @@ export const getSSOUISchema = (
   return commonSchema;
 };
 
-export enum ValidationStatus {
-  SUCCESS = 'success',
-  FAILED = 'failed',
-}
-
-export interface SecurityValidationResult {
-  component: string;
-  status: ValidationStatus;
-  message: string;
-}
-
-export interface SecurityValidationResponse {
-  status: ValidationStatus;
-  message: string;
-  results: SecurityValidationResult[];
-}
-
 export const VALIDATION_STATUS = {
   SUCCESS: 'success',
   FAILED: 'failed',
