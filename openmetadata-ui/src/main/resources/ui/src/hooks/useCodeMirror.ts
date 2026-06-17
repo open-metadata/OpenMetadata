@@ -137,6 +137,7 @@ function buildDynamicExtensions(opts: UseCodeMirrorOptions): Extension[] {
           path.setAttribute('stroke-linejoin', 'round');
           svg.appendChild(path);
           span.appendChild(svg);
+
           return span;
         },
       })
