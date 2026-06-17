@@ -757,6 +757,7 @@ export enum DataModelType {
     PowerBIDatamart = "PowerBIDatamart",
     QlikDataModel = "QlikDataModel",
     QuickSightDataModel = "QuickSightDataModel",
+    SapBw4HanaQuery = "SapBw4HanaQuery",
     SapS4HanaCdsView = "SapS4HanaCdsView",
     SigmaDataModel = "SigmaDataModel",
     SsrsDataModel = "SsrsDataModel",
