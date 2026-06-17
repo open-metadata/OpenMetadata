@@ -33,6 +33,7 @@ import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
+import { getEntityIconWithBg } from 'src/utils/Assets/AssetsUtils';
 import AlertBar from '../../../components/AlertBar/AlertBar';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
@@ -54,7 +55,6 @@ import {
   getListContextMemories,
 } from '../../../rest/contextMemoryAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const MEMORIES_PER_PAGE = 10;
@@ -592,10 +592,7 @@ const ContextCenterMemoriesPage: FC = () => {
                     {opt.type ? (
                       <Box align="center" className="tw:min-w-0" gap={2}>
                         <div className="tw:shrink-0">
-                          {searchClassBase.getEntityIcon(
-                            opt.type,
-                            'tw:w-6 tw:h-6 tw:text-gray-500'
-                          )}
+                          {getEntityIconWithBg(opt.type)}
                         </div>
                         <Box
                           align="center"
@@ -605,7 +602,7 @@ const ContextCenterMemoriesPage: FC = () => {
                             <Typography
                               ellipsis
                               className="tw:truncate tw:text-gray-800"
-                              size="text-sm"
+                              size="text-xs"
                               weight="medium">
                               {opt.displayName}
                             </Typography>
@@ -617,7 +614,7 @@ const ContextCenterMemoriesPage: FC = () => {
                             </Typography>
                           </div>
                           <Badge
-                            className="tw:shrink-0 tw:uppercase"
+                            className="tw:shrink-0 tw:capitalize"
                             color="gray"
                             size="sm"
                             type="color">

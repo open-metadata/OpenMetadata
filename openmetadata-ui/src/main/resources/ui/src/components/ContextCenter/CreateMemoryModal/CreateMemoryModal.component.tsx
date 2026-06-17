@@ -55,6 +55,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import { Link } from 'react-router-dom';
+import { getEntityIconWithBg } from 'src/utils/Assets/AssetsUtils';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import {
   getCustomMarkdownComponents,
@@ -88,7 +89,6 @@ import {
   getShortRelativeTime,
 } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import searchClassBase from '../../../utils/SearchClassBase';
 import { getErrorText } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showSuccessToast } from '../../../utils/ToastUtils';
@@ -114,10 +114,7 @@ const LinkedAssetCard: FC<{
   return (
     <Card className="tw:flex tw:items-center tw:gap-3 tw:p-3">
       <div className="tw:shrink-0">
-        {searchClassBase.getEntityIcon(
-          asset.reference?.type ?? '',
-          'tw:w-8 tw:h-8 tw:text-gray-500'
-        )}
+        {getEntityIconWithBg(asset.reference?.type)}
       </div>
       <div className="tw:flex tw:flex-1 tw:justify-between tw:items-center tw:min-w-0">
         <div className="tw:min-w-0 tw:flex-1 tw:pr-2">
@@ -131,7 +128,7 @@ const LinkedAssetCard: FC<{
         <div className="tw:flex tw:items-center tw:gap-2 tw:shrink-0">
           {asset.reference?.type && (
             <Badge
-              className="tw:uppercase"
+              className="tw:capitalize"
               color="gray"
               size="sm"
               type="modern">
