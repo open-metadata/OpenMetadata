@@ -59,13 +59,13 @@ import { getEntityFeedLink } from '../../utils/EntityPureUtils';
 import { handleEntityCreationError } from '../../utils/formUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
-import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
-  getAddServiceEntityBreadcrumb,
   getEntityTypeFromServiceCategory,
   getServiceRouteFromServiceType,
   getServiceType,
-} from '../../utils/ServiceUtils';
+} from '../../utils/ServicePureUtils';
+import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
+import { getAddServiceEntityBreadcrumb } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { ServiceConfig } from './AddServicePage.interface';

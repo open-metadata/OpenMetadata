@@ -51,7 +51,7 @@ import { useMarketplaceStore } from '../hooks/useMarketplaceStore';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import { getPartialNameFromFQN } from './FqnUtils';
-import { getServiceRouteFromServiceType } from './ServiceUtils';
+import { getServiceRouteFromServiceType } from './ServicePureUtils';
 import { getEncodedFqn } from './StringUtils';
 
 export const isInPageSearchAllowed = (pathname: string): boolean => {

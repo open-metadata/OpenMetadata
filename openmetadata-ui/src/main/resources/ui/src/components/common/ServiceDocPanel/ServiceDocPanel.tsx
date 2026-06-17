@@ -33,16 +33,13 @@ import { fetchMarkdownFile } from '../../../rest/miscAPI';
 import { getServiceLogo } from '../../../utils/EntityDisplayUtils';
 import { languageMap } from '../../../utils/i18next/i18nextUtil';
 import { SupportedLocales } from '../../../utils/i18next/LocalUtil.interface';
-import {
-  getActiveFieldNameForAppDocs,
-  processDocMarkdown,
-} from '../../../utils/ServiceUtils';
+import { getActiveFieldNameForAppDocs } from '../../../utils/ServicePureUtils';
+import { processDocMarkdown } from '../../../utils/ServiceUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import Loader from '../Loader/Loader';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import './service-doc-panel.less';
-
 const EntitySummaryPanel = withSuspenseFallback(
   lazy(
     () =>

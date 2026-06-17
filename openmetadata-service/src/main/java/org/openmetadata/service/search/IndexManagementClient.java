@@ -181,6 +181,7 @@ public interface IndexManagementClient {
   record IndexStats(
       String name,
       long documents,
+      long indexedOperations,
       int primaryShards,
       int replicaShards,
       long sizeInBytes,
@@ -190,16 +191,41 @@ public interface IndexManagementClient {
   List<IndexStats> getAllIndexStats() throws IOException;
 
   /**
-   * Get the document count for a specific index.
+   * Get the document count for a specific index. Reads {@code _stats docs.count}, which reflects
+   * only documents that have been refreshed into searchable Lucene segments.
    *
    * @param indexName the name of the index
-   * @return the number of documents in the index, or -1 if count cannot be determined
+   * @return the number of searchable documents in the index, or -1 if count cannot be determined
    */
   default long getDocumentCount(String indexName) {
     try {
       for (IndexStats stats : getAllIndexStats()) {
         if (stats.name().equals(indexName)) {
           return stats.documents();
+        }
+      }
+    } catch (Exception e) {
+      return -1;
+    }
+    return 0;
+  }
+
+  /**
+   * Get the count of index operations applied to an index ({@code _stats indexing.index_total}).
+   * Unlike {@link #getDocumentCount}, this counter increments on every write and is independent of
+   * refresh — documents bulk-written with {@code refresh=false} to an index whose
+   * {@code refresh_interval} is disabled (as during a staged reindex build) are reflected here even
+   * though they are not yet in a searchable segment. Used to decide whether a staged index actually
+   * received documents without having to refresh it before promotion.
+   *
+   * @param indexName the name of the index
+   * @return the number of index operations applied, or -1 if it cannot be determined
+   */
+  default long getIndexedDocumentCount(String indexName) {
+    try {
+      for (IndexStats stats : getAllIndexStats()) {
+        if (stats.name().equals(indexName)) {
+          return stats.indexedOperations();
         }
       }
     } catch (Exception e) {

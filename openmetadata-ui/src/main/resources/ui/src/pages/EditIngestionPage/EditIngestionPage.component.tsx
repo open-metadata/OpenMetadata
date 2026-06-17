@@ -56,9 +56,9 @@ import {
   getBreadCrumbsArray,
   getIngestionHeadingName,
   getSettingsPathFromPipelineType,
-} from '../../utils/IngestionUtils';
+} from '../../utils/IngestionConfigUtils';
 import { getServiceDetailsPath } from '../../utils/RouterUtils';
-import { getServiceType } from '../../utils/ServiceUtils';
+import { getServiceType } from '../../utils/ServicePureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 

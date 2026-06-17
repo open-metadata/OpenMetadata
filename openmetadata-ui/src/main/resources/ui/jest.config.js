@@ -58,7 +58,7 @@ module.exports = {
   moduleNameMapper: {
     '\\.svg': '<rootDir>/src/test/unit/mocks/svg.mock.js', // Mock SVG imports
     '\\.(scss)$': 'identity-obj-proxy', // Mock style imports
-    '\\.(jpg|JPG|gif|GIF|png|PNG|less|LESS|css|CSS)$':
+    '\\.(jpg|JPG|gif|GIF|png|PNG|webp|WEBP|less|LESS|css|CSS)$':
       '<rootDir>/src/test/unit/mocks/file.mock.js',
     // fix vendors.map error
     '^<rootDir>/src/.*\\.json$': '<rootDir>/src/test/unit/mocks/json.mock.js',
