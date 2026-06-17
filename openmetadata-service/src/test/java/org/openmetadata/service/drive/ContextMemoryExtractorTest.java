@@ -5,9 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -15,14 +12,12 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.llm.KnowledgePill;
 import org.openmetadata.service.llm.LLMCompletionClient;
 import org.openmetadata.service.llm.LLMCompletionException;
@@ -30,16 +25,18 @@ import org.openmetadata.service.llm.LLMCompletionException;
 @ExtendWith(MockitoExtension.class)
 class ContextMemoryExtractorTest {
 
-  @Mock private ContextMemoryRepository memoryRepository;
   @Mock private LLMCompletionClient llmClient;
 
   private static EntityReference fileRef(UUID id, String name) {
     return new EntityReference().withId(id).withName(name).withType(Entity.CONTEXT_FILE);
   }
 
-  private int extract(ContextMemoryExtractor extractor, String text, EntityReference source) {
-    return extractor.persist(
-        extractor.derive(text, source, ContextMemorySourceType.FILE_EXTRACTION).memories());
+  private ContextMemoryExtractor extractor() {
+    return new ContextMemoryExtractor(llmClient);
+  }
+
+  private List<ContextMemory> derive(String text, EntityReference source) {
+    return extractor().derive(text, source, ContextMemorySourceType.FILE_EXTRACTION).memories();
   }
 
   @Test
@@ -51,12 +48,10 @@ class ContextMemoryExtractorTest {
                 new KnowledgePill("T1", "Q1", "A1", "S1", "Faq"),
                 new KnowledgePill("T2", "Q2", "A2", "S2", "Note")));
 
-    int created = extract(new ContextMemoryExtractor(memoryRepository, llmClient), "text", source);
+    List<ContextMemory> memories = derive("text", source);
 
-    assertEquals(2, created);
-    ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
-    verify(memoryRepository, times(2)).create(isNull(), captor.capture());
-    ContextMemory first = captor.getAllValues().get(0);
+    assertEquals(2, memories.size());
+    ContextMemory first = memories.getFirst();
     assertEquals(ContextMemorySourceType.FILE_EXTRACTION, first.getSourceType());
     assertEquals(source.getId(), first.getSourceEntity().getId());
     assertEquals("Q1", first.getQuestion());
@@ -72,26 +67,21 @@ class ContextMemoryExtractorTest {
                 new KnowledgePill("T", "dup", "A2", "S", "Note"),
                 new KnowledgePill("T", null, "A", "S", "Note")));
 
-    int created = extract(new ContextMemoryExtractor(memoryRepository, llmClient), "text", source);
-
-    assertEquals(1, created);
-    verify(memoryRepository, times(1)).create(isNull(), any());
+    assertEquals(1, derive("text", source).size());
   }
 
   @Test
-  void deriveDoesNotPersist() {
+  void deriveReturnsMemoriesAndChunkStats() {
     EntityReference source = fileRef(UUID.randomUUID(), "report");
     when(llmClient.completeStructured(any(), any(), eq(KnowledgePill.class)))
         .thenReturn(List.of(new KnowledgePill("T", "Q", "A", "S", "Faq")));
 
     ContextMemoryExtractor.DeriveResult result =
-        new ContextMemoryExtractor(memoryRepository, llmClient)
-            .derive("text", source, ContextMemorySourceType.FILE_EXTRACTION);
+        extractor().derive("text", source, ContextMemorySourceType.FILE_EXTRACTION);
 
     assertEquals(1, result.memories().size());
     assertEquals(1, result.chunksTotal());
     assertEquals(1, result.chunksProcessed());
-    verify(memoryRepository, never()).create(any(), any());
   }
 
   @Test
@@ -102,7 +92,7 @@ class ContextMemoryExtractorTest {
         .thenReturn(List.of(new KnowledgePill("T", "Q", "A", "S", "Faq")));
 
     ContextMemory memory =
-        new ContextMemoryExtractor(memoryRepository, llmClient)
+        extractor()
             .derive("text", pageRef, ContextMemorySourceType.PAGE_EXTRACTION)
             .memories()
             .getFirst();
@@ -119,12 +109,8 @@ class ContextMemoryExtractorTest {
     when(llmClient.completeStructured(any(), any(), eq(KnowledgePill.class)))
         .thenReturn(List.of(new KnowledgePill("T", "Q", "A", "S", "Faq")));
 
-    List<ContextMemory> memories =
-        new ContextMemoryExtractor(memoryRepository, llmClient)
-            .derive("text", source, ContextMemorySourceType.FILE_EXTRACTION)
-            .memories();
+    String name = derive("text", source).getFirst().getName();
 
-    String name = memories.getFirst().getName();
     assertTrue(name.length() <= 256, "memory name must fit the entityName limit");
     assertTrue(name.startsWith("f".repeat(ContextMemoryExtractor.MAX_NAME_BASE_LENGTH) + "-"));
   }
@@ -139,8 +125,7 @@ class ContextMemoryExtractorTest {
         .thenReturn(List.of(new KnowledgePill("T", "Q", "A", "S", "Faq")));
 
     ContextMemoryExtractor.DeriveResult result =
-        new ContextMemoryExtractor(memoryRepository, llmClient)
-            .derive(text, source, ContextMemorySourceType.FILE_EXTRACTION);
+        extractor().derive(text, source, ContextMemorySourceType.FILE_EXTRACTION);
 
     assertEquals(1, result.memories().size(), "pills from surviving chunks must be kept");
     assertTrue(result.chunksTotal() >= 2);
@@ -153,7 +138,7 @@ class ContextMemoryExtractorTest {
     when(llmClient.completeStructured(any(), any(), eq(KnowledgePill.class)))
         .thenThrow(new LLMCompletionException("provider exploded"));
 
-    ContextMemoryExtractor extractor = new ContextMemoryExtractor(memoryRepository, llmClient);
+    ContextMemoryExtractor extractor = extractor();
 
     assertThrows(
         LLMCompletionException.class,
@@ -164,9 +149,7 @@ class ContextMemoryExtractorTest {
   void skipsLlmWhenNoText() {
     EntityReference source = fileRef(UUID.randomUUID(), "report");
 
-    int created = extract(new ContextMemoryExtractor(memoryRepository, llmClient), null, source);
-
-    assertEquals(0, created);
+    assertEquals(0, derive(null, source).size());
   }
 
   @Test
@@ -177,7 +160,7 @@ class ContextMemoryExtractorTest {
     when(llmClient.completeStructured(any(), any(), eq(KnowledgePill.class)))
         .thenReturn(List.of(new KnowledgePill("T", "same question", "A", "S", "Faq")));
 
-    int created = extract(new ContextMemoryExtractor(memoryRepository, llmClient), text, source);
+    List<ContextMemory> memories = derive(text, source);
 
     int expectedChunks =
         Math.min(
@@ -187,7 +170,7 @@ class ContextMemoryExtractorTest {
         .completeStructured(any(), any(), eq(KnowledgePill.class));
     verify(llmClient, org.mockito.Mockito.atMost(expectedChunks))
         .completeStructured(any(), any(), eq(KnowledgePill.class));
-    assertEquals(1, created, "identical pills from different chunks must dedupe to one");
+    assertEquals(1, memories.size(), "identical pills from different chunks must dedupe to one");
   }
 
   @Test
@@ -196,8 +179,7 @@ class ContextMemoryExtractorTest {
     EntityReference source = fileRef(UUID.randomUUID(), "report");
     when(llmClient.completeStructured(any(), any(), eq(KnowledgePill.class))).thenReturn(List.of());
 
-    new ContextMemoryExtractor(memoryRepository, llmClient)
-        .derive(text, source, ContextMemorySourceType.FILE_EXTRACTION);
+    extractor().derive(text, source, ContextMemorySourceType.FILE_EXTRACTION);
 
     verify(llmClient, org.mockito.Mockito.times(ContextMemoryExtractor.MAX_CHUNKS))
         .completeStructured(any(), any(), eq(KnowledgePill.class));

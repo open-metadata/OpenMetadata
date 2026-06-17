@@ -30,8 +30,7 @@ public final class PageContextProcessingEngineHolder {
           (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
       KnowledgePageRepository pageRepository =
           (KnowledgePageRepository) Entity.getEntityRepository(Entity.PAGE);
-      ContextMemoryExtractor extractor =
-          new ContextMemoryExtractor(memoryRepository, LLMClientHolder.get());
+      ContextMemoryExtractor extractor = new ContextMemoryExtractor(LLMClientHolder.get());
       ContextMemoryReconciler reconciler = new ContextMemoryReconciler(memoryRepository);
       long quietPeriodMillis =
           Long.getLong(

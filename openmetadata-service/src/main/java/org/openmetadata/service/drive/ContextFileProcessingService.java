@@ -120,9 +120,7 @@ public class ContextFileProcessingService {
   }
 
   private static ContextMemoryExtractor buildDefaultExtractor() {
-    return new ContextMemoryExtractor(
-        (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY),
-        LLMClientHolder.get());
+    return new ContextMemoryExtractor(LLMClientHolder.get());
   }
 
   public void submit(UUID fileId, UUID contentId) {

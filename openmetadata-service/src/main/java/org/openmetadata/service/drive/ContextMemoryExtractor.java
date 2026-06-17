@@ -15,7 +15,6 @@ import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.llm.KnowledgePill;
 import org.openmetadata.service.llm.LLMCompletionClient;
 import org.openmetadata.service.llm.LLMCompletionException;
@@ -24,8 +23,10 @@ import org.openmetadata.service.util.FullyQualifiedName;
 /**
  * Turns a Context Center source's extracted text into reusable {@link ContextMemory} knowledge
  * pills via an {@link LLMCompletionClient}. The source can be any entity (a ContextFile, a Page,
- * ...); created memories are linked back to it via {@code sourceEntity} and tagged with the
- * supplied {@link ContextMemorySourceType}. The standard create path embeds and indexes them.
+ * ...); derived memories are linked back to it via {@code sourceEntity} and tagged with the
+ * supplied {@link ContextMemorySourceType}. This is a side-effect-free derivation; persisting the
+ * pills (and the embedding/indexing that rides the create path) is the {@link
+ * ContextMemoryReconciler}'s job.
  */
 @Slf4j
 public class ContextMemoryExtractor {
@@ -38,12 +39,9 @@ public class ContextMemoryExtractor {
           + "Runbook, UseCase, Preference). Capture durable facts, definitions, policies, and "
           + "how-to guidance. Return ONLY the JSON array, no prose.";
 
-  private final ContextMemoryRepository memoryRepository;
   private final LLMCompletionClient llmClient;
 
-  public ContextMemoryExtractor(
-      ContextMemoryRepository memoryRepository, LLMCompletionClient llmClient) {
-    this.memoryRepository = memoryRepository;
+  public ContextMemoryExtractor(LLMCompletionClient llmClient) {
     this.llmClient = llmClient;
   }
 
@@ -86,14 +84,6 @@ public class ContextMemoryExtractor {
       memories.add(toMemory(pill, sourceRef, sourceType));
     }
     return new DeriveResult(memories, plan.totalChunks(), processed);
-  }
-
-  public int persist(List<ContextMemory> memories) {
-    for (ContextMemory memory : memories) {
-      memoryRepository.create(null, memory);
-    }
-    LOG.info("Persisted {} knowledge pills", memories.size());
-    return memories.size();
   }
 
   /** The chunks submitted to the LLM plus the count the document would need without the cap. */

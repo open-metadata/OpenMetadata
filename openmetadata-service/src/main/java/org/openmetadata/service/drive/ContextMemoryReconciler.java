@@ -62,21 +62,25 @@ public class ContextMemoryReconciler {
 
   private void reconcileExisting(
       ContextMemory pill, Map<String, ContextMemory> derivedByQuestion, Counts counts) {
+    // Always claim the matching question, even for a human-owned (Manual) pill: it stops a
+    // re-derived duplicate from being created alongside it. Only automated pills are then updated
+    // or archived; a pill a human edited (sourceType flipped to Manual) is left exactly as-is.
     ContextMemory match = derivedByQuestion.remove(questionKey(pill));
-    if (!isAutomated(pill)) {
-      // Human-owned pill (manually edited / pinned): never updated, never retired. Removing its
-      // question above keeps a re-derived duplicate from being created alongside it.
-      return;
-    }
-    if (match == null) {
-      if (pill.getStatus() != ContextMemoryStatus.ARCHIVED) {
-        archive(pill);
-        counts.archived++;
+    if (isAutomated(pill)) {
+      if (match == null) {
+        archiveIfActive(pill, counts);
+      } else if (applyDerived(pill, match)) {
+        counts.updated++;
+      } else {
+        counts.kept++;
       }
-    } else if (applyDerived(pill, match)) {
-      counts.updated++;
-    } else {
-      counts.kept++;
+    }
+  }
+
+  private void archiveIfActive(ContextMemory pill, Counts counts) {
+    if (pill.getStatus() != ContextMemoryStatus.ARCHIVED) {
+      archive(pill);
+      counts.archived++;
     }
   }
 

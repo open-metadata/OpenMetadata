@@ -635,6 +635,8 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
       // Update Related Terms
       updateRelatedEntities(original, updated);
 
+      recordExtractionStats(original, updated);
+
       // Updated Quick Link
       if (original.getPageType().equals(PageType.QUICK_LINK)) {
         QuickLink originalLink = JsonUtils.convertValue(original.getPage(), QuickLink.class);
@@ -654,6 +656,25 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
       }
 
       updateParent(original, updated);
+    }
+
+    /**
+     * extractionStats is engine-managed: the extraction throttle stamps it, and it is absent from
+     * CreatePage. Preserve the stored value when an update omits it so a body edit through PUT never
+     * wipes it, and persist a fresh stamp with updateVersion=false (the same treatment lifeCycle
+     * gets) so machine extraction does not churn the article's version history on every run.
+     */
+    private void recordExtractionStats(Page original, Page updated) {
+      if (updated.getExtractionStats() == null) {
+        updated.setExtractionStats(original.getExtractionStats());
+      }
+      recordChange(
+          "extractionStats",
+          original.getExtractionStats(),
+          updated.getExtractionStats(),
+          true,
+          EntityUtil.objectMatch,
+          false);
     }
 
     private void updateParent(Page original, Page updated) {
