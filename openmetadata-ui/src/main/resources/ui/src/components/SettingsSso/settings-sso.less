@@ -12,7 +12,7 @@
  */
 @import (reference) '../../styles/variables.less';
 .scim-token-card {
-  background-color: @white;
+  background-color: var(--tw-color-bg-primary);
   padding: @size-mlg @size-md;
   border-radius: @size-sm;
   border: 1px solid @grey-15;
@@ -129,7 +129,7 @@
     padding: 0;
   }
   .scim-modal-cancel-button {
-    background-color: @white;
+    background-color: var(--tw-color-bg-primary);
     color: @black;
     border: 1px solid @grey-400;
     padding: @size-sm - 2px @size-xl;
@@ -139,14 +139,14 @@
   }
   .scim-modal-delete-button {
     background-color: @red-14;
-    color: @white;
+    color: var(--tw-color-bg-primary);
     padding: @size-sm - 2px @size-xl;
     border-radius: @size-xs;
     width: @size-3xl * 2 + @size-lg + @size-sm;
   }
 }
 .enable-sso-card-container {
-  background-color: @white;
+  background-color: var(--tw-color-bg-primary);
   padding: @size-md;
   border-radius: @border-rad-sm;
   margin: @size-xs 0 @size-lg 0;
@@ -183,7 +183,7 @@
       width: @size-md;
       height: @size-md;
       border-radius: 50%;
-      background-color: @white;
+      background-color: var(--tw-color-bg-primary);
       box-shadow: @box-shadow-small-dark;
       top: @size-xxs / 2;
       left: @size-xxs / 2;
@@ -201,7 +201,7 @@
 
       .ant-switch-handle {
         left: calc(100% - @size-md - @size-xxs / 2);
-        background-color: @white;
+        background-color: var(--tw-color-bg-primary);
       }
     }
 

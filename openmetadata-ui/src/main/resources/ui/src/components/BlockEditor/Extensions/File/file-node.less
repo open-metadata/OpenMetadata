@@ -18,7 +18,7 @@
   position: relative;
   border-radius: @border-rad-base;
   overflow: hidden;
-  background: @white;
+  background: var(--tw-color-bg-primary);
   border: 1px solid @border-color;
   user-select: none;
   transition: all 0.3s ease;
@@ -30,7 +30,7 @@
 
   &.ProseMirror-selectednode {
     outline: none;
-    background: @white;
+    background: var(--tw-color-bg-primary);
     border: 1px solid @primary-color;
     box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
   }
@@ -44,7 +44,7 @@
   .media-content {
     padding: @padding-sm;
     transition: all 0.3s;
-    background: @white;
+    background: var(--tw-color-bg-primary);
     position: relative;
 
     &:hover {
@@ -240,7 +240,7 @@
 
         &::-webkit-media-controls-current-time-display,
         &::-webkit-media-controls-time-remaining-display {
-          color: @white;
+          color: var(--tw-color-bg-primary);
           text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
           padding: 0 @padding-xs;
         }
@@ -271,7 +271,7 @@
         outline: none;
 
         &::-webkit-media-controls-panel {
-          background: @white;
+          background: var(--tw-color-bg-primary);
           border: 1px solid @border-color;
           border-radius: @border-rad-base;
           padding: @padding-xs;

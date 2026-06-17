@@ -356,7 +356,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                       : t('label.no-entity', { entity: t('label.domain') })}
                   </Typography>
                   {extraDomains.length > 0 && (
-                    <span className="tw:inline-flex tw:items-center tw:rounded-full tw:bg-gray-100 tw:px-1.5 tw:py-0.5 tw:text-xs tw:font-medium tw:text-gray-600">
+                    <span className="tw:inline-flex tw:items-center tw:rounded-full tw:bg-gray-100 tw:px-1.5 tw:py-0.5 tw:text-xs tw:font-medium tw:text-tertiary">
                       +{extraDomains.length}
                     </span>
                   )}

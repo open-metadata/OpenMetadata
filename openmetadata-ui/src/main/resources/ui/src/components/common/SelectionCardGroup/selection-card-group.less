@@ -23,7 +23,7 @@
     border-radius: @border-rad-xs;
     cursor: pointer;
     transition: all 0.3s ease;
-    background: @white;
+    background: var(--tw-color-bg-primary);
     position: relative;
 
     .beta-badge {
@@ -89,13 +89,13 @@
 
           &.unchecked {
             border: 1px solid @grey-300;
-            background-color: @white;
+            background-color: var(--tw-color-bg-primary);
           }
 
           &.checked {
             background-color: @primary-color;
             border: none;
-            color: @white;
+            color: var(--tw-color-bg-primary);
 
             svg {
               width: 10px;
