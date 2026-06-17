@@ -168,6 +168,7 @@ import { useRequiredParams } from '../../utils/useRequiredParams';
 import './service-details-page.less';
 import { ServicePageData } from './ServiceDetailsPage.interface';
 import ServiceMainTabContent from './ServiceMainTabContent';
+
 const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();

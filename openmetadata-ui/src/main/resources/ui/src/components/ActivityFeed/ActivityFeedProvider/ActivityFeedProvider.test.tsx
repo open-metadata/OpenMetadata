@@ -151,14 +151,6 @@ jest.mock('../../../utils/FeedUtilsPure', () => ({
   }),
 }));
 
-jest.mock('../../../utils/FeedUtilsPure', () => ({
-  getUpdatedThread: jest.fn().mockResolvedValue({
-    id: '123',
-    posts: [],
-    postsCount: 0,
-  }),
-}));
-
 describe('ActivityFeedProvider', () => {
   beforeEach(() => {
     jest.clearAllMocks();
