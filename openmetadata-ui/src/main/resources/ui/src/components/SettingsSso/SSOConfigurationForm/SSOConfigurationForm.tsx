@@ -1090,26 +1090,30 @@ const SSOConfigurationFormRJSF = ({
   const renderFormActions = () =>
     isEditMode ? (
       <>
-        {!hasExistingConfig && (
-          <InlineAlert
-            alertClassName="m-b-md sso-save-warning"
-            description={t('message.sso-new-config-save-warning')}
-            heading={t('label.warning')}
-            type="warning"
-          />
-        )}
-        {testResult && (
-          <InlineAlert
-            alertClassName="m-b-md sso-test-result"
-            description={getTestResultDescription(testResult)}
-            heading={
-              testResult.status === 'success'
-                ? t('label.success')
-                : t('label.failed')
-            }
-            type={testResult.status === 'success' ? 'success' : 'error'}
-            onClose={() => setTestResult(undefined)}
-          />
+        {(!hasExistingConfig || testResult) && (
+          <div className="tw:mt-4 tw:flex tw:flex-col tw:gap-4">
+            {!hasExistingConfig && (
+              <InlineAlert
+                alertClassName="sso-save-warning"
+                description={t('message.sso-new-config-save-warning')}
+                heading={t('label.warning')}
+                type="warning"
+              />
+            )}
+            {testResult && (
+              <InlineAlert
+                alertClassName="sso-test-result"
+                description={getTestResultDescription(testResult)}
+                heading={
+                  testResult.status === 'success'
+                    ? t('label.success')
+                    : t('label.failed')
+                }
+                type={testResult.status === 'success' ? 'success' : 'error'}
+                onClose={() => setTestResult(undefined)}
+              />
+            )}
+          </div>
         )}
         <div className="form-actions-bottom">
           <Button
