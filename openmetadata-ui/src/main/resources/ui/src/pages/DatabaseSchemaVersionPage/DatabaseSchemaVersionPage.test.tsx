@@ -106,6 +106,9 @@ jest.mock('../../pages/DatabaseSchemaPage/SchemaTablesTab', () =>
 jest.mock(
   '../../components/Customization/GenericProvider/GenericContext',
   () => ({
+    ...jest.requireActual(
+      '../../components/Customization/GenericProvider/GenericContext'
+    ),
     useGenericContext: jest.fn().mockImplementation(() => ({
       data: {
         tableDetails: {
