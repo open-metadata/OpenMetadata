@@ -1512,9 +1512,13 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   public void postUpdate(GlossaryTerm original, GlossaryTerm updated) {
-    super.postUpdate(original, updated);
+    // Repoint in-flight workflows BEFORE the (potentially slower) base post-update work so the
+    // relatedEntity is current as soon as the FQN change is visible — minimizing the window where
+    // an
+    // approval submitted right after a move/rename could still resolve the stale FQN.
     updateWorkflowRelatedEntitiesAfterFqnChange(
         original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+    super.postUpdate(original, updated);
     if (original.getEntityStatus() == EntityStatus.IN_REVIEW) {
       if (updated.getEntityStatus() == EntityStatus.APPROVED) {
         closeApprovalTask(updated, "Approved the glossary term");
