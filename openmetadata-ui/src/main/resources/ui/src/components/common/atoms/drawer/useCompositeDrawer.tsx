@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useMemo } from 'react';
+import { DrawerPopupContainerProvider } from './DrawerPopupContainerProvider';
 import { DrawerConfig, useDrawer } from './useDrawer';
 import { DrawerBodyConfig, useDrawerBody } from './useDrawerBody';
 import { DrawerFooterConfig, useDrawerFooter } from './useDrawerFooter';
@@ -53,11 +54,11 @@ export const useCompositeDrawer = (config: CompositeDrawerConfig = {}) => {
 
   const drawerContent = useMemo(
     () => (
-      <>
+      <DrawerPopupContainerProvider>
         {drawerHeader}
         {drawerBody}
         {drawerFooter}
-      </>
+      </DrawerPopupContainerProvider>
     ),
     [drawerHeader, drawerBody, drawerFooter]
   );

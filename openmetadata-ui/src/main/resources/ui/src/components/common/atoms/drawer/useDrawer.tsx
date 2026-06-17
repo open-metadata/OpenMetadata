@@ -13,6 +13,7 @@
 
 import { SlideoutMenu } from '@openmetadata/ui-core-components';
 import { ReactNode, useCallback, useMemo, useState } from 'react';
+import { DrawerPopupContainerProvider } from './DrawerPopupContainerProvider';
 
 export interface DrawerConfig {
   width?: number | string;
@@ -64,7 +65,9 @@ export const useDrawer = (config: DrawerConfig = {}) => {
         isOpen={open}
         width={config.width}
         onOpenChange={handleOpenChange}>
-        {config.children}
+        <DrawerPopupContainerProvider>
+          {config.children}
+        </DrawerPopupContainerProvider>
       </SlideoutMenu>
     ),
     [

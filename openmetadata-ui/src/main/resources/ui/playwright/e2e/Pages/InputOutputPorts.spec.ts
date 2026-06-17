@@ -20,6 +20,7 @@ import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { performAdminLogin } from '../../utils/admin';
+import { verifyDrawerAssetFilters } from '../../utils/assetSelection';
 import {
   getApiContext,
   redirectToHomePage,
@@ -634,7 +635,9 @@ test.describe('Input Output Ports', () => {
       });
     });
 
-    test('Port drawers show Entity Type quick filter', async ({ page }) => {
+    test('Port drawers allow selecting, scrolling and applying quick filters', async ({
+      page,
+    }) => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Create data product with assets', async () => {
@@ -651,30 +654,26 @@ test.describe('Input Output Ports', () => {
         await navigateToPortsTab(page);
       });
 
-      await test.step('Verify Entity Type filter in input port drawer', async () => {
+      await test.step('Verify quick filters in input port drawer', async () => {
         await page.getByTestId('add-input-port-button').click();
         await page.getByTestId('asset-selection-modal').waitFor({
           state: 'visible',
         });
         await waitForAllLoadersToDisappear(page);
 
-        await expect(
-          page.getByTestId('search-dropdown-Entity Type')
-        ).toBeVisible();
+        await verifyDrawerAssetFilters(page);
 
         await page.getByTestId('cancel-btn').click();
       });
 
-      await test.step('Verify Entity Type filter in output port drawer', async () => {
+      await test.step('Verify quick filters in output port drawer', async () => {
         await page.getByTestId('add-output-port-button').click();
         await page.getByTestId('asset-selection-modal').waitFor({
           state: 'visible',
         });
         await waitForAllLoadersToDisappear(page);
 
-        await expect(
-          page.getByTestId('search-dropdown-Entity Type')
-        ).toBeVisible();
+        await verifyDrawerAssetFilters(page);
 
         await page.getByTestId('cancel-btn').click();
       });

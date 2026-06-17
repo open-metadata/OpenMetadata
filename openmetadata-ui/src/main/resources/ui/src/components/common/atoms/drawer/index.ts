@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+export * from './DrawerPopupContainerProvider';
 export * from './useCompositeDrawer';
 export * from './useDrawer';
 export * from './useDrawerBody';

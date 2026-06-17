@@ -695,6 +695,59 @@ test.describe('Column Bulk Operations - Selection & Edit Drawer', () => {
     });
   });
 
+  test('should keep the tag select popup interactive inside the edit drawer', async ({
+    page,
+  }) => {
+    await test.step('Search, select a column, and open the edit drawer', async () => {
+      await searchColumn(page, sharedColumnName);
+      const checkbox = getColumnRowCheckbox(page, sharedColumnName);
+      await expect(checkbox).toBeVisible();
+      await checkbox.click();
+
+      const editButton = page.getByTestId('edit-button');
+      await expect(editButton).toBeEnabled();
+      await editButton.click();
+
+      await expect(
+        page.getByTestId('column-bulk-operations-form-drawer')
+      ).toBeVisible();
+    });
+
+    await test.step('Open the tag select and verify its popup renders inside the drawer dialog', async () => {
+      const drawer = page.getByTestId('column-bulk-operations-form-drawer');
+
+      await drawer
+        .getByTestId('tags-field')
+        .locator('.ant-select-selector')
+        .click();
+
+      // Regression guard for the react-aria focus-scope bug: the Ant Select
+      // popup must render inside the drawer dialog (not document.body) so its
+      // options stay clickable and scrollable.
+      const dropdownOption = page
+        .locator(
+          '[role="dialog"] .async-select-list-dropdown .ant-select-item-option'
+        )
+        .first();
+      await expect(dropdownOption).toBeVisible();
+
+      await dropdownOption.click();
+
+      await expect(
+        page
+          .locator(
+            '[role="dialog"] .async-select-list-dropdown .ant-select-item-option-selected'
+          )
+          .first()
+      ).toBeVisible();
+    });
+
+    await test.step('Close the drawer', async () => {
+      await page.keyboard.press('Escape');
+      await page.keyboard.press('Escape');
+    });
+  });
+
   test('should show column count for multiple column selection', async ({
     page,
   }) => {

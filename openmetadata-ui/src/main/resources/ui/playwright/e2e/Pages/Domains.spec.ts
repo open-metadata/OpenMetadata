@@ -32,6 +32,7 @@ import { TagClass } from '../../support/tag/TagClass';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
+import { verifyDrawerAssetFilters } from '../../utils/assetSelection';
 import {
   clickOutside,
   descriptionBox,
@@ -240,6 +241,39 @@ test.describe('Domains', () => {
     });
 
     await assetCleanup();
+  });
+
+  test('Domain add assets drawer quick filters are interactive', async ({
+    page,
+  }) => {
+    const { assetCleanup } = await setupAssetsForDomain(page);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const filterDomain = new Domain();
+    await filterDomain.create(apiContext);
+
+    try {
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDomain(page, filterDomain.data);
+      await waitForAllLoadersToDisappear(page);
+
+      const assetRes = page.waitForResponse(
+        '/api/v1/search/query?q=&index=all&*'
+      );
+      await page.getByTestId('domain-details-add-button').click();
+      await page.getByRole('menuitem', { name: 'Assets', exact: true }).click();
+      await assetRes;
+
+      await page
+        .getByTestId('asset-selection-modal')
+        .waitFor({ state: 'visible' });
+      await waitForAllLoadersToDisappear(page);
+
+      await verifyDrawerAssetFilters(page);
+    } finally {
+      await filterDomain.delete(apiContext);
+      await assetCleanup();
+      await afterAction();
+    }
   });
 
   test('Create DataProducts and add remove assets', async ({ page }) => {

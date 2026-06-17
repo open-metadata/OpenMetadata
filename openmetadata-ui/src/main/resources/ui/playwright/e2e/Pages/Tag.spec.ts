@@ -21,8 +21,13 @@ import { TagClass } from '../../support/tag/TagClass';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
+import { applyAndClearFirstAssetFilterOption } from '../../utils/assetSelection';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
-import { addMultiOwner, removeOwner } from '../../utils/entity';
+import {
+  addMultiOwner,
+  removeOwner,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import {
   addAssetsToTag,
@@ -214,6 +219,23 @@ test.describe('Tag Page with Admin Roles', () => {
 
     await test.step('Add Asset ', async () => {
       await addAssetsToTag(adminPage, assets, tag1);
+    });
+
+    await test.step('Verify add asset modal filters are interactive', async () => {
+      const initialFetch = adminPage.waitForResponse(
+        '/api/v1/search/query?q=&index=all&from=0&size=25&deleted=false**'
+      );
+      await adminPage.getByTestId('data-classification-add-button').click();
+      await initialFetch;
+
+      await adminPage
+        .getByTestId('asset-selection-modal')
+        .waitFor({ state: 'visible' });
+      await waitForAllLoadersToDisappear(adminPage);
+
+      await applyAndClearFirstAssetFilterOption(adminPage, 'Entity Type');
+
+      await adminPage.getByTestId('cancel-btn').click();
     });
 
     await test.step('Verify EntityType Filter', async () => {

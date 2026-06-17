@@ -23,6 +23,7 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
+import { verifyDrawerAssetFilters } from '../../utils/assetSelection';
 import { descriptionBox, redirectToHomePage } from '../../utils/common';
 import {
   addAssetsToDataProduct,
@@ -204,6 +205,55 @@ test.describe('Data Products', () => {
       );
       await afterAction();
     });
+  });
+
+  test('Data product add assets drawer quick filters are interactive', async ({
+    page,
+  }) => {
+    const dataProduct = new DataProduct([domain]);
+    const table = new TableClass();
+
+    const { apiContext, afterAction } = await performAdminLogin(
+      page.context().browser()!
+    );
+    await table.create(apiContext);
+    await table.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/domains/0',
+          value: {
+            id: domain.responseData.id,
+            type: 'domain',
+          },
+        },
+      ],
+    });
+    await dataProduct.create(apiContext);
+
+    try {
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await waitForAllLoadersToDisappear(page);
+      await selectDataProduct(page, dataProduct.data);
+
+      const assetRes = page.waitForResponse(
+        '/api/v1/search/query?q=&index=all&*'
+      );
+      await page.getByTestId('data-product-details-add-button').click();
+      await assetRes;
+
+      await page
+        .getByTestId('asset-selection-modal')
+        .waitFor({ state: 'visible' });
+      await waitForAllLoadersToDisappear(page);
+
+      await verifyDrawerAssetFilters(page);
+    } finally {
+      await dataProduct.delete(apiContext);
+      await table.delete(apiContext);
+      await afterAction();
+    }
   });
 
   test('Search Data Products', async ({ page }) => {
