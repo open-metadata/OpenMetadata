@@ -654,40 +654,40 @@ const KnowledgePagesHierarchy = forwardRef<
           }
         }}
         onScroll={handleScroll}>
-        <Box align='center' className="tw:px-1.5 tw:pb-5" justify='between'>
-        <Box align="center" gap={3}>
-          <div className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0">
-            <File06 className="tw:text-gray-600" size={20} />
-          </div>
-          <div>  
-            <Typography size="text-md" weight="semibold">
-              {t('label.article-plural')}
-            </Typography>
-            <Typography
-              className="tw:text-gray-500 tw:flex tw:items-center tw:gap-2"
-              size="text-xs">
-              {paginationState.paging.total ?? 0} {t('label.article-plural')}
-            </Typography>
-          </div>
-        </Box>
-        {isEmpty(expandedKeys) ? (
-                <ButtonUtility
-                  color="tertiary"
-                  icon={<ExpandAllIcon className='tw:size-6' />}
-                  isDisabled={isExpandingAll}
-                  size="sm"
-                  tooltip={t('label.expand-all')}
-                  onClick={handleExpandAll}
-                />
-              ) : (
-                <ButtonUtility
-                  color="tertiary"
-                  icon={<CollapseAllIcon className='tw:size-6' />}
-                  size="sm"
-                  tooltip={t('label.collapse-all')}
-                  onClick={() => setExpandedKeys([])}
-                />
-              )}
+        <Box align="center" className="tw:px-1.5 tw:pb-5" justify="between">
+          <Box align="center" gap={3}>
+            <div className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0">
+              <File06 className="tw:text-gray-600" size={20} />
+            </div>
+            <div>
+              <Typography size="text-md" weight="semibold">
+                {t('label.article-plural')}
+              </Typography>
+              <Typography
+                className="tw:text-gray-500 tw:flex tw:items-center tw:gap-2"
+                size="text-xs">
+                {paginationState.paging.total ?? 0} {t('label.article-plural')}
+              </Typography>
+            </div>
+          </Box>
+          {isEmpty(expandedKeys) ? (
+            <ButtonUtility
+              color="tertiary"
+              icon={<ExpandAllIcon className="tw:size-6" />}
+              isDisabled={isExpandingAll}
+              size="sm"
+              tooltip={t('label.expand-all')}
+              onClick={handleExpandAll}
+            />
+          ) : (
+            <ButtonUtility
+              color="tertiary"
+              icon={<CollapseAllIcon className="tw:size-6" />}
+              size="sm"
+              tooltip={t('label.collapse-all')}
+              onClick={() => setExpandedKeys([])}
+            />
+          )}
         </Box>
         {isLoading && (
           <div className="tw:px-1.5">
