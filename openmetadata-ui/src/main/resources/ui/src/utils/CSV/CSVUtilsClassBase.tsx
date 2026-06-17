@@ -38,8 +38,7 @@ import TagSuggestion from '../../pages/TasksPage/shared/TagSuggestion';
 import Fqn from '../Fqn';
 import { t } from '../i18next/LocalUtil';
 import { removeOuterEscapes } from '../StringUtils';
-import { getCustomPropertyEntityType } from './CSV.utils';
-
+import { getCustomPropertyEntityType } from './CSVPureUtils';
 const ModalWithMarkdownEditor = withSuspenseFallback(
   lazy(() =>
     import(
@@ -79,7 +78,11 @@ class CSVUtilsClassBase {
       user: boolean;
       team: boolean;
     }
-  ): ((props: RenderEditCellProps<any, any>) => ReactNode) | undefined {
+  ):
+    | ((
+        props: RenderEditCellProps<Record<string, unknown>, unknown>
+      ) => ReactNode)
+    | undefined {
     switch (column) {
       case 'owner':
         return ({
@@ -87,7 +90,7 @@ class CSVUtilsClassBase {
           onRowChange,
           onClose,
           column,
-        }: RenderEditCellProps<any, any>) => {
+        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
           const value = row?.[column.key];
           const owners = value?.split(';') ?? [];
           const ownerEntityRef = owners.map((owner: string) => {
@@ -132,7 +135,7 @@ class CSVUtilsClassBase {
           onRowChange,
           onClose,
           column,
-        }: RenderEditCellProps<any, any>) => {
+        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
           const value = row[column.key];
           const handleSave = async (description: string) => {
             onRowChange({ ...row, [column.key]: description }, true);
@@ -158,7 +161,7 @@ class CSVUtilsClassBase {
           onRowChange,
           onClose,
           column,
-        }: RenderEditCellProps<any, any>) => {
+        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
           const containerRef = useRef<HTMLDivElement | null>(null);
           const dropdownContainerRef = useRef<HTMLDivElement | null>(null);
           useMultiContainerFocusTrap({
@@ -212,7 +215,7 @@ class CSVUtilsClassBase {
           onRowChange,
           onClose,
           column,
-        }: RenderEditCellProps<any, any>) => {
+        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
           const containerRef = useRef<HTMLDivElement | null>(null);
           const dropdownContainerRef = useRef<HTMLDivElement | null>(null);
           useMultiContainerFocusTrap({
@@ -263,7 +266,7 @@ class CSVUtilsClassBase {
           onRowChange,
           onClose,
           column,
-        }: RenderEditCellProps<any, any>) => {
+        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
           const value = row[column.key];
           const handleChange = async (tag?: Tag) => {
             onRowChange(
@@ -292,7 +295,7 @@ class CSVUtilsClassBase {
           onRowChange,
           onClose,
           column,
-        }: RenderEditCellProps<any, any>) => {
+        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
           const value = row[column.key];
           const handleChange = async (tag?: Tag) => {
             onRowChange(
@@ -320,7 +323,7 @@ class CSVUtilsClassBase {
           row,
           onRowChange,
           column,
-        }: RenderEditCellProps<any, any>) => {
+        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
           const value = row[column.key];
           const domains = value
             ? (value?.split(';') ?? []).map((domain: string) => {
@@ -385,7 +388,7 @@ class CSVUtilsClassBase {
           onRowChange,
           onClose,
           column,
-        }: RenderEditCellProps<any, any>) => {
+        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
           const value = row[column.key];
           const reviewers = value?.split(';') ?? [];
           const reviewersEntityRef = reviewers.map((reviewer: string) => {
@@ -445,7 +448,7 @@ class CSVUtilsClassBase {
           onRowChange,
           onClose,
           column,
-        }: RenderEditCellProps<any, any>) => {
+        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
           const value = row[column.key];
           const handleSave = async (extension?: string) => {
             onRowChange({ ...row, [column.key]: extension }, true);
@@ -471,7 +474,7 @@ class CSVUtilsClassBase {
           onRowChange,
           onClose,
           column,
-        }: RenderEditCellProps<any, any>) => {
+        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
           const value = row[column.key];
           const handleChange = (typeValue: string) => {
             onRowChange({ ...row, [column.key]: typeValue });
@@ -508,7 +511,7 @@ class CSVUtilsClassBase {
           onRowChange,
           onClose,
           column,
-        }: RenderEditCellProps<any, any>) => {
+        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
           const value = row[column.key];
           const handleChange = (value: string) => {
             onRowChange({ ...row, [column.key]: value });

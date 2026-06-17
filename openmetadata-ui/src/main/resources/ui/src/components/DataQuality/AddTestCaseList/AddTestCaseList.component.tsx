@@ -54,10 +54,10 @@ import {
   getColumnNameFromColumnFilterKey,
   getSelectedOptionsFromKeys,
   parseColumnAggregateBuckets,
-} from '../../../utils/DataQuality/DataQualityUtils';
+} from '../../../utils/DataQuality/DataQualityPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getColumnNameFromEntityLink } from '../../../utils/EntityPureUtils';
-import { getEntityFQN } from '../../../utils/FeedUtils';
+import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { replacePlus } from '../../../utils/StringUtils';

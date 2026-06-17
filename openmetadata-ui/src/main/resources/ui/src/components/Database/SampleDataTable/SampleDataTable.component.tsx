@@ -65,7 +65,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
   permissions,
   entityType = EntityType.TABLE,
 }) => {
-  const { isTourPage } = useTourProvider();
+  const { isTourPage, tourMockDatasetData } = useTourProvider();
   const { currentUser, theme } = useApplicationStore();
   const { t } = useTranslation();
   const [sampleData, setSampleData] = useState<SampleData>();
@@ -244,18 +244,19 @@ const SampleDataTable: FC<SampleDataProps> = ({
       setIsLoading(false);
     }
     if (isTourPage) {
-      import('../../../constants/mockTourData.constants').then(
-        ({ mockDatasetData }) => {
-          setSampleData(
-            getSampleDataWithType({
-              columns: mockDatasetData.tableDetails.columns,
-              sampleData: mockDatasetData.sampleData,
-            } as unknown as Table)
-          );
-        }
-      );
+      const mock = tourMockDatasetData as
+        | { tableDetails: { columns: unknown }; sampleData: unknown }
+        | undefined;
+      if (mock) {
+        setSampleData(
+          getSampleDataWithType({
+            columns: mock.tableDetails.columns,
+            sampleData: mock.sampleData,
+          } as unknown as Table)
+        );
+      }
     }
-  }, [tableId]);
+  }, [tableId, tourMockDatasetData]);
 
   if (isLoading) {
     return <Loader />;
