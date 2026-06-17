@@ -8,6 +8,9 @@ import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -40,6 +43,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.util.EntityUtil;
@@ -52,6 +56,15 @@ public class MigrationUtil {
   private static final String RECOGNIZER_APPROVAL_TASK_SUBTYPE =
       "createRecognizerFeedbackApprovalTask";
   private static final int BATCH_SIZE = 200;
+
+  private static final String NOTIFICATION_ALERT_TYPE = "Notification";
+  private static final String MENTION_FILTER_NAME = "filterByMentionedName";
+  private static final String CONVERSATION_RESOURCE = "conversation";
+  private static final String TASK_RESOURCE = "task";
+  private static final String UPDATE_SUBSCRIPTION_MYSQL =
+      "UPDATE event_subscription_entity SET json = :json WHERE id = :id";
+  private static final String UPDATE_SUBSCRIPTION_POSTGRES =
+      "UPDATE event_subscription_entity SET json = :json::jsonb WHERE id = :id";
 
   private final Handle handle;
   private final CollectionDAO collectionDAO;
@@ -560,6 +573,78 @@ public class MigrationUtil {
       return "thread_entity_archived";
     }
     return null;
+  }
+
+  /**
+   * Incidents moved from conversation threads to Task entities in the task redesign. Add the "task"
+   * resource to existing mention-based Notification alerts so they keep notifying mentioned users on
+   * incident/task activity, alongside conversations.
+   */
+  public void addTaskResourceToMentionAlerts() {
+    LOG.info("Adding '{}' resource to mention-based notification alerts", TASK_RESOURCE);
+    List<Map<String, Object>> rows =
+        handle.createQuery("SELECT id, json FROM event_subscription_entity").mapToMap().list();
+    int updated = 0;
+
+    for (Map<String, Object> row : rows) {
+      String id = row.get("id").toString();
+      try {
+        ObjectNode root = (ObjectNode) JsonUtils.readTree(row.get("json").toString());
+        ArrayNode resources = mentionAlertResourcesToUpdate(root);
+        if (resources == null) {
+          continue;
+        }
+        resources.add(TASK_RESOURCE);
+        String updateSql =
+            Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+                ? UPDATE_SUBSCRIPTION_MYSQL
+                : UPDATE_SUBSCRIPTION_POSTGRES;
+        handle.createUpdate(updateSql).bind("json", root.toString()).bind("id", id).execute();
+        updated++;
+      } catch (Exception e) {
+        LOG.warn("Failed to add task resource to event subscription {}", id, e);
+      }
+    }
+    LOG.info("Added '{}' resource to {} mention-based notification alerts", TASK_RESOURCE, updated);
+  }
+
+  private ArrayNode mentionAlertResourcesToUpdate(ObjectNode root) {
+    JsonNode alertType = root.get("alertType");
+    if (alertType == null || !NOTIFICATION_ALERT_TYPE.equals(alertType.asText())) {
+      return null;
+    }
+    JsonNode filteringRules = root.get("filteringRules");
+    if (filteringRules == null
+        || !(filteringRules.get("resources") instanceof ArrayNode resources)) {
+      return null;
+    }
+    boolean isMentionConversationAlert =
+        jsonArrayContains(resources, CONVERSATION_RESOURCE)
+            && !jsonArrayContains(resources, TASK_RESOURCE)
+            && hasMentionFilter(filteringRules.get("rules"));
+    return isMentionConversationAlert ? resources : null;
+  }
+
+  private boolean hasMentionFilter(JsonNode rules) {
+    if (!(rules instanceof ArrayNode ruleArray)) {
+      return false;
+    }
+    for (JsonNode rule : ruleArray) {
+      JsonNode name = rule.get("name");
+      if (name != null && MENTION_FILTER_NAME.equals(name.asText())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean jsonArrayContains(ArrayNode array, String value) {
+    for (JsonNode node : array) {
+      if (value.equals(node.asText())) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private static class TypeAndCategory {

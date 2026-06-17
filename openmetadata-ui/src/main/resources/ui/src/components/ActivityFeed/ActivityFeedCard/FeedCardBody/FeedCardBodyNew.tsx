@@ -25,7 +25,7 @@ import {
   getEntityType,
   getFrontEndFormat,
   MarkdownToHTMLConverter,
-} from '../../../../utils/FeedUtils';
+} from '../../../../utils/FeedUtilsPure';
 import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import ActivityDescriptionFeed from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/ActivityDescriptionFeed';
 import DescriptionFeedNew from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/DescriptionFeedNew';
@@ -35,7 +35,6 @@ import ActivityTagsFeed from '../../ActivityFeedCardV2/FeedCardBody/TagsFeed/Act
 import TagsFeed from '../../ActivityFeedCardV2/FeedCardBody/TagsFeed/TagsFeed';
 import './feed-card-body-v1.less';
 import { FeedCardBodyV1Props } from './FeedCardBodyV1.interface';
-
 const ActivityFeedEditor = withSuspenseFallback(
   lazy(() => import('../../ActivityFeedEditor/ActivityFeedEditor'))
 );

@@ -85,7 +85,7 @@ import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
   getFeedCounts,
-} from '../../utils/FeedUtils';
+} from '../../utils/FeedUtilsPure';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
@@ -101,15 +101,22 @@ import {
   getTierTags,
   updateColumnInNestedStructure,
 } from '../../utils/TablePureUtils';
-import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
+import {
+  updateCertificationTag,
+  updateTierTag,
+} from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import TableDetailsPageSkeleton from './TableDetailsPageSkeleton.component';
 
 const TableDetailsPageV1: React.FC = () => {
-  const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
-    useTourProvider();
+  const {
+    isTourOpen,
+    activeTabForTourDatasetPage,
+    isTourPage,
+    tourMockDatasetData,
+  } = useTourProvider();
   const { currentUser } = useApplicationStore();
   const { setDqLineageData } = useTestCaseStore();
   const queryClient = useQueryClient();
@@ -117,8 +124,7 @@ const TableDetailsPageV1: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const USERId = currentUser?.id ?? '';
-  const { getEntityPermissionByFqn, permissions: resourcePermissions } =
-    usePermissionProvider();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
@@ -447,10 +453,6 @@ const TableDetailsPageV1: React.FC = () => {
       setDqLineageData(undefined);
     };
   }, [tableFqn]);
-
-  const canCreateTask = Boolean(
-    resourcePermissions?.[ResourceEntity.TASK]?.Create
-  );
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -916,15 +918,10 @@ const TableDetailsPageV1: React.FC = () => {
 
   useEffect(() => {
     if (isTourOpen || isTourPage) {
-      // Seed the cache with the tour mock so the rest of the page reads through the same
-      // useQuery slot. The {@link useQuery} hook is {@code enabled: false} in tour mode, so
-      // this manual write is the only thing that populates the slot. The tour mock data is
-      // ~113 KB so we lazy-load it only when actually in tour mode.
-      import('../../constants/mockTourData.constants').then(
-        ({ mockDatasetData }) => {
-          setTableDetails(mockDatasetData.tableDetails as unknown as Table);
-        }
-      );
+      const mock = tourMockDatasetData as { tableDetails: unknown } | undefined;
+      if (mock?.tableDetails) {
+        setTableDetails(mock.tableDetails as Table);
+      }
     } else if (viewBasicPermission) {
       // Don't manually clear the cache to {@code undefined} here — that would flash a Loader
       // on every navigation between tables even when the destination is already cached.
@@ -933,7 +930,13 @@ const TableDetailsPageV1: React.FC = () => {
       fetchTaskCounts();
       fetchActivityCount();
     }
-  }, [tableFqn, isTourOpen, isTourPage, viewBasicPermission]);
+  }, [
+    tableFqn,
+    isTourOpen,
+    isTourPage,
+    viewBasicPermission,
+    tourMockDatasetData,
+  ]);
 
   // P1.2: getTestCaseFailureCount drives the global red-alert badge in the page chrome,
   // so it must run as soon as tableDetails resolves — deferring would mean the user could
@@ -1042,7 +1045,6 @@ const TableDetailsPageV1: React.FC = () => {
               afterDeleteAction={afterDeleteAction}
               afterDomainUpdateAction={updateTableDetailsState}
               badge={alertBadge}
-              canCreateTask={canCreateTask}
               dataAsset={tableDetails}
               entityType={EntityType.TABLE}
               extraDropdownContent={extraDropdownContent}

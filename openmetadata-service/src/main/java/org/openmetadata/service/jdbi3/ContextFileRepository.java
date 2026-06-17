@@ -64,11 +64,23 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   public void setFields(
       ContextFile file, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     file.setFolder(fields.contains("folder") ? getFolder(file) : file.getFolder());
+    if (fields.contains("memoryCount")) {
+      file.setMemoryCount(
+          findTo(
+                  file.getId(),
+                  CONTEXT_FILE_ENTITY,
+                  Relationship.MENTIONED_IN,
+                  Entity.CONTEXT_MEMORY)
+              .size());
+    }
   }
 
   @Override
   public void clearFields(ContextFile file, EntityUtil.Fields fields) {
     file.setFolder(fields.contains("folder") ? file.getFolder() : null);
+    if (!fields.contains("memoryCount")) {
+      file.setMemoryCount(null);
+    }
   }
 
   @Override
@@ -123,6 +135,23 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
           FOLDER_ENTITY,
           CONTEXT_FILE_ENTITY,
           Relationship.CONTAINS);
+    }
+  }
+
+  @Override
+  protected void postDelete(ContextFile entity, boolean hardDelete) {
+    deleteExtractedMemories(entity, hardDelete);
+  }
+
+  public void deleteExtractedMemories(ContextFile file, boolean hardDelete) {
+    List<EntityReference> pills =
+        findTo(file.getId(), CONTEXT_FILE_ENTITY, Relationship.MENTIONED_IN, Entity.CONTEXT_MEMORY);
+    if (!pills.isEmpty()) {
+      ContextMemoryRepository memoryRepository =
+          (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
+      for (EntityReference pill : pills) {
+        memoryRepository.delete(ADMIN_USER_NAME, pill.getId(), false, hardDelete);
+      }
     }
   }
 
@@ -197,6 +226,9 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
       recordChange("fileType", original.getFileType(), updated.getFileType());
       recordChange(
           "processingStatus", original.getProcessingStatus(), updated.getProcessingStatus());
+      recordChange("processingError", original.getProcessingError(), updated.getProcessingError());
+      recordChange(
+          "extractionStats", original.getExtractionStats(), updated.getExtractionStats(), true);
       recordChange("extractedText", original.getExtractedText(), updated.getExtractedText());
       recordChange("pageCount", original.getPageCount(), updated.getPageCount());
       updateFolder();

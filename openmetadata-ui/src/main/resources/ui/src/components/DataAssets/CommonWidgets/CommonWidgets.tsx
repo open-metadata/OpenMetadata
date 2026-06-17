@@ -50,13 +50,13 @@ import {
 import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
-import { createTagObject } from '../../../utils/TagsUtils';
+import { createTagObject } from '../../../utils/TagsPureUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import CertificationWidget from '../../common/CertificationWidget/CertificationWidget';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import TierWidget from '../../common/TierWidget/TierWidget';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { LeftPanelContainer } from '../../Customization/GenericTab/LeftPanelContainer';
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import { DomainExpertWidget } from '../../Domain/DomainExpertsWidget/DomainExpertWidget';

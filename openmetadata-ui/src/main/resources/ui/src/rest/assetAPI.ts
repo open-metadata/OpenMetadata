@@ -54,7 +54,7 @@ export const deleteFolder = async (
 export const listContextFiles = async (params: ListParams = {}) => {
   const response = await APIClient.get<PagingResponse<ContextFile[]>>(
     '/contextCenter/drive/files',
-    { params: { fields: 'folder', limit: 100, ...params } }
+    { params: { fields: 'folder,memoryCount', limit: 100, ...params } }
   );
 
   return response.data;
