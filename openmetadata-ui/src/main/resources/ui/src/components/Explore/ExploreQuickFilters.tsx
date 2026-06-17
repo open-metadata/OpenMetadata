@@ -21,7 +21,7 @@ import { SearchIndex } from '../../enums/search.enum';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useSearchStore } from '../../hooks/useSearchStore';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
-import { getOptionsFromAggregationBucket } from '../../utils/AdvancedSearchUtils';
+import { getOptionsFromAggregationBucket } from '../../utils/AdvancedSearchPureUtils';
 import { getEntityNameLabel } from '../../utils/EntityNameUtils';
 import {
   getCombinedQueryFilterObject,

@@ -63,6 +63,10 @@ public class SdkClients {
   // would reject the minted token with SigningKeyNotFoundException once the 15-min cache expired.
   private static volatile String OVERRIDDEN_ADMIN_TOKEN;
 
+  public static String baseUrl() {
+    return BASE_URL;
+  }
+
   // Cached clients to avoid creating new HTTP connections for each test
   private static volatile CachedClient ADMIN_CLIENT;
   private static volatile CachedClient TEST_USER_CLIENT;
