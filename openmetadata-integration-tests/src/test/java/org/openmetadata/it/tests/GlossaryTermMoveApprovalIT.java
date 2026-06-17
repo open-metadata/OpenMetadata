@@ -31,7 +31,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.junitpioneer.jupiter.RetryingTest;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
@@ -83,6 +82,10 @@ import org.openmetadata.service.Entity;
  * using the stale pre-move FQN and throws {@code "glossaryTerm instance for <oldFqn> not found"},
  * so the Glossary Approval Workflow instance never reaches {@code FINISHED}.
  *
+ * <p>The fix records the entity's immutable id ({@code relatedEntityId}) at trigger time and has the
+ * workflow nodes resolve the term by id (with an FQN fallback), so a moved/renamed FQN no longer
+ * breaks resolution.
+ *
  * <p>These tests assert the post-fix invariant: after approving the moved term's task, the term is
  * {@code Approved} AND the approval workflow instance completes successfully. Without the fix the
  * workflow instance fails to advance past the failing {@code SetEntityAttribute} node.
@@ -112,10 +115,10 @@ public class GlossaryTermMoveApprovalIT {
    * Documented repro: a leaf term has an open approval task, then its parent is moved under a new
    * term. Approving the leaf's task must still drive the leaf to Approved and complete the workflow.
    */
-  // Async move: the relatedEntity repoint runs in the move's async executor thread, so under heavy
-  // CI load the approval can land in the brief window before the repoint completes. Retry to absorb
-  // that timing race (the workflow then completes cleanly).
-  @RetryingTest(3)
+  // Deterministic regardless of the move's async timing: the workflow resolves the leaf by its
+  // immutable id (relatedEntityId), so approving after the move no longer depends on the FQN being
+  // repointed first.
+  @Test
   void test_approveApprovalTaskAfterMovingParentTerm_drivesMovedTermToApproved(TestNamespace ns)
       throws Exception {
     Glossary glossary = createGlossary(ns);
@@ -146,8 +149,8 @@ public class GlossaryTermMoveApprovalIT {
    * Variant exercising the move-to-glossary-root path: a deeply nested leaf term has an open
    * approval task, then an ancestor is moved to the glossary root.
    */
-  // Async move (see the parent-move test) — retry to absorb the repoint timing race under CI load.
-  @RetryingTest(3)
+  // Deterministic via by-id resolution (see the parent-move test).
+  @Test
   void test_approveApprovalTaskAfterMovingAncestorToGlossaryRoot_drivesMovedTermToApproved(
       TestNamespace ns) throws Exception {
     Glossary glossary = createGlossary(ns);
@@ -392,7 +395,7 @@ public class GlossaryTermMoveApprovalIT {
     // any
     // terminal status (not FINISHED only) surfaces a stale-FQN failure within seconds — EXCEPTION
     // is
-    // terminal, so waiting the full timeout for FINISHED would only slow a @RetryingTest retry.
+    // terminal, so a regression fails fast instead of waiting the full timeout for FINISHED.
     Awaitility.await(
             "glossary approval workflow for " + preMoveTermFqn + " should reach a terminal state")
         .atMost(STATUS_TIMEOUT)
