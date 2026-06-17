@@ -65,10 +65,8 @@ import {
 import { deleteKnowledgePage } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import EntityLink from '../../../utils/EntityLink';
-import {
-  getKnowledgePageName,
-  updateKnowledgeCenterRecentViewed,
-} from '../../../utils/KnowledgePageUtils';
+import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
+import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
@@ -307,7 +305,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
 
   return (
     <div
-      className="tw:flex tw:flex-col tw:gap-3 tw:mb-5"
+      className="tw:flex tw:flex-col tw:mb-5"
       data-testid="article-detail-header">
       {!breadcrumbInsideCard && breadcrumbEl}
 

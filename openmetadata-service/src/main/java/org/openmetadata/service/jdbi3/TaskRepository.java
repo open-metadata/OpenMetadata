@@ -41,7 +41,9 @@ import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
@@ -117,8 +119,8 @@ public class TaskRepository extends EntityRepository<Task> {
         Entity.TASK,
         Task.class,
         Entity.getCollectionDAO().taskDAO(),
-        "assignees,reviewers,watchers,about,createdBy",
-        "assignees,reviewers,watchers,about,createdBy");
+        "assignees,reviewers,watchers,about,createdBy,comments",
+        "assignees,reviewers,watchers,about,createdBy,comments");
     supportsSearch = true;
     quoteFqn = false;
     this.allowedFields.add(FIELD_ASSIGNEES);
@@ -138,8 +140,8 @@ public class TaskRepository extends EntityRepository<Task> {
         Entity.TASK,
         Task.class,
         initializeTaskDao(jdbi),
-        "assignees,reviewers,watchers,about,createdBy",
-        "assignees,reviewers,watchers,about,createdBy");
+        "assignees,reviewers,watchers,about,createdBy,comments",
+        "assignees,reviewers,watchers,about,createdBy,comments");
     supportsSearch = true;
     quoteFqn = false;
     this.allowedFields.add(FIELD_ASSIGNEES);
@@ -586,16 +588,36 @@ public class TaskRepository extends EntityRepository<Task> {
    * Anyone who can view the task can add comments.
    */
   public Task addComment(Task task, org.openmetadata.schema.type.TaskComment comment) {
+    Task original = JsonUtils.deepCopy(task, Task.class);
     List<org.openmetadata.schema.type.TaskComment> comments =
         new java.util.ArrayList<>(listOrEmpty(task.getComments()));
     comments.add(comment);
     task.setComments(comments);
     task.setCommentCount(comments.size());
     task.setUpdatedAt(System.currentTimeMillis());
+    if (comment.getAuthor() != null && comment.getAuthor().getName() != null) {
+      task.setUpdatedBy(comment.getAuthor().getName());
+    }
+    // Record the new comment in the change delta so the event is self-describing: the notification
+    // pipeline resolves mentions from this comment only, and the email template renders it as a
+    // reply rather than treating every task update as a comment.
+    task.setChangeDescription(
+        new ChangeDescription()
+            .withPreviousVersion(task.getVersion())
+            .withFieldsAdded(
+                List.of(
+                    new FieldChange()
+                        .withName(FIELD_COMMENTS)
+                        .withNewValue(comment.getMessage()))));
     storeEntity(task, true);
 
     // Store mentions from the comment message
     storeMentions(task, comment.getMessage());
+
+    // storeEntity is the raw persistence path; fire postUpdate so search/lifecycle
+    // handlers stay consistent. The task/entityUpdated change event that drives
+    // mention notifications is emitted from the resource response header.
+    postUpdate(original, task);
 
     return task;
   }
@@ -1413,6 +1435,7 @@ public class TaskRepository extends EntityRepository<Task> {
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      preserveComments();
       updateAssignees();
       updateTaskReviewers();
       updateWorkflowMetadata();
@@ -1421,6 +1444,12 @@ public class TaskRepository extends EntityRepository<Task> {
       updatePayload();
       updateResolution();
       updateWorkflowFields();
+    }
+
+    // Comments are mutated only via the comment endpoints; a generic PATCH/PUT must preserve them.
+    private void preserveComments() {
+      updated.setComments(original.getComments());
+      updated.setCommentCount(original.getCommentCount());
     }
 
     private void updateAssignees() {
