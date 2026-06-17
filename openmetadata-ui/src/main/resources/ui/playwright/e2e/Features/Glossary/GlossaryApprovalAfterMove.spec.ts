@@ -170,15 +170,26 @@ test.describe(
         });
 
         await test.step('Wait for task accessible at new FQN: count=1, same task ID (no duplicate or replacement)', async () => {
-          const childAfterMove = await adminApiContext
-            .get(
-              `/api/v1/glossaryTerms/${child.responseData.id}?fields=fullyQualifiedName`
-            )
-            .then((r) => r.json());
-          newChildFqn = childAfterMove.fullyQualifiedName;
+          await expect
+            .poll(
+              async () => {
+                const res = await adminApiContext
+                  .get(
+                    `/api/v1/glossaryTerms/${child.responseData.id}?fields=fullyQualifiedName`
+                  )
+                  .then((r) => r.json());
+                newChildFqn = res.fullyQualifiedName;
 
-          // GlossaryTermTab approve button renders only when the task's
-          // about.fullyQualifiedName matches the term's current FQN.
+                return newChildFqn;
+              },
+              {
+                message: 'child FQN to update after async move',
+                timeout: 120_000,
+                intervals: [3_000, 5_000, 10_000],
+              }
+            )
+            .not.toBe(child.responseData.fullyQualifiedName);
+
           await verifyTaskCreated(reviewerPage, newChildFqn, child.data.name);
 
           const { count: countNew, taskId: taskIdNew } =
@@ -266,12 +277,25 @@ test.describe(
         });
 
         await test.step('Wait for task accessible at new FQN: count=1, same task ID (no duplicate or replacement)', async () => {
-          const childAfterMove = await adminApiContext
-            .get(
-              `/api/v1/glossaryTerms/${child.responseData.id}?fields=fullyQualifiedName`
+          await expect
+            .poll(
+              async () => {
+                const res = await adminApiContext
+                  .get(
+                    `/api/v1/glossaryTerms/${child.responseData.id}?fields=fullyQualifiedName`
+                  )
+                  .then((r) => r.json());
+                newChildFqn = res.fullyQualifiedName;
+
+                return newChildFqn;
+              },
+              {
+                message: 'child FQN to update after async move',
+                timeout: 120_000,
+                intervals: [3_000, 5_000, 10_000],
+              }
             )
-            .then((r) => r.json());
-          newChildFqn = childAfterMove.fullyQualifiedName;
+            .not.toBe(child.responseData.fullyQualifiedName);
 
           await verifyTaskCreated(reviewerPage, newChildFqn, child.data.name);
 
