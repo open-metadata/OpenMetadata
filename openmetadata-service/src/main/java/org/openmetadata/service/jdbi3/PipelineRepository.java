@@ -972,9 +972,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     for (CollectionDAO.EntityRelationshipObject record : records) {
       UUID pipelineId = UUID.fromString(record.getToId());
       EntityReference serviceRef =
-          Entity.getEntityReferenceById(
+          Entity.getEntityReferenceByIdOrNull(
               Entity.PIPELINE_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
-      serviceMap.put(pipelineId, serviceRef);
+      if (serviceRef != null) {
+        serviceMap.put(pipelineId, serviceRef);
+      }
     }
 
     return serviceMap;

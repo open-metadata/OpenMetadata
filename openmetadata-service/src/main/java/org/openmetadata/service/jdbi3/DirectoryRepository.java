@@ -27,6 +27,7 @@ import static org.openmetadata.service.Entity.FIELD_PARENT;
 import static org.openmetadata.service.Entity.FILE;
 import static org.openmetadata.service.Entity.SPREADSHEET;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
+import static org.openmetadata.service.Entity.getEntityReferenceByIdOrNull;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -281,8 +282,11 @@ public class DirectoryRepository extends EntityRepository<Directory> {
         UUID fromId = UUID.fromString(record.getFromId());
         EntityReference ref =
             refById.computeIfAbsent(
-                fromId, id -> getEntityReferenceById(fromEntityType, id, Include.NON_DELETED));
-        resultMap.put(directoryId, ref);
+                fromId,
+                id -> getEntityReferenceByIdOrNull(fromEntityType, id, Include.NON_DELETED));
+        if (ref != null) {
+          resultMap.put(directoryId, ref);
+        }
       }
     }
     return resultMap;

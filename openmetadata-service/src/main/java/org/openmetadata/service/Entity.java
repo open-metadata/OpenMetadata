@@ -527,6 +527,30 @@ public final class Entity {
     return repository.getReference(id, include);
   }
 
+  /**
+   * Lenient variant of {@link #getEntityReferenceById(String, UUID, Include)} that returns {@code
+   * null} instead of throwing when the referenced entity was concurrently hard-deleted. A bulk read
+   * path resolves a relationship's target entity in a statement separate from the relationship
+   * lookup; if the target is hard-deleted in between (e.g. a sibling test cascade-deleting a parent
+   * service), the relationship row was seen but the entity row is already gone. Returning {@code
+   * null} there — rather than 500'ing the whole list with "Entity not found: &lt;type&gt;
+   * &lt;id&gt;" — mirrors {@link EntityRepository#getFromEntityRef}'s existing single-entity
+   * tolerance and the batch resolver {@link #getEntityReferencesByIds}, whose underlying
+   * {@code findEntitiesByIds} already omits concurrently-deleted rows.
+   */
+  public static EntityReference getEntityReferenceByIdOrNull(
+      @NonNull String entityType, @NonNull UUID id, Include include) {
+    EntityReference reference;
+    try {
+      reference = getEntityReferenceById(entityType, id, include);
+    } catch (EntityNotFoundException e) {
+      LOG.debug(
+          "Skipping concurrently-deleted reference {} {}: {}", entityType, id, e.getMessage());
+      reference = null;
+    }
+    return reference;
+  }
+
   public static List<EntityReference> getEntityReferencesByIds(
       @NonNull String entityType, @NonNull List<UUID> ids, Include include) {
     // Check if this is a time-series entity

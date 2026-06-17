@@ -8,7 +8,7 @@ import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.FIELD_PARENT;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.STORAGE_SERVICE;
-import static org.openmetadata.service.Entity.getEntityReferenceById;
+import static org.openmetadata.service.Entity.getEntityReferenceByIdOrNull;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsWithPreFetched;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.batchFetchDerivedTags;
@@ -187,9 +187,11 @@ public class ContainerRepository extends EntityRepository<Container> {
       // Only consider container parents, not service parents
       if (CONTAINER.equals(record.getFromEntity())) {
         EntityReference parentRef =
-            getEntityReferenceById(
+            getEntityReferenceByIdOrNull(
                 record.getFromEntity(), UUID.fromString(record.getFromId()), NON_DELETED);
-        parentsMap.put(containerId, parentRef);
+        if (parentRef != null) {
+          parentsMap.put(containerId, parentRef);
+        }
       }
     }
 
@@ -226,8 +228,10 @@ public class ContainerRepository extends EntityRepository<Container> {
     for (CollectionDAO.EntityRelationshipObject record : records) {
       UUID parentId = UUID.fromString(record.getFromId());
       EntityReference childRef =
-          getEntityReferenceById(CONTAINER, UUID.fromString(record.getToId()), NON_DELETED);
-      childrenMap.get(parentId).add(childRef);
+          getEntityReferenceByIdOrNull(CONTAINER, UUID.fromString(record.getToId()), NON_DELETED);
+      if (childRef != null) {
+        childrenMap.get(parentId).add(childRef);
+      }
     }
 
     return childrenMap;
@@ -273,8 +277,10 @@ public class ContainerRepository extends EntityRepository<Container> {
       UUID serviceId = UUID.fromString(record.getFromId());
       EntityReference serviceRef =
           serviceRefById.computeIfAbsent(
-              serviceId, id -> getEntityReferenceById(STORAGE_SERVICE, id, NON_DELETED));
-      serviceMap.put(containerId, serviceRef);
+              serviceId, id -> getEntityReferenceByIdOrNull(STORAGE_SERVICE, id, NON_DELETED));
+      if (serviceRef != null) {
+        serviceMap.put(containerId, serviceRef);
+      }
     }
 
     return serviceMap;

@@ -227,9 +227,11 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
       if (Entity.SEARCH_SERVICE.equals(record.getFromEntity())) {
         UUID searchIndexId = UUID.fromString(record.getToId());
         EntityReference serviceRef =
-            Entity.getEntityReferenceById(
+            Entity.getEntityReferenceByIdOrNull(
                 Entity.SEARCH_SERVICE, UUID.fromString(record.getFromId()), Include.NON_DELETED);
-        serviceMap.put(searchIndexId, serviceRef);
+        if (serviceRef != null) {
+          serviceMap.put(searchIndexId, serviceRef);
+        }
       }
     }
 

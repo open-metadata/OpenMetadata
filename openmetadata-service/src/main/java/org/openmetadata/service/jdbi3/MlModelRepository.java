@@ -195,9 +195,11 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     for (CollectionDAO.EntityRelationshipObject record : records) {
       UUID mlModelId = UUID.fromString(record.getToId());
       EntityReference serviceRef =
-          Entity.getEntityReferenceById(
+          Entity.getEntityReferenceByIdOrNull(
               Entity.MLMODEL_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
-      serviceMap.put(mlModelId, serviceRef);
+      if (serviceRef != null) {
+        serviceMap.put(mlModelId, serviceRef);
+      }
     }
 
     return serviceMap;

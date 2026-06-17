@@ -33,6 +33,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.it.util.UpdateType;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -45,7 +46,10 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
@@ -58,6 +62,10 @@ import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.services.policies.PolicyService;
 import org.openmetadata.sdk.services.teams.RoleService;
 import org.openmetadata.sdk.services.teams.UserService;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.TestUtils;
 
 /**
@@ -1046,6 +1054,76 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
         Exception.class,
         () -> listEntities(paramsBefore),
         "Listing with invalid before cursor should fail");
+  }
+
+  /**
+   * Regression for the flaky {@code Entity not found: <service> <id>} failure on the LIST path (seen
+   * in CI on {@code ContainerResourceIT}/{@code MlModelResourceIT}). A list resolves every row's
+   * parent service in bulk, in a statement separate from the relationship lookup; when a sibling
+   * test cascade-hard-deletes the service in between, the {@code CONTAINS} relationship row is still
+   * seen but the service entity row is already gone. A non-lenient bulk resolver then threw {@code
+   * EntityNotFoundException} and failed the whole list instead of the single affected row.
+   *
+   * <p>Runs for every entity directly contained by a service this test created (skips entities with
+   * no owned service parent). Reproduces the window deterministically: delete only the service
+   * entity row (the {@code CONTAINS} relationship survives) and evict it from the entity cache —
+   * exactly the state a concurrent cascade delete leaves mid-flight — then list scoped by the
+   * now-dangling service FQN. The list must succeed; the bulk resolver must tolerate the deleted
+   * service rather than fail the whole page.
+   */
+  @Test
+  void list_toleratesConcurrentlyHardDeletedService(TestNamespace ns) {
+    T entity = createEntity(createMinimalRequest(ns));
+    EntityReference serviceRef = findOwnedServiceParent(ns, entity);
+    Assumptions.assumeTrue(
+        serviceRef != null,
+        getEntityType() + " is not directly contained by a service it owns; tolerance test N/A");
+
+    String serviceType = serviceRef.getType();
+    EntityDAO<?> serviceDao = Entity.getEntityRepository(serviceType).getDao();
+    int rowsRemoved = serviceDao.delete(serviceDao.getTableName(), serviceRef.getId());
+    assertEquals(1, rowsRemoved, "Setup: should have removed exactly the service entity row");
+    EntityRepository.invalidateCacheForEntity(
+        serviceType, serviceRef.getId(), serviceRef.getFullyQualifiedName());
+
+    org.openmetadata.sdk.models.ListParams params = new org.openmetadata.sdk.models.ListParams();
+    params.setService(serviceRef.getFullyQualifiedName());
+    params.setLimit(1000);
+
+    org.openmetadata.sdk.models.ListResponse<T> response = listEntities(params);
+    assertNotNull(response);
+    assertNotNull(
+        response.getData(),
+        "List must tolerate the concurrently hard-deleted service, not fail the whole page");
+  }
+
+  /**
+   * Find this entity's immediate {@code CONTAINS} parent that is a service AND was created by this
+   * test (tracked as a namespace root) so deleting it can never disturb a shared fixture. Returns
+   * {@code null} when the entity is not directly service-scoped or its parent service is not owned
+   * here.
+   */
+  private EntityReference findOwnedServiceParent(TestNamespace ns, T entity) {
+    EntityReference serviceRef = null;
+    List<CollectionDAO.EntityRelationshipRecord> parents =
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .findFrom(entity.getId(), getEntityType(), Relationship.CONTAINS.ordinal());
+    for (CollectionDAO.EntityRelationshipRecord parent : parents) {
+      boolean ownedByThisTest =
+          ns.trackedRoots().stream().anyMatch(root -> root.id().equals(parent.getId()));
+      if (ownedByThisTest && isServiceEntity(parent.getType(), parent.getId())) {
+        serviceRef = Entity.getEntityReferenceById(parent.getType(), parent.getId(), Include.ALL);
+        break;
+      }
+    }
+    return serviceRef;
+  }
+
+  private boolean isServiceEntity(String entityType, UUID id) {
+    EntityInterface candidate =
+        Entity.getEntity(new EntityReference().withId(id).withType(entityType), "", Include.ALL);
+    return candidate instanceof ServiceEntityInterface;
   }
 
   @Test

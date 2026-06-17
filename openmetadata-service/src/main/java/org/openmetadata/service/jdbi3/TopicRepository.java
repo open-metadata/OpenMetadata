@@ -573,9 +573,11 @@ public class TopicRepository extends EntityRepository<Topic> {
         record -> {
           var topicId = UUID.fromString(record.getToId());
           var serviceRef =
-              Entity.getEntityReferenceById(
+              Entity.getEntityReferenceByIdOrNull(
                   Entity.MESSAGING_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
-          serviceMap.put(topicId, serviceRef);
+          if (serviceRef != null) {
+            serviceMap.put(topicId, serviceRef);
+          }
         });
 
     return serviceMap;

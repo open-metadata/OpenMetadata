@@ -274,9 +274,11 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     for (CollectionDAO.EntityRelationshipObject record : records) {
       UUID pipelineId = UUID.fromString(record.getToId());
       EntityReference serviceRef =
-          Entity.getEntityReferenceById(
+          Entity.getEntityReferenceByIdOrNull(
               record.getFromEntity(), UUID.fromString(record.getFromId()), Include.NON_DELETED);
-      serviceMap.put(pipelineId, serviceRef);
+      if (serviceRef != null) {
+        serviceMap.put(pipelineId, serviceRef);
+      }
     }
 
     return serviceMap;

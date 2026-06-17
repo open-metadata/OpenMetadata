@@ -104,9 +104,11 @@ public class LLMModelRepository extends EntityRepository<LLMModel> {
     for (CollectionDAO.EntityRelationshipObject record : records) {
       UUID llmModelId = UUID.fromString(record.getToId());
       EntityReference serviceRef =
-          Entity.getEntityReferenceById(
+          Entity.getEntityReferenceByIdOrNull(
               Entity.LLM_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
-      serviceMap.put(llmModelId, serviceRef);
+      if (serviceRef != null) {
+        serviceMap.put(llmModelId, serviceRef);
+      }
     }
 
     return serviceMap;
