@@ -108,7 +108,7 @@ jest.mock('../../../utils/StringUtils', () => ({
   stripMarkdown: jest.fn().mockImplementation((text: string) => text),
 }));
 
-jest.mock('../../../utils/FeedUtils', () => ({
+jest.mock('../../../utils/FeedUtilsPure', () => ({
   getFrontEndFormat: jest.fn().mockImplementation((text: string) => text),
 }));
 

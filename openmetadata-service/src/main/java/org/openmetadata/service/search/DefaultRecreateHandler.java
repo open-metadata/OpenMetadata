@@ -104,32 +104,8 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
 
     // Always-promote: partial data is better than no data. When reindex failed but the staged
     // index has documents, promote it. Only delete if truly empty.
-    boolean shouldPromote = reindexSuccess;
-    if (!shouldPromote) {
-      long docCount = searchClient.getDocumentCount(stagedIndex);
-      if (docCount > 0) {
-        LOG.info(
-            "Reindex failed for entity '{}' but staged index '{}' has {} documents. "
-                + "Promoting partial data (partial data > no data).",
-            entityType,
-            stagedIndex,
-            docCount);
-        shouldPromote = true;
-      } else if (docCount == 0) {
-        LOG.info(
-            "Reindex failed for entity '{}' and staged index '{}' has 0 documents. "
-                + "Deleting empty staged index.",
-            entityType,
-            stagedIndex);
-      } else {
-        LOG.warn(
-            "Could not determine doc count for staged index '{}' (entity '{}'). "
-                + "Promoting to avoid data loss.",
-            stagedIndex,
-            entityType);
-        shouldPromote = true;
-      }
-    }
+    boolean shouldPromote =
+        shouldPromoteStagedIndex(searchClient, stagedIndex, entityType, reindexSuccess);
 
     if (shouldPromote) {
       // Restore live serving settings on the staged index before alias swap. The bulk-build
@@ -246,6 +222,54 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
   }
 
   /**
+   * Decides whether a staged index should be promoted after a reindex. A successful reindex always
+   * promotes. A failed reindex promotes only if the staged index actually received documents
+   * ("partial data > no data").
+   *
+   * <p>The emptiness check uses {@code indexing.index_total} (via {@link
+   * SearchClient#getIndexedDocumentCount}) rather than {@code docs.count}. The bulk reindex writes
+   * documents with {@code refresh=false} to a staged index whose {@code refresh_interval} is
+   * disabled for the build, so {@code docs.count} reads 0 until a refresh — and the staged index
+   * must NOT be refreshed before promotion. {@code index_total} increments on every write
+   * regardless of refresh, so it reflects the successfully-built documents without touching the
+   * staged index. Using {@code docs.count} here would read 0 for a fully-built index and delete it,
+   * turning a single bad record into total data loss.
+   *
+   * @return {@code true} to promote (success, received documents, or count indeterminate);
+   *     {@code false} only when the staged index is confirmed to have received zero documents.
+   */
+  private boolean shouldPromoteStagedIndex(
+      SearchClient searchClient, String stagedIndex, String entityType, boolean reindexSuccess) {
+    boolean shouldPromote = reindexSuccess;
+    if (!reindexSuccess) {
+      long indexedDocs = searchClient.getIndexedDocumentCount(stagedIndex);
+      if (indexedDocs > 0) {
+        LOG.info(
+            "Reindex failed for entity '{}' but staged index '{}' received {} documents. "
+                + "Promoting partial data (partial data > no data).",
+            entityType,
+            stagedIndex,
+            indexedDocs);
+        shouldPromote = true;
+      } else if (indexedDocs < 0) {
+        LOG.warn(
+            "Could not determine indexed-doc count for staged index '{}' (entity '{}'). "
+                + "Promoting to avoid data loss.",
+            stagedIndex,
+            entityType);
+        shouldPromote = true;
+      } else {
+        LOG.info(
+            "Reindex failed for entity '{}' and staged index '{}' received 0 documents. "
+                + "Deleting empty staged index.",
+            entityType,
+            stagedIndex);
+      }
+    }
+    return shouldPromote;
+  }
+
+  /**
    * Promotes a single entity's staged index immediately after reindexing completes.
    * Uses aliases from indexMapping.json instead of reading from old index.
    */
@@ -268,29 +292,8 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     }
 
     // Always-promote: check doc count when reindex failed
-    boolean shouldPromote = reindexSuccess;
-    if (!shouldPromote) {
-      long docCount = searchClient.getDocumentCount(stagedIndex);
-      if (docCount > 0) {
-        LOG.info(
-            "Per-entity reindex failed for '{}' but staged index '{}' has {} documents. Promoting.",
-            entityType,
-            stagedIndex,
-            docCount);
-        shouldPromote = true;
-      } else if (docCount == 0) {
-        LOG.info(
-            "Per-entity reindex failed for '{}' and staged index '{}' is empty. Deleting.",
-            entityType,
-            stagedIndex);
-      } else {
-        LOG.warn(
-            "Could not determine doc count for staged index '{}' (entity '{}'). Promoting.",
-            stagedIndex,
-            entityType);
-        shouldPromote = true;
-      }
-    }
+    boolean shouldPromote =
+        shouldPromoteStagedIndex(searchClient, stagedIndex, entityType, reindexSuccess);
 
     if (!shouldPromote) {
       try {
@@ -324,12 +327,6 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
 
     // Always clear staged-index routing on the way out — see the rationale in finalizeReindex.
     try {
-      // Restore live serving settings on the staged index before alias swap. The bulk-build
-      // overrides (refresh=-1, replicas=0, async translog) must NOT be the new live settings,
-      // or newly indexed docs are buffered indefinitely until a manual _refresh.
-      applyLiveServingSettings(searchClient, stagedIndex, entityType);
-      maybeForceMerge(searchClient, stagedIndex, entityType);
-
       Set<String> aliasesToAttach =
           getAliasesFromMapping(indexMapping, searchRepository.getClusterAlias());
 
