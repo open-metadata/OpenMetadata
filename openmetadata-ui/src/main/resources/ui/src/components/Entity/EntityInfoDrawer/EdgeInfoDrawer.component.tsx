@@ -26,10 +26,8 @@ import { EntityType } from '../../../enums/entity.enum';
 import { AddLineage } from '../../../generated/api/lineage/addLineage';
 import { Source } from '../../../generated/type/entityLineage';
 import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
-import {
-  getColumnFunctionValue,
-  getLineageDetailsObject,
-} from '../../../utils/EntityLineageUtils';
+import { getLineageDetailsObject } from '../../../utils/EntityLineageEdgeUtils';
+import { getColumnFunctionValue } from '../../../utils/EntityLineagePureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getNameFromFQN } from '../../../utils/FqnUtils';

@@ -22,7 +22,6 @@ import {
 import { getEntityIcon } from '../../../../../utils/TableUtils';
 import './announcement-card-v1.less';
 import AnnouncementCardV1Content from './AnnouncementCardV1Content.component';
-
 interface AnnouncementCardV1Props {
   announcement: AnnouncementEntity;
   currentBackgroundColor?: string;

@@ -40,9 +40,9 @@ import {
 } from '../../../interface/knowledge-center.interface';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { t } from '../../../utils/i18next/LocalUtil';
+import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
 import {
   addToKnowledgeCenterRecentViewed,
-  getKnowledgePageName,
   updateKnowledgeCenterRecentViewed,
 } from '../../../utils/KnowledgePageUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
