@@ -62,7 +62,7 @@ test.describe(
         await selectSortOrder(page, 'Name');
         await verifyEntitiesAreSorted(page);
 
-        const clearFilters = page.getByTestId('clear-filters');
+        const clearFilters = page.getByTestId('clear-all-chips');
 
         await expect(clearFilters).toBeVisible();
 

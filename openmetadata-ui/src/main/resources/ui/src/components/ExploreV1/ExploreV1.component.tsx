@@ -689,17 +689,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
             <Divider className="tw:my-2" orientation="vertical" />
 
-            {(quickFilters || sqlQuery || !isEmpty(browseFields)) && (
-              <Typography.Text
-                className="text-primary self-center cursor-pointer font-medium"
-                data-testid="clear-filters"
-                onClick={() => clearFilters()}>
-                {t('label.clear-entity', {
-                  entity: t('label.all'),
-                })}
-              </Typography.Text>
-            )}
-
             <Dropdown.Root>
               <Button
                 className="tw:p-0"

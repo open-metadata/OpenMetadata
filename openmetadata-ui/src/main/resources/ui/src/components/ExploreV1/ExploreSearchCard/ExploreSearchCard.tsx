@@ -16,7 +16,7 @@ import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isObject, isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
-import { forwardRef, useCallback, useMemo, useState } from 'react';
+import { forwardRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ScoreIcon } from '../../../assets/svg/score.svg';
@@ -29,7 +29,6 @@ import {
 } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
-import { TagLabel } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
 import { TableColumnSearchSource } from '../../../interface/search.interface';
 import { prefetchDashboard } from '../../../rest/queries/dashboardQuery';
@@ -46,13 +45,13 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import { DomainDisplay } from '../../common/DomainDisplay/DomainDisplay.component';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
-import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import './explore-search-card.less';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
+import { Breadcrumbs, Card } from '@openmetadata/ui-core-components';
 
 const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
   HTMLDivElement,
@@ -172,7 +171,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             <OwnerLabel
               avatarSize={18}
               isCompactView={false}
-              owners={(columnSource?.owners as EntityReference[]) ?? []}
+              owners={columnSource?.owners ?? []}
               showLabel={false}
             />
           ),
@@ -184,10 +183,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       const tierValue = isString(source.tier)
         ? source.tier
         : source.tier && (
-            <TagsV1
-              startWith={TAG_START_WITH.SOURCE_ICON}
-              tag={source.tier as TagLabel}
-            />
+            <TagsV1 startWith={TAG_START_WITH.SOURCE_ICON} tag={source.tier} />
           );
 
       const shouldShowDomainField = !searchClassBase
@@ -259,35 +255,9 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         searchClassBase.getEntityBreadcrumbs(
           source,
           source.entityType as EntityType,
-          true
+          false
         ),
       [source]
-    );
-
-    // Long paths collapse to "first / … / last"; clicking the ellipsis
-    // reveals the full path. Keeps every card a single breadcrumb line.
-    const [isBreadcrumbExpanded, setIsBreadcrumbExpanded] = useState(false);
-    const displayBreadcrumbs = useMemo(() => {
-      if (isBreadcrumbExpanded || breadcrumbs.length <= 3) {
-        return breadcrumbs;
-      }
-
-      return [
-        breadcrumbs[0],
-        { name: '…', url: '' },
-        breadcrumbs[breadcrumbs.length - 1],
-      ];
-    }, [breadcrumbs, isBreadcrumbExpanded]);
-
-    const handleBreadcrumbEllipsisClick = useCallback(
-      (event: React.MouseEvent<HTMLDivElement>) => {
-        if ((event.target as HTMLElement).textContent === '…') {
-          event.preventDefault();
-          event.stopPropagation();
-          setIsBreadcrumbExpanded(true);
-        }
-      },
-      []
     );
 
     const entityIcon = useMemo(() => {
@@ -356,16 +326,16 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             <Col className="d-flex justify-between items-center" flex="auto">
               <div className="d-flex gap-2 items-center">
                 {breadcrumbs.length > 0 && serviceIcon}
-                <div
-                  className="entity-breadcrumb"
-                  data-testid="category-name"
-                  onClick={handleBreadcrumbEllipsisClick}>
-                  <TitleBreadcrumb
-                    className={classNameForBreadcrumb}
-                    titleLinks={displayBreadcrumbs}
-                    widthDeductions={780}
-                  />
-                </div>
+
+                <Breadcrumbs
+                  className={classNameForBreadcrumb}
+                  items={breadcrumbs.map((b) => ({
+                    id: b.name,
+                    label: b.name,
+                    href: typeof b.url === 'string' ? b.url : b.url.pathname,
+                  }))}
+                  maxItems={3}
+                />
               </div>
               {score && (
                 <div className="flex items-center gap-1 score-container">
@@ -453,7 +423,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     ]);
 
     return (
-      <div
+      <Card
         className={classNames('explore-search-card', className)}
         data-testid={'table-data-card_' + (source.fullyQualifiedName ?? '')}
         id={id}
@@ -486,7 +456,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         {actionPopoverContent && (
           <Space className="explore-card-actions">{actionPopoverContent}</Space>
         )}
-      </div>
+      </Card>
     );
   }
 );

@@ -24,6 +24,7 @@ import {
   ExploreQueryFilterChipsProps,
   QueryFilterChip,
 } from './ExploreQueryFilterChips.interface';
+import { Button } from '@openmetadata/ui-core-components';
 
 const ENTITY_TYPE_KEYS: ReadonlySet<string> = new Set([
   EntityFields.ENTITY_TYPE,
@@ -155,14 +156,16 @@ const ExploreQueryFilterChips = ({
       ))}
 
       {hasActiveQuery && onClearAll && (
-        <button
-          className="explore-query-filter-chips__clear"
+        <Button
+          className="tw:ml-auto"
+          color="secondary"
           data-testid="clear-all-chips"
+          iconLeading={XCircle}
+          size="xs"
           type="button"
           onClick={onClearAll}>
-          <XCircle height={13} width={13} />
           {t('label.clear')}
-        </button>
+        </Button>
       )}
     </div>
   );

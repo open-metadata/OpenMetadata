@@ -117,7 +117,7 @@ export const selectNullOption = async (
   expect(queryParamValue).toEqual(queryFilter);
 
   if (clearFilter) {
-    await page.click(`[data-testid="clear-filters"]`);
+    await page.click(`[data-testid="clear-all-chips"]`);
   }
 };
 

@@ -17,7 +17,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 6px 0;
+  padding: 6px 0 6px 8px;
 
   &__query-label {
     display: inline-flex;
@@ -32,18 +32,18 @@
 
   &__empty {
     color: @text-grey-muted;
-    font-size: 13px;
+    font-size: 12px;
   }
 
   &__chip {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 5px 10px;
+    padding: 4px 8px;
     border: 1px solid @border-color;
     border-radius: 8px;
     background-color: @white;
-    font-size: 13px;
+    font-size: 12px;
     line-height: 20px;
 
     // Browse-location chips read as "where you are" — tinted with the brand
@@ -84,26 +84,6 @@
 
     &:hover {
       color: @text-color;
-    }
-  }
-
-  &__clear {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin-left: auto;
-    padding: 5px 12px;
-    border: 1px solid @border-color;
-    border-radius: 8px;
-    background: @white;
-    font-size: 13px;
-    font-weight: 500;
-    color: @text-color;
-    cursor: pointer;
-
-    &:hover {
-      border-color: @primary-1;
-      color: @primary-color;
     }
   }
 }
