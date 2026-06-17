@@ -22,11 +22,14 @@ import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNameAlreadyExists;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -34,6 +37,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -69,6 +73,7 @@ public class DomainRepository extends EntityRepository<Domain> {
   private static final String UPDATE_FIELDS = "parent,children,experts";
 
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
+  private final ThreadLocal<Set<UUID>> domainDeleteSubtree = new ThreadLocal<>();
 
   public DomainRepository() {
     super(
@@ -447,6 +452,151 @@ public class DomainRepository extends EntityRepository<Domain> {
         getFromEntityRef(ref.getId(), ref.getType(), relationship, DOMAIN, false);
     deleteTo(ref.getId(), ref.getType(), relationship, fromEntity);
     LineageUtil.removeDomainLineage(ref.getId(), ref.getType(), oldDomain);
+  }
+
+  @Override
+  protected void deleteChildren(UUID id, boolean recursive, boolean hardDelete, String updatedBy) {
+    boolean rootDomainDelete = domainDeleteSubtree.get() == null;
+    if (rootDomainDelete) {
+      domainDeleteSubtree.set(collectDomainSubtreeIds(List.of(id)));
+    }
+    try {
+      super.deleteChildren(id, recursive, hardDelete, updatedBy);
+    } finally {
+      if (rootDomainDelete) {
+        domainDeleteSubtree.remove();
+      }
+    }
+  }
+
+  @Override
+  protected List<CollectionDAO.EntityRelationshipRecord> filterChildrenForDeleteCascade(
+      UUID parentId, List<CollectionDAO.EntityRelationshipRecord> children) {
+    List<String> dataProductIds =
+        children.stream()
+            .filter(child -> DATA_PRODUCT.equals(child.getType()))
+            .map(child -> child.getId().toString())
+            .distinct()
+            .toList();
+    if (dataProductIds.isEmpty()) {
+      return children;
+    }
+
+    Set<UUID> retainedDataProductIds =
+        retainedSharedDataProductIds(dataProductIds, deletingDomainIds(List.of(parentId)));
+    if (retainedDataProductIds.isEmpty()) {
+      return children;
+    }
+
+    return children.stream()
+        .filter(
+            child ->
+                !DATA_PRODUCT.equals(child.getType())
+                    || !retainedDataProductIds.contains(child.getId()))
+        .toList();
+  }
+
+  @Override
+  protected List<CollectionDAO.EntityRelationshipObject> filterChildrenForDeleteCascade(
+      List<Domain> parents, List<CollectionDAO.EntityRelationshipObject> children) {
+    List<String> dataProductIds =
+        children.stream()
+            .filter(this::isDomainDataProductContainment)
+            .map(CollectionDAO.EntityRelationshipObject::getToId)
+            .distinct()
+            .toList();
+    if (dataProductIds.isEmpty()) {
+      return children;
+    }
+
+    Set<UUID> retainedDataProductIds =
+        retainedSharedDataProductIds(
+            dataProductIds, deletingDomainIds(parents.stream().map(Domain::getId).toList()));
+    if (retainedDataProductIds.isEmpty()) {
+      return children;
+    }
+
+    return children.stream()
+        .filter(
+            child ->
+                !isDomainDataProductContainment(child)
+                    || !retainedDataProductIds.contains(UUID.fromString(child.getToId())))
+        .toList();
+  }
+
+  private boolean isDomainDataProductContainment(CollectionDAO.EntityRelationshipObject child) {
+    return Relationship.CONTAINS.ordinal() == child.getRelation()
+        && DOMAIN.equals(child.getFromEntity())
+        && DATA_PRODUCT.equals(child.getToEntity());
+  }
+
+  private Set<UUID> deletingDomainIds(List<UUID> parentIds) {
+    Set<UUID> deletingDomainIds = domainDeleteSubtree.get();
+    return deletingDomainIds != null ? deletingDomainIds : collectDomainSubtreeIds(parentIds);
+  }
+
+  private Set<UUID> collectDomainSubtreeIds(List<UUID> rootIds) {
+    Set<UUID> domainIds = new HashSet<>();
+    ArrayDeque<UUID> queue = new ArrayDeque<>(rootIds);
+    while (!queue.isEmpty()) {
+      UUID domainId = queue.removeFirst();
+      if (!domainIds.add(domainId)) {
+        continue;
+      }
+      daoCollection
+          .relationshipDAO()
+          .findTo(domainId, DOMAIN, Relationship.CONTAINS.ordinal(), DOMAIN)
+          .forEach(child -> queue.add(child.getId()));
+    }
+    return domainIds;
+  }
+
+  private Set<UUID> retainedSharedDataProductIds(
+      List<String> dataProductIds, Set<UUID> deletingDomainIds) {
+    Map<UUID, List<UUID>> deletingParentsByDataProduct = new HashMap<>();
+    Set<UUID> retainedDataProductIds = new HashSet<>();
+
+    daoCollection
+        .relationshipDAO()
+        .findFromBatch(dataProductIds, Relationship.CONTAINS.ordinal(), DOMAIN, ALL)
+        .forEach(
+            relationship -> {
+              UUID dataProductId = UUID.fromString(relationship.getToId());
+              UUID domainId = UUID.fromString(relationship.getFromId());
+              if (deletingDomainIds.contains(domainId)) {
+                deletingParentsByDataProduct
+                    .computeIfAbsent(dataProductId, id -> new ArrayList<>())
+                    .add(domainId);
+              } else {
+                retainedDataProductIds.add(dataProductId);
+              }
+            });
+
+    detachRetainedDataProductsFromDeletingDomains(
+        retainedDataProductIds, deletingParentsByDataProduct);
+    return retainedDataProductIds;
+  }
+
+  private void detachRetainedDataProductsFromDeletingDomains(
+      Set<UUID> retainedDataProductIds, Map<UUID, List<UUID>> deletingParentsByDataProduct) {
+    if (retainedDataProductIds.isEmpty()) {
+      return;
+    }
+
+    DataProductRepository dataProductRepository =
+        (DataProductRepository) Entity.getEntityRepository(DATA_PRODUCT);
+    for (UUID dataProductId : retainedDataProductIds) {
+      for (UUID domainId : listOrEmpty(deletingParentsByDataProduct.get(dataProductId))) {
+        deleteRelationship(domainId, DOMAIN, dataProductId, DATA_PRODUCT, Relationship.CONTAINS);
+        deleteRelationship(domainId, DOMAIN, dataProductId, DATA_PRODUCT, Relationship.HAS);
+      }
+      DataProduct dataProduct = dataProductRepository.find(dataProductId, ALL, false);
+      dataProduct.setDomains(dataProductRepository.getDomains(dataProduct, ALL));
+      dataProductRepository.storeEntity(dataProduct, true);
+      if (searchRepository != null) {
+        searchRepository.updateEntityIndex(dataProduct);
+      }
+    }
   }
 
   private void cleanupDataProducts(

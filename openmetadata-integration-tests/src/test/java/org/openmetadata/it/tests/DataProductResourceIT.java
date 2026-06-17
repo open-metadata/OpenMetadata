@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.it.bootstrap.SharedEntities.*;
+import static org.openmetadata.service.Entity.DATA_PRODUCT;
+import static org.openmetadata.service.Entity.DOMAIN;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -52,6 +54,7 @@ import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
@@ -62,6 +65,7 @@ import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for DataProduct entity operations.
@@ -1187,6 +1191,77 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     assertTrue(
         listed.getData().stream().anyMatch(dp -> dp.getId().equals(dataProduct.getId())),
         "Moved data product must remain visible under its target domain after original domain deletion");
+  }
+
+  @Test
+  void test_deleteOneDomainForMultiDomainDataProduct_preservesDataProductUntilLastDomain(
+      TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Domain domain1 = createTestDomain(ns, "multi_domain_delete_1");
+    Domain domain2 = createTestDomain(ns, "multi_domain_delete_2");
+
+    DataProduct dataProduct =
+        createEntity(
+            new CreateDataProduct()
+                .withName(ns.prefix("dp_multi_domain_delete"))
+                .withDescription("Data product shared by multiple domains")
+                .withDomains(List.of(domain1.getFullyQualifiedName())));
+    attachDataProductToDomain(dataProduct, domain2);
+
+    DataProduct sharedDataProduct =
+        client.dataProducts().get(dataProduct.getId().toString(), "domains");
+    assertEquals(2, sharedDataProduct.getDomains().size());
+    assertTrue(
+        sharedDataProduct.getDomains().stream()
+            .anyMatch(domain -> domain.getId().equals(domain1.getId())));
+    assertTrue(
+        sharedDataProduct.getDomains().stream()
+            .anyMatch(domain -> domain.getId().equals(domain2.getId())));
+
+    client
+        .domains()
+        .delete(domain1.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    DataProduct fetched = client.dataProducts().get(dataProduct.getId().toString(), "domains");
+    assertFalse(Boolean.TRUE.equals(fetched.getDeleted()));
+    assertEquals(1, fetched.getDomains().size());
+    assertEquals(domain2.getId(), fetched.getDomains().getFirst().getId());
+
+    ListResponse<DataProduct> listed =
+        client
+            .dataProducts()
+            .list(
+                new ListParams()
+                    .setFields("domains")
+                    .withDomain(domain2.getFullyQualifiedName())
+                    .withLimit(100));
+    assertTrue(
+        listed.getData().stream().anyMatch(dp -> dp.getId().equals(dataProduct.getId())),
+        "Data product must remain visible under the surviving domain");
+
+    client
+        .domains()
+        .delete(domain2.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    assertThrows(
+        Exception.class,
+        () -> client.dataProducts().get(dataProduct.getId().toString(), "domains"));
+  }
+
+  private void attachDataProductToDomain(DataProduct dataProduct, Domain domain) {
+    Entity.getEntityRepository(DATA_PRODUCT)
+        .addRelationship(
+            domain.getId(), dataProduct.getId(), DOMAIN, DATA_PRODUCT, Relationship.HAS);
+    Entity.getEntityRepository(DATA_PRODUCT)
+        .addRelationship(
+            domain.getId(), dataProduct.getId(), DOMAIN, DATA_PRODUCT, Relationship.CONTAINS);
+    List<EntityReference> domains =
+        dataProduct.getDomains() == null
+            ? new ArrayList<>()
+            : new ArrayList<>(dataProduct.getDomains());
+    domains.add(domain.getEntityReference());
+    dataProduct.setDomains(domains);
+    Entity.getCollectionDAO().dataProductDAO().update(dataProduct);
   }
 
   @Test

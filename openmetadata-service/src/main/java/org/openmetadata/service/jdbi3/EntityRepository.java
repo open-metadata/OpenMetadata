@@ -4666,6 +4666,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (!recursive) {
       throw new IllegalArgumentException(CatalogExceptionMessage.entityIsNotEmpty(entityType));
     }
+    childrenRecords = filterChildrenForDeleteCascade(id, childrenRecords);
+    if (childrenRecords.isEmpty()) {
+      LOG.debug("No children to delete for {} {} after cascade filtering", entityType, id);
+      return;
+    }
     // Delete all the contained entities
     deleteChildren(childrenRecords, hardDelete, updatedBy);
   }
@@ -6394,6 +6399,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       relationships =
           daoCollection.relationshipDAO().findToBatchAllTypes(parentIds, SUBTREE_RELATIONS, ALL);
     }
+    relationships = filterChildrenForDeleteCascade(parents, relationships);
     if (relationships.isEmpty()) {
       return;
     }
@@ -6414,6 +6420,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
         dispatcher.accept(repo, childIds);
       }
     }
+  }
+
+  protected List<EntityRelationshipRecord> filterChildrenForDeleteCascade(
+      UUID parentId, List<EntityRelationshipRecord> children) {
+    return children;
+  }
+
+  protected List<CollectionDAO.EntityRelationshipObject> filterChildrenForDeleteCascade(
+      List<T> parents, List<CollectionDAO.EntityRelationshipObject> children) {
+    return children;
   }
 
   /**

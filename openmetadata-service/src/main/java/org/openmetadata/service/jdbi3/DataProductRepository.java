@@ -866,6 +866,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
           origDomains.stream().map(EntityReference::getFullyQualifiedName).toList(),
           updatedDomains.stream().map(EntityReference::getFullyQualifiedName).toList());
 
+      updateDataProductDomainContainment(origDomains, updatedDomains);
+
       List<CollectionDAO.EntityRelationshipRecord> assetRecords =
           daoCollection
               .relationshipDAO()
@@ -899,6 +901,33 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
               allRecords.stream().map(CollectionDAO.EntityRelationshipRecord::getId).toList();
           searchRepository.updateAssetDomainsByIds(assetIds, oldDomainFqns, updatedDomains);
         }
+      }
+    }
+
+    private void updateDataProductDomainContainment(
+        List<EntityReference> oldDomains, List<EntityReference> newDomains) {
+      List<EntityReference> addedDomains =
+          diffLists(
+              newDomains,
+              oldDomains,
+              EntityReference::getId,
+              EntityReference::getId,
+              Function.identity());
+      List<EntityReference> removedDomains =
+          diffLists(
+              oldDomains,
+              newDomains,
+              EntityReference::getId,
+              EntityReference::getId,
+              Function.identity());
+
+      for (EntityReference domain : removedDomains) {
+        deleteRelationship(
+            domain.getId(), DOMAIN, updated.getId(), DATA_PRODUCT, Relationship.CONTAINS);
+      }
+      for (EntityReference domain : addedDomains) {
+        addRelationship(
+            domain.getId(), updated.getId(), DOMAIN, DATA_PRODUCT, Relationship.CONTAINS);
       }
     }
 
