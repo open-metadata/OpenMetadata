@@ -318,13 +318,9 @@
         </exclusion>
       </exclusions>
     </dependency>
-    <!-- Pin to match micrometer-registry-prometheus 1.15.x's prometheus-metrics 1.3.10;
-         the inherited Dropwizard BOM otherwise keeps this wrapper (and its -core/-model
-         children) at 1.3.6 while the exposition layer resolves to 1.3.10. -->
     <dependency>
       <groupId>io.prometheus</groupId>
       <artifactId>prometheus-metrics-instrumentation-dropwizard</artifactId>
-      <version>1.3.10</version>
     </dependency>
     <dependency>
       <groupId>io.dropwizard</groupId>
