@@ -399,6 +399,26 @@ jest.mock('../../components/DataAssets/OwnerLabelV2/OwnerLabelV2', () => ({
   OwnerLabelV2: jest.fn().mockImplementation(() => <div>OwnerLabelV2</div>),
 }));
 
+jest.mock('../../components/DataAssets/DomainLabelV2/DomainLabelV2', () => ({
+  DomainLabelV2: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="domain-label-v2" />),
+}));
+
+jest.mock('../../utils/LazyTagComponents', () => ({
+  LazyCommonWidgets: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="common-widgets" />),
+  LazyDomainLabelV2: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="domain-label-v2" />),
+  LazyOwnerLabelV2: jest
+    .fn()
+    .mockImplementation(({ dataTestId = 'owner-label-v2' }) => (
+      <div data-testid={dataTestId} />
+    )),
+}));
+
 jest.mock(
   '../../components/Customization/GenericProvider/GenericContext',
   () => ({

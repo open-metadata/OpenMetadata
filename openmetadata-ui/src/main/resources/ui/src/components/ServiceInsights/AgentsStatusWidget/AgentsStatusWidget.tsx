@@ -18,9 +18,9 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowSvg } from '../../../assets/svg/ic-arrow-down.svg';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { getAgentStatusSummary } from '../../../utils/AgentsStatusWidgetPureUtils';
 import {
   getAgentRunningStatusMessage,
-  getAgentStatusSummary,
   getIconFromStatus,
 } from '../../../utils/AgentsStatusWidgetUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';

@@ -22,6 +22,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as CuratedAssetsEmptyIcon } from '../../../../assets/svg/curated-assets-no-data-placeholder.svg';
 import { ReactComponent as CuratedAssetsNoDataIcon } from '../../../../assets/svg/curated-assets-not-found-placeholder.svg';
 import { ReactComponent as StarOutlinedIcon } from '../../../../assets/svg/star-outlined.svg';
+import withSuspenseFallback from '../../../../components/AppRouter/withSuspenseFallback';
 import { CURATED_ASSETS_LIST } from '../../../../constants/AdvancedSearch.constants';
 import {
   PAGE_SIZE_BASE,
@@ -45,21 +46,23 @@ import {
   WidgetConfig,
 } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
-import { getTextFromHtmlString } from '../../../../utils/BlockEditorUtils';
+import { getTextFromHtmlString } from '../../../../utils/BlockEditorPureUtils';
 import {
   getExploreURLForAdvancedFilter,
   getModifiedQueryFilterWithSelectedAssets,
   getTotalResourceCount,
-} from '../../../../utils/CuratedAssetsUtils';
+} from '../../../../utils/CuratedAssetsPureUtils';
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import CertificationTag from '../../../common/CertificationTag/CertificationTag';
-import { useAdvanceSearch } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
+import {
+  AdvanceSearchProvider,
+  useAdvanceSearch,
+} from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
@@ -492,20 +495,22 @@ const CuratedAssetsWidget = ({
   );
 
   return (
-    <>
-      <WidgetWrapper
-        dataTestId="KnowledgePanel.CuratedAssets"
-        header={widgetHeader}
-        loading={isLoading}>
-        {widgetContent}
-      </WidgetWrapper>
-      <CuratedAssetsModal
-        curatedAssetsConfig={curatedAssetsConfig}
-        isOpen={createCuratedAssetsModalOpen}
-        onCancel={handleModalClose}
-        onSave={handleSave}
-      />
-    </>
+    <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
+      <>
+        <WidgetWrapper
+          dataTestId="KnowledgePanel.CuratedAssets"
+          header={widgetHeader}
+          loading={isLoading}>
+          {widgetContent}
+        </WidgetWrapper>
+        <CuratedAssetsModal
+          curatedAssetsConfig={curatedAssetsConfig}
+          isOpen={createCuratedAssetsModalOpen}
+          onCancel={handleModalClose}
+          onSave={handleSave}
+        />
+      </>
+    </AdvanceSearchProvider>
   );
 };
 

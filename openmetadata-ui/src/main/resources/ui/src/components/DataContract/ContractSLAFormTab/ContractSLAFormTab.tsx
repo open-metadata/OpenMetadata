@@ -42,7 +42,7 @@ import {
 import { Table } from '../../../generated/entity/data/table';
 import { generateSelectOptionsFromString } from '../../../utils/DataContract/DataContractUtils';
 import { filterSelectOptions } from '../../../utils/FilterQueryUtils';
-import { getPopupContainer } from '../../../utils/formUtils';
+import { getPopupContainer } from '../../../utils/formPureUtils';
 import { getColumnOptionsFromTableColumn } from '../../../utils/TablePureUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import './contract-sla-form-tab.less';
