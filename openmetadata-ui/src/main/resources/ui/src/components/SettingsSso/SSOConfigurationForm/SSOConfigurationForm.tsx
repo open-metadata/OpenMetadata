@@ -55,7 +55,7 @@ import {
 import {
   createScrollToErrorHandler,
   transformErrors,
-} from '../../../utils/formUtils';
+} from '../../../utils/formPureUtils';
 import {
   applySamlConfiguration,
   cleanupProviderSpecificFields,
@@ -99,7 +99,6 @@ import {
 } from './SSOConfigurationForm.interface';
 import SsoConfigurationFormArrayFieldTemplate from './SsoConfigurationFormArrayFieldTemplate';
 import SsoRolesSelectField from './SsoRolesSelectField';
-
 interface MetadataUploadStatusCardProps {
   status: 'success' | 'error';
   fileName: string;

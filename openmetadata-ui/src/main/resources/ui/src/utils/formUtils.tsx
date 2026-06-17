@@ -82,13 +82,6 @@ import AntDTagSuggestion, {
 import { t } from './i18next/LocalUtil';
 import { getErrorText } from './StringUtils';
 
-export {
-  createScrollToErrorHandler,
-  getPopupContainer,
-  transformErrors,
-  type ScrollToErrorOptions,
-} from './formPureUtils';
-
 export const getField = (field: FieldProp) => {
   const {
     label,
