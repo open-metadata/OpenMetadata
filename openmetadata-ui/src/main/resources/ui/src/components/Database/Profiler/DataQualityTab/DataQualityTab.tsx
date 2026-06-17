@@ -74,7 +74,6 @@ import {
   TestCasePermission,
 } from '../ProfilerDashboard/profilerDashboard.interface';
 import './data-quality-tab.less';
-
 const DataQualityTab: React.FC<DataQualityTabProps> = ({
   isLoading = false,
   testCases,

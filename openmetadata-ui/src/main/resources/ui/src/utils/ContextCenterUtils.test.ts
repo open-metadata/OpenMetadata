@@ -12,13 +12,14 @@
  */
 import { AxiosError } from 'axios';
 import { ROUTES } from '../constants/constants';
+import type { ContextFile } from '../generated/entity/data/contextFile';
 import { PageType } from '../interface/knowledge-center.interface';
 import { downloadDriveFile } from '../rest/assetAPI';
 import {
   formatBytes,
   handleAssetDownload,
   knowledgePageToArticleItem,
-} from './ContextCenterUtils';
+} from './ContextCenterPureUtils';
 import { showErrorToast } from './ToastUtils';
 
 jest.mock('./ToastUtils', () => ({
@@ -128,7 +129,7 @@ describe('handleAssetDownload', () => {
       remove: removeMock,
     } as unknown as HTMLAnchorElement);
 
-    await handleAssetDownload(mockFile as any);
+    await handleAssetDownload(mockFile as unknown as ContextFile);
 
     expect(downloadDriveFile).toHaveBeenCalledWith('123');
 
@@ -148,7 +149,7 @@ describe('handleAssetDownload', () => {
 
     (downloadDriveFile as jest.Mock).mockRejectedValue(error);
 
-    await handleAssetDownload(mockFile as any);
+    await handleAssetDownload(mockFile as unknown as ContextFile);
 
     expect(showErrorToast).toHaveBeenCalledWith(error as AxiosError);
   });
