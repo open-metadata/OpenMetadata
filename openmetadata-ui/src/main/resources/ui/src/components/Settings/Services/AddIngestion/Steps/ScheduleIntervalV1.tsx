@@ -24,7 +24,7 @@ import {
   PERIOD_OPTIONS,
 } from '../../../../../constants/Schedular.constants';
 import { SchedularOptions } from '../../../../../enums/Schedular.enum';
-import { getPopupContainer } from '../../../../../utils/formUtils';
+import { getPopupContainer } from '../../../../../utils/formPureUtils';
 import { getCurrentLocaleForConstrue } from '../../../../../utils/i18next/i18nextUtil';
 import {
   getCron,

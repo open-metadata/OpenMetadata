@@ -39,7 +39,7 @@ import {
   IngestionWorkflowFormProps,
 } from '../../../../../interface/service.interface';
 import ProfilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
-import { transformErrors } from '../../../../../utils/formUtils';
+import { transformErrors } from '../../../../../utils/formPureUtils';
 import { getSchemaByWorkflowType } from '../../../../../utils/IngestionWorkflowUtils';
 import BooleanFieldTemplate from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
 import WorkflowArrayFieldTemplate from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate';

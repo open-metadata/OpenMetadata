@@ -19,9 +19,9 @@ import { useCallback, useState } from 'react';
 import { Input as AriaInput } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useClipboard } from '../../../../hooks/useClipBoard';
-import { splitCSV } from '../../../../utils/CSV/CSV.utils';
 import { getFormDisplayLabel } from '../formBuilderV1LabelUtils';
 
+import { splitCSV } from '../../../../utils/CSV/CSVPureUtils';
 const CoreArrayField = (props: FieldProps) => {
   const {
     idSchema,
