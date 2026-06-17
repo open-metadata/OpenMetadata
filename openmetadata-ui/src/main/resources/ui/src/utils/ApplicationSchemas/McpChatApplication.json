@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MCP Chat",
+  "description": "AI-powered chat assistant for OpenMetadata. Uses MCP tools to search, explore, and manage metadata through natural language. The LLM provider and credentials are configured at the platform level via llmConfiguration.",
+  "type": "object",
+  "properties": {
+    "systemPrompt": {
+      "title": "System Prompt",
+      "description": "The system prompt that guides the assistant's behavior.",
+      "type": "string",
+      "default": "You are a helpful metadata assistant for OpenMetadata. Use the available tools to search, explore, and manage metadata. Be concise and actionable."
+    }
+  },
+  "additionalProperties": false
+}

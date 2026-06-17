@@ -174,7 +174,7 @@ jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
     .mockReturnValue(<p>CustomPropertyTable.component</p>),
 }));
 
-jest.mock('../../../utils/FeedUtils', () => ({
+jest.mock('../../../utils/FeedUtilsPure', () => ({
   getFeedCounts: jest.fn().mockReturnValue({}),
 }));
 
@@ -238,6 +238,9 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   GenericProvider: jest
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),
+}));
+
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn().mockReturnValue({
     data: mockPipelineDetails,
     permissions: DEFAULT_ENTITY_PERMISSION,
@@ -248,15 +251,19 @@ jest.mock('../../../constants/constants', () => ({
   getEntityDetailsPath: jest.fn(),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => {
-  return {
-    getEntityFeedLink: jest.fn(),
-    getEntityName: jest.fn().mockReturnValue('testEntityName'),
-    getColumnSorter: jest.fn().mockImplementation(() => {
-      return () => 1;
-    }),
-  };
-});
+jest.mock('../../../utils/EntityPureUtils', () => ({
+  getEntityFeedLink: jest.fn(),
+}));
+
+jest.mock('../../../utils/EntityNameUtils', () => ({
+  getEntityName: jest.fn().mockReturnValue('testEntityName'),
+}));
+
+jest.mock('../../../utils/EntitySortUtils', () => ({
+  getColumnSorter: jest.fn().mockImplementation(() => {
+    return () => 1;
+  }),
+}));
 
 jest.mock('../../../rest/pipelineAPI', () => ({
   restorePipeline: jest.fn().mockImplementation(() => Promise.resolve()),

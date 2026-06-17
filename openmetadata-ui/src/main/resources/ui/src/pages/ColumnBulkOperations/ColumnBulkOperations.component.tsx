@@ -11,26 +11,19 @@
  *  limitations under the License.
  */
 import { useTranslation } from 'react-i18next';
-import { useBreadcrumbs } from '../../components/common/atoms/navigation/useBreadcrumbs';
+import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import ColumnGrid from './ColumnGrid/ColumnGrid.component';
 
 const ColumnBulkOperations = () => {
   const { t } = useTranslation();
 
-  const { breadcrumbs } = useBreadcrumbs({
-    items: [
-      {
-        name: t('label.column-bulk-operations'),
-        url: '/column-bulk-operations',
-      },
-    ],
-  });
-
   return (
     <PageLayoutV1 pageTitle={t('label.column-bulk-operations')}>
       <div>
-        {breadcrumbs}
+        <HeaderBreadcrumb
+          items={[{ label: t('label.column-bulk-operations') }]}
+        />
         <ColumnGrid />
       </div>
     </PageLayoutV1>

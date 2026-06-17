@@ -96,7 +96,7 @@
     "react-aria": "^3.47.0",
     "react-aria-components": "^1.16.0",
     "react-dom": ">=18.0.0",
-    "react-hook-form": "^7.71.1",
+    "react-hook-form": "^7.78.0",
     "tailwind-merge": ">=3.0.0",
     "tailwindcss": ">=4.0.0",
     "tailwindcss-animate": ">=1.0.0",
@@ -133,7 +133,7 @@
     "react-aria": "^3.47.0",
     "react-aria-components": "^1.16.0",
     "react-dom": "^18.2.0",
-    "react-hook-form": "^7.71.1",
+    "react-hook-form": "^7.78.0",
     "storybook": "^8.6.18",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.1.18",
@@ -158,7 +158,8 @@
     "minimatch": "10.2.3",
     "postcss": "8.5.10",
     "rollup": "4.59.0",
-    "uuid": "^14.0.0"
+    "uuid": "^14.0.0",
+    "esbuild": "^0.28.1"
   },
   "publishConfig": {
     "access": "restricted",

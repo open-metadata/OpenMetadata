@@ -2,6 +2,7 @@ package org.openmetadata.it.tests.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -81,6 +82,10 @@ class ReindexStatsIT {
 
   @Test
   void orphanedSchemaDoesNotFailReindex(final TestNamespace ns) {
+    Assumptions.assumeTrue(
+        !OssTestServer.isExternalMode(),
+        "Creating an orphan (schema row hard-deleted without cascading to its table) needs the "
+            + "in-JVM DAO; the REST API would reject or cascade, so this case is embedded-only");
     final DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
     final Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
 

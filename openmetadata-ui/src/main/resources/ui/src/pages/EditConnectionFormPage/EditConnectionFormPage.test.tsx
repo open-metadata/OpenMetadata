@@ -141,7 +141,7 @@ jest.mock('../../utils/EntityDisplayUtils', () => ({
   getServiceLogo: jest.fn().mockReturnValue(''),
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn(),
 }));
 

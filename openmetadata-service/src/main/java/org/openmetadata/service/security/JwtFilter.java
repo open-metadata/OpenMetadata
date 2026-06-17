@@ -111,7 +111,7 @@ public class JwtFilter implements ContainerRequestFilter {
           "v1/users/password/reset",
           "v1/users/login",
           "v1/users/refresh",
-          "v1/collate/apps/support/login");
+          "v1/collate/apps/support/redeem-code");
 
   @SuppressWarnings("unused")
   private JwtFilter() {}
@@ -378,6 +378,11 @@ public class JwtFilter implements ContainerRequestFilter {
         || nullOrEmpty(session.getUsername())
         || !session.getUsername().equalsIgnoreCase(userName)) {
       throw AuthenticationException.getInvalidTokenException("Invalid session.");
+    }
+    try {
+      sessionService.recordSessionAccess(session);
+    } catch (Exception e) {
+      LOG.warn("Failed to record session access for session {}", session.getId(), e);
     }
   }
 

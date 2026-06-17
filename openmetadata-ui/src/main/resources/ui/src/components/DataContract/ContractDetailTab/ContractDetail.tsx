@@ -27,7 +27,7 @@ import {
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import type { MenuInfo } from 'rc-menu/lib/interface';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import approvedIcon from '../../../assets/img/approved.png';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new-thick.svg';
@@ -57,18 +57,19 @@ import {
   validateContractByEntityId,
   validateContractById,
 } from '../../../rest/contractAPI';
-import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
+import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
 import {
   downloadContractAsODCSYaml,
   downloadContractYamlFile,
   getConstraintStatus,
 } from '../../../utils/DataContract/DataContractUtils';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
-import { getPopupContainer } from '../../../utils/formUtils';
-import { pruneEmptyChildren } from '../../../utils/TableUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getPopupContainer } from '../../../utils/formPureUtils';
+import { pruneEmptyChildren } from '../../../utils/TablePureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -77,13 +78,18 @@ import StatusBadgeV2 from '../../common/StatusBadge/StatusBadgeV2.component';
 import ContractExecutionChart from '../ContractExecutionChart/ContractExecutionChart.component';
 import ContractQualityCard from '../ContractQualityCard/ContractQualityCard.component';
 import ContractSchemaTable from '../ContractSchemaTable/ContractSchemaTable.component';
-import ContractSecurityCard from '../ContractSecurity/ContractSecurityCard.component';
 import ContractSemantics from '../ContractSemantics/ContractSemantics.component';
 import ContractSLA from '../ContractSLACard/ContractSLA.component';
 import ContractViewSwitchTab from '../ContractViewSwitchTab/ContractViewSwitchTab.component';
 import ContractYaml from '../ContractYaml/ContractYaml.component';
-import ContractImportModal from '../ODCSImportModal';
 import './contract-detail.less';
+const ContractSecurityCard = withSuspenseFallback(
+  lazy(() => import('../ContractSecurity/ContractSecurityCard.component'))
+);
+
+const ContractImportModal = withSuspenseFallback(
+  lazy(() => import('../ODCSImportModal'))
+);
 
 interface TermsOfUse {
   content?: string;

@@ -1,0 +1,16 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/internal/mcpChatAppConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "McpChatAppConfig",
+  "description": "Configuration for the MCP Chat Application. The LLM provider and credentials are configured at the platform level via `llmConfiguration`; this app only governs chat behavior.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.app.internal.McpChatAppConfig",
+  "properties": {
+    "systemPrompt": {
+      "description": "The system prompt that guides the assistant behavior.",
+      "type": "string",
+      "default": "You are a helpful metadata assistant for OpenMetadata. Use the available tools to search, explore, and manage metadata. Be concise and actionable."
+    }
+  },
+  "additionalProperties": false
+}
