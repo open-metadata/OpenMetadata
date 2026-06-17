@@ -10,9 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from '@openmetadata/ui-core-components';
+import {
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
+  BadgeWithIcon,
+  Box,
+  Button,
+  FeaturedIcon,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
-import { ChevronDown, ChevronRight, Eye } from '@untitledui/icons';
+import { ChevronRight, Eye } from '@untitledui/icons';
 import classNames from 'classnames';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -47,12 +56,12 @@ function RulePreview({
 
   return (
     <div className="tw:rounded-xl tw:border tw:border-secondary tw:bg-secondary tw:p-3.5">
-      <div className="tw:mb-2.5 tw:flex tw:items-center tw:gap-2">
+      <Box align="center" className="tw:mb-2.5" gap={2}>
         <Eye className="tw:text-utility-brand-600" size={15} />
         <span className="tw:text-xs] tw:font-medium tw:text-primary">
           {t('label.preview')}
         </span>
-      </div>
+      </Box>
       <p className="tw:m-0 tw:font-normal tw:leading-5 tw:text-tertiary">
         {t(getScopeSummaryKey(filter), {
           entity: section.label.toLowerCase(),
@@ -69,7 +78,7 @@ function RulePreview({
               entity: t(getRuleLabelKey(includeCount)),
             })}
           </span>
-          <div className="tw:flex tw:flex-wrap tw:gap-1.5">
+          <Box className="tw:gap-1.5" wrap="wrap">
             {filter.includes.map((condition, index) => (
               <PreviewRuleChip
                 condition={condition}
@@ -78,7 +87,7 @@ function RulePreview({
                 tone="include"
               />
             ))}
-          </div>
+          </Box>
         </div>
       )}
       {excludeCount > 0 && (
@@ -88,7 +97,7 @@ function RulePreview({
               entity: t(getRuleLabelKey(excludeCount)),
             })}
           </span>
-          <div className="tw:flex tw:flex-wrap tw:gap-1.5">
+          <Box className="tw:gap-1.5" wrap="wrap">
             {filter.excludes.map((condition, index) => (
               <PreviewRuleChip
                 condition={condition}
@@ -97,7 +106,7 @@ function RulePreview({
                 tone="exclude"
               />
             ))}
-          </div>
+          </Box>
         </div>
       )}
     </div>
@@ -230,192 +239,189 @@ export function FilterSectionCard({
   };
 
   return (
-    <section
-      className="tw:overflow-hidden tw:rounded-2xl tw:border tw:border-primary tw:bg-primary tw:shadow-xs"
-      data-testid={`filter-section-${section.fieldName}`}>
-      <button
+    <AccordionItem
+      className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary"
+      data-testid={`filter-section-${section.fieldName}`}
+      id={section.fieldName}
+      isExpanded={isOpen}
+      onExpandedChange={() => {
+        onFocus(section.fieldName);
+        onToggle();
+      }}>
+      <AccordionHeader
         className={classNames(
-          'tw:flex tw:w-full tw:items-center tw:gap-3 tw:border-0 tw:bg-primary tw:px-[18px] tw:py-4 tw:text-left tw:cursor-pointer',
-          isOpen && 'tw:bg-secondary'
-        )}
-        type="button"
-        onClick={() => {
-          onFocus(section.fieldName);
-          onToggle();
-        }}>
-        <span className="tw:grid tw:size-[34px] tw:shrink-0 tw:place-items-center tw:rounded-[9px] tw:bg-utility-brand-50 tw:text-utility-brand-600">
-          <Icon size={18} />
+          'tw:gap-3 tw:px-4 tw:font-medium tw:border-0 hover:tw:bg-primary',
+          isOpen ? 'tw:bg-secondary' : 'tw:bg-primary'
+        )}>
+        <span className="tw:flex tw:min-w-0 tw:items-center tw:gap-3">
+          <FeaturedIcon
+            className="tw:shrink-0"
+            color="brand"
+            icon={<Icon size={16} />}
+            radius="md"
+            shape="square"
+            size="sm"
+            theme="light"
+          />
+          <Typography weight="medium">{section.label}</Typography>
+          <BadgeWithIcon
+            className="tw:gap-2 tw:font-medium"
+            color={summary.tone === 'success' ? 'success' : 'brand'}
+            iconLeading={() => (
+              <span className="tw:size-1.5 tw:rounded-full tw:bg-current" />
+            )}
+            size="sm">
+            {t(summary.textKey, summary.values)}
+          </BadgeWithIcon>
         </span>
-        <span className="tw:text-sm tw:font-medium tw:leading-6 tw:text-primary">
-          {section.label}
-        </span>
-        <span
-          className={classNames(
-            'tw:inline-flex tw:items-center tw:gap-[5px] tw:rounded-full tw:border tw:px-2.5 tw:py-0.5 tw:text-xs tw:font-medium',
-            summary.tone === 'success'
-              ? 'tw:border-utility-success-200 tw:bg-utility-success-50 tw:text-utility-success-700'
-              : 'tw:border-utility-brand-200 tw:bg-utility-brand-50 tw:text-utility-brand-700'
-          )}>
-          <span className="tw:size-1.5 tw:rounded-full tw:bg-current" />
-          {t(summary.textKey, summary.values)}
-        </span>
-        <ChevronDown
-          className={classNames(
-            'tw:ml-auto tw:shrink-0 tw:text-quaternary tw:transition-transform tw:duration-150',
-            isOpen && 'tw:rotate-180'
-          )}
-          size={18}
-        />
-      </button>
+      </AccordionHeader>
 
-      {isOpen && (
-        <div className="tw:grid tw:gap-[18px] tw:border-t tw:border-secondary tw:p-[18px]">
-          <div>
-            <div className="tw:mb-2 tw:text-xs tw:font-medium tw:text-secondary">
-              {t('label.what-to-scan')}
-            </div>
-            <div className="tw:grid tw:grid-cols-2 tw:gap-1 tw:rounded-[10px] tw:border tw:border-primary tw:bg-secondary tw:p-1">
-              <button
-                className={classNames(
-                  'tw:flex tw:min-h-10 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-[7px] tw:border tw:px-3 tw:py-2 tw:text-center tw:text-sm tw:leading-5 tw:transition-colors',
-                  filter.restrict
-                    ? 'tw:border-transparent tw:font-medium tw:text-tertiary'
-                    : 'tw:border-primary tw:bg-primary tw:font-medium tw:text-primary tw:shadow-xs'
-                )}
-                data-testid={`${section.fieldName}-scan-all-button`}
-                type="button"
-                onClick={() =>
-                  onChange({ ...filter, includes: [], restrict: false })
-                }>
-                {t('label.scan-all-entity', {
-                  entity: section.label.toLowerCase(),
-                })}
-              </button>
-              <button
-                className={classNames(
-                  'tw:flex tw:min-h-10 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-[7px] tw:border tw:px-3 tw:py-2 tw:text-center tw:text-sm tw:leading-5 tw:transition-colors',
-                  filter.restrict
-                    ? 'tw:border-primary tw:bg-primary tw:font-medium tw:text-primary tw:shadow-xs'
-                    : 'tw:border-transparent tw:font-medium tw:text-tertiary'
-                )}
-                data-testid={`${section.fieldName}-only-specific-button`}
-                type="button"
-                onClick={() => onChange({ ...filter, restrict: true })}>
-                {t('label.only-specific-entity', {
-                  entity: section.label.toLowerCase(),
-                })}
-              </button>
-            </div>
+      <AccordionPanel className="tw:grid tw:gap-[18px] tw:border-secondary tw:p-[18px]">
+        <div>
+          <div className="tw:mb-2 tw:text-xs tw:font-medium tw:text-secondary">
+            {t('label.what-to-scan')}
           </div>
-
-          {filter.restrict && (
-            <div>
-              <div className="tw:mb-2 tw:text-xs tw:font-medium tw:text-utility-brand-700">
-                {t('message.include-only-entities-where-name', {
-                  entity: section.label.toLowerCase(),
-                })}
-              </div>
-              {filter.includes.length > 0 && (
-                <div className="tw:mb-2.5 tw:flex tw:flex-wrap tw:gap-1.5">
-                  {filter.includes.map((condition, index) => (
-                    <ConditionChip
-                      condition={condition}
-                      key={`${conditionKey(condition)}-${index}`}
-                      operatorLabel={t(OPERATOR_LABEL_KEYS[condition.op])}
-                      removeLabel={t('label.remove')}
-                      tone="include"
-                      onRemove={() =>
-                        onChange({
-                          ...filter,
-                          includes: removeConditionAtIndex(
-                            filter.includes,
-                            index
-                          ),
-                        })
-                      }
-                    />
-                  ))}
-                </div>
+          <div className="tw:grid tw:grid-cols-2 tw:gap-1 tw:rounded-[10px] tw:border tw:border-primary tw:bg-secondary tw:p-1">
+            <button
+              className={classNames(
+                'tw:flex tw:min-h-10 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-[7px] tw:border tw:px-3 tw:py-2 tw:text-center tw:text-sm tw:leading-5 tw:transition-colors',
+                filter.restrict
+                  ? 'tw:border-transparent tw:font-medium tw:text-tertiary'
+                  : 'tw:border-primary tw:bg-primary tw:font-medium tw:text-primary tw:shadow-xs'
               )}
-              <ConditionComposer
-                defaultOperator="contains"
-                fieldName={section.fieldName}
-                placeholder={t('message.example-value', {
-                  value: t('message.entity-name-example', {
-                    entity: section.singleLabel.toLowerCase(),
-                  }),
-                })}
-                onAdd={(condition) => addCondition('includes', condition)}
-                onFocus={onFocus}
-              />
-            </div>
-          )}
-
-          <div className="tw:border-t tw:border-dashed tw:border-primary tw:pt-1">
-            <div className="tw:my-3.5 tw:mb-2 tw:flex tw:flex-col tw:gap-2 tw:relative">
-              {hasSystemExcludes && (
-                <BooleanFieldTemplate
-                  {...({
-                    formData: !hasSystemExcludesEnabled,
-                    idSchema: {
-                      $id: `${section.fieldName}-exclude-system-filters`,
-                    },
-                    name: `${section.fieldName}-exclude-system-filters`,
-                    schema: {
-                      description: t(
-                        'message.exclude-system-entity-description',
-                        { entity: section.label.toLowerCase() }
-                      ),
-                      title: t('label.exclude-system-entity', {
-                        entity: section.label.toLowerCase(),
-                      }),
-                    },
-                    onChange: toggleSystemExcludes,
-                  } as unknown as FieldProps)}
-                />
+              data-testid={`${section.fieldName}-scan-all-button`}
+              type="button"
+              onClick={() =>
+                onChange({ ...filter, includes: [], restrict: false })
+              }>
+              {t('label.scan-all-entity', {
+                entity: section.label.toLowerCase(),
+              })}
+            </button>
+            <button
+              className={classNames(
+                'tw:flex tw:min-h-10 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-[7px] tw:border tw:px-3 tw:py-2 tw:text-center tw:text-sm tw:leading-5 tw:transition-colors',
+                filter.restrict
+                  ? 'tw:border-primary tw:bg-primary tw:font-medium tw:text-primary tw:shadow-xs'
+                  : 'tw:border-transparent tw:font-medium tw:text-tertiary'
               )}
-              <span className="tw:text-xs tw:font-medium tw:text-utility-error-700">
-                {t('label.always-exclude')}
-              </span>
-            </div>
+              data-testid={`${section.fieldName}-only-specific-button`}
+              type="button"
+              onClick={() => onChange({ ...filter, restrict: true })}>
+              {t('label.only-specific-entity', {
+                entity: section.label.toLowerCase(),
+              })}
+            </button>
+          </div>
+        </div>
 
-            {filter.excludes.length > 0 && (
-              <div className="tw:mb-2.5 tw:flex tw:flex-wrap tw:gap-1.5">
-                {filter.excludes.map((condition, index) => (
+        {filter.restrict && (
+          <div>
+            <div className="tw:mb-2 tw:text-xs tw:font-medium tw:text-utility-brand-700">
+              {t('message.include-only-entities-where-name', {
+                entity: section.label.toLowerCase(),
+              })}
+            </div>
+            {filter.includes.length > 0 && (
+              <Box className="tw:mb-2.5 tw:gap-1.5" wrap="wrap">
+                {filter.includes.map((condition, index) => (
                   <ConditionChip
                     condition={condition}
                     key={`${conditionKey(condition)}-${index}`}
                     operatorLabel={t(OPERATOR_LABEL_KEYS[condition.op])}
                     removeLabel={t('label.remove')}
-                    tone="exclude"
+                    tone="include"
                     onRemove={() =>
                       onChange({
                         ...filter,
-                        excludes: removeConditionAtIndex(
-                          filter.excludes,
+                        includes: removeConditionAtIndex(
+                          filter.includes,
                           index
                         ),
                       })
                     }
                   />
                 ))}
-              </div>
+              </Box>
             )}
-
             <ConditionComposer
-              defaultOperator="startsWith"
+              defaultOperator="contains"
               fieldName={section.fieldName}
-              placeholder={t('message.example-value', { value: 'TMP_' })}
-              tone="exclude"
-              onAdd={(condition) => addCondition('excludes', condition)}
+              placeholder={t('message.example-value', {
+                value: t('message.entity-name-example', {
+                  entity: section.singleLabel.toLowerCase(),
+                }),
+              })}
+              onAdd={(condition) => addCondition('includes', condition)}
               onFocus={onFocus}
             />
           </div>
+        )}
 
-          <RulePreview filter={filter} section={section} />
-          <RegexDisclosure filter={filter} />
+        <div className="tw:border-t tw:border-dashed tw:border-primary tw:pt-1">
+          <Box
+            className="tw:my-3.5 tw:mb-2 tw:relative"
+            direction="col"
+            gap={2}>
+            {hasSystemExcludes && (
+              <BooleanFieldTemplate
+                {...({
+                  formData: !hasSystemExcludesEnabled,
+                  idSchema: {
+                    $id: `${section.fieldName}-exclude-system-filters`,
+                  },
+                  name: `${section.fieldName}-exclude-system-filters`,
+                  schema: {
+                    description: t(
+                      'message.exclude-system-entity-description',
+                      { entity: section.label.toLowerCase() }
+                    ),
+                    title: t('label.exclude-system-entity', {
+                      entity: section.label.toLowerCase(),
+                    }),
+                  },
+                  onChange: toggleSystemExcludes,
+                } as unknown as FieldProps)}
+              />
+            )}
+            <span className="tw:text-xs tw:font-medium tw:text-utility-error-700">
+              {t('label.always-exclude')}
+            </span>
+          </Box>
+
+          {filter.excludes.length > 0 && (
+            <Box className="tw:mb-2.5 tw:gap-1.5" wrap="wrap">
+              {filter.excludes.map((condition, index) => (
+                <ConditionChip
+                  condition={condition}
+                  key={`${conditionKey(condition)}-${index}`}
+                  operatorLabel={t(OPERATOR_LABEL_KEYS[condition.op])}
+                  removeLabel={t('label.remove')}
+                  tone="exclude"
+                  onRemove={() =>
+                    onChange({
+                      ...filter,
+                      excludes: removeConditionAtIndex(filter.excludes, index),
+                    })
+                  }
+                />
+              ))}
+            </Box>
+          )}
+
+          <ConditionComposer
+            defaultOperator="startsWith"
+            fieldName={section.fieldName}
+            placeholder={t('message.example-value', { value: 'TMP_' })}
+            tone="exclude"
+            onAdd={(condition) => addCondition('excludes', condition)}
+            onFocus={onFocus}
+          />
         </div>
-      )}
-    </section>
+
+        <RulePreview filter={filter} section={section} />
+        <RegexDisclosure filter={filter} />
+      </AccordionPanel>
+    </AccordionItem>
   );
 }
