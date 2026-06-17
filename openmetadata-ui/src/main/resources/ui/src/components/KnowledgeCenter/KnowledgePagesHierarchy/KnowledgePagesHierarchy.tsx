@@ -377,6 +377,11 @@ const KnowledgePagesHierarchy = forwardRef<
         const { sourceNode, sourceNodeParent, targetNode } = movedPageData;
         const newExpandedKeys: string[] = [];
 
+        const oldSourceFQN = sourceNode.fullyQualifiedName;
+        const newSourceFQN = targetNode
+          ? Fqn.build(targetNode.fullyQualifiedName, sourceNode.name)
+          : Fqn.build(sourceNode.name);
+
         const updatedSourceNodeForPatch = {
           ...sourceNode,
           parent: targetNode
@@ -395,6 +400,14 @@ const KnowledgePagesHierarchy = forwardRef<
           compare(sourceNode, updatedSourceNodeForPatch)
         );
 
+        setExpandedKeys((prev) =>
+          prev.map((key) =>
+            key === oldSourceFQN || key.startsWith(`${oldSourceFQN}.`)
+              ? newSourceFQN + key.slice(oldSourceFQN.length)
+              : key
+          )
+        );
+
         if (isUndefined(targetNode)) {
           fetchKnowledgePageHierarchy(
             true,
@@ -403,7 +416,6 @@ const KnowledgePagesHierarchy = forwardRef<
             KNOWLEDGE_CENTER_PAGINATION_LIMIT,
             true
           );
-          setExpandedKeys([]);
         } else {
           const targetNodeChildren = await getPageHierarchyFromES(
             targetNode.fullyQualifiedName
@@ -442,7 +454,7 @@ const KnowledgePagesHierarchy = forwardRef<
             );
           }
 
-          setExpandedKeys(newExpandedKeys);
+          setExpandedKeys((prev) => uniq([...prev, ...newExpandedKeys]));
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
