@@ -90,7 +90,7 @@ export const HeatmapCellTooltip: FC<HeatmapCellTooltipProps> = ({ cell }) => {
     <div className="tw:rounded-lg tw:bg-white tw:p-2.5 tw:shadow-sm">
       <Typography
         as="span"
-        className="tw:block tw:text-sm] tw:font-medium tw:text-gray-900">
+        className="tw:block tw:text-sm tw:font-medium tw:text-gray-900">
         {cell.date}
       </Typography>
       <div
