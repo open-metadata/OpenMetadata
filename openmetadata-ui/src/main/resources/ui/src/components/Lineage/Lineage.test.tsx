@@ -263,6 +263,9 @@ jest.mock('reactflow', () => ({
 jest.mock('../../utils/EntityLineageUtils', () => ({
   customEdges: {},
   nodeTypes: {},
+}));
+
+jest.mock('../../utils/EntityLineagePureUtils', () => ({
   dragHandle: jest.fn(),
   onNodeContextMenu: jest.fn(),
   onNodeMouseEnter: jest.fn(),

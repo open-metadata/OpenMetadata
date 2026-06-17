@@ -38,10 +38,9 @@ import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizableP
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { t } from '../../../utils/i18next/LocalUtil';
-import { getKnowledgePagePath } from '../../../utils/KnowledgePageUtils';
+import { getKnowledgePagePath } from '../../../utils/KnowledgePagePureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './KnowledgeCenterWidget.less';
-
 const KnowledgeCenterWidget = ({
   isEditView = false,
   widgetKey,

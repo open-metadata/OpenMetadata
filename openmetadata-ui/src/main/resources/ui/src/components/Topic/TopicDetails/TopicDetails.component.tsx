@@ -74,7 +74,6 @@ import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interfa
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { TopicDetailsProps } from './TopicDetails.interface';
-
 const TopicDetails: React.FC<TopicDetailsProps> = ({
   updateTopicDetailsState,
   topicDetails,
