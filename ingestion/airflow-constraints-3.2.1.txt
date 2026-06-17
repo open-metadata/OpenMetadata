@@ -50,7 +50,7 @@ MarkupSafe==3.0.3
 PyAthena==3.30.1
 PyGithub==2.9.1
 PyHive==0.7.0
-PyJWT==2.12.1
+PyJWT==2.13.0
 PyMySQL==1.1.2
 PyNaCl==1.6.2
 PyYAML==6.0.3
