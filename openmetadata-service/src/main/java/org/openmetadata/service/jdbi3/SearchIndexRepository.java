@@ -38,6 +38,7 @@ import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.ResolveTask;
@@ -54,6 +55,7 @@ import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -64,6 +66,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
+@Slf4j
 public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("fields.description");
 
@@ -226,10 +229,16 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
       // We're looking for records where Search Service contains Search Index
       if (Entity.SEARCH_SERVICE.equals(record.getFromEntity())) {
         UUID searchIndexId = UUID.fromString(record.getToId());
-        EntityReference serviceRef =
-            Entity.getEntityReferenceById(
-                Entity.SEARCH_SERVICE, UUID.fromString(record.getFromId()), Include.NON_DELETED);
-        serviceMap.put(searchIndexId, serviceRef);
+        try {
+          EntityReference serviceRef =
+              Entity.getEntityReferenceById(
+                  Entity.SEARCH_SERVICE, UUID.fromString(record.getFromId()), Include.NON_DELETED);
+          serviceMap.put(searchIndexId, serviceRef);
+        } catch (EntityNotFoundException e) {
+          // Service concurrently hard-deleted mid-list; skip the now-dangling reference.
+          LOG.debug(
+              "Skipping deleted service {} for search index {}", record.getFromId(), searchIndexId);
+        }
       }
     }
 

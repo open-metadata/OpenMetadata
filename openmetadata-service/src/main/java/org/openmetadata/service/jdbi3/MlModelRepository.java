@@ -49,6 +49,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -194,10 +195,15 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
     for (CollectionDAO.EntityRelationshipObject record : records) {
       UUID mlModelId = UUID.fromString(record.getToId());
-      EntityReference serviceRef =
-          Entity.getEntityReferenceById(
-              Entity.MLMODEL_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
-      serviceMap.put(mlModelId, serviceRef);
+      try {
+        EntityReference serviceRef =
+            Entity.getEntityReferenceById(
+                Entity.MLMODEL_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
+        serviceMap.put(mlModelId, serviceRef);
+      } catch (EntityNotFoundException e) {
+        // Service concurrently hard-deleted mid-list; skip the now-dangling reference.
+        LOG.debug("Skipping deleted service {} for ML model {}", record.getFromId(), mlModelId);
+      }
     }
 
     return serviceMap;

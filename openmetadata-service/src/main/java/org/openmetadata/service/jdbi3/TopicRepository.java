@@ -39,6 +39,7 @@ import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.ResolveTask;
@@ -56,6 +57,7 @@ import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -66,6 +68,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
+@Slf4j
 public class TopicRepository extends EntityRepository<Topic> {
   private static final Set<String> CHANGE_SUMMARY_FIELDS =
       Set.of("messageSchema.schemaFields.description");
@@ -572,10 +575,15 @@ public class TopicRepository extends EntityRepository<Topic> {
     records.forEach(
         record -> {
           var topicId = UUID.fromString(record.getToId());
-          var serviceRef =
-              Entity.getEntityReferenceById(
-                  Entity.MESSAGING_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
-          serviceMap.put(topicId, serviceRef);
+          try {
+            var serviceRef =
+                Entity.getEntityReferenceById(
+                    Entity.MESSAGING_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
+            serviceMap.put(topicId, serviceRef);
+          } catch (EntityNotFoundException e) {
+            // Service concurrently hard-deleted mid-list; skip the now-dangling reference.
+            LOG.debug("Skipping deleted service {} for topic {}", record.getFromId(), topicId);
+          }
         });
 
     return serviceMap;

@@ -279,10 +279,15 @@ public class DirectoryRepository extends EntityRepository<Directory> {
       if (fromEntityType.equals(record.getFromEntity())) {
         UUID directoryId = UUID.fromString(record.getToId());
         UUID fromId = UUID.fromString(record.getFromId());
-        EntityReference ref =
-            refById.computeIfAbsent(
-                fromId, id -> getEntityReferenceById(fromEntityType, id, Include.NON_DELETED));
-        resultMap.put(directoryId, ref);
+        try {
+          EntityReference ref =
+              refById.computeIfAbsent(
+                  fromId, id -> getEntityReferenceById(fromEntityType, id, Include.NON_DELETED));
+          resultMap.put(directoryId, ref);
+        } catch (EntityNotFoundException e) {
+          // Parent concurrently hard-deleted mid-list; skip the now-dangling reference.
+          LOG.debug("Skipping deleted {} {} for directory {}", fromEntityType, fromId, directoryId);
+        }
       }
     }
     return resultMap;

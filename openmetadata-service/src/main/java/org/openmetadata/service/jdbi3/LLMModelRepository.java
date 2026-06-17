@@ -27,6 +27,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.ai.LLMModelResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -103,10 +104,15 @@ public class LLMModelRepository extends EntityRepository<LLMModel> {
 
     for (CollectionDAO.EntityRelationshipObject record : records) {
       UUID llmModelId = UUID.fromString(record.getToId());
-      EntityReference serviceRef =
-          Entity.getEntityReferenceById(
-              Entity.LLM_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
-      serviceMap.put(llmModelId, serviceRef);
+      try {
+        EntityReference serviceRef =
+            Entity.getEntityReferenceById(
+                Entity.LLM_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
+        serviceMap.put(llmModelId, serviceRef);
+      } catch (EntityNotFoundException e) {
+        // Service concurrently hard-deleted mid-list; skip the now-dangling reference.
+        LOG.debug("Skipping deleted service {} for LLM model {}", record.getFromId(), llmModelId);
+      }
     }
 
     return serviceMap;

@@ -273,10 +273,18 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
     for (CollectionDAO.EntityRelationshipObject record : records) {
       UUID pipelineId = UUID.fromString(record.getToId());
-      EntityReference serviceRef =
-          Entity.getEntityReferenceById(
-              record.getFromEntity(), UUID.fromString(record.getFromId()), Include.NON_DELETED);
-      serviceMap.put(pipelineId, serviceRef);
+      try {
+        EntityReference serviceRef =
+            Entity.getEntityReferenceById(
+                record.getFromEntity(), UUID.fromString(record.getFromId()), Include.NON_DELETED);
+        serviceMap.put(pipelineId, serviceRef);
+      } catch (EntityNotFoundException e) {
+        // Service concurrently hard-deleted mid-list; skip the now-dangling reference.
+        LOG.debug(
+            "Skipping deleted service {} for ingestion pipeline {}",
+            record.getFromId(),
+            pipelineId);
+      }
     }
 
     return serviceMap;
