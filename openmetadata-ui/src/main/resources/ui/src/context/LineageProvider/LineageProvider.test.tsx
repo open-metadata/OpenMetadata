@@ -262,8 +262,8 @@ jest.mock('../../rest/lineageAPI', () => ({
 }));
 
 const mockCenterNodePosition = jest.fn();
-jest.mock('../../utils/EntityLineageUtils', () => ({
-  ...jest.requireActual('../../utils/EntityLineageUtils'),
+jest.mock('../../utils/EntityLineageLayoutUtils', () => ({
+  ...jest.requireActual('../../utils/EntityLineageLayoutUtils'),
   centerNodePosition: (...args: unknown[]) => mockCenterNodePosition(...args),
 }));
 
