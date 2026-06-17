@@ -84,11 +84,7 @@ class MysqlSource(CommonDbSourceService):
         if self.source_config.includeStoredProcedures:
             with self.engine.connect() as conn:
                 results = conn.execute(
-                    text(
-                        MYSQL_GET_ROUTINES.format(
-                            schema_name=self.context.get().database_schema
-                        )
-                    )
+                    text(MYSQL_GET_ROUTINES).bindparams(schema_name=self.context.get().database_schema)  # pyright: ignore[reportAttributeAccessIssue]
                 ).all()
             for row in results:
                 try:
