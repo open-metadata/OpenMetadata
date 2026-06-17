@@ -443,7 +443,7 @@ test.describe('Data Contract Inheritance', () => {
 
       // Verify the inherited icon is shown next to contract name
       await expect(
-        page.locator('.contract-header-container .inherit-icon')
+        page.getByTestId('contract-header-container').locator('.inherit-icon')
       ).toBeVisible();
 
       // Verify Terms of Service has inherited icon
@@ -568,7 +568,7 @@ test.describe('Data Contract Inheritance', () => {
 
       // Contract itself should NOT show inherited icon (asset has its own contract)
       await expect(
-        page.locator('.contract-header-container .inherit-icon')
+        page.getByTestId('contract-header-container').locator('.inherit-icon')
       ).not.toBeVisible();
 
       // Verify Terms of Service section exists with inherited icon (from Data Product)
@@ -679,7 +679,7 @@ test.describe('Data Contract Inheritance', () => {
 
       // Click edit to add asset's own contract
       await page.getByTestId('manage-contract-actions').click();
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
       await page.getByTestId('contract-edit-button').click();
@@ -727,7 +727,7 @@ test.describe('Data Contract Inheritance', () => {
     await test.step('Edit contract again to ADD its own SLA', async () => {
       // Click edit to modify contract
       await page.getByTestId('manage-contract-actions').click();
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
       await page.getByTestId('contract-edit-button').click();
@@ -848,13 +848,13 @@ test.describe('Data Contract Inheritance', () => {
 
       // Verify the inherited icon is shown
       await expect(
-        page.locator('.contract-header-container .inherit-icon')
+        page.getByTestId('contract-header-container').locator('.inherit-icon')
       ).toBeVisible();
     });
 
     await test.step('Click Edit on inherited contract - should open ADD form, not EDIT', async () => {
       await page.getByTestId('manage-contract-actions').click();
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
       await page.getByTestId('contract-edit-button').click();
@@ -904,7 +904,7 @@ test.describe('Data Contract Inheritance', () => {
 
       // Verify the inherited icon is NOT shown (asset has its own contract now)
       await expect(
-        page.locator('.contract-header-container .inherit-icon')
+        page.getByTestId('contract-header-container').locator('.inherit-icon')
       ).not.toBeVisible();
     });
 
@@ -985,12 +985,12 @@ test.describe('Data Contract Inheritance', () => {
 
       // Verify the inherited icon is shown
       await expect(
-        page.locator('.contract-header-container .inherit-icon')
+        page.getByTestId('contract-header-container').locator('.inherit-icon')
       ).toBeVisible();
 
       // Open the contract actions menu
       await page.getByTestId('manage-contract-actions').click();
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -998,11 +998,8 @@ test.describe('Data Contract Inheritance', () => {
       const deleteButton = page.getByTestId('delete-contract-button');
       await expect(deleteButton).toBeVisible();
 
-      // The delete button should have the 'disabled' class or be visually disabled
-      const deleteMenuItem = page
-        .locator('.contract-action-dropdown .ant-dropdown-menu-item')
-        .filter({ hasText: 'Delete' });
-      await expect(deleteMenuItem).toHaveAttribute('aria-disabled', 'true');
+      // The delete button should be disabled for inherited contracts
+      await expect(deleteButton).toBeDisabled();
     });
   });
 
@@ -1057,7 +1054,7 @@ test.describe('Data Contract Inheritance', () => {
 
       // Open the contract actions menu
       await page.getByTestId('manage-contract-actions').click();
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -1138,7 +1135,7 @@ test.describe('Data Contract Inheritance', () => {
 
       // Verify the inherited icon is shown
       await expect(
-        page.locator('.contract-header-container .inherit-icon')
+        page.getByTestId('contract-header-container').locator('.inherit-icon')
       ).toBeVisible();
     });
 
@@ -1230,7 +1227,7 @@ test.describe('Data Contract Inheritance', () => {
 
       // Click edit to add asset's own contract
       await page.getByTestId('manage-contract-actions').click();
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
       await page.getByTestId('contract-edit-button').click();
@@ -1266,13 +1263,13 @@ test.describe('Data Contract Inheritance', () => {
 
       // Verify no inherited icon on contract header (asset has its own contract)
       await expect(
-        page.locator('.contract-header-container .inherit-icon')
+        page.getByTestId('contract-header-container').locator('.inherit-icon')
       ).not.toBeVisible();
     });
 
     await test.step('Delete asset own contract', async () => {
       await page.getByTestId('manage-contract-actions').click();
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -1286,11 +1283,7 @@ test.describe('Data Contract Inheritance', () => {
 
       await page.getByTestId('delete-contract-button').click();
 
-      // Confirm deletion in modal - must type DELETE to enable confirm button
-      await expect(page.locator('.ant-modal-title')).toBeVisible();
-      await page.getByTestId('confirmation-text-input').click();
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
-      await expect(page.getByTestId('confirm-button')).toBeEnabled();
+      await expect(page.getByTestId('modal-header')).toBeVisible();
       await page.getByTestId('confirm-button').click();
 
       await deleteResponse;
@@ -1313,7 +1306,7 @@ test.describe('Data Contract Inheritance', () => {
 
       // Verify the inherited icon is shown on the contract header
       await expect(
-        page.locator('.contract-header-container .inherit-icon')
+        page.getByTestId('contract-header-container').locator('.inherit-icon')
       ).toBeVisible();
 
       // Verify Terms of Service from Data Product is shown

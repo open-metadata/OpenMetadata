@@ -152,8 +152,12 @@ class UnityCatalogConnection(BaseConnection[UnityCatalogConnectionConfig, Worksp
 
         def get_tables(connection: WorkspaceClient, table_obj: DatabricksTable):
             if table_obj.catalog_name and table_obj.schema_name:
+                # Only one table is needed to validate access; max_results=1 avoids
+                # downloading the schema's full table list in a single response.
                 for table in connection.tables.list(
-                    catalog_name=table_obj.catalog_name, schema_name=table_obj.schema_name
+                    catalog_name=table_obj.catalog_name,
+                    schema_name=table_obj.schema_name,
+                    max_results=1,
                 ):
                     table_obj.name = table.name
                     break

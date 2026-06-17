@@ -106,36 +106,42 @@ import {
 import { getCurrentISODate } from '../../utils/date-time/DateTimeUtils';
 import { getEntityBreadcrumbs } from '../../utils/EntityBreadcrumbPureUtils';
 import {
-  addLineageHandler,
-  centerNodePosition,
   createColumnEdges,
   createEdgesAndEdgeMaps,
   createEntityEdgesAndMaps,
   createNewEdge,
-  createNodes,
   getAllDownstreamEdges,
   getAllTracedColumnEdge,
   getClassifiedEdge,
-  getConnectedNodesEdges,
   getEdgeDataFromEdge,
-  getEntityTypeFromPlatformView,
   getLineageEdge,
   getLineageEdgeForAPI,
-  getLoadingStatusValue,
   getModalBodyText,
   getNewLineageConnectionDetails,
-  getNodeLineageData,
   getUpdatedColumnsFromEdge,
-  getUpstreamDownstreamNodesEdges,
+} from '../../utils/EntityLineageEdgeUtils';
+import {
+  centerNodePosition,
   getViewportForLineageExport,
-  parseLineageData,
   positionNodesUsingElk,
-  removeLineageHandler,
+} from '../../utils/EntityLineageLayoutUtils';
+import {
+  createNodes,
+  getConnectedNodesEdges,
+  getEntityTypeFromPlatformView,
+  getNodeLineageData,
+  getUpstreamDownstreamNodesEdges,
   removeUnconnectedNodes,
-} from '../../utils/EntityLineageUtils';
+} from '../../utils/EntityLineageNodeUtils';
+import {
+  addLineageHandler,
+  parseLineageData,
+  removeLineageHandler,
+} from '../../utils/EntityLineagePureUtils';
+import { getLoadingStatusValue } from '../../utils/EntityLineageUtils';
 import { updateNodeType } from '../../utils/EntityPureUtils';
 import { getEntityReferenceFromEntity } from '../../utils/EntityReferenceUtils';
-import { getQuickFilterQuery } from '../../utils/ExploreUtils';
+import { getQuickFilterQuery } from '../../utils/ExplorePureUtils';
 import { addBaseNodeDepthToNodes } from '../../utils/Lineage/LineageUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -146,7 +152,6 @@ import {
   LineageProviderProps,
   LineageTimeRange,
 } from './LineageProvider.interface';
-
 const LINEAGE_START_TIME_PARAM = 'lineageStartTime';
 const LINEAGE_END_TIME_PARAM = 'lineageEndTime';
 
@@ -193,7 +198,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const { t } = useTranslation();
   const { fqn: decodedFqn } = useFqn();
   const location = useCustomLocation();
-  const { isTourOpen, isTourPage } = useTourProvider();
+  const { isTourOpen, isTourPage, tourMockDatasetData } = useTourProvider();
   const { appPreferences } = useApplicationStore();
   const { activeDomain, isDomainRestricted } = useDomainStore();
   const { preferences } = useCurrentUserPreferences();
@@ -2052,15 +2057,14 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     if (isTourOpen || isTourPage) {
       setInit(true);
       setLoading(false);
-      import('../../constants/mockTourData.constants').then(
-        ({ mockDatasetData }) => {
-          setEntityLineage(
-            mockDatasetData.entityLineage as unknown as EntityLineageResponse
-          );
-        }
-      );
+      const mock = tourMockDatasetData as
+        | { entityLineage: unknown }
+        | undefined;
+      if (mock?.entityLineage) {
+        setEntityLineage(mock.entityLineage as EntityLineageResponse);
+      }
     }
-  }, [isTourOpen, isTourPage]);
+  }, [isTourOpen, isTourPage, tourMockDatasetData]);
 
   useEffect(() => {
     if (lineageLayer) {

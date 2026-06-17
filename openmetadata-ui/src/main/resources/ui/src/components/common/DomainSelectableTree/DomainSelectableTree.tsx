@@ -41,11 +41,9 @@ import {
   getDomainChildrenPaginated,
   searchDomains,
 } from '../../../rest/domainAPI';
+import { isDomainExist } from '../../../utils/DomainFilterUtils';
 import { filterDomainsToAllowed } from '../../../utils/DomainRestrictionUtils';
-import {
-  convertDomainsToTreeOptions,
-  isDomainExist,
-} from '../../../utils/DomainUtils';
+import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import {
   escapeESReservedCharacters,

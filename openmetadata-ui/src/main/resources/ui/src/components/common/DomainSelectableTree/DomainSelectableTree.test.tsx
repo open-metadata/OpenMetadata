@@ -88,6 +88,9 @@ jest.mock('../../../utils/DomainUtils', () => ({
         : undefined,
     }))
   ),
+}));
+
+jest.mock('../../../utils/DomainFilterUtils', () => ({
   isDomainExist: jest.fn().mockReturnValue(false),
 }));
 

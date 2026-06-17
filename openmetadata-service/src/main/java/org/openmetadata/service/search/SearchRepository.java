@@ -97,6 +97,8 @@ import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.LLMConfiguration;
+import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Pipeline;
@@ -124,6 +126,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
+import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -553,8 +556,9 @@ public class SearchRepository {
       return;
     }
 
+    LLMConfiguration llmConfig = LlmConfigHolder.get();
     try {
-      this.embeddingClient = createEmbeddingClient(cfg);
+      this.embeddingClient = createEmbeddingClient(llmConfig);
 
       if (cfg.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
         os.org.opensearch.client.opensearch.OpenSearchClient osClient =
@@ -576,7 +580,7 @@ public class SearchRepository {
 
       LOG.info(
           "Vector search service initialized with provider={}, dimension={}",
-          cfg.getNaturalLanguageSearch().getEmbeddingProvider(),
+          resolveEmbeddingProvider(llmConfig),
           embeddingClient.getDimension());
     } catch (Exception e) {
       this.vectorServiceInitError = e.toString();
@@ -3541,41 +3545,53 @@ public class SearchRepository {
     }
   }
 
-  protected EmbeddingClient createEmbeddingClient(ElasticSearchConfiguration esConfig) {
-    NaturalLanguageSearchConfiguration config = esConfig.getNaturalLanguageSearch();
+  protected EmbeddingClient createEmbeddingClient(LLMConfiguration llmConfig) {
+    LLMEmbeddingsConfig embeddings = llmConfig != null ? llmConfig.getEmbeddings() : null;
     String provider =
-        config.getEmbeddingProvider() != null ? config.getEmbeddingProvider() : "bedrock";
+        embeddings != null && embeddings.getProvider() != null
+            ? embeddings.getProvider().value()
+            : "bedrock";
 
     return switch (provider.toLowerCase()) {
       case "bedrock" -> {
-        if (config.getBedrock() == null) {
+        if (embeddings == null || embeddings.getBedrock() == null) {
           throw new IllegalStateException(
               "Bedrock configuration is required when using bedrock provider");
         }
-        yield new BedrockEmbeddingClient(esConfig);
+        yield new BedrockEmbeddingClient(llmConfig);
       }
       case "openai" -> {
-        if (config.getOpenai() == null) {
+        if (llmConfig.getOpenai() == null || embeddings.getOpenai() == null) {
           throw new IllegalStateException(
               "OpenAI configuration is required when using openai provider");
         }
-        yield new OpenAIEmbeddingClient(esConfig);
+        yield new OpenAIEmbeddingClient(llmConfig);
       }
       case "google" -> {
-        if (config.getGoogle() == null) {
+        if (llmConfig.getGoogle() == null || embeddings.getGoogle() == null) {
           throw new IllegalStateException(
               "Google configuration is required when using google provider");
         }
-        yield new GoogleEmbeddingClient(esConfig);
+        yield new GoogleEmbeddingClient(llmConfig);
       }
       case "djl" -> {
-        if (config.getDjl() == null) {
+        if (embeddings.getDjl() == null) {
           throw new IllegalStateException("DJL configuration is required when using djl provider");
         }
-        yield new DjlEmbeddingClient(esConfig);
+        yield new DjlEmbeddingClient(llmConfig);
       }
       default -> throw new IllegalArgumentException("Unknown embedding provider: " + provider);
     };
+  }
+
+  private static String resolveEmbeddingProvider(LLMConfiguration llmConfig) {
+    String provider = "unknown";
+    if (llmConfig != null
+        && llmConfig.getEmbeddings() != null
+        && llmConfig.getEmbeddings().getProvider() != null) {
+      provider = llmConfig.getEmbeddings().getProvider().value();
+    }
+    return provider;
   }
 
   public String getModelIdentifier() {

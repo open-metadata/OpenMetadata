@@ -688,6 +688,17 @@ def get_manifest_column_name(manifest_node) -> Optional[str]:  # noqa: UP045
     return None
 
 
+def get_dbt_test_definition_name(manifest_node) -> str:
+    """
+    Return the dbt test type (e.g. "unique", "not_null") from
+    test_metadata for generic tests. Singular tests and source freshness
+    nodes have no test_metadata, so fall back to the node name.
+    """
+    test_metadata = getattr(manifest_node, "test_metadata", None)
+    test_type = getattr(test_metadata, "name", None) if test_metadata else None
+    return test_type or manifest_node.name
+
+
 def generate_entity_link(dbt_test):
     """
     Method returns entity link for dbt test cases.
