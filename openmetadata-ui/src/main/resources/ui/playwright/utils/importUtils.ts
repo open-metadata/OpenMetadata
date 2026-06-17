@@ -110,6 +110,35 @@ const getActiveTextEditor = async (page: Page) => {
   throw new Error('Unable to open the active grid text editor');
 };
 
+const fillAndCommitTextEditor = async (
+  page: Page,
+  text: string,
+  maxAttempts = 3
+) => {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      await page.keyboard.press('Enter', { delay: 100 });
+
+      const textboxLocator = await getActiveTextEditor(page);
+      await textboxLocator.fill(text, { timeout: 10000 });
+      await textboxLocator.press('Enter', { delay: 100 });
+
+      return;
+    } catch (error) {
+      lastError = error;
+      await page.keyboard.press('Escape').catch(() => undefined);
+    }
+  }
+
+  if (lastError instanceof Error) {
+    throw lastError;
+  }
+
+  throw new Error('Unable to fill the active grid text editor');
+};
+
 const getActiveDescriptionEditor = async (page: Page) => {
   const editor = page.locator(descriptionBox).first();
 
@@ -165,14 +194,7 @@ export const createGlossaryTermRowDetails = () => {
 };
 
 export const fillTextInputDetails = async (page: Page, text: string) => {
-  await page.keyboard.press('Enter', { delay: 100 });
-
-  const textboxLocator = await getActiveTextEditor(page);
-
-  await expect(textboxLocator).toBeVisible();
-
-  await textboxLocator.fill(text);
-  await textboxLocator.press('Enter', { delay: 100 });
+  await fillAndCommitTextEditor(page, text);
 };
 
 export const fillDescriptionDetails = async (
@@ -181,13 +203,30 @@ export const fillDescriptionDetails = async (
 ) => {
   const editor = await getActiveDescriptionEditor(page);
 
-  // eslint-disable-next-line playwright/no-force-option -- markdown editor can be partially covered by the modal toolbar.
-  await editor.click({ force: true });
-  await editor.fill(description);
+  await editor.evaluate((element) =>
+    element.scrollIntoView({ block: 'center', inline: 'nearest' })
+  );
+  await editor.fill(description, { timeout: 10000 });
 
   await page.click('[data-testid="save"]');
 
   await page.getByTestId('markdown-editor').waitFor({ state: 'detached' });
+};
+
+const clickInlineSave = async (page: Page) => {
+  const saveButton = page.getByTestId('inline-save-btn');
+
+  // eslint-disable-next-line playwright/no-force-option -- grid cells and the fixed import footer can overlap inline editors.
+  await saveButton.click({ force: true });
+  await saveButton.waitFor({ state: 'detached' });
+};
+
+const clickAssociatedTagSave = async (page: Page) => {
+  const saveButton = page.getByTestId('saveAssociatedTag');
+
+  // eslint-disable-next-line playwright/no-force-option -- grid cells and the fixed import footer can overlap inline editors.
+  await saveButton.click({ force: true });
+  await saveButton.waitFor({ state: 'detached' });
 };
 
 export const fillOwnerDetails = async (page: Page, owners: string[]) => {
@@ -291,9 +330,7 @@ export const fillEntityTypeDetails = async (page: Page, entityType: string) => {
 
   await page.getByTestId('entity-type-select').click();
   await page.getByTitle(entityType, { exact: true }).nth(0).click();
-  await page.getByTestId('inline-save-btn').click();
-
-  await page.getByTestId('inline-save-btn').waitFor({ state: 'detached' });
+  await clickInlineSave(page);
 };
 
 export const fillTagDetails = async (page: Page, tag: string) => {
@@ -306,9 +343,7 @@ export const fillTagDetails = async (page: Page, tag: string) => {
   await page.locator('[data-testid="tag-selector"] input').fill(tag);
   await waitForQueryResponse;
   await page.click(`[data-testid="tag-${tag}"]`);
-  await page.click('[data-testid="inline-save-btn"]');
-
-  await page.getByTestId('inline-save-btn').waitFor({ state: 'detached' });
+  await clickInlineSave(page);
 };
 
 export const fillGlossaryTermDetails = async (
@@ -327,9 +362,7 @@ export const fillGlossaryTermDetails = async (
   await searchResponse;
   await waitForAllLoadersToDisappear(page);
   await page.getByTestId(`tag-"${glossary.parent}"."${glossary.name}"`).click();
-  await page.click('[data-testid="saveAssociatedTag"]');
-
-  await page.getByTestId('saveAssociatedTag').waitFor({ state: 'detached' });
+  await clickAssociatedTagSave(page);
 };
 
 export const fillDomainDetails = async (
@@ -354,10 +387,7 @@ export const fillDomainDetails = async (
   await searchDomain;
 
   await page.getByTestId(`tag-${domains.fullyQualifiedName}`).click();
-
-  await page.getByTestId('saveAssociatedTag').click();
-
-  await page.getByTestId('saveAssociatedTag').waitFor({ state: 'detached' });
+  await clickAssociatedTagSave(page);
 };
 
 export const fillStoredProcedureCode = async (page: Page) => {
@@ -641,7 +671,13 @@ export const startCsvPreviewAndWaitForGrid = async (
     await options.csvImportCompletedPromise;
   }
 
-  await page.locator('.rdg-header-row').waitFor({ state: 'visible', timeout });
+  await page
+    .getByText('Import is in progress.')
+    .waitFor({ state: 'detached', timeout });
+  await page
+    .locator('.rdg-header-row')
+    .first()
+    .waitFor({ state: 'visible', timeout });
 };
 
 export const uploadCSVAndWaitForGrid = async (

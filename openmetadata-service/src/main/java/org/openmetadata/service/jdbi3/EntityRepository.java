@@ -6518,8 +6518,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // walk HAS relationships to discover linked entities, and bulkCleanupReferences wipes
     // those relationship rows.
     runHardDeleteAdditionalChildren(entities, updatedBy);
-    bulkCleanupReferences(entities);
-    bulkDeleteEntityRows(entities);
+    bulkDeleteReferencesAndRows(entities);
     bulkInvalidate(entities);
     for (T entity : entities) {
       postDelete(entity, true);
@@ -6578,6 +6577,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
             ex);
       }
     }
+  }
+
+  private void bulkDeleteReferencesAndRows(List<T> entities) {
+    Entity.getJdbi()
+        .inTransaction(
+            handle -> {
+              bulkCleanupReferences(entities);
+              bulkDeleteEntityRows(entities);
+              return null;
+            });
   }
 
   private void bulkCleanupReferences(List<T> entities) {
