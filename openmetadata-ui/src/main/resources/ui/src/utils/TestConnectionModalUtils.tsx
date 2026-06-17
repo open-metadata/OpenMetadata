@@ -435,7 +435,7 @@ export function ConnectionGateCard(
           <span
             className={classNames(
               'tw:inline-flex tw:h-[22px] tw:items-center tw:rounded-full tw:border',
-              'tw:border-utility-success-200 tw:bg-[#dcfae6] tw:px-2',
+              'tw:border-utility-success-200 tw:bg-[var(--color-bg-success-secondary)] tw:px-2',
               'tw:text-xs tw:font-medium tw:uppercase tw:leading-4 tw:text-utility-success-700'
             )}>
             {t('label.gate')}
