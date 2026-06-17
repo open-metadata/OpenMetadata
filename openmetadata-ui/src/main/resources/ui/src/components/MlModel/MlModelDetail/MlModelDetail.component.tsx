@@ -44,7 +44,7 @@ import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
   getFeedCounts,
-} from '../../../utils/FeedUtils';
+} from '../../../utils/FeedUtilsPure';
 import mlModelDetailsClassBase from '../../../utils/MlModel/MlModelClassBase';
 import {
   DEFAULT_ENTITY_PERMISSION,
@@ -56,7 +56,7 @@ import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
   updateCertificationTag,
   updateTierTag,
-} from '../../../utils/TagsUtils';
+} from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
