@@ -199,8 +199,11 @@ jest.mock('../../utils/ConnectionsRouterClassBase', () => ({
   },
 }));
 
-jest.mock('../../utils/ServiceUtils', () => ({
+jest.mock('../../utils/ServicePureUtils', () => ({
   getServiceRouteFromServiceType: jest.fn(),
+}));
+
+jest.mock('../../utils/ServiceUtils', () => ({
   getAddServiceEntityBreadcrumb: jest.fn().mockReturnValue([]),
   getEntityTypeFromServiceCategory: jest.fn(),
   getServiceType: jest.fn(),

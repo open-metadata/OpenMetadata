@@ -75,11 +75,10 @@ import {
   TaskStatusGroup,
 } from '../../../rest/tasksAPI';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
-import { getUpdatedThread } from '../../../utils/FeedUtils';
+import { getUpdatedThread } from '../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { ActivityFeedProviderContextType } from './ActivityFeedProviderContext.interface';
-
 const ActivityFeedDrawer = withSuspenseFallback(
   lazy(() => import('../ActivityFeedDrawer/ActivityFeedDrawer'))
 );

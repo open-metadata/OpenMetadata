@@ -189,14 +189,25 @@ const collectHiddenKeys = (
 
   if (navigationMap && (!navItem || navItem.isHidden)) {
     keys.push(item.key);
+
+    return keys;
   }
 
-  const hiddenChildKeys =
-    navItem?.children
-      ?.filter((child) => child.isHidden)
-      .map((child) => child.id) ?? [];
+  if (navItem && item.children) {
+    const savedChildMap = new Map(
+      navItem.children?.map((c) => [c.id, c]) ?? []
+    );
 
-  return [...keys, ...hiddenChildKeys];
+    item.children.forEach((child) => {
+      const navChild = savedChildMap.get(child.key);
+
+      if (!navChild || navChild.isHidden) {
+        keys.push(child.key);
+      }
+    });
+  }
+
+  return keys;
 };
 
 export const getHiddenKeysFromNavigationItems = (

@@ -18,12 +18,11 @@ import { useTranslation } from 'react-i18next';
 import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
-} from '../../../../utils/FeedUtils';
+} from '../../../../utils/FeedUtilsPure';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ActivityFeedEditor from '../../ActivityFeedEditor/ActivityFeedEditor';
 import Reactions from '../../Reactions/Reactions';
 import { FeedBodyProp } from '../ActivityFeedCard.interface';
-
 const FeedCardBody: FC<FeedBodyProp> = ({
   message,
   className,

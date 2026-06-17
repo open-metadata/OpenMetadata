@@ -50,7 +50,7 @@ import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import AntTable from '../../common/Table/Table';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { TableCellRendered } from '../../Database/SchemaTable/SchemaTable.interface';
 import TableTags from '../../Database/TableTags/TableTags.component';
 

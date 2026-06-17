@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import {
-  Alert,
-  Avatar,
-  Button as CoreButton,
-  Tooltip as CoreTooltip,
-} from '@openmetadata/ui-core-components';
+import { Avatar } from '@openmetadata/ui-core-components';
 import { Button, Dropdown, Space, Tabs, Tag, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
@@ -62,7 +57,6 @@ import { ContractExecutionStatus } from '../../../generated/type/contractExecuti
 import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
-import { useDataAccessRequest } from '../../../hooks/useDataAccessRequest';
 import { useFqn } from '../../../hooks/useFqn';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { FeedCounts } from '../../../interface/feed.interface';
@@ -84,7 +78,7 @@ import {
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBase';
-import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
+import { getQueryFilterToIncludeDomain } from '../../../utils/DomainFilterUtils';
 import { getEntityDeleteMessage } from '../../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
@@ -96,7 +90,7 @@ import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
   getFeedCounts,
-} from '../../../utils/FeedUtils';
+} from '../../../utils/FeedUtilsPure';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import { showNotistackError } from '../../../utils/NotistackUtils';
 import {
@@ -109,7 +103,6 @@ import {
   getVersionPath,
 } from '../../../utils/RouterUtils';
 import { getTermQuery } from '../../../utils/SearchUtils';
-import { getDarButtonTooltip } from '../../../utils/TasksUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
@@ -157,8 +150,7 @@ const DataProductsDetailsPage = ({
   const fromMarketplace =
     (location.state as { fromMarketplace?: boolean } | null)?.fromMarketplace ??
     false;
-  const { getEntityPermission, permissions: resourcePermissions } =
-    usePermissionProvider();
+  const { getEntityPermission } = usePermissionProvider();
   const { tab: activeTab, version } = useRequiredParams<{
     tab: string;
     version: string;
@@ -191,18 +183,6 @@ const DataProductsDetailsPage = ({
   const [dataContract, setDataContract] = useState<DataContract>();
   const [inputPortsCount, setInputPortsCount] = useState(0);
   const [outputPortsCount, setOutputPortsCount] = useState(0);
-  const [isRequestDataAccessOpen, setIsRequestDataAccessOpen] = useState(false);
-  const { isDarDisabled, isDarGranted, isDarAwaitingGrant } =
-    useDataAccessRequest({
-      entityFqn: dataProduct.fullyQualifiedName,
-      enabled: dataProductClassBase.getShowRequestDataAccess(),
-      listenForEvents: true,
-    });
-
-  const canCreateTask = Boolean(
-    resourcePermissions?.[ResourceEntity.TASK]?.Create
-  );
-
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
   }, []);
@@ -860,146 +840,6 @@ const DataProductsDetailsPage = ({
               : undefined
           }
         />
-        <div className="tw:flex tw:mx-5 tw:items-end">
-          <div className="tw:flex-1">
-            <EntityHeader
-              badge={statusBadge}
-              breadcrumb={[]}
-              entityData={{ ...dataProduct, displayName, name }}
-              entityType={EntityType.DATA_PRODUCT}
-              handleFollowingClick={handleFollowingClick}
-              icon={iconData}
-              isFollowing={isFollowing}
-              isFollowingLoading={isFollowingLoading}
-              serviceName=""
-              suffix={<LearningIcon pageId={LEARNING_PAGE_IDS.DATA_PRODUCT} />}
-              titleColor={dataProduct.style?.color}
-            />
-          </div>
-          <div>
-            <div className="tw:flex tw:gap-3 tw:justify-end tw:items-center tw:pb-1">
-              {!isVersionsView &&
-                canCreateTask &&
-                dataProductClassBase.getShowRequestDataAccess() && (
-                  <CoreTooltip
-                    isDisabled={!isDarDisabled}
-                    title={getDarButtonTooltip(
-                      isDarDisabled,
-                      isDarGranted,
-                      isDarAwaitingGrant,
-                      t
-                    )}>
-                    <CoreButton
-                      color="primary"
-                      data-testid="request-data-access-button"
-                      isDisabled={isDarDisabled}
-                      size="md"
-                      onClick={() => setIsRequestDataAccessOpen(true)}>
-                      {t('label.request-data-access')}
-                    </CoreButton>
-                  </CoreTooltip>
-                )}
-
-              {!isVersionsView && dataProductPermission.Create && (
-                <Button
-                  data-testid="data-product-details-add-button"
-                  type="primary"
-                  onClick={openAssetDrawer}>
-                  {t('label.add-entity', {
-                    entity: t('label.asset-plural'),
-                  })}
-                </Button>
-              )}
-
-              <ButtonGroup className="spaced" size="small">
-                {dataContractLatestResultButton}
-
-                {onUpdateVote && (
-                  <Voting
-                    voteStatus={voteStatus}
-                    votes={dataProduct.votes}
-                    onUpdateVote={handleVoteChange}
-                  />
-                )}
-
-                {dataProduct?.version && (
-                  <Tooltip
-                    title={t(
-                      `label.${
-                        isVersionsView
-                          ? 'exit-version-history'
-                          : 'version-plural-history'
-                      }`
-                    )}>
-                    <Button
-                      className={classNames('', {
-                        'text-primary border-primary': version,
-                      })}
-                      data-testid="version-button"
-                      icon={<Icon component={VersionIcon} />}
-                      onClick={handleVersionClick}>
-                      <Typography.Text
-                        className={classNames('', {
-                          'text-primary': version,
-                        })}>
-                        {toString(dataProduct.version)}
-                      </Typography.Text>
-                    </Button>
-                  </Tooltip>
-                )}
-
-                {!isVersionsView && manageButtonContent.length > 0 && (
-                  <Dropdown
-                    align={{ targetOffset: [-12, 0] }}
-                    className="m-l-xs"
-                    menu={{
-                      items: manageButtonContent,
-                    }}
-                    open={showActions}
-                    overlayClassName="domain-manage-dropdown-list-container"
-                    overlayStyle={{ width: '350px' }}
-                    placement="bottomRight"
-                    trigger={['click']}
-                    onOpenChange={setShowActions}>
-                    <Tooltip
-                      placement="topRight"
-                      title={t('label.manage-entity', {
-                        entity: t('label.data-product'),
-                      })}>
-                      <Button
-                        className="domain-manage-dropdown-button tw-px-1.5"
-                        data-testid="manage-button"
-                        icon={
-                          <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
-                        }
-                        onClick={() => setShowActions(true)}
-                      />
-                    </Tooltip>
-                  </Dropdown>
-                )}
-              </ButtonGroup>
-
-              {activeAnnouncement && (
-                <AnnouncementCard
-                  announcement={activeAnnouncement}
-                  onClick={handleOpenAnnouncementDrawer}
-                />
-              )}
-            </div>
-          </div>
-        </div>
-
-        {isDarAwaitingGrant && (
-          <div className="tw:px-5">
-            <Alert
-              data-testid="dar-awaiting-grant-banner"
-              title={t('label.data-access-request-awaiting-grant')}
-              variant="brand">
-              {t('message.data-access-request-awaiting-grant-message')}
-            </Alert>
-          </div>
-        )}
-
         <GenericProvider<DataProduct>
           muiTags
           currentVersionData={dataProduct}
@@ -1010,6 +850,119 @@ const DataProductsDetailsPage = ({
           permissions={dataProductPermission}
           type={EntityType.DATA_PRODUCT}
           onUpdate={onUpdate}>
+          <div className="tw:flex tw:mx-5 tw:items-end">
+            <div className="tw:flex-1">
+              <EntityHeader
+                badge={statusBadge}
+                breadcrumb={[]}
+                entityData={{ ...dataProduct, displayName, name }}
+                entityType={EntityType.DATA_PRODUCT}
+                handleFollowingClick={handleFollowingClick}
+                icon={iconData}
+                isFollowing={isFollowing}
+                isFollowingLoading={isFollowingLoading}
+                serviceName=""
+                suffix={
+                  <LearningIcon pageId={LEARNING_PAGE_IDS.DATA_PRODUCT} />
+                }
+                titleColor={dataProduct.style?.color}
+              />
+            </div>
+            <div>
+              <div className="tw:flex tw:gap-3 tw:justify-end tw:items-center tw:pb-1">
+                {dataProductClassBase.getRequestDataAccessButton()}
+
+                {!isVersionsView && dataProductPermission.Create && (
+                  <Button
+                    data-testid="data-product-details-add-button"
+                    type="primary"
+                    onClick={openAssetDrawer}>
+                    {t('label.add-entity', {
+                      entity: t('label.asset-plural'),
+                    })}
+                  </Button>
+                )}
+
+                <ButtonGroup className="spaced" size="small">
+                  {dataContractLatestResultButton}
+
+                  {onUpdateVote && (
+                    <Voting
+                      voteStatus={voteStatus}
+                      votes={dataProduct.votes}
+                      onUpdateVote={handleVoteChange}
+                    />
+                  )}
+
+                  {dataProduct?.version && (
+                    <Tooltip
+                      title={t(
+                        `label.${
+                          isVersionsView
+                            ? 'exit-version-history'
+                            : 'version-plural-history'
+                        }`
+                      )}>
+                      <Button
+                        className={classNames('', {
+                          'text-primary border-primary': version,
+                        })}
+                        data-testid="version-button"
+                        icon={<Icon component={VersionIcon} />}
+                        onClick={handleVersionClick}>
+                        <Typography.Text
+                          className={classNames('', {
+                            'text-primary': version,
+                          })}>
+                          {toString(dataProduct.version)}
+                        </Typography.Text>
+                      </Button>
+                    </Tooltip>
+                  )}
+
+                  {!isVersionsView && manageButtonContent.length > 0 && (
+                    <Dropdown
+                      align={{ targetOffset: [-12, 0] }}
+                      className="m-l-xs"
+                      menu={{
+                        items: manageButtonContent,
+                      }}
+                      open={showActions}
+                      overlayClassName="domain-manage-dropdown-list-container"
+                      overlayStyle={{ width: '350px' }}
+                      placement="bottomRight"
+                      trigger={['click']}
+                      onOpenChange={setShowActions}>
+                      <Tooltip
+                        placement="topRight"
+                        title={t('label.manage-entity', {
+                          entity: t('label.data-product'),
+                        })}>
+                        <Button
+                          className="domain-manage-dropdown-button tw-px-1.5"
+                          data-testid="manage-button"
+                          icon={
+                            <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
+                          }
+                          onClick={() => setShowActions(true)}
+                        />
+                      </Tooltip>
+                    </Dropdown>
+                  )}
+                </ButtonGroup>
+
+                {activeAnnouncement && (
+                  <AnnouncementCard
+                    announcement={activeAnnouncement}
+                    onClick={handleOpenAnnouncementDrawer}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+
+          {dataProductClassBase.getRequestDataAccessBanner()}
+
           <div className="data-product-details-page-tabs tw:w-full">
             <div className="tw:p-5">
               <Tabs
@@ -1125,14 +1078,6 @@ const DataProductsDetailsPage = ({
           setIsMetadataEditing(false);
         }}
       />
-
-      {dataProductClassBase.getRequestDataAccessDrawer(
-        isRequestDataAccessOpen,
-        () => setIsRequestDataAccessOpen(false),
-        dataProduct.fullyQualifiedName ?? '',
-        getEntityName(dataProduct),
-        EntityType.DATA_PRODUCT
-      )}
     </>
   );
 

@@ -80,7 +80,7 @@ import {
   highlightSearchArrayElement,
   highlightSearchText,
 } from '../../../utils/EntitySearchUtils';
-import { getEntityColumnFQN } from '../../../utils/FeedUtils';
+import { getEntityColumnFQN } from '../../../utils/FeedUtilsPure';
 import { stringToHTML } from '../../../utils/StringUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
@@ -106,7 +106,7 @@ import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTabl
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../common/Table/Table';
 import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import {
   EntityName,

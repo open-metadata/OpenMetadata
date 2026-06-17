@@ -30,7 +30,7 @@ import {
   getEndOfDayInMillis,
   getStartOfDayInMillis,
 } from '../../../../utils/date-time/DateTimeUtils';
-import { getEntityFQN } from '../../../../utils/FeedUtils';
+import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import {
   getEntityDetailsPath,
   getTestCaseDimensionsDetailPagePath,
@@ -44,7 +44,6 @@ import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import DimensionalityHeatmap from './DimensionalityHeatmap/DimensionalityHeatmap.component';
 import { DimensionResultWithTimestamp } from './DimensionalityHeatmap/DimensionalityHeatmap.interface';
-
 const DimensionalityTab = () => {
   const { t } = useTranslation();
   const { dimensionKey } = useRequiredParams<{ dimensionKey?: string }>();

@@ -123,6 +123,7 @@ export * from './application/pagination/pagination-base';
 export * from './application/pagination/pagination-dot';
 export * from './application/pagination/pagination-line';
 export * from './application/popover/popover';
+export * from './application/progress-steps/progress-steps';
 export { SlideoutMenu } from './application/slideout-menus/slideout-menu';
 export * from './application/table/table';
 export * from './application/tabs/tabs';
