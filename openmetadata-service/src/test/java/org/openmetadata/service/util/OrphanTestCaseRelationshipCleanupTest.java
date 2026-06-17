@@ -62,8 +62,9 @@ class OrphanTestCaseRelationshipCleanupTest {
 
       assertEquals(1, result.getTotalScanned());
       assertEquals(1, result.getMissingTestDefinitionDeleted());
+      assertEquals(0, result.getMissingTestDefinitionFailures());
       assertEquals(0, result.getMissingExecutableSuiteDeleted());
-      assertEquals(0, result.getFailures());
+      assertEquals(0, result.getMissingExecutableSuiteFailures());
       entityMock.verify(
           () -> Entity.deleteEntity("admin", Entity.TEST_CASE, TC_ID, true, true), times(1));
     }

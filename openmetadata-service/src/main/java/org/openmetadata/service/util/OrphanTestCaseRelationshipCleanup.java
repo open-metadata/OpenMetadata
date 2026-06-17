@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
@@ -80,8 +81,9 @@ public class OrphanTestCaseRelationshipCleanup {
   public static class Result {
     private int totalScanned;
     private int missingTestDefinitionDeleted;
+    private int missingTestDefinitionFailures;
     private int missingExecutableSuiteDeleted;
-    private int failures;
+    private int missingExecutableSuiteFailures;
   }
 
   public Result performCleanup(int batchSize) {
@@ -96,7 +98,7 @@ public class OrphanTestCaseRelationshipCleanup {
           collectionDAO
               .testCaseDAO()
               .listAfterWithOffset(collectionDAO.testCaseDAO().getTableName(), batchSize, offset);
-      if (jsonBatch == null || jsonBatch.isEmpty()) {
+      if (nullOrEmpty(jsonBatch)) {
         break;
       }
       List<TestCase> testCases = parseTestCases(jsonBatch);
@@ -113,11 +115,12 @@ public class OrphanTestCaseRelationshipCleanup {
 
     LOG.info(
         "Test case relationship cleanup done. Scanned: {}, Missing-definition deleted: {}, "
-            + "Missing-executable-suite deleted: {}, Failed: {}",
+            + "failed: {}, Missing-executable-suite deleted: {}, failed: {}",
         result.getTotalScanned(),
         result.getMissingTestDefinitionDeleted(),
+        result.getMissingTestDefinitionFailures(),
         result.getMissingExecutableSuiteDeleted(),
-        result.getFailures());
+        result.getMissingExecutableSuiteFailures());
     return result;
   }
 
@@ -156,7 +159,11 @@ public class OrphanTestCaseRelationshipCleanup {
         rowsRemoved = 1;
       }
     } else {
-      result.setFailures(result.getFailures() + 1);
+      if (missingDefinition) {
+        result.setMissingTestDefinitionFailures(result.getMissingTestDefinitionFailures() + 1);
+      } else {
+        result.setMissingExecutableSuiteFailures(result.getMissingExecutableSuiteFailures() + 1);
+      }
     }
     return rowsRemoved;
   }

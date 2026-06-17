@@ -331,18 +331,21 @@ public class DataRetention extends AbstractNativeApplication {
           new OrphanTestCaseRelationshipCleanup(collectionDAO, false);
       OrphanTestCaseRelationshipCleanup.Result result = cleanup.performCleanup(BATCH_SIZE);
       updateStats(
-          "test_cases_missing_test_definition", result.getMissingTestDefinitionDeleted(), 0);
+          "test_cases_missing_test_definition",
+          result.getMissingTestDefinitionDeleted(),
+          result.getMissingTestDefinitionFailures());
       updateStats(
           "test_cases_missing_executable_suite",
           result.getMissingExecutableSuiteDeleted(),
-          result.getFailures());
+          result.getMissingExecutableSuiteFailures());
       LOG.info(
           "Test case relationship cleanup completed - Scanned: {}, Missing-definition deleted: {}, "
-              + "Missing-executable-suite deleted: {}, Failed: {}",
+              + "failed: {}, Missing-executable-suite deleted: {}, failed: {}",
           result.getTotalScanned(),
           result.getMissingTestDefinitionDeleted(),
+          result.getMissingTestDefinitionFailures(),
           result.getMissingExecutableSuiteDeleted(),
-          result.getFailures());
+          result.getMissingExecutableSuiteFailures());
     } catch (Exception ex) {
       LOG.error("Failed to clean test cases with missing relationships", ex);
       internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
