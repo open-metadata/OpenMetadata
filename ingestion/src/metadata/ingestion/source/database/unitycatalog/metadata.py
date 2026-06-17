@@ -399,13 +399,13 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                     try:
                         table = self.client.tables.get(table.full_name)
                     except Exception as exc:
-                        self.status.failed(
-                            StackTraceError(
-                                name=table.full_name,
-                                error=f"Unexpected exception fetching the contraints on [{table.full_name}]: {exc}",
-                                stackTrace=traceback.format_exc(),
-                            )
+                        msg = (
+                            f"Unexpected exception in fetching constraints "
+                            f"(table [{table.full_name}]: {exc}. "
+                            f"Contraints will be ignored."
                         )
+                        logger.warning(msg)
+                        self.status.warning(table.name, msg)
                 yield from self._process_table(table, catalog_name, schema_name)
 
     def _get_incremental_tables(self, catalog_name: str, schema_name: str) -> Iterable[Tuple[str, TableType]]:  # noqa: UP006
