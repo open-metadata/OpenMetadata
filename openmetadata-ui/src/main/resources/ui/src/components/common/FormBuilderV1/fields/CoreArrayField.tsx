@@ -117,7 +117,7 @@ const CoreArrayField = (props: FieldProps) => {
       {fieldLabel && <Label isRequired={required}>{fieldLabel}</Label>}
       <div
         className={[
-          'tw:flex tw:flex-wrap tw:items-center tw:gap-1.5 tw:min-h-[38px] tw:rounded-lg tw:bg-primary tw:px-2 tw:py-1.5 tw:ring-1 tw:ring-inset tw:transition-shadow tw:duration-100 tw:ease-linear',
+          'tw:flex tw:flex-wrap tw:items-center tw:gap-1.5 tw:min-h-10 tw:rounded-lg tw:bg-primary tw:px-2 tw:py-1.5 tw:ring-1 tw:ring-inset tw:transition-shadow tw:duration-100 tw:ease-linear',
           isInvalid ? 'tw:ring-error_subtle' : 'tw:ring-primary',
           isDisabled
             ? 'tw:cursor-not-allowed tw:bg-disabled_subtle tw:ring-disabled'

@@ -329,7 +329,7 @@ export const CoreObjectFieldTemplate: FunctionComponent<
   const addButton = schema.additionalProperties ? (
     <Button
       aria-label={t('label.add-entity', { entity: addEntityLabel })}
-      className="core-object-field-template-add-button tw:inline-flex tw:size-7 tw:items-center tw:justify-center tw:rounded-[6px] tw:p-0 tw:leading-none"
+      className="core-object-field-template-add-button tw:inline-flex tw:size-7 tw:items-center tw:justify-center tw:rounded-md tw:p-0 tw:leading-none"
       color="primary"
       data-testid={`add-item-${addEntityLabel}`}
       id={`${idSchema.$id}`}
@@ -598,9 +598,9 @@ export const CoreObjectFieldTemplate: FunctionComponent<
           isSampleDataSection &&
             'core-object-field-template-sample-data-section',
           isSampleDataConfig &&
-            'core-object-field-template-sample-data-config tw:mt-[18px] tw:box-border tw:w-full tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:p-[18px]',
+            'core-object-field-template-sample-data-config tw:mt-4 tw:box-border tw:w-full tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:p-4',
           isAwsS3StorageConfig &&
-            'core-object-field-template-storage-config tw:mt-4 tw:gap-4 tw:box-border tw:w-full tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:p-[18px]',
+            'core-object-field-template-storage-config tw:mt-4 tw:gap-4 tw:box-border tw:w-full tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:p-4',
           isGatedCredentialConfig &&
             'core-object-field-template-gated-credential-block',
           isGenericNestedConfig && 'core-object-field-template-credential-block'

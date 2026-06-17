@@ -301,7 +301,7 @@ const EmbeddedAddServicePage = () => {
         items={serviceBreadcrumb}
         onAction={handleBreadcrumbAction}
       />
-      <div className="tw:mt-[22px]">
+      <div className="tw:mt-6">
         <div data-testid="add-new-service-container">
           {serviceConfig.serviceType ? (
             <div className="tw:flex tw:items-center tw:gap-3 tw:pb-0">
@@ -332,7 +332,7 @@ const EmbeddedAddServicePage = () => {
             className="tw:mt-6"
             steps={translatedSteps}
           />
-          <div className="tw:mt-[30px]">
+          <div className="tw:mt-8">
             {activeServiceStep === 1 && (
               <SelectServiceType
                 handleServiceTypeClick={handleServiceTypeClick}

@@ -366,7 +366,7 @@ const AddServicePage = () => {
           items={serviceBreadcrumb}
           onAction={handleBreadcrumbAction}
         />
-        <div className="tw:mt-[22px]">
+        <div className="tw:mt-4">
           <div data-testid="add-new-service-container">
             {serviceConfig.serviceType ? (
               <div className="tw:flex tw:items-center tw:gap-3 tw:pb-0">
@@ -397,7 +397,7 @@ const AddServicePage = () => {
               className="tw:mt-6"
               steps={translatedSteps}
             />
-            <div className="tw:mt-[30px]">
+            <div className="tw:mt-7">
               {activeServiceStep === 1 && (
                 <SelectServiceType
                   handleServiceTypeClick={handleServiceTypeClick}
@@ -463,6 +463,7 @@ const AddServicePage = () => {
         <div className="tw:flex tw:flex-shrink-0 tw:items-center tw:justify-end tw:gap-5 tw:border-t tw:border-secondary tw:bg-primary tw:px-5 tw:py-4">
           <Button
             color="secondary"
+            data-testid="previous-button"
             isDisabled={isSavingService}
             size="sm"
             type="button"
@@ -471,6 +472,7 @@ const AddServicePage = () => {
           </Button>
           <Button
             color="primary"
+            data-testid="next-button"
             isDisabled={footerNextDisabled || isSavingService}
             size="sm"
             type="button"

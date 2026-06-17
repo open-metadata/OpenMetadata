@@ -29,7 +29,7 @@ interface ServiceFlowStepperProps {
 type StepState = 'completed' | 'current' | 'upcoming';
 
 const NODE_BASE =
-  'tw:flex tw:size-[26px] tw:flex-shrink-0 tw:items-center tw:justify-center tw:rounded-full';
+  'tw:flex tw:size-6 tw:flex-shrink-0 tw:items-center tw:justify-center tw:rounded-full';
 
 const LABEL_CLASS_BY_STATE: Record<StepState, string> = {
   completed: 'tw:font-semibold tw:text-brand-secondary',
@@ -108,7 +108,7 @@ const ServiceFlowStepper = ({
           {!isLast && (
             <div
               className={classNames(
-                'tw:mt-[11px] tw:h-0.5 tw:w-[100px] tw:flex-none tw:rounded-full',
+                'tw:mt-3 tw:h-0.5 tw:w-[100px] tw:flex-none tw:rounded-full',
                 state === 'completed'
                   ? 'tw:bg-brand-solid'
                   : 'tw:bg-[var(--tw-color-border-primary)]'

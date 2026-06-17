@@ -269,7 +269,7 @@ const CoreOneOfField = (props: FieldProps) => {
           )}
           <div
             aria-label={fieldLabel}
-            className="tw:grid tw:gap-1 tw:rounded-[10px] tw:border tw:border-primary tw:bg-secondary tw:p-1"
+            className="tw:grid tw:gap-1 tw:rounded-lg tw:border tw:border-primary tw:bg-secondary tw:p-1"
             role="tablist"
             style={{
               gridTemplateColumns: `repeat(${resolvedOptions.length}, minmax(0, 1fr))`,
@@ -281,7 +281,7 @@ const CoreOneOfField = (props: FieldProps) => {
                 <button
                   aria-selected={isSelected}
                   className={classNames(
-                    'tw:flex tw:min-h-10 tw:items-center tw:justify-center tw:rounded-[7px] tw:border tw:px-3 tw:py-2 tw:text-center tw:text-sm tw:leading-5 tw:transition-colors',
+                    'tw:flex tw:min-h-10 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:px-3 tw:py-2 tw:text-center tw:text-sm tw:leading-5 tw:transition-colors',
                     isSelected
                       ? 'tw:border-primary tw:bg-primary tw:font-medium tw:text-primary tw:shadow-xs'
                       : 'tw:border-transparent tw:font-medium tw:text-tertiary'

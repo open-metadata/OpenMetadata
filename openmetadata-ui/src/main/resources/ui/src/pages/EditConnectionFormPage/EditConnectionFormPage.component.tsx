@@ -288,7 +288,7 @@ function EditConnectionFormPage() {
           items={slashedBreadcrumb}
           onAction={handleBreadcrumbAction}
         />
-        <div className="tw:mt-[22px]">
+        <div className="tw:mt-6">
           <div className="tw:flex tw:items-center tw:gap-3 tw:pb-0">
             {getServiceLogo(
               serviceDetails?.serviceType ?? '',
@@ -311,7 +311,7 @@ function EditConnectionFormPage() {
             steps={translatedSteps}
           />
 
-          <div className="tw:mt-[30px]">
+          <div className="tw:mt-8">
             {activeServiceStep === 1 && (
               <ConnectionConfigForm
                 hideFooter
@@ -347,6 +347,7 @@ function EditConnectionFormPage() {
       <div className="tw:flex tw:flex-shrink-0 tw:items-center tw:justify-end tw:gap-5 tw:border-t tw:border-secondary tw:bg-primary tw:px-5 tw:py-4">
         <Button
           color="secondary"
+          data-testid="previous-button"
           isDisabled={isSavingService}
           size="sm"
           type="button"
@@ -355,6 +356,7 @@ function EditConnectionFormPage() {
         </Button>
         <Button
           color="primary"
+          data-testid="next-button"
           isDisabled={isSavingService}
           size="sm"
           type="button"

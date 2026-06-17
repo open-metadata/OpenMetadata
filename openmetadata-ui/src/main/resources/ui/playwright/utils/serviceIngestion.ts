@@ -157,14 +157,18 @@ export const testConnection = async (page: Page) => {
 
   // Wait for the success badge or the warning badge to appear
   const statusBadge = page.locator(
-    '[data-testid="message-container"] [data-testid="success-badge"], [data-testid="message-container"] [data-testid="warning-badge"]'
+    '[data-testid="test-connection-card-Successful"], [data-testid="test-connection-card-Warning"]'
   );
 
   await expect(statusBadge).toBeVisible({
     timeout: 3.5 * 60 * 1000, // 3 minutes for connection test and 0.5 minute buffer
   });
 
-  await expect(page.getByTestId('messag-text')).toContainText(
+  await expect(
+    page
+      .locator('[data-testid^="test-connection-card-"]')
+      .getByTestId('alert-title')
+  ).toContainText(
     /Connection verified|Connection test was successful.|Test connection partially successful: Some steps had failures, we will only ingest partial metadata./
   );
 };
@@ -249,11 +253,11 @@ export const mockSuccessfulTestConnection = async (page: Page) => {
 export const testConnectionIfRequired = async (page: Page) => {
   await waitForServiceConnectionForm(page);
 
-  const submitButton = page.getByTestId('submit-btn');
+  const submitButton = page.getByTestId('next-button');
 
-  if (await submitButton.isDisabled({ timeout: 1000 }).catch(() => false)) {
+  if (await submitButton.isDisabled().catch(() => false)) {
     await testConnection(page);
-    await expect(submitButton).toBeEnabled({ timeout: 30_000 });
+    await expect(submitButton).toBeEnabled();
   }
 };
 
@@ -265,7 +269,7 @@ export const checkServiceFieldSectionHighlighting = async (
     `[data-id="${field}"][data-highlighted="true"]`
   );
 
-  if (await highlightedField.isVisible({ timeout: 1000 }).catch(() => false)) {
+  if (await highlightedField.isVisible().catch(() => false)) {
     return;
   }
 
@@ -281,7 +285,6 @@ export const selectServiceConnector = async (
   try {
     await page.getByTestId('service-name').waitFor({
       state: 'visible',
-      timeout: 5000,
     });
   } catch {
     await page.getByTestId('next-button').click();
@@ -292,33 +295,19 @@ export const selectServiceConnector = async (
 export const waitForServiceConnectionForm = async (page: Page) => {
   await page
     .getByTestId('connection-schema-loader')
-    .waitFor({ state: 'detached', timeout: 60_000 })
+    .waitFor({ state: 'detached' })
     .catch(() => null);
 
-  await page
-    .locator(
-      [
-        '[data-testid="test-connection-btn"]:visible',
-        '[data-testid="test-connection-button"]:visible',
-        '[data-testid="no-config-available"]:visible',
-        '[data-field-id^="root/"]:visible',
-        'input[id^="root/"]:not([type="hidden"]):visible',
-        'textarea[id^="root/"]:visible',
-      ].join(', ')
-    )
-    .first()
-    .waitFor({ state: 'visible', timeout: 60_000 });
-
-  await page.getByTestId('submit-btn').waitFor({ state: 'visible' });
+  await page.getByTestId('next-button').waitFor({ state: 'visible' });
 };
 
 export const advanceToServiceConnectionStep = async (
   page: Page,
-  waitForTestId = 'submit-btn'
+  waitForTestId = 'next-button'
 ) => {
   const target = page.getByTestId(waitForTestId);
-  if (await target.isVisible({ timeout: 1000 }).catch(() => false)) {
-    if (waitForTestId === 'submit-btn') {
+  if (await target.isVisible().catch(() => false)) {
+    if (waitForTestId === 'next-button') {
       await waitForServiceConnectionForm(page);
     }
 
@@ -327,7 +316,7 @@ export const advanceToServiceConnectionStep = async (
 
   await page.getByTestId('next-button').click();
 
-  if (waitForTestId === 'submit-btn') {
+  if (waitForTestId === 'next-button') {
     await waitForServiceConnectionForm(page);
   } else {
     await target.waitFor({ state: 'visible' });

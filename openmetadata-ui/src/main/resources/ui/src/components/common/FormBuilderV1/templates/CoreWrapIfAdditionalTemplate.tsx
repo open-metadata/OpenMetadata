@@ -60,7 +60,7 @@ export const CoreWrapIfAdditionalTemplate: FunctionComponent<
         </div>
         <Button
           aria-label={t('label.remove')}
-          className="core-wrap-if-additional-remove-button tw:inline-flex tw:h-[38px] tw:w-[38px] tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:p-0 tw:leading-none"
+          className="core-wrap-if-additional-remove-button tw:inline-flex tw:h-9 tw:w-9 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:p-0 tw:leading-none"
           color="secondary"
           isDisabled={disabled || readonly}
           size="sm"

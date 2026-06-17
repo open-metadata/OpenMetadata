@@ -296,8 +296,8 @@ export function ConnectionStepRow(props: Readonly<ConnectionStepRowProps>) {
             {step.mandatory && (
               <span
                 className={classNames(
-                  'tw:inline-flex tw:h-[22px] tw:items-center tw:rounded-full tw:border',
-                  'tw:border-utility-brand-200 tw:bg-utility-brand-50 tw:px-[7px]',
+                  'tw:inline-flex tw:h-6 tw:items-center tw:rounded-full tw:border',
+                  'tw:border-utility-brand-200 tw:bg-utility-brand-50 tw:px-2',
                   'tw:text-xs tw:font-medium tw:uppercase tw:leading-4 tw:text-utility-brand-700'
                 )}>
                 {requiredLabel}
@@ -347,7 +347,7 @@ export function ConnectionStatusBanner(
   } = props;
 
   const bannerClass = classNames(
-    'tw:grid tw:grid-cols-[minmax(0,1fr)_180px] tw:items-center tw:gap-[18px] tw:rounded-xl tw:border tw:px-4 tw:py-3.5',
+    'tw:grid tw:grid-cols-[minmax(0,1fr)_180px] tw:items-center tw:gap-4 tw:rounded-xl tw:border tw:px-4 tw:py-3.5',
     {
       'tw:border-utility-brand-200 tw:bg-utility-brand-50':
         !isSuccessful && !isWarning && !isFailed,
@@ -387,7 +387,7 @@ export function ConnectionStatusBanner(
         <div className="tw:flex tw:items-center tw:gap-2">
           <ProgressBarBase className="tw:flex-1" value={progressPercent} />
           <span
-            className="tw:min-w-[40px] tw:font-medium tw:text-secondary"
+            className="tw:min-w-10 tw:font-medium tw:text-secondary"
             data-testid="progress-bar-value">{`${progressPercent}%`}</span>
         </div>
       )}
@@ -434,7 +434,7 @@ export function ConnectionGateCard(
         <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2.5 tw:text-quaternary">
           <span
             className={classNames(
-              'tw:inline-flex tw:h-[22px] tw:items-center tw:rounded-full tw:border',
+              'tw:inline-flex tw:h-6 tw:items-center tw:rounded-full tw:border',
               'tw:border-utility-success-200 tw:bg-[var(--color-bg-success-secondary)] tw:px-2',
               'tw:text-xs tw:font-medium tw:uppercase tw:leading-4 tw:text-utility-success-700'
             )}>

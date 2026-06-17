@@ -95,7 +95,7 @@ export const isCreatePipelineCall = (url: string, method: string) =>
 export const submitAndCaptureCreatePayload = async (
   page: Page
 ): Promise<ProfileSampleConfig> => {
-  await page.click('[data-testid="submit-btn"]');
+  await page.click('[data-testid="next-button"]');
 
   await page.getByTestId('schedular-card-container').waitFor();
   await page
@@ -107,7 +107,7 @@ export const submitAndCaptureCreatePayload = async (
     isCreatePipelineCall(response.url(), response.request().method())
   );
 
-  await page.click('[data-testid="deploy-button"]');
+  await page.click('[data-testid="next-button"]');
 
   const createResponse = await createResponsePromise;
 

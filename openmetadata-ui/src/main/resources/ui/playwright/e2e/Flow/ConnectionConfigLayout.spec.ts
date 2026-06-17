@@ -563,7 +563,7 @@ test.describe('Connection config layout', () => {
     expect(workflowPayload.request.connection.config.authType).toBeUndefined();
 
     await expect(
-      page.getByTestId('message-container').getByTestId('success-badge')
+      page.getByTestId('test-connection-card-Successful')
     ).toBeVisible();
     await page.getByRole('button', { name: 'Done' }).click();
 

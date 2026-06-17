@@ -207,7 +207,7 @@ const FiltersConfigForm = forwardRef<
       </div>
 
       <div className="tw:flex tw:items-start tw:gap-3 tw:rounded-xl tw:border tw:border-utility-success-200 tw:bg-utility-success-50 tw:px-4 tw:py-3.5">
-        <span className="tw:grid tw:size-[30px] tw:shrink-0 tw:place-items-center tw:rounded-full tw:bg-white tw:text-utility-success-600">
+        <span className="tw:grid tw:size-8 tw:shrink-0 tw:place-items-center tw:rounded-full tw:bg-white tw:text-utility-success-600">
           <CheckCircle size={17} />
         </span>
         <div>

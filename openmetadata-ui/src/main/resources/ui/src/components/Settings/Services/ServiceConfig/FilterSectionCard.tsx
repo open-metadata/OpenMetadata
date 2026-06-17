@@ -149,7 +149,7 @@ function RegexDisclosure({
           : t('label.show-equivalent-regex')}
       </Button>
       {isOpen && (
-        <div className="tw:mt-2 tw:grid tw:gap-1.5 tw:rounded-[10px] tw:bg-gray-900 tw:p-3">
+        <div className="tw:mt-2 tw:grid tw:gap-1.5 tw:rounded-lg tw:bg-gray-900 tw:p-3">
           {includes.map((regex) => (
             <code
               className="tw:font-mono tw:text-xs tw:font-medium tw:text-blue-300"
@@ -276,15 +276,15 @@ export function FilterSectionCard({
         </span>
       </AccordionHeader>
 
-      <AccordionPanel className="tw:grid tw:gap-[18px] tw:border-secondary tw:p-[18px]">
+      <AccordionPanel className="tw:grid tw:gap-4 tw:border-secondary tw:p-4">
         <div>
           <div className="tw:mb-2 tw:text-xs tw:font-medium tw:text-secondary">
             {t('label.what-to-scan')}
           </div>
-          <div className="tw:grid tw:grid-cols-2 tw:gap-1 tw:rounded-[10px] tw:border tw:border-primary tw:bg-secondary tw:p-1">
+          <div className="tw:grid tw:grid-cols-2 tw:gap-1 tw:rounded-lg tw:border tw:border-primary tw:bg-secondary tw:p-1">
             <button
               className={classNames(
-                'tw:flex tw:min-h-10 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-[7px] tw:border tw:px-3 tw:py-2 tw:text-center tw:text-sm tw:leading-5 tw:transition-colors',
+                'tw:flex tw:min-h-10 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border tw:px-3 tw:py-2 tw:text-center tw:text-sm tw:leading-5 tw:transition-colors',
                 filter.restrict
                   ? 'tw:border-transparent tw:font-medium tw:text-tertiary'
                   : 'tw:border-primary tw:bg-primary tw:font-medium tw:text-primary tw:shadow-xs'
@@ -300,7 +300,7 @@ export function FilterSectionCard({
             </button>
             <button
               className={classNames(
-                'tw:flex tw:min-h-10 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-[7px] tw:border tw:px-3 tw:py-2 tw:text-center tw:text-sm tw:leading-5 tw:transition-colors',
+                'tw:flex tw:min-h-10 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border tw:px-3 tw:py-2 tw:text-center tw:text-sm tw:leading-5 tw:transition-colors',
                 filter.restrict
                   ? 'tw:border-primary tw:bg-primary tw:font-medium tw:text-primary tw:shadow-xs'
                   : 'tw:border-transparent tw:font-medium tw:text-tertiary'

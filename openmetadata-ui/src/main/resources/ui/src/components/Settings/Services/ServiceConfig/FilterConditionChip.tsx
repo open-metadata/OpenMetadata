@@ -36,7 +36,7 @@ export function PreviewRuleChip({
   return (
     <span
       className={classNames(
-        'tw:inline-flex tw:max-w-full tw:items-center tw:gap-1 tw:rounded-full tw:px-2 tw:py-[3px] tw:text-xs tw:font-medium',
+        'tw:inline-flex tw:max-w-full tw:items-center tw:gap-1 tw:rounded-full tw:px-2 tw:py-1 tw:text-xs tw:font-medium',
         tone === 'include'
           ? 'tw:border tw:border-utility-brand-200 tw:bg-utility-brand-50 tw:text-utility-brand-700'
           : 'tw:border tw:border-utility-error-200 tw:bg-utility-error-50 tw:text-utility-error-700'

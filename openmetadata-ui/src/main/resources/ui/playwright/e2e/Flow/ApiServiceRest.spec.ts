@@ -15,6 +15,7 @@ import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
+  descriptionBox,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -124,9 +125,7 @@ test.describe('API service', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
     await page.locator('#service-name').fill(apiServiceConfig.name);
     await page.getByTestId('add-description-button').click();
-    await page
-      .getByTestId('service-description')
-      .fill(apiServiceConfig.description);
+    await page.locator(descriptionBox).fill(apiServiceConfig.description);
 
     await page
       .locator('#root\\/openAPISchemaConnection\\/openAPISchemaURL')
@@ -136,7 +135,7 @@ test.describe('API service', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
     await testConnection(page);
 
-    await page.getByTestId('submit-btn').click();
+    await page.getByTestId('next-button').click();
 
     const autoPilotApplicationRequest = page.waitForRequest(
       (request) =>

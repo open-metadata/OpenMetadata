@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 
-import type { FC, HTMLAttributes, ReactNode } from 'react';
+import { CloseButton } from '@/components/base/buttons/close-button';
+import { FeaturedIcon } from '@/components/foundations/featured-icon/featured-icon';
+import { cx } from '@/utils/cx';
 import {
   AlertCircle,
   AlertTriangle,
   CheckCircle,
   InfoCircle,
 } from '@untitledui/icons';
-import { CloseButton } from '@/components/base/buttons/close-button';
-import { FeaturedIcon } from '@/components/foundations/featured-icon/featured-icon';
-import { cx } from '@/utils/cx';
+import type { FC, HTMLAttributes, ReactNode } from 'react';
 
 export type AlertVariant = 'success' | 'warning' | 'error' | 'brand' | 'gray';
 
@@ -122,6 +122,7 @@ export const Alert = ({
         bgColor={iconBgColor}
         className={cx('tw:shrink-0', children && 'tw:self-start')}
         color={styles.iconColor}
+        data-testid="alert-icon"
         icon={Icon}
         outlined={iconOutlined}
         radius={iconRadius}
@@ -131,18 +132,31 @@ export const Alert = ({
       />
 
       <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:text-sm">
-        <p className="tw:font-semibold tw:text-secondary">{title}</p>
+        <p
+          className="tw:font-semibold tw:text-secondary"
+          data-testid="alert-title">
+          {title}
+        </p>
 
-        {children && <div className="tw:text-tertiary">{children}</div>}
+        {children && (
+          <div className="tw:text-tertiary" data-testid="alert-children">
+            {children}
+          </div>
+        )}
       </div>
 
       {rightContent && (
-        <div className="tw:shrink-0 tw:self-center">{rightContent}</div>
+        <div
+          className="tw:shrink-0 tw:self-center"
+          data-testid="alert-right-content">
+          {rightContent}
+        </div>
       )}
 
       {closable && (
         <CloseButton
           className="tw:shrink-0"
+          data-testid="alert-close-button"
           label="Close alert"
           size="sm"
           onPress={onClose}

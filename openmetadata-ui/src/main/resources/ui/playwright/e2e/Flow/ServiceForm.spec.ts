@@ -286,13 +286,7 @@ test.describe(
 
         await selectServiceConnector(page, 'BigQuery');
 
-        if (await page.getByTestId('next-button').isVisible()) {
-          await page.getByTestId('next-button').click();
-
-          await expect(page.locator('[slot="errorMessage"]')).toContainText(
-            'Name is required'
-          );
-        }
+        await expect(page.getByTestId('next-button')).toBeDisabled();
 
         await page.locator('#service-name').click();
         await page.locator('#service-name').fill(`${SERVICE_NAMES.service1}`);
@@ -476,7 +470,7 @@ test.describe(
             response.request().method() === 'PATCH'
         );
 
-        await page.getByTestId('submit-btn').click();
+        await page.getByTestId('next-button').click();
         await page.getByRole('button', { name: 'Save' }).click();
 
         const patch = await patchResponse;

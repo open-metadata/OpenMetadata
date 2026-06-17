@@ -203,14 +203,14 @@ class ServiceBaseClass {
     await page.getByTestId('add-ingestion-container').waitFor();
     await this.fillIngestionDetails(page);
 
-    await page.click('[data-testid="submit-btn"]');
+    await page.click('[data-testid="next-button"]');
 
     // Go back and data should persist
     await page.click('[data-testid="back-button"]');
     await this.validateIngestionDetails(page);
 
     // Go Next
-    await page.click('[data-testid="submit-btn"]');
+    await page.click('[data-testid="next-button"]');
     await this.scheduleIngestion(page);
 
     await page.click('[data-testid="view-service-button"]');
@@ -254,7 +254,7 @@ class ServiceBaseClass {
   }
 
   async submitService(page: Page) {
-    await page.getByTestId('submit-btn').getByText('Next').click();
+    await page.getByTestId('next-button').getByText('Next').click();
 
     if (this.shouldAddDefaultFilters) {
       await this.fillIngestionDetails(page);
@@ -474,7 +474,7 @@ class ServiceBaseClass {
 
     await page.getByTestId('more-actions').first().click();
     await page.click('[data-testid="edit-button"]');
-    await page.click('[data-testid="submit-btn"]');
+    await page.click('[data-testid="next-button"]');
 
     // select schedule
     await page.getByTestId('schedular-card-container').waitFor();
@@ -505,7 +505,7 @@ class ServiceBaseClass {
     // click and edit pipeline schedule for Day
     await page.getByTestId('more-actions').first().click();
     await page.click('[data-testid="edit-button"]');
-    await page.click('[data-testid="submit-btn"]');
+    await page.click('[data-testid="next-button"]');
     await page.click('[data-testid="cron-type"]');
     await page.click('.ant-select-item-option-content:has-text("Day")');
 
@@ -536,7 +536,7 @@ class ServiceBaseClass {
     // click and edit pipeline schedule for Week
     await page.getByTestId('more-actions').first().click();
     await page.click('[data-testid="edit-button"]');
-    await page.click('[data-testid="submit-btn"]');
+    await page.click('[data-testid="next-button"]');
     await page.click('[data-testid="cron-type"]');
     await page.click('.ant-select-item-option-content:has-text("Week")');
     await page
@@ -562,7 +562,7 @@ class ServiceBaseClass {
     // click and edit pipeline schedule for Custom
     await page.getByTestId('more-actions').first().click();
     await page.click('[data-testid="edit-button"]');
-    await page.click('[data-testid="submit-btn"]');
+    await page.click('[data-testid="next-button"]');
     await page.click('[data-testid="cron-type"]');
     await page.click('.ant-select-item-option-content:has-text("Custom")');
 

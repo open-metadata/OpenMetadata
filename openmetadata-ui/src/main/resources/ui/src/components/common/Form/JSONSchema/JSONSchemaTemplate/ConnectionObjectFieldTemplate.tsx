@@ -390,7 +390,7 @@ const SectionFields = ({
               renderProperty(
                 element,
                 index,
-                'connection-advanced-full-row tw:pt-[18px] tw:border-t tw:border-secondary'
+                'connection-advanced-full-row tw:pt-4 tw:border-t tw:border-secondary'
               )
             )}
           </div>
@@ -517,14 +517,14 @@ const AuthTabs = ({
 
   return (
     <div className="tw:flex tw:flex-col tw:gap-3" data-testid="auth-tabs">
-      <div className="tw:grid tw:grid-cols-2 tw:gap-1 tw:rounded-[10px] tw:border tw:border-primary tw:bg-secondary tw:p-1">
+      <div className="tw:grid tw:grid-cols-2 tw:gap-1 tw:rounded-xl tw:border tw:border-primary tw:bg-secondary tw:p-1">
         {tabs.map((tab) => {
           const isActive = tab.id === method;
 
           return (
             <button
               className={classNames(
-                'tw:flex tw:h-7 tw:items-center tw:justify-center tw:gap-2 tw:rounded-[7px] tw:border tw:px-3 tw:text-xs tw:transition-colors',
+                'tw:flex tw:h-7 tw:items-center tw:justify-center tw:gap-2 tw:rounded-lg tw:border tw:px-3 tw:text-xs tw:transition-colors',
                 isActive
                   ? 'tw:border-primary tw:bg-primary tw:font-medium tw:text-primary tw:shadow-xs'
                   : 'tw:border-transparent tw:font-medium tw:text-tertiary'

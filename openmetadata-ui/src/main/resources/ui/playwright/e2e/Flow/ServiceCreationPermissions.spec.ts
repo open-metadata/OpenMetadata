@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import {
   SERVICE_CREATOR_RULES,
@@ -172,7 +172,7 @@ test.describe(
       await page.locator('#root\\/hostPort').fill('localhost:3306');
 
       await testConnectionIfRequired(page);
-      await page.getByTestId('submit-btn').click();
+      await page.getByTestId('next-button').click();
       await page.getByRole('button', { name: 'Create & Deploy' }).click();
 
       await expect(page.getByTestId('entity-header-title')).toContainText(
@@ -258,7 +258,7 @@ test.describe(
       );
 
       await testConnectionIfRequired(page);
-      await page.getByTestId('submit-btn').click();
+      await page.getByTestId('next-button').click();
       await page.getByRole('button', { name: 'Save' }).click();
       await saveResponse;
 
