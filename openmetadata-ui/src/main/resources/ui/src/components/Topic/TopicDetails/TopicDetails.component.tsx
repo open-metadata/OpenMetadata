@@ -43,7 +43,7 @@ import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
   getFeedCounts,
-} from '../../../utils/FeedUtils';
+} from '../../../utils/FeedUtilsPure';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
@@ -54,7 +54,7 @@ import {
   createTagObject,
   updateCertificationTag,
   updateTierTag,
-} from '../../../utils/TagsUtils';
+} from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import topicClassBase from '../../../utils/TopicClassBase';
 import { useRequiredParams } from '../../../utils/useRequiredParams';

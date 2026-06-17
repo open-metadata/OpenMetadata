@@ -5,7 +5,7 @@ import json
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 from cachetools import LRUCache
@@ -37,6 +37,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.source.pipeline.openlineage.metadata import (
     KPL_AGGREGATED_MAGIC,
     RESOLUTION_CACHE_MAXSIZE,
@@ -52,6 +53,7 @@ from metadata.ingestion.source.pipeline.openlineage.models import (
 from metadata.ingestion.source.pipeline.openlineage.utils import (
     message_to_open_lineage_event,
 )
+from metadata.utils import fqn
 
 MOCK_WORKFLOW_CONFIG = {
     "openMetadataServerConfig": {
@@ -959,6 +961,69 @@ class OpenLineageUnitTest(unittest.TestCase):
         ol_event = self.read_openlineage_event_from_kafka(FULL_OL_KAFKA_EVENT)
         self.assertIsInstance(ol_event, OpenLineageEvent)
         self.assertEqual(ol_event, EXPECTED_OL_EVENT)
+
+    def test_yield_pipeline_sets_owners_from_job_ownership_facet(self):
+        """Test pipeline owners are populated from OpenLineage job ownership facet."""
+        ol_event = copy.deepcopy(EXPECTED_OL_EVENT)
+        ol_event.job = {
+            **ol_event.job,
+            "facets": {"ownership": {"owners": [{"name": "team:data-platform", "type": "OWNER"}]}},
+        }
+        owners = EntityReferenceList(
+            root=[
+                EntityReference(
+                    id=uuid4(),
+                    type="team",
+                    name="data-platform",
+                    displayName="Data Platform",
+                )
+            ]
+        )
+        owner_resolver = Mock()
+        owner_resolver.get_pipeline_job_owners.return_value = owners
+        self.open_lineage_source._owner_resolver = owner_resolver
+
+        with (
+            patch.object(
+                self.open_lineage_source,
+                "_resolve_pipeline_service",
+                return_value=MOCK_PIPELINE_SERVICE.name.root,
+            ),
+            patch.object(self.open_lineage_source, "register_record"),
+        ):
+            results = list(self.open_lineage_source.yield_pipeline(ol_event))
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].right.owners, owners)
+        owner_resolver.get_pipeline_job_owners.assert_called_once()
+        self.assertEqual(
+            owner_resolver.get_pipeline_job_owners.call_args.args,
+            (ol_event.job,),
+        )
+        self.assertEqual(
+            owner_resolver.get_pipeline_job_owners.call_args.kwargs["pipeline_fqn"],
+            fqn.build(
+                metadata=self.open_lineage_source.metadata,
+                entity_type=Pipeline,
+                service_name=MOCK_PIPELINE_SERVICE.name.root,
+                pipeline_name=self.open_lineage_source.get_pipeline_name(ol_event),
+            ),
+        )
+
+    def test_prepare_passes_include_owners_to_owner_resolver(self):
+        self.open_lineage_source.source_config.includeOwners = False
+
+        with (
+            patch.object(self.open_lineage_source, "_build_db_service_type_map", return_value={}),
+            patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenLineageOwnerResolver") as resolver_cls,
+        ):
+            self.open_lineage_source.prepare()
+
+        resolver_cls.assert_called_once_with(
+            self.open_lineage_source.metadata,
+            include_owners=False,
+            ownership_update_mode=self.open_lineage_source.source_config.ownershipUpdateMode,
+        )
 
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om")
     def test_yield_pipeline_lineage_details(self, mock_get_table_from_om):
