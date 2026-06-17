@@ -29,6 +29,22 @@ import { performUserLogin } from '../../../utils/user';
 
 const reviewerUser = new UserClass();
 
+const queryOpenApprovalTasks = async (
+  apiContext: APIRequestContext,
+  termFqn: string
+): Promise<{ count: number; taskId: string | null }> => {
+  const res = await apiContext
+    .get(
+      `/api/v1/tasks?aboutEntity=${encodeURIComponent(
+        termFqn
+      )}&status=Open&category=Approval&limit=100&fields=about,assignees`
+    )
+    .then((r) => r.json());
+  const data: { id?: string | number }[] = res?.data ?? [];
+
+  return { count: data.length, taskId: data[0]?.id?.toString() ?? null };
+};
+
 const waitForTermStatus = async (
   apiContext: APIRequestContext,
   termId: string,
@@ -52,6 +68,55 @@ const waitForTermStatus = async (
     .toBe(expectedStatus);
 };
 
+const reviewerRef = () => ({
+  id: reviewerUser.responseData.id,
+  type: 'user' as const,
+  displayName: reviewerUser.responseData.displayName,
+  fullyQualifiedName: reviewerUser.responseData.fullyQualifiedName,
+  name: reviewerUser.responseData.name,
+});
+
+const setupGlossaryWithPendingApproval = async (
+  adminApiContext: APIRequestContext
+) => {
+  const glossary = new Glossary();
+  const parent = new GlossaryTerm(glossary); // Securities Lending
+  const child = new GlossaryTerm(glossary); // Eligible Securities — has the open task
+  const container = new GlossaryTerm(glossary); // Product and Service — move target
+
+  await glossary.create(adminApiContext);
+  await glossary.patch(adminApiContext, [
+    { op: 'add', path: '/reviewers/0', value: reviewerRef() },
+  ]);
+  await parent.create(adminApiContext);
+  child.data.parent = parent.responseData.fullyQualifiedName;
+  await child.create(adminApiContext);
+  await container.create(adminApiContext);
+
+  return { glossary, parent, child, container };
+};
+
+const moveParentUnderContainer = async (
+  adminApiContext: APIRequestContext,
+  parent: GlossaryTerm,
+  container: GlossaryTerm
+) => {
+  const res = await adminApiContext.put(
+    `/api/v1/glossaryTerms/${parent.responseData.id}/moveAsync`,
+    {
+      data: {
+        parent: {
+          id: container.responseData.id,
+          type: 'glossaryTerm',
+          name: container.responseData.name,
+          fullyQualifiedName: container.responseData.fullyQualifiedName,
+        },
+      },
+    }
+  );
+  expect(res.ok()).toBeTruthy();
+};
+
 test.beforeAll(async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await reviewerUser.create(apiContext);
@@ -64,6 +129,7 @@ test.afterAll(async ({ browser }) => {
   await reviewerUser.delete(apiContext);
   await afterAction();
 });
+
 
 test.describe(
   'Glossary - Approval After Move',
@@ -79,82 +145,47 @@ test.describe(
       const { page: reviewerPage, afterAction: reviewerAfterAction } =
         await performUserLogin(browser, reviewerUser);
 
-      const glossary = new Glossary();
-      const securitiesLending = new GlossaryTerm(glossary);
-      const eligibleSecurities = new GlossaryTerm(glossary);
-      const productAndService = new GlossaryTerm(glossary);
+      let originalTaskId: string | null = null;
+      let newChildFqn = '';
+
+      const { glossary, parent, child, container } =
+        await setupGlossaryWithPendingApproval(adminApiContext);
 
       try {
-        await test.step('Setup: glossary with reviewer', async () => {
-          await glossary.create(adminApiContext);
-          await glossary.patch(adminApiContext, [
-            {
-              op: 'add',
-              path: '/reviewers/0',
-              value: {
-                id: reviewerUser.responseData.id,
-                type: 'user',
-                displayName: reviewerUser.responseData.displayName,
-                fullyQualifiedName:
-                  reviewerUser.responseData.fullyQualifiedName,
-                name: reviewerUser.responseData.name,
-              },
-            },
-          ]);
-        });
-
-        await test.step('Setup: Securities Lending → Eligible Securities', async () => {
-          await securitiesLending.create(adminApiContext);
-          eligibleSecurities.data.parent =
-            securitiesLending.responseData.fullyQualifiedName;
-          await eligibleSecurities.create(adminApiContext);
-        });
-
-        await test.step('Verify approval task is open for Eligible Securities', async () => {
+        await test.step('Verify exactly one open approval task exists for Eligible Securities', async () => {
           await verifyTaskCreated(
             reviewerPage,
-            eligibleSecurities.responseData.fullyQualifiedName,
-            eligibleSecurities.data.name
+            child.responseData.fullyQualifiedName,
+            child.data.name
           );
-        });
-
-        await test.step('Setup: create Product and Service (new container)', async () => {
-          await productAndService.create(adminApiContext);
+          const { count, taskId } = await queryOpenApprovalTasks(
+            adminApiContext,
+            child.responseData.fullyQualifiedName
+          );
+          expect(count).toBe(1);
+          originalTaskId = taskId;
         });
 
         await test.step('Move Securities Lending under Product and Service', async () => {
-          const res = await adminApiContext.put(
-            `/api/v1/glossaryTerms/${securitiesLending.responseData.id}/moveAsync`,
-            {
-              data: {
-                parent: {
-                  id: productAndService.responseData.id,
-                  type: 'glossaryTerm',
-                  name: productAndService.responseData.name,
-                  fullyQualifiedName:
-                    productAndService.responseData.fullyQualifiedName,
-                },
-              },
-            }
-          );
-          expect(res.ok()).toBeTruthy();
+          await moveParentUnderContainer(adminApiContext, parent, container);
         });
 
-        // GlossaryTermTab keys termTaskThreads by task.about.fullyQualifiedName.
-        // The approve button only renders once the task FQN cascade has updated
-        // the task to the new child FQN — verifyTaskCreated(newFqn) confirms this.
-        await test.step('Wait for approval task to be repointed to the new child FQN', async () => {
+        await test.step('Wait for task accessible at new FQN: count=1, same task ID (no duplicate or replacement)', async () => {
           const childAfterMove = await adminApiContext
             .get(
-              `/api/v1/glossaryTerms/${eligibleSecurities.responseData.id}?fields=fullyQualifiedName`
+              `/api/v1/glossaryTerms/${child.responseData.id}?fields=fullyQualifiedName`
             )
             .then((r) => r.json());
+          newChildFqn = childAfterMove.fullyQualifiedName;
 
-          await verifyTaskCreated(
-            reviewerPage,
-            childAfterMove.fullyQualifiedName,
-            eligibleSecurities.data.name
-          );
+          // GlossaryTermTab approve button renders only when the task's
+          // about.fullyQualifiedName matches the term's current FQN.
+          await verifyTaskCreated(reviewerPage, newChildFqn, child.data.name);
+
+          const { count: countNew, taskId: taskIdNew } =
+            await queryOpenApprovalTasks(adminApiContext, newChildFqn);
+          expect(countNew).toBe(1);
+          expect(taskIdNew).toBe(originalTaskId);
         });
 
         await test.step('Reviewer: expand tree and approve Eligible Securities', async () => {
@@ -167,7 +198,7 @@ test.describe(
           await performExpandAll(reviewerPage);
 
           const approveButton = reviewerPage.getByTestId(
-            `${eligibleSecurities.data.name}-approve-btn`
+            `${child.data.name}-approve-btn`
           );
           await expect(approveButton).toBeVisible({ timeout: 60_000 });
 
@@ -181,12 +212,112 @@ test.describe(
           );
         });
 
-        await test.step('Verify Eligible Securities reaches Approved status', async () => {
+        await test.step('Verify Approved status and zero remaining open tasks', async () => {
           await waitForTermStatus(
             adminApiContext,
-            eligibleSecurities.responseData.id,
+            child.responseData.id,
             'Approved'
           );
+          const { count } = await queryOpenApprovalTasks(
+            adminApiContext,
+            newChildFqn
+          );
+          expect(count).toBe(0);
+        });
+      } finally {
+        await glossary.delete(adminApiContext);
+        await adminAfterAction();
+        await reviewerAfterAction();
+      }
+    });
+
+
+    test('rejecting an open task succeeds after the parent term is moved under a sibling', async ({
+      browser,
+    }) => {
+      test.slow(true);
+
+      const { apiContext: adminApiContext, afterAction: adminAfterAction } =
+        await performAdminLogin(browser);
+      const { page: reviewerPage, afterAction: reviewerAfterAction } =
+        await performUserLogin(browser, reviewerUser);
+
+      let originalTaskId: string | null = null;
+      let newChildFqn = '';
+
+      const { glossary, parent, child, container } =
+        await setupGlossaryWithPendingApproval(adminApiContext);
+
+      try {
+        await test.step('Verify exactly one open approval task exists for Eligible Securities', async () => {
+          await verifyTaskCreated(
+            reviewerPage,
+            child.responseData.fullyQualifiedName,
+            child.data.name
+          );
+          const { count, taskId } = await queryOpenApprovalTasks(
+            adminApiContext,
+            child.responseData.fullyQualifiedName
+          );
+          expect(count).toBe(1);
+          originalTaskId = taskId;
+        });
+
+        await test.step('Move Securities Lending under Product and Service', async () => {
+          await moveParentUnderContainer(adminApiContext, parent, container);
+        });
+
+        await test.step('Wait for task accessible at new FQN: count=1, same task ID (no duplicate or replacement)', async () => {
+          const childAfterMove = await adminApiContext
+            .get(
+              `/api/v1/glossaryTerms/${child.responseData.id}?fields=fullyQualifiedName`
+            )
+            .then((r) => r.json());
+          newChildFqn = childAfterMove.fullyQualifiedName;
+
+          await verifyTaskCreated(reviewerPage, newChildFqn, child.data.name);
+
+          const { count: countNew, taskId: taskIdNew } =
+            await queryOpenApprovalTasks(adminApiContext, newChildFqn);
+          expect(countNew).toBe(1);
+          expect(taskIdNew).toBe(originalTaskId);
+        });
+
+        await test.step('Reviewer: expand tree and reject Eligible Securities', async () => {
+          await redirectToHomePage(reviewerPage);
+          await sidebarClick(reviewerPage, SidebarItem.GLOSSARY);
+          await selectActiveGlossary(
+            reviewerPage,
+            glossary.responseData.displayName
+          );
+          await performExpandAll(reviewerPage);
+
+          const rejectButton = reviewerPage.getByTestId(
+            `${child.data.name}-reject-btn`
+          );
+          await expect(rejectButton).toBeVisible({ timeout: 60_000 });
+
+          const taskResolve = waitForTaskResolveResponse(reviewerPage);
+          await rejectButton.click();
+          await taskResolve;
+
+          await toastNotification(
+            reviewerPage,
+            /Task resolved successfully|Vote recorded/
+          );
+        });
+
+        await test.step('Verify term reaches Rejected status and zero remaining open tasks', async () => {
+          await waitForTermStatus(
+            adminApiContext,
+            child.responseData.id,
+            'Rejected'
+          );
+          const { count } = await queryOpenApprovalTasks(
+            adminApiContext,
+            newChildFqn
+          );
+          expect(count).toBe(0);
         });
       } finally {
         await glossary.delete(adminApiContext);
