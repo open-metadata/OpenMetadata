@@ -50,7 +50,6 @@ import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVers
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import TagsViewer from '../../Tag/TagsViewer/TagsViewer';
 import { PipelineVersionProp } from './PipelineVersion.interface';
-
 const PipelineVersion: FC<PipelineVersionProp> = ({
   version,
   currentVersionData,

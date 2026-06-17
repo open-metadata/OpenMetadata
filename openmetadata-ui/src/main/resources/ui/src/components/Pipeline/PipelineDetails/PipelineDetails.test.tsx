@@ -213,9 +213,12 @@ jest.mock(
   })
 );
 
-jest.mock('../../../utils/TableUtils', () => ({
+jest.mock('../../../utils/TablePureUtils', () => ({
   getTagsWithoutTier: jest.fn().mockReturnValue([]),
   getTierTags: jest.fn().mockReturnValue([]),
+}));
+
+jest.mock('../../../utils/TableUtils', () => ({
   getTableExpandableConfig: jest.fn().mockReturnValue({}),
 }));
 
