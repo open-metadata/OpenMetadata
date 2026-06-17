@@ -30,6 +30,7 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.EntityRelationshipCleanupUtil;
 import org.openmetadata.service.util.OrphanTestCaseCleanup;
+import org.openmetadata.service.util.OrphanTestCaseRelationshipCleanup;
 import org.openmetadata.service.util.TagUsageCleanup;
 import org.quartz.JobExecutionContext;
 
@@ -123,6 +124,8 @@ public class DataRetention extends AbstractNativeApplication {
     entityStats.withAdditionalProperty("broken_search_entities", new StepStats());
     entityStats.withAdditionalProperty("orphaned_tag_usages", new StepStats());
     entityStats.withAdditionalProperty("orphaned_test_cases", new StepStats());
+    entityStats.withAdditionalProperty("test_cases_missing_test_definition", new StepStats());
+    entityStats.withAdditionalProperty("test_cases_missing_executable_suite", new StepStats());
     entityStats.withAdditionalProperty("orphan_test_case_resolution_status", new StepStats());
     entityStats.withAdditionalProperty("orphan_agent_execution", new StepStats());
     entityStats.withAdditionalProperty("orphan_mcp_execution", new StepStats());
@@ -153,6 +156,13 @@ public class DataRetention extends AbstractNativeApplication {
     // delete a test case whose suite has just been restored from a relationship row.
     LOG.info("Starting cleanup for orphan test cases.");
     cleanOrphanTestCases();
+
+    // Clean up test cases whose core relationship rows are gone: no testDefinition link (breaks
+    // search indexing) or no live executable test suite ("No executable test suite was found").
+    // Runs after the relationship/hierarchy cleanup above so a suite relationship that was just
+    // repaired is not mistaken for missing.
+    LOG.info("Starting cleanup for test cases with missing relationships.");
+    cleanTestCasesWithMissingRelationships();
 
     // Run after orphan test case cleanup so resolution-status rows for deleted test cases
     // also get swept up.
@@ -306,6 +316,35 @@ public class DataRetention extends AbstractNativeApplication {
           result.getFailures());
     } catch (Exception ex) {
       LOG.error("Failed to clean orphan test cases", ex);
+      internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
+      if (failureDetails == null) {
+        failureDetails = new HashMap<>();
+        failureDetails.put("message", ex.getMessage());
+        failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
+      }
+    }
+  }
+
+  private void cleanTestCasesWithMissingRelationships() {
+    try {
+      OrphanTestCaseRelationshipCleanup cleanup =
+          new OrphanTestCaseRelationshipCleanup(collectionDAO, false);
+      OrphanTestCaseRelationshipCleanup.Result result = cleanup.performCleanup(BATCH_SIZE);
+      updateStats(
+          "test_cases_missing_test_definition", result.getMissingTestDefinitionDeleted(), 0);
+      updateStats(
+          "test_cases_missing_executable_suite",
+          result.getMissingExecutableSuiteDeleted(),
+          result.getFailures());
+      LOG.info(
+          "Test case relationship cleanup completed - Scanned: {}, Missing-definition deleted: {}, "
+              + "Missing-executable-suite deleted: {}, Failed: {}",
+          result.getTotalScanned(),
+          result.getMissingTestDefinitionDeleted(),
+          result.getMissingExecutableSuiteDeleted(),
+          result.getFailures());
+    } catch (Exception ex) {
+      LOG.error("Failed to clean test cases with missing relationships", ex);
       internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
       if (failureDetails == null) {
         failureDetails = new HashMap<>();
