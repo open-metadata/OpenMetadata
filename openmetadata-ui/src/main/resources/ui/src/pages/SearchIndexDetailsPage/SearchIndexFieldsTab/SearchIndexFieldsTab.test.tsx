@@ -30,7 +30,7 @@ jest.mock('../../../utils/EntitySearchUtils', () => ({
 }));
 
 jest.mock(
-  '../../../components/Customization/GenericProvider/GenericProvider',
+  '../../../components/Customization/GenericProvider/GenericContext',
   () => ({
     ...jest.requireActual(
       '../../../components/Customization/GenericProvider/GenericProvider'

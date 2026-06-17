@@ -21,7 +21,8 @@ import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../utils/formUtils';
 import { getMetricExpressionLanguageName } from '../../../utils/MetricEntityUtils/MetricPureUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
 );
