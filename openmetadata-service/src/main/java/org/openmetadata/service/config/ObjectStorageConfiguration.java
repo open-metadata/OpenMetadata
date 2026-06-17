@@ -17,9 +17,7 @@ public class ObjectStorageConfiguration {
   @JsonProperty("maxFileSize")
   private long maxFileSize = 5 * 1024 * 1024; // 5MB in bytes
 
-  /**
-   * Provider can be "s3", "azure", or "noop" (for local testing).
-   */
+  /** Provider can be "s3", "azure", "inmemory", "in-memory", or "noop". */
   @JsonProperty("provider")
   private String provider;
 
