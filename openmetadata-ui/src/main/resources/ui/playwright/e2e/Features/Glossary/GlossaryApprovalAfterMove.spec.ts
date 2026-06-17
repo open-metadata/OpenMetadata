@@ -130,7 +130,6 @@ test.afterAll(async ({ browser }) => {
   await afterAction();
 });
 
-
 test.describe(
   'Glossary - Approval After Move',
   { tag: ['@Features', '@Governance'] },
@@ -230,7 +229,6 @@ test.describe(
         await reviewerAfterAction();
       }
     });
-
 
     test('rejecting an open task succeeds after the parent term is moved under a sibling', async ({
       browser,
