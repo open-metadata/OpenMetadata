@@ -25,7 +25,7 @@ import {
   getEntityField,
   getEntityFQN,
   getEntityType,
-} from '../../../utils/FeedUtils';
+} from '../../../utils/FeedUtilsPure';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import EditAnnouncementModal from '../../Modals/AnnouncementModal/EditAnnouncementModal';
 import { ActivityFeedCardProp } from './ActivityFeedCard.interface';
@@ -33,7 +33,6 @@ import FeedCardBody from './FeedCardBody/FeedCardBody';
 import FeedCardFooter from './FeedCardFooter/FeedCardFooter';
 import FeedCardHeader from './FeedCardHeader/FeedCardHeader';
 import PopoverContent from './PopoverContent';
-
 const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   feed,
   feedType,

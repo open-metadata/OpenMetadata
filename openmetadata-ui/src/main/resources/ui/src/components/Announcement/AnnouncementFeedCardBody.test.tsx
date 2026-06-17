@@ -18,10 +18,21 @@ import { MOCK_ANNOUNCEMENT_DATA } from '../../mocks/Announcement.mock';
 import { mockUserData } from '../../mocks/MyDataPage.mock';
 import AnnouncementFeedCardBody from './AnnouncementFeedCardBody.component';
 
-jest.mock('../../utils/FeedUtils', () => ({
-  getEntityField: jest.fn(),
-  getEntityFQN: jest.fn(),
-  getEntityType: jest.fn(),
+jest.mock('../../utils/date-time/DateTimeUtils', () => ({
+  formatDateTime: jest.fn(() => 'formatted-time'),
+}));
+
+jest.mock('../../utils/EntityUtilClassBase', () => ({
+  __esModule: true,
+  default: {
+    getEntityLink: jest.fn(() => '/entity-link'),
+  },
+}));
+
+jest.mock('../../utils/FeedUtilsPure', () => ({
+  getEntityField: jest.fn(() => 'columns.name'),
+  getEntityFQN: jest.fn(() => 'service.database.table'),
+  getEntityType: jest.fn(() => 'table'),
 }));
 
 jest.mock('../../hooks/useApplicationStore', () => ({

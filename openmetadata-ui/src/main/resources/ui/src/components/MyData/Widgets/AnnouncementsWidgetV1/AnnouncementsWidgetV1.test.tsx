@@ -30,9 +30,11 @@ jest.mock('react-i18next', () => ({
 }));
 
 // Mock utility functions
-jest.mock('../../../../utils/FeedUtils', () => ({
-  getEntityFQN: jest.fn((about) => about.split('::').pop() || ''),
-  getEntityType: jest.fn((about) => about.split('::')[1] || ''),
+jest.mock('../../../../utils/FeedUtilsPure', () => ({
+  getEntityFQN: jest.fn(
+    () => 'sample_data.ecommerce_db.shopify.raw_product_catalog'
+  ),
+  getEntityType: jest.fn(() => 'table'),
   prepareFeedLink: jest.fn(() => '/test-feed-link'),
 }));
 

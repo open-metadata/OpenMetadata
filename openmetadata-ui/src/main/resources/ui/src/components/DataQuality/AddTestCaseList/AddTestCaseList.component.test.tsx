@@ -50,7 +50,7 @@ jest.mock('../../../utils/StringUtils', () => {
     replacePlus: jest.fn().mockImplementation((fqn) => fqn),
   };
 });
-jest.mock('../../../utils/FeedUtils', () => {
+jest.mock('../../../utils/FeedUtilsPure', () => {
   return {
     getEntityFQN: jest.fn().mockImplementation((fqn) => fqn),
   };

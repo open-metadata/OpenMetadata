@@ -24,8 +24,10 @@ jest.mock('../../../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
 });
 
 jest.mock('../../../../../utils/FeedUtils', () => ({
-  getFeedChangeFieldLabel: jest.fn(),
   getFieldOperationIcon: jest.fn(),
+}));
+jest.mock('../../../../../utils/FeedUtilsPure', () => ({
+  getFeedChangeFieldLabel: jest.fn(),
   getFrontEndFormat: jest.fn(),
 }));
 

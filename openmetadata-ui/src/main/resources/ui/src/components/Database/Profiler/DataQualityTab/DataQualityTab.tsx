@@ -50,7 +50,7 @@ import { removeTestCaseFromTestSuite } from '../../../../rest/testAPI';
 import { getNameFromFQN } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
-import { getEntityFQN } from '../../../../utils/FeedUtils';
+import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import {
   getEntityDetailsPath,

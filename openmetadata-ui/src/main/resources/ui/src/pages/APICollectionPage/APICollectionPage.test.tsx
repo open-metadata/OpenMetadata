@@ -44,7 +44,7 @@ jest.mock('../../utils/EntityNameUtils', () => ({
 jest.mock('../../utils/CommonUtils', () => ({
   getFeedCounts: jest.fn(),
 }));
-jest.mock('../../utils/FeedUtils', () => ({
+jest.mock('../../utils/FeedUtilsPure', () => ({
   fetchEntityActivityCountInto: jest.fn(),
   fetchEntityTaskCountsInto: jest.fn(),
   getEntityMissingError: jest.fn(),

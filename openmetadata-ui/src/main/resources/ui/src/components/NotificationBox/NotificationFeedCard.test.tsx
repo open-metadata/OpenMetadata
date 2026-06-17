@@ -24,7 +24,7 @@ jest.mock('../../utils/date-time/DateTimeUtils', () => ({
 const mockPrepareFeedLink = jest.fn();
 const mockGetTaskDetailPath = jest.fn();
 
-jest.mock('../../utils/FeedUtils', () => ({
+jest.mock('../../utils/FeedUtilsPure', () => ({
   entityDisplayName: jest.fn().mockReturnValue('database.schema.table'),
   prepareFeedLink: (...args: any[]) => mockPrepareFeedLink(...args),
 }));
