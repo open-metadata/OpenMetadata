@@ -40,39 +40,6 @@ import {
 } from './ProfilerUtils';
 import { getTermQuery } from './SearchPureUtils';
 
-// Re-exports from FeedUtilsPure (backward compat)
-export {
-  buildMentionLink,
-  deletePost,
-  entityDisplayName,
-  fetchEntityActivityCountInto,
-  fetchEntityTaskCountsInto,
-  formatTestStatusData,
-  getBackendFormat,
-  getEntityColumnFQN,
-  getEntityDetail,
-  getEntityField,
-  getEntityFQN,
-  getEntityFQNFromAbout,
-  getEntityType,
-  getEntityTypeFromAbout,
-  getFeedChangeFieldLabel,
-  getFeedCounts,
-  getFeedListWithRelativeDays,
-  getFeedPanelHeaderText,
-  getFrontEndFormat,
-  getHashTagList,
-  getMentionList,
-  getReplyText,
-  getTestCaseNameListForResult,
-  getUpdatedThread,
-  HTMLToMarkdown,
-  isEntityReferenceAbout,
-  MarkdownToHTMLConverter,
-  prepareFeedLink,
-  updateThreadData,
-} from './FeedUtilsPure';
-
 export async function suggestions(
   searchTerm: string,
   mentionChar: string

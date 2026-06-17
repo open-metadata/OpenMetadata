@@ -90,7 +90,7 @@ import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../../../../utils/StringUtils';
-import { getTagAssetsQueryFilter } from '../../../../utils/TagsUtils';
+import { getTagAssetsQueryFilter } from '../../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';

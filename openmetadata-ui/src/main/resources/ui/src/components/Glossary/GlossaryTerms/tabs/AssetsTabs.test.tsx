@@ -18,7 +18,7 @@ import { Operation } from '../../../../generated/entity/policies/policy';
 import { searchQuery } from '../../../../rest/searchAPI';
 import * as SearchPureUtils from '../../../../utils/SearchPureUtils';
 import * as StringUtils from '../../../../utils/StringUtils';
-import * as TagsUtils from '../../../../utils/TagsUtils';
+import * as TagsPureUtils from '../../../../utils/TagsPureUtils';
 import AssetsTabs from './AssetsTabs.component';
 import { AssetsOfEntity } from './AssetsTabs.interface';
 
@@ -158,7 +158,7 @@ jest
   .spyOn(StringUtils, 'escapeESReservedCharacters')
   .mockImplementation(mockEscapeESReservedCharacters);
 jest
-  .spyOn(TagsUtils, 'getTagAssetsQueryFilter')
+  .spyOn(TagsPureUtils, 'getTagAssetsQueryFilter')
   .mockImplementation(mockGetTagAssetsQueryFilter);
 
 const mockOnAddAsset = jest.fn();

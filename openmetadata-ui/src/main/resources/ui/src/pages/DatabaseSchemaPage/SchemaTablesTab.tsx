@@ -24,7 +24,7 @@ import DisplayName from '../../components/common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import TableAntd from '../../components/common/Table/Table';
-import { useGenericContext } from '../../components/Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../components/Customization/GenericProvider/GenericContext';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import {
   INITIAL_PAGING_VALUE,
