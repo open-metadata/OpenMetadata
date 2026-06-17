@@ -687,8 +687,18 @@ public class WorkflowHandler {
           repointSubtreeLink(
               instance.getProcessVariables().get(variableName), entityType, oldFqn, newFqn);
       if (newLink != null) {
-        runtimeService.setVariable(instance.getId(), variableName, newLink);
-        updatedCount++;
+        try {
+          runtimeService.setVariable(instance.getId(), variableName, newLink);
+          updatedCount++;
+        } catch (FlowableObjectNotFoundException e) {
+          // The instance completed between the query and this update — nothing to repoint. The
+          // other instances in the subtree must still be updated, so swallow and continue.
+          LOG.debug(
+              "[WorkflowHandler] Instance {} gone before relatedEntity repoint ({} -> {})",
+              instance.getId(),
+              oldFqn,
+              newFqn);
+        }
       }
     }
     if (updatedCount > 0) {

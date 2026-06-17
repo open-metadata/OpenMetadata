@@ -1513,11 +1513,20 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   public void postUpdate(GlossaryTerm original, GlossaryTerm updated) {
     // Repoint in-flight workflows BEFORE the (potentially slower) base post-update work so the
-    // relatedEntity is current as soon as the FQN change is visible — minimizing the window where
-    // an
-    // approval submitted right after a move/rename could still resolve the stale FQN.
-    updateWorkflowRelatedEntitiesAfterFqnChange(
-        original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+    // relatedEntity is current as soon as the FQN change is visible. This is a best-effort,
+    // post-commit side effect: a Flowable failure (e.g. an instance completing between the query
+    // and setVariable) must NOT abort the rest of postUpdate — search indexing, change-event
+    // publishing, RDF, and the approval-task closing below must still run.
+    try {
+      updateWorkflowRelatedEntitiesAfterFqnChange(
+          original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to repoint workflow relatedEntity for {} -> {}; continuing post-update",
+          original.getFullyQualifiedName(),
+          updated.getFullyQualifiedName(),
+          e);
+    }
     super.postUpdate(original, updated);
     if (original.getEntityStatus() == EntityStatus.IN_REVIEW) {
       if (updated.getEntityStatus() == EntityStatus.APPROVED) {
