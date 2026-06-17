@@ -518,7 +518,11 @@ public final class JsonUtils {
   }
 
   public static Schema getJsonSchema(String schema) {
-    return schemaFactory.getSchema(schema);
+    // SchemaRegistry compiles schemas against shared dialect/metaschema caches that are not safe
+    // under concurrent compilation; serialize compilation to avoid transient failures.
+    synchronized (schemaFactory) {
+      return schemaFactory.getSchema(schema);
+    }
   }
 
   public static JsonNode valueToTree(Object object) {

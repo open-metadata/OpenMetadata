@@ -226,6 +226,7 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
   - Background: `--color-bg-primary`, `--color-bg-secondary`, `--color-bg-error-primary`, `--color-bg-brand-solid`, etc.
   - Shadows: `--shadow-xs` through `--shadow-3xl`
   - Border radius: `--radius-none` through `--radius-full`
+- **Color Usage**: Full token reference, dark mode guide, and anti-pattern cheat sheet: [`openmetadata-ui/src/main/resources/ui/docs/colors.md`](openmetadata-ui/src/main/resources/ui/docs/colors.md). Always consult this before choosing any color class.
 - **MUI**: Do not use MUI — we are actively removing MUI from the codebase. Do not import from `@mui/*` or `@emotion/*`
 - **Legacy**: Ant Design components remain in existing code but should be replaced with `openmetadata-ui-core-components` equivalents when refactoring
 - Do not add unnecessary spacing between logs and code.
