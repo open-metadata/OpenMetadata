@@ -26,7 +26,7 @@ import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import {
   getClassificationTags,
   getGlossaryTags,
-} from '../../../utils/TagsUtils';
+} from '../../../utils/TagsPureUtils';
 import { useListingData } from '../../common/atoms/compositions/useListingData';
 import {
   CellRenderer,

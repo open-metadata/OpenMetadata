@@ -27,7 +27,7 @@ import {
   TASK_ENTITIES,
 } from '../../../utils/TasksUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import SuggestionsSlider from '../../Suggestions/SuggestionsSlider/SuggestionsSlider';
 import DescriptionSourceBadge from '../DescriptionSourceBadge/DescriptionSourceBadge';

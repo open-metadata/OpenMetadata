@@ -45,7 +45,7 @@ import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.inte
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
 import Table from '../../common/Table/Table';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { TestLevel } from '../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
 import './contract-quality-form-tab.less';
 

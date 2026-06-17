@@ -25,14 +25,14 @@ import { Domain } from '../../../../generated/entity/domains/domain';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { ChangeDescription } from '../../../../generated/entity/type';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { getEntityVersionByField } from '../../../../utils/EntityVersionUtils';
+import { getEntityVersionByField } from '../../../../utils/EntityVersionUtilsPure';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
 } from '../../../../utils/PermissionsUtils';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
-import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import { OwnerLabelV2 } from '../../../DataAssets/OwnerLabelV2/OwnerLabelV2';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
@@ -43,7 +43,6 @@ import {
   DocumentationEntity,
   DocumentationTabProps,
 } from './DocumentationTab.interface';
-
 const DocumentationTab = ({
   isVersionsView = false,
   type = DocumentationEntity.DOMAIN,

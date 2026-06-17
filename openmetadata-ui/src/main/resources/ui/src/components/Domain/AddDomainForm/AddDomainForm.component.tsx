@@ -64,7 +64,147 @@ import {
 } from '../../common/IconPicker';
 import '../domain.less';
 import { DomainFormType } from '../DomainPage.interface';
-import { AddDomainFormProps } from './AddDomainForm.interface';
+import {
+  AddDomainFormProps,
+  DomainFormSelectItem,
+  DomainFormValues,
+} from './AddDomainForm.interface';
+
+export const DOMAIN_FORM_DEFAULTS: DomainFormValues = {
+  name: '',
+  displayName: '',
+  description: '',
+  color: '',
+  iconURL: '',
+  coverImage: null,
+  tags: [],
+  glossaryTerms: [],
+  owners: [],
+  experts: [],
+  reviewers: [],
+  domainType: null,
+  domains: undefined,
+  dataProductType: null,
+  visibility: null,
+  portfolioPriority: null,
+  extension: {},
+};
+
+// Extension fields rendered by core-components pickers store the selected
+// FormSelectItem/DomainFormSelectItem ({ id, label, value, ... }) in form
+// state, but the API expects the raw wrapped `.value`:
+//  - SELECT (enum)          → item.value (the enum string)
+//  - USER_TEAM_SELECT_INPUT → item.value (an EntityReference), single or array
+// Plain TEXT / NUMBER / DESCRIPTION fields store raw values and pass through
+// untouched. This is shape-based (not custom-property-type-based) so it works
+// in every submit path — including the drawer flow, which calls
+// transformDomainFormData without the custom-property definitions.
+const isFormSelectItem = (value: unknown): value is DomainFormSelectItem =>
+  typeof value === 'object' &&
+  value !== null &&
+  'id' in value &&
+  'value' in value;
+
+const unwrapSelectItemValue = (raw: unknown): unknown => {
+  if (Array.isArray(raw)) {
+    return raw.map((item) => (isFormSelectItem(item) ? item.value : item));
+  }
+  if (isFormSelectItem(raw)) {
+    return raw.value;
+  }
+
+  return raw;
+};
+
+const normalizeExtensionForApi = (
+  extension: Record<string, unknown> | undefined
+): Record<string, unknown> | undefined => {
+  if (!extension) {
+    return extension;
+  }
+  const normalized: Record<string, unknown> = {};
+  for (const [key, raw] of Object.entries(extension)) {
+    normalized[key] = unwrapSelectItemValue(raw);
+  }
+
+  return normalized;
+};
+
+export const transformDomainFormData = (
+  formData: DomainFormValues,
+  type: DomainFormType,
+  parentDomain?: Domain
+): CreateDomain | CreateDataProduct => {
+  const tags = formData.tags.map((item) => item.value as TagLabel);
+  const expertsList = formData.experts.map(
+    (item) => item.value as EntityReference
+  );
+  const ownersList = formData.owners.map(
+    (item) => item.value as EntityReference
+  );
+  const reviewersList = formData.reviewers.map(
+    (item) => item.value as EntityReference
+  );
+
+  const updatedData = omit(
+    formData,
+    'color',
+    'iconURL',
+    'glossaryTerms',
+    'tags',
+    'owners',
+    'experts',
+    'reviewers',
+    'domains',
+    'domainType',
+    'dataProductType',
+    'visibility',
+    'portfolioPriority'
+  );
+  const style: { color?: string; iconURL?: string } = {};
+  if (formData.color) {
+    style.color = formData.color;
+  }
+  if (formData.iconURL) {
+    style.iconURL = formData.iconURL;
+  }
+
+  const data: CreateDomain | CreateDataProduct = {
+    ...updatedData,
+    domainType: (formData.domainType?.value as DomainType) ?? undefined,
+    experts: expertsList.map((item) => item.name ?? ''),
+    extension: normalizeExtensionForApi(formData.extension),
+    owners: ownersList,
+    style,
+    tags: [...tags, ...formData.glossaryTerms],
+  } as CreateDomain | CreateDataProduct;
+
+  if (type === DomainFormType.DATA_PRODUCT) {
+    const dataProduct = data as CreateDataProduct;
+    const domainRef = formData.domains?.value as EntityReference | undefined;
+    if (domainRef?.fullyQualifiedName) {
+      dataProduct.domains = [domainRef.fullyQualifiedName];
+    } else if (parentDomain?.fullyQualifiedName) {
+      dataProduct.domains = [parentDomain.fullyQualifiedName];
+    }
+    if (formData.dataProductType?.value) {
+      dataProduct.dataProductType = formData.dataProductType
+        .value as DataProductType;
+    }
+    if (formData.visibility?.value) {
+      dataProduct.visibility = formData.visibility.value as Visibility;
+    }
+    if (formData.portfolioPriority?.value) {
+      dataProduct.portfolioPriority = formData.portfolioPriority
+        .value as PortfolioPriority;
+    }
+    dataProduct.reviewers = reviewersList;
+  } else {
+    delete (data as CreateDomain & { domains?: unknown }).domains;
+  }
+
+  return data;
+};
 
 const AddDomainForm = ({
   isFormInDialog,

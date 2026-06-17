@@ -47,8 +47,7 @@ import { addToRecentViewed } from '../../utils/CommonUtils';
 import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getTierTags } from '../../utils/TablePureUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { updateTierTag } from '../../utils/TagsPureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const DataModelsPage = () => {

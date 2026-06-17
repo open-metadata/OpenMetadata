@@ -33,11 +33,6 @@ import { getClassificationTagPath } from './RouterUtils';
 import { descriptionTableObject } from './TableColumn.util';
 import { getDeleteIcon } from './TagsUtils';
 
-export {
-  getClassificationInfo,
-  getDeleteButtonData,
-} from './ClassificationPureUtils';
-
 export const getCommonColumns = (options?: {
   handleToggleDisable?: (tag: Tag) => void;
   classificationPermissions?: OperationPermission;

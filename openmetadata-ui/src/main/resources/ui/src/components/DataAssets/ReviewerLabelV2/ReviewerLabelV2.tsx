@@ -23,7 +23,7 @@ import {
   PlusIconButton,
 } from '../../common/IconButtons/EditIconButton';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 
 export const ReviewerLabelV2 = <
   T extends {

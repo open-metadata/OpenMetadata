@@ -27,7 +27,7 @@ import {
   PlusIconButton,
 } from '../../common/IconButtons/EditIconButton';
 import { UserSelectableList } from '../../common/UserSelectableList/UserSelectableList.component';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 
 export const DomainExpertWidget = () => {
   const {
