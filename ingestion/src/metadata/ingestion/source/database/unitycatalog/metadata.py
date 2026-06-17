@@ -350,7 +350,6 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
 
         sql = UNITY_CATALOG_TABLE_CONSTRAINTS
         params = {}
-        # Build WHERE clause with proper handling of None values
 
         if catalog_name is not None:
             sql += " AND table_catalog = :catalog_name"
@@ -362,7 +361,6 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         tables_with_constraints = set()
         try:
             cursor = self.sql_connection.execute(text(sql), params)
-            # Collect unique tables with constraints
             for row in cursor:
                 table_identifier = (row.table_catalog, row.table_schema, row.table_name)
                 tables_with_constraints.add(table_identifier)
@@ -398,7 +396,16 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             ):
                 if (table.catalog_name, table.schema_name, table.name) in table_with_constraints:
                     # Only tables with constraints require full fetch; list() doesn't include constraint details
-                    table = self.client.tables.get(table.full_name)
+                    try:
+                        table = self.client.tables.get(table.full_name)
+                    except Exception as exc:
+                        self.status.failed(
+                            StackTraceError(
+                                name=table.full_name,
+                                error=f"Unexpected exception fetching the contraints on [{table.full_name}]: {exc}",
+                                stackTrace=traceback.format_exc(),
+                            )
+                        )
                 yield from self._process_table(table, catalog_name, schema_name)
 
     def _get_incremental_tables(self, catalog_name: str, schema_name: str) -> Iterable[Tuple[str, TableType]]:  # noqa: UP006
