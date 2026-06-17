@@ -149,7 +149,6 @@ import {
   getServiceVersionPath,
   getSettingPath,
 } from '../../utils/RouterUtils';
-import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
@@ -157,7 +156,8 @@ import {
   getServiceDisplayNameQueryFilter,
   getServiceRouteFromServiceType,
   shouldTestConnection,
-} from '../../utils/ServiceUtils';
+} from '../../utils/ServicePureUtils';
+import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,

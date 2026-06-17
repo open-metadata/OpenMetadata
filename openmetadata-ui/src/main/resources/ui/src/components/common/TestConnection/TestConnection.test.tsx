@@ -58,8 +58,8 @@ jest.mock('antd', () => ({
   )),
 }));
 
-jest.mock('../../../utils/ServiceUtils', () => ({
-  ...jest.requireActual('../../../utils/ServiceUtils'),
+jest.mock('../../../utils/ServicePureUtils', () => ({
+  ...jest.requireActual('../../../utils/ServicePureUtils'),
   getTestConnectionName: jest.fn().mockReturnValue('test-connection-Mysql-01'),
 }));
 

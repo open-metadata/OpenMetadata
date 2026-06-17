@@ -12,6 +12,7 @@
  */
 
 import { Typography } from 'antd';
+import React, { Suspense } from 'react';
 import { ReactComponent as DescriptionPlaceholderIcon } from '../assets/svg/ic-flat-doc.svg';
 import { ReactComponent as TablePlaceholderIcon } from '../assets/svg/ic-large-table.svg';
 import { ReactComponent as NoDataPlaceholderIcon } from '../assets/svg/ic-no-records.svg';
@@ -25,6 +26,25 @@ import { ServiceInsightsWidgetType } from '../enums/ServiceInsights.enum';
 import type { ThemeConfiguration } from '../generated/configuration/uiThemePreference';
 import documentationLinksClassBase from './DocumentationLinksClassBase';
 import { Transi18next } from './i18next/LocalUtil';
+
+const MetadataAgentsWidgetLazy = React.lazy(
+  () =>
+    import(
+      '../components/Settings/Services/Ingestion/MetadataAgentsWidget/MetadataAgentsWidget'
+    )
+);
+
+const MetadataAgentsWidget = (props: Record<string, unknown>) => {
+  const widgetProps = props as React.ComponentProps<
+    typeof MetadataAgentsWidgetLazy
+  >;
+
+  return (
+    <Suspense fallback={null}>
+      <MetadataAgentsWidgetLazy {...widgetProps} />
+    </Suspense>
+  );
+};
 
 export const getServiceInsightsWidgetPlaceholder = ({
   chartType,
@@ -148,3 +168,10 @@ export const getServiceInsightsWidgetPlaceholder = ({
     </ErrorPlaceHolder>
   );
 };
+
+export const getDefaultAgentsTabWidgets = (): Record<
+  string,
+  React.ComponentType<Record<string, unknown>>
+> => ({
+  MetadataAgentsWidget,
+});
