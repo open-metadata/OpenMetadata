@@ -663,7 +663,7 @@ tinycss2==1.4.0
 tokenizers==0.22.2
 tomli==2.4.1
 tomlkit==0.14.0
-tornado==6.5.5
+tornado==6.5.7
 tqdm==4.67.3
 traitlets==5.14.3
 trino==0.337.0
