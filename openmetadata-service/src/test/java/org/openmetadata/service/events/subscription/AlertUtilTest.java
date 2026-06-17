@@ -17,9 +17,13 @@ import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
@@ -244,6 +248,48 @@ class AlertUtilTest {
     assertFalse(AlertUtil.shouldTriggerAlert(event, config));
   }
 
+  // ---- observability triggers must not fire on thread events ----------------
+  // A trigger is a positive predicate. shouldTriggerAlert routes a thread about
+  // an entity to that entity's alert (#28122), but a thread carries no test or
+  // pipeline signal, so the trigger must reject it — otherwise a threadUpdated
+  // leaks into a testCase "status = Failed" observability alert.
+
+  @Test
+  void matchTestResult_threadEventAboutTestCase_returnsFalse() {
+    ChangeEvent event = threadUpdatedEvent(testCaseRef());
+    assertFalse(new AlertsRuleEvaluator(event).matchTestResult(List.of("Failed")));
+  }
+
+  @Test
+  void matchPipelineState_threadEvent_returnsFalse() {
+    ChangeEvent event = threadUpdatedEvent(testCaseRef());
+    assertFalse(new AlertsRuleEvaluator(event).matchPipelineState(List.of("Failed")));
+  }
+
+  @Test
+  void matchIngestionPipelineState_threadEvent_returnsFalse() {
+    ChangeEvent event = threadUpdatedEvent(testCaseRef());
+    assertFalse(new AlertsRuleEvaluator(event).matchIngestionPipelineState(List.of("failed")));
+  }
+
+  @Test
+  void matchTestResult_testCaseFailedResult_returnsTrue() {
+    FieldChange resultChange =
+        new FieldChange()
+            .withName("testCaseResult")
+            .withNewValue(new TestCaseResult().withTestCaseStatus(TestCaseStatus.Failed));
+    ChangeEvent event =
+        new ChangeEvent()
+            .withId(UUID.randomUUID())
+            .withEventType(EventType.ENTITY_UPDATED)
+            .withEntityType(Entity.TEST_CASE)
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsUpdated(List.of(resultChange))
+                    .withFieldsAdded(Collections.emptyList()));
+    assertTrue(new AlertsRuleEvaluator(event).matchTestResult(List.of("Failed")));
+  }
+
   // ---- evaluateAlertConditions: compile-once cache --------------------------
 
   @Test
@@ -299,6 +345,24 @@ class AlertUtilTest {
         .withEventType(eventType)
         .withEntityType(Entity.THREAD)
         .withEntity(thread);
+  }
+
+  private static ChangeEvent threadUpdatedEvent(EntityReference parent) {
+    Thread thread =
+        new Thread()
+            .withId(UUID.randomUUID())
+            .withType(ThreadType.Conversation)
+            .withEntityRef(parent);
+    return new ChangeEvent()
+        .withId(UUID.randomUUID())
+        .withEventType(EventType.THREAD_UPDATED)
+        .withEntityType(Entity.THREAD)
+        .withEntity(thread)
+        .withChangeDescription(new ChangeDescription());
+  }
+
+  private static EntityReference testCaseRef() {
+    return new EntityReference().withId(UUID.randomUUID()).withType(Entity.TEST_CASE);
   }
 
   private static FilteringRules filteringRules(String resource) {
