@@ -29,7 +29,7 @@ import {
   EditIconButton,
   PlusIconButton,
 } from '../../common/IconButtons/EditIconButton';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { DataAssetOption } from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import './related-metrics.less';
 import { RelatedMetricsForm } from './RelatedMetricsForm';
