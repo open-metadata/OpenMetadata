@@ -11,10 +11,55 @@
  *  limitations under the License.
  */
 import { FormInstance } from 'antd';
-import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
-import { CreateDomain } from '../../../generated/api/domains/createDomain';
+import {
+  CreateDataProduct,
+  DataProductType,
+  PortfolioPriority,
+  Visibility,
+} from '../../../generated/api/domains/createDataProduct';
+import {
+  CreateDomain,
+  DomainType,
+} from '../../../generated/api/domains/createDomain';
 import { Domain } from '../../../generated/entity/domains/domain';
+import { EntityReference } from '../../../generated/entity/type';
+import { TagLabel } from '../../../generated/type/tagLabel';
+import { CoverImageFileValue } from '../../common/CoverImageUpload/CoverImageUpload.interface';
 import { DomainFormType } from '../DomainPage.interface';
+
+export interface DomainFormSelectItem {
+  id: string;
+  label?: string;
+  value:
+    | TagLabel
+    | EntityReference
+    | DomainType
+    | DataProductType
+    | PortfolioPriority
+    | Visibility
+    | string;
+  name?: string;
+}
+
+export interface DomainFormValues {
+  name: string;
+  displayName: string;
+  description: string;
+  color: string;
+  iconURL: string;
+  coverImage: CoverImageFileValue | null;
+  tags: DomainFormSelectItem[];
+  glossaryTerms: TagLabel[];
+  owners: DomainFormSelectItem[];
+  experts: DomainFormSelectItem[];
+  reviewers: DomainFormSelectItem[];
+  domainType: DomainFormSelectItem | null;
+  domains?: DomainFormSelectItem;
+  dataProductType: DomainFormSelectItem | null;
+  visibility: DomainFormSelectItem | null;
+  portfolioPriority: DomainFormSelectItem | null;
+  extension: Record<string, unknown>;
+}
 
 export interface AddDomainFormProps {
   isFormInDialog: boolean;

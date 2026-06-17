@@ -40,7 +40,6 @@ import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
 import { useGlossaryStore } from '../useGlossary.store';
 import './glossary-details.less';
 import { GlossaryDetailsProps } from './GlossaryDetails.interface';
-
 const GlossaryDetails = ({
   updateVote,
   handleGlossaryDelete,

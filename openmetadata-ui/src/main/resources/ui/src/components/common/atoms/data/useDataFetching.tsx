@@ -19,7 +19,7 @@ import {
   SearchResponse,
 } from '../../../../interface/search.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
-import { domainBuildESQuery } from '../../../../utils/DomainUtils';
+import { domainBuildESQuery } from '../../../../utils/DomainFilterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 
 export interface DataFetchingConfig<T> {

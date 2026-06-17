@@ -146,15 +146,16 @@ jest.mock('../useGlossary.store', () => ({
   useGlossaryStore: jest.fn().mockReturnValue({ onAddGlossaryTerm: jest.fn() }),
 }));
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => {
-  return {
-    useGenericContext: jest.fn().mockImplementation(() => ({
-      permissions: MOCK_PERMISSIONS,
-    })),
-    GenericProvider: jest.fn().mockImplementation(({ children }) => children),
-    _esModule: true,
-  };
-});
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
+  ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
+  useGenericContext: jest.fn().mockImplementation(() => ({
+    permissions: MOCK_PERMISSIONS,
+  })),
+}));
+
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+  GenericProvider: jest.fn().mockImplementation(({ children }) => children),
+}));
 
 describe('Test Glossary-term component', () => {
   it('Should render overview tab when activeTab is undefined', async () => {

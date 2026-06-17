@@ -22,7 +22,7 @@ import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import DescriptionSourceBadge from '../../common/DescriptionSourceBadge/DescriptionSourceBadge';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import { TableDescriptionProps } from './TableDescription.interface';
