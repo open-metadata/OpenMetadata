@@ -44,7 +44,6 @@ import { GenericProvider } from '../Customization/GenericProvider/GenericProvide
 import DataProductsContainer from '../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import VersionTable from '../Entity/VersionTable/VersionTable.component';
 import { SearchIndexVersionProps } from './SearchIndexVersion.interface';
-
 const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
   version,
   currentVersionData,

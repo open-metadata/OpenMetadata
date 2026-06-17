@@ -20,7 +20,6 @@ import { getReadableCountString } from '../../../utils/ServicePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import PlatformInsightsWidget from './PlatformInsightsWidget';
 import { PlatformInsightsWidgetProps } from './PlatformInsightsWidget.interface';
-
 // Mock dependencies
 jest.mock('../../../utils/useRequiredParams', () => ({
   useRequiredParams: jest.fn(),

@@ -44,7 +44,7 @@ jest.mock('../../../components/SearchDropdown/SearchDropdown', () =>
   jest.fn(() => <div>SearchDropdown</div>)
 );
 
-jest.mock('../../../utils/DataInsightUtils', () => ({
+jest.mock('../../../utils/DataInsightPureUtils', () => ({
   getOptionalDataInsightTabFlag: jest.fn(() => ({
     showDataInsightSummary: true,
     showKpiChart: true,

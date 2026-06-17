@@ -52,8 +52,8 @@ import { entityChartColor } from '../../utils/CommonUtils';
 import {
   getQueryFilterForDataInsightChart,
   isPercentageSystemGraph,
-  renderDataInsightLineChart,
-} from '../../utils/DataInsightUtils';
+} from '../../utils/DataInsightPureUtils';
+import { renderDataInsightLineChart } from '../../utils/DataInsightUtils';
 import { getExplorePath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -62,7 +62,6 @@ import PageHeader from '../PageHeader/PageHeader.component';
 import DataInsightProgressBar from './DataInsightProgressBar';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 import EntitySummaryProgressBar from './EntitySummaryProgressBar.component';
-
 interface DataInsightChartCardProps {
   type: SystemChartType;
   header: ReactNode;

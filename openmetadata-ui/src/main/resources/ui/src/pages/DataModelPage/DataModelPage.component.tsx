@@ -50,6 +50,16 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { updateTierTag } from '../../utils/TagsPureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
+const DATA_MODEL_FIELDS = [
+  TabSpecificField.OWNERS,
+  TabSpecificField.TAGS,
+  TabSpecificField.FOLLOWERS,
+  TabSpecificField.VOTES,
+  TabSpecificField.DOMAINS,
+  TabSpecificField.DATA_PRODUCTS,
+  TabSpecificField.EXTENSION,
+].join(',');
+
 const DataModelsPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -107,8 +117,7 @@ const DataModelsPage = () => {
     setIsLoading(true);
     try {
       const response = await getDataModelByFqn(dashboardDataModelFQN, {
-        // eslint-disable-next-line max-len
-        fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.FOLLOWERS},${TabSpecificField.VOTES},${TabSpecificField.DOMAINS},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`,
+        fields: DATA_MODEL_FIELDS,
         include: Include.All,
       });
       setDataModelData(response);
