@@ -48,7 +48,7 @@ jest.mock('../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockReturnValue({ isAdminUser: true }),
 }));
 
-jest.mock('../../utils/DataInsightUtils', () => ({
+jest.mock('../../utils/DataInsightPureUtils', () => ({
   ...jest.requireActual('../../utils/DataInsightUtils'),
   getKpiTargetValueByMetricType: jest.fn().mockReturnValue(10),
   getDisabledDates: jest.fn().mockReturnValue(true),

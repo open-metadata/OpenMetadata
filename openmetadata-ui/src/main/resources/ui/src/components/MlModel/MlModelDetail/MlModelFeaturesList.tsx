@@ -37,7 +37,6 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericCo
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
 import SourceList from './SourceList.component';
-
 const ModalWithMarkdownEditor = withSuspenseFallback(
   lazy(() =>
     import('../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor').then(

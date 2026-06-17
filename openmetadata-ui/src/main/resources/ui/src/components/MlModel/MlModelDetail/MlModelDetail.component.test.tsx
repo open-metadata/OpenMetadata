@@ -218,7 +218,7 @@ jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('entityName'),
 }));
 
-jest.mock('../../../utils/TableUtils', () => {
+jest.mock('../../../utils/TablePureUtils', () => {
   return {
     getTagsWithoutTier: jest.fn().mockReturnValue([]),
     getTierTags: jest.fn().mockReturnValue(undefined),
