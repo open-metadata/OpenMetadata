@@ -25,10 +25,12 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.MlFeature;
 import org.openmetadata.schema.type.MlFeatureDataType;
 import org.openmetadata.schema.type.MlHyperParameter;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for MlModel entity operations.
@@ -209,6 +211,42 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
     assertNotNull(mlModel);
     assertNotNull(mlModel.getMlFeatures());
     assertEquals(2, mlModel.getMlFeatures().size());
+  }
+
+  @Test
+  void test_listEntities_orphanWithMissingServiceRelationship_200(TestNamespace ns) {
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_orphan_service"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("Random Forest");
+
+    MlModel mlModel = createEntity(request);
+    int relation = Relationship.CONTAINS.ordinal();
+    int rowsRemoved =
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .delete(
+                service.getId(), Entity.MLMODEL_SERVICE, mlModel.getId(), Entity.MLMODEL, relation);
+    assertEquals(1, rowsRemoved, "Setup: should have dropped exactly one CONTAINS row");
+
+    try {
+      ListParams params = new ListParams();
+      params.setLimit(1000);
+
+      ListResponse<MlModel> list = listEntities(params);
+      assertNotNull(list);
+      assertNotNull(list.getData());
+      assertTrue(
+          list.getData().stream().anyMatch(item -> item.getId().equals(mlModel.getId())),
+          "Listing should still return the orphaned ml model");
+    } finally {
+      Entity.getCollectionDAO()
+          .relationshipDAO()
+          .insert(
+              service.getId(), mlModel.getId(), Entity.MLMODEL_SERVICE, Entity.MLMODEL, relation);
+    }
   }
 
   @Test

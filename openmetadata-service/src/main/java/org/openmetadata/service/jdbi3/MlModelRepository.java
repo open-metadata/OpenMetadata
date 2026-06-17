@@ -92,6 +92,13 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Override
   public void setFullyQualifiedName(MlModel mlModel) {
+    if (mlModel.getService() == null) {
+      mlModel.setService(
+          getFromEntityRef(mlModel.getId(), Relationship.CONTAINS, Entity.MLMODEL_SERVICE, false));
+    }
+    if (mlModel.getService() == null) {
+      return;
+    }
     mlModel.setFullyQualifiedName(
         FullyQualifiedName.add(mlModel.getService().getFullyQualifiedName(), mlModel.getName()));
     if (!nullOrEmpty(mlModel.getMlFeatures())) {
@@ -101,7 +108,10 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Override
   public void setFields(MlModel mlModel, Fields fields, RelationIncludes relationIncludes) {
-    mlModel.setService(getContainer(mlModel.getId()));
+    if (mlModel.getService() == null) {
+      mlModel.setService(
+          getFromEntityRef(mlModel.getId(), Relationship.CONTAINS, Entity.MLMODEL_SERVICE, false));
+    }
     mlModel.setDashboard(
         fields.contains("dashboard") ? getDashboard(mlModel) : mlModel.getDashboard());
     if (mlModel.getUsageSummary() == null) {
@@ -181,26 +191,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   private Map<UUID, EntityReference> batchFetchServices(List<MlModel> mlModels) {
-    Map<UUID, EntityReference> serviceMap = new HashMap<>();
-    if (mlModels == null || mlModels.isEmpty()) {
-      return serviceMap;
-    }
-
-    // Single batch query to get all services for all ML models
-    List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
-            .relationshipDAO()
-            .findFromBatch(entityListToStrings(mlModels), Relationship.CONTAINS.ordinal());
-
-    for (CollectionDAO.EntityRelationshipObject record : records) {
-      UUID mlModelId = UUID.fromString(record.getToId());
-      EntityReference serviceRef =
-          Entity.getEntityReferenceById(
-              Entity.MLMODEL_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
-      serviceMap.put(mlModelId, serviceRef);
-    }
-
-    return serviceMap;
+    return batchFetchContainers(mlModels, Entity.MLMODEL_SERVICE, NON_DELETED);
   }
 
   @Override
