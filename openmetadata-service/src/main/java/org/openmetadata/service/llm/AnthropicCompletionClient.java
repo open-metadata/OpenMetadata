@@ -49,8 +49,13 @@ public final class AnthropicCompletionClient extends LLMCompletionClient {
   }
 
   @Override
-  protected String doComplete(String systemPrompt, String userPrompt) {
-    String result;
+  protected CompletionResult doComplete(
+      String systemPrompt, String userPrompt, CompletionOptions options) {
+    String model = options.modelIdOr(this.modelId);
+    int tokens = options.maxTokensOr(this.maxTokens);
+    double temp = options.temperatureOr(this.temperature);
+    int timeout = options.timeoutSecondsOr(this.timeoutSeconds);
+    CompletionResult result;
     try {
       HttpRequest request =
           HttpRequest.newBuilder()
@@ -58,8 +63,10 @@ public final class AnthropicCompletionClient extends LLMCompletionClient {
               .header("Content-Type", "application/json")
               .header("x-api-key", apiKey)
               .header("anthropic-version", ANTHROPIC_VERSION)
-              .timeout(Duration.ofSeconds(timeoutSeconds))
-              .POST(HttpRequest.BodyPublishers.ofString(buildRequestBody(systemPrompt, userPrompt)))
+              .timeout(Duration.ofSeconds(timeout))
+              .POST(
+                  HttpRequest.BodyPublishers.ofString(
+                      buildRequestBody(systemPrompt, userPrompt, model, tokens, temp)))
               .build();
       HttpResponse<String> response =
           httpClient.send(request, HttpResponse.BodyHandlers.ofString());
@@ -67,7 +74,7 @@ public final class AnthropicCompletionClient extends LLMCompletionClient {
         throw new LLMCompletionException(
             "Anthropic API returned status " + response.statusCode() + ": " + response.body());
       }
-      result = parseContent(response.body());
+      result = parseResult(response.body());
     } catch (IOException e) {
       throw new LLMCompletionException("Anthropic completion failed due to IO error", e);
     } catch (InterruptedException e) {
@@ -77,11 +84,12 @@ public final class AnthropicCompletionClient extends LLMCompletionClient {
     return result;
   }
 
-  private String buildRequestBody(String systemPrompt, String userPrompt) {
+  static String buildRequestBody(
+      String systemPrompt, String userPrompt, String model, int maxTokens, double temperature) {
     String result;
     try {
       ObjectNode payload = MAPPER.createObjectNode();
-      payload.put("model", modelId);
+      payload.put("model", model);
       payload.put("max_tokens", maxTokens);
       payload.put("temperature", temperature);
       payload.put("system", systemPrompt);
@@ -94,14 +102,20 @@ public final class AnthropicCompletionClient extends LLMCompletionClient {
     return result;
   }
 
-  static String parseContent(String responseBody) {
-    String result;
+  static CompletionResult parseResult(String responseBody) {
+    CompletionResult result;
     try {
-      JsonNode text = MAPPER.readTree(responseBody).path("content").path(0).path("text");
+      JsonNode root = MAPPER.readTree(responseBody);
+      JsonNode text = root.path("content").path(0).path("text");
       if (!text.isTextual()) {
         throw new LLMCompletionException("Invalid Anthropic response: no text content returned");
       }
-      result = text.asText();
+      JsonNode usage = root.path("usage");
+      result =
+          new CompletionResult(
+              text.asText(),
+              usage.path("input_tokens").asInt(0),
+              usage.path("output_tokens").asInt(0));
     } catch (IOException e) {
       throw new LLMCompletionException("Failed to parse Anthropic response", e);
     }

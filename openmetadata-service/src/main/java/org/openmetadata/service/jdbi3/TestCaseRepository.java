@@ -157,7 +157,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         fields.contains(INCIDENTS_FIELD) ? getIncidentId(test) : test.getIncidentId());
   }
 
-  private final ThreadLocal<Map<String, Table>> linkedTablesCache = new ThreadLocal<>();
+  private static final ThreadLocal<Map<String, Table>> linkedTablesCache = new ThreadLocal<>();
 
   @Override
   public void setFieldsInBulk(Fields fields, List<TestCase> testCases) {

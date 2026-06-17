@@ -56,6 +56,8 @@ import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.SecurityValidationResponse;
+import org.openmetadata.schema.system.TestLoginResult;
+import org.openmetadata.schema.system.TestLoginTokenRequest;
 import org.openmetadata.schema.system.ValidationResponse;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -87,6 +89,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.security.auth.TestLoginService;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -836,6 +839,32 @@ public class SystemResource {
     String currentUsername = SecurityUtil.getUserName(securityContext);
     return systemRepository.validateSecurityConfiguration(
         securityConfig, applicationConfig, currentUsername);
+  }
+
+  @POST
+  @Path("/security/test-login/validate-token")
+  @Operation(
+      operationId = "testLoginValidateToken",
+      summary = "Validate an OIDC id_token against a candidate security configuration",
+      description =
+          "Admin-only. Validates a browser-obtained OIDC id_token against a candidate (unsaved) "
+              + "security configuration and reports the identity, roles, teams and domain outcome a "
+              + "real login would produce. Performs no side effects: no user is created, no token is "
+              + "issued, and no session is started.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Test login result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestLoginResult.class)))
+      })
+  public TestLoginResult testLoginValidateToken(
+      @Context SecurityContext securityContext, @Valid TestLoginTokenRequest request) {
+    authorizer.authorizeAdmin(securityContext);
+    return TestLoginService.resolveFromIdToken(
+        request.getSecurityConfiguration(), request.getIdToken());
   }
 
   @GET
