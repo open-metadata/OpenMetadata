@@ -274,6 +274,21 @@ class TestAnalyzeWithAnyLanguage:
         assert result.score == 0
         assert result.recognizer_results == []
 
+    def test_build_analyzer_with_raises_when_language_is_any_without_effective_language(
+        self, pii_classification, column, mock_nlp_engine
+    ):
+        """build_analyzer_with must raise ValueError when the analyzer language is 'any'
+        and no effective_language is provided, to prevent silent 'any' propagation to Presidio."""
+        tag = _make_any_language_tag(pii_classification)
+        analyzer = TagAnalyzer(
+            tag=tag,
+            column=column,
+            nlp_engine=mock_nlp_engine,
+            language=ClassificationLanguage.any,
+        )
+        with pytest.raises(ValueError, match="concrete language"):
+            analyzer.build_analyzer_with([])
+
     def test_any_language_analyze_column_no_exception(self, pii_classification, column, mock_nlp_engine):
         en_pattern = PatternFactory.create(
             name="column-pattern",
@@ -340,6 +355,23 @@ class TestNormalizeRecognizerLanguage:
         )
         result = analyzer._normalize_recognizer_language(rec, "fr")
         assert result.supported_language == "en"
+
+    def test_original_not_mutated(self, pii_classification, column, mock_nlp_engine):
+        """_normalize_recognizer_language must not mutate the original recognizer."""
+        analyzer = TagAnalyzer(
+            tag=_make_any_language_tag(pii_classification),
+            column=column,
+            nlp_engine=mock_nlp_engine,
+            language=ClassificationLanguage.en,
+        )
+        rec = PatternRecognizer(
+            supported_entity="EMAIL",
+            supported_language="any",
+            patterns=[Pattern(name="p", regex=r"@", score=0.5)],
+        )
+        result = analyzer._normalize_recognizer_language(rec, "en")
+        assert result.supported_language == "en"
+        assert rec.supported_language == "any"
 
 
 def _make_presidio_nlp_mock_for(language: str):

@@ -1,3 +1,4 @@
+import copy
 from itertools import groupby
 from typing import List, Optional, Sequence, final  # noqa: UP035
 
@@ -126,9 +127,11 @@ class TagAnalyzer:
         so 'any' will not match specific language codes like 'en'. This method
         translates 'any' to a concrete language for Presidio's filter to work.
         """
-        if recognizer_obj.supported_language == ClassificationLanguage.any.value:
-            recognizer_obj.supported_language = effective_language
-        return recognizer_obj
+        if recognizer_obj.supported_language != ClassificationLanguage.any.value:
+            return recognizer_obj
+        recognizer_copy = copy.copy(recognizer_obj)
+        recognizer_copy.supported_language = effective_language
+        return recognizer_copy
 
     def build_analyzer_with(
         self,
@@ -137,6 +140,11 @@ class TagAnalyzer:
         effective_language: Optional[str] = None,  # noqa: UP045
     ) -> AnalyzerEngine:
         effective_lang = effective_language or self._language.value
+        if effective_lang == ClassificationLanguage.any.value:
+            raise ValueError(
+                "build_analyzer_with requires a concrete language when the analyzer language is 'any'. "
+                "Pass effective_language explicitly."
+            )
         normalized_recs = [self._normalize_recognizer_language(rec, effective_lang) for rec in recognizers]
         supported_languages = [rec.supported_language for rec in normalized_recs]
         recognizer_registry = RecognizerRegistry(recognizers=normalized_recs, supported_languages=supported_languages)
