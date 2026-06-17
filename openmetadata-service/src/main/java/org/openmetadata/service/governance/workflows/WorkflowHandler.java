@@ -666,9 +666,11 @@ public class WorkflowHandler {
   /**
    * Repoint the {@code relatedEntity} of running workflow instances after an entity (and its FQN
    * subtree) is moved or renamed: the entity itself ({@code oldFqn}) and every descendant
-   * ({@code oldFqn}-prefixed) is rebased onto {@code newFqn}. Issues a SINGLE query for the entity
-   * type's running instances and rewrites the matching subtree in one pass, so a move/rename of a
-   * deep glossary subtree never fans out into one Flowable query per descendant.
+   * ({@code oldFqn}-prefixed) is rebased onto {@code newFqn}. Issues a SINGLE query scoped to the
+   * moved subtree's link prefix — NOT to every running instance of the entity type, which would
+   * scale with total concurrent workflows and make the repoint slow enough to lose the race against
+   * an approval submitted right after the move. The LIKE may over-match (FQN {@code _}/{@code %}
+   * act as wildcards); {@link #repointSubtreeLink} narrows it back to the exact subtree.
    */
   public void updateRelatedEntityFqnForSubtree(String entityType, String oldFqn, String newFqn) {
     RuntimeService runtimeService = processEngine.getRuntimeService();
@@ -676,7 +678,7 @@ public class WorkflowHandler {
     List<ProcessInstance> instances =
         runtimeService
             .createProcessInstanceQuery()
-            .variableValueLike(variableName, entityLinkTypePrefix(entityType) + "%")
+            .variableValueLike(variableName, entityLinkTypePrefix(entityType) + oldFqn + "%")
             .includeProcessVariables()
             .list();
     int updatedCount = 0;
