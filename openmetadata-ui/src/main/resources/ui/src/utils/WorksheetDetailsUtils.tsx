@@ -22,7 +22,6 @@ import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import i18n from './i18next/LocalUtil';
-
 const ContractTab = withSuspenseFallback(
   lazy(() =>
     import('../components/DataContract/ContractTab/ContractTab').then(

@@ -10,12 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export {
-  ContainerFields,
-  extractContainerColumns,
-  updateContainerColumnDescription,
-  updateContainerColumnTags,
-} from './ContainerDetailPureUtils';
 
 import { Col, Row } from 'antd';
 import { get } from 'lodash';

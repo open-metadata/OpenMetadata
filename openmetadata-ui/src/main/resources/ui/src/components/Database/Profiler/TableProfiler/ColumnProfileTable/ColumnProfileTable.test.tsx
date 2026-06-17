@@ -88,8 +88,7 @@ jest.mock('../../../../../utils/CommonUtils', () => ({
     ),
 }));
 
-jest.mock('../../../../../utils/TableUtils', () => ({
-  getTableExpandableConfig: jest.fn().mockReturnValue({}),
+jest.mock('../../../../../utils/TablePureUtils', () => ({
   pruneEmptyChildren: jest.fn().mockImplementation((data) => data),
 }));
 
