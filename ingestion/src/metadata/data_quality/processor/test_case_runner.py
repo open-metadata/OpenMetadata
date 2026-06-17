@@ -15,7 +15,7 @@ This Processor is in charge of executing the test cases
 
 import traceback
 from copy import deepcopy
-from typing import List, Optional  # noqa: UP035
+from typing import List, Optional, cast  # noqa: UP035
 
 from pydantic import RootModel
 
@@ -49,6 +49,7 @@ from metadata.ingestion.api.step import Step  # noqa: TC001
 from metadata.ingestion.api.steps import Processor
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import entity_link
+from metadata.utils.entity_reference import require_entity_reference_id
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -245,7 +246,11 @@ class TestCaseRunner(Processor):
         """
         om_test_cases: List[TestCase] = []  # noqa: UP006
         for test_case in test_cases:
-            test_definition: TestDefinition = self.metadata.get_by_id(TestDefinition, test_case.testDefinition.id)
+            test_definition_id = require_entity_reference_id(test_case.testDefinition, "Test definition")
+            test_definition = cast(
+                "TestDefinition",
+                self.metadata.get_by_id(TestDefinition, test_definition_id, nullable=False),
+            )
             if TestPlatform.OpenMetadata not in test_definition.testPlatforms:
                 logger.debug(f"Test case {test_case.name.root} is not an OpenMetadata test case.")
                 continue
@@ -304,8 +309,9 @@ class TestCaseRunner(Processor):
         """
         result: List[TestCase] = []  # noqa: UP006
         for tc in test_cases:
+            test_definition_id = require_entity_reference_id(tc.testDefinition, "Test definition")
             test_definition: TestDefinition = self.metadata.get_by_id(
-                TestDefinition, tc.testDefinition.id, nullable=False
+                TestDefinition, test_definition_id, nullable=False
             )
             if test_definition.entityType != EntityType.COLUMN:
                 result.append(tc)
