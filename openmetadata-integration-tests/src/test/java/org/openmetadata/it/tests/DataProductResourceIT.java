@@ -1149,6 +1149,47 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   }
 
   @Test
+  void test_changeDataProductDomain_thenDeleteOriginalDomain_preservesDataProduct(
+      TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Domain domain1 = createTestDomain(ns, "domain_delete_original_1");
+    Domain domain2 = createTestDomain(ns, "domain_delete_original_2");
+
+    DataProduct dataProduct =
+        createEntity(
+            new CreateDataProduct()
+                .withName(ns.prefix("dp_delete_original_domain"))
+                .withDescription("Data product moved before original domain deletion")
+                .withDomains(List.of(domain1.getFullyQualifiedName())));
+
+    dataProduct.setDomains(List.of(domain2.getEntityReference()));
+    DataProduct updated = patchEntity(dataProduct.getId().toString(), dataProduct);
+    assertEquals(1, updated.getDomains().size());
+    assertEquals(domain2.getId(), updated.getDomains().getFirst().getId());
+
+    client
+        .domains()
+        .delete(domain1.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    DataProduct fetched = client.dataProducts().get(dataProduct.getId().toString(), "domains");
+    assertFalse(Boolean.TRUE.equals(fetched.getDeleted()));
+    assertEquals(1, fetched.getDomains().size());
+    assertEquals(domain2.getId(), fetched.getDomains().getFirst().getId());
+
+    ListResponse<DataProduct> listed =
+        client
+            .dataProducts()
+            .list(
+                new ListParams()
+                    .setFields("domains")
+                    .withDomain(domain2.getFullyQualifiedName())
+                    .withLimit(100));
+    assertTrue(
+        listed.getData().stream().anyMatch(dp -> dp.getId().equals(dataProduct.getId())),
+        "Moved data product must remain visible under its target domain after original domain deletion");
+  }
+
+  @Test
   void test_changeDataProductDomain_withAssetMigration(TestNamespace ns) throws Exception {
     // Create two domains
     Domain domain1 = createTestDomain(ns, "domain_migrate_1");
