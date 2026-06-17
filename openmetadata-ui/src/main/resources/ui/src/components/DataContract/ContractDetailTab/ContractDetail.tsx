@@ -535,7 +535,17 @@ const ContractDetail: React.FC<{
         </Box>
       </Box>
     );
-  }, [contract, mode, handleRunNow, handleModeChange, validateLoading]);
+  }, [
+    contract,
+    mode,
+    handleRunNow,
+    handleModeChange,
+    validateLoading,
+    hasEditPermission,
+    isInheritedContract,
+    handleContractAction,
+    t,
+  ]);
 
   useEffect(() => {
     if (contract?.id && contract?.latestResult?.resultId) {
