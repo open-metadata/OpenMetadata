@@ -44,6 +44,7 @@ jest.mock('../TagsV1/TagsV1.component', () =>
 );
 
 jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
+  ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
   useGenericContext: () => ({
     onThreadLinkSelect: jest.fn(),
     activeTagDropdownKey: null,

@@ -54,6 +54,11 @@ jest.mock('../ReviewerLabelV2/ReviewerLabelV2', () => ({
     <div data-testid="reviewer-label-widget">Reviewer Label Widget</div>
   ),
 }));
+jest.mock('../../Domain/DomainExpertsWidget/DomainExpertWidget', () => ({
+  DomainExpertWidget: () => (
+    <div data-testid="domain-expert-name">Domain Expert Widget</div>
+  ),
+}));
 
 jest.mock('../../../utils/CommonWidget/CommonWidgetClassBase', () => ({
   getCommonWidgetsFromConfig: jest.fn(),

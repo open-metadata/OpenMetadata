@@ -43,7 +43,6 @@ import {
   DocumentationEntity,
   DocumentationTabProps,
 } from './DocumentationTab.interface';
-
 const DocumentationTab = ({
   isVersionsView = false,
   type = DocumentationEntity.DOMAIN,

@@ -331,7 +331,7 @@ jest.mock('../../../utils/StringUtils', () => ({
   stringToHTML: jest.fn((text) => text),
 }));
 
-jest.mock('../../../utils/FeedUtils', () => ({
+jest.mock('../../../utils/FeedUtilsPure', () => ({
   getEntityColumnFQN: jest.fn(),
 }));
 

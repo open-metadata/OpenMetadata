@@ -99,7 +99,7 @@ import {
   findExpandableKeysForArray,
   glossaryTermTableColumnsWidth,
   permissionForApproveOrReject,
-} from '../../../utils/GlossaryUtils';
+} from '../../../utils/GlossaryPureUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { ownerTableObject } from '../../../utils/TableColumn.util';
@@ -119,7 +119,6 @@ import {
   ModifiedGlossaryTerm,
   MoveGlossaryTermType,
 } from './GlossaryTermTab.interface';
-
 const WorkflowHistory = withSuspenseFallback(
   lazy(
     () => import('../GlossaryTerms/tabs/WorkFlowTab/WorkflowHistory.component')

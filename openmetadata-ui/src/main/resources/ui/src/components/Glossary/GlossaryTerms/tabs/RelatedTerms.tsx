@@ -44,7 +44,7 @@ import {
   getGlossaryTermRelationSettings,
   searchGlossaryTermsPaginated,
 } from '../../../../rest/glossaryAPI';
-import { getTextFromHtmlString } from '../../../../utils/BlockEditorUtils';
+import { getTextFromHtmlString } from '../../../../utils/BlockEditorPureUtils';
 import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
@@ -67,7 +67,6 @@ import {
   TermsRowEditorProps,
 } from './RelatedTerms.interface';
 import TermsRowEditor from './TermsRowEditor.component';
-
 const MAX_VISIBLE_BADGES = 5;
 
 const BadgeList: React.FC<{ items: ReactNode[] }> = ({ items }) => {

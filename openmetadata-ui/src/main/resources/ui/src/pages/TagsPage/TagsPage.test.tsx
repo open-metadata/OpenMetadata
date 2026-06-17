@@ -402,6 +402,9 @@ jest.mock('../../components/DataAssets/OwnerLabelV2/OwnerLabelV2', () => ({
 jest.mock(
   '../../components/Customization/GenericProvider/GenericContext',
   () => ({
+    ...jest.requireActual(
+      '../../components/Customization/GenericProvider/GenericContext'
+    ),
     useGenericContext: jest.fn().mockReturnValue({
       data: {
         id: '93285c04-d8b6-4833-997e-56dc5f973427',

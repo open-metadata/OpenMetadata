@@ -44,7 +44,7 @@ import {
   getAllTags,
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
-import { createTagObject } from '../../../utils/TagsUtils';
+import { createTagObject } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
