@@ -7,8 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.it.bootstrap.SharedEntities.*;
-import static org.openmetadata.service.Entity.DATA_PRODUCT;
-import static org.openmetadata.service.Entity.DOMAIN;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -22,6 +20,7 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.MessagingServiceTestFactory;
@@ -54,7 +53,6 @@ import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
-import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
@@ -65,7 +63,6 @@ import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
-import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for DataProduct entity operations.
@@ -1194,6 +1191,7 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   }
 
   @Test
+  @ResourceLock("MULTI_DOMAIN_RULE")
   void test_deleteOneDomainForMultiDomainDataProduct_preservesDataProductUntilLastDomain(
       TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -1206,7 +1204,7 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
                 .withName(ns.prefix("dp_multi_domain_delete"))
                 .withDescription("Data product shared by multiple domains")
                 .withDomains(List.of(domain1.getFullyQualifiedName())));
-    attachDataProductToDomain(dataProduct, domain2);
+    updateDataProductDomainsWithMultiDomainRuleDisabled(client, dataProduct, domain1, domain2);
 
     DataProduct sharedDataProduct =
         client.dataProducts().get(dataProduct.getId().toString(), "domains");
@@ -1248,20 +1246,16 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         () -> client.dataProducts().get(dataProduct.getId().toString(), "domains"));
   }
 
-  private void attachDataProductToDomain(DataProduct dataProduct, Domain domain) {
-    Entity.getEntityRepository(DATA_PRODUCT)
-        .addRelationship(
-            domain.getId(), dataProduct.getId(), DOMAIN, DATA_PRODUCT, Relationship.HAS);
-    Entity.getEntityRepository(DATA_PRODUCT)
-        .addRelationship(
-            domain.getId(), dataProduct.getId(), DOMAIN, DATA_PRODUCT, Relationship.CONTAINS);
-    List<EntityReference> domains =
-        dataProduct.getDomains() == null
-            ? new ArrayList<>()
-            : new ArrayList<>(dataProduct.getDomains());
-    domains.add(domain.getEntityReference());
-    dataProduct.setDomains(domains);
-    Entity.getCollectionDAO().dataProductDAO().update(dataProduct);
+  private DataProduct updateDataProductDomainsWithMultiDomainRuleDisabled(
+      OpenMetadataClient client, DataProduct dataProduct, Domain... domains) {
+    EntityRulesUtil.toggleMultiDomainRule(client, false);
+    try {
+      DataProduct update = client.dataProducts().get(dataProduct.getId().toString(), "domains");
+      update.setDomains(List.of(domains).stream().map(Domain::getEntityReference).toList());
+      return client.dataProducts().update(dataProduct.getId().toString(), update);
+    } finally {
+      EntityRulesUtil.toggleMultiDomainRule(client, true);
+    }
   }
 
   @Test

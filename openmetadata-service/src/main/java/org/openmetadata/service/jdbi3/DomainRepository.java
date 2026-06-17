@@ -73,7 +73,10 @@ public class DomainRepository extends EntityRepository<Domain> {
   private static final String UPDATE_FIELDS = "parent,children,experts";
 
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
-  private final ThreadLocal<Set<UUID>> domainDeleteSubtree = new ThreadLocal<>();
+  private final ThreadLocal<Set<UUID>> domainHardDeleteSubtree = new ThreadLocal<>();
+
+  private record RetainedDataProductCascadePlan(
+      Set<UUID> retainedDataProductIds, Map<UUID, List<UUID>> deletingParentsByDataProduct) {}
 
   public DomainRepository() {
     super(
@@ -456,21 +459,31 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   @Override
   protected void deleteChildren(UUID id, boolean recursive, boolean hardDelete, String updatedBy) {
-    boolean rootDomainDelete = domainDeleteSubtree.get() == null;
-    if (rootDomainDelete) {
-      domainDeleteSubtree.set(collectDomainSubtreeIds(List.of(id)));
+    boolean rootDomainHardDelete = hardDelete && domainHardDeleteSubtree.get() == null;
+    if (rootDomainHardDelete) {
+      domainHardDeleteSubtree.set(collectDomainSubtreeIds(List.of(id)));
     }
     try {
       super.deleteChildren(id, recursive, hardDelete, updatedBy);
     } finally {
-      if (rootDomainDelete) {
-        domainDeleteSubtree.remove();
+      if (rootDomainHardDelete) {
+        domainHardDeleteSubtree.remove();
       }
     }
   }
 
   @Override
-  protected List<CollectionDAO.EntityRelationshipRecord> filterChildrenForDeleteCascade(
+  protected Runnable enterBulkHardDeleteCascade(List<Domain> domains) {
+    if (domainHardDeleteSubtree.get() != null) {
+      return () -> {};
+    }
+    domainHardDeleteSubtree.set(
+        collectDomainSubtreeIds(domains.stream().map(Domain::getId).toList()));
+    return domainHardDeleteSubtree::remove;
+  }
+
+  @Override
+  protected List<CollectionDAO.EntityRelationshipRecord> prepareChildrenForHardDeleteCascade(
       UUID parentId, List<CollectionDAO.EntityRelationshipRecord> children) {
     List<String> dataProductIds =
         children.stream()
@@ -482,22 +495,24 @@ public class DomainRepository extends EntityRepository<Domain> {
       return children;
     }
 
-    Set<UUID> retainedDataProductIds =
-        retainedSharedDataProductIds(dataProductIds, deletingDomainIds(List.of(parentId)));
-    if (retainedDataProductIds.isEmpty()) {
+    RetainedDataProductCascadePlan plan =
+        retainedSharedDataProductCascadePlan(dataProductIds, currentDomainHardDeleteSubtree());
+    if (plan.retainedDataProductIds().isEmpty()) {
       return children;
     }
+    detachRetainedDataProductsFromDeletingDomains(
+        plan.retainedDataProductIds(), plan.deletingParentsByDataProduct());
 
     return children.stream()
         .filter(
             child ->
                 !DATA_PRODUCT.equals(child.getType())
-                    || !retainedDataProductIds.contains(child.getId()))
+                    || !plan.retainedDataProductIds().contains(child.getId()))
         .toList();
   }
 
   @Override
-  protected List<CollectionDAO.EntityRelationshipObject> filterChildrenForDeleteCascade(
+  protected List<CollectionDAO.EntityRelationshipObject> prepareChildrenForHardDeleteCascade(
       List<Domain> parents, List<CollectionDAO.EntityRelationshipObject> children) {
     List<String> dataProductIds =
         children.stream()
@@ -509,18 +524,19 @@ public class DomainRepository extends EntityRepository<Domain> {
       return children;
     }
 
-    Set<UUID> retainedDataProductIds =
-        retainedSharedDataProductIds(
-            dataProductIds, deletingDomainIds(parents.stream().map(Domain::getId).toList()));
-    if (retainedDataProductIds.isEmpty()) {
+    RetainedDataProductCascadePlan plan =
+        retainedSharedDataProductCascadePlan(dataProductIds, currentDomainHardDeleteSubtree());
+    if (plan.retainedDataProductIds().isEmpty()) {
       return children;
     }
+    detachRetainedDataProductsFromDeletingDomains(
+        plan.retainedDataProductIds(), plan.deletingParentsByDataProduct());
 
     return children.stream()
         .filter(
             child ->
                 !isDomainDataProductContainment(child)
-                    || !retainedDataProductIds.contains(UUID.fromString(child.getToId())))
+                    || !plan.retainedDataProductIds().contains(UUID.fromString(child.getToId())))
         .toList();
   }
 
@@ -530,9 +546,12 @@ public class DomainRepository extends EntityRepository<Domain> {
         && DATA_PRODUCT.equals(child.getToEntity());
   }
 
-  private Set<UUID> deletingDomainIds(List<UUID> parentIds) {
-    Set<UUID> deletingDomainIds = domainDeleteSubtree.get();
-    return deletingDomainIds != null ? deletingDomainIds : collectDomainSubtreeIds(parentIds);
+  private Set<UUID> currentDomainHardDeleteSubtree() {
+    Set<UUID> deletingDomainIds = domainHardDeleteSubtree.get();
+    if (deletingDomainIds == null) {
+      throw new IllegalStateException("Domain hard-delete subtree context is not initialized");
+    }
+    return deletingDomainIds;
   }
 
   private Set<UUID> collectDomainSubtreeIds(List<UUID> rootIds) {
@@ -551,7 +570,7 @@ public class DomainRepository extends EntityRepository<Domain> {
     return domainIds;
   }
 
-  private Set<UUID> retainedSharedDataProductIds(
+  private RetainedDataProductCascadePlan retainedSharedDataProductCascadePlan(
       List<String> dataProductIds, Set<UUID> deletingDomainIds) {
     Map<UUID, List<UUID>> deletingParentsByDataProduct = new HashMap<>();
     Set<UUID> retainedDataProductIds = new HashSet<>();
@@ -572,9 +591,7 @@ public class DomainRepository extends EntityRepository<Domain> {
               }
             });
 
-    detachRetainedDataProductsFromDeletingDomains(
-        retainedDataProductIds, deletingParentsByDataProduct);
-    return retainedDataProductIds;
+    return new RetainedDataProductCascadePlan(retainedDataProductIds, deletingParentsByDataProduct);
   }
 
   private void detachRetainedDataProductsFromDeletingDomains(

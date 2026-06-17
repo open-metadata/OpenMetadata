@@ -4666,10 +4666,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (!recursive) {
       throw new IllegalArgumentException(CatalogExceptionMessage.entityIsNotEmpty(entityType));
     }
-    childrenRecords = filterChildrenForDeleteCascade(id, childrenRecords);
-    if (childrenRecords.isEmpty()) {
-      LOG.debug("No children to delete for {} {} after cascade filtering", entityType, id);
-      return;
+    if (hardDelete) {
+      childrenRecords = prepareChildrenForHardDeleteCascade(id, childrenRecords);
+      if (childrenRecords.isEmpty()) {
+        LOG.debug("No children to delete for {} {} after hard-delete preparation", entityType, id);
+        return;
+      }
     }
     // Delete all the contained entities
     deleteChildren(childrenRecords, hardDelete, updatedBy);
@@ -6390,6 +6392,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   private void dispatchToContainedChildren(
       List<T> parents, String phaseName, BiConsumer<EntityRepository<?>, List<UUID>> dispatcher) {
+    dispatchToContainedChildren(parents, phaseName, dispatcher, false);
+  }
+
+  private void dispatchToContainedChildren(
+      List<T> parents,
+      String phaseName,
+      BiConsumer<EntityRepository<?>, List<UUID>> dispatcher,
+      boolean hardDelete) {
     List<String> parentIds = new ArrayList<>(parents.size());
     for (T parent : parents) {
       parentIds.add(parent.getId().toString());
@@ -6399,7 +6409,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       relationships =
           daoCollection.relationshipDAO().findToBatchAllTypes(parentIds, SUBTREE_RELATIONS, ALL);
     }
-    relationships = filterChildrenForDeleteCascade(parents, relationships);
+    if (hardDelete) {
+      relationships = prepareChildrenForHardDeleteCascade(parents, relationships);
+    }
     if (relationships.isEmpty()) {
       return;
     }
@@ -6422,14 +6434,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  protected List<EntityRelationshipRecord> filterChildrenForDeleteCascade(
+  protected List<EntityRelationshipRecord> prepareChildrenForHardDeleteCascade(
       UUID parentId, List<EntityRelationshipRecord> children) {
     return children;
   }
 
-  protected List<CollectionDAO.EntityRelationshipObject> filterChildrenForDeleteCascade(
+  protected List<CollectionDAO.EntityRelationshipObject> prepareChildrenForHardDeleteCascade(
       List<T> parents, List<CollectionDAO.EntityRelationshipObject> children) {
     return children;
+  }
+
+  protected Runnable enterBulkHardDeleteCascade(List<T> entities) {
+    return () -> {};
   }
 
   /**
@@ -6585,38 +6601,44 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (entities.isEmpty()) {
       return;
     }
-    // Populate relation fields up front so the same subclass hooks the legacy
-    // Entity.deleteEntity path called against a fully-loaded entity (e.g.,
-    // TestCaseRepository.updateTestSuite reading testCase.getTestSuite()) see the
-    // expected shape. bulkCleanupReferences wipes these relationship rows later, so
-    // hooks running after that point must remain null-safe.
-    populateRelationFields(entities);
-    for (T entity : entities) {
-      checkSystemEntityDeletion(entity);
-      preDelete(entity, updatedBy);
-    }
-    dispatchToContainedChildren(
-        entities,
-        "bulkHardDeleteFindChildren",
-        (childRepo, childIds) -> childRepo.bulkHardDeleteSubtree(childIds, updatedBy));
-    bulkEntitySpecificCleanup(entities);
-    // Run BEFORE bulkCleanupReferences: hooks like DashboardRepository.cascadeChartCleanup
-    // walk HAS relationships to discover linked entities, and bulkCleanupReferences wipes
-    // those relationship rows.
-    runHardDeleteAdditionalChildren(entities, updatedBy);
-    bulkCleanupReferences(entities);
-    bulkDeleteEntityRows(entities);
-    bulkInvalidate(entities);
-    for (T entity : entities) {
-      postDelete(entity, true);
-      // Fire deleteFromSearch per-entity so cascade-deleted descendants are removed from
-      // Elasticsearch. The legacy per-entity Entity.deleteEntity path invoked this via
-      // delete()'s top-level dispatch — this bulk replacement is the only path that walks
-      // cascaded children now, so a missing call leaves stale ES docs that surface as
-      // duplicate results (e.g. Playwright Domains.spec.ts:533 found two "PW_DataProduct_
-      // Sales" rows after a recursive Domain hard-delete because the DB row was gone but
-      // the search-index doc lingered).
-      deleteFromSearch(entity, true);
+    Runnable exitHardDeleteCascade = enterBulkHardDeleteCascade(entities);
+    try {
+      // Populate relation fields up front so the same subclass hooks the legacy
+      // Entity.deleteEntity path called against a fully-loaded entity (e.g.,
+      // TestCaseRepository.updateTestSuite reading testCase.getTestSuite()) see the
+      // expected shape. bulkCleanupReferences wipes these relationship rows later, so
+      // hooks running after that point must remain null-safe.
+      populateRelationFields(entities);
+      for (T entity : entities) {
+        checkSystemEntityDeletion(entity);
+        preDelete(entity, updatedBy);
+      }
+      dispatchToContainedChildren(
+          entities,
+          "bulkHardDeleteFindChildren",
+          (childRepo, childIds) -> childRepo.bulkHardDeleteSubtree(childIds, updatedBy),
+          true);
+      bulkEntitySpecificCleanup(entities);
+      // Run BEFORE bulkCleanupReferences: hooks like DashboardRepository.cascadeChartCleanup
+      // walk HAS relationships to discover linked entities, and bulkCleanupReferences wipes
+      // those relationship rows.
+      runHardDeleteAdditionalChildren(entities, updatedBy);
+      bulkCleanupReferences(entities);
+      bulkDeleteEntityRows(entities);
+      bulkInvalidate(entities);
+      for (T entity : entities) {
+        postDelete(entity, true);
+        // Fire deleteFromSearch per-entity so cascade-deleted descendants are removed from
+        // Elasticsearch. The legacy per-entity Entity.deleteEntity path invoked this via
+        // delete()'s top-level dispatch — this bulk replacement is the only path that walks
+        // cascaded children now, so a missing call leaves stale ES docs that surface as
+        // duplicate results (e.g. Playwright Domains.spec.ts:533 found two "PW_DataProduct_
+        // Sales" rows after a recursive Domain hard-delete because the DB row was gone but
+        // the search-index doc lingered).
+        deleteFromSearch(entity, true);
+      }
+    } finally {
+      exitHardDeleteCascade.run();
     }
   }
 
