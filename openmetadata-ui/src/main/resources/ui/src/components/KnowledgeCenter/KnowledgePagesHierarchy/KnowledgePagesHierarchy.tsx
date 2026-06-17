@@ -16,7 +16,6 @@ import {
   Button,
   ButtonUtility,
   Dialog,
-  Dot,
   Modal,
   ModalOverlay,
   Tree,
@@ -41,6 +40,8 @@ import {
 import type { Selection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
+import { ReactComponent as CollapseAllIcon } from '../../../assets/svg/collapse-new.svg';
+import { ReactComponent as ExpandAllIcon } from '../../../assets/svg/expand-new.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import CreateErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/CreateErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
@@ -131,6 +132,7 @@ const KnowledgePagesHierarchy = forwardRef<
     const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
     const [deletePage, setDeletePage] = useState<PageHierarchy>();
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isExpandingAll, setIsExpandingAll] = useState(false);
 
     const [movedPage, setMovedPage] = useState<MovedEntity>();
     const [isMovingPage, setIsMovingPage] = useState<boolean>(false);
@@ -152,21 +154,69 @@ const KnowledgePagesHierarchy = forwardRef<
       [isPageHeaderAvailable]
     );
 
-    const allExpandableIds = useMemo(() => {
-      const ids: string[] = [];
-      const collect = (nodes: PageHierarchy[]) => {
-        nodes.forEach((n) => {
-          if (n.childrenCount > 0 || !isEmpty(n.children)) {
-            ids.push(n.fullyQualifiedName);
-            if (n.children) {
-              collect(n.children);
-            }
-          }
-        });
-      };
-      collect(knowledgePageHierarchy);
+    const handleExpandAll = useCallback(async () => {
+      setIsExpandingAll(true);
+      try {
+        let currentHierarchy = knowledgePageHierarchy;
+        let nodesPendingChildren: PageHierarchy[] = [];
 
-      return ids;
+        const collectUnloadedExpandableNodes = (
+          nodes: PageHierarchy[]
+        ): PageHierarchy[] => {
+          const unloaded: PageHierarchy[] = [];
+          nodes.forEach((n) => {
+            if (n.childrenCount > 0 && !n.children) {
+              unloaded.push(n);
+            } else if (n.children) {
+              unloaded.push(...collectUnloadedExpandableNodes(n.children));
+            }
+          });
+
+          return unloaded;
+        };
+
+        nodesPendingChildren = collectUnloadedExpandableNodes(currentHierarchy);
+
+        while (nodesPendingChildren.length > 0) {
+          const childrenResults = await Promise.all(
+            nodesPendingChildren.map((node) =>
+              getPageHierarchyFromES(node.fullyQualifiedName)
+            )
+          );
+
+          nodesPendingChildren.forEach((node, index) => {
+            currentHierarchy = updateTreeData(
+              currentHierarchy,
+              childrenResults[index].data,
+              node.fullyQualifiedName
+            );
+          });
+
+          nodesPendingChildren =
+            collectUnloadedExpandableNodes(currentHierarchy);
+        }
+
+        setKnowledgePageHierarchy(currentHierarchy);
+
+        const ids: string[] = [];
+        const collect = (nodes: PageHierarchy[]) => {
+          nodes.forEach((n) => {
+            if (n.childrenCount > 0 || !isEmpty(n.children)) {
+              ids.push(n.fullyQualifiedName);
+              if (n.children) {
+                collect(n.children);
+              }
+            }
+          });
+        };
+        collect(currentHierarchy);
+
+        setExpandedKeys(ids);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsExpandingAll(false);
+      }
     }, [knowledgePageHierarchy]);
 
     const fetchKnowledgePageHierarchy = async (
@@ -478,13 +528,10 @@ const KnowledgePagesHierarchy = forwardRef<
             id={node.fullyQualifiedName}
             key={node.fullyQualifiedName}
             textValue={displayName}>
-            <Tree.ItemContent
-              showGuideLines
-              className="knowledge-hierarchy-node-wrapper"
-              hasChildItems={hasChildren}>
+            <Tree.ItemContent showGuideLines hasChildItems={hasChildren}>
               {() => (
                 <Link
-                  className="knowledge-hierarchy-node-link tw:flex tw:items-center tw:min-w-0 tw:flex-1 custom-group tw:justify-between tw:gap-2 tw:hover:no-underline"
+                  className="tw:flex tw:items-center tw:min-w-0 tw:flex-1 custom-group tw:justify-between tw:gap-2 tw:hover:no-underline"
                   data-isactive={isActive}
                   data-testid={`page-node-${displayName}`}
                   to={contextCenterClassBase.getArticlePath(
@@ -501,7 +548,7 @@ const KnowledgePagesHierarchy = forwardRef<
                       ellipsis
                       className="knowledge-hierarchy-page-title"
                       size="text-sm"
-                      weight={isActive ? 'semibold' : 'medium'}>
+                      weight={isActive ? 'medium' : 'regular'}>
                       {displayName}
                     </Typography>
                   </Box>
@@ -579,55 +626,17 @@ const KnowledgePagesHierarchy = forwardRef<
       });
     }, [expandedKeys, knowledgePageHierarchy, loadNodeChildren]);
 
-    if (isLoading) {
-      return (
-        <div className="knowledge-pages-hierarchy-wrapper">
-          <Box align="center" className="tw:p-4 tw:pb-2" gap={3}>
-            <Box
-              align="center"
-              className="tw:p-3 tw:rounded-lg tw:bg-gray-100 tw:leading-none"
-              justify="center">
-              <File06
-                className="tw:text-tertiary"
-                height={20}
-                strokeWidth={1.2}
-                width={20}
-              />
-            </Box>
-            <Typography size="text-md" weight="semibold">
-              {t('label.article-plural')}
-            </Typography>
-          </Box>
-          <div className="tw:px-4 tw:pt-2">
-            {Array.from({ length: 8 }, (_, i) => (
-              <div
-                className="tw:h-5 tw:mb-2 tw:rounded tw:bg-gray-100 tw:animate-pulse"
-                key={`skeleton-${i}`}
-                style={{ width: `${60 + (i % 3) * 15}%` }}
-              />
-            ))}
-          </div>
-        </div>
-      );
-    }
-
-    if (!isLoading && knowledgePageHierarchy.length === 0) {
-      return (
-        <CreateErrorPlaceHolder
-          className="border-none p-x-md"
-          permission={permissions.Create}
-          placeholderText={t('message.no-articles-listed')}
-          size={SIZE.MEDIUM}
-        />
-      );
-    }
+    const isHierarchyEmpty = !isLoading && knowledgePageHierarchy.length === 0;
 
     return (
       <section
         aria-label={t('label.article-plural')}
-        className="knowledge-pages-hierarchy-wrapper tw:pt-2 tw:px-3"
+        className="tw:pt-2 tw:px-3 tw:flex tw:flex-col"
         data-testid="knowledge-pages-hierarchy-container"
-        style={{ height: TREE_HEIGHT, overflow: 'auto' }}
+        style={{
+          height: isHierarchyEmpty ? '100%' : TREE_HEIGHT,
+          overflow: isHierarchyEmpty ? 'hidden' : 'auto',
+        }}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           const sourceKey = e.dataTransfer.getData('text/plain');
@@ -649,10 +658,30 @@ const KnowledgePagesHierarchy = forwardRef<
           <div className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0">
             <File06 className="tw:text-gray-600" size={20} />
           </div>
-          <div>
-            <Typography size="text-md" weight="medium">
-              {t('label.article-plural')}
-            </Typography>
+          <div className="tw:w-full">
+            <Box align="center" className="tw:w-full" justify="between">
+              <Typography size="text-md" weight="semibold">
+                {t('label.article-plural')}
+              </Typography>
+              {isEmpty(expandedKeys) ? (
+                <ButtonUtility
+                  color="tertiary"
+                  icon={ExpandAllIcon}
+                  isDisabled={isExpandingAll}
+                  size="sm"
+                  tooltip={t('label.expand-all')}
+                  onClick={handleExpandAll}
+                />
+              ) : (
+                <ButtonUtility
+                  color="tertiary"
+                  icon={CollapseAllIcon}
+                  size="sm"
+                  tooltip={t('label.collapse-all')}
+                  onClick={() => setExpandedKeys([])}
+                />
+              )}
+            </Box>
             <Typography
               className="tw:text-gray-500 tw:flex tw:items-center tw:gap-2"
               size="text-xs">
@@ -661,53 +690,58 @@ const KnowledgePagesHierarchy = forwardRef<
           </div>
         </Box>
 
-        <Box align="center" className="tw:px-1.5 tw:pb-3" gap={2}>
-          <Button
-            className="tw:hover:*:data-text:decoration-transparent"
-            color="link-gray"
-            size="xs"
-            onPress={() => setExpandedKeys(allExpandableIds)}>
-            {t('label.expand-all')}
-          </Button>
-          <Dot className="tw:text-gray-300" size="micro" />
-          <Button
-            className="tw:hover:*:data-text:decoration-transparent"
-            color="link-gray"
-            size="xs"
-            onPress={() => setExpandedKeys([])}>
-            {t('label.collapse-all')}
-          </Button>
-        </Box>
+        {isLoading && (
+          <div className="tw:px-1.5">
+            {Array.from({ length: 8 }, (_, i) => (
+              <div
+                className="tw:h-5 tw:mb-2 tw:rounded tw:bg-gray-100 tw:animate-pulse"
+                key={`skeleton-${i}`}
+                style={{ width: `${60 + (i % 3) * 15}%` }}
+              />
+            ))}
+          </div>
+        )}
 
-        <Tree
-          aria-label={t('label.article-plural')}
-          className="knowledge-pages-tree"
-          data-testid="knowledge-pages-hierarchy"
-          expandedKeys={new Set(expandedKeys)}
-          selectedKeys={activeKey ? new Set([activeKey]) : new Set<string>()}
-          selectionMode="single"
-          onExpandedChange={(keys: Selection) => {
-            if (keys !== 'all') {
-              setExpandedKeys(Array.from(keys).map(String));
-            }
-          }}
-          onItemMove={handleItemMove}
-          onItemRootDrop={(sourceKey) => {
-            const { page: sourceNode, parent: sourceNodeParent } =
-              findPageAndParentInTreeData(
-                knowledgePageHierarchy,
-                sourceKey as string
-              );
-            if (sourceNode && sourceNodeParent) {
-              setMovedPage({
-                sourceNode,
-                sourceNodeParent,
-                targetNode: undefined,
-              });
-            }
-          }}>
-          {knowledgePageHierarchy.map(renderNode)}
-        </Tree>
+        {isHierarchyEmpty && (
+          <CreateErrorPlaceHolder
+            className="tw:border-0 tw:px-4 tw:flex-1 tw:h-auto"
+            permission={permissions.Create}
+            placeholderText={t('message.no-articles-listed')}
+            size={SIZE.MEDIUM}
+          />
+        )}
+
+        {!isLoading && !isHierarchyEmpty && (
+          <Tree
+            aria-label={t('label.article-plural')}
+            className="knowledge-pages-tree"
+            data-testid="knowledge-pages-hierarchy"
+            expandedKeys={new Set(expandedKeys)}
+            selectedKeys={activeKey ? new Set([activeKey]) : new Set<string>()}
+            selectionMode="single"
+            onExpandedChange={(keys: Selection) => {
+              if (keys !== 'all') {
+                setExpandedKeys(Array.from(keys).map(String));
+              }
+            }}
+            onItemMove={handleItemMove}
+            onItemRootDrop={(sourceKey) => {
+              const { page: sourceNode, parent: sourceNodeParent } =
+                findPageAndParentInTreeData(
+                  knowledgePageHierarchy,
+                  sourceKey as string
+                );
+              if (sourceNode && sourceNodeParent) {
+                setMovedPage({
+                  sourceNode,
+                  sourceNodeParent,
+                  targetNode: undefined,
+                });
+              }
+            }}>
+            {knowledgePageHierarchy.map(renderNode)}
+          </Tree>
+        )}
 
         {paginationState.paginationLoading && <Loader size="x-small" />}
 
