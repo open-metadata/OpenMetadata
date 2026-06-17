@@ -31,6 +31,7 @@ import { AssetCertification } from '../../../generated/type/assetCertification';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { MOCK_DATA_CONTRACT } from '../../../mocks/DataContract.mock';
 import { MOCK_TIER_DATA } from '../../../mocks/TableData.mock';
+import { getActiveAnnouncements } from '../../../rest/announcementsAPI';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
@@ -180,6 +181,9 @@ jest.mock(
       .fn()
       .mockImplementation(() => <div>AnnouncementsWidgetV3Body.component</div>)
 );
+jest.mock('../../../rest/announcementsAPI', () => ({
+  getActiveAnnouncements: jest.fn().mockResolvedValue({ data: [] }),
+}));
 jest.mock(
   '../../../components/common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer',
   () =>
@@ -309,6 +313,34 @@ describe('DataAssetsHeader component', () => {
     );
 
     expect(mockGetContainerAncestors).not.toHaveBeenCalled();
+  });
+
+  it('clears stale announcements when navigating to an entity without any', async () => {
+    (getActiveAnnouncements as jest.Mock)
+      .mockResolvedValueOnce({ data: [{ id: 'announcement-1' }] })
+      .mockResolvedValueOnce({ data: [] });
+
+    const { rerender } = render(<DataAssetsHeader {...mockProps} />);
+
+    expect(
+      await screen.findByText('AnnouncementsWidgetV3Body.component')
+    ).toBeInTheDocument();
+
+    rerender(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          fullyQualifiedName: 'other.fully.qualified.name',
+        }}
+      />
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText('AnnouncementsWidgetV3Body.component')
+      ).not.toBeInTheDocument()
+    );
   });
 
   it('should resolve the full ancestor chain in a single API call', async () => {

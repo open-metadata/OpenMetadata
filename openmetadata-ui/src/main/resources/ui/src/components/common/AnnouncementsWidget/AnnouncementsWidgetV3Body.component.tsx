@@ -18,7 +18,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Announcement02, ChevronLeft, ChevronRight } from '@untitledui/icons';
 import classNames from 'classnames';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../Loader/Loader';
 import AnnouncementItemV3 from './AnnouncementItemV3.component';
@@ -37,6 +37,10 @@ const AnnouncementsWidgetV3Body = ({
 }: AnnouncementsWidgetV3BodyProps) => {
   const { t } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    setCurrentIndex(0);
+  }, [announcements]);
 
   if (loading) {
     return (

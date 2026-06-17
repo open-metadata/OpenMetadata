@@ -311,9 +311,7 @@ export const DataAssetsHeader = ({
         getEntityFeedLink(entityType, dataAsset.fullyQualifiedName ?? '')
       );
 
-      if (!isEmpty(announcements.data)) {
-        setActiveAnnouncements(announcements.data);
-      }
+      setActiveAnnouncements(announcements.data ?? []);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }

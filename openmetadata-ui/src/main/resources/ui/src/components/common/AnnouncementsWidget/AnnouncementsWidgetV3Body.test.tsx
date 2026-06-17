@@ -242,4 +242,53 @@ describe('AnnouncementsWidgetV3Body', () => {
       screen.queryByTestId('announcements-widget-v3')
     ).not.toBeInTheDocument();
   });
+
+  it('resets to the first announcement when the announcements prop changes', () => {
+    const { rerender } = render(
+      <AnnouncementsWidgetV3Body
+        announcements={mockAnnouncements}
+        onItemClick={jest.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('announcement-next-btn'));
+    fireEvent.click(screen.getByTestId('announcement-next-btn'));
+
+    expect(screen.getByText('3/3')).toBeInTheDocument();
+
+    const nextEntityAnnouncements: AnnouncementEntity[] = [
+      { ...mockAnnouncements[0], displayName: 'Next 0', id: 'b-0' },
+      { ...mockAnnouncements[1], displayName: 'Next 1', id: 'b-1' },
+    ];
+
+    rerender(
+      <AnnouncementsWidgetV3Body
+        announcements={nextEntityAnnouncements}
+        onItemClick={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('1/2')).toBeInTheDocument();
+    expect(screen.getByText('Next 0')).toBeInTheDocument();
+  });
+
+  it('renders nothing after the announcements prop becomes empty', () => {
+    const { rerender } = render(
+      <AnnouncementsWidgetV3Body
+        announcements={mockAnnouncements}
+        onItemClick={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('announcements-widget-v3')).toBeInTheDocument();
+
+    rerender(
+      <AnnouncementsWidgetV3Body announcements={[]} onItemClick={jest.fn()} />
+    );
+
+    expect(
+      screen.queryByTestId('announcements-widget-v3')
+    ).not.toBeInTheDocument();
+    expect(screen.queryAllByTestId('mock-announcement-item')).toHaveLength(0);
+  });
 });
