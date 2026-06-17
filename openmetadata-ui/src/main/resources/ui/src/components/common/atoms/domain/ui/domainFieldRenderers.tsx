@@ -23,7 +23,7 @@ import { getEntityAvatarProps } from '../../../../../utils/IconUtils';
 import {
   getClassificationTags,
   getGlossaryTags,
-} from '../../../../../utils/TagsUtils';
+} from '../../../../../utils/TagsPureUtils';
 import { DomainTypeChip } from '../../../../DomainListing/components/DomainTypeChip';
 import { OwnerLabel } from '../../../OwnerLabel/OwnerLabel.component';
 import TagBadgeList from '../../../TagBadgeList/TagBadgeList.component';
