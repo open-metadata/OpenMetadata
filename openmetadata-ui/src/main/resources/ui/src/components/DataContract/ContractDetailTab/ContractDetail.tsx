@@ -38,7 +38,7 @@ import { isEmpty } from 'lodash';
 import React, { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import approvedIcon from '../../../assets/img/approved.png';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new-thick.svg';
 import { ReactComponent as EmptyContractIcon } from '../../../assets/svg/empty-contract.svg';
 import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
 import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-gear.svg';
@@ -46,8 +46,8 @@ import { ReactComponent as ImportIconContract } from '../../../assets/svg/import
 
 import {
   ContractImportFormat,
-  DataContractMode,
   DATA_CONTRACT_ACTION_DROPDOWN_KEY,
+  DataContractMode,
 } from '../../../constants/DataContract.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
@@ -371,7 +371,7 @@ const ContractDetail: React.FC<{
                           <Box align="center" gap={2}>
                             <EditIcon
                               aria-hidden="true"
-                              className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+                              className="tw:size-4.5 tw:shrink-0 tw:text-fg-quaternary"
                             />
                             <Typography
                               ellipsis
