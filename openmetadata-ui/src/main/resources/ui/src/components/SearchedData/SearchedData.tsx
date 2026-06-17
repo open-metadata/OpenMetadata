@@ -90,9 +90,9 @@ const SearchedData: React.FC<SearchedDataProps> = ({
       }
       if (isFilterSelected || filter?.quickFilter) {
         if (MAX_RESULT_HITS === total) {
-          return <div>{`About ${total} results`}</div>;
+          return `~${total} results`;
         } else {
-          return <div>{pluralize(total, 'result')}</div>;
+          return pluralize(total, 'result');
         }
       } else {
         return null;
