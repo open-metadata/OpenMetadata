@@ -55,9 +55,6 @@ jest.mock('../../../common/Table/Table', () =>
   ))
 );
 jest.mock('../../../Customization/GenericProvider/GenericContext', () => ({
-  ...jest.requireActual(
-    '../../../Customization/GenericProvider/GenericContext'
-  ),
   useGenericContext: jest.fn(),
 }));
 

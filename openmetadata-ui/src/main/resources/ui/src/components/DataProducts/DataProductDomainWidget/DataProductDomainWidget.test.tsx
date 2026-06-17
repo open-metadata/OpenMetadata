@@ -50,7 +50,7 @@ jest.mock('../../../rest/searchAPI', () => ({
   searchQuery: jest.fn().mockResolvedValue({ hits: { total: { value: 0 } } }),
 }));
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: () => ({
     data: mockDataProduct,
     onUpdate: mockOnUpdate,

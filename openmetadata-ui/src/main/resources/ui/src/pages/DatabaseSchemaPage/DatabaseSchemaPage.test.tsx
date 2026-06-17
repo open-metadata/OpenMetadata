@@ -264,6 +264,14 @@ jest.mock(
         .mockImplementation(({ children }) =>
           React.createElement('div', null, children)
         ),
+    };
+  }
+);
+
+jest.mock(
+  '../../components/Customization/GenericProvider/GenericContext',
+  () => {
+    return {
       useGenericContext: jest.fn().mockReturnValue({
         data: {},
         permissions: DEFAULT_ENTITY_PERMISSION,
