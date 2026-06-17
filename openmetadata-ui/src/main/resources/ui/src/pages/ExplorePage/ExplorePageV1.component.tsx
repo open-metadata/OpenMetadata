@@ -41,11 +41,10 @@ import { useSearchStore } from '../../hooks/useSearchStore';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import {
   extractTermKeys,
-  fetchEntityData,
   findActiveSearchIndex,
-  generateTabItems,
   parseSearchParams,
-} from '../../utils/ExploreUtils';
+} from '../../utils/ExplorePureUtils';
+import { fetchEntityData, generateTabItems } from '../../utils/ExploreUtils';
 import { getExplorePath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { useRequiredParams } from '../../utils/useRequiredParams';

@@ -17,7 +17,6 @@ import { FC } from 'react';
 import { filterSelectOptions } from '../../../../../utils/FilterQueryUtils';
 import { getPopupContainer } from '../../../../../utils/formPureUtils';
 import TreeSelectWidget from './TreeSelectWidget';
-
 const getDisplayLabel = (
   label: string | number | boolean | null,
   shouldCapitalize: boolean
