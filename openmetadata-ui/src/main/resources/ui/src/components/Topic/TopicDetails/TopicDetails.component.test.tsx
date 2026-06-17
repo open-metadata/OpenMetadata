@@ -95,7 +95,7 @@ jest.mock('../../../utils/useRequiredParams', () => ({
   }),
 }));
 
-jest.mock('../../../utils/FeedUtils', () => ({
+jest.mock('../../../utils/FeedUtilsPure', () => ({
   fetchEntityActivityCountInto: jest.fn(),
   fetchEntityTaskCountsInto: jest.fn(),
   getFeedCounts: jest.fn(),

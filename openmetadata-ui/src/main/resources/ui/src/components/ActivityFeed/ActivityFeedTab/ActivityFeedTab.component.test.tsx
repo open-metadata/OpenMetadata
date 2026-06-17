@@ -94,7 +94,7 @@ jest.mock('../../../utils/EntityDisplayUtils', () => ({
   getEntityUserLink: jest.fn().mockReturnValue(''),
 }));
 
-jest.mock('../../../utils/FeedUtils', () => ({
+jest.mock('../../../utils/FeedUtilsPure', () => ({
   getFeedCounts: jest.fn((_, __, ___, cb) =>
     cb({
       conversationCount: 0,
