@@ -296,7 +296,7 @@
     "js-yaml": "4.1.1",
     "lodash": "4.18.1",
     "lodash-es": "4.18.1",
-    "markdown-it": ">=14.1.1",
+    "markdown-it": ">=14.2.0",
     "uuid": "^14.0.0",
     "esbuild": "^0.28.1"
   }
