@@ -31,7 +31,6 @@ import ExpandableCard from '../ExpandableCard/ExpandableCard';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import TierCard from '../TierCard/TierCard';
 import './TierWidget.less';
-
 const TierWidget = () => {
   const {
     data: entity,

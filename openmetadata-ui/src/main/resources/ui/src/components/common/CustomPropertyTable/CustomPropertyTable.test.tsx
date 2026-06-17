@@ -55,6 +55,7 @@ jest.mock('../../common/Loader/Loader', () => {
 });
 
 jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
+  ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
   useGenericContext: jest.fn().mockReturnValue({
     data: {},
     onUpdate: jest.fn(),
