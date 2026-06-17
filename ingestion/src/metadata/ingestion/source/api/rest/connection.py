@@ -31,11 +31,12 @@ from metadata.generated.schema.entity.services.connections.api.openAPISchemaURL 
     OpenAPISchemaURL,
 )
 from metadata.generated.schema.entity.services.connections.api.restConnection import (
-    RestConnection,
+    RestConnection as RestConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.api.rest.parser import (
@@ -61,7 +62,7 @@ class InvalidOpenAPISchemaError(Exception):
     """
 
 
-def get_connection(connection: RestConnection) -> Union[Response, Dict]:  # noqa: UP006, UP007
+def get_connection(connection: RestConnectionConfig) -> Union[Response, Dict]:  # noqa: UP006, UP007
     """
     Create connection.
     If openAPISchemaURL is provided, fetches the schema via HTTP.
@@ -90,50 +91,55 @@ def get_connection(connection: RestConnection) -> Union[Response, Dict]:  # noqa
     raise ValueError(f"Unsupported openAPISchemaConnection type: {type(schema_conn)}")
 
 
-def test_connection(
-    metadata: OpenMetadata,
-    client: Union[Response, Dict],  # noqa: UP006, UP007
-    service_connection: RestConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
-) -> TestConnectionResult:
-    """
-    Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
-    """
-    is_local_file = isinstance(client, dict)
+class RestConnection(BaseConnection[RestConnectionConfig, Response | dict]):
+    def _get_client(self) -> Response | dict:
+        return get_connection(self.service_connection)
 
-    def custom_url_exec():
-        if is_local_file:
-            return []
-        if client.status_code == 200:
-            return []
-        raise SchemaURLError(
-            "Failed to connect to the JSON schema url. "
-            "Please check the url and credentials. "
-            f"Status Code was: {client.status_code}"
-        )
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        """
+        Test connection. This can be executed either as part
+        of a metadata workflow or during an Automation Workflow
+        """
+        client = self.client
+        service_connection = self.service_connection
+        is_local_file = isinstance(client, dict)
 
-    def custom_schema_exec():
-        try:
-            schema = client if is_local_file else parse_openapi_schema(client)
-            if validate_openapi_schema(schema):
+        def custom_url_exec():
+            if is_local_file:
                 return []
+            if client.status_code == 200:  # pyright: ignore[reportAttributeAccessIssue]
+                return []
+            raise SchemaURLError(
+                "Failed to connect to the JSON schema url. "
+                "Please check the url and credentials. "
+                f"Status Code was: {client.status_code}"  # pyright: ignore[reportAttributeAccessIssue]
+            )
 
-            raise InvalidOpenAPISchemaError("Provided schema is not valid OpenAPI specification")  # noqa: TRY301
-        except OpenAPIParseError as e:
-            raise InvalidOpenAPISchemaError(f"Failed to parse OpenAPI schema: {e}")  # noqa: B904
-        except InvalidOpenAPISchemaError:
-            raise
-        except Exception as e:
-            raise InvalidOpenAPISchemaError(f"Error validating OpenAPI schema: {e}")  # noqa: B904
+        def custom_schema_exec():
+            try:
+                schema = client if is_local_file else parse_openapi_schema(client)  # pyright: ignore[reportArgumentType]
+                if validate_openapi_schema(schema):  # pyright: ignore[reportArgumentType]
+                    return []
 
-    test_fn = {"CheckURL": custom_url_exec, "CheckSchema": custom_schema_exec}
+                raise InvalidOpenAPISchemaError("Provided schema is not valid OpenAPI specification")  # noqa: TRY301
+            except OpenAPIParseError as e:
+                raise InvalidOpenAPISchemaError(f"Failed to parse OpenAPI schema: {e}")  # noqa: B904
+            except InvalidOpenAPISchemaError:
+                raise
+            except Exception as e:
+                raise InvalidOpenAPISchemaError(f"Error validating OpenAPI schema: {e}")  # noqa: B904
 
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
+        test_fn = {"CheckURL": custom_url_exec, "CheckSchema": custom_schema_exec}
+
+        return test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
+            automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
+        )

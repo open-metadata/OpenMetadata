@@ -32,7 +32,7 @@ import {
   permissionForApproveOrReject,
   referenceURLValidator,
   validateReferenceURL,
-} from './GlossaryUtils';
+} from './GlossaryPureUtils';
 
 describe('Glossary Utils', () => {
   it('getQueryFilterToExcludeTerm returns the correct query filter', () => {

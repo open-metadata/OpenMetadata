@@ -87,10 +87,13 @@ jest.mock('../../../utils/DomainUtils', () => ({
         : undefined,
     }))
   ),
+}));
+
+jest.mock('../../../utils/DomainFilterUtils', () => ({
   isDomainExist: jest.fn().mockReturnValue(false),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityReferenceUtils', () => ({
   getEntityReferenceFromEntity: jest
     .fn()
     .mockImplementation((entity: Domain) => ({

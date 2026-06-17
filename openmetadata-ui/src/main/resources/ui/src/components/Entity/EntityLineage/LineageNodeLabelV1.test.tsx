@@ -42,7 +42,7 @@ jest.mock('../../../utils/TableUtils', () => ({
   getEntityTypeIcon: jest.fn(() => <div>EntityIcon</div>),
 }));
 
-jest.mock('../../../utils/EntityLineageUtils', () => ({
+jest.mock('../../../utils/EntityLineageNodeUtils', () => ({
   getEntityChildrenAndLabel: jest.fn((node) => {
     const childrenCount = node.columns?.length ?? node.tasks?.length ?? 0;
     const isPlural = childrenCount !== 1;
@@ -62,7 +62,7 @@ jest.mock('../../../utils/EntityLineageUtils', () => ({
   }),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityPureUtils', () => ({
   getBreadcrumbsFromFqn: jest.fn((fqn) => {
     if (!fqn) {
       return [];
@@ -71,6 +71,9 @@ jest.mock('../../../utils/EntityUtils', () => ({
 
     return parts.slice(0, -1).map((part) => ({ name: part }));
   }),
+}));
+
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn((entity) => entity.name || entity.displayName || ''),
 }));
 

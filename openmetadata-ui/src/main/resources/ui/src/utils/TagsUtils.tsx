@@ -34,31 +34,9 @@ import {
   getClassificationByName,
   getTags,
 } from '../rest/tagAPI';
-import { getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
 import { getQueryFilterToIncludeApprovedTerm } from './GlossaryPureUtils';
 import { getTagDisplay } from './TagsPureUtils';
-
-export {
-  createCertificationTag,
-  createTagObject,
-  createTierTag,
-  getClassificationTags,
-  getExcludedIndexesBasedOnEntityTypeEditTagPermission,
-  getGlossaryTags,
-  getQueryFilterToExcludeTermsAndEntities,
-  getTableTags,
-  getTagAssetsQueryFilter,
-  getTagDisplay,
-  getTagName,
-  getTagPlaceholder,
-  getTagRedirectLink,
-  getTagValue,
-  getUsageCountLink,
-  isGlossaryTag,
-  updateCertificationTag,
-  updateTierTag,
-} from './TagsPureUtils';
-export type { ResultType } from './TagsPureUtils';
 
 export const getClassifications = async (
   fields?: Array<string> | string,

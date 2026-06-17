@@ -21,7 +21,7 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Clock, Link04, Pin01, Trash01 } from '@untitledui/icons';
+import { Clock, Copy06, Pin01, Trash01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,7 +29,7 @@ import { ReactComponent as EditNewIcon } from '../../../assets/svg/edit-new.svg'
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { stripMarkdown } from '../../../utils/StringUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import {
@@ -297,13 +297,8 @@ const MemoryRow: FC<MemoryRowProps> = ({
               setPinAnimKey((prev) => prev + 1);
             }}
           />
-          <CopyLinkButton url={memoryUrl}>
-            <Link04
-              aria-hidden="true"
-              className="tw:-rotate-45"
-              size={17}
-              strokeWidth={1.8}
-            />
+          <CopyLinkButton className="tw:w-7 tw:h-7" url={memoryUrl}>
+            <Copy06 aria-hidden="true" size={17} strokeWidth={1.8} />
           </CopyLinkButton>
           {canActOnMemory && onEditMemory && (
             <Tooltip title={t('label.edit')}>

@@ -24,7 +24,7 @@ import { LabelType, State } from '../../../../generated/type/tagLabel';
 import { ENTITY_PERMISSIONS } from '../../../../mocks/Permissions.mock';
 import WorksheetColumnsTable from './WorksheetColumnsTable';
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn((entity) => entity?.displayName || entity?.name),
 }));
 jest.mock('../../../../utils/TableTags/TableTags.utils', () => ({
@@ -79,7 +79,7 @@ const mockUseGenericContextResult = {
   setDisplayedColumns: jest.fn(),
 };
 
-jest.mock('../../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn(() => mockUseGenericContextResult),
 }));
 jest.mock('../../../Database/ColumnFilter/ColumnFilter.component', () => ({

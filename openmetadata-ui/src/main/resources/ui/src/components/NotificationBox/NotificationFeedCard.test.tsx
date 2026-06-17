@@ -37,7 +37,7 @@ jest.mock('../../utils/date-time/DateTimeUtils', () => ({
 const mockPrepareFeedLink = jest.fn();
 const mockGetTaskDetailPathFromTask = jest.fn();
 
-jest.mock('../../utils/FeedUtils', () => ({
+jest.mock('../../utils/FeedUtilsPure', () => ({
   entityDisplayName: jest.fn().mockReturnValue('database.schema.table'),
   prepareFeedLink: (...args: unknown[]) => mockPrepareFeedLink(...args),
 }));
@@ -71,7 +71,7 @@ jest.mock('react-router-dom', () => ({
     ),
   useNavigate: jest.fn(() => mockNavigate),
 }));
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation(({ displayName, name }) => displayName || name || ''),

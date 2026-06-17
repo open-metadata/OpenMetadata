@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -46,6 +47,14 @@ import org.openmetadata.sdk.fluent.Apps;
 @ResourceLock(value = "SEARCH_INDEX_APP", mode = ResourceAccessMode.READ_WRITE)
 class DbToEsCountReconciliationIT {
 
+  // testSuite/testCase are created and deleted without bound by concurrent
+  // observability/data-quality
+  // tests sharing this cluster (executable test suites are spawned implicitly when a test case is
+  // attached to a table). A cluster-wide count of them races the reindex window — the DB can gain a
+  // suite after the reindex snapshot but before the DB read — so they cannot be reconciled
+  // cluster-wide on a shared cluster. Every other type is owned by stable reindex output.
+  private static final Set<String> CONTENTION_PRONE_TYPES = Set.of("testSuite", "testCase");
+
   private static ServerHandle server;
   private static IndexAliasInspector inspector;
   private static DbCountQuerier db;
@@ -69,7 +78,7 @@ class DbToEsCountReconciliationIT {
 
     final List<String> mismatches = new ArrayList<>();
     for (final String entityType : inspector.declaredEntityTypes()) {
-      if (!db.canCount(entityType)) {
+      if (!db.canCount(entityType) || CONTENTION_PRONE_TYPES.contains(entityType)) {
         continue;
       }
       final String alias = inspector.aliasFor(entityType);
