@@ -292,6 +292,24 @@ public class OpenMetadataAssetServletTest {
   }
 
   @Test
+  public void testHashedImageGetsImmutableCacheControl() throws Exception {
+    String path = "/images/landing-page-header-bg-DcT5-tmD.svg";
+    when(request.getRequestURI()).thenReturn(path);
+    when(request.getContextPath()).thenReturn("");
+    when(request.getPathInfo()).thenReturn(path);
+    when(request.getServletPath()).thenReturn("");
+    when(request.getHeader("Accept-Encoding")).thenReturn(null);
+    when(request.getMethod()).thenReturn("GET");
+    when(request.getDateHeader(anyString())).thenReturn(-1L);
+    when(request.getHeader("If-None-Match")).thenReturn(null);
+    when(request.getHeader("If-Modified-Since")).thenReturn(null);
+
+    servlet.doGet(request, response);
+
+    verify(response).setHeader("Cache-Control", "public, max-age=31536000, immutable");
+  }
+
+  @Test
   public void testUnhashedAssetDoesNotGetImmutableCacheControl() throws Exception {
     // {@code manifest.json} ships under {@code /assets/} without a content hash,
     // so the immutable header would be wrong (a future deploy could change the file
