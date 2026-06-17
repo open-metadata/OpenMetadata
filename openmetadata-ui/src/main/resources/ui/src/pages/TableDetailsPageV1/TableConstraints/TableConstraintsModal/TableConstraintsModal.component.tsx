@@ -49,7 +49,6 @@ import {
   TableConstraintForm,
   TableConstraintModalProps,
 } from './TableConstraintsModal.interface';
-
 const TableConstraintsModal = ({
   tableDetails,
   constraint,

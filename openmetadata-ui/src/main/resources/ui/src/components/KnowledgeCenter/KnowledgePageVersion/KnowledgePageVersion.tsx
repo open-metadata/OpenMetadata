@@ -43,7 +43,6 @@ import {
 import { getFrontEndFormat } from '../../../utils/FeedUtilsPure';
 import i18n from '../../../utils/i18next/LocalUtil';
 import { stringToHTML } from '../../../utils/StringUtils';
-
 interface KnowledgePageVersionProps {
   knowledgePage: KnowledgePage;
   loading: boolean;

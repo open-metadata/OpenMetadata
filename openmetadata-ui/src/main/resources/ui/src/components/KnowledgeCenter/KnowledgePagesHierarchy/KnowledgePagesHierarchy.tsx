@@ -87,9 +87,9 @@ import {
   hierarchyPaginationInitialState,
   hierarchyPaginationReducer,
   integrateNodesIntoHierarchy,
-  updateKnowledgeCenterRecentViewed,
   updateTreeData,
-} from '../../../utils/KnowledgePageUtils';
+} from '../../../utils/KnowledgePagePureUtils';
+import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 
