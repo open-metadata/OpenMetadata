@@ -116,7 +116,6 @@ import { ColumnFilter } from '../ColumnFilter/ColumnFilter.component';
 import TableDescription from '../TableDescription/TableDescription.component';
 import TableTags from '../TableTags/TableTags.component';
 import { TableCellRendered } from './SchemaTable.interface';
-
 const ModalWithMarkdownEditor = withSuspenseFallback(
   lazy(() =>
     import('../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor').then(

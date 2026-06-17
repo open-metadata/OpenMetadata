@@ -133,7 +133,7 @@ import {
 import { getLoadingStatusValue } from '../../utils/EntityLineageUtils';
 import { updateNodeType } from '../../utils/EntityPureUtils';
 import { getEntityReferenceFromEntity } from '../../utils/EntityReferenceUtils';
-import { getQuickFilterQuery } from '../../utils/ExploreUtils';
+import { getQuickFilterQuery } from '../../utils/ExplorePureUtils';
 import { addBaseNodeDepthToNodes } from '../../utils/Lineage/LineageUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';

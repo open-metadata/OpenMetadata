@@ -29,8 +29,13 @@
 
 # Assets
 *.gif
+*.avif
+*.bmp
+*.jpeg
+*.jpg
 *.svg
 *.png
+*.webp
 *.ico
 *.ttf
 
