@@ -1248,13 +1248,14 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
 
   private DataProduct updateDataProductDomainsWithMultiDomainRuleDisabled(
       OpenMetadataClient client, DataProduct dataProduct, Domain... domains) {
+    boolean originalRuleState = EntityRulesUtil.isMultiDomainRuleEnabled(client);
     EntityRulesUtil.toggleMultiDomainRule(client, false);
     try {
       DataProduct update = client.dataProducts().get(dataProduct.getId().toString(), "domains");
       update.setDomains(List.of(domains).stream().map(Domain::getEntityReference).toList());
       return client.dataProducts().update(dataProduct.getId().toString(), update);
     } finally {
-      EntityRulesUtil.toggleMultiDomainRule(client, true);
+      EntityRulesUtil.toggleMultiDomainRule(client, originalRuleState);
     }
   }
 
