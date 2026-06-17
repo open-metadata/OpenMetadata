@@ -24,9 +24,6 @@ import { useTranslation } from 'react-i18next';
 import AnnouncementItemV3 from './AnnouncementItemV3.component';
 import { AnnouncementsWidgetV3BodyProps } from './AnnouncementsWidgetV3Body.interface';
 
-const CARD_CLASSNAME =
-  'tw:rounded-[10px] tw:border tw:border-gray-blue-100 tw:bg-linear-to-b tw:from-[#f2f8fb] tw:to-white tw:px-4 tw:py-3.5';
-
 const AnnouncementsWidgetV3Body = ({
   announcements,
   onItemClick,
@@ -45,7 +42,10 @@ const AnnouncementsWidgetV3Body = ({
   if (loading) {
     return (
       <div
-        className={classNames(CARD_CLASSNAME, className)}
+        className={classNames(
+          'tw:rounded-[10px] tw:border tw:border-gray-blue-100 tw:bg-linear-to-b tw:from-brand-50 tw:to-white tw:px-4 tw:py-3.5',
+          className
+        )}
         data-testid={testId}>
         <div
           className="tw:flex tw:flex-col tw:gap-[9px] tw:pl-[3px]"
@@ -80,7 +80,12 @@ const AnnouncementsWidgetV3Body = ({
   const current = announcements[index];
 
   return (
-    <div className={classNames(CARD_CLASSNAME, className)} data-testid={testId}>
+    <div
+      className={classNames(
+        'tw:rounded-[10px] tw:border tw:border-gray-blue-100 tw:bg-linear-to-b tw:from-brand-50 tw:to-white tw:px-4 tw:py-3.5',
+        className
+      )}
+      data-testid={testId}>
       <div className="tw:mb-3 tw:flex tw:items-center tw:justify-between">
         <div className="tw:flex tw:items-center tw:gap-2">
           <Announcement02 className="tw:size-5 tw:text-fg-brand-primary" />
