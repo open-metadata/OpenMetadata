@@ -14,6 +14,7 @@ Snowflake lineage module
 
 import json
 import traceback
+from datetime import datetime, timedelta
 from typing import Any, Iterable, Iterator, List, Optional, Tuple, Union  # noqa: UP035
 
 from cachetools import LRUCache
@@ -35,7 +36,6 @@ from metadata.generated.schema.type.entityLineage import Source as LineageEdgeSo
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.models import Either
-from metadata.ingestion.connections.builders import get_connection_options_dict
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.lineage_source import LineageSource
@@ -65,9 +65,9 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-USE_ACCESS_HISTORY_OPTION_KEY = "useAccessHistory"
-
 TABLE_CACHE_MAX_SIZE = 100
+
+DEFAULT_ACCESS_HISTORY_CHUNK_DAYS = 2
 
 EXTERNAL_STAGE_PREFIXES = ("s3://", "azure://", "gcs://", "https://")
 
@@ -106,51 +106,59 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
         metadata: OpenMetadata,
         get_engine: bool = True,
     ):
-        # Pop the OM-specific flag from connectionOptions BEFORE the parent
-        # creates the SQLAlchemy engine — the Snowflake URL builder copies
-        # every connectionOptions entry into the URL query string, so the
-        # driver would otherwise receive an unknown `useAccessHistory` param.
-        self._use_access_history = self._pop_access_history_flag(config)
         super().__init__(config, metadata, get_engine=get_engine)
         self._table_cache: LRUCache = LRUCache(maxsize=TABLE_CACHE_MAX_SIZE)
-        if self._use_access_history and self.engine is not None:
-            available = probe_access_history_available(self.engine, self.service_connection.accountUsageSchema)
-            if not available:
-                logger.warning(
-                    "useAccessHistory was set in connectionOptions but the ACCESS_HISTORY probe failed; "
-                    "falling back to legacy QUERY_HISTORY parser path."
-                )
-                self._use_access_history = False
-            else:
-                logger.info("ACCESS_HISTORY-based lineage path enabled via connectionOptions.useAccessHistory.")
+        self._access_history_chunk_days = self._resolve_chunk_days()
+        self._use_access_history = self._resolve_use_access_history()
 
-    @staticmethod
-    def _pop_access_history_flag(config: WorkflowSource) -> bool:
+    def _resolve_chunk_days(self) -> int:
         """
-        Read and remove the OM-specific `useAccessHistory` key from
-        connectionOptions on the workflow config. Called before the parent
-        init so the popped key never reaches the Snowflake driver URL.
+        Days of ACCESS_HISTORY scanned per query, read from the
+        `accessHistoryChunkSize` connection field. Clamp to >= 1 so the
+        date-window iterator always makes forward progress.
         """
-        service_connection = config.serviceConnection.root.config  # pyright: ignore[reportOptionalMemberAccess]
-        options = get_connection_options_dict(service_connection)
-        if not options:
+        configured = getattr(self.service_connection, "accessHistoryChunkSize", None)
+        if configured is None:
+            return DEFAULT_ACCESS_HISTORY_CHUNK_DAYS
+        return max(1, int(configured))
+
+    def _resolve_use_access_history(self) -> bool:
+        """
+        Select the ACCESS_HISTORY lineage path. Enabled by default via the
+        `useAccessHistory` connection field, but it requires the configured role
+        to read ACCOUNT_USAGE.ACCESS_HISTORY — probe once at init and fall back
+        to the legacy QUERY_HISTORY parser if the probe fails, so a missing grant
+        never zeroes out lineage.
+        """
+        configured = getattr(self.service_connection, "useAccessHistory", True)
+        if configured is None:
+            configured = True
+        if not bool(configured):
             return False
-        raw = options.pop(USE_ACCESS_HISTORY_OPTION_KEY, None)
-        if raw is None:
-            return False
-        return str(raw).strip().lower() == "true"
+        if self.engine is None:
+            return True
+        if probe_access_history_available(self.engine, self.service_connection.accountUsageSchema):
+            logger.info("ACCESS_HISTORY-based lineage path enabled.")
+            return True
+        logger.warning(
+            "useAccessHistory is enabled but the ACCESS_HISTORY probe failed; "
+            "falling back to the legacy QUERY_HISTORY parser path."
+        )
+        return False
 
     def _build_filter_condition_clause(self) -> str:
         """
-        Render `sourceConfig.filterCondition` as an extra `AND (...)` predicate
-        scoped to the access_history_filtered CTE. Unqualified column names
-        resolve against `qh` (QUERY_HISTORY) — e.g. `query_type = 'COPY'`,
-        `user_name = 'etl_user'`, `query_text ILIKE '%my_pipeline%'`.
+        Render `sourceConfig.filterCondition` as a trailing `WHERE (...)` on the
+        final edge result, so it scopes lineage by the edge's tables rather than
+        by QUERY_HISTORY. Unqualified column names resolve against the edge
+        columns `UPSTREAM_TABLE` / `DOWNSTREAM_TABLE` (Snowflake `DB.SCHEMA.TABLE`
+        FQNs) — e.g. `DOWNSTREAM_TABLE LIKE 'MYDB.%'`,
+        `UPSTREAM_TABLE ILIKE 'MYDB.MYSCHEMA.%'`.
         """
         condition = getattr(self.source_config, "filterCondition", None)
         if not condition:
             return ""
-        return f"AND ({condition})"
+        return f"WHERE ({condition})"
 
     def get_stored_procedure_sql_statement(self) -> str:
         """
@@ -219,7 +227,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
     ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:  # noqa: UP007
         """
         Dispatch lineage extraction to either the ACCESS_HISTORY path (gated by
-        `useAccessHistory` in connectionOptions) or the legacy QUERY_HISTORY +
+        the `useAccessHistory` connection field) or the legacy QUERY_HISTORY +
         client-side parser path.
         """
         if self._use_access_history:
@@ -233,52 +241,118 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
         Stream one row per directed table edge from the combined ACCESS_HISTORY
         SQL — column-pairs are aggregated into a VARIANT array per edge inside
         Snowflake, so client memory stays O(1) regardless of catalog size.
+
+        The two phases are isolated: a catastrophic failure in the combined
+        ACCESS_HISTORY phase must not stop the COPY_HISTORY phase, and vice versa.
         """
-        yield from self._yield_combined_access_history()
-        yield from self._yield_copy_history_lineage()
+        try:
+            yield from self._yield_combined_access_history()
+        except Exception as exc:
+            logger.warning("ACCESS_HISTORY combined lineage phase failed: %s", exc)
+            logger.debug(traceback.format_exc())
+        try:
+            yield from self._yield_copy_history_lineage()
+        except Exception as exc:
+            logger.warning("COPY_HISTORY lineage phase failed: %s", exc)
+            logger.debug(traceback.format_exc())
+
+    def _iter_lineage_date_windows(self) -> Iterable[Tuple[datetime, datetime]]:  # noqa: UP006
+        """
+        Split the configured [start, end] window into `accessHistoryChunkSize`
+        day chunks. A single query over a large window (e.g. queryLogDuration=180)
+        builds a FLATTEN-heavy plan that Snowflake cancels on a client/server
+        timeout; per-chunk queries keep each scan bounded and let one slow
+        window fail without aborting the run.
+        """
+        window_start = self.start
+        while window_start < self.end:
+            window_end = min(window_start + timedelta(days=self._access_history_chunk_days), self.end)
+            yield window_start, window_end
+            window_start = window_end
 
     def _yield_combined_access_history(self) -> Iterable[Either[AddLineageRequest]]:
         """
-        Run the single combined ACCESS_HISTORY query and emit one
-        `AddLineageRequest` per row. Uses `stream_results=True` so the
-        snowflake-sqlalchemy cursor streams rather than buffering.
+        Stream the combined ACCESS_HISTORY query per date window and emit one
+        `AddLineageRequest` per row, accumulating counters across all windows.
+        Per-row edge building is isolated so a single failing row is skipped
+        rather than aborting the rest of the window or the COPY_HISTORY phase.
         """
-        sql_statement = SNOWFLAKE_ACCESS_HISTORY_LINEAGE.format(
-            account_usage=self.service_connection.accountUsageSchema,
-            start_time=self.start,
-            end_time=self.end,
-            filter_condition=self._build_filter_condition_clause(),
-        )
         emitted = 0
         emitted_with_sql = 0
         skipped = 0
+        failed = 0
+        for window_start, window_end in self._iter_lineage_date_windows():
+            for row in self._fetch_access_history_rows(window_start, window_end):
+                try:
+                    edge = self._build_access_history_edge(row)
+                except Exception as exc:
+                    failed += 1
+                    logger.warning("Skipping ACCESS_HISTORY row that failed edge building: %s", exc)
+                    logger.debug(traceback.format_exc())
+                    continue
+                if edge is None:
+                    skipped += 1
+                    continue
+                emitted += 1
+                if row.query_text:
+                    emitted_with_sql += 1
+                yield Either(right=edge)  # pyright: ignore[reportCallIssue]
+        logger.info(
+            "ACCESS_HISTORY lineage: emitted %d edges (%d with SQL text), "
+            "skipped %d (unresolvable downstream/upstream tables), failed %d (row errors)",
+            emitted,
+            emitted_with_sql,
+            skipped,
+            failed,
+        )
+
+    def _fetch_access_history_rows(self, window_start: datetime, window_end: datetime) -> Iterable[AccessHistoryRow]:
+        """
+        Run the combined ACCESS_HISTORY query for a single [window_start,
+        window_end) window and yield parsed rows. Uses `stream_results=True`
+        so the snowflake-sqlalchemy cursor streams rather than buffering.
+        A failure on one window is logged and swallowed so the remaining
+        windows still run; a single malformed row is skipped so the rest of
+        the window still yields.
+        """
+        sql_statement = SNOWFLAKE_ACCESS_HISTORY_LINEAGE.format(
+            account_usage=self.service_connection.accountUsageSchema,
+            start_time=window_start,
+            end_time=window_end,
+            filter_condition=self._build_filter_condition_clause(),
+        )
         try:
             for engine in self.get_engine():
                 if engine is None:
                     continue
                 with engine.connect() as conn:
-                    logger.debug("Executing combined ACCESS_HISTORY lineage query: %s", sql_statement)
+                    logger.debug("Executing ACCESS_HISTORY lineage query for %s - %s", window_start, window_end)
                     rows = conn.execution_options(stream_results=True, max_row_buffer=1000).execute(text(sql_statement))
                     for raw_row in rows:
-                        row = AccessHistoryRow(**self._row_to_lower_dict(raw_row))
-                        edge = self._build_access_history_edge(row)
-                        if edge is None:
-                            skipped += 1
-                            continue
-                        emitted += 1
-                        if row.query_text:
-                            emitted_with_sql += 1
-                        yield Either(right=edge)  # pyright: ignore[reportCallIssue]
+                        parsed = self._parse_access_history_row(raw_row)
+                        if parsed is not None:
+                            yield parsed
         except Exception as exc:
-            logger.warning("Failed to extract lineage from ACCESS_HISTORY: %s", exc)
+            logger.warning(
+                "Failed to extract lineage from ACCESS_HISTORY for window %s - %s: %s",
+                window_start,
+                window_end,
+                exc,
+            )
             logger.debug(traceback.format_exc())
-        logger.info(
-            "ACCESS_HISTORY lineage: emitted %d edges (%d with SQL text), "
-            "skipped %d (unresolvable downstream/upstream tables)",
-            emitted,
-            emitted_with_sql,
-            skipped,
-        )
+
+    def _parse_access_history_row(self, raw_row: Any) -> Optional[AccessHistoryRow]:  # noqa: UP045
+        """
+        Parse one cursor row into an `AccessHistoryRow`. A single malformed row
+        is logged and skipped (returns None) so it doesn't abort the rest of
+        the window's results.
+        """
+        try:
+            return AccessHistoryRow(**self._row_to_lower_dict(raw_row))
+        except Exception as exc:
+            logger.warning("Skipping malformed ACCESS_HISTORY row: %s", exc)
+            logger.debug(traceback.format_exc())
+            return None
 
     def _build_access_history_edge(self, row: AccessHistoryRow) -> Optional[AddLineageRequest]:  # noqa: UP045
         """
@@ -292,6 +366,14 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
         downstream_entity = self._resolve_snowflake_table(row.downstream_table)
         upstream_entity = self._resolve_snowflake_table(row.upstream_table)
         if downstream_entity is None or upstream_entity is None:
+            logger.debug(
+                "Skipping ACCESS_HISTORY edge: table not found in OpenMetadata "
+                "(upstream=`%s` found=%s, downstream=`%s` found=%s)",
+                row.upstream_table,
+                upstream_entity is not None,
+                row.downstream_table,
+                downstream_entity is not None,
+            )
             return None
 
         column_pairs = self._parse_column_pairs(row.column_pairs)
@@ -362,6 +444,9 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
         Read ACCOUNT_USAGE.COPY_HISTORY for stage→table lineage. Resolve the
         downstream Table and the upstream Container (by stage location URL).
         Skip internal Snowflake stages silently (they don't map to OM Containers).
+
+        The outer try guards query/connection failures; a per-row try isolates a
+        single malformed or unresolvable row so it doesn't drop the remaining rows.
         """
         sql_statement = SNOWFLAKE_COPY_HISTORY_LINEAGE.format(
             account_usage=self.service_connection.accountUsageSchema,
@@ -371,6 +456,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
         emitted = 0
         skipped_internal = 0
         skipped_unresolved = 0
+        failed = 0
         try:
             for engine in self.get_engine():
                 if engine is None:
@@ -379,11 +465,17 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
                     logger.debug("Executing COPY_HISTORY lineage query: %s", sql_statement)
                     rows = conn.execute(text(sql_statement))
                     for raw_row in rows:
-                        row = CopyHistoryRow(**self._row_to_lower_dict(raw_row))
-                        if not self._is_external_stage(row.stage_location or ""):
-                            skipped_internal += 1
+                        try:
+                            row = CopyHistoryRow(**self._row_to_lower_dict(raw_row))
+                            if not self._is_external_stage(row.stage_location or ""):
+                                skipped_internal += 1
+                                continue
+                            edge = self._build_copy_edge(row)
+                        except Exception as exc:
+                            failed += 1
+                            logger.warning("Skipping COPY_HISTORY row that failed processing: %s", exc)
+                            logger.debug(traceback.format_exc())
                             continue
-                        edge = self._build_copy_edge(row)
                         if edge is None:
                             skipped_unresolved += 1
                             continue
@@ -393,10 +485,12 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
             logger.warning("Failed to extract COPY_HISTORY lineage: %s", exc)
             logger.debug(traceback.format_exc())
         logger.info(
-            "COPY_HISTORY lineage: emitted %d edges, skipped %d internal stages, skipped %d unresolved external stages",
+            "COPY_HISTORY lineage: emitted %d edges, skipped %d internal stages, "
+            "skipped %d unresolved external stages, failed %d (row errors)",
             emitted,
             skipped_internal,
             skipped_unresolved,
+            failed,
         )
 
     def _build_copy_edge(self, row: CopyHistoryRow) -> Optional[AddLineageRequest]:  # noqa: UP045

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { expect, Page, Request, test as base } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { Column, Table } from '../../../src/generated/entity/data/table';
 import { COMMON_TIER_TAG, KEY_PROFILE_METRICS } from '../../constant/common';
@@ -53,6 +53,7 @@ import { getCurrentMillis } from '../../utils/dateTime';
 import {
   addMultiOwner,
   closeColumnDetailPanel,
+  copyAndGetClipboardText,
   openColumnDetailPanel,
   removeOwner,
   removeOwnersFromList,
@@ -295,8 +296,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       await entity.tier(
         page,
         'Tier1',
-        COMMON_TIER_TAG[2].name,
-        COMMON_TIER_TAG[2].fullyQualifiedName,
+        COMMON_TIER_TAG[4].name,
+        COMMON_TIER_TAG[4].fullyQualifiedName,
         entity
       );
     });
@@ -1589,9 +1590,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
             const profileResponse = page.waitForResponse(
               (response) =>
-                response.url().includes('/api/v1/tables/') &&
-                response.url().includes('/columns') &&
-                response.url().includes('profile')
+                response.url().includes('/api/v1/columns/name/') &&
+                response.url().includes('profile') &&
+                response.request().method() === 'GET'
             );
             await columnName.click();
             await profileResponse;
@@ -1633,6 +1634,51 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             await expect(
               page.locator('.column-detail-panel')
             ).not.toBeVisible();
+          });
+        });
+      }
+
+      if (entity.type === 'DashboardDataModel') {
+        test('Column detail panel does not call /columns/name GET for DashboardDataModel', async ({
+          page,
+        }) => {
+          test.slow();
+
+          await page.getByTestId(entity.childrenTabId ?? '').click();
+          await waitForAllLoadersToDisappear(page);
+
+          const columnGetCalls: string[] = [];
+          const listener = (req: Request) => {
+            if (
+              req.url().includes('/api/v1/columns/name/') &&
+              req.method() === 'GET'
+            ) {
+              columnGetCalls.push(req.url());
+            }
+          };
+
+          await test.step('Open column detail panel and verify no /columns/name GET fires', async () => {
+            page.on('request', listener);
+
+            try {
+              await openColumnDetailPanel({
+                page,
+                rowSelector,
+                columnId: entity.childrenSelectorId ?? '',
+                columnNameTestId: 'column-name',
+                entityType: entity.type as EntityType,
+              });
+
+              await waitForAllLoadersToDisappear(page);
+
+              await expect(page.locator('.column-detail-panel')).toBeVisible();
+
+              expect(columnGetCalls).toHaveLength(0);
+
+              await closeColumnDetailPanel(page);
+            } finally {
+              page.off('request', listener);
+            }
           });
         });
       }
@@ -1951,6 +1997,18 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       const entityName =
         entity.entityResponseData?.['displayName'] ?? entity.entity.name;
       await entity.followUnfollowEntity(page, entityName);
+    });
+
+    /**
+     * Tests copying the entity URL from the header
+     * @description Tests that the header copy button copies the current entity page URL to the clipboard
+     */
+    test(`Copy entity URL from header`, async ({ page }) => {
+      const pageUrl = page.url();
+      const copyButton = page.getByTestId('entity-header-copy-button');
+      const clipboardText = await copyAndGetClipboardText(page, copyButton);
+
+      expect(clipboardText).toBe(pageUrl);
     });
 
     /**

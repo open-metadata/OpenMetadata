@@ -68,7 +68,8 @@ CREATE TABLE IF NOT EXISTS activity_stream (
     entityfqnhash character varying(768),
     about character varying(2048),
     aboutfqnhash character varying(768),
-    actorid character varying(36) NOT NULL,
+    -- Nullable for system events and hard-deleted users; actorname is the display fallback.
+    actorid character varying(36),
     actorname character varying(256),
     timestamp bigint NOT NULL,
     summary character varying(500),
@@ -306,3 +307,65 @@ CREATE TABLE IF NOT EXISTS context_memory (
   UNIQUE (nameHash)
 );
 CREATE INDEX IF NOT EXISTS idx_context_memory_updated_at ON context_memory (updatedAt);
+
+-- Database-backed user session store for multi-pod session management (issue #21971).
+CREATE TABLE IF NOT EXISTS user_session (
+    id character varying(64) GENERATED ALWAYS AS ((json ->> 'id'::text)) STORED NOT NULL,
+    userid character varying(36) GENERATED ALWAYS AS ((json ->> 'userId'::text)) STORED,
+    status character varying(32) GENERATED ALWAYS AS ((json ->> 'status'::text)) STORED NOT NULL,
+    expiresat bigint GENERATED ALWAYS AS (((json ->> 'expiresAt'::text))::bigint) STORED NOT NULL,
+    idleexpiresat bigint GENERATED ALWAYS AS (((json ->> 'idleExpiresAt'::text))::bigint) STORED NOT NULL,
+    updatedat bigint GENERATED ALWAYS AS (((json ->> 'updatedAt'::text))::bigint) STORED NOT NULL,
+    sessiontype character varying(32) GENERATED ALWAYS AS ((json ->> 'type'::text)) STORED,
+    provider character varying(64) GENERATED ALWAYS AS ((json ->> 'provider'::text)) STORED,
+    version bigint GENERATED ALWAYS AS (((json ->> 'version'::text))::bigint) STORED,
+    lastaccessedat bigint GENERATED ALWAYS AS (((json ->> 'lastAccessedAt'::text))::bigint) STORED,
+    refreshleaseuntil bigint GENERATED ALWAYS AS (((json ->> 'refreshLeaseUntil'::text))::bigint) STORED,
+    json jsonb NOT NULL,
+    CONSTRAINT user_session_pkey PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS user_session_user_status_idx ON user_session USING btree (userid, status);
+CREATE INDEX IF NOT EXISTS user_session_expiry_idx ON user_session USING btree (status, expiresat);
+CREATE INDEX IF NOT EXISTS user_session_idle_expiry_idx ON user_session USING btree (status, idleexpiresat);
+CREATE INDEX IF NOT EXISTS user_session_prune_idx ON user_session USING btree (status, updatedat);
+
+-- Per-entity `name` index for entity tables first created in 2.0.0, so the distributed
+-- reindex's `... ORDER BY name, id LIMIT 1 OFFSET :n` cursor query
+-- (EntityRepository.getCursorAtOffset) runs index-only instead of a sort that can exhaust
+-- work_mem on large tables. Added here (not 1.13.1) because these tables are created above
+-- in this same 2.0.0 migration. Idempotent via IF NOT EXISTS.
+CREATE INDEX IF NOT EXISTS task_entity_name_index ON task_entity (name);
+CREATE INDEX IF NOT EXISTS announcement_entity_name_index ON announcement_entity (name);
+CREATE INDEX IF NOT EXISTS drive_folder_name_index ON drive_folder (name);
+CREATE INDEX IF NOT EXISTS asset_entity_name_index ON asset_entity (name);
+
+-- MCP conversation table for MCP Client message tracking
+CREATE TABLE IF NOT EXISTS mcp_conversation (
+  id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+  json JSONB NOT NULL,
+  userId VARCHAR(256) GENERATED ALWAYS AS ((json -> 'user') ->> 'id') STORED NOT NULL,
+  createdAt BIGINT GENERATED ALWAYS AS ((json ->> 'createdAt')::bigint) STORED NOT NULL,
+  updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+  createdBy VARCHAR(50) GENERATED ALWAYS AS (json ->> 'createdBy') STORED NOT NULL,
+  updatedBy VARCHAR(50) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+  messageCount INT GENERATED ALWAYS AS ((json ->> 'messageCount')::int) STORED,
+
+  PRIMARY KEY (id)
+);
+CREATE INDEX IF NOT EXISTS idx_mcp_conversation_user_updated ON mcp_conversation (userId, updatedAt DESC);
+
+-- MCP message table for MCP Client message tracking
+CREATE TABLE IF NOT EXISTS mcp_message (
+  id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+  json JSONB NOT NULL,
+  conversationId VARCHAR(36) GENERATED ALWAYS AS (json ->> 'conversationId') STORED NOT NULL,
+  sender VARCHAR(10) GENERATED ALWAYS AS (json ->> 'sender') STORED NOT NULL,
+  messageIndex INT GENERATED ALWAYS AS ((json ->> 'index')::int) STORED,
+  timestamp BIGINT GENERATED ALWAYS AS ((json ->> 'timestamp')::bigint) STORED NOT NULL,
+
+  PRIMARY KEY (id),
+  CONSTRAINT fk_mcp_message_conversation FOREIGN KEY (conversationId) REFERENCES mcp_conversation(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_mcp_message_conversation_index ON mcp_message (conversationId, messageIndex);
+CREATE INDEX IF NOT EXISTS idx_mcp_message_conversation_created ON mcp_message (conversationId, timestamp);

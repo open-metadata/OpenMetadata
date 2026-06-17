@@ -61,7 +61,6 @@ export const AGGREGATE_PAGE_SIZE_LARGE = 1000;
 export const ES_MAX_PAGE_SIZE = 10000;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
-export const LINEAGE_CHILD_ITEMS_PER_PAGE = 10;
 export const TAG_LIST_SIZE = 3;
 export const ADD_USER_CONTAINER_HEIGHT = 250;
 export const MAX_NAME_LENGTH = 256;
@@ -171,6 +170,7 @@ export const ROUTES = {
   CONTEXT_CENTER_ARTICLE_VERSION: `/context-center/articles/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   CONTEXT_CENTER_DOCUMENTS: '/context-center/documents',
   CONTEXT_CENTER_FILTER: '/context-center/filter',
+  CONTEXT_CENTER_MEMORIES: '/context-center/memories',
   CONTEXT_CENTER_INTEGRATIONS: '/context-center/integrations',
   CONTEXT_CENTER_ARCHIVE: '/context-center/archive',
   SETTINGS_WITH_CATEGORY: `/settings/${PLACEHOLDER_SETTING_CATEGORY}`,
@@ -182,6 +182,8 @@ export const ROUTES = {
   COLUMN_BULK_OPERATIONS: `/column-bulk-operations`,
   STORE: '/store',
   FEEDS: '/feeds',
+  MCP_CHAT: '/mcp-chat',
+  MCP_CHAT_WITH_ID: `/mcp-chat/${PLACEHOLDER_ROUTE_ID}`,
   DUMMY: '/dummy',
   SERVICE: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_FQN}`,
   SERVICE_VERSION: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,

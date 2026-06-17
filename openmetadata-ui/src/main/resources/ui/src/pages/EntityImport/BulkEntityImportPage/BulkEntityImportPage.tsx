@@ -14,13 +14,13 @@ import { Button, Card, Col, Progress, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import DataGrid, { Column, ColumnOrColumnGroup } from 'react-data-grid';
-import 'react-data-grid/lib/styles.css';
+import type { Column, ColumnOrColumnGroup } from 'react-data-grid';
 import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
 import { useLocation, useNavigate } from 'react-router-dom';
 import BulkEditEntity from '../../../components/BulkEditEntity/BulkEditEntity.component';
 import Banner from '../../../components/common/Banner/Banner';
+import { LazyDataGrid } from '../../../components/common/DataGrid/LazyDataGrid';
 import { ImportStatus } from '../../../components/common/EntityImport/ImportStatus/ImportStatus.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -41,10 +41,8 @@ import { CSVImportResult } from '../../../generated/type/csvImportResult';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import { useGridEditController } from '../../../hooks/useGridEditController';
-import {
-  getCSVStringFromColumnsAndDataSource,
-  getEntityColumnsAndDataSourceFromCSV,
-} from '../../../utils/CSV/CSV.utils';
+import { getEntityColumnsAndDataSourceFromCSV } from '../../../utils/CSV/CSV.utils';
+import { getCSVStringFromColumnsAndDataSource } from '../../../utils/CSV/CSVPureUtils';
 import csvUtilsClassBase from '../../../utils/CSV/CSVUtilsClassBase';
 import {
   getBulkEntityNavigationPath,
@@ -70,7 +68,6 @@ import {
   CSVImportAsyncWebsocketResponse,
   CSVImportJobType,
 } from './BulkEntityImportPage.interface';
-
 const BulkEntityImportPage = () => {
   const location = useLocation();
   const { socket } = useWebSocketConnector();
@@ -624,7 +621,7 @@ const BulkEntityImportPage = () => {
   const editDataGrid = useMemo(() => {
     return (
       <div className="om-rdg" ref={setGridContainer}>
-        <DataGrid
+        <LazyDataGrid
           className="rdg-light"
           columns={
             filterColumns as unknown as ColumnOrColumnGroup<
@@ -771,7 +768,7 @@ const BulkEntityImportPage = () => {
                   <Col span={24}>
                     {validateCSVData && (
                       <div className="om-rdg">
-                        <DataGrid
+                        <LazyDataGrid
                           className="rdg-light"
                           columns={validateCSVData.columns}
                           rows={validateCSVData.dataSource}

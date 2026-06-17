@@ -271,7 +271,6 @@ public final class TaskWorkflowLifecycleResolver {
         "DomainUpdateTaskWorkflow",
         "GlossaryApprovalTaskWorkflow",
         "RequestApprovalTaskWorkflow",
-        "DataAccessRequestTaskWorkflow",
         "SuggestionTaskWorkflow",
         "TestCaseResolutionTaskWorkflow",
         "IncidentResolutionTaskWorkflow",

@@ -18,7 +18,6 @@ import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   getKnowledgePageCardByIndex,
   getKnowledgePageCardEntityIdentifier,
-  toggleKnowledgePageBookmark,
 } from '../../utils/KnowledgeCenter';
 import { sidebarClick } from '../../utils/sidebar';
 
@@ -28,13 +27,12 @@ test.use({
 
 // 7 cards needed: tests use indices 0-6
 const MIN_CARDS = 7;
-const knowledgeCenter = new KnowledgeCenterClass();
+let knowledgeCenter: KnowledgeCenterClass;
 
 test.describe('Knowledge Center List', () => {
-  test.slow(true);
-
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
+    knowledgeCenter = new KnowledgeCenterClass();
     await knowledgeCenter.create(apiContext, MIN_CARDS);
     await afterAction();
   });
@@ -47,7 +45,7 @@ test.describe('Knowledge Center List', () => {
 
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
-    const listResponse = page.waitForResponse('/api/v1/knowledgeCenter*');
+    const listResponse = page.waitForResponse('/api/v1/contextCenter/pages*');
     await sidebarClick(page, SidebarItem.ARTICLE);
     await listResponse;
     await page
@@ -67,112 +65,20 @@ test.describe('Knowledge Center List', () => {
       const card = await getKnowledgePageCardByIndex(page, 0);
       await expect(card).toBeVisible();
 
-      const title = card.getByTestId('entity-header-display-name');
+      const title = card.getByTestId('knowledge-card-title');
       await expect(title).toBeVisible();
       await expect(title).not.toBeEmpty();
 
-      const titleDescription = card.getByTestId('knowledge-title-description');
+      const titleDescription = card.getByTestId('knowledge-card-description');
       await expect(titleDescription).toBeVisible();
 
       const knowledgePageLink = card.getByTestId('knowledge-page-link');
       await expect(knowledgePageLink).toBeVisible();
 
-      const dateOwnerCol = card.getByTestId('date-owner-col');
-      await expect(dateOwnerCol).toBeVisible();
-
       const updatedAt = card.getByTestId('updated-at');
       await expect(updatedAt).toBeVisible();
       await expect(updatedAt).not.toBeEmpty();
-
-      const metadata = card.getByTestId('knowledge-metadata');
-
-      await expect(metadata).toBeVisible();
     });
-  });
-
-  test('Knowledge Center List - Test upvote and downvote buttons', async ({
-    page,
-  }) => {
-    const card = await getKnowledgePageCardByIndex(page, 1);
-    await expect(card).toBeVisible();
-
-    // Get initial up-vote count
-    const initialUpVoteCount = Number.parseInt(
-      (await card.getByTestId('up-vote-count').textContent()) || '0',
-      10
-    );
-
-    const upVoteBtn = card.getByTestId('up-vote-btn');
-    const upVoteResponse = page.waitForResponse(
-      '/api/v1/knowledgeCenter/*/vote'
-    );
-    await upVoteBtn.click();
-    await upVoteResponse;
-    await waitForAllLoadersToDisappear(page);
-
-    const expectedUpVoteCount = initialUpVoteCount + 1;
-    await expect(card.getByTestId('up-vote-count')).toHaveText(
-      String(expectedUpVoteCount)
-    );
-
-    // Re-read down count after upvote — if the user had an existing downvote,
-    // the upvote action clears it, making a pre-upvote baseline stale.
-    const downVoteCountAfterUpvote = Number.parseInt(
-      (await card.getByTestId('down-vote-count').textContent()) || '0',
-      10
-    );
-
-    const downVoteBtn = card.getByTestId('down-vote-btn');
-    const downVoteResponse = page.waitForResponse(
-      '/api/v1/knowledgeCenter/*/vote'
-    );
-    await downVoteBtn.click();
-    await downVoteResponse;
-    await waitForAllLoadersToDisappear(page);
-
-    await expect(card.getByTestId('up-vote-count')).toHaveText(
-      String(expectedUpVoteCount - 1)
-    );
-    await expect(card.getByTestId('down-vote-count')).toHaveText(
-      String(downVoteCountAfterUpvote + 1)
-    );
-  });
-
-  test('Knowledge Center List - Test bookmark functionality', async ({
-    page,
-  }) => {
-    const card = await getKnowledgePageCardByIndex(page, 2);
-    await expect(card).toBeVisible();
-
-    const bookmarkIdentifier = await getKnowledgePageCardEntityIdentifier(card);
-
-    const bookmarkBtn = card.getByTestId('bookmark-btn');
-    await expect(bookmarkBtn).toBeVisible();
-
-    await toggleKnowledgePageBookmark(
-      page,
-      bookmarkBtn,
-      bookmarkIdentifier,
-      true
-    );
-
-    const unbookmarkResponse = page.waitForResponse((response) => {
-      const url = response.url();
-      return (
-        url.includes('/api/v1/knowledgeCenter') && url.includes('/followers')
-      );
-    });
-
-    await bookmarkBtn.click();
-    const unbookmarkRes = await unbookmarkResponse;
-    expect(unbookmarkRes.status()).toBe(200);
-    await waitForAllLoadersToDisappear(page);
-
-    const rightPanel = page.getByTestId('knowledge-center-right-panel');
-    const specificBookmark = rightPanel.getByTestId(
-      `bookmarked-${bookmarkIdentifier}`
-    );
-    await expect(specificBookmark).not.toBeVisible();
   });
 
   test('Knowledge Center List - Verify Recently Viewed widget', async ({
@@ -183,9 +89,8 @@ test.describe('Knowledge Center List', () => {
 
     const cardIdentifier = await getKnowledgePageCardEntityIdentifier(card);
     const cardDisplayText =
-      (
-        await card.getByTestId('entity-header-display-name').textContent()
-      )?.trim() ?? '';
+      (await card.getByTestId('knowledge-card-title').textContent())?.trim() ??
+      '';
 
     const knowledgePageLink = card.getByTestId('knowledge-page-link');
 
@@ -205,7 +110,7 @@ test.describe('Knowledge Center List', () => {
 
     await waitForAllLoadersToDisappear(page);
 
-    const listResponse = page.waitForResponse('/api/v1/knowledgeCenter*');
+    const listResponse = page.waitForResponse('/api/v1/contextCenter/pages*');
     await sidebarClick(page, SidebarItem.ARTICLE);
     await listResponse;
     await page
@@ -242,14 +147,14 @@ test.describe('Knowledge Center List', () => {
     page,
   }) => {
     const listing = page.getByTestId('knowledge-page-listing');
-    const cards = listing.locator('.knowledge-card');
+    const cards = listing.locator('[data-testid^="knowledge-card-"]');
     const initialCardCount = await cards.count();
 
     const observerElement = page.getByTestId('observer-element');
     const paginationResponse = page.waitForResponse(
       (response) =>
-        response.url().includes('/api/v1/knowledgeCenter') &&
-        response.url().includes('after=')
+        response.url().includes('/api/v1/contextCenter/pages') &&
+        response.url().includes('offset=')
     );
 
     await observerElement.scrollIntoViewIfNeeded();
@@ -259,50 +164,5 @@ test.describe('Knowledge Center List', () => {
 
     const finalCardCount = await cards.count();
     expect(finalCardCount).toBeGreaterThan(initialCardCount);
-  });
-
-  test('Knowledge Center List - Test unbookmark functionality', async ({
-    page,
-  }) => {
-    const card = await getKnowledgePageCardByIndex(page, 5);
-    await expect(card).toBeVisible();
-
-    const bookmarkIdentifier = await getKnowledgePageCardEntityIdentifier(card);
-
-    const bookmarkBtn = card.getByTestId('bookmark-btn');
-    await expect(bookmarkBtn).toBeVisible();
-
-    await toggleKnowledgePageBookmark(
-      page,
-      bookmarkBtn,
-      bookmarkIdentifier,
-      true
-    );
-    await toggleKnowledgePageBookmark(
-      page,
-      bookmarkBtn,
-      bookmarkIdentifier,
-      false
-    );
-  });
-
-  test('Knowledge Center List - Test metadata section details', async ({
-    page,
-  }) => {
-    const card = await getKnowledgePageCardByIndex(page, 6);
-    await expect(card).toBeVisible();
-
-    const metadata = card.getByTestId('knowledge-metadata');
-    await expect(metadata).toBeVisible();
-
-    const updatedAtMetadata = metadata.getByTestId('updated-at-metadata');
-    await expect(updatedAtMetadata).toBeVisible();
-    await expect(updatedAtMetadata).not.toBeEmpty();
-
-    const dateOwnerCol = card.getByTestId('date-owner-col');
-    await expect(dateOwnerCol).toBeVisible();
-
-    const ownerLink = dateOwnerCol.getByTestId('owner-link');
-    await expect(ownerLink).toBeVisible();
   });
 });

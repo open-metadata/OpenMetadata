@@ -15,6 +15,9 @@
     <junit.jupiter.version>${org.junit.jupiter.version}</junit.jupiter.version>
     <junit.platform.version>${org.junit.platform.version}</junit.platform.version>
     <dockerjava.version>3.4.2</dockerjava.version>
+    <!-- Tags excluded from the ui-it profile. Override on the CLI to include them, e.g.
+         -Dui.it.excludedGroups= to run every UIIT including @Tag("sso-bootstrap"). -->
+    <ui.it.excludedGroups>sso-bootstrap</ui.it.excludedGroups>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -169,6 +172,13 @@
       <version>4.4.0</version>
       <scope>test</scope>
     </dependency>
+    <!-- Playwright Java for UI integration tests (*UIIT.java) -->
+    <dependency>
+      <groupId>com.microsoft.playwright</groupId>
+      <artifactId>playwright</artifactId>
+      <version>1.49.0</version>
+      <scope>test</scope>
+    </dependency>
     <!--
       REST client dependencies for org.openmetadata.sdk.test.util.RestClient.
       openmetadata-sdk declares these as <optional>true</optional> so generic SDK
@@ -263,6 +273,42 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>publish-test-harness</id>
+            <goals>
+              <goal>test-jar</goal>
+            </goals>
+            <configuration>
+              <includes>
+                <include>org/openmetadata/it/bootstrap/**</include>
+                <include>org/openmetadata/it/auth/**</include>
+                <include>org/openmetadata/it/util/**</include>
+                <include>org/openmetadata/it/factories/**</include>
+                <include>org/openmetadata/it/server/**</include>
+                <include>org/openmetadata/it/search/**</include>
+                <include>org/openmetadata/playwright/**</include>
+                <include>org/openmetadata/it/tests/BaseEntityIT*</include>
+                <include>private_key.der</include>
+                <include>public_key.der</include>
+                <include>openmetadata-secure-test.yaml</include>
+                <include>logback.xml</include>
+                <include>junit-platform.properties</include>
+                <include>testcontainers.properties</include>
+                <include>docker-java.properties</include>
+                <include>META-INF/services/**</include>
+              </includes>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
   <profiles>
     <!-- MySQL + Elasticsearch (default) -->
     <profile>
@@ -328,8 +374,11 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/*UIIT.java</exclude>
+                    <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -339,6 +388,7 @@
 
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
+                    <excludedGroups>scale</excludedGroups>
                   </systemPropertyVariables>
                   <trimStackTrace>false</trimStackTrace>
                   <reportFormat>plain</reportFormat>
@@ -419,9 +469,12 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/*UIIT.java</exclude>
+                    <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -513,9 +566,12 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/*UIIT.java</exclude>
+                    <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -605,8 +661,11 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/*UIIT.java</exclude>
+                    <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -696,9 +755,12 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/*UIIT.java</exclude>
+                    <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -787,8 +849,11 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/*UIIT.java</exclude>
+                    <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -894,9 +959,12 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/*UIIT.java</exclude>
+                    <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -989,8 +1057,11 @@
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
+                    <exclude>**/*UIIT.java</exclude>
+                    <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <enableRdf>true</enableRdf>
@@ -1014,6 +1085,244 @@
                 <goals>
                   <goal>verify</goal>
                 </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <!-- UI integration tests (*UIIT.java). Run with `mvn verify -P ui-it`. Boots the OM
+         Docker image via ContainerizedServer + Playwright; embedded TestSuiteBootstrap is
+         skipped. Per-method parallel; tests with global state opt out via @ResourceLock
+         or @Execution(SAME_THREAD). -->
+    <profile>
+      <id>ui-it</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>${maven.failsafe.version}</version>
+            <executions>
+              <execution>
+                <id>ui-scenario-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                  <goal>verify</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/*UIIT.java</include>
+                  </includes>
+                  <!-- SSO bootstrap UIITs spin up their own ContainerizedServer to verify
+                       SSO env wiring; that's a second OM lifecycle worth ~1-2 min and not
+                       useful on every run. Opt in with -DincludeSsoBootstrap=true. -->
+                  <excludedGroups>${ui.it.excludedGroups}</excludedGroups>
+                  <systemPropertyVariables>
+                    <skip.embedded.bootstrap>true</skip.embedded.bootstrap>
+                    <!-- Video recording on by default while the suite is young — captures
+                         each run to target/playwright-videos/ for triage. Disable per-run
+                         with -DPW_VIDEO=false. -->
+                    <PW_VIDEO>true</PW_VIDEO>
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
+                    <junit.jupiter.execution.parallel.mode.default>concurrent</junit.jupiter.execution.parallel.mode.default>
+                    <junit.jupiter.execution.parallel.mode.classes.default>same_thread</junit.jupiter.execution.parallel.mode.classes.default>
+                    <junit.jupiter.execution.parallel.config.strategy>dynamic</junit.jupiter.execution.parallel.config.strategy>
+                    <junit.jupiter.execution.parallel.config.dynamic.factor>0.5</junit.jupiter.execution.parallel.config.dynamic.factor>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <!-- Scale + benchmark tests (@Tag("scale")). Excluded from PR runs by the
+         default failsafe config; nightly runs invoke `mvn verify -P scale-it`. -->
+    <profile>
+      <id>scale-it</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>${maven.failsafe.version}</version>
+            <executions>
+              <execution>
+                <id>scale-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                  <goal>verify</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/tests/search/scale/*IT.java</include>
+                  </includes>
+                  <includedGroups>scale</includedGroups>
+                  <systemPropertyVariables>
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <!-- Server-global destructive search ITs: full reindex/recreate, alias swaps, ES container
+         pause. They mutate cluster-wide state on the shared embedded server, so they must never
+         run alongside the parallel corpus or the other sequential tests (which is why the default
+         profiles exclude **/tests/search/*IT.java). Like scale-it, this profile runs them on their
+         own fork + server, serially, and is invoked on demand / nightly via
+         `mvn verify -P search-it` (pass -DsearchType= / -DdatabaseType= to choose the backend). -->
+    <profile>
+      <id>search-it</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>${maven.failsafe.version}</version>
+            <executions>
+              <execution>
+                <id>search-isolated-tests</id>
+                <goals>
+                  <goal>integration-test</goal>
+                  <goal>verify</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/tests/search/*IT.java</include>
+                  </includes>
+                  <excludes>
+                    <exclude>**/tests/search/scale/**</exclude>
+                    <!-- StaticDatasetSeedIT (@Tag("seed")) and ClusterPurgeIT (@Tag("purge")) match
+                         the include glob but must NEVER run in a normal search-it pass — the former
+                         seeds the full bulk cohort, the latter hard-deletes data. Excluded by path
+                         here AND by tag below; run them explicitly via the seed-it / purge-it profiles. -->
+                    <exclude>**/tests/search/StaticDatasetSeedIT.java</exclude>
+                    <exclude>**/tests/search/ClusterPurgeIT.java</exclude>
+                  </excludes>
+                  <!-- excludedGroups must be a direct <configuration> child: nested inside
+                       <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
+                       JUnit Platform tag filter). See ui-it profile for the same correct placement. -->
+                  <excludedGroups>scale,seed,purge</excludedGroups>
+                  <systemPropertyVariables>
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <!-- One-time loader for the static dataset the scale/search suites reuse when run with
+         -Djpw.data.mode=static (or ensure). Runs only StaticDatasetSeedIT (@Tag("seed")), which
+         creates a bulk cohort and deliberately leaves it on the cluster (no namespace cleanup).
+         Invoke once against the external cluster, then run the suites in static/ensure mode:
+         `mvn verify -P seed-it -Dskip.embedded.bootstrap=true -Djpw.scale.tables=100000`. -->
+    <profile>
+      <id>seed-it</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>${maven.failsafe.version}</version>
+            <executions>
+              <execution>
+                <id>seed-dataset</id>
+                <goals>
+                  <goal>integration-test</goal>
+                  <goal>verify</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <!-- The wide-table seed builds ~1M Column objects and serializes the whole create
+                       payload in memory in one shot, so this fork needs more heap than the others. -->
+                  <argLine>-Xmx8192m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/tests/search/StaticDatasetSeedIT.java</include>
+                  </includes>
+                  <includedGroups>seed</includedGroups>
+                  <systemPropertyVariables>
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <!-- On-demand maintenance task that hard-deletes orphaned test entities (mainly the bulk
+         cohorts StaticDatasetSeedIT leaves behind, and data from cancelled runs) from a shared /
+         external cluster. Runs only ClusterPurgeIT (@Tag("purge")). Invoke explicitly with the
+         marker(s) to match:
+         `mvn verify -P purge-it -Dskip.embedded.bootstrap=true -Djpw.purge.markers=StaticDatasetSeed`. -->
+    <profile>
+      <id>purge-it</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>${maven.failsafe.version}</version>
+            <executions>
+              <execution>
+                <id>purge-orphans</id>
+                <goals>
+                  <goal>integration-test</goal>
+                  <goal>verify</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx2048m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/tests/search/ClusterPurgeIT.java</include>
+                  </includes>
+                  <includedGroups>purge</includedGroups>
+                  <systemPropertyVariables>
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
               </execution>
             </executions>
           </plugin>

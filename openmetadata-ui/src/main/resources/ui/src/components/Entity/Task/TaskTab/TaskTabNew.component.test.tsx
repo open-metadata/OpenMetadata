@@ -350,12 +350,16 @@ jest.mock('../../../../utils/TasksUtils', () => ({
   generateOptions: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/FqnUtils', () => ({
+  ...jest.requireActual('../../../../utils/FqnUtils'),
   getNameFromFQN: jest.fn().mockReturnValue('entityName'),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Admin User'),
+}));
+
+jest.mock('../../../../utils/EntityReferenceUtils', () => ({
   getEntityReferenceListFromEntities: jest.fn().mockReturnValue([]),
 }));
 

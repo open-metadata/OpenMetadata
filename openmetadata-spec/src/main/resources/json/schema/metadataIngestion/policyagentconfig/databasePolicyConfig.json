@@ -13,11 +13,17 @@
       "enum": ["USER", "ROLE"],
       "default": "USER"
     },
-    "privilege": {
-      "description": "Privilege to grant.",
+    "accessType": {
+      "description": "Pattern of access being requested.",
       "type": "string",
-      "javaType": "org.openmetadata.schema.metadataIngestion.policyagentconfig.DatabasePrivilege",
-      "enum": ["USAGE", "SELECT", "INSERT", "UPDATE", "DELETE", "ALL"]
+      "javaType": "org.openmetadata.schema.metadataIngestion.policyagentconfig.DatabaseAccessType",
+      "enum": ["FullAccess", "ColumnLevel", "Masked"]
+    },
+    "requestedAccess": {
+      "description": "Permission level being requested.",
+      "type": "string",
+      "javaType": "org.openmetadata.schema.metadataIngestion.policyagentconfig.DatabaseRequestedAccess",
+      "enum": ["Read", "Write", "Admin"]
     }
   },
   "properties": {
@@ -47,11 +53,25 @@
       "description": "Column on which the grant is applied. Requires tableName. Supported only by connectors that allow column-level grants; ignored otherwise.",
       "$ref": "../../entity/data/table.json#/definitions/columnName"
     },
-    "privilege": {
-      "$ref": "#/definitions/privilege"
+    "columns": {
+      "description": "List of column names requested when accessType is ColumnLevel.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "accessType": {
+      "$ref": "#/definitions/accessType"
+    },
+    "requestedAccess": {
+      "$ref": "#/definitions/requestedAccess"
+    },
+    "duration": {
+      "description": "ISO 8601 duration for which access is granted (e.g. P14D). Connectors that support time-limited grants may use this; others ignore it.",
+      "$ref": "../../type/basic.json#/definitions/duration"
     }
   },
-  "required": ["principal", "databaseName", "privilege"],
+  "required": ["principal", "databaseName", "accessType", "requestedAccess"],
   "dependencies": {
     "tableName": ["schemaName"],
     "columnName": ["tableName"]

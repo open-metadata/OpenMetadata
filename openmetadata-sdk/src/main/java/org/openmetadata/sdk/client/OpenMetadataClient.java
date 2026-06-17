@@ -36,6 +36,8 @@ import org.openmetadata.sdk.services.databases.StoredProcedureService;
 import org.openmetadata.sdk.services.datacontracts.DataContractService;
 import org.openmetadata.sdk.services.domains.DataProductService;
 import org.openmetadata.sdk.services.domains.DomainService;
+import org.openmetadata.sdk.services.drives.ContextFileService;
+import org.openmetadata.sdk.services.drives.FolderService;
 import org.openmetadata.sdk.services.events.ChangeEventService;
 import org.openmetadata.sdk.services.events.EventSubscriptionService;
 import org.openmetadata.sdk.services.events.NotificationTemplateService;
@@ -48,6 +50,7 @@ import org.openmetadata.sdk.services.governance.AIGovernancePolicyService;
 import org.openmetadata.sdk.services.governance.WorkflowDefinitionService;
 import org.openmetadata.sdk.services.importexport.ImportExportAPI;
 import org.openmetadata.sdk.services.ingestion.IngestionPipelineService;
+import org.openmetadata.sdk.services.knowledge.PageService;
 import org.openmetadata.sdk.services.lineage.LineageAPI;
 import org.openmetadata.sdk.services.policies.PolicyService;
 import org.openmetadata.sdk.services.search.SearchAPI;
@@ -117,6 +120,11 @@ public class OpenMetadataClient {
   private final FileService files;
   private final SpreadsheetService spreadsheets;
   private final WorksheetService worksheets;
+
+  // Context Center
+  private final FolderService folders;
+  private final ContextFileService contextFiles;
+  private final PageService pages;
 
   // Glossary
   private final GlossaryService glossaries;
@@ -235,6 +243,11 @@ public class OpenMetadataClient {
     this.files = new FileService(httpClient);
     this.spreadsheets = new SpreadsheetService(httpClient);
     this.worksheets = new WorksheetService(httpClient);
+
+    // Initialize Context Center services
+    this.folders = new FolderService(httpClient);
+    this.contextFiles = new ContextFileService(httpClient);
+    this.pages = new PageService(httpClient);
 
     // Initialize glossary services
     this.glossaries = new GlossaryService(httpClient);
@@ -422,6 +435,19 @@ public class OpenMetadataClient {
 
   public WorksheetService worksheets() {
     return worksheets;
+  }
+
+  // Context Center Service Getters
+  public FolderService folders() {
+    return folders;
+  }
+
+  public ContextFileService contextFiles() {
+    return contextFiles;
+  }
+
+  public PageService pages() {
+    return pages;
   }
 
   // Glossary Service Getters

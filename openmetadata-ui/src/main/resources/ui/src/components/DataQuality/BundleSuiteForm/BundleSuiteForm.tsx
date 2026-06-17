@@ -54,18 +54,16 @@ import {
   addTestCasesToLogicalTestSuiteBulk,
   createTestSuites,
 } from '../../../rest/testAPI';
+import { getScheduleOptionsFromSchedules } from '../../../utils/CronExpressionUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { createScrollToErrorHandler } from '../../../utils/formPureUtils';
+import { generateFormFields } from '../../../utils/formUtils';
+import { getNameFromFQN } from '../../../utils/FqnUtils';
+import { getIngestionName } from '../../../utils/ServicePureUtils';
 import {
-  getNameFromFQN,
+  generateUUID,
   replaceAllSpacialCharWith_,
-} from '../../../utils/CommonUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
-import {
-  createScrollToErrorHandler,
-  generateFormFields,
-} from '../../../utils/formUtils';
-import { getScheduleOptionsFromSchedules } from '../../../utils/SchedularUtils';
-import { getIngestionName } from '../../../utils/ServiceUtils';
-import { generateUUID } from '../../../utils/StringsUtils';
+} from '../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
 import ScheduleIntervalV1 from '../../Settings/Services/AddIngestion/Steps/ScheduleIntervalV1';
@@ -76,7 +74,6 @@ import {
   BundleSuiteFormData,
   BundleSuiteFormProps,
 } from './BundleSuiteForm.interface';
-
 // =============================================
 // MAIN COMPONENT
 // =============================================

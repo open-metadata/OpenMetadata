@@ -412,49 +412,76 @@ export function captureReports(page: Page): CapturedReport[] {
   return captured;
 }
 
-/**
- * Opens the Tier filter dropdown on the Data Quality dashboard, selects the
- * given tier FQN, clicks Update, and waits for the first matching
- * dataQualityReport response to complete.
- */
+async function applyDashboardTagBasedFilter(
+  page: Page,
+  options: {
+    buttonName: 'Tier' | 'Tag' | 'Certification';
+    searchText: string;
+    optionFqn: string;
+  }
+): Promise<void> {
+  const { buttonName, searchText, optionFqn } = options;
+
+  await page.getByRole('button', { name: buttonName }).click();
+  await page.getByTestId('search-input').click();
+
+  const searchRes = page.waitForResponse((res) => {
+    if (!res.url().includes('/api/v1/search/query')) {
+      return false;
+    }
+    const parsed = new URL(res.url());
+    return (
+      parsed.searchParams.get('index') === 'tag' &&
+      (parsed.searchParams.get('q') ?? '').includes(`*${searchText}*`)
+    );
+  });
+  await page.getByTestId('search-input').fill(searchText);
+  await searchRes;
+
+  await page.getByTestId(optionFqn).click();
+
+  const reportRes = page.waitForResponse(
+    (res) =>
+      res.url().includes('/dataQualityReport') &&
+      res.url().includes(encodeURIComponent(optionFqn))
+  );
+  await page.getByTestId('update-btn').click();
+  await reportRes;
+}
+
 export async function applyDashboardTierFilter(
   page: Page,
   tierFqn: string
 ): Promise<void> {
-  await page.getByRole('button', { name: 'Tier' }).click();
-  await page.getByTestId('search-input').click();
-  await page.getByTestId('search-input').fill(tierFqn);
-  await page.getByTestId(tierFqn).click();
-  const apiResponse = page.waitForResponse(
-    (res) =>
-      res.url().includes('/dataQualityReport') &&
-      res.url().includes(encodeURIComponent(tierFqn))
-  );
-  await page.getByTestId('update-btn').click();
-  await apiResponse;
+  await applyDashboardTagBasedFilter(page, {
+    buttonName: 'Tier',
+    searchText: tierFqn,
+    optionFqn: tierFqn,
+  });
 }
 
-/**
- * Opens the Tag filter dropdown on the Data Quality dashboard, searches by
- * tag name, selects the option by FQN, clicks Update, and waits for the first
- * matching dataQualityReport response to complete.
- */
 export async function applyDashboardTagFilter(
   page: Page,
   tagName: string,
   tagFqn: string
 ): Promise<void> {
-  await page.getByRole('button', { name: 'Tag' }).click();
-  await page.getByTestId('search-input').click();
-  await page.getByTestId('search-input').fill(tagName);
-  await page.getByText(tagFqn).click();
-  const apiResponse = page.waitForResponse(
-    (res) =>
-      res.url().includes('/dataQualityReport') &&
-      res.url().includes(encodeURIComponent(tagFqn))
-  );
-  await page.getByTestId('update-btn').click();
-  await apiResponse;
+  await applyDashboardTagBasedFilter(page, {
+    buttonName: 'Tag',
+    searchText: tagName,
+    optionFqn: tagFqn,
+  });
+}
+
+export async function applyDashboardCertificationFilter(
+  page: Page,
+  certName: string,
+  certFqn: string
+): Promise<void> {
+  await applyDashboardTagBasedFilter(page, {
+    buttonName: 'Certification',
+    searchText: certName,
+    optionFqn: certFqn,
+  });
 }
 
 /**
@@ -462,11 +489,14 @@ export async function applyDashboardTagFilter(
  * within the [failTs-60s, failTs+120s] window.
  * Call this immediately after `addTestCaseResult` to guarantee the incident
  * document is indexed before any UI assertions.
+ * Pass `expectedStatus` to also wait until the incident reaches that resolution
+ * status (e.g. "Resolved") — useful after posting a status transition.
  */
 export async function waitForIncidentToBeIndexed(
   apiContext: APIRequestContext,
   testCaseFqn: string,
-  failTs: number
+  failTs: number,
+  expectedStatus?: string
 ): Promise<void> {
   await expect
     .poll(
@@ -479,8 +509,18 @@ export async function waitForIncidentToBeIndexed(
         const body = await res.json();
 
         return (body.data ?? []).some(
-          (i: { testCaseReference?: { fullyQualifiedName?: string } }) =>
-            i.testCaseReference?.fullyQualifiedName === testCaseFqn
+          (i: {
+            testCaseReference?: { fullyQualifiedName?: string };
+            testCaseResolutionStatusType?: string;
+          }) => {
+            if (i.testCaseReference?.fullyQualifiedName !== testCaseFqn) {
+              return false;
+            }
+
+            return expectedStatus
+              ? i.testCaseResolutionStatusType === expectedStatus
+              : true;
+          }
         );
       },
       { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }

@@ -67,6 +67,44 @@ public final class SearchUtils {
     return Collections.emptyList();
   }
 
+  /**
+   * Time-windowed overload that filters edges by observed time window.
+   * An edge is included if its [createdAt, updatedAt] interval overlaps the
+   * requested [startTime, endTime] window. Legacy edges with no timestamps bypass the filter — see
+   * {@link #edgeMatchesWindow}.
+   *
+   * @param esDoc     Source map from an ES hit
+   * @param startTime Inclusive lower bound of the window in epoch millis, or null for -∞
+   * @param endTime   Inclusive upper bound of the window in epoch millis, or null for +∞
+   * @return Edges in the window (or all edges if both bounds are null)
+   */
+  public static List<EsLineageData> getUpstreamLineageListIfExist(
+      Map<String, Object> esDoc, Long startTime, Long endTime) {
+    return getUpstreamLineageListIfExist(esDoc).stream()
+        .filter(edge -> edgeMatchesWindow(edge, startTime, endTime))
+        .collect(Collectors.toList());
+  }
+
+  private static boolean edgeMatchesWindow(EsLineageData edge, Long startTime, Long endTime) {
+    boolean matches;
+    if (edge == null) {
+      matches = false;
+    } else if (startTime == null && endTime == null) {
+      matches = true;
+    } else if (edge.getCreatedAt() == null && edge.getUpdatedAt() == null) {
+      matches = true;
+    } else {
+      Long createdAt = edge.getCreatedAt();
+      Long updatedAt = edge.getUpdatedAt();
+      Long effectiveCreatedAt = createdAt == null ? updatedAt : createdAt;
+      Long effectiveUpdatedAt = updatedAt == null ? createdAt : updatedAt;
+      boolean startOk = endTime == null || effectiveCreatedAt <= endTime;
+      boolean endOk = startTime == null || effectiveUpdatedAt >= startTime;
+      matches = startOk && endOk;
+    }
+    return matches;
+  }
+
   public static EsLineageData copyEsLineageData(EsLineageData data) {
     return new EsLineageData()
         .withDocId(data.getDocId())
@@ -330,11 +368,17 @@ public final class SearchUtils {
     return requiredFields;
   }
 
-  public static List<Object> searchAfter(String searchAfter) {
-    if (!nullOrEmpty(searchAfter)) {
-      return List.of(searchAfter.split(","));
+  /** One {@code ?search_after=v} per sort value — no in-band delimiter. */
+  public static List<Object> searchAfter(List<String> values) {
+    List<Object> result = null;
+    if (!nullOrEmpty(values)) {
+      List<String> filtered =
+          values.stream().filter(v -> !nullOrEmpty(v)).collect(Collectors.toList());
+      if (!filtered.isEmpty()) {
+        result = new ArrayList<>(filtered);
+      }
     }
-    return null;
+    return result;
   }
 
   public static List<String> sourceFields(String sourceFields) {

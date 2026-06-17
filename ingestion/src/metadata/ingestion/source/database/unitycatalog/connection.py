@@ -21,7 +21,6 @@ from urllib.parse import quote_plus
 from databricks.sdk import WorkspaceClient
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
-from sqlalchemy.exc import DatabaseError
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -36,7 +35,7 @@ from metadata.generated.schema.entity.services.connections.database.databricks.p
     PersonalAccessToken,
 )
 from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
-    UnityCatalogConnection,
+    UnityCatalogConnection as UnityCatalogConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
@@ -46,6 +45,7 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
     init_empty_connection_arguments,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.databricks.auth import get_auth_config
@@ -63,21 +63,18 @@ from metadata.ingestion.source.database.unitycatalog.queries import (
 )
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.db_utils import get_host_from_host_port
-from metadata.utils.logger import ingestion_logger
-
-logger = ingestion_logger()
 
 suppress_user_agent_entry_deprecation_log()
 
 
-def get_connection_url(connection: UnityCatalogConnection) -> str:
+def get_connection_url(connection: UnityCatalogConnectionConfig) -> str:
     url = f"{connection.scheme.value}://{connection.hostPort}"
     if connection.catalog:
         url = f"{url}?catalog={quote_plus(connection.catalog)}"
     return url
 
 
-def get_connection(connection: UnityCatalogConnection) -> WorkspaceClient:
+def get_connection(connection: UnityCatalogConnectionConfig) -> WorkspaceClient:
     """
     Create connection
     """
@@ -95,7 +92,7 @@ def get_connection(connection: UnityCatalogConnection) -> WorkspaceClient:
     return WorkspaceClient(host=get_host_from_host_port(connection.hostPort), **client_params)
 
 
-def get_sqlalchemy_connection(connection: UnityCatalogConnection) -> Engine:
+def get_sqlalchemy_connection(connection: UnityCatalogConnectionConfig) -> Engine:
     """
     Create sqlalchemy connection
     """
@@ -121,95 +118,101 @@ def get_sqlalchemy_connection(connection: UnityCatalogConnection) -> Engine:
     return engine
 
 
-def test_connection(
-    metadata: OpenMetadata,
-    connection: WorkspaceClient,
-    service_connection: UnityCatalogConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
-) -> TestConnectionResult:
-    """
-    Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
-    """
-    table_obj = DatabricksTable()
-    engine = get_sqlalchemy_connection(service_connection)
+class UnityCatalogConnection(BaseConnection[UnityCatalogConnectionConfig, WorkspaceClient]):
+    def _get_client(self) -> WorkspaceClient:
+        return get_connection(self.service_connection)
 
-    def test_database_query(engine: Engine, statement: str):
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
         """
-        Method used to execute the given query and fetch a result
-        to test if user has access to the tables specified
-        in the sql statement
+        Test connection. This can be executed either as part
+        of a metadata workflow or during an Automation Workflow
         """
-        try:
-            with engine.connect() as connection:  # noqa: PLR1704
-                connection.execute(text(statement)).fetchone()
-        except DatabaseError as soe:
-            logger.debug(f"Failed to fetch catalogs due to: {soe}")
+        connection = self.client
+        service_connection = self.service_connection
 
-    def get_catalogs(connection: WorkspaceClient, table_obj: DatabricksTable):
-        for catalog in connection.catalogs.list():
-            if catalog.name != "__databricks_internal":
-                table_obj.catalog_name = catalog.name
-                return
-
-    def get_schemas(connection: WorkspaceClient, table_obj: DatabricksTable):
-        for schema in connection.schemas.list(catalog_name=table_obj.catalog_name):
-            if schema.name:
-                table_obj.schema_name = schema.name
-                return
-
-    def get_tables(connection: WorkspaceClient, table_obj: DatabricksTable):
-        if table_obj.catalog_name and table_obj.schema_name:
-            for table in connection.tables.list(catalog_name=table_obj.catalog_name, schema_name=table_obj.schema_name):
-                table_obj.name = table.name
-                break
-
-    def get_tags(service_connection: UnityCatalogConnection, table_obj: DatabricksTable):
+        table_obj = DatabricksTable()
         engine = get_sqlalchemy_connection(service_connection)
-        with engine.connect() as connection:  # noqa: PLR1704
-            connection.execute(
-                text(UNITY_CATALOG_GET_CATALOGS_TAGS.format(database=table_obj.catalog_name).replace(";", " limit 1;"))
-            )
-            connection.execute(
-                text(
-                    UNITY_CATALOG_GET_ALL_SCHEMA_TAGS.format(database=table_obj.catalog_name).replace(";", " limit 1;")
-                )
-            )
-            connection.execute(
-                text(
-                    UNITY_CATALOG_GET_ALL_TABLE_TAGS.format(
-                        database=table_obj.catalog_name, schema=table_obj.schema_name
-                    ).replace(";", " limit 1;")
-                )
-            )
-            connection.execute(
-                text(
-                    UNITY_CATALOG_GET_ALL_TABLE_COLUMNS_TAGS.format(
-                        database=table_obj.catalog_name, schema=table_obj.schema_name
-                    ).replace(";", " limit 1;")
-                )
-            )
 
-    def test_lineage_tables(engine: Engine):
-        with engine.connect() as conn:
-            conn.execute(text(UNITY_CATALOG_TEST_TABLE_LINEAGE)).fetchone()
-            conn.execute(text(UNITY_CATALOG_TEST_COLUMN_LINEAGE)).fetchone()
+        def get_catalogs(connection: WorkspaceClient, table_obj: DatabricksTable):
+            for catalog in connection.catalogs.list():
+                if catalog.name != "__databricks_internal":
+                    table_obj.catalog_name = catalog.name
+                    return
 
-    test_fn = {
-        "CheckAccess": connection.catalogs.list,
-        "GetDatabases": partial(get_catalogs, connection, table_obj),
-        "GetSchemas": partial(get_schemas, connection, table_obj),
-        "GetTables": partial(get_tables, connection, table_obj),
-        "GetViews": partial(get_tables, connection, table_obj),
-        "GetQueries": partial(test_lineage_tables, engine),
-        "GetTags": partial(get_tags, service_connection, table_obj),
-    }
+        def get_schemas(connection: WorkspaceClient, table_obj: DatabricksTable):
+            for schema in connection.schemas.list(catalog_name=table_obj.catalog_name):  # pyright: ignore[reportArgumentType]
+                if schema.name:
+                    table_obj.schema_name = schema.name
+                    return
 
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=service_connection.connectionTimeout or timeout_seconds,
-    )
+        def get_tables(connection: WorkspaceClient, table_obj: DatabricksTable):
+            if table_obj.catalog_name and table_obj.schema_name:
+                # Only one table is needed to validate access; max_results=1 avoids
+                # downloading the schema's full table list in a single response.
+                for table in connection.tables.list(
+                    catalog_name=table_obj.catalog_name,
+                    schema_name=table_obj.schema_name,
+                    max_results=1,
+                ):
+                    table_obj.name = table.name
+                    break
+
+        def get_tags(service_connection: UnityCatalogConnectionConfig, table_obj: DatabricksTable):
+            engine = get_sqlalchemy_connection(service_connection)
+            with engine.connect() as connection:
+                connection.execute(
+                    text(
+                        UNITY_CATALOG_GET_CATALOGS_TAGS.format(database=table_obj.catalog_name).replace(
+                            ";", " limit 1;"
+                        )
+                    )
+                )
+                connection.execute(
+                    text(
+                        UNITY_CATALOG_GET_ALL_SCHEMA_TAGS.format(database=table_obj.catalog_name).replace(
+                            ";", " limit 1;"
+                        )
+                    )
+                )
+                connection.execute(
+                    text(
+                        UNITY_CATALOG_GET_ALL_TABLE_TAGS.format(
+                            database=table_obj.catalog_name, schema=table_obj.schema_name
+                        ).replace(";", " limit 1;")
+                    )
+                )
+                connection.execute(
+                    text(
+                        UNITY_CATALOG_GET_ALL_TABLE_COLUMNS_TAGS.format(
+                            database=table_obj.catalog_name, schema=table_obj.schema_name
+                        ).replace(";", " limit 1;")
+                    )
+                )
+
+        def test_lineage_tables(engine: Engine):
+            with engine.connect() as conn:
+                conn.execute(text(UNITY_CATALOG_TEST_TABLE_LINEAGE)).fetchone()
+                conn.execute(text(UNITY_CATALOG_TEST_COLUMN_LINEAGE)).fetchone()
+
+        test_fn = {
+            "CheckAccess": connection.catalogs.list,
+            "GetDatabases": partial(get_catalogs, connection, table_obj),
+            "GetSchemas": partial(get_schemas, connection, table_obj),
+            "GetTables": partial(get_tables, connection, table_obj),
+            "GetViews": partial(get_tables, connection, table_obj),
+            "GetQueries": partial(test_lineage_tables, engine),
+            "GetTags": partial(get_tags, service_connection, table_obj),
+        }
+
+        return test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
+            automation_workflow=automation_workflow,
+            timeout_seconds=service_connection.connectionTimeout or timeout_seconds,
+        )

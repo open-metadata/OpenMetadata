@@ -10,6 +10,7 @@ import static org.openmetadata.schema.type.Function.ParameterType.SPECIFIC_INDEX
 import static org.openmetadata.service.Entity.DATA_CONTRACT;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 import static org.openmetadata.service.Entity.PIPELINE;
+import static org.openmetadata.service.Entity.TASK;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
@@ -27,6 +28,7 @@ import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.ResultSummary;
@@ -34,16 +36,21 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.StatusType;
+import org.openmetadata.schema.type.TaskComment;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class AlertsRuleEvaluator {
@@ -127,7 +134,7 @@ public class AlertsRuleEvaluator {
       name = "matchAnyEntityFqn",
       input = "List of comma separated fully qualified entity names",
       description =
-          "Returns true if the change event entity's fully qualified name equals any of the listed FQNs.",
+          "Returns true if the change event entity's fully qualified name equals, or is a descendant of, any of the listed FQNs.",
       examples = {
         "matchAnyEntityFqn({'service.database.schema.table1', 'service.database.schema.table2'})"
       },
@@ -143,7 +150,7 @@ public class AlertsRuleEvaluator {
     }
 
     EntityInterface entity = getEntity(changeEvent);
-    if (entityFqns.contains(entity.getFullyQualifiedName())) {
+    if (matchesFqnOrDescendant(entity.getFullyQualifiedName(), entityFqns)) {
       return true;
     }
 
@@ -156,6 +163,20 @@ public class AlertsRuleEvaluator {
     }
 
     return false;
+  }
+
+  // Matches the entity FQN exactly or as a descendant (segment-anchored via isParent, no regex).
+  private boolean matchesFqnOrDescendant(String entityFqn, List<String> entityFqns) {
+    boolean matched = false;
+    if (entityFqn != null) {
+      for (String listedFqn : entityFqns) {
+        if (entityFqn.equals(listedFqn) || FullyQualifiedName.isParent(entityFqn, listedFqn)) {
+          matched = true;
+          break;
+        }
+      }
+    }
+    return matched;
   }
 
   @Function(
@@ -359,8 +380,12 @@ public class AlertsRuleEvaluator {
       return false;
     }
     String entityUpdatedBy = changeEvent.getUserName();
-    User user = Entity.getEntityByName(Entity.USER, entityUpdatedBy, "id", Include.NON_DELETED);
-    return user.getIsBot();
+    try {
+      User user = Entity.getEntityByName(Entity.USER, entityUpdatedBy, "id", Include.NON_DELETED);
+      return Boolean.TRUE.equals(user.getIsBot());
+    } catch (EntityNotFoundException e) {
+      return false;
+    }
   }
 
   @Function(
@@ -537,8 +562,9 @@ public class AlertsRuleEvaluator {
       return false;
     }
 
-    // Filter does not apply to Thread Change Events
-    if (!changeEvent.getEntityType().equals(THREAD)) {
+    boolean isTask = TASK.equals(changeEvent.getEntityType());
+    // Filter applies to conversation (Thread) and incident/task (Task) change events
+    if (!THREAD.equals(changeEvent.getEntityType()) && !isTask) {
       return false;
     }
 
@@ -546,8 +572,12 @@ public class AlertsRuleEvaluator {
       return true;
     }
 
-    Thread thread = getThread(changeEvent);
+    List<MessageParser.EntityLink> mentions =
+        isTask ? getTaskMentions(getTask(changeEvent)) : getThreadMentions(getThread(changeEvent));
+    return matchesMentionedUserOrTeam(mentions, usersOrTeamName);
+  }
 
+  private List<MessageParser.EntityLink> getThreadMentions(Thread thread) {
     List<MessageParser.EntityLink> mentions;
     if (thread.getPostsCount() == 0) {
       mentions = MessageParser.getEntityLinks(thread.getMessage());
@@ -555,6 +585,47 @@ public class AlertsRuleEvaluator {
       Post latestPost = thread.getPosts().get(thread.getPostsCount() - 1);
       mentions = MessageParser.getEntityLinks(latestPost.getMessage());
     }
+    return mentions;
+  }
+
+  // A mention notification must fire only for the comment that triggered this event. addComment
+  // records the newly-added comment in the change delta, so we parse exactly that text — never
+  // earlier comments (which would re-notify their mentionees on every reply). Non-comment task
+  // updates (assignees/status) carry no comment delta, so nobody is newly mentioned.
+  public static List<MessageParser.EntityLink> getTaskMentions(Task task) {
+    String addedComment = addedCommentMessage(task.getChangeDescription());
+    if (addedComment != null) {
+      return MessageParser.getEntityLinks(addedComment);
+    }
+    if (task.getChangeDescription() != null) {
+      return List.of();
+    }
+    // No change delta (legacy/unknown event): fall back to the latest comment, else the
+    // description.
+    List<TaskComment> comments = task.getComments();
+    if (!nullOrEmpty(comments) && comments.get(comments.size() - 1).getMessage() != null) {
+      return MessageParser.getEntityLinks(comments.get(comments.size() - 1).getMessage());
+    }
+    return task.getDescription() == null
+        ? List.of()
+        : MessageParser.getEntityLinks(task.getDescription());
+  }
+
+  private static String addedCommentMessage(ChangeDescription change) {
+    if (change == null) {
+      return null;
+    }
+    for (FieldChange field : listOrEmpty(change.getFieldsAdded())) {
+      if (TaskRepository.FIELD_COMMENTS.equals(field.getName())
+          && !nullOrEmpty(field.getNewValue())) {
+        return field.getNewValue().toString();
+      }
+    }
+    return null;
+  }
+
+  private boolean matchesMentionedUserOrTeam(
+      List<MessageParser.EntityLink> mentions, List<String> usersOrTeamName) {
     for (MessageParser.EntityLink entityLink : mentions) {
       String fqn = entityLink.getEntityFQN();
       if (USER.equals(entityLink.getEntityType())) {
@@ -586,6 +657,22 @@ public class AlertsRuleEvaluator {
           String.format(
               "Change Event Data Asset is not an Thread %s",
               JsonUtils.pojoToJson(event.getEntity())));
+    }
+  }
+
+  public static Task getTask(ChangeEvent event) {
+    try {
+      Task task;
+      if (event.getEntity() instanceof String str) {
+        task = JsonUtils.readValue(str, Task.class);
+      } else {
+        task = JsonUtils.convertValue(event.getEntity(), Task.class);
+      }
+      return task;
+    } catch (Exception ex) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Change Event Data Asset is not a Task %s", JsonUtils.pojoToJson(event.getEntity())));
     }
   }
 

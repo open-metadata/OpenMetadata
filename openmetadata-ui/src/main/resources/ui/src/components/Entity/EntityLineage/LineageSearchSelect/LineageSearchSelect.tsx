@@ -27,8 +27,8 @@ import { useLineageProvider } from '../../../../context/LineageProvider/LineageP
 import { LineagePlatformView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { Column } from '../../../../generated/entity/data/table';
 import { useLineageStore } from '../../../../hooks/useLineageStore';
-import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageNodeUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 

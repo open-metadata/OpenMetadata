@@ -166,8 +166,7 @@ def count_severities(libs, by_rule):
     for rid, items in by_rule.items():
         for uri, level, lines in items:
             mapped = {"error": "high", "warning": "medium", "note": "low"}.get(level, "medium")
-            # Count one per (rule, file, level) group to match `total` in collect_code.
-            counts[mapped] += 1
+            counts[mapped] += 1  # count locations to match render_code_md total
     return counts
 
 
@@ -226,13 +225,19 @@ def main():
 
     if args.slack_file:
         header = (
-            f"*🛡️ Snyk Security Scan* — 🚨 {totals['critical']} · 🔴 {totals['high']} · "
-            f"🟠 {totals['medium']} · 🟡 {totals['low']}"
+            f"*🛡️ Snyk Security Scan*\n"
+            f"🚨 {totals['critical']} critical  ·  🔴 {totals['high']} high  ·  "
+            f"🟠 {totals['medium']} medium  ·  🟡 {totals['low']} low"
         )
         body = "\n\n".join([header] + slack_parts[1:])
-        # Slack hard limit 4000 chars per text field; truncate safely.
-        if len(body) > 3800:
-            body = body[:3750] + "\n…truncated. See Job Summary for full report."
+        # Slack section block text limit 3000 chars; leave headroom for shell-added header lines.
+        # Truncate at the last newline before the limit so we don't cut a Slack mrkdwn link
+        # (`<url|text>`) or a multi-codepoint emoji sequence mid-token.
+        if len(body) > 2800:
+            cut = body.rfind("\n", 0, 2750)
+            if cut < 0:
+                cut = 2750
+            body = body[:cut].rstrip() + "\n…truncated. See Job Summary for full report."
         with open(args.slack_file, "w") as f:
             f.write(body)
 

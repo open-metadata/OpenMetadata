@@ -10,20 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render } from '@testing-library/react';
 import { AxiosError } from 'axios';
-import { ROUTES } from 'constants/constants';
-import { Asset } from 'generated/attachments/asset';
-import { PageType } from 'interface/knowledge-center.interface';
-import { downloadAsset } from 'rest/assetAPI';
+import { ROUTES } from '../constants/constants';
+import type { ContextFile } from '../generated/entity/data/contextFile';
+import { PageType } from '../interface/knowledge-center.interface';
+import { downloadDriveFile } from '../rest/assetAPI';
 import {
-  assetToDocumentItem,
-  extensionToFileType,
   formatBytes,
-  getFileTypeIcon,
   handleAssetDownload,
   knowledgePageToArticleItem,
-} from './ContextCenterUtils';
+} from './ContextCenterPureUtils';
 import { showErrorToast } from './ToastUtils';
 
 jest.mock('./ToastUtils', () => ({
@@ -31,7 +27,7 @@ jest.mock('./ToastUtils', () => ({
 }));
 
 jest.mock('../rest/assetAPI', () => ({
-  downloadAsset: jest.fn(),
+  downloadDriveFile: jest.fn(),
 }));
 
 jest.mock('./KnowledgePageUtils', () => ({
@@ -41,36 +37,6 @@ jest.mock('./KnowledgePageUtils', () => ({
 jest.mock('crypto-random-string-with-promisify-polyfill', () =>
   jest.fn(() => 'random123')
 );
-
-describe('extensionToFileType', () => {
-  it('should return doc for doc/docx files', () => {
-    expect(extensionToFileType('test.doc')).toBe('doc');
-    expect(extensionToFileType('test.docx')).toBe('doc');
-  });
-
-  it('should return pdf for pdf files', () => {
-    expect(extensionToFileType('test.pdf')).toBe('pdf');
-  });
-
-  it('should return xls for spreadsheet files', () => {
-    expect(extensionToFileType('test.xls')).toBe('xls');
-    expect(extensionToFileType('test.xlsx')).toBe('xls');
-    expect(extensionToFileType('test.csv')).toBe('xls');
-  });
-
-  it('should return image for image files', () => {
-    expect(extensionToFileType('test.png')).toBe('image');
-    expect(extensionToFileType('test.jpeg')).toBe('image');
-  });
-
-  it('should return other for unsupported files', () => {
-    expect(extensionToFileType('test.zip')).toBe('other');
-  });
-
-  it('should return other when extension is missing', () => {
-    expect(extensionToFileType('test')).toBe('other');
-  });
-});
 
 describe('formatBytes', () => {
   it('should return empty string for undefined', () => {
@@ -87,28 +53,6 @@ describe('formatBytes', () => {
 
   it('should format MB correctly', () => {
     expect(formatBytes(5 * 1024 * 1024)).toBe('5.0 MB');
-  });
-});
-
-describe('assetToDocumentItem', () => {
-  it('should transform asset into UploadedDocumentItem', () => {
-    const asset = {
-      id: '1',
-      fileName: 'sample.pdf',
-      size: 2048,
-      updatedAt: 1778756959299,
-      updatedBy: 'admin',
-    };
-
-    expect(assetToDocumentItem(asset as Asset)).toEqual({
-      fileType: 'pdf',
-      id: '1',
-      name: 'sample.pdf',
-      sizeLabel: '2.0 KB',
-      status: 'processed',
-      updatedAt: 1778756959299,
-      updatedBy: 'admin',
-    });
   });
 });
 
@@ -155,18 +99,6 @@ describe('knowledgePageToArticleItem', () => {
   });
 });
 
-describe('getFileTypeIcon', () => {
-  it('should render default icon for unknown type', () => {
-    const { container } = render(getFileTypeIcon('unknown'));
-
-    expect(container.querySelector('svg')).toBeInTheDocument();
-  });
-
-  it('should render icon component for pdf type', () => {
-    expect(getFileTypeIcon('pdf')).toBeTruthy();
-  });
-});
-
 describe('handleAssetDownload', () => {
   const mockFile = {
     id: '123',
@@ -183,7 +115,7 @@ describe('handleAssetDownload', () => {
   });
 
   it('should download asset successfully', async () => {
-    (downloadAsset as jest.Mock).mockResolvedValue(mockBlob);
+    (downloadDriveFile as jest.Mock).mockResolvedValue(mockBlob);
 
     const clickMock = jest.fn();
     const removeMock = jest.fn();
@@ -197,9 +129,9 @@ describe('handleAssetDownload', () => {
       remove: removeMock,
     } as unknown as HTMLAnchorElement);
 
-    await handleAssetDownload(mockFile as any);
+    await handleAssetDownload(mockFile as unknown as ContextFile);
 
-    expect(downloadAsset).toHaveBeenCalledWith('123');
+    expect(downloadDriveFile).toHaveBeenCalledWith('123');
 
     expect(URL.createObjectURL).toHaveBeenCalledWith(mockBlob);
 
@@ -215,9 +147,9 @@ describe('handleAssetDownload', () => {
   it('should show error toast when download fails', async () => {
     const error = new Error('Download failed');
 
-    (downloadAsset as jest.Mock).mockRejectedValue(error);
+    (downloadDriveFile as jest.Mock).mockRejectedValue(error);
 
-    await handleAssetDownload(mockFile as any);
+    await handleAssetDownload(mockFile as unknown as ContextFile);
 
     expect(showErrorToast).toHaveBeenCalledWith(error as AxiosError);
   });

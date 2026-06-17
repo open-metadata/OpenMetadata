@@ -26,9 +26,8 @@ import {
   Typography,
 } from 'antd';
 import classNames from 'classnames';
-import cronstrue from 'cronstrue/i18n';
 import { isEmpty } from 'lodash';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DAY_IN_MONTH_OPTIONS,
@@ -45,16 +44,16 @@ import {
   FieldTypes,
   FormItemLayout,
 } from '../../../../../interface/FormUtils.interface';
-import { generateFormFields } from '../../../../../utils/formUtils';
-import { getCurrentLocaleForConstrue } from '../../../../../utils/i18next/i18nextUtil';
 import {
   cronValidator,
   getCron,
   getDefaultScheduleValue,
-  getHourMinuteSelect,
   getStateValue,
   getUpdatedStateFromFormState,
-} from '../../../../../utils/SchedularUtils';
+} from '../../../../../utils/CronExpressionUtils';
+import { generateFormFields } from '../../../../../utils/formUtils';
+import { getCurrentLocaleForConstrue } from '../../../../../utils/i18next/i18nextUtil';
+import { getHourMinuteSelect } from '../../../../../utils/SchedularUtils';
 import './schedule-interval.less';
 import {
   ScheduleIntervalProps,
@@ -104,6 +103,32 @@ const ScheduleInterval = <T,>({
   );
   const [form] = Form.useForm<StateValue>();
   const { cron: cronString, selectedPeriod, dow, dom } = state;
+  const [cronHumanText, setCronHumanText] = useState<string>('');
+
+  useEffect(() => {
+    if (!cronString) {
+      setCronHumanText('');
+
+      return;
+    }
+    let cancelled = false;
+    import('cronstrue/i18n').then((m) => {
+      if (!cancelled) {
+        setCronHumanText(
+          m.default.toString(cronString, {
+            use24HourTimeFormat: false,
+            verbose: true,
+            locale: getCurrentLocaleForConstrue(),
+            throwExceptionOnParseError: false,
+          })
+        );
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cronString]);
 
   const {
     showMinuteSelect,
@@ -369,16 +394,7 @@ const ScheduleInterval = <T,>({
                 </Form.Item>
               </Col>
 
-              {cronString && (
-                <Col span={24}>
-                  {cronstrue.toString(cronString, {
-                    use24HourTimeFormat: false,
-                    verbose: true,
-                    locale: getCurrentLocaleForConstrue(), // To get localized string
-                    throwExceptionOnParseError: false,
-                  })}
-                </Col>
-              )}
+              {cronString && <Col span={24}>{cronHumanText}</Col>}
 
               {isEmpty(cronString) && (
                 <Col span={24}>

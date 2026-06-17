@@ -25,6 +25,7 @@
  */
 
 import { cloneDeep, uniqBy } from 'lodash';
+import { TaskAvailableTransition } from '../generated/entity/tasks/task';
 import { TagLabel } from '../generated/type/tagLabel';
 import {
   JsonSchemaObject,
@@ -33,7 +34,6 @@ import {
 } from '../rest/taskFormSchemasAPI';
 import {
   Task,
-  TaskAvailableTransition,
   TaskCategory,
   TaskEntityType,
   TaskPayload,

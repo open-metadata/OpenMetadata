@@ -1368,14 +1368,15 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   }
 
   /**
-   * Forces the {@code batchDeleteChildren} / {@code processDeletionBatch} path:
-   * {@code deleteChildren} only takes the batch path when {@code hardDelete=true} AND
-   * {@code children.size() > 100}. Previously that path pre-deleted relationships in
-   * two batched queries before iterating {@code cleanup()} per child, and swallowed any
-   * per-child exception in the loop — so a single failed cleanup left an entity row
-   * alive with all its relationship rows already wiped (orphan with multi-segment FQN).
-   * The fix routes everything through {@code cleanup()} per entity and lets exceptions
-   * propagate. 101 is one above the 100-child threshold that gates the batch path.
+   * Exercises the {@code bulkHardDeleteSubtree} path that replaced the legacy
+   * {@code batchDeleteChildren} / {@code processDeletionBatch} flow. The legacy path opened
+   * an independent JDBI transaction per child via {@code cleanup()} and could leave an
+   * entity row alive with its relationship rows wiped (orphan with multi-segment FQN) when
+   * a per-child cleanup failed mid-loop. The replacement runs the entire subtree in a
+   * single {@code @Transaction} that rolls back atomically on any failure. 101 is one above
+   * the size that the legacy implementation gated its batch path on — keeping the test
+   * value pins the regression scenario in place even though the gating threshold no longer
+   * exists in the code.
    */
   @Test
   void test_recursiveHardDelete_largeBatch_leavesNoOrphans(TestNamespace ns) {

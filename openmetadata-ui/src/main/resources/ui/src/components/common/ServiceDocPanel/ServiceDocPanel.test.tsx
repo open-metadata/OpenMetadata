@@ -15,10 +15,8 @@ import { NodeViewProps } from '@tiptap/core';
 import React from 'react';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { fetchMarkdownFile } from '../../../rest/miscAPI';
-import {
-  getActiveFieldNameForAppDocs,
-  processDocMarkdown,
-} from '../../../utils/ServiceUtils';
+import { getActiveFieldNameForAppDocs } from '../../../utils/ServicePureUtils';
+import { processDocMarkdown } from '../../../utils/ServiceUtils';
 import CodeBlockComponent from '../../BlockEditor/Extensions/CodeBlock/CodeBlockComponent';
 import ServiceDocPanel from './ServiceDocPanel';
 
@@ -50,8 +48,11 @@ jest.mock('../../../rest/miscAPI', () => ({
   fetchMarkdownFile: jest.fn(),
 }));
 
-jest.mock('../../../utils/ServiceUtils', () => ({
+jest.mock('../../../utils/ServicePureUtils', () => ({
   getActiveFieldNameForAppDocs: jest.fn(),
+}));
+
+jest.mock('../../../utils/ServiceUtils', () => ({
   processDocMarkdown: jest.fn((content: string) => content),
 }));
 
@@ -232,6 +233,60 @@ describe('ServiceDocPanel Component', () => {
       await waitFor(() => {
         expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
           '$$note\nsome note\n$$'
+        );
+      });
+    });
+  });
+
+  describe('Brand Name Replacement', () => {
+    const originalEnv = process.env;
+
+    afterEach(() => {
+      process.env = originalEnv;
+    });
+
+    it('should replace OpenMetadata with BRAND_NAME when env var is set', async () => {
+      process.env = { ...originalEnv, BRAND_NAME: 'Collate' };
+      mockFetchMarkdownFile.mockResolvedValue(
+        'Connect to OpenMetadata using OpenMetadata SDK'
+      );
+
+      render(<ServiceDocPanel {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          'Connect to Collate using Collate SDK'
+        );
+      });
+    });
+
+    it('should keep OpenMetadata when BRAND_NAME env var is not set', async () => {
+      process.env = { ...originalEnv };
+      delete process.env.BRAND_NAME;
+      mockFetchMarkdownFile.mockResolvedValue(
+        'Connect to OpenMetadata using OpenMetadata SDK'
+      );
+
+      render(<ServiceDocPanel {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          'Connect to OpenMetadata using OpenMetadata SDK'
+        );
+      });
+    });
+
+    it('should replace all occurrences of OpenMetadata with BRAND_NAME', async () => {
+      process.env = { ...originalEnv, BRAND_NAME: 'MyBrand' };
+      mockFetchMarkdownFile.mockResolvedValue(
+        'OpenMetadata is great. Use OpenMetadata for metadata management.'
+      );
+
+      render(<ServiceDocPanel {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          'MyBrand is great. Use MyBrand for metadata management.'
         );
       });
     });

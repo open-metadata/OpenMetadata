@@ -32,27 +32,29 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreTopic } from '../../../rest/topicsAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../utils/EntityUtils';
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtilsPure';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
 } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
   createTagObject,
   updateCertificationTag,
   updateTierTag,
-} from '../../../utils/TagsUtils';
+} from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import topicClassBase from '../../../utils/TopicClassBase';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -72,7 +74,6 @@ import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interfa
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { TopicDetailsProps } from './TopicDetails.interface';
-
 const TopicDetails: React.FC<TopicDetailsProps> = ({
   updateTopicDetailsState,
   topicDetails,
@@ -250,6 +251,22 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const getEntityFeedCount = () =>
     getFeedCounts(EntityType.TOPIC, decodedTopicFQN, handleFeedCount);
 
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedTopicFQN) {
+      fetchEntityTaskCountsInto(decodedTopicFQN, setFeedCount);
+    }
+  }, [decodedTopicFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedTopicFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.TOPIC,
+        decodedTopicFQN,
+        setFeedCount
+      );
+    }
+  }, [decodedTopicFQN]);
+
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
@@ -303,7 +320,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   );
 
   useEffect(() => {
-    getEntityFeedCount();
+    fetchTaskCounts();
+    fetchActivityCount();
   }, [topicPermissions, decodedTopicFQN]);
 
   const tabs = useMemo(() => {

@@ -75,7 +75,7 @@ import {
   getCustomizeColumnDetails,
   getReorderedColumns,
 } from '../../../utils/CustomizeColumnUtils';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import Loader from '../Loader/Loader';
 import NextPrevious from '../NextPrevious/NextPrevious';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
@@ -533,7 +533,11 @@ const TableV2 = <T extends object>(
 
   return (
     <div
-      className={classNames('table-container', rest.containerClassName)}
+      className={classNames(
+        'table-container',
+        'tw:[&_tbody_tr:hover_td]:bg-secondary',
+        rest.containerClassName
+      )}
       ref={ref}>
       <div
         className={classNames('p-x-md', {

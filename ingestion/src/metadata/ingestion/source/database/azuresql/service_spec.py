@@ -1,3 +1,4 @@
+from metadata.ingestion.source.database.azuresql.connection import AzureSQLConnection
 from metadata.ingestion.source.database.azuresql.lineage import AzuresqlLineageSource
 from metadata.ingestion.source.database.azuresql.metadata import AzuresqlSource
 from metadata.ingestion.source.database.azuresql.usage import AzuresqlUsageSource
@@ -9,4 +10,5 @@ ServiceSpec = DefaultDatabaseSpec(
     lineage_source_class=AzuresqlLineageSource,
     usage_source_class=AzuresqlUsageSource,
     sampler_class=AzureSQLSampler,
+    connection_class=AzureSQLConnection,  # pyright: ignore[reportArgumentType]
 )

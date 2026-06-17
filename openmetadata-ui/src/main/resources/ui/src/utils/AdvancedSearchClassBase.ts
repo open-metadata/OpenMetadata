@@ -13,18 +13,18 @@
 
 import {
   AntdConfig,
-  AsyncFetchListValuesResult,
-  BasicConfig,
-  Field,
-  Fields,
-  ListItem,
-  ListValues,
-  SelectFieldSettings,
+  type AsyncFetchListValuesResult,
+  type BasicConfig,
+  type Field,
+  type Fields,
+  type ListItem,
+  type ListValues,
+  type SelectFieldSettings,
 } from '@react-awesome-query-builder/antd';
 import { debounce, isEmpty, sortBy, toLower } from 'lodash';
 import {
-  CustomPropertyEnumConfig,
   SearchOutputType,
+  type CustomPropertyEnumConfig,
 } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import {
   CP_TYPE_WITHOUT_KEYWORD_FIELD,
@@ -42,21 +42,18 @@ import {
   SuggestionField,
 } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { Config } from '../generated/api/data/createCustomProperty';
+import type { Config } from '../generated/api/data/createCustomProperty';
 import { EntityStatus } from '../generated/entity/data/searchIndex';
-import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
+import type { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
-import {
-  getCustomPropertyAdvanceSearchEnumOptions,
-  renderAdvanceSearchButtons,
-} from './AdvancedSearchUtils';
+import { getCustomPropertyAdvanceSearchEnumOptions } from './AdvancedSearchPureUtils';
+import { renderAdvanceSearchButtons } from './AdvancedSearchUtils';
 import { getCustomPropertyMomentFormat } from './CustomProperty.utils';
 import { buildTermQuery } from './elasticsearchQueryBuilder';
-import { getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
 import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
-import { parseBucketsData } from './SearchUtils';
-
+import { parseBucketsData } from './SearchPureUtils';
 type OMField = Field & { __omPropertyType: CustomPropertySummary['type'] };
 
 class AdvancedSearchClassBase {
@@ -1124,6 +1121,31 @@ class AdvancedSearchClassBase {
       : {};
   };
 
+  // columns.tags.tagFQN is only present in indices that have a columns field,
+  // so we gate it the same way as getColumnConfig
+  public getColumnTagConfig = (entitySearchIndex: SearchIndex[]) => {
+    const shouldAddField = entitySearchIndex.every((index) =>
+      SEARCH_INDICES_WITH_COLUMNS_FIELD.includes(index)
+    );
+
+    return shouldAddField
+      ? {
+          [EntityFields.COLUMN_TAG]: {
+            label: t('label.column-tag-plural'),
+            type: 'select',
+            mainWidgetProps: this.mainWidgetProps,
+            fieldSettings: {
+              asyncFetch: this.autocomplete({
+                searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY_TERM],
+                entityField: EntityFields.FULLY_QUALIFIED_NAME,
+              }),
+              useAsyncSearch: true,
+            },
+          },
+        }
+      : {};
+  };
+
   /**
    * Get entity specific fields for the query builder
    */
@@ -1238,6 +1260,7 @@ class AdvancedSearchClassBase {
       ...(shouldAddServiceField ? serviceQueryBuilderFields : {}),
       ...this.getEntitySpecificQueryBuilderFields(entitySearchIndex),
       ...this.getColumnConfig(entitySearchIndex),
+      ...this.getColumnTagConfig(entitySearchIndex),
     };
 
     // Sort the fields according to the label

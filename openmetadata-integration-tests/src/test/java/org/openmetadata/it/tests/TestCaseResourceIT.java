@@ -35,6 +35,7 @@ import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.tests.CreateTestCase;
+import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
@@ -44,6 +45,7 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -1661,6 +1663,132 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void test_deleteTableCascadesTestSuiteAndTestCases(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase firstCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("cascade_first"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    TestCase secondCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("cascade_second"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "200")
+            .create();
+
+    TestCase loaded = client.testCases().get(firstCase.getId().toString(), "testSuite");
+    assertNotNull(loaded.getTestSuite(), "Test case must have an executable test suite");
+    String testSuiteId = loaded.getTestSuite().getId().toString();
+
+    Map<String, String> params = new HashMap<>();
+    params.put("hardDelete", "true");
+    params.put("recursive", "true");
+    client.tables().delete(table.getId().toString(), params);
+
+    assertThrows(
+        Exception.class,
+        () -> getEntity(firstCase.getId().toString()),
+        "First test case should be deleted along with the table");
+    assertThrows(
+        Exception.class,
+        () -> getEntity(secondCase.getId().toString()),
+        "Second test case should be deleted along with the table");
+    assertThrows(
+        Exception.class,
+        () -> client.testSuites().get(testSuiteId),
+        "Executable test suite should be deleted along with the table");
+  }
+
+  @Test
+  void test_listTestCasesReturnsTestSuiteFieldAfterCascade(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table tableA = createTable(ns);
+    Table tableB = createTable(ns);
+
+    TestCaseBuilder.create(client)
+        .name(ns.prefix("listing_tolerance_a"))
+        .forTable(tableA)
+        .testDefinition("tableRowCountToEqual")
+        .parameter("value", "100")
+        .create();
+
+    TestCase keepCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("listing_tolerance_b"))
+            .forTable(tableB)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "200")
+            .create();
+
+    Map<String, String> params = new HashMap<>();
+    params.put("hardDelete", "true");
+    params.put("recursive", "true");
+    client.tables().delete(tableA.getId().toString(), params);
+
+    String entityLink = String.format("<#E::table::%s>", tableB.getFullyQualifiedName());
+    ListResponse<TestCase> listed =
+        client
+            .testCases()
+            .list(
+                new ListParams()
+                    .setLimit(100)
+                    .addQueryParam("entityLink", entityLink)
+                    .addQueryParam("fields", "testSuite"));
+
+    assertNotNull(listed);
+    assertTrue(
+        listed.getData().stream().anyMatch(tc -> tc.getId().equals(keepCase.getId())),
+        "Surviving test case should still be returned with testSuite field");
+    listed.getData().stream()
+        .filter(tc -> tc.getId().equals(keepCase.getId()))
+        .findFirst()
+        .ifPresent(
+            tc -> assertNotNull(tc.getTestSuite(), "Surviving test case must keep its test suite"));
+  }
+
+  @Test
+  void test_recursiveHardDeleteCascadesPastResolutionStatusChildren(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("tcrs_cascade_delete"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    // Writes a TEST_CASE --PARENT_OF--> testCaseResolutionStatus row. testCaseResolutionStatus
+    // is a time-series entity (registered in ENTITY_TS_REPOSITORY_MAP, not
+    // ENTITY_REPOSITORY_MAP), so the bulk hard-delete cascade used to throw
+    // EntityRepositoryNotFound the moment it walked PARENT_OF children of a test case.
+    CreateTestCaseResolutionStatus newStatus = new CreateTestCaseResolutionStatus();
+    newStatus.setTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New);
+    newStatus.setTestCaseReference(testCase.getFullyQualifiedName());
+    client.testCaseResolutionStatuses().create(newStatus);
+
+    String testCaseId = testCase.getId().toString();
+
+    Map<String, String> params = new HashMap<>();
+    params.put("hardDelete", "true");
+    params.put("recursive", "true");
+    client.tables().delete(table.getId().toString(), params);
+
+    assertThrows(
+        Exception.class,
+        () -> getEntity(testCaseId),
+        "Test case should be deleted along with its resolution-status children");
+  }
+
+  @Test
   void test_testCaseInheritsFromTestDefinition(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
@@ -2362,24 +2490,32 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             .queryParam("offset", "0")
             .build();
 
-    String responseJson =
-        client
-            .getHttpClient()
-            .executeForString(
-                HttpMethod.GET, "/v1/dataQuality/testCases/search/list", null, options);
-    TestCaseResource.TestCaseList result =
-        JsonUtils.readValue(responseJson, TestCaseResource.TestCaseList.class);
+    Awaitility.await("test case present in ES-backed search/list with incidentId")
+        .atMost(180, TimeUnit.SECONDS)
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String responseJson =
+                  client
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.GET, "/v1/dataQuality/testCases/search/list", null, options);
+              TestCaseResource.TestCaseList result =
+                  JsonUtils.readValue(responseJson, TestCaseResource.TestCaseList.class);
 
-    TestCase matching =
-        result.getData().stream()
-            .filter(tc -> testCase.getId().equals(tc.getId()))
-            .findFirst()
-            .orElse(null);
+              TestCase matching =
+                  result.getData().stream()
+                      .filter(tc -> testCase.getId().equals(tc.getId()))
+                      .findFirst()
+                      .orElse(null);
 
-    assertNotNull(matching, "Expected created test case in search/list response");
-    assertNotNull(
-        matching.getIncidentId(),
-        "search/list with fields=* must include incidentId even when testCaseResult is present");
+              assertNotNull(matching, "Expected created test case in search/list response");
+              assertNotNull(
+                  matching.getIncidentId(),
+                  "search/list with fields=* must include incidentId even when testCaseResult is"
+                      + " present");
+            });
   }
 
   @Test

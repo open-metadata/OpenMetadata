@@ -12,18 +12,63 @@
  */
 // ─── File type badge ──────────────────────────────────────────────────────────
 
-import { DocFileType } from 'components/ContextCenter/DocumentsView/DocumentsView.interface';
-
-export const FILE_TYPE_STYLES: Record<
-  DocFileType,
-  { label: string; bg: string; text: string }
-> = {
-  csv: { bg: 'tw:bg-green-100', label: 'CSV', text: 'tw:text-green-700' },
-  doc: { bg: 'tw:bg-blue-100', label: 'DOC', text: 'tw:text-blue-700' },
-  image: { bg: 'tw:bg-gray-100', label: 'IMG', text: 'tw:text-gray-600' },
-  other: { bg: 'tw:bg-gray-100', label: 'FILE', text: 'tw:text-gray-600' },
-  pdf: { bg: 'tw:bg-red-100', label: 'PDF', text: 'tw:text-red-700' },
-  xls: { bg: 'tw:bg-green-100', label: 'XLSX', text: 'tw:text-green-700' },
-};
+import {
+  MemoryType,
+  ShareVisibility,
+} from '../generated/entity/context/contextMemory';
 
 export const DOCUMENT_MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+export const RECENT_DASHBOARD_ARTICLES_LIMIT = 3;
+export const RECENT_DASHBOARD_DOCUMENTS_LIMIT = 3;
+
+export const PILLAR_TONE_TEXT_CLASS: Record<string, string> = {
+  info: 'tw:text-utility-brand-700',
+  warning: 'tw:text-utility-warning-700',
+  success: 'tw:text-utility-success-700',
+};
+
+export const ATTENTION_SEVERITY_BADGE_COLOR = {
+  error: 'error',
+  warning: 'warning',
+  info: 'blue',
+} as const;
+
+export const MEMORY_TYPE_OPTIONS = [
+  { id: MemoryType.FAQ, labelKey: 'label.faq' },
+  { id: MemoryType.Note, labelKey: 'label.note' },
+  { id: MemoryType.Preference, labelKey: 'label.preference' },
+  { id: MemoryType.Runbook, labelKey: 'label.runbook' },
+  { id: MemoryType.UseCase, labelKey: 'label.use-case' },
+];
+
+export const VISIBILITY_OPTIONS = [
+  {
+    id: ShareVisibility.Shared,
+    labelKey: 'label.shared',
+    descriptionKey: 'message.visible-to-everyone-in-workspace',
+    badgeColor: 'brand' as const,
+    iconName: 'Share07' as const,
+  },
+  {
+    id: ShareVisibility.Entity,
+    labelKey: 'label.entity',
+    descriptionKey: 'message.visible-to-linked-entities',
+    badgeColor: 'orange' as const,
+    iconName: 'Database01' as const,
+  },
+  {
+    id: ShareVisibility.Private,
+    labelKey: 'label.private',
+    descriptionKey: 'message.visible-only-to-you',
+    badgeColor: 'gray' as const,
+    iconName: 'FileLock02' as const,
+  },
+];
+
+export const ARTICLE_FILTER_TABS = [
+  { id: 'all', labelKey: 'label.all' },
+  { id: 'published', labelKey: 'label.published' },
+  { id: 'draft', labelKey: 'label.draft' },
+  { id: 'sensitive', labelKey: 'label.sensitive' },
+] as const;

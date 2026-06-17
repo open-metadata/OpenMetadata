@@ -97,6 +97,8 @@ import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.LLMConfiguration;
+import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Pipeline;
@@ -124,6 +126,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
+import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -155,6 +158,129 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 public class SearchRepository {
 
   private volatile SearchClient searchClient;
+
+  /**
+   * When a search-write deferral scope is open on the calling thread, the rename/move/domain-change
+   * cascade ES mutations ({@link #updateEntityIndex}, {@link #updateEntity(EntityReference)}, the
+   * {@code update*ByFqnPrefix} / {@code updateAssetDomains*} bulk rewrites, plus the direct {@code
+   * getSearchClient().*} cascade calls routed through {@link #deferIfFlushScopeActive}) capture their
+   * blocking Elasticsearch round trip here instead of issuing it inline. The create/update flush
+   * opens a scope before its DB transaction so NO Elasticsearch call runs while a pooled DB
+   * connection is held, then drains the captured closures after commit. A deadlock replay re-runs the
+   * flush body, so the scope is reset per attempt and the closures are drained exactly once after the
+   * final successful commit. {@code null} means "no scope active" and the mutation executes inline —
+   * every non-flush caller (reindex apps, the post-commit search-index handler, lineage jobs) is
+   * unaffected.
+   */
+  private static final ThreadLocal<List<DeferredSearchWrite>> DEFERRED_SEARCH_WRITES =
+      new ThreadLocal<>();
+
+  /**
+   * A captured search-index mutation plus the locator of the entity whose document it rewrites. When
+   * a post-commit drain fails the round trip, {@code entityId}/{@code entityFqn}/{@code entityType}
+   * are enqueued to the durable, entity-keyed {@link SearchIndexRetryQueue} so the document is
+   * rebuilt from the committed source-of-truth DB rows on retry instead of silently losing the
+   * cascade rewrite. A {@code null} locator means the mutation already self-enqueues on failure (the
+   * {@code SearchRepository.update*} methods wrap their own try/catch), so the drain only logs.
+   */
+  public record DeferredSearchWrite(
+      Runnable esWrite, String operation, String entityId, String entityFqn, String entityType) {
+    public void run() {
+      esWrite.run();
+    }
+  }
+
+  /**
+   * Open a search-write deferral scope on the current thread. While open, the cascade ES mutations
+   * enqueue their work instead of running it inline. Returns {@code true} if this call opened the
+   * scope (caller owns draining/closing it), {@code false} if a scope was already open (nested call —
+   * the outer owner stays responsible). Pair a {@code true} result with a {@code finally} that calls
+   * {@link #drainSearchWriteDeferred()} after commit and {@link #clearSearchWriteDeferred()} on
+   * failure.
+   */
+  public static boolean beginSearchWriteDeferral() {
+    boolean opened = DEFERRED_SEARCH_WRITES.get() == null;
+    if (opened) {
+      DEFERRED_SEARCH_WRITES.set(new ArrayList<>());
+    }
+    return opened;
+  }
+
+  /**
+   * Number of closures captured in the currently-open scope, or {@code 0} when no scope is open. A
+   * nested (non-owning) caller records this before contributing so it can {@link
+   * #rollbackSearchWriteToCheckpoint(int)} its own contributions on a deadlock replay without
+   * disturbing closures the outer owner captured.
+   */
+  public static int searchWriteCheckpoint() {
+    List<DeferredSearchWrite> deferred = DEFERRED_SEARCH_WRITES.get();
+    return deferred == null ? 0 : deferred.size();
+  }
+
+  /** Drop every closure captured after {@code checkpoint} so a retried nested flush re-captures cleanly. */
+  public static void rollbackSearchWriteToCheckpoint(int checkpoint) {
+    List<DeferredSearchWrite> deferred = DEFERRED_SEARCH_WRITES.get();
+    if (deferred != null) {
+      while (deferred.size() > checkpoint) {
+        deferred.removeLast();
+      }
+    }
+  }
+
+  /** Return the closures captured since {@link #beginSearchWriteDeferral} and close the scope. */
+  public static List<DeferredSearchWrite> drainSearchWriteDeferred() {
+    List<DeferredSearchWrite> deferred = DEFERRED_SEARCH_WRITES.get();
+    DEFERRED_SEARCH_WRITES.remove();
+    return deferred == null ? List.of() : deferred;
+  }
+
+  /** Discard captured closures and close the scope without running them (failed transaction). */
+  public static void clearSearchWriteDeferred() {
+    DEFERRED_SEARCH_WRITES.remove();
+  }
+
+  /** {@code true} while a flush has opened a search-write deferral scope on the current thread. */
+  public static boolean isSearchWriteDeferralActive() {
+    return DEFERRED_SEARCH_WRITES.get() != null;
+  }
+
+  private static boolean deferSearchWrite(DeferredSearchWrite write) {
+    List<DeferredSearchWrite> deferred = DEFERRED_SEARCH_WRITES.get();
+    boolean captured = deferred != null;
+    if (captured) {
+      deferred.add(write);
+    }
+    return captured;
+  }
+
+  /**
+   * Capture {@code esWrite} for post-commit execution when a flush deferral scope is open on this
+   * thread; otherwise run it inline. The locator is used to enqueue the entity to the durable
+   * search-index retry outbox if the deferred round trip later fails. Use this for the direct {@code
+   * getSearchClient().*} cascade rewrites that bypass the {@code SearchRepository.update*} methods
+   * (glossary-term / classification / container FQN-prefix updates) so they too never run inside the
+   * transaction handle.
+   */
+  public void deferIfFlushScopeActive(
+      Runnable esWrite, String operation, String entityId, String entityFqn, String entityType) {
+    deferOrRunSearchWrite(esWrite, operation, entityId, entityFqn, entityType);
+  }
+
+  /**
+   * Static variant of {@link #deferIfFlushScopeActive} for call sites that have no {@code
+   * SearchRepository} instance in scope (e.g. the static {@code
+   * EntityRepository.invalidateCacheForTaggedEntities} ES-search loop). The {@code entityId}/{@code
+   * entityFqn} locator drives durable retry on a failed post-commit drain.
+   */
+  public static void deferOrRunSearchWrite(
+      Runnable esWrite, String operation, String entityId, String entityFqn, String entityType) {
+    if (!deferSearchWrite(
+        new DeferredSearchWrite(esWrite, operation, entityId, entityFqn, entityType))) {
+      // No flush deferral scope is open (a non-flush cascade rewrite): run it synchronously inline
+      // on the request thread so the rewrite is read-your-write visible when the request returns.
+      esWrite.run();
+    }
+  }
 
   @Getter private Map<String, IndexMapping> entityIndexMap;
 
@@ -331,7 +457,6 @@ public class SearchRepository {
                   .parentAliases(parentAliases)
                   .build();
           recreateIndexHandler.finalizeReindex(entityReindexContext, true);
-
         } catch (Exception ex) {
           LOG.error("Failed to recreate index for entity {}", entityType, ex);
         }
@@ -430,8 +555,9 @@ public class SearchRepository {
       return;
     }
 
+    LLMConfiguration llmConfig = LlmConfigHolder.get();
     try {
-      this.embeddingClient = createEmbeddingClient(cfg);
+      this.embeddingClient = createEmbeddingClient(llmConfig);
 
       if (cfg.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
         os.org.opensearch.client.opensearch.OpenSearchClient osClient =
@@ -453,7 +579,7 @@ public class SearchRepository {
 
       LOG.info(
           "Vector search service initialized with provider={}, dimension={}",
-          cfg.getNaturalLanguageSearch().getEmbeddingProvider(),
+          resolveEmbeddingProvider(llmConfig),
           embeddingClient.getDimension());
     } catch (Exception e) {
       this.vectorServiceInitError = e.toString();
@@ -1221,12 +1347,33 @@ public class SearchRepository {
   }
 
   /**
+   * Capture this entity-index rewrite for post-commit drain when a flush deferral scope is open on
+   * the current thread (it is reached from a rename/move/domain cascade inside the wrapped DB
+   * transaction). The entity locator is retained so a failed post-commit drain re-enqueues this
+   * entity to the durable retry outbox. Returns {@code false} (run inline) for every non-flush
+   * caller — the post-commit search-index handler, reindex apps, lineage jobs.
+   */
+  private boolean deferEntityIndex(EntityInterface entity) {
+    EntityReference ref = entity.getEntityReference();
+    return deferSearchWrite(
+        new DeferredSearchWrite(
+            () -> updateEntityIndex(entity),
+            "updateEntityIndex",
+            entity.getId() != null ? entity.getId().toString() : null,
+            entity.getFullyQualifiedName(),
+            ref != null ? ref.getType() : null));
+  }
+
+  /**
    * Update search index for an entity only (no lifecycle events).
    * This method is used by SearchIndexHandler.
    */
   public void updateEntityIndex(EntityInterface entity) {
     if (entity == null) {
       LOG.warn("Entity is null, cannot update index.");
+      return;
+    }
+    if (deferEntityIndex(entity)) {
       return;
     }
 
@@ -1384,9 +1531,26 @@ public class SearchRepository {
   }
 
   public void updateEntity(EntityReference entityReference) {
+    if (deferSearchWrite(
+        new DeferredSearchWrite(
+            () -> updateEntity(entityReference),
+            "updateEntity",
+            entityReference.getId() != null ? entityReference.getId().toString() : null,
+            entityReference.getFullyQualifiedName(),
+            entityReference.getType()))) {
+      return;
+    }
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityReference.getType());
+    // Fetch only the fields this entity's search index needs, never "*". For container
+    // entities (database/schema) "*" hydrates every child — tens of thousands of tables on
+    // large catalogs — and can OOM the server on a single live update. The required-field
+    // set is the same one the reindex pipeline uses, so live updates and reindex stay
+    // consistent and bounded.
+    String fields =
+        String.join(",", searchIndexFactory.getReindexFieldsFor(entityReference.getType()));
     EntityInterface entity =
-        entityRepository.get(null, entityReference.getId(), entityRepository.getFields("*"));
+        entityRepository.get(
+            null, entityReference.getId(), entityRepository.getOnlySupportedFields(fields));
     entity.setChangeDescription(null);
     updateEntityIndex(entity);
   }
@@ -1462,6 +1626,7 @@ public class SearchRepository {
         bulkSink = createBulkSink(batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
         Map<String, Object> contextData = new HashMap<>();
         contextData.put(ReindexingUtil.ENTITY_TYPE_KEY, entityType);
+        ReindexingUtil.populateDocBuildContext(contextData, entityType, typeEntities);
         bulkSink.write(typeEntities, contextData);
         bulkSink.flushAndAwait(60); // Wait up to 60 seconds for completion
       } catch (Exception e) {
@@ -1554,6 +1719,15 @@ public class SearchRepository {
    */
   public void updateAssetDomainsForDataProduct(
       String dataProductFqn, List<String> oldDomainFqns, List<EntityReference> newDomains) {
+    if (deferSearchWrite(
+        new DeferredSearchWrite(
+            () -> updateAssetDomainsForDataProduct(dataProductFqn, oldDomainFqns, newDomains),
+            "updateAssetDomainsForDataProduct",
+            null,
+            dataProductFqn,
+            null))) {
+      return;
+    }
     Timer.Sample s = RequestLatencyContext.startSearchOperation();
     if (!getSearchClient().isClientAvailable()) {
       SearchIndexRetryQueue.enqueue(
@@ -1574,6 +1748,15 @@ public class SearchRepository {
 
   public void updateAssetDomainsByIds(
       List<UUID> assetIds, List<String> oldDomainFqns, List<EntityReference> newDomains) {
+    if (deferSearchWrite(
+        new DeferredSearchWrite(
+            () -> updateAssetDomainsByIds(assetIds, oldDomainFqns, newDomains),
+            "updateAssetDomainsByIds",
+            null,
+            null,
+            null))) {
+      return;
+    }
     Timer.Sample s = RequestLatencyContext.startSearchOperation();
 
     if (!getSearchClient().isClientAvailable()) {
@@ -1600,6 +1783,15 @@ public class SearchRepository {
   }
 
   public void updateDomainFqnByPrefix(String oldFqn, String newFqn) {
+    if (deferSearchWrite(
+        new DeferredSearchWrite(
+            () -> updateDomainFqnByPrefix(oldFqn, newFqn),
+            "updateDomainFqnByPrefix",
+            null,
+            newFqn,
+            null))) {
+      return;
+    }
     Timer.Sample s = RequestLatencyContext.startSearchOperation();
     if (!getSearchClient().isClientAvailable()) {
       SearchIndexRetryQueue.enqueue(
@@ -1617,6 +1809,15 @@ public class SearchRepository {
   }
 
   public void updateAssetDomainFqnByPrefix(String oldFqn, String newFqn) {
+    if (deferSearchWrite(
+        new DeferredSearchWrite(
+            () -> updateAssetDomainFqnByPrefix(oldFqn, newFqn),
+            "updateAssetDomainFqnByPrefix",
+            null,
+            newFqn,
+            null))) {
+      return;
+    }
     Timer.Sample s = RequestLatencyContext.startSearchOperation();
 
     if (!getSearchClient().isClientAvailable()) {
@@ -2055,15 +2256,17 @@ public class SearchRepository {
             String.format(PROPAGATE_NESTED_FIELD_SCRIPT, desc.nestPath(), field.getName()));
       }
       case SIMPLE_VALUE -> {
-        script.append(String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
+        data.put(field.getName(), field.getNewValue());
+        script.append(String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getName()));
       }
       case RAW_REPLACE -> {
         data.put(field.getName(), field.getNewValue());
         script.append(
-            String.format("ctx._source.%s = params.%s", field.getName(), field.getName()));
+            String.format("ctx._source.%s = params.%s;", field.getName(), field.getName()));
       }
       case EXTERNAL_HANDLER -> {
         // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
+        return;
       }
     }
     script.append(" ");
@@ -2114,10 +2317,11 @@ public class SearchRepository {
       case RAW_REPLACE -> {
         data.put(field.getName(), field.getOldValue());
         script.append(
-            String.format("ctx._source.%s = params.%s", field.getName(), field.getName()));
+            String.format("ctx._source.%s = params.%s;", field.getName(), field.getName()));
       }
       case EXTERNAL_HANDLER -> {
         // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
+        return;
       }
     }
     script.append(" ");
@@ -2170,7 +2374,8 @@ public class SearchRepository {
         data.put(field.getName(), ref);
       }
       case SIMPLE_VALUE -> {
-        script.append(String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
+        data.put(field.getName(), field.getNewValue());
+        script.append(String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getName()));
       }
       case NESTED_FIELD -> {
         data.put(field.getName(), field.getNewValue().toString());
@@ -2180,10 +2385,11 @@ public class SearchRepository {
       case RAW_REPLACE -> {
         data.put(field.getName(), field.getNewValue());
         script.append(
-            String.format("ctx._source.%s = params.%s", field.getName(), field.getName()));
+            String.format("ctx._source.%s = params.%s;", field.getName(), field.getName()));
       }
       case EXTERNAL_HANDLER -> {
         // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
+        return;
       }
     }
     script.append(" ");
@@ -2986,8 +3192,29 @@ public class SearchRepository {
       boolean includeDeleted,
       String entityType)
       throws IOException {
+    return getLineagePaginationInfo(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType, null, null);
+  }
+
+  public LineagePaginationInfo getLineagePaginationInfo(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean includeDeleted,
+      String entityType,
+      Long startTime,
+      Long endTime)
+      throws IOException {
     return searchClient.getLineagePaginationInfo(
-        fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType);
+        fqn,
+        upstreamDepth,
+        downstreamDepth,
+        queryFilter,
+        includeDeleted,
+        entityType,
+        startTime,
+        endTime);
   }
 
   public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
@@ -3266,41 +3493,53 @@ public class SearchRepository {
     }
   }
 
-  protected EmbeddingClient createEmbeddingClient(ElasticSearchConfiguration esConfig) {
-    NaturalLanguageSearchConfiguration config = esConfig.getNaturalLanguageSearch();
+  protected EmbeddingClient createEmbeddingClient(LLMConfiguration llmConfig) {
+    LLMEmbeddingsConfig embeddings = llmConfig != null ? llmConfig.getEmbeddings() : null;
     String provider =
-        config.getEmbeddingProvider() != null ? config.getEmbeddingProvider() : "bedrock";
+        embeddings != null && embeddings.getProvider() != null
+            ? embeddings.getProvider().value()
+            : "bedrock";
 
     return switch (provider.toLowerCase()) {
       case "bedrock" -> {
-        if (config.getBedrock() == null) {
+        if (embeddings == null || embeddings.getBedrock() == null) {
           throw new IllegalStateException(
               "Bedrock configuration is required when using bedrock provider");
         }
-        yield new BedrockEmbeddingClient(esConfig);
+        yield new BedrockEmbeddingClient(llmConfig);
       }
       case "openai" -> {
-        if (config.getOpenai() == null) {
+        if (llmConfig.getOpenai() == null || embeddings.getOpenai() == null) {
           throw new IllegalStateException(
               "OpenAI configuration is required when using openai provider");
         }
-        yield new OpenAIEmbeddingClient(esConfig);
+        yield new OpenAIEmbeddingClient(llmConfig);
       }
       case "google" -> {
-        if (config.getGoogle() == null) {
+        if (llmConfig.getGoogle() == null || embeddings.getGoogle() == null) {
           throw new IllegalStateException(
               "Google configuration is required when using google provider");
         }
-        yield new GoogleEmbeddingClient(esConfig);
+        yield new GoogleEmbeddingClient(llmConfig);
       }
       case "djl" -> {
-        if (config.getDjl() == null) {
+        if (embeddings.getDjl() == null) {
           throw new IllegalStateException("DJL configuration is required when using djl provider");
         }
-        yield new DjlEmbeddingClient(esConfig);
+        yield new DjlEmbeddingClient(llmConfig);
       }
       default -> throw new IllegalArgumentException("Unknown embedding provider: " + provider);
     };
+  }
+
+  private static String resolveEmbeddingProvider(LLMConfiguration llmConfig) {
+    String provider = "unknown";
+    if (llmConfig != null
+        && llmConfig.getEmbeddings() != null
+        && llmConfig.getEmbeddings().getProvider() != null) {
+      provider = llmConfig.getEmbeddings().getProvider().value();
+    }
+    return provider;
   }
 
   public String getModelIdentifier() {

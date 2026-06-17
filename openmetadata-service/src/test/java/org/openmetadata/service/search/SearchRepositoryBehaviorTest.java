@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -30,6 +31,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.apache.commons.lang3.tuple.Pair;
@@ -47,6 +49,9 @@ import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.configuration.LLMConfiguration;
+import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
+import org.openmetadata.schema.configuration.LLMEmbeddingsConfig.Provider;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Pipeline;
@@ -1115,7 +1120,8 @@ class SearchRepositoryBehaviorTest {
     assertTrue(updates.getLeft().contains("updatedDomains"));
     assertTrue(updates.getLeft().contains("updatedFollowers"));
     assertTrue(updates.getLeft().contains("ctx._source.service.displayName = params.displayName"));
-    assertTrue(updates.getLeft().contains("ctx._source.put('disabled', 'true')"));
+    assertTrue(updates.getLeft().contains("ctx._source.put('disabled', params.disabled);"));
+    assertEquals(true, updates.getRight().get(Entity.FIELD_DISABLED));
     assertEquals("Renamed Service", updates.getRight().get(Entity.FIELD_DISPLAY_NAME));
     assertTrue(
         ((List<EntityReference>) updates.getRight().get("updatedOwners"))
@@ -1166,6 +1172,38 @@ class SearchRepositoryBehaviorTest {
     assertTrue(updates.getLeft().contains("ctx._source.remove('disabled')"));
     assertEquals(List.of("suite1"), updates.getRight().get(Entity.FIELD_TEST_SUITES));
     assertEquals("Orders Table", updates.getRight().get(Entity.FIELD_DISPLAY_NAME));
+  }
+
+  @Test
+  void inheritedFieldChangesSimpleValueBindsValueAsParamAndTerminatesStatements() throws Exception {
+    EntityInterface tagEntity = mockEntity(Entity.TAG, UUID.randomUUID(), "PII.Sensitive");
+
+    String renamedTag = "O'Brien's Tag";
+    String certification = "Gold's";
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(),
+            List.of(
+                new FieldChange().withName("name").withNewValue(renamedTag),
+                new FieldChange().withName("certification").withNewValue(certification)),
+            List.of());
+
+    Pair<String, Map<String, Object>> updates =
+        invokeGetInheritedFieldChanges(changeDescription, tagEntity);
+
+    String script = updates.getLeft();
+
+    assertTrue(
+        script.contains("ctx._source.put('name', params.name);"),
+        "SIMPLE_VALUE must bind the value as a param and terminate the statement");
+    assertTrue(
+        script.contains("ctx._source.put('certification', params.certification);"),
+        "Each propagated SIMPLE_VALUE field must produce its own terminated statement");
+    assertFalse(
+        script.contains(renamedTag) || script.contains(certification),
+        "Raw values must not be inlined into the Painless source (would break compilation)");
+    assertEquals(renamedTag, updates.getRight().get("name"));
+    assertEquals(certification, updates.getRight().get("certification"));
   }
 
   @Test
@@ -2083,13 +2121,13 @@ class SearchRepositoryBehaviorTest {
     when(context.getEntities())
         .thenReturn(new LinkedHashSet<>(List.of(Entity.TABLE, Entity.DOMAIN)));
     when(context.getOriginalIndex(any()))
-        .thenAnswer(invocation -> java.util.Optional.of("original_" + invocation.getArgument(0)));
+        .thenAnswer(invocation -> Optional.of("original_" + invocation.getArgument(0)));
     when(context.getCanonicalIndex(any()))
-        .thenAnswer(invocation -> java.util.Optional.of("canonical_" + invocation.getArgument(0)));
+        .thenAnswer(invocation -> Optional.of("canonical_" + invocation.getArgument(0)));
     when(context.getStagedIndex(any()))
-        .thenAnswer(invocation -> java.util.Optional.of("staged_" + invocation.getArgument(0)));
+        .thenAnswer(invocation -> Optional.of("staged_" + invocation.getArgument(0)));
     when(context.getCanonicalAlias(any()))
-        .thenAnswer(invocation -> java.util.Optional.of("alias_" + invocation.getArgument(0)));
+        .thenAnswer(invocation -> Optional.of("alias_" + invocation.getArgument(0)));
     when(context.getExistingAliases(any()))
         .thenAnswer(invocation -> Set.of("existing_" + invocation.getArgument(0)));
     when(context.getParentAliases(any()))
@@ -2469,22 +2507,25 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void createEmbeddingClientRejectsUnsupportedOrIncompleteConfigurations() {
-    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
-    config.setNaturalLanguageSearch(
-        new NaturalLanguageSearchConfiguration().withEmbeddingProvider("bedrock"));
-    assertThrows(IllegalStateException.class, () -> repository.createEmbeddingClient(config));
+    assertThrows(
+        IllegalStateException.class,
+        () -> repository.createEmbeddingClient(embeddingConfigWithProvider(Provider.BEDROCK)));
 
-    config.setNaturalLanguageSearch(
-        new NaturalLanguageSearchConfiguration().withEmbeddingProvider("openai"));
-    assertThrows(IllegalStateException.class, () -> repository.createEmbeddingClient(config));
+    assertThrows(
+        IllegalStateException.class,
+        () -> repository.createEmbeddingClient(embeddingConfigWithProvider(Provider.OPENAI)));
 
-    config.setNaturalLanguageSearch(
-        new NaturalLanguageSearchConfiguration().withEmbeddingProvider("djl"));
-    assertThrows(IllegalStateException.class, () -> repository.createEmbeddingClient(config));
+    assertThrows(
+        IllegalStateException.class,
+        () -> repository.createEmbeddingClient(embeddingConfigWithProvider(Provider.GOOGLE)));
 
-    config.setNaturalLanguageSearch(
-        new NaturalLanguageSearchConfiguration().withEmbeddingProvider("unknown"));
-    assertThrows(IllegalArgumentException.class, () -> repository.createEmbeddingClient(config));
+    assertThrows(
+        IllegalStateException.class,
+        () -> repository.createEmbeddingClient(embeddingConfigWithProvider(Provider.DJL)));
+  }
+
+  private LLMConfiguration embeddingConfigWithProvider(Provider provider) {
+    return new LLMConfiguration().withEmbeddings(new LLMEmbeddingsConfig().withProvider(provider));
   }
 
   @Test
@@ -2502,8 +2543,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void initializeVectorSearchServiceInitializesOpenSearchVectorSupport() throws Exception {
-    NaturalLanguageSearchConfiguration nlConfig =
-        new NaturalLanguageSearchConfiguration().withEmbeddingProvider("openai");
+    NaturalLanguageSearchConfiguration nlConfig = new NaturalLanguageSearchConfiguration();
     SearchRepository openSearchRepository =
         newRepository(
             Map.of(Entity.TABLE, TABLE_MAPPING),
@@ -2522,7 +2562,7 @@ class SearchRepositoryBehaviorTest {
     doReturn(true).when(spyRepository).isVectorEmbeddingEnabled();
     doReturn(embeddingClient)
         .when(spyRepository)
-        .createEmbeddingClient(any(ElasticSearchConfiguration.class));
+        .createEmbeddingClient(nullable(LLMConfiguration.class));
     setPrivateField(spyRepository, "searchClient", openSearchClient);
 
     try (var settingsCacheMock = mockStatic(SettingsCache.class);
@@ -2650,7 +2690,8 @@ class SearchRepositoryBehaviorTest {
     when(searchClient.searchLineage(lineageRequest)).thenReturn(lineageResult);
     when(searchClient.searchPlatformLineage("alias", "{}", false)).thenReturn(lineageResult);
     when(searchClient.searchLineageWithDirection(lineageRequest)).thenReturn(lineageResult);
-    when(searchClient.getLineagePaginationInfo("svc.db.orders", 1, 2, "{}", false, Entity.TABLE))
+    when(searchClient.getLineagePaginationInfo(
+            "svc.db.orders", 1, 2, "{}", false, Entity.TABLE, null, null))
         .thenReturn(paginationInfo);
     when(searchClient.searchLineageByEntityCount(entityCountRequest)).thenReturn(lineageResult);
     when(searchClient.searchEntityRelationship("svc.db.orders", 1, 2, "{}", false))

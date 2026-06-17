@@ -38,21 +38,20 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { triggerOnDemandApp } from '../../rest/applicationAPI';
 import { postService } from '../../rest/serviceAPI';
-import { getServiceLogo } from '../../utils/CommonUtils';
 import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
-import { getEntityFeedLink } from '../../utils/EntityUtils';
+import { getServiceLogo } from '../../utils/EntityDisplayUtils';
+import { getEntityFeedLink } from '../../utils/EntityPureUtils';
 import { handleEntityCreationError } from '../../utils/formUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
-import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
-  getAddServiceEntityBreadcrumb,
   getEntityTypeFromServiceCategory,
   getServiceType,
-} from '../../utils/ServiceUtils';
+} from '../../utils/ServicePureUtils';
+import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
+import { getAddServiceEntityBreadcrumb } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { ServiceConfig } from './AddServicePage.interface';
-
 const AddServicePage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();

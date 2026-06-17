@@ -73,6 +73,8 @@ try:
     from airflow.providers.standard.operators.bash import BashOperator
 except ImportError:
     from airflow.operators.bash import BashOperator
+from flask import Flask
+
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
@@ -87,6 +89,7 @@ from openmetadata_managed_apis.operations.trigger import trigger
 class TestAirflowOps(TestCase):
     dagbag: DagBag
     dag: DAG
+    _app_ctx = None
 
     conn = OpenMetadataConnection(
         hostPort=os.getenv("OPENMETADATA_HOST_PORT", "http://localhost:8585/api"),
@@ -102,6 +105,9 @@ class TestAirflowOps(TestCase):
         """
         Prepare ingredients
         """
+        cls._app_ctx = Flask(__name__).app_context()
+        cls._app_ctx.push()
+
         # Initialize Airflow database if it doesn't exist
         from airflow.utils.db import initdb  # noqa: PLC0415
 
@@ -164,6 +170,9 @@ class TestAirflowOps(TestCase):
         """
         Clean up
         """
+        if cls._app_ctx is not None:
+            cls._app_ctx.pop()
+
         try:
             service = cls.metadata.get_by_name(entity=DatabaseService, fqn="test-service-ops")
             if service:
@@ -368,10 +377,10 @@ class TestAirflowOps(TestCase):
 
         self.assertIsNotNone(dag_model)
 
-        res = trigger(dag_id="my_new_dag", run_id=None)
+        trigger_payload, trigger_status = trigger(dag_id="my_new_dag", run_id=None)
 
-        self.assertEqual(res.status_code, 200)
-        self.assertIn("Workflow [my_new_dag] has been triggered", res.json["message"])
+        self.assertEqual(trigger_status, 200)
+        self.assertIn("Workflow [my_new_dag] has been triggered", trigger_payload["message"])
 
         # Delete it
         res = delete_dag_id("my_new_dag")

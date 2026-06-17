@@ -202,14 +202,22 @@ class DistributedReindexStatsMapper {
       StepStats entityStats = stats.getEntityStats().getAdditionalProperties().get(entry.getKey());
       if (entityStats != null) {
         SearchIndexJob.EntityTypeStats distributedEntityStats = entry.getValue();
-        // totalRecords from the partition plan, not the up-front getEntityTotal() pre-count.
-        // The two counts can drift (different ListFilter, queried moments apart on a churny
-        // time-series table) — the partition plan defines what is actually processed, so the
-        // total must match it or the job shows a phantom "total > success" gap.
-        entityStats.setTotalRecords(saturatedToInt(distributedEntityStats.getTotalRecords()));
-        entityStats.setSuccessRecords(saturatedToInt(distributedEntityStats.getSuccessRecords()));
-        entityStats.setFailedRecords(saturatedToInt(distributedEntityStats.getFailedRecords()));
-        entityStats.setWarningRecords(saturatedToInt(distributedEntityStats.getWarningRecords()));
+        long success = distributedEntityStats.getSuccessRecords();
+        long failed = distributedEntityStats.getFailedRecords();
+        long warnings = distributedEntityStats.getWarningRecords();
+        long total = distributedEntityStats.getTotalRecords();
+        // Rows the planner counted but the reader never produced (deletes between plan and
+        // read, ListFilter snapshot drift) — absorb into warnings so total balances against
+        // success + failed + warnings. Without this, totalRecords stays at the planner count
+        // while the stage counters reflect only what the reader saw, leaving a phantom gap.
+        long gap = total - (success + failed + warnings);
+        if (gap > 0) {
+          warnings += gap;
+        }
+        entityStats.setTotalRecords(saturatedToInt(total));
+        entityStats.setSuccessRecords(saturatedToInt(success));
+        entityStats.setFailedRecords(saturatedToInt(failed));
+        entityStats.setWarningRecords(saturatedToInt(warnings));
         entityStats.setReaderTimeMs(distributedEntityStats.getReaderTimeMs());
         entityStats.setProcessTimeMs(distributedEntityStats.getProcessTimeMs());
         entityStats.setSinkTimeMs(distributedEntityStats.getSinkTimeMs());

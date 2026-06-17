@@ -85,8 +85,7 @@ import {
   TaskEntityType,
 } from '../rest/tasksAPI';
 import { getTopicByFqn } from '../rest/topicsAPI';
-import { getPartialNameFromTableFQN } from './CommonUtils';
-import { ContainerFields } from './ContainerDetailUtils';
+import { ContainerFields } from './ContainerDetailPureUtils';
 import {
   defaultFields as DashboardFields,
   fetchCharts,
@@ -95,10 +94,12 @@ import { DatabaseFields } from './Database/Database.util';
 import { defaultFields as DatabaseSchemaFields } from './DatabaseSchemaDetailsUtils';
 import { defaultFields as DataModelFields } from './DataModelsUtils';
 import { defaultFieldsWithColumns as TableFields } from './DatasetDetailsUtils';
+import { getEntityName } from './EntityNameUtils';
+import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
-import { ENTITY_LINK_SEPARATOR, getEntityName } from './EntityUtils';
-import { getEntityFQNFromAbout, getEntityTypeFromAbout } from './FeedUtils';
-import { getGlossaryBreadcrumbs } from './GlossaryUtils';
+import { getEntityFQNFromAbout, getEntityTypeFromAbout } from './FeedUtilsPure';
+import { getPartialNameFromTableFQN } from './FqnUtils';
+import { getGlossaryBreadcrumbs } from './GlossaryPureUtils';
 import { t } from './i18next/LocalUtil';
 import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
 import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
@@ -111,7 +112,7 @@ import {
 } from './RouterUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { STORED_PROCEDURE_DEFAULT_FIELDS } from './StoredProceduresUtils';
-import { getEncodedFqn } from './StringsUtils';
+import { getEncodedFqn } from './StringUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const getRequestDescriptionPath = (

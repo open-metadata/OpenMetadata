@@ -32,6 +32,7 @@ import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadc
 import { ROUTES } from '../../constants/constants';
 import contextCenterClassBase from '../../utils/ContextCenterClassBase';
 import i18n from '../../utils/i18next/LocalUtil';
+import { getKnowledgePageName } from '../../utils/KnowledgePagePureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 
@@ -108,7 +109,7 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
         url: ROUTES.KNOWLEDGE_CENTER,
       },
       {
-        name: (knowledgePage?.displayName ?? '') || t('label.untitled'),
+        name: getKnowledgePageName(knowledgePage, t),
         url: '',
         activeTitle: false,
       },
@@ -184,7 +185,7 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
   useEffect(() => {
     onPageChange({
       rightPanel: getVersionTimeLineElement(),
-      title: selectedData?.displayName || t('label.untitled'),
+      title: getKnowledgePageName(selectedData, t),
       data: knowledgePage,
       header: getHeaderElement(),
     });

@@ -25,6 +25,7 @@ import { TagClass } from '../../../support/tag/TagClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { createNewPage, uuid } from '../../../utils/common';
 import {
+  applyDashboardCertificationFilter,
   applyDashboardTagFilter,
   applyDashboardTierFilter,
   assertDimensionCard,
@@ -360,6 +361,7 @@ test.describe(
         uniquenessFailTs
       );
 
+      const resolveTs = getCurrentMillis();
       await apiContext.post(
         '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
         {
@@ -368,6 +370,13 @@ test.describe(
             testCaseResolutionStatusType: 'Resolved',
           },
         }
+      );
+
+      await waitForIncidentToBeIndexed(
+        apiContext,
+        uniquenessTestCaseFqn,
+        resolveTs,
+        'Resolved'
       );
 
       await afterAction();
@@ -470,23 +479,21 @@ test.describe(
 
       await test.step('Filter by Owner and verify all API responses succeed', async () => {
         await page.getByRole('button', { name: 'Owner' }).click();
-        await expect(
-          page.locator("[data-testid='select-owner-tabs']")
-        ).toBeVisible();
+        await expect(page.getByTestId('select-owner-tabs')).toBeVisible();
         await waitForAllLoadersToDisappear(page);
         await page.getByRole('tab', { name: 'Users' }).click();
         await waitForAllLoadersToDisappear(page);
+        await expect(
+          page.getByTestId('owner-select-users-search-bar')
+        ).toBeVisible();
 
         const searchOwner = page.waitForResponse(
           'api/v1/search/query?q=*&index=user*'
         );
+        await page.getByTestId('owner-select-users-search-bar').clear();
         await page
-          .locator('[data-testid="owner-select-users-search-bar"]')
-          .clear();
-        await page.fill(
-          '[data-testid="owner-select-users-search-bar"]',
-          user1.getUserDisplayName()
-        );
+          .getByTestId('owner-select-users-search-bar')
+          .pressSequentially(user1.getUserDisplayName());
         await searchOwner;
         await waitForAllLoadersToDisappear(page);
 
@@ -698,20 +705,11 @@ test.describe(
         await goToDataQualityDashboard(page);
         await waitForAllLoadersToDisappear(page);
 
-        await page.getByRole('button', { name: 'Certification' }).click();
-        await page.getByTestId('search-input').fill(cert2.data.name);
-        await page.getByTestId(cert2.responseData.fullyQualifiedName).click();
-        const certApiDone = page.waitForResponse(
-          (res) =>
-            res.url().includes('/dataQualityReport') &&
-            res
-              .url()
-              .includes(
-                encodeURIComponent(cert2.responseData.fullyQualifiedName)
-              )
+        await applyDashboardCertificationFilter(
+          page,
+          cert2.data.name,
+          cert2.responseData.fullyQualifiedName
         );
-        await page.getByTestId('update-btn').click();
-        await certApiDone;
         await waitForAllLoadersToDisappear(page);
 
         // table4 has exactly one test case: Uniqueness → Failed

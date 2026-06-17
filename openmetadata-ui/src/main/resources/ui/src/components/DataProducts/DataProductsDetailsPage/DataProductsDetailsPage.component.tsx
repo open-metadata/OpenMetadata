@@ -11,12 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import {
-  Avatar,
-  Button as CoreButton,
-  Tooltip as CoreTooltip,
-} from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Tabs, Tooltip, Typography } from 'antd';
+import { Avatar } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, Space, Tabs, Tag, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
@@ -29,6 +25,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconAnnouncementsBlack } from '../../../assets/svg/announcements-black.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
+import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
+import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
@@ -59,7 +57,6 @@ import { ContractExecutionStatus } from '../../../generated/type/contractExecuti
 import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
-import { useDataAccessRequest } from '../../../hooks/useDataAccessRequest';
 import { useFqn } from '../../../hooks/useFqn';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { FeedCounts } from '../../../interface/feed.interface';
@@ -69,28 +66,31 @@ import {
   getActiveAnnouncements,
 } from '../../../rest/announcementsAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
-import { getDataProductPortsView } from '../../../rest/dataProductAPI';
-import { searchQuery } from '../../../rest/searchAPI';
 import {
-  getEntityDeleteMessage,
-  getFeedCounts,
-  hasEditAccess,
-} from '../../../utils/CommonUtils';
+  exportDataProductToODPSYaml,
+  getDataProductPortsView,
+} from '../../../rest/dataProductAPI';
+import { searchQuery } from '../../../rest/searchAPI';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBase';
-import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
+import { getQueryFilterToIncludeDomain } from '../../../utils/DomainFilterUtils';
+import { getEntityDeleteMessage } from '../../../utils/EntityDisplayUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
+import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
+import { downloadFile } from '../../../utils/Export/ExportUtils';
 import {
-  getEntityFeedLink,
-  getEntityName,
-  getEntityVoteStatus,
-} from '../../../utils/EntityUtils';
-import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtilsPure';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import { showNotistackError } from '../../../utils/NotistackUtils';
 import {
@@ -102,13 +102,13 @@ import {
   getDomainPath,
   getVersionPath,
 } from '../../../utils/RouterUtils';
-import { getTermQuery } from '../../../utils/SearchUtils';
+import { getTermQuery } from '../../../utils/SearchPureUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumbs';
-import { useBreadcrumbs } from '../../common/atoms/navigation/useBreadcrumbs';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
+import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
@@ -126,9 +126,10 @@ import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component
 import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
+import { DataProductMetadataModal } from '../DataProductMetadataModal';
+import { ODPSImportModal } from '../ODPSImportModal';
 import './data-products-details-page.less';
 import { DataProductsDetailsPageProps } from './DataProductsDetailsPage.interface';
-
 const DataProductsDetailsPage = ({
   dataProduct,
   isVersionsView = false,
@@ -164,6 +165,8 @@ const DataProductsDetailsPage = ({
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
   const [isStyleEditing, setIsStyleEditing] = useState(false);
+  const [isOdpsImportOpen, setIsOdpsImportOpen] = useState(false);
+  const [isMetadataEditing, setIsMetadataEditing] = useState(false);
   const assetTabRef = useRef<AssetsTabRef>(null);
   const [isAssetDrawerOpen, setIsAssetDrawerOpen] = useState(false);
   const [previewAsset, setPreviewAsset] =
@@ -179,13 +182,6 @@ const DataProductsDetailsPage = ({
   const [dataContract, setDataContract] = useState<DataContract>();
   const [inputPortsCount, setInputPortsCount] = useState(0);
   const [outputPortsCount, setOutputPortsCount] = useState(0);
-  const [isRequestDataAccessOpen, setIsRequestDataAccessOpen] = useState(false);
-  const { isDarDisabled } = useDataAccessRequest({
-    entityFqn: dataProduct.fullyQualifiedName,
-    enabled: dataProductClassBase.getShowRequestDataAccess(),
-    listenForEvents: true,
-  });
-
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
   }, []);
@@ -197,6 +193,20 @@ const DataProductsDetailsPage = ({
       handleFeedCount
     );
   };
+
+  const fetchTaskCounts = useCallback(() => {
+    const fqn = dataProduct.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityTaskCountsInto(fqn, setFeedCount);
+    }
+  }, [dataProduct.fullyQualifiedName]);
+
+  const fetchActivityCount = useCallback(() => {
+    const fqn = dataProduct.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityActivityCountInto(EntityType.DATA_PRODUCT, fqn, setFeedCount);
+    }
+  }, [dataProduct.fullyQualifiedName]);
 
   const openAssetDrawer = useCallback(() => {
     setIsAssetDrawerOpen(true);
@@ -249,32 +259,32 @@ const DataProductsDetailsPage = ({
     fetchActiveAnnouncement();
   };
 
-  const breadcrumbItems = useMemo<BreadcrumbItem[]>(() => {
-    const items: BreadcrumbItem[] = [];
+  const breadcrumbItems = useMemo(() => {
+    const items: { label: string; href?: string }[] = [];
 
     if (isMarketplace) {
       items.push({
-        name: t('label.data-marketplace'),
-        url: ROUTES.DATA_MARKETPLACE,
+        label: t('label.data-marketplace'),
+        href: ROUTES.DATA_MARKETPLACE,
       });
     }
 
     items.push(
       fromMarketplace
         ? {
-            name: t('label.data-marketplace'),
-            url: ROUTES.DATA_MARKETPLACE,
+            label: t('label.data-marketplace'),
+            href: ROUTES.DATA_MARKETPLACE,
           }
         : {
-            name: t('label.data-product-plural'),
-            url: dataProductBasePath,
+            label: t('label.data-product-plural'),
+            href: dataProductBasePath,
           }
     );
 
     if (dataProduct.domains && dataProduct.domains.length > 0) {
       items.push({
-        name: getEntityName(dataProduct.domains[0]),
-        url: getDomainPath(dataProduct.domains[0].fullyQualifiedName),
+        label: getEntityName(dataProduct.domains[0]),
+        href: getDomainPath(dataProduct.domains[0].fullyQualifiedName),
       });
     }
 
@@ -286,8 +296,6 @@ const DataProductsDetailsPage = ({
     dataProductBasePath,
     t,
   ]);
-
-  const { breadcrumbs } = useBreadcrumbs({ items: breadcrumbItems });
 
   const [name, displayName] = useMemo(() => {
     const defaultName = dataProduct.name;
@@ -347,16 +355,6 @@ const DataProductsDetailsPage = ({
   const voteStatus = useMemo(
     () => getEntityVoteStatus(currentUser?.id ?? '', dataProduct.votes),
     [dataProduct.votes, currentUser?.id]
-  );
-
-  const isOwner = useMemo(
-    () =>
-      Boolean(
-        currentUser &&
-          dataProduct.owners?.length &&
-          hasEditAccess(dataProduct.owners, currentUser)
-      ),
-    [dataProduct.owners, currentUser]
   );
 
   const handleVoteChange = useCallback(
@@ -495,6 +493,22 @@ const DataProductsDetailsPage = ({
               setShowActions(false);
             },
           },
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.edit-metadata-description')}
+                icon={EditIcon}
+                id="edit-metadata-button"
+                name={t('label.edit-metadata')}
+              />
+            ),
+            key: 'edit-metadata-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsMetadataEditing(true);
+              setShowActions(false);
+            },
+          },
         ] as ItemType[])
       : []),
     ...(deleteDataProductPermission
@@ -517,6 +531,51 @@ const DataProductsDetailsPage = ({
             onClick: (e) => {
               e.domEvent.stopPropagation();
               setIsDelete(true);
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
+    {
+      label: (
+        <ManageButtonItemLabel
+          description={t('message.export-entity-as-odps-description')}
+          icon={ExportIcon}
+          id="export-odps-button"
+          name={t('label.export-as-odps')}
+        />
+      ),
+      key: 'export-odps-button',
+      onClick: async (e) => {
+        e.domEvent.stopPropagation();
+        setShowActions(false);
+        try {
+          const yaml = await exportDataProductToODPSYaml(dataProduct.id ?? '');
+          downloadFile(
+            yaml,
+            `${dataProduct.name}.odps.yaml`,
+            'application/yaml'
+          );
+        } catch (err) {
+          showErrorToast(err as AxiosError);
+        }
+      },
+    },
+    ...(editAllPermission
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.import-odps-description')}
+                icon={ImportIcon}
+                id="import-odps-button"
+                name={t('label.import-from-odps')}
+              />
+            ),
+            key: 'import-odps-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsOdpsImportOpen(true);
               setShowActions(false);
             },
           },
@@ -666,7 +725,8 @@ const DataProductsDetailsPage = ({
   useEffect(() => {
     fetchDataProductPermission();
     fetchDataProductAssets();
-    getEntityFeedCount();
+    fetchTaskCounts();
+    fetchActivityCount();
     fetchActiveAnnouncement();
     fetchDataProductContract();
     fetchPortCounts();
@@ -726,11 +786,27 @@ const DataProductsDetailsPage = ({
       'entityStatus' in dataProduct
         ? dataProduct.entityStatus
         : EntityStatus.Unprocessed;
+    const { lifecycleStage } = dataProduct;
 
-    return shouldShowStatus && entityStatus ? (
-      <EntityStatusBadge showDivider={false} status={entityStatus} />
-    ) : null;
-  }, [dataProduct]);
+    if (!shouldShowStatus && !lifecycleStage) {
+      return null;
+    }
+
+    return (
+      <Space size={8}>
+        {shouldShowStatus && entityStatus && (
+          <EntityStatusBadge showDivider={false} status={entityStatus} />
+        )}
+        {lifecycleStage && (
+          <Tag
+            className="tw:rounded-full tw:font-medium"
+            data-testid="lifecycle-stage-badge">
+            {t('label.lifecycle-stage')}: {lifecycleStage}
+          </Tag>
+        )}
+      </Space>
+    );
+  }, [dataProduct, t]);
 
   if (isCustomPageLoading) {
     return <Loader />;
@@ -763,130 +839,6 @@ const DataProductsDetailsPage = ({
               : undefined
           }
         />
-        <div className="tw:flex tw:mx-5 tw:items-end">
-          <div className="tw:flex-1">
-            <EntityHeader
-              badge={statusBadge}
-              breadcrumb={[]}
-              entityData={{ ...dataProduct, displayName, name }}
-              entityType={EntityType.DATA_PRODUCT}
-              handleFollowingClick={handleFollowingClick}
-              icon={iconData}
-              isFollowing={isFollowing}
-              isFollowingLoading={isFollowingLoading}
-              serviceName=""
-              suffix={<LearningIcon pageId={LEARNING_PAGE_IDS.DATA_PRODUCT} />}
-              titleColor={dataProduct.style?.color}
-            />
-          </div>
-          <div>
-            <div className="tw:flex tw:gap-3 tw:justify-end tw:items-center tw:pb-1">
-              {!isVersionsView &&
-                !isOwner &&
-                dataProductClassBase.getShowRequestDataAccess() && (
-                  <CoreTooltip
-                    isDisabled={!isDarDisabled}
-                    title={t('message.data-access-request-already-exists')}>
-                    <CoreButton
-                      color="primary"
-                      data-testid="request-data-access-button"
-                      isDisabled={isDarDisabled}
-                      size="md"
-                      onClick={() => setIsRequestDataAccessOpen(true)}>
-                      {t('label.request-data-access')}
-                    </CoreButton>
-                  </CoreTooltip>
-                )}
-
-              {!isVersionsView && dataProductPermission.Create && (
-                <Button
-                  data-testid="data-product-details-add-button"
-                  type="primary"
-                  onClick={openAssetDrawer}>
-                  {t('label.add-entity', {
-                    entity: t('label.asset-plural'),
-                  })}
-                </Button>
-              )}
-
-              <ButtonGroup className="spaced" size="small">
-                {dataContractLatestResultButton}
-
-                {onUpdateVote && (
-                  <Voting
-                    voteStatus={voteStatus}
-                    votes={dataProduct.votes}
-                    onUpdateVote={handleVoteChange}
-                  />
-                )}
-
-                {dataProduct?.version && (
-                  <Tooltip
-                    title={t(
-                      `label.${
-                        isVersionsView
-                          ? 'exit-version-history'
-                          : 'version-plural-history'
-                      }`
-                    )}>
-                    <Button
-                      className={classNames('', {
-                        'text-primary border-primary': version,
-                      })}
-                      data-testid="version-button"
-                      icon={<Icon component={VersionIcon} />}
-                      onClick={handleVersionClick}>
-                      <Typography.Text
-                        className={classNames('', {
-                          'text-primary': version,
-                        })}>
-                        {toString(dataProduct.version)}
-                      </Typography.Text>
-                    </Button>
-                  </Tooltip>
-                )}
-
-                {!isVersionsView && manageButtonContent.length > 0 && (
-                  <Dropdown
-                    align={{ targetOffset: [-12, 0] }}
-                    className="m-l-xs"
-                    menu={{
-                      items: manageButtonContent,
-                    }}
-                    open={showActions}
-                    overlayClassName="domain-manage-dropdown-list-container"
-                    overlayStyle={{ width: '350px' }}
-                    placement="bottomRight"
-                    trigger={['click']}
-                    onOpenChange={setShowActions}>
-                    <Tooltip
-                      placement="topRight"
-                      title={t('label.manage-entity', {
-                        entity: t('label.data-product'),
-                      })}>
-                      <Button
-                        className="domain-manage-dropdown-button tw-px-1.5"
-                        data-testid="manage-button"
-                        icon={
-                          <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
-                        }
-                        onClick={() => setShowActions(true)}
-                      />
-                    </Tooltip>
-                  </Dropdown>
-                )}
-              </ButtonGroup>
-
-              {activeAnnouncement && (
-                <AnnouncementCard
-                  announcement={activeAnnouncement}
-                  onClick={handleOpenAnnouncementDrawer}
-                />
-              )}
-            </div>
-          </div>
-        </div>
-
         <GenericProvider<DataProduct>
           muiTags
           currentVersionData={dataProduct}
@@ -897,6 +849,119 @@ const DataProductsDetailsPage = ({
           permissions={dataProductPermission}
           type={EntityType.DATA_PRODUCT}
           onUpdate={onUpdate}>
+          <div className="tw:flex tw:mx-5 tw:items-end">
+            <div className="tw:flex-1">
+              <EntityHeader
+                badge={statusBadge}
+                breadcrumb={[]}
+                entityData={{ ...dataProduct, displayName, name }}
+                entityType={EntityType.DATA_PRODUCT}
+                handleFollowingClick={handleFollowingClick}
+                icon={iconData}
+                isFollowing={isFollowing}
+                isFollowingLoading={isFollowingLoading}
+                serviceName=""
+                suffix={
+                  <LearningIcon pageId={LEARNING_PAGE_IDS.DATA_PRODUCT} />
+                }
+                titleColor={dataProduct.style?.color}
+              />
+            </div>
+            <div>
+              <div className="tw:flex tw:gap-3 tw:justify-end tw:items-center tw:pb-1">
+                {dataProductClassBase.getRequestDataAccessButton()}
+
+                {!isVersionsView && dataProductPermission.Create && (
+                  <Button
+                    data-testid="data-product-details-add-button"
+                    type="primary"
+                    onClick={openAssetDrawer}>
+                    {t('label.add-entity', {
+                      entity: t('label.asset-plural'),
+                    })}
+                  </Button>
+                )}
+
+                <ButtonGroup className="spaced" size="small">
+                  {dataContractLatestResultButton}
+
+                  {onUpdateVote && (
+                    <Voting
+                      voteStatus={voteStatus}
+                      votes={dataProduct.votes}
+                      onUpdateVote={handleVoteChange}
+                    />
+                  )}
+
+                  {dataProduct?.version && (
+                    <Tooltip
+                      title={t(
+                        `label.${
+                          isVersionsView
+                            ? 'exit-version-history'
+                            : 'version-plural-history'
+                        }`
+                      )}>
+                      <Button
+                        className={classNames('', {
+                          'text-primary border-primary': version,
+                        })}
+                        data-testid="version-button"
+                        icon={<Icon component={VersionIcon} />}
+                        onClick={handleVersionClick}>
+                        <Typography.Text
+                          className={classNames('', {
+                            'text-primary': version,
+                          })}>
+                          {toString(dataProduct.version)}
+                        </Typography.Text>
+                      </Button>
+                    </Tooltip>
+                  )}
+
+                  {!isVersionsView && manageButtonContent.length > 0 && (
+                    <Dropdown
+                      align={{ targetOffset: [-12, 0] }}
+                      className="m-l-xs"
+                      menu={{
+                        items: manageButtonContent,
+                      }}
+                      open={showActions}
+                      overlayClassName="domain-manage-dropdown-list-container"
+                      overlayStyle={{ width: '350px' }}
+                      placement="bottomRight"
+                      trigger={['click']}
+                      onOpenChange={setShowActions}>
+                      <Tooltip
+                        placement="topRight"
+                        title={t('label.manage-entity', {
+                          entity: t('label.data-product'),
+                        })}>
+                        <Button
+                          className="domain-manage-dropdown-button tw-px-1.5"
+                          data-testid="manage-button"
+                          icon={
+                            <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
+                          }
+                          onClick={() => setShowActions(true)}
+                        />
+                      </Tooltip>
+                    </Dropdown>
+                  )}
+                </ButtonGroup>
+
+                {activeAnnouncement && (
+                  <AnnouncementCard
+                    announcement={activeAnnouncement}
+                    onClick={handleOpenAnnouncementDrawer}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+
+          {dataProductClassBase.getRequestDataAccessBanner()}
+
           <div className="data-product-details-page-tabs tw:w-full">
             <div className="tw:p-5">
               <Tabs
@@ -983,19 +1048,41 @@ const DataProductsDetailsPage = ({
         onClose={handleCloseAnnouncementDrawer}
       />
 
-      {dataProductClassBase.getRequestDataAccessDrawer(
-        isRequestDataAccessOpen,
-        () => setIsRequestDataAccessOpen(false),
-        dataProduct.fullyQualifiedName ?? '',
-        getEntityName(dataProduct),
-        EntityType.DATA_PRODUCT
-      )}
+      <ODPSImportModal
+        domainFqn={dataProduct.domains?.[0]?.fullyQualifiedName}
+        existingDataProduct={dataProduct}
+        open={isOdpsImportOpen}
+        onClose={() => setIsOdpsImportOpen(false)}
+        onSuccess={() => {
+          // The ODPS import endpoint already persists the entity; use the
+          // refetch hook rather than feeding the returned object back through
+          // onUpdate, which would compute a JSON patch against stale local
+          // state and resubmit the import's diff as a regular PATCH.
+          setIsOdpsImportOpen(false);
+          onRefresh?.();
+        }}
+      />
+
+      <DataProductMetadataModal
+        dataProduct={dataProduct}
+        open={isMetadataEditing}
+        onCancel={() => setIsMetadataEditing(false)}
+        onSubmit={async (values) => {
+          await onUpdate({
+            ...dataProduct,
+            dataProductType: values.dataProductType,
+            visibility: values.visibility,
+            portfolioPriority: values.portfolioPriority,
+          });
+          setIsMetadataEditing(false);
+        }}
+      />
     </>
   );
 
   return (
     <>
-      {breadcrumbs}
+      <HeaderBreadcrumb items={breadcrumbItems} />
       <div className="domain-page-container">{content}</div>
     </>
   );

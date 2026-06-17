@@ -650,7 +650,7 @@ const WithColumnFilterDropdownExample = () => {
                   {selectedStatuses.size > 0 ? '●' : '○'}
                 </button>
                 <Popover placement="bottom right">
-                  <Dialog className="tw:outline-none">
+                  <Dialog className="tw:outline-hidden">
                     <div className="tw:bg-primary tw:shadow-lg tw:ring-1 tw:ring-secondary_alt tw:rounded-lg tw:p-3 tw:min-w-48">
                       <p className="tw:text-xs tw:font-medium tw:text-secondary tw:mb-2">
                         Filter by status
