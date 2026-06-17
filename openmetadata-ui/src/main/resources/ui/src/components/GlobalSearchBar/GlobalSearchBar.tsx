@@ -159,7 +159,7 @@ export const GlobalSearchBar = () => {
 
   const handleClear = () => {
     setSearchValue('');
-    if (pathname.startsWith('/explore')) {
+    if (pathname === '/explore' || pathname.startsWith('/explore/')) {
       navigate(getExplorePath({ search: '', isPersistFilters: true }));
     }
   };
