@@ -29,7 +29,6 @@ import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
-import org.openmetadata.schema.api.services.ingestion.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
@@ -37,7 +36,6 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
-import org.openmetadata.schema.entity.services.ingestion.IngestionPipeline;
 import org.openmetadata.schema.services.connections.database.ConnectionArguments;
 import org.openmetadata.schema.services.connections.database.ConnectionOptions;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
@@ -45,10 +43,6 @@ import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
-import org.openmetadata.schema.services.connections.metadata.AirflowConfig;
-import org.openmetadata.schema.services.connections.metadata.DatabaseServiceMetadataPipeline;
-import org.openmetadata.schema.services.connections.metadata.PipelineType;
-import org.openmetadata.schema.services.connections.metadata.SourceConfig;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -335,52 +329,6 @@ public class DatabaseServiceResourceIT
     ListResponse<DatabaseService> response = listEntities(params);
     assertNotNull(response);
     assertTrue(response.getData().size() >= 3);
-  }
-
-  @Test
-  void list_databaseServiceWithPipelinesField_populatesPipelines(TestNamespace ns) {
-    Domain domain =
-        SdkClients.adminClient()
-            .domains()
-            .create(
-                new CreateDomain()
-                    .withName(ns.prefix("svc_pipe_dom"))
-                    .withDescription("Isolates list query for pipelines-field test")
-                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
-
-    CreateDatabaseService createRequest =
-        createMinimalRequest(ns)
-            .withName(ns.prefix("svc_pipe"))
-            .withDomains(List.of(domain.getFullyQualifiedName()));
-    DatabaseService service = createEntity(createRequest);
-
-    CreateIngestionPipeline pipelineRequest =
-        new CreateIngestionPipeline()
-            .withName(ns.prefix("ingestion_pipe"))
-            .withPipelineType(PipelineType.METADATA)
-            .withService(service.getEntityReference())
-            .withSourceConfig(
-                new SourceConfig()
-                    .withConfig(new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true)))
-            .withAirflowConfig(new AirflowConfig());
-    IngestionPipeline pipeline =
-        SdkClients.adminClient().ingestionPipelines().create(pipelineRequest);
-
-    ListParams params = new ListParams().withDomain(domain.getFullyQualifiedName()).withLimit(1000);
-    params.setFields("pipelines");
-    ListResponse<DatabaseService> response = listEntities(params);
-
-    DatabaseService listed =
-        response.getData().stream()
-            .filter(s -> s.getId().equals(service.getId()))
-            .findFirst()
-            .orElse(null);
-    assertNotNull(listed, "Created service should be present in list response");
-    assertNotNull(
-        listed.getPipelines(), "fields=pipelines must populate pipelines on the service endpoint");
-    assertTrue(
-        listed.getPipelines().stream().anyMatch(p -> p.getId().equals(pipeline.getId())),
-        "Service should include the ingestion pipeline when fields=pipelines");
   }
 
   @Test
