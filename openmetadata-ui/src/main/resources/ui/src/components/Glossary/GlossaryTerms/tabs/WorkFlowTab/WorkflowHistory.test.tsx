@@ -34,7 +34,7 @@ import { showErrorToast } from '../../../../../utils/ToastUtils';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericContext';
 
 // Mock dependencies
-jest.mock('../../../../Customization/GenericProvider/GenericProvider');
+jest.mock('../../../../Customization/GenericProvider/GenericContext');
 jest.mock('../../../../../rest/workflowAPI');
 jest.mock('../../../../../utils/ToastUtils');
 jest.mock('../../../../../utils/date-time/DateTimeUtils');
