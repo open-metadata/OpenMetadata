@@ -541,9 +541,12 @@ SNOWFLAKE_ACCESS_HISTORY_LINEAGE = textwrap.dedent(
         SELECT
             ah.QUERY_ID,
             ah.QUERY_START_TIME,
+            ah.USER_NAME,
             ah.DIRECT_OBJECTS_ACCESSED,
             ah.OBJECTS_MODIFIED,
-            qh.QUERY_TEXT
+            qh.QUERY_TEXT,
+            qh.QUERY_TYPE,
+            qh.TOTAL_ELAPSED_TIME AS QUERY_DURATION
         FROM {account_usage}.ACCESS_HISTORY ah
         LEFT JOIN {account_usage}.QUERY_HISTORY qh
             ON ah.QUERY_ID = qh.QUERY_ID
@@ -560,7 +563,11 @@ SNOWFLAKE_ACCESS_HISTORY_LINEAGE = textwrap.dedent(
             downstream.value:"objectName"::STRING AS DOWNSTREAM_TABLE,
             downstream.value:"objectDomain"::STRING AS DOWNSTREAM_DOMAIN,
             MAX_BY(ah.QUERY_ID, ah.QUERY_START_TIME) AS QUERY_ID,
-            MAX_BY(ah.QUERY_TEXT, ah.QUERY_START_TIME) AS QUERY_TEXT
+            MAX_BY(ah.QUERY_TEXT, ah.QUERY_START_TIME) AS QUERY_TEXT,
+            MAX_BY(ah.QUERY_TYPE, ah.QUERY_START_TIME) AS QUERY_TYPE,
+            MAX_BY(ah.QUERY_DURATION, ah.QUERY_START_TIME) AS QUERY_DURATION,
+            MAX_BY(ah.USER_NAME, ah.QUERY_START_TIME) AS USER_NAME,
+            MAX(ah.QUERY_START_TIME) AS QUERY_START_TIME
         FROM access_history_filtered ah,
              LATERAL FLATTEN(input => ah.DIRECT_OBJECTS_ACCESSED) upstream,
              LATERAL FLATTEN(input => ah.OBJECTS_MODIFIED) downstream
@@ -605,6 +612,10 @@ SNOWFLAKE_ACCESS_HISTORY_LINEAGE = textwrap.dedent(
         te.DOWNSTREAM_DOMAIN,
         te.QUERY_ID,
         te.QUERY_TEXT,
+        te.QUERY_TYPE,
+        te.QUERY_DURATION,
+        te.QUERY_START_TIME,
+        te.USER_NAME,
         ce.COLUMN_PAIRS
     FROM table_edges te
     LEFT JOIN column_edges_grouped ce

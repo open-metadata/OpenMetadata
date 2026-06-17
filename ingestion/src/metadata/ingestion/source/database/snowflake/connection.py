@@ -18,7 +18,8 @@ from urllib.parse import quote_plus
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
-from pydantic import BaseModel, SecretStr
+from pydantic import BaseModel
+from sqlalchemy import text
 from sqlalchemy.engine import Engine
 from sqlalchemy.inspection import inspect
 
@@ -123,7 +124,13 @@ def probe_access_history_available(engine: Engine, account_usage_schema: str) ->
     """
     try:
         with engine.connect() as conn:
-            conn.execute(text(SNOWFLAKE_ACCESS_HISTORY_PROBE.format(account_usage=account_usage_schema)))
+            conn.execute(
+                text(
+                    SNOWFLAKE_ACCESS_HISTORY_PROBE.format(
+                        account_usage=account_usage_schema
+                    )
+                )
+            )
     except Exception as exc:
         logger.info(
             f"ACCESS_HISTORY probe failed (will fall back to legacy lineage path): {exc}. "
@@ -150,13 +157,10 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
 
         if connection.username:
             url += f"{quote_plus(connection.username)}"
-            if not connection.password:
-                connection.password = SecretStr("")
-            url += (
-                f":{quote_plus(connection.password.get_secret_value())}"
-                if connection
-                else ""
+            password = (
+                connection.password.get_secret_value() if connection.password else ""
             )
+            url += f":{quote_plus(password)}"
             url += "@"
 
         url += connection.account
