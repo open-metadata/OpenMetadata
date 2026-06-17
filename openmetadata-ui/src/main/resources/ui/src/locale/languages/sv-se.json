@@ -3608,7 +3608,7 @@
       "default": "Se till att {{service_type}} är konfigurerad för att tillåta anslutningar",
       "withIp": " från {{ip}}"
     },
-    “test-connection-unlocks-next-step”: “Ett lyckat test låser upp “Vad som ska matas in””,
+    "test-connection-unlocks-next-step": "Ett lyckat test låser upp \"Vad som ska matas in\"",
     "test-connection-verified": "Anslutning verifierad",
     "test-connection-verified-count": "Anslutning verifierad · {{passed}} av {{total}} kontroller godkända",
     "test-connection-view-details": "Granska kontrollerna och råloggarna för denna anslutning.",

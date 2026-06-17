@@ -116,15 +116,18 @@ jest.mock(
   () => jest.fn().mockImplementation(() => <div>IngestionStepper</div>)
 );
 
-jest.mock('../../components/common/NavigationGuardModal/NavigationGuardModal', () => ({
-  NavigationGuardModal: jest.fn().mockImplementation(({ isOpen, onLeave }) =>
-    isOpen ? (
-      <button data-testid="modal-leave" onClick={onLeave}>
-        Leave
-      </button>
-    ) : null
-  ),
-}));
+jest.mock(
+  '../../components/common/NavigationGuardModal/NavigationGuardModal',
+  () => ({
+    NavigationGuardModal: jest.fn().mockImplementation(({ isOpen, onLeave }) =>
+      isOpen ? (
+        <button data-testid="modal-leave" onClick={onLeave}>
+          Leave
+        </button>
+      ) : null
+    ),
+  })
+);
 
 jest.mock('../../utils/ConnectionsRouterClassBase', () => ({
   __esModule: true,

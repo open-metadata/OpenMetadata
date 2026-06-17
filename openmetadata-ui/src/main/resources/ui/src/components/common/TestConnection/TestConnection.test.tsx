@@ -157,7 +157,6 @@ describe('Test Connection Component', () => {
       render(<TestConnection {...mockProps} />);
     });
 
-    const connectionCard = screen.getByTestId('test-connection-card');
     const testConnectionButton = screen.getByTestId('test-connection-btn');
 
     expect(
