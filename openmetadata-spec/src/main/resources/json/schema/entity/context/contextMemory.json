@@ -49,11 +49,12 @@
       "javaType": "org.openmetadata.schema.entity.context.ContextMemorySourceType",
       "description": "How the memory was created.",
       "type": "string",
-      "enum": ["Manual", "ChatPromotion", "RememberRequest"],
+      "enum": ["Manual", "ChatPromotion", "RememberRequest", "FileExtraction"],
       "javaEnums": [
         { "name": "MANUAL" },
         { "name": "CHAT_PROMOTION" },
-        { "name": "REMEMBER_REQUEST" }
+        { "name": "REMEMBER_REQUEST" },
+        { "name": "FILE_EXTRACTION" }
       ],
       "default": "Manual"
     },
@@ -231,6 +232,10 @@
     "sourceAssistantMessage": {
       "description": "Assistant message identifier used to produce this memory.",
       "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "sourceFile": {
+      "description": "The Context Center file this memory was extracted from.",
+      "$ref": "../../type/entityReference.json"
     },
     "rootMemory": {
       "description": "Root memory in an append-style memory thread.",
