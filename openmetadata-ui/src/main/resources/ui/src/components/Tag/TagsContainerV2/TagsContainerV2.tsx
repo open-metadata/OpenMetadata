@@ -47,7 +47,7 @@ import {
   PlusIconButton,
   RequestIconButton,
 } from '../../common/IconButtons/EditIconButton';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { TableTagsProps } from '../../Database/TableTags/TableTags.interface';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';

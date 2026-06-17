@@ -168,9 +168,6 @@ jest.mock(
     GenericProvider: jest
       .fn()
       .mockImplementation(({ children }) => <div>{children}</div>),
-    useGenericContext: jest.fn().mockImplementation(() => ({
-      data: {},
-    })),
   })
 );
 

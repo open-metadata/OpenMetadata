@@ -143,7 +143,7 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../../../utils/FeedUtils', () => ({
+jest.mock('../../../utils/FeedUtilsPure', () => ({
   getUpdatedThread: jest.fn().mockResolvedValue({
     id: '123',
     posts: [],

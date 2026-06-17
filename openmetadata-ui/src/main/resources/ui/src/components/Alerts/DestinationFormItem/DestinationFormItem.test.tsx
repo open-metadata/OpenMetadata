@@ -39,10 +39,6 @@ jest.mock('../../../utils/Alerts/AlertsUtil', () => ({
   getDestinationConfigField: jest
     .fn()
     .mockReturnValue(<div data-testid="destination-field" />),
-  getSubscriptionTypeOptions: jest.fn().mockReturnValue([]),
-  getFilteredDestinationOptions: jest
-    .fn()
-    .mockImplementation((key) => DESTINATION_SOURCE_ITEMS[key]),
   getConnectionTimeoutField: jest
     .fn()
     .mockReturnValue(<div data-testid="connection-timeout" />),
@@ -55,6 +51,11 @@ jest.mock('../../../utils/Alerts/AlertsUtilPure', () => ({
   listLengthValidator: jest.fn().mockImplementation(() => Promise.resolve()),
   getFormattedDestinations: (...args: unknown[]) =>
     mockGetFormattedDestinations(...args),
+  getSubscriptionTypeOptions: jest.fn().mockReturnValue([]),
+  getFilteredDestinationOptions: jest
+    .fn()
+    .mockImplementation((key) => DESTINATION_SOURCE_ITEMS[key]),
+  normalizeDestinationConfig: jest.fn().mockImplementation((config) => config),
 }));
 
 jest.mock('../../../utils/ObservabilityUtils', () => ({

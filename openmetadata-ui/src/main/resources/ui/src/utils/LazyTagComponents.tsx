@@ -13,6 +13,7 @@
 
 import { lazy, Suspense } from 'react';
 import { DomainLabelProps } from '../components/common/DomainLabel/DomainLabel.interface';
+import { OwnerLabelV2Props } from '../components/DataAssets/OwnerLabelV2/OwnerLabelV2';
 import { EntityType } from '../enums/entity.enum';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 
@@ -40,11 +41,6 @@ interface LazyCommonWidgetsProps {
   showTaskHandler?: boolean;
 }
 
-interface LazyOwnerLabelV2Props {
-  dataTestId?: string;
-  hasPermission?: boolean;
-}
-
 export const LazyCommonWidgets = (props: LazyCommonWidgetsProps) => (
   <Suspense fallback={null}>
     <CommonWidgets {...props} />
@@ -57,7 +53,7 @@ export const LazyDomainLabelV2 = (props: Partial<DomainLabelProps>) => (
   </Suspense>
 );
 
-export const LazyOwnerLabelV2 = (props: LazyOwnerLabelV2Props) => (
+export const LazyOwnerLabelV2 = (props: OwnerLabelV2Props) => (
   <Suspense fallback={null}>
     <OwnerLabelV2 {...props} />
   </Suspense>

@@ -83,7 +83,7 @@ const mockUseGenericContextResult = {
   setDisplayedColumns: jest.fn(),
 };
 
-jest.mock('../../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn(() => mockUseGenericContextResult),
 }));
 jest.mock('../../../Database/ColumnFilter/ColumnFilter.component', () => ({
