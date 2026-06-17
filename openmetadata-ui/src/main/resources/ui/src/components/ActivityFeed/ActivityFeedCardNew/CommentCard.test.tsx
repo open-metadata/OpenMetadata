@@ -90,7 +90,7 @@ jest.mock('../Shared/ActivityFeedActions', () => {
   ));
 });
 
-jest.mock('../../../utils/FeedUtils', () => ({
+jest.mock('../../../utils/FeedUtilsPure', () => ({
   getFrontEndFormat: jest.fn((text) => text),
   MarkdownToHTMLConverter: {
     makeHtml: jest.fn((text) => text),

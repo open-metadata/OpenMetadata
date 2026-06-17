@@ -78,19 +78,19 @@ import {
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBase';
-import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
+import { getQueryFilterToIncludeDomain } from '../../../utils/DomainFilterUtils';
 import { getEntityDeleteMessage } from '../../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
 import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import { downloadFile } from '../../../utils/Export/ExportUtils';
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
   getFeedCounts,
-} from '../../../utils/FeedUtils';
+} from '../../../utils/FeedUtilsPure';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import { showNotistackError } from '../../../utils/NotistackUtils';
 import {
@@ -102,7 +102,7 @@ import {
   getDomainPath,
   getVersionPath,
 } from '../../../utils/RouterUtils';
-import { getTermQuery } from '../../../utils/SearchUtils';
+import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
@@ -130,7 +130,6 @@ import { DataProductMetadataModal } from '../DataProductMetadataModal';
 import { ODPSImportModal } from '../ODPSImportModal';
 import './data-products-details-page.less';
 import { DataProductsDetailsPageProps } from './DataProductsDetailsPage.interface';
-
 const DataProductsDetailsPage = ({
   dataProduct,
   isVersionsView = false,

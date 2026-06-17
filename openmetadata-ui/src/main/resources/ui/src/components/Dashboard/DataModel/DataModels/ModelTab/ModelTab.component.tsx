@@ -53,7 +53,7 @@ import { EntityAttachmentProvider } from '../../../../common/EntityDescription/E
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../../../common/Table/Table';
-import { useGenericContext } from '../../../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../../Customization/GenericProvider/GenericContext';
 import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../../../Database/TableTags/TableTags.component';

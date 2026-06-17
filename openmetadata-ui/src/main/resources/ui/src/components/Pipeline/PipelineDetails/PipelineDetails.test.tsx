@@ -174,7 +174,7 @@ jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
     .mockReturnValue(<p>CustomPropertyTable.component</p>),
 }));
 
-jest.mock('../../../utils/FeedUtils', () => ({
+jest.mock('../../../utils/FeedUtilsPure', () => ({
   getFeedCounts: jest.fn().mockReturnValue({}),
 }));
 
@@ -238,6 +238,9 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   GenericProvider: jest
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),
+}));
+
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn().mockReturnValue({
     data: mockPipelineDetails,
     permissions: DEFAULT_ENTITY_PERMISSION,

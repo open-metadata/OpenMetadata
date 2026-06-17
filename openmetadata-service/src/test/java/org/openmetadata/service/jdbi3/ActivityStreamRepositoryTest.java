@@ -27,7 +27,9 @@ import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,9 +39,11 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ActivityEventType;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -100,6 +104,36 @@ class ActivityStreamRepositoryTest {
             .tag("kind", "hard_deleted")
             .counter();
     assertEquals(1.0, counter.count());
+  }
+
+  @Test
+  void createFieldEventsFromChangeEventMapsEntityFieldsToEventTypes() {
+    CollectionDAO.ActivityStreamDAO dao = mock(CollectionDAO.ActivityStreamDAO.class);
+    ActivityStreamRepository repository = new ActivityStreamRepository(dao);
+
+    ChangeDescription changeDescription =
+        new ChangeDescription()
+            .withFieldsAdded(
+                List.of(
+                    new FieldChange().withName("description").withNewValue("d"),
+                    new FieldChange().withName("tags").withNewValue("t"),
+                    new FieldChange().withName("owners").withNewValue("o")));
+    ChangeEvent changeEvent =
+        changeEventWith(null)
+            .withEventType(EventType.ENTITY_UPDATED)
+            .withChangeDescription(changeDescription);
+
+    List<ActivityEvent> events =
+        repository.createFieldEventsFromChangeEvent(changeEvent, tableEntity());
+
+    Set<ActivityEventType> deliveredTypes =
+        events.stream().map(ActivityEvent::getEventType).collect(Collectors.toSet());
+    assertEquals(
+        Set.of(
+            ActivityEventType.DESCRIPTION_UPDATED,
+            ActivityEventType.TAGS_UPDATED,
+            ActivityEventType.OWNER_UPDATED),
+        deliveredTypes);
   }
 
   private static ChangeEvent changeEventWith(String userName) {

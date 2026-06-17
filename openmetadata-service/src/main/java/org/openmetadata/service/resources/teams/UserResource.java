@@ -217,7 +217,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("profile,roles,teams,follows,owns", MetadataOperation.VIEW_BASIC);
-    return listOf(MetadataOperation.EDIT_TEAMS);
+    return listOf(MetadataOperation.EDIT_TEAMS, MetadataOperation.IMPERSONATE);
   }
 
   @Override
