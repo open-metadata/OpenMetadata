@@ -17,7 +17,6 @@ import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { getDatabaseSchemaDetailsByFQN } from '../../rest/databaseAPI';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
-import { getFeedCounts } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import DatabaseSchemaPageComponent from './DatabaseSchemaPage.component';
 import {
@@ -120,6 +119,10 @@ jest.mock('../../rest/tableAPI', () => ({
 
 jest.mock('../../utils/CommonUtils', () => ({
   getEntityMissingError: jest.fn().mockImplementation((error) => error),
+}));
+jest.mock('../../utils/FeedUtilsPure', () => ({
+  fetchEntityActivityCountInto: jest.fn(),
+  fetchEntityTaskCountsInto: jest.fn(),
   getFeedCounts: jest.fn().mockImplementation(() => FEED_COUNT_INITIAL_DATA),
   sortTagsCaseInsensitive: jest.fn(),
 }));

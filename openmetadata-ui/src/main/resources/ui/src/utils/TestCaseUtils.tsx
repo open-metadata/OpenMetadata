@@ -14,6 +14,7 @@
 import { Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { lowerCase } from 'lodash';
+import type { ReactNode } from 'react';
 import { NavigateFunction } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../assets/svg/edit-new.svg';
 import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
@@ -31,7 +32,7 @@ import { t } from './i18next/LocalUtil';
 export const getTestCaseResultCount = (
   count: number,
   status: TestCaseStatus
-) => (
+): ReactNode => (
   <div
     className={`test-result-container ${lowerCase(status)}`}
     data-testid={`test-${status}`}>

@@ -14,11 +14,11 @@
 import { Col, Row } from 'antd';
 import { useMemo } from 'react';
 import { EntityField } from '../../../../../constants/Feeds.constants';
+import { getFieldOperationIcon } from '../../../../../utils/FeedUtils';
 import {
   getFeedChangeFieldLabel,
-  getFieldOperationIcon,
   getFrontEndFormat,
-} from '../../../../../utils/FeedUtils';
+} from '../../../../../utils/FeedUtilsPure';
 import RichTextEditorPreviewerV1 from '../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { DescriptionFeedProps } from './DescriptionFeed.interface';
 

@@ -19,7 +19,6 @@ import { Include } from '../../generated/type/include';
 import { useFqn } from '../../hooks/useFqn';
 import { getApiCollectionByFQN } from '../../rest/apiCollectionsAPI';
 import { getApiEndPoints } from '../../rest/apiEndpointsAPI';
-import { getFeedCounts } from '../../utils/CommonUtils';
 import APICollectionPage from './APICollectionPage';
 
 jest.mock('../../rest/apiCollectionsAPI', () => ({
@@ -41,10 +40,7 @@ jest.mock('../../utils/EntityDisplayUtils', () => ({
 jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('test-api-collection'),
 }));
-jest.mock('../../utils/CommonUtils', () => ({
-  getFeedCounts: jest.fn(),
-}));
-jest.mock('../../utils/FeedUtils', () => ({
+jest.mock('../../utils/FeedUtilsPure', () => ({
   fetchEntityActivityCountInto: jest.fn(),
   fetchEntityTaskCountsInto: jest.fn(),
   getEntityMissingError: jest.fn(),

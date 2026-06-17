@@ -13,23 +13,9 @@
 import { Card, Typography } from 'antd';
 import { isEqual } from 'lodash';
 import { FC, Fragment } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
-import {
-  ANNOUNCEMENT_BG,
-  ANNOUNCEMENT_BORDER,
-  GLOBAL_BORDER,
-  TASK_BORDER,
-} from '../../../constants/Feeds.constants';
-import {
-  Post,
-  Thread,
-  ThreadTaskStatus,
-  ThreadType,
-} from '../../../generated/entity/feed/thread';
-import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
-import { getTaskDetailPath } from '../../../utils/TasksUtils';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
+import { GLOBAL_BORDER } from '../../../constants/Feeds.constants';
+import { Post } from '../../../generated/entity/feed/thread';
+import { getFeedListWithRelativeDays } from '../../../utils/FeedUtilsPure';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
@@ -37,7 +23,6 @@ import FeedListSeparator from '../FeedListSeparator/FeedListSeparator';
 import AnnouncementBadge from '../Shared/AnnouncementBadge';
 import TaskBadge from '../Shared/TaskBadge';
 import { ActivityThreadListProp } from './ActivityThreadPanel.interface';
-
 const ActivityThreadList: FC<ActivityThreadListProp> = ({
   className,
   threads,

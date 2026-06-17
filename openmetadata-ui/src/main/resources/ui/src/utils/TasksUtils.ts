@@ -76,8 +76,7 @@ import { getContainerByFQN } from '../rest/storageAPI';
 import { getStoredProceduresByFqn } from '../rest/storedProceduresAPI';
 import { getTableDetailsByFQN } from '../rest/tableAPI';
 import { getTopicByFqn } from '../rest/topicsAPI';
-import { getPartialNameFromTableFQN } from './CommonUtils';
-import { ContainerFields } from './ContainerDetailUtils';
+import { ContainerFields } from './ContainerDetailPureUtils';
 import {
   defaultFields as DashboardFields,
   fetchCharts,
@@ -88,8 +87,8 @@ import { defaultFields as DataModelFields } from './DataModelsUtils';
 import { defaultFields as TableFields } from './DatasetDetailsUtils';
 import { getEntityName } from './EntityNameUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
-import { getEntityFQN, getEntityType } from './FeedUtils';
-import { getGlossaryBreadcrumbs } from './GlossaryUtils';
+import { getPartialNameFromTableFQN } from './FqnUtils';
+import { getGlossaryBreadcrumbs } from './GlossaryPureUtils';
 import { t } from './i18next/LocalUtil';
 import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
 import { defaultFields as PipelineFields } from './PipelineDetailsUtils';

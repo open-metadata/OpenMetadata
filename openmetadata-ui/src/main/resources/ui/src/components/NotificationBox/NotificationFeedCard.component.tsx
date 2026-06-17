@@ -23,9 +23,7 @@ import {
 } from '../../utils/date-time/DateTimeUtils';
 import { getEntityLinkFromType } from '../../utils/EntityBreadcrumbUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import { entityDisplayName, prepareFeedLink } from '../../utils/FeedUtils';
-import Fqn from '../../utils/Fqn';
-import { getTaskDetailPath } from '../../utils/TasksUtils';
+import { entityDisplayName, prepareFeedLink } from '../../utils/FeedUtilsPure';
 import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { SourceType } from '../SearchedData/SearchedData.interface';

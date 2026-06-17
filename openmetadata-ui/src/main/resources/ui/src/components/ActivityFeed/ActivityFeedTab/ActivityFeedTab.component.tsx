@@ -85,7 +85,6 @@ import {
   ActivityFeedTabProps,
   ActivityFeedTabs,
 } from './ActivityFeedTab.interface';
-
 const TaskTabNew = withSuspenseFallback(
   lazy(() =>
     import('../../Entity/Task/TaskTab/TaskTabNew.component').then((m) => ({
