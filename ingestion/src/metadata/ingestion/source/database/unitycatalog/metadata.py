@@ -347,6 +347,9 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         """
         schema_name = self.context.get().database_schema
         catalog_name = self.context.get().database
+        tables_with_constraints = set()
+        if catalog_name is None or schema_name is None:
+            return tables_with_constraints
 
         sql = UNITY_CATALOG_TABLE_CONSTRAINTS
         params = {}
@@ -358,7 +361,6 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             sql += " AND table_schema = :schema_name"
             params["schema_name"] = schema_name
 
-        tables_with_constraints = set()
         try:
             cursor = self.sql_connection.execute(text(sql), params)
             for row in cursor:
@@ -401,8 +403,8 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                     except Exception as exc:
                         msg = (
                             f"Unexpected exception in fetching constraints "
-                            f"(table [{table.full_name}]: {exc}. "
-                            f"Contraints will be ignored."
+                            f"Constraints will be ignored."
+                            f"table [{table.full_name}]: {exc}. "
                         )
                         logger.warning(msg)
                         self.status.warning(table.name, msg)
