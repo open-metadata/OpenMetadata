@@ -13,6 +13,7 @@
 Tests for GCP CloudSQL MySQL connection handling
 """
 
+import inspect
 import sys
 from types import ModuleType
 from unittest.mock import MagicMock, patch
@@ -31,27 +32,27 @@ _NAMESPACE_MODULES = (
     "google",
     "google.cloud",
     "google.cloud.sql",
-    "google.cloud.sql.connectors",
+    "google.cloud.sql.connector",
 )
 
 
 @pytest.fixture(autouse=True)
 def mock_connector():
-    """Inject a fake google.cloud.sql.connectors module into sys.modules so the
+    """Inject a fake google.cloud.sql.connector module into sys.modules so the
     lazy import inside _CloudSqlStrategy.build works without installing
     cloud-sql-python-connector."""
     connector_instance = MagicMock()
     connector_cls = MagicMock(return_value=connector_instance)
 
-    connectors_mod = ModuleType("google.cloud.sql.connectors")
-    connectors_mod.Connector = connector_cls
+    connector_mod = ModuleType("google.cloud.sql.connector")
+    connector_mod.Connector = connector_cls
 
     originals = {k: sys.modules.get(k) for k in _NAMESPACE_MODULES}
 
     sys.modules.setdefault("google", ModuleType("google"))
     sys.modules.setdefault("google.cloud", ModuleType("google.cloud"))
     sys.modules.setdefault("google.cloud.sql", ModuleType("google.cloud.sql"))
-    sys.modules["google.cloud.sql.connectors"] = connectors_mod
+    sys.modules["google.cloud.sql.connector"] = connector_mod
 
     yield connector_cls, connector_instance
 
@@ -181,3 +182,14 @@ class TestMySQLCloudSQLConnection:
 
         connect_kwargs = mock_connector_inst.connect.call_args.kwargs
         assert connect_kwargs["db"] == "mydb"
+
+    def test_cloudsql_imports_singular_connector_module(self):
+        """Guard against the plural-module typo (google.cloud.sql.connectors).
+
+        The other tests mock the module into sys.modules, so they pass under
+        either name; this asserts the real source imports the correct singular
+        google.cloud.sql.connector module the library actually exposes."""
+        source = inspect.getsource(_CloudSqlStrategy.build)
+
+        assert "from google.cloud.sql.connector import Connector" in source
+        assert "google.cloud.sql.connectors" not in source
