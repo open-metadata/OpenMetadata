@@ -84,7 +84,7 @@ export const updateUserDetail = async (id: string, data: Operation[]) => {
   );
 
   if (response.data.name) {
-    userProfileCache.set(response.data.name, response.data);
+    userProfileCache.delete(response.data.name);
   }
 
   return response.data;

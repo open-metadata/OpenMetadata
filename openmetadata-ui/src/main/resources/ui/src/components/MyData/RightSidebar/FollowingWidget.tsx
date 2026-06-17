@@ -101,7 +101,7 @@ function FollowingWidget({
     } catch (err) {
       showErrorToast(err as AxiosError);
 
-      return [];
+      throw err;
     }
   }, [currentUser?.id, selectedEntityFilter]);
 

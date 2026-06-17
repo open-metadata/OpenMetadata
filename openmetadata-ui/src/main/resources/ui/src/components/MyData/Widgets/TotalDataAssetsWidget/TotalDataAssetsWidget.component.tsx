@@ -97,6 +97,39 @@ const TotalDataAssetsWidget = ({
     return currentLayout?.find((item) => item.i === widgetKey)?.w === 2;
   }, [currentLayout, widgetKey]);
 
+  const fetchData = useCallback(async () => {
+    try {
+      const daysMap: Record<string, number> = {
+        [DATA_ASSETS_SORT_BY_KEYS.LAST_7_DAYS]: 7,
+        [DATA_ASSETS_SORT_BY_KEYS.LAST_14_DAYS]: 14,
+      };
+
+      const days = daysMap[selectedSortBy] ?? 7;
+
+      const filter = {
+        start: getEpochMillisForPastDays(days),
+        end: getCurrentMillis(),
+      };
+
+      return await getChartPreviewByName(
+        SystemChartType.TotalDataAssets,
+        filter
+      );
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+
+      throw error;
+    }
+  }, [selectedSortBy]);
+
+  const { data: chartData, isLoading } = useDashboardWidgetData<
+    DataInsightCustomChartResult | undefined
+  >({
+    cacheKey: `my-data:total-assets:${selectedSortBy}`,
+    fetcher: fetchData,
+    initialData: undefined,
+  });
+
   const { graphData, dataByDate, availableDates } = useMemo(() => {
     const results = chartData?.results ?? [];
 
@@ -165,39 +198,6 @@ const TotalDataAssetsWidget = ({
       totalDatAssets: total,
     };
   }, [selectedDate, dataByDate]);
-
-  const fetchData = useCallback(async () => {
-    try {
-      const daysMap: Record<string, number> = {
-        [DATA_ASSETS_SORT_BY_KEYS.LAST_7_DAYS]: 7,
-        [DATA_ASSETS_SORT_BY_KEYS.LAST_14_DAYS]: 14,
-      };
-
-      const days = daysMap[selectedSortBy] ?? 7;
-
-      const filter = {
-        start: getEpochMillisForPastDays(days),
-        end: getCurrentMillis(),
-      };
-
-      return await getChartPreviewByName(
-        SystemChartType.TotalDataAssets,
-        filter
-      );
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-
-      return undefined;
-    }
-  }, [selectedSortBy]);
-
-  const { data: chartData, isLoading } = useDashboardWidgetData<
-    DataInsightCustomChartResult | undefined
-  >({
-    cacheKey: `my-data:total-assets:${selectedSortBy}`,
-    fetcher: fetchData,
-    initialData: undefined,
-  });
 
   const emptyState = useMemo(() => {
     return (

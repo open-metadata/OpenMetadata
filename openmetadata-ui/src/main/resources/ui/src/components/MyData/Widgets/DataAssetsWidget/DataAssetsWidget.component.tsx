@@ -73,7 +73,7 @@ const DataAssetsWidget = ({
     } catch (error) {
       showErrorToast(error as AxiosError);
 
-      return [];
+      throw error;
     }
   }, [selectedSortBy]);
 

@@ -133,33 +133,25 @@ const MyDataWidgetInternal = ({
       return [];
     }
 
-    try {
-      const queryFilterObj = getTermQuery(
-        { 'owners.id': ownerIds },
-        'should',
-        1
-      );
+    const queryFilterObj = getTermQuery({ 'owners.id': ownerIds }, 'should', 1);
 
-      const sortField = getSortField(selectedFilter);
-      const sortOrder = getSortOrder(selectedFilter);
+    const sortField = getSortField(selectedFilter);
+    const sortOrder = getSortOrder(selectedFilter);
 
-      const res = await searchQuery({
-        query: '',
-        pageNumber: INITIAL_PAGING_VALUE,
-        pageSize: PAGE_SIZE_MEDIUM,
-        queryFilter: queryFilterObj,
-        sortField,
-        sortOrder,
-        searchIndex: SearchIndex.ALL,
-      });
+    const res = await searchQuery({
+      query: '',
+      pageNumber: INITIAL_PAGING_VALUE,
+      pageSize: PAGE_SIZE_MEDIUM,
+      queryFilter: queryFilterObj,
+      sortField,
+      sortOrder,
+      searchIndex: SearchIndex.ALL,
+    });
 
-      const ownedAssets = res?.hits?.hits ?? [];
-      const sourceData = ownedAssets.map((hit) => hit._source);
+    const ownedAssets = res?.hits?.hits ?? [];
+    const sourceData = ownedAssets.map((hit) => hit._source);
 
-      return applySortToData(sourceData, selectedFilter);
-    } catch {
-      return [];
-    }
+    return applySortToData(sourceData, selectedFilter);
   }, [currentUser, ownerIds, selectedFilter]);
 
   const { data, isLoading } = useDashboardWidgetData<SourceType[]>({

@@ -47,12 +47,23 @@ Object.defineProperty(window, 'localStorage', {
 jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
+
+jest.mock(
+  '../../components/common/DeferredWidget/DeferredWidget.component',
+  () => ({
+    __esModule: true,
+    default: jest.fn().mockImplementation(({ children }) => <>{children}</>),
+  })
+);
+
 jest.mock('./MyDataPageSkeleton.component', () => {
   return jest.fn().mockImplementation(() => <div>MyDataPageSkeleton</div>);
 });
+
 jest.mock('../../utils/CustomizeMyDataPageClassBase', () => {
   return mockCustomizePageClassBase;
 });
+
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest
     .fn()
@@ -60,6 +71,7 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
       <div data-testid="page-layout-v1">{children}</div>
     ));
 });
+
 jest.mock(
   '../../components/MyData/WelcomeScreen/WelcomeScreen.component',
   () => {

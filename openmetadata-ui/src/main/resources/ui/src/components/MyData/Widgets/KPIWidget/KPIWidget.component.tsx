@@ -116,7 +116,7 @@ const KPIWidget = ({
     } catch (_err) {
       showErrorToast(_err as AxiosError);
 
-      return [];
+      throw _err;
     }
   }, []);
 
@@ -163,7 +163,7 @@ const KPIWidget = ({
     } catch (error) {
       showErrorToast(error as AxiosError);
 
-      return {};
+      throw error;
     }
   }, [kpiList, selectedDays]);
 
@@ -207,7 +207,7 @@ const KPIWidget = ({
     } catch (error) {
       showErrorToast(error as AxiosError);
 
-      return {};
+      throw error;
     }
   }, [kpiList]);
 

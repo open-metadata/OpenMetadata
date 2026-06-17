@@ -21,9 +21,10 @@ const MAX_WIDGET_CACHE_ENTRIES = 50;
 const dashboardWidgetCache = makeLruCache<unknown>(MAX_WIDGET_CACHE_ENTRIES);
 const dashboardWidgetRequests = new Map<string, Promise<unknown>>();
 
-/** Drop all dashboard widget cache entries. Call on logout / user switch. */
+/** Drop all dashboard widget cache entries and in-flight requests. Call on logout / user switch or between tests. */
 export function clearDashboardWidgetCache(): void {
   dashboardWidgetCache.clear();
+  dashboardWidgetRequests.clear();
 }
 
 interface UseDashboardWidgetDataOptions<T> {

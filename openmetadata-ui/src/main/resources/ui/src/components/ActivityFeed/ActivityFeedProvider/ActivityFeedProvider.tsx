@@ -92,9 +92,10 @@ const myActivityFeedCache = makeLruCache<ActivityEvent[]>(
 );
 const myActivityFeedRequests = new Map<string, Promise<ActivityEvent[]>>();
 
-/** Drop all cached activity feed entries. Call on logout / user switch. */
+/** Drop all cached activity feed entries and in-flight requests. Call on logout / user switch or between tests. */
 export function clearActivityFeedCache(): void {
   myActivityFeedCache.clear();
+  myActivityFeedRequests.clear();
 }
 
 interface Props {

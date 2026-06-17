@@ -11,23 +11,24 @@
  *  limitations under the License.
  */
 import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
+    act,
+    fireEvent,
+    render,
+    screen,
+    waitFor
 } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { MemoryRouter } from 'react-router-dom';
 import { CHART_WIDGET_DAYS_DURATION } from '../../../../constants/constants';
 import { SystemChartType } from '../../../../enums/DataInsight.enum';
+import { clearDashboardWidgetCache } from '../../../../hooks/useDashboardWidgetData';
 import {
-  DataInsightCustomChartResult,
-  getChartPreviewByName,
+    DataInsightCustomChartResult,
+    getChartPreviewByName
 } from '../../../../rest/DataInsightAPI';
 import {
-  getCurrentMillis,
-  getEpochMillisForPastDays,
+    getCurrentMillis,
+    getEpochMillisForPastDays
 } from '../../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import TotalDataAssetsWidget from './TotalDataAssetsWidget.component';
@@ -223,6 +224,7 @@ const renderTotalDataAssetsWidget = (
 describe('TotalDataAssetsWidget', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    clearDashboardWidgetCache();
     (getChartPreviewByName as jest.Mock).mockResolvedValue(mockChartData);
   });
 
