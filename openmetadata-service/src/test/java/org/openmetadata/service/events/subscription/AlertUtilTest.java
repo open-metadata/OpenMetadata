@@ -290,6 +290,88 @@ class AlertUtilTest {
     assertTrue(new AlertsRuleEvaluator(event).matchTestResult(List.of("Failed")));
   }
 
+  // ---- end-to-end (checkIfChangeEventIsAllowed): no regression across --------
+  // INCLUDE/EXCLUDE triggers. A thread event must never reach an observability
+  // alert's trigger: for an EXCLUDE trigger the "abstain" boolean would otherwise
+  // flip and DELIVER the thread. Real results must still behave correctly.
+
+  @Test
+  void allowed_testCase_includeTrigger_thread_notDelivered() {
+    assertFalse(
+        AlertUtil.checkIfChangeEventIsAllowed(
+            threadUpdatedEvent(ref(Entity.TEST_CASE)),
+            observabilityRules(
+                "testCase", ArgumentsInput.Effect.INCLUDE, "matchTestResult({'Failed'})")));
+  }
+
+  @Test
+  void allowed_testCase_excludeTrigger_thread_notDelivered() {
+    assertFalse(
+        AlertUtil.checkIfChangeEventIsAllowed(
+            threadUpdatedEvent(ref(Entity.TEST_CASE)),
+            observabilityRules(
+                "testCase", ArgumentsInput.Effect.EXCLUDE, "matchTestResult({'Failed'})")));
+  }
+
+  @Test
+  void allowed_pipeline_excludeTrigger_thread_notDelivered() {
+    assertFalse(
+        AlertUtil.checkIfChangeEventIsAllowed(
+            threadUpdatedEvent(ref(Entity.PIPELINE)),
+            observabilityRules(
+                "pipeline", ArgumentsInput.Effect.EXCLUDE, "matchPipelineState({'Failed'})")));
+  }
+
+  @Test
+  void allowed_ingestionPipeline_excludeTrigger_thread_notDelivered() {
+    assertFalse(
+        AlertUtil.checkIfChangeEventIsAllowed(
+            threadUpdatedEvent(ref(Entity.INGESTION_PIPELINE)),
+            observabilityRules(
+                "ingestionPipeline",
+                ArgumentsInput.Effect.EXCLUDE,
+                "matchIngestionPipelineState({'failed'})")));
+  }
+
+  @Test
+  void allowed_testCase_includeTrigger_failedResult_delivered() {
+    assertTrue(
+        AlertUtil.checkIfChangeEventIsAllowed(
+            testCaseResultEvent(TestCaseStatus.Failed),
+            observabilityRules(
+                "testCase", ArgumentsInput.Effect.INCLUDE, "matchTestResult({'Failed'})")));
+  }
+
+  @Test
+  void allowed_testCase_includeTrigger_successResult_notDelivered() {
+    assertFalse(
+        AlertUtil.checkIfChangeEventIsAllowed(
+            testCaseResultEvent(TestCaseStatus.Success),
+            observabilityRules(
+                "testCase", ArgumentsInput.Effect.INCLUDE, "matchTestResult({'Failed'})")));
+  }
+
+  @Test
+  void allowed_testCase_excludeTrigger_failedResult_notDelivered() {
+    assertFalse(
+        AlertUtil.checkIfChangeEventIsAllowed(
+            testCaseResultEvent(TestCaseStatus.Failed),
+            observabilityRules(
+                "testCase", ArgumentsInput.Effect.EXCLUDE, "matchTestResult({'Failed'})")));
+  }
+
+  @Test
+  void allowed_notificationThreadOnEntity_stillDelivered() {
+    // #28122 preserved: notification alerts (no trigger actions) still get thread events.
+    FilteringRules notif =
+        new FilteringRules()
+            .withResources(List.of("glossaryTerm"))
+            .withRules(Collections.emptyList())
+            .withActions(Collections.emptyList());
+    assertTrue(
+        AlertUtil.checkIfChangeEventIsAllowed(threadUpdatedEvent(ref("glossaryTerm")), notif));
+  }
+
   // ---- evaluateAlertConditions: compile-once cache --------------------------
 
   @Test
@@ -363,6 +445,39 @@ class AlertUtilTest {
 
   private static EntityReference testCaseRef() {
     return new EntityReference().withId(UUID.randomUUID()).withType(Entity.TEST_CASE);
+  }
+
+  private static EntityReference ref(String type) {
+    return new EntityReference().withId(UUID.randomUUID()).withType(type);
+  }
+
+  private static FilteringRules observabilityRules(
+      String resource, ArgumentsInput.Effect effect, String condition) {
+    EventFilterRule action =
+        new EventFilterRule()
+            .withName("trigger")
+            .withEffect(effect)
+            .withCondition(condition)
+            .withPrefixCondition(ArgumentsInput.PrefixCondition.AND);
+    return new FilteringRules()
+        .withResources(List.of(resource))
+        .withRules(Collections.emptyList())
+        .withActions(List.of(action));
+  }
+
+  private static ChangeEvent testCaseResultEvent(TestCaseStatus status) {
+    FieldChange resultChange =
+        new FieldChange()
+            .withName("testCaseResult")
+            .withNewValue(new TestCaseResult().withTestCaseStatus(status));
+    return new ChangeEvent()
+        .withId(UUID.randomUUID())
+        .withEventType(EventType.ENTITY_UPDATED)
+        .withEntityType(Entity.TEST_CASE)
+        .withChangeDescription(
+            new ChangeDescription()
+                .withFieldsUpdated(List.of(resultChange))
+                .withFieldsAdded(Collections.emptyList()));
   }
 
   private static FilteringRules filteringRules(String resource) {
