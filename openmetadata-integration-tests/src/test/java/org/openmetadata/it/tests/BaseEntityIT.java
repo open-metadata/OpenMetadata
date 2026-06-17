@@ -60,7 +60,6 @@ import org.openmetadata.sdk.services.teams.RoleService;
 import org.openmetadata.sdk.services.teams.UserService;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.util.RequestEntityCache;
 import org.openmetadata.service.util.TestUtils;
 
 /**
@@ -6261,13 +6260,14 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @SuppressWarnings("unchecked")
   private void persistEntityWithoutChangeDescription(String entityType, EntityInterface entity) {
     // These integration tests run in-process with the OpenMetadata server, so this can seed
-    // persisted state that is not reachable through public APIs.
+    // persisted state that is not reachable through public APIs. invalidateCacheForEntity
+    // drops the cross-thread Guava L1 entry and bumps the write epoch, which is what the
+    // CSV import request (handled on a different Jetty thread) actually reads through.
     EntityRepository<EntityInterface> repository =
         (EntityRepository<EntityInterface>) Entity.getEntityRepository(entityType);
     repository.getDao().update(entity);
     EntityRepository.invalidateCacheForEntity(
         entityType, entity.getId(), entity.getFullyQualifiedName());
-    RequestEntityCache.clear();
   }
 
   /**
