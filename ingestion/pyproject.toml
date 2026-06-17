@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 # since it helps us organize and isolate version management
 [project]
 name = "openmetadata-ingestion"
-version = "1.12.0.0.dev0"
+version = "2.0.0.0.dev0"
 dynamic = ["readme", "dependencies", "optional-dependencies"]
 authors = [
     { name = "OpenMetadata Committers" }
@@ -82,7 +82,7 @@ pytest_openmetadata = "_openmetadata_testutils.pytest_openmetadata.plugin"
 
 [tool.ruff]
 line-length = 120
-target-version = "py310"
+target-version = "2.0.0.0.dev0"
 # Pin source roots so first-party isort detection is stable regardless of
 # whether ruff is invoked from the repo root (pre-commit, CI) or from
 # `ingestion/` (`make py_format_check`). Each path is listed twice — once
