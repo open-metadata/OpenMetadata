@@ -842,7 +842,7 @@ public class DashboardDataModelResourceIT
   }
 
   // ===================================================================
-  // CASCADE HARD-DELETE ATOMICITY
+  // CONCURRENT CASCADE HARD-DELETE
   // (regression for flaky "does not have expected relationship contains")
   // ===================================================================
 
@@ -851,19 +851,18 @@ public class DashboardDataModelResourceIT
 
   /**
    * Regression for the flaky {@code dashboardDataModel <id> does not have expected relationship
-   * contains to/from entity type null}. The cascade hard-delete path
-   * ({@code EntityRepository.bulkHardDeleteSubtree}) deletes a data model's CONTAINS relationship
-   * row and its entity row. Before the fix those ran as two independent auto-commits (a JDBI
-   * {@code @Transaction} annotation is inert on the plain repository class), opening a window where
-   * the row still existed but its CONTAINS parent was already gone — a concurrent list/get resolving
-   * the required {@code service} field via {@code getContainer} then 500'd with this message.
+   * contains to/from entity type null}. A reader loads the data model row, then resolves its required
+   * {@code service} parent via {@code getContainer} in a separate statement; if the data model is
+   * cascade-hard-deleted in between, the row was seen but its CONTAINS row is gone, and
+   * {@code getContainer} used to 500. The fix makes {@code getContainer} tolerate the
+   * concurrently-deleted relationship (returns null instead of throwing), mirroring how
+   * {@code getFromEntityRef} already tolerates the parent entity itself being concurrently deleted.
    *
    * <p>Reproduces the real flake: while a pool of readers continuously GETs the data models (each
    * GET resolves the required {@code service} relationship), the parent service is hard-deleted,
-   * cascading through {@code bulkHardDeleteSubtree}. With the relationship + row deletes wrapped in
-   * one transaction a reader only ever sees a data model fully present or fully gone (404) — never
-   * the partial state — so no reader observes the relationship error. The completed cascade delete
-   * also leaves no entities behind.
+   * cascading through {@code bulkHardDeleteSubtree}. A reader now only ever sees the data model with
+   * its service resolved or fully gone (404) — never a 500 — so no reader observes the relationship
+   * error. The completed cascade delete also leaves no entities behind.
    */
   @Test
   void hardDelete_serviceCascade_concurrentReadsNeverSeePartialState(TestNamespace ns)

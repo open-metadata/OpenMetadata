@@ -6525,22 +6525,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * {@code (id, *)} and {@code (*, id)} entity_relationship rows in a single statement; one
    * batched extension delete; one batched entity row delete; per-entity loops for tag_usage /
    * usage / field_relationship / feed threads (those tables key on FQN strings rather than ids
-   * so they can't share a single IN-list query, but they stay inside the same {@code @Transaction}
-   * which removes the per-entity transaction overhead that dominated the old path).
+   * so they can't share a single IN-list query, but they run as a tight per-entity loop rather than
+   * the independent JDBI transaction per descendant that dominated the old path).
    *
    * <p>Subclasses with non-CONTAINS related entities (e.g., dashboard charts attached via HAS)
    * should override {@link #hardDeleteAdditionalChildren(UUID, String)}. Subclasses that need true
    * batched external cleanup (Airflow DAGs, S3, secrets stores) can override
    * {@link #bulkEntitySpecificCleanup(List)}; the default loops the per-entity hook.
    *
-   * <p><b>Failure / visibility semantics:</b> each recursion level deletes its relationship rows
-   * and entity rows inside one explicit transaction (see {@link #bulkDeleteReferencesAndRows}), so a
-   * concurrent reader never observes an entity row whose required CONTAINS parent relationship has
-   * already been deleted. No JDBI {@code @Transaction} annotation is used because
-   * {@code EntityRepository} subclasses are plain objects, not JDBI SqlObject proxies, so JDBI would
-   * never weave it; the explicit wrapper is what guarantees the relationship + row deletes commit
-   * atomically. A mid-walk failure rolls back the level it occurred on, leaving already-committed
-   * deeper levels deleted. See also {@link #bulkRestoreSubtree(List, String)} for the operational
+   * <p><b>Concurrency:</b> relationship rows and entity rows are deleted as separate auto-committed
+   * statements (these are plain {@code EntityRepository} calls, not JDBI SqlObject proxies, so a
+   * {@code @Transaction} annotation would be inert). A concurrent reader resolving a required parent
+   * via {@link #getContainer(UUID)} therefore tolerates the relationship row being already gone — it
+   * returns {@code null} rather than throwing a 500, mirroring the parent-entity-gone handling in
+   * {@link #getFromEntityRef}. See also {@link #bulkRestoreSubtree(List, String)} for the operational
    * ceiling note around single-connection holding for the duration of the walk.
    */
   public final void bulkHardDeleteSubtree(List<UUID> ids, String updatedBy) {
@@ -6570,7 +6568,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // walk HAS relationships to discover linked entities, and bulkCleanupReferences wipes
     // those relationship rows.
     runHardDeleteAdditionalChildren(entities, updatedBy);
-    bulkDeleteReferencesAndRows(entities);
+    bulkCleanupReferences(entities);
+    bulkDeleteEntityRows(entities);
     bulkInvalidate(entities);
     for (T entity : entities) {
       postDelete(entity, true);
@@ -6670,31 +6669,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       dao.deleteByIds(entityIds);
     }
-  }
-
-  /**
-   * Delete this batch's relationship rows and entity rows together in one transaction. Without it a
-   * concurrent reader can observe an entity row whose required CONTAINS (parent service)
-   * relationship has already been auto-committed away, which {@link #getContainer(UUID)} surfaces as
-   * "Entity type X &lt;id&gt; does not have expected relationship contains" while resolving the
-   * parent during a list/get.
-   *
-   * <p>No JDBI {@code @Transaction} annotation can establish this boundary on
-   * {@link #bulkHardDeleteSubtree(List, String)}: {@code EntityRepository} subclasses are plain
-   * objects built with {@code new}, not JDBI SqlObject proxies, so JDBI never weaves the annotation
-   * and each {@code daoCollection} call auto-commits on its own handle. This explicit wrapper mirrors
-   * the per-entity {@code cleanup} path, which has always bracketed its relationship + row deletes
-   * the same way. Both callees do pure-DB work only, so holding the connection for the wrapped block
-   * is safe.
-   */
-  private void bulkDeleteReferencesAndRows(List<T> entities) {
-    Entity.getJdbi()
-        .inTransaction(
-            handle -> {
-              bulkCleanupReferences(entities);
-              bulkDeleteEntityRows(entities);
-              return null;
-            });
   }
 
   private void bulkInvalidate(List<T> entities) {
@@ -6998,12 +6972,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .findFrom(toId, toEntityType, relationship.ordinal(), fromEntityType);
   }
 
+  // mustHaveRelationship=false: a read must tolerate the CONTAINS row being concurrently
+  // hard-deleted. The reader loads the entity row, then resolves its parent in a separate
+  // statement;
+  // if the entity is deleted in between, the row was seen but its relationship is gone. Returning
+  // null there — rather than a 500 "does not have expected relationship contains" — mirrors
+  // getFromEntityRef's existing tolerance of the parent entity being concurrently deleted
+  // (EntityNotFoundException -> null), and deflakes concurrent list/get vs cascade hard-delete.
   public final EntityReference getContainer(UUID toId) {
-    return getFromEntityRef(toId, Relationship.CONTAINS, null, true);
+    return getFromEntityRef(toId, Relationship.CONTAINS, null, false);
   }
 
   public final EntityReference getContainer(UUID toId, String fromEntityType) {
-    return getFromEntityRef(toId, Relationship.CONTAINS, fromEntityType, true);
+    return getFromEntityRef(toId, Relationship.CONTAINS, fromEntityType, false);
   }
 
   protected final Map<UUID, EntityReference> batchFetchContainers(
