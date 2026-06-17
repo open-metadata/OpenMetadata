@@ -35,7 +35,7 @@ import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
-} from '../../../utils/EntityVersionUtils';
+} from '../../../utils/EntityVersionUtilsPure';
 import { getMlFeatureVersionData } from '../../../utils/MlModelVersionUtils';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';

@@ -472,8 +472,13 @@ jest.mock(
       onUpdate: jest.fn(),
       filterWidgets: jest.fn(),
     }),
+  })
+);
+
+jest.mock(
+  '../../components/Customization/GenericProvider/GenericProvider',
+  () => ({
     GenericProvider: jest.fn().mockImplementation(({ children }) => children),
-    _esModule: true,
   })
 );
 
