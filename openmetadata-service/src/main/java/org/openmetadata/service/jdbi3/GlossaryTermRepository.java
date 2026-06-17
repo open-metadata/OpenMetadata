@@ -1732,51 +1732,24 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
 
     // Task entities key tasks by aboutFqnHash (the about reference itself is stored as a
-    // relationship, not in the task JSON), and it is computed once at creation — a move never
-    // recomputes it, so the task is findable only by the pre-move FQN. Rewrite the hash from the
-    // old
-    // FQN to the new FQN for the moved term AND every nested descendant. Each descendant's old FQN
-    // is its new FQN with the moved subtree's prefix swapped back.
-    updateTaskAboutFqnHash(oldFqn, newFqn);
+    // relationship, not in the task JSON), and it is computed once at creation. Batch the hash
+    // rewrites for the moved term and every nested descendant.
+    Map<String, String> taskFqnHashUpdates = new HashMap<>();
+    taskFqnHashUpdates.put(
+        FullyQualifiedName.buildHash(oldFqn), FullyQualifiedName.buildHash(newFqn));
     for (GlossaryTerm descendant : getNestedTerms(updated)) {
       String descendantNewFqn = descendant.getFullyQualifiedName();
+      if (nullOrEmpty(descendantNewFqn) || !descendantNewFqn.startsWith(newFqn)) {
+        continue;
+      }
       String descendantOldFqn = oldFqn + descendantNewFqn.substring(newFqn.length());
-      updateTaskAboutFqnHash(descendantOldFqn, descendantNewFqn);
+      taskFqnHashUpdates.put(
+          FullyQualifiedName.buildHash(descendantOldFqn),
+          FullyQualifiedName.buildHash(descendantNewFqn));
     }
+    updateTaskAboutFqnHashes(taskFqnHashUpdates);
 
-    updateWorkflowInstanceRelatedEntity(oldFqn, newFqn);
-  }
-
-  /**
-   * Repoint the workflow-instance {@code relatedEntity} (the {@code entityLink} the history card
-   * filters by) for the moved term AND its entire descendant subtree in a single set-based
-   * statement. The instance rows carry the term FQN as a readable link, so one exact match (the term)
-   * plus one prefix match (all descendants) covers the whole subtree regardless of how many
-   * descendants or workflow runs exist — no per-term loop. Only the instance table is touched: the
-   * state table is read by the stable {@code workflowInstanceId}, never by {@code relatedEntity}.
-   */
-  private void updateWorkflowInstanceRelatedEntity(String oldFqn, String newFqn) {
-    String oldLink = new EntityLink(GLOSSARY_TERM, oldFqn).getLinkString();
-    String newLink = new EntityLink(GLOSSARY_TERM, newFqn).getLinkString();
-    String oldStem = oldLink.substring(0, oldLink.length() - 1);
-    String newStem = newLink.substring(0, newLink.length() - 1);
-    String oldChildPrefix = oldStem + Entity.SEPARATOR + "%";
-    int instances =
-        daoCollection
-            .workflowInstanceTimeSeriesDAO()
-            .repointRelatedEntitySubtree(oldLink, oldChildPrefix, oldStem, newStem);
-    if (instances > 0) {
-      LOG.info("[move] repointed workflow instances {} -> {} rows={}", oldFqn, newFqn, instances);
-    }
-  }
-
-  private void updateTaskAboutFqnHash(String oldFqn, String newFqn) {
-    int rows =
-        daoCollection
-            .taskDAO()
-            .updateAboutFqnHash(
-                FullyQualifiedName.buildHash(oldFqn), FullyQualifiedName.buildHash(newFqn));
-    LOG.info("[move] updateTaskAboutFqnHash {} -> {} taskRowsUpdated={}", oldFqn, newFqn, rows);
+    repointWorkflowInstancesForFqnChange(GLOSSARY_TERM, oldFqn, newFqn);
   }
 
   private List<GlossaryTerm> getNestedTerms(GlossaryTerm glossaryTerm) {

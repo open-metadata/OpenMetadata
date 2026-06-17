@@ -2,6 +2,7 @@ package org.openmetadata.service.migration.utils.v11212;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
@@ -13,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.statement.PreparedBatch;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -35,6 +37,9 @@ import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
  *   <li>the running Flowable instance's {@code global_relatedEntity} variable — approving the
  *       still-open task now resolves the term, so the workflow finishes instead of throwing
  *       {@code EntityNotFoundException}.
+ *   <li>the running Flowable instance's {@code global_relatedEntityId} variable — old instances
+ *       that are still current during migration keep resolving by immutable id after any future
+ *       move.
  * </ul>
  */
 @Slf4j
@@ -45,6 +50,8 @@ public final class MigrationUtil {
   private static final String REQUEST_APPROVAL_TASK = "RequestApproval";
   private static final String RELATED_ENTITY_KEY =
       getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE);
+  private static final String RELATED_ENTITY_ID_KEY =
+      getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_ID_VARIABLE);
 
   public static void repairStaleGlossaryApprovalFqns(Handle handle, boolean isPostgres) {
     if (!tableExists(handle, isPostgres, "thread_entity")) {
@@ -54,19 +61,29 @@ public final class MigrationUtil {
       return;
     }
     Map<String, String> staleToCurrentLink = collectStaleApprovalLinks(handle, isPostgres);
+    int threadRows = 0;
+    int repointed = 0;
     if (staleToCurrentLink.isEmpty()) {
       LOG.info("[1.12.12] No stale glossary RequestApproval tasks to repair");
+    } else {
+      String varPath = "variables." + RELATED_ENTITY_KEY;
+      threadRows = batchRewrite(handle, isPostgres, "thread_entity", "about", staleToCurrentLink);
+      batchRewrite(
+          handle, isPostgres, "workflow_instance_time_series", varPath, staleToCurrentLink);
+      repointed = repointRunningInstances(staleToCurrentLink);
+    }
+    int idBackfilled = backfillMissingRelatedEntityIds();
+    if (staleToCurrentLink.isEmpty()) {
+      LOG.info(
+          "[1.12.12] Backfilled relatedEntityId on {} running workflow instance(s)", idBackfilled);
       return;
     }
-    String varPath = "variables." + RELATED_ENTITY_KEY;
-    int threadRows = batchRewrite(handle, isPostgres, "thread_entity", "about", staleToCurrentLink);
-    batchRewrite(handle, isPostgres, "workflow_instance_time_series", varPath, staleToCurrentLink);
-    int repointed = repointRunningInstances(staleToCurrentLink);
     LOG.info(
-        "[1.12.12] Repaired {} stale glossary RequestApproval task(s) ({} thread row(s)); repointed {} running instance(s)",
+        "[1.12.12] Repaired {} stale glossary RequestApproval task(s) ({} thread row(s)); repointed {} running instance(s); backfilled relatedEntityId on {} running instance(s)",
         staleToCurrentLink.size(),
         threadRows,
-        repointed);
+        repointed,
+        idBackfilled);
   }
 
   /**
@@ -183,12 +200,70 @@ public final class MigrationUtil {
         workflowHandler.getRunningInstanceVariables().entrySet()) {
       Object current = instance.getValue().get(RELATED_ENTITY_KEY);
       if (current instanceof String link && staleToCurrentLink.containsKey(link)) {
-        workflowHandler.setProcessInstanceVariable(
-            instance.getKey(), RELATED_ENTITY_KEY, staleToCurrentLink.get(link));
-        repointed++;
+        if (setProcessInstanceVariable(
+            workflowHandler, instance.getKey(), RELATED_ENTITY_KEY, staleToCurrentLink.get(link))) {
+          repointed++;
+        }
       }
     }
     return repointed;
+  }
+
+  /**
+   * Backfill immutable ids for old running workflow instances that still have only
+   * {@code global_relatedEntity}. This protects instances that were current at upgrade time but get
+   * moved later: workflow nodes can then resolve by id instead of falling back to the mutable FQN.
+   */
+  private static int backfillMissingRelatedEntityIds() {
+    WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
+    int backfilled = 0;
+    for (Map.Entry<String, Map<String, Object>> instance :
+        workflowHandler.getRunningInstanceVariables().entrySet()) {
+      Map<String, Object> variables = instance.getValue();
+      if (variables.get(RELATED_ENTITY_ID_KEY) != null) {
+        continue;
+      }
+      Object current = variables.get(RELATED_ENTITY_KEY);
+      if (current instanceof String link) {
+        UUID entityId = resolveEntityId(link);
+        if (entityId != null) {
+          if (setProcessInstanceVariable(
+              workflowHandler, instance.getKey(), RELATED_ENTITY_ID_KEY, entityId.toString())) {
+            backfilled++;
+          }
+        }
+      }
+    }
+    return backfilled;
+  }
+
+  private static boolean setProcessInstanceVariable(
+      WorkflowHandler workflowHandler, String instanceId, String variableName, Object value) {
+    try {
+      workflowHandler.setProcessInstanceVariable(instanceId, variableName, value);
+      return true;
+    } catch (Exception e) {
+      LOG.warn(
+          "[1.12.12] Could not set {} on running workflow instance {}; skipping",
+          variableName,
+          instanceId,
+          e);
+      return false;
+    }
+  }
+
+  private static UUID resolveEntityId(String entityLink) {
+    try {
+      EntityLink parsed = EntityLink.parse(entityLink);
+      EntityReference reference =
+          Entity.getEntityReferenceByName(
+              parsed.getEntityType(), parsed.getEntityFQN(), Include.NON_DELETED);
+      return reference.getId();
+    } catch (Exception e) {
+      LOG.warn(
+          "[1.12.12] Could not resolve relatedEntity {} for id backfill; skipping", entityLink, e);
+      return null;
+    }
   }
 
   /**

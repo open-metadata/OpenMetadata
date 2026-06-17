@@ -142,7 +142,7 @@ public class GlossaryTermMoveApprovalIT {
     approveTask(approvalTask.getId());
 
     waitForTermStatus(eligibleSecurities.getId(), EntityStatus.APPROVED);
-    assertApprovalWorkflowFinished(preMoveLeafFqn);
+    assertApprovalWorkflowFinished(movedLeafFqn);
   }
 
   /**
@@ -175,7 +175,7 @@ public class GlossaryTermMoveApprovalIT {
     approveTask(approvalTask.getId());
 
     waitForTermStatus(leaf.getId(), EntityStatus.APPROVED);
-    assertApprovalWorkflowFinished(preMoveLeafFqn);
+    assertApprovalWorkflowFinished(movedLeafFqn);
   }
 
   /**
@@ -204,7 +204,7 @@ public class GlossaryTermMoveApprovalIT {
     approveTask(approvalTask.getId());
 
     waitForTermStatus(leaf.getId(), EntityStatus.APPROVED);
-    assertApprovalWorkflowFinished(preRenameLeafFqn);
+    assertApprovalWorkflowFinished(renamedLeafFqn);
   }
 
   /**
@@ -386,30 +386,32 @@ public class GlossaryTermMoveApprovalIT {
   }
 
   /**
-   * The Glossary Approval Workflow instance is created (and keyed) by the term's FQN at trigger
-   * time, i.e. the pre-move FQN. After approval it must complete; the stale-relatedEntity bug stops
-   * it from advancing past the failing SetEntityAttribute node so it never reaches FINISHED.
+   * The Glossary Approval Workflow instance follows the term across a move/rename: the move repoints
+   * the instance's {@code relatedEntity} to the new FQN (so the history card resolves at the term's
+   * current location), so it is queried by the POST-move FQN. After approval it must complete; the
+   * stale-relatedEntity bug stops it from advancing past the failing SetEntityAttribute node so it
+   * never reaches FINISHED.
    */
-  private void assertApprovalWorkflowFinished(String preMoveTermFqn) throws Exception {
+  private void assertApprovalWorkflowFinished(String currentTermFqn) throws Exception {
     // Poll until the workflow reaches a TERMINAL status, then assert it is FINISHED. Polling for
     // any
     // terminal status (not FINISHED only) surfaces a stale-FQN failure within seconds — EXCEPTION
     // is
     // terminal, so a regression fails fast instead of waiting the full timeout for FINISHED.
     Awaitility.await(
-            "glossary approval workflow for " + preMoveTermFqn + " should reach a terminal state")
+            "glossary approval workflow for " + currentTermFqn + " should reach a terminal state")
         .atMost(STATUS_TIMEOUT)
         .pollInterval(POLL_INTERVAL)
         .ignoreExceptions()
         .until(
             () ->
-                approvalWorkflowStatuses(preMoveTermFqn).stream()
+                approvalWorkflowStatuses(currentTermFqn).stream()
                     .anyMatch(TERMINAL_WORKFLOW_STATUSES::contains));
-    List<String> statuses = approvalWorkflowStatuses(preMoveTermFqn);
+    List<String> statuses = approvalWorkflowStatuses(currentTermFqn);
     assertTrue(
         statuses.contains(WORKFLOW_STATUS_FINISHED),
         "Approval workflow for "
-            + preMoveTermFqn
+            + currentTermFqn
             + " should reach FINISHED but statuses were "
             + statuses);
   }
