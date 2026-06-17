@@ -6533,12 +6533,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * batched external cleanup (Airflow DAGs, S3, secrets stores) can override
    * {@link #bulkEntitySpecificCleanup(List)}; the default loops the per-entity hook.
    *
-   * <p><b>Failure semantics:</b> the entire bulk hard-delete runs in a single
-   * {@code @Transaction}, so a mid-walk failure rolls back every row + relationship deletion.
-   * This is stronger than the previous {@code processDeletionBatch} contract, which only
-   * guaranteed per-child atomicity and could leave the operator with a partially-deleted subtree
-   * after a failure. See also {@link #bulkRestoreSubtree(List, String)} for the same operational
-   * ceiling note around single-connection holding for the duration of the walk.
+   * <p><b>Failure / visibility semantics:</b> each recursion level deletes its relationship rows
+   * and entity rows inside one explicit transaction (see {@link #bulkDeleteReferencesAndRows}), so a
+   * concurrent reader never observes an entity row whose required CONTAINS parent relationship has
+   * already been deleted. The {@code @Transaction} annotation below does NOT by itself create that
+   * boundary — {@code EntityRepository} subclasses are plain objects, not JDBI SqlObject proxies, so
+   * JDBI never weaves it; the explicit wrapper is what guarantees the relationship + row deletes
+   * commit atomically. A mid-walk failure rolls back the level it occurred on, leaving already-
+   * committed deeper levels deleted. See also {@link #bulkRestoreSubtree(List, String)} for the
+   * operational ceiling note around single-connection holding for the duration of the walk.
    */
   @Transaction
   public final void bulkHardDeleteSubtree(List<UUID> ids, String updatedBy) {
@@ -6568,8 +6571,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // walk HAS relationships to discover linked entities, and bulkCleanupReferences wipes
     // those relationship rows.
     runHardDeleteAdditionalChildren(entities, updatedBy);
-    bulkCleanupReferences(entities);
-    bulkDeleteEntityRows(entities);
+    bulkDeleteReferencesAndRows(entities);
     bulkInvalidate(entities);
     for (T entity : entities) {
       postDelete(entity, true);
@@ -6668,6 +6670,58 @@ public abstract class EntityRepository<T extends EntityInterface> {
         entityIds.add(entity.getId());
       }
       dao.deleteByIds(entityIds);
+    }
+  }
+
+  /**
+   * Delete this batch's relationship rows and entity rows together in one transaction. Without it a
+   * concurrent reader can observe an entity row whose required CONTAINS (parent service)
+   * relationship has already been auto-committed away, which {@link #getContainer(UUID)} surfaces as
+   * "Entity type X &lt;id&gt; does not have expected relationship contains" while resolving the
+   * parent during a list/get.
+   *
+   * <p>The {@code @Transaction} on {@link #bulkHardDeleteSubtree(List, String)} does NOT establish
+   * this boundary: {@code EntityRepository} subclasses are plain objects built with {@code new}, not
+   * JDBI SqlObject proxies, so JDBI never weaves the annotation and each {@code daoCollection} call
+   * auto-commits on its own handle. This explicit wrapper mirrors the per-entity {@code cleanup}
+   * path, which has always bracketed its relationship + row deletes the same way. Both callees do
+   * pure-DB work only, so holding the connection for the wrapped block is safe.
+   */
+  private void bulkDeleteReferencesAndRows(List<T> entities) {
+    Entity.getJdbi()
+        .inTransaction(
+            handle -> {
+              bulkCleanupReferences(entities);
+              runBulkHardDeleteMidpointHook();
+              bulkDeleteEntityRows(entities);
+              return null;
+            });
+  }
+
+  /**
+   * Test-only seam fired on the deleting thread inside {@link #bulkDeleteReferencesAndRows} after the
+   * relationship rows are deleted but before the entity rows, while the transaction is still open.
+   * Lets a deterministic test prove atomicity (a failure here must roll the relationship deletes
+   * back; a separate-connection read must not see a row whose CONTAINS parent is already gone).
+   * {@link ThreadLocal} so it only fires for the thread that armed it — concurrent deletes on other
+   * threads are unaffected; {@code null} (no-op) in production.
+   */
+  private static final ThreadLocal<Runnable> BULK_HARD_DELETE_MIDPOINT_HOOK = new ThreadLocal<>();
+
+  @VisibleForTesting
+  public static void setBulkHardDeleteMidpointHook(Runnable hook) {
+    BULK_HARD_DELETE_MIDPOINT_HOOK.set(hook);
+  }
+
+  @VisibleForTesting
+  public static void clearBulkHardDeleteMidpointHook() {
+    BULK_HARD_DELETE_MIDPOINT_HOOK.remove();
+  }
+
+  private static void runBulkHardDeleteMidpointHook() {
+    Runnable hook = BULK_HARD_DELETE_MIDPOINT_HOOK.get();
+    if (hook != null) {
+      hook.run();
     }
   }
 

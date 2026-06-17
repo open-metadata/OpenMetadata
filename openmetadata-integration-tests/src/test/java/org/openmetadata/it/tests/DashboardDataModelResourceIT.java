@@ -31,11 +31,15 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.DataModelType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelResource;
 
 /**
@@ -830,5 +834,73 @@ public class DashboardDataModelResourceIT
     CreateDashboardDataModel request = new CreateDashboardDataModel();
     request.setName(ns.prefix("invalid_data_model"));
     return request;
+  }
+
+  // ===================================================================
+  // CASCADE HARD-DELETE ATOMICITY
+  // (regression for flaky "does not have expected relationship contains")
+  // ===================================================================
+
+  /**
+   * Regression for the flaky {@code dashboardDataModel <id> does not have expected relationship
+   * contains to/from entity type null}. The cascade hard-delete path
+   * ({@code EntityRepository.bulkHardDeleteSubtree}) deletes a data model's CONTAINS relationship
+   * row and its entity row. Before the fix those ran as two independent auto-commits — the
+   * {@code @Transaction} annotation is inert on the plain repository class — so a concurrent
+   * list/get could resolve the required {@code service} field via {@code getContainer} in the gap
+   * (row present, relationship already gone) and 500.
+   *
+   * <p>Deterministic and cache-immune: arm a thread-scoped seam that throws between the relationship
+   * delete and the row delete, run the bulk hard delete on this thread, and assert the CONTAINS
+   * relationship row survived. With both deletes wrapped in one transaction the injected failure
+   * rolls the relationship delete back (relationship still present); without the wrapper the
+   * relationship was already committed away (relationship gone) — the exact partial state that
+   * produced the flake. The relationship row is read straight from the DAO, bypassing every entity /
+   * relationship cache.
+   */
+  @Test
+  void hardDelete_relationshipCleanupAndRowDelete_areAtomic(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DashboardService service = DashboardServiceTestFactory.createLooker(ns);
+    CreateDashboardDataModel request =
+        new CreateDashboardDataModel()
+            .withName(ns.prefix("atomic_dm"))
+            .withService(service.getFullyQualifiedName())
+            .withDataModelType(DataModelType.LookMlView)
+            .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+    DashboardDataModel dataModel = client.dashboardDataModels().create(request);
+    UUID dataModelId = dataModel.getId();
+
+    assertFalse(
+        containsRelationships(dataModelId).isEmpty(),
+        "Precondition: data model must have its CONTAINS relationship before delete");
+
+    EntityRepository<?> repository = Entity.getEntityRepository(Entity.DASHBOARD_DATA_MODEL);
+    EntityRepository.setBulkHardDeleteMidpointHook(
+        () -> {
+          throw new IllegalStateException("injected mid-delete failure");
+        });
+    try {
+      assertThrows(
+          Exception.class,
+          () -> repository.bulkHardDeleteSubtree(List.of(dataModelId), "admin"),
+          "Injected mid-delete failure must abort the bulk hard delete");
+    } finally {
+      EntityRepository.clearBulkHardDeleteMidpointHook();
+    }
+
+    assertFalse(
+        containsRelationships(dataModelId).isEmpty(),
+        "CONTAINS relationship must survive the rolled-back delete — relationship cleanup and row "
+            + "deletion must commit in one transaction");
+    assertNotNull(
+        client.dashboardDataModels().get(dataModelId.toString()),
+        "Data model must remain fully usable after the rolled-back delete");
+  }
+
+  private List<CollectionDAO.EntityRelationshipRecord> containsRelationships(UUID dataModelId) {
+    return Entity.getCollectionDAO()
+        .relationshipDAO()
+        .findFrom(dataModelId, Entity.DASHBOARD_DATA_MODEL, Relationship.CONTAINS.ordinal());
   }
 }
