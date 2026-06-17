@@ -23,6 +23,19 @@ const defaultProps = {
   serviceType: 'Snowflake',
 };
 
+jest.mock('../../../../common/RichTextEditor/RichTextEditor', () =>
+  jest
+    .fn()
+    .mockImplementation(({ initialValue, onFocus, onTextChange }) => (
+      <textarea
+        data-testid="service-description"
+        value={initialValue ?? ''}
+        onChange={(e) => onTextChange?.(e.target.value)}
+        onFocus={onFocus}
+      />
+    ))
+);
+
 describe('ServiceNameCard', () => {
   beforeEach(() => {
     jest.clearAllMocks();

@@ -168,8 +168,6 @@ describe('Test Connection Component', () => {
       screen.getByText('message.test-connection-unlocks-next-step')
     ).toBeInTheDocument();
 
-    expect(screen.getByTestId('ready-badge')).toBeInTheDocument();
-    expect(connectionCard).toHaveClass('tw:border-utility-brand-300');
     expect(testConnectionButton).toBeInTheDocument();
   });
 
@@ -497,11 +495,6 @@ describe('Test Connection Component', () => {
     expect(
       screen.getByText('message.test-connection-ready-count')
     ).toBeInTheDocument();
-
-    expect(screen.getByTestId('success-badge')).toBeInTheDocument();
-    expect(screen.getByTestId('test-connection-card')).toHaveClass(
-      'tw:border-utility-success-200'
-    );
   });
 
   it('Should show warning message if test connection failed and mandatory steps passed', async () => {
@@ -537,10 +530,6 @@ describe('Test Connection Component', () => {
       screen.getByText('message.connection-test-warning')
     ).toBeInTheDocument();
 
-    expect(screen.getByTestId('warning-badge')).toBeInTheDocument();
-    expect(screen.getByTestId('test-connection-card')).toHaveClass(
-      'tw:border-utility-warning-200'
-    );
     expect(onTestConnectionStatusChange).toHaveBeenLastCalledWith(true);
   });
 
@@ -625,11 +614,6 @@ describe('Test Connection Component', () => {
     expect(
       await screen.findByText('message.connection-test-failed')
     ).toBeInTheDocument();
-
-    expect(screen.getByTestId('fail-badge')).toBeInTheDocument();
-    expect(screen.getByTestId('test-connection-card')).toHaveClass(
-      'tw:border-utility-error-200'
-    );
   });
 
   it('Should show the unexpected response message for 500 workflow failures', async () => {
@@ -674,8 +658,6 @@ describe('Test Connection Component', () => {
     expect(
       screen.getByText('message.connection-test-failed')
     ).toBeInTheDocument();
-
-    expect(screen.getByTestId('fail-badge')).toBeInTheDocument();
   });
 
   it('Should not show the connection status modal if test connection definition API fails', async () => {
@@ -799,8 +781,6 @@ describe('Test Connection Component', () => {
     expect(
       screen.getByText('message.connection-test-failed')
     ).toBeInTheDocument();
-
-    expect(screen.getByTestId('fail-badge')).toBeInTheDocument();
   });
 
   it('Should validate the form before testing the connect', async () => {

@@ -845,7 +845,7 @@ describe('FiltersConfigForm', () => {
     );
 
     fireEvent.click(
-      within(schemaSection).getByRole('button', {
+      within(schemaSection).getByRole('switch', {
         name: 'Exclude system schemas',
       })
     );
@@ -873,7 +873,7 @@ describe('FiltersConfigForm', () => {
     );
 
     fireEvent.click(
-      within(schemaSection).getByRole('button', {
+      within(schemaSection).getByRole('switch', {
         name: 'Exclude system schemas',
       })
     );

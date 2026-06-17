@@ -14,10 +14,10 @@ import { ExplorePageTabs } from '../enums/Explore.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { ServiceType } from '../generated/entity/services/serviceType';
 import { ServicesType } from '../interface/service.interface';
+import { getTestConnectionName } from './ServicePureUtils';
 import serviceUtilClassBase, {
   ServiceUtilClassBase,
 } from './ServiceUtilClassBase';
-import { getTestConnectionName } from './ServiceUtils';
 
 jest.mock('./ServiceIconUtils', () => ({
   getServiceLogo: jest.fn(),
@@ -69,7 +69,7 @@ jest.mock('./SearchServiceUtils', () => ({
 jest.mock('./SecurityServiceUtils', () => ({
   getSecurityConfig: jest.fn().mockResolvedValue({ schema: {}, uiSchema: {} }),
 }));
-jest.mock('./ServiceUtils', () => ({ getTestConnectionName: jest.fn() }));
+jest.mock('./ServicePureUtils', () => ({ getTestConnectionName: jest.fn() }));
 jest.mock('./StorageServiceUtils', () => ({
   getStorageConfig: jest.fn().mockResolvedValue({ schema: {}, uiSchema: {} }),
 }));

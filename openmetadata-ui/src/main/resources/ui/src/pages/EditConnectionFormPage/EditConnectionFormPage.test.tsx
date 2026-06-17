@@ -79,16 +79,13 @@ jest.mock('../../components/common/Loader/Loader', () =>
 jest.mock(
   '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm',
   () =>
-    jest.fn().mockImplementation(({ onSave, onCancel, onFocus }) => (
+    jest.fn().mockImplementation(({ onSave, onFocus }) => (
       <div>
         <div>ConnectionConfigForm</div>
         <button
           data-testid="next-button"
           onClick={() => onSave({ formData: { testData: 'test' } })}>
           label.next
-        </button>
-        <button data-testid="cancel-button" onClick={onCancel}>
-          label.back
         </button>
         <input
           data-testid="connection-field"
@@ -102,13 +99,14 @@ jest.mock(
 jest.mock(
   '../../components/Settings/Services/ServiceConfig/FiltersConfigForm',
   () =>
-    jest.fn().mockImplementation(({ onSave, onCancel }) => (
+    jest.fn().mockImplementation(({ onSave }) => (
       <div>
         <div>FiltersConfigForm</div>
-        <button onClick={() => onSave({ formData: { testData: 'test' } })}>
+        <button
+          data-testid="filters-save-button"
+          onClick={() => onSave({ formData: { testData: 'test' } })}>
           label.save
         </button>
-        <button onClick={onCancel}>label.back</button>
       </div>
     ))
 );
@@ -117,6 +115,23 @@ jest.mock(
   '../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component',
   () => jest.fn().mockImplementation(() => <div>IngestionStepper</div>)
 );
+
+jest.mock('../../components/common/NavigationGuardModal/NavigationGuardModal', () => ({
+  NavigationGuardModal: jest.fn().mockImplementation(({ isOpen, onLeave }) =>
+    isOpen ? (
+      <button data-testid="modal-leave" onClick={onLeave}>
+        Leave
+      </button>
+    ) : null
+  ),
+}));
+
+jest.mock('../../utils/ConnectionsRouterClassBase', () => ({
+  __esModule: true,
+  default: {
+    getPathByServiceFQN: jest.fn().mockReturnValue('/service/path'),
+  },
+}));
 
 jest.mock('../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockImplementation(() => ({ fqn: '' })),
@@ -220,7 +235,7 @@ describe('EditConnectionFormPage component', () => {
       render(<EditConnectionFormPage {...mockProps} />);
     });
 
-    const nextButton = screen.getByText('label.next');
+    const nextButton = screen.getByTestId('next-button');
     await act(async () => {
       fireEvent.click(nextButton);
     });
@@ -234,15 +249,18 @@ describe('EditConnectionFormPage component', () => {
     });
 
     // Move to step 2
-    const nextButton = screen.getByText('label.next');
     await act(async () => {
-      fireEvent.click(nextButton);
+      fireEvent.click(screen.getByTestId('next-button'));
     });
 
-    // Click back button
-    const backButton = screen.getByText('label.back');
+    // Click footer back button → confirmation modal appears
     await act(async () => {
-      fireEvent.click(backButton);
+      fireEvent.click(screen.getByRole('button', { name: 'label.back' }));
+    });
+
+    // Confirm leaving step 2
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('modal-leave'));
     });
 
     expect(screen.getByText('ConnectionConfigForm')).toBeInTheDocument();
@@ -256,15 +274,13 @@ describe('EditConnectionFormPage component', () => {
     });
 
     // Move to step 2
-    const nextButton = screen.getByText('label.next');
     await act(async () => {
-      fireEvent.click(nextButton);
+      fireEvent.click(screen.getByTestId('next-button'));
     });
 
-    // Submit form in step 2
-    const saveButton = screen.getByText('label.save');
+    // Submit filters form in step 2
     await act(async () => {
-      fireEvent.click(saveButton);
+      fireEvent.click(screen.getByTestId('filters-save-button'));
     });
 
     expect(mockPatchService).toHaveBeenCalled();
@@ -279,15 +295,13 @@ describe('EditConnectionFormPage component', () => {
     });
 
     // Move to step 2
-    const nextButton = screen.getByText('label.next');
     await act(async () => {
-      fireEvent.click(nextButton);
+      fireEvent.click(screen.getByTestId('next-button'));
     });
 
-    // Submit form in step 2
-    const saveButton = screen.getByText('label.save');
+    // Submit filters form in step 2
     await act(async () => {
-      fireEvent.click(saveButton);
+      fireEvent.click(screen.getByTestId('filters-save-button'));
     });
 
     expect(mockShowErrorToast).toHaveBeenCalled();
@@ -311,14 +325,14 @@ describe('EditConnectionFormPage component', () => {
   });
 
   it('should handle cancel button click', async () => {
-    render(<EditConnectionFormPage {...mockProps} />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('cancel-button')).toBeInTheDocument();
+    await act(async () => {
+      render(<EditConnectionFormPage {...mockProps} />);
     });
 
-    const cancelButton = screen.getByTestId('cancel-button');
-    fireEvent.click(cancelButton);
+    // Footer back button at step 1 calls onCancel → navigate(-1)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'label.back' }));
+    });
 
     expect(mockNavigate).toHaveBeenCalled();
   });

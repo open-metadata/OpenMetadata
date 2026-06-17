@@ -129,15 +129,24 @@ jest.mock(
   }
 );
 
+jest.mock('../../components/common/NavigationGuardModal/NavigationGuardModal', () => ({
+  NavigationGuardModal: jest.fn().mockImplementation(({ isOpen, onLeave }) =>
+    isOpen ? (
+      <button data-testid="modal-leave" onClick={onLeave}>
+        Leave
+      </button>
+    ) : null
+  ),
+}));
+
 jest.mock(
   '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm',
   () => {
-    return jest.fn().mockImplementation(({ onSave, onCancel }) => (
+    return jest.fn().mockImplementation(({ onSave }) => (
       <div>
         <button onClick={() => onSave({ formData: { host: 'localhost' } })}>
           Save Connection
         </button>
-        <button onClick={onCancel}>Back</button>
       </div>
     ));
   }
@@ -146,12 +155,11 @@ jest.mock(
 jest.mock(
   '../../components/Settings/Services/ServiceConfig/FiltersConfigForm',
   () => {
-    return jest.fn().mockImplementation(({ onSave, onCancel }) => (
+    return jest.fn().mockImplementation(({ onSave }) => (
       <div>
         <button onClick={() => onSave({ formData: { filterPattern: {} } })}>
           Save Filters
         </button>
-        <button onClick={onCancel}>Back</button>
       </div>
     ));
   }
@@ -295,8 +303,14 @@ describe('AddServicePage', () => {
     );
     expect(screen.queryByText('Select MySQL')).not.toBeInTheDocument();
 
+    // Clicking the breadcrumb shows a confirmation modal (activeServiceStep > 1)
     await act(async () => {
       fireEvent.click(screen.getByText('label.add-new-entity'));
+    });
+
+    // Confirm leaving to reset the selected connector
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('modal-leave'));
     });
 
     expect(screen.getByTestId('header')).toHaveTextContent(
@@ -541,8 +555,13 @@ describe('AddServicePage', () => {
       fireEvent.click(screen.getByText('Save Connection'));
     });
 
+    // Footer Back button shows a confirmation modal before going back
     await act(async () => {
-      fireEvent.click(await screen.findByText('Back'));
+      fireEvent.click(screen.getByRole('button', { name: 'label.back' }));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('modal-leave'));
     });
 
     expect(screen.getByText('Save Connection')).toBeInTheDocument();
@@ -558,9 +577,13 @@ describe('AddServicePage', () => {
       fireEvent.click(selectMySQLButton);
     });
 
-    const backButton = screen.getByText('Back');
+    // Footer Back button shows a confirmation modal before going back to step 1
     await act(async () => {
-      fireEvent.click(backButton);
+      fireEvent.click(screen.getByRole('button', { name: 'label.back' }));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('modal-leave'));
     });
 
     expect(screen.getByText('Select MySQL')).toBeInTheDocument();
