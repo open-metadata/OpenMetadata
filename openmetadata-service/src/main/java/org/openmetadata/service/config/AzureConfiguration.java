@@ -13,6 +13,31 @@ public class AzureConfiguration {
   @NotBlank(message = "Container name must be provided")
   private String containerName;
 
+  /**
+   * Deprecated Azure credential fields are retained only so existing YAML files
+   * continue to deserialize while asset uploads authenticate through
+   * DefaultAzureCredential.
+   */
+  @Deprecated
+  @JsonProperty("connectionString")
+  private String connectionString;
+
+  @Deprecated
+  @JsonProperty("useManagedIdentity")
+  private boolean useManagedIdentity;
+
+  @Deprecated
+  @JsonProperty("clientId")
+  private String clientId;
+
+  @Deprecated
+  @JsonProperty("tenantId")
+  private String tenantId;
+
+  @Deprecated
+  @JsonProperty("clientSecret")
+  private String clientSecret;
+
   @JsonProperty("cdnUrl")
   private String cdnUrl;
 

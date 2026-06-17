@@ -1,15 +1,32 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.service.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
+import java.io.IOException;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 class ObjectStorageConfigurationTest {
+  private final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
   private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
 
   @Test
@@ -26,6 +43,27 @@ class ObjectStorageConfigurationTest {
     ObjectStorageConfiguration config = baseConfig("azure");
     config.setAzureConfiguration(
         azureConfigWithoutCredentials("https://account.blob.core.windows.net"));
+
+    assertTrue(validate(config).isEmpty());
+  }
+
+  @Test
+  void legacyAzureCredentialFieldsDeserializeButAreNotRequired() throws IOException {
+    ObjectStorageConfiguration config =
+        yamlMapper.readValue(
+            """
+            enabled: true
+            provider: azure
+            azure:
+              containerName: assets
+              blobEndpoint: https://account.blob.core.windows.net
+              connectionString: DefaultEndpointsProtocol=https;AccountName=legacy;AccountKey=key
+              useManagedIdentity: true
+              clientId: legacy-client
+              tenantId: legacy-tenant
+              clientSecret: legacy-secret
+            """,
+            ObjectStorageConfiguration.class);
 
     assertTrue(validate(config).isEmpty());
   }
