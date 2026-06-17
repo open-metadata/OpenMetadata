@@ -46,7 +46,6 @@ import { SourceType } from '../SearchedData/SearchedData.interface';
 import { CanvasLayerWrapper } from './Edges/CanvasLayerWrapper/CanvasLayerWrapper';
 import { LineageProps } from './Lineage.interface';
 import LineageSkeleton from './LineageSkeleton.component';
-
 const Lineage = ({
   deleted,
   entity,
