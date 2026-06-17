@@ -55,14 +55,18 @@ jest.mock('@react-awesome-query-builder/antd', () => ({
   },
 }));
 
+jest.mock('../../../../../utils/CuratedAssetsPureUtils', () => ({
+  getExpandedResourceList: jest.fn().mockReturnValue(['table']),
+  getExploreURLForAdvancedFilter: jest.fn().mockReturnValue('test-url'),
+  getModifiedQueryFilterWithSelectedAssets: jest.fn().mockReturnValue({}),
+}));
+
 jest.mock('../../../../../utils/CuratedAssetsUtils', () => ({
   AlertMessage: jest
     .fn()
     .mockImplementation(() => (
       <div data-testid="alert-message">Alert Message</div>
     )),
-  getExploreURLForAdvancedFilter: jest.fn().mockReturnValue('test-url'),
-  getModifiedQueryFilterWithSelectedAssets: jest.fn().mockReturnValue({}),
 }));
 
 jest.mock('../../../../../utils/QueryBuilderElasticsearchFormatUtils', () => ({

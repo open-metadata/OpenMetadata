@@ -56,7 +56,6 @@ import WidgetHeader from '../Widgets/Common/WidgetHeader/WidgetHeader';
 import WidgetWrapper from '../Widgets/Common/WidgetWrapper/WidgetWrapper';
 import { CURATED_ASSETS_SORT_BY_KEYS } from '../Widgets/CuratedAssetsWidget/CuratedAssetsWidget.constants';
 import './my-data-widget.less';
-
 const MyDataWidgetInternal = ({
   isEditView = false,
   handleRemoveWidget,

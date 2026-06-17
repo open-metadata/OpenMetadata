@@ -76,7 +76,6 @@ import {
   searchHitSourceToEntityRef,
 } from '../utils/graphBuilders';
 import { useOntologyGraphDerived } from './useOntologyGraphDerived';
-
 const MODEL_TERM_FIELDS = [
   TabSpecificField.RELATED_TERMS,
   TabSpecificField.CHILDREN,

@@ -25,11 +25,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFqn } from '../../../../../hooks/useFqn';
 import {
-  AlertMessage,
-  CuratedAssetsFormSelectedAssetsInfo,
   getExpandedResourceList,
   getExploreURLForAdvancedFilter,
   getModifiedQueryFilterWithSelectedAssets,
+} from '../../../../../utils/CuratedAssetsPureUtils';
+import {
+  AlertMessage,
+  CuratedAssetsFormSelectedAssetsInfo,
 } from '../../../../../utils/CuratedAssetsUtils';
 import { elasticSearchFormat } from '../../../../../utils/QueryBuilderElasticsearchFormatUtils';
 import { getJsonTreeFromQueryFilter } from '../../../../../utils/QueryBuilderPureUtils';

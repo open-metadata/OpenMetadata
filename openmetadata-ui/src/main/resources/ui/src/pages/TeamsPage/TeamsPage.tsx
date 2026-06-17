@@ -53,7 +53,6 @@ import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import { getTermQuery } from '../../utils/SearchPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
-
 const TeamsPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();

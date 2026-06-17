@@ -110,7 +110,6 @@ import './teams.less';
 import TeamsHeadingLabel from './TeamsHeaderSection/TeamsHeadingLabel.component';
 import TeamsInfo from './TeamsHeaderSection/TeamsInfo.component';
 import { UserTab } from './UserTab/UserTab.component';
-
 const EntitySummaryPanel = withSuspenseFallback(
   lazy(
     () =>

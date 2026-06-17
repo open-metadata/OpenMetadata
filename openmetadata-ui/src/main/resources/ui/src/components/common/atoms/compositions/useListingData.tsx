@@ -21,7 +21,6 @@ import { useUrlState } from '../data/useUrlState';
 import { usePaginationState } from '../pagination/usePaginationState';
 import { CellRenderer, ColumnConfig, ListingData } from '../shared/types';
 import { useActionHandlers } from './useActionHandlers';
-
 interface UseListingDataProps<T> {
   searchIndex: SearchIndex;
   baseFilter?: string;
