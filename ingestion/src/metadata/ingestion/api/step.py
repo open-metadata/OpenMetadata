@@ -118,7 +118,15 @@ class Summary(StepSummary):
             warnings=len(step.status.warnings),
             errors=len(step.status.failures),
             filtered=len(step.status.filtered),
-            failures=step.status.failures[0:10] if step.status.failures else None,
+            # Failures are capped to 10 for display payload size. A step may opt out
+            # (report_all_failures=True) when downstream logic needs the COMPLETE list — e.g. the
+            # Policy Agent, where the coordinator decides per-policy grant vs manual from exactly
+            # which policy ids failed; a truncated list would silently (and unsafely) grant the rest.
+            failures=(
+                (step.status.failures if getattr(step, "report_all_failures", False) else step.status.failures[0:10])
+                if step.status.failures
+                else None
+            ),
             progress=progress_tracker.get_progress_as_dict() or None,
             operationMetrics=operation_metrics.get_summary() or None,
             sourceTimeMs=source_time_ms if source_time_ms else None,
