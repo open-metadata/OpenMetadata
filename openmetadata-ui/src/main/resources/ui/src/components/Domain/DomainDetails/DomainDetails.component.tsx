@@ -87,7 +87,7 @@ import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
   getFeedCounts,
-} from '../../../utils/FeedUtils';
+} from '../../../utils/FeedUtilsPure';
 import { submitAndClose } from '../../../utils/FormDrawerUtils';
 import Fqn from '../../../utils/Fqn';
 import { showNotistackError } from '../../../utils/NotistackUtils';

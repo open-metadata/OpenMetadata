@@ -107,7 +107,7 @@ import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
   getFeedCounts,
-} from '../../utils/FeedUtils';
+} from '../../utils/FeedUtilsPure';
 import { renderIcon } from '../../utils/IconUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {

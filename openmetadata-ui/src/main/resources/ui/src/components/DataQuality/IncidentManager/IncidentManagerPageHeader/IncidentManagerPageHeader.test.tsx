@@ -115,7 +115,7 @@ jest.mock('../../../../utils/EntityPureUtils', () => ({
     .mockReturnValue('getColumnNameFromEntityLink'),
 }));
 
-jest.mock('../../../../utils/FeedUtils', () => ({
+jest.mock('../../../../utils/FeedUtilsPure', () => ({
   getEntityFQN: jest.fn().mockReturnValue('entityFQN'),
 }));
 

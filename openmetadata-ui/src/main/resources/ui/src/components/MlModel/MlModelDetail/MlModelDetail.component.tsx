@@ -44,7 +44,7 @@ import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
   getFeedCounts,
-} from '../../../utils/FeedUtils';
+} from '../../../utils/FeedUtilsPure';
 import mlModelDetailsClassBase from '../../../utils/MlModel/MlModelClassBase';
 import {
   DEFAULT_ENTITY_PERMISSION,

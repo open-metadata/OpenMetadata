@@ -87,7 +87,7 @@ jest.mock('../../../utils/TasksUtils', () => ({
   isDescriptionTask: jest.fn().mockReturnValue(false),
 }));
 
-jest.mock('../../../utils/FeedUtils', () => ({
+jest.mock('../../../utils/FeedUtilsPure', () => ({
   getEntityFQNFromAbout: jest.fn().mockReturnValue('entityFQN'),
   getEntityTypeFromAbout: jest.fn().mockReturnValue('table'),
 }));
@@ -110,6 +110,8 @@ jest.mock('../../../utils/EntityLink', () => {
     __esModule: true,
     default: {
       getTableColumnName: jest.fn().mockReturnValue(null),
+      getEntityType: jest.fn().mockReturnValue('table'),
+      getEntityFqn: jest.fn().mockReturnValue('test.entity.fqn'),
     },
   };
 });
