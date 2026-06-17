@@ -32,6 +32,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateGlossary;
+import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.ApiStatus;
@@ -624,15 +625,15 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
                 .withName(originalName)
                 .withDescription("Glossary used for rename-propagation IT"));
 
-    org.openmetadata.schema.api.data.CreateGlossaryTerm createTerm =
-        new org.openmetadata.schema.api.data.CreateGlossaryTerm()
+    CreateGlossaryTerm createTerm =
+        new CreateGlossaryTerm()
             .withName(ns.prefix("term"))
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("term under renamed glossary");
     GlossaryTerm term = client.glossaryTerms().create(createTerm);
 
-    org.openmetadata.schema.api.data.CreateGlossaryTerm createSubTerm =
-        new org.openmetadata.schema.api.data.CreateGlossaryTerm()
+    CreateGlossaryTerm createSubTerm =
+        new CreateGlossaryTerm()
             .withName(ns.prefix("subterm"))
             .withGlossary(glossary.getFullyQualifiedName())
             .withParent(term.getFullyQualifiedName())
