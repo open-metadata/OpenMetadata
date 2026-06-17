@@ -316,6 +316,15 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       return;
     }
 
+    // Restore live serving settings on the staged index before alias swap. The bulk-build
+    // overrides (refresh=-1, replicas=0, async translog) must NOT survive into live serving —
+    // otherwise live writes after promotion are buffered indefinitely and only become
+    // searchable on a manual _refresh, which surfaces as the "create-then-search returns
+    // nothing until reindex" symptom on knowledge pages. This mirrors the call in
+    // finalizeReindex; the per-entity distributed promotion path was missing it.
+    applyLiveServingSettings(searchClient, stagedIndex, entityType);
+    maybeForceMerge(searchClient, stagedIndex, entityType);
+
     // Always clear staged-index routing on the way out — see the rationale in finalizeReindex.
     try {
       Set<String> aliasesToAttach =
