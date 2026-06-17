@@ -44,7 +44,7 @@ Use background tokens for surfaces, containers, cards, modals, and page-level ba
 | Tailwind Class | CSS Variable | Light | Dark | When to Use |
 |---|---|---|---|---|
 | `tw:bg-primary` | `--color-bg-primary` | `#ffffff` | `#0c0e12` | Default page, card, modal background |
-| `tw:bg-primary_alt` | `--color-bg-primary_alt` | `#ffffff` | `#131619` (bg-secondary) | Alternate surface; pairs with `bg-primary` for subtle layering |
+| `tw:bg-primary_alt` | `--color-bg-primary_alt` | `#ffffff` | `#13161b` (bg-secondary) | Alternate surface; pairs with `bg-primary` for subtle layering |
 | `tw:bg-primary_hover` | `--color-bg-primary_hover` | `#fafafa` | `#22262f` | Hover state on primary surface |
 | `tw:bg-secondary` | `--color-bg-secondary` | `#fafafa` | `#13161b` | Secondary surface, sidebar, panel |
 | `tw:bg-secondary_alt` | `--color-bg-secondary_alt` | `#fafafa` | `#0c0e12` (bg-primary) | Alternate secondary surface |
@@ -283,7 +283,7 @@ Brand tokens are for CTAs, highlighted navigation, brand-accented UI, and sectio
 
 Utility colors are for data-driven UI elements like badges, tags, category chips, and data visualization where you need a specific hue. All utility tokens automatically invert in dark mode (light shades become dark and vice versa), so you still only need to write one class.
 
-The pattern is: `tw:bg-utility-{family}-{shade}` where shade ranges from `50` to `900`.
+The pattern is: `tw:bg-utility-{family}-{shade}`. The `brand` and `gray` families support shades `50`–`900`; all other families support `50`–`700`.
 
 Available families: `brand`, `gray`, `blue`, `blue-dark`, `blue-light`, `gray-blue`, `error`, `warning`, `success`, `orange`, `orange-dark`, `indigo`, `fuchsia`, `pink`, `purple`, `green`, `yellow`.
 
@@ -306,18 +306,18 @@ Available families: `brand`, `gray`, `blue`, `blue-dark`, `blue-light`, `gray-bl
 
 **Utility color shade guide:**
 
-| Shade | Background Use | Text/Icon Use |
-|---|---|---|
-| `50` | Badge/chip background (lightest) | — |
-| `100` | Slightly stronger badge background | — |
-| `200` | Badge border | — |
-| `300` | Hover border | — |
-| `400` | — | Muted icon inside badge |
-| `500` | Medium fill (fixed across modes) | Medium icon |
-| `600` | Solid fill | — |
-| `700` | — | Default text inside badge |
-| `800` | — | Strong/dark text |
-| `900` | Dark fill (strongest) | — |
+| Shade | Background Use | Text/Icon Use | Available in |
+|---|---|---|---|
+| `50` | Badge/chip background (lightest) | — | All families |
+| `100` | Slightly stronger badge background | — | All families |
+| `200` | Badge border | — | All families |
+| `300` | Hover border | — | All families |
+| `400` | — | Muted icon inside badge | All families |
+| `500` | Medium fill (fixed across modes) | Medium icon | All families |
+| `600` | Solid fill | — | All families |
+| `700` | — | Default text inside badge | All families |
+| `800` | — | Strong/dark text | `brand`, `gray` only |
+| `900` | Dark fill (strongest) | — | `brand`, `gray` only |
 
 ---
 
@@ -373,7 +373,7 @@ Quick reference for the most common mistakes. When reviewing or writing code, sc
 | `tw:border-red-500` | `tw:border-error` | Use error token |
 | `tw:border-blue-500` | `tw:border-brand` | Use brand token |
 | `tw:bg-green-50 tw:text-green-700` | `tw:bg-utility-success-50 tw:text-utility-success-700` | Utility tokens invert in dark mode |
-| `tw:bg-purple-100 tw:text-purple-800` | `tw:bg-utility-purple-100 tw:text-utility-purple-800` | Use utility tokens for badges/chips |
+| `tw:bg-purple-100 tw:text-purple-800` | `tw:bg-utility-purple-100 tw:text-utility-purple-700` | Use utility tokens for badges/chips |
 | `tw:dark:bg-gray-900` (redundant) | Use `tw:bg-primary` instead | If a token already handles it, the explicit override is noise — only keep `tw:dark:*` when overriding for a deliberate design reason |
 | `tw:dark:text-white` (redundant) | Use `tw:text-primary` instead | Same — prefer the token unless the design specifically diverges |
 | `style={{ color: '#1570ef' }}` | `tw:text-fg-brand-primary` | Never hardcode hex values |
