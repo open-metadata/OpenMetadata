@@ -51,6 +51,7 @@ jest.mock('../../../rest/searchAPI', () => ({
 }));
 
 jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
+  ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
   useGenericContext: () => ({
     data: mockDataProduct,
     onUpdate: mockOnUpdate,

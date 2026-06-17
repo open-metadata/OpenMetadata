@@ -42,7 +42,6 @@ import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVers
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import TopicSchemaFields from '../TopicSchema/TopicSchema';
 import { TopicVersionProp } from './TopicVersion.interface';
-
 const TopicVersion: FC<TopicVersionProp> = ({
   version,
   currentVersionData,

@@ -117,7 +117,7 @@ export const COLUMN_GRID_FILTERS: ExploreQuickFilterField[] = [
  * @returns Array of SearchDropdownOption objects
  */
 export const convertFilterValuesToOptions = (
-  filterKey: string,
+  _filterKey: string,
   filterValues: string[]
 ): SearchDropdownOption[] => {
   return filterValues.map((v) => ({

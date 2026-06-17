@@ -65,7 +65,6 @@ import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
 import { DomainLabelV2 } from '../DomainLabelV2/DomainLabelV2';
 import { OwnerLabelV2 } from '../OwnerLabelV2/OwnerLabelV2';
 import { ReviewerLabelV2 } from '../ReviewerLabelV2/ReviewerLabelV2';
-
 const GlossaryUpdateConfirmationModal = withSuspenseFallback(
   lazy(() =>
     import(

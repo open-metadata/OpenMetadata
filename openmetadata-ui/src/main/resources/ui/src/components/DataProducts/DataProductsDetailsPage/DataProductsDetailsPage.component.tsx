@@ -102,7 +102,7 @@ import {
   getDomainPath,
   getVersionPath,
 } from '../../../utils/RouterUtils';
-import { getTermQuery } from '../../../utils/SearchUtils';
+import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
@@ -130,7 +130,6 @@ import { DataProductMetadataModal } from '../DataProductMetadataModal';
 import { ODPSImportModal } from '../ODPSImportModal';
 import './data-products-details-page.less';
 import { DataProductsDetailsPageProps } from './DataProductsDetailsPage.interface';
-
 const DataProductsDetailsPage = ({
   dataProduct,
   isVersionsView = false,
