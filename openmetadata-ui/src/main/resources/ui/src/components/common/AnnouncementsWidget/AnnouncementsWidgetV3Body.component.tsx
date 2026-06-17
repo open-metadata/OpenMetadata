@@ -43,7 +43,7 @@ const AnnouncementsWidgetV3Body = ({
     return (
       <div
         className={classNames(
-          'tw:rounded-[10px] tw:border tw:border-gray-blue-100 tw:bg-linear-to-b tw:from-brand-50 tw:to-white tw:px-4 tw:py-3.5',
+          'tw:rounded-[10px] tw:border tw:border-gray-blue-100 tw:bg-linear-to-b tw:from-brand-50 tw:to-bg-primary tw:px-4 tw:py-3.5',
           className
         )}
         data-testid={testId}>
@@ -57,7 +57,7 @@ const AnnouncementsWidgetV3Body = ({
               variant="rectangular"
               width={4}
             />
-            <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-[4px]">
+            <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1">
               <Skeleton height={14} variant="text" width="55%" />
               <Skeleton height={12} variant="text" width="90%" />
             </div>
@@ -82,7 +82,7 @@ const AnnouncementsWidgetV3Body = ({
   return (
     <div
       className={classNames(
-        'tw:rounded-[10px] tw:border tw:border-gray-blue-100 tw:bg-linear-to-b tw:from-brand-50 tw:to-white tw:px-4 tw:py-3.5',
+        'tw:rounded-[10px] tw:border tw:border-gray-blue-100 tw:bg-linear-to-b tw:from-brand-50 tw:to-bg-primary tw:px-4 tw:py-3.5',
         className
       )}
       data-testid={testId}>
