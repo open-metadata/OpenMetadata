@@ -83,9 +83,7 @@ export const visitEntityPage = async (data: {
 
   // Adding a failsafe for the operation below to avoid a tooltip overlap issue.
   // A tooltip over the option can cause Playwright click failures:
-  // 1) Hover over the option to move the mouse away from the tooltip trigger element.
-  // 2) If the tooltip is still present, force-click the option.
-  await page.getByTestId(dataTestId).getByTestId('data-name').hover();
+  // If the tooltip is still present, force-click the option.
   await page
     .getByTestId(dataTestId)
     .getByTestId('data-name')
