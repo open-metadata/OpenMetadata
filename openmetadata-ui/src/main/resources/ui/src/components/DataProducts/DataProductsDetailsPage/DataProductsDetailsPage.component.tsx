@@ -84,7 +84,7 @@ import { getQueryFilterToIncludeDomain } from '../../../utils/DomainFilterUtils'
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
 import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import { downloadFile } from '../../../utils/Export/ExportUtils';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
@@ -98,7 +98,7 @@ import {
   getDomainPath,
   getVersionPath,
 } from '../../../utils/RouterUtils';
-import { getTermQuery } from '../../../utils/SearchUtils';
+import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumbs';
@@ -127,7 +127,6 @@ import { DataProductMetadataModal } from '../DataProductMetadataModal';
 import { ODPSImportModal } from '../ODPSImportModal';
 import './data-products-details-page.less';
 import { DataProductsDetailsPageProps } from './DataProductsDetailsPage.interface';
-
 const DataProductsDetailsPage = ({
   dataProduct,
   isVersionsView = false,

@@ -129,8 +129,11 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   ),
 }));
 
-jest.mock('../../utils/EntityLineageUtils', () => ({
+jest.mock('../../utils/EntityLineagePureUtils', () => ({
   getLineageEntityExclusionFilter: jest.fn(() => ({ mustNot: [] })),
+}));
+
+jest.mock('../../utils/EntityLineageLayoutUtils', () => ({
   getViewportForLineageExport: jest.fn(() => ({ x: 0, y: 0, zoom: 1 })),
 }));
 

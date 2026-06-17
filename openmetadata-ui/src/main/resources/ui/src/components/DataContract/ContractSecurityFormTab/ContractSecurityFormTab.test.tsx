@@ -31,6 +31,7 @@ jest.mock('../../../utils/useRequiredParams', () => ({
 }));
 
 jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
+  ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
   useGenericContext: jest.fn(() => ({
     data: {
       id: 'table-1',

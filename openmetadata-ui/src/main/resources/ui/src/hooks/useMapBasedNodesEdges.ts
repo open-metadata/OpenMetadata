@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { useCallback, useMemo, useState } from 'react';
-import { Edge, Node, OnEdgesChange, OnNodesChange } from 'reactflow';
-import { getClassifiedEdge } from '../utils/EntityLineageUtils';
+import type { Edge, Node, OnEdgesChange, OnNodesChange } from 'reactflow';
+import { getClassifiedEdge } from '../utils/EntityLineageEdgeUtils';
 
 interface UseMapBasedNodesEdgesReturn {
   nodes: Node[];

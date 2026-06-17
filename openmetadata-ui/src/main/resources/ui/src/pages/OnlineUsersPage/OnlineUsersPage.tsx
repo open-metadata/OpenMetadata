@@ -37,10 +37,9 @@ import { searchQuery } from '../../rest/searchAPI';
 import { getOnlineUsers, OnlineUsersQueryParams } from '../../rest/userAPI';
 import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
-import { getTermQuery } from '../../utils/SearchUtils';
+import { getTermQuery } from '../../utils/SearchPureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { commonUserDetailColumns } from '../../utils/Users.util';
-
 const OnlineUsersPage = () => {
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();

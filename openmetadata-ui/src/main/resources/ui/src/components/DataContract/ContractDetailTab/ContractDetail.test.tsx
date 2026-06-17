@@ -34,7 +34,7 @@ import {
   validateContractById,
 } from '../../../rest/contractAPI';
 import '../../../test/unit/mocks/mui.mock';
-import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
+import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
 import {
   downloadContractAsODCSYaml,
   downloadContractYamlFile,
@@ -93,8 +93,11 @@ jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
 }));
 
 jest.mock('../../../utils/BlockEditorUtils', () => ({
-  isDescriptionContentEmpty: jest.fn(),
   formatContent: jest.fn().mockReturnValue('formatted content'),
+}));
+
+jest.mock('../../../utils/BlockEditorPureUtils', () => ({
+  isDescriptionContentEmpty: jest.fn(),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
