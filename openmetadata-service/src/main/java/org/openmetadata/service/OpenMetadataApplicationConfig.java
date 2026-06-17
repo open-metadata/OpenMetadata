@@ -81,11 +81,11 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("elasticsearch")
   private ElasticSearchConfiguration elasticSearchConfiguration;
 
-  @JsonProperty("nlqHybridSearch")
-  private JsonNode nlqHybridSearch;
-
   @JsonProperty("llmConfiguration")
   private LLMConfiguration llmConfiguration;
+
+  @JsonProperty("nlqHybridSearch")
+  private JsonNode nlqHybridSearch;
 
   @JsonProperty("eventHandlerConfiguration")
   private EventHandlerConfiguration eventHandlerConfiguration;

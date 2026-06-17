@@ -232,6 +232,14 @@ class TableClassBase {
     return false;
   }
 
+  public getRequestDataAccessBanner(): ReactNode {
+    return null;
+  }
+
+  public getRequestDataAccessButton(): ReactNode {
+    return null;
+  }
+
   public getRequestDataAccessDrawer(
     _isOpen: boolean,
     _onClose: () => void,

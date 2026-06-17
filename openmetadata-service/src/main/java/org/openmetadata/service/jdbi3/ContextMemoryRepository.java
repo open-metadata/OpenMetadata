@@ -46,10 +46,19 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
   static final String FIELD_PRIMARY_ENTITY = "primaryEntity";
   static final String FIELD_RELATED_ENTITIES = "relatedEntities";
+  static final String FIELD_SOURCE_FILE = "sourceFile";
   private static final String PATCH_FIELDS =
-      FIELD_PRIMARY_ENTITY + "," + FIELD_RELATED_ENTITIES + ",rootMemory,parentMemory";
+      FIELD_PRIMARY_ENTITY
+          + ","
+          + FIELD_RELATED_ENTITIES
+          + ",rootMemory,parentMemory,"
+          + FIELD_SOURCE_FILE;
   private static final String UPDATE_FIELDS =
-      FIELD_PRIMARY_ENTITY + "," + FIELD_RELATED_ENTITIES + ",rootMemory,parentMemory";
+      FIELD_PRIMARY_ENTITY
+          + ","
+          + FIELD_RELATED_ENTITIES
+          + ",rootMemory,parentMemory,"
+          + FIELD_SOURCE_FILE;
 
   static {
     ContextMemoryBodyTextContributor.INSTANCE.register();
@@ -74,6 +83,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     if (fields.contains(FIELD_RELATED_ENTITIES)) {
       entity.setRelatedEntities(getRelatedEntities(entity));
     }
+    if (fields.contains(FIELD_SOURCE_FILE)) {
+      entity.setSourceFile(getSourceFile(entity));
+    }
   }
 
   @Override
@@ -84,6 +96,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     if (!fields.contains(FIELD_RELATED_ENTITIES)) {
       entity.setRelatedEntities(null);
     }
+    if (!fields.contains(FIELD_SOURCE_FILE)) {
+      entity.setSourceFile(null);
+    }
   }
 
   @Override
@@ -93,6 +108,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     }
     fetchAndSetPrimaryEntities(entities, fields);
     fetchAndSetRelatedEntities(entities, fields);
+    fetchAndSetSourceFiles(entities, fields);
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
     for (ContextMemory entity : entities) {
@@ -211,6 +227,40 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     return findFrom(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.RELATED_TO, null);
   }
 
+  private EntityReference getSourceFile(ContextMemory entity) {
+    List<EntityReference> refs =
+        findFrom(
+            entity.getId(), Entity.CONTEXT_MEMORY, Relationship.MENTIONED_IN, Entity.CONTEXT_FILE);
+    return nullOrEmpty(refs) ? null : refs.getFirst();
+  }
+
+  private void fetchAndSetSourceFiles(List<ContextMemory> entities, Fields fields) {
+    if (!fields.contains(FIELD_SOURCE_FILE)) {
+      return;
+    }
+    Map<UUID, EntityReference> sourceFileById = batchFetchSourceFiles(entities);
+    entities.forEach(memory -> memory.setSourceFile(sourceFileById.get(memory.getId())));
+  }
+
+  private Map<UUID, EntityReference> batchFetchSourceFiles(List<ContextMemory> entities) {
+    Map<UUID, EntityReference> sourceFileById = new HashMap<>();
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(entities),
+                Relationship.MENTIONED_IN.ordinal(),
+                Include.NON_DELETED);
+    Map<String, EntityReference> refById = resolveReferencesByType(records);
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      EntityReference ref = refById.get(record.getFromId());
+      if (ref != null) {
+        sourceFileById.putIfAbsent(UUID.fromString(record.getToId()), ref);
+      }
+    }
+    return sourceFileById;
+  }
+
   @Override
   public void setFullyQualifiedName(ContextMemory entity) {
     if (!nullOrEmpty(entity.getFullyQualifiedName())) {
@@ -233,6 +283,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       EntityReference primaryEntity =
           Entity.getEntityReference(entity.getPrimaryEntity(), Include.NON_DELETED);
       entity.setPrimaryEntity(primaryEntity);
+    }
+    if (entity.getSourceFile() != null) {
+      entity.setSourceFile(Entity.getEntityReference(entity.getSourceFile(), Include.NON_DELETED));
     }
     entity.setRelatedEntities(EntityUtil.populateEntityReferences(entity.getRelatedEntities()));
 
@@ -340,6 +393,15 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           Entity.CONTEXT_MEMORY,
           Entity.CONTEXT_MEMORY,
           Relationship.PARENT_OF);
+    }
+
+    if (entity.getSourceFile() != null) {
+      addRelationship(
+          entity.getSourceFile().getId(),
+          entity.getId(),
+          Entity.CONTEXT_FILE,
+          Entity.CONTEXT_MEMORY,
+          Relationship.MENTIONED_IN);
     }
   }
 
@@ -464,6 +526,14 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           original.getParentMemory(),
           updated.getParentMemory(),
           Relationship.PARENT_OF,
+          Entity.CONTEXT_MEMORY,
+          original.getId());
+      updateFromRelationship(
+          FIELD_SOURCE_FILE,
+          Entity.CONTEXT_FILE,
+          original.getSourceFile(),
+          updated.getSourceFile(),
+          Relationship.MENTIONED_IN,
           Entity.CONTEXT_MEMORY,
           original.getId());
 

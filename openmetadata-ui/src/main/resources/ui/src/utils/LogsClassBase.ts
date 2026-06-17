@@ -21,7 +21,7 @@ import { getEntityName } from './EntityNameUtils';
 import Fqn from './Fqn';
 import { getNameFromFQN, getTableFQNFromColumnFQN } from './FqnUtils';
 import i18n from './i18next/LocalUtil';
-import { getSettingsPathFromPipelineType } from './IngestionUtils';
+import { getSettingsPathFromPipelineType } from './IngestionConfigUtils';
 import {
   getApplicationDetailsPath,
   getDataQualityPagePath,
