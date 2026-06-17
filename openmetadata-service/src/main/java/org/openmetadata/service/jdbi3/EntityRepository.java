@@ -963,13 +963,33 @@ public abstract class EntityRepository<T extends EntityInterface> {
     EntityReference parentRef = getParentReference(entity);
     EntityInterface parent = getCachedInheritanceParent(parentRef, inheritableFields);
     if (parent == null) {
-      parent = getParentEntity(entity, inheritableFields);
+      parent = resolveInheritanceParentLeniently(entity, inheritableFields);
       cacheInheritanceParent(parentRef, inheritableFields, parent);
     }
     if (parent != null) {
       // Keep single-entity inheritance path aligned with batch/recursive inheritance path.
       applyInheritance(entity, fields, parent);
     }
+  }
+
+  /**
+   * Resolve the inheritance parent, tolerating concurrent hard-deletion. A reader loads the entity,
+   * then loads its parent in a separate statement; if the parent is hard-deleted in between,
+   * {@link #getParentEntity} throws {@link EntityNotFoundException}. Returning null (skip
+   * inheritance) instead of 500'ing the reader matches getContainer's CONTAINS-row tolerance and the
+   * batch inheritance path (whose batched parent load already omits missing parents). The batch
+   * {@link #setInheritedFields(List, Fields)} routes entities without a {@code getParentReference}
+   * override through this per-entity path, so this is also the list path's guard.
+   */
+  private EntityInterface resolveInheritanceParentLeniently(T entity, String inheritableFields) {
+    EntityInterface parent;
+    try {
+      parent = getParentEntity(entity, inheritableFields);
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Inheritance parent not found (concurrently deleted): {}", e.getMessage());
+      parent = null;
+    }
+    return parent;
   }
 
   /**
