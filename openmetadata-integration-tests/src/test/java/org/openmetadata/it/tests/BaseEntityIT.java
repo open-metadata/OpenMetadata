@@ -6470,6 +6470,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     assertTrue(
         updated.getVersion() > versionBeforeImport, "CSV import should create a new version");
     assertNotNull(updated.getChangeDescription(), "CSV import should record a changeDescription");
+    assertNotNull(
+        updated.getChangeDescription().getPreviousVersion(),
+        "CSV import should record a previousVersion");
     assertTrue(
         updated.getChangeDescription().getPreviousVersion() >= versionBeforeImport,
         "CSV import should skip consolidation and avoid rolling back to an older session version");
