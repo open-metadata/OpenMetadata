@@ -30,7 +30,6 @@ import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTa
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { SourceType } from '../SearchedData/SearchedData.interface';
 import { NotificationFeedProp } from './NotificationFeedCard.interface';
-
 const NotificationFeedCard: FC<NotificationFeedProp> = ({
   createdBy,
   entityFQN,

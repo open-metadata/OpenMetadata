@@ -41,24 +41,6 @@ import {
 import { escapeESReservedCharacters } from './StringUtils';
 import { showErrorToast } from './ToastUtils';
 
-export {
-  extractTermKeys,
-  findActiveSearchIndex,
-  getAggregations,
-  getExploreQueryFilterMust,
-  getParseValueFromLocation,
-  getQuickFilterObject,
-  getQuickFilterObjectForEntities,
-  getQuickFilterQuery,
-  getSelectedValuesFromQuickFilter,
-  getSubLevelHierarchyKey,
-  isElasticsearchError,
-  parseSearchParams,
-  updateCountsInTreeData,
-  updateTreeData,
-  updateTreeDataWithCounts,
-} from './ExplorePureUtils';
-
 export const getAggregationOptions = async (
   index: SearchIndex | SearchIndex[],
   key: string,
