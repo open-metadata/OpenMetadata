@@ -1,24 +1,24 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/connections/database/sapBw4HanaConnection.json",
+  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/sapBw4HanaPipelineConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "SapBw4HanaConnection",
-  "description": "SAP BW/4HANA Database Connection Config",
+  "title": "SapBw4HanaPipelineConnection",
+  "description": "SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.services.connections.database.SapBw4HanaConnection",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.SapBw4HanaPipelineConnection",
   "definitions": {
-    "sapBw4HanaType": {
-      "description": "Service type.",
+    "sapBw4HanaPipelineType": {
+      "description": "SAP BW/4HANA pipeline service type.",
       "type": "string",
-      "enum": ["SapBw4Hana"],
-      "default": "SapBw4Hana"
+      "enum": ["SapBw4HanaPipeline"],
+      "default": "SapBw4HanaPipeline"
     }
   },
   "properties": {
     "type": {
       "title": "Service Type",
       "description": "Service Type",
-      "$ref": "#/definitions/sapBw4HanaType",
-      "default": "SapBw4Hana"
+      "$ref": "#/definitions/sapBw4HanaPipelineType",
+      "default": "SapBw4HanaPipeline"
     },
     "hostPort": {
       "expose": true,
@@ -43,31 +43,14 @@
       "type": "string",
       "default": "SAPHANADB"
     },
-    "schemaFilterPattern": {
-      "title": "Default Schema Filter Pattern",
-      "description": "Regex to only include/exclude InfoAreas that match the pattern.",
+    "pipelineFilterPattern": {
+      "title": "Default Pipeline Filter Pattern",
+      "description": "Regex to only include/exclude Process Chains that match the pattern.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
-    },
-    "tableFilterPattern": {
-      "title": "Default Table Filter Pattern",
-      "description": "Regex to only include/exclude InfoProviders (ADSOs, CompositeProviders) that match the pattern.",
-      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
-    },
-    "connectionOptions": {
-      "title": "Connection Options",
-      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
-    },
-    "connectionArguments": {
-      "title": "Connection Arguments",
-      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
-    },
-    "supportsLineageExtraction": {
-      "title": "Supports Lineage Extraction",
-      "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
     }
   },
   "additionalProperties": false,

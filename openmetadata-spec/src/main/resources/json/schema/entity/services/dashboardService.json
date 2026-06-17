@@ -35,8 +35,7 @@
         "Grafana",
         "Hex",
         "Ssrs",
-        "SapS4Hana",
-        "SapBw4Hana"
+        "SapS4Hana"
       ],
       "javaEnums": [
         {
@@ -101,9 +100,6 @@
         },
         {
           "name": "SapS4Hana"
-        },
-        {
-          "name": "SapBw4Hana"
         }
       ]
     },
@@ -180,9 +176,6 @@
             },
             {
               "$ref": "./connections/dashboard/sapS4HanaConnection.json"
-            },
-            {
-              "$ref": "./connections/dashboard/sapBw4HanaConnection.json"
             }
           ]
         }
