@@ -58,8 +58,10 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.drive.PageContextProcessingEngineHolder;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.llm.LLMClientHolder;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.knowledge.KnowledgePageResource;
 import org.openmetadata.service.search.PropagationDescriptor;
@@ -84,6 +86,7 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   private static final String KNOWLEDGE_UPDATE_FIELDS = "page,relatedEntities,parent,children";
   public static final String RELATED_ENTITIES = "relatedEntities";
   public static final String EDITORS = "editors";
+  public static final String MEMORY_COUNT = "memoryCount";
   public static final String KNOWLEDGE_PAGE_TERM_SEARCH_INDEX = "page";
   private final CollectionDAO.KnowledgePageDAO daoExtension;
   private final CollectionDAO.AssetDAO assetDAO;
@@ -130,6 +133,15 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
         fields.contains(FIELD_PARENT) ? getParent(knowledgePage) : knowledgePage.getParent());
     knowledgePage.setChildren(
         fields.contains("children") ? getChildren(knowledgePage) : knowledgePage.getChildren());
+    if (fields.contains(MEMORY_COUNT)) {
+      knowledgePage.setMemoryCount(
+          findTo(
+                  knowledgePage.getId(),
+                  KNOWLEDGE_PAGE_ENTITY,
+                  Relationship.MENTIONED_IN,
+                  Entity.CONTEXT_MEMORY)
+              .size());
+    }
     if (knowledgePage.getPageType().equals(PageType.ARTICLE)) {
       Article article = new Article();
       if (knowledgePage.getPage() != null) {
@@ -816,6 +828,44 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
         closeApprovalTask(updated, "Closed due to page going back to DRAFT.");
       } catch (EntityNotFoundException ignored) {
       } // No ApprovalTask is present, and thus we don't need to worry about this.
+    }
+
+    if (isArticleBodyChanged(original, updated)) {
+      schedulePillExtraction(updated.getId());
+    }
+  }
+
+  @Override
+  protected void postCreate(Page entity) {
+    super.postCreate(entity);
+    if (PageType.ARTICLE.equals(entity.getPageType()) && !nullOrEmpty(entity.getDescription())) {
+      schedulePillExtraction(entity.getId());
+    }
+  }
+
+  @Override
+  protected void postDelete(Page entity, boolean hardDelete) {
+    if (LLMClientHolder.isEnabled()) {
+      PageContextProcessingEngineHolder.get().cancel(entity.getId());
+    }
+    ContextMemoryRepository memoryRepository =
+        (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
+    memoryRepository.deleteExtractedMemories(entity.getId(), KNOWLEDGE_PAGE_ENTITY, hardDelete);
+  }
+
+  /** True when an article's markdown body changed — the only edit that warrants re-extraction. */
+  private boolean isArticleBodyChanged(Page original, Page updated) {
+    return PageType.ARTICLE.equals(updated.getPageType())
+        && !Objects.equals(original.getDescription(), updated.getDescription());
+  }
+
+  /**
+   * Hands the page to the in-memory throttle, which coalesces autosaves and runs extraction once the
+   * body settles. A no-op when the LLM is disabled, mirroring the file pipeline.
+   */
+  private void schedulePillExtraction(UUID pageId) {
+    if (LLMClientHolder.isEnabled()) {
+      PageContextProcessingEngineHolder.get().schedule(pageId);
     }
   }
 

@@ -144,15 +144,9 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   }
 
   public void deleteExtractedMemories(ContextFile file, boolean hardDelete) {
-    List<EntityReference> pills =
-        findTo(file.getId(), CONTEXT_FILE_ENTITY, Relationship.MENTIONED_IN, Entity.CONTEXT_MEMORY);
-    if (!pills.isEmpty()) {
-      ContextMemoryRepository memoryRepository =
-          (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
-      for (EntityReference pill : pills) {
-        memoryRepository.delete(ADMIN_USER_NAME, pill.getId(), false, hardDelete);
-      }
-    }
+    ContextMemoryRepository memoryRepository =
+        (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
+    memoryRepository.deleteExtractedMemories(file.getId(), CONTEXT_FILE_ENTITY, hardDelete);
   }
 
   @Override

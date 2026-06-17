@@ -13,7 +13,6 @@ import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.ContextMemoryType;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
-import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
@@ -23,10 +22,10 @@ import org.openmetadata.service.llm.LLMCompletionException;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
- * Turns a processed {@link ContextFile}'s extracted text into reusable {@link ContextMemory}
- * knowledge pills via an {@link LLMCompletionClient}. Created memories are linked back to the file
- * ({@code sourceFile}) and tagged {@code sourceType=FileExtraction}; the standard create path
- * embeds and indexes them.
+ * Turns a Context Center source's extracted text into reusable {@link ContextMemory} knowledge
+ * pills via an {@link LLMCompletionClient}. The source can be any entity (a ContextFile, a Page,
+ * ...); created memories are linked back to it via {@code sourceEntity} and tagged with the
+ * supplied {@link ContextMemorySourceType}. The standard create path embeds and indexes them.
  */
 @Slf4j
 public class ContextMemoryExtractor {
@@ -48,23 +47,20 @@ public class ContextMemoryExtractor {
     this.llmClient = llmClient;
   }
 
-  /** Result of an LLM derive pass, carrying chunk-level stats for the file's extractionStats. */
+  /** Result of an LLM derive pass, carrying chunk-level stats for the source's extractionStats. */
   public record DeriveResult(List<ContextMemory> memories, int chunksTotal, int chunksProcessed) {}
 
-  public int extract(ContextFile file) {
-    return persist(file, derive(file, file.getExtractedText()).memories());
-  }
-
   /**
-   * Derives memories from {@code text} (typically the content snapshot's canonical extracted text,
-   * which is longer than the file's indexed text) without persisting anything. Long documents are
-   * processed in paragraph-aligned chunks, one LLM call per chunk, with pills deduplicated across
-   * chunks. Chunk failures are tolerated as long as at least one chunk succeeds — the stats in the
-   * result expose partial coverage; if every chunk fails the run fails. Kept side-effect free so
-   * callers can replace the file's previous pills only after the LLM pass succeeded.
+   * Derives memories from {@code text} without persisting anything. Long documents are processed in
+   * paragraph-aligned chunks, one LLM call per chunk, with pills deduplicated across chunks. Chunk
+   * failures are tolerated as long as at least one chunk succeeds — the stats in the result expose
+   * partial coverage; if every chunk fails the run fails. Kept side-effect free so callers can
+   * reconcile the source's previous pills only after the LLM pass succeeded. Each derived memory is
+   * linked to {@code sourceRef} and tagged {@code sourceType}.
    */
-  public DeriveResult derive(ContextFile file, String text) {
-    ChunkPlan plan = chunkText(text, file);
+  public DeriveResult derive(
+      String text, EntityReference sourceRef, ContextMemorySourceType sourceType) {
+    ChunkPlan plan = chunkText(text, sourceRef);
     List<KnowledgePill> collected = new ArrayList<>();
     int processed = 0;
     RuntimeException firstFailure = null;
@@ -73,7 +69,11 @@ public class ContextMemoryExtractor {
         collected.addAll(callLlm(chunk));
         processed++;
       } catch (RuntimeException e) {
-        LOG.warn("Knowledge pill extraction failed for a chunk of file {}", file.getId(), e);
+        LOG.warn(
+            "Knowledge pill extraction failed for a chunk of {} {}",
+            sourceRef.getType(),
+            sourceRef.getId(),
+            e);
         firstFailure = firstFailure == null ? e : firstFailure;
       }
     }
@@ -82,25 +82,24 @@ public class ContextMemoryExtractor {
           "All " + plan.chunks().size() + " chunks failed knowledge pill extraction", firstFailure);
     }
     List<ContextMemory> memories = new ArrayList<>();
-    EntityReference fileRef = file.getEntityReference();
     for (KnowledgePill pill : dedupe(collected)) {
-      memories.add(toMemory(pill, fileRef));
+      memories.add(toMemory(pill, sourceRef, sourceType));
     }
     return new DeriveResult(memories, plan.totalChunks(), processed);
   }
 
-  public int persist(ContextFile file, List<ContextMemory> memories) {
+  public int persist(List<ContextMemory> memories) {
     for (ContextMemory memory : memories) {
       memoryRepository.create(null, memory);
     }
-    LOG.info("Extracted {} knowledge pills from file {}", memories.size(), file.getId());
+    LOG.info("Persisted {} knowledge pills", memories.size());
     return memories.size();
   }
 
   /** The chunks submitted to the LLM plus the count the document would need without the cap. */
   private record ChunkPlan(List<String> chunks, int totalChunks) {}
 
-  private ChunkPlan chunkText(String text, ContextFile file) {
+  private ChunkPlan chunkText(String text, EntityReference sourceRef) {
     List<String> chunks = new ArrayList<>();
     int skippedChunks = 0;
     if (text != null && !text.isBlank()) {
@@ -114,8 +113,9 @@ public class ContextMemoryExtractor {
         int remaining = text.length() - position;
         skippedChunks = (remaining + MAX_PROMPT_CHARS - 1) / MAX_PROMPT_CHARS;
         LOG.warn(
-            "File {} text exceeds {} chunks of {} chars; skipping the remaining {} chars",
-            file.getId(),
+            "{} {} text exceeds {} chunks of {} chars; skipping the remaining {} chars",
+            sourceRef.getType(),
+            sourceRef.getId(),
             MAX_CHUNKS,
             MAX_PROMPT_CHARS,
             remaining);
@@ -174,8 +174,9 @@ public class ContextMemoryExtractor {
         && !pill.answer().isBlank();
   }
 
-  private ContextMemory toMemory(KnowledgePill pill, EntityReference fileRef) {
-    String name = memoryName(fileRef);
+  private ContextMemory toMemory(
+      KnowledgePill pill, EntityReference sourceRef, ContextMemorySourceType sourceType) {
+    String name = memoryName(sourceRef);
     return new ContextMemory()
         .withId(UUID.randomUUID())
         .withName(name)
@@ -186,16 +187,16 @@ public class ContextMemoryExtractor {
         .withSummary(pill.summary())
         .withMemoryType(parseType(pill.memoryType()))
         .withStatus(ContextMemoryStatus.ACTIVE)
-        .withSourceType(ContextMemorySourceType.FILE_EXTRACTION)
-        .withSourceFile(fileRef)
+        .withSourceType(sourceType)
+        .withSourceEntity(sourceRef)
         .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.SHARED))
         .withUpdatedBy(Entity.ADMIN_USER_NAME)
         .withUpdatedAt(System.currentTimeMillis());
   }
 
   /** Keeps the generated memory name within the 256-char entityName limit (UUID suffix included). */
-  private String memoryName(EntityReference fileRef) {
-    String base = fileRef.getName();
+  private String memoryName(EntityReference sourceRef) {
+    String base = sourceRef.getName();
     if (base.length() > MAX_NAME_BASE_LENGTH) {
       base = base.substring(0, MAX_NAME_BASE_LENGTH);
     }
