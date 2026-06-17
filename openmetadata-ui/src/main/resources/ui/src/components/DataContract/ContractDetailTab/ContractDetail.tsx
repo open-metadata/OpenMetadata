@@ -46,8 +46,8 @@ import { ReactComponent as ImportIconContract } from '../../../assets/svg/import
 
 import {
   ContractImportFormat,
-  DATA_CONTRACT_ACTION_DROPDOWN_KEY,
   DataContractMode,
+  DATA_CONTRACT_ACTION_DROPDOWN_KEY,
 } from '../../../constants/DataContract.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
