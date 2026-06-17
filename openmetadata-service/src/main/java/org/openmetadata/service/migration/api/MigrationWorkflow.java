@@ -106,8 +106,7 @@ public class MigrationWorkflow {
 
   public void validateMigrationsForServer() {
     if (!migrations.isEmpty()) {
-      List<String> pendingVersions =
-          migrations.stream().map(MigrationProcess::getVersion).toList();
+      List<String> pendingVersions = migrations.stream().map(MigrationProcess::getVersion).toList();
       throw new IllegalStateException(
           "There are pending migrations to be run on the database: "
               + pendingVersions
