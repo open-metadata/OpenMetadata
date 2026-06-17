@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Button } from '@openmetadata/ui-core-components';
 import { FilterFunnel01, XCircle, XClose } from '@untitledui/icons';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
@@ -24,7 +25,6 @@ import {
   ExploreQueryFilterChipsProps,
   QueryFilterChip,
 } from './ExploreQueryFilterChips.interface';
-import { Button } from '@openmetadata/ui-core-components';
 
 const ENTITY_TYPE_KEYS: ReadonlySet<string> = new Set([
   EntityFields.ENTITY_TYPE,
