@@ -24,11 +24,20 @@ import { PersonalAccessToken } from '../generated/auth/personalAccessToken';
 import { JWTTokenExpiry, User } from '../generated/entity/teams/user';
 import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
+import { makeLruCache } from '../utils/lruCacheUtils';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
-const userProfileCache = new Map<string, User>();
+// 200 entries ≈ 10 MB worst case for typical user objects; covers large active-feed sessions.
+const MAX_PROFILE_ENTRIES = 200;
+
+const userProfileCache = makeLruCache<User>(MAX_PROFILE_ENTRIES);
 const userProfileRequests = new Map<string, Promise<User>>();
+
+/** Drop all cached user profiles. Call on logout / user switch. */
+export function clearUserProfileCache(): void {
+  userProfileCache.clear();
+}
 
 export interface UsersQueryParams {
   fields?: string;

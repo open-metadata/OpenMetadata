@@ -76,6 +76,7 @@ import {
 } from '../../../rest/tasksAPI';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import { getUpdatedThread } from '../../../utils/FeedUtilsPure';
+import { makeLruCache } from '../../../utils/lruCacheUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { ActivityFeedProviderContextType } from './ActivityFeedProviderContext.interface';
@@ -83,8 +84,18 @@ const ActivityFeedDrawer = withSuspenseFallback(
   lazy(() => import('../ActivityFeedDrawer/ActivityFeedDrawer'))
 );
 
-const myActivityFeedCache = new Map<string, ActivityEvent[]>();
+// 20 entries covers all realistic filter combinations (domain × date range) in one session.
+const MAX_FEED_CACHE_ENTRIES = 20;
+
+const myActivityFeedCache = makeLruCache<ActivityEvent[]>(
+  MAX_FEED_CACHE_ENTRIES
+);
 const myActivityFeedRequests = new Map<string, Promise<ActivityEvent[]>>();
+
+/** Drop all cached activity feed entries. Call on logout / user switch. */
+export function clearActivityFeedCache(): void {
+  myActivityFeedCache.clear();
+}
 
 interface Props {
   children: ReactNode;

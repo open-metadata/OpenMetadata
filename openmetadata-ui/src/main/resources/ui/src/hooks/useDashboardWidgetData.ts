@@ -12,9 +12,19 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { makeLruCache } from '../utils/lruCacheUtils';
 
-const dashboardWidgetCache = new Map<string, unknown>();
+// 50 distinct keys covers all realistic widget × filter × date-range combinations on
+// a single dashboard page with comfortable headroom.
+const MAX_WIDGET_CACHE_ENTRIES = 50;
+
+const dashboardWidgetCache = makeLruCache<unknown>(MAX_WIDGET_CACHE_ENTRIES);
 const dashboardWidgetRequests = new Map<string, Promise<unknown>>();
+
+/** Drop all dashboard widget cache entries. Call on logout / user switch. */
+export function clearDashboardWidgetCache(): void {
+  dashboardWidgetCache.clear();
+}
 
 interface UseDashboardWidgetDataOptions<T> {
   cacheKey: string;
@@ -36,11 +46,13 @@ export const useDashboardWidgetData = <T>({
   const fetcherRef = useRef(fetcher);
   fetcherRef.current = fetcher;
 
-  const cachedData = dashboardWidgetCache.get(cacheKey) as T | undefined;
-  const [data, setData] = useState<T>(cachedData ?? initialData);
-  const [isLoading, setIsLoading] = useState<boolean>(
-    enabled && cachedData === undefined
+  // Use has() — not a value-undefined check — so a legitimately cached undefined
+  // result (or an error path that returns undefined) is distinguished from a cache miss.
+  const isCached = dashboardWidgetCache.has(cacheKey);
+  const [data, setData] = useState<T>(
+    isCached ? (dashboardWidgetCache.get(cacheKey) as T) : initialData
   );
+  const [isLoading, setIsLoading] = useState<boolean>(enabled && !isCached);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
   const refresh = useCallback(async () => {
@@ -68,7 +80,12 @@ export const useDashboardWidgetData = <T>({
     try {
       const response = await request;
 
-      dashboardWidgetCache.set(cacheKey, response);
+      // Don't cache undefined — fetchers that return undefined on error would
+      // otherwise write a sentinel that has() treats as a hit but get() returns
+      // as undefined, making the loading/refreshing state inconsistent.
+      if (response !== undefined) {
+        dashboardWidgetCache.set(cacheKey, response);
+      }
       setData(response);
     } catch {
       // Fetchers own user-facing error handling; keep the previous cached data visible.
@@ -80,10 +97,14 @@ export const useDashboardWidgetData = <T>({
   }, [cacheKey, enabled]);
 
   useEffect(() => {
-    const nextCachedData = dashboardWidgetCache.get(cacheKey) as T | undefined;
+    const hasCached = dashboardWidgetCache.has(cacheKey);
 
-    setData(nextCachedData ?? initialDataRef.current);
-    setIsLoading(enabled && nextCachedData === undefined);
+    setData(
+      hasCached
+        ? (dashboardWidgetCache.get(cacheKey) as T)
+        : initialDataRef.current
+    );
+    setIsLoading(enabled && !hasCached);
   }, [cacheKey, enabled]);
 
   useEffect(() => {
