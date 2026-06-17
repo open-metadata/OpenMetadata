@@ -54,7 +54,6 @@ import DataProductsContainer from '../../../DataProducts/DataProductsContainer/D
 import EntityVersionTimeLine from '../../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { DirectoryVersionProps } from './DirectoryVersion.interface';
-
 const DirectoryVersion = ({
   version,
   currentVersionData,

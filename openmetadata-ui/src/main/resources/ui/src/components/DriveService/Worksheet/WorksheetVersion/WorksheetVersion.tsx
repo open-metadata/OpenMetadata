@@ -50,7 +50,6 @@ import EntityVersionTimeLine from '../../../Entity/EntityVersionTimeLine/EntityV
 import VersionTable from '../../../Entity/VersionTable/VersionTable.component';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { WorksheetVersionProps } from './WorksheetVersion.interface';
-
 const WorksheetVersion = ({
   version,
   currentVersionData,

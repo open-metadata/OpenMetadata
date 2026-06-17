@@ -32,7 +32,6 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import SpreadsheetDetails from './SpreadsheetDetails';
 import { SpreadsheetDetailsProps } from './SpreadsheetDetails.interface';
-
 jest.mock('../../../hooks/useApplicationStore');
 jest.mock('../../../hooks/useCustomPages');
 jest.mock('../../../hooks/useFqn');

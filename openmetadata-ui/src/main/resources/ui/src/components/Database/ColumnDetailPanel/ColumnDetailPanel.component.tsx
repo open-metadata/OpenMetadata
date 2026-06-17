@@ -76,7 +76,6 @@ import {
 import './ColumnDetailPanel.less';
 import { KeyProfileMetrics } from './KeyProfileMetrics';
 import { NestedColumnsSection } from './NestedColumnsSection';
-
 const isColumn = (item: ColumnOrTask | null): item is Column => {
   return item !== null && 'dataType' in item;
 };

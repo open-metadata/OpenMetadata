@@ -50,7 +50,6 @@ import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVers
 import VersionTable from '../../Entity/VersionTable/VersionTable.component';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { ContainerVersionProp } from './ContainerVersion.interface';
-
 const ContainerVersion: React.FC<ContainerVersionProp> = ({
   version,
   currentVersionData,
