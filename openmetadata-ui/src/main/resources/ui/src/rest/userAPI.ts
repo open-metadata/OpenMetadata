@@ -15,6 +15,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 
 import { PagingResponse, RestoreRequestType } from 'Models';
+import { TabSpecificField } from '../enums/entity.enum';
 import {
   AuthenticationMechanism,
   CreateUser,
@@ -25,6 +26,9 @@ import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
+
+const userProfileCache = new Map<string, User>();
+const userProfileRequests = new Map<string, Promise<User>>();
 
 export interface UsersQueryParams {
   fields?: string;
@@ -70,16 +74,49 @@ export const updateUserDetail = async (id: string, data: Operation[]) => {
     data
   );
 
+  if (response.data.name) {
+    userProfileCache.set(response.data.name, response.data);
+  }
+
   return response.data;
 };
 
 export const getUserByName = async (name: string, params?: ListParams) => {
-  const response = await APIClient.get<User>(
-    `/users/name/${getEncodedFqn(name)}`,
-    { params }
-  );
+  const cacheProfile = params?.fields === TabSpecificField.PROFILE;
 
-  return response.data;
+  if (!cacheProfile) {
+    const response = await APIClient.get<User>(
+      `/users/name/${getEncodedFqn(name)}`,
+      { params }
+    );
+
+    return response.data;
+  }
+
+  const cachedUser = userProfileCache.get(name);
+
+  if (cachedUser) {
+    return cachedUser;
+  }
+
+  let request = userProfileRequests.get(name);
+
+  if (!request) {
+    request = APIClient.get<User>(`/users/name/${getEncodedFqn(name)}`, {
+      params,
+    }).then((response) => {
+      userProfileCache.set(name, response.data);
+
+      return response.data;
+    });
+    userProfileRequests.set(name, request);
+  }
+
+  try {
+    return await request;
+  } finally {
+    userProfileRequests.delete(name);
+  }
 };
 
 export const getUserById = async (id: string, params?: ListParams) => {

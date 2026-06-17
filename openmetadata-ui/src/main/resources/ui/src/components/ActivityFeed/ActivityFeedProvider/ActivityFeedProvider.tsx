@@ -83,6 +83,9 @@ const ActivityFeedDrawer = withSuspenseFallback(
   lazy(() => import('../ActivityFeedDrawer/ActivityFeedDrawer'))
 );
 
+const myActivityFeedCache = new Map<string, ActivityEvent[]>();
+const myActivityFeedRequests = new Map<string, Promise<ActivityEvent[]>>();
+
 interface Props {
   children: ReactNode;
   // To override current userId in case of User profile page
@@ -778,15 +781,38 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
 
   const fetchMyActivityFeedHandler = useCallback(
     async (params?: { days?: number; limit?: number }) => {
-      setIsActivityLoading(true);
+      const domain =
+        activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined;
+      const cacheKey = JSON.stringify({ ...params, domain });
+      const cachedActivityEvents = myActivityFeedCache.get(cacheKey);
+
+      if (cachedActivityEvents) {
+        setActivityEvents(cachedActivityEvents);
+      }
+
+      setIsActivityLoading(!cachedActivityEvents);
+
       try {
-        const domain =
-          activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined;
-        const { data } = await getMyActivityFeed({ ...params, domain });
+        let request = myActivityFeedRequests.get(cacheKey);
+
+        if (!request) {
+          request = getMyActivityFeed({ ...params, domain }).then(
+            ({ data }) => {
+              myActivityFeedCache.set(cacheKey, data);
+
+              return data;
+            }
+          );
+          myActivityFeedRequests.set(cacheKey, request);
+        }
+
+        const data = await request;
+
         setActivityEvents(data);
       } catch (err) {
         showErrorToast(err as AxiosError);
       } finally {
+        myActivityFeedRequests.delete(cacheKey);
         setIsActivityLoading(false);
       }
     },

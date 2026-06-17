@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PageType } from '../../generated/system/ui/page';
 import {
@@ -222,11 +222,11 @@ describe('MyDataPage component', () => {
     expect(screen.queryByText('WelcomeScreen')).toBeNull();
   });
 
-  it('MyDataPage should display skeleton initially while loading data', async () => {
+  it('MyDataPage should display dashboard shell immediately while loading data', async () => {
     render(<MyDataPage />);
 
-    expect(screen.getByText('MyDataPageSkeleton')).toBeInTheDocument();
-    expect(screen.queryByTestId('react-grid-layout')).toBeNull();
+    expect(screen.queryByText('MyDataPageSkeleton')).toBeNull();
+    expect(screen.getByTestId('react-grid-layout')).toBeInTheDocument();
     expect(screen.queryByText('WelcomeScreen')).toBeNull();
     expect(
       screen.getByTestId('customise-landing-page-header')
@@ -256,9 +256,12 @@ describe('MyDataPage component', () => {
     expect(
       await screen.findByText('KnowledgePanel.RecentlyViewed')
     ).toBeInTheDocument();
-    expect(screen.queryByText('KnowledgePanel.KPI')).toBeNull();
-    expect(screen.queryByText('KnowledgePanel.TotalAssets')).toBeNull();
-    expect(screen.queryByText('KnowledgePanel.MyData')).toBeNull();
+
+    await waitFor(() => {
+      expect(screen.queryByText('KnowledgePanel.KPI')).toBeNull();
+      expect(screen.queryByText('KnowledgePanel.TotalAssets')).toBeNull();
+      expect(screen.queryByText('KnowledgePanel.MyData')).toBeNull();
+    });
   });
 
   it('MyDataPage should not render announcement widget if there are no announcements', async () => {
@@ -279,9 +282,12 @@ describe('MyDataPage component', () => {
     expect(
       await screen.findByText('KnowledgePanel.RecentlyViewed')
     ).toBeInTheDocument();
-    expect(screen.queryByText('KnowledgePanel.KPI')).toBeNull();
-    expect(screen.queryByText('KnowledgePanel.TotalAssets')).toBeNull();
-    expect(screen.queryByText('KnowledgePanel.MyData')).toBeNull();
+
+    await waitFor(() => {
+      expect(screen.queryByText('KnowledgePanel.KPI')).toBeNull();
+      expect(screen.queryByText('KnowledgePanel.TotalAssets')).toBeNull();
+      expect(screen.queryByText('KnowledgePanel.MyData')).toBeNull();
+    });
   });
 
   it('MyDataPage should render default widgets when getDocumentByFQN API fails', async () => {
