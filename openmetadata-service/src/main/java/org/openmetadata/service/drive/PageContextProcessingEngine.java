@@ -7,6 +7,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
@@ -95,11 +96,11 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
    */
   public void schedule(UUID pageId) {
     evictIfFull();
-    ScheduledFuture<?> previous =
-        pending.put(
-            pageId,
-            scheduler.schedule(
-                () -> runScheduled(pageId), quietPeriodMillis, TimeUnit.MILLISECONDS));
+    AtomicReference<ScheduledFuture<?>> holder = new AtomicReference<>();
+    holder.set(
+        scheduler.schedule(
+            () -> runScheduled(pageId, holder.get()), quietPeriodMillis, TimeUnit.MILLISECONDS));
+    ScheduledFuture<?> previous = pending.put(pageId, holder.get());
     if (previous != null) {
       previous.cancel(false);
     }
@@ -114,6 +115,11 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
   }
 
   private void evictIfFull() {
+    // Best-effort bound: size() and the caller's put() are not atomic, so concurrent schedulers can
+    // briefly push pending past maxPendingPages by the number of in-flight callers. The dropped
+    // entry is whatever the hash order yields first rather than the least-recent; at the (large)
+    // default cap that is acceptable — a dropped page re-arms on its next edit and the hash gate
+    // keeps the eventual run correct.
     if (pending.size() >= maxPendingPages) {
       UUID dropped = pending.keySet().stream().findFirst().orElse(null);
       if (dropped != null) {
@@ -126,8 +132,11 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
     }
   }
 
-  private void runScheduled(UUID pageId) {
-    pending.remove(pageId);
+  private void runScheduled(UUID pageId, ScheduledFuture<?> firedFuture) {
+    // Only clear the entry if it is still the future that just fired. A concurrent schedule() may
+    // have already installed a newer future for this page, which must stay tracked so a later
+    // cancel() (e.g. on delete) can reach it.
+    pending.remove(pageId, firedFuture);
     try {
       runExtraction(pageId);
     } catch (Exception e) {
@@ -139,8 +148,10 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
   protected Source loadSource(UUID pageId) {
     Source source = null;
     Page page = getPage(pageId);
-    if (page != null && page.getDescription() != null && !page.getDescription().isBlank()) {
-      String body = page.getDescription();
+    if (page != null) {
+      // Return a source even for an empty body so a cleared article reconciles to an empty pill
+      // set (archiving its stale pills); null is reserved for a page that no longer exists.
+      String body = page.getDescription() == null ? "" : page.getDescription();
       source = new Source(body, DigestUtils.sha256Hex(body), page.getEntityReference());
     }
     return source;

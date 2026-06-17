@@ -29,12 +29,8 @@ public class ContextMemoryReconciler {
     this.memoryRepository = memoryRepository;
   }
 
-  /** Counts of what the run did. activeCount is the live (non-archived) automated pill total. */
-  public record ReconcileResult(int created, int updated, int kept, int archived) {
-    public int activeCount() {
-      return created + updated + kept;
-    }
-  }
+  /** Counts of what the run did, by reconciliation outcome. */
+  public record ReconcileResult(int created, int updated, int kept, int archived) {}
 
   public ReconcileResult reconcile(
       EntityReference sourceRef, String sourceType, List<ContextMemory> derived) {

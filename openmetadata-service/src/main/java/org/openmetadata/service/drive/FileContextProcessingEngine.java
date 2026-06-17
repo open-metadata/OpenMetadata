@@ -32,10 +32,13 @@ public class FileContextProcessingEngine extends ContextProcessingEngine {
     ContextFile file = getFile(fileId);
     if (file != null && file.getHeadContentId() != null) {
       ContextFileContent content = fileRepository.getContentById(file.getHeadContentId());
-      if (content != null && content.getExtractedText() != null) {
+      if (content != null) {
+        // Empty extracted text still yields a source so a file whose content became empty
+        // reconciles to an empty pill set (archiving stale pills) rather than being skipped.
+        String text = content.getExtractedText() == null ? "" : content.getExtractedText();
         String hash =
             content.getChecksum() != null ? content.getChecksum() : content.getId().toString();
-        source = new Source(content.getExtractedText(), hash, file.getEntityReference());
+        source = new Source(text, hash, file.getEntityReference());
       }
     }
     return source;

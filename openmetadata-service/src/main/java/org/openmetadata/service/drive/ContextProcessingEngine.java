@@ -42,24 +42,29 @@ public abstract class ContextProcessingEngine {
   }
 
   /**
-   * Runs the full pipeline for one source. Returns a skip when the source is empty or its content
-   * hash matches the last successful run, so the LLM is never called for unchanged content.
+   * Runs the full pipeline for one source. Skips when the content hash matches the last successful
+   * run (so the LLM is never called for unchanged content) and when a never-extracted source is
+   * empty. A source that was previously extracted and has since been emptied is NOT skipped: it is
+   * reconciled against an empty derived set so its now-stale pills are archived rather than left
+   * ACTIVE forever.
    */
   public final ExtractionOutcome runExtraction(UUID entityId) {
     ExtractionOutcome outcome = ExtractionOutcome.skip();
     Source source = loadSource(entityId);
-    if (source != null
-        && source.text() != null
-        && !source.text().isBlank()
-        && hasChanged(entityId, source)) {
-      outcome = extractAndReconcile(entityId, source);
+    if (source != null) {
+      ExtractionStats previous = loadStats(entityId);
+      if (shouldProcess(source, previous)) {
+        outcome = extractAndReconcile(entityId, source);
+      }
     }
     return outcome;
   }
 
-  private boolean hasChanged(UUID entityId, Source source) {
-    ExtractionStats previous = loadStats(entityId);
-    return previous == null || !source.hash().equals(previous.getSourceHash());
+  private boolean shouldProcess(Source source, ExtractionStats previous) {
+    boolean hasContent = source.text() != null && !source.text().isBlank();
+    boolean everExtracted = previous != null;
+    boolean changed = previous == null || !source.hash().equals(previous.getSourceHash());
+    return (hasContent || everExtracted) && changed;
   }
 
   private ExtractionOutcome extractAndReconcile(UUID entityId, Source source) {
@@ -70,7 +75,7 @@ public abstract class ContextProcessingEngine {
         new ExtractionStats()
             .withChunksTotal(derived.chunksTotal())
             .withChunksProcessed(derived.chunksProcessed())
-            .withPillsCreated(reconciled.activeCount())
+            .withPillsCreated(reconciled.created())
             .withLastExtractedAt(System.currentTimeMillis())
             .withSourceHash(source.hash());
     stampStats(entityId, stats);

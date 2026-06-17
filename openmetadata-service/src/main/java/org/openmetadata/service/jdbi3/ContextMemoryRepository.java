@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -568,17 +569,29 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     }
 
     /**
-     * A user editing a machine-generated pill through the PATCH endpoint takes ownership of it: the
-     * sourceType flips to Manual so re-extraction never clobbers the human edit. updatedBy cannot
-     * tell this apart (the extraction engine also writes as admin) — the operation does, since the
-     * engine only ever creates/PUTs, never PATCHes.
+     * A user editing the content of a machine-generated pill through the PATCH endpoint takes
+     * ownership of it: the sourceType flips to Manual so re-extraction never clobbers the human
+     * edit. updatedBy cannot tell this apart (the extraction engine also writes as admin) — the
+     * operation does, since the engine only ever creates/PUTs, never PATCHes. The flip is gated on
+     * an actual content change so unrelated PATCHes (tagging, starring, re-scoping, sharing) leave
+     * the pill under engine management.
      */
     private void flipToManualOnUserEdit() {
       if (operation == Operation.PATCH
           && updated.getSourceType() == original.getSourceType()
-          && isAutomatedSource(original.getSourceType())) {
+          && isAutomatedSource(original.getSourceType())
+          && extractionManagedFieldChanged()) {
         updated.setSourceType(ContextMemorySourceType.MANUAL);
       }
+    }
+
+    /** True when a PATCH edited a field the extraction reconciler would otherwise overwrite. */
+    private boolean extractionManagedFieldChanged() {
+      return !Objects.equals(original.getTitle(), updated.getTitle())
+          || !Objects.equals(original.getQuestion(), updated.getQuestion())
+          || !Objects.equals(original.getAnswer(), updated.getAnswer())
+          || !Objects.equals(original.getSummary(), updated.getSummary())
+          || !Objects.equals(original.getMemoryType(), updated.getMemoryType());
     }
 
     private void updateSourceEntityRelationship() {

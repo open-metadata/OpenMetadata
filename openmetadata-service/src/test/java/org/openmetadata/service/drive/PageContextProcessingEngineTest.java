@@ -1,5 +1,6 @@
 package org.openmetadata.service.drive;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -76,23 +77,40 @@ class PageContextProcessingEngineTest {
     when(extractor.derive(eq(body), any(), eq(ContextMemorySourceType.PAGE_EXTRACTION)))
         .thenReturn(new ContextMemoryExtractor.DeriveResult(List.<ContextMemory>of(), 1, 1));
     when(reconciler.reconcile(any(), eq(Entity.PAGE), any()))
-        .thenReturn(new ContextMemoryReconciler.ReconcileResult(1, 0, 0, 0));
+        .thenReturn(new ContextMemoryReconciler.ReconcileResult(1, 2, 3, 0));
 
     ContextProcessingEngine.ExtractionOutcome outcome = engine(10).runExtraction(pageId);
 
     assertFalse(outcome.skipped());
+    assertEquals(
+        1, outcome.stats().getPillsCreated(), "pillsCreated is created-only, not the active total");
     verify(extractor).derive(eq(body), any(), eq(ContextMemorySourceType.PAGE_EXTRACTION));
     verify(reconciler).reconcile(any(), eq(Entity.PAGE), any());
   }
 
   @Test
-  void skipsBlankBody() {
+  void skipsBlankBodyThatWasNeverExtracted() {
     pageReturns(page("   ", null));
 
     ContextProcessingEngine.ExtractionOutcome outcome = engine(10).runExtraction(pageId);
 
     assertTrue(outcome.skipped());
     verify(extractor, never()).derive(any(), any(), any());
+  }
+
+  @Test
+  void clearedBodyArchivesPillsInsteadOfSkipping() {
+    pageReturns(page("", "prior-content-hash"));
+    when(extractor.derive(eq(""), any(), eq(ContextMemorySourceType.PAGE_EXTRACTION)))
+        .thenReturn(new ContextMemoryExtractor.DeriveResult(List.<ContextMemory>of(), 0, 0));
+    when(reconciler.reconcile(any(), eq(Entity.PAGE), any()))
+        .thenReturn(new ContextMemoryReconciler.ReconcileResult(0, 0, 0, 2));
+
+    ContextProcessingEngine.ExtractionOutcome outcome = engine(10).runExtraction(pageId);
+
+    assertFalse(outcome.skipped());
+    verify(extractor).derive(eq(""), any(), eq(ContextMemorySourceType.PAGE_EXTRACTION));
+    verify(reconciler).reconcile(any(), eq(Entity.PAGE), any());
   }
 
   @Test

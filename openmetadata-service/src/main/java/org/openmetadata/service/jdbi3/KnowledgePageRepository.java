@@ -866,6 +866,7 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
 
   @Override
   protected void postDelete(Page entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
     if (LLMClientHolder.isEnabled()) {
       PageContextProcessingEngineHolder.get().cancel(entity.getId());
     }
