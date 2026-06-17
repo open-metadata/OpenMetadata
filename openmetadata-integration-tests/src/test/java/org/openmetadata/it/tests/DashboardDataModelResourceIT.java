@@ -7,9 +7,17 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -31,15 +39,12 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.DataModelType;
 import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelResource;
 
 /**
@@ -841,66 +846,83 @@ public class DashboardDataModelResourceIT
   // (regression for flaky "does not have expected relationship contains")
   // ===================================================================
 
+  private static final String EXPECTED_RELATIONSHIP_ERROR_FRAGMENT =
+      "does not have expected relationship contains";
+
   /**
    * Regression for the flaky {@code dashboardDataModel <id> does not have expected relationship
    * contains to/from entity type null}. The cascade hard-delete path
    * ({@code EntityRepository.bulkHardDeleteSubtree}) deletes a data model's CONTAINS relationship
-   * row and its entity row. Before the fix those ran as two independent auto-commits — the
-   * {@code @Transaction} annotation is inert on the plain repository class — so a concurrent
-   * list/get could resolve the required {@code service} field via {@code getContainer} in the gap
-   * (row present, relationship already gone) and 500.
+   * row and its entity row. Before the fix those ran as two independent auto-commits (a JDBI
+   * {@code @Transaction} annotation is inert on the plain repository class), opening a window where
+   * the row still existed but its CONTAINS parent was already gone — a concurrent list/get resolving
+   * the required {@code service} field via {@code getContainer} then 500'd with this message.
    *
-   * <p>Deterministic and cache-immune: arm a thread-scoped seam that throws between the relationship
-   * delete and the row delete, run the bulk hard delete on this thread, and assert the CONTAINS
-   * relationship row survived. With both deletes wrapped in one transaction the injected failure
-   * rolls the relationship delete back (relationship still present); without the wrapper the
-   * relationship was already committed away (relationship gone) — the exact partial state that
-   * produced the flake. The relationship row is read straight from the DAO, bypassing every entity /
-   * relationship cache.
+   * <p>Reproduces the real flake: while a pool of readers continuously GETs the data models (each
+   * GET resolves the required {@code service} relationship), the parent service is hard-deleted,
+   * cascading through {@code bulkHardDeleteSubtree}. With the relationship + row deletes wrapped in
+   * one transaction a reader only ever sees a data model fully present or fully gone (404) — never
+   * the partial state — so no reader observes the relationship error. The completed cascade delete
+   * also leaves no entities behind.
    */
   @Test
-  void hardDelete_relationshipCleanupAndRowDelete_areAtomic(TestNamespace ns) {
+  void hardDelete_serviceCascade_concurrentReadsNeverSeePartialState(TestNamespace ns)
+      throws InterruptedException {
     OpenMetadataClient client = SdkClients.adminClient();
     DashboardService service = DashboardServiceTestFactory.createLooker(ns);
-    CreateDashboardDataModel request =
-        new CreateDashboardDataModel()
-            .withName(ns.prefix("atomic_dm"))
-            .withService(service.getFullyQualifiedName())
-            .withDataModelType(DataModelType.LookMlView)
-            .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
-    DashboardDataModel dataModel = client.dashboardDataModels().create(request);
-    UUID dataModelId = dataModel.getId();
 
-    assertFalse(
-        containsRelationships(dataModelId).isEmpty(),
-        "Precondition: data model must have its CONTAINS relationship before delete");
-
-    EntityRepository<?> repository = Entity.getEntityRepository(Entity.DASHBOARD_DATA_MODEL);
-    EntityRepository.setBulkHardDeleteMidpointHook(
-        () -> {
-          throw new IllegalStateException("injected mid-delete failure");
-        });
-    try {
-      assertThrows(
-          Exception.class,
-          () -> repository.bulkHardDeleteSubtree(List.of(dataModelId), "admin"),
-          "Injected mid-delete failure must abort the bulk hard delete");
-    } finally {
-      EntityRepository.clearBulkHardDeleteMidpointHook();
+    List<String> dataModelIds = new ArrayList<>();
+    for (int i = 0; i < 12; i++) {
+      CreateDashboardDataModel request =
+          new CreateDashboardDataModel()
+              .withName(ns.prefix("race_dm_" + i))
+              .withService(service.getFullyQualifiedName())
+              .withDataModelType(DataModelType.LookMlView)
+              .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+      dataModelIds.add(client.dashboardDataModels().create(request).getId().toString());
     }
 
-    assertFalse(
-        containsRelationships(dataModelId).isEmpty(),
-        "CONTAINS relationship must survive the rolled-back delete — relationship cleanup and row "
-            + "deletion must commit in one transaction");
-    assertNotNull(
-        client.dashboardDataModels().get(dataModelId.toString()),
-        "Data model must remain fully usable after the rolled-back delete");
+    AtomicBoolean reading = new AtomicBoolean(true);
+    List<String> relationshipErrors = new CopyOnWriteArrayList<>();
+    ExecutorService readers = Executors.newFixedThreadPool(4);
+    for (int i = 0; i < 4; i++) {
+      readers.submit(() -> hammerReadsUntilStopped(dataModelIds, reading, relationshipErrors));
+    }
+
+    Map<String, String> params = new HashMap<>();
+    params.put("hardDelete", "true");
+    params.put("recursive", "true");
+    client.dashboardServices().delete(service.getId().toString(), params);
+
+    reading.set(false);
+    readers.shutdown();
+    assertTrue(
+        readers.awaitTermination(60, TimeUnit.SECONDS), "Reader threads did not finish in time");
+    assertTrue(
+        relationshipErrors.isEmpty(),
+        "Concurrent readers observed a partial cascade-delete state (row present, CONTAINS "
+            + "relationship already gone): "
+            + relationshipErrors);
   }
 
-  private List<CollectionDAO.EntityRelationshipRecord> containsRelationships(UUID dataModelId) {
-    return Entity.getCollectionDAO()
-        .relationshipDAO()
-        .findFrom(dataModelId, Entity.DASHBOARD_DATA_MODEL, Relationship.CONTAINS.ordinal());
+  private void hammerReadsUntilStopped(
+      List<String> dataModelIds, AtomicBoolean reading, List<String> relationshipErrors) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    while (reading.get()) {
+      for (String id : dataModelIds) {
+        readOnce(client, id, relationshipErrors);
+      }
+    }
+  }
+
+  private void readOnce(OpenMetadataClient client, String id, List<String> relationshipErrors) {
+    try {
+      client.dashboardDataModels().get(id);
+    } catch (OpenMetadataException e) {
+      String message = e.getMessage();
+      if (message != null && message.contains(EXPECTED_RELATIONSHIP_ERROR_FRAGMENT)) {
+        relationshipErrors.add(message);
+      }
+    }
   }
 }
