@@ -54,7 +54,7 @@ import {
   postKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import { createArticleKnowledgePage } from '../../../utils/ContextCenterUtils';
+import { createArticleKnowledgePage } from '../../../utils/ContextCenterPureUtils';
 import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';

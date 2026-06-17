@@ -98,33 +98,39 @@ import {
 import { getCurrentISODate } from '../../utils/date-time/DateTimeUtils';
 import { getEntityBreadcrumbs } from '../../utils/EntityBreadcrumbPureUtils';
 import {
-  addLineageHandler,
-  centerNodePosition,
   createColumnEdges,
   createEdgesAndEdgeMaps,
   createEntityEdgesAndMaps,
   createNewEdge,
-  createNodes,
   getAllDownstreamEdges,
   getAllTracedColumnEdge,
   getClassifiedEdge,
-  getConnectedNodesEdges,
   getEdgeDataFromEdge,
-  getEntityTypeFromPlatformView,
   getLineageEdge,
   getLineageEdgeForAPI,
-  getLoadingStatusValue,
   getModalBodyText,
   getNewLineageConnectionDetails,
-  getNodeLineageData,
   getUpdatedColumnsFromEdge,
-  getUpstreamDownstreamNodesEdges,
+} from '../../utils/EntityLineageEdgeUtils';
+import {
+  centerNodePosition,
   getViewportForLineageExport,
-  parseLineageData,
   positionNodesUsingElk,
-  removeLineageHandler,
+} from '../../utils/EntityLineageLayoutUtils';
+import {
+  createNodes,
+  getConnectedNodesEdges,
+  getEntityTypeFromPlatformView,
+  getNodeLineageData,
+  getUpstreamDownstreamNodesEdges,
   removeUnconnectedNodes,
-} from '../../utils/EntityLineageUtils';
+} from '../../utils/EntityLineageNodeUtils';
+import {
+  addLineageHandler,
+  parseLineageData,
+  removeLineageHandler,
+} from '../../utils/EntityLineagePureUtils';
+import { getLoadingStatusValue } from '../../utils/EntityLineageUtils';
 import { updateNodeType } from '../../utils/EntityPureUtils';
 import { getEntityReferenceFromEntity } from '../../utils/EntityReferenceUtils';
 import { getQuickFilterQuery } from '../../utils/ExploreUtils';
