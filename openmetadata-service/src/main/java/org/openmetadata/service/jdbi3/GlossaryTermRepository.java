@@ -108,7 +108,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
@@ -1512,21 +1511,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   public void postUpdate(GlossaryTerm original, GlossaryTerm updated) {
-    // Repoint in-flight workflows BEFORE the (potentially slower) base post-update work so the
-    // relatedEntity is current as soon as the FQN change is visible. This is a best-effort,
-    // post-commit side effect: a Flowable failure (e.g. an instance completing between the query
-    // and setVariable) must NOT abort the rest of postUpdate — search indexing, change-event
-    // publishing, RDF, and the approval-task closing below must still run.
-    try {
-      updateWorkflowRelatedEntitiesAfterFqnChange(
-          original.getFullyQualifiedName(), updated.getFullyQualifiedName());
-    } catch (Exception e) {
-      LOG.warn(
-          "Failed to repoint workflow relatedEntity for {} -> {}; continuing post-update",
-          original.getFullyQualifiedName(),
-          updated.getFullyQualifiedName(),
-          e);
-    }
     super.postUpdate(original, updated);
     if (original.getEntityStatus() == EntityStatus.IN_REVIEW) {
       if (updated.getEntityStatus() == EntityStatus.APPROVED) {
@@ -1746,6 +1730,53 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       newAbout = new EntityLink(entityType, child.getFullyQualifiedName());
       feedRepository.updateLegacyThreadsAbout(newAbout.getLinkString(), child.getId().toString());
     }
+
+    // Task entities key tasks by aboutFqnHash (the about reference itself is stored as a
+    // relationship, not in the task JSON), and it is computed once at creation — a move never
+    // recomputes it, so the task is findable only by the pre-move FQN. Rewrite the hash from the
+    // old
+    // FQN to the new FQN for the moved term AND every nested descendant. Each descendant's old FQN
+    // is its new FQN with the moved subtree's prefix swapped back.
+    updateTaskAboutFqnHash(oldFqn, newFqn);
+    for (GlossaryTerm descendant : getNestedTerms(updated)) {
+      String descendantNewFqn = descendant.getFullyQualifiedName();
+      String descendantOldFqn = oldFqn + descendantNewFqn.substring(newFqn.length());
+      updateTaskAboutFqnHash(descendantOldFqn, descendantNewFqn);
+    }
+
+    updateWorkflowInstanceRelatedEntity(oldFqn, newFqn);
+  }
+
+  /**
+   * Repoint the workflow-instance {@code relatedEntity} (the {@code entityLink} the history card
+   * filters by) for the moved term AND its entire descendant subtree in a single set-based
+   * statement. The instance rows carry the term FQN as a readable link, so one exact match (the term)
+   * plus one prefix match (all descendants) covers the whole subtree regardless of how many
+   * descendants or workflow runs exist — no per-term loop. Only the instance table is touched: the
+   * state table is read by the stable {@code workflowInstanceId}, never by {@code relatedEntity}.
+   */
+  private void updateWorkflowInstanceRelatedEntity(String oldFqn, String newFqn) {
+    String oldLink = new EntityLink(GLOSSARY_TERM, oldFqn).getLinkString();
+    String newLink = new EntityLink(GLOSSARY_TERM, newFqn).getLinkString();
+    String oldStem = oldLink.substring(0, oldLink.length() - 1);
+    String newStem = newLink.substring(0, newLink.length() - 1);
+    String oldChildPrefix = oldStem + Entity.SEPARATOR + "%";
+    int instances =
+        daoCollection
+            .workflowInstanceTimeSeriesDAO()
+            .repointRelatedEntitySubtree(oldLink, oldChildPrefix, oldStem, newStem);
+    if (instances > 0) {
+      LOG.info("[move] repointed workflow instances {} -> {} rows={}", oldFqn, newFqn, instances);
+    }
+  }
+
+  private void updateTaskAboutFqnHash(String oldFqn, String newFqn) {
+    int rows =
+        daoCollection
+            .taskDAO()
+            .updateAboutFqnHash(
+                FullyQualifiedName.buildHash(oldFqn), FullyQualifiedName.buildHash(newFqn));
+    LOG.info("[move] updateTaskAboutFqnHash {} -> {} taskRowsUpdated={}", oldFqn, newFqn, rows);
   }
 
   private List<GlossaryTerm> getNestedTerms(GlossaryTerm glossaryTerm) {
@@ -2734,21 +2765,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       }
     }
     return updated;
-  }
-
-  /**
-   * A move OR rename rewrites the FQN of the term and every descendant. Any in-flight governance
-   * workflow (e.g. an open Glossary Approval) keeps its {@code relatedEntity} pinned to the
-   * pre-change FQN and would fail to resolve the term on resolution. Repoint the moved/renamed
-   * subtree's running instances to the new FQNs — the WorkflowHandler resolves the term plus every
-   * descendant in a single query. Driven from {@code postUpdate} (post-commit) so the new FQNs are
-   * already durable, covering both the move path ({@code moveAndStore}) and the rename path
-   * ({@code updateNameAndParent}).
-   */
-  private void updateWorkflowRelatedEntitiesAfterFqnChange(String oldFqn, String newFqn) {
-    if (!oldFqn.equals(newFqn) && WorkflowHandler.isInitialized()) {
-      WorkflowHandler.getInstance().updateRelatedEntityFqnForSubtree(GLOSSARY_TERM, oldFqn, newFqn);
-    }
   }
 
   @Override

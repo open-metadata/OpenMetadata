@@ -1,7 +1,5 @@
 package org.openmetadata.service.governance.workflows;
 
-import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
-import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
@@ -65,7 +63,6 @@ import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineMapper;
 
 @Slf4j
@@ -664,74 +661,23 @@ public class WorkflowHandler {
   }
 
   /**
-   * Repoint the {@code relatedEntity} of running workflow instances after an entity (and its FQN
-   * subtree) is moved or renamed: the entity itself ({@code oldFqn}) and every descendant
-   * ({@code oldFqn}-prefixed) is rebased onto {@code newFqn}. Issues a SINGLE query scoped to the
-   * moved subtree's link prefix — NOT to every running instance of the entity type, which would
-   * scale with total concurrent workflows and make the repoint slow enough to lose the race against
-   * an approval submitted right after the move. The LIKE may over-match (FQN {@code _}/{@code %}
-   * act as wildcards); {@link #repointSubtreeLink} narrows it back to the exact subtree.
+   * Snapshot of every running process instance keyed by its id, with its process variables. Lets
+   * callers (e.g. one-time migrations) inspect or repair instance state without exposing the
+   * Flowable engine.
    */
-  public void updateRelatedEntityFqnForSubtree(String entityType, String oldFqn, String newFqn) {
-    RuntimeService runtimeService = processEngine.getRuntimeService();
-    String variableName = getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE);
-    List<ProcessInstance> instances =
-        runtimeService
-            .createProcessInstanceQuery()
-            .variableValueLike(variableName, entityLinkTypePrefix(entityType) + oldFqn + "%")
-            .includeProcessVariables()
-            .list();
-    int updatedCount = 0;
-    for (ProcessInstance instance : instances) {
-      String newLink =
-          repointSubtreeLink(
-              instance.getProcessVariables().get(variableName), entityType, oldFqn, newFqn);
-      if (newLink != null) {
-        try {
-          runtimeService.setVariable(instance.getId(), variableName, newLink);
-          updatedCount++;
-        } catch (FlowableObjectNotFoundException e) {
-          // The instance completed between the query and this update — nothing to repoint. The
-          // other instances in the subtree must still be updated, so swallow and continue.
-          LOG.debug(
-              "[WorkflowHandler] Instance {} gone before relatedEntity repoint ({} -> {})",
-              instance.getId(),
-              oldFqn,
-              newFqn);
-        }
-      }
+  public Map<String, Map<String, Object>> getRunningInstanceVariables() {
+    final RuntimeService runtimeService = processEngine.getRuntimeService();
+    final List<ProcessInstance> instances =
+        runtimeService.createProcessInstanceQuery().includeProcessVariables().list();
+    final Map<String, Map<String, Object>> instanceVariables = new LinkedHashMap<>();
+    for (final ProcessInstance instance : instances) {
+      instanceVariables.put(instance.getId(), instance.getProcessVariables());
     }
-    if (updatedCount > 0) {
-      LOG.info(
-          "[WorkflowHandler] Repointed relatedEntity on {} running instance(s): {} subtree -> {}",
-          updatedCount,
-          oldFqn,
-          newFqn);
-    }
+    return instanceVariables;
   }
 
-  /** The {@code "<#E::<type>::"} EntityLink prefix shared by all links of a given entity type. */
-  private static String entityLinkTypePrefix(String entityType) {
-    String emptyLink = new EntityLink(entityType, "").getLinkString();
-    return emptyLink.substring(0, emptyLink.length() - 1);
-  }
-
-  /**
-   * If {@code currentLink}'s FQN is {@code oldFqn} or a descendant of it, return the link rebased
-   * onto {@code newFqn}; otherwise {@code null} (an unrelated term that merely shares the type
-   * prefix). The {@code startsWith} guard keeps the {@code substring} safe.
-   */
-  private static String repointSubtreeLink(
-      Object currentLink, String entityType, String oldFqn, String newFqn) {
-    String repointed = null;
-    if (currentLink instanceof String link) {
-      String fqn = EntityLink.parse(link).getEntityFQN();
-      if (fqn != null && (fqn.equals(oldFqn) || fqn.startsWith(oldFqn + "."))) {
-        repointed =
-            new EntityLink(entityType, newFqn + fqn.substring(oldFqn.length())).getLinkString();
-      }
-    }
-    return repointed;
+  public void setProcessInstanceVariable(String instanceId, String variableName, Object value) {
+    processEngine.getRuntimeService().setVariable(instanceId, variableName, value);
   }
 
   public String getParentActivityId(String executionId) {

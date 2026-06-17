@@ -181,7 +181,7 @@ public class GlossaryTermMoveApprovalIT {
   /**
    * Rename path: a leaf term has an open approval task, then its parent is RENAMED (PATCH name),
    * which cascades the leaf's FQN exactly like a move. Approving the leaf's task must still complete
-   * the workflow — the rename must repoint the stranded {@code relatedEntity}.
+   * the workflow — by-id resolution makes this work regardless of the renamed FQN.
    */
   @Test
   void test_approveApprovalTaskAfterRenamingParentTerm_drivesRenamedTermToApproved(TestNamespace ns)
