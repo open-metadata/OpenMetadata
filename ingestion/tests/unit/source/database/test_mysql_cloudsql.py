@@ -36,6 +36,17 @@ _NAMESPACE_MODULES = (
 )
 
 
+def _package_module(name: str) -> ModuleType:
+    """Build a stub namespace module that behaves like a package.
+
+    A ``__path__`` is required so that ``from google.cloud.sql.connector import
+    Connector`` resolves; without it Python treats the parent as a non-package
+    and raises "not a package" when the real google namespace isn't installed."""
+    module = ModuleType(name)
+    module.__path__ = []  # type: ignore[attr-defined]
+    return module
+
+
 @pytest.fixture(autouse=True)
 def mock_connector():
     """Inject a fake google.cloud.sql.connector module into sys.modules so the
@@ -49,9 +60,9 @@ def mock_connector():
 
     originals = {k: sys.modules.get(k) for k in _NAMESPACE_MODULES}
 
-    sys.modules.setdefault("google", ModuleType("google"))
-    sys.modules.setdefault("google.cloud", ModuleType("google.cloud"))
-    sys.modules.setdefault("google.cloud.sql", ModuleType("google.cloud.sql"))
+    sys.modules.setdefault("google", _package_module("google"))
+    sys.modules.setdefault("google.cloud", _package_module("google.cloud"))
+    sys.modules.setdefault("google.cloud.sql", _package_module("google.cloud.sql"))
     sys.modules["google.cloud.sql.connector"] = connector_mod
 
     yield connector_cls, connector_instance

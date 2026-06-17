@@ -204,7 +204,7 @@ class _CloudSqlStrategy(EngineStrategy[MySQLConnectionConfig]):
         except ImportError:
             raise ImportError(  # noqa: B904
                 "cloud-sql-python-connector is required for GCP CloudSQL connections. "
-                "Install it with: pip install 'cloud-sql-python-connector[pymysql]>=1.0.0'"
+                "Install it with: pip install 'cloud-sql-python-connector[pymysql]>=1.0.0,<2.0.0'"
             )
 
         connection = self._connection
