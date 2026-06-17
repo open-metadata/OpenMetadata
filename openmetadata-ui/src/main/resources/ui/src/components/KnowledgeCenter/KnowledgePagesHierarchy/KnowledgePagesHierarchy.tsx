@@ -654,19 +654,26 @@ const KnowledgePagesHierarchy = forwardRef<
           }
         }}
         onScroll={handleScroll}>
-        <Box align="center" className="tw:px-1.5 tw:pb-5" gap={3}>
+        <Box align='center' className="tw:px-1.5 tw:pb-5" justify='between'>
+        <Box align="center" gap={3}>
           <div className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0">
             <File06 className="tw:text-gray-600" size={20} />
           </div>
-          <div className="tw:w-full">
-            <Box align="center" className="tw:w-full" justify="between">
-              <Typography size="text-md" weight="semibold">
-                {t('label.article-plural')}
-              </Typography>
-              {isEmpty(expandedKeys) ? (
+          <div>  
+            <Typography size="text-md" weight="semibold">
+              {t('label.article-plural')}
+            </Typography>
+            <Typography
+              className="tw:text-gray-500 tw:flex tw:items-center tw:gap-2"
+              size="text-xs">
+              {paginationState.paging.total ?? 0} {t('label.article-plural')}
+            </Typography>
+          </div>
+        </Box>
+        {isEmpty(expandedKeys) ? (
                 <ButtonUtility
                   color="tertiary"
-                  icon={ExpandAllIcon}
+                  icon={<ExpandAllIcon className='tw:size-6' />}
                   isDisabled={isExpandingAll}
                   size="sm"
                   tooltip={t('label.expand-all')}
@@ -675,21 +682,13 @@ const KnowledgePagesHierarchy = forwardRef<
               ) : (
                 <ButtonUtility
                   color="tertiary"
-                  icon={CollapseAllIcon}
+                  icon={<CollapseAllIcon className='tw:size-6' />}
                   size="sm"
                   tooltip={t('label.collapse-all')}
                   onClick={() => setExpandedKeys([])}
                 />
               )}
-            </Box>
-            <Typography
-              className="tw:text-gray-500 tw:flex tw:items-center tw:gap-2"
-              size="text-xs">
-              {paginationState.paging.total ?? 0} {t('label.article-plural')}
-            </Typography>
-          </div>
         </Box>
-
         {isLoading && (
           <div className="tw:px-1.5">
             {Array.from({ length: 8 }, (_, i) => (
