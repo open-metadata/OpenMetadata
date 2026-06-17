@@ -49,7 +49,6 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -97,6 +96,13 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Override
   public void setFullyQualifiedName(MlModel mlModel) {
+    if (mlModel.getService() == null) {
+      mlModel.setService(
+          getFromEntityRef(mlModel.getId(), Relationship.CONTAINS, Entity.MLMODEL_SERVICE, false));
+    }
+    if (mlModel.getService() == null) {
+      return;
+    }
     mlModel.setFullyQualifiedName(
         FullyQualifiedName.add(mlModel.getService().getFullyQualifiedName(), mlModel.getName()));
     if (!nullOrEmpty(mlModel.getMlFeatures())) {
@@ -106,7 +112,10 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Override
   public void setFields(MlModel mlModel, Fields fields, RelationIncludes relationIncludes) {
-    mlModel.setService(getContainer(mlModel.getId()));
+    if (mlModel.getService() == null) {
+      mlModel.setService(
+          getFromEntityRef(mlModel.getId(), Relationship.CONTAINS, Entity.MLMODEL_SERVICE, false));
+    }
     mlModel.setDashboard(
         fields.contains("dashboard") ? getDashboard(mlModel) : mlModel.getDashboard());
     if (mlModel.getUsageSummary() == null) {
@@ -186,39 +195,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   private Map<UUID, EntityReference> batchFetchServices(List<MlModel> mlModels) {
-    Map<UUID, EntityReference> serviceMap = new HashMap<>();
-    if (mlModels == null || mlModels.isEmpty()) {
-      return serviceMap;
-    }
-
-    // Single batch query to get all services for all ML models
-    List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
-            .relationshipDAO()
-            .findFromBatch(entityListToStrings(mlModels), Relationship.CONTAINS.ordinal());
-
-    for (CollectionDAO.EntityRelationshipObject record : records) {
-      UUID mlModelId = UUID.fromString(record.getToId());
-      EntityReference serviceRef = resolveServiceRefLeniently(UUID.fromString(record.getFromId()));
-      if (serviceRef != null) {
-        serviceMap.put(mlModelId, serviceRef);
-      }
-    }
-
-    return serviceMap;
-  }
-
-  private EntityReference resolveServiceRefLeniently(UUID serviceId) {
-    EntityReference serviceRef = null;
-    try {
-      serviceRef = Entity.getEntityReferenceById(Entity.MLMODEL_SERVICE, serviceId, NON_DELETED);
-    } catch (EntityNotFoundException e) {
-      // The parent service can be hard-deleted concurrently (e.g. a sibling test's cascade delete)
-      // between the relationship lookup above and this resolution. The ml model row is mid-cascade
-      // and about to be removed, so tolerate the missing service rather than failing the read.
-      LOG.debug("MlModel service {} not found (concurrent delete); skipping", serviceId);
-    }
-    return serviceRef;
+    return batchFetchContainers(mlModels, Entity.MLMODEL_SERVICE, NON_DELETED);
   }
 
   @Override
