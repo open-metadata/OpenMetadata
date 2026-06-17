@@ -119,11 +119,10 @@ import {
   getExcludedIndexesBasedOnEntityTypeEditTagPermission,
   getQueryFilterToExcludeTermsAndEntities,
   getTagAssetsQueryFilter,
-} from '../../utils/TagsUtils';
+} from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './tag-page.less';
-
 const EntitySummaryPanel = withSuspenseFallback(
   lazy(
     () =>

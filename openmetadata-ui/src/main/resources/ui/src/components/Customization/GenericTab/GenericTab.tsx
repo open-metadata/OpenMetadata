@@ -22,7 +22,7 @@ import { PageType } from '../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getWidgetsFromKey } from '../../../utils/CustomizePage/CustomizePageDispatchUtils';
-import { useGenericContext } from '../GenericProvider/GenericProvider';
+import { useGenericContext } from '../GenericProvider/GenericContext';
 import { DynamicHeightWidget } from './DynamicHeightWidget';
 import './generic-tab.less';
 

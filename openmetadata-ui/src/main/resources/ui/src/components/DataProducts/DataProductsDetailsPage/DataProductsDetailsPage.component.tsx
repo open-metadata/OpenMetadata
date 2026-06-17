@@ -78,7 +78,7 @@ import {
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBase';
-import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
+import { getQueryFilterToIncludeDomain } from '../../../utils/DomainFilterUtils';
 import { getEntityDeleteMessage } from '../../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
