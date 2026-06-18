@@ -16,17 +16,24 @@
  */
 export interface LlmConfiguration {
     anthropic?: Anthropic;
-    bedrock?:   Bedrock;
+    bedrock?:   LlmConfigurationBedrock;
+    /**
+     * Vector embedding configuration for semantic search. Credentials are reused from the
+     * sibling provider blocks (bedrock.awsConfig, openai.apiKey/endpoint,
+     * google.apiKey/endpoint); this section selects the embedding provider and per-provider
+     * embedding model. The embedding provider may differ from the chat completion provider.
+     */
+    embeddings?: Embeddings;
     /**
      * Whether LLM completion features are enabled.
      */
     enabled?: boolean;
-    google?:  Google;
+    google?:  LlmConfigurationGoogle;
     /**
      * Maximum number of concurrent LLM completion requests.
      */
     maxConcurrentRequests?: number;
-    openai?:                Openai;
+    openai?:                LlmConfigurationOpenai;
     provider?:              LlmProvider;
 }
 
@@ -39,7 +46,7 @@ export interface Anthropic {
     timeoutSeconds?: number;
 }
 
-export interface Bedrock {
+export interface LlmConfigurationBedrock {
     /**
      * AWS credentials configuration for Bedrock service.
      */
@@ -93,7 +100,57 @@ export interface AWSBaseConfig {
     sessionToken?: string;
 }
 
-export interface Google {
+/**
+ * Vector embedding configuration for semantic search. Credentials are reused from the
+ * sibling provider blocks (bedrock.awsConfig, openai.apiKey/endpoint,
+ * google.apiKey/endpoint); this section selects the embedding provider and per-provider
+ * embedding model. The embedding provider may differ from the chat completion provider.
+ */
+export interface Embeddings {
+    bedrock?: EmbeddingsBedrock;
+    djl?:     Djl;
+    google?:  EmbeddingsGoogle;
+    /**
+     * Maximum number of concurrent embedding requests.
+     */
+    maxConcurrentRequests?: number;
+    openai?:                EmbeddingsOpenai;
+    /**
+     * Embedding provider to use for semantic search vectors.
+     */
+    provider?: Provider;
+}
+
+export interface EmbeddingsBedrock {
+    embeddingDimension?: number;
+    embeddingModelId?:   string;
+}
+
+export interface Djl {
+    embeddingModel?: string;
+}
+
+export interface EmbeddingsGoogle {
+    embeddingDimension?: number;
+    embeddingModelId?:   string;
+}
+
+export interface EmbeddingsOpenai {
+    embeddingDimension?: number;
+    embeddingModelId?:   string;
+}
+
+/**
+ * Embedding provider to use for semantic search vectors.
+ */
+export enum Provider {
+    Bedrock = "bedrock",
+    Djl = "djl",
+    Google = "google",
+    Openai = "openai",
+}
+
+export interface LlmConfigurationGoogle {
     apiKey?:         string;
     endpoint?:       string;
     maxTokens?:      number;
@@ -102,7 +159,7 @@ export interface Google {
     timeoutSeconds?: number;
 }
 
-export interface Openai {
+export interface LlmConfigurationOpenai {
     apiKey?:         string;
     apiVersion?:     string;
     deploymentName?: string;
