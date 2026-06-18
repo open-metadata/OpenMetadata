@@ -124,7 +124,7 @@ const NeedsAttentionSection: FC<NeedsAttentionSectionProps> = ({
             as="div"
             className="tw:text-primary"
             size="text-sm"
-            weight="semibold">
+            weight="medium">
             {t('label.needs-attention')}
           </Typography>
           <Typography

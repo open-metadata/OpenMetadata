@@ -16,7 +16,7 @@ import { ArrowRight } from '@untitledui/icons';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
-import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
+import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getUserPath } from '../../../utils/RouterUtils';
