@@ -124,7 +124,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
         label: getKnowledgePageName(knowledgePage, t),
       },
     ],
-    [knowledgePage?.displayName, t]
+    [knowledgePage?.id, knowledgePage?.name, knowledgePage?.displayName, t]
   );
 
   const voteStatus = useMemo(() => {
