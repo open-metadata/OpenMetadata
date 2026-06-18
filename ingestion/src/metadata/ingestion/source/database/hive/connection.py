@@ -19,7 +19,7 @@ from functools import singledispatch
 from typing import Any, Optional
 from urllib.parse import quote_plus
 
-from pydantic import SecretStr, ValidationError
+from pydantic import ValidationError
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -51,6 +51,7 @@ from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import (
     test_connection_db_schema_sources,
 )
+from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.hive.custom_hive_connection import (
     CustomHiveConnection,
@@ -77,7 +78,7 @@ class HiveConnection(BaseConnection[HiveConnectionConfig, Engine]):
         if connection.username and connection.auth and connection.auth.value in ("LDAP", "CUSTOM"):
             url += quote_plus(connection.username)
             if not connection.password:
-                connection.password = SecretStr("")  # pyright: ignore[reportAttributeAccessIssue]
+                connection.password = CustomSecretStr("")  # pyright: ignore[reportAttributeAccessIssue]
             url += f":{quote_plus(connection.password.get_secret_value())}"  # pyright: ignore[reportOptionalMemberAccess]
             url += "@"
 

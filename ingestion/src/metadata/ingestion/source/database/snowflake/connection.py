@@ -19,7 +19,7 @@ from urllib.parse import quote_plus
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
-from pydantic import BaseModel, SecretStr
+from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 from sqlalchemy.inspection import inspect
@@ -45,6 +45,7 @@ from metadata.ingestion.connections.test_connections import (
     test_connection_steps,
     test_query,
 )
+from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_ACCESS_HISTORY_PROBE,
@@ -155,7 +156,7 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
         if connection.username:
             url += f"{quote_plus(connection.username)}"
             if not connection.password:
-                connection.password = SecretStr("")
+                connection.password = CustomSecretStr("")
             url += f":{quote_plus(connection.password.get_secret_value())}" if connection else ""
             url += "@"
 
