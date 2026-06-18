@@ -129,7 +129,7 @@ const ExtractedMemoriesCard: FC<ExtractedMemoriesCardProps> = ({
               {memory.question && (
                 <Typography
                   ellipsis
-                  className="tw:text-utility-gray-400"
+                  className="tw:text-quaternary"
                   size="text-xs">
                   {memory.question}
                 </Typography>
