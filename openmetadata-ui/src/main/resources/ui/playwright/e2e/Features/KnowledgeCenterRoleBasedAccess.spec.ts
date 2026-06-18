@@ -184,7 +184,9 @@ testWithRolesPages(
 
     await expect(dataConsumerPage.getByTestId('Add')).not.toBeVisible();
 
-    await expect(dataConsumerPage.getByTestId('edit-owner')).not.toBeVisible();
+    await expect(
+      dataConsumerPage.getByTestId('edit-owner-btn')
+    ).not.toBeVisible();
 
     await expect(
       dataConsumerPage.getByTestId('add-data-assets-container')

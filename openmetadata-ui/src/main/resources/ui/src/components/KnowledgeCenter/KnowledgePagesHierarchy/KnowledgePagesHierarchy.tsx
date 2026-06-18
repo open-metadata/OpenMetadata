@@ -157,8 +157,9 @@ const KnowledgePagesHierarchy = forwardRef<
     const handleExpandAll = useCallback(async () => {
       setIsExpandingAll(true);
       try {
-        let currentHierarchy = knowledgePageHierarchy;
+        let traversalHierarchy = knowledgePageHierarchy;
         let nodesPendingChildren: PageHierarchy[] = [];
+        const fetchedChildrenByParentFqn = new Map<string, PageHierarchy[]>();
 
         const collectUnloadedExpandableNodes = (
           nodes: PageHierarchy[]
@@ -175,7 +176,8 @@ const KnowledgePagesHierarchy = forwardRef<
           return unloaded;
         };
 
-        nodesPendingChildren = collectUnloadedExpandableNodes(currentHierarchy);
+        nodesPendingChildren =
+          collectUnloadedExpandableNodes(traversalHierarchy);
 
         while (nodesPendingChildren.length > 0) {
           const childrenResults = await Promise.all(
@@ -185,18 +187,29 @@ const KnowledgePagesHierarchy = forwardRef<
           );
 
           nodesPendingChildren.forEach((node, index) => {
-            currentHierarchy = updateTreeData(
-              currentHierarchy,
+            fetchedChildrenByParentFqn.set(
+              node.fullyQualifiedName,
+              childrenResults[index].data
+            );
+            traversalHierarchy = updateTreeData(
+              traversalHierarchy,
               childrenResults[index].data,
               node.fullyQualifiedName
             );
           });
 
           nodesPendingChildren =
-            collectUnloadedExpandableNodes(currentHierarchy);
+            collectUnloadedExpandableNodes(traversalHierarchy);
         }
 
-        setKnowledgePageHierarchy(currentHierarchy);
+        setKnowledgePageHierarchy((prev) => {
+          let merged = prev;
+          fetchedChildrenByParentFqn.forEach((children, parentFqn) => {
+            merged = updateTreeData(merged, children, parentFqn);
+          });
+
+          return merged;
+        });
 
         const ids: string[] = [];
         const collect = (nodes: PageHierarchy[]) => {
@@ -209,9 +222,9 @@ const KnowledgePagesHierarchy = forwardRef<
             }
           });
         };
-        collect(currentHierarchy);
+        collect(traversalHierarchy);
 
-        setExpandedKeys(ids);
+        setExpandedKeys((prev) => uniq([...prev, ...ids]));
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
