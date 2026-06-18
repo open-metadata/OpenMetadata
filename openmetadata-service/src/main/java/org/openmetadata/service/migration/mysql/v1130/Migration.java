@@ -39,6 +39,7 @@ public class Migration extends MigrationProcessImpl {
     MigrationUtil.removeStaleFileExtensionAggregation();
     addTriggerOperationToDefaultBotPolicies(collectionDAO);
     addTriggerRuleToDataStewardPolicy(collectionDAO);
+    MigrationUtil.addTaskRuleToDataConsumerPolicy(collectionDAO);
     try {
       MigrationUtil.healStuckCertificationOnEntityJson(handle, ConnectionType.MYSQL);
     } catch (Exception e) {
