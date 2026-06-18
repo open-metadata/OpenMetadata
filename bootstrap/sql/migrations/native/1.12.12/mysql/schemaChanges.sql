@@ -7,6 +7,6 @@
 ALTER TABLE tag_usage MODIFY tagFQN VARCHAR(512) NOT NULL;
 
 -- PII recognizer context keyword cleanup: remove overly broad context keywords
--- (e.g. "code", "security", "address", "name", "call", "check", "save", "social")
+-- (e.g. "code", "security", "address", "name", "call", "check", "save", "social", "number")
 -- that caused false-positive PII classification on non-PII columns.
 -- Handled by Java data migration in v11212.MigrationUtil.removeBroadPiiContextKeywords.

@@ -41,7 +41,9 @@ public class PiiRecognizerMigrationUtil {
 
   /**
    * Context keywords that are too generic for their respective recognizers and cause false-positive
-   * PII classification (e.g. ACADEMIC_YEAR_CODE being tagged as CVV because "code" is in context).
+   * PII classification (e.g. ACADEMIC_YEAR_CODE being tagged as CVV because "code" is in context,
+   * or NHS_number/order_number columns being tagged as phone numbers because "number" is in
+   * PhoneRecognizer's Presidio default context).
    */
   private static final Map<String, Set<String>> BROAD_KEYWORDS_TO_REMOVE =
       Map.of(
@@ -49,7 +51,7 @@ public class PiiRecognizerMigrationUtil {
           "UsBankRecognizer", Set.of("check", "save"),
           "UsSsnRecognizer", Set.of("social", "security", "id_number"),
           "CryptoRecognizer", Set.of("address"),
-          "PhoneRecognizer", Set.of("call"));
+          "PhoneRecognizer", Set.of("call", "number"));
 
   private static final Set<String> SPACY_PERSON_BROAD_KEYWORDS = Set.of("name");
 
