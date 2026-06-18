@@ -13,6 +13,15 @@
 import { startCase } from 'lodash';
 import { useEffect, useState } from 'react';
 import { ExplorePageTabs } from '../enums/Explore.enum';
+import { APIServiceType } from '../generated/entity/services/apiService';
+import { DashboardServiceType } from '../generated/entity/services/dashboardService';
+import { DriveServiceType } from '../generated/entity/services/driveService';
+import { MessagingServiceType } from '../generated/entity/services/messagingService';
+import { MlModelServiceType } from '../generated/entity/services/mlmodelService';
+import { PipelineServiceType } from '../generated/entity/services/pipelineService';
+import { SearchServiceType } from '../generated/entity/services/searchService';
+import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
+import { StorageServiceType } from '../generated/entity/services/storageService';
 import { LANDING_WIDGET_DEFAULT_ICON_URL } from './LandingPageWidgetIconUtils.constants';
 
 type DataAssetServiceCategory =
@@ -27,88 +36,43 @@ type DataAssetServiceCategory =
   | 'storage'
   | 'topic';
 
-const MESSAGING_SERVICE_TYPES = new Set([
-  'custommessaging',
-  'kafka',
-  'kinesis',
-  'pubsub',
-  'redpanda',
-]);
+type ServiceTypeEnum = Record<string, string>;
 
-const DASHBOARD_SERVICE_TYPES = new Set([
-  'customdashboard',
-  'domodashboard',
-  'grafana',
-  'hex',
-  'lightdash',
-  'looker',
-  'metabase',
-  'microstrategy',
-  'mode',
-  'powerbi',
-  'powerbireportserver',
-  'qliksense',
-  'quicksight',
-  'redash',
-  'saps4hana',
-  'sigma',
-  'ssrs',
-  'superset',
-  'tableau',
-  'thoughtspot',
-]);
+const normalizeServiceType = (serviceType: string) =>
+  serviceType.toLowerCase().replaceAll(/[_\s-]/g, '');
 
-const PIPELINE_SERVICE_TYPES = new Set([
-  'airbyte',
-  'airflow',
-  'custompipeline',
-  'dagster',
-  'datafactory',
-  'databrickspipeline',
-  'dbtcloud',
-  'fivetran',
-  'flink',
-  'gluepipeline',
-  'kafkaconnect',
-  'matillion',
-  'microsoftfabricpipeline',
-  'mulesoft',
-  'nifi',
-  'openlineage',
-  'snowplow',
-  'spark',
-  'spline',
-  'ssis',
-  'stitch',
-  'wherescape',
-]);
+const getNormalizedServiceTypes = (
+  serviceTypes: ServiceTypeEnum,
+  aliases: string[] = []
+) =>
+  new Set([
+    ...Object.values(serviceTypes).map(normalizeServiceType),
+    ...aliases.map(normalizeServiceType),
+  ]);
 
-const ML_MODEL_SERVICE_TYPES = new Set([
-  'custommlmodel',
-  'mlflow',
-  'sagemaker',
+const MESSAGING_SERVICE_TYPES = getNormalizedServiceTypes(MessagingServiceType);
+
+const DASHBOARD_SERVICE_TYPES = getNormalizedServiceTypes(DashboardServiceType);
+
+const PIPELINE_SERVICE_TYPES = getNormalizedServiceTypes(PipelineServiceType);
+
+const ML_MODEL_SERVICE_TYPES = getNormalizedServiceTypes(MlModelServiceType, [
   'scikit',
-  'vertexai',
 ]);
 
-const STORAGE_SERVICE_TYPES = new Set(['adls', 'customstorage', 'gcs', 's3']);
+const STORAGE_SERVICE_TYPES = getNormalizedServiceTypes(StorageServiceType);
 
-const SEARCH_SERVICE_TYPES = new Set([
-  'customsearch',
-  'elasticsearch',
-  'opensearch',
+const SEARCH_SERVICE_TYPES = getNormalizedServiceTypes(SearchServiceType);
+
+const API_SERVICE_TYPES = getNormalizedServiceTypes(APIServiceType, [
+  'customapi',
 ]);
 
-const API_SERVICE_TYPES = new Set(['customapi', 'rest', 'webhook']);
+const DRIVE_SERVICE_TYPES = getNormalizedServiceTypes(DriveServiceType);
 
-const DRIVE_SERVICE_TYPES = new Set([
-  'customdrive',
-  'googledrive',
-  'sftp',
-  'sharepoint',
+const SECURITY_SERVICE_TYPES = getNormalizedServiceTypes(SecurityServiceType, [
+  'customsecurity',
 ]);
-
-const SECURITY_SERVICE_TYPES = new Set(['customsecurity', 'ranger']);
 
 const SERVICE_TYPE_LABELS: Record<string, string> = {
   azuresql: 'Azure SQL',
@@ -221,6 +185,7 @@ const SERVICE_ICON_IMPORTS: Record<string, () => Promise<{ default: string }>> =
     saphana: () => import('../assets/img/service-icon-sap-hana.webp'),
     sas: () => import('../assets/img/service-icon-sas.svg'),
     scikit: () => import('../assets/img/service-icon-scikit.webp'),
+    sklearn: () => import('../assets/img/service-icon-scikit.webp'),
     sftp: () => import('../assets/svg/service-icon-sftp.svg'),
     sigma: () => import('../assets/img/service-icon-sigma.webp'),
     singlestore: () => import('../assets/img/service-icon-singlestore.webp'),
@@ -254,9 +219,6 @@ const DEFAULT_ICON_IMPORTS: Record<
   storage: () => import('../assets/svg/ic-custom-storage.svg'),
   topic: () => import('../assets/svg/topic.svg'),
 };
-
-const normalizeServiceType = (serviceType: string) =>
-  serviceType.toLowerCase().replaceAll(/[_\s-]/g, '');
 
 export const getDataAssetServiceCategory = (
   serviceType: string
