@@ -380,6 +380,7 @@ test.describe('Bulk Import Export', () => {
       const updateButtonResponse = page.waitForResponse(
         `/api/v1/services/databaseServices/name/*/importAsync?*dryRun=false&recursive=true*`
       );
+      const navigationPromise = page.waitForEvent('framenavigated');
 
       await page.getByRole('button', { name: 'Update' }).click();
       await page
@@ -387,7 +388,7 @@ test.describe('Bulk Import Export', () => {
         .waitFor({ state: 'detached' });
 
       await updateButtonResponse;
-      await page.waitForEvent('framenavigated');
+      await navigationPromise;
       await toastNotification(page, /details updated successfully/);
     });
 
@@ -585,6 +586,7 @@ test.describe('Bulk Import Export', () => {
       const updateButtonResponse = page.waitForResponse(
         `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=true*`
       );
+      const navigationPromise = page.waitForEvent('framenavigated');
 
       await page.getByRole('button', { name: 'Update' }).click();
       await page
@@ -592,7 +594,7 @@ test.describe('Bulk Import Export', () => {
         .waitFor({ state: 'detached' });
 
       await updateButtonResponse;
-      await page.waitForEvent('framenavigated');
+      await navigationPromise;
       await toastNotification(page, /details updated successfully/);
     });
 
@@ -749,6 +751,7 @@ test.describe('Bulk Import Export', () => {
       const updateButtonResponse = page.waitForResponse(
         `/api/v1/databaseSchemas/name/*/importAsync?*dryRun=false&recursive=true*`
       );
+      const navigationPromise = page.waitForEvent('framenavigated');
 
       await page.getByRole('button', { name: 'Update' }).click();
       await page
@@ -756,7 +759,7 @@ test.describe('Bulk Import Export', () => {
         .waitFor({ state: 'detached' });
 
       await updateButtonResponse;
-      await page.waitForEvent('framenavigated');
+      await navigationPromise;
       await toastNotification(page, /details updated successfully/);
     });
 
@@ -916,6 +919,7 @@ test.describe('Bulk Import Export', () => {
       const updateButtonResponse = page.waitForResponse(
         `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=true*`
       );
+      const navigationPromise = page.waitForEvent('framenavigated');
 
       await page.getByRole('button', { name: 'Update' }).click();
       await page
@@ -923,7 +927,7 @@ test.describe('Bulk Import Export', () => {
         .waitFor({ state: 'detached' });
 
       await updateButtonResponse;
-      await page.waitForEvent('framenavigated');
+      await navigationPromise;
       await toastNotification(page, /details updated successfully/);
     });
 
@@ -981,6 +985,7 @@ test.describe('Bulk Import Export', () => {
       const updateButtonResponse = page.waitForResponse(
         `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=true*`
       );
+      const navigationPromise = page.waitForEvent('framenavigated');
 
       await page.getByRole('button', { name: 'Update' }).click();
       await page
@@ -988,7 +993,7 @@ test.describe('Bulk Import Export', () => {
         .waitFor({ state: 'detached' });
 
       await updateButtonResponse;
-      await page.waitForEvent('framenavigated');
+      await navigationPromise;
       await toastNotification(page, /details updated successfully/);
     });
 
