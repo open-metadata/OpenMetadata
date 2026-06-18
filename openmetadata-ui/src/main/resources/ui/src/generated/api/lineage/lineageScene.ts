@@ -10,108 +10,254 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-export enum LineageLens {
-  Service = 'service',
-  Domain = 'domain',
-  DataProduct = 'dataProduct',
-}
-
-export enum LineageBand {
-  Layer = 'LAYER',
-  Asset = 'ASSET',
-  Field = 'FIELD',
-}
-
-export enum LineageLevelKind {
-  Service = 'service',
-  Database = 'database',
-  Schema = 'schema',
-  Table = 'table',
-  Column = 'column',
-  Topic = 'topic',
-  Field = 'field',
-  Dashboard = 'dashboard',
-  Chart = 'chart',
-  Model = 'model',
-  Feature = 'feature',
-  Pipeline = 'pipeline',
-  Task = 'task',
-  Domain = 'domain',
-  DataProduct = 'dataProduct',
-  Container = 'container',
-  SearchIndex = 'searchIndex',
-  ApiEndpoint = 'apiEndpoint',
-  Metric = 'metric',
-  Directory = 'directory',
-  File = 'file',
-  Spreadsheet = 'spreadsheet',
-  Worksheet = 'worksheet',
-  Asset = 'asset',
-}
-
-export interface LineageSceneField {
-  id: string;
-  name: string;
-  fullyQualifiedName?: string;
-  dataType?: string;
-}
-
-export interface LineageSceneBreadcrumb {
-  id: string;
-  label: string;
-  fullyQualifiedName?: string;
-  entityType?: string;
-  levelKind: LineageLevelKind;
-  band: LineageBand;
-}
-
-export interface LineageSceneNode {
-  id: string;
-  fullyQualifiedName?: string;
-  entityType?: string;
-  levelKind: LineageLevelKind;
-  band: LineageBand;
-  serviceType?: string;
-  label: string;
-  displayName?: string;
-  parentId?: string;
-  parentFqn?: string;
-  childrenCount?: number;
-  hiddenChildrenCount?: number;
-  counts?: Record<string, number>;
-  fields?: LineageSceneField[];
-  isFocus?: boolean;
-  isOrigin?: boolean;
-  isExpandable?: boolean;
-  isGhost?: boolean;
-  certification?: string;
-  sourceEntity?: Record<string, unknown>;
-}
-
-export interface LineageSceneEdge {
-  id: string;
-  from: string;
-  to: string;
-  band: LineageBand;
-  isRollup?: boolean;
-  weight?: number;
-  label?: string;
-  source?: string;
-  sqlQuery?: string;
-  transform?: string;
-  underlyingEdgeIds?: string[];
-}
-
+/**
+ * Semantic lineage scene response for map-style lineage navigation.
+ */
 export interface LineageScene {
-  lens: LineageLens;
-  band: LineageBand;
-  focusFqn?: string;
-  focusEntityType?: string;
-  originFqn?: string;
-  originEntityType?: string;
-  nodes: LineageSceneNode[];
-  edges: LineageSceneEdge[];
-  breadcrumb: LineageSceneBreadcrumb[];
-  hiddenNodeCount?: number;
+    band:       LineageBand;
+    breadcrumb: LineageSceneBreadcrumb[];
+    edges:      LineageSceneEdge[];
+    /**
+     * Focused entity type.
+     */
+    focusEntityType?: string;
+    /**
+     * Focused entity or container FQN.
+     */
+    focusFqn?: string;
+    /**
+     * Number of nodes hidden by scene size limits.
+     */
+    hiddenNodeCount?: number;
+    lens:             LineageLens;
+    nodes:            LineageSceneNode[];
+    /**
+     * Originally opened asset entity type.
+     */
+    originEntityType?: string;
+    /**
+     * Originally opened asset FQN.
+     */
+    originFqn?: string;
+}
+
+/**
+ * Semantic altitude band for lineage map scenes.
+ */
+export enum LineageBand {
+    Asset = "ASSET",
+    Field = "FIELD",
+    Layer = "LAYER",
+}
+
+/**
+ * Breadcrumb item for lineage scene navigation.
+ */
+export interface LineageSceneBreadcrumb {
+    band: LineageBand;
+    /**
+     * OpenMetadata entity type.
+     */
+    entityType?: string;
+    /**
+     * Entity or container fully qualified name.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Stable breadcrumb identifier.
+     */
+    id: string;
+    /**
+     * Display label.
+     */
+    label:     string;
+    levelKind: LineageLevelKind;
+}
+
+/**
+ * Concrete hierarchy level rendered in a lineage scene.
+ */
+export enum LineageLevelKind {
+    APIEndpoint = "apiEndpoint",
+    Asset = "asset",
+    Chart = "chart",
+    Column = "column",
+    Container = "container",
+    Dashboard = "dashboard",
+    DataProduct = "dataProduct",
+    Database = "database",
+    Directory = "directory",
+    Domain = "domain",
+    Feature = "feature",
+    Field = "field",
+    File = "file",
+    Metric = "metric",
+    Model = "model",
+    Pipeline = "pipeline",
+    Schema = "schema",
+    SearchIndex = "searchIndex",
+    Service = "service",
+    Spreadsheet = "spreadsheet",
+    Table = "table",
+    Task = "task",
+    Topic = "topic",
+    Worksheet = "worksheet",
+}
+
+/**
+ * Edge rendered in a lineage map scene.
+ */
+export interface LineageSceneEdge {
+    band: LineageBand;
+    /**
+     * Source node id or field id.
+     */
+    from: string;
+    /**
+     * Stable edge identifier.
+     */
+    id: string;
+    /**
+     * Whether this edge aggregates lower-level lineage edges.
+     */
+    isRollup?: boolean;
+    /**
+     * Optional edge label.
+     */
+    label?: string;
+    /**
+     * Lineage source.
+     */
+    source?: string;
+    /**
+     * SQL or transform text associated with this edge.
+     */
+    sqlQuery?: string;
+    /**
+     * Target node id or field id.
+     */
+    to: string;
+    /**
+     * Field-level transform expression.
+     */
+    transform?: string;
+    /**
+     * Concrete edge ids represented by this scene edge.
+     */
+    underlyingEdgeIds?: string[];
+    /**
+     * Number of concrete edges represented by this scene edge.
+     */
+    weight?: number;
+}
+
+/**
+ * Container lens used to group lineage.
+ */
+export enum LineageLens {
+    DataProduct = "dataProduct",
+    Domain = "domain",
+    Service = "service",
+}
+
+/**
+ * Node rendered in a lineage map scene.
+ */
+export interface LineageSceneNode {
+    band: LineageBand;
+    /**
+     * Certification badge label when present.
+     */
+    certification?: string;
+    /**
+     * Known child count for the next meaningful level.
+     */
+    childrenCount?: number;
+    /**
+     * Counts by concrete level kind.
+     */
+    counts?: { [key: string]: number };
+    /**
+     * Optional display name from the entity.
+     */
+    displayName?: string;
+    /**
+     * OpenMetadata entity type.
+     */
+    entityType?: string;
+    /**
+     * Fields rendered for field-level scenes.
+     */
+    fields?: LineageSceneField[];
+    /**
+     * Entity or synthetic container FQN.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Children hidden by scene size limits.
+     */
+    hiddenChildrenCount?: number;
+    /**
+     * Stable node identifier.
+     */
+    id: string;
+    /**
+     * Whether drilling into this node can load a deeper meaningful scene.
+     */
+    isExpandable?: boolean;
+    /**
+     * Whether this node is the current scene focus.
+     */
+    isFocus?: boolean;
+    /**
+     * Whether this node is contextual and visually de-emphasized.
+     */
+    isGhost?: boolean;
+    /**
+     * Whether this node contains or equals the originally opened asset.
+     */
+    isOrigin?: boolean;
+    /**
+     * Display label.
+     */
+    label:     string;
+    levelKind: LineageLevelKind;
+    /**
+     * Parent FQN in the lineage ladder.
+     */
+    parentFqn?: string;
+    /**
+     * Parent node id in the lineage ladder.
+     */
+    parentId?: string;
+    /**
+     * Connector/service type for type-aware drilling and icons.
+     */
+    serviceType?: string;
+    /**
+     * Original search entity payload for existing lineage UI behavior.
+     */
+    sourceEntity?: { [key: string]: any };
+}
+
+/**
+ * Typed field rendered inside a field-level lineage node.
+ */
+export interface LineageSceneField {
+    /**
+     * Field data type label.
+     */
+    dataType?: string;
+    /**
+     * Field fully qualified name.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Stable field identifier.
+     */
+    id: string;
+    /**
+     * Field display name.
+     */
+    name: string;
 }
