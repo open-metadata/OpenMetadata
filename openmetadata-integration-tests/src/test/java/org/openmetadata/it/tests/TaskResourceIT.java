@@ -1031,12 +1031,19 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
     Task createdTask = SdkClients.user1Client().tasks().create(request);
 
-    ListResponse<Task> user1CreatedTasks = SdkClients.user1Client().tasks().listCreated();
-
-    assertNotNull(user1CreatedTasks);
-    assertTrue(
-        user1CreatedTasks.getData().stream().anyMatch(t -> t.getId().equals(createdTask.getId())),
-        "User1's created tasks should include the task they created");
+    Awaitility.await("User1's created tasks include the task they created")
+        .atMost(Duration.ofSeconds(15))
+        .pollInterval(Duration.ofMillis(500))
+        .untilAsserted(
+            () -> {
+              ListResponse<Task> user1CreatedTasks =
+                  SdkClients.user1Client().tasks().listCreated(null, null, null, null, 1000);
+              assertNotNull(user1CreatedTasks);
+              assertTrue(
+                  user1CreatedTasks.getData().stream()
+                      .anyMatch(t -> t.getId().equals(createdTask.getId())),
+                  "User1's created tasks should include the task they created");
+            });
   }
 
   @Test
