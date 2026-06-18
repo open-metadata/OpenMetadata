@@ -21,18 +21,10 @@ import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
-import org.openmetadata.schema.entity.policies.Policy;
-import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.settings.Settings;
-import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
-import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
@@ -742,55 +734,5 @@ public class MigrationUtil {
       }
     }
     return node.toString();
-  }
-
-  private static final String DATA_CONSUMER_POLICY = "DataConsumerPolicy";
-  private static final String TASK_RULE_NAME = "DataConsumerPolicy-TaskRule";
-
-  /**
-   * Backfill the per-entity {@code CreateTask}/{@code EditTask} grant onto an existing tenant's
-   * {@code DataConsumerPolicy}. The rule is added to the seed JSON in this release but seed
-   * policies are create-if-not-exists, so without this migration upgraded deployments would lose
-   * the ability for non-admin users to file or patch task threads (the new authorization wired into
-   * {@link org.openmetadata.service.resources.feeds.FeedResource} would reject them with 403).
-   */
-  public static void addTaskRuleToDataConsumerPolicy(CollectionDAO collectionDAO) {
-    PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
-    try {
-      Policy policy = repository.findByName(DATA_CONSUMER_POLICY, Include.NON_DELETED);
-      if (policy.getRules() == null) {
-        policy.setRules(new ArrayList<>());
-      }
-      boolean ruleExists = false;
-      for (Rule rule : policy.getRules()) {
-        if (TASK_RULE_NAME.equals(rule.getName())) {
-          ruleExists = true;
-          break;
-        }
-      }
-      if (!ruleExists) {
-        Rule taskRule =
-            new Rule()
-                .withName(TASK_RULE_NAME)
-                .withDescription(
-                    "Allow authenticated users to file and edit tasks (data access requests,"
-                        + " suggestions, etc.) against any entity. Restrict this rule (e.g. with"
-                        + " an isOwner condition) to limit who can file or edit tasks on which"
-                        + " entities.")
-                .withResources(List.of("all"))
-                .withOperations(List.of(MetadataOperation.CREATE_TASK, MetadataOperation.EDIT_TASK))
-                .withEffect(Rule.Effect.ALLOW);
-        policy.getRules().add(taskRule);
-        collectionDAO
-            .policyDAO()
-            .update(policy.getId(), policy.getFullyQualifiedName(), JsonUtils.pojoToJson(policy));
-        LOG.info("Added {} rule to {}", TASK_RULE_NAME, DATA_CONSUMER_POLICY);
-      }
-    } catch (EntityNotFoundException ex) {
-      LOG.warn("{} not found, skipping TaskRule backfill", DATA_CONSUMER_POLICY);
-    } catch (Exception ex) {
-      LOG.error(
-          "Failed to add {} to {}: {}", TASK_RULE_NAME, DATA_CONSUMER_POLICY, ex.getMessage(), ex);
-    }
   }
 }
