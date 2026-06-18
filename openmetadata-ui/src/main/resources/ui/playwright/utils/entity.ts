@@ -2043,20 +2043,22 @@ export const softDeleteEntity = async (
   await expect
     .poll(
       async () => {
-        const isVisible = await page
+        const isVisibleBeforeReload = await page
           .locator('[data-testid="deleted-badge"]')
           .isVisible();
-        if (isVisible) {
+        if (isVisibleBeforeReload) {
           return true;
         }
 
         await page.reload({ waitUntil: 'domcontentloaded' });
+        await waitForAllLoadersToDisappear(page);
 
-        return false;
+        return await page.locator('[data-testid="deleted-badge"]').isVisible();
       },
       {
+        message: 'Waiting for deleted badge to be visible after soft delete',
         timeout: 120000,
-        intervals: [15000, 10000, 5000],
+        intervals: [5000, 10000, 15000],
       }
     )
     .toBeTruthy();
