@@ -27,15 +27,10 @@ export interface ContextMemory {
      */
     deleted?: boolean;
     /**
-     * GlossaryTerms and Metrics that were created (DERIVED_FROM edge) from this memory
-     * by the Ontology Agent. Non-default field — request via `fields=derivedEntities`.
+     * Derived: glossary terms and metrics created by the Ontology Agent from this memory
+     * (DERIVED_FROM edges, agent-owned).
      */
     derivedEntities?: EntityReference[];
-    /**
-     * Existing GlossaryTerms and Metrics linked to this memory via RELATED_TO (reuse)
-     * by the Ontology Agent. Non-default field — request via `fields=reusedEntities`.
-     */
-    reusedEntities?: EntityReference[];
     /**
      * Optional markdown description for the memory.
      */
@@ -74,7 +69,8 @@ export interface ContextMemory {
     /**
      * Stable system name for the memory.
      */
-    name: string;
+    name:           string;
+    ontologyStats?: OntologyStats;
     /**
      * Owners of this memory.
      */
@@ -95,6 +91,11 @@ export interface ContextMemory {
      * Additional related entities this memory applies to.
      */
     relatedEntities?: EntityReference[];
+    /**
+     * Derived: glossary terms and metrics reused (not created) by the Ontology Agent from this
+     * memory (RELATED_TO edges).
+     */
+    reusedEntities?: EntityReference[];
     /**
      * Root memory in an append-style memory thread.
      */
@@ -220,7 +221,8 @@ export interface FieldChange {
 }
 
 /**
- * Domains this memory belongs to.
+ * Derived: glossary terms and metrics created by the Ontology Agent from this memory
+ * (DERIVED_FROM edges, agent-owned).
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
@@ -341,6 +343,20 @@ export enum MemoryType {
     Preference = "Preference",
     Runbook = "Runbook",
     UseCase = "UseCase",
+}
+
+/**
+ * Telemetry + hash-gate for the Ontology Agent derivation of this memory.
+ */
+export interface OntologyStats {
+    derivedMetricCount?: number;
+    derivedTermCount?:   number;
+    lastRunAt?:          number;
+    reusedCount?:        number;
+    /**
+     * Hash of the ontology-relevant content last processed.
+     */
+    sourceHash?: string;
 }
 
 /**

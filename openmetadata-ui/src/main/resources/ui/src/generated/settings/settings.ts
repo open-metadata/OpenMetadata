@@ -28,7 +28,7 @@ export interface Settings {
  * This schema defines all possible filters enum in OpenMetadata.
  */
 export enum SettingType {
-    AiSettings = "aiSettings",
+    AISettings = "aiSettings",
     AirflowConfiguration = "airflowConfiguration",
     AssetCertificationSettings = "assetCertificationSettings",
     AuthenticationConfiguration = "authenticationConfiguration",
@@ -109,6 +109,9 @@ export enum SettingType {
  *
  * This schema defines the Glossary Term Relation Settings for configuring typed semantic
  * relations between glossary terms.
+ *
+ * Configuration for AI features: memory extraction, the Ontology Agent, and tunable LLM
+ * system prompts.
  */
 export interface PipelineServiceClientConfiguration {
     /**
@@ -631,7 +634,10 @@ export interface PipelineServiceClientConfiguration {
     /**
      * List of configured glossary term relation types.
      */
-    relationTypes?: GlossaryTermRelationType[];
+    relationTypes?:    GlossaryTermRelationType[];
+    memoryExtraction?: MemoryExtraction;
+    ontologyAgent?:    OntologyAgent;
+    prompts?:          Prompts;
 }
 
 export interface AllowedFieldValueBoostFields {
@@ -2057,6 +2063,11 @@ export enum LogStorageConfigurationType {
     S3 = "s3",
 }
 
+export interface MemoryExtraction {
+    fromFiles?: boolean;
+    fromPages?: boolean;
+}
+
 /**
  * This schema defines the parameters that can be passed for a Test Case.
  */
@@ -2432,6 +2443,19 @@ export interface TitleSection {
     [property: string]: any;
 }
 
+export interface OntologyAgent {
+    deletionPolicy?:      DeletionPolicy;
+    deriveGlossaryTerms?: boolean;
+    deriveMetrics?:       boolean;
+    enabled?:             boolean;
+}
+
+export enum DeletionPolicy {
+    Cascade = "cascade",
+    Deprecate = "deprecate",
+    Orphan = "orphan",
+}
+
 /**
  * Set how owners from OpenLineage job ownership facets update Pipeline owners. In replace
  * mode, resolved owners from the current event replace existing owners. In append mode,
@@ -2450,6 +2474,15 @@ export enum OwnershipUpdateMode {
 export enum PipelineViewMode {
     Edge = "Edge",
     Node = "Node",
+}
+
+export interface Prompts {
+    memoryExtraction?: PromptConfig;
+    ontologyAgent?:    PromptConfig;
+}
+
+export interface PromptConfig {
+    systemPrompt?: string;
 }
 
 /**

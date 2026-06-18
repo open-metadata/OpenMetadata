@@ -15,99 +15,35 @@
  * system prompts.
  */
 export interface AISettings {
-  /**
-   * Whether AI features are globally enabled.
-   */
-  enabled?: boolean;
-  /**
-   * Settings controlling which source types feed the memory extraction pipeline.
-   */
-  memoryExtraction?: MemoryExtractionSettings;
-  /**
-   * Settings for the Ontology Agent that derives Glossary Terms and Metrics from
-   * ContextMemory.
-   */
-  ontologyAgent?: OntologyAgentSettings;
-  /**
-   * Tunable LLM system prompts for each AI sub-system.
-   */
-  prompts?: AIPrompts;
+    enabled?:          boolean;
+    memoryExtraction?: MemoryExtraction;
+    ontologyAgent?:    OntologyAgent;
+    prompts?:          Prompts;
 }
 
-/**
- * Settings controlling which source types feed the memory extraction pipeline.
- */
-export interface MemoryExtractionSettings {
-  /**
-   * Extract knowledge pills from uploaded files (ContextFile entities).
-   */
-  fromFiles?: boolean;
-  /**
-   * Extract knowledge pills from knowledge-base pages (ContextMemory from pages).
-   */
-  fromPages?: boolean;
+export interface MemoryExtraction {
+    fromFiles?: boolean;
+    fromPages?: boolean;
 }
 
-/**
- * Settings for the Ontology Agent that derives Glossary Terms and Metrics from
- * ContextMemory.
- */
-export interface OntologyAgentSettings {
-  /**
-   * What to do with Ontology-Agent-owned entities when their source ContextMemory is
-   * deleted.
-   */
-  deletionPolicy?: AIDeletionPolicy;
-  /**
-   * Whether the Ontology Agent should propose new Glossary Terms derived from memory.
-   */
-  deriveGlossaryTerms?: boolean;
-  /**
-   * Whether the Ontology Agent should propose new Metrics derived from memory.
-   */
-  deriveMetrics?: boolean;
-  /**
-   * Whether the Ontology Agent pipeline is enabled.
-   */
-  enabled?: boolean;
+export interface OntologyAgent {
+    deletionPolicy?:      DeletionPolicy;
+    deriveGlossaryTerms?: boolean;
+    deriveMetrics?:       boolean;
+    enabled?:             boolean;
 }
 
-/**
- * What to do with Ontology-Agent-owned entities when their source ContextMemory is
- * deleted.
- *
- * Deletion policy for entities owned by the Ontology Agent.
- */
-export enum AIDeletionPolicy {
-  Cascade = 'cascade',
-  Deprecate = 'deprecate',
-  Orphan = 'orphan',
+export enum DeletionPolicy {
+    Cascade = "cascade",
+    Deprecate = "deprecate",
+    Orphan = "orphan",
 }
 
-/**
- * Tunable LLM system prompts for each AI sub-system.
- */
-export interface AIPrompts {
-  /**
-   * System prompt configuration for the memory-extraction pipeline.
-   */
-  memoryExtraction?: PromptConfig;
-  /**
-   * System prompt configuration for the Ontology Agent.
-   */
-  ontologyAgent?: PromptConfig;
+export interface Prompts {
+    memoryExtraction?: PromptConfig;
+    ontologyAgent?:    PromptConfig;
 }
 
-/**
- * System prompt configuration for the memory-extraction pipeline.
- *
- * System prompt configuration for the Ontology Agent.
- *
- * Tunable system-prompt configuration for a single AI sub-system.
- */
 export interface PromptConfig {
-  /**
-   * The LLM system prompt text. Leave empty to use the built-in default.
-   */
-  systemPrompt?: string;
+    systemPrompt?: string;
 }
