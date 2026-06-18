@@ -15,8 +15,16 @@ Unit tests for PATCH helpers in OMetaPatchMixin.
 from unittest.mock import MagicMock
 from uuid import uuid4
 
-from metadata.generated.schema.entity.data.container import Container, ContainerDataModel
-from metadata.generated.schema.entity.data.table import Column, ColumnName, DataType, Table
+from metadata.generated.schema.entity.data.container import (
+    Container,
+    ContainerDataModel,
+)
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    ColumnName,
+    DataType,
+    Table,
+)
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import (
@@ -28,7 +36,6 @@ from metadata.generated.schema.type.tagLabel import (
 )
 from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin
-
 
 PII_TAG = TagLabel(
     tagFQN=TagFQN("PII.Sensitive"),
