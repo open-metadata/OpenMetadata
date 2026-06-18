@@ -187,7 +187,6 @@ const MyDataPage = () => {
         return (
           <div data-grid={widget} key={widget.i}>
             <DeferredWidget
-              deferUntilAfterPaint
               data-testid={`deferred-widget-${widget.i}`}
               minHeight={reservedHeight}>
               <LandingPageWidgetRenderer
@@ -271,27 +270,7 @@ const MyDataPage = () => {
   };
 
   useEffect(() => {
-    // Announcements are shared with the header, but they are not needed for the
-    // first paint. Schedule the fetch after a frame so it does not compete with
-    // the landing header/search shell for LCP.
-    if (typeof window.requestAnimationFrame !== 'function') {
-      const timeoutId = window.setTimeout(fetchAnnouncements, 0);
-
-      return () => window.clearTimeout(timeoutId);
-    }
-
-    let timeoutId: number | undefined;
-    const frameId = window.requestAnimationFrame(() => {
-      timeoutId = window.setTimeout(fetchAnnouncements, 0);
-    });
-
-    return () => {
-      window.cancelAnimationFrame(frameId);
-
-      if (timeoutId !== undefined) {
-        window.clearTimeout(timeoutId);
-      }
-    };
+    fetchAnnouncements();
   }, [fetchAnnouncements]);
 
   // call the hook to set the direction of the grid layout

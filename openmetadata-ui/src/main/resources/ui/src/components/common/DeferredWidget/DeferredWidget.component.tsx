@@ -71,13 +71,6 @@ interface DeferredWidgetProps {
    * result is ignored — children render immediately.
    */
   initialInView?: boolean;
-
-  /**
-   * Wait until the next paint before mounting visible children. This is useful for
-   * first-viewport widgets that fetch data on mount; the page shell can paint before those
-   * requests start.
-   */
-  deferUntilAfterPaint?: boolean;
 }
 
 /**
@@ -112,7 +105,6 @@ export const DeferredWidget = ({
   minHeight,
   'data-testid': dataTestId,
   initialInView = false,
-  deferUntilAfterPaint = false,
 }: DeferredWidgetProps) => {
   const [hasBeenVisible, setHasBeenVisible] = useState(initialInView);
 
@@ -159,31 +151,8 @@ export const DeferredWidget = ({
       return;
     }
 
-    if (!deferUntilAfterPaint || ioUnsupported.current) {
-      setHasBeenVisible(true);
-
-      return;
-    }
-
-    if (typeof window.requestAnimationFrame !== 'function') {
-      const timeoutId = window.setTimeout(() => setHasBeenVisible(true), 0);
-
-      return () => window.clearTimeout(timeoutId);
-    }
-
-    let timeoutId: number | undefined;
-    const frameId = window.requestAnimationFrame(() => {
-      timeoutId = window.setTimeout(() => setHasBeenVisible(true), 0);
-    });
-
-    return () => {
-      window.cancelAnimationFrame(frameId);
-
-      if (timeoutId !== undefined) {
-        window.clearTimeout(timeoutId);
-      }
-    };
-  }, [deferUntilAfterPaint, inView, hasBeenVisible]);
+    setHasBeenVisible(true);
+  }, [inView, hasBeenVisible]);
 
   const shouldRender = hasBeenVisible || initialInView || ioUnsupported.current;
 

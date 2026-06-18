@@ -13,102 +13,17 @@
 import { startCase } from 'lodash';
 import { useEffect, useState } from 'react';
 import { ExplorePageTabs } from '../enums/Explore.enum';
+import { ServiceCategory } from '../enums/service.enum';
+import { APIServiceType } from '../generated/entity/services/apiService';
+import { DashboardServiceType } from '../generated/entity/services/dashboardService';
+import { DriveServiceType } from '../generated/entity/services/driveService';
+import { MessagingServiceType } from '../generated/entity/services/messagingService';
+import { MlModelServiceType } from '../generated/entity/services/mlmodelService';
+import { PipelineServiceType } from '../generated/entity/services/pipelineService';
+import { SearchServiceType } from '../generated/entity/services/searchService';
+import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
+import { StorageServiceType } from '../generated/entity/services/storageService';
 import { LANDING_WIDGET_DEFAULT_ICON_URL } from './LandingPageWidgetIconUtils.constants';
-
-type DataAssetServiceCategory =
-  | 'api'
-  | 'dashboard'
-  | 'database'
-  | 'drive'
-  | 'mlmodel'
-  | 'pipeline'
-  | 'search'
-  | 'security'
-  | 'storage'
-  | 'topic';
-
-const MESSAGING_SERVICE_TYPES = new Set([
-  'custommessaging',
-  'kafka',
-  'kinesis',
-  'pubsub',
-  'redpanda',
-]);
-
-const DASHBOARD_SERVICE_TYPES = new Set([
-  'customdashboard',
-  'domodashboard',
-  'grafana',
-  'hex',
-  'lightdash',
-  'looker',
-  'metabase',
-  'microstrategy',
-  'mode',
-  'powerbi',
-  'powerbireportserver',
-  'qliksense',
-  'quicksight',
-  'redash',
-  'saps4hana',
-  'sigma',
-  'ssrs',
-  'superset',
-  'tableau',
-  'thoughtspot',
-]);
-
-const PIPELINE_SERVICE_TYPES = new Set([
-  'airbyte',
-  'airflow',
-  'custompipeline',
-  'dagster',
-  'datafactory',
-  'databrickspipeline',
-  'dbtcloud',
-  'fivetran',
-  'flink',
-  'gluepipeline',
-  'kafkaconnect',
-  'matillion',
-  'microsoftfabricpipeline',
-  'mulesoft',
-  'nifi',
-  'openlineage',
-  'snowplow',
-  'spark',
-  'spline',
-  'ssis',
-  'stitch',
-  'wherescape',
-]);
-
-const ML_MODEL_SERVICE_TYPES = new Set([
-  'custommlmodel',
-  'mlflow',
-  'sagemaker',
-  'scikit',
-  'vertexai',
-]);
-
-const STORAGE_SERVICE_TYPES = new Set(['adls', 'customstorage', 'gcs', 's3']);
-
-const SEARCH_SERVICE_TYPES = new Set([
-  'customsearch',
-  'elasticsearch',
-  'opensearch',
-]);
-
-const API_SERVICE_TYPES = new Set(['customapi', 'rest', 'webhook']);
-
-const DRIVE_SERVICE_TYPES = new Set([
-  'customdrive',
-  'googledrive',
-  'sftp',
-  'sharepoint',
-]);
-
-const SECURITY_SERVICE_TYPES = new Set(['customsecurity', 'ranger']);
 
 const SERVICE_TYPE_LABELS: Record<string, string> = {
   azuresql: 'Azure SQL',
@@ -239,59 +154,113 @@ const SERVICE_ICON_IMPORTS: Record<string, () => Promise<{ default: string }>> =
     vertica: () => import('../assets/img/service-icon-vertica.webp'),
   };
 
-const DEFAULT_ICON_IMPORTS: Record<
-  DataAssetServiceCategory,
-  () => Promise<{ default: string }>
+const DEFAULT_ICON_IMPORTS: Partial<
+  Record<
+    ServiceCategory,
+    () => Promise<{
+      default: string;
+    }>
+  >
 > = {
-  api: () => import('../assets/svg/ic-service-rest-api.svg'),
-  dashboard: () => import('../assets/svg/dashboard.svg'),
-  database: () => import('../assets/svg/ic-custom-database.svg'),
-  drive: () => import('../assets/svg/ic-drive-service.svg'),
-  mlmodel: () => import('../assets/svg/ic-custom-model.svg'),
-  pipeline: () => import('../assets/svg/pipeline.svg'),
-  search: () => import('../assets/svg/ic-custom-search.svg'),
-  security: () => import('../assets/svg/security-safe.svg'),
-  storage: () => import('../assets/svg/ic-custom-storage.svg'),
-  topic: () => import('../assets/svg/topic.svg'),
+  [ServiceCategory.API_SERVICES]: () =>
+    import('../assets/svg/ic-service-rest-api.svg'),
+  [ServiceCategory.DASHBOARD_SERVICES]: () =>
+    import('../assets/svg/dashboard.svg'),
+  [ServiceCategory.DATABASE_SERVICES]: () =>
+    import('../assets/svg/ic-custom-database.svg'),
+  [ServiceCategory.DRIVE_SERVICES]: () =>
+    import('../assets/svg/ic-drive-service.svg'),
+  [ServiceCategory.ML_MODEL_SERVICES]: () =>
+    import('../assets/svg/ic-custom-model.svg'),
+  [ServiceCategory.PIPELINE_SERVICES]: () =>
+    import('../assets/svg/pipeline.svg'),
+  [ServiceCategory.SEARCH_SERVICES]: () =>
+    import('../assets/svg/ic-custom-search.svg'),
+  [ServiceCategory.SECURITY_SERVICES]: () =>
+    import('../assets/svg/security-safe.svg'),
+  [ServiceCategory.STORAGE_SERVICES]: () =>
+    import('../assets/svg/ic-custom-storage.svg'),
+  [ServiceCategory.MESSAGING_SERVICES]: () => import('../assets/svg/topic.svg'),
 };
+
+type ServiceTypeEnum = Record<string, string>;
 
 const normalizeServiceType = (serviceType: string) =>
   serviceType.toLowerCase().replaceAll(/[_\s-]/g, '');
 
+const matchesLegacyServiceKey = (
+  normalizedServiceType: string,
+  legacyKeys: string[] = []
+) => legacyKeys.includes(normalizedServiceType);
+
+const isGeneratedServiceType = (
+  normalizedServiceType: string,
+  serviceTypes: ServiceTypeEnum,
+  ignoredServiceTypes: string[] = []
+) => {
+  const ignoredKeys = ignoredServiceTypes.map(normalizeServiceType);
+
+  return Object.values(serviceTypes).some(
+    (serviceType) =>
+      normalizeServiceType(serviceType) === normalizedServiceType &&
+      !ignoredKeys.includes(normalizedServiceType)
+  );
+};
+
 export const getDataAssetServiceCategory = (
   serviceType: string
-): DataAssetServiceCategory => {
+): ServiceCategory => {
   const normalizedServiceType = normalizeServiceType(serviceType);
 
-  if (MESSAGING_SERVICE_TYPES.has(normalizedServiceType)) {
-    return 'topic';
+  if (isGeneratedServiceType(normalizedServiceType, MessagingServiceType)) {
+    return ServiceCategory.MESSAGING_SERVICES;
   }
-  if (DASHBOARD_SERVICE_TYPES.has(normalizedServiceType)) {
-    return 'dashboard';
+  if (
+    isGeneratedServiceType(normalizedServiceType, DashboardServiceType, [
+      DashboardServiceType.QlikCloud,
+    ])
+  ) {
+    return ServiceCategory.DASHBOARD_SERVICES;
   }
-  if (PIPELINE_SERVICE_TYPES.has(normalizedServiceType)) {
-    return 'pipeline';
+  if (
+    isGeneratedServiceType(normalizedServiceType, PipelineServiceType, [
+      PipelineServiceType.DomoPipeline,
+      PipelineServiceType.KinesisFirehose,
+    ])
+  ) {
+    return ServiceCategory.PIPELINE_SERVICES;
   }
-  if (ML_MODEL_SERVICE_TYPES.has(normalizedServiceType)) {
-    return 'mlmodel';
+  if (
+    matchesLegacyServiceKey(normalizedServiceType, ['scikit']) ||
+    isGeneratedServiceType(normalizedServiceType, MlModelServiceType, [
+      MlModelServiceType.Sklearn,
+    ])
+  ) {
+    return ServiceCategory.ML_MODEL_SERVICES;
   }
-  if (STORAGE_SERVICE_TYPES.has(normalizedServiceType)) {
-    return 'storage';
+  if (isGeneratedServiceType(normalizedServiceType, StorageServiceType)) {
+    return ServiceCategory.STORAGE_SERVICES;
   }
-  if (SEARCH_SERVICE_TYPES.has(normalizedServiceType)) {
-    return 'search';
+  if (isGeneratedServiceType(normalizedServiceType, SearchServiceType)) {
+    return ServiceCategory.SEARCH_SERVICES;
   }
-  if (API_SERVICE_TYPES.has(normalizedServiceType)) {
-    return 'api';
+  if (
+    matchesLegacyServiceKey(normalizedServiceType, ['customapi']) ||
+    isGeneratedServiceType(normalizedServiceType, APIServiceType)
+  ) {
+    return ServiceCategory.API_SERVICES;
   }
-  if (DRIVE_SERVICE_TYPES.has(normalizedServiceType)) {
-    return 'drive';
+  if (isGeneratedServiceType(normalizedServiceType, DriveServiceType)) {
+    return ServiceCategory.DRIVE_SERVICES;
   }
-  if (SECURITY_SERVICE_TYPES.has(normalizedServiceType)) {
-    return 'security';
+  if (
+    matchesLegacyServiceKey(normalizedServiceType, ['customsecurity']) ||
+    isGeneratedServiceType(normalizedServiceType, SecurityServiceType)
+  ) {
+    return ServiceCategory.SECURITY_SERVICES;
   }
 
-  return 'database';
+  return ServiceCategory.DATABASE_SERVICES;
 };
 
 export const getDataAssetExploreTab = (
@@ -299,20 +268,20 @@ export const getDataAssetExploreTab = (
 ): ExplorePageTabs => {
   const category = getDataAssetServiceCategory(serviceType);
 
-  const tabByCategory: Record<DataAssetServiceCategory, ExplorePageTabs> = {
-    api: ExplorePageTabs.API_ENDPOINT,
-    dashboard: ExplorePageTabs.DASHBOARDS,
-    database: ExplorePageTabs.TABLES,
-    drive: ExplorePageTabs.DIRECTORIES,
-    mlmodel: ExplorePageTabs.MLMODELS,
-    pipeline: ExplorePageTabs.PIPELINES,
-    search: ExplorePageTabs.SEARCH_INDEX,
-    security: ExplorePageTabs.TABLES,
-    storage: ExplorePageTabs.CONTAINERS,
-    topic: ExplorePageTabs.TOPICS,
+  const tabByCategory: Partial<Record<ServiceCategory, ExplorePageTabs>> = {
+    [ServiceCategory.API_SERVICES]: ExplorePageTabs.API_ENDPOINT,
+    [ServiceCategory.DASHBOARD_SERVICES]: ExplorePageTabs.DASHBOARDS,
+    [ServiceCategory.DATABASE_SERVICES]: ExplorePageTabs.TABLES,
+    [ServiceCategory.DRIVE_SERVICES]: ExplorePageTabs.DIRECTORIES,
+    [ServiceCategory.ML_MODEL_SERVICES]: ExplorePageTabs.MLMODELS,
+    [ServiceCategory.PIPELINE_SERVICES]: ExplorePageTabs.PIPELINES,
+    [ServiceCategory.SEARCH_SERVICES]: ExplorePageTabs.SEARCH_INDEX,
+    [ServiceCategory.SECURITY_SERVICES]: ExplorePageTabs.TABLES,
+    [ServiceCategory.STORAGE_SERVICES]: ExplorePageTabs.CONTAINERS,
+    [ServiceCategory.MESSAGING_SERVICES]: ExplorePageTabs.TOPICS,
   };
 
-  return tabByCategory[category];
+  return tabByCategory[category] ?? ExplorePageTabs.TABLES;
 };
 
 export const getFormattedDataAssetServiceType = (serviceType: string) => {
@@ -337,11 +306,13 @@ export const DataAssetServiceLogo = ({
 
   useEffect(() => {
     let isMounted = true;
+    const defaultIconImport =
+      DEFAULT_ICON_IMPORTS[category] ??
+      DEFAULT_ICON_IMPORTS[ServiceCategory.DATABASE_SERVICES];
     const loadIcon =
-      SERVICE_ICON_IMPORTS[normalizedServiceType] ??
-      DEFAULT_ICON_IMPORTS[category];
+      SERVICE_ICON_IMPORTS[normalizedServiceType] ?? defaultIconImport;
 
-    loadIcon()
+    loadIcon?.()
       .then((icon) => {
         if (isMounted) {
           setLogo(icon.default);
