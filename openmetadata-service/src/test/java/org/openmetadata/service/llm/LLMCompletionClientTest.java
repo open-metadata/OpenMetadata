@@ -17,8 +17,9 @@ class LLMCompletionClientTest {
     }
 
     @Override
-    protected String doComplete(String systemPrompt, String userPrompt) {
-      return response;
+    protected CompletionResult doComplete(
+        String systemPrompt, String userPrompt, CompletionOptions options) {
+      return new CompletionResult(response, 0, 0);
     }
 
     @Override
@@ -33,8 +34,9 @@ class LLMCompletionClientTest {
     }
 
     @Override
-    protected String doComplete(String systemPrompt, String userPrompt) {
-      return "[]";
+    protected CompletionResult doComplete(
+        String systemPrompt, String userPrompt, CompletionOptions options) {
+      return new CompletionResult("[]", 0, 0);
     }
 
     @Override
@@ -71,22 +73,30 @@ class LLMCompletionClientTest {
   void anthropicParseExtractsText() {
     assertEquals(
         "hello",
-        AnthropicCompletionClient.parseContent(
-            "{\"content\":[{\"type\":\"text\",\"text\":\"hello\"}]}"));
+        AnthropicCompletionClient.parseResult(
+                "{\"content\":[{\"type\":\"text\",\"text\":\"hello\"}],"
+                    + "\"usage\":{\"input_tokens\":0,\"output_tokens\":0}}")
+            .text());
   }
 
   @Test
   void anthropicParseRejectsContentWithoutText() {
     assertThrows(
         LLMCompletionException.class,
-        () -> AnthropicCompletionClient.parseContent("{\"content\":[{\"type\":\"thinking\"}]}"));
+        () ->
+            AnthropicCompletionClient.parseResult(
+                "{\"content\":[{\"type\":\"thinking\"}],"
+                    + "\"usage\":{\"input_tokens\":0,\"output_tokens\":0}}"));
   }
 
   @Test
   void openAiParseExtractsContent() {
     assertEquals(
         "hi",
-        OpenAICompletionClient.parseContent("{\"choices\":[{\"message\":{\"content\":\"hi\"}}]}"));
+        OpenAICompletionClient.parseResult(
+                "{\"choices\":[{\"message\":{\"content\":\"hi\"}}],"
+                    + "\"usage\":{\"prompt_tokens\":0,\"completion_tokens\":0}}")
+            .text());
   }
 
   @Test
@@ -94,7 +104,7 @@ class LLMCompletionClientTest {
     assertThrows(
         LLMCompletionException.class,
         () ->
-            OpenAICompletionClient.parseContent(
+            OpenAICompletionClient.parseResult(
                 "{\"choices\":[{\"message\":{\"content\":null,\"tool_calls\":[]}}]}"));
   }
 
@@ -102,8 +112,9 @@ class LLMCompletionClientTest {
   void googleParseExtractsText() {
     assertEquals(
         "ok",
-        GoogleCompletionClient.parseContent(
-            "{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"ok\"}]}}]}"));
+        GoogleCompletionClient.parseResult(
+                "{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"ok\"}]}}]}")
+            .text());
   }
 
   @Test
@@ -111,7 +122,6 @@ class LLMCompletionClientTest {
     assertThrows(
         LLMCompletionException.class,
         () ->
-            GoogleCompletionClient.parseContent(
-                "{\"candidates\":[{\"finishReason\":\"SAFETY\"}]}"));
+            GoogleCompletionClient.parseResult("{\"candidates\":[{\"finishReason\":\"SAFETY\"}]}"));
   }
 }

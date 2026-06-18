@@ -159,7 +159,7 @@ class DefaultRecreateHandlerTest {
       aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
       SearchClient client = aliasState.toMock();
-      when(client.getDocumentCount("table_search_index_rebuild_new")).thenReturn(0L);
+      when(client.getIndexedDocumentCount("table_search_index_rebuild_new")).thenReturn(0L);
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
 
@@ -195,7 +195,7 @@ class DefaultRecreateHandlerTest {
       aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
       SearchClient client = aliasState.toMock();
-      when(client.getDocumentCount("table_search_index_rebuild_new")).thenReturn(7L);
+      when(client.getIndexedDocumentCount("table_search_index_rebuild_new")).thenReturn(7L);
 
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
@@ -239,7 +239,7 @@ class DefaultRecreateHandlerTest {
       aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
       SearchClient client = aliasState.toMock();
-      when(client.getDocumentCount("table_search_index_rebuild_new")).thenReturn(-1L);
+      when(client.getIndexedDocumentCount("table_search_index_rebuild_new")).thenReturn(-1L);
 
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
@@ -499,7 +499,7 @@ class DefaultRecreateHandlerTest {
     @DisplayName("Should swallow staged index deletion failures after failed reindex")
     void testPromoteEntityIndexSwallowsDeleteFailure() {
       SearchClient client = mock(SearchClient.class);
-      when(client.getDocumentCount("table_search_index_rebuild_new")).thenReturn(0L);
+      when(client.getIndexedDocumentCount("table_search_index_rebuild_new")).thenReturn(0L);
       when(client.indexExists("table_search_index_rebuild_new")).thenReturn(true);
       doThrow(new IllegalStateException("delete failed"))
           .when(client)
@@ -658,7 +658,7 @@ class DefaultRecreateHandlerTest {
       aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
       SearchClient client = aliasState.toMock();
-      when(client.getDocumentCount("table_search_index_rebuild_new")).thenReturn(12L);
+      when(client.getIndexedDocumentCount("table_search_index_rebuild_new")).thenReturn(12L);
 
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
@@ -705,7 +705,7 @@ class DefaultRecreateHandlerTest {
       aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
       SearchClient client = aliasState.toMock();
-      when(client.getDocumentCount("table_search_index_rebuild_new")).thenReturn(0L);
+      when(client.getIndexedDocumentCount("table_search_index_rebuild_new")).thenReturn(0L);
 
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
