@@ -32,6 +32,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
@@ -58,8 +59,10 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.drive.PageContextProcessingEngineHolder;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.llm.LLMClientHolder;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.knowledge.KnowledgePageResource;
 import org.openmetadata.service.search.PropagationDescriptor;
@@ -84,6 +87,7 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   private static final String KNOWLEDGE_UPDATE_FIELDS = "page,relatedEntities,parent,children";
   public static final String RELATED_ENTITIES = "relatedEntities";
   public static final String EDITORS = "editors";
+  public static final String MEMORY_COUNT = "memoryCount";
   public static final String KNOWLEDGE_PAGE_TERM_SEARCH_INDEX = "page";
   private final CollectionDAO.KnowledgePageDAO daoExtension;
   private final CollectionDAO.AssetDAO assetDAO;
@@ -130,6 +134,15 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
         fields.contains(FIELD_PARENT) ? getParent(knowledgePage) : knowledgePage.getParent());
     knowledgePage.setChildren(
         fields.contains("children") ? getChildren(knowledgePage) : knowledgePage.getChildren());
+    if (fields.contains(MEMORY_COUNT)) {
+      knowledgePage.setMemoryCount(
+          findTo(
+                  knowledgePage.getId(),
+                  KNOWLEDGE_PAGE_ENTITY,
+                  Relationship.MENTIONED_IN,
+                  Entity.CONTEXT_MEMORY)
+              .size());
+    }
     if (knowledgePage.getPageType().equals(PageType.ARTICLE)) {
       Article article = new Article();
       if (knowledgePage.getPage() != null) {
@@ -623,6 +636,8 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
       // Update Related Terms
       updateRelatedEntities(original, updated);
 
+      recordExtractionStats(original, updated);
+
       // Updated Quick Link
       if (original.getPageType().equals(PageType.QUICK_LINK)) {
         QuickLink originalLink = JsonUtils.convertValue(original.getPage(), QuickLink.class);
@@ -642,6 +657,25 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
       }
 
       updateParent(original, updated);
+    }
+
+    /**
+     * extractionStats is engine-managed: the extraction throttle stamps it, and it is absent from
+     * CreatePage. Preserve the stored value when an update omits it so a body edit through PUT never
+     * wipes it, and persist a fresh stamp with updateVersion=false (the same treatment lifeCycle
+     * gets) so machine extraction does not churn the article's version history on every run.
+     */
+    private void recordExtractionStats(Page original, Page updated) {
+      if (updated.getExtractionStats() == null) {
+        updated.setExtractionStats(original.getExtractionStats());
+      }
+      recordChange(
+          "extractionStats",
+          original.getExtractionStats(),
+          updated.getExtractionStats(),
+          true,
+          EntityUtil.objectMatch,
+          false);
     }
 
     private void updateParent(Page original, Page updated) {
@@ -816,6 +850,69 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
         closeApprovalTask(updated, "Closed due to page going back to DRAFT.");
       } catch (EntityNotFoundException ignored) {
       } // No ApprovalTask is present, and thus we don't need to worry about this.
+    }
+
+    if (isArticleBodyChanged(original, updated)) {
+      schedulePillExtraction(updated.getId());
+    }
+  }
+
+  @Override
+  protected void postCreate(Page entity) {
+    super.postCreate(entity);
+    if (PageType.ARTICLE.equals(entity.getPageType()) && !nullOrEmpty(entity.getDescription())) {
+      schedulePillExtraction(entity.getId());
+    }
+  }
+
+  @Override
+  protected void postDelete(Page entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
+    if (LLMClientHolder.isEnabled()) {
+      PageContextProcessingEngineHolder.get().cancel(entity.getId());
+    }
+  }
+
+  // Knowledge-pill cleanup runs in the *AdditionalChildren hooks rather than postDelete because
+  // those fire while the page -> memory MENTIONED_IN edges still exist. postDelete runs after
+  // cleanup() has already deleted those edges on a hard delete, so a findTo there would match
+  // nothing and orphan the pills. The pills track the page's lifecycle: soft-deleted with it,
+  // hard-deleted with it, restored with it. Mirrors DashboardRepository's chart cascade.
+  @Override
+  @Transaction
+  protected void softDeleteAdditionalChildren(UUID pageId, String deletedBy) {
+    contextMemoryRepository().deleteExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY, false);
+  }
+
+  @Override
+  @Transaction
+  protected void hardDeleteAdditionalChildren(UUID pageId, String deletedBy) {
+    contextMemoryRepository().deleteExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY, true);
+  }
+
+  @Override
+  @Transaction
+  protected void restoreAdditionalChildren(UUID pageId, String updatedBy) {
+    contextMemoryRepository().restoreExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY);
+  }
+
+  private ContextMemoryRepository contextMemoryRepository() {
+    return (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
+  }
+
+  /** True when an article's markdown body changed — the only edit that warrants re-extraction. */
+  private boolean isArticleBodyChanged(Page original, Page updated) {
+    return PageType.ARTICLE.equals(updated.getPageType())
+        && !Objects.equals(original.getDescription(), updated.getDescription());
+  }
+
+  /**
+   * Hands the page to the in-memory throttle, which coalesces autosaves and runs extraction once the
+   * body settles. A no-op when the LLM is disabled, mirroring the file pipeline.
+   */
+  private void schedulePillExtraction(UUID pageId) {
+    if (LLMClientHolder.isEnabled()) {
+      PageContextProcessingEngineHolder.get().schedule(pageId);
     }
   }
 

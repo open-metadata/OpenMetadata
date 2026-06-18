@@ -28,6 +28,7 @@ import { TagSource } from '../../../generated/type/tagLabel';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import { EntityTags } from '../../../Models';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import ExtractedMemoriesCard from '../../ContextCenter/ExtractedMemoriesCard/ExtractedMemoriesCard.component';
 import RelatedDataAssets from '../RelatedDataAssets/RelatedDataAssets';
 import './knowledge-page.less';
 interface KnowledgePageDetailRightPanelProps {
@@ -153,6 +154,11 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
             onRelatedDataAssetsUpdate={handleRelatedEntitiesUpdate}
           />
         </Col>
+        {knowledgePage?.id && (
+          <Col span={24}>
+            <ExtractedMemoriesCard sourceId={knowledgePage.id} />
+          </Col>
+        )}
       </Row>
     </div>
   );
