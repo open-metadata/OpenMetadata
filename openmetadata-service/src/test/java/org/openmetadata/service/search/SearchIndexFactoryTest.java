@@ -281,6 +281,14 @@ class SearchIndexFactoryTest {
   }
 
   @Test
+  void domainReindexFieldsIncludeParent() {
+    Set<String> domainFields = factory.getReindexFieldsFor(Entity.DOMAIN);
+    assertTrue(
+        domainFields.contains(Entity.FIELD_PARENT),
+        () -> "Domain reindex fields must include 'parent'; got " + domainFields);
+  }
+
+  @Test
   void reindexFieldsOmitKnownFanOutFields() {
     // These are the "blow up the heap" relationships we explicitly do NOT want fetched during
     // reindex. They either live in the Index's getExcludedFields() (stripped post-hoc) or
