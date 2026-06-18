@@ -11,14 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  Dialog,
-  IconButton,
-  Tooltip,
-  Typography,
-  useTheme,
-} from '@mui/material';
+import { Box, Dialog, IconButton, Tooltip, Typography } from '@mui/material';
 import { Maximize01, Minimize01, XClose } from '@untitledui/icons';
 import { DateTime } from 'luxon';
 import React, { useEffect, useRef, useState } from 'react';
@@ -38,7 +31,6 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
   onClose,
 }) => {
   const { t } = useTranslation();
-  const theme = useTheme();
   const fullscreenRef = useRef<HTMLDivElement>(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [fetchedResource, setFetchedResource] =
@@ -163,7 +155,7 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
           maxHeight: isFullScreen ? undefined : '90vh',
           overflow: isFullScreen ? 'hidden' : 'auto',
           '&:fullscreen': {
-            backgroundColor: theme.palette.allShades?.gray?.[100],
+            backgroundColor: 'var(--color-bg-tertiary)',
             borderRadius: 0,
             height: '100vh',
             width: '100vw',
@@ -174,10 +166,10 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
         <Box
           sx={{
             borderBottom: '1px solid',
-            borderColor: theme.palette.allShades?.gray?.[200],
+            borderColor: 'var(--color-border-secondary)',
             display: 'flex',
             flexDirection: 'column',
-            padding: theme.spacing(3, 6),
+            padding: '12px 24px',
             ...(isFullScreen && { flexShrink: 0 }),
           }}>
           <Box
@@ -192,11 +184,11 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
                 component="div"
                 fontWeight={600}
                 sx={{
-                  color: theme.palette.allShades?.gray?.[900],
+                  color: 'var(--color-text-primary)',
                   display: 'block',
-                  fontSize: theme.typography.body1.fontSize,
-                  lineHeight: theme.typography.body1.lineHeight,
-                  marginBottom: theme.spacing(0.5),
+                  fontSize: '16px',
+                  lineHeight: '24px',
+                  marginBottom: '2px',
                   overflowWrap: 'break-word',
                   wordBreak: 'break-word',
                 }}>
@@ -208,10 +200,10 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
                   aria-label={displayResource.description}
                   component="div"
                   sx={{
-                    color: theme.palette.allShades?.gray?.[600],
-                    fontSize: theme.typography.pxToRem(13),
-                    lineHeight: theme.typography.body2.lineHeight,
-                    paddingTop: theme.spacing(3),
+                    color: 'var(--color-text-tertiary)',
+                    fontSize: '0.8125rem',
+                    lineHeight: '20px',
+                    paddingTop: '12px',
                   }}>
                   {displayResource.description}
                 </Typography>
@@ -221,8 +213,8 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
                 sx={{
                   display: 'flex',
                   flexWrap: 'wrap',
-                  gap: theme.spacing(1.5),
-                  paddingTop: theme.spacing(3),
+                  gap: '6px',
+                  paddingTop: '12px',
                 }}>
                 {categoryTags.map((category) => {
                   const colors = getCategoryColors(category);
@@ -233,11 +225,11 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
                       key={category}
                       sx={{
                         margin: 0,
-                        fontSize: theme.typography.caption.fontSize,
+                        fontSize: '12px',
                         lineHeight: 1.5,
-                        padding: theme.spacing(0.25, 0.75),
-                        borderRadius: theme.spacing(0.75),
-                        fontWeight: theme.typography.fontWeightMedium,
+                        padding: '1px 3px',
+                        borderRadius: '3px',
+                        fontWeight: 500,
                         borderWidth: 1,
                         borderStyle: 'solid',
                         backgroundColor: colors.bgColor,
@@ -278,9 +270,9 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
                     isFullScreen ? 'minimize-button' : 'maximize-button'
                   }
                   sx={{
-                    color: theme.palette.allShades?.gray?.[600],
+                    color: 'var(--color-text-tertiary)',
                     '&:hover': {
-                      color: theme.palette.allShades?.gray?.[700],
+                      color: 'var(--color-text-secondary)',
                     },
                     '& svg': {
                       height: 16,
@@ -296,9 +288,9 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
                 color="inherit"
                 data-testid="close-resource-player"
                 sx={{
-                  color: theme.palette.allShades?.gray?.[600],
+                  color: 'var(--color-text-tertiary)',
                   '&:hover': {
-                    color: theme.palette.allShades?.gray?.[700],
+                    color: 'var(--color-text-secondary)',
                   },
                   '& svg': {
                     height: 16,
@@ -316,9 +308,9 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
               alignItems: 'center',
               display: 'flex',
               flexWrap: 'wrap',
-              gap: theme.spacing(1.5),
+              gap: '6px',
               justifyContent: 'space-between',
-              paddingTop: theme.spacing(3),
+              paddingTop: '12px',
             }}>
             <Box sx={{ flex: 1, minWidth: 0 }}>
               {contextItems.length > 0 && (
@@ -326,20 +318,20 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
                   sx={{
                     display: 'flex',
                     flexWrap: 'wrap',
-                    gap: theme.spacing(1),
+                    gap: '4px',
                   }}>
                   {contextItems.map((ctx, idx) => (
                     <Box
                       component="span"
                       key={`${ctx.pageId}-${idx}`}
                       sx={{
-                        backgroundColor: theme.palette.grey[50],
-                        border: `1px solid ${theme.palette.grey[200]}`,
-                        borderRadius: theme.spacing(0.75),
-                        color: theme.palette.grey[700],
-                        fontSize: theme.typography.caption.fontSize,
-                        fontWeight: theme.typography.fontWeightMedium,
-                        padding: theme.spacing(0.25, 0.75),
+                        backgroundColor: 'var(--color-bg-secondary)',
+                        border: `1px solid var(--color-border-secondary)`,
+                        borderRadius: '3px',
+                        color: 'var(--color-text-secondary)',
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        padding: '1px 3px',
                         flexShrink: 1,
                         minWidth: 0,
                         maxWidth: '100%',
@@ -365,8 +357,8 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
                   <Typography
                     component="span"
                     sx={{
-                      color: theme.palette.allShades?.gray?.[600],
-                      fontSize: theme.typography.caption.fontSize,
+                      color: 'var(--color-text-tertiary)',
+                      fontSize: '12px',
                     }}>
                     {formattedDate}
                   </Typography>
@@ -375,9 +367,9 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
                   <Typography
                     component="span"
                     sx={{
-                      color: theme.palette.allShades?.gray?.[400],
-                      fontSize: theme.typography.caption.fontSize,
-                      px: theme.spacing(0.875),
+                      color: '#A4A7AE',
+                      fontSize: '12px',
+                      px: '3.5px',
                     }}>
                     |
                   </Typography>
@@ -386,8 +378,8 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
                   <Typography
                     component="span"
                     sx={{
-                      color: theme.palette.allShades?.gray?.[500],
-                      fontSize: theme.typography.caption.fontSize,
+                      color: 'var(--color-text-tertiary)',
+                      fontSize: '12px',
                     }}>
                     {formattedDuration}
                   </Typography>
@@ -399,7 +391,7 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
 
         <Box
           sx={{
-            backgroundColor: theme.palette.allShades?.gray?.[100],
+            backgroundColor: 'var(--color-bg-tertiary)',
             width: '100%',
             flex: isFullScreen ? 1 : undefined,
             minHeight: isFullScreen ? 0 : undefined,

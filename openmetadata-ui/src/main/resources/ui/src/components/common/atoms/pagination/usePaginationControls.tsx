@@ -17,9 +17,7 @@ import {
   MenuItem,
   Pagination,
   Select,
-  SelectChangeEvent,
   Typography,
-  useTheme,
 } from '@mui/material';
 import { ArrowLeft, ArrowRight } from '@untitledui/icons';
 import { useMemo } from 'react';
@@ -30,6 +28,8 @@ import {
   PAGE_SIZE_MEDIUM,
 } from '../../../../constants/constants';
 import { formatNumberWithComma } from '../../../../utils/NumberUtils';
+
+type SelectChangeEvent<T = string> = { target: { value: T } };
 
 // Default rows per page options used across pagination components
 const DEFAULT_ROWS_PER_PAGE_OPTIONS = [
@@ -52,7 +52,6 @@ interface PaginationControlsConfig {
 
 export const usePaginationControls = (config: PaginationControlsConfig) => {
   const { t } = useTranslation();
-  const theme = useTheme();
 
   const goToFirstPage = () => config.onPageChange(1);
   const goToLastPage = () => config.onPageChange(config.totalPages);
@@ -102,7 +101,7 @@ export const usePaginationControls = (config: PaginationControlsConfig) => {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          borderTop: `1px solid ${theme.palette.allShades?.gray?.[200]}`,
+          borderTop: `1px solid var(--color-border-secondary)`,
           pt: 3.5,
           px: 6,
           pb: 5,
@@ -112,11 +111,7 @@ export const usePaginationControls = (config: PaginationControlsConfig) => {
           data-testid="previous"
           disabled={config.currentPage === 1}
           size="small"
-          startIcon={
-            <ArrowLeft
-              style={{ color: theme.palette.allShades?.gray?.[400] }}
-            />
-          }
+          startIcon={<ArrowLeft style={{ color: '#A4A7AE' }} />}
           variant="contained"
           onClick={() => config.onPageChange(config.currentPage - 1)}>
           {t('label.previous')}
@@ -149,10 +144,10 @@ export const usePaginationControls = (config: PaginationControlsConfig) => {
               }}>
               <Typography
                 sx={{
-                  fontSize: theme.typography.pxToRem(14),
-                  color: theme.palette.text.secondary,
+                  fontSize: '0.875rem',
+                  color: 'var(--color-text-secondary)',
                   whiteSpace: 'nowrap',
-                  marginRight: theme.spacing(1),
+                  marginRight: '4px',
                 }}>
                 {`${formatNumberWithComma(
                   displayedRowsRange.start
@@ -165,7 +160,7 @@ export const usePaginationControls = (config: PaginationControlsConfig) => {
                 size="small"
                 sx={{
                   '&.MuiOutlinedInput-root .MuiOutlinedInput-input': {
-                    fontSize: `${theme.typography.pxToRem(14)}`,
+                    fontSize: '0.875rem',
                   },
                   '& .MuiOutlinedInput-input.MuiInputBase-inputSizeSmall': {
                     padding: '6px 32px 6px 12px !important',
@@ -186,11 +181,7 @@ export const usePaginationControls = (config: PaginationControlsConfig) => {
             color="secondary"
             data-testid="next"
             disabled={config.currentPage >= config.totalPages}
-            endIcon={
-              <ArrowRight
-                style={{ color: theme.palette.allShades?.gray?.[400] }}
-              />
-            }
+            endIcon={<ArrowRight style={{ color: '#A4A7AE' }} />}
             size="small"
             variant="contained"
             onClick={() => config.onPageChange(config.currentPage + 1)}>
@@ -210,7 +201,6 @@ export const usePaginationControls = (config: PaginationControlsConfig) => {
       rowsPerPageOptions,
       displayedRowsRange,
       selectedPageSize,
-      theme,
       t,
     ]
   );

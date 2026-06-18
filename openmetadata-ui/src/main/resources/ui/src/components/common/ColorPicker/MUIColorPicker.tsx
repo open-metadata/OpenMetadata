@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, FormControl, FormLabel, useTheme } from '@mui/material';
+import { Box, FormControl, FormLabel } from '@mui/material';
 import { FC } from 'react';
 
 interface ColorPickerProps {
@@ -71,8 +71,6 @@ const MUIColorPicker: FC<ColorPickerProps> = ({
   colors = defaultColorOptions,
   label,
 }) => {
-  const theme = useTheme();
-
   const handleColorClick = (color: string) => {
     if (onChange) {
       onChange(color);
@@ -109,9 +107,7 @@ const MUIColorPicker: FC<ColorPickerProps> = ({
                 transition: 'all 0.2s ease',
                 opacity: 1,
                 '&:focus-visible': {
-                  outline: `2px solid ${
-                    theme.palette.primary?.main || '#1470EF'
-                  }`,
+                  outline: `2px solid var(--color-bg-brand-solid)`,
                   outlineOffset: '2px',
                 },
               }}

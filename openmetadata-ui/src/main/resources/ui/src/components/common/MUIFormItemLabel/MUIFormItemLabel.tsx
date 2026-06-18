@@ -11,15 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  Chip,
-  FormLabel,
-  SxProps,
-  Theme,
-  Tooltip,
-  useTheme,
-} from '@mui/material';
+import { Box, Chip, FormLabel, SxProps, Theme, Tooltip } from '@mui/material';
 import { TooltipProps } from '@mui/material/Tooltip';
 import { InfoCircle } from '@untitledui/icons';
 import { FC, ReactNode } from 'react';
@@ -50,7 +42,6 @@ const MUIFormItemLabel: FC<MUIFormItemLabelProps> = ({
   slotProps,
 }) => {
   const { t } = useTranslation();
-  const theme = useTheme();
 
   return (
     <Box alignItems="center" display="inline-flex" gap={0.5}>
@@ -83,7 +74,7 @@ const MUIFormItemLabel: FC<MUIFormItemLabelProps> = ({
                   pointerEvents: 'auto',
                 }}>
                 <InfoCircle
-                  color={theme.palette.text.secondary}
+                  color="var(--color-text-secondary)"
                   data-testid="mui-helper-icon"
                   size={14}
                   style={{

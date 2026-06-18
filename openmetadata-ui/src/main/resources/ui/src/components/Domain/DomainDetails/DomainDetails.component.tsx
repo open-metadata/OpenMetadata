@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Box, Typography as MuiTypography, useTheme } from '@mui/material';
+import { Box, Typography as MuiTypography } from '@mui/material';
 import { Avatar } from '@openmetadata/ui-core-components';
 import { Button, Dropdown, Space, Tabs, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
@@ -152,7 +152,6 @@ const DomainDetails = ({
   isTreeView = false,
 }: DomainDetailsProps) => {
   const { t } = useTranslation();
-  const theme = useTheme();
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   const { isMarketplace } = useMarketplaceStore();
   const location = useLocation();

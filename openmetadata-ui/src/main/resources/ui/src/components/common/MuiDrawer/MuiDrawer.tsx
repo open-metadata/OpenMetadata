@@ -19,7 +19,6 @@ import {
   IconButton,
   Switch,
   Typography,
-  useTheme,
 } from '@mui/material';
 import { FC, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -40,7 +39,6 @@ const MuiDrawer: FC<MuiDrawerProps> = ({
   sidePanel,
   hasSidePanel = false,
 }) => {
-  const theme = useTheme();
   const { t } = useTranslation();
   const drawerContentRef = useRef<HTMLDivElement>(null);
   const [showSidePanel, setShowSidePanel] = useState<boolean>(false);
@@ -51,11 +49,8 @@ const MuiDrawer: FC<MuiDrawerProps> = ({
         sx: {
           width: '100%',
           maxWidth: showSidePanel ? '1200px' : '700px',
-          backgroundColor: theme.palette.background.default,
-          transition: theme.transitions.create('width', {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.enteringScreen,
-          }),
+          backgroundColor: 'var(--color-bg-primary)',
+          transition: 'width 225ms cubic-bezier(0.4, 0, 0.6, 1) 0ms',
         },
       }}
       anchor="right"
@@ -77,12 +72,12 @@ const MuiDrawer: FC<MuiDrawerProps> = ({
           sx={{
             px: 6,
             py: 4,
-            borderBottom: `1px solid ${theme.palette.divider}`,
+            borderBottom: `1px solid var(--color-border-primary)`,
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             flexShrink: 0,
-            bgcolor: theme.palette.background.paper,
+            bgcolor: 'var(--color-bg-primary)',
           }}>
           <Typography component="h2" variant="h6">
             {title}
@@ -113,7 +108,7 @@ const MuiDrawer: FC<MuiDrawerProps> = ({
             flex: 1,
             display: 'flex',
             overflow: 'hidden',
-            bgcolor: theme.palette.background.default,
+            bgcolor: 'var(--color-bg-primary)',
           }}>
           {/* Main Content Side */}
           <Box
@@ -123,9 +118,9 @@ const MuiDrawer: FC<MuiDrawerProps> = ({
               p: 6,
               pt: 0,
               maxWidth: showSidePanel ? '60%' : '100%',
-              transition: theme.transitions.create('max-width'),
+              transition: 'max-width 300ms cubic-bezier(0.4, 0, 0.2, 1) 0ms',
               borderRight: showSidePanel
-                ? `1px solid ${theme.palette.divider}`
+                ? `1px solid var(--color-border-primary)`
                 : 'none',
             }}>
             {children}
@@ -137,7 +132,7 @@ const MuiDrawer: FC<MuiDrawerProps> = ({
               sx={{
                 width: '40%',
                 overflowY: 'auto',
-                bgcolor: theme.palette.background.paper,
+                bgcolor: 'var(--color-bg-primary)',
                 display: 'flex',
                 flexDirection: 'column',
                 pt: 0,
@@ -153,8 +148,8 @@ const MuiDrawer: FC<MuiDrawerProps> = ({
             sx={{
               px: 3,
               py: 2,
-              borderTop: `1px solid ${theme.palette.divider}`,
-              bgcolor: theme.palette.background.paper,
+              borderTop: `1px solid var(--color-border-primary)`,
+              bgcolor: 'var(--color-bg-primary)',
               flexShrink: 0,
               display: 'flex',
               justifyContent: 'flex-end',
@@ -177,11 +172,11 @@ const MuiDrawer: FC<MuiDrawerProps> = ({
               sx={{
                 px: 3,
                 py: 1,
-                fontSize: theme.typography.body2.fontSize,
+                fontSize: '14px',
                 '&:disabled': {
-                  backgroundColor: theme.palette.allShades.blue['100'],
-                  color: theme.palette.allShades.white,
-                  borderColor: theme.palette.allShades.blue['100'],
+                  backgroundColor: '#D1E9FF',
+                  color: '#ffffff',
+                  borderColor: '#D1E9FF',
                 },
               }}
               variant="contained"

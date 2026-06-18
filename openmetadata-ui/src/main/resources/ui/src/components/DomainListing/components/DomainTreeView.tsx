@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Chip, Typography, useTheme } from '@mui/material';
+import { Box, Button, Chip, Typography } from '@mui/material';
 import { SimpleTreeView, TreeItem, treeItemClasses } from '@mui/x-tree-view';
 import { Avatar } from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
@@ -71,11 +71,9 @@ const DomainTreeView = ({
   refreshToken = 0,
   openAddDomainDrawer,
 }: DomainTreeViewProps) => {
-  const theme = useTheme();
-  const outlineColor =
-    theme.palette.allShades?.gray?.[200] ?? theme.palette.grey[300];
-  const childIndent = theme.spacing(2);
-  const connectorOffset = theme.spacing(1.5);
+  const outlineColor = 'var(--color-border-secondary)';
+  const childIndent = '8px';
+  const connectorOffset = '6px';
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -782,7 +780,7 @@ const DomainTreeView = ({
                 <Avatar size="xs" {...getEntityAvatarProps(node)} />
                 <Typography
                   sx={{
-                    color: theme.palette.allShades?.gray?.[800],
+                    color: 'var(--color-text-primary)',
                   }}
                   variant="body2">
                   {getEntityName(node)}
@@ -794,9 +792,9 @@ const DomainTreeView = ({
                     sx={{
                       height: 20,
                       border: 'none',
-                      color: theme.palette.allShades?.gray?.[800],
-                      fontWeight: theme.typography.fontWeightRegular,
-                      backgroundColor: theme.palette.allShades?.blueGray?.[100],
+                      color: 'var(--color-text-primary)',
+                      fontWeight: 400,
+                      backgroundColor: '#EAECF5',
                     }}
                   />
                 )}
@@ -830,10 +828,10 @@ const DomainTreeView = ({
                     p: 0,
                     cursor: 'pointer',
                     fontSize: '14px',
-                    color: theme.palette.primary.main,
-                    fontWeight: theme.typography.fontWeightMedium,
+                    color: 'var(--color-bg-brand-solid)',
+                    fontWeight: 500,
                     '&:hover': {
-                      color: theme.palette.primary.dark,
+                      color: '#175CD3',
                       backgroundColor: 'transparent',
                     },
                   }}
@@ -857,10 +855,6 @@ const DomainTreeView = ({
       childIndent,
       connectorOffset,
       outlineColor,
-      theme.palette.allShades?.gray,
-      theme.palette.primary.main,
-      theme.typography.fontWeightMedium,
-      theme.typography.fontWeightRegular,
       loadingChildren,
       childPaging,
       handleLoadMoreChildren,
@@ -955,7 +949,7 @@ const DomainTreeView = ({
                 transform: 'translateY(-50%)',
                 width: '16px',
                 height: '1px',
-                background: theme.palette.allShades?.gray?.[200],
+                background: 'var(--color-border-secondary)',
                 zIndex: 0,
               },
             },
@@ -988,7 +982,7 @@ const DomainTreeView = ({
                 top: '-24px',
                 bottom: '24px',
                 width: '1px',
-                background: theme.palette.allShades?.gray?.[200],
+                background: 'var(--color-border-secondary)',
                 zIndex: 0,
               },
             },
@@ -1000,10 +994,10 @@ const DomainTreeView = ({
 
             '& .MuiTreeItem-content:has(.MuiTreeItem-iconContainer:empty)': {
               '&:hover': {
-                backgroundColor: theme.palette.action.hover,
+                backgroundColor: 'rgba(0,0,0,0.04)',
               },
               '&.Mui-selected': {
-                backgroundColor: theme.palette.allShades?.blue?.[50],
+                backgroundColor: '#EFF8FF',
               },
             },
 
@@ -1013,11 +1007,11 @@ const DomainTreeView = ({
                   backgroundColor: 'transparent !important',
                 },
                 '&:hover .MuiTreeItem-label': {
-                  backgroundColor: theme.palette.action.hover,
+                  backgroundColor: 'rgba(0,0,0,0.04)',
                   borderRadius: '8px',
                 },
                 '&.Mui-selected .MuiTreeItem-label': {
-                  backgroundColor: theme.palette.allShades?.blue?.[50],
+                  backgroundColor: '#EFF8FF',
                   borderRadius: '8px',
                 },
               },
@@ -1067,8 +1061,6 @@ const DomainTreeView = ({
     hierarchy,
     expandedItems,
     selectedFqn,
-    theme.palette.allShades?.gray,
-    theme.palette.allShades?.blue,
     handleExpandedChange,
     handleSelectionChange,
     renderTreeItems,

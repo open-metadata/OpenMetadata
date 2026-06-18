@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Link, Popover, Typography, useTheme } from '@mui/material';
+import { Box, Link, Popover, Typography } from '@mui/material';
 import { DateTime } from 'luxon';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,11 +29,10 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
   onClick,
 }) => {
   const { t } = useTranslation();
-  const theme = useTheme();
 
   const iconColors = {
-    video: theme.palette.allShades?.blue?.[600],
-    storylane: theme.palette.allShades?.purple?.[600],
+    video: 'var(--color-bg-brand-solid)',
+    storylane: '#6938EF',
   };
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
 
@@ -97,17 +96,17 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
 
   return (
     <Box
-      bgcolor={theme.palette.allShades?.white}
+      bgcolor="#ffffff"
       border="1px solid"
-      borderColor={theme.palette.allShades?.blueGray?.[50]}
-      borderRadius={theme.spacing(1.5)}
-      boxShadow={theme.shadows[1]}
+      borderColor="#F8F9FC"
+      borderRadius="6px"
+      boxShadow="var(--shadow-xs)"
       data-clickable={onClick ? 'true' : undefined}
       data-testid={`learning-resource-card-${resource.name}`}
       sx={{
         width: '100%',
         minWidth: 0,
-        padding: theme.spacing(2.5),
+        padding: '10px',
         display: 'flex',
         flexDirection: 'column',
         gap: 1.5,
@@ -136,9 +135,9 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
             sx={{
               flex: 1,
               minWidth: 0,
-              fontSize: theme.typography.body2.fontSize,
-              lineHeight: theme.typography.body2.lineHeight,
-              color: theme.palette.allShades?.gray?.[900],
+              fontSize: '14px',
+              lineHeight: '20px',
+              color: 'var(--color-text-primary)',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               display: '-webkit-box',
@@ -163,9 +162,9 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
                 component="span"
                 data-testid="learning-resource-description"
                 sx={{
-                  fontSize: theme.typography.caption.fontSize,
-                  lineHeight: theme.typography.body2.lineHeight,
-                  color: theme.palette.allShades?.gray?.[600],
+                  fontSize: '12px',
+                  lineHeight: '20px',
+                  color: 'var(--color-text-tertiary)',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   display: '-webkit-box',
@@ -180,8 +179,8 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
                 <Link
                   component="button"
                   sx={{
-                    fontSize: theme.typography.caption.fontSize,
-                    color: theme.palette.allShades?.brand?.[600],
+                    fontSize: '12px',
+                    color: 'var(--color-bg-brand-solid)',
                     cursor: 'pointer',
                     flexShrink: 0,
                     alignSelf: 'flex-start',
@@ -198,12 +197,12 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
               component="span"
               data-testid="learning-resource-description"
               sx={{
-                color: theme.palette.allShades?.gray?.[500],
-                fontFamily: theme.typography.fontFamily,
-                fontSize: theme.typography.body2.fontSize,
+                color: 'var(--color-text-tertiary)',
+                fontFamily: 'inherit',
+                fontSize: '14px',
                 fontStyle: 'italic',
-                fontWeight: theme.typography.fontWeightRegular,
-                lineHeight: theme.typography.body2.lineHeight,
+                fontWeight: 400,
+                lineHeight: '20px',
               }}>
               {t('label.no-entity-added', {
                 entity: t('label.description-lowercase'),
@@ -222,7 +221,7 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
             sx={{
               display: 'flex',
               alignItems: 'center',
-              gap: theme.spacing(0.75),
+              gap: '3px',
               minWidth: 0,
               overflow: 'hidden',
             }}>
@@ -232,7 +231,7 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
                   sx={{
                     display: 'flex',
                     flexWrap: 'nowrap',
-                    gap: theme.spacing(0.75),
+                    gap: '3px',
                     minWidth: 0,
                     overflow: 'hidden',
                   }}>
@@ -245,11 +244,11 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
                         key={category}
                         sx={{
                           flexShrink: 0,
-                          fontSize: theme.typography.caption.fontSize,
-                          lineHeight: theme.typography.body2.lineHeight,
-                          padding: theme.spacing(0.25, 0.75),
-                          borderRadius: theme.spacing(0.75),
-                          fontWeight: theme.typography.fontWeightMedium,
+                          fontSize: '12px',
+                          lineHeight: '20px',
+                          padding: '1px 3px',
+                          borderRadius: '3px',
+                          fontWeight: 500,
                           backgroundColor: colors.bgColor,
                           border: '1px solid',
                           borderColor: colors.borderColor,
@@ -268,18 +267,17 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
                       component="span"
                       sx={{
                         flexShrink: 0,
-                        fontSize: theme.typography.caption.fontSize,
-                        lineHeight: theme.typography.body2.lineHeight,
-                        padding: theme.spacing(0.25, 0.75),
-                        borderRadius: theme.spacing(0.75),
-                        fontWeight: theme.typography.fontWeightMedium,
-                        backgroundColor: theme.palette.allShades?.brand?.[50],
+                        fontSize: '12px',
+                        lineHeight: '20px',
+                        padding: '1px 3px',
+                        borderRadius: '3px',
+                        fontWeight: 500,
+                        backgroundColor: 'var(--color-bg-brand-primary)',
                         border: 'none',
-                        color: theme.palette.allShades?.brand?.[700],
+                        color: '#175CD3',
                         cursor: 'pointer',
                         '&:hover': {
-                          backgroundColor:
-                            theme.palette.allShades?.brand?.[100],
+                          backgroundColor: 'var(--color-bg-brand-secondary)',
                         },
                       }}
                       onClick={handleMoreTagClick}>
@@ -313,11 +311,11 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
                               component="span"
                               key={category}
                               sx={{
-                                fontSize: theme.typography.caption.fontSize,
-                                lineHeight: theme.typography.body2.lineHeight,
-                                padding: theme.spacing(0.25, 0.75),
-                                borderRadius: theme.spacing(0.75),
-                                fontWeight: theme.typography.fontWeightMedium,
+                                fontSize: '12px',
+                                lineHeight: '20px',
+                                padding: '1px 3px',
+                                borderRadius: '3px',
+                                fontWeight: 500,
                                 backgroundColor: colors.bgColor,
                                 border: '1px solid',
                                 borderColor: colors.borderColor,
@@ -338,12 +336,12 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
               <Typography
                 component="span"
                 sx={{
-                  color: theme.palette.allShades?.gray?.[500],
-                  fontFamily: theme.typography.fontFamily,
-                  fontSize: theme.typography.body2.fontSize,
+                  color: 'var(--color-text-tertiary)',
+                  fontFamily: 'inherit',
+                  fontSize: '14px',
                   fontStyle: 'italic',
-                  fontWeight: theme.typography.fontWeightRegular,
-                  lineHeight: theme.typography.body2.lineHeight,
+                  fontWeight: 400,
+                  lineHeight: '20px',
                 }}>
                 {t('label.no-entity-added', {
                   entity: t('label.category-lowercase'),
@@ -363,8 +361,8 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
               <Typography
                 component="span"
                 sx={{
-                  fontSize: theme.typography.caption.fontSize,
-                  color: theme.palette.allShades?.gray?.[600],
+                  fontSize: '12px',
+                  color: 'var(--color-text-tertiary)',
                 }}>
                 {formattedDate}
               </Typography>
@@ -373,8 +371,8 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
               <Typography
                 component="span"
                 sx={{
-                  fontSize: theme.typography.caption.fontSize,
-                  color: theme.palette.allShades?.blueGray?.[100],
+                  fontSize: '12px',
+                  color: '#EAECF5',
                 }}>
                 |
               </Typography>
@@ -383,8 +381,8 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
               <Typography
                 component="span"
                 sx={{
-                  fontSize: theme.typography.caption.fontSize,
-                  color: theme.palette.allShades?.gray?.[600],
+                  fontSize: '12px',
+                  color: 'var(--color-text-tertiary)',
                 }}>
                 {formattedDuration}
               </Typography>

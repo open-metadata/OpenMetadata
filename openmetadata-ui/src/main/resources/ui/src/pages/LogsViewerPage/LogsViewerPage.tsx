@@ -22,7 +22,6 @@ import {
   Stack,
   Tooltip,
   Typography,
-  useTheme,
 } from '@mui/material';
 import { AxiosError } from 'axios';
 import { isEmpty, isNil, isUndefined, toNumber } from 'lodash';
@@ -85,7 +84,6 @@ const ScheduleSummaryValue = ({
 }: {
   cronExpression: string;
 }) => {
-  const theme = useTheme();
   const { descriptionFirstPart, descriptionSecondPart } =
     useScheduleDescriptionTexts(cronExpression);
 
@@ -110,7 +108,7 @@ const ScheduleSummaryValue = ({
             fontSize: 12,
             lineHeight: '14px',
             marginBottom: '0px !important',
-            color: theme.palette.grey[500],
+            color: 'var(--color-text-quaternary)',
           }}
           variant="body1">
           {descriptionSecondPart}

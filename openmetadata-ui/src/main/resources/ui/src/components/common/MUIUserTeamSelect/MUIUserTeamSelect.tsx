@@ -17,7 +17,6 @@ import {
   Box,
   Chip,
   TextField,
-  useTheme,
 } from '@mui/material';
 import { XClose } from '@untitledui/icons';
 import { debounce } from 'lodash';
@@ -84,7 +83,6 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
   required,
 }) => {
   const { t } = useTranslation();
-  const theme = useTheme();
   const [userOptions, setUserOptions] = useState<OptionType[]>([]);
   const [teamOptions, setTeamOptions] = useState<OptionType[]>([]);
   const [loading, setLoading] = useState(false);
@@ -356,7 +354,7 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
           sx={{
             borderRadius: '8px',
             backgroundColor: 'transparent',
-            borderColor: theme.palette.grey[300],
+            borderColor: 'var(--color-border-primary)',
           }}
           variant="outlined"
         />

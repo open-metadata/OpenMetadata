@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { SelectChangeEvent } from '@mui/material';
 import { useCallback, useEffect, useState } from 'react';
 import { Connection, Edge, Node } from 'reactflow';
 import { NodeType } from '../generated/governance/workflows/elements/nodeType';
@@ -20,6 +19,8 @@ import {
   DataAssetFilter,
   NodeConfig,
 } from '../interface/workflow-builder-components.interface';
+
+type SelectChangeEvent<T = string> = { target: { value: T } };
 
 export interface WorkflowState {
   nodes: Node[];

@@ -15,7 +15,6 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Tooltip,
-  useTheme,
 } from '@mui/material';
 import Qs from 'qs';
 import { FC, useCallback, useMemo, useState } from 'react';
@@ -41,7 +40,6 @@ const LineageControlButtons: FC<{
   miniMapVisible?: boolean;
 }> = ({ onToggleMiniMap, miniMapVisible = false }) => {
   const { t } = useTranslation();
-  const theme = useTheme();
   const [lineageViewOptionsAnchorEl, setLineageViewOptionsAnchorEl] =
     useState<null | HTMLElement>(null);
 
@@ -106,13 +104,12 @@ const LineageControlButtons: FC<{
       exclusive
       color="primary"
       sx={{
-        /* Shadows/shadow-xs */
-        boxShadow: theme.shadows[1],
-        background: theme.palette.background.paper,
+        boxShadow: 'var(--shadow-xs)',
+        background: 'var(--color-bg-primary)',
 
         svg: {
-          height: theme.spacing(4),
-          width: theme.spacing(4),
+          height: '16px',
+          width: '16px',
         },
       }}>
       <Tooltip

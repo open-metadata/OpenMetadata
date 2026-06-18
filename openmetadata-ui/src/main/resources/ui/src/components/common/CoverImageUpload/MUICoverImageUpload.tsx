@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Button, IconButton, Typography, useTheme } from '@mui/material';
+import { Box, Button, IconButton, Typography } from '@mui/material';
 import { RefreshCcw01, Trash01, UploadCloud01 } from '@untitledui/icons';
 import { useSnackbar } from 'notistack';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -47,7 +47,6 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
   acceptedFormats = DEFAULT_ACCEPTED_FORMATS,
   maxDimensions = DEFAULT_MAX_DIMENSIONS,
 }) => {
-  const theme = useTheme();
   const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
   const imageContainerRef = useRef<HTMLDivElement>(null);
@@ -394,8 +393,8 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
             borderRadius: '8px',
             overflow: 'hidden',
             border: error
-              ? `2px solid ${theme.palette.error?.main}`
-              : `1px solid ${theme.palette.grey?.[300]}`,
+              ? `2px solid var(--color-text-error-primary)`
+              : `1px solid var(--color-border-primary)`,
           }}
           tabIndex={isRepositioning ? 0 : -1}
           onKeyDown={handleRepositionKeyDown}>
@@ -443,7 +442,7 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: theme.palette.grey?.[100],
+                backgroundColor: 'var(--color-bg-tertiary)',
               }}>
               <Loader size="small" />
             </Box>
@@ -458,10 +457,10 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: theme.palette.grey?.[100],
+                backgroundColor: 'var(--color-bg-tertiary)',
               }}>
               <Typography
-                sx={{ color: theme.palette.error?.main }}
+                sx={{ color: 'var(--color-text-error-primary)' }}
                 variant="body2">
                 {t('message.failed-to-load-image')}
               </Typography>
@@ -516,9 +515,9 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
                   startIcon={<RefreshCcw01 style={{ fontSize: 16 }} />}
                   sx={{
                     pointerEvents: 'auto',
-                    color: theme.palette.primary?.main,
+                    color: 'var(--color-bg-brand-solid)',
                     '&:hover': {
-                      color: theme.palette.primary?.main,
+                      color: 'var(--color-bg-brand-solid)',
                     },
                   }}
                   variant="contained"
@@ -534,9 +533,9 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
                     size="small"
                     sx={{
                       pointerEvents: 'auto',
-                      color: theme.palette.primary?.main,
+                      color: 'var(--color-bg-brand-solid)',
                       '&:hover': {
-                        color: theme.palette.primary?.main,
+                        color: 'var(--color-bg-brand-solid)',
                       },
                     }}
                     variant="contained"
@@ -551,9 +550,9 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
                     size="small"
                     sx={{
                       pointerEvents: 'auto',
-                      color: theme.palette.primary?.main,
+                      color: 'var(--color-bg-brand-solid)',
                       '&:hover': {
-                        color: theme.palette.primary?.main,
+                        color: 'var(--color-bg-brand-solid)',
                       },
                     }}
                     variant="contained"
@@ -574,9 +573,9 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
                   startIcon={<UploadCloud01 style={{ fontSize: 16 }} />}
                   sx={{
                     pointerEvents: 'auto',
-                    color: theme.palette.primary?.main,
+                    color: 'var(--color-bg-brand-solid)',
                     '&:hover': {
-                      color: theme.palette.primary?.main,
+                      color: 'var(--color-bg-brand-solid)',
                     },
                   }}
                   variant="contained"
@@ -593,9 +592,9 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
                   size="small"
                   sx={{
                     pointerEvents: 'auto',
-                    color: theme.palette.primary?.main,
+                    color: 'var(--color-bg-brand-solid)',
                     '&:hover': {
-                      color: theme.palette.primary?.main,
+                      color: 'var(--color-bg-brand-solid)',
                     },
                   }}
                   variant="contained"
@@ -614,9 +613,9 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
                     height: 36,
                     width: 36,
                     pointerEvents: 'auto',
-                    color: theme.palette.primary?.main,
+                    color: 'var(--color-bg-brand-solid)',
                     '&:hover': {
-                      color: theme.palette.primary?.main,
+                      color: 'var(--color-bg-brand-solid)',
                     },
                   }}
                   onClick={(e) => {
@@ -633,7 +632,6 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
     },
     [
       error,
-      theme,
       isRepositioning,
       handleRepositionKeyDown,
       showImage,

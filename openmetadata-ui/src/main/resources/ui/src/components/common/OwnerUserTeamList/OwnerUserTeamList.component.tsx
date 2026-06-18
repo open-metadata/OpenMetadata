@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Divider, IconButton, useTheme } from '@mui/material';
+import { Box, Divider, IconButton } from '@mui/material';
 import classNames from 'classnames';
 import { ReactNode } from 'react';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -43,7 +43,6 @@ const OwnerUserTeamList = ({
   ownerDisplayName,
   placement = 'horizontal',
 }: OwnerUserTeamListProps) => {
-  const theme = useTheme();
   const showMultipleTypeTeam = owners.filter(
     (owner) => owner.type === OwnerType.TEAM
   );
@@ -76,7 +75,7 @@ const OwnerUserTeamList = ({
           orientation="vertical"
           sx={{
             margin: '0 10px',
-            background: theme.palette.allShades.blueGray[100],
+            background: '#EAECF5',
           }}
           variant="middle"
         />

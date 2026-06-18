@@ -201,4 +201,53 @@ describe('ResourcePlayerModal', () => {
       screen.getByText('message.unsupported-resource-type')
     ).toBeInTheDocument();
   });
+
+  it('should render without MUI ThemeProvider — no useTheme dependency', () => {
+    // After refactoring all theme.palette.* calls are replaced with static
+    // CSS custom properties and hex values. The component must not require
+    // a MUI ThemeProvider in the tree.
+    const resource = createMockResource('Video');
+
+    expect(() =>
+      render(
+        <ResourcePlayerModal open resource={resource} onClose={mockOnClose} />
+      )
+    ).not.toThrow();
+  });
+
+  it('should render maximize and close icon buttons', () => {
+    const resource = createMockResource('Video');
+    render(
+      <ResourcePlayerModal open resource={resource} onClose={mockOnClose} />
+    );
+
+    // Both buttons use static color 'var(--color-text-tertiary)' instead of
+    // theme.palette.allShades.gray[600] — verify they are visible.
+    expect(screen.getByTestId('maximize-button')).toBeInTheDocument();
+    expect(screen.getByTestId('close-resource-player')).toBeInTheDocument();
+  });
+
+  it('should render context chips with static border color when contexts exist', () => {
+    const resource = createMockResource('Video', {
+      contexts: [{ pageId: 'glossary' }],
+    });
+    render(
+      <ResourcePlayerModal open resource={resource} onClose={mockOnClose} />
+    );
+
+    // Context chips use static 'var(--color-border-secondary)' border instead
+    // of theme.palette.grey[200] — verify the chip label text is visible.
+    expect(screen.getByText('Glossary')).toBeInTheDocument();
+  });
+
+  it('should render the divider separator between date and duration', () => {
+    const resource = createMockResource('Video');
+    render(
+      <ResourcePlayerModal open resource={resource} onClose={mockOnClose} />
+    );
+
+    // The '|' separator uses static color '#A4A7AE' (gray[400]) instead of
+    // theme.palette.allShades.gray[400].
+    expect(screen.getByText('|')).toBeInTheDocument();
+  });
 });

@@ -10,8 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Theme } from '@mui/material';
 import type { Edge } from 'reactflow';
+
+interface EdgeThemeColors {
+  palette: {
+    primary: { main: string };
+    allShades: {
+      indigo: Record<number, string>;
+      error: Record<number, string>;
+    };
+  };
+}
 
 export interface EdgeStyle {
   stroke: string;
@@ -27,7 +36,7 @@ function calculateEdgeStyle(
   hasTracedContext: boolean,
   dqHighlightedEdges: Set<string>,
   selectedColumn: string | undefined,
-  theme: Theme,
+  theme: EdgeThemeColors,
   isColumnLineage: boolean,
   isColumnHighlighted: boolean,
   isEdgeHovered?: boolean
@@ -81,7 +90,7 @@ export function computeEdgeStyle(
   tracedColumns: Set<string>,
   dqHighlightedEdges: Set<string>,
   selectedColumn: string | undefined,
-  theme: Theme,
+  theme: EdgeThemeColors,
   isColumnLineage: boolean,
   sourceHandle?: string | null,
   targetHandle?: string | null,

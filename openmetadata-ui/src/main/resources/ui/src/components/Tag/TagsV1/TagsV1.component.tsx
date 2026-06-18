@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, useTheme } from '@mui/material';
+import { Tooltip } from '@mui/material';
 import { Tag, Typography } from 'antd';
 import classNames from 'classnames';
 import { useMemo } from 'react';
@@ -54,7 +54,6 @@ const TagsV1 = ({
   newLook,
   entityFqn,
 }: TagsV1Props) => {
-  const theme = useTheme();
   const color = useMemo(
     () => (isVersionPage ? undefined : tag.style?.color),
     [tag]
@@ -187,29 +186,26 @@ const TagsV1 = ({
         to={redirectLink}>
         <TagChip
           icon={
-            <AutomatedTag
-              color={theme.palette.allShades.brand[900]}
-              width={16}
-            />
+            <AutomatedTag color="var(--color-text-brand-primary)" width={16} />
           }
           label={tagName || ''}
           labelDataTestId={`tag-${tag.tagFQN}`}
           sx={{
             pl: 1.5,
-            color: theme.palette.allShades.brand[900],
-            borderColor: theme.palette.allShades.brand[100],
-            backgroundColor: theme.palette.allShades.brand[50],
+            color: 'var(--color-text-brand-primary)',
+            borderColor: 'var(--color-bg-brand-secondary)',
+            backgroundColor: 'var(--color-bg-brand-primary)',
             '&::before': {
               display: 'none',
             },
             '&:hover': {
-              backgroundColor: theme.palette.allShades.brand[50],
+              backgroundColor: 'var(--color-bg-brand-primary)',
             },
           }}
         />
       </Link>
     ),
-    [tagName, tag, redirectLink, theme]
+    [tagName, tag, redirectLink]
   );
 
   const tagChip = useMemo(

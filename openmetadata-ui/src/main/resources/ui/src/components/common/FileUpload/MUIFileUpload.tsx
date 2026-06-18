@@ -24,13 +24,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  FormControl,
-  FormLabel,
-  Typography,
-  useTheme,
-} from '@mui/material';
+import { Box, FormControl, FormLabel, Typography } from '@mui/material';
 import { UploadCloud01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { useSnackbar } from 'notistack';
@@ -60,7 +54,6 @@ const MUIFileUpload: FC<MUIFileUploadProps> = ({
   showFileName = true,
   uploadZoneSubtext,
 }) => {
-  const theme = useTheme();
   const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -256,9 +249,9 @@ const MUIFileUpload: FC<MUIFileUploadProps> = ({
             width: '100%',
             p: 0.5,
             border: '1px solid',
-            borderColor: theme.palette.allShades?.blueGray?.[100],
+            borderColor: '#EAECF5',
             borderRadius: 1,
-            backgroundColor: theme.palette.allShades?.gray?.[50],
+            backgroundColor: 'var(--color-bg-secondary)',
           }}>
           <Box
             aria-label={t('label.upload-file')}
@@ -271,15 +264,15 @@ const MUIFileUpload: FC<MUIFileUploadProps> = ({
               minHeight: uploadZoneHeight,
               border: `1px solid ${
                 isDragging
-                  ? theme.palette.primary?.main
+                  ? 'var(--color-bg-brand-solid)'
                   : error
-                  ? theme.palette.error?.main
-                  : theme.palette.allShades?.gray?.[200]
+                  ? 'var(--color-text-error-primary)'
+                  : 'var(--color-border-secondary)'
               }`,
               borderRadius: '8px',
               backgroundColor: isDragging
-                ? theme.palette.action?.hover
-                : theme.palette.background?.paper,
+                ? 'rgba(0,0,0,0.04)'
+                : 'var(--color-bg-primary)',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -316,7 +309,7 @@ const MUIFileUpload: FC<MUIFileUploadProps> = ({
                 }}>
                 <Loader />
                 <Typography
-                  sx={{ color: theme.palette.grey?.[600] }}
+                  sx={{ color: 'var(--color-text-tertiary)' }}
                   variant="body2">
                   {t('label.uploading')}
                 </Typography>
@@ -328,9 +321,9 @@ const MUIFileUpload: FC<MUIFileUploadProps> = ({
                     width: 26,
                     height: 26,
                     borderRadius: '4px',
-                    backgroundColor: theme.palette.background?.paper,
+                    backgroundColor: 'var(--color-bg-primary)',
                     border: '1px solid',
-                    borderColor: theme.palette.allShades?.blueGray?.[100],
+                    borderColor: '#EAECF5',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -340,7 +333,7 @@ const MUIFileUpload: FC<MUIFileUploadProps> = ({
                     style={{
                       width: 14,
                       height: 14,
-                      color: theme.palette.grey?.[600],
+                      color: 'var(--color-text-tertiary)',
                     }}
                   />
                 </Box>
@@ -349,7 +342,7 @@ const MUIFileUpload: FC<MUIFileUploadProps> = ({
                   <Box>
                     <Typography
                       sx={{
-                        color: theme.palette.primary?.main,
+                        color: 'var(--color-bg-brand-solid)',
                         fontWeight: 500,
                         display: 'inline',
                         fontSize: '14px',
@@ -360,7 +353,7 @@ const MUIFileUpload: FC<MUIFileUploadProps> = ({
                     </Typography>
                     <Typography
                       sx={{
-                        color: theme.palette.grey?.[700],
+                        color: 'var(--color-text-secondary)',
                         display: 'inline',
                         ml: 0.5,
                         fontSize: '14px',
@@ -373,7 +366,7 @@ const MUIFileUpload: FC<MUIFileUploadProps> = ({
 
                   <Typography
                     sx={{
-                      color: theme.palette.grey?.[600],
+                      color: 'var(--color-text-tertiary)',
                       fontSize: '12px',
                       lineHeight: '18px',
                     }}
@@ -401,10 +394,10 @@ const MUIFileUpload: FC<MUIFileUploadProps> = ({
                 p: 2,
                 border: '1px solid',
                 borderColor: error
-                  ? theme.palette.error?.main
-                  : theme.palette.allShades?.gray?.[200],
+                  ? 'var(--color-text-error-primary)'
+                  : 'var(--color-border-secondary)',
                 borderRadius: 1,
-                backgroundColor: theme.palette.background?.paper,
+                backgroundColor: 'var(--color-bg-primary)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
@@ -412,7 +405,7 @@ const MUIFileUpload: FC<MUIFileUploadProps> = ({
               {showFileName && (
                 <Typography
                   sx={{
-                    color: theme.palette.grey?.[900],
+                    color: 'var(--color-text-primary)',
                     fontSize: '14px',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
@@ -424,7 +417,7 @@ const MUIFileUpload: FC<MUIFileUploadProps> = ({
               )}
               <Typography
                 sx={{
-                  color: theme.palette.primary?.main,
+                  color: 'var(--color-bg-brand-solid)',
                   fontSize: '14px',
                   cursor: 'pointer',
                   '&:hover': {
@@ -444,8 +437,8 @@ const MUIFileUpload: FC<MUIFileUploadProps> = ({
         <Typography
           sx={{
             color: error
-              ? theme.palette.error?.main
-              : theme.palette.grey?.[600],
+              ? 'var(--color-text-error-primary)'
+              : 'var(--color-text-tertiary)',
             mt: 1,
             display: 'block',
           }}

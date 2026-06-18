@@ -25,7 +25,6 @@ import {
   TableRow,
   Tooltip,
   Typography,
-  useTheme,
 } from '@mui/material';
 import { defaultColors } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@untitledui/icons';
@@ -125,7 +124,6 @@ const ResourceRow = ({
   handleDelete: (record: LearningResource) => void;
 }) => {
   const { t } = useTranslation();
-  const theme = useTheme();
 
   return (
     <TableRow
@@ -154,8 +152,8 @@ const ResourceRow = ({
           <Typography
             noWrap
             sx={{
-              fontSize: theme.typography.body2.fontSize,
-              fontWeight: theme.typography.fontWeightMedium,
+              fontSize: '14px',
+              fontWeight: 500,
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               minWidth: 0,
@@ -184,7 +182,7 @@ const ResourceRow = ({
               overflow: 'hidden',
               display: 'flex',
               flexWrap: 'nowrap',
-              gap: theme.spacing(1.5),
+              gap: '6px',
               alignItems: 'center',
             }}>
             {record.categories?.slice(0, MAX_VISIBLE_TAGS).map((cat) => {
@@ -222,7 +220,7 @@ const ResourceRow = ({
                 borderRadius: '6px',
                 backgroundColor:
                   'var(--Component-colors-Utility-Brand-utility-brand-50, #EFF8FF)',
-                color: theme.palette.primary.main,
+                color: 'var(--color-bg-brand-solid)',
                 border: 'none',
               }}
             />
@@ -248,7 +246,7 @@ const ResourceRow = ({
               overflow: 'hidden',
               display: 'flex',
               flexWrap: 'nowrap',
-              gap: theme.spacing(1.5),
+              gap: '6px',
               alignItems: 'center',
             }}>
             {record.contexts?.slice(0, MAX_VISIBLE_CONTEXTS).map((ctx, i) => (
@@ -264,10 +262,10 @@ const ResourceRow = ({
                   minWidth: 0,
                   maxWidth: '100%',
                   borderRadius: '6px',
-                  border: `1px solid ${theme.palette.grey[200]}`,
-                  backgroundColor: theme.palette.grey[50],
-                  padding: theme.spacing(0.25, 0.75),
-                  color: theme.palette.grey[700],
+                  border: `1px solid var(--color-border-secondary)`,
+                  backgroundColor: 'var(--color-bg-secondary)',
+                  padding: '1px 3px',
+                  color: 'var(--color-text-secondary)',
                   '& .MuiChip-label': {
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
@@ -284,10 +282,10 @@ const ResourceRow = ({
               sx={{
                 flexShrink: 0,
                 borderRadius: '6px',
-                border: `1px solid ${theme.palette.grey[200]}`,
-                backgroundColor: theme.palette.grey[50],
-                padding: theme.spacing(0.25, 0.75),
-                color: theme.palette.grey[700],
+                border: `1px solid var(--color-border-secondary)`,
+                backgroundColor: 'var(--color-bg-secondary)',
+                padding: '1px 3px',
+                color: 'var(--color-text-secondary)',
               }}
             />
           )}
@@ -299,8 +297,8 @@ const ResourceRow = ({
         <Typography
           component="span"
           sx={{
-            color: theme.palette.grey[600],
-            fontSize: theme.typography.body2.fontSize,
+            color: 'var(--color-text-tertiary)',
+            fontSize: '14px',
           }}>
           {record.updatedAt
             ? DateTime.fromMillis(record.updatedAt).toFormat('LLL d, yyyy')
@@ -317,8 +315,8 @@ const ResourceRow = ({
               size="small"
               sx={{
                 borderRadius: '4px',
-                padding: theme.spacing(1),
-                border: `1px solid ${theme.palette.grey[200]}`,
+                padding: '4px',
+                border: `1px solid var(--color-border-secondary)`,
                 bgcolor: 'common.white',
                 '&:hover': {
                   bgcolor: 'common.white',
@@ -335,8 +333,8 @@ const ResourceRow = ({
               size="small"
               sx={{
                 borderRadius: '4px',
-                border: `1px solid ${theme.palette.grey[200]}`,
-                padding: theme.spacing(1),
+                border: `1px solid var(--color-border-secondary)`,
+                padding: '4px',
                 bgcolor: 'common.white',
                 '&:hover': {
                   bgcolor: 'common.white',
@@ -354,7 +352,6 @@ const ResourceRow = ({
 
 export const LearningResourcesPage: React.FC = () => {
   const { t } = useTranslation();
-  const theme = useTheme();
   const [searchText, setSearchText] = useState('');
   const [filterState, setFilterState] = useState<LearningResourceFilterState>(
     {}
@@ -456,7 +453,7 @@ export const LearningResourcesPage: React.FC = () => {
           minHeight: 0,
           overflow: 'hidden',
         }}>
-        <Box sx={{ flexShrink: 0, marginBottom: theme.spacing(2) }}>
+        <Box sx={{ flexShrink: 0, marginBottom: '8px' }}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Box>
 
@@ -467,8 +464,8 @@ export const LearningResourcesPage: React.FC = () => {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            marginTop: theme.spacing(1),
-            padding: theme.spacing(6),
+            marginTop: '4px',
+            padding: '24px',
             mb: 2,
             bgcolor: 'background.paper',
             boxShadow: 1,
@@ -479,25 +476,25 @@ export const LearningResourcesPage: React.FC = () => {
             sx={{
               display: 'flex',
               flexDirection: 'column',
-              gap: theme.spacing(2 / 3),
+              gap: '2.67px',
             }}>
             <Typography
               sx={{
-                color: theme.palette.grey[900],
-                fontFamily: theme.typography.fontFamily,
-                fontSize: theme.typography.body1.fontSize,
+                color: 'var(--color-text-primary)',
+                fontFamily: 'inherit',
+                fontSize: '16px',
                 fontWeight: 600,
-                lineHeight: theme.typography.body1.lineHeight,
+                lineHeight: '24px',
               }}>
               {t('label.learning-resource')}
             </Typography>
             <Typography
               sx={{
-                color: theme.palette.grey[600],
-                fontFamily: theme.typography.fontFamily,
-                fontSize: theme.typography.body2.fontSize,
+                color: 'var(--color-text-tertiary)',
+                fontFamily: 'inherit',
+                fontSize: '14px',
                 fontWeight: 400,
-                lineHeight: theme.typography.body2.lineHeight,
+                lineHeight: '20px',
               }}>
               {t('message.learning-resources-management-description')}
             </Typography>
@@ -505,17 +502,15 @@ export const LearningResourcesPage: React.FC = () => {
 
           <Button
             data-testid="create-resource"
-            startIcon={
-              <Plus style={{ fontSize: theme.typography.pxToRem(16) }} />
-            }
+            startIcon={<Plus style={{ fontSize: '1rem' }} />}
             sx={{
-              fontSize: theme.typography.body2.fontSize,
-              fontWeight: theme.typography.fontWeightMedium,
+              fontSize: '14px',
+              fontWeight: 500,
               color: defaultColors.white,
               borderRadius: '8px',
               border: `1px solid ${defaultColors.blue[600]}`,
               background: defaultColors.blue[600],
-              padding: theme.spacing(2, 3.5),
+              padding: '8px 14px',
               '&:hover': {
                 background: defaultColors.blue[600],
                 color: defaultColors.white,
@@ -538,7 +533,7 @@ export const LearningResourcesPage: React.FC = () => {
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            marginTop: theme.spacing(2.5),
+            marginTop: '10px',
             borderRadius: '12px',
             border: `1px solid ${defaultColors.blueGray[100]}`,
           }}>

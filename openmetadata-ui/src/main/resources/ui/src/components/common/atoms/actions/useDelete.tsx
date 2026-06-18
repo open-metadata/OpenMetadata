@@ -21,7 +21,6 @@ import {
   DialogTitle,
   IconButton,
   Typography,
-  useTheme,
 } from '@mui/material';
 import { Trash01 } from '@untitledui/icons';
 import { useCallback, useMemo, useState } from 'react';
@@ -76,7 +75,6 @@ export const useDelete = <
   onDeleteComplete,
   onCancel,
 }: UseDeleteConfig<T>) => {
-  const theme = useTheme();
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -180,7 +178,7 @@ export const useDelete = <
           color="error"
           sx={{
             '& .MuiBadge-badge': {
-              backgroundColor: theme.palette.allShades?.error?.[600],
+              backgroundColor: 'var(--color-text-error-primary)',
             },
           }}>
           <IconButton
@@ -188,7 +186,7 @@ export const useDelete = <
             disabled={selectedEntities.length === 0}
             size="small"
             sx={{
-              color: theme.palette.allShades?.gray?.[600],
+              color: 'var(--color-text-tertiary)',
             }}
             onClick={openModal}>
             <Trash01 size={20} />
@@ -200,13 +198,13 @@ export const useDelete = <
           disabled={selectedEntities.length === 0}
           size="small"
           sx={{
-            color: theme.palette.allShades?.gray?.[600],
+            color: 'var(--color-text-tertiary)',
           }}
           onClick={openModal}>
           <Trash01 size={20} />
         </IconButton>
       ),
-    [selectedEntities.length, openModal, theme.palette.allShades]
+    [selectedEntities.length, openModal]
   );
 
   const deleteModal = useMemo(
@@ -227,7 +225,7 @@ export const useDelete = <
           <Box
             sx={{
               alignItems: 'center',
-              backgroundColor: theme.palette.allShades?.error?.[50],
+              backgroundColor: 'var(--color-bg-error-primary)',
               borderRadius: '50%',
               display: 'flex',
               height: 48,
@@ -235,7 +233,7 @@ export const useDelete = <
               mb: 4,
               width: 48,
             }}>
-            <Trash01 color={theme.palette.allShades?.error?.[600]} size={24} />
+            <Trash01 color="var(--color-text-error-primary)" size={24} />
           </Box>
 
           <DialogTitle
@@ -329,7 +327,6 @@ export const useDelete = <
       isDeleting,
       isOpen,
       selectedEntities.length,
-      theme.palette.allShades,
     ]
   );
 

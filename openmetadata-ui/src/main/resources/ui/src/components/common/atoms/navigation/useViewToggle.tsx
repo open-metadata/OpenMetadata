@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, ButtonGroup, useTheme } from '@mui/material';
+import { Button, ButtonGroup } from '@mui/material';
 import { defaultColors } from '@openmetadata/ui-core-components';
 import { Grid01, Menu01 } from '@untitledui/icons';
 import { useCallback, useMemo, useState } from 'react';
@@ -55,8 +55,6 @@ export const useViewToggle = ({
   defaultView = 'table',
   views,
 }: UseViewToggleConfig = {}) => {
-  const theme = useTheme();
-
   const availableViews = useMemo<ViewMode[]>(
     () => (views && views.length > 0 ? views : ['table', 'card']),
     [views]
@@ -135,13 +133,9 @@ export const useViewToggle = ({
                 backgroundColor: isActive
                   ? `${defaultColors.blue[50]} !important`
                   : 'transparent',
-                color: isActive
-                  ? theme.palette.allShades?.brand?.[600]
-                  : 'inherit',
+                color: isActive ? 'var(--color-bg-brand-solid)' : 'inherit',
                 '& svg': {
-                  color: isActive
-                    ? theme.palette.allShades?.brand?.[600]
-                    : 'inherit',
+                  color: isActive ? 'var(--color-bg-brand-solid)' : 'inherit',
                 },
               }}
               title={mode}
@@ -153,7 +147,7 @@ export const useViewToggle = ({
         })}
       </ButtonGroup>
     ),
-    [availableViews, renderIcon, setView, theme, view]
+    [availableViews, renderIcon, setView, view]
   );
 
   return {

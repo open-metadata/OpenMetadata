@@ -19,7 +19,6 @@ import {
   Select,
   SelectProps,
   Typography,
-  useTheme,
 } from '@mui/material';
 import { isEmpty } from 'lodash';
 import { FC, memo, ReactNode, useMemo } from 'react';
@@ -50,7 +49,6 @@ const MUISelect: FC<MUISelectProps> = ({
   ...props
 }) => {
   const labelId = id ? `${id}-label` : 'mui-select-label';
-  const theme = useTheme();
 
   const optionsMap = useMemo(
     () => new Map(options.map((opt) => [opt.value, opt.label])),
@@ -84,9 +82,7 @@ const MUISelect: FC<MUISelectProps> = ({
         renderValue={(selected) => {
           if (isEmpty(selected)) {
             return placeholder ? (
-              <Typography color={theme.palette.grey[400]}>
-                {placeholder}
-              </Typography>
+              <Typography color="#A4A7AE">{placeholder}</Typography>
             ) : null;
           }
 

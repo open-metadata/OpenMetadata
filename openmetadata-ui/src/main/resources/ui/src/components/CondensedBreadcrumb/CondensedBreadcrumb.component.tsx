@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useTheme } from '@mui/material';
 import Breadcrumbs from '@mui/material/Breadcrumbs';
 import IconButton from '@mui/material/IconButton';
 import Link from '@mui/material/Link';
@@ -28,7 +27,6 @@ export const CondensedBreadcrumb: React.FC<CondensedBreadcrumbProps> = ({
   itemsAfterCollapse = 1,
   className,
 }) => {
-  const theme = useTheme();
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
   const open = Boolean(anchorEl);
 
@@ -61,7 +59,7 @@ export const CondensedBreadcrumb: React.FC<CondensedBreadcrumbProps> = ({
             color="inherit"
             href="#"
             key={item}
-            sx={{ fontSize: theme.spacing(2.5) }}
+            sx={{ fontSize: '10px' }}
             underline="hover"
             onClick={handleLinkClick}>
             {item}
@@ -98,7 +96,7 @@ export const CondensedBreadcrumb: React.FC<CondensedBreadcrumbProps> = ({
             color="inherit"
             href="#"
             key={item}
-            sx={{ fontSize: theme.spacing(2.5) }}
+            sx={{ fontSize: '10px' }}
             underline="hover"
             onClick={handleLinkClick}>
             {item}
@@ -117,7 +115,7 @@ export const CondensedBreadcrumb: React.FC<CondensedBreadcrumbProps> = ({
             color="inherit"
             href="#"
             key={`end-${item}`}
-            sx={{ fontSize: theme.spacing(2.5) }}
+            sx={{ fontSize: '10px' }}
             underline="hover"
             onClick={handleLinkClick}>
             {item}

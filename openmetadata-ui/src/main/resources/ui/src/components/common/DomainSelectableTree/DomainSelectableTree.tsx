@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button as MUIButton, useTheme } from '@mui/material';
+import { Button as MUIButton } from '@mui/material';
 import { Plus } from '@untitledui/icons';
 import { Button, Empty, Space, Spin, Tree, Typography } from 'antd';
 import Search from 'antd/lib/input/Search';
@@ -70,7 +70,6 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   showAllDomains = false,
   isClearable = true,
 }) => {
-  const theme = useTheme();
   const { t } = useTranslation();
   const [treeData, setTreeData] = useState<TreeListItem[]>([]);
   const [domains, setDomains] = useState<Domain[]>([]);
@@ -246,11 +245,11 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
                 ml: 7,
                 cursor: 'pointer',
                 fontSize: '14px',
-                color: theme.palette.primary.main,
-                fontWeight: theme.typography.fontWeightMedium,
+                color: 'var(--color-bg-brand-solid)',
+                fontWeight: 500,
                 textTransform: 'none',
                 '&:hover': {
-                  color: theme.palette.primary.dark,
+                  color: '#175CD3',
                   backgroundColor: 'transparent',
                 },
               }}

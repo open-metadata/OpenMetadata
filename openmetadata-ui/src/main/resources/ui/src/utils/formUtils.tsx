@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TooltipProps as MUITooltipProps } from '@mui/material/Tooltip';
 import { Toggle, ToggleProps } from '@openmetadata/ui-core-components';
 import {
   Alert,
@@ -135,9 +134,9 @@ export const getField = (field: FieldProp) => {
       helperTextType={helperTextType}
       isBeta={isBeta}
       label={label}
-      placement={props?.tooltipPlacement as MUITooltipProps['placement']}
+      placement={props?.tooltipPlacement as TooltipPlacement}
       showHelperText={showHelperText}
-      slotProps={props?.slotProps as Partial<MUITooltipProps>}
+      slotProps={props?.slotProps as Record<string, unknown>}
     />
   );
 

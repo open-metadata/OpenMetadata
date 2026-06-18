@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Theme } from '@mui/material';
 import { RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import type { Edge } from 'reactflow';
 import { Position, useNodes, useReactFlow, useViewport } from 'reactflow';
@@ -33,12 +32,22 @@ import { getEdgePathData } from '../utils/EntityLineageEdgeUtils';
 import { getEntityName } from '../utils/EntityNameUtils';
 import { useLineageStore } from './useLineageStore';
 
+interface EdgeThemeColors {
+  palette: {
+    primary: { main: string };
+    allShades: {
+      indigo: Record<number, string>;
+      error: Record<number, string>;
+    };
+  };
+}
+
 interface UseCanvasEdgeRendererProps {
   canvasRef: RefObject<HTMLCanvasElement>;
   edges: Edge[];
   hoverEdge?: Edge | null;
   dqHighlightedEdges: Set<string>;
-  theme: Theme;
+  theme: EdgeThemeColors;
   containerWidth: number;
   containerHeight: number;
 }

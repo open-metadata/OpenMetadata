@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { InputAdornment, TextField, useTheme } from '@mui/material';
+import { InputAdornment, TextField } from '@mui/material';
 import { SearchLg } from '@untitledui/icons';
 import { debounce } from 'lodash';
 import { useMemo, useState } from 'react';
@@ -27,7 +27,6 @@ interface SearchConfig {
 
 export const useSearch = (config: SearchConfig) => {
   const { t } = useTranslation();
-  const theme = useTheme();
   const [searchQuery, setSearchQuery] = useState(
     config.initialSearchQuery || ''
   );
@@ -65,7 +64,7 @@ export const useSearch = (config: SearchConfig) => {
               <InputAdornment position="start">
                 <SearchLg
                   style={{
-                    color: theme.palette.allShades?.gray?.[725],
+                    color: '#363636',
                     width: 16,
                     height: 16,
                   }}
@@ -79,9 +78,9 @@ export const useSearch = (config: SearchConfig) => {
           width: config.customStyles?.searchBoxWidth ?? 354,
           '& .MuiOutlinedInput-root': {
             width: '100%',
-            backgroundColor: theme.palette.allShades?.blueGray?.[40],
+            backgroundColor: '#FAFAFA',
             boxShadow: 'none !important',
-            border: `1px solid ${theme.palette.allShades?.blueGray?.[200]} !important`,
+            border: '1px solid #D5D9EB !important',
             borderRadius: '10px',
             '& .MuiOutlinedInput-input': {
               fontSize: '14px !important',
@@ -90,10 +89,10 @@ export const useSearch = (config: SearchConfig) => {
               border: 'none',
             },
             '&:hover': {
-              border: `1px solid ${theme.palette.allShades?.blueGray?.[200]} !important`,
+              border: '1px solid #D5D9EB !important',
             },
             '&.Mui-focused': {
-              border: `1px solid ${theme.palette.allShades?.blueGray?.[200]} !important`,
+              border: '1px solid #D5D9EB !important',
               outline: 'none',
             },
           },
@@ -102,7 +101,7 @@ export const useSearch = (config: SearchConfig) => {
         onChange={(e) => handleInputChange(e.target.value)}
       />
     ),
-    [searchQuery, config.searchPlaceholder, theme, t, handleInputChange]
+    [searchQuery, config.searchPlaceholder, t, handleInputChange]
   );
 
   return {

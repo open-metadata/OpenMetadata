@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, useAutocomplete, useTheme } from '@mui/material';
+import { Box, useAutocomplete } from '@mui/material';
 import { useTreeViewApiRef } from '@mui/x-tree-view/hooks';
 import { debounce } from 'lodash';
 import {
@@ -81,7 +81,6 @@ const MUIAsyncTreeSelect: FC<MUIAsyncTreeSelectProps> = ({
   onNodeCollapse,
   onSearch,
 }) => {
-  const theme = useTheme();
   const anchorRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const treeApiRef = useTreeViewApiRef();
@@ -570,7 +569,7 @@ const MUIAsyncTreeSelect: FC<MUIAsyncTreeSelectProps> = ({
 
       <TreeDropdown
         anchorEl={anchorRef.current}
-        borderColor={theme.palette.divider}
+        borderColor="var(--color-border-primary)"
         maxHeight={maxHeight}
         minWidth={minWidth}
         open={open}

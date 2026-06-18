@@ -224,4 +224,57 @@ describe('LearningResourceCard', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('No description added')).toBeInTheDocument();
   });
+
+  it('should render without MUI ThemeProvider — no useTheme dependency', () => {
+    // After refactoring, the component uses static color values instead of
+    // theme.palette.* calls, so it must render without any ThemeProvider in
+    // the tree.
+    expect(() =>
+      render(<LearningResourceCard resource={mockVideoResource} />)
+    ).not.toThrow();
+  });
+
+  it('should render the +N overflow badge when categories exceed the visible limit', () => {
+    render(
+      <LearningResourceCard resource={mockResourceWithMultipleCategories} />
+    );
+
+    const overflowBadge = screen.getByText('+2');
+
+    expect(overflowBadge).toBeInTheDocument();
+    // The badge uses static brand colors (var(--color-bg-brand-primary) /
+    // var(--color-bg-brand-secondary)) — not a theme.palette lookup.
+    // Verify it is rendered as a clickable span.
+    expect(overflowBadge.tagName).toBe('SPAN');
+  });
+
+  it('should render all visible category tags with correct labels', () => {
+    render(<LearningResourceCard resource={mockVideoResource} />);
+
+    // 'Discovery' label from LEARNING_CATEGORIES map — rendered with static
+    // category colors, not MUI palette.
+    expect(screen.getByText('Discovery')).toBeInTheDocument();
+  });
+
+  it('should render date when updatedAt is provided', () => {
+    render(<LearningResourceCard resource={mockVideoResource} />);
+
+    // The date text is rendered in a Typography using static color
+    // 'var(--color-text-tertiary)' instead of theme.palette.allShades.gray[600].
+    expect(
+      screen.getByText(/Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec/)
+    ).toBeInTheDocument();
+  });
+
+  it('should not render date separator when only date is present', () => {
+    const resourceWithoutDuration = {
+      ...mockVideoResource,
+      estimatedDuration: undefined,
+    };
+    render(<LearningResourceCard resource={resourceWithoutDuration} />);
+
+    // The '|' separator span uses static color '#EAECF5' (blueGray[100]).
+    // It should only appear when BOTH date AND duration are present.
+    expect(screen.queryByText('|')).not.toBeInTheDocument();
+  });
 });

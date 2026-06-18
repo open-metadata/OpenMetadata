@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button as MUIButton, useTheme } from '@mui/material';
+import { Button as MUIButton } from '@mui/material';
 import { Plus } from '@untitledui/icons';
 import { Button, Empty, Select, Space, Tree } from 'antd';
 import { AxiosError } from 'axios';
@@ -69,7 +69,6 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
   isClearable = true,
   open,
 }) => {
-  const theme = useTheme();
   const { t } = useTranslation();
   const [treeData, setTreeData] = useState<TreeListItem[]>([]);
   const [domains, setDomains] = useState<Domain[]>([]);
@@ -244,11 +243,11 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
                 ml: 7,
                 cursor: 'pointer',
                 fontSize: '14px',
-                color: theme.palette.primary.main,
-                fontWeight: theme.typography.fontWeightMedium,
+                color: 'var(--color-bg-brand-solid)',
+                fontWeight: 500,
                 textTransform: 'none',
                 '&:hover': {
-                  color: theme.palette.primary.dark,
+                  color: '#175CD3',
                   backgroundColor: 'transparent',
                 },
               }}

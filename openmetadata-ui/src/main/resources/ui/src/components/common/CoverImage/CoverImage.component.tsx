@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, useTheme } from '@mui/material';
+import { Box } from '@mui/material';
 import imageClassBase from '../../BlockEditor/Extensions/image/ImageClassBase';
 
 interface CoverImageProps {
@@ -19,7 +19,6 @@ interface CoverImageProps {
 }
 
 export const CoverImage = ({ imageUrl, position }: CoverImageProps) => {
-  const theme = useTheme();
   // Get authenticated image hook from ImageClassBase (paid version override)
   const authenticatedImageUrl = imageClassBase.getAuthenticatedImageUrl();
 
@@ -69,7 +68,7 @@ export const CoverImage = ({ imageUrl, position }: CoverImageProps) => {
             width: '100%',
             height: '100%',
             background: isLoading
-              ? theme.palette.grey[100]
+              ? 'var(--color-bg-tertiary)'
               : 'linear-gradient(271.49deg, #00D2FF -11.47%, #03A0FF 59.48%, #016AFB 115.84%)',
           }}
         />

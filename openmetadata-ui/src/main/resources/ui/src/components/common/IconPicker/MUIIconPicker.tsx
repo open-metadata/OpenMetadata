@@ -21,7 +21,6 @@ import {
   Tab,
   Tabs,
   TextField,
-  useTheme,
 } from '@mui/material';
 import { FC, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -47,7 +46,6 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
   customStyles,
   'data-testid': dataTestId,
 }) => {
-  const theme = useTheme();
   const { t } = useTranslation();
   const anchorRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -169,18 +167,18 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
           width: 34,
           height: 34,
           borderRadius: '4px',
-          backgroundColor: backgroundColor || theme.palette.primary?.main,
+          backgroundColor: backgroundColor || 'var(--color-bg-brand-solid)',
           color: 'white',
           cursor: disabled ? 'not-allowed' : 'pointer',
           transition: 'all 0.2s ease',
           '&:hover': {
             backgroundColor: disabled
               ? undefined
-              : backgroundColor || theme.palette.primary?.dark,
+              : backgroundColor || '#175CD3',
           },
           '&:focus-visible': {
             outline: `2px solid ${
-              backgroundColor || theme.palette.primary?.main
+              backgroundColor || 'var(--color-bg-brand-solid)'
             }`,
             outlineOffset: '2px',
           },
@@ -214,7 +212,7 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
               width: 400,
               maxHeight: 500,
               overflow: 'hidden',
-              border: `1px solid ${theme.palette.grey?.[300]}`,
+              border: `1px solid var(--color-border-primary)`,
               borderRadius: '8px',
               boxShadow:
                 '0px 12px 16px -4px rgba(10, 13, 18, 0.08), 0px 4px 6px -2px rgba(10, 13, 18, 0.03)',
@@ -222,7 +220,7 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
             {allowUrl && (
               <Tabs
                 sx={{
-                  borderBottom: `1px solid ${theme.palette.grey?.[200]}`,
+                  borderBottom: `1px solid var(--color-border-secondary)`,
                   minHeight: 42,
                   '& .MuiTabs-scroller': {
                     border: 'none !important',
@@ -261,7 +259,7 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
                       sx={{
                         fontSize: '0.875rem',
                         fontWeight: 500,
-                        color: theme.palette.grey?.[900],
+                        color: 'var(--color-text-primary)',
                       }}>
                       {t('label.default')}
                     </Box>
@@ -283,10 +281,10 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
                       backgroundColor: 'transparent',
                       color:
                         selectedIcon === resolvedIconName
-                          ? theme.palette.primary?.main
-                          : theme.palette.grey?.[700],
+                          ? 'var(--color-bg-brand-solid)'
+                          : 'var(--color-text-secondary)',
                       '&:hover': {
-                        backgroundColor: theme.palette.grey?.[100],
+                        backgroundColor: 'var(--color-bg-tertiary)',
                       },
                       mb: 2,
                     }}
@@ -312,7 +310,7 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
                       sx={{
                         fontSize: '0.875rem',
                         fontWeight: 500,
-                        color: theme.palette.grey?.[900],
+                        color: 'var(--color-text-primary)',
                         mb: 1.5,
                       }}>
                       {t('label.icon-plural')}
@@ -349,10 +347,10 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
                               transition: 'all 0.2s',
                               backgroundColor: 'transparent',
                               color: isSelected
-                                ? theme.palette.primary?.main
-                                : theme.palette.grey?.[700],
+                                ? 'var(--color-bg-brand-solid)'
+                                : 'var(--color-text-secondary)',
                               '&:hover': {
-                                backgroundColor: theme.palette.grey?.[100],
+                                backgroundColor: 'var(--color-bg-tertiary)',
                               },
                             }}
                             tabIndex={0}

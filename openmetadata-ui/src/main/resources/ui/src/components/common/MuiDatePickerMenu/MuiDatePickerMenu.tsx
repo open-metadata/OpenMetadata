@@ -18,7 +18,6 @@ import {
   IconButton,
   Menu,
   MenuItem,
-  useTheme,
 } from '@mui/material';
 import { ChevronDown, XClose } from '@untitledui/icons';
 import { isUndefined } from 'lodash';
@@ -55,8 +54,6 @@ const MuiDatePickerMenu = ({
   onClear,
   size = 'medium',
 }: MuiDatePickerMenuProps) => {
-  const theme = useTheme();
-
   const { t } = useTranslation();
 
   const translatedProfileFilterRange = useMemo(() => {
@@ -126,13 +123,13 @@ const MuiDatePickerMenu = ({
     () => ({
       '&.Mui-selected': {
         '&:hover': {
-          backgroundColor: theme.palette.primary.dark,
+          backgroundColor: '#175CD3',
         },
-        backgroundColor: theme.palette.primary.main,
-        color: theme.palette.primary.contrastText,
+        backgroundColor: 'var(--color-bg-brand-solid)',
+        color: '#ffffff',
       },
     }),
-    [theme.palette.primary]
+    []
   );
 
   const customRangeMenuItemStyles = useMemo(
@@ -141,12 +138,12 @@ const MuiDatePickerMenu = ({
       '&.Mui-selected': {
         ...menuItemStyles['&.Mui-selected'],
         '& .ant-picker-input > input': {
-          color: theme.palette.primary.contrastText,
+          color: '#ffffff',
         },
       },
       p: 0,
     }),
-    [menuItemStyles, theme.palette.primary.contrastText]
+    [menuItemStyles]
   );
 
   const handleMenuClick = useCallback(
@@ -255,15 +252,13 @@ const MuiDatePickerMenu = ({
         sx={{
           height: BUTTON_HEIGHTS[size],
           textTransform: 'none',
-          color: selectedTimeRangeKey
-            ? theme.palette.grey[900]
-            : theme.palette.grey[400],
+          color: selectedTimeRangeKey ? 'var(--color-text-primary)' : '#A4A7AE',
           fontWeight: selectedTimeRangeKey ? 600 : 400,
-          fontSize: theme.typography.pxToRem(12),
+          fontSize: '0.75rem',
           boxShadow: 'none',
-          border: `1px solid ${theme.palette.grey[200]}`,
+          border: `1px solid var(--color-border-secondary)`,
           '&:hover': {
-            border: `1px solid ${theme.palette.grey[200]}`,
+            border: `1px solid var(--color-border-secondary)`,
             boxShadow: 'none',
           },
         }}

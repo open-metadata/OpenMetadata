@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography, useTheme } from '@mui/material';
+import { Typography } from '@mui/material';
 import { Typography as AntTypography } from 'antd';
 import { startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -37,7 +37,6 @@ const FieldCard: React.FC<FieldCardProps> = ({
   isHighlighted = false,
 }) => {
   const { t } = useTranslation();
-  const theme = useTheme();
   const [isExpanded, setIsExpanded] = useState(false);
   const [shouldShowButton, setShouldShowButton] = useState(false);
   const [showAllTags, setShowAllTags] = useState(false);
@@ -294,7 +293,7 @@ const FieldCard: React.FC<FieldCardProps> = ({
             <span className="constraint-icon">{constraintIcon}</span>
           )}
           <Typography
-            color={theme.palette.grey[900]}
+            color="var(--color-text-primary)"
             data-testid={`field-name-${fieldName}`}
             fontSize="13px"
             fontWeight="600"
@@ -307,7 +306,7 @@ const FieldCard: React.FC<FieldCardProps> = ({
         </div>
         <Typography
           alignContent="center"
-          color={theme.palette.grey[700]}
+          color="var(--color-text-secondary)"
           data-testid={`data-type-text-${dataType}`}
           fontSize="12px"
           fontWeight="400"

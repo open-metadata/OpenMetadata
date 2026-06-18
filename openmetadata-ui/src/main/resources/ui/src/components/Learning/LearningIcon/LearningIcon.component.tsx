@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Button, useTheme } from '@mui/material';
+import { Box, Button } from '@mui/material';
 import { ArrowRight } from '@untitledui/icons';
 import { Popover } from 'antd';
 import React, { lazy, useCallback, useEffect, useState } from 'react';
@@ -35,7 +35,6 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
   className = '',
 }) => {
   const { t } = useTranslation();
-  const theme = useTheme();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [resourceCount, setResourceCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -80,12 +79,12 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
       sx={{
         display: 'flex',
         alignItems: 'center',
-        gap: theme.spacing(1),
+        gap: '4px',
       }}>
       <Box
         component="span"
         sx={{
-          fontSize: theme.typography.pxToRem(13),
+          fontSize: '0.8125rem',
           whiteSpace: 'nowrap',
         }}>
         {t('label.learn-how-this-feature-works')}
@@ -94,14 +93,14 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
         endIcon={<ArrowRight size={14} />}
         size="small"
         sx={{
-          borderRadius: theme.spacing(1.25),
-          border: `0.5px solid ${theme.palette.grey[300]}`,
-          background: theme.palette.background.paper,
-          boxShadow: theme.shadows[1],
-          color: theme.palette.text.secondary,
-          fontSize: theme.typography.body2.fontSize,
-          fontWeight: theme.typography.fontWeightMedium,
-          padding: theme.spacing(0.5, 1.25),
+          borderRadius: '5px',
+          border: `0.5px solid var(--color-border-primary)`,
+          background: 'var(--color-bg-primary)',
+          boxShadow: 'var(--shadow-xs)',
+          color: 'var(--color-text-secondary)',
+          fontSize: '14px',
+          fontWeight: 500,
+          padding: '2px 5px',
           minWidth: 0,
         }}
         variant="text"
@@ -116,10 +115,10 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
       <Popover
         content={popoverContent}
         overlayInnerStyle={{
-          borderRadius: theme.shape.borderRadius,
-          background: `linear-gradient(180deg, ${theme.palette.grey[50]} 0%, ${theme.palette.grey[100]} 100%)`,
-          boxShadow: theme.shadows[2],
-          padding: theme.spacing(0.5, 1.25),
+          borderRadius: '8px',
+          background: `linear-gradient(180deg, var(--color-bg-secondary) 0%, var(--color-bg-tertiary) 100%)`,
+          boxShadow: 'var(--shadow-sm)',
+          padding: '2px 5px',
         }}
         placement="bottomLeft"
         showArrow={false}
@@ -133,14 +132,14 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
             alignItems: 'center',
             verticalAlign: 'middle',
             position: 'relative',
-            borderRadius: theme.spacing(2),
-            backgroundColor: theme.palette.primary.light + '1A',
-            padding: theme.spacing(0.5),
+            borderRadius: '8px',
+            backgroundColor: 'rgba(83, 177, 253, 0.1)',
+            padding: '2px',
             height: 'fit-content',
-            color: theme.palette.primary.main,
+            color: 'var(--color-bg-brand-solid)',
             transition: 'all 0.2s ease',
             '&:hover': {
-              backgroundColor: theme.palette.primary.light + '33',
+              backgroundColor: 'rgba(83, 177, 253, 0.2)',
             },
           }}
           onClick={handleClick}>
