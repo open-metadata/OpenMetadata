@@ -10,11 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
+import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage, uuid } from '../../utils/common';
+import { descriptionBox, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
 const INTAKE_FORMS_URL = '/settings/governance/intake-forms';
@@ -733,6 +735,329 @@ test.describe(
         );
         await afterAction();
       });
+    });
+  }
+);
+
+// -----------------------------------------------------------------------------
+// Domain intake forms — intake forms support Domain, DataProduct and
+// GlossaryTerm, all enforced by IntakeFormValidator in their repositories. The
+// Domain create form is AddDomainForm rendered with type=DOMAIN from the
+// Domains listing page; these tests mirror the DataProduct coverage for Domain.
+// -----------------------------------------------------------------------------
+
+const DOMAIN_TYPE = 'Aggregate';
+
+const openAddDomainForm = async (page: Page) => {
+  await sidebarClick(page, SidebarItem.DOMAIN);
+  await waitForAllLoadersToDisappear(page);
+  await page.getByTestId('add-domain').click();
+  await expect(page.getByTestId('form-heading')).toBeVisible();
+};
+
+const fillDomainRequiredBasics = async (page: Page, name: string) => {
+  await page.locator('#root\\/name').fill(name);
+  await page.locator(descriptionBox).first().fill('Playwright intake domain');
+  await page.getByRole('combobox', { name: 'Domain Type' }).click();
+  await page.getByRole('option', { name: DOMAIN_TYPE }).click();
+};
+
+const expectNoDomainCreatePost = async (page: Page) => {
+  let postFired = false;
+  const listener = (r: import('@playwright/test').Response) => {
+    if (
+      r.url().endsWith('/api/v1/domains') &&
+      r.request().method() === 'POST'
+    ) {
+      postFired = true;
+    }
+  };
+  page.on('response', listener);
+  await page.getByTestId('save-btn').click();
+  await expect(async () => {
+    expect(postFired).toBe(false);
+  }).toPass({ timeout: 3000, intervals: [300] });
+  page.off('response', listener);
+};
+
+test.describe(
+  'IntakeForm — Domain create enforcement',
+  { tag: ['@Governance'] },
+  () => {
+    test.describe.configure({ mode: 'serial' });
+
+    const stringPropName = `pwDomainString${uuid()}`;
+
+    test.beforeAll('Clean slate + custom property', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await ensureNoIntakeForm(apiContext, DOMAIN_INTAKE_NAME);
+      await ensureStringCustomProperty(apiContext, 'domain', stringPropName);
+      await afterAction();
+    });
+
+    test.afterEach('Reset intake form', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await ensureNoIntakeForm(apiContext, DOMAIN_INTAKE_NAME);
+      await afterAction();
+    });
+
+    test.afterAll('Tear down', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await ensureNoIntakeForm(apiContext, DOMAIN_INTAKE_NAME);
+      await afterAction();
+    });
+
+    test('admin can create an Intake Form for Domain via the UI', async ({
+      page,
+    }) => {
+      test.slow();
+      await redirectToHomePage(page);
+      await page.goto(INTAKE_FORMS_URL);
+      await waitForAllLoadersToDisappear(page);
+
+      await page.getByTestId('add-intake-form').click();
+      const menuItem = page
+        .getByRole('menu')
+        .getByRole('menuitem', { name: /^Domain$/ });
+      await expect(menuItem).toBeVisible();
+      await menuItem.click();
+
+      await expect(
+        page.getByTestId('intake-form-designer-modal')
+      ).toBeVisible();
+
+      await page.getByTestId('require-displayName').click();
+      await page.getByTestId('require-tags').click();
+
+      const createResponse = page.waitForResponse(
+        (r) =>
+          r.url().endsWith('/api/v1/governance/intakeForms') &&
+          r.request().method() === 'POST' &&
+          r.status() === 201
+      );
+      await page.getByTestId('intake-form-submit').click();
+      const body = await (await createResponse).json();
+
+      expect(body.entityType).toBe(DOMAIN_INTAKE_NAME);
+      expect(body.requiredFields).toHaveLength(2);
+    });
+
+    test('"Domain" option is disabled when a form already exists', async ({
+      browser,
+      page,
+    }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      const res = await apiContext.post('/api/v1/governance/intakeForms', {
+        data: {
+          name: DOMAIN_INTAKE_NAME,
+          displayName: 'Domain Intake Form',
+          entityType: 'domain',
+          enabled: true,
+          requiredFields: [],
+        },
+      });
+      expect(res.status()).toBe(201);
+      await afterAction();
+
+      await redirectToHomePage(page);
+      await page.goto(INTAKE_FORMS_URL);
+      await waitForAllLoadersToDisappear(page);
+
+      await page.getByTestId('add-intake-form').click();
+      const menu = page.getByRole('menu');
+      await expect(menu.getByText(/Domain.*already configured/i)).toBeVisible();
+      await expect(
+        menu.getByRole('menuitem').filter({ hasText: /Domain/ })
+      ).toHaveAttribute('aria-disabled', 'true');
+    });
+
+    test('intake form with required field blocks Domain create when missing', async ({
+      browser,
+      page,
+    }) => {
+      test.slow();
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      const seed = await apiContext.post('/api/v1/governance/intakeForms', {
+        data: {
+          name: DOMAIN_INTAKE_NAME,
+          displayName: 'Domain Intake Form',
+          entityType: 'domain',
+          enabled: true,
+          requiredFields: [
+            {
+              fieldPath: 'displayName',
+              fieldLabel: 'Display Name',
+              fieldKind: 'native',
+            },
+          ],
+        },
+      });
+      expect(seed.status()).toBe(201);
+      await afterAction();
+
+      await redirectToHomePage(page);
+      await openAddDomainForm(page);
+
+      await test.step('Display Name is marked required by the intake form', async () => {
+        await expect(
+          page.locator('[id="root/displayName-label"]').getByText('*')
+        ).toBeVisible();
+      });
+
+      await test.step('Client blocks submit; backend also rejects via API', async () => {
+        await fillDomainRequiredBasics(page, `intake-domain-${uuid()}`);
+        await expectNoDomainCreatePost(page);
+
+        const { apiContext: api2, afterAction: after2 } =
+          await performAdminLogin(browser);
+        const res = await api2.post('/api/v1/domains', {
+          data: {
+            name: `intake-domain-api-${uuid()}`,
+            description: 'Missing display name should be rejected by backend',
+            domainType: DOMAIN_TYPE,
+          },
+        });
+        expect(res.status()).toBe(400);
+        expect((await res.text()).toLowerCase()).toContain('display name');
+        await after2();
+      });
+    });
+
+    test('required custom property renders and blocks Domain create when empty', async ({
+      browser,
+      page,
+    }) => {
+      test.slow();
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      const seed = await apiContext.post('/api/v1/governance/intakeForms', {
+        data: {
+          name: DOMAIN_INTAKE_NAME,
+          entityType: 'domain',
+          enabled: true,
+          requiredFields: [
+            {
+              fieldPath: `extension.${stringPropName}`,
+              fieldLabel: stringPropName,
+              fieldKind: 'customProperty',
+            },
+          ],
+        },
+      });
+      expect(seed.status()).toBe(201);
+      await afterAction();
+
+      await redirectToHomePage(page);
+      await openAddDomainForm(page);
+
+      await expect(
+        page.getByTestId(`extension-${stringPropName}`)
+      ).toBeVisible();
+
+      await fillDomainRequiredBasics(page, `intake-domain-cp-${uuid()}`);
+      await expectNoDomainCreatePost(page);
+    });
+  }
+);
+
+// Domain entity-reference custom property — isolated in its own describe so the
+// freeSolo MUIUserTeamSelect Autocomplete gets a fresh page; its async listbox
+// wedges when the component is reused across a shared serial context (same
+// reason the DataProduct entity-ref test above lives on its own).
+test.describe(
+  'IntakeForm — Domain entity-reference custom property E2E',
+  { tag: ['@Governance'] },
+  () => {
+    const refPropName = `pwDomainRef${uuid()}`;
+    const createdDomainNames: string[] = [];
+
+    test.beforeAll(
+      'Clean slate + entity-ref custom property',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        await ensureNoIntakeForm(apiContext, DOMAIN_INTAKE_NAME);
+        await ensureEntityReferenceCustomProperty(
+          apiContext,
+          'domain',
+          refPropName,
+          ['user']
+        );
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Tear down', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await ensureNoIntakeForm(apiContext, DOMAIN_INTAKE_NAME);
+      for (const name of createdDomainNames) {
+        await apiContext.delete(
+          `/api/v1/domains/name/${encodeURIComponent(
+            name
+          )}?hardDelete=true&recursive=true`
+        );
+      }
+      await afterAction();
+    });
+
+    test('pick admin user → Domain create succeeds with correct extension payload', async ({
+      browser,
+      page,
+    }) => {
+      test.slow();
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      const seed = await apiContext.post('/api/v1/governance/intakeForms', {
+        data: {
+          name: DOMAIN_INTAKE_NAME,
+          entityType: 'domain',
+          enabled: true,
+          requiredFields: [
+            {
+              fieldPath: `extension.${refPropName}`,
+              fieldLabel: 'Domain Steward',
+              fieldKind: 'customProperty',
+            },
+          ],
+        },
+      });
+      expect(seed.status()).toBe(201);
+      await afterAction();
+
+      await redirectToHomePage(page);
+      await openAddDomainForm(page);
+
+      await fillDomainRequiredBasics(page, `intake-domain-ref-${uuid()}`);
+
+      const steward = page
+        .getByRole('combobox', { name: 'Domain Steward' })
+        .or(page.getByRole('textbox', { name: 'Domain Steward' }))
+        .first();
+      await expect(steward).toBeVisible({ timeout: 15000 });
+      await steward.click();
+      await steward.fill('admin');
+
+      const listbox = page.getByRole('listbox');
+      await expect(listbox).toBeVisible({ timeout: 30000 });
+      await listbox
+        .getByRole('option')
+        .filter({ hasText: /admin/i })
+        .first()
+        .click();
+
+      const createResponse = page.waitForResponse(
+        (r) =>
+          r.url().endsWith('/api/v1/domains') && r.request().method() === 'POST'
+      );
+      await page.getByTestId('save-btn').click();
+      const response = await createResponse;
+
+      expect(response.status()).toBe(201);
+      const body = await response.json();
+      createdDomainNames.push(body.name);
+
+      const ref = body.extension[refPropName];
+      expect(ref).toBeDefined();
+      expect(Array.isArray(ref)).toBe(false);
+      expect(ref.type).toBe('user');
+      expect(typeof ref.id).toBe('string');
     });
   }
 );
