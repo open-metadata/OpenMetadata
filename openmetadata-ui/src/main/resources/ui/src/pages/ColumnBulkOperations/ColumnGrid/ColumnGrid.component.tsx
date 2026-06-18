@@ -86,7 +86,7 @@ import {
   TagSource,
 } from '../../../generated/type/tagLabel';
 import { bulkUpdateColumnsAsync } from '../../../rest/columnAPI';
-import { formatClientContent } from '../../../utils/BlockEditorPureUtils';
+import { formatContent } from '../../../utils/BlockEditorUtils';
 import { getTableFQNFromColumnFQN } from '../../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { stringToDOMElement } from '../../../utils/StringUtils';
@@ -248,7 +248,7 @@ const getDescriptionPreview = (description?: string): string => {
   }
 
   return (
-    stringToDOMElement(formatClientContent(description)).textContent ?? ''
+    stringToDOMElement(formatContent(description, 'client')).textContent ?? ''
   ).slice(0, 100);
 };
 
