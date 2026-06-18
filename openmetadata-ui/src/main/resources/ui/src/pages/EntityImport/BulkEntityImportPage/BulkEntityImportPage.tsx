@@ -79,9 +79,7 @@ import {
   getCsvDocumentation,
 } from '../../../rest/csvAPI';
 import {
-  COLUMNS_WIDTH,
   getCsvHeaderKey,
-  getCSVStringFromColumnsAndDataSource,
   getEntityColumnsAndDataSourceFromCSV,
   getImportOperation,
   getImportOperationRowClass,
@@ -90,6 +88,10 @@ import {
   IMPORT_OPERATION_COLUMN_KEY,
   isMetricBulkEditHiddenColumn,
 } from '../../../utils/CSV/CSV.utils';
+import {
+  COLUMNS_WIDTH,
+  getCSVStringFromColumnsAndDataSource,
+} from '../../../utils/CSV/CSVPureUtils';
 import csvUtilsClassBase from '../../../utils/CSV/CSVUtilsClassBase';
 import entityBulkEditConfigClassBase, {
   BulkEditListingScope,

@@ -731,13 +731,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
                 .NaturalLanguageSearchConfiguration();
     nlSearch.setSemanticSearchEnabled(true);
     nlSearch.setEnabled(true);
-    nlSearch.setEmbeddingProvider("djl");
-
-    org.openmetadata.schema.service.configuration.elasticsearch.Djl djlConfig =
-        new org.openmetadata.schema.service.configuration.elasticsearch.Djl();
-    djlConfig.setEmbeddingModel(
-        "ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2");
-    nlSearch.setDjl(djlConfig);
     config.setNaturalLanguageSearch(nlSearch);
     return config;
   }
@@ -795,19 +788,26 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
    * provider, so the Company Context pill-extraction pipeline runs deterministically end to end.
    */
   private static void configureLlm(OpenMetadataApplicationConfig config) {
+    LLMConfiguration llm =
+        new LLMConfiguration()
+            .withEmbeddings(
+                new org.openmetadata.schema.configuration.LLMEmbeddingsConfig()
+                    .withProvider(
+                        org.openmetadata.schema.configuration.LLMEmbeddingsConfig.Provider.DJL)
+                    .withDjl(
+                        new org.openmetadata.schema.configuration.LLMDjlEmbeddingConfig()
+                            .withEmbeddingModel(
+                                "ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2")));
     if (LLM_STUB_SERVER != null) {
       LLMOpenAIConfig openai =
           new LLMOpenAIConfig()
               .withApiKey("integration-test")
               .withModelId("stub-model")
               .withEndpoint(LLM_STUB_SERVER.baseUrl());
-      config.setLlmConfiguration(
-          new LLMConfiguration()
-              .withEnabled(true)
-              .withProvider(LLMProvider.OPENAI)
-              .withOpenai(openai));
+      llm.withEnabled(true).withProvider(LLMProvider.OPENAI).withOpenai(openai);
       LOG.info("LLM completion configured against stub endpoint {}", LLM_STUB_SERVER.baseUrl());
     }
+    config.setLlmConfiguration(llm);
   }
 
   private void cleanup() {

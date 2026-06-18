@@ -63,7 +63,6 @@ import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHe
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { DashboardDetailsProps } from './DashboardDetails.interface';
-
 const DashboardDetails = ({
   updateDashboardDetailsState,
   dashboardDetails,

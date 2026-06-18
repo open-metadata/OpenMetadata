@@ -55,7 +55,7 @@ import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePag
 import {
   getExploreQueryFilterMust,
   getSelectedValuesFromQuickFilter,
-} from '../../utils/ExploreUtils';
+} from '../../utils/ExplorePureUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { showSuccessToast } from '../../utils/ToastUtils';
 import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
@@ -78,7 +78,6 @@ import { ReactComponent as IconAscending } from './../../assets/svg/ic-ascending
 import { ReactComponent as IconDescending } from './../../assets/svg/ic-descending.svg';
 import './exploreV1.less';
 import { IndexNotFoundBanner } from './IndexNotFoundBanner';
-
 const EntitySummaryPanel = withSuspenseFallback(
   lazy(
     () =>

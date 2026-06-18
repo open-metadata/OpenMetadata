@@ -90,7 +90,7 @@ import { formatTeamsResponse, formatUsersResponse } from '../APIUtils';
 import { getEntityName } from '../EntityNameUtils';
 import Fqn from '../Fqn';
 import { t } from '../i18next/LocalUtil';
-import { getTermQuery } from '../SearchUtils';
+import { getTermQuery } from '../SearchPureUtils';
 import { removeOuterEscapes } from '../StringUtils';
 import { isSystemClassificationTagFqn } from './CSV.utils';
 import {

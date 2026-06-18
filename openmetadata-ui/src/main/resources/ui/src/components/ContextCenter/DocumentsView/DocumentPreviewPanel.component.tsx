@@ -24,7 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getListContextMemories } from '../../../rest/contextMemoryAPI';
-import { formatBytes } from '../../../utils/ContextCenterUtils';
+import { formatBytes } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';

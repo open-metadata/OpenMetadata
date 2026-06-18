@@ -5,6 +5,7 @@ import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.teams.User;
@@ -30,6 +31,7 @@ public class GenericBackgroundWorker implements Managed {
   private final JobHandlerRegistry handlerRegistry;
   private final Semaphore workerSlots = new Semaphore(WORKER_POOL_SIZE);
   private volatile boolean running = true;
+  private Thread pollerThread;
   private ExecutorService workerPool;
 
   public GenericBackgroundWorker(JobDAO jobDao, JobHandlerRegistry handlerRegistry) {
@@ -40,8 +42,9 @@ public class GenericBackgroundWorker implements Managed {
   @Override
   public void start() {
     LOG.info("Starting background job worker with {} executor threads", WORKER_POOL_SIZE);
+    running = true;
     workerPool = createWorkerPool();
-    Thread pollerThread = new Thread(this::runWorker, "background-job-poller");
+    pollerThread = new Thread(this::runWorker, "background-job-poller");
     pollerThread.setDaemon(true);
     pollerThread.start();
   }
@@ -49,8 +52,26 @@ public class GenericBackgroundWorker implements Managed {
   @Override
   public void stop() {
     running = false;
+    if (pollerThread != null) {
+      pollerThread.interrupt();
+      try {
+        pollerThread.join(TimeUnit.SECONDS.toMillis(5));
+        if (pollerThread.isAlive()) {
+          LOG.warn("Background job poller did not terminate within timeout.");
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
     if (workerPool != null) {
-      workerPool.shutdown();
+      workerPool.shutdownNow();
+      try {
+        if (!workerPool.awaitTermination(5, TimeUnit.SECONDS)) {
+          LOG.warn("Background job worker pool did not terminate within timeout.");
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
     }
   }
 
@@ -81,7 +102,12 @@ public class GenericBackgroundWorker implements Managed {
       } catch (Exception e) {
         LOG.error("Unexpected error in background job worker: {}", e.getMessage(), e);
         backoff = Math.min(backoff * 5, MAX_BACKOFF_SECONDS); // Exponential backoff with max limit
-        sleep(backoff);
+        try {
+          sleep(backoff);
+        } catch (InterruptedException interruptedException) {
+          Thread.currentThread().interrupt();
+          running = false;
+        }
       }
     }
 
@@ -96,8 +122,11 @@ public class GenericBackgroundWorker implements Managed {
     workerSlots.acquire();
     boolean slotHandedToTask = false;
     try {
+      if (!running) {
+        return false;
+      }
       Optional<BackgroundJob> jobOpt = jobDao.fetchPendingJob();
-      if (jobOpt.isPresent() && jobDao.claimPendingJob(jobOpt.get().getId()) > 0) {
+      if (running && jobOpt.isPresent() && jobDao.claimPendingJob(jobOpt.get().getId()) > 0) {
         BackgroundJob job = jobOpt.get();
         workerPool.submit(() -> runClaimedJob(job));
         slotHandedToTask = true;
@@ -180,13 +209,8 @@ public class GenericBackgroundWorker implements Managed {
         e);
   }
 
-  private void sleep(int seconds) {
-    try {
-      Thread.sleep(seconds * 1000L);
-    } catch (InterruptedException ie) {
-      LOG.error("Worker interrupted during sleep");
-      Thread.currentThread().interrupt();
-    }
+  private void sleep(int seconds) throws InterruptedException {
+    Thread.sleep(seconds * 1000L);
   }
 
   private void sendJobStatusUpdate(BackgroundJob job) {
