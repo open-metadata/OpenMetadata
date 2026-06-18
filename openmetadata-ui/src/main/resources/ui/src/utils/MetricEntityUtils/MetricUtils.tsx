@@ -10,10 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export {
-  getMetricExpressionLanguageName,
-  getSortedOptions,
-} from './MetricPureUtils';
 
 import { lazy, Suspense } from 'react';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';

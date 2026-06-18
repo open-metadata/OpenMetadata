@@ -17,5 +17,6 @@ public class Migration extends MigrationProcessImpl {
     initializeWorkflowHandler();
     MigrationUtil migrationUtil = new MigrationUtil(handle);
     migrationUtil.runTaskWorkflowCutoverMigration();
+    migrationUtil.addTaskResourceToMentionAlerts();
   }
 }

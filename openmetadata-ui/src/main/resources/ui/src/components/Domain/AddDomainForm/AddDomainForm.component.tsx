@@ -81,9 +81,9 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
 import { showNotistackError } from '../../../utils/NotistackUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
-import { getTermQuery } from '../../../utils/SearchUtils';
+import { getTermQuery } from '../../../utils/SearchPureUtils';
 import tagClassBase from '../../../utils/TagClassBase';
-import { getTagDisplay } from '../../../utils/TagsUtils';
+import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   AVAILABLE_ICONS,
@@ -99,7 +99,6 @@ import {
   DomainFormSelectItem,
   DomainFormValues,
 } from './AddDomainForm.interface';
-
 const COVER_IMAGE_ACCEPTED_TYPES = [
   'image/svg+xml',
   'image/png',

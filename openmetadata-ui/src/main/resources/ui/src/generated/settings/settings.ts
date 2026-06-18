@@ -581,6 +581,12 @@ export interface PipelineServiceClientConfiguration {
      */
     namespaceToServiceMapping?: { [key: string]: string };
     /**
+     * Set how owners from OpenLineage job ownership facets update Pipeline owners. In replace
+     * mode, resolved owners from the current event replace existing owners. In append mode,
+     * resolved owners are appended to active existing Pipeline owners.
+     */
+    ownershipUpdateMode?: OwnershipUpdateMode;
+    /**
      * List of allowed origins for CORS on OAuth endpoints. Use specific origins for production
      * security. Wildcard (*) is NOT recommended.
      */
@@ -2201,18 +2207,6 @@ export enum MetricType {
  */
 export interface NaturalLanguageSearch {
     /**
-     * AWS Bedrock configuration for natural language processing
-     */
-    bedrock?: Bedrock;
-    /**
-     * Embedding generation using Deep Java Library (DJL)
-     */
-    djl?: Djl;
-    /**
-     * The provider to use for generating vector embeddings (e.g., bedrock, openai, google, djl).
-     */
-    embeddingProvider?: string;
-    /**
      * Enable or disable natural language search
      */
     enabled?: boolean;
@@ -2221,10 +2215,6 @@ export interface NaturalLanguageSearch {
      */
     filterExtractor?: FilterExtractor;
     /**
-     * Google Gemini configuration for embedding generation via the Generative Language API.
-     */
-    google?: Google;
-    /**
      * Hybrid search runtime tuning combining BM25 keyword and KNN semantic queries.
      */
     hybridSearch?: HybridSearch;
@@ -2232,16 +2222,6 @@ export interface NaturalLanguageSearch {
      * Weight for BM25 keyword search results in hybrid RRF pipeline (0.0-1.0)
      */
     keywordWeight?: number;
-    /**
-     * Maximum number of concurrent embedding and NLQ provider requests. Controls the semaphore
-     * used to throttle calls to the providers and prevent overwhelming HTTP/2 connection limits.
-     */
-    maxConcurrentRequests?: number;
-    /**
-     * OpenAI configuration for embedding generation. Supports both OpenAI and Azure OpenAI
-     * endpoints.
-     */
-    openai?: Openai;
     /**
      * Fully qualified class name of the NLQService implementation to use
      */
@@ -2254,93 +2234,6 @@ export interface NaturalLanguageSearch {
      * Weight for semantic vector search results in hybrid RRF pipeline (0.0-1.0)
      */
     semanticWeight?: number;
-}
-
-/**
- * AWS Bedrock configuration for natural language processing
- */
-export interface Bedrock {
-    /**
-     * AWS credentials configuration for Bedrock service
-     */
-    awsConfig?: AWSBaseConfig;
-    /**
-     * Dimension of the embedding vector
-     */
-    embeddingDimension?: number;
-    /**
-     * Bedrock embedding model identifier to use for vector search
-     */
-    embeddingModelId?: string;
-    /**
-     * Maximum tokens the Bedrock model is allowed to generate.
-     */
-    maxTokens?: number;
-    /**
-     * Bedrock model identifier to use for query transformation
-     */
-    modelId?: string;
-    /**
-     * Sampling temperature for Bedrock requests.
-     */
-    temperature?: number;
-    /**
-     * Bedrock InvokeModel API call timeout in seconds.
-     */
-    timeoutSeconds?: number;
-}
-
-/**
- * AWS credentials configuration for Bedrock service
- *
- * Base AWS configuration for authentication. Supports static credentials, IAM roles, and
- * default credential provider chain.
- */
-export interface AWSBaseConfig {
-    /**
-     * AWS Access Key ID. Falls back to default credential provider chain if not set.
-     */
-    accessKeyId?: string;
-    /**
-     * ARN of IAM role to assume for cross-account access.
-     */
-    assumeRoleArn?: string;
-    /**
-     * Session name for assumed role.
-     */
-    assumeRoleSessionName?: string;
-    /**
-     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
-     * (environment variables, instance profile, etc.). Defaults to false for backward
-     * compatibility.
-     */
-    enabled?: boolean;
-    /**
-     * Custom endpoint URL for AWS-compatible services (MinIO, LocalStack).
-     */
-    endpointUrl?: string;
-    /**
-     * AWS Region (e.g., us-east-1). Required when AWS authentication is enabled.
-     */
-    region?: string;
-    /**
-     * AWS Secret Access Key. Falls back to default credential provider chain if not set.
-     */
-    secretAccessKey?: string;
-    /**
-     * AWS Session Token for temporary credentials.
-     */
-    sessionToken?: string;
-}
-
-/**
- * Embedding generation using Deep Java Library (DJL)
- */
-export interface Djl {
-    /**
-     * DJL model name for embedding generation
-     */
-    embeddingModel?: string;
 }
 
 /**
@@ -2359,40 +2252,23 @@ export interface FilterExtractor {
      * Max sample values shown per filter category in the system prompt.
      */
     maxSampleValues?: number;
-}
-
-/**
- * Google Gemini configuration for embedding generation via the Generative Language API.
- */
-export interface Google {
     /**
-     * API key from Google AI Studio for authenticating with the Generative Language API.
+     * Maximum tokens the model may generate for NLQ filter extraction.
      */
-    apiKey?: string;
+    maxTokens?: number;
     /**
-     * Dimension of the embedding vector, sent to Google as `outputDimensionality`. For
-     * `gemini-embedding-001` valid values are 768, 1536, or 3072. For `text-embedding-004` use
-     * 768.
-     */
-    embeddingDimension?: number;
-    /**
-     * Gemini embedding model identifier (e.g., gemini-embedding-001, text-embedding-004).
-     */
-    embeddingModelId?: string;
-    /**
-     * Optional override for the full embedding endpoint URL. Must be the complete URL including
-     * the model and `:embedContent` action (e.g.
-     * `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent`),
-     * not just a base URL. Leave empty to use the default Generative Language API endpoint,
-     * which is constructed from `embeddingModelId`. The `key` query parameter is appended
-     * automatically.
-     */
-    endpoint?: string;
-    /**
-     * Gemini chat model identifier for query transformation (e.g., gemini-2.5-flash,
-     * gemini-1.5-flash).
+     * Optional model override for NLQ filter extraction. Leave empty to use the model from
+     * llmConfiguration.
      */
     modelId?: string;
+    /**
+     * Sampling temperature for NLQ filter extraction.
+     */
+    temperature?: number;
+    /**
+     * Per-call timeout in seconds for NLQ filter extraction completion.
+     */
+    timeoutSeconds?: number;
 }
 
 /**
@@ -2419,54 +2295,6 @@ export interface HybridSearch {
      * Minimum score threshold for the semantic (KNN) sub-query results.
      */
     semanticScoreThreshold?: number;
-}
-
-/**
- * OpenAI configuration for embedding generation. Supports both OpenAI and Azure OpenAI
- * endpoints.
- */
-export interface Openai {
-    /**
-     * API key for authenticating with OpenAI or Azure OpenAI.
-     */
-    apiKey?: string;
-    /**
-     * Azure OpenAI API version. Only used with Azure OpenAI.
-     */
-    apiVersion?: string;
-    /**
-     * Azure OpenAI deployment name. Required when using Azure OpenAI.
-     */
-    deploymentName?: string;
-    /**
-     * Dimension of the embedding vector. Default is 1536 for text-embedding-3-small.
-     */
-    embeddingDimension?: number;
-    /**
-     * OpenAI embedding model identifier (e.g., text-embedding-3-small, text-embedding-ada-002).
-     */
-    embeddingModelId?: string;
-    /**
-     * Custom endpoint URL. For Azure OpenAI, use the Azure resource endpoint (e.g.,
-     * https://your-resource.openai.azure.com). Leave empty for standard OpenAI API.
-     */
-    endpoint?: string;
-    /**
-     * Maximum tokens the OpenAI model is allowed to generate.
-     */
-    maxTokens?: number;
-    /**
-     * OpenAI model identifier to use for query transformation (chat completions).
-     */
-    modelId?: string;
-    /**
-     * Sampling temperature for OpenAI requests.
-     */
-    temperature?: number;
-    /**
-     * OpenAI HTTP request and connect timeout in seconds.
-     */
-    timeoutSeconds?: number;
 }
 
 /**
@@ -2601,6 +2429,16 @@ export interface TitleSection {
      */
     title?: string;
     [property: string]: any;
+}
+
+/**
+ * Set how owners from OpenLineage job ownership facets update Pipeline owners. In replace
+ * mode, resolved owners from the current event replace existing owners. In append mode,
+ * resolved owners are appended to active existing Pipeline owners.
+ */
+export enum OwnershipUpdateMode {
+    Append = "append",
+    Replace = "replace",
 }
 
 /**

@@ -32,11 +32,10 @@ import {
   getListTestSuitesBySearch,
 } from '../../../rest/testAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { getPopupContainer } from '../../../utils/formUtils';
+import { getPopupContainer } from '../../../utils/formPureUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { AddToBundleSuiteModalProps } from './AddToBundleSuiteModal.interface';
-
 const AddToBundleSuiteModal: React.FC<AddToBundleSuiteModalProps> = ({
   open,
   selectedTestCases,
