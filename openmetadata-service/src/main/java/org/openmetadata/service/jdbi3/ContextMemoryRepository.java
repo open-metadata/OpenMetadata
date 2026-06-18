@@ -595,17 +595,15 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     }
 
     private void updateSourceEntityRelationship() {
-      EntityReference originalSource = original.getSourceEntity();
-      EntityReference updatedSource = updated.getSourceEntity();
-      String fromType =
-          updatedSource != null
-              ? updatedSource.getType()
-              : (originalSource != null ? originalSource.getType() : Entity.CONTEXT_FILE);
-      updateFromRelationship(
+      // Plural form with single-element lists so the stale edge is removed under its OWN entity
+      // type and the new one added under its own. The singular updateFromRelationship took one
+      // fromType for both delete and add, which orphaned the old edge when the source changed type
+      // (e.g. ContextFile -> Page). Mirrors how primaryEntity is reconciled above.
+      updateFromRelationships(
           FIELD_SOURCE_ENTITY,
-          fromType,
-          originalSource,
-          updatedSource,
+          Entity.CONTEXT_MEMORY,
+          asRefList(original.getSourceEntity()),
+          asRefList(updated.getSourceEntity()),
           Relationship.MENTIONED_IN,
           Entity.CONTEXT_MEMORY,
           original.getId());
@@ -621,11 +619,13 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   public List<ContextMemory> listExtractedMemories(UUID sourceId, String sourceType) {
     List<EntityReference> refs =
         findTo(sourceId, sourceType, Relationship.MENTIONED_IN, Entity.CONTEXT_MEMORY);
-    List<ContextMemory> memories = new ArrayList<>();
-    for (EntityReference ref : refs) {
-      memories.add(get(null, ref.getId(), getFields(""), Include.NON_DELETED, false));
+    if (refs.isEmpty()) {
+      return new ArrayList<>();
     }
-    return memories;
+    // Batch-load in one query instead of a get() per ref (avoids N+1). Reconciliation only reads
+    // stored fields (question/status/answer/...), so the relationship-free fetch is sufficient.
+    List<UUID> ids = refs.stream().map(EntityReference::getId).toList();
+    return find(ids, Include.NON_DELETED);
   }
 
   /** Deletes every knowledge pill linked to a Context Center source, propagating the delete flag. */
