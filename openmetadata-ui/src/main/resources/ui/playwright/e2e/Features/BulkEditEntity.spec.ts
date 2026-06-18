@@ -196,6 +196,7 @@ test.describe('Bulk Edit Entity', () => {
       const updateButtonResponse = page.waitForResponse(
         `/api/v1/services/databaseServices/name/*/importAsync?*dryRun=false&recursive=false*`
       );
+      const navigationPromise = page.waitForEvent('framenavigated');
 
       await page.getByRole('button', { name: 'Update' }).click();
 
@@ -203,7 +204,7 @@ test.describe('Bulk Edit Entity', () => {
         .locator('.inovua-react-toolkit-load-mask__background-layer')
         .waitFor({ state: 'detached' });
       await updateButtonResponse;
-      await page.waitForEvent('framenavigated');
+      await navigationPromise;
       await toastNotification(page, /details updated successfully/);
 
       await page.click('[data-testid="databases"]');
@@ -347,12 +348,13 @@ test.describe('Bulk Edit Entity', () => {
       const updateButtonResponse = page.waitForResponse(
         `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=false*`
       );
+      const navigationPromise = page.waitForEvent('framenavigated');
       await page.getByRole('button', { name: 'Update' }).click();
       await page
         .locator('.inovua-react-toolkit-load-mask__background-layer')
         .waitFor({ state: 'detached' });
       await updateButtonResponse;
-      await page.waitForEvent('framenavigated');
+      await navigationPromise;
       await toastNotification(page, /details updated successfully/);
 
       // Verify Details updated
@@ -490,10 +492,11 @@ test.describe('Bulk Edit Entity', () => {
       const updateButtonResponse = page.waitForResponse(
         `/api/v1/databaseSchemas/name/*/importAsync?*dryRun=false&recursive=false*`
       );
+      const navigationPromise = page.waitForEvent('framenavigated');
       await page.getByRole('button', { name: 'Update' }).click();
 
       await updateButtonResponse;
-      await page.waitForEvent('framenavigated');
+      await navigationPromise;
       await toastNotification(page, /details updated successfully/);
 
       // Verify Details updated
@@ -588,6 +591,8 @@ test.describe('Bulk Edit Entity', () => {
       await page.click(RDG_ACTIVE_CELL_SELECTOR);
 
       await pressKeyXTimes(page, 2, 'ArrowRight');
+
+      await page.locator(RDG_ACTIVE_CELL_SELECTOR).first().click({ force: true });
 
       await fillDescriptionDetails(page, columnDetails1.description);
 

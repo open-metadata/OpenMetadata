@@ -457,9 +457,16 @@ export const fillDomainDetails = async (
   await clickAssociatedTagSave(page);
 };
 
-export const fillTierDetails = async (page: Page, tier: string) => {
+export const fillTierDetails = async (
+  page: Page,
+  tier: string,
+  isBulkEdit?: boolean
+) => {
   const tierResponse = page.waitForResponse('/api/v1/tags?parent=Tier*');
   await page.locator(RDG_ACTIVE_CELL_SELECTOR).click({ force: true });
+  if (!isBulkEdit) {
+    await page.keyboard.press('Enter', { delay: 100 });
+  }
   await tierResponse;
 
   await page.getByTestId(`radio-btn-${tier}`).click();
@@ -468,12 +475,16 @@ export const fillTierDetails = async (page: Page, tier: string) => {
 
 export const fillCertificationDetails = async (
   page: Page,
-  certification: string
+  certification: string,
+  isBulkEdit?: boolean
 ) => {
   const certificationResponse = page.waitForResponse(
     '/api/v1/tags?parent=Certification*'
   );
   await page.locator(RDG_ACTIVE_CELL_SELECTOR).click({ force: true });
+  if (!isBulkEdit) {
+    await page.keyboard.press('Enter', { delay: 100 });
+  }
   await certificationResponse;
 
   const certRadioBtn = page.getByTestId(`radio-btn-${certification}`);
@@ -579,10 +590,18 @@ export const fillCustomPropertyDetails = async (
   page: Page,
   propertyListName: Record<string, string>
 ) => {
-  await page.keyboard.press('Enter', { delay: 100 });
 
-  // Wait for the loader to disappear
-  await expect(page.locator('.ant-skeleton-content')).toHaveCount(0);
+  await page.keyboard.press('Enter', { delay: 100 });
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).first().click({ force: true });
+
+  await page
+    .getByTestId('custom-property-editor')
+    .waitFor({ state: 'attached' });
+
+  await waitForAllLoadersToDisappear(page);
+
+  // Wait for skeleton loaders to disappear
+  await expect(page.locator('.ant-skeleton')).toHaveCount(0);
 
   for (const propertyName of Object.values(CUSTOM_PROPERTIES_TYPES)) {
     await editGlossaryCustomProperty(
@@ -1021,10 +1040,10 @@ export const fillRowDetails = async (
   await fillGlossaryTermDetails(page, row.glossary);
 
   await moveToNextColumnWithVerification(page);
-  await fillTierDetails(page, row.tier);
+  await fillTierDetails(page, row.tier, isBulkEdit);
 
   await moveToNextColumnWithVerification(page);
-  await fillCertificationDetails(page, row.certification);
+  await fillCertificationDetails(page, row.certification, isBulkEdit);
 
   await moveToNextColumnWithVerification(page);
 
