@@ -23,7 +23,7 @@ import {
 } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { isNil, isNumber } from 'lodash';
-import { WebStorageStateStore } from 'oidc-client';
+import type { WebStorageStateStore } from 'oidc-client';
 import {
   ComponentType,
   createContext,
@@ -53,6 +53,7 @@ import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/se
 import { withDomainFilter } from '../../../hoc/withDomainFilter';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { clearDashboardWidgetCache } from '../../../hooks/useDashboardWidgetData';
 import { useExploreCache } from '../../../hooks/useExploreCache';
 import { queryClient } from '../../../queryClient';
 import axiosClient from '../../../rest';
@@ -61,7 +62,7 @@ import {
   fetchAuthenticationConfig,
   fetchAuthorizerConfig,
 } from '../../../rest/miscAPI';
-import { getLoggedInUser } from '../../../rest/userAPI';
+import { clearUserProfileCache, getLoggedInUser } from '../../../rest/userAPI';
 import applicationRoutesClass from '../../../utils/ApplicationRoutesClassBase';
 import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import {
@@ -80,6 +81,7 @@ import {
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
 import { checkIfUpdateRequired } from '../../../utils/UserDataUtils';
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
+import { clearActivityFeedCache } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedCache';
 import Loader from '../../common/Loader/Loader';
 import {
   LazyAuth0Authenticator,
@@ -235,6 +237,9 @@ export const AuthProvider = ({
     //     clear the next user would see the previous user's bodies until staleTime + gcTime.
     useExploreCache.getState().clearCache();
     clearEtagCache();
+    clearUserProfileCache();
+    clearDashboardWidgetCache();
+    clearActivityFeedCache();
     queryClient.clear();
 
     setApplicationLoading(false);

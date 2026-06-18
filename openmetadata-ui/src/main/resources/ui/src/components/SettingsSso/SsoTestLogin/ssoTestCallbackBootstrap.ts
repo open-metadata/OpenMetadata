@@ -34,7 +34,7 @@ export const runSsoTestCallback = async (): Promise<void> => {
       raw ? JSON.parse(raw) : {}
     ) as AuthenticationConfigurationWithScope;
     const userManager = new UserManager(
-      getCandidateUserManagerConfig(candidate)
+      await getCandidateUserManagerConfig(candidate)
     );
     await userManager.signinPopupCallback();
   } catch {
