@@ -54,12 +54,16 @@ const DescriptionFeedNew = withSuspenseFallback(
 const ActivityOwnersFeed = withSuspenseFallback(
   lazy(
     () =>
-      import('../../ActivityFeedCardV2/FeedCardBody/OwnerFeed/ActivityOwnersFeed')
+      import(
+        '../../ActivityFeedCardV2/FeedCardBody/OwnerFeed/ActivityOwnersFeed'
+      )
   )
 );
 
 const OwnersFeed = withSuspenseFallback(
-  lazy(() => import('../../ActivityFeedCardV2/FeedCardBody/OwnerFeed/OwnersFeed'))
+  lazy(
+    () => import('../../ActivityFeedCardV2/FeedCardBody/OwnerFeed/OwnersFeed')
+  )
 );
 
 const TagsFeed = withSuspenseFallback(

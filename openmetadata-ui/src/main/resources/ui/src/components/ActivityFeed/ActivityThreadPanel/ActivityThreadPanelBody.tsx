@@ -55,7 +55,9 @@ const TaskFeedCardFromTask = withSuspenseFallback(
   lazy(() => import('../TaskFeedCard/TaskFeedCardFromTask.component'))
 );
 
-const ActivityThread = withSuspenseFallback(lazy(() => import('./ActivityThread')));
+const ActivityThread = withSuspenseFallback(
+  lazy(() => import('./ActivityThread'))
+);
 
 const ActivityThreadList = withSuspenseFallback(
   lazy(() => import('./ActivityThreadList'))
