@@ -139,6 +139,15 @@
         "$ref": "../../attachments/asset.json"
       },
       "default": null
+    },
+    "extractionStats": {
+      "description": "Statistics from the most recent knowledge-pill extraction run on this page's body.",
+      "$ref": "./contextFile.json#/definitions/extractionStats"
+    },
+    "memoryCount": {
+      "description": "Number of knowledge pills (context memories) extracted from this page.",
+      "type": "integer",
+      "default": 0
     }
   },
   "required": ["name", "pageType", "page"],
