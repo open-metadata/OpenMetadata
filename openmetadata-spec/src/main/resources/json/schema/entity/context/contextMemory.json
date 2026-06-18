@@ -160,6 +160,19 @@
         }
       },
       "additionalProperties": false
+    },
+    "ontologyStats": {
+      "type": "object",
+      "description": "Telemetry + hash-gate for the Ontology Agent derivation of this memory.",
+      "javaType": "org.openmetadata.schema.entity.context.OntologyStats",
+      "properties": {
+        "sourceHash": { "type": "string", "description": "Hash of the ontology-relevant content last processed." },
+        "derivedTermCount": { "type": "integer", "default": 0 },
+        "derivedMetricCount": { "type": "integer", "default": 0 },
+        "reusedCount": { "type": "integer", "default": 0 },
+        "lastRunAt": { "$ref": "../../type/basic.json#/definitions/timestamp" }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -252,6 +265,9 @@
     },
     "machineRepresentation": {
       "$ref": "#/definitions/machineRepresentation"
+    },
+    "ontologyStats": {
+      "$ref": "#/definitions/ontologyStats"
     },
     "usageCount": {
       "description": "How many times this memory has been used in AI-assisted retrieval.",

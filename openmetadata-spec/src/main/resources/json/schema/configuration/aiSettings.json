@@ -1,0 +1,60 @@
+{
+  "$id": "https://open-metadata.org/schema/configuration/aiSettings.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AISettings",
+  "description": "Configuration for AI features: memory extraction, the Ontology Agent, and tunable LLM system prompts.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.configuration.AISettings",
+  "definitions": {
+    "deletionPolicy": {
+      "javaType": "org.openmetadata.schema.configuration.AIDeletionPolicy",
+      "type": "string",
+      "enum": ["cascade", "orphan", "deprecate"],
+      "default": "cascade"
+    },
+    "memoryExtraction": {
+      "javaType": "org.openmetadata.schema.configuration.MemoryExtractionSettings",
+      "type": "object",
+      "properties": {
+        "fromFiles": { "type": "boolean", "default": true },
+        "fromPages": { "type": "boolean", "default": true }
+      },
+      "additionalProperties": false
+    },
+    "ontologyAgent": {
+      "javaType": "org.openmetadata.schema.configuration.OntologyAgentSettings",
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "default": true },
+        "deriveGlossaryTerms": { "type": "boolean", "default": true },
+        "deriveMetrics": { "type": "boolean", "default": true },
+        "deletionPolicy": { "$ref": "#/definitions/deletionPolicy" }
+      },
+      "additionalProperties": false
+    },
+    "promptConfig": {
+      "javaType": "org.openmetadata.schema.configuration.PromptConfig",
+      "type": "object",
+      "properties": {
+        "systemPrompt": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "prompts": {
+      "javaType": "org.openmetadata.schema.configuration.AIPrompts",
+      "type": "object",
+      "properties": {
+        "memoryExtraction": { "$ref": "#/definitions/promptConfig" },
+        "ontologyAgent": { "$ref": "#/definitions/promptConfig" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "enabled": { "type": "boolean", "default": true },
+    "memoryExtraction": { "$ref": "#/definitions/memoryExtraction" },
+    "ontologyAgent": { "$ref": "#/definitions/ontologyAgent" },
+    "prompts": { "$ref": "#/definitions/prompts" }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "memoryExtraction": { "fromFiles": true, "fromPages": true },
+  "ontologyAgent": {
+    "enabled": true,
+    "deriveGlossaryTerms": true,
+    "deriveMetrics": true,
+    "deletionPolicy": "cascade"
+  },
+  "prompts": {
+    "memoryExtraction": {
+      "systemPrompt": "You extract reusable company knowledge from a document as a JSON array. Each element is an object with keys: title, question, answer, summary, memoryType (one of Faq, Note, Runbook, UseCase, Preference). Capture durable facts, definitions, policies, and how-to guidance. Return ONLY the JSON array, no prose."
+    },
+    "ontologyAgent": {
+      "systemPrompt": "You are an ontology agent. Given a knowledge memory (title, question, answer, type) and the existing glossary terms, glossaries, and metrics that most closely match it, decide whether the memory should map to a Glossary Term and/or a Metric. For each axis return one verdict: REUSE an existing entity if one already covers the memory (give its fullyQualifiedName); CREATE a new entity only if none covers it (for a term, choose the best existing glossary by fullyQualifiedName, or propose a new glossary name+description if none fits; for a metric, give name, description, metricType, unitOfMeasurement, and optionally a SQL metricExpression); or SKIP if the memory is not ontology-worthy. Return ONLY a JSON array with a single object: {termVerdict, metricVerdict}. Each verdict is {action: REUSE|CREATE|SKIP, targetFqn, newGlossaryName, newGlossaryDescription, name, displayName, description, metricType, unitOfMeasurement, metricExpressionCode}. Use null for fields that do not apply."
+    }
+  }
+}
