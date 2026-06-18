@@ -23,6 +23,14 @@ test.describe(
   'MCP Chat - Sidebar Navigation',
   { tag: ['@Features', '@Platform'] },
   () => {
+    // Run serially in a single worker. These tests share one globally-named
+    // installed app (McpChatApplication) set up in beforeAll and removed in
+    // afterAll. Under the project's `fullyParallel` mode the tests would be
+    // split across workers, so afterAll (hardDelete) could run while a sibling
+    // test in another worker is still asserting the sidebar item — making the
+    // `app-bar-item-mcp-chat` entry disappear and the test fail.
+    test.describe.configure({ mode: 'serial' });
+
     test.beforeAll('Install MCP Chat app', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
