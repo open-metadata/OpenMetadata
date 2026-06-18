@@ -20,7 +20,7 @@ import type {
 import type { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { PageType } from '../../generated/system/ui/page';
-import { getCountBadge } from '../../utils/EntityDisplayPureUtils';
+import { getCountBadge } from '../../utils/EntityDisplayUtils';
 import i18n from '../i18next/LocalUtil';
 import type { GlossaryTermDetailPageTabProps } from './GlossaryTermClassBase';
 
@@ -47,14 +47,18 @@ const GenericTab = withSuspenseFallback(
 const AssetsTabs = withSuspenseFallback(
   lazy(
     () =>
-      import('../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component')
+      import(
+        '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component'
+      )
   )
 );
 
 const GlossaryTermTab = withSuspenseFallback(
   lazy(
     () =>
-      import('../../components/Glossary/GlossaryTermTab/GlossaryTermTab.component')
+      import(
+        '../../components/Glossary/GlossaryTermTab/GlossaryTermTab.component'
+      )
   )
 );
 

@@ -103,7 +103,7 @@ import {
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { ownerTableObject } from '../../../utils/TableColumn.util';
-import { isTaskPendingFurtherApproval } from '../../../utils/TaskNavigationUtils';
+import { isTaskPendingFurtherApproval } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { DraggableBodyRowProps } from '../../common/Draggable/DraggableBodyRowProps.interface';

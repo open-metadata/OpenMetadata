@@ -37,7 +37,7 @@ import {
   ListGlossaryTermsParams,
   patchGlossaryTerm,
 } from '../../rest/glossaryAPI';
-import { getEntityDeleteMessage } from '../../utils/EntityDisplayPureUtils';
+import { getEntityDeleteMessage } from '../../utils/EntityDisplayUtils';
 import { updateGlossaryTermByFqn } from '../../utils/GlossaryPureUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getGlossaryTermDetailsPath } from '../../utils/RouterUtils';
