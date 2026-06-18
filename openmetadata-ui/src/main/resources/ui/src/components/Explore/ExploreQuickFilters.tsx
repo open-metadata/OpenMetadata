@@ -34,6 +34,7 @@ import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface
 import { useAdvanceSearch } from './AdvanceSearchProvider/AdvanceSearchProvider.component';
 import { ExploreSearchIndex } from './ExplorePage.interface';
 import { ExploreQuickFiltersProps } from './ExploreQuickFilters.interface';
+import QuickFilterDropdown from './QuickFilterDropdown';
 const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   fields,
   index,
@@ -45,6 +46,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   showSelectedCounts = false,
   optionPageSize,
   additionalActions,
+  untitledDropdown = false,
 }) => {
   const location = useCustomLocation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
@@ -207,7 +209,24 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         );
         const dropdownOptions = field.options ?? options ?? [];
 
-        return (
+        return untitledDropdown ? (
+          <QuickFilterDropdown
+            hideCounts={field.hideCounts ?? false}
+            key={field.key}
+            label={translateWithNestedKeys(field.label, field.labelKeyOptions)}
+            options={dropdownOptions}
+            searchKey={field.key}
+            selectedKeys={field.value ?? []}
+            showSelectedCounts={showSelectedCounts}
+            singleSelect={field.singleSelect}
+            onChange={(updatedValues) =>
+              onFieldValueSelect({ ...field, value: updatedValues })
+            }
+            onGetInitialOptions={(key) =>
+              getInitialOptions(key, field.searchIndex, field.searchKey)
+            }
+          />
+        ) : (
           <SearchDropdown
             highlight
             dropdownClassName={field.dropdownClassName}
