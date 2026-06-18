@@ -245,8 +245,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
     return records.stream()
         .filter(r -> TEST_CASE.equals(r.getToEntity()))
+        .filter(rel -> idToRefMap.get(rel.getToId()) != null)
         .map(rel -> Map.entry(UUID.fromString(rel.getFromId()), idToRefMap.get(rel.getToId())))
-        .filter(entry -> entry.getValue() != null)
         .collect(
             Collectors.groupingBy(
                 Map.Entry::getKey, Collectors.mapping(Map.Entry::getValue, Collectors.toList())));

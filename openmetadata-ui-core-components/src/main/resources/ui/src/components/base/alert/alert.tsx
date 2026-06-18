@@ -55,7 +55,7 @@ const variantStyles: Record<
     defaultIcon: InfoCircle,
   },
   gray: {
-    root: 'tw:border-utility-gray-300 tw:bg-white',
+    root: 'tw:border-utility-gray-300 tw:bg-primary',
     iconColor: 'gray',
     defaultIcon: InfoCircle,
   },
