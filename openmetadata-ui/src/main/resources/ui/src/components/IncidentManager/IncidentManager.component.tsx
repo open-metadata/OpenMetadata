@@ -712,7 +712,7 @@ const IncidentManager = ({
   }
 
   return (
-    <div className="tw:border tw:border-border-secondary tw:rounded-[10px] tw:bg-white">
+    <div className="tw:border tw:border-border-secondary tw:rounded-[10px] tw:bg-primary">
       <div className="new-form-style tw:flex tw:justify-between tw:items-center tw:p-4 tw:gap-5.5 tw:w-full">
         <AsyncSelect
           allowClear
