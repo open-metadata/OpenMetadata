@@ -43,6 +43,8 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
   private static final String TRANSLOG = "translog";
   private static final String DURABILITY = "durability";
   private static final String SYNC_INTERVAL = "sync_interval";
+  private static final String REFRESH_DISABLED = "-1";
+  private static final String DEFAULT_LIVE_REFRESH_INTERVAL = "1s";
 
   private EventPublisherJob jobData;
 
@@ -676,13 +678,33 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
   }
 
   private static String pickRefreshInterval(IndexSettings live, BulkIndexOverrides bulk) {
+    String refreshInterval = null;
     if (live != null && live.getRefreshInterval() != null) {
-      return live.getRefreshInterval();
+      refreshInterval = live.getRefreshInterval();
+    } else if (bulk != null && bulk.getRefreshInterval() != null) {
+      refreshInterval = DEFAULT_LIVE_REFRESH_INTERVAL; // bulk disabled refresh; restore default
     }
-    if (bulk != null && bulk.getRefreshInterval() != null) {
-      return "1s"; // bulk disabled refresh; restore near-real-time default
+    if (isRefreshDisabled(refreshInterval)) {
+      LOG.warn(
+          "Configured live refresh_interval '{}' disables refresh and would leave the promoted "
+              + "index unsearchable until a manual _refresh. Overriding to '{}' so documents stay "
+              + "searchable after promotion.",
+          refreshInterval,
+          DEFAULT_LIVE_REFRESH_INTERVAL);
+      refreshInterval = DEFAULT_LIVE_REFRESH_INTERVAL;
     }
-    return null;
+    return refreshInterval;
+  }
+
+  /**
+   * A {@code refresh_interval} of {@code -1} disables refresh entirely. That is correct for a
+   * staged index nothing reads from, but as a <em>live</em> serving value it leaves newly indexed
+   * documents invisible to search until a manual {@code _refresh} — the "reindex finishes but the
+   * page is empty" symptom. The live-revert must never apply it, regardless of what the admin
+   * configured on {@code liveIndexSettings} or what fell back from the bulk overrides.
+   */
+  private static boolean isRefreshDisabled(String refreshInterval) {
+    return refreshInterval != null && REFRESH_DISABLED.equals(refreshInterval.trim());
   }
 
   private static Integer pickReplicas(IndexSettings live, BulkIndexOverrides bulk) {
