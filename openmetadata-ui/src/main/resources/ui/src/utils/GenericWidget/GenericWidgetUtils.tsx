@@ -11,15 +11,11 @@
  *  limitations under the License.
  */
 import classNames from 'classnames';
-import { lazy } from 'react';
+import { lazy, type ComponentType } from 'react';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
-import { PropertyValue } from '../../components/common/CustomPropertyTable/PropertyValue';
-import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
-import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
-import TagButton from '../../components/common/TagButton/TagButton.component';
-import { ContainerWidget } from '../../components/Container/ContainerWidget/ContainerWidget';
-import { StoredProcedureCodeCard } from '../../components/Database/StoredProcedureCodeCard/StoredProcedureCodeCard';
-import { EntityUnion } from '../../components/Explore/ExplorePage.interface';
+import type { DomainLabelProps } from '../../components/common/DomainLabel/DomainLabel.interface';
+import type { PreviewerProp } from '../../components/common/RichTextEditor/RichTextEditor.interface';
+import type { EntityUnion } from '../../components/Explore/ExplorePage.interface';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import {
   DUMMY_OWNER_LIST,
@@ -31,12 +27,56 @@ import {
   GlossaryTermDetailPageWidgetKeys,
 } from '../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../enums/entity.enum';
-import { EntityReference, TagSource } from '../../generated/tests/testCase';
-import SearchIndexFieldsTab from '../../pages/SearchIndexDetailsPage/SearchIndexFieldsTab/SearchIndexFieldsTab';
-import { PartitionedKeys } from '../../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component';
+import { TagSource } from '../../generated/tests/testCase';
+import type { EntityReference } from '../../generated/tests/testCase';
 import domainClassBase from '../Domain/DomainClassBase';
 import { renderReferenceElement } from '../GlossaryUtils';
 import tableClassBase from '../TableClassBase';
+
+const PropertyValue = withSuspenseFallback(
+  lazy(() =>
+    import('../../components/common/CustomPropertyTable/PropertyValue').then(
+      (m) => ({ default: m.PropertyValue })
+    )
+  )
+) as ComponentType<Record<string, unknown>>;
+
+const DomainLabel = withSuspenseFallback(
+  lazy(() =>
+    import('../../components/common/DomainLabel/DomainLabel.component').then(
+      (m) => ({ default: m.DomainLabel })
+    )
+  )
+) as ComponentType<DomainLabelProps>;
+
+const RichTextEditorPreviewerV1 = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/common/RichTextEditor/RichTextEditorPreviewerV1'
+      )
+  )
+) as ComponentType<PreviewerProp>;
+
+const TagButton = withSuspenseFallback(
+  lazy(() => import('../../components/common/TagButton/TagButton.component'))
+) as ComponentType<Record<string, unknown>>;
+
+const ContainerWidget = withSuspenseFallback(
+  lazy(() =>
+    import('../../components/Container/ContainerWidget/ContainerWidget').then(
+      (m) => ({ default: m.ContainerWidget })
+    )
+  )
+);
+
+const StoredProcedureCodeCard = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../components/Database/StoredProcedureCodeCard/StoredProcedureCodeCard'
+    ).then((m) => ({ default: m.StoredProcedureCodeCard }))
+  )
+);
 
 const APIEndpointSchema = withSuspenseFallback(
   lazy(
@@ -153,6 +193,15 @@ const APIEndpointsTab = withSuspenseFallback(
   lazy(() => import('../../pages/APICollectionPage/APIEndpointsTab'))
 );
 
+const SearchIndexFieldsTab = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../pages/SearchIndexDetailsPage/SearchIndexFieldsTab/SearchIndexFieldsTab'
+      )
+  )
+);
+
 const SchemaTablesTab = withSuspenseFallback(
   lazy(() => import('../../pages/DatabaseSchemaPage/SchemaTablesTab'))
 );
@@ -169,6 +218,14 @@ const TableConstraints = withSuspenseFallback(
   lazy(
     () =>
       import('../../pages/TableDetailsPageV1/TableConstraints/TableConstraints')
+  )
+);
+
+const PartitionedKeys = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component'
+    ).then((m) => ({ default: m.PartitionedKeys }))
   )
 );
 

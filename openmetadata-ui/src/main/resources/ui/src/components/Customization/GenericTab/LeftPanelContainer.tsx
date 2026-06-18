@@ -12,19 +12,36 @@
  */
 import { Col, Row } from 'antd';
 import { isUndefined } from 'lodash';
-import { useMemo } from 'react';
-import RGL, { ReactGridLayoutProps, WidthProvider } from 'react-grid-layout';
+import { lazy, useMemo } from 'react';
+import RGL, { WidthProvider } from 'react-grid-layout';
+import type { ReactGridLayoutProps } from 'react-grid-layout';
 import { PageType } from '../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
-import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import type { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getWidgetsFromKey } from '../../../utils/CustomizePage/CustomizePageDispatchUtils';
-import EmptyWidgetPlaceholder from '../../MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
-import { GenericWidget } from '../GenericWidget/GenericWidget';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './generic-tab.less';
 
 const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
   ReactGridLayoutProps & { children?: React.ReactNode }
 >;
+
+const GenericWidget = withSuspenseFallback(
+  lazy(() =>
+    import('../GenericWidget/GenericWidget').then((module) => ({
+      default: module.GenericWidget,
+    }))
+  )
+);
+
+const EmptyWidgetPlaceholder = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder'
+      )
+  )
+);
 
 interface GenericTabProps {
   layout: WidgetConfig[];

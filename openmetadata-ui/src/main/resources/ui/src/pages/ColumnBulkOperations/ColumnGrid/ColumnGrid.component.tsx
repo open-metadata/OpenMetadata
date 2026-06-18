@@ -86,10 +86,9 @@ import {
   TagSource,
 } from '../../../generated/type/tagLabel';
 import { bulkUpdateColumnsAsync } from '../../../rest/columnAPI';
-import { formatContent } from '../../../utils/BlockEditorUtils';
+import { formatClientContent } from '../../../utils/BlockEditorPureUtils';
 import { getTableFQNFromColumnFQN } from '../../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import { getSanitizeContent } from '../../../utils/sanitize.utils';
 import { stringToDOMElement } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -249,7 +248,7 @@ const getDescriptionPreview = (description?: string): string => {
   }
 
   return (
-    stringToDOMElement(getSanitizeContent(formatContent(description, 'client')))
+    stringToDOMElement(formatClientContent(description))
       .textContent ?? ''
   ).slice(0, 100);
 };

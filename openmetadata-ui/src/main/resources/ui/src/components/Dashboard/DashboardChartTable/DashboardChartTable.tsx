@@ -29,10 +29,10 @@ import { usePermissionProvider } from '../../../context/PermissionProvider/Permi
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
-import { TagLabel, TagSource } from '../../../generated/entity/data/chart';
+import { TagSource } from '../../../generated/entity/data/chart';
+import type { TagLabel } from '../../../generated/entity/data/chart';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { useTableFilters } from '../../../hooks/useTableFilters';
-import { ChartType } from '../../../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import { updateChart } from '../../../rest/chartAPI';
 import { fetchCharts } from '../../../utils/DashboardDetailsUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -54,7 +54,10 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericCo
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
-import { ChartsPermissions } from '../DashboardDetails/DashboardDetails.interface';
+import {
+  ChartsPermissions,
+  ChartType,
+} from '../DashboardDetails/DashboardDetails.interface';
 const ModalWithMarkdownEditor = withSuspenseFallback(
   lazy(() =>
     import('../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor').then(
