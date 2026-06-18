@@ -20,15 +20,21 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateGlossary;
+import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -599,6 +605,123 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
         Exception.class,
         () -> patchEntity(glossary.getId().toString(), glossary),
         "Cannot rename system provider glossary");
+  }
+
+  /**
+   * Reproduces the bug where renaming a glossary leaves child terms with stale glossary denorm
+   * (glossary.name / glossary.fullyQualifiedName) and stale own fullyQualifiedName in the search
+   * index. The DB rename cascades, but before the inline updateAssetIndexes call was added in
+   * GlossaryRepository.updateName the ES cascade only ran via entityRelationshipReindex — which
+   * has had no caller since PR #19550.
+   */
+  @Test
+  void test_renameGlossaryPropagatesToChildTermSearchIndex(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String originalName = ns.prefix("renameProp");
+    Glossary glossary =
+        createEntity(
+            new CreateGlossary()
+                .withName(originalName)
+                .withDescription("Glossary used for rename-propagation IT"));
+
+    CreateGlossaryTerm createTerm =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("term"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("term under renamed glossary");
+    GlossaryTerm term = client.glossaryTerms().create(createTerm);
+
+    CreateGlossaryTerm createSubTerm =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("subterm"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(term.getFullyQualifiedName())
+            .withDescription("subterm under renamed glossary");
+    GlossaryTerm subTerm = client.glossaryTerms().create(createSubTerm);
+
+    awaitTermIndexed(client, term.getId().toString());
+    awaitTermIndexed(client, subTerm.getId().toString());
+
+    String newName = ns.prefix("renamePropAfter");
+    glossary.setName(newName);
+    Glossary renamed = patchEntity(glossary.getId().toString(), glossary);
+    assertEquals(newName, renamed.getName());
+    assertEquals(newName, renamed.getFullyQualifiedName());
+
+    String expectedTermFqn = newName + "." + term.getName();
+    String expectedSubTermFqn = expectedTermFqn + "." + subTerm.getName();
+
+    Awaitility.await("term ES doc reflects glossary rename")
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(60))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              JsonNode termDoc = searchTermSourceById(client, term.getId().toString());
+              assertNotNull(termDoc, "child term doc must be present in search index");
+              assertEquals(
+                  expectedTermFqn,
+                  termDoc.path("fullyQualifiedName").asText(""),
+                  "child term fullyQualifiedName must reflect renamed glossary");
+              assertEquals(
+                  newName,
+                  termDoc.path("glossary").path("name").asText(""),
+                  "child term glossary.name denorm must reflect rename");
+              assertEquals(
+                  newName,
+                  termDoc.path("glossary").path("fullyQualifiedName").asText(""),
+                  "child term glossary.fullyQualifiedName denorm must reflect rename");
+
+              JsonNode subDoc = searchTermSourceById(client, subTerm.getId().toString());
+              assertNotNull(subDoc, "grandchild term doc must be present in search index");
+              assertEquals(
+                  expectedSubTermFqn,
+                  subDoc.path("fullyQualifiedName").asText(""),
+                  "grandchild fullyQualifiedName must reflect renamed glossary");
+              assertEquals(
+                  newName,
+                  subDoc.path("glossary").path("name").asText(""),
+                  "grandchild glossary.name denorm must reflect rename");
+              assertEquals(
+                  expectedTermFqn,
+                  subDoc.path("parent").path("fullyQualifiedName").asText(""),
+                  "grandchild parent.fullyQualifiedName must reflect renamed glossary");
+            });
+  }
+
+  private static final ObjectMapper RENAME_PROP_MAPPER = new ObjectMapper();
+  private static final String GLOSSARY_TERM_SEARCH_INDEX = "glossary_term_search_index";
+
+  private JsonNode searchTermSourceById(OpenMetadataClient client, String termId) throws Exception {
+    String filter = "{\"query\":{\"term\":{\"id.keyword\":\"" + termId + "\"}}}";
+    String response =
+        client
+            .search()
+            .query("*")
+            .index(GLOSSARY_TERM_SEARCH_INDEX)
+            .queryFilter(filter)
+            .size(1)
+            .deleted(false)
+            .execute();
+    JsonNode hits = RENAME_PROP_MAPPER.readTree(response).path("hits").path("hits");
+    JsonNode result = null;
+    for (JsonNode hit : hits) {
+      if (termId.equals(hit.path("_source").path("id").asText(""))) {
+        result = hit.path("_source");
+        break;
+      }
+    }
+    return result;
+  }
+
+  private void awaitTermIndexed(OpenMetadataClient client, String termId) {
+    Awaitility.await("glossary term " + termId + " becomes searchable")
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(60))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> assertNotNull(searchTermSourceById(client, termId), "term not yet indexed"));
   }
 
   @Test
