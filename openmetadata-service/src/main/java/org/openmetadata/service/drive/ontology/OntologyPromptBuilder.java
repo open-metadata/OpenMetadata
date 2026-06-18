@@ -13,7 +13,10 @@
 
 package org.openmetadata.service.drive.ontology;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.List;
+import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.entity.context.ContextMemory;
 
 /** Renders a compact user-prompt from a ContextMemory and its grounding candidates. */
@@ -21,16 +24,7 @@ final class OntologyPromptBuilder {
   private OntologyPromptBuilder() {}
 
   static String build(ContextMemory memory, OntologyContext context) {
-    return "MEMORY\n"
-        + "title: "
-        + nullToEmpty(memory.getTitle())
-        + "\n"
-        + "question: "
-        + nullToEmpty(memory.getQuestion())
-        + "\n"
-        + "answer: "
-        + nullToEmpty(memory.getAnswer())
-        + "\n\n"
+    return renderMemory(memory)
         + "EXISTING GLOSSARY TERMS\n"
         + renderCandidates(context.terms())
         + "\n"
@@ -41,24 +35,33 @@ final class OntologyPromptBuilder {
         + renderCandidates(context.glossaries());
   }
 
+  private static String renderMemory(ContextMemory memory) {
+    return "MEMORY\n"
+        + "title: "
+        + StringUtils.defaultString(memory.getTitle())
+        + "\n"
+        + "question: "
+        + StringUtils.defaultString(memory.getQuestion())
+        + "\n"
+        + "answer: "
+        + StringUtils.defaultString(memory.getAnswer())
+        + "\n\n";
+  }
+
   private static String renderCandidates(List<OntologyCandidate> candidates) {
     String result = "(none)\n";
-    if (candidates != null && !candidates.isEmpty()) {
+    if (!nullOrEmpty(candidates)) {
       StringBuilder sb = new StringBuilder();
       for (OntologyCandidate c : candidates) {
         sb.append(c.fqn())
             .append(" — ")
             .append(c.name())
             .append(" — ")
-            .append(nullToEmpty(c.description()))
+            .append(StringUtils.defaultString(c.description()))
             .append("\n");
       }
       result = sb.toString();
     }
     return result;
-  }
-
-  private static String nullToEmpty(String s) {
-    return s == null ? "" : s;
   }
 }

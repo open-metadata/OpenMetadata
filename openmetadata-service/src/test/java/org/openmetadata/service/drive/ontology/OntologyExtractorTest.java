@@ -34,7 +34,7 @@ class OntologyExtractorTest {
     OntologyDerivation verdict =
         new OntologyDerivation(
             new OntologyVerdict(
-                "CREATE",
+                OntologyAction.CREATE,
                 null,
                 "Business",
                 "Business glossary",
@@ -44,7 +44,8 @@ class OntologyExtractorTest {
                 null,
                 null,
                 null),
-            new OntologyVerdict("SKIP", null, null, null, null, null, null, null, null, null));
+            new OntologyVerdict(
+                OntologyAction.SKIP, null, null, null, null, null, null, null, null, null));
     when(llmClient.completeStructured(
             org.mockito.ArgumentMatchers.anyString(),
             org.mockito.ArgumentMatchers.anyString(),
@@ -60,8 +61,8 @@ class OntologyExtractorTest {
     OntologyDerivation result =
         extractor.derive(memory, new OntologyContext(List.of(), List.of(), List.of()));
 
-    assertEquals("CREATE", result.termVerdict().action());
-    assertEquals("SKIP", result.metricVerdict().action());
+    assertEquals(OntologyAction.CREATE, result.termVerdict().action());
+    assertEquals(OntologyAction.SKIP, result.metricVerdict().action());
   }
 
   @Test

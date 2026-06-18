@@ -14,6 +14,8 @@
 package org.openmetadata.service.drive.ontology;
 
 import static org.openmetadata.service.search.SearchClient.GLOSSARY_TERM_SEARCH_INDEX;
+import static org.openmetadata.service.search.SearchConstants.DEFAULT_SORT_FIELD;
+import static org.openmetadata.service.search.SearchConstants.DEFAULT_SORT_ORDER;
 import static org.openmetadata.service.search.SearchConstants.FULLY_QUALIFIED_NAME;
 import static org.openmetadata.service.search.SearchConstants.HITS;
 import static org.openmetadata.service.search.SearchConstants.SEARCH_SOURCE;
@@ -24,6 +26,7 @@ import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -46,8 +49,6 @@ public class OntologyGrounding {
   private static final String TYPE_TERM = "glossaryTerm";
   private static final String TYPE_METRIC = "metric";
   private static final String TYPE_GLOSSARY = "glossary";
-  private static final String FIELD_NAME = "name";
-  private static final String FIELD_DESCRIPTION = "description";
 
   public OntologyContext fetchCandidates(ContextMemory memory) {
     final String text = groundingText(memory);
@@ -79,9 +80,9 @@ public class OntologyGrounding {
         .withFrom(0)
         .withFetchSource(true)
         .withTrackTotalHits(false)
-        .withSortFieldParam("_score")
+        .withSortFieldParam(DEFAULT_SORT_FIELD)
         .withDeleted(false)
-        .withSortOrder("desc")
+        .withSortOrder(DEFAULT_SORT_ORDER)
         .withIncludeSourceFields(new ArrayList<>());
   }
 
@@ -91,8 +92,9 @@ public class OntologyGrounding {
     if (hitsRaw instanceof ArrayNode hits) {
       for (final JsonNode hit : hits) {
         final String fqn = JsonUtils.extractValue(hit, SEARCH_SOURCE, FULLY_QUALIFIED_NAME);
-        final String name = JsonUtils.extractValue(hit, SEARCH_SOURCE, FIELD_NAME);
-        final String description = JsonUtils.extractValue(hit, SEARCH_SOURCE, FIELD_DESCRIPTION);
+        final String name = JsonUtils.extractValue(hit, SEARCH_SOURCE, Entity.FIELD_NAME);
+        final String description =
+            JsonUtils.extractValue(hit, SEARCH_SOURCE, Entity.FIELD_DESCRIPTION);
         if (fqn != null && name != null) {
           candidates.add(new OntologyCandidate(type, fqn, name, description));
         }
@@ -103,10 +105,9 @@ public class OntologyGrounding {
 
   private String groundingText(ContextMemory m) {
     return String.join(
-        " ", nullToEmpty(m.getTitle()), nullToEmpty(m.getQuestion()), nullToEmpty(m.getAnswer()));
-  }
-
-  private String nullToEmpty(String s) {
-    return s == null ? "" : s;
+        " ",
+        StringUtils.defaultString(m.getTitle()),
+        StringUtils.defaultString(m.getQuestion()),
+        StringUtils.defaultString(m.getAnswer()));
   }
 }
