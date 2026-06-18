@@ -27,10 +27,15 @@ public class ObjectStorageConfiguration {
   @JsonProperty("azure")
   private AzureConfiguration azureConfiguration;
 
+  @AssertTrue(message = "Object storage provider must be configured when object storage is enabled")
+  public boolean isProviderConfigured() {
+    return !enabled || StringUtils.isNotBlank(provider);
+  }
+
   @AssertTrue(
       message = "Object storage provider must be one of: s3, azure, inmemory, in-memory, noop")
   public boolean isValidProvider() {
-    if (!enabled) {
+    if (!enabled || StringUtils.isBlank(provider)) {
       return true;
     }
     return switch (normalizedProvider()) {

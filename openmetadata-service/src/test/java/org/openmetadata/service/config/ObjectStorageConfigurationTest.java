@@ -24,16 +24,19 @@ import jakarta.validation.Validator;
 import java.io.IOException;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class ObjectStorageConfigurationTest {
   private final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
   private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
 
   @Test
-  void s3ProviderDoesNotValidateAzureCredentials() {
+  void s3ProviderIgnoresInvalidAzureConfiguration() {
     ObjectStorageConfiguration config = baseConfig("s3");
     config.setS3Configuration(s3Config());
-    config.setAzureConfiguration(azureConfigWithoutCredentials("missing-endpoint"));
+    config.setAzureConfiguration(new AzureConfiguration());
 
     assertTrue(validate(config).isEmpty());
   }
@@ -92,6 +95,20 @@ class ObjectStorageConfigurationTest {
         message(violations));
   }
 
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {" ", "\t"})
+  void enabledObjectStorageRequiresProvider(String provider) {
+    ObjectStorageConfiguration config = baseConfig(provider);
+
+    Set<ConstraintViolation<ObjectStorageConfiguration>> violations = validate(config);
+
+    assertEquals(1, violations.size());
+    assertEquals(
+        "Object storage provider must be configured when object storage is enabled",
+        message(violations));
+  }
+
   @Test
   void providerValidationNormalizesWhitespaceAndCase() {
     ObjectStorageConfiguration config = baseConfig(" S3 ");
@@ -143,6 +160,14 @@ class ObjectStorageConfigurationTest {
   void disabledObjectStorageSkipsProviderSpecificValidation() {
     ObjectStorageConfiguration config = new ObjectStorageConfiguration();
     config.setEnabled(false);
+
+    assertTrue(validate(config).isEmpty());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"inmemory", "in-memory", "noop"})
+  void localProvidersSkipS3AndAzureConfigurationValidation(String provider) {
+    ObjectStorageConfiguration config = baseConfig(provider);
 
     assertTrue(validate(config).isEmpty());
   }
