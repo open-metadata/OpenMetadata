@@ -55,7 +55,7 @@ import {
 } from '../../../../utils/CuratedAssetsPureUtils';
 import { getEntityLinkFromType } from '../../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { getLandingPageWidgetIcon } from '../../../../utils/LandingPageWidgetIconUtils';
+import { getEntityIcon } from '../../../../utils/LandingPageWidgetIconUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import CertificationTag from '../../../common/CertificationTag/CertificationTag';
@@ -362,7 +362,7 @@ const CuratedAssetsWidget = ({
           <div
             className="curated-assets-list-item flex items-center w-full"
             data-testid={`Curated Assets-${title}`}>
-            {getLandingPageWidgetIcon(item as SearchSourceAlias, 'entity-icon')}
+            {getEntityIcon(item as SearchSourceAlias, 'entity-icon')}
             <div className="flex flex-col curated-assets-list-item-content">
               <div className="flex items-center gap-1">
                 <Typography.Text

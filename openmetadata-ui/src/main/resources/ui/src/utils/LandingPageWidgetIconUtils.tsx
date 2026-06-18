@@ -24,7 +24,7 @@ interface LandingPageWidgetIconSource {
   serviceType?: string;
 }
 
-export const getLandingPageWidgetIcon = (
+export const getEntityIcon = (
   item: LandingPageWidgetIconSource,
   className = 'w-8 h-8'
 ) => {

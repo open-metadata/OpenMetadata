@@ -104,9 +104,9 @@ describe('AnnouncementCardV1', () => {
     expect(screen.getByTestId('announcement-card-v1-1')).toBeInTheDocument();
     expect(screen.getByText('alberto')).toBeInTheDocument();
     expect(screen.getByText('Total Data Assets')).toBeInTheDocument();
-    expect(await screen.findByTestId('announcement-description')).toHaveTextContent(
-      'Lorem ipsum dolor sit amet.'
-    );
+    expect(
+      await screen.findByTestId('announcement-description')
+    ).toHaveTextContent('Lorem ipsum dolor sit amet.');
   });
 
   it('renders entity and user links without triggering card click', () => {

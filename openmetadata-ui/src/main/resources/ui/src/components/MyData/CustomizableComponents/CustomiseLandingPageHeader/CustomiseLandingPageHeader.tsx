@@ -38,7 +38,7 @@ import {
 } from '../../../../utils/CustomizableLandingPageCarouselUtils';
 import { getEntityLinkFromType } from '../../../../utils/EntityLinkUtils';
 import { getDomainDisplayName } from '../../../../utils/EntityNameUtils';
-import { getLandingPageWidgetIcon } from '../../../../utils/LandingPageWidgetIconUtils';
+import { getEntityIcon } from '../../../../utils/LandingPageWidgetIconUtils';
 import { getRecentlyViewedData } from '../../../../utils/RecentActivityUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
@@ -116,7 +116,7 @@ const CustomiseLandingPageHeader = ({
 
     return entities.map((entity) => {
       return {
-        icon: getLandingPageWidgetIcon(
+        icon: getEntityIcon(
           {
             entityType: entity.entityType,
             name: entity.displayName,

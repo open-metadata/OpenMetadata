@@ -64,6 +64,7 @@ describe('DataAssetCard', () => {
         screen.getByTestId('service-icon').querySelector('img')
       ).toBeInTheDocument();
     });
+
     expect(screen.getByText('MySQL')).toBeInTheDocument();
     expect(screen.getByText('AppBadge')).toBeInTheDocument();
 

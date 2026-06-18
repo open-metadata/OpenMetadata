@@ -42,7 +42,7 @@ import {
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { getLandingPageWidgetIcon } from '../../../utils/LandingPageWidgetIconUtils';
+import { getEntityIcon } from '../../../utils/LandingPageWidgetIconUtils';
 import { getDomainPath, getUserPath } from '../../../utils/RouterUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -220,7 +220,7 @@ function FollowingWidget({
                       className="entity-button flex items-center gap-2 p-0 w-full"
                       icon={
                         <div className="entity-button-icon d-flex items-center justify-center flex-shrink">
-                          {getLandingPageWidgetIcon(item)}
+                          {getEntityIcon(item)}
                         </div>
                       }
                       type="text">
