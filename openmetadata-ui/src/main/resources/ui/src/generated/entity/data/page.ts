@@ -55,6 +55,10 @@ export interface Page {
      */
     entityStatus?: EntityStatus;
     /**
+     * Statistics from the most recent knowledge-pill extraction run on this page's body.
+     */
+    extractionStats?: ExtractionStats;
+    /**
      * Followers of this Knowledge Page.
      */
     followers?: EntityReference[];
@@ -74,6 +78,10 @@ export interface Page {
      * Change that lead to this version of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
+    /**
+     * Number of knowledge pills (context memories) extracted from this page.
+     */
+    memoryCount?: number;
     /**
      * Name of Knowledge Page belongs to
      */
@@ -327,6 +335,35 @@ export enum EntityStatus {
     InReview = "In Review",
     Rejected = "Rejected",
     Unprocessed = "Unprocessed",
+}
+
+/**
+ * Statistics from the most recent knowledge-pill extraction run on this page's body.
+ *
+ * Statistics from the most recent knowledge-pill extraction run.
+ */
+export interface ExtractionStats {
+    /**
+     * Number of chunks the LLM successfully processed.
+     */
+    chunksProcessed?: number;
+    /**
+     * Number of chunks the document text splits into.
+     */
+    chunksTotal?: number;
+    /**
+     * Time of the last extraction run in Unix epoch time milliseconds.
+     */
+    lastExtractedAt?: number;
+    /**
+     * Number of knowledge pills persisted by the run.
+     */
+    pillsCreated?: number;
+    /**
+     * Hash of the source content used for the most recent extraction. Lets the processing
+     * engine skip re-extraction when the content is unchanged.
+     */
+    sourceHash?: string;
 }
 
 /**

@@ -35,4 +35,5 @@ export interface ExploreQuickFiltersProps {
   immediateApply?: boolean;
   // Helper text shown at the bottom of each filter dropdown when immediateApply is enabled.
   helperText?: string;
+  untitledDropdown?: boolean;
 }
