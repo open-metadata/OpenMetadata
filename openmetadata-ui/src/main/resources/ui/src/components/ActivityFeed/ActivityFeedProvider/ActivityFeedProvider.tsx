@@ -78,11 +78,6 @@ import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import { getUpdatedThread } from '../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import {
-  activityFeedCacheEpoch,
-  myActivityFeedCache,
-  myActivityFeedRequests,
-} from './ActivityFeedCache';
 import { ActivityFeedProviderContextType } from './ActivityFeedProviderContext.interface';
 const ActivityFeedDrawer = withSuspenseFallback(
   lazy(() => import('../ActivityFeedDrawer/ActivityFeedDrawer'))
@@ -783,45 +778,15 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
 
   const fetchMyActivityFeedHandler = useCallback(
     async (params?: { days?: number; limit?: number }) => {
-      const domain =
-        activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined;
-      const cacheKey = JSON.stringify({ ...params, domain });
-      // My-data loads this feed alongside several other widgets. Reuse cached
-      // data immediately and coalesce same-key refreshes so a dashboard revisit
-      // does not create another critical-path feed request.
-      const cachedActivityEvents = myActivityFeedCache.get(cacheKey);
-
-      if (cachedActivityEvents) {
-        setActivityEvents(cachedActivityEvents);
-      }
-
-      setIsActivityLoading(!cachedActivityEvents);
-
-      const epoch = activityFeedCacheEpoch;
-
+      setIsActivityLoading(true);
       try {
-        let request = myActivityFeedRequests.get(cacheKey);
-
-        if (!request) {
-          request = getMyActivityFeed({ ...params, domain }).then(
-            ({ data }) => {
-              if (epoch === activityFeedCacheEpoch) {
-                myActivityFeedCache.set(cacheKey, data);
-              }
-
-              return data;
-            }
-          );
-          myActivityFeedRequests.set(cacheKey, request);
-        }
-
-        const data = await request;
-
+        const domain =
+          activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined;
+        const { data } = await getMyActivityFeed({ ...params, domain });
         setActivityEvents(data);
       } catch (err) {
         showErrorToast(err as AxiosError);
       } finally {
-        myActivityFeedRequests.delete(cacheKey);
         setIsActivityLoading(false);
       }
     },

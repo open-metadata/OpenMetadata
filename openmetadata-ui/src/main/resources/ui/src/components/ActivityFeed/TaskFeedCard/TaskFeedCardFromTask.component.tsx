@@ -47,16 +47,14 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { getErrorText } from '../../../utils/StringUtils';
 import {
+  getNormalizedTaskPayload,
   getTaskDetailPathFromTask,
   getTaskDisplayId,
-  isTaskPendingFurtherApproval,
-} from '../../../utils/TaskNavigationUtils';
-import {
   isDescriptionTaskType,
   isRecognizerFeedbackTask,
   isTagsTaskType,
-} from '../../../utils/TaskActionUtils';
-import { getNormalizedTaskPayload } from '../../../utils/TaskPayloadUtils';
+  isTaskPendingFurtherApproval,
+} from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';

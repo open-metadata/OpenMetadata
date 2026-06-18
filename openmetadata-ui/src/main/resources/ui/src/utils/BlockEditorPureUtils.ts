@@ -35,26 +35,30 @@ const convertMarkdownFormatToHtmlString = (markdown: string) => {
     hashTagList.map((hashTag) => [hashTag, getEntityDetail(hashTag)])
   );
 
-  mentionMap.forEach((value, key) => {
-    if (value) {
-      const [, href, rawEntityType, fqn] = value;
-      const entityType = urlEntries.find((e) => e[1] === rawEntityType)?.[0];
+  [...mentionMap.entries()]
+    .sort(([leftKey], [rightKey]) => rightKey.length - leftKey.length)
+    .forEach(([key, value]) => {
+      if (value) {
+        const [, href, rawEntityType, fqn] = value;
+        const entityType = urlEntries.find((e) => e[1] === rawEntityType)?.[0];
 
-      if (entityType) {
-        const entityLink = `<a href="${href}/${rawEntityType}/${fqn}" data-type="mention" data-entityType="${entityType}" data-fqn="${fqn}" data-label="${fqn}">@${fqn}</a>`;
-        updatedMessage = updatedMessage.replaceAll(key, entityLink);
+        if (entityType) {
+          const entityLink = `<a href="${href}/${rawEntityType}/${fqn}" data-type="mention" data-entityType="${entityType}" data-fqn="${fqn}" data-label="${fqn}">@${fqn}</a>`;
+          updatedMessage = updatedMessage.replaceAll(key, () => entityLink);
+        }
       }
-    }
-  });
+    });
 
-  hashTagMap.forEach((value, key) => {
-    if (value) {
-      const [, href, rawEntityType, fqn] = value;
+  [...hashTagMap.entries()]
+    .sort(([leftKey], [rightKey]) => rightKey.length - leftKey.length)
+    .forEach(([key, value]) => {
+      if (value) {
+        const [, href, rawEntityType, fqn] = value;
 
-      const entityLink = `<a href="${href}/${rawEntityType}/${fqn}" data-type="hashtag" data-entityType="${rawEntityType}" data-fqn="${fqn}" data-label="${fqn}">#${fqn}</a>`;
-      updatedMessage = updatedMessage.replaceAll(key, entityLink);
-    }
-  });
+        const entityLink = `<a href="${href}/${rawEntityType}/${fqn}" data-type="hashtag" data-entityType="${rawEntityType}" data-fqn="${fqn}" data-label="${fqn}">#${fqn}</a>`;
+        updatedMessage = updatedMessage.replaceAll(key, () => entityLink);
+      }
+    });
 
   return updatedMessage;
 };

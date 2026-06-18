@@ -29,7 +29,7 @@ import type { User } from '../generated/entity/teams/user';
 import { searchQuery } from '../rest/searchAPI';
 import { getRandomColor } from './ColorUtils';
 import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
-import { getEntityPlaceHolder } from './EntityDisplayPureUtils';
+import { getEntityPlaceHolder } from './EntityDisplayUtils';
 import { getEntityName } from './EntityNameUtils';
 import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
 import { buildMentionLink } from './FeedUtilsPure';
