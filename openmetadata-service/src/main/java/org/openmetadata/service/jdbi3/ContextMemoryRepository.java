@@ -27,6 +27,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.configuration.AIDeletionPolicy;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
@@ -517,19 +518,19 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   // Knowledge-pill cascade hooks fire BEFORE relationshipDAO().deleteAll(id) so the
   // DERIVED_FROM edges are still queryable when the reconciler runs (see design spec §9).
   @Override
-  @org.jdbi.v3.sqlobject.transaction.Transaction
+  @Transaction
   protected void softDeleteAdditionalChildren(final UUID memoryId, final String deletedBy) {
     cascadeOntology(memoryId, false);
   }
 
   @Override
-  @org.jdbi.v3.sqlobject.transaction.Transaction
+  @Transaction
   protected void hardDeleteAdditionalChildren(final UUID memoryId, final String deletedBy) {
     cascadeOntology(memoryId, true);
   }
 
   @Override
-  @org.jdbi.v3.sqlobject.transaction.Transaction
+  @Transaction
   protected void restoreAdditionalChildren(final UUID memoryId, final String restoredBy) {
     final ContextMemory memory = get(null, memoryId, getFields(""), Include.ALL, false);
     ontologyReconciler().onMemoryRestored(memory);

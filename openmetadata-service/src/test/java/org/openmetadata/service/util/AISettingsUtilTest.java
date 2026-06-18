@@ -13,12 +13,15 @@
 
 package org.openmetadata.service.util;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.configuration.AIPrompts;
 import org.openmetadata.schema.configuration.AISettings;
 import org.openmetadata.schema.configuration.MemoryExtractionSettings;
+import org.openmetadata.schema.configuration.PromptConfig;
 
 class AISettingsUtilTest {
 
@@ -26,15 +29,38 @@ class AISettingsUtilTest {
   void disabledMasterSwitchDisablesEverything() {
     AISettings off = new AISettings().withEnabled(false);
     assertFalse(AISettingsUtil.isFileExtractionEnabled(off));
+    assertFalse(AISettingsUtil.isPageExtractionEnabled(off));
     assertFalse(AISettingsUtil.isOntologyAgentEnabled(off));
   }
 
   @Test
-  void fileExtractionRequiresMasterAndFlag() {
+  void fileExtractionEnabledWhenMasterOnAndFlagSet() {
+    AISettings on =
+        new AISettings()
+            .withEnabled(true)
+            .withMemoryExtraction(
+                new MemoryExtractionSettings().withFromFiles(true).withFromPages(false));
+    assertTrue(AISettingsUtil.isFileExtractionEnabled(on));
+    assertFalse(AISettingsUtil.isPageExtractionEnabled(on));
+  }
+
+  @Test
+  void memoryExtractionPromptReturnsFallbackWhenNoPromptConfigured() {
     AISettings on =
         new AISettings()
             .withEnabled(true)
             .withMemoryExtraction(new MemoryExtractionSettings().withFromFiles(true));
-    assertNotNull(AISettingsUtil.memoryExtractionPrompt(on, "fallback"));
+    assertEquals("fallback", AISettingsUtil.memoryExtractionPrompt(on, "fallback"));
+  }
+
+  @Test
+  void memoryExtractionPromptReturnsConfiguredPromptWhenSet() {
+    AISettings on =
+        new AISettings()
+            .withEnabled(true)
+            .withPrompts(
+                new AIPrompts()
+                    .withMemoryExtraction(new PromptConfig().withSystemPrompt("custom-prompt")));
+    assertEquals("custom-prompt", AISettingsUtil.memoryExtractionPrompt(on, "fallback"));
   }
 }

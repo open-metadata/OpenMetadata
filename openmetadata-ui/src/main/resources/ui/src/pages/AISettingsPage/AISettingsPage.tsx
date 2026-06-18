@@ -33,6 +33,7 @@ import {
 import { Settings, SettingType } from '../../generated/settings/settings';
 import {
   getSettingsByType,
+  restoreSettingsConfig,
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
@@ -97,7 +98,20 @@ const AISettingsPage = () => {
   };
 
   const handleReset = async () => {
-    await fetchAIConfig();
+    try {
+      setIsUpdating(true);
+      await restoreSettingsConfig(SettingType.AiSettings);
+      await fetchAIConfig();
+      showSuccessToast(
+        t('server.update-entity-success', {
+          entity: t('label.ai-setting-plural'),
+        })
+      );
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   useEffect(() => {
