@@ -78,14 +78,19 @@ public class OntologyReconciler {
   }
 
   /** Tally of what a reconcile run did, by ownership outcome. */
-  public record ReconcileResult(int created, int reused, int retired) {}
+  public record ReconcileResult(int createdTerms, int createdMetrics, int reused, int retired) {
+    /** Total entities created; kept for call sites that do not need axis-level granularity. */
+    public int created() {
+      return createdTerms + createdMetrics;
+    }
+  }
 
   public ReconcileResult reconcile(
       final ContextMemory memory, final OntologyDerivation verdict, final AIDeletionPolicy policy) {
     final ReconcileResult result;
     if (isAllSkip(verdict)) {
       LOG.info("All-SKIP derivation for memory {}; skipping reconcile entirely", memory.getId());
-      result = new ReconcileResult(0, 0, 0);
+      result = new ReconcileResult(0, 0, 0, 0);
     } else {
       result = reconcileNonSkip(memory, verdict, policy);
     }
@@ -100,12 +105,14 @@ public class OntologyReconciler {
     retireStaleOwned(memory, Entity.GLOSSARY_TERM, termRepo, impliedTerm, policy, counts);
     retireStaleOwned(memory, Entity.METRIC, metricRepo, impliedMetric, policy, counts);
     LOG.info(
-        "Reconciled ontology for memory {}: {} created, {} reused, {} retired",
+        "Reconciled ontology for memory {}: {} terms created, {} metrics created, {} reused, {} retired",
         memory.getId(),
-        counts.created,
+        counts.createdTerms,
+        counts.createdMetrics,
         counts.reused,
         counts.retired);
-    return new ReconcileResult(counts.created, counts.reused, counts.retired);
+    return new ReconcileResult(
+        counts.createdTerms, counts.createdMetrics, counts.reused, counts.retired);
   }
 
   private boolean isAllSkip(final OntologyDerivation verdict) {
@@ -157,7 +164,7 @@ public class OntologyReconciler {
               .withUpdatedBy(ONTOLOGY_BOT_NAME);
       final GlossaryTerm created = termRepo.createInternal(term);
       addDerivedFromEdge(created.getId(), memory.getId(), Entity.GLOSSARY_TERM, termRepo);
-      counts.created++;
+      counts.createdTerms++;
     }
     return verdict.name();
   }
@@ -179,7 +186,7 @@ public class OntologyReconciler {
               .withUpdatedBy(ONTOLOGY_BOT_NAME);
       final Metric created = metricRepo.createInternal(metric);
       addDerivedFromEdge(created.getId(), memory.getId(), Entity.METRIC, metricRepo);
-      counts.created++;
+      counts.createdMetrics++;
     }
     return verdict.name();
   }
@@ -390,7 +397,8 @@ public class OntologyReconciler {
 
   /** Mutable tally threaded through reconciliation to keep each step a small single-purpose method. */
   private static final class Counts {
-    private int created;
+    private int createdTerms;
+    private int createdMetrics;
     private int reused;
     private int retired;
   }

@@ -68,7 +68,7 @@ class OntologyProcessingEngineTest {
                 OntologyAction.SKIP, null, null, null, null, null, null, null, null, null),
             new OntologyVerdict(
                 OntologyAction.SKIP, null, null, null, null, null, null, null, null, null));
-    OntologyReconciler.ReconcileResult result = new OntologyReconciler.ReconcileResult(1, 2, 0);
+    OntologyReconciler.ReconcileResult result = new OntologyReconciler.ReconcileResult(1, 1, 2, 0);
 
     when(grounding.fetchCandidates(any())).thenReturn(ctx);
     when(extractor.derive(any(), any())).thenReturn(verdict);

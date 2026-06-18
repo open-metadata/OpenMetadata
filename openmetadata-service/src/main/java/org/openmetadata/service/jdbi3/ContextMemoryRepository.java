@@ -674,10 +674,13 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
   /**
    * Persists new {@link OntologyStats} on a memory WITHOUT bumping its version. The engine calls
-   * this after every derivation run. Using {@code updateVersion=false} inside
-   * {@link ContextMemoryUpdater#recordOntologyStats()} means the JSON store is updated but the
-   * version counter stays flat, so no postUpdate event is fired for the stats field and the
-   * schedule → run loop cannot re-trigger itself.
+   * this after every derivation run. Using {@code updateVersion=false} inside {@link
+   * ContextMemoryUpdater#recordOntologyStats()} means the JSON store is updated but the version
+   * counter stays flat (no history churn). {@code postUpdate} DOES still fire ({@code
+   * entityChanged=true}). The recursion loop is broken solely by the hash-gate in {@link
+   * org.openmetadata.service.drive.ontology.OntologyProcessingEngine}: after the stamp, {@code
+   * sourceHash == hashOf(memory)}, so a re-triggered run skips derivation. The hash-gate is
+   * load-bearing — do NOT remove it.
    */
   public void stampOntologyStats(final ContextMemory memory, final OntologyStats stats) {
     final ContextMemory updated = JsonUtils.deepCopy(memory, ContextMemory.class);

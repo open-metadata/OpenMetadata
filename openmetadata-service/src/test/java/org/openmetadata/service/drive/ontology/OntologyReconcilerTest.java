@@ -143,6 +143,8 @@ class OntologyReconcilerTest {
         reconciler()
             .reconcile(memory, new OntologyDerivation(term, skip()), AIDeletionPolicy.CASCADE);
 
+    assertEquals(1, result.createdTerms());
+    assertEquals(0, result.createdMetrics());
     assertEquals(1, result.created());
     ArgumentCaptor<GlossaryTerm> captor = ArgumentCaptor.forClass(GlossaryTerm.class);
     verify(termRepo).createInternal(captor.capture());
@@ -217,6 +219,8 @@ class OntologyReconcilerTest {
         reconciler()
             .reconcile(memory, new OntologyDerivation(skip(), metric), AIDeletionPolicy.CASCADE);
 
+    assertEquals(0, result.createdTerms());
+    assertEquals(1, result.createdMetrics());
     assertEquals(1, result.created());
     ArgumentCaptor<Metric> captor = ArgumentCaptor.forClass(Metric.class);
     verify(metricRepo).createInternal(captor.capture());

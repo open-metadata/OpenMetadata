@@ -39,9 +39,14 @@ import org.openmetadata.service.util.AISettingsUtil;
 /**
  * Orchestrates Ontology Agent derivation from {@link ContextMemory}. When memory content changes,
  * a trailing-throttle (debounce) collapses rapid edits into one run. Each run is guarded by a
- * content hash so an identical memory is never re-derived, protecting against both cost blowout and
- * infinite postUpdate→schedule→run re-entry (the stamp uses {@code updateVersion=false}, so it does
- * not churn the memory version and does not re-trigger the postUpdate hook).
+ * content hash so an identical memory is never re-derived, protecting against cost blowout and the
+ * postUpdate→schedule→run re-entry loop.
+ *
+ * <p>The stamp persists ontologyStats with {@code updateVersion=false}, so it does NOT bump the
+ * entity version (no history churn). It DOES still fire postUpdate ({@code entityChanged=true}).
+ * The recursion loop is therefore broken solely by the hash-gate: after a stamp, {@code sourceHash
+ * == hashOf(memory)}, so a re-triggered ontology run skips derivation. The hash-gate is
+ * load-bearing — do NOT remove it.
  */
 @Slf4j
 public class OntologyProcessingEngine {
@@ -229,8 +234,8 @@ public class OntologyProcessingEngine {
   private OntologyStats buildStats(final String hash, final OntologyReconciler.ReconcileResult r) {
     return new OntologyStats()
         .withSourceHash(hash)
-        .withDerivedTermCount(r.created())
-        .withDerivedMetricCount(0)
+        .withDerivedTermCount(r.createdTerms())
+        .withDerivedMetricCount(r.createdMetrics())
         .withReusedCount(r.reused())
         .withLastRunAt(System.currentTimeMillis());
   }
@@ -258,18 +263,17 @@ public class OntologyProcessingEngine {
   }
 
   private static ScheduledExecutorService defaultScheduler() {
-    return Executors.newSingleThreadScheduledExecutor(
-        runnable -> {
-          final Thread thread = new Thread(runnable, "ontology-derivation");
-          thread.setDaemon(true);
-          return thread;
-        });
+    return newScheduler("ontology-derivation");
   }
 
   private static ScheduledExecutorService immediateExecutor() {
+    return newScheduler("ontology-derivation-test");
+  }
+
+  private static ScheduledExecutorService newScheduler(final String threadName) {
     return Executors.newSingleThreadScheduledExecutor(
         runnable -> {
-          final Thread thread = new Thread(runnable, "ontology-derivation-test");
+          final Thread thread = new Thread(runnable, threadName);
           thread.setDaemon(true);
           return thread;
         });
