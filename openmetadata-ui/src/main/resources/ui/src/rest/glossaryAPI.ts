@@ -345,47 +345,15 @@ export const getGlossaryTermAssets = async (
   return response.data;
 };
 
-export type GlossaryTermAssetCountsParams = {
-  parent?: string;
-  limit?: number;
-  offset?: number;
-};
-
-export type GlossaryTermAssetCountsResponse = {
-  data: Record<string, number>;
-  total: number;
-};
-
 export const getGlossaryTermsAssetCounts = async (
-  parentOrParams?: string | GlossaryTermAssetCountsParams
+  parent?: string
 ): Promise<Record<string, number>> => {
-  const params: GlossaryTermAssetCountsParams =
-    typeof parentOrParams === 'string'
-      ? { parent: parentOrParams }
-      : parentOrParams ?? {};
   const response = await APIClient.get<Record<string, number>>(
     '/glossaryTerms/assets/counts',
-    { params }
+    { params: parent ? { parent } : undefined }
   );
 
   return response.data;
-};
-
-export const getGlossaryTermsAssetCountsPage = async (
-  params: GlossaryTermAssetCountsParams
-): Promise<GlossaryTermAssetCountsResponse> => {
-  const response = await APIClient.get<Record<string, number>>(
-    '/glossaryTerms/assets/counts',
-    { params }
-  );
-  const totalHeader =
-    response.headers?.['x-total-count'] ?? response.headers?.['X-Total-Count'];
-  const parsedTotal = totalHeader ? Number(totalHeader) : NaN;
-  const total = Number.isFinite(parsedTotal)
-    ? parsedTotal
-    : Object.keys(response.data ?? {}).length;
-
-  return { data: response.data ?? {}, total };
 };
 
 export const searchGlossaryTerms = async (search: string, page = 1) => {

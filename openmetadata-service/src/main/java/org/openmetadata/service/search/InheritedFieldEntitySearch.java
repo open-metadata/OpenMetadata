@@ -33,6 +33,9 @@ public interface InheritedFieldEntitySearch {
 
   Map<String, Integer> getAggregatedCountsByField(String fieldPath, String queryFilter, int size);
 
+  Map<String, Integer> getAggregatedCountsByField(
+      String fieldPath, String queryFilter, int size, String include);
+
   enum QueryFilterType {
     DOMAIN_ASSETS,
     OWNER_ASSETS,

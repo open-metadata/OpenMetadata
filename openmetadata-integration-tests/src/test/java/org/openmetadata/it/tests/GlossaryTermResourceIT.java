@@ -10,7 +10,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.ws.rs.core.Response;
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -57,6 +60,7 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.sdk.test.util.RestClient;
 
 /**
  * Integration tests for GlossaryTerm entity operations.
@@ -3238,6 +3242,14 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
       assertTrue(unpaged.has(fqn), "Unpaged response should contain term " + fqn);
     }
 
+    try (Response pagedResponse = rawGetAssetCounts(glossary.getFullyQualifiedName(), 2, 0)) {
+      assertEquals(200, pagedResponse.getStatus());
+      assertEquals(
+          String.valueOf(unpaged.size()),
+          pagedResponse.getHeaderString("X-Total-Count"),
+          "X-Total-Count header should report the pre-slice total term count");
+    }
+
     String firstPageBody = getAssetCountsWithPaging(client, glossary.getFullyQualifiedName(), 2, 0);
     JsonNode firstPage = mapper.readTree(firstPageBody);
     assertEquals(
@@ -3447,6 +3459,14 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
         .getHttpClient()
         .executeForString(
             HttpMethod.GET, "/v1/glossaryTerms/assets/counts", null, optionsBuilder.build());
+  }
+
+  private Response rawGetAssetCounts(String parent, int limit, int offset) {
+    String path =
+        String.format(
+            "/v1/glossaryTerms/assets/counts?parent=%s&limit=%d&offset=%d",
+            URLEncoder.encode(parent, StandardCharsets.UTF_8), limit, offset);
+    return RestClient.admin().rawGet(path);
   }
 
   private String getTermAssetsById(OpenMetadataClient client, String id) {
