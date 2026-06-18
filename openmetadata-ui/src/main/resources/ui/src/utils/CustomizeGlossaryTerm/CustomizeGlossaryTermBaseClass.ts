@@ -11,14 +11,10 @@
  *  limitations under the License.
  */
 
-import {
-  CustomizeTabWidget,
-  CustomizeTabWidgetProps,
-} from '../../components/Customization/CustomizeTabWidget/CustomizeTabWidget';
-import { GenericWidget } from '../../components/Customization/GenericWidget/GenericWidget';
-import GlossaryHeader from '../../components/Glossary/GlossaryHeader/GlossaryHeader.component';
-import { GlossaryHeaderProps } from '../../components/Glossary/GlossaryHeader/GlossaryHeader.interface';
-import { GlossaryHeaderWidget } from '../../components/Glossary/GlossaryHeader/GlossaryHeaderWidget';
+import { lazy, type ComponentType } from 'react';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
+import type { CustomizeTabWidgetProps } from '../../components/Customization/CustomizeTabWidget/CustomizeTabWidget';
+import type { GlossaryHeaderProps } from '../../components/Glossary/GlossaryHeader/GlossaryHeader.interface';
 import {
   CommonWidgetType,
   CUSTOM_PROPERTIES_WIDGET,
@@ -42,62 +38,96 @@ import {
   WidgetCommonProps,
   WidgetConfig,
 } from '../../pages/CustomizablePage/CustomizablePage.interface';
-import { getGlossaryTermWidgetFromKey } from '../GlossaryTerm/GlossaryTermUtil';
+import { getGlossaryTermWidgetFromKey } from '../GlossaryTerm/GlossaryTermWidgetUtils';
 
 type ComponentMap = {
   [GlossaryTermDetailPageWidgetKeys.HEADER]: {
-    component: typeof GlossaryHeader;
+    component: ComponentType<GlossaryHeaderProps & WidgetCommonProps>;
     props: GlossaryHeaderProps & WidgetCommonProps;
   };
   [GlossaryTermDetailPageWidgetKeys.TABS]: {
-    component: typeof CustomizeTabWidget;
+    component: ComponentType<WidgetCommonProps>;
     props: WidgetCommonProps;
   };
   [GlossaryTermDetailPageWidgetKeys.WORKFLOW_HISTORY]: {
-    component: typeof GenericWidget;
+    component: ComponentType<WidgetCommonProps>;
     props: WidgetCommonProps;
   };
   [GlossaryTermDetailPageWidgetKeys.DESCRIPTION]: {
-    component: typeof GenericWidget;
+    component: ComponentType<WidgetCommonProps>;
     props: WidgetCommonProps;
   };
   [GlossaryTermDetailPageWidgetKeys.TAGS]: {
-    component: typeof GenericWidget;
+    component: ComponentType<WidgetCommonProps>;
     props: WidgetCommonProps;
   };
   [GlossaryTermDetailPageWidgetKeys.DOMAIN]: {
-    component: typeof GenericWidget;
+    component: ComponentType<WidgetCommonProps>;
     props: WidgetCommonProps;
   };
   [GlossaryTermDetailPageWidgetKeys.CUSTOM_PROPERTIES]: {
-    component: typeof GenericWidget;
+    component: ComponentType<WidgetCommonProps>;
     props: WidgetCommonProps;
   };
   [GlossaryTermDetailPageWidgetKeys.SYNONYMS]: {
-    component: typeof GenericWidget;
+    component: ComponentType<WidgetCommonProps>;
     props: WidgetCommonProps;
   };
   [GlossaryTermDetailPageWidgetKeys.RELATED_TERMS]: {
-    component: typeof GenericWidget;
+    component: ComponentType<WidgetCommonProps>;
     props: WidgetCommonProps;
   };
   [GlossaryTermDetailPageWidgetKeys.REFERENCES]: {
-    component: typeof GenericWidget;
+    component: ComponentType<WidgetCommonProps>;
     props: WidgetCommonProps;
   };
   [GlossaryTermDetailPageWidgetKeys.OWNER]: {
-    component: typeof GenericWidget;
+    component: ComponentType<WidgetCommonProps>;
     props: WidgetCommonProps;
   };
   [GlossaryTermDetailPageWidgetKeys.REVIEWER]: {
-    component: typeof GenericWidget;
+    component: ComponentType<WidgetCommonProps>;
     props: WidgetCommonProps;
   };
   [GlossaryTermDetailPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER]: {
-    component: typeof GenericWidget;
+    component: ComponentType<WidgetCommonProps>;
     props: WidgetCommonProps;
   };
 };
+
+const CustomizeTabWidget = withSuspenseFallback(
+  lazy(() =>
+    import('../../components/Customization/CustomizeTabWidget/CustomizeTabWidget').then(
+      (module) => ({ default: module.CustomizeTabWidget })
+    )
+  )
+) as ComponentType<WidgetCommonProps>;
+
+const GenericWidget = withSuspenseFallback(
+  lazy(() =>
+    import('../../components/Customization/GenericWidget/GenericWidget').then(
+      (module) => ({ default: module.GenericWidget })
+    )
+  )
+) as ComponentType<WidgetCommonProps>;
+
+const GlossaryHeader = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../components/Glossary/GlossaryHeader/GlossaryHeader.component')
+  )
+) as ComponentType<GlossaryHeaderProps & WidgetCommonProps>;
+
+const GlossaryHeaderWidget = withSuspenseFallback(
+  lazy(() =>
+    import('../../components/Glossary/GlossaryHeader/GlossaryHeaderWidget').then(
+      (module) => ({ default: module.GlossaryHeaderWidget })
+    )
+  )
+) as ComponentType<{
+  isGlossary?: boolean;
+  widgetKey?: string;
+}>;
 
 class CustomizeGlossaryTermPageClassBase {
   defaultWidgetHeight = 2;
