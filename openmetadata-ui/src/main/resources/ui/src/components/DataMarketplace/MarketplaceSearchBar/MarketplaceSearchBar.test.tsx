@@ -19,11 +19,8 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import {
-  getNLPEnabledStatus,
-  nlqSearch,
-  searchQuery,
-} from '../../../rest/searchAPI';
+import { useSearchStore } from '../../../hooks/useSearchStore';
+import { nlqSearch, searchQuery } from '../../../rest/searchAPI';
 import MarketplaceSearchBar from './MarketplaceSearchBar.component';
 
 const mockNavigate = jest.fn();
@@ -34,7 +31,6 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock('../../../rest/searchAPI', () => ({
-  getNLPEnabledStatus: jest.fn().mockResolvedValue(true),
   nlqSearch: jest.fn().mockResolvedValue({ hits: { hits: [] } }),
   searchQuery: jest.fn().mockResolvedValue({ hits: { hits: [] } }),
 }));
@@ -141,24 +137,20 @@ const renderComponent = (props = {}) =>
 describe('MarketplaceSearchBar', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (getNLPEnabledStatus as jest.Mock).mockResolvedValue(true);
+    useSearchStore.setState({ isNLPEnabled: true, isNLPActive: false });
     (searchQuery as jest.Mock).mockResolvedValue({ hits: { hits: [] } });
     (nlqSearch as jest.Mock).mockResolvedValue({ hits: { hits: [] } });
   });
 
-  it('renders the search input', async () => {
-    await act(async () => {
-      renderComponent();
-    });
+  it('renders the search input', () => {
+    renderComponent();
 
     expect(screen.getByTestId('marketplace-search-bar')).toBeInTheDocument();
     expect(screen.getByTestId('marketplace-search-input')).toBeInTheDocument();
   });
 
-  it('shows NLQ toggle button when NLP is enabled', async () => {
-    await act(async () => {
-      renderComponent();
-    });
+  it('shows NLQ toggle button when NLP is enabled', () => {
+    renderComponent();
 
     const toggleBtn = screen.getByTestId('marketplace-nlq-toggle');
 
@@ -166,25 +158,19 @@ describe('MarketplaceSearchBar', () => {
     expect(toggleBtn).not.toHaveClass('active');
   });
 
-  it('shows search icon fallback when NLP is disabled', async () => {
-    (getNLPEnabledStatus as jest.Mock).mockResolvedValue(false);
+  it('shows search icon fallback when NLP is disabled', () => {
+    useSearchStore.setState({ isNLPEnabled: false, isNLPActive: false });
 
-    await act(async () => {
-      renderComponent();
-    });
+    renderComponent();
 
-    await waitFor(() => {
-      expect(screen.getByTestId('search-icon')).toBeInTheDocument();
-      expect(
-        screen.queryByTestId('marketplace-nlq-toggle')
-      ).not.toBeInTheDocument();
-    });
+    expect(screen.getByTestId('search-icon')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('marketplace-nlq-toggle')
+    ).not.toBeInTheDocument();
   });
 
   it('toggles NLQ active state when the toggle button is clicked', async () => {
-    await act(async () => {
-      renderComponent();
-    });
+    renderComponent();
 
     const toggleBtn = screen.getByTestId('marketplace-nlq-toggle');
 
@@ -216,9 +202,7 @@ describe('MarketplaceSearchBar', () => {
       hits: { hits: mockDataProducts.map((dp) => ({ _source: dp })) },
     });
 
-    await act(async () => {
-      renderComponent();
-    });
+    renderComponent();
 
     const input = screen.getByTestId('marketplace-search-input');
 
@@ -234,15 +218,10 @@ describe('MarketplaceSearchBar', () => {
   });
 
   it('calls nlqSearch when NLQ is active and NLP is enabled', async () => {
+    useSearchStore.setState({ isNLPEnabled: true, isNLPActive: true });
     (nlqSearch as jest.Mock).mockResolvedValue({ hits: { hits: [] } });
 
-    await act(async () => {
-      renderComponent();
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('marketplace-nlq-toggle'));
-    });
+    renderComponent();
 
     const input = screen.getByTestId('marketplace-search-input');
 
@@ -258,9 +237,7 @@ describe('MarketplaceSearchBar', () => {
   });
 
   it('does not open popover when input is empty', async () => {
-    await act(async () => {
-      renderComponent();
-    });
+    renderComponent();
 
     const input = screen.getByTestId('marketplace-search-input');
 
@@ -278,9 +255,7 @@ describe('MarketplaceSearchBar', () => {
       })
       .mockResolvedValueOnce({ hits: { hits: [] } });
 
-    await act(async () => {
-      renderComponent();
-    });
+    renderComponent();
 
     const input = screen.getByTestId('marketplace-search-input');
 
@@ -301,9 +276,7 @@ describe('MarketplaceSearchBar', () => {
         hits: { hits: mockDomains.map((d) => ({ _source: d })) },
       });
 
-    await act(async () => {
-      renderComponent();
-    });
+    renderComponent();
 
     const input = screen.getByTestId('marketplace-search-input');
 
@@ -322,9 +295,7 @@ describe('MarketplaceSearchBar', () => {
   it('shows no-data message when search returns empty results', async () => {
     (searchQuery as jest.Mock).mockResolvedValue({ hits: { hits: [] } });
 
-    await act(async () => {
-      renderComponent();
-    });
+    renderComponent();
 
     const input = screen.getByTestId('marketplace-search-input');
 
@@ -345,9 +316,7 @@ describe('MarketplaceSearchBar', () => {
       })
       .mockResolvedValueOnce({ hits: { hits: [] } });
 
-    await act(async () => {
-      renderComponent();
-    });
+    renderComponent();
 
     const input = screen.getByTestId('marketplace-search-input');
 
@@ -376,9 +345,7 @@ describe('MarketplaceSearchBar', () => {
         hits: { hits: mockDomains.map((d) => ({ _source: d })) },
       });
 
-    await act(async () => {
-      renderComponent();
-    });
+    renderComponent();
 
     const input = screen.getByTestId('marketplace-search-input');
 
@@ -408,9 +375,7 @@ describe('MarketplaceSearchBar', () => {
       })
       .mockResolvedValueOnce({ hits: { hits: [] } });
 
-    await act(async () => {
-      renderComponent();
-    });
+    renderComponent();
 
     const input = screen.getByTestId('marketplace-search-input');
 
@@ -429,10 +394,8 @@ describe('MarketplaceSearchBar', () => {
     expect(screen.queryByTestId('search-popover')).not.toBeInTheDocument();
   });
 
-  it('does not search when component is in edit view', async () => {
-    await act(async () => {
-      renderComponent({ isEditView: true });
-    });
+  it('does not search when component is in edit view', () => {
+    renderComponent({ isEditView: true });
 
     const input = screen.getByTestId('marketplace-search-input');
 
@@ -442,9 +405,7 @@ describe('MarketplaceSearchBar', () => {
   it('triggers search on Enter key press', async () => {
     (searchQuery as jest.Mock).mockResolvedValue({ hits: { hits: [] } });
 
-    await act(async () => {
-      renderComponent();
-    });
+    renderComponent();
 
     const input = screen.getByTestId('marketplace-search-input');
 
@@ -464,9 +425,7 @@ describe('MarketplaceSearchBar', () => {
   it('handles search API error gracefully', async () => {
     (searchQuery as jest.Mock).mockRejectedValue(new Error('API error'));
 
-    await act(async () => {
-      renderComponent();
-    });
+    renderComponent();
 
     const input = screen.getByTestId('marketplace-search-input');
 
