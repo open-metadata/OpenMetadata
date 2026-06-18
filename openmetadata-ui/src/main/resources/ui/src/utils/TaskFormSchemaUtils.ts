@@ -39,10 +39,8 @@ import {
   TaskPayload,
 } from '../rest/tasksAPI';
 import { getDefaultTaskFormSchema } from './TaskFormSchemaRegistry';
-import {
-  getNormalizedTaskPayload,
-  isRecognizerFeedbackTask,
-} from './TasksUtils';
+import { isRecognizerFeedbackTask } from './TaskActionUtils';
+import { getNormalizedTaskPayload } from './TaskPayloadUtils';
 
 export { getDefaultTaskFormSchema };
 

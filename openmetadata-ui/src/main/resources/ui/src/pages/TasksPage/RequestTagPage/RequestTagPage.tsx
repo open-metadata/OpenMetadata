@@ -47,13 +47,15 @@ import {
 } from '../../../utils/TaskFormSchemaUtils';
 import {
   fetchEntityDetail,
-  fetchOptions,
   getBreadCrumbList,
+} from '../../../utils/TaskEntityFetchUtils';
+import {
   getTagTaskFieldPath,
   getTaskAssignee,
   getTaskEntityFQN,
   getTaskMessage,
-} from '../../../utils/TasksUtils';
+} from '../../../utils/TaskFieldUtils';
+import { fetchOptions } from '../../../utils/TaskAssigneeUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Assignees from '../shared/Assignees';

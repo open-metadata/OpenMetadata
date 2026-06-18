@@ -24,12 +24,12 @@ import { TagSource } from '../../../generated/type/tagLabel';
 import { getFieldThreadElement } from '../../../utils/FeedElementUtils';
 import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import {
-  getEntityTaskDetails,
   getRequestDescriptionPath,
   getRequestTagsPath,
   getUpdateDescriptionPath,
   getUpdateTagsPath,
-} from '../../../utils/TasksUtils';
+} from '../../../utils/TaskNavigationUtils';
+import { getEntityTaskDetails } from '../../../utils/TaskFieldUtils';
 import { EntityTasksProps } from './EntityTasks.interface';
 
 const EntityTasks = ({
