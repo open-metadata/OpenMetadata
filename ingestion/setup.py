@@ -395,6 +395,8 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     # CVE-2026-28490 (RSA1_5 Bleichenbacher), CVE-2026-28498 (OIDC hash fail-open),
     # CVE-2026-28802 (alg:none bypass).
     "salesforce": {"simple_salesforce~=1.11", "authlib>=1.6.9"},
+    "data360": {"simple_salesforce~=1.11", "authlib>=1.6.9"},
+    "data360pipeline": {"simple_salesforce~=1.11", "authlib>=1.6.9"},
     "sample-data": {
         VERSIONS["avro"],
         VERSIONS["grpc-tools"],

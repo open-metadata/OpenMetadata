@@ -303,6 +303,8 @@ export interface DatabaseConnection {
  * IOMETE Connection Config
  *
  * QuestDB Connection Config
+ *
+ * Salesforce Data 360 (formerly DataCloud) Connection Config
  */
 export interface Connection {
     /**
@@ -980,12 +982,16 @@ export interface Connection {
      * Salesforce Consumer Key (Client ID) for OAuth 2.0 authentication. This is obtained from
      * your Salesforce Connected App configuration. Required along with Consumer Secret for
      * OAuth authentication.
+     *
+     * Consumer key provided when you setup your Salesforce connected app
      */
     consumerKey?: string;
     /**
      * Salesforce Consumer Secret (Client Secret) for OAuth 2.0 authentication. This is obtained
      * from your Salesforce Connected App configuration. Required along with Consumer Key for
      * OAuth authentication.
+     *
+     * Consumer secret provided when you setup your Salesforce connected app
      */
     consumerSecret?: string;
     /**
@@ -1217,6 +1223,9 @@ export interface Connection {
     apiKey?: string;
     /**
      * Pagination limit used while querying the SAP ERP API for fetching the entities
+     *
+     * Pagination limit used when fetching Data 360 objects. The default value is 10, and the
+     * valid range is 1-100
      */
     paginationLimit?: number;
     /**
@@ -2464,6 +2473,7 @@ export enum ConfigType {
     Cockroach = "Cockroach",
     Couchbase = "Couchbase",
     CustomDatabase = "CustomDatabase",
+    Data360 = "Data360",
     Databricks = "Databricks",
     Datalake = "Datalake",
     Db2 = "Db2",
@@ -2613,6 +2623,7 @@ export enum DatabaseServiceType {
     Cockroach = "Cockroach",
     Couchbase = "Couchbase",
     CustomDatabase = "CustomDatabase",
+    Data360 = "Data360",
     Databricks = "Databricks",
     Datalake = "Datalake",
     Db2 = "Db2",

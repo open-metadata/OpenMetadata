@@ -83,6 +83,10 @@ const pipelineSchemaLoaders: Partial<
     import(
       '../jsons/connectionSchemas/connections/pipeline/microsoftFabricPipelineConnection.json'
     ),
+  [PipelineServiceType.Data360Pipeline]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/pipeline/data360PipelineConnection.json'
+    ),
 };
 
 const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {
