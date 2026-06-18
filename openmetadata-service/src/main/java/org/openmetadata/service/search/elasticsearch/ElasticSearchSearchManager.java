@@ -36,20 +36,17 @@ import jakarta.json.JsonObject;
 import jakarta.json.JsonReader;
 import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
-import jakarta.json.spi.JsonProvider;
 import jakarta.json.stream.JsonGenerator;
 import jakarta.json.stream.JsonParser;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.StringReader;
-import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -752,35 +749,32 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     }
     processedNode.add(fqn);
     SearchResponse<JsonData> searchResponse = performLineageSearchForDQ(fqn, queryFilter, deleted);
-    Optional<List> optionalDocs =
-        JsonUtils.readJsonAtPath(
-            serializeSearchResponse(searchResponse), "$.hits.hits[*]._source", List.class);
+    for (Hit<JsonData> hit : searchResponse.hits().hits()) {
+      if (hit.source() == null) {
+        continue;
+      }
+      Map<String, Object> doc = EsUtils.jsonDataToMap(hit.source());
+      String nodeId = doc.get("id").toString();
+      allNodes.put(nodeId, doc);
+      if (testCaseResultRepository.hasTestCaseFailure(doc.get("fullyQualifiedName").toString())) {
+        nodesWithFailure.add(nodeId);
+      }
 
-    if (optionalDocs.isPresent()) {
-      List<Map<String, Object>> docs = (List<Map<String, Object>>) optionalDocs.get();
-      for (Map<String, Object> doc : docs) {
-        String nodeId = doc.get("id").toString();
-        allNodes.put(nodeId, doc);
-        if (testCaseResultRepository.hasTestCaseFailure(doc.get("fullyQualifiedName").toString())) {
-          nodesWithFailure.add(nodeId);
-        }
-
-        List<EsLineageData> lineageDataList =
-            JsonUtils.readOrConvertValues(doc.get("upstreamLineage"), EsLineageData.class);
-        for (EsLineageData lineage : lineageDataList) {
-          lineage.withToEntity(SearchUtils.getRelationshipRef(doc));
-          String fromEntityId = lineage.getFromEntity().getId().toString();
-          allEdges.computeIfAbsent(fromEntityId, k -> new ArrayList<>()).add(lineage);
-          collectNodesAndEdgesForDQ(
-              lineage.getFromEntity().getFullyQualifiedName(),
-              upstreamDepth - 1,
-              queryFilter,
-              deleted,
-              allEdges,
-              allNodes,
-              nodesWithFailure,
-              processedNode);
-        }
+      List<EsLineageData> lineageDataList =
+          JsonUtils.readOrConvertValues(doc.get("upstreamLineage"), EsLineageData.class);
+      for (EsLineageData lineage : lineageDataList) {
+        lineage.withToEntity(SearchUtils.getRelationshipRef(doc));
+        String fromEntityId = lineage.getFromEntity().getId().toString();
+        allEdges.computeIfAbsent(fromEntityId, k -> new ArrayList<>()).add(lineage);
+        collectNodesAndEdgesForDQ(
+            lineage.getFromEntity().getFullyQualifiedName(),
+            upstreamDepth - 1,
+            queryFilter,
+            deleted,
+            allEdges,
+            allNodes,
+            nodesWithFailure,
+            processedNode);
       }
     }
   }
@@ -949,24 +943,6 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     AssetTypeConfiguration assetConfig =
         sourceBuilderFactory.findAssetTypeConfig(indexName, searchSettings);
     sourceBuilderFactory.addConfiguredAggregationsV2(requestBuilder, assetConfig);
-  }
-
-  /**
-   * Serializes a SearchResponse to JSON string.
-   *
-   * @param searchResponse the SearchResponse to serialize
-   * @return JSON string representation of the response
-   */
-  private String serializeSearchResponse(SearchResponse<JsonData> searchResponse) {
-    JsonpMapper jsonpMapper = client._transport().jsonpMapper();
-    JsonProvider provider = jsonpMapper.jsonProvider();
-    StringWriter stringWriter = new StringWriter();
-    JsonGenerator generator = provider.createGenerator(stringWriter);
-
-    searchResponse.serialize(generator, jsonpMapper);
-    generator.close();
-
-    return stringWriter.toString();
   }
 
   private Response streamSearchResponse(SearchResponse<JsonData> searchResponse) {

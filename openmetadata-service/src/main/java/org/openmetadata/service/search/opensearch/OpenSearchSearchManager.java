@@ -33,7 +33,6 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -660,9 +659,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         }
       }
 
-      String responseJson = response.toJsonString();
       LOG.debug("Direct query search completed successfully");
-      return Response.status(Response.Status.OK).entity(responseJson).build();
+      return streamSearchResponse(response);
     } catch (Exception e) {
       LOG.error("Error executing direct query search: {}", e.getMessage(), e);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -745,35 +743,32 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     }
     processedNode.add(fqn);
     SearchResponse<JsonData> searchResponse = performLineageSearchForDQ(fqn, queryFilter, deleted);
-    Optional<List> optionalDocs =
-        JsonUtils.readJsonAtPath(
-            searchResponse.toJsonString(), "$.hits.hits[*]._source", List.class);
+    for (Hit<JsonData> hit : searchResponse.hits().hits()) {
+      if (hit.source() == null) {
+        continue;
+      }
+      Map<String, Object> doc = OsUtils.jsonDataToMap(hit.source());
+      String nodeId = doc.get("id").toString();
+      allNodes.put(nodeId, doc);
+      if (testCaseResultRepository.hasTestCaseFailure(doc.get("fullyQualifiedName").toString())) {
+        nodesWithFailure.add(nodeId);
+      }
 
-    if (optionalDocs.isPresent()) {
-      List<Map<String, Object>> docs = (List<Map<String, Object>>) optionalDocs.get();
-      for (Map<String, Object> doc : docs) {
-        String nodeId = doc.get("id").toString();
-        allNodes.put(nodeId, doc);
-        if (testCaseResultRepository.hasTestCaseFailure(doc.get("fullyQualifiedName").toString())) {
-          nodesWithFailure.add(nodeId);
-        }
-
-        List<EsLineageData> lineageDataList =
-            JsonUtils.readOrConvertValues(doc.get("upstreamLineage"), EsLineageData.class);
-        for (EsLineageData lineage : lineageDataList) {
-          lineage.withToEntity(SearchUtils.getRelationshipRef(doc));
-          String fromEntityId = lineage.getFromEntity().getId().toString();
-          allEdges.computeIfAbsent(fromEntityId, k -> new ArrayList<>()).add(lineage);
-          collectNodesAndEdgesForDQ(
-              lineage.getFromEntity().getFullyQualifiedName(),
-              upstreamDepth - 1,
-              queryFilter,
-              deleted,
-              allEdges,
-              allNodes,
-              nodesWithFailure,
-              processedNode);
-        }
+      List<EsLineageData> lineageDataList =
+          JsonUtils.readOrConvertValues(doc.get("upstreamLineage"), EsLineageData.class);
+      for (EsLineageData lineage : lineageDataList) {
+        lineage.withToEntity(SearchUtils.getRelationshipRef(doc));
+        String fromEntityId = lineage.getFromEntity().getId().toString();
+        allEdges.computeIfAbsent(fromEntityId, k -> new ArrayList<>()).add(lineage);
+        collectNodesAndEdgesForDQ(
+            lineage.getFromEntity().getFullyQualifiedName(),
+            upstreamDepth - 1,
+            queryFilter,
+            deleted,
+            allEdges,
+            allNodes,
+            nodesWithFailure,
+            processedNode);
       }
     }
   }
