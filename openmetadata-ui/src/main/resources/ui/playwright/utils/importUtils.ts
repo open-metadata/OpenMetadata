@@ -418,7 +418,9 @@ export const fillGlossaryTermDetails = async (
 
   await waitForAllLoadersToDisappear(page);
 
-  await page.locator('.async-tree-select-list-dropdown').waitFor({ state: 'visible' });
+  await page
+    .locator('.async-tree-select-list-dropdown')
+    .waitFor({ state: 'visible' });
   const searchResponse = page.waitForResponse(
     `/api/v1/search/query?q=**&index=glossaryTerm&**`
   );
