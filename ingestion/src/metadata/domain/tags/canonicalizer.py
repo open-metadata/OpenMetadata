@@ -60,7 +60,7 @@ class TagCanonicalizer:
     surface them to workflow status.
     """
 
-    def __init__(self, metadata: OpenMetadata) -> None:
+    def __init__(self, metadata: OpenMetadata[Any, Any]) -> None:
         self._metadata = metadata
         self._classification_cache: dict[str, Canonical] = {}
         self._tag_cache: dict[str, Canonical] = {}
