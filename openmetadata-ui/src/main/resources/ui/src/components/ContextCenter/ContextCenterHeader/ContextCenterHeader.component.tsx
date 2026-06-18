@@ -84,7 +84,7 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
               <Typography as="h3">{title}</Typography>
             </div>
             {subtitle && (
-              <Typography className="tw:text-gray-700">{subtitle}</Typography>
+              <Typography className="tw:text-secondary">{subtitle}</Typography>
             )}
           </div>
           <div className="tw:flex tw:items-center tw:gap-3 tw:ml-auto tw:shrink-0">
