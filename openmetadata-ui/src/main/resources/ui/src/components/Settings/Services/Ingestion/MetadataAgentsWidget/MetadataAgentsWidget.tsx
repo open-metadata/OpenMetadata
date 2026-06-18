@@ -32,17 +32,9 @@ import {
 } from '../../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../../utils/useRequiredParams';
 import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
+import ButtonSkeleton from '../../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import './metadata-agents-widget.less';
 import { MetadataAgentsWidgetProps } from './MetadataAgentsWidget.interface';
-
-const ButtonSkeleton = withSuspenseFallback(
-  lazy(
-    () =>
-      import(
-        '../../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component'
-      )
-  )
-);
 
 const IngestionListTable = withSuspenseFallback(
   lazy(() => import('../IngestionListTable/IngestionListTable'))
