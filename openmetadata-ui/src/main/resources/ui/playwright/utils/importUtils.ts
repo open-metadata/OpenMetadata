@@ -147,6 +147,7 @@ const getDescriptionEditorCandidates = (page: Page) => {
   return [
     page.getByTestId('markdown-editor').locator(descriptionBox).first(),
     page.locator(descriptionBox).first(),
+    page.locator('textarea.bulk-edit-description-editor-textarea').first(),
   ];
 };
 
@@ -189,7 +190,14 @@ const fillVisibleDescriptionEditor = async (
       element.scrollIntoView({ block: 'center', inline: 'nearest' })
     );
     await editor.fill(description, { timeout: 10000 });
-    await clickMarkdownEditorSave(page);
+
+    const tagName = await editor.evaluate((el) => el.tagName.toLowerCase());
+    if (tagName === 'textarea') {
+      await editor.press('Control+Enter');
+      await editor.waitFor({ state: 'detached' });
+    } else {
+      await clickMarkdownEditorSave(page);
+    }
 
     return true;
   } catch {
@@ -392,12 +400,12 @@ export const fillEntityTypeDetails = async (page: Page, entityType: string) => {
 export const fillTagDetails = async (page: Page, tag: string) => {
   await page.keyboard.press('Enter', { delay: 100 });
 
-  await page.click('[data-testid="tag-selector"]');
   const waitForQueryResponse = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
   );
-  await page.locator('[data-testid="tag-selector"] input').fill(tag);
+  await page.keyboard.type(tag);
   await waitForQueryResponse;
+
   await page.click(`[data-testid="tag-${tag}"]`);
   await clickInlineSave(page);
 };
@@ -410,12 +418,13 @@ export const fillGlossaryTermDetails = async (
 
   await waitForAllLoadersToDisappear(page);
 
-  await page.click('[data-testid="tag-selector"]');
+  await page.locator('.async-tree-select-list-dropdown').waitFor({ state: 'visible' });
   const searchResponse = page.waitForResponse(
     `/api/v1/search/query?q=**&index=glossaryTerm&**`
   );
-  await page.locator('[data-testid="tag-selector"] input').fill(glossary.name);
+  await page.keyboard.type(glossary.name);
   await searchResponse;
+
   await waitForAllLoadersToDisappear(page);
   await page.getByTestId(`tag-"${glossary.parent}"."${glossary.name}"`).click();
   await clickAssociatedTagSave(page);
@@ -444,6 +453,31 @@ export const fillDomainDetails = async (
 
   await page.getByTestId(`tag-${domains.fullyQualifiedName}`).click();
   await clickAssociatedTagSave(page);
+};
+
+export const fillTierDetails = async (page: Page, tier: string) => {
+  const tierResponse = page.waitForResponse('/api/v1/tags?parent=Tier*');
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click({ force: true });
+  await tierResponse;
+
+  await page.getByTestId(`radio-btn-${tier}`).click();
+  await page.getByTestId('update-tier-card').click();
+};
+
+export const fillCertificationDetails = async (
+  page: Page,
+  certification: string
+) => {
+  const certificationResponse = page.waitForResponse(
+    '/api/v1/tags?parent=Certification*'
+  );
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click({ force: true });
+  await certificationResponse;
+
+  const certRadioBtn = page.getByTestId(`radio-btn-${certification}`);
+  await certRadioBtn.waitFor({ state: 'visible' });
+  await certRadioBtn.click();
+  await page.getByTestId('update-certification').click();
 };
 
 export const fillStoredProcedureCode = async (page: Page) => {
@@ -985,25 +1019,10 @@ export const fillRowDetails = async (
   await fillGlossaryTermDetails(page, row.glossary);
 
   await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-  await page.keyboard.press('Enter', { delay: 100 });
-
-  await page.click(`[data-testid="radio-btn-${row.tier}"]`);
-  await page.click(`[data-testid="update-tier-card"]`);
+  await fillTierDetails(page, row.tier);
 
   await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
-  const certificationResponse = page.waitForResponse(
-    '/api/v1/tags?parent=Certification*'
-  );
-  await page.keyboard.press('Enter', { delay: 100 });
-  await certificationResponse;
-
-  const certRadioBtn = page.getByTestId(`radio-btn-${row.certification}`);
-  await certRadioBtn.waitFor({ state: 'visible' });
-  await certRadioBtn.click();
-  await page.getByTestId('update-certification').click();
+  await fillCertificationDetails(page, row.certification);
 
   await moveToNextColumnWithVerification(page);
 

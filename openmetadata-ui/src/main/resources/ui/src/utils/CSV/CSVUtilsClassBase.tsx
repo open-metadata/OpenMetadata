@@ -2169,6 +2169,7 @@ class CSVUtilsClassBase {
               <TreeAsyncSelectList
                 defaultValue={tags}
                 dropdownContainerRef={dropdownContainerRef}
+                dropdownMatchSelectWidth={false}
                 optionClassName="tag-select-box"
                 tagType={TagSource.Glossary}
                 onCancel={() => {
