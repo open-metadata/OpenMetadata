@@ -56,6 +56,8 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   static final String FIELD_RELATED_ENTITIES = "relatedEntities";
   static final String FIELD_SOURCE_FILE = "sourceFile";
   static final String FIELD_SOURCE_ENTITY = "sourceEntity";
+  static final String FIELD_DERIVED_ENTITIES = "derivedEntities";
+  static final String FIELD_REUSED_ENTITIES = "reusedEntities";
   private static final String PATCH_FIELDS =
       FIELD_PRIMARY_ENTITY
           + ","
@@ -105,6 +107,12 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         entity.setSourceFile(asContextFileRef(source));
       }
     }
+    if (fields.contains(FIELD_DERIVED_ENTITIES)) {
+      entity.setDerivedEntities(getDerivedEntities(entity));
+    }
+    if (fields.contains(FIELD_REUSED_ENTITIES)) {
+      entity.setReusedEntities(getReusedEntities(entity));
+    }
   }
 
   @Override
@@ -120,6 +128,12 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     }
     if (!fields.contains(FIELD_SOURCE_FILE)) {
       entity.setSourceFile(null);
+    }
+    if (!fields.contains(FIELD_DERIVED_ENTITIES)) {
+      entity.setDerivedEntities(null);
+    }
+    if (!fields.contains(FIELD_REUSED_ENTITIES)) {
+      entity.setReusedEntities(null);
     }
   }
 
@@ -259,6 +273,36 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   /** Back-compat view: the deprecated sourceFile is the source only when it is a ContextFile. */
   private EntityReference asContextFileRef(EntityReference source) {
     return source != null && Entity.CONTEXT_FILE.equals(source.getType()) ? source : null;
+  }
+
+  /**
+   * Returns the glossary terms and metrics created by the Ontology Agent from this memory.
+   * Edge direction: from=term/metric → to=memory via DERIVED_FROM; findFrom resolves from-side.
+   */
+  private List<EntityReference> getDerivedEntities(ContextMemory entity) {
+    final List<EntityReference> terms =
+        findFrom(
+            entity.getId(), Entity.CONTEXT_MEMORY, Relationship.DERIVED_FROM, Entity.GLOSSARY_TERM);
+    final List<EntityReference> metrics =
+        findFrom(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.DERIVED_FROM, Entity.METRIC);
+    final List<EntityReference> combined = new ArrayList<>(terms);
+    combined.addAll(metrics);
+    return combined;
+  }
+
+  /**
+   * Returns the glossary terms and metrics reused (not created) by the Ontology Agent from this memory.
+   * Edge direction: from=memory → to=term/metric via RELATED_TO; findTo resolves to-side.
+   */
+  private List<EntityReference> getReusedEntities(ContextMemory entity) {
+    final List<EntityReference> terms =
+        findTo(
+            entity.getId(), Entity.CONTEXT_MEMORY, Relationship.RELATED_TO, Entity.GLOSSARY_TERM);
+    final List<EntityReference> metrics =
+        findTo(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.RELATED_TO, Entity.METRIC);
+    final List<EntityReference> combined = new ArrayList<>(terms);
+    combined.addAll(metrics);
+    return combined;
   }
 
   private void fetchAndSetSources(List<ContextMemory> entities, Fields fields) {

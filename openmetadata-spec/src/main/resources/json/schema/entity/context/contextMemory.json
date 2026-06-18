@@ -269,6 +269,14 @@
     "ontologyStats": {
       "$ref": "#/definitions/ontologyStats"
     },
+    "derivedEntities": {
+      "description": "Derived: glossary terms and metrics created by the Ontology Agent from this memory (DERIVED_FROM edges, agent-owned).",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "reusedEntities": {
+      "description": "Derived: glossary terms and metrics reused (not created) by the Ontology Agent from this memory (RELATED_TO edges).",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "usageCount": {
       "description": "How many times this memory has been used in AI-assisted retrieval.",
       "type": "integer",

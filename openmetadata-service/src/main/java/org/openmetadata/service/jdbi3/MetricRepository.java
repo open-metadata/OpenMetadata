@@ -51,6 +51,7 @@ import org.openmetadata.service.util.OntologyOwnership;
 public class MetricRepository extends EntityRepository<Metric> {
   private static final String UPDATE_FIELDS = "relatedMetrics";
   private static final String PATCH_FIELDS = "relatedMetrics";
+  static final String FIELD_DERIVED_FROM = "derivedFrom";
 
   public MetricRepository() {
     super(
@@ -100,11 +101,27 @@ public class MetricRepository extends EntityRepository<Metric> {
       Metric metric, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     metric.setRelatedMetrics(
         fields.contains("relatedMetrics") ? getRelatedMetrics(metric) : metric.getRelatedMetrics());
+    if (fields.contains(FIELD_DERIVED_FROM)) {
+      metric.setDerivedFrom(getDerivedFrom(metric));
+    }
   }
 
   @Override
   protected void clearFields(Metric entity, EntityUtil.Fields fields) {
     entity.setRelatedMetrics(fields.contains("relatedMetrics") ? entity.getRelatedMetrics() : null);
+    if (!fields.contains(FIELD_DERIVED_FROM)) {
+      entity.setDerivedFrom(null);
+    }
+  }
+
+  /**
+   * Returns the context memory from which the Ontology Agent created this metric.
+   * Edge direction: from=metric → to=memory via DERIVED_FROM; findTo resolves the to-side (memory).
+   */
+  private EntityReference getDerivedFrom(Metric metric) {
+    final List<EntityReference> refs =
+        findTo(metric.getId(), Entity.METRIC, Relationship.DERIVED_FROM, Entity.CONTEXT_MEMORY);
+    return nullOrEmpty(refs) ? null : refs.getFirst();
   }
 
   // Individual field fetchers registered in constructor

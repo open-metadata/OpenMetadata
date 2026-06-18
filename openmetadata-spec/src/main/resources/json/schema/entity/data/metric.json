@@ -226,6 +226,10 @@
     },
     "provider": {
       "$ref": "../../type/basic.json#/definitions/providerType"
+    },
+    "derivedFrom": {
+      "description": "Derived: the context memory from which the Ontology Agent created this metric (DERIVED_FROM edge, read-only projection).",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["id", "name"],
