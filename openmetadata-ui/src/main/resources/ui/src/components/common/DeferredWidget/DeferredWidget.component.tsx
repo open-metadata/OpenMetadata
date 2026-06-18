@@ -155,11 +155,12 @@ export const DeferredWidget = ({
   }, [inView, hasBeenVisible]);
 
   const shouldRender = hasBeenVisible || initialInView || ioUnsupported.current;
+  const shouldExposeWrapperTestId = !shouldRender || ioUnsupported.current;
 
   return (
     <div
       className={className}
-      data-testid={dataTestId}
+      data-testid={shouldExposeWrapperTestId ? dataTestId : undefined}
       ref={ref}
       style={{
         height: '100%',
