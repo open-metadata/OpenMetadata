@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import axiosClient from '.';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
+import { AISettings } from '../generated/configuration/aiSettings';
 import { RelationCardinality } from '../generated/configuration/glossaryTermRelationSettings';
 import { LineageSettings } from '../generated/configuration/lineageSettings';
 import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
@@ -89,12 +90,15 @@ export const testEmailConnection = async (data: { email: string }) => {
 
 export const getSettingsByType = async (
   settingType: SettingType
-): Promise<SearchSettings | LineageSettings> => {
+): Promise<AISettings | LineageSettings | SearchSettings> => {
   const response = await axiosClient.get<Settings>(
     `/system/settings/${settingType}`
   );
 
-  return response.data.config_value as SearchSettings | LineageSettings;
+  return response.data.config_value as
+    | AISettings
+    | LineageSettings
+    | SearchSettings;
 };
 
 export const restoreSettingsConfig = async (settingType: SettingType) => {
