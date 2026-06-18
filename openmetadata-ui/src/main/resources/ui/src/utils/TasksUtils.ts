@@ -135,26 +135,6 @@ export const getRequestDescriptionPath = (
   return { pathname, search: searchParams.toString() };
 };
 
-export const getRequestTagsPath = (
-  entityType: string,
-  entityFqn: string,
-  field?: string,
-  value?: string
-) => {
-  let pathname = ROUTES.REQUEST_TAGS;
-  pathname = pathname
-    .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(entityFqn));
-  const searchParams = new URLSearchParams();
-
-  if (!isUndefined(field) && !isUndefined(value)) {
-    searchParams.append('field', field);
-    searchParams.append('value', value);
-  }
-
-  return { pathname, search: searchParams.toString() };
-};
-
 export const getUpdateDescriptionPath = (
   entityType: string,
   entityFqn: string,
@@ -162,26 +142,6 @@ export const getUpdateDescriptionPath = (
   value?: string
 ) => {
   let pathname = ROUTES.UPDATE_DESCRIPTION;
-  pathname = pathname
-    .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(entityFqn));
-  const searchParams = new URLSearchParams();
-
-  if (!isUndefined(field) && !isUndefined(value)) {
-    searchParams.append('field', field);
-    searchParams.append('value', value);
-  }
-
-  return { pathname, search: searchParams.toString() };
-};
-
-export const getUpdateTagsPath = (
-  entityType: string,
-  entityFqn: string,
-  field?: string,
-  value?: string
-) => {
-  let pathname = ROUTES.UPDATE_TAGS;
   pathname = pathname
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(entityFqn));

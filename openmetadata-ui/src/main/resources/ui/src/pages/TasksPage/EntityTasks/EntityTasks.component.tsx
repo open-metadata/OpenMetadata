@@ -24,11 +24,13 @@ import { TagSource } from '../../../generated/type/tagLabel';
 import { getFieldThreadElement } from '../../../utils/FeedElementUtils';
 import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import {
+  getRequestTagsPath,
+  getUpdateTagsPath,
+} from '../../../utils/TaskTagNavigationUtils';
+import {
   getEntityTaskDetails,
   getRequestDescriptionPath,
-  getRequestTagsPath,
   getUpdateDescriptionPath,
-  getUpdateTagsPath,
 } from '../../../utils/TasksUtils';
 import { EntityTasksProps } from './EntityTasks.interface';
 

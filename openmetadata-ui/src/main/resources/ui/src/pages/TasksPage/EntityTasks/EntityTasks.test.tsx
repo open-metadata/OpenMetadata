@@ -60,10 +60,13 @@ jest.mock('../../../utils/TasksUtils', () => ({
   getRequestDescriptionPath: jest
     .fn()
     .mockImplementation(() => mockRequestDescription),
-  getRequestTagsPath: jest.fn().mockImplementation(() => mockRequestTags),
   getUpdateDescriptionPath: jest
     .fn()
     .mockImplementation(() => mockUpdateDescription),
+}));
+
+jest.mock('../../../utils/TaskTagNavigationUtils', () => ({
+  getRequestTagsPath: jest.fn().mockImplementation(() => mockRequestTags),
   getUpdateTagsPath: jest.fn().mockImplementation(() => mockUpdateTags),
 }));
 
