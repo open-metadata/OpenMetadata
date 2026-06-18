@@ -97,9 +97,9 @@ type ComponentMap = {
 
 const CustomizeTabWidget = withSuspenseFallback(
   lazy(() =>
-    import('../../components/Customization/CustomizeTabWidget/CustomizeTabWidget').then(
-      (module) => ({ default: module.CustomizeTabWidget })
-    )
+    import(
+      '../../components/Customization/CustomizeTabWidget/CustomizeTabWidget'
+    ).then((module) => ({ default: module.CustomizeTabWidget }))
   )
 ) as ComponentType<WidgetCommonProps>;
 
@@ -114,15 +114,17 @@ const GenericWidget = withSuspenseFallback(
 const GlossaryHeader = withSuspenseFallback(
   lazy(
     () =>
-      import('../../components/Glossary/GlossaryHeader/GlossaryHeader.component')
+      import(
+        '../../components/Glossary/GlossaryHeader/GlossaryHeader.component'
+      )
   )
 ) as ComponentType<GlossaryHeaderProps & WidgetCommonProps>;
 
 const GlossaryHeaderWidget = withSuspenseFallback(
   lazy(() =>
-    import('../../components/Glossary/GlossaryHeader/GlossaryHeaderWidget').then(
-      (module) => ({ default: module.GlossaryHeaderWidget })
-    )
+    import(
+      '../../components/Glossary/GlossaryHeader/GlossaryHeaderWidget'
+    ).then((module) => ({ default: module.GlossaryHeaderWidget }))
   )
 ) as ComponentType<{
   isGlossary?: boolean;
