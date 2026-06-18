@@ -181,23 +181,16 @@ public class SystemResource {
     return searchSettings;
   }
 
-  public AISettings loadDefaultAiSettings() {
-    AISettings defaultAiSettings;
-    try {
-      List<String> jsonDataFiles =
-          EntityUtil.getJsonDataResources(".*json/data/settings/aiSettings.json$");
-      if (jsonDataFiles.isEmpty()) {
-        throw new IllegalArgumentException("Default AI settings file not found.");
-      }
-      String json =
-          CommonUtil.getResourceAsStream(
-              EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
-      defaultAiSettings = JsonUtils.readValue(json, AISettings.class);
-    } catch (IOException e) {
-      LOG.error("Failed to read default AI settings. Message: {}", e.getMessage(), e);
-      defaultAiSettings = new AISettings();
+  public AISettings loadDefaultAiSettings() throws IOException {
+    List<String> jsonDataFiles =
+        EntityUtil.getJsonDataResources(".*json/data/settings/aiSettings.json$");
+    if (jsonDataFiles.isEmpty()) {
+      throw new IllegalArgumentException("Default AI settings file not found.");
     }
-    return defaultAiSettings;
+    String json =
+        CommonUtil.getResourceAsStream(
+            EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
+    return JsonUtils.readValue(json, AISettings.class);
   }
 
   @GET
@@ -439,10 +432,16 @@ public class SystemResource {
     }
 
     if (AI_SETTINGS.value().equalsIgnoreCase(settingName.getConfigType().toString())) {
-      AISettings defaults = loadDefaultAiSettings();
-      AISettings incoming = JsonUtils.convertValue(settingName.getConfigValue(), AISettings.class);
-      aiSettingsHandler.validateAISettings(incoming);
-      settingName.setConfigValue(aiSettingsHandler.mergeAISettings(defaults, incoming));
+      try {
+        AISettings defaults = loadDefaultAiSettings();
+        AISettings incoming =
+            JsonUtils.convertValue(settingName.getConfigValue(), AISettings.class);
+        aiSettingsHandler.validateAISettings(incoming);
+        settingName.setConfigValue(aiSettingsHandler.mergeAISettings(defaults, incoming));
+      } catch (IOException e) {
+        LOG.error("Failed to read default AI settings. Message: {}", e.getMessage(), e);
+        throw new SystemSettingsException("Failed to load default AI settings: " + e.getMessage());
+      }
     }
 
     Response response = systemRepository.createOrUpdate(settingName);
@@ -481,15 +480,20 @@ public class SystemResource {
 
     authorizer.authorizeAdmin(securityContext);
 
+    Object defaults;
     if (SettingsType.SEARCH_SETTINGS.value().equalsIgnoreCase(name)) {
-      SearchSettings settings = loadDefaultSearchSettings(true);
-      return Response.ok(settings).build();
+      defaults = loadDefaultSearchSettings(true);
+    } else if (AI_SETTINGS.value().equalsIgnoreCase(name)) {
+      try {
+        defaults = loadDefaultAiSettings();
+      } catch (IOException e) {
+        LOG.error("Failed to read default AI settings. Message: {}", e.getMessage(), e);
+        throw new SystemSettingsException("Failed to load default AI settings: " + e.getMessage());
+      }
+    } else {
+      throw new SystemSettingsException("Resetting of setting '" + name + "' is not supported.");
     }
-    if (AI_SETTINGS.value().equalsIgnoreCase(name)) {
-      AISettings settings = loadDefaultAiSettings();
-      return Response.ok(settings).build();
-    }
-    throw new SystemSettingsException("Resetting of setting '" + name + "' is not supported.");
+    return Response.ok(defaults).build();
   }
 
   @PUT

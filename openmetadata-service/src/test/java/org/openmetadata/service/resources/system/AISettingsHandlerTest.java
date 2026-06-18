@@ -24,6 +24,31 @@ import org.openmetadata.schema.configuration.OntologyAgentSettings;
 class AISettingsHandlerTest {
 
   @Test
+  void incomingNullReturnsDefaults() {
+    AISettings defaults =
+        new AISettings()
+            .withEnabled(true)
+            .withMemoryExtraction(
+                new MemoryExtractionSettings().withFromFiles(true).withFromPages(true));
+
+    AISettings merged = new AISettingsHandler().mergeAISettings(defaults, null);
+
+    assertEquals(Boolean.TRUE, merged.getEnabled());
+    assertEquals(Boolean.TRUE, merged.getMemoryExtraction().getFromFiles());
+  }
+
+  @Test
+  void nullNestedDefaultInheritsIncoming() {
+    AISettings defaults = new AISettings().withEnabled(true).withMemoryExtraction(null);
+    AISettings incoming =
+        new AISettings().withMemoryExtraction(new MemoryExtractionSettings().withFromFiles(true));
+
+    AISettings merged = new AISettingsHandler().mergeAISettings(defaults, incoming);
+
+    assertEquals(Boolean.TRUE, merged.getMemoryExtraction().getFromFiles());
+  }
+
+  @Test
   void mergePreservesAdminOverridesAndFillsMissingDefaults() {
     AISettings defaults =
         new AISettings()
