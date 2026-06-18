@@ -156,12 +156,14 @@ public class OntologyReconciler {
       final EntityReference glossary = resolveOrMintGlossary(verdict);
       final GlossaryTerm term =
           new GlossaryTerm()
+              .withId(UUID.randomUUID())
               .withName(verdict.name())
               .withDisplayName(verdict.displayName())
               .withDescription(verdict.description())
               .withGlossary(glossary)
               .withProvider(ProviderType.AUTOMATION)
-              .withUpdatedBy(OntologyOwnership.ONTOLOGY_BOT_NAME);
+              .withUpdatedBy(OntologyOwnership.ONTOLOGY_BOT_NAME)
+              .withUpdatedAt(System.currentTimeMillis());
       final GlossaryTerm created = termRepo.createInternal(term);
       addDerivedFromEdge(created.getId(), memory.getId(), Entity.GLOSSARY_TERM, termRepo);
       counts.createdTerms++;
@@ -176,6 +178,7 @@ public class OntologyReconciler {
     if (existingOwned == null) {
       final Metric metric =
           new Metric()
+              .withId(UUID.randomUUID())
               .withName(verdict.name())
               .withDisplayName(verdict.displayName())
               .withDescription(verdict.description())
@@ -183,7 +186,8 @@ public class OntologyReconciler {
               .withUnitOfMeasurement(toUnit(verdict.unitOfMeasurement()))
               .withMetricExpression(toExpression(verdict.metricExpressionCode()))
               .withProvider(ProviderType.AUTOMATION)
-              .withUpdatedBy(OntologyOwnership.ONTOLOGY_BOT_NAME);
+              .withUpdatedBy(OntologyOwnership.ONTOLOGY_BOT_NAME)
+              .withUpdatedAt(System.currentTimeMillis());
       final Metric created = metricRepo.createInternal(metric);
       addDerivedFromEdge(created.getId(), memory.getId(), Entity.METRIC, metricRepo);
       counts.createdMetrics++;
@@ -220,11 +224,13 @@ public class OntologyReconciler {
     if (glossary == null) {
       final Glossary minted =
           new Glossary()
+              .withId(UUID.randomUUID())
               .withName(verdict.newGlossaryName())
               .withDisplayName(verdict.newGlossaryName())
               .withDescription(verdict.newGlossaryDescription())
               .withProvider(ProviderType.AUTOMATION)
-              .withUpdatedBy(OntologyOwnership.ONTOLOGY_BOT_NAME);
+              .withUpdatedBy(OntologyOwnership.ONTOLOGY_BOT_NAME)
+              .withUpdatedAt(System.currentTimeMillis());
       glossary = glossaryRepo.createInternal(minted).getEntityReference();
     }
     return glossary;

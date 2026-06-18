@@ -31,7 +31,6 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.data.CreateGlossary;
-import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -44,6 +43,7 @@ import org.openmetadata.sdk.services.context.ContextMemoryService;
 import org.openmetadata.sdk.services.glossary.GlossaryService;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
+import org.openmetadata.service.util.OntologyOwnership;
 
 /**
  * Integration tests for the Ontology Agent lifecycle.
@@ -88,7 +88,7 @@ public class OntologyAgentIT {
 
     ContextMemory memory = createMemory(client, ns.prefix("mem-cascade"));
     Glossary glossary = createGlossary(client, ns.prefix("gl-cascade"));
-    GlossaryTerm term = createAutomationTerm(client, ns.prefix("term-cascade"), glossary);
+    GlossaryTerm term = createAutomationTerm(ns.prefix("term-cascade"), glossary);
     seedDerivedFromEdge(term.getId(), memory.getId());
 
     hardDeleteMemory(client, memory.getId());
@@ -115,7 +115,7 @@ public class OntologyAgentIT {
 
     ContextMemory memory = createMemory(client, ns.prefix("mem-adopt"));
     Glossary glossary = createGlossary(client, ns.prefix("gl-adopt"));
-    GlossaryTerm term = createAutomationTerm(client, ns.prefix("term-adopt"), glossary);
+    GlossaryTerm term = createAutomationTerm(ns.prefix("term-adopt"), glossary);
     seedDerivedFromEdge(term.getId(), memory.getId());
 
     GlossaryTerm fetched = client.glossaryTerms().get(term.getId().toString());
@@ -142,6 +142,7 @@ public class OntologyAgentIT {
             });
 
     GlossaryService glossaryService = new GlossaryService(client.getHttpClient());
+    client.glossaryTerms().delete(term.getId().toString(), hardDeleteParams());
     glossaryService.delete(glossary.getId().toString(), hardDeleteParams());
   }
 
@@ -155,7 +156,7 @@ public class OntologyAgentIT {
 
     ContextMemory memory = createMemory(client, ns.prefix("mem-proj"));
     Glossary glossary = createGlossary(client, ns.prefix("gl-proj"));
-    GlossaryTerm term = createAutomationTerm(client, ns.prefix("term-proj"), glossary);
+    GlossaryTerm term = createAutomationTerm(ns.prefix("term-proj"), glossary);
     seedDerivedFromEdge(term.getId(), memory.getId());
 
     GlossaryTerm termWithDerivedFrom =
@@ -202,27 +203,27 @@ public class OntologyAgentIT {
     return svc.create(req);
   }
 
-  private GlossaryTerm createAutomationTerm(
-      OpenMetadataClient client, String name, Glossary glossary) {
-    CreateGlossaryTerm req =
-        new CreateGlossaryTerm()
-            .withName(name)
-            .withDescription("Automation-derived term for " + name)
-            .withGlossary(glossary.getFullyQualifiedName());
-    GlossaryTerm term = client.glossaryTerms().create(req);
-
-    // Set provider=AUTOMATION via in-process repository to replicate the reconciler's CREATE path.
-    // The public CreateGlossaryTerm API does not expose provider, so we write it directly.
+  /**
+   * Creates a GlossaryTerm with {@code provider=AUTOMATION} via the in-process repository,
+   * exactly replicating the path {@code OntologyReconciler.createTerm} takes. The public REST
+   * {@code CreateGlossaryTerm} API does not expose {@code provider}, so we bypass it and call
+   * {@code createInternal} directly — the same call the reconciler uses — so the stored JSON
+   * carries {@code "provider":"automation"} and the cascade / adopt-on-touch hooks see the correct
+   * value when they read back from the DB.
+   */
+  private GlossaryTerm createAutomationTerm(String name, Glossary glossary) {
     GlossaryTermRepository termRepo =
         (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
-    GlossaryTerm stored = termRepo.get(null, term.getId(), termRepo.getFields(""));
-    GlossaryTerm updated = JsonUtils.deepCopy(stored, GlossaryTerm.class);
-    updated.setProvider(ProviderType.AUTOMATION);
-    updated.setUpdatedBy("admin");
-    updated.setUpdatedAt(System.currentTimeMillis());
-    termRepo.update(null, stored, updated, "admin");
-
-    return term;
+    GlossaryTerm term =
+        new GlossaryTerm()
+            .withId(UUID.randomUUID())
+            .withName(name)
+            .withDescription("Automation-derived term for " + name)
+            .withGlossary(glossary.getEntityReference())
+            .withProvider(ProviderType.AUTOMATION)
+            .withUpdatedBy(OntologyOwnership.ONTOLOGY_BOT_NAME)
+            .withUpdatedAt(System.currentTimeMillis());
+    return termRepo.createInternal(term);
   }
 
   /**
