@@ -15,6 +15,7 @@ import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
 import { MenuProps } from 'antd';
 import { get, isEmpty } from 'lodash';
 import { ServiceTypes } from 'Models';
+import type { ComponentType } from 'react';
 import GlossaryIcon from '../assets/svg/book.svg';
 import ChartIcon from '../assets/svg/chart.svg';
 import KnowledgePageIcon from '../assets/svg/ic-articles.svg';
@@ -74,10 +75,7 @@ import { getPipelineConfig } from './PipelineServiceUtils';
 import { getSearchServiceConfig } from './SearchServiceUtils';
 import { getSecurityConfig } from './SecurityServiceUtils';
 import { getServiceIcon } from './ServiceIconUtils';
-import {
-  getDefaultAgentsTabWidgets,
-  getDefaultInsightsTabWidgets,
-} from './ServiceInsightsWidgets';
+import { getDefaultInsightsTabWidgets } from './ServiceInsightsWidgets';
 import {
   getSearchIndexFromService,
   getTestConnectionName,
@@ -546,8 +544,11 @@ class ServiceUtilClassBase {
     return updatedData;
   }
 
-  public getAgentsTabWidgets() {
-    return getDefaultAgentsTabWidgets();
+  public getAgentsTabWidgets(): Record<
+    string,
+    ComponentType<Record<string, unknown>>
+  > {
+    return {};
   }
 
   public getExtraIngestionMenuItems(

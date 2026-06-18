@@ -30,8 +30,10 @@ import { DatabaseServiceType } from '../../../../../generated/entity/data/databa
 import { MetadataServiceType } from '../../../../../generated/entity/services/metadataService';
 import { MlModelServiceType } from '../../../../../generated/entity/services/mlmodelService';
 import { PipelineServiceType } from '../../../../../generated/entity/services/pipelineService';
-import { errorMsg } from '../../../../../utils/EntityDisplayPureUtils';
-import { getServiceLogo } from '../../../../../utils/EntityDisplayUtils';
+import {
+  errorMsg,
+  getServiceLogo,
+} from '../../../../../utils/EntityDisplayUtils';
 import ServiceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
