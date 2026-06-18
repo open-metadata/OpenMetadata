@@ -68,6 +68,7 @@ import {
   MEMORY_TYPE_OPTIONS,
   VISIBILITY_OPTIONS,
 } from '../../../constants/ContextCenter.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
   EntityReference,
@@ -83,6 +84,7 @@ import {
   deleteContextMemory,
   updateContextMemory,
 } from '../../../rest/contextMemoryAPI';
+import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import {
   formatDate,
   getShortRelativeTime,
@@ -239,6 +241,20 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       false,
     [memoryToEdit, currentUserName]
   );
+
+  const memorySource = memoryToEdit?.sourceEntity ?? memoryToEdit?.sourceFile;
+
+  const memorySourceLink = useMemo(() => {
+    if (!memorySource) {
+      return undefined;
+    }
+
+    return memorySource.type === EntityType.KNOWLEDGE_PAGE
+      ? contextCenterClassBase.getArticlePath(
+          memorySource.fullyQualifiedName ?? ''
+        )
+      : `${ROUTES.CONTEXT_CENTER_DOCUMENTS}?document=${memorySource.id}`;
+  }, [memorySource]);
 
   useEffect(() => {
     setIsViewOnly(viewOnly);
@@ -543,7 +559,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                         </Typography>
                       </div>
                     )}
-                    {memoryToEdit?.sourceFile && (
+                    {memorySource && memorySourceLink && (
                       <div className="tw:flex tw:items-center tw:gap-1">
                         <FileLock02
                           className="tw:shrink-0 tw:text-gray-400"
@@ -556,8 +572,8 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                         <Link
                           className="tw:text-xs tw:font-medium tw:text-brand-600 tw:hover:underline tw:truncate"
                           data-testid="memory-source-file-link"
-                          to={`${ROUTES.CONTEXT_CENTER_DOCUMENTS}?document=${memoryToEdit.sourceFile.id}`}>
-                          {getEntityName(memoryToEdit.sourceFile)}
+                          to={memorySourceLink}>
+                          {getEntityName(memorySource)}
                         </Link>
                       </div>
                     )}
