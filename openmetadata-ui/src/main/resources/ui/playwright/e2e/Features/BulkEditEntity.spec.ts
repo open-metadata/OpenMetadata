@@ -567,7 +567,10 @@ test.describe('Bulk Edit Entity', () => {
 
       await pressKeyXTimes(page, 2, 'ArrowRight');
 
-      await page.locator(RDG_ACTIVE_CELL_SELECTOR).first().click({ force: true });
+      await page
+        .locator(RDG_ACTIVE_CELL_SELECTOR)
+        .first()
+        .click({ force: true });
 
       await fillDescriptionDetails(page, columnDetails1.description);
 
