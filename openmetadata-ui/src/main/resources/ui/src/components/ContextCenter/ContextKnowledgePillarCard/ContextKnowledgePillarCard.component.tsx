@@ -187,11 +187,7 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
 
         <Box className="tw:pt-2.5" direction="col">
           {recent.map((item) => (
-            <RecentItem
-              Icon={Icon}
-              item={item}
-              key={item.title}
-            />
+            <RecentItem Icon={Icon} item={item} key={item.title} />
           ))}
         </Box>
       </div>
