@@ -584,12 +584,16 @@ public class OpenSearchIndexManager implements IndexManagementClient {
       }
       IndicesStats stats = entry.getValue();
       long docs = 0;
+      long indexedOps = 0;
       long sizeBytes = 0;
       int primaryShards = 0;
       int replicaShards = 0;
       if (stats.primaries() != null) {
         if (stats.primaries().docs() != null) {
           docs = stats.primaries().docs().count();
+        }
+        if (stats.primaries().indexing() != null) {
+          indexedOps = stats.primaries().indexing().indexTotal();
         }
         if (stats.primaries().store() != null) {
           sizeBytes = stats.primaries().store().sizeInBytes();
@@ -610,7 +614,14 @@ public class OpenSearchIndexManager implements IndexManagementClient {
       Set<String> aliases = getAliases(indexName);
       result.add(
           new IndexStats(
-              indexName, docs, primaryShards, replicaShards, sizeBytes, health, aliases));
+              indexName,
+              docs,
+              indexedOps,
+              primaryShards,
+              replicaShards,
+              sizeBytes,
+              health,
+              aliases));
     }
     return result;
   }

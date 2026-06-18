@@ -18,7 +18,7 @@ import {
   type EventSubscription,
 } from '../generated/events/eventSubscription';
 import type { SearchSourceAlias } from '../interface/search.interface';
-import { getKnowledgePagePath } from './KnowledgePageUtils';
+import { getKnowledgePagePath } from './KnowledgePagePureUtils';
 import {
   getApplicationDetailsPath,
   getBotsPath,

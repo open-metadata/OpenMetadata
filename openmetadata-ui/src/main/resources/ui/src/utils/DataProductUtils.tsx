@@ -399,10 +399,3 @@ export const DataProductListItemRenderer = (props: EntityReference) => {
     </Space>
   );
 };
-
-// Re-exports from DataProductPureUtils (backward compat)
-export {
-  convertDataProductsToEntityReferences,
-  convertEntityReferencesToDataProducts,
-  getQueryFilterForDataProductPorts,
-} from './DataProductPureUtils';
