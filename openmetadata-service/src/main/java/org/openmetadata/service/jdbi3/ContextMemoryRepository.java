@@ -30,10 +30,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.context.OntologyStats;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.context.ContextMemoryResource;
 import org.openmetadata.service.search.vector.ContextMemoryBodyTextContributor;
@@ -564,8 +566,28 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           original.getId());
       updateSourceEntityRelationship();
 
+      recordOntologyStats();
+
       // usageCount and lastUsedAt are AI-retrieval telemetry, intentionally excluded from
       // version history so routine retrieval does not churn the entity version.
+    }
+
+    /**
+     * ontologyStats is engine-managed telemetry. Preserve the stored value when an update omits it
+     * so a user PUT never wipes it, and persist a fresh stamp with updateVersion=false so the
+     * Ontology Agent does not churn the memory's version history on every derivation run.
+     */
+    private void recordOntologyStats() {
+      if (updated.getOntologyStats() == null) {
+        updated.setOntologyStats(original.getOntologyStats());
+      }
+      recordChange(
+          "ontologyStats",
+          original.getOntologyStats(),
+          updated.getOntologyStats(),
+          true,
+          EntityUtil.objectMatch,
+          false);
     }
 
     /**
@@ -648,5 +670,18 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     for (EntityReference ref : refs) {
       restoreEntity(Entity.ADMIN_USER_NAME, ref.getId());
     }
+  }
+
+  /**
+   * Persists new {@link OntologyStats} on a memory WITHOUT bumping its version. The engine calls
+   * this after every derivation run. Using {@code updateVersion=false} inside
+   * {@link ContextMemoryUpdater#recordOntologyStats()} means the JSON store is updated but the
+   * version counter stays flat, so no postUpdate event is fired for the stats field and the
+   * schedule → run loop cannot re-trigger itself.
+   */
+  public void stampOntologyStats(final ContextMemory memory, final OntologyStats stats) {
+    final ContextMemory updated = JsonUtils.deepCopy(memory, ContextMemory.class);
+    updated.setOntologyStats(stats);
+    update(null, memory, updated, Entity.ADMIN_USER_NAME);
   }
 }
