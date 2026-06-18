@@ -1458,6 +1458,24 @@ class DefaultRecreateHandlerTest {
     }
 
     @Test
+    @DisplayName("Live refresh_interval '-1' is never applied as a live value (guard -> 1s)")
+    void liveRefreshDisabledIsOverriddenToDefault() {
+      // Misconfiguration: liveIndexSettings.refreshInterval is "-1" (refresh disabled) — e.g.
+      // copied from the bulk side or a stale saved config. Without the guard the revert would
+      // faithfully re-apply "-1" to the promoted index, leaving it unsearchable until a manual
+      // _refresh (the "reindex finishes but the page is empty" symptom). The revert must override
+      // it back to the near-real-time default.
+      org.openmetadata.schema.system.IndexSettings live =
+          new org.openmetadata.schema.system.IndexSettings().withRefreshInterval("-1");
+      org.openmetadata.schema.system.BulkIndexOverrides bulk =
+          new org.openmetadata.schema.system.BulkIndexOverrides().withRefreshInterval("-1");
+      String json = DefaultRecreateHandler.buildRevertJson(live, bulk);
+      assertNotNull(json);
+      assertTrue(json.contains("\"refresh_interval\":\"1s\""));
+      assertFalse(json.contains("\"refresh_interval\":\"-1\""));
+    }
+
+    @Test
     @DisplayName("Bulk JSON properly escapes admin-supplied string values")
     void bulkSettingsEscapesQuotesInValues() {
       // Hostile / unusual but legal admin input — quote, backslash, newline. Naive string

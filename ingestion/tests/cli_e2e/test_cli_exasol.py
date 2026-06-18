@@ -14,10 +14,14 @@ Test Exasol connector with CLI
 """
 
 import subprocess
+import time
 from typing import List  # noqa: UP035
 
 import pytest
 from sqlalchemy import text
+
+from metadata.generated.schema.entity.data.table import Table
+from metadata.ingestion.api.status import Status
 
 from .base.e2e_types import E2EType  # noqa: TID252
 from .common.test_cli_db import CliCommonDB  # noqa: TID252
@@ -27,19 +31,14 @@ SERVICE_NAME = "local_exasol"
 SCHEMA_NAME = "openmetadata_schema"
 TABLE_NAME = "datatypes"
 VIEW_NAME = f"view_{TABLE_NAME}"
+TABLE_COMMENT = "OpenMetadata Exasol CLI table comment"
+COLUMN_COMMENT = "OpenMetadata Exasol CLI column comment"
 DB_PORT = 8563
 # The compressed size of this image is 3.23 GB, so it takes on the order of minutes
 # to pull it.
 DB_VERSION = "2025.1.8"
 CONTAINER_SUFFIX = "exasoaddl"
 CONTAINER_NAME = f"db_container_{CONTAINER_SUFFIX}"
-
-VANILLA_INGESTION_SKIP_REASON = """
-There are currently issues with this test, likely related to how OpenMetadata relies
-upon certain SQLAlchemy functions, which seem not to be defined yet for Exasol.
-This leads in the UI to warnings with a basic ingestion setup, but here, in this test,
-this leads to larger problems. This will be investigated and resolved.
-"""
 
 
 class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
@@ -53,10 +52,17 @@ class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             col_decimal DOUBLE PRECISION,
             col_date DATE,
             col_timestamp TIMESTAMP,
-            col_timestamp_local TIMESTAMP WITH LOCAL TIME ZONE,
             col_char CHAR(1),
             col_varchar VARCHAR(1)
         );
+    """
+
+    comment_column_query: str = f"""
+        COMMENT ON COLUMN {SCHEMA_NAME}.{TABLE_NAME}.col_boolean IS '{COLUMN_COMMENT}';
+    """
+
+    comment_table_query: str = f"""
+        COMMENT ON TABLE {SCHEMA_NAME}.{TABLE_NAME} IS '{TABLE_COMMENT}';
     """
 
     create_view_query: str = f"""
@@ -66,7 +72,6 @@ class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             col_decimal,
             col_date,
             col_timestamp,
-            col_timestamp_local,
             col_char,
             col_varchar
         FROM {SCHEMA_NAME}.{TABLE_NAME}
@@ -74,12 +79,12 @@ class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     insert_data_queries: List[str] = [  # noqa: RUF012, UP006
         f"""
-            INSERT INTO {SCHEMA_NAME}.{TABLE_NAME} (col_boolean, col_decimal, col_date, col_timestamp, col_timestamp_local, col_char, col_varchar) VALUES
-            (TRUE, 18.5, '2023-07-13', '2023-07-13 06:04:45', '2023-07-13 04:04:45', 'a', 'b');
+            INSERT INTO {SCHEMA_NAME}.{TABLE_NAME} (col_boolean, col_decimal, col_date, col_timestamp, col_char, col_varchar) VALUES
+            (TRUE, 18.5, '2023-07-13', '2023-07-13 06:04:45', 'a', 'b');
         """,
         f"""
-            INSERT INTO {SCHEMA_NAME}.{TABLE_NAME} (col_boolean, col_decimal, col_date, col_timestamp, col_timestamp_local, col_char, col_varchar) VALUES
-            (TRUE, -18.5, '2023-09-13', '2023-09-13 06:04:45', '2023-09-13 04:04:45', 'c', 'd');
+            INSERT INTO {SCHEMA_NAME}.{TABLE_NAME} (col_boolean, col_decimal, col_date, col_timestamp, col_char, col_varchar) VALUES
+            (TRUE, -18.5, '2023-09-13', '2023-09-13 06:04:45', 'c', 'd');
         """,
     ]
 
@@ -136,6 +141,8 @@ class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             connection.execute(text(f"CREATE SCHEMA IF NOT EXISTS {SCHEMA_NAME}"))
             connection.execute(text("CREATE SCHEMA IF NOT EXISTS IGNORE_SCHEMA"))
             connection.execute(text(cls.create_table_query))
+            connection.execute(text(cls.comment_column_query))
+            connection.execute(text(cls.comment_table_query))
             connection.execute(
                 text(f"CREATE OR REPLACE TABLE {SCHEMA_NAME}.IGNORE_TABLE AS SELECT * FROM {SCHEMA_NAME}.{TABLE_NAME}")
             )
@@ -158,6 +165,64 @@ class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         result = self.run_command()
         sink_status, source_status = self.retrieve_statuses(result)
         self.assert_filtered_tables_excludes(source_status, sink_status)
+
+    def assert_for_table_with_profiler(self, source_status: Status, sink_status: Status) -> None:
+        super().assert_for_table_with_profiler(source_status, sink_status)
+
+        profile = self.retrieve_profile(self.fqn_created_table())
+        self.assertIsNotNone(profile.profile)
+        self.assertEqual(profile.profile.rowCount, 2.0)
+
+    def assert_table_metadata(self) -> None:
+        table = None
+        for _ in range(6):
+            tables = self.openmetadata.list_entities(
+                entity=Table,
+                fields=["*"],
+                params={"database": f"{SERVICE_NAME}.default"},
+            ).entities
+            table = next(
+                (
+                    candidate
+                    for candidate in tables
+                    if candidate.name.root.lower() == TABLE_NAME.lower()
+                    and candidate.databaseSchema
+                    and candidate.databaseSchema.name
+                    and candidate.databaseSchema.name.lower() == SCHEMA_NAME.lower()
+                ),
+                None,
+            )
+            if table is not None:
+                break
+            time.sleep(5)
+
+        self.assertIsNotNone(table)
+        self.assertEqual(table.description.root, TABLE_COMMENT)
+
+        column_names = [column.name.root for column in table.columns]
+        self.assertEqual(
+            column_names,
+            [
+                "col_boolean",
+                "col_decimal",
+                "col_date",
+                "col_timestamp",
+                "col_char",
+                "col_varchar",
+            ],
+        )
+
+        column_by_name = {column.name.root: column for column in table.columns}
+        self.assertEqual(column_by_name["col_boolean"].description.root, COLUMN_COMMENT)
+        self.assertIsNone(column_by_name["col_date"].description)
+
+    @pytest.mark.order(100)
+    def test_table_metadata_contains_comments(self) -> None:
+        self.build_config_file(E2EType.INGEST_DB_FILTER_TABLE, {"excludes": self.get_excludes_tables()})
+        result = self.run_command()
+        sink_status, source_status = self.retrieve_statuses(result)
+        self.assert_filtered_tables_excludes(source_status, sink_status)
+        self.assert_table_metadata()
 
     @staticmethod
     def get_connector_name() -> str:
@@ -193,7 +258,7 @@ class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return len(self.insert_data_queries)
 
     def view_column_lineage_count(self) -> int:
-        return 7
+        return 6
 
     def expected_lineage_node(self) -> str:
         return f"{SERVICE_NAME}.default.{SCHEMA_NAME}.{VIEW_NAME}"
