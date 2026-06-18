@@ -110,18 +110,22 @@ import {
   shouldRequireTaskResolutionValue,
 } from '../../../../utils/TaskFormSchemaUtils';
 import {
-  fetchOptions,
-  generateOptions,
-  getNormalizedTaskPayload,
   getTaskDetailPathFromTask,
   getTaskDisplayId,
-  GLOSSARY_TASK_ACTION_LIST,
-  INCIDENT_TASK_ACTION_LIST,
   isTaskPendingFurtherApproval,
   isTaskTerminalStatus,
+} from '../../../../utils/TaskNavigationUtils';
+import {
+  GLOSSARY_TASK_ACTION_LIST,
+  INCIDENT_TASK_ACTION_LIST,
   TASK_ACTION_COMMON_ITEM,
   TASK_ACTION_LIST,
-} from '../../../../utils/TasksUtils';
+} from '../../../../utils/TaskActionUtils';
+import {
+  fetchOptions,
+  generateOptions,
+} from '../../../../utils/TaskAssigneeUtils';
+import { getNormalizedTaskPayload } from '../../../../utils/TaskPayloadUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import TaskCommentCard from '../../../ActivityFeed/ActivityFeedCardNew/TaskCommentCard.component';
 import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';

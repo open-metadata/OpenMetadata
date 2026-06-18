@@ -10,13 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { lazy } from 'react';
 import { ReactComponent as IconArticle } from '../assets/svg/ic-articles.svg';
 import { ReactComponent as LinkIcon } from '../assets/svg/ic-link.svg';
-import KnowledgePageSummary from '../components/KnowledgeCenter/KnowledgePageSummary/KnowledgePageSummary';
-import {
-  KnowledgePage,
-  PageType,
-} from '../interface/knowledge-center.interface';
+import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import { PageType } from '../interface/knowledge-center.interface';
+import type { KnowledgePage } from '../interface/knowledge-center.interface';
+
+const KnowledgePageSummary = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/KnowledgeCenter/KnowledgePageSummary/KnowledgePageSummary'
+      )
+  )
+);
 
 export const getPageIcon = (pageType: PageType) => {
   const isQuickLink = pageType === PageType.QUICK_LINK;
