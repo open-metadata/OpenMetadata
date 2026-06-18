@@ -62,7 +62,9 @@ const GlossaryTermReferences = withSuspenseFallback(
 const GlossaryTermSynonyms = withSuspenseFallback(
   lazy(
     () =>
-      import('../../components/Glossary/GlossaryTerms/tabs/GlossaryTermSynonyms')
+      import(
+        '../../components/Glossary/GlossaryTerms/tabs/GlossaryTermSynonyms'
+      )
   )
 );
 
