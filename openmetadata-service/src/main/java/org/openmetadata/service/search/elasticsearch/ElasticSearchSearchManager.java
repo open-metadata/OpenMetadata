@@ -36,20 +36,17 @@ import jakarta.json.JsonObject;
 import jakarta.json.JsonReader;
 import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
-import jakarta.json.spi.JsonProvider;
 import jakarta.json.stream.JsonGenerator;
 import jakarta.json.stream.JsonParser;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.StringReader;
-import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -72,6 +69,7 @@ import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchManagementClient;
+import org.openmetadata.service.search.SearchResponseStreamer;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
@@ -164,8 +162,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
       }
     }
-    String responseJson = serializeSearchResponse(response);
-    return Response.status(OK).entity(responseJson).build();
+    return streamSearchResponse(response);
   }
 
   @Override
@@ -202,8 +199,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
       }
     }
-    String responseJson = serializeSearchResponse(response);
-    return Response.status(OK).entity(responseJson).build();
+    return streamSearchResponse(response);
   }
 
   @Override
@@ -582,9 +578,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
           nlqService.cacheQuery(request.getQuery(), transformedQuery);
         }
 
-        return Response.status(Response.Status.OK)
-            .entity(serializeSearchResponse(response))
-            .build();
+        return streamSearchResponse(response);
       } catch (Exception e) {
         LOG.error("Error transforming or executing NLQ query: {}", e.getMessage(), e);
         return fallbackToBasicSearch(request, subjectContext);
@@ -671,9 +665,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         }
       }
 
-      String responseJson = serializeSearchResponse(response);
       LOG.debug("Direct query search completed successfully");
-      return Response.status(Response.Status.OK).entity(responseJson).build();
+      return streamSearchResponse(response);
     } catch (Exception e) {
       LOG.error("Error executing direct query search: {}", e.getMessage(), e);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -756,35 +749,32 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     }
     processedNode.add(fqn);
     SearchResponse<JsonData> searchResponse = performLineageSearchForDQ(fqn, queryFilter, deleted);
-    Optional<List> optionalDocs =
-        JsonUtils.readJsonAtPath(
-            serializeSearchResponse(searchResponse), "$.hits.hits[*]._source", List.class);
+    for (Hit<JsonData> hit : searchResponse.hits().hits()) {
+      if (hit.source() == null) {
+        continue;
+      }
+      Map<String, Object> doc = EsUtils.jsonDataToMap(hit.source());
+      String nodeId = doc.get("id").toString();
+      allNodes.put(nodeId, doc);
+      if (testCaseResultRepository.hasTestCaseFailure(doc.get("fullyQualifiedName").toString())) {
+        nodesWithFailure.add(nodeId);
+      }
 
-    if (optionalDocs.isPresent()) {
-      List<Map<String, Object>> docs = (List<Map<String, Object>>) optionalDocs.get();
-      for (Map<String, Object> doc : docs) {
-        String nodeId = doc.get("id").toString();
-        allNodes.put(nodeId, doc);
-        if (testCaseResultRepository.hasTestCaseFailure(doc.get("fullyQualifiedName").toString())) {
-          nodesWithFailure.add(nodeId);
-        }
-
-        List<EsLineageData> lineageDataList =
-            JsonUtils.readOrConvertValues(doc.get("upstreamLineage"), EsLineageData.class);
-        for (EsLineageData lineage : lineageDataList) {
-          lineage.withToEntity(SearchUtils.getRelationshipRef(doc));
-          String fromEntityId = lineage.getFromEntity().getId().toString();
-          allEdges.computeIfAbsent(fromEntityId, k -> new ArrayList<>()).add(lineage);
-          collectNodesAndEdgesForDQ(
-              lineage.getFromEntity().getFullyQualifiedName(),
-              upstreamDepth - 1,
-              queryFilter,
-              deleted,
-              allEdges,
-              allNodes,
-              nodesWithFailure,
-              processedNode);
-        }
+      List<EsLineageData> lineageDataList =
+          JsonUtils.readOrConvertValues(doc.get("upstreamLineage"), EsLineageData.class);
+      for (EsLineageData lineage : lineageDataList) {
+        lineage.withToEntity(SearchUtils.getRelationshipRef(doc));
+        String fromEntityId = lineage.getFromEntity().getId().toString();
+        allEdges.computeIfAbsent(fromEntityId, k -> new ArrayList<>()).add(lineage);
+        collectNodesAndEdgesForDQ(
+            lineage.getFromEntity().getFullyQualifiedName(),
+            upstreamDepth - 1,
+            queryFilter,
+            deleted,
+            allEdges,
+            allNodes,
+            nodesWithFailure,
+            processedNode);
       }
     }
   }
@@ -956,21 +946,20 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   }
 
   /**
-   * Serializes a SearchResponse to JSON string.
-   *
-   * @param searchResponse the SearchResponse to serialize
-   * @return JSON string representation of the response
+   * Streams a SearchResponse straight to the HTTP output via a JSON generator over the response
+   * {@link java.io.OutputStream}, avoiding the intermediate full-size String that OOM'd the node on
+   * very large documents. The body is re-serialized from the in-memory response each time it is
+   * written, so the returned {@link Response} is safe to write more than once (the caller-side cache
+   * relies on this to buffer-then-stream).
    */
-  private String serializeSearchResponse(SearchResponse<JsonData> searchResponse) {
-    JsonpMapper jsonpMapper = client._transport().jsonpMapper();
-    JsonProvider provider = jsonpMapper.jsonProvider();
-    StringWriter stringWriter = new StringWriter();
-    JsonGenerator generator = provider.createGenerator(stringWriter);
-
-    searchResponse.serialize(generator, jsonpMapper);
-    generator.close();
-
-    return stringWriter.toString();
+  private Response streamSearchResponse(SearchResponse<JsonData> searchResponse) {
+    JsonpMapper mapper = client._transport().jsonpMapper();
+    return SearchResponseStreamer.stream(
+        output -> {
+          try (JsonGenerator generator = mapper.jsonProvider().createGenerator(output)) {
+            searchResponse.serialize(generator, mapper);
+          }
+        });
   }
 
   public Response doSearch(
@@ -998,8 +987,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       }
 
       if (!Boolean.TRUE.equals(request.getIsHierarchy())) {
-        String responseJson = serializeSearchResponse(searchResponse);
-        return Response.status(OK).entity(responseJson).build();
+        return streamSearchResponse(searchResponse);
       } else {
         List<?> response = buildSearchHierarchy(request, searchResponse, clusterAlias);
         return Response.status(OK).entity(response).build();
@@ -1558,9 +1546,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         }
       }
 
-      return Response.status(Response.Status.OK)
-          .entity(serializeSearchResponse(searchResponse))
-          .build();
+      return streamSearchResponse(searchResponse);
     } catch (Exception e) {
       LOG.error("Error in fallback search: {}", e.getMessage(), e);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)

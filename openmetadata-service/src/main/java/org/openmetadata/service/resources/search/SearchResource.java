@@ -71,6 +71,7 @@ import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.monitoring.LatencyPhase;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.search.CapBufferingOutputStream;
 import org.openmetadata.service.search.IndexManagementClient.IndexStats;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
@@ -94,6 +95,11 @@ import os.org.opensearch.client.opensearch.core.search.Suggest;
 @Collection(name = "search")
 @LatencyPhase
 public class SearchResource {
+  // Upper bound on a search response body the cache will buffer and store. A normal response is far
+  // below this; an oversized one (e.g. a container with a huge dataModel) trips the cap and streams
+  // uncached instead of being materialized in heap.
+  private static final int MAX_CACHEABLE_SEARCH_BYTES = 4 * 1024 * 1024;
+
   private final SearchRepository searchRepository;
   private final Authorizer authorizer;
 
@@ -274,10 +280,19 @@ public class SearchResource {
     // single-flight wrapper holds the stripe lock around the supplier; we keep the supplier
     // tight to minimize lock-hold time.
     //
+    // Search responses now stream (see SearchResponseStreamer) — the entity is a StreamingOutput,
+    // not a String. To keep the cache working without re-introducing the heap OOM, the supplier
+    // serializes the streamed body into a size-capped buffer: a normal (small) response is captured
+    // and cached, while an oversized one (e.g. a container with a 170MB dataModel) trips the cap,
+    // is left uncached, and is streamed straight through via `capturedResponse[0]`. Because the
+    // streamed response re-serializes from the in-memory result on each write, returning the
+    // captured response after a failed buffer attempt streams the full body with no second backend
+    // call.
+    //
     // The supplier captures the Response object into `capturedResponse[0]` so a non-cacheable
-    // outcome (non-200 or non-String body) can be returned directly without a SECOND call to
-    // searchRepository.search() — the previous implementation re-called search() on the error
-    // path, doubling backend load for every error / non-200 response.
+    // outcome (non-200, oversized, or non-streamable body) can be returned directly without a
+    // SECOND
+    // call to searchRepository.search().
     final Response[] capturedResponse = new Response[1];
     final java.io.IOException[] thrown = new java.io.IOException[1];
     String body =
@@ -291,8 +306,7 @@ public class SearchResource {
                 if (upstream.getStatus() != 200) {
                   return null; // don't cache non-200; loadOrCompute treats null as "no cache write"
                 }
-                Object entity = upstream.getEntity();
-                return entity instanceof String s ? s : null;
+                return materializeIfCacheable(upstream.getEntity());
               } catch (java.io.IOException ioe) {
                 thrown[0] = ioe;
                 return null;
@@ -315,6 +329,50 @@ public class SearchResource {
     // through to a live call (this is rare and only affects the second+ caller of a query
     // that's currently returning errors).
     return searchRepository.search(request, subjectContext);
+  }
+
+  /**
+   * Returns the response body as a cacheable String when it is small enough, or {@code null} when it
+   * is not cacheable (oversized or not a streamable/String body). A streamed body is serialized into
+   * a {@link CapBufferingOutputStream}: under the cap it is captured for caching, over the cap it is
+   * left uncached so the multi-hundred-MB outlier never lands fully in heap. Serialization happens
+   * here, before the response is committed, so a streaming failure on the cacheable path still
+   * surfaces as a clean error rather than a truncated 200.
+   */
+  private static String materializeIfCacheable(Object entity) throws IOException {
+    String result = null;
+    if (entity instanceof String s) {
+      result = s;
+    } else if (entity instanceof StreamingOutput streaming) {
+      result = bufferIfCacheable(streaming);
+    }
+    return result;
+  }
+
+  private static String bufferIfCacheable(StreamingOutput streaming) throws IOException {
+    CapBufferingOutputStream buffer = new CapBufferingOutputStream(MAX_CACHEABLE_SEARCH_BYTES);
+    String result = null;
+    try {
+      streaming.write(buffer);
+      result = buffer.toUtf8String();
+    } catch (RuntimeException | IOException error) {
+      // The JSON-P generator wraps an OutputStream IOException in an unchecked JsonException, so
+      // the
+      // cap signal can arrive either directly or as a cause. Anything else is a real failure.
+      if (!isOverCapacity(error)) {
+        throw error;
+      }
+      LOG.debug("Search response exceeds cacheable size; streaming without caching");
+    }
+    return result;
+  }
+
+  private static boolean isOverCapacity(Throwable error) {
+    Throwable cause = error;
+    while (cause != null && !(cause instanceof CapBufferingOutputStream.OverCapacityException)) {
+      cause = cause.getCause();
+    }
+    return cause != null;
   }
 
   @GET
