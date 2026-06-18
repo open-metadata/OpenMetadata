@@ -65,7 +65,7 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({ folders, onPick }) => {
 
   if (folders.length === 0) {
     return (
-      <Typography as="p" className="tw:px-3 tw:py-2 tw:text-gray-400">
+      <Typography as="p" className="tw:px-3 tw:py-2 tw:text-utility-gray-400">
         {t('label.no-entity', { entity: t('label.folder-plural') })}
       </Typography>
     );
@@ -171,11 +171,11 @@ const FileActions: FC<FileActionsProps> = ({
               <Box align="center" gap={2}>
                 <Trash01
                   aria-hidden="true"
-                  className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-600"
+                  className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-primary"
                 />
                 <Typography
                   ellipsis
-                  className="tw:grow tw:text-error-600"
+                  className="tw:grow tw:text-error-primary"
                   size="text-sm"
                   weight="medium">
                   {t('label.delete')}
@@ -243,10 +243,10 @@ const ListHeader: FC<ListHeaderProps> = ({
     return (
       <Box
         align="center"
-        className="tw:px-4 tw:h-12 tw:shrink-0 tw:border-b tw:border-blue-100 tw:bg-blue-50"
+        className="tw:px-4 tw:h-12 tw:shrink-0 tw:border-b tw:border-utility-blue-100 tw:bg-utility-blue-50"
         gap={2}>
         <Typography
-          className="tw:text-blue-700"
+          className="tw:text-utility-blue-700"
           size="text-sm"
           weight="semibold">
           {selectedCount} {t('label.selected-lowercase')}
@@ -307,11 +307,17 @@ const ListHeader: FC<ListHeaderProps> = ({
     <Box
       align="center"
       className="tw:px-4 tw:h-12 tw:shrink-0 tw:border-b tw:border-secondary tw:bg-primary">
-      <Typography className="tw:text-gray-500" size="text-xs" weight="semibold">
+      <Typography
+        className="tw:text-quaternary"
+        size="text-xs"
+        weight="semibold">
         {count} {t('label.file-plural').toLowerCase()}
       </Typography>
       <span className="tw:flex-1" />
-      <Typography className="tw:text-gray-500" size="text-xs" weight="semibold">
+      <Typography
+        className="tw:text-quaternary"
+        size="text-xs"
+        weight="semibold">
         {t('label.sorted-by-recently-uploaded')}
       </Typography>
     </Box>
@@ -356,7 +362,9 @@ const FileRow: FC<FileRowProps> = ({
     <Box
       align="center"
       className={`tw:relative tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:cursor-pointer tw:transition-colors tw:duration-100 ${
-        isActive ? 'tw:bg-blue-50' : 'tw:bg-primary hover:tw:bg-gray-25'
+        isActive
+          ? 'tw:bg-utility-blue-50'
+          : 'tw:bg-primary hover:tw:bg-secondary_subtle'
       }`}
       data-testid={`document-row-${file.id}`}
       gap={4}
@@ -399,16 +407,16 @@ const FileRow: FC<FileRowProps> = ({
         </Box>
         <Box align="center" gap={2}>
           <Typography
-            className="tw:text-gray-500"
+            className="tw:text-quaternary"
             data-testid="document-size"
             size="text-xs">
             {formattedFileSize}
           </Typography>
           {Boolean(file.memoryCount) && (
             <>
-              <Dot className="tw:text-gray-500" size="micro" />
+              <Dot className="tw:text-quaternary" size="micro" />
               <Typography
-                className="tw:text-gray-500"
+                className="tw:text-quaternary"
                 data-testid="document-memory-count"
                 size="text-xs">
                 {file.memoryCount} {t('label.memory-plural').toLowerCase()}
@@ -417,9 +425,9 @@ const FileRow: FC<FileRowProps> = ({
           )}
           {file.updatedBy && (
             <>
-              <Dot className="tw:text-gray-500" size="micro" />
+              <Dot className="tw:text-quaternary" size="micro" />
               <Typography
-                className="tw:text-gray-500"
+                className="tw:text-quaternary"
                 data-testid="document-updated-by"
                 size="text-xs">
                 {file.updatedBy}
@@ -428,9 +436,9 @@ const FileRow: FC<FileRowProps> = ({
           )}
           {file.updatedAt && (
             <>
-              <Dot className="tw:text-gray-500" size="micro" />
+              <Dot className="tw:text-quaternary" size="micro" />
               <Typography
-                className="tw:text-gray-500"
+                className="tw:text-quaternary"
                 data-testid="document-updated-at"
                 size="text-xs">
                 {relativeTime}
@@ -439,9 +447,9 @@ const FileRow: FC<FileRowProps> = ({
           )}
           {folderName && (
             <>
-              <Dot className="tw:text-gray-500" size="micro" />
+              <Dot className="tw:text-quaternary" size="micro" />
               <Typography
-                className="tw:text-gray-500"
+                className="tw:text-quaternary"
                 data-testid="document-folder-name"
                 size="text-xs">
                 {folderName}
@@ -462,7 +470,7 @@ const FileRow: FC<FileRowProps> = ({
               data-testid="download-btn"
               icon={
                 <Download01
-                  className="tw:text-gray-500"
+                  className="tw:text-quaternary"
                   height={16}
                   width={16}
                 />

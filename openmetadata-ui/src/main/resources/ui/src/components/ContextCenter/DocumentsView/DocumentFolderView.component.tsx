@@ -117,7 +117,7 @@ const DocumentFolderView = ({
                 {t('label.folder')}
               </Typography>
               <Typography
-                className="tw:text-gray-500 tw:flex tw:items-center tw:gap-2"
+                className="tw:text-quaternary tw:flex tw:items-center tw:gap-2"
                 size="text-xs">
                 <span>
                   {folders.length} {t('label.folder-plural')}
@@ -161,7 +161,9 @@ const DocumentFolderView = ({
 
                 return (
                   <Tree.Item
-                    className={isSelected ? 'tw:bg-blue-50 tw:rounded-lg' : ''}
+                    className={
+                      isSelected ? 'tw:bg-utility-blue-50 tw:rounded-lg' : ''
+                    }
                     id={folder.id}
                     key={folder.id}
                     textValue={folder.displayName ?? folder.name}>
@@ -174,7 +176,7 @@ const DocumentFolderView = ({
                             handleFolderItemSelect(folder.id);
                           }}>
                           <FolderIcon
-                            className="tw:shrink-0 tw:text-gray-500"
+                            className="tw:shrink-0 tw:text-utility-gray-500"
                             height={16}
                             width={16}
                           />

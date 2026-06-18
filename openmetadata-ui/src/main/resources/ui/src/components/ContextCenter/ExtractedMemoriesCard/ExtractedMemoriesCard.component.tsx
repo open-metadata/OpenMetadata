@@ -87,7 +87,7 @@ const ExtractedMemoriesCard: FC<ExtractedMemoriesCardProps> = ({
     <Card className="tw:p-4 tw:shrink-0" data-testid="extracted-memories-card">
       <div className="tw:mb-3">
         <Typography
-          className="tw:text-gray-500 tw:uppercase"
+          className="tw:text-quaternary tw:uppercase"
           size="text-xs"
           weight="semibold">
           {t('label.memory-plural')}
@@ -100,14 +100,14 @@ const ExtractedMemoriesCard: FC<ExtractedMemoriesCardProps> = ({
           <Skeleton height="14px" variant="rounded" width="60%" />
         </Box>
       ) : memories.length === 0 ? (
-        <Typography className="tw:text-gray-400" size="text-sm">
+        <Typography className="tw:text-utility-gray-400" size="text-sm">
           {t('label.no-entity', { entity: t('label.memory-plural') })}
         </Typography>
       ) : (
         <Box direction="col">
           {memories.map((memory) => (
             <Box
-              className="tw:py-1.5 tw:-mx-2 tw:px-2 tw:rounded-md tw:cursor-pointer hover:tw:bg-gray-50"
+              className="tw:py-1.5 tw:-mx-2 tw:px-2 tw:rounded-md tw:cursor-pointer hover:tw:bg-secondary"
               data-testid={`extracted-memory-${memory.id}`}
               direction="col"
               key={memory.id}
@@ -121,7 +121,7 @@ const ExtractedMemoriesCard: FC<ExtractedMemoriesCardProps> = ({
               }}>
               <Typography
                 ellipsis
-                className="tw:text-gray-900"
+                className="tw:text-primary"
                 size="text-sm"
                 weight="medium">
                 {memory.title ?? getEntityName(memory)}
@@ -129,7 +129,7 @@ const ExtractedMemoriesCard: FC<ExtractedMemoriesCardProps> = ({
               {memory.question && (
                 <Typography
                   ellipsis
-                  className="tw:text-gray-500"
+                  className="tw:text-utility-gray-400"
                   size="text-xs">
                   {memory.question}
                 </Typography>
