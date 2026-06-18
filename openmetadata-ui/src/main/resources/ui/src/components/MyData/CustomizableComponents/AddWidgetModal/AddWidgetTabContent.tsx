@@ -28,7 +28,7 @@ import { useTranslation } from 'react-i18next';
 import { PageType } from '../../../../generated/system/ui/page';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import customizeDetailPageClassBase from '../../../../utils/CustomizeDetailPage/CustomizeDetailPageClassBase';
-import customizePageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
+import { getMyDataWidgetImageFromKey } from '../../../../utils/CustomizeMyDataPageImageUtils';
 import { AddWidgetTabContentProps } from './AddWidgetModal.interface';
 
 function AddWidgetTabContent({
@@ -57,7 +57,7 @@ function AddWidgetTabContent({
           selectedWidgetSize
         );
       case PageType.LandingPage:
-        return customizePageClassBase.getWidgetImageFromKey(
+        return getMyDataWidgetImageFromKey(
           widget.fullyQualifiedName,
           selectedWidgetSize
         );

@@ -112,6 +112,8 @@ export const mockCustomizedLayout: Array<WidgetConfig> = [
   },
 ];
 
+const widgetComponentCache: Record<string, () => JSX.Element> = {};
+
 export const mockCustomizePageClassBase = {
   defaultLayout: mockDefaultLayout,
   announcementWidget: {
@@ -125,7 +127,13 @@ export const mockCustomizePageClassBase = {
   landingPageMaxGridSize: 4,
   landingPageWidgetMargin: 16,
   landingPageRowHeight: 200,
-  getWidgetsFromKey: (i: string) => () => <div data-testid={i}>{i}</div>,
+  getWidgetsFromKey: (i: string) => {
+    if (!widgetComponentCache[i]) {
+      widgetComponentCache[i] = () => <div data-testid={i}>{i}</div>;
+    }
+
+    return widgetComponentCache[i];
+  },
 };
 
 export const mockDocumentData: Document = {

@@ -71,6 +71,13 @@ interface DeferredWidgetProps {
    * result is ignored — children render immediately.
    */
   initialInView?: boolean;
+
+  /**
+   * Wait until the next paint before mounting visible children. This is useful for
+   * first-viewport widgets that fetch data on mount; the page shell can paint before those
+   * requests start.
+   */
+  deferUntilAfterPaint?: boolean;
 }
 
 /**
@@ -105,6 +112,7 @@ export const DeferredWidget = ({
   minHeight,
   'data-testid': dataTestId,
   initialInView = false,
+  deferUntilAfterPaint = false,
 }: DeferredWidgetProps) => {
   const [hasBeenVisible, setHasBeenVisible] = useState(initialInView);
 
@@ -116,16 +124,16 @@ export const DeferredWidget = ({
   //     the callback. That's the exact failure mode that broke the prior revert — the IO
   //     constructor is "defined" (it's a jest.fn) but no entries ever arrive. Detect by
   //     `process.env.NODE_ENV === 'test'`, which Jest sets automatically.
-  //   - Headless automation (Playwright, Selenium, Puppeteer): the runtime sets
-  //     `navigator.webdriver=true`. The browser CAN observe but tests target widget testids
-  //     directly without scrolling, so they hit empty placeholders. Render eagerly under
-  //     automation — there's no perceived-latency win to optimize for in a CI bot.
+  // Do not use `navigator.webdriver` here. Lighthouse also runs in an automated browser,
+  // and treating all automation as eager rendering bypasses the production lazy path that
+  // this wrapper exists to measure and protect.
   // Cheap one-time check.
   const ioUnsupported = useRef(
     typeof window === 'undefined' ||
       typeof window.IntersectionObserver === 'undefined' ||
       process.env.NODE_ENV === 'test' ||
-      (typeof navigator !== 'undefined' && navigator.webdriver === true)
+      (typeof navigator !== 'undefined' &&
+        navigator.userAgent.includes('jsdom'))
   );
 
   const { ref, inView } = useInView({
@@ -147,10 +155,35 @@ export const DeferredWidget = ({
   // previous setState-in-render call triggered React's "Cannot update component during render"
   // warning and an extra render pass; gitar-bot and Copilot both flagged it.
   useEffect(() => {
-    if (inView && !hasBeenVisible) {
-      setHasBeenVisible(true);
+    if (!inView || hasBeenVisible) {
+      return;
     }
-  }, [inView, hasBeenVisible]);
+
+    if (!deferUntilAfterPaint || ioUnsupported.current) {
+      setHasBeenVisible(true);
+
+      return;
+    }
+
+    if (typeof window.requestAnimationFrame !== 'function') {
+      const timeoutId = window.setTimeout(() => setHasBeenVisible(true), 0);
+
+      return () => window.clearTimeout(timeoutId);
+    }
+
+    let timeoutId: number | undefined;
+    const frameId = window.requestAnimationFrame(() => {
+      timeoutId = window.setTimeout(() => setHasBeenVisible(true), 0);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [deferUntilAfterPaint, inView, hasBeenVisible]);
 
   const shouldRender = hasBeenVisible || initialInView || ioUnsupported.current;
 

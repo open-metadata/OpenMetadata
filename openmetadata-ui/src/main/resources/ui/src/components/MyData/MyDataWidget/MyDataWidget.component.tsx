@@ -13,7 +13,7 @@
 import { Button, Typography } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as MyDataIcon } from '../../../assets/svg/ic-my-data.svg';
@@ -31,21 +31,21 @@ import {
   MY_DATA_WIDGET_FILTER_OPTIONS,
 } from '../../../constants/Widgets.constant';
 import { SIZE } from '../../../enums/common.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
-import { EntityReference } from '../../../generated/tests/testCase';
+import type { EntityReference } from '../../../generated/tests/testCase';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { SearchSourceAlias } from '../../../interface/search.interface';
+import { useDashboardWidgetData } from '../../../hooks/useDashboardWidgetData';
 import {
   WidgetCommonProps,
   WidgetConfig,
 } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
+import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { getLandingPageWidgetIcon } from '../../../utils/LandingPageWidgetIconUtils';
 import { getDomainPath, getUserPath } from '../../../utils/RouterUtils';
-import searchClassBase from '../../../utils/SearchClassBase';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
-import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
@@ -66,8 +66,6 @@ const MyDataWidgetInternal = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
-  const [isLoading, setIsLoading] = useState(true);
-  const [data, setData] = useState<SourceType[]>([]);
 
   const widgetData = useMemo(
     () => currentLayout?.find((w) => w.i === widgetKey),
@@ -119,72 +117,48 @@ const MyDataWidgetInternal = ({
     return extraInfo;
   };
 
-  const fetchMyDataAssets = useCallback(async () => {
+  const ownerIds = useMemo(() => {
     if (!isUndefined(currentUser)) {
-      setIsLoading(true);
-      try {
-        const teamsIds = (currentUser.teams ?? []).map((team) => team.id);
-        const ownerIds = [...teamsIds, currentUser.id];
+      const teamsIds = (currentUser.teams ?? []).map((team) => team.id);
 
-        const queryFilterObj = getTermQuery(
-          { 'owners.id': ownerIds },
-          'should',
-          1
-        );
-
-        const sortField = getSortField(selectedFilter);
-        const sortOrder = getSortOrder(selectedFilter);
-
-        const res = await searchQuery({
-          query: '',
-          pageNumber: INITIAL_PAGING_VALUE,
-          pageSize: PAGE_SIZE_MEDIUM,
-          queryFilter: queryFilterObj,
-          sortField,
-          sortOrder,
-          searchIndex: SearchIndex.ALL,
-        });
-
-        // Extract useful details from the Response
-        const ownedAssets = res?.hits?.hits;
-        const sourceData = ownedAssets.map((hit) => hit._source);
-
-        // Apply client-side sorting as well to ensure consistent results
-        const sortedData = applySortToData(sourceData, selectedFilter);
-        setData(sortedData);
-      } catch {
-        setData([]);
-      } finally {
-        setIsLoading(false);
-      }
+      return [...teamsIds, currentUser.id];
     }
-  }, [
-    currentUser,
-    selectedFilter,
-    getSortField,
-    getSortOrder,
-    applySortToData,
-  ]);
 
-  useEffect(() => {
-    fetchMyDataAssets();
-  }, [fetchMyDataAssets]);
+    return [];
+  }, [currentUser]);
 
-  const getEntityIcon = (item: SourceType) => {
-    if ('serviceType' in item && item.serviceType) {
-      return (
-        <img
-          alt={item.name}
-          className="w-8 h-8"
-          src={serviceUtilClassBase.getServiceTypeLogo({
-            serviceType: item.serviceType,
-          } as SearchSourceAlias)}
-        />
-      );
-    } else {
-      return searchClassBase.getEntityIcon(item.entityType ?? '');
+  const fetchMyDataAssets = useCallback(async () => {
+    if (isUndefined(currentUser)) {
+      return [];
     }
-  };
+
+    const queryFilterObj = getTermQuery({ 'owners.id': ownerIds }, 'should', 1);
+
+    const sortField = getSortField(selectedFilter);
+    const sortOrder = getSortOrder(selectedFilter);
+
+    const res = await searchQuery({
+      query: '',
+      pageNumber: INITIAL_PAGING_VALUE,
+      pageSize: PAGE_SIZE_MEDIUM,
+      queryFilter: queryFilterObj,
+      sortField,
+      sortOrder,
+      searchIndex: SearchIndex.ALL,
+    });
+
+    const ownedAssets = res?.hits?.hits ?? [];
+    const sourceData = ownedAssets.map((hit) => hit._source);
+
+    return applySortToData(sourceData, selectedFilter);
+  }, [currentUser, ownerIds, selectedFilter]);
+
+  const { data, isLoading } = useDashboardWidgetData<SourceType[]>({
+    cacheKey: `my-data:owned-assets:${ownerIds.join(',')}:${selectedFilter}`,
+    enabled: !isUndefined(currentUser),
+    fetcher: fetchMyDataAssets,
+    initialData: [],
+  });
 
   const emptyState = useMemo(
     () => (
@@ -215,15 +189,15 @@ const MyDataWidgetInternal = ({
                 <div className="d-flex items-center justify-between ">
                   <Link
                     className="item-link w-min-0"
-                    to={entityUtilClassBase.getEntityLink(
-                      item.entityType ?? '',
-                      item.fullyQualifiedName as string
+                    to={getEntityLinkFromType(
+                      item.fullyQualifiedName as string,
+                      item.entityType as EntityType
                     )}>
                     <Button
                       className="entity-button flex items-center gap-2 p-0 w-full"
                       icon={
                         <div className="entity-button-icon d-flex items-center justify-center flex-shrink">
-                          {getEntityIcon(item)}
+                          {getLandingPageWidgetIcon(item)}
                         </div>
                       }
                       type="text">

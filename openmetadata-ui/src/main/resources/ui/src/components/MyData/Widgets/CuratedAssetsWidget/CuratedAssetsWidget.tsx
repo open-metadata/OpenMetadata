@@ -24,6 +24,7 @@ import { ReactComponent as CuratedAssetsNoDataIcon } from '../../../../assets/sv
 import { ReactComponent as StarOutlinedIcon } from '../../../../assets/svg/star-outlined.svg';
 import withSuspenseFallback from '../../../../components/AppRouter/withSuspenseFallback';
 import { CURATED_ASSETS_LIST } from '../../../../constants/AdvancedSearch.constants';
+import { CURATED_ASSETS_WIDGET_DEFAULT_VALUES } from '../../../../constants/CustomizeMyDataPage.constants';
 import {
   PAGE_SIZE_BASE,
   PAGE_SIZE_MEDIUM,
@@ -52,11 +53,10 @@ import {
   getModifiedQueryFilterWithSelectedAssets,
   getTotalResourceCount,
 } from '../../../../utils/CuratedAssetsPureUtils';
-import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
+import { getEntityLinkFromType } from '../../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
+import { getLandingPageWidgetIcon } from '../../../../utils/LandingPageWidgetIconUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
-import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import CertificationTag from '../../../common/CertificationTag/CertificationTag';
 import {
@@ -236,7 +236,7 @@ const CuratedAssetsWidget = ({
       : [
           ...(currentLayout || []),
           {
-            ...customizeMyDataPageClassBase.curatedAssetsWidgetDefaultValues,
+            ...CURATED_ASSETS_WIDGET_DEFAULT_VALUES,
             i: widgetKey,
             config: value,
           },
@@ -275,11 +275,10 @@ const CuratedAssetsWidget = ({
           : [
               ...(currentLayout || []),
               {
-                ...customizeMyDataPageClassBase.curatedAssetsWidgetDefaultValues,
+                ...CURATED_ASSETS_WIDGET_DEFAULT_VALUES,
                 i: widgetKey,
                 config: {
-                  ...customizeMyDataPageClassBase
-                    .curatedAssetsWidgetDefaultValues.config,
+                  ...CURATED_ASSETS_WIDGET_DEFAULT_VALUES.config,
                   sortBy: e.key,
                 },
               },
@@ -356,20 +355,17 @@ const CuratedAssetsWidget = ({
       return (
         <Link
           className="curated-assets-list-item-link"
-          to={entityUtilClassBase.getEntityLink(
-            item.type || '',
-            item.fullyQualifiedName as string
+          to={getEntityLinkFromType(
+            item.fullyQualifiedName as string,
+            item.type as EntityType
           )}>
           <div
             className="curated-assets-list-item flex items-center w-full"
             data-testid={`Curated Assets-${title}`}>
-            <img
-              alt={get(item, 'service.displayName', '')}
-              className="entity-icon"
-              src={serviceUtilClassBase.getServiceTypeLogo(
-                item as unknown as SearchSourceAlias
-              )}
-            />
+            {getLandingPageWidgetIcon(
+              item as SearchSourceAlias,
+              'entity-icon'
+            )}
             <div className="flex flex-col curated-assets-list-item-content">
               <div className="flex items-center gap-1">
                 <Typography.Text

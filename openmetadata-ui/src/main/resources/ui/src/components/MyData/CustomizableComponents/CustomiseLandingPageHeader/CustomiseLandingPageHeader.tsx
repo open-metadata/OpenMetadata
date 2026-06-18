@@ -14,7 +14,6 @@ import Icon from '@ant-design/icons';
 import { Button, Carousel, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { get } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -24,10 +23,10 @@ import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domain.s
 import LandingPageBg from '../../../../assets/svg/landing-page-header-bg.svg';
 import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
 import { DEFAULT_HEADER_BG_COLOR } from '../../../../constants/Mydata.constants';
-import { EntityReference } from '../../../../generated/entity/type';
+import { EntityType } from '../../../../enums/entity.enum';
+import type { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../../hooks/useDomainStore';
-import { SearchSourceAlias } from '../../../../interface/search.interface';
 import {
   AnnouncementEntity,
   getActiveAnnouncements,
@@ -36,11 +35,11 @@ import { isLinearGradient } from '../../../../utils/ColorUtils';
 import {
   CustomNextArrow,
   CustomPrevArrow,
-} from '../../../../utils/CustomizableLandingPageUtils';
+} from '../../../../utils/CustomizableLandingPageCarouselUtils';
+import { getEntityLinkFromType } from '../../../../utils/EntityLinkUtils';
 import { getDomainDisplayName } from '../../../../utils/EntityNameUtils';
-import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
+import { getLandingPageWidgetIcon } from '../../../../utils/LandingPageWidgetIconUtils';
 import { getRecentlyViewedData } from '../../../../utils/RecentActivityUtils';
-import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import DomainSelectableList from '../../../common/DomainSelectableList/DomainSelectableList.component';
@@ -118,13 +117,14 @@ const CustomiseLandingPageHeader = ({
     return entities.map((entity) => {
       return {
         icon: (
-          <img
-            alt={get(entity, 'service.displayName', '')}
-            className="entity-icon"
-            src={serviceUtilClassBase.getServiceTypeLogo(
-              entity as unknown as SearchSourceAlias
-            )}
-          />
+          getLandingPageWidgetIcon(
+            {
+              entityType: entity.entityType,
+              name: entity.displayName,
+              serviceType: entity.serviceType,
+            },
+            'entity-icon'
+          )
         ),
         name: entity.displayName,
         entityType: entity.entityType,
@@ -174,10 +174,15 @@ const CustomiseLandingPageHeader = ({
     entityType: string;
     fullyQualifiedName: string;
   }) => {
-    const path = entityUtilClassBase.getEntityLink(
-      data.entityType || '',
-      data.fullyQualifiedName
+    const path = getEntityLinkFromType(
+      data.fullyQualifiedName,
+      data.entityType as EntityType
     );
+
+    if (!path) {
+      return;
+    }
+
     navigate(path);
   };
 

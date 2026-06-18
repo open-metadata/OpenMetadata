@@ -14,7 +14,7 @@ import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { ExtraInfo } from 'Models';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as FollowingAssetsIcon } from '../../../assets/svg/ic-following-assets.svg';
@@ -31,21 +31,21 @@ import {
   getSortOrder,
 } from '../../../constants/Widgets.constant';
 import { SIZE } from '../../../enums/common.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
-import { EntityReference } from '../../../generated/entity/type';
+import type { EntityReference } from '../../../generated/entity/type';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { SearchSourceAlias } from '../../../interface/search.interface';
+import { useDashboardWidgetData } from '../../../hooks/useDashboardWidgetData';
 import {
   WidgetCommonProps,
   WidgetConfig,
 } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
+import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { getLandingPageWidgetIcon } from '../../../utils/LandingPageWidgetIconUtils';
 import { getDomainPath, getUserPath } from '../../../utils/RouterUtils';
-import searchClassBase from '../../../utils/SearchClassBase';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
-import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
@@ -71,14 +71,12 @@ function FollowingWidget({
   const [selectedEntityFilter, setSelectedEntityFilter] = useState<string>(
     CURATED_ASSETS_SORT_BY_KEYS.LATEST
   );
-  const [followedData, setFollowedData] = useState<SourceType[]>([]);
-  const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(true);
 
-  const fetchUserFollowedData = async () => {
+  const fetchUserFollowedData = useCallback(async () => {
     if (!currentUser?.id) {
-      return;
+      return [];
     }
-    setIsLoadingOwnedData(true);
+
     try {
       const sortField = getSortField(selectedEntityFilter);
       const sortOrder = getSortOrder(selectedEntityFilter);
@@ -97,21 +95,24 @@ function FollowingWidget({
       });
 
       const sourceData = res.hits.hits.map((hit) => hit._source);
-      // Apply client-side sorting as well to ensure consistent results
-      const sortedData = applySortToData(sourceData, selectedEntityFilter);
-      setFollowedData(sortedData);
+
+      return applySortToData(sourceData, selectedEntityFilter);
     } catch (err) {
       showErrorToast(err as AxiosError);
-    } finally {
-      setIsLoadingOwnedData(false);
-    }
-  };
 
-  useEffect(() => {
-    if (currentUser) {
-      fetchUserFollowedData();
+      throw err;
     }
-  }, [currentUser, selectedEntityFilter]);
+  }, [currentUser?.id, selectedEntityFilter]);
+
+  const { data: followedData, isLoading: isLoadingOwnedData } =
+    useDashboardWidgetData<SourceType[]>({
+      cacheKey: `my-data:following:${
+        currentUser?.id ?? ''
+      }:${selectedEntityFilter}`,
+      enabled: Boolean(currentUser?.id),
+      fetcher: fetchUserFollowedData,
+      initialData: [],
+    });
   // Check if widget is in expanded form (full size)
   const isExpanded = useMemo(() => {
     const currentWidget = currentLayout?.find(
@@ -155,22 +156,6 @@ function FollowingWidget({
     return extraInfo;
   };
 
-  const getEntityIcon = (item: any) => {
-    if (item.serviceType) {
-      return (
-        <img
-          alt={item.name}
-          className="w-8 h-8"
-          src={serviceUtilClassBase.getServiceTypeLogo({
-            serviceType: item.serviceType,
-          } as SearchSourceAlias)}
-        />
-      );
-    } else {
-      return searchClassBase.getEntityIcon(item.type ?? '');
-    }
-  };
-
   const widgetData = useMemo(
     () => currentLayout?.find((w) => w.i === widgetKey),
     [currentLayout, widgetKey]
@@ -210,15 +195,15 @@ function FollowingWidget({
                 <div className="d-flex items-center justify-between w-full">
                   <Link
                     className="item-link w-min-0"
-                    to={entityUtilClassBase.getEntityLink(
-                      item.entityType ?? '',
-                      item.fullyQualifiedName as string
+                    to={getEntityLinkFromType(
+                      item.fullyQualifiedName as string,
+                      item.entityType as EntityType
                     )}>
                     <Button
                       className="entity-button flex items-center gap-2 p-0 w-full"
                       icon={
                         <div className="entity-button-icon d-flex items-center justify-center flex-shrink">
-                          {getEntityIcon(item)}
+                          {getLandingPageWidgetIcon(item)}
                         </div>
                       }
                       type="text">
