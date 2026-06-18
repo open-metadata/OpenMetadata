@@ -2126,6 +2126,9 @@ export interface ConfigObject {
     pipelineFilterPattern?: FilterPattern;
     /**
      * Underlying database connection
+     *
+     * Optional. Underlying SSISDB connection. When omitted, the connector runs in file-only
+     * mode and run history is not extracted.
      */
     databaseConnection?: DatabaseConnectionClass;
     /**
@@ -4230,6 +4233,9 @@ export interface PurpleGCPCredentials {
  * Underlying database connection
  *
  * Mssql Database Connection Config
+ *
+ * Optional. Underlying SSISDB connection. When omitted, the connector runs in file-only
+ * mode and run history is not extracted.
  */
 export interface DatabaseConnectionClass {
     connectionArguments?: { [key: string]: any };
@@ -5706,6 +5712,12 @@ export interface Pipeline {
      */
     markDeletedPipelines?: boolean;
     /**
+     * Set how owners from source metadata update Pipeline owners. In replace mode, resolved
+     * owners from the current source replace existing owners. In append mode, resolved owners
+     * are appended to active existing Pipeline owners.
+     */
+    ownershipUpdateMode?: OwnershipUpdateMode;
+    /**
      * Regex exclude pipelines.
      */
     pipelineFilterPattern?: FilterPattern;
@@ -5967,6 +5979,10 @@ export interface Pipeline {
  * Cache Warmup Application Configuration.
  *
  * Configuration for the AutoPilot Application.
+ *
+ * Configuration for the MCP Chat Application. The LLM provider and credentials are
+ * configured at the platform level via `llmConfiguration`; this app only governs chat
+ * behavior.
  */
 export interface CollateAIAppConfig {
     /**
@@ -6171,6 +6187,10 @@ export interface CollateAIAppConfig {
      * Service Entity Link for which to trigger the application.
      */
     entityLink?: string;
+    /**
+     * The system prompt that guides the assistant behavior.
+     */
+    systemPrompt?: string;
     [property: string]: any;
 }
 
@@ -7589,6 +7609,16 @@ export interface OwnerConfiguration {
      * owner(s).
      */
     table?: { [key: string]: string[] | string } | string;
+}
+
+/**
+ * Set how owners from source metadata update Pipeline owners. In replace mode, resolved
+ * owners from the current source replace existing owners. In append mode, resolved owners
+ * are appended to active existing Pipeline owners.
+ */
+export enum OwnershipUpdateMode {
+    Append = "append",
+    Replace = "replace",
 }
 
 /**

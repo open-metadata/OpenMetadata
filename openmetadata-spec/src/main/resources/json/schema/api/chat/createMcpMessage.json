@@ -1,0 +1,30 @@
+{
+  "$id": "https://open-metadata.org/schema/api/chat/createMcpMessage.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateMcpMessage",
+  "description": "Request to create a new MCP message.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.chat.CreateMcpMessage",
+  "properties": {
+    "sender": {
+      "$ref": "../../entity/chat/mcpMessage.json#/definitions/sender"
+    },
+    "content": {
+      "description": "Rich content blocks.",
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/chat/content/messageBlock.json"
+      }
+    },
+    "timestamp": {
+      "description": "Timestamp when the message was sent.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "tokens": {
+      "description": "LLM token usage.",
+      "$ref": "../../entity/chat/mcpMessage.json#/definitions/tokens"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["sender", "timestamp"]
+}

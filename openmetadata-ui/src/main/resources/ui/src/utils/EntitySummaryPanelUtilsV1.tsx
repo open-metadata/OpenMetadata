@@ -53,32 +53,16 @@ import {
   getTableList,
   searchTableColumnsByFQN,
 } from '../rest/tableAPI';
-import { GenericNestedField } from './EntitySummaryPanelUtilsV1.interface';
-import { getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
+import {
+  filterItemsBySearchText,
+  filterNestedFields,
+} from './EntitySummaryPanelPureUtilsV1';
+import type { GenericNestedField } from './EntitySummaryPanelUtilsV1.interface';
 import { t } from './i18next/LocalUtil';
 
-import { pruneEmptyChildren } from './TableUtils';
+import { pruneEmptyChildren } from './TablePureUtils';
 const { Text } = AntTypography;
-
-/**
- * Shared utility to filter items by search text using case-insensitive
- * name/displayName matching. Used by all entity child components.
- */
-const filterItemsBySearchText = <T extends { name?: string }>(
-  items: T[],
-  searchText?: string
-): T[] => {
-  if (!searchText) {
-    return items;
-  }
-  const lowerSearch = searchText.toLowerCase();
-
-  return items.filter(
-    (item) =>
-      item.name?.toLowerCase().includes(lowerSearch) ||
-      getEntityName(item)?.toLowerCase().includes(lowerSearch)
-  );
-};
 
 // Recursive component to render nested columns
 const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
@@ -236,32 +220,6 @@ const NestedSchemaFieldCard: React.FC<{
       )}
     </div>
   );
-};
-
-// Shared recursive filter that preserves tree structure (used by Topic, Container, SearchIndex)
-const filterNestedFields = (
-  fieldList: GenericNestedField[],
-  searchText: string
-): GenericNestedField[] => {
-  const lowerSearch = searchText.toLowerCase();
-
-  return fieldList.reduce<GenericNestedField[]>((acc, field) => {
-    const nameMatch =
-      field.name?.toLowerCase().includes(lowerSearch) ||
-      getEntityName(field)?.toLowerCase().includes(lowerSearch);
-    const filteredChildren = field.children
-      ? filterNestedFields(field.children, searchText)
-      : [];
-
-    if (nameMatch || filteredChildren.length > 0) {
-      acc.push({
-        ...field,
-        children: nameMatch ? field.children : filteredChildren,
-      });
-    }
-
-    return acc;
-  }, []);
 };
 
 // Component for Table and Dashboard Data Model schema fields

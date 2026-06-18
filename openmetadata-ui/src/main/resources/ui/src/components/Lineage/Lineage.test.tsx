@@ -101,4 +101,11 @@ describe('Lineage Component', () => {
       'lineage-header-edit-mode'
     );
   });
+
+  it('keeps the scene map mounted when controls are hidden', () => {
+    render(<Lineage {...defaultProps} showControls={false} />);
+
+    expect(screen.queryByTestId('custom-controls')).not.toBeInTheDocument();
+    expect(screen.getByTestId('lineage-map')).toBeInTheDocument();
+  });
 });

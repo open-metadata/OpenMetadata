@@ -81,6 +81,15 @@ export const visitEntityPage = async (data: {
       response.url().includes('exclude_source_fields')
   );
 
+  // Adding a failsafe for the operation below to avoid a tooltip overlap issue.
+  // A tooltip over the option can cause Playwright click failures
+  // move the mouse away from the option first to get rid of the tooltip.
+  await page.locator('body').hover({
+    position: {
+      x: 0,
+      y: 0,
+    },
+  });
   await page.getByTestId(dataTestId).getByTestId('data-name').click();
   await waitForAllLoadersToDisappear(page);
   await page.getByTestId('searchBox').clear();
@@ -1422,7 +1431,8 @@ const announcementForm = async (
 export const createAnnouncement = async (
   page: Page,
   data: { title: string; description: string },
-  hideAlert?: boolean
+  hideAlert?: boolean,
+  announcementContainerTestId = 'entity-header-announcements'
 ) => {
   await page.getByTestId('manage-button').click();
   await page.getByTestId('announcement-button').click();
@@ -1446,16 +1456,22 @@ export const createAnnouncement = async (
   await page.reload();
   await waitForAllLoadersToDisappear(page);
 
-  await expect(page.getByTestId('announcement-card')).toBeVisible();
-  await expect(page.getByTestId('announcement-title')).toHaveText(data.title);
+  await expect(page.getByTestId(announcementContainerTestId)).toBeVisible();
+  await expect(page.getByTestId(announcementContainerTestId)).toContainText(
+    data.title
+  );
 
-  await expect(page.getByTestId('announcement-card')).toContainText(
+  await expect(page.getByTestId(announcementContainerTestId)).toContainText(
     data.description
   );
 };
 
 export const replyAnnouncement = async (page: Page) => {
-  await page.click('[data-testid="announcement-card"]');
+  await page
+    .locator('[data-testid="entity-header-announcements"]')
+    .locator('[data-testid^="announcement-item-"]')
+    .first()
+    .click();
 
   await page.hover(
     '[data-testid="announcement-thread-body"] [data-testid="announcement-card"] [data-testid="main-message"]'
@@ -2024,25 +2040,32 @@ export const softDeleteEntity = async (
   await page.reload();
   await waitForAllLoadersToDisappear(page);
   // Retry mechanism for checking deleted badge
-  let deletedBadge = page.locator('[data-testid="deleted-badge"]');
-  let attempts = 0;
-  const maxAttempts = 5;
+  await expect
+    .poll(
+      async () => {
+        const isVisibleBeforeReload = await page
+          .locator('[data-testid="deleted-badge"]')
+          .isVisible();
+        if (isVisibleBeforeReload) {
+          return true;
+        }
 
-  while (attempts < maxAttempts) {
-    const isVisible = await deletedBadge.isVisible();
-    if (isVisible) {
-      break;
-    }
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await waitForAllLoadersToDisappear(page);
 
-    attempts++;
-    if (attempts < maxAttempts) {
-      await page.reload();
-      await waitForAllLoadersToDisappear(page);
-      deletedBadge = page.locator('[data-testid="deleted-badge"]');
-    }
-  }
+        return await page.locator('[data-testid="deleted-badge"]').isVisible();
+      },
+      {
+        message: 'Waiting for deleted badge to be visible after soft delete',
+        timeout: 120000,
+        intervals: [5000, 10000, 15000],
+      }
+    )
+    .toBeTruthy();
 
-  await expect(deletedBadge).toHaveText('Deleted');
+  await expect(page.locator('[data-testid="deleted-badge"]')).toHaveText(
+    'Deleted'
+  );
 
   await deletedEntityCommonChecks({
     page,
@@ -2053,7 +2076,7 @@ export const softDeleteEntity = async (
   await clickOutside(page);
 
   if (endPoint === EntityTypeEndpoint.Table) {
-    await page.click('[data-testid="breadcrumb-link"]:last-child');
+    await page.getByTestId('breadcrumb').getByRole('link').last().click();
     const deletedTableResponse = page.waitForResponse(
       '/api/v1/tables?*databaseSchema=*'
     );

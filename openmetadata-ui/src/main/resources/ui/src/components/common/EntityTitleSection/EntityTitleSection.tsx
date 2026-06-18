@@ -26,9 +26,9 @@ import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { updateTableColumn } from '../../../rest/tableAPI';
-import { getTextFromHtmlString } from '../../../utils/BlockEditorUtils';
+import { getTextFromHtmlString } from '../../../utils/BlockEditorPureUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -127,7 +127,7 @@ export const EntityTitleSection = ({
   return (
     <div
       className={classNames(
-        'tw:sticky tw:p-1 tw:z-999 tw:top-0 tw:bg-white',
+        'tw:sticky tw:p-1 tw:z-999 tw:top-0 tw:bg-primary',
         className
       )}>
       <div className="tw:flex tw:gap-2 tw:items-center tw:rounded-lg tw:px-1 tw:bg-gray-blue-50 tw:py-2">

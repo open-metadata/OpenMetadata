@@ -81,6 +81,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.EntityWithType;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.IntakeFormValidator;
 import org.openmetadata.service.util.LineageUtil;
 
 @Slf4j
@@ -144,6 +145,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   @Override
   public void prepare(DataProduct entity, boolean update) {
     // Parent, Experts, Owner, Assets are already validated
+    IntakeFormValidator.validate(entity, Entity.DATA_PRODUCT);
   }
 
   @Override
@@ -782,15 +784,12 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   private void updateAssetSearchIndexes(String oldFqn, String newFqn) {
     if (searchRepository != null) {
-      try {
-        searchRepository.getSearchClient().updateDataProductReferences(oldFqn, newFqn);
-      } catch (Exception e) {
-        LOG.warn(
-            "Failed to update search indexes for data product rename from {} to {}: {}",
-            oldFqn,
-            newFqn,
-            e.getMessage());
-      }
+      searchRepository.deferIfFlushScopeActive(
+          () -> searchRepository.getSearchClient().updateDataProductReferences(oldFqn, newFqn),
+          "updateDataProductReferences",
+          null,
+          newFqn,
+          DATA_PRODUCT);
     }
   }
 
@@ -803,6 +802,14 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
     public DataProductUpdater(DataProduct original, DataProduct updated, Operation operation) {
       super(original, updated, operation);
+    }
+
+    @Override
+    protected void resetForRetryAttempt() {
+      renameProcessed = false;
+      domainChangeProcessed = false;
+      capturedOriginalDomains = null;
+      capturedUpdatedDomains = null;
     }
 
     @Override

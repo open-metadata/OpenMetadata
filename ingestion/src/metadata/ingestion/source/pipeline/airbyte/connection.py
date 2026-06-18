@@ -22,11 +22,12 @@ from metadata.generated.schema.entity.services.connections.pipeline.airbyte.oaut
     Oauth20ClientCredentialsAuthentication,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
-    AirbyteConnection,
+    AirbyteConnection as AirbyteConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.airbyte.client import (
@@ -37,7 +38,7 @@ from metadata.utils.constants import THREE_MIN
 
 
 def get_connection(
-    connection: AirbyteConnection,
+    connection: AirbyteConnectionConfig,
 ) -> Union[AirbyteClient, AirbyteCloudClient]:  # noqa: UP007
     """
     Create connection - returns appropriate client based on auth type.
@@ -48,24 +49,29 @@ def get_connection(
     return AirbyteClient(connection)
 
 
-def test_connection(
-    metadata: OpenMetadata,
-    client: Union[AirbyteClient, AirbyteCloudClient],  # noqa: UP007
-    service_connection: AirbyteConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
-) -> TestConnectionResult:
-    """
-    Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
-    """
+class AirbyteConnection(BaseConnection[AirbyteConnectionConfig, AirbyteClient | AirbyteCloudClient]):
+    def _get_client(self) -> AirbyteClient | AirbyteCloudClient:
+        return get_connection(self.service_connection)
 
-    test_fn = {"GetPipelines": client.list_workspaces}
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        """
+        Test connection. This can be executed either as part
+        of a metadata workflow or during an Automation Workflow
+        """
+        client = self.client
+        service_connection = self.service_connection
 
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
+        test_fn = {"GetPipelines": client.list_workspaces}
+
+        return test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
+            automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
+        )

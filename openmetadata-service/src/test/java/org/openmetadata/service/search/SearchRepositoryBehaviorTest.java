@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -30,6 +31,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.apache.commons.lang3.tuple.Pair;
@@ -47,6 +49,9 @@ import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.configuration.LLMConfiguration;
+import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
+import org.openmetadata.schema.configuration.LLMEmbeddingsConfig.Provider;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Pipeline;
@@ -2116,13 +2121,13 @@ class SearchRepositoryBehaviorTest {
     when(context.getEntities())
         .thenReturn(new LinkedHashSet<>(List.of(Entity.TABLE, Entity.DOMAIN)));
     when(context.getOriginalIndex(any()))
-        .thenAnswer(invocation -> java.util.Optional.of("original_" + invocation.getArgument(0)));
+        .thenAnswer(invocation -> Optional.of("original_" + invocation.getArgument(0)));
     when(context.getCanonicalIndex(any()))
-        .thenAnswer(invocation -> java.util.Optional.of("canonical_" + invocation.getArgument(0)));
+        .thenAnswer(invocation -> Optional.of("canonical_" + invocation.getArgument(0)));
     when(context.getStagedIndex(any()))
-        .thenAnswer(invocation -> java.util.Optional.of("staged_" + invocation.getArgument(0)));
+        .thenAnswer(invocation -> Optional.of("staged_" + invocation.getArgument(0)));
     when(context.getCanonicalAlias(any()))
-        .thenAnswer(invocation -> java.util.Optional.of("alias_" + invocation.getArgument(0)));
+        .thenAnswer(invocation -> Optional.of("alias_" + invocation.getArgument(0)));
     when(context.getExistingAliases(any()))
         .thenAnswer(invocation -> Set.of("existing_" + invocation.getArgument(0)));
     when(context.getParentAliases(any()))
@@ -2502,22 +2507,25 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void createEmbeddingClientRejectsUnsupportedOrIncompleteConfigurations() {
-    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
-    config.setNaturalLanguageSearch(
-        new NaturalLanguageSearchConfiguration().withEmbeddingProvider("bedrock"));
-    assertThrows(IllegalStateException.class, () -> repository.createEmbeddingClient(config));
+    assertThrows(
+        IllegalStateException.class,
+        () -> repository.createEmbeddingClient(embeddingConfigWithProvider(Provider.BEDROCK)));
 
-    config.setNaturalLanguageSearch(
-        new NaturalLanguageSearchConfiguration().withEmbeddingProvider("openai"));
-    assertThrows(IllegalStateException.class, () -> repository.createEmbeddingClient(config));
+    assertThrows(
+        IllegalStateException.class,
+        () -> repository.createEmbeddingClient(embeddingConfigWithProvider(Provider.OPENAI)));
 
-    config.setNaturalLanguageSearch(
-        new NaturalLanguageSearchConfiguration().withEmbeddingProvider("djl"));
-    assertThrows(IllegalStateException.class, () -> repository.createEmbeddingClient(config));
+    assertThrows(
+        IllegalStateException.class,
+        () -> repository.createEmbeddingClient(embeddingConfigWithProvider(Provider.GOOGLE)));
 
-    config.setNaturalLanguageSearch(
-        new NaturalLanguageSearchConfiguration().withEmbeddingProvider("unknown"));
-    assertThrows(IllegalArgumentException.class, () -> repository.createEmbeddingClient(config));
+    assertThrows(
+        IllegalStateException.class,
+        () -> repository.createEmbeddingClient(embeddingConfigWithProvider(Provider.DJL)));
+  }
+
+  private LLMConfiguration embeddingConfigWithProvider(Provider provider) {
+    return new LLMConfiguration().withEmbeddings(new LLMEmbeddingsConfig().withProvider(provider));
   }
 
   @Test
@@ -2535,8 +2543,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void initializeVectorSearchServiceInitializesOpenSearchVectorSupport() throws Exception {
-    NaturalLanguageSearchConfiguration nlConfig =
-        new NaturalLanguageSearchConfiguration().withEmbeddingProvider("openai");
+    NaturalLanguageSearchConfiguration nlConfig = new NaturalLanguageSearchConfiguration();
     SearchRepository openSearchRepository =
         newRepository(
             Map.of(Entity.TABLE, TABLE_MAPPING),
@@ -2555,7 +2562,7 @@ class SearchRepositoryBehaviorTest {
     doReturn(true).when(spyRepository).isVectorEmbeddingEnabled();
     doReturn(embeddingClient)
         .when(spyRepository)
-        .createEmbeddingClient(any(ElasticSearchConfiguration.class));
+        .createEmbeddingClient(nullable(LLMConfiguration.class));
     setPrivateField(spyRepository, "searchClient", openSearchClient);
 
     try (var settingsCacheMock = mockStatic(SettingsCache.class);
@@ -2683,7 +2690,8 @@ class SearchRepositoryBehaviorTest {
     when(searchClient.searchLineage(lineageRequest)).thenReturn(lineageResult);
     when(searchClient.searchPlatformLineage("alias", "{}", false)).thenReturn(lineageResult);
     when(searchClient.searchLineageWithDirection(lineageRequest)).thenReturn(lineageResult);
-    when(searchClient.getLineagePaginationInfo("svc.db.orders", 1, 2, "{}", false, Entity.TABLE))
+    when(searchClient.getLineagePaginationInfo(
+            "svc.db.orders", 1, 2, "{}", false, Entity.TABLE, null, null))
         .thenReturn(paginationInfo);
     when(searchClient.searchLineageByEntityCount(entityCountRequest)).thenReturn(lineageResult);
     when(searchClient.searchEntityRelationship("svc.db.orders", 1, 2, "{}", false))

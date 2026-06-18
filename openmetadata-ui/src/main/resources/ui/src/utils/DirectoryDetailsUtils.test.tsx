@@ -262,7 +262,7 @@ describe('DirectoryDetailsUtils', () => {
   });
 
   describe('getDirectoryWidgetsFromKey', () => {
-    it('should return DirectoryChildrenTable for directory children widget', () => {
+    it('should return DirectoryChildrenTable for directory children widget', async () => {
       const widgetConfig: WidgetConfig = {
         h: 8,
         i: DetailPageWidgetKeys.DIRECTORY_CHILDREN,
@@ -277,7 +277,7 @@ describe('DirectoryDetailsUtils', () => {
       render(<MemoryRouter>{result}</MemoryRouter>);
 
       expect(
-        screen.getByTestId('directory-children-table')
+        await screen.findByTestId('directory-children-table')
       ).toBeInTheDocument();
     });
 

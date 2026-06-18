@@ -13,7 +13,7 @@
 
 import { EditorState } from '@tiptap/pm/state';
 import type { Editor } from '@tiptap/react';
-import { isEmpty, isString } from 'lodash';
+import { isString } from 'lodash';
 import Showdown from 'showdown';
 import { ReactComponent as IconFormatAttachment } from '../assets/svg/ic-format-attachment.svg';
 import { ReactComponent as IconFormatAudio } from '../assets/svg/ic-format-audio.svg';
@@ -22,8 +22,12 @@ import { ReactComponent as IconFormatVideo } from '../assets/svg/ic-format-video
 import { FileType } from '../components/BlockEditor/BlockEditor.interface';
 import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
 import blockEditorExtensionsClassBase from './BlockEditorExtensionsClassBase';
-import { ENTITY_LINK_SEPARATOR } from './EntityUtils';
-import { getEntityDetail, getHashTagList, getMentionList } from './FeedUtils';
+import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
+import {
+  getEntityDetail,
+  getHashTagList,
+  getMentionList,
+} from './FeedUtilsPure';
 import { getSanitizeContent } from './sanitize.utils';
 
 export const getSelectedText = (state: EditorState) => {
@@ -95,6 +99,50 @@ const escapeMarkdownLinkText = (text: string): string =>
 
 const sanitizeEntityLinkField = (value: string): string =>
   value.replace(/[<>|]/g, '');
+
+export const isHTMLString = (content: string) => {
+  // Quick check for common HTML tags
+  const commonHtmlTags =
+    /<(p|div|span|a|ul|ol|li|h[1-6]|br|strong|em|code|pre)[>\s]/i;
+
+  // If content doesn't have any HTML-like structure, return false early
+  if (!commonHtmlTags.test(content)) {
+    return false;
+  }
+
+  try {
+    const parser = new DOMParser();
+    const parsedDocument = parser.parseFromString(content, 'text/html');
+
+    // Check if there are any actual HTML elements (not just text nodes)
+    const hasHtmlElements = Array.from(parsedDocument.body.childNodes).some(
+      (node) => node.nodeType === Node.ELEMENT_NODE
+    );
+
+    // Check if the content has markdown-specific patterns
+    const markdownPatterns = [
+      /^#{1,6}\s/, // Headers
+      /^\s*[-*+]\s/, // Lists
+      /^\s*\d+\.\s/, // Numbered lists
+      /^\s*>{1,}\s/, // Blockquotes
+      /^---|\*\*\*|___/, // Horizontal rules
+      /`{1,3}[^`]+`{1,3}/, // Code blocks
+      /(\*\*)[^*]+(\*\*)|(__)[^_]+(__)/, // Bold/Strong text
+    ];
+
+    const hasMarkdownSyntax = markdownPatterns.some((pattern) =>
+      pattern.test(content)
+    );
+
+    // If it has markdown syntax but also parsed as HTML, prefer markdown interpretation
+    return hasHtmlElements && !hasMarkdownSyntax;
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('Error parsing content to check HTML string:', e);
+
+    return false;
+  }
+};
 
 export const formatContent = (
   htmlString: string,
@@ -178,50 +226,6 @@ export const formatContent = (
 
 export const formatValueBasedOnContent = (value: string) =>
   value === '<p></p>' ? '' : value;
-
-export const isHTMLString = (content: string) => {
-  // Quick check for common HTML tags
-  const commonHtmlTags =
-    /<(p|div|span|a|ul|ol|li|h[1-6]|br|strong|em|code|pre)[>\s]/i;
-
-  // If content doesn't have any HTML-like structure, return false early
-  if (!commonHtmlTags.test(content)) {
-    return false;
-  }
-
-  try {
-    const parser = new DOMParser();
-    const parsedDocument = parser.parseFromString(content, 'text/html');
-
-    // Check if there are any actual HTML elements (not just text nodes)
-    const hasHtmlElements = Array.from(parsedDocument.body.childNodes).some(
-      (node) => node.nodeType === Node.ELEMENT_NODE
-    );
-
-    // Check if the content has markdown-specific patterns
-    const markdownPatterns = [
-      /^#{1,6}\s/, // Headers
-      /^\s*[-*+]\s/, // Lists
-      /^\s*\d+\.\s/, // Numbered lists
-      /^\s*>{1,}\s/, // Blockquotes
-      /^---|\*\*\*|___/, // Horizontal rules
-      /`{1,3}[^`]+`{1,3}/, // Code blocks
-      /(\*\*)[^*]+(\*\*)|(__)[^_]+(__)/, // Bold/Strong text
-    ];
-
-    const hasMarkdownSyntax = markdownPatterns.some((pattern) =>
-      pattern.test(content)
-    );
-
-    // If it has markdown syntax but also parsed as HTML, prefer markdown interpretation
-    return hasHtmlElements && !hasMarkdownSyntax;
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.warn('Error parsing content to check HTML string:', e);
-
-    return false;
-  }
-};
 
 /**
  * Convert a markdown string to an HTML string
@@ -313,48 +317,6 @@ export const setEditorContent = (editor: Editor, newContent: string) => {
     storedMarks: editor.state.storedMarks,
   });
   editor.view.updateState(newEditorState);
-};
-
-/**
- *
- * @param content The content to check
- * @returns Whether the content is empty or not
- */
-export const isDescriptionContentEmpty = (content: string) => {
-  // Treat null/undefined/empty string as empty
-  if (isEmpty(content)) {
-    return true;
-  }
-
-  // Trim the content
-  const trimmedContent = content.trim();
-
-  // Check if it's an empty string after trimming
-  if (trimmedContent === '') {
-    return true;
-  }
-
-  // Match a single <p>...</p> where the inner content is only common whitespace
-  // (space, tab, newline, carriage return) and non-breaking space (\u00A0)
-  // Note: We intentionally do NOT match other unicode whitespace like em space (\u2003)
-  // or thin space (\u2009) as those are considered content
-  const emptyPRegex =
-    /^[ \t\r\n]*<p(?:\s[^>]*)?>[ \t\r\n\u00A0]*<\/p>[ \t\r\n]*$/i;
-
-  return emptyPRegex.test(trimmedContent);
-};
-
-/**
- *
- * @param description HTML string
- * @returns Text from HTML string
- */
-export const getTextFromHtmlString = (description?: string): string => {
-  if (!description) {
-    return '';
-  }
-
-  return description.replace(/<[^>]{1,1000}>/g, '').trim();
 };
 
 export const getAcceptedFileTypes = (fileType: FileType) => {

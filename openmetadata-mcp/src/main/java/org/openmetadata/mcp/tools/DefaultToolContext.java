@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.limits.Limits;
@@ -26,6 +27,9 @@ public class DefaultToolContext {
   private static final int STATUS_TOO_MANY_REQUESTS = 429;
   private static final int STATUS_INTERNAL_ERROR = 500;
   private static final int STATUS_GATEWAY_TIMEOUT = 504;
+  private static final String OVERSIZED_ADVICE =
+      "Response exceeded the size limit and was withheld. Narrow your request — use a more specific "
+          + "query, request fewer results, or fetch a single entity by its fullyQualifiedName.";
 
   public DefaultToolContext() {}
 
@@ -80,6 +84,12 @@ public class DefaultToolContext {
         case "get_entity_details":
           tool = new GetEntityTool();
           result = tool.execute(authorizer, securityContext, params);
+          break;
+        case "search_company_context":
+          result = new SearchCompanyContextTool().execute(authorizer, securityContext, params);
+          break;
+        case "get_company_context":
+          result = new GetCompanyContextTool().execute(authorizer, securityContext, params);
           break;
         case "create_glossary":
           tool = new GlossaryTool();
@@ -145,7 +155,7 @@ public class DefaultToolContext {
 
       return new CallToolOutcome(
           McpSchema.CallToolResult.builder()
-              .content(List.of(new McpSchema.TextContent(JsonUtils.pojoToJson(result))))
+              .content(List.of(new McpSchema.TextContent(serializeWithinBudget(result, toolName))))
               .isError(false)
               .build(),
           elapsedMs(startNanos),
@@ -160,7 +170,8 @@ public class DefaultToolContext {
                           JsonUtils.pojoToJson(
                               Map.of(
                                   "error",
-                                  String.format("Authorization error: %s", ex.getMessage()),
+                                  String.format(
+                                      "Authorization error: %s", McpResponseTrim.safeMessage(ex)),
                                   "statusCode",
                                   STATUS_FORBIDDEN)))))
               .isError(true)
@@ -177,7 +188,8 @@ public class DefaultToolContext {
                           JsonUtils.pojoToJson(
                               Map.of(
                                   "error",
-                                  String.format("Error executing tool: %s", ex.getMessage()),
+                                  String.format(
+                                      "Error executing tool: %s", McpResponseTrim.safeMessage(ex)),
                                   "statusCode",
                                   resolveStatusCode(ex))))))
               .isError(true)
@@ -298,6 +310,32 @@ public class DefaultToolContext {
 
   private static long elapsedMs(long startNanos) {
     return (System.nanoTime() - startNanos) / 1_000_000L;
+  }
+
+  /**
+   * Serializes a tool result once and, only when it exceeds {@link
+   * McpResponseTrim#MAX_RESPONSE_CHARS}, replaces it with a generic {@code truncated:true} envelope.
+   * This is the dispatch-level floor that bounds tools without their own per-tool trim ({@code
+   * get_entity_details}, {@code get_test_definitions}) and backstops the rest. The happy path
+   * serializes exactly once; the re-serialization runs only on the rare oversized path.
+   *
+   * <p>Public so the Collate dispatcher ({@code CollateToolContext}), which builds its own success
+   * result for Collate-only tools, applies the same floor instead of re-implementing it.
+   */
+  public static String serializeWithinBudget(Object result, String toolName) {
+    String serialized = JsonUtils.pojoToJson(result);
+    if (serialized.length() > McpResponseTrim.MAX_RESPONSE_CHARS) {
+      LOG.warn(
+          "[MCP] tool '{}' response {} chars exceeds {} budget; returning truncation envelope",
+          toolName,
+          serialized.length(),
+          McpResponseTrim.MAX_RESPONSE_CHARS);
+      Map<String, Object> capped =
+          McpResponseTrim.oversizedEnvelope(
+              serialized.length(), Map.of("tool", toolName), OVERSIZED_ADVICE);
+      serialized = JsonUtils.pojoToJson(capped);
+    }
+    return serialized;
   }
 
   /**

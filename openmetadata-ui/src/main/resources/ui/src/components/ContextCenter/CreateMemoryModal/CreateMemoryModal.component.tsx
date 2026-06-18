@@ -43,9 +43,18 @@ import { ConfigProvider } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  FC,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
+import { Link } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import {
   getCustomMarkdownComponents,
@@ -54,11 +63,12 @@ import {
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import DataAssetSelectList from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetSelectList';
-import TagSelectForm from '../../../components/Tag/TagsSelectForm/TagsSelectForm.component';
+import { ROUTES } from '../../../constants/constants';
 import {
   MEMORY_TYPE_OPTIONS,
   VISIBILITY_OPTIONS,
 } from '../../../constants/ContextCenter.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
   EntityReference,
@@ -74,15 +84,25 @@ import {
   deleteContextMemory,
   updateContextMemory,
 } from '../../../rest/contextMemoryAPI';
+import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import {
   formatDate,
   getShortRelativeTime,
 } from '../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { getErrorText } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showSuccessToast } from '../../../utils/ToastUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { CreateMemoryModalProps } from './CreateMemoryModal.interface';
+
+const TagSelectForm = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../../components/Tag/TagsSelectForm/TagsSelectForm.component')
+  )
+);
 
 const LinkedAssetCard: FC<{
   asset: DataAssetOption;
@@ -221,6 +241,20 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       false,
     [memoryToEdit, currentUserName]
   );
+
+  const memorySource = memoryToEdit?.sourceEntity ?? memoryToEdit?.sourceFile;
+
+  const memorySourceLink = useMemo(() => {
+    if (!memorySource) {
+      return undefined;
+    }
+
+    return memorySource.type === EntityType.KNOWLEDGE_PAGE
+      ? contextCenterClassBase.getArticlePath(
+          memorySource.fullyQualifiedName ?? ''
+        )
+      : `${ROUTES.CONTEXT_CENTER_DOCUMENTS}?document=${memorySource.id}`;
+  }, [memorySource]);
 
   useEffect(() => {
     setIsViewOnly(viewOnly);
@@ -461,7 +495,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     }
 
     return (
-      <div className="prose tw:p-3 tw:rounded-lg tw:border tw:border-gray-200 tw:bg-gray-100 tw:text-gray-700 tw:h-36 tw:overflow-y-auto tw:resize-y">
+      <div className="prose tw:p-3 tw:rounded-lg tw:border tw:border-gray-200 tw:bg-gray-100 tw:text-secondary tw:h-36 tw:overflow-y-auto tw:resize-y">
         {memory.trim() ? (
           <ReactMarkdown components={getCustomMarkdownComponents()}>
             {preprocessMarkdownText(memory)}
@@ -513,7 +547,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                         </Typography>
                         <UserPopOverCard
                           showUserName
-                          className="tw:text-gray-900"
+                          className="tw:text-primary"
                           profileWidth={16}
                           userName={memoryToEdit?.owners?.[0]?.name || ''}
                         />
@@ -523,6 +557,24 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                         <Typography className="tw:text-gray-500" size="text-xs">
                           {formatDate(memoryToEdit.updatedAt)}
                         </Typography>
+                      </div>
+                    )}
+                    {memorySource && memorySourceLink && (
+                      <div className="tw:flex tw:items-center tw:gap-1">
+                        <FileLock02
+                          className="tw:shrink-0 tw:text-gray-400"
+                          size={12}
+                          strokeWidth={2}
+                        />
+                        <Typography className="tw:text-gray-500" size="text-xs">
+                          {t('label.extracted-from')}
+                        </Typography>
+                        <Link
+                          className="tw:text-xs tw:font-medium tw:text-brand-600 tw:hover:underline tw:truncate"
+                          data-testid="memory-source-file-link"
+                          to={memorySourceLink}>
+                          {getEntityName(memorySource)}
+                        </Link>
                       </div>
                     )}
                   </div>
@@ -588,7 +640,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                     <div className="tw:flex tw:items-center tw:justify-between">
                       <div className="tw:flex tw:items-center tw:gap-1">
                         <Typography
-                          className="tw:text-gray-700"
+                          className="tw:text-secondary"
                           size="text-sm"
                           weight="medium">
                           {t('label.memory')}
@@ -653,7 +705,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                   {/* Section 4: Linked Data Assets */}
                   <div className="tw:flex tw:flex-col tw:gap-2">
                     <Typography
-                      className="tw:text-gray-600"
+                      className="tw:text-tertiary"
                       size="text-xs"
                       weight="semibold">
                       {`${t('label.linked-data-asset-plural')} (${
@@ -704,7 +756,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                   {/* Section 5: Metadata */}
                   <div>
                     <Typography
-                      className="tw:text-gray-600"
+                      className="tw:text-tertiary"
                       size="text-xs"
                       weight="semibold">
                       {t('label.metadata')}
@@ -814,7 +866,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                                   )}
                                   <Typography
                                     ellipsis
-                                    className="tw:text-gray-700"
+                                    className="tw:text-secondary"
                                     size="text-xs">
                                     {tag.tagFQN}
                                   </Typography>
@@ -841,7 +893,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                                     )}
                                     <Typography
                                       ellipsis
-                                      className="tw:text-gray-700"
+                                      className="tw:text-secondary"
                                       size="text-xs">
                                       {tag.tagFQN}
                                     </Typography>
@@ -887,7 +939,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                             </Typography>
                           </div>
                           <Typography
-                            className="tw:text-gray-600"
+                            className="tw:text-tertiary"
                             size="text-sm">
                             {formatDate(memoryToEdit?.updatedAt)}
                           </Typography>
@@ -904,7 +956,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                           </div>
                           <div className="tw:flex tw:items-center tw:gap-1">
                             <Typography
-                              className="tw:text-gray-600"
+                              className="tw:text-tertiary"
                               size="text-sm"
                               weight="semibold">
                               {t('label.n-times', {

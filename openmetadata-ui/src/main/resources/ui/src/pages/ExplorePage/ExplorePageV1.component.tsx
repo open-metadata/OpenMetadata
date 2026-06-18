@@ -39,11 +39,10 @@ import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import {
   extractTermKeys,
-  fetchEntityData,
   findActiveSearchIndex,
-  generateTabItems,
   parseSearchParams,
-} from '../../utils/ExploreUtils';
+} from '../../utils/ExplorePureUtils';
+import { fetchEntityData, generateTabItems } from '../../utils/ExploreUtils';
 import { getExplorePath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -58,7 +57,8 @@ const ExplorePageV1: FC<unknown> = () => {
     searchClassBase.getEntityTypeSearchIndexMapping();
   const location = useCustomLocation();
   const navigate = useNavigate();
-  const { isTourOpen } = useTourProvider();
+  const { isTourOpen, tourMockSearchResults, tourMockSearchHitCounts } =
+    useTourProvider();
   const TABS_SEARCH_INDEXES = Object.keys(tabsInfo) as ExploreSearchIndex[];
   const { isNLPActive, isNLPEnabled } = useSearchStore();
   const isNLPRequestEnabled = isNLPEnabled && isNLPActive;
@@ -72,9 +72,6 @@ const ExplorePageV1: FC<unknown> = () => {
   const { searchCriteria } = useApplicationStore();
 
   const [searchResults, setSearchResults] =
-    useState<SearchResponse<ExploreSearchIndex>>();
-
-  const [tourSearchResults, setTourSearchResults] =
     useState<SearchResponse<ExploreSearchIndex>>();
 
   const [showIndexNotFoundAlert, setShowIndexNotFoundAlert] =
@@ -308,19 +305,11 @@ const ExplorePageV1: FC<unknown> = () => {
   const getCached = useExploreCache((s) => s.getCached);
   const setCached = useExploreCache((s) => s.setCached);
 
-  // Effect for handling tour — lazy-load the ~113 KB mock dataset only when the tour is open.
   useEffect(() => {
-    if (isTourOpen) {
-      import('../../constants/mockTourData.constants').then(
-        ({ mockSearchData, MOCK_EXPLORE_PAGE_COUNT }) => {
-          setSearchHitCounts(MOCK_EXPLORE_PAGE_COUNT);
-          setTourSearchResults(
-            mockSearchData as unknown as SearchResponse<ExploreSearchIndex>
-          );
-        }
-      );
+    if (isTourOpen && tourMockSearchHitCounts) {
+      setSearchHitCounts(tourMockSearchHitCounts);
     }
-  }, [isTourOpen]);
+  }, [isTourOpen, tourMockSearchHitCounts]);
 
   // Create a dependency string to trigger fetch only when dependencies actually change. Also
   // doubles as the SWR cache key for {@link useExploreCache}.
@@ -548,7 +537,7 @@ const ExplorePageV1: FC<unknown> = () => {
       loading={isLoading && !isTourOpen}
       quickFilters={advancedSearchQuickFilters}
       searchIndex={searchIndex}
-      searchResults={isTourOpen ? tourSearchResults : searchResults}
+      searchResults={isTourOpen ? tourMockSearchResults : searchResults}
       showDeleted={showDeleted}
       sortOrder={sortOrder}
       sortValue={sortValue}

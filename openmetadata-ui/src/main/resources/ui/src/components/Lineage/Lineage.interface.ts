@@ -41,6 +41,7 @@ export interface LineageProps {
   entity?: SourceType;
   isPlatformLineage?: boolean;
   platformHeader?: React.ReactNode;
+  showControls?: boolean;
 }
 
 export interface EntityLineageResponse {
@@ -69,6 +70,10 @@ export interface EdgeDetails {
   docId?: string;
   extraInfo?: EdgeDetails;
   tempLineageTables?: TempLineageTable[];
+  createdAt?: number;
+  createdBy?: string;
+  updatedAt?: number;
+  updatedBy?: string;
 }
 
 export interface ColumnLevelLineageNode

@@ -1,8 +1,43 @@
 {
   "tools": [
     {
+      "name": "search_company_context",
+      "description": "Semantic search over Company Context knowledge pills extracted from Context Center files. Returns each pill's title, question, answer, summary, and source file in one call. Use this to answer questions from company documents, runbooks, FAQs, and policies.",
+      "parameters": {
+        "description": "Provide a natural-language 'query'. Returns the most semantically relevant knowledge pills.",
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Natural-language question or topic to find relevant company knowledge for."
+          },
+          "size": {
+            "type": "integer",
+            "description": "Number of pills to return. Default is 10, maximum is 50.",
+            "default": 10
+          }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "get_company_context",
+      "description": "Fetch a single Company Context knowledge pill, returning its full title, question, answer, summary, and source file. Pass the 'fullyQualifiedName' (or 'name') from a search_company_context result, exactly as returned.",
+      "parameters": {
+        "description": "Provide the 'fqn' of the knowledge pill to fetch.",
+        "type": "object",
+        "properties": {
+          "fqn": {
+            "type": "string",
+            "description": "The 'fullyQualifiedName' or 'name' of the knowledge pill from a search_company_context result. Pass it verbatim; surrounding quotes are optional and handled for you."
+          }
+        },
+        "required": ["fqn"]
+      }
+    },
+    {
       "name": "search_metadata",
-      "description": "Keyword-based search for data assets in OpenMetadata. Best when you know specific names, owners, tags, tiers, services, or column names. Use this for exact lookups (e.g., 'find table X', 'tables owned by team Y'), filtering by metadata properties, counting assets, and aggregations. Supports pagination and advanced OpenSearch DSL queries. Choose this over semantic_search when the query targets known identifiers or structured attributes. Results include 'fullyQualifiedName' and 'entityType' — pass these directly to get_entity_details for full entity information.",
+      "description": "Keyword-based search for data assets and data quality entities in OpenMetadata. Best when you know specific names, owners, tags, tiers, services, or column names. Use this for exact lookups (e.g., 'find table X', 'tables owned by team Y'), filtering by metadata properties, counting assets, and aggregations. Also searches data quality test cases and test suites when entityType is 'testCase' or 'testSuite' — these are NOT part of the default search scope, so always set entityType explicitly for data quality questions. Supports pagination and advanced OpenSearch DSL queries. Choose this over semantic_search when the query targets known identifiers or structured attributes. Results include 'fullyQualifiedName' and 'entityType' — pass these directly to get_entity_details for full entity information.",
       "parameters": {
         "description": "Use 'query' for keyword search or 'queryFilter' for advanced OpenSearch DSL. Best for exact matches and filtering by metadata properties.",
         "type": "object",
@@ -13,7 +48,7 @@
           },
           "entityType": {
             "type": "string",
-            "description": "Filter by entity type (auto-detected if not specified). Use singular form: table, dashboard, topic, pipeline, database, databaseService, glossary, glossaryTerm, mlmodel, container, chart, metric, user, team, domain, dataProduct."
+            "description": "Filter by entity type (auto-detected if not specified). Use singular form: table, dashboard, topic, pipeline, database, databaseService, glossary, glossaryTerm, mlmodel, container, chart, metric, user, team, domain, dataProduct. Data quality types: testCase (individual data quality tests, includes the tested asset's FQN in 'entityFQN' and latest status in 'testCaseStatus'), testSuite (collections of test cases). Data quality entities are only searched when explicitly set as entityType."
           },
           "queryFilter": {
             "type": "string",
@@ -36,7 +71,7 @@
           },
           "fields": {
             "type": "string",
-            "description": "Comma-separated additional fields to include. Default returns: name, displayName, fullyQualifiedName, description, entityType, service, database, databaseSchema, serviceType, href, tags, owners, tier, tableType, columnNames.\n\nAdditional fields by entity type:\n- Table entities: columns, schemaDefinition, queries, upstreamLineage, entityRelationship\n- Topic entities: messageSchema, partitions, replicationFactor  \n- Dashboard entities: charts, dataModels, project\n- Pipeline entities: tasks, pipelineUrl, scheduleInterval\n- All entities: createdAt, updatedAt, changeDescription, extension, domain, dataProducts, lifeCycle, sourceHash\n\nExample: 'columns,queries' for table column details and sample queries."
+            "description": "Comma-separated additional fields to include. Default returns: name, displayName, fullyQualifiedName, description, entityType, service, database, databaseSchema, serviceType, href, tags, owners, tier, tableType, columnNames.\n\nAdditional fields by entity type:\n- Table entities: columns, schemaDefinition, queries, upstreamLineage, entityRelationship\n- Topic entities: messageSchema, partitions, replicationFactor  \n- Dashboard entities: charts, dataModels, project\n- Pipeline entities: tasks, pipelineUrl, scheduleInterval\n- TestCase entities: testCaseResult (full latest result; a slim status/timestamp/result version is returned by default), testDefinition, testSuite, testSuites, parameterValues, table\n- All entities: createdAt, updatedAt, changeDescription, extension, domain, dataProducts, lifeCycle, sourceHash\n\nExample: 'columns,queries' for table column details and sample queries."
           },
           "includeAggregations": {
             "type": "boolean",
@@ -95,6 +130,26 @@
           {
             "description": "Advanced - Aggregation query for counting",
             "queryFilter": "{\"size\": 0, \"query\": {\"bool\": {\"must\": [{\"term\": {\"entityType\": \"databaseService\"}}, {\"term\": {\"serviceType\": \"BigQuery\"}}]}}, \"aggs\": {\"total_count\": {\"value_count\": {\"field\": \"_id\"}}}}"
+          },
+          {
+            "description": "Data quality - Find test cases by name or description",
+            "query": "column values to be unique",
+            "entityType": "testCase"
+          },
+          {
+            "description": "Data quality - List test suites",
+            "query": "*",
+            "entityType": "testSuite"
+          },
+          {
+            "description": "Data quality - All test cases on a table and its columns (entityFQN is a lowercase keyword field; use lowercase prefix of the table FQN)",
+            "entityType": "testCase",
+            "queryFilter": "{\"bool\": {\"must\": [{\"prefix\": {\"entityFQN\": \"sample_data.ecommerce_db.shopify.dim_address\"}}]}}"
+          },
+          {
+            "description": "Data quality - Failed test cases (testCaseResult.testCaseStatus is a lowercase keyword field)",
+            "entityType": "testCase",
+            "queryFilter": "{\"bool\": {\"must\": [{\"term\": {\"testCaseResult.testCaseStatus\": \"failed\"}}]}}"
           }
         ]
       }
@@ -112,7 +167,7 @@
           },
           "filters": {
             "type": "object",
-            "description": "Optional filters to narrow results. Keys are field names and values are arrays of allowed values. Supported filter fields: 'entityType' (e.g., ['table', 'dashboard']), 'service' (e.g., ['BigQuery', 'Snowflake']), 'tags' (e.g., ['PII.Sensitive']). Example: {\"entityType\": [\"table\"], \"service\": [\"BigQuery\"]}.",
+            "description": "Optional filters to narrow results. Keys are field names and values are arrays of allowed values. Supported filter fields: 'entityType' (e.g., ['table', 'dashboard'], also data quality types ['testCase', 'testSuite']), 'service' (e.g., ['BigQuery', 'Snowflake']), 'tags' (e.g., ['PII.Sensitive']). Example: {\"entityType\": [\"table\"], \"service\": [\"BigQuery\"]}.",
             "additionalProperties": {
               "type": "array",
               "items": {
@@ -162,14 +217,14 @@
     },
     {
       "name": "get_entity_details",
-      "description": "Get detailed information about a specific entity by its fully qualified name, including its custom properties (returned under the 'extension' field). IMPORTANT: Use the 'fullyQualifiedName' and 'entityType' values directly from search_metadata or semantic_search results — do not construct the FQN manually. Response is optimized for LLM context by excluding verbose metadata fields.",
+      "description": "Get detailed information about a specific entity by its fully qualified name, including its custom properties (returned under the 'extension' field). IMPORTANT: Use the 'fullyQualifiedName' and 'entityType' values directly from search_metadata or semantic_search results — do not construct the FQN manually. Response is optimized for LLM context: verbose metadata fields are excluded, and per-column descriptions and raw schema/model SQL are truncated at 500 characters (marked with 'columnDescriptionsTruncated' / 'schemaDefinitionTruncated', or 'sqlTruncated' inside 'dataModel', when cut). The entity-level description is always returned in full.",
       "parameters": {
         "description": "Use 'fullyQualifiedName' and 'entityType' from search results directly.",
         "type": "object",
         "properties": {
           "entityType": {
             "type": "string",
-            "description": "Type of entity (e.g., table, dashboard, topic, pipeline). Use the 'entityType' value from search results."
+            "description": "Type of entity (e.g., table, dashboard, topic, pipeline, testCase, testSuite). Use the 'entityType' value from search results. For testSuite, the response includes a 'summary' field with total/passed/failed test counts."
           },
           "fqn": {
             "type": "string",

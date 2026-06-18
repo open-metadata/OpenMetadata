@@ -12,7 +12,7 @@
  */
 import { Col, Row } from 'antd';
 import { first, last, noop } from 'lodash';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ENDS_WITH_NUMBER_REGEX,
@@ -21,15 +21,19 @@ import {
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { fetchMarkdownFile } from '../../../rest/miscAPI';
 import { SupportedLocales } from '../../../utils/i18next/LocalUtil.interface';
-import {
-  getActiveFieldNameForAppDocs,
-  processDocMarkdown,
-} from '../../../utils/ServiceUtils';
-import EntitySummaryPanel from '../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import { getActiveFieldNameForAppDocs } from '../../../utils/ServicePureUtils';
+import { processDocMarkdown } from '../../../utils/ServiceUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import Loader from '../Loader/Loader';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import './service-doc-panel.less';
+const EntitySummaryPanel = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../Explore/EntitySummaryPanel/EntitySummaryPanel.component')
+  )
+);
 interface ServiceDocPanelProp {
   serviceName: string;
   serviceType: string;
@@ -116,7 +120,12 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
         response = fallbackTranslation.value;
       }
 
-      setMarkdownContent(response);
+      setMarkdownContent(
+        response.replaceAll(
+          'OpenMetadata',
+          process.env.BRAND_NAME ?? 'OpenMetadata'
+        )
+      );
     } catch {
       setMarkdownContent('');
     } finally {

@@ -25,14 +25,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
+import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { Folder } from '../../../generated/entity/data/folder';
 import { deleteFolder, listFolders } from '../../../rest/assetAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import CreateFolderModal from '../CreateFolderModal/CreateFolderModal.component';
-import { DocFile } from './DocumentsView.interface';
 
 export interface DocumentFolderViewProps {
-  files?: DocFile[];
+  files?: ContextFile[];
   selectedFolderId?: string;
   onSelectFolder: (folderId: string | undefined) => void;
   onFoldersLoaded?: (folders: Folder[]) => void;
@@ -110,7 +110,7 @@ const DocumentFolderView = ({
         <div className="tw:flex tw:items-center tw:justify-between tw:mb-5">
           <div className="tw:flex tw:items-center tw:gap-3">
             <div className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0">
-              <FolderIcon className="tw:text-gray-600" height={20} width={20} />
+              <FolderIcon className="tw:text-tertiary" height={20} width={20} />
             </div>
             <div>
               <Typography size="text-md" weight="semibold">
@@ -156,7 +156,7 @@ const DocumentFolderView = ({
               {folders.map((folder) => {
                 const isSelected = selectedFolderId === folder.id;
                 const folderFiles = files.filter(
-                  (f) => f.folderId === folder.id
+                  (file) => file.folder?.id === folder.id
                 );
 
                 return (
@@ -169,7 +169,10 @@ const DocumentFolderView = ({
                       <div className="custom-group tw:flex tw:flex-1 tw:items-center tw:gap-2 tw:min-w-0">
                         <button
                           className="tw:flex tw:flex-1 tw:items-center tw:gap-2 tw:min-w-0 tw:text-left tw:bg-transparent tw:border-none tw:cursor-pointer tw:p-0"
-                          onClick={() => handleFolderItemSelect(folder.id)}>
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleFolderItemSelect(folder.id);
+                          }}>
                           <FolderIcon
                             className="tw:shrink-0 tw:text-gray-500"
                             height={16}
@@ -205,16 +208,18 @@ const DocumentFolderView = ({
                         id={file.id}
                         key={file.id}
                         textValue={file.name}>
-                        <Tree.ItemContent showExpandIcon={false}>
+                        <Tree.ItemContent
+                          className="tw:ml-7!"
+                          showExpandIcon={false}>
                           <FileIcon
-                            className="tw:size-6"
+                            className="tw:size-5 tw:shrink-0"
                             theme="light"
                             type={file.fileExtension ?? ''}
                             variant="default"
                           />
                           <Typography
                             ellipsis
-                            className="tw:truncate tw:text-gray-700 tw:max-w-[70%]"
+                            className="tw:truncate tw:text-secondary tw:max-w-[70%]"
                             size="text-sm"
                             weight="medium">
                             {file.name}

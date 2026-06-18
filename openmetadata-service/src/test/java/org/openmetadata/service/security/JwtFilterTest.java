@@ -310,6 +310,8 @@ class JwtFilterTest {
       jwtFilter.filter(context);
       verify(context, times(1))
           .setSecurityContext(org.mockito.ArgumentMatchers.any(SecurityContext.class));
+      verify(sessionService, times(1))
+          .recordSessionAccess(org.mockito.ArgumentMatchers.any(UserSession.class));
     } finally {
       AuthServeletHandlerRegistry.setSessionService(null, null);
     }

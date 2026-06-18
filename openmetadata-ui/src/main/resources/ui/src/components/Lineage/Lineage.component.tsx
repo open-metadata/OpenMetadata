@@ -16,7 +16,6 @@ import { useLineageStore } from '../../hooks/useLineageStore';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
 import { LineageProps } from './Lineage.interface';
 import LineageMap from './LineageMap/LineageMap.component';
-
 const Lineage = ({
   deleted,
   entity,
@@ -24,6 +23,7 @@ const Lineage = ({
   isPlatformLineage,
   hasEditAccess,
   platformHeader,
+  showControls = true,
 }: LineageProps) => {
   const { isEditMode } = useLineageStore();
 
@@ -34,7 +34,7 @@ const Lineage = ({
       title={
         isPlatformLineage ? (
           platformHeader
-        ) : (
+        ) : showControls ? (
           <div
             className={classNames('lineage-header', {
               'lineage-header-edit-mode': isEditMode,
@@ -44,7 +44,7 @@ const Lineage = ({
               hasEditAccess={hasEditAccess}
             />
           </div>
-        )
+        ) : undefined
       }>
       <div
         className="h-full relative lineage-container"

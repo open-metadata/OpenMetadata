@@ -155,6 +155,7 @@ from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
     EntitiesEdge,
     LineageDetails,
+    TempLineageTable,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
@@ -242,6 +243,74 @@ def get_table_key(row: Dict[str, Any]) -> Union[TableKey, None]:  # noqa: UP006,
     :return:
     """
     return TableKey(schema=row["schema"], table_name=row["table_name"])
+
+
+def get_lineage_timestamp(
+    edge: dict[str, Any],
+    timestamp_key: str,
+    days_ago_key: str,
+    reference_time: datetime,
+) -> int | None:
+    if edge.get(timestamp_key) is not None:
+        return int(edge[timestamp_key])
+
+    days_ago = edge.get(days_ago_key)
+    if days_ago is None:
+        return None
+
+    return int((reference_time - timedelta(days=float(days_ago))).timestamp() * 1000)
+
+
+def get_lineage_details(
+    edge: dict[str, Any],
+    edge_entity_ref: EntityReference | None,
+    reference_time: datetime,
+) -> LineageDetails | None:
+    temp_tables = None
+    if edge.get("temp_lineage_tables"):
+        temp_tables = [TempLineageTable(**table) for table in edge["temp_lineage_tables"]]
+
+    columns_lineage = [
+        ColumnLineage(**column_lineage)
+        for column_lineage in edge.get("columnsLineage", edge.get("columns_lineage", []))
+    ]
+    created_at = get_lineage_timestamp(edge, "createdAt", "created_at_days_ago", reference_time)
+    updated_at = get_lineage_timestamp(edge, "updatedAt", "updated_at_days_ago", reference_time)
+
+    if not any(
+        [
+            edge_entity_ref,
+            edge.get("sql_query"),
+            temp_tables,
+            columns_lineage,
+            edge.get("source"),
+            created_at is not None,
+            edge.get("createdBy"),
+            updated_at is not None,
+            edge.get("updatedBy"),
+        ]
+    ):
+        return None
+
+    lineage_details = {
+        "pipeline": edge_entity_ref if edge_entity_ref else None,
+        "sqlQuery": edge.get("sql_query"),
+        "tempLineageTables": temp_tables,
+        "columnsLineage": columns_lineage or None,
+    }
+
+    if edge.get("source") is not None:
+        lineage_details["source"] = edge["source"]
+    if created_at is not None:
+        lineage_details["createdAt"] = created_at
+    if edge.get("createdBy") is not None:
+        lineage_details["createdBy"] = edge["createdBy"]
+    if updated_at is not None:
+        lineage_details["updatedAt"] = updated_at
+    if edge.get("updatedBy") is not None:
+        lineage_details["updatedBy"] = edge["updatedBy"]
+
+    return LineageDetails(**lineage_details)
 
 
 class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
@@ -1872,6 +1941,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
             yield Either(right=pipeline_ev)
 
     def ingest_lineage(self) -> Iterable[Either[AddLineageRequest]]:
+        reference_time = datetime.now(timezone.utc)
         for edge in self.lineage:
             try:
                 from_entity_ref = get_lineage_entity_ref(edge["from"], self.metadata)
@@ -1882,30 +1952,11 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                     )
                     continue
                 edge_entity_ref = get_lineage_entity_ref(edge["edge_meta"], self.metadata)
-                columns_lineage = [
-                    ColumnLineage(**column_lineage)
-                    for column_lineage in edge.get("columnsLineage", edge.get("columns_lineage", []))
-                ]
-                lineage_details = None
-                if (
-                    edge_entity_ref
-                    or edge.get("sql_query")
-                    or edge.get("temp_lineage_tables")
-                    or columns_lineage
-                ):
-                    temp_tables = None
-                    if edge.get("temp_lineage_tables"):
-                        from metadata.generated.schema.type.entityLineage import (  # noqa: PLC0415
-                            TempLineageTable,
-                        )
-
-                        temp_tables = [TempLineageTable(**t) for t in edge["temp_lineage_tables"]]
-                    lineage_details = LineageDetails(
-                        pipeline=edge_entity_ref if edge_entity_ref else None,
-                        sqlQuery=edge.get("sql_query"),
-                        tempLineageTables=temp_tables,
-                        columnsLineage=columns_lineage or None,
-                    )
+                lineage_details = get_lineage_details(
+                    edge=edge,
+                    edge_entity_ref=edge_entity_ref,
+                    reference_time=reference_time,
+                )
                 lineage = AddLineageRequest(
                     edge=EntitiesEdge(
                         fromEntity=from_entity_ref,
