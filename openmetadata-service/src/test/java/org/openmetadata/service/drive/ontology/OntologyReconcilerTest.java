@@ -68,8 +68,8 @@ class OntologyReconcilerTest {
     lenient().when(metricRepo.getEntityClass()).thenReturn(Metric.class);
     stubFindFrom(termRepo, Relationship.DERIVED_FROM, Entity.GLOSSARY_TERM, List.of());
     stubFindFrom(metricRepo, Relationship.DERIVED_FROM, Entity.METRIC, List.of());
-    stubFindFrom(termRepo, Relationship.RELATED_TO, Entity.GLOSSARY_TERM, List.of());
-    stubFindFrom(metricRepo, Relationship.RELATED_TO, Entity.METRIC, List.of());
+    stubFindTo(termRepo, Relationship.RELATED_TO, Entity.GLOSSARY_TERM, List.of());
+    stubFindTo(metricRepo, Relationship.RELATED_TO, Entity.METRIC, List.of());
   }
 
   private void stubFindFrom(
@@ -82,6 +82,16 @@ class OntologyReconcilerTest {
         .thenReturn(result);
   }
 
+  private void stubFindTo(
+      EntityRepository<?> repo,
+      Relationship relationship,
+      String toType,
+      List<EntityReference> result) {
+    lenient()
+        .when(repo.findTo(memory.getId(), Entity.CONTEXT_MEMORY, relationship, toType))
+        .thenReturn(result);
+  }
+
   private OntologyReconciler reconciler() {
     return new OntologyReconciler(termRepo, metricRepo, glossaryRepo);
   }
@@ -89,6 +99,16 @@ class OntologyReconcilerTest {
   private OntologyVerdict skip() {
     return new OntologyVerdict(
         OntologyAction.SKIP, null, null, null, null, null, null, null, null, null);
+  }
+
+  private OntologyVerdict createMetric(String name) {
+    return new OntologyVerdict(
+        OntologyAction.CREATE, null, null, null, name, name, null, null, null, null);
+  }
+
+  private void echoMetricOnCreate() {
+    when(metricRepo.createInternal(any(Metric.class)))
+        .thenAnswer(inv -> ((Metric) inv.getArgument(0)).withId(UUID.randomUUID()));
   }
 
   private void echoTermOnCreate() {
@@ -120,7 +140,8 @@ class OntologyReconcilerTest {
             null);
 
     OntologyReconciler.ReconcileResult result =
-        reconciler().reconcile(memory, new OntologyDerivation(term, skip()));
+        reconciler()
+            .reconcile(memory, new OntologyDerivation(term, skip()), AIDeletionPolicy.CASCADE);
 
     assertEquals(1, result.created());
     ArgumentCaptor<GlossaryTerm> captor = ArgumentCaptor.forClass(GlossaryTerm.class);
@@ -160,7 +181,8 @@ class OntologyReconcilerTest {
             null);
 
     OntologyReconciler.ReconcileResult result =
-        reconciler().reconcile(memory, new OntologyDerivation(term, skip()));
+        reconciler()
+            .reconcile(memory, new OntologyDerivation(term, skip()), AIDeletionPolicy.CASCADE);
 
     assertEquals(1, result.created());
     ArgumentCaptor<Glossary> glossaryCaptor = ArgumentCaptor.forClass(Glossary.class);
@@ -192,7 +214,8 @@ class OntologyReconcilerTest {
             "SELECT count(*) FROM churn");
 
     OntologyReconciler.ReconcileResult result =
-        reconciler().reconcile(memory, new OntologyDerivation(skip(), metric));
+        reconciler()
+            .reconcile(memory, new OntologyDerivation(skip(), metric), AIDeletionPolicy.CASCADE);
 
     assertEquals(1, result.created());
     ArgumentCaptor<Metric> captor = ArgumentCaptor.forClass(Metric.class);
@@ -226,7 +249,8 @@ class OntologyReconcilerTest {
             OntologyAction.REUSE, "Business.Churn", null, null, null, null, null, null, null, null);
 
     OntologyReconciler.ReconcileResult result =
-        reconciler().reconcile(memory, new OntologyDerivation(term, skip()));
+        reconciler()
+            .reconcile(memory, new OntologyDerivation(term, skip()), AIDeletionPolicy.CASCADE);
 
     assertEquals(0, result.created());
     assertEquals(1, result.reused());
@@ -249,7 +273,8 @@ class OntologyReconcilerTest {
             OntologyAction.REUSE, "Ghost.Term", null, null, null, null, null, null, null, null);
 
     OntologyReconciler.ReconcileResult result =
-        reconciler().reconcile(memory, new OntologyDerivation(term, skip()));
+        reconciler()
+            .reconcile(memory, new OntologyDerivation(term, skip()), AIDeletionPolicy.CASCADE);
 
     assertEquals(0, result.created());
     assertEquals(0, result.reused());
@@ -259,7 +284,8 @@ class OntologyReconcilerTest {
   @Test
   void skipBothAxesIsNoOp() {
     OntologyReconciler.ReconcileResult result =
-        reconciler().reconcile(memory, new OntologyDerivation(skip(), skip()));
+        reconciler()
+            .reconcile(memory, new OntologyDerivation(skip(), skip()), AIDeletionPolicy.CASCADE);
 
     assertEquals(0, result.created());
     assertEquals(0, result.reused());
@@ -269,7 +295,32 @@ class OntologyReconcilerTest {
   }
 
   @Test
-  void reDeriveRetiresStaleOwnedTerm() {
+  void allSkipVerdictNeverRetiresOwnedEntities() {
+    EntityReference ownedTerm = ref("OwnedTerm", Entity.GLOSSARY_TERM);
+    EntityReference ownedMetric = ref("OwnedMetric", Entity.METRIC);
+    stubFindFrom(termRepo, Relationship.DERIVED_FROM, Entity.GLOSSARY_TERM, List.of(ownedTerm));
+    stubFindFrom(metricRepo, Relationship.DERIVED_FROM, Entity.METRIC, List.of(ownedMetric));
+
+    OntologyReconciler.ReconcileResult result =
+        reconciler()
+            .reconcile(memory, new OntologyDerivation(skip(), skip()), AIDeletionPolicy.CASCADE);
+
+    assertEquals(0, result.created());
+    assertEquals(0, result.reused());
+    assertEquals(0, result.retired());
+    verify(termRepo, never()).delete(any(), any(), eq(false), eq(true));
+    verify(metricRepo, never()).delete(any(), any(), eq(false), eq(true));
+    verify(termRepo, never()).deleteRelationship(any(), any(), any(), any(), any());
+    verify(metricRepo, never()).deleteRelationship(any(), any(), any(), any(), any());
+    verify(termRepo, never()).update(any(), any(), any(), any());
+    verify(metricRepo, never()).update(any(), any(), any(), any());
+    verify(termRepo, never()).get(any(), any(), any(EntityUtil.Fields.class));
+    verify(metricRepo, never()).get(any(), any(), any(EntityUtil.Fields.class));
+  }
+
+  @Test
+  void reDeriveCascadeHardDeletesStaleOwnedTerm() {
+    echoMetricOnCreate();
     EntityReference staleRef = ref("OldTerm", Entity.GLOSSARY_TERM);
     stubFindFrom(termRepo, Relationship.DERIVED_FROM, Entity.GLOSSARY_TERM, List.of(staleRef));
     GlossaryTerm stale =
@@ -281,14 +332,87 @@ class OntologyReconcilerTest {
         .thenReturn(stale);
 
     OntologyReconciler.ReconcileResult result =
-        reconciler().reconcile(memory, new OntologyDerivation(skip(), skip()));
+        reconciler()
+            .reconcile(
+                memory,
+                new OntologyDerivation(skip(), createMetric("churn_rate")),
+                AIDeletionPolicy.CASCADE);
 
     assertEquals(1, result.retired());
     verify(termRepo).delete(BOT, staleRef.getId(), false, true);
   }
 
   @Test
+  void reDeriveOrphanFlipsStaleOwnedTermToUserAndDropsEdge() {
+    echoMetricOnCreate();
+    EntityReference staleRef = ref("OldTerm", Entity.GLOSSARY_TERM);
+    stubFindFrom(termRepo, Relationship.DERIVED_FROM, Entity.GLOSSARY_TERM, List.of(staleRef));
+    GlossaryTerm stale =
+        new GlossaryTerm()
+            .withId(staleRef.getId())
+            .withName("OldTerm")
+            .withProvider(ProviderType.AUTOMATION);
+    when(termRepo.get(isNull(), eq(staleRef.getId()), any(EntityUtil.Fields.class)))
+        .thenReturn(stale);
+
+    OntologyReconciler.ReconcileResult result =
+        reconciler()
+            .reconcile(
+                memory,
+                new OntologyDerivation(skip(), createMetric("churn_rate")),
+                AIDeletionPolicy.ORPHAN);
+
+    assertEquals(1, result.retired());
+    ArgumentCaptor<GlossaryTerm> captor = ArgumentCaptor.forClass(GlossaryTerm.class);
+    verify(termRepo).update(isNull(), eq(stale), captor.capture(), eq(BOT));
+    assertEquals(ProviderType.USER, captor.getValue().getProvider());
+    verify(termRepo)
+        .deleteRelationship(
+            staleRef.getId(),
+            Entity.GLOSSARY_TERM,
+            memory.getId(),
+            Entity.CONTEXT_MEMORY,
+            Relationship.DERIVED_FROM);
+    verify(termRepo, never()).delete(any(), any(), eq(false), eq(true));
+  }
+
+  @Test
+  void reDeriveDeprecateSetsStaleOwnedTermStatusAndDropsEdge() {
+    echoMetricOnCreate();
+    EntityReference staleRef = ref("OldTerm", Entity.GLOSSARY_TERM);
+    stubFindFrom(termRepo, Relationship.DERIVED_FROM, Entity.GLOSSARY_TERM, List.of(staleRef));
+    GlossaryTerm stale =
+        new GlossaryTerm()
+            .withId(staleRef.getId())
+            .withName("OldTerm")
+            .withProvider(ProviderType.AUTOMATION);
+    when(termRepo.get(isNull(), eq(staleRef.getId()), any(EntityUtil.Fields.class)))
+        .thenReturn(stale);
+
+    OntologyReconciler.ReconcileResult result =
+        reconciler()
+            .reconcile(
+                memory,
+                new OntologyDerivation(skip(), createMetric("churn_rate")),
+                AIDeletionPolicy.DEPRECATE);
+
+    assertEquals(1, result.retired());
+    ArgumentCaptor<GlossaryTerm> captor = ArgumentCaptor.forClass(GlossaryTerm.class);
+    verify(termRepo).update(isNull(), eq(stale), captor.capture(), eq(BOT));
+    assertEquals(EntityStatus.DEPRECATED, captor.getValue().getEntityStatus());
+    verify(termRepo)
+        .deleteRelationship(
+            staleRef.getId(),
+            Entity.GLOSSARY_TERM,
+            memory.getId(),
+            Entity.CONTEXT_MEMORY,
+            Relationship.DERIVED_FROM);
+    verify(termRepo, never()).delete(any(), any(), eq(false), eq(true));
+  }
+
+  @Test
   void reDeriveSkipsHumanAdoptedTerm() {
+    echoMetricOnCreate();
     EntityReference adoptedRef = ref("Adopted", Entity.GLOSSARY_TERM);
     stubFindFrom(termRepo, Relationship.DERIVED_FROM, Entity.GLOSSARY_TERM, List.of(adoptedRef));
     GlossaryTerm adopted =
@@ -300,7 +424,11 @@ class OntologyReconcilerTest {
         .thenReturn(adopted);
 
     OntologyReconciler.ReconcileResult result =
-        reconciler().reconcile(memory, new OntologyDerivation(skip(), skip()));
+        reconciler()
+            .reconcile(
+                memory,
+                new OntologyDerivation(skip(), createMetric("churn_rate")),
+                AIDeletionPolicy.CASCADE);
 
     assertEquals(0, result.retired());
     verify(termRepo, never()).delete(any(), any(), eq(false), eq(true));
@@ -370,10 +498,13 @@ class OntologyReconcilerTest {
   @Test
   void onMemoryDeletedDropsReusedRelatedToEdgesNeverTouchingTarget() {
     EntityReference reusedRef = ref("Reused", Entity.GLOSSARY_TERM);
-    stubFindFrom(termRepo, Relationship.RELATED_TO, Entity.GLOSSARY_TERM, List.of(reusedRef));
+    stubFindTo(termRepo, Relationship.RELATED_TO, Entity.GLOSSARY_TERM, List.of(reusedRef));
 
     reconciler().onMemoryDeleted(memory, true, AIDeletionPolicy.CASCADE);
 
+    verify(termRepo)
+        .findTo(
+            memory.getId(), Entity.CONTEXT_MEMORY, Relationship.RELATED_TO, Entity.GLOSSARY_TERM);
     verify(termRepo)
         .deleteRelationship(
             memory.getId(),
@@ -386,12 +517,64 @@ class OntologyReconcilerTest {
   }
 
   @Test
+  void reuseWriteAndMemoryDeleteReadAgreeOnRelatedToDirection() {
+    GlossaryTerm existing =
+        new GlossaryTerm()
+            .withId(UUID.randomUUID())
+            .withName("Churn")
+            .withProvider(ProviderType.USER);
+    when(termRepo.findByNameOrNull("Business.Churn", Include.NON_DELETED)).thenReturn(existing);
+    OntologyVerdict term =
+        new OntologyVerdict(
+            OntologyAction.REUSE, "Business.Churn", null, null, null, null, null, null, null, null);
+
+    reconciler().reconcile(memory, new OntologyDerivation(term, skip()), AIDeletionPolicy.CASCADE);
+
+    ArgumentCaptor<UUID> fromId = ArgumentCaptor.forClass(UUID.class);
+    ArgumentCaptor<UUID> toId = ArgumentCaptor.forClass(UUID.class);
+    ArgumentCaptor<String> fromType = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<String> toType = ArgumentCaptor.forClass(String.class);
+    verify(termRepo)
+        .addRelationship(
+            fromId.capture(),
+            toId.capture(),
+            fromType.capture(),
+            toType.capture(),
+            eq(Relationship.RELATED_TO),
+            eq(false));
+
+    assertEquals(memory.getId(), fromId.getValue());
+    assertEquals(existing.getId(), toId.getValue());
+    assertEquals(Entity.CONTEXT_MEMORY, fromType.getValue());
+    assertEquals(Entity.GLOSSARY_TERM, toType.getValue());
+
+    EntityReference reusedRef =
+        new EntityReference()
+            .withId(existing.getId())
+            .withName("Churn")
+            .withType(Entity.GLOSSARY_TERM);
+    stubFindTo(termRepo, Relationship.RELATED_TO, Entity.GLOSSARY_TERM, List.of(reusedRef));
+    reconciler().onMemoryDeleted(memory, true, AIDeletionPolicy.CASCADE);
+
+    verify(termRepo)
+        .findTo(fromId.getValue(), fromType.getValue(), Relationship.RELATED_TO, toType.getValue());
+    verify(termRepo)
+        .deleteRelationship(
+            memory.getId(),
+            Entity.CONTEXT_MEMORY,
+            existing.getId(),
+            Entity.GLOSSARY_TERM,
+            Relationship.RELATED_TO);
+  }
+
+  @Test
   void unknownActionTreatedAsNoOp() {
     OntologyVerdict garbage =
         new OntologyVerdict("WAT", null, null, null, null, null, null, null, null, null);
 
     OntologyReconciler.ReconcileResult result =
-        reconciler().reconcile(memory, new OntologyDerivation(garbage, skip()));
+        reconciler()
+            .reconcile(memory, new OntologyDerivation(garbage, skip()), AIDeletionPolicy.CASCADE);
 
     assertEquals(0, result.created());
     assertEquals(0, result.reused());

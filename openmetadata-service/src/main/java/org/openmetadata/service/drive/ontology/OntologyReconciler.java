@@ -51,10 +51,13 @@ import org.openmetadata.service.jdbi3.MetricRepository;
  * created with that provider. A CREATE verdict mints the entity (minting its glossary too when none
  * fits) and owns it; a REUSE verdict only links an existing entity for provenance and never claims
  * it; on re-derive, owned entities the new verdict no longer implies are retired, while any entity a
- * human has adopted (provider flipped off {@code automation}) is left untouched. Re-derive
- * retirement hard-deletes (the entity is regenerable from the memory, mirroring the pills
- * reconciler); the policy-driven retirement modes apply on memory deletion via {@link
- * #onMemoryDeleted}.
+ * human has adopted (provider flipped off {@code automation}) is left untouched. Both re-derive
+ * retirement and memory-deletion retirement (via {@link #onMemoryDeleted}) route through the same
+ * {@code deletionPolicy}-driven {@link AIDeletionPolicy} modes; re-derive passes {@code
+ * hardDelete=true} for the {@code CASCADE} case since the entity is regenerable from the memory. An
+ * all-SKIP derivation (the signal {@code OntologyExtractor} emits on an empty or failed LLM result)
+ * is treated as carrying no actionable intent and is a complete no-op, so a transient LLM hiccup can
+ * never mass-retire a memory's derived set.
  */
 @Slf4j
 public class OntologyReconciler {
@@ -77,12 +80,25 @@ public class OntologyReconciler {
   /** Tally of what a reconcile run did, by ownership outcome. */
   public record ReconcileResult(int created, int reused, int retired) {}
 
-  public ReconcileResult reconcile(final ContextMemory memory, final OntologyDerivation verdict) {
+  public ReconcileResult reconcile(
+      final ContextMemory memory, final OntologyDerivation verdict, final AIDeletionPolicy policy) {
+    final ReconcileResult result;
+    if (isAllSkip(verdict)) {
+      LOG.info("All-SKIP derivation for memory {}; skipping reconcile entirely", memory.getId());
+      result = new ReconcileResult(0, 0, 0);
+    } else {
+      result = reconcileNonSkip(memory, verdict, policy);
+    }
+    return result;
+  }
+
+  private ReconcileResult reconcileNonSkip(
+      final ContextMemory memory, final OntologyDerivation verdict, final AIDeletionPolicy policy) {
     final Counts counts = new Counts();
     final String impliedTerm = applyTermAxis(memory, verdict.termVerdict(), counts);
     final String impliedMetric = applyMetricAxis(memory, verdict.metricVerdict(), counts);
-    retireStaleOwned(memory, Entity.GLOSSARY_TERM, termRepo, impliedTerm, counts);
-    retireStaleOwned(memory, Entity.METRIC, metricRepo, impliedMetric, counts);
+    retireStaleOwned(memory, Entity.GLOSSARY_TERM, termRepo, impliedTerm, policy, counts);
+    retireStaleOwned(memory, Entity.METRIC, metricRepo, impliedMetric, policy, counts);
     LOG.info(
         "Reconciled ontology for memory {}: {} created, {} reused, {} retired",
         memory.getId(),
@@ -90,6 +106,15 @@ public class OntologyReconciler {
         counts.reused,
         counts.retired);
     return new ReconcileResult(counts.created, counts.reused, counts.retired);
+  }
+
+  private boolean isAllSkip(final OntologyDerivation verdict) {
+    return isSkip(verdict.termVerdict()) && isSkip(verdict.metricVerdict());
+  }
+
+  private boolean isSkip(final OntologyVerdict verdict) {
+    final String action = verdict == null ? OntologyAction.SKIP : verdict.action();
+    return action == null || OntologyAction.SKIP.equals(action);
   }
 
   private String applyTermAxis(
@@ -234,10 +259,11 @@ public class OntologyReconciler {
       final String entityType,
       final EntityRepository<?> repo,
       final String impliedName,
+      final AIDeletionPolicy policy,
       final Counts counts) {
     for (final EntityReference owned : ownedDerived(memory, entityType, repo)) {
       if (!Objects.equals(owned.getName(), impliedName) && isAutomationOwned(repo, owned)) {
-        repo.delete(ONTOLOGY_BOT_NAME, owned.getId(), false, true);
+        retireByPolicy(memory, entityType, repo, owned, true, policy);
         counts.retired++;
       }
     }
@@ -287,7 +313,7 @@ public class OntologyReconciler {
   private void dropReusedLinks(
       final ContextMemory memory, final String entityType, final EntityRepository<?> repo) {
     final List<EntityReference> reused =
-        repo.findFrom(memory.getId(), Entity.CONTEXT_MEMORY, Relationship.RELATED_TO, entityType);
+        repo.findTo(memory.getId(), Entity.CONTEXT_MEMORY, Relationship.RELATED_TO, entityType);
     for (final EntityReference link : reused) {
       repo.deleteRelationship(
           memory.getId(), Entity.CONTEXT_MEMORY, link.getId(), entityType, Relationship.RELATED_TO);
