@@ -29,7 +29,7 @@ import {
 } from '../../../generated/tests/testCase';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
-import { getEntityChildrenAndLabel } from '../../../utils/EntityLineageUtils';
+import { getEntityChildrenAndLabel } from '../../../utils/EntityLineageNodeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityTypeIcon, getServiceIcon } from '../../../utils/TableUtils';
 import { LineageNodeType } from '../../Lineage/Lineage.interface';

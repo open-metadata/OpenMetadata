@@ -22,17 +22,6 @@ import { SearchIndex } from '../enums/search.enum';
 import { searchQuery } from '../rest/searchAPI';
 import { getTotalResourceCount } from './CuratedAssetsPureUtils';
 
-export {
-  EMPTY_QUERY_FILTER_STRINGS,
-  getExpandedResourceList,
-  getExploreURLForAdvancedFilter,
-  getExploreURLWithFilters,
-  getModifiedQueryFilterWithSelectedAssets,
-  getSimpleExploreURLForAssetTypes,
-  getTotalResourceCount,
-  isValidElasticsearchQuery,
-} from './CuratedAssetsPureUtils';
-
 export interface CuratedAssetsFormSelectedAssetsInfo {
   resourceCount?: number;
   filteredResourceCount?: number;

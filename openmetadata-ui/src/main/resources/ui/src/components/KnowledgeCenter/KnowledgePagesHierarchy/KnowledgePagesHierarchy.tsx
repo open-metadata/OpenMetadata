@@ -87,9 +87,9 @@ import {
   hierarchyPaginationInitialState,
   hierarchyPaginationReducer,
   integrateNodesIntoHierarchy,
-  updateKnowledgeCenterRecentViewed,
   updateTreeData,
-} from '../../../utils/KnowledgePageUtils';
+} from '../../../utils/KnowledgePagePureUtils';
+import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 
@@ -594,7 +594,7 @@ const KnowledgePagesHierarchy = forwardRef<
               className="tw:p-3 tw:rounded-lg tw:bg-gray-100 tw:leading-none"
               justify="center">
               <File06
-                className="tw:text-gray-600"
+                className="tw:text-tertiary"
                 height={20}
                 strokeWidth={1.2}
                 width={20}
@@ -674,7 +674,7 @@ const KnowledgePagesHierarchy = forwardRef<
                       {
                         'tw:border-brand-100 tw:bg-brand-50 tw:text-brand-700':
                           isSelected,
-                        'tw:border-gray-300 tw:bg-white tw:text-gray-700':
+                        'tw:border-gray-300 tw:bg-primary tw:text-secondary':
                           !isSelected,
                       }
                     )
