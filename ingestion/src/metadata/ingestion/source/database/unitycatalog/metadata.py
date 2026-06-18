@@ -404,7 +404,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                         msg = (
                             f"Unexpected exception in fetching constraints "
                             f"Constraints will be ignored."
-                            f"table [{table.full_name}]: {exc}. "
+                            f"table [{table.full_name}]: {exc}."
                         )
                         logger.warning(msg)
                         self.status.warning(table.name, msg)
