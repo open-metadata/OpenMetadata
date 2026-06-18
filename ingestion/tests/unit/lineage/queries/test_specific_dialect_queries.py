@@ -96,7 +96,7 @@ Special Cases:
 
 Test Coverage:
 -------------
-- Total Tests: 32
+- Total Tests: 52
 - Dialects: Snowflake, BigQuery, MySQL, ClickHouse, PostgreSQL, T-SQL, Oracle, StarRocks
 - Parsers: SqlGlot, SqlFluff, SqlParse
 - All tests validate both table lineage AND column lineage
@@ -1411,6 +1411,454 @@ ON_ERROR = CONTINUE"""
             ],
             dialect=Dialect.STARROCKS.value,
             test_sqlfluff=False,
+        )
+
+    def test_starrocks_ctas_duplicate_key_table(self):
+        """Test StarRocks Duplicate Key table CTAS.
+
+        Docs: https://docs.starrocks.io/docs/table_design/table_types/duplicate_key_table/
+        """
+        query = """CREATE TABLE analytics.t
+        DUPLICATE KEY(a)
+        DISTRIBUTED BY HASH(a) BUCKETS 4
+        AS SELECT a, b FROM analytics.src"""
+
+        # SqlFluff has no StarRocks grammar for the DUPLICATE KEY clause.
+        assert_table_lineage_equal(
+            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
+                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("b", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
+        )
+
+    def test_starrocks_ctas_aggregate_key_table(self):
+        """Test StarRocks Aggregate table CTAS with a SUM value column.
+
+        Docs: https://docs.starrocks.io/docs/table_design/table_types/aggregate_table/
+        """
+        query = """CREATE TABLE analytics.t (a INT, s BIGINT SUM)
+        AGGREGATE KEY(a)
+        DISTRIBUTED BY HASH(a)
+        AS SELECT a, sum(b) AS s FROM analytics.src GROUP BY a"""
+
+        # Only SqlParse handles the AGGREGATE KEY column-aggregate DDL today.
+        assert_table_lineage_equal(
+            query,
+            {"analytics.src"},
+            {"analytics.t"},
+            dialect=Dialect.STARROCKS.value,
+            test_sqlglot=False,
+            test_sqlfluff=False,
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
+                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("s", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlglot=False,
+            test_sqlfluff=False,
+        )
+
+    def test_starrocks_ctas_unique_key_table(self):
+        """Test StarRocks Unique Key table CTAS.
+
+        Docs: https://docs.starrocks.io/docs/table_design/table_types/unique_key_table/
+        """
+        query = """CREATE TABLE analytics.t
+        UNIQUE KEY(a)
+        DISTRIBUTED BY HASH(a)
+        AS SELECT a, b FROM analytics.src"""
+
+        # SqlFluff has no StarRocks grammar for the UNIQUE KEY clause.
+        assert_table_lineage_equal(
+            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
+                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("b", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
+        )
+
+    def test_starrocks_ctas_primary_key_table(self):
+        """Test StarRocks Primary Key table CTAS.
+
+        Docs: https://docs.starrocks.io/docs/table_design/table_types/primary_key_table/
+        """
+        query = """CREATE TABLE analytics.t
+        PRIMARY KEY(a)
+        DISTRIBUTED BY HASH(a)
+        AS SELECT a, b FROM analytics.src"""
+
+        # SqlFluff has no StarRocks grammar for the PRIMARY KEY clause.
+        assert_table_lineage_equal(
+            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
+                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("b", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
+        )
+
+    def test_starrocks_ctas_range_partition(self):
+        """Test StarRocks CTAS with range partitioning.
+
+        Docs: https://docs.starrocks.io/docs/table_design/data_distribution/
+        """
+        query = """CREATE TABLE analytics.t
+        PARTITION BY RANGE(dt) (PARTITION p1 VALUES LESS THAN ('2024-01-01'))
+        DISTRIBUTED BY HASH(id)
+        AS SELECT id, dt FROM analytics.src"""
+
+        # SqlFluff has no StarRocks grammar for the PARTITION BY RANGE clause.
+        assert_table_lineage_equal(
+            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("id", "analytics.src"), TestColumnQualifierTuple("id", "analytics.t")),
+                (TestColumnQualifierTuple("dt", "analytics.src"), TestColumnQualifierTuple("dt", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
+        )
+
+    def test_starrocks_ctas_expression_partition(self):
+        """Test StarRocks CTAS with expression partitioning.
+
+        Docs: https://docs.starrocks.io/docs/table_design/data_distribution/expression_partitioning/
+        """
+        query = """CREATE TABLE analytics.t
+        PARTITION BY date_trunc('day', dt)
+        DISTRIBUTED BY HASH(id)
+        AS SELECT id, dt FROM analytics.src"""
+
+        # SqlFluff has no StarRocks grammar for expression partitioning.
+        assert_table_lineage_equal(
+            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("id", "analytics.src"), TestColumnQualifierTuple("id", "analytics.t")),
+                (TestColumnQualifierTuple("dt", "analytics.src"), TestColumnQualifierTuple("dt", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
+        )
+
+    def test_starrocks_ctas_sort_key_order_by(self):
+        """Test StarRocks CTAS with an ORDER BY sort key.
+
+        Docs: https://docs.starrocks.io/docs/sql-reference/sql-statements/table_bucket_part_index/CREATE_TABLE/
+        """
+        query = """CREATE TABLE analytics.t
+        DISTRIBUTED BY HASH(id)
+        ORDER BY (id)
+        AS SELECT id, v FROM analytics.src"""
+
+        # SqlFluff has no StarRocks grammar for the ORDER BY sort key clause.
+        assert_table_lineage_equal(
+            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("id", "analytics.src"), TestColumnQualifierTuple("id", "analytics.t")),
+                (TestColumnQualifierTuple("v", "analytics.src"), TestColumnQualifierTuple("v", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
+        )
+
+    def test_starrocks_ctas_random_bucketing(self):
+        """Test StarRocks CTAS with random bucketing.
+
+        Docs: https://docs.starrocks.io/docs/table_design/data_distribution/
+        """
+        query = """CREATE TABLE analytics.t
+        DISTRIBUTED BY RANDOM
+        AS SELECT a, b FROM analytics.src"""
+
+        # SqlFluff has no StarRocks grammar for DISTRIBUTED BY RANDOM.
+        assert_table_lineage_equal(
+            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
+                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("b", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
+        )
+
+    def test_starrocks_create_view(self):
+        """Test StarRocks CREATE VIEW.
+
+        Docs: https://docs.starrocks.io/docs/sql-reference/sql-statements/View/CREATE_VIEW/
+        """
+        query = """CREATE VIEW analytics.v AS SELECT a, b FROM analytics.src"""
+
+        assert_table_lineage_equal(query, {"analytics.src"}, {"analytics.v"}, dialect=Dialect.STARROCKS.value)
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.v")),
+                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("b", "analytics.v")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+        )
+
+    def test_starrocks_create_materialized_view(self):
+        """Test StarRocks asynchronous CREATE MATERIALIZED VIEW.
+
+        Docs: https://docs.starrocks.io/docs/sql-reference/sql-statements/materialized_view/CREATE_MATERIALIZED_VIEW/
+        """
+        query = """CREATE MATERIALIZED VIEW analytics.mv
+        DISTRIBUTED BY HASH(id) REFRESH ASYNC
+        AS SELECT id, sum(v) AS c FROM analytics.src GROUP BY id"""
+
+        # SqlFluff has no StarRocks grammar for the materialized view refresh clause.
+        assert_table_lineage_equal(
+            query, {"analytics.src"}, {"analytics.mv"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("id", "analytics.src"), TestColumnQualifierTuple("id", "analytics.mv")),
+                (TestColumnQualifierTuple("v", "analytics.src"), TestColumnQualifierTuple("c", "analytics.mv")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
+        )
+
+    def test_starrocks_insert_into_select(self):
+        """Test StarRocks INSERT INTO ... SELECT.
+
+        Docs: https://docs.starrocks.io/docs/sql-reference/sql-statements/loading_unloading/INSERT/
+        """
+        query = """INSERT INTO analytics.t SELECT a, b FROM analytics.src"""
+
+        assert_table_lineage_equal(query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value)
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
+                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("b", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+        )
+
+    def test_starrocks_insert_with_label(self):
+        """Test StarRocks INSERT INTO ... WITH LABEL ... SELECT.
+
+        Docs: https://docs.starrocks.io/docs/sql-reference/sql-statements/loading_unloading/INSERT/
+        """
+        query = """INSERT INTO analytics.t WITH LABEL lbl1 SELECT a, b FROM analytics.src"""
+
+        # Only SqlParse handles the WITH LABEL insert clause today.
+        assert_table_lineage_equal(
+            query,
+            {"analytics.src"},
+            {"analytics.t"},
+            dialect=Dialect.STARROCKS.value,
+            test_sqlglot=False,
+            test_sqlfluff=False,
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
+                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("b", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlglot=False,
+            test_sqlfluff=False,
+        )
+
+    def test_starrocks_insert_overwrite(self):
+        """Test StarRocks INSERT OVERWRITE ... SELECT.
+
+        Docs: https://docs.starrocks.io/docs/sql-reference/sql-statements/loading_unloading/INSERT/
+        """
+        query = """INSERT OVERWRITE analytics.t SELECT a, b FROM analytics.src"""
+
+        # SqlFluff does not extract lineage from INSERT OVERWRITE today.
+        assert_table_lineage_equal(
+            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
+                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("b", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
+        )
+
+    def test_starrocks_insert_with_column_list(self):
+        """Test StarRocks INSERT INTO ... (columns) ... SELECT.
+
+        Docs: https://docs.starrocks.io/docs/sql-reference/sql-statements/loading_unloading/INSERT/
+        """
+        query = """INSERT INTO analytics.t (a, b) SELECT a, b FROM analytics.src"""
+
+        assert_table_lineage_equal(query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value)
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
+                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("b", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+        )
+
+    def test_starrocks_hll_union_agg(self):
+        """Test StarRocks HLL approximate distinct functions.
+
+        Docs: https://docs.starrocks.io/docs/sql-reference/sql-functions/aggregate-functions/hll_union_agg/
+        """
+        query = """INSERT INTO analytics.t
+        SELECT region, hll_union_agg(hll_hash(uid)) AS uv FROM analytics.src GROUP BY region"""
+
+        # SqlParse does not trace the argument of the HLL aggregate into uv.
+        assert_table_lineage_equal(
+            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlparse=False
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (
+                    TestColumnQualifierTuple("region", "analytics.src"),
+                    TestColumnQualifierTuple("region", "analytics.t"),
+                ),
+                (TestColumnQualifierTuple("uid", "analytics.src"), TestColumnQualifierTuple("uv", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlparse=False,
+        )
+
+    def test_starrocks_approx_count_distinct(self):
+        """Test StarRocks approx_count_distinct.
+
+        Docs: https://docs.starrocks.io/docs/sql-reference/sql-functions/aggregate-functions/approx_count_distinct/
+        """
+        query = """INSERT INTO analytics.t
+        SELECT region, approx_count_distinct(uid) AS uv FROM analytics.src GROUP BY region"""
+
+        # SqlParse does not trace the argument of the aggregate into uv.
+        assert_table_lineage_equal(
+            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlparse=False
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (
+                    TestColumnQualifierTuple("region", "analytics.src"),
+                    TestColumnQualifierTuple("region", "analytics.t"),
+                ),
+                (TestColumnQualifierTuple("uid", "analytics.src"), TestColumnQualifierTuple("uv", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlparse=False,
+        )
+
+    def test_starrocks_percentile_approx(self):
+        """Test StarRocks percentile_approx.
+
+        Docs: https://docs.starrocks.io/docs/sql-reference/sql-functions/aggregate-functions/percentile_approx/
+        """
+        query = """INSERT INTO analytics.t
+        SELECT region, percentile_approx(v, 0.99) AS p99 FROM analytics.src GROUP BY region"""
+
+        assert_table_lineage_equal(query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value)
+        assert_column_lineage_equal(
+            query,
+            [
+                (
+                    TestColumnQualifierTuple("region", "analytics.src"),
+                    TestColumnQualifierTuple("region", "analytics.t"),
+                ),
+                (TestColumnQualifierTuple("v", "analytics.src"), TestColumnQualifierTuple("p99", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+        )
+
+    def test_starrocks_array_map_lambda(self):
+        """Test StarRocks array_map with a lambda expression.
+
+        Docs: https://docs.starrocks.io/docs/sql-reference/sql-functions/array-functions/array_map/
+        Lambda: https://docs.starrocks.io/docs/sql-reference/sql-functions/Lambda_expression/
+        """
+        query = """INSERT INTO analytics.t SELECT array_map(x -> x + 1, arr) AS r FROM analytics.src"""
+
+        # SqlFluff additionally maps the lambda parameter as a source column.
+        assert_table_lineage_equal(
+            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("arr", "analytics.src"), TestColumnQualifierTuple("r", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
+        )
+
+    def test_starrocks_cte(self):
+        """Test StarRocks common table expression feeding an INSERT.
+
+        Docs: https://docs.starrocks.io/docs/sql-reference/sql-statements/table_bucket_part_index/SELECT/
+        """
+        query = """INSERT INTO analytics.t WITH c AS (SELECT a FROM analytics.src) SELECT a FROM c"""
+
+        assert_table_lineage_equal(query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value)
+        # Parsers model the CTE node differently, so compare endpoints only.
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            skip_graph_check=True,
+        )
+
+    def test_starrocks_join(self):
+        """Test StarRocks JOIN feeding an INSERT.
+
+        Docs: https://docs.starrocks.io/docs/sql-reference/sql-statements/table_bucket_part_index/SELECT/SELECT_JOIN/
+        """
+        query = """INSERT INTO analytics.t
+        SELECT a.id AS id FROM analytics.s1 a JOIN analytics.s2 b ON a.id = b.id"""
+
+        assert_table_lineage_equal(
+            query, {"analytics.s1", "analytics.s2"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (TestColumnQualifierTuple("id", "analytics.s1"), TestColumnQualifierTuple("id", "analytics.t")),
+            ],
+            dialect=Dialect.STARROCKS.value,
         )
 
     def test_snowflake_copy_into_stage_subpath_date_partitioned(self):
