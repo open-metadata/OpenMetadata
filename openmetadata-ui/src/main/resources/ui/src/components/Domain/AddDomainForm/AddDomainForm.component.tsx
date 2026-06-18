@@ -571,6 +571,29 @@ const AddDomainForm = ({
           propertyTypeName === 'number'
         ) {
           result = { ...baseField, type: FieldTypes.NUMBER };
+        } else if (
+          propertyTypeName === 'entityReference' ||
+          propertyTypeName === 'entityReferenceList'
+        ) {
+          const allowedTypes = Array.isArray(config)
+            ? (config as string[])
+            : [];
+          const isUserOnly =
+            allowedTypes.length === 1 && allowedTypes[0] === 'user';
+          result = {
+            ...baseField,
+            type: FieldTypes.USER_TEAM_SELECT_MUI,
+            props: {
+              'data-testid': `extension-${propertyName}`,
+              userOnly: isUserOnly,
+              multipleUser: propertyTypeName === 'entityReferenceList',
+              label: rf.fieldLabel,
+            },
+            formItemProps: {
+              valuePropName: 'value',
+              trigger: 'onChange',
+            },
+          };
         }
 
         return result;
@@ -596,6 +619,24 @@ const AddDomainForm = ({
   const reviewersList =
     Form.useWatch<EntityReference[]>('reviewers', form) ?? [];
 
+  // The user/team picker stores a single-select value as a one-element array,
+  // but a single `entityReference` custom property expects a bare object. Unwrap
+  // it so the API receives the shape it validates against; list and scalar
+  // custom properties pass through untouched.
+  const normalizeExtension = (extension?: Record<string, unknown>) => {
+    if (!extension) {
+      return extension;
+    }
+    const normalized: Record<string, unknown> = {};
+    Object.entries(extension).forEach(([key, value]) => {
+      const definition = customProperties.find((cp) => cp.name === key);
+      const isSingleRef = definition?.propertyType?.name === 'entityReference';
+      normalized[key] = isSingleRef && Array.isArray(value) ? value[0] : value;
+    });
+
+    return normalized;
+  };
+
   const handleFormSubmit: FormProps['onFinish'] = (formData) => {
     const updatedData = omit(
       formData,
@@ -619,6 +660,7 @@ const AddDomainForm = ({
       experts: expertsList.map((item) => item.name ?? ''),
       owners: ownersList ?? [],
       tags: [...(formData.tags ?? []), ...(formData.glossaryTerms ?? [])],
+      extension: normalizeExtension(formData.extension),
     } as CreateDomain | CreateDataProduct;
 
     // Handle domains field based on form type

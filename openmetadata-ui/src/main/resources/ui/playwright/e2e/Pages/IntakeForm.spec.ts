@@ -304,26 +304,19 @@ test.describe(
           await dpTab.click();
         }
         await page.getByRole('button', { name: /Add Data Product/i }).click();
-        await expect(page.getByTestId('add-domain-form')).toBeVisible();
+        await expect(page.getByTestId('add-domain')).toBeVisible();
       });
 
       await test.step('Type field is rendered and marked required by intake form', async () => {
         const typeSelect = page.getByTestId('dataProductType');
         await expect(typeSelect).toBeVisible();
 
-        // core-components renders each field as a Box: a FormItemLabel
-        // followed by the field element. When the intake form marks the
-        // field required, FormItemLabel appends a "*" span next to the
-        // label (the Select itself doesn't carry aria-required). Scope to
-        // the field group wrapping the Type select so the asterisk we assert
-        // on belongs to this field and not another required one.
-        const typeFieldGroup = page
-          .locator('div')
-          .filter({ has: typeSelect })
-          .filter({ has: page.getByTestId('form-item-label') })
-          .last();
+        // The Data Product Type field is rendered as a MUI select whose label
+        // carries the required asterisk when the intake form marks it required.
+        // Scope to this field's label so the asterisk we assert on belongs to
+        // the Type field and not another required field on the form.
         await expect(
-          typeFieldGroup.getByText('*', { exact: true })
+          page.locator('[id="root/dataProductType-label"]').getByText('*')
         ).toBeVisible();
       });
 
@@ -471,7 +464,7 @@ test.describe(
         await dpTab.click();
       }
       await page.getByRole('button', { name: /Add Data Product/i }).click();
-      await expect(page.getByTestId('add-domain-form')).toBeVisible();
+      await expect(page.getByTestId('add-domain')).toBeVisible();
 
       // The field is rendered; its required marker is widget-specific. The
       // enforcement is covered end-to-end by the entity-reference test below
@@ -681,7 +674,7 @@ test.describe(
           r.request().method() === 'GET'
       );
       await page.getByRole('button', { name: /Add Data Product/i }).click();
-      await expect(page.getByTestId('add-domain-form')).toBeVisible();
+      await expect(page.getByTestId('add-domain')).toBeVisible();
       await intakeFetch;
 
       const dpName = `intake-ref-e2e-${uuid()}`;
