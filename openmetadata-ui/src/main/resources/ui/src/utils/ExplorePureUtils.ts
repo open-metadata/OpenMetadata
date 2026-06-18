@@ -409,6 +409,11 @@ export const isElasticsearchError = (error: unknown): boolean => {
   );
 };
 
+const isBrowsePathOption = (option: unknown): boolean =>
+  typeof option === 'object' &&
+  option !== null &&
+  typeof (option as Record<string, unknown>).key === 'string';
+
 const isBrowsePathField = (
   field: unknown
 ): field is ExploreQuickFilterField => {
@@ -416,11 +421,12 @@ const isBrowsePathField = (
     field && typeof field === 'object'
       ? (field as Record<string, unknown>)
       : undefined;
+  const value = record?.value;
+  const hasValidValue =
+    value === undefined ||
+    (Array.isArray(value) && value.every(isBrowsePathOption));
 
-  return (
-    typeof record?.key === 'string' &&
-    (record.value === undefined || Array.isArray(record.value))
-  );
+  return typeof record?.key === 'string' && hasValidValue;
 };
 
 /**

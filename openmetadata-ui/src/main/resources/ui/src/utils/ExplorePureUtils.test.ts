@@ -177,6 +177,18 @@ describe('parseBrowsePathFields', () => {
     ).toEqual([]);
   });
 
+  it('drops a field whose value array has elements without a string key', () => {
+    expect(
+      parseBrowsePathFields('[{"key":"serviceType","value":[null]}]')
+    ).toEqual([]);
+    expect(
+      parseBrowsePathFields('[{"key":"serviceType","value":[{}]}]')
+    ).toEqual([]);
+    expect(
+      parseBrowsePathFields('[{"key":"serviceType","value":[{"key":1}]}]')
+    ).toEqual([]);
+  });
+
   it('keeps well-formed fields while dropping garbage siblings', () => {
     const valid = {
       key: 'serviceType',

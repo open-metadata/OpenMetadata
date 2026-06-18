@@ -155,7 +155,9 @@ const selectOptionAndWaitForQuery = async (
     if (response.url().includes('/api/v1/search/query')) {
       const queryFilter =
         new URL(response.url()).searchParams.get('query_filter') ?? '';
-      isMatch = queryFilter.includes(optionKey);
+      // Match the quoted term value ("table") so short keys can't
+      // incidentally hit field names like "table.name" in the filter.
+      isMatch = queryFilter.includes(`"${optionKey}"`);
     }
 
     return isMatch;

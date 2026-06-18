@@ -150,11 +150,12 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     // Use field-specific searchKey if provided, otherwise use the key
     const searchKeyToUse = fieldSearchKey ?? key;
 
-    // The page aggregations reflect the full current query — including this
-    // facet's own selection — so they are only reusable when nothing scopes
-    // the facet differently from the page.
-    const canUsePageAggregations =
-      !hasSelectedFieldValues && isEmpty(defaultQueryFilter);
+    // The page aggregations already reflect the browse-path scope (performFetch
+    // combines browseQueryFilter), so they are reusable whenever no dropdown
+    // field has a value to exclude from its own facet — even when only the
+    // browse filter is active. A per-facet fetch is only needed once a field
+    // value must be excluded from its own aggregation.
+    const canUsePageAggregations = !hasSelectedFieldValues;
 
     let buckets = canUsePageAggregations
       ? aggregations?.[key]?.buckets
