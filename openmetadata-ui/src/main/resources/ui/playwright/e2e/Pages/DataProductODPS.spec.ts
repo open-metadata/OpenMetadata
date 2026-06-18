@@ -329,6 +329,73 @@ test.describe('DataProduct ODPS & metadata — UI', () => {
     }
   });
 
+  test('name guard blocks a YAML whose product name targets a different product', async ({
+    page,
+    browser,
+  }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const dataProduct = new DataProduct();
+    const cleanName = `pwodpsguard${uuid()}`;
+    dataProduct.data.name = cleanName;
+    dataProduct.data.displayName = cleanName;
+    dataProduct.data.fullyQualifiedName = cleanName;
+
+    try {
+      await dataProduct.create(apiContext);
+      await dataProduct.visitEntityPage(page);
+      await openManageMenu(page, 'import-odps-button');
+      await page.getByTestId('import-odps-button').click();
+      await expect(page.getByTestId('odps-import-modal')).toBeVisible();
+
+      // A decoy top-level `name:` matches THIS product (what a first-`name:`
+      // regex would grab), but the real product name lives at
+      // product.details.en.name and targets a different product. The hardened
+      // js-yaml guard reads that path and must block the import.
+      const decoyYaml = [
+        `name: "${cleanName}"`,
+        'schema: "https://opendataproducts.org/v4.1/schema/odps.json"',
+        'version: "4.1"',
+        'product:',
+        '  details:',
+        '    en:',
+        '      name: "a-different-product"',
+        '      productID: "a-different-product"',
+        '      visibility: "private"',
+        '      status: "development"',
+        '      type: "dataset"',
+        '      description: "name-guard decoy"',
+      ].join('\n');
+
+      const yamlField = page
+        .getByTestId('odps-yaml-content')
+        .locator('textarea');
+      await yamlField.click();
+      await yamlField.fill(decoyYaml);
+
+      let putFired = false;
+      const listener = (r: import('@playwright/test').Response) => {
+        if (
+          r.url().includes('/dataProducts/odps/yaml') &&
+          r.request().method() === 'PUT'
+        ) {
+          putFired = true;
+        }
+      };
+      page.on('response', listener);
+      await page.getByTestId('odps-import-submit').click();
+
+      // The guard short-circuits before any API call: no PUT, modal stays open.
+      await expect(async () => {
+        expect(putFired).toBe(false);
+      }).toPass({ timeout: 3000, intervals: [300] });
+      page.off('response', listener);
+      await expect(page.getByTestId('odps-import-modal')).toBeVisible();
+    } finally {
+      await dataProduct.delete(apiContext);
+      await afterAction();
+    }
+  });
+
   test('edits data product metadata (type, visibility, priority) via the modal', async ({
     page,
     browser,
