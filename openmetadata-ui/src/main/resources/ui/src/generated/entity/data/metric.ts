@@ -87,6 +87,11 @@ export interface Metric {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * The ContextMemory this metric was automatically derived from by the Ontology Agent.
+     * Non-default field — request via `fields=derivedFrom`.
+     */
+    derivedFrom?: EntityReference;
+    /**
      * Expression used to compute the metric.
      */
     metricExpression?: MetricExpression;

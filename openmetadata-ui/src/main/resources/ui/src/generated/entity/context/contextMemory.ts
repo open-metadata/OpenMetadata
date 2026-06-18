@@ -27,6 +27,16 @@ export interface ContextMemory {
      */
     deleted?: boolean;
     /**
+     * GlossaryTerms and Metrics that were created (DERIVED_FROM edge) from this memory
+     * by the Ontology Agent. Non-default field — request via `fields=derivedEntities`.
+     */
+    derivedEntities?: EntityReference[];
+    /**
+     * Existing GlossaryTerms and Metrics linked to this memory via RELATED_TO (reuse)
+     * by the Ontology Agent. Non-default field — request via `fields=reusedEntities`.
+     */
+    reusedEntities?: EntityReference[];
+    /**
      * Optional markdown description for the memory.
      */
     description?: string;

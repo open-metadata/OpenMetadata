@@ -108,6 +108,11 @@ export interface GlossaryTerm {
      */
     owners?: EntityReference[];
     /**
+     * The ContextMemory this term was automatically derived from by the Ontology Agent.
+     * Non-default field — request via `fields=derivedFrom`.
+     */
+    derivedFrom?: EntityReference;
+    /**
      * Parent glossary term that this term is child of. When `null` this term is the root term
      * of the glossary.
      */
