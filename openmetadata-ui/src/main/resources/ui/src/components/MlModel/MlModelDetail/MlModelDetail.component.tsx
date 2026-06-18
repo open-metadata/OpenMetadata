@@ -68,7 +68,6 @@ import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHe
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { MlModelDetailProp } from './MlModelDetail.interface';
-
 const MlModelDetail: FC<MlModelDetailProp> = ({
   updateMlModelDetailsState,
   mlModelDetail,
