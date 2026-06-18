@@ -72,6 +72,7 @@ import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchManagementClient;
+import org.openmetadata.service.search.SearchResponseStreamer;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
@@ -164,8 +165,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
       }
     }
-    String responseJson = serializeSearchResponse(response);
-    return Response.status(OK).entity(responseJson).build();
+    return streamSearchResponse(response);
   }
 
   @Override
@@ -202,8 +202,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
       }
     }
-    String responseJson = serializeSearchResponse(response);
-    return Response.status(OK).entity(responseJson).build();
+    return streamSearchResponse(response);
   }
 
   @Override
@@ -582,9 +581,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
           nlqService.cacheQuery(request.getQuery(), transformedQuery);
         }
 
-        return Response.status(Response.Status.OK)
-            .entity(serializeSearchResponse(response))
-            .build();
+        return streamSearchResponse(response);
       } catch (Exception e) {
         LOG.error("Error transforming or executing NLQ query: {}", e.getMessage(), e);
         return fallbackToBasicSearch(request, subjectContext);
@@ -671,9 +668,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         }
       }
 
-      String responseJson = serializeSearchResponse(response);
       LOG.debug("Direct query search completed successfully");
-      return Response.status(Response.Status.OK).entity(responseJson).build();
+      return streamSearchResponse(response);
     } catch (Exception e) {
       LOG.error("Error executing direct query search: {}", e.getMessage(), e);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -973,6 +969,16 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     return stringWriter.toString();
   }
 
+  private Response streamSearchResponse(SearchResponse<JsonData> searchResponse) {
+    JsonpMapper mapper = client._transport().jsonpMapper();
+    return SearchResponseStreamer.stream(
+        output -> {
+          try (JsonGenerator generator = mapper.jsonProvider().createGenerator(output)) {
+            searchResponse.serialize(generator, mapper);
+          }
+        });
+  }
+
   public Response doSearch(
       org.openmetadata.schema.search.SearchRequest request,
       SubjectContext subjectContext,
@@ -998,8 +1004,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       }
 
       if (!Boolean.TRUE.equals(request.getIsHierarchy())) {
-        String responseJson = serializeSearchResponse(searchResponse);
-        return Response.status(OK).entity(responseJson).build();
+        return streamSearchResponse(searchResponse);
       } else {
         List<?> response = buildSearchHierarchy(request, searchResponse, clusterAlias);
         return Response.status(OK).entity(response).build();
@@ -1558,9 +1563,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         }
       }
 
-      return Response.status(Response.Status.OK)
-          .entity(serializeSearchResponse(searchResponse))
-          .build();
+      return streamSearchResponse(searchResponse);
     } catch (Exception e) {
       LOG.error("Error in fallback search: {}", e.getMessage(), e);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)

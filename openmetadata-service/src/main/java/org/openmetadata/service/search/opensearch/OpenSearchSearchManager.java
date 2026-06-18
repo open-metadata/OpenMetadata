@@ -22,6 +22,7 @@ import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonReader;
 import jakarta.json.JsonValue;
+import jakarta.json.stream.JsonGenerator;
 import jakarta.json.stream.JsonParser;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -57,6 +58,7 @@ import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchManagementClient;
+import org.openmetadata.service.search.SearchResponseStreamer;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
@@ -185,7 +187,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
       }
     }
-    return Response.status(OK).entity(response.toJsonString()).build();
+    return streamSearchResponse(response);
   }
 
   @Override
@@ -226,7 +228,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
       }
     }
-    return Response.status(OK).entity(response.toJsonString()).build();
+    return streamSearchResponse(response);
   }
 
   @Override
@@ -592,7 +594,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
           nlqService.cacheQuery(request.getQuery(), transformedQuery);
         }
 
-        return Response.status(Response.Status.OK).entity(response.toJsonString()).build();
+        return streamSearchResponse(response);
       } catch (Exception e) {
         LOG.error("Error transforming or executing NLQ query: {}", e.getMessage(), e);
         return fallbackToBasicSearch(request, subjectContext);
@@ -1019,6 +1021,16 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     sourceBuilderFactory.addConfiguredAggregationsV2(requestBuilder, assetConfig);
   }
 
+  private Response streamSearchResponse(SearchResponse<JsonData> searchResponse) {
+    JsonpMapper mapper = client._transport().jsonpMapper();
+    return SearchResponseStreamer.stream(
+        output -> {
+          try (JsonGenerator generator = mapper.jsonProvider().createGenerator(output)) {
+            searchResponse.serialize(generator, mapper);
+          }
+        });
+  }
+
   public Response doSearch(
       org.openmetadata.schema.search.SearchRequest request,
       SubjectContext subjectContext,
@@ -1036,7 +1048,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
 
       if (!Boolean.TRUE.equals(request.getIsHierarchy())) {
-        return Response.status(OK).entity(searchResponse.toJsonString()).build();
+        return streamSearchResponse(searchResponse);
       } else {
         List<?> response = buildSearchHierarchy(request, searchResponse, clusterAlias);
         return Response.status(OK).entity(response).build();
@@ -1591,7 +1603,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         }
       }
 
-      return Response.status(Response.Status.OK).entity(searchResponse.toJsonString()).build();
+      return streamSearchResponse(searchResponse);
     } catch (Exception e) {
       LOG.error("Error in fallback search: {}", e.getMessage(), e);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
