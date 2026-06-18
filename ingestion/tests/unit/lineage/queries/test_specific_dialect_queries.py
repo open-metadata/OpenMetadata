@@ -96,7 +96,7 @@ Special Cases:
 
 Test Coverage:
 -------------
-- Total Tests: 31
+- Total Tests: 32
 - Dialects: Snowflake, BigQuery, MySQL, ClickHouse, PostgreSQL, T-SQL, Oracle, StarRocks
 - Parsers: SqlGlot, SqlFluff, SqlParse
 - All tests validate both table lineage AND column lineage
@@ -1370,6 +1370,47 @@ ON_ERROR = CONTINUE"""
             {"analytics.user_events"},
             {"analytics.uv_daily"},
             dialect=Dialect.STARROCKS.value,
+        )
+
+    def test_starrocks_ctas_with_distributed_and_properties(self):
+        """Test StarRocks CREATE TABLE AS SELECT with DISTRIBUTED BY and PROPERTIES.
+
+        These StarRocks table-creation clauses must be parsed with the StarRocks
+        dialect for both table and column lineage to be extracted.
+        """
+        query = """CREATE TABLE analytics.uv_daily
+        DISTRIBUTED BY HASH(dt) BUCKETS 10
+        PROPERTIES ("replication_num" = "1")
+        AS SELECT
+            dt,
+            bitmap_union(to_bitmap(user_id)) AS uv
+        FROM analytics.user_events
+        GROUP BY dt"""
+
+        # SqlFluff does not support the StarRocks PROPERTIES clause. SqlGlot and
+        # SqlParse both extract the lineage under the StarRocks dialect.
+        assert_table_lineage_equal(
+            query,
+            {"analytics.user_events"},
+            {"analytics.uv_daily"},
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
+        )
+
+        assert_column_lineage_equal(
+            query,
+            [
+                (
+                    TestColumnQualifierTuple("dt", "analytics.user_events"),
+                    TestColumnQualifierTuple("dt", "analytics.uv_daily"),
+                ),
+                (
+                    TestColumnQualifierTuple("user_id", "analytics.user_events"),
+                    TestColumnQualifierTuple("uv", "analytics.uv_daily"),
+                ),
+            ],
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
         )
 
     def test_snowflake_copy_into_stage_subpath_date_partitioned(self):
