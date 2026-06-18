@@ -619,7 +619,7 @@ const TableV2 = <T extends object>(
         data-testid={dataTestId}
         style={scrollStyle}>
         {isLoading && (
-          <div className="tw:absolute tw:inset-0 tw:z-10 tw:flex tw:items-center tw:justify-center tw:bg-white/60">
+          <div className="tw:absolute tw:inset-0 tw:z-10 tw:flex tw:items-center tw:justify-center tw:bg-primary/60">
             <Loader />
           </div>
         )}

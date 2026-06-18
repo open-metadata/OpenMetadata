@@ -479,8 +479,8 @@ llmConfiguration:
     maxTokens:     ${LLM_OPENAI_MAX_TOKENS:-4096}
   bedrock:
     awsConfig:
-      awsRegion:       ${AWS_BEDROCK_REGION:-""}
-      # IAM or static keys via AWS_BEDROCK_ACCESS_KEY / _SECRET_KEY / _SESSION_TOKEN
+      awsRegion:       ${AWS_DEFAULT_REGION:-""}
+      # IAM or static keys via AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_SESSION_TOKEN
     modelId:   ${LLM_BEDROCK_MODEL_ID:-"eu.anthropic.claude-haiku-4-5-20251001-v1:0"}
     maxTokens: ${LLM_BEDROCK_MAX_TOKENS:-4096}
   google:

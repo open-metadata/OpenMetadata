@@ -1496,7 +1496,8 @@ test.describe('Domains', () => {
           title: 'Domain Announcement Test',
           description: 'Domain Announcement Description',
         },
-        false
+        false,
+        'announcement-card'
       );
 
       await editAnnouncement(page, {
@@ -1534,7 +1535,8 @@ test.describe('Domains', () => {
           title: 'Data Product Announcement Test',
           description: 'Data Product Announcement Description',
         },
-        false
+        false,
+        'announcement-card'
       );
 
       await editAnnouncement(page, {

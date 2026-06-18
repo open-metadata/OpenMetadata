@@ -240,8 +240,8 @@ public class AlertsRuleEvaluator {
     }
     if (!changeEvent.getEntityType().equals(TEST_CASE)
         && !changeEvent.getEntityType().equals(TEST_SUITE)) {
-      // in case the entity is not test case return since the filter doesn't apply
-      return true;
+      // Trigger requires a test case result; non-test-case events (incl. THREAD) cannot fire it.
+      return false;
     }
 
     // we need to handle both fields updated and fields added
@@ -324,13 +324,8 @@ public class AlertsRuleEvaluator {
       return false;
     }
     if (!changeEvent.getEntityType().equals(TEST_CASE)) {
-      // in case the entity is not test case return since the filter doesn't apply
-      return true;
-    }
-
-    // Filter does not apply to Thread Change Events
-    if (changeEvent.getEntityType().equals(THREAD)) {
-      return true;
+      // Trigger requires a test case result; non-test-case events (incl. THREAD) cannot fire it.
+      return false;
     }
 
     // we need to handle both fields updated and fields added
@@ -402,13 +397,8 @@ public class AlertsRuleEvaluator {
       return false;
     }
     if (!changeEvent.getEntityType().equals(INGESTION_PIPELINE)) {
-      // in case the entity is not ingestion pipeline return since the filter doesn't apply
-      return true;
-    }
-
-    // Filter does not apply to Thread Change Events
-    if (changeEvent.getEntityType().equals(THREAD)) {
-      return true;
+      // Trigger requires a pipeline status; non-pipeline events (incl. THREAD) cannot fire it.
+      return false;
     }
 
     for (FieldChange fieldChange : changeEvent.getChangeDescription().getFieldsUpdated()) {
@@ -438,13 +428,8 @@ public class AlertsRuleEvaluator {
       return false;
     }
     if (!changeEvent.getEntityType().equals(PIPELINE)) {
-      // in case the entity is not ingestion pipeline return since the filter doesn't apply
-      return true;
-    }
-
-    // Filter does not apply to Thread Change Events
-    if (changeEvent.getEntityType().equals(THREAD)) {
-      return true;
+      // Trigger requires a pipeline status; non-pipeline events (incl. THREAD) cannot fire it.
+      return false;
     }
 
     for (FieldChange fieldChange : changeEvent.getChangeDescription().getFieldsUpdated()) {
