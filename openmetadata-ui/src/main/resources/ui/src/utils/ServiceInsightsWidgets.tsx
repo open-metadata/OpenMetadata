@@ -12,14 +12,16 @@
  */
 
 import { Typography } from 'antd';
-import React, { Suspense } from 'react';
+import React from 'react';
 import { ReactComponent as DescriptionPlaceholderIcon } from '../assets/svg/ic-flat-doc.svg';
 import { ReactComponent as TablePlaceholderIcon } from '../assets/svg/ic-large-table.svg';
 import { ReactComponent as NoDataPlaceholderIcon } from '../assets/svg/ic-no-records.svg';
 import { ReactComponent as OwnersPlaceholderIcon } from '../assets/svg/key-hand.svg';
 import { ReactComponent as TierPlaceholderIcon } from '../assets/svg/no-tier.svg';
 import { ReactComponent as PiiPlaceholderIcon } from '../assets/svg/security-safe.svg';
+import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import type { MetadataAgentsWidgetProps } from '../components/Settings/Services/Ingestion/MetadataAgentsWidget/MetadataAgentsWidget.interface';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../enums/common.enum';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { ServiceInsightsWidgetType } from '../enums/ServiceInsights.enum';
@@ -34,17 +36,9 @@ const MetadataAgentsWidgetLazy = React.lazy(
     )
 );
 
-const MetadataAgentsWidget = (props: Record<string, unknown>) => {
-  const widgetProps = props as React.ComponentProps<
-    typeof MetadataAgentsWidgetLazy
-  >;
-
-  return (
-    <Suspense fallback={null}>
-      <MetadataAgentsWidgetLazy {...widgetProps} />
-    </Suspense>
-  );
-};
+const MetadataAgentsWidget = withSuspenseFallback(
+  MetadataAgentsWidgetLazy
+) as React.ComponentType<MetadataAgentsWidgetProps>;
 
 export const getServiceInsightsWidgetPlaceholder = ({
   chartType,
@@ -171,7 +165,7 @@ export const getServiceInsightsWidgetPlaceholder = ({
 
 export const getDefaultAgentsTabWidgets = (): Record<
   string,
-  React.ComponentType<Record<string, unknown>>
+  React.ComponentType<MetadataAgentsWidgetProps>
 > => ({
   MetadataAgentsWidget,
 });

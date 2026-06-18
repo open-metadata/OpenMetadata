@@ -144,7 +144,6 @@ import {
   LineageProviderProps,
   LineageTimeRange,
 } from './LineageProvider.interface';
-
 const LINEAGE_START_TIME_PARAM = 'lineageStartTime';
 const LINEAGE_END_TIME_PARAM = 'lineageEndTime';
 

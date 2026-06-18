@@ -13,8 +13,8 @@
 
 package org.openmetadata.service.security;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.security.SecurityUtil.buildPrincipalClaimsMapping;
 import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.isBot;
@@ -51,7 +51,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeMap;
-import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -124,9 +123,7 @@ public class JwtFilter implements ContainerRequestFilter {
     // Cannot remove  Principal Claims listing since that is , breaking change for existing users
     this.jwtPrincipalClaims = authenticationConfiguration.getJwtPrincipalClaims();
     this.jwtPrincipalClaimsMapping =
-        listOrEmpty(authenticationConfiguration.getJwtPrincipalClaimsMapping()).stream()
-            .map(s -> s.split(":"))
-            .collect(Collectors.toMap(s -> s[0], s -> s[1]));
+        buildPrincipalClaimsMapping(authenticationConfiguration.getJwtPrincipalClaimsMapping());
     validatePrincipalClaimsMapping(jwtPrincipalClaimsMapping);
     this.jwtTeamClaimMapping = authenticationConfiguration.getJwtTeamClaimMapping();
 

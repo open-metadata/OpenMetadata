@@ -70,7 +70,6 @@ import {
   ServiceInsightsTabProps,
   TotalAssetsCount,
 } from './ServiceInsightsTab.interface';
-
 const ServiceInsightsTab = ({
   serviceDetails,
   workflowStatesData,
