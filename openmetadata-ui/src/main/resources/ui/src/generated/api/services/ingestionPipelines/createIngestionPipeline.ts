@@ -209,6 +209,7 @@ export enum PipelineType {
     ElasticSearchReindex = "elasticSearchReindex",
     Lineage = "lineage",
     Metadata = "metadata",
+    PolicyAgent = "policyAgent",
     Profiler = "profiler",
     TestSuite = "TestSuite",
     Usage = "usage",
@@ -273,6 +274,8 @@ export interface SourceConfig {
  * Apply a set of operations on a service
  *
  * McpService Metadata Pipeline Configuration.
+ *
+ * Policy Agent Pipeline Configuration. Applies access grants against the source system.
  */
 export interface Pipeline {
     /**
@@ -654,6 +657,12 @@ export interface Pipeline {
      */
     markDeletedPipelines?: boolean;
     /**
+     * Set how owners from source metadata update Pipeline owners. In replace mode, resolved
+     * owners from the current source replace existing owners. In append mode, resolved owners
+     * are appended to active existing Pipeline owners.
+     */
+    ownershipUpdateMode?: OwnershipUpdateMode;
+    /**
      * Regex exclude pipelines.
      */
     pipelineFilterPattern?: FilterPattern;
@@ -782,12 +791,6 @@ export interface Pipeline {
      */
     entityFullyQualifiedName?: string;
     /**
-     * Percentage of data or no. of rows we want to execute the profiler and tests on
-     */
-    profileSample?:      number;
-    profileSampleType?:  ProfileSampleType;
-    samplingMethodType?: SamplingMethodType;
-    /**
      * Service connections to be used for the logical test suite.
      */
     serviceConnections?: ServiceConnections[];
@@ -898,6 +901,10 @@ export interface Pipeline {
      * Regex to only fetch MCP servers with names matching the pattern.
      */
     serverFilterPattern?: FilterPattern;
+    /**
+     * List of access grants to apply on the source.
+     */
+    policies?: Policy[];
 }
 
 /**
@@ -1025,6 +1032,10 @@ export interface FilterPattern {
  * Cache Warmup Application Configuration.
  *
  * Configuration for the AutoPilot Application.
+ *
+ * Configuration for the MCP Chat Application. The LLM provider and credentials are
+ * configured at the platform level via `llmConfiguration`; this app only governs chat
+ * behavior.
  */
 export interface CollateAIAppConfig {
     /**
@@ -1166,11 +1177,7 @@ export interface CollateAIAppConfig {
      */
     queueSize?: number;
     /**
-     * This schema publisher run modes.
-     */
-    recreateIndex?: boolean;
-    /**
-     * Recreate Indexes with updated Language
+     * Search index mapping language.
      */
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
     /**
@@ -1184,11 +1191,6 @@ export interface CollateAIAppConfig {
      * Set to a positive value like 15 to limit to recent data only.
      */
     timeSeriesMaxDays?: number;
-    /**
-     * Enable distributed indexing to scale reindexing across multiple servers with fault
-     * tolerance and parallel processing
-     */
-    useDistributedIndexing?: boolean;
     /**
      * In multi-instance deployments, claim each entity type via Redis SETNX so only one
      * instance warms it. Disable to let every instance warm independently (idempotent but
@@ -1204,6 +1206,12 @@ export interface CollateAIAppConfig {
      * deploy doesn't fan out to the DB. Disable for very large installs.
      */
     warmBundles?: boolean;
+    /**
+     * Optionally pre-warm common relationship fields in the read bundle cache. Requires Warm
+     * Read Bundles. This adds extra relationship-table and entity-reference reads during
+     * warmup, so enable it only when first-read relationship latency matters.
+     */
+    warmRelationships?: boolean;
     /**
      * Enter the retention period for Activity Threads of type = 'Conversation' records in days
      * (e.g., 30 for one month, 60 for two months).
@@ -1232,6 +1240,10 @@ export interface CollateAIAppConfig {
      * Service Entity Link for which to trigger the application.
      */
     entityLink?: string;
+    /**
+     * The system prompt that guides the assistant behavior.
+     */
+    systemPrompt?: string;
     [property: string]: any;
 }
 
@@ -2126,6 +2138,8 @@ export interface Resource {
  * Recreate Indexes with updated Language
  *
  * This schema defines the language options available for search index mappings.
+ *
+ * Search index mapping language.
  */
 export enum SearchIndexMappingLanguage {
     En = "EN",
@@ -2885,6 +2899,97 @@ export interface OwnerConfiguration {
 }
 
 /**
+ * Set how owners from source metadata update Pipeline owners. In replace mode, resolved
+ * owners from the current source replace existing owners. In append mode, resolved owners
+ * are appended to active existing Pipeline owners.
+ */
+export enum OwnershipUpdateMode {
+    Append = "append",
+    Replace = "replace",
+}
+
+/**
+ * A single access grant entry. The per-service shape lives under `config`.
+ */
+export interface Policy {
+    /**
+     * Per-service-type policy configuration.
+     */
+    config: DatabasePolicyConfig;
+    /**
+     * Unique id of the policy entry.
+     */
+    id: string;
+}
+
+/**
+ * Per-service-type policy configuration.
+ *
+ * Policy config for database service connectors (snowflake, postgres, etc.).
+ */
+export interface DatabasePolicyConfig {
+    accessType: AccessType;
+    /**
+     * Column on which the grant is applied. Requires tableName. Supported only by connectors
+     * that allow column-level grants; ignored otherwise.
+     */
+    columnName?: string;
+    /**
+     * List of column names requested when accessType is ColumnLevel.
+     */
+    columns?: string[];
+    /**
+     * Database on which the grant is applied.
+     */
+    databaseName: string;
+    /**
+     * ISO 8601 duration for which access is granted (e.g. P14D). Connectors that support
+     * time-limited grants may use this; others ignore it.
+     */
+    duration?: string;
+    /**
+     * Grantee identifier. For USER this is typically the email/username; for ROLE the role name.
+     */
+    principal:       string;
+    principalType?:  PrincipalType;
+    requestedAccess: RequestedAccess;
+    /**
+     * Schema on which the grant is applied. If omitted, the grant is scoped to the database.
+     */
+    schemaName?: string;
+    /**
+     * Table on which the grant is applied. Requires schemaName.
+     */
+    tableName?: string;
+}
+
+/**
+ * Pattern of access being requested.
+ */
+export enum AccessType {
+    ColumnLevel = "ColumnLevel",
+    FullAccess = "FullAccess",
+    Masked = "Masked",
+}
+
+/**
+ * Type of principal the grant is issued to.
+ */
+export enum PrincipalType {
+    Role = "ROLE",
+    User = "USER",
+}
+
+/**
+ * Permission level being requested.
+ */
+export enum RequestedAccess {
+    Admin = "Admin",
+    Read = "Read",
+    Write = "Write",
+}
+
+/**
  * Processing Engine Configuration. If not provided, the Native Engine will be used by
  * default.
  *
@@ -2942,6 +3047,11 @@ export interface ProfileSampleConfig {
  * Configuration for static sampling based on table row count.
  */
 export interface ICSamplingConfig {
+    /**
+     * Set to true to dynamically determine sampling percentage based on row count thresholds.
+     * If false, the thresholds values passed will be used as the sampling configuration.
+     */
+    smartSampling?: boolean;
     /**
      * Row count thresholds for sampling. Evaluated in order from highest to lowest threshold.
      * Tables below the lowest threshold are profiled at 100% (no sampling).
@@ -3230,6 +3340,8 @@ export interface ServiceConnection {
  * IBM Informix Database Connection Config
  *
  * IOMETE Connection Config
+ *
+ * QuestDB Connection Config
  *
  * Kafka Connection Config
  *
@@ -3596,6 +3708,8 @@ export interface ConfigObject {
      *
      * Host and port of the IOMETE service, e.g. dev.iomete.cloud:443
      *
+     * Host and port of the QuestDB service (default PostgreSQL wire protocol port is 8812).
+     *
      * Pub/Sub APIs URL. For local testing with the emulator, use http://localhost:8085.
      *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
@@ -3851,6 +3965,8 @@ export interface ConfigObject {
      * metadata in Informix.
      *
      * Username to connect to IOMETE.
+     *
+     * Username to connect to QuestDB.
      *
      * username to connect to the Amundsen Neo4j Connection.
      *
@@ -4358,7 +4474,15 @@ export interface ConfigObject {
      */
     httpPath?: string;
     /**
+     * Policy agent configuration for access control extraction.
+     */
+    policyAgentConfig?: PolicyAgentConfig;
+    /**
      * Table name to fetch the query history.
+     *
+     * Table name to fetch the query history. When set, this overrides the default
+     * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
+     * must expose columns compatible with the selected log path.
      */
     queryHistoryTable?: string;
     /**
@@ -4549,6 +4673,13 @@ export interface ConfigObject {
      */
     tokenUrl?: string;
     /**
+     * Number of days of ACCESS_HISTORY scanned per query when 'Use Access History for Lineage'
+     * is enabled. The lineage time window is split into chunks of this many days to keep each
+     * Snowflake query bounded and avoid client/server timeouts over long windows. Lower this
+     * value if queries still time out on very busy accounts.
+     */
+    accessHistoryChunkSize?: number;
+    /**
      * If the Snowflake URL is https://xyz1234.us-east-1.gcp.snowflakecomputing.com, then the
      * account is xyz1234.us-east-1.gcp
      *
@@ -4601,6 +4732,13 @@ export interface ConfigObject {
      * Snowflake source host for the Snowflake account.
      */
     snowflakeSourceHost?: string;
+    /**
+     * Use Snowflake's ACCOUNT_USAGE.ACCESS_HISTORY view as the source of query lineage.
+     * ACCESS_HISTORY provides Snowflake-computed table- and column-level lineage, including for
+     * queries OpenMetadata cannot parse. Enabled by default; if the configured role cannot read
+     * ACCESS_HISTORY, ingestion automatically falls back to the legacy query-log parser.
+     */
+    useAccessHistory?: boolean;
     /**
      * Snowflake warehouse.
      */
@@ -5029,6 +5167,9 @@ export interface ConfigObject {
     pipelineFilterPattern?: FilterPattern;
     /**
      * Underlying database connection
+     *
+     * Optional. Underlying SSISDB connection. When omitted, the connector runs in file-only
+     * mode and run history is not extracted.
      */
     databaseConnection?: DatabaseConnectionClass;
     /**
@@ -6333,6 +6474,12 @@ export interface ConfigConnection {
      */
     databaseSchema?: string;
     /**
+     * Table name to fetch the query history. When set, this overrides the default
+     * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
+     * must expose columns compatible with the selected log path.
+     */
+    queryHistoryTable?: string;
+    /**
      * Use slow logs to extract lineage.
      */
     useSlowLogs?: boolean;
@@ -6745,6 +6892,9 @@ export interface PurpleGCPCredentials {
  * Underlying database connection
  *
  * Mssql Database Connection Config
+ *
+ * Optional. Underlying SSISDB connection. When omitted, the connector runs in file-only
+ * mode and run history is not extracted.
  */
 export interface DatabaseConnectionClass {
     connectionArguments?: { [key: string]: any };
@@ -7055,6 +7205,12 @@ export interface HiveMetastoreConnectionDetails {
      */
     databaseSchema?: string;
     /**
+     * Table name to fetch the query history. When set, this overrides the default
+     * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
+     * must expose columns compatible with the selected log path.
+     */
+    queryHistoryTable?: string;
+    /**
      * Use slow logs to extract lineage.
      */
     useSlowLogs?: boolean;
@@ -7252,6 +7408,28 @@ export interface BucketDetails {
      * Path of the folder where the .pbit files are stored
      */
     objectPrefix?: string;
+}
+
+/**
+ * Policy agent configuration for access control extraction.
+ */
+export interface PolicyAgentConfig {
+    /**
+     * Enable policy agent extraction.
+     */
+    enabled?: boolean;
+    /**
+     * Supports column-level access policy extraction.
+     */
+    supportsColumnAccess?: boolean;
+    /**
+     * Supports full access policy extraction.
+     */
+    supportsFullAccess?: boolean;
+    /**
+     * Supports masked access policy extraction.
+     */
+    supportsMaskedAccess?: boolean;
 }
 
 /**
@@ -7705,6 +7883,7 @@ export enum PurpleType {
     PubSub = "PubSub",
     QlikCloud = "QlikCloud",
     QlikSense = "QlikSense",
+    QuestDB = "QuestDB",
     QuickSight = "QuickSight",
     REST = "Rest",
     Ranger = "Ranger",
@@ -7827,6 +8006,8 @@ export interface StorageMetadataBucketDetails {
  * Reverse Ingestion Config Pipeline type
  *
  * MCP Source Config Metadata Pipeline type
+ *
+ * Policy Agent Pipeline type
  */
 export enum FluffyType {
     APIMetadata = "ApiMetadata",
@@ -7844,6 +8025,7 @@ export enum FluffyType {
     MetadataToElasticSearch = "MetadataToElasticSearch",
     MlModelMetadata = "MlModelMetadata",
     PipelineMetadata = "PipelineMetadata",
+    PolicyAgent = "PolicyAgent",
     Profiler = "Profiler",
     ReverseIngestion = "ReverseIngestion",
     SearchMetadata = "SearchMetadata",

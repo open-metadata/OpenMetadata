@@ -13,66 +13,6 @@
 
 @import '../../../styles/variables.less';
 
-.roles-container {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 1rem;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.user-layout {
-  > .ant-col {
-    padding-top: 0;
-  }
-
-  .user-profile-container {
-    .ant-collapse-item > .ant-collapse-header {
-      align-items: center;
-    }
-
-    .profile-image-container {
-      width: 54px;
-      height: 54px;
-      border-radius: 50%;
-      overflow: hidden;
-    }
-
-    .ant-card {
-      background: none;
-    }
-  }
-
-  .user-page-layout-right-panel {
-    padding-right: 0 !important;
-    background-color: @white;
-    border: 1px solid @border-color;
-    border-radius: 0;
-    padding-left: 0 !important;
-    border-top: 0;
-  }
-
-  .activity-feed-tab {
-    .center-container {
-      height: @users-page-tabs-height;
-    }
-
-    .right-container {
-      height: @users-page-tabs-height;
-    }
-  }
-
-  .summary-panel-container {
-    padding: 20px;
-    border-radius: 12px;
-    background-color: @white;
-  }
-
-  .explore-search-card {
-    margin: 0 12px;
-  }
-}
-
 .user-layout-scroll {
   height: @profile-entity-details-tab-height;
   overflow-y: scroll;
@@ -147,25 +87,6 @@
   margin: 8px 0px;
   width: 100%;
   gap: 10px;
-}
-
-.profile-section-card-title {
-  font-weight: 600;
-  font-size: 16px;
-  line-height: 24px;
-  color: #414654;
-}
-
-.profile-section-card-list {
-  font-weight: 400;
-  font-size: 14px;
-  line-height: 20px;
-  color: @text-color;
-  text-decoration: none;
-
-  &:hover {
-    color: @primary-heading-color;
-  }
 }
 
 .users-tabs-container {

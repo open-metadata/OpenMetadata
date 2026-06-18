@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 import { FC } from 'react';
+import KnowledgePages from '../components/KnowledgeCenter/KnowledgePages/KnowledgePages';
 
 class EntityRightPanelClassBase {
   public getKnowLedgeArticlesWidget(): FC<{
     entityId: string;
     entityType: string;
   }> | null {
-    return null;
+    return KnowledgePages;
   }
 }
 

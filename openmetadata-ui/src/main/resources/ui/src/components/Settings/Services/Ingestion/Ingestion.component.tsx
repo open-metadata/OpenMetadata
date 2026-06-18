@@ -32,9 +32,10 @@ import {
   ServiceCategory,
 } from '../../../../enums/service.enum';
 import { useFqn } from '../../../../hooks/useFqn';
-import { getCountBadge } from '../../../../utils/CommonUtils';
-import { getTypeAndStatusMenuItems } from '../../../../utils/IngestionUtils';
+import { getCountBadge } from '../../../../utils/EntityDisplayUtils';
+import { getTypeAndStatusMenuItems } from '../../../../utils/IngestionConfigUtils';
 import { getServiceDetailsPath } from '../../../../utils/RouterUtils';
+import { getDefaultAgentsTabWidgets } from '../../../../utils/ServiceInsightsWidgets';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import ErrorPlaceHolderIngestion from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
@@ -90,7 +91,10 @@ const Ingestion: React.FC<IngestionProps> = ({
     useState<Array<{ key: string; label: string }>>(typeMenuItems);
 
   const { CollateAIAgentsWidget, MetadataAgentsWidget } = useMemo(
-    () => serviceUtilClassBase.getAgentsTabWidgets(),
+    () => ({
+      ...getDefaultAgentsTabWidgets(),
+      ...serviceUtilClassBase.getAgentsTabWidgets(),
+    }),
     [serviceCategory]
   );
   const isCollateAIWidgetSupported = useMemo(

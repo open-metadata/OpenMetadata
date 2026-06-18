@@ -2,6 +2,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -16,6 +17,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.StorageServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
@@ -39,6 +41,7 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.ContainerRepository;
 
 /**
  * Integration tests for Container entity operations.
@@ -1365,14 +1368,15 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   }
 
   /**
-   * Forces the {@code batchDeleteChildren} / {@code processDeletionBatch} path:
-   * {@code deleteChildren} only takes the batch path when {@code hardDelete=true} AND
-   * {@code children.size() > 100}. Previously that path pre-deleted relationships in
-   * two batched queries before iterating {@code cleanup()} per child, and swallowed any
-   * per-child exception in the loop — so a single failed cleanup left an entity row
-   * alive with all its relationship rows already wiped (orphan with multi-segment FQN).
-   * The fix routes everything through {@code cleanup()} per entity and lets exceptions
-   * propagate. 101 is one above the 100-child threshold that gates the batch path.
+   * Exercises the {@code bulkHardDeleteSubtree} path that replaced the legacy
+   * {@code batchDeleteChildren} / {@code processDeletionBatch} flow. The legacy path opened
+   * an independent JDBI transaction per child via {@code cleanup()} and could leave an
+   * entity row alive with its relationship rows wiped (orphan with multi-segment FQN) when
+   * a per-child cleanup failed mid-loop. The replacement runs the entire subtree in a
+   * single {@code @Transaction} that rolls back atomically on any failure. 101 is one above
+   * the size that the legacy implementation gated its batch path on — keeping the test
+   * value pins the regression scenario in place even though the gating threshold no longer
+   * exists in the code.
    */
   @Test
   void test_recursiveHardDelete_largeBatch_leavesNoOrphans(TestNamespace ns) {
@@ -2828,6 +2832,344 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     assertTrue(
         piiColumn.getTags().stream()
             .anyMatch(t -> t.getTagFQN().equals(shared.PII_SENSITIVE_TAG_LABEL.getTagFQN())));
+  }
+
+  // ===================================================================
+  // PATCH PARENT UPDATE (issue #24294)
+  // ===================================================================
+
+  private Container createUnderService(TestNamespace ns, StorageService service, String name) {
+    CreateContainer request = new CreateContainer();
+    request.setName(ns.prefix(name));
+    request.setService(service.getFullyQualifiedName());
+    return createEntity(request);
+  }
+
+  private Container createUnderParent(
+      TestNamespace ns, StorageService service, Container parent, String name) {
+    CreateContainer request = new CreateContainer();
+    request.setName(ns.prefix(name));
+    request.setService(service.getFullyQualifiedName());
+    request.setParent(
+        new EntityReference()
+            .withId(parent.getId())
+            .withType("container")
+            .withFullyQualifiedName(parent.getFullyQualifiedName()));
+    return createEntity(request);
+  }
+
+  private static EntityReference parentRefOf(Container parent) {
+    return new EntityReference()
+        .withId(parent.getId())
+        .withType("container")
+        .withFullyQualifiedName(parent.getFullyQualifiedName());
+  }
+
+  @Test
+  void patch_containerParent_movesContainer_200(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    Container parentA = createUnderService(ns, service, "moveA");
+    Container parentB = createUnderService(ns, service, "moveB");
+    Container child = createUnderParent(ns, service, parentA, "moveChild");
+
+    assertEquals(parentA.getId(), child.getParent().getId());
+    String oldFqn = child.getFullyQualifiedName();
+
+    child.setParent(parentRefOf(parentB));
+    Container moved = patchEntity(child.getId().toString(), child);
+
+    assertNotNull(moved.getParent());
+    assertEquals(parentB.getId(), moved.getParent().getId());
+    assertTrue(
+        moved.getFullyQualifiedName().startsWith(parentB.getFullyQualifiedName() + "."),
+        "child FQN should now nest under new parent " + parentB.getFullyQualifiedName());
+    assertNotEquals(oldFqn, moved.getFullyQualifiedName());
+
+    Container refetched = getEntityWithFields(moved.getId().toString(), "parent");
+    assertEquals(parentB.getId(), refetched.getParent().getId());
+  }
+
+  @Test
+  void patch_containerParent_preservesMetadata_200(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    Container parentA = createUnderService(ns, service, "metaA");
+    Container parentB = createUnderService(ns, service, "metaB");
+
+    CreateContainer childRequest = new CreateContainer();
+    childRequest.setName(ns.prefix("metaChild"));
+    childRequest.setService(service.getFullyQualifiedName());
+    childRequest.setParent(parentRefOf(parentA));
+    childRequest.setDescription("Keep me through the move");
+    childRequest.setTags(new ArrayList<>(List.of(shared.PII_SENSITIVE_TAG_LABEL)));
+    Container child = createEntity(childRequest);
+
+    Container loaded =
+        SdkClients.adminClient()
+            .containers()
+            .get(child.getId().toString(), "tags,description,parent");
+
+    loaded.setParent(parentRefOf(parentB));
+    Container moved = patchEntity(loaded.getId().toString(), loaded);
+
+    Container refetched =
+        SdkClients.adminClient()
+            .containers()
+            .get(moved.getId().toString(), "tags,description,parent");
+    assertEquals(parentB.getId(), refetched.getParent().getId());
+    assertEquals("Keep me through the move", refetched.getDescription());
+    assertNotNull(refetched.getTags());
+    assertTrue(
+        refetched.getTags().stream()
+            .anyMatch(t -> t.getTagFQN().equals(shared.PII_SENSITIVE_TAG_LABEL.getTagFQN())),
+        "PII tag must survive parent reassignment");
+  }
+
+  @Test
+  void patch_containerParent_cascadesFqnToChildren_200(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    Container parentA = createUnderService(ns, service, "cascA");
+    Container parentB = createUnderService(ns, service, "cascB");
+    Container child = createUnderParent(ns, service, parentA, "cascChild");
+    Container grandchild = createUnderParent(ns, service, child, "cascGrandchild");
+
+    String oldGrandFqn = grandchild.getFullyQualifiedName();
+    assertTrue(oldGrandFqn.startsWith(parentA.getFullyQualifiedName() + "."));
+
+    child.setParent(parentRefOf(parentB));
+    Container moved = patchEntity(child.getId().toString(), child);
+
+    Container refetchedGrand = getEntity(grandchild.getId().toString());
+    assertNotNull(refetchedGrand);
+    assertTrue(
+        refetchedGrand.getFullyQualifiedName().startsWith(moved.getFullyQualifiedName() + "."),
+        "grandchild FQN should cascade under moved child: "
+            + refetchedGrand.getFullyQualifiedName());
+    assertNotEquals(oldGrandFqn, refetchedGrand.getFullyQualifiedName());
+  }
+
+  @Test
+  void patch_containerParent_cascadesToColumnFqns_200(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    Container parentA = createUnderService(ns, service, "colA");
+    Container parentB = createUnderService(ns, service, "colB");
+
+    List<Column> columns =
+        Arrays.asList(
+            new Column().withName("colOne").withDataType(ColumnDataType.INT),
+            new Column().withName("colTwo").withDataType(ColumnDataType.STRING));
+    ContainerDataModel dataModel =
+        new ContainerDataModel().withIsPartitioned(false).withColumns(columns);
+
+    CreateContainer childRequest = new CreateContainer();
+    childRequest.setName(ns.prefix("colChild"));
+    childRequest.setService(service.getFullyQualifiedName());
+    childRequest.setParent(parentRefOf(parentA));
+    childRequest.setDataModel(dataModel);
+    Container child = createEntity(childRequest);
+
+    Container loaded =
+        SdkClients.adminClient().containers().get(child.getId().toString(), "dataModel,parent");
+    loaded.setParent(parentRefOf(parentB));
+    Container moved = patchEntity(loaded.getId().toString(), loaded);
+
+    Container refetched =
+        SdkClients.adminClient().containers().get(moved.getId().toString(), "dataModel,parent");
+    assertNotNull(refetched.getDataModel());
+    assertEquals(2, refetched.getDataModel().getColumns().size());
+    String expectedColumnPrefix = refetched.getFullyQualifiedName() + ".";
+    for (Column c : refetched.getDataModel().getColumns()) {
+      assertNotNull(c.getFullyQualifiedName(), "column must have an FQN");
+      assertTrue(
+          c.getFullyQualifiedName().startsWith(expectedColumnPrefix),
+          "column FQN should cascade under new container FQN: " + c.getFullyQualifiedName());
+    }
+  }
+
+  @Test
+  void patch_containerParent_toNull_promotesToTopLevel_200(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    Container parentA = createUnderService(ns, service, "promA");
+    Container child = createUnderParent(ns, service, parentA, "promChild");
+    assertNotNull(child.getParent());
+
+    // Pre-fetch with `parent` so the SDK's JSON-diff sees the original parent and emits a
+    // proper "remove /parent" operation. Without this, the SDK's NON_NULL serialization
+    // omits the cleared `parent` from the patch document and the change is lost.
+    Container loaded =
+        SdkClients.adminClient().containers().get(child.getId().toString(), "parent");
+    loaded.setParent(null);
+    Container moved = patchEntity(loaded.getId().toString(), loaded);
+
+    assertNull(moved.getParent(), "parent should be cleared");
+    assertTrue(
+        moved.getFullyQualifiedName().startsWith(service.getFullyQualifiedName() + "."),
+        "FQN should now sit directly under the service: " + moved.getFullyQualifiedName());
+    assertFalse(
+        moved.getFullyQualifiedName().contains(parentA.getName()),
+        "FQN should no longer reference the old parent");
+  }
+
+  @Test
+  void patch_containerParent_fromNull_assignsParent_200(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    Container top = createUnderService(ns, service, "topLvl");
+    Container target = createUnderService(ns, service, "newParent");
+    assertNull(top.getParent());
+
+    top.setParent(parentRefOf(target));
+    Container moved = patchEntity(top.getId().toString(), top);
+
+    assertNotNull(moved.getParent());
+    assertEquals(target.getId(), moved.getParent().getId());
+    assertTrue(
+        moved.getFullyQualifiedName().startsWith(target.getFullyQualifiedName() + "."),
+        "FQN should now nest under the new parent");
+  }
+
+  @Test
+  void patch_containerParent_rejectsCycle_400(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    Container root = createUnderService(ns, service, "cycRoot");
+    Container child = createUnderParent(ns, service, root, "cycChild");
+
+    // Try to make root.parent = child (cycle: root → child → root)
+    root.setParent(parentRefOf(child));
+    assertThrows(
+        Exception.class,
+        () -> patchEntity(root.getId().toString(), root),
+        "moving a container under its own descendant must be rejected");
+
+    Container refetched = getEntity(root.getId().toString());
+    assertNull(refetched.getParent(), "rejected PATCH must not mutate root");
+  }
+
+  @Test
+  void patch_containerParent_rejectsSelfParent_400(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    Container c = createUnderService(ns, service, "selfRef");
+
+    c.setParent(parentRefOf(c));
+    assertThrows(
+        Exception.class,
+        () -> patchEntity(c.getId().toString(), c),
+        "self-parent must be rejected");
+  }
+
+  @Test
+  void patch_containerParent_rejectsCrossServiceParent_400(TestNamespace ns) {
+    StorageService serviceA = StorageServiceTestFactory.createS3(ns);
+    StorageService serviceB = StorageServiceTestFactory.createS3(ns);
+    Container child = createUnderService(ns, serviceA, "xsChild");
+    Container parentInB = createUnderService(ns, serviceB, "xsParent");
+
+    child.setParent(parentRefOf(parentInB));
+    assertThrows(
+        Exception.class,
+        () -> patchEntity(child.getId().toString(), child),
+        "reparenting across StorageServices must be rejected");
+  }
+
+  @Test
+  void patch_containerParent_rejectsNonExistentParent_404(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    Container c = createUnderService(ns, service, "noParent");
+
+    c.setParent(new EntityReference().withId(UUID.randomUUID()).withType("container"));
+    assertThrows(
+        Exception.class,
+        () -> patchEntity(c.getId().toString(), c),
+        "non-existent parent must be rejected");
+  }
+
+  @Test
+  @ResourceLock(value = ContainerRepository.MAX_REPARENT_DESCENDANTS_TEST_LOCK)
+  void patch_containerParent_rejectsOversizedSubtree_400(TestNamespace ns) {
+    // Force a tiny threshold for this test only via a package-private test override. The
+    // override is read on every PATCH so it takes effect immediately. We do NOT use
+    // System.setProperty because the property is JVM-global and concurrent tests doing other
+    // re-parents would observe the artificially low value. @ResourceLock above serializes any
+    // test that mutates this override.
+    ContainerRepository.setMaxReparentDescendantsForTest(2);
+    try {
+      StorageService service = StorageServiceTestFactory.createS3(ns);
+      Container parentA = createUnderService(ns, service, "bigA");
+      Container parentB = createUnderService(ns, service, "bigB");
+      Container child = createUnderParent(ns, service, parentA, "bigChild");
+      // 3 grandchildren — exceeds the threshold of 2 descendants.
+      createUnderParent(ns, service, child, "gc1");
+      createUnderParent(ns, service, child, "gc2");
+      createUnderParent(ns, service, child, "gc3");
+
+      child.setParent(parentRefOf(parentB));
+      Exception ex =
+          assertThrows(
+              Exception.class,
+              () -> patchEntity(child.getId().toString(), child),
+              "subtree of 3 descendants must exceed the configured limit of 2");
+      String message = ex.getMessage();
+      assertNotNull(message);
+      assertTrue(
+          message.contains("subtree has 3 descendant"),
+          "error message should report the actual descendant count: " + message);
+      assertTrue(
+          message.contains("maximum of 2"),
+          "error message should report the configured maximum: " + message);
+
+      // The rejection must not have partially mutated state: child still points at parentA.
+      Container refetched = getEntityWithFields(child.getId().toString(), "parent");
+      assertEquals(parentA.getId(), refetched.getParent().getId());
+    } finally {
+      ContainerRepository.clearMaxReparentDescendantsForTest();
+    }
+  }
+
+  @Test
+  @ResourceLock(value = ContainerRepository.MAX_REPARENT_DESCENDANTS_TEST_LOCK)
+  void patch_containerParent_allowsMoveAtConfiguredLimit_200(TestNamespace ns) {
+    // Exactly at the limit (descendantCount == max) must still be allowed — the guard uses
+    // strict `>` not `>=`. Same package-private test override mechanism as above.
+    ContainerRepository.setMaxReparentDescendantsForTest(2);
+    try {
+      StorageService service = StorageServiceTestFactory.createS3(ns);
+      Container parentA = createUnderService(ns, service, "limA");
+      Container parentB = createUnderService(ns, service, "limB");
+      Container child = createUnderParent(ns, service, parentA, "limChild");
+      createUnderParent(ns, service, child, "lgc1");
+      createUnderParent(ns, service, child, "lgc2");
+
+      child.setParent(parentRefOf(parentB));
+      Container moved = patchEntity(child.getId().toString(), child);
+      assertEquals(parentB.getId(), moved.getParent().getId());
+    } finally {
+      ContainerRepository.clearMaxReparentDescendantsForTest();
+    }
+  }
+
+  @Test
+  void patch_containerParent_emitsChangeDescription_200(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    Container parentA = createUnderService(ns, service, "cdA");
+    Container parentB = createUnderService(ns, service, "cdB");
+    Container child = createUnderParent(ns, service, parentA, "cdChild");
+    Double initialVersion = child.getVersion();
+
+    child.setParent(parentRefOf(parentB));
+    Container moved = patchEntity(child.getId().toString(), child);
+
+    assertNotNull(moved.getChangeDescription(), "change description should be populated");
+    assertTrue(
+        moved.getVersion() > initialVersion,
+        "version should bump after parent change: " + initialVersion + " -> " + moved.getVersion());
+    boolean parentInChangeDescription =
+        moved.getChangeDescription().getFieldsUpdated().stream()
+                .anyMatch(f -> "parent".equals(f.getName()))
+            || moved.getChangeDescription().getFieldsAdded().stream()
+                .anyMatch(f -> "parent".equals(f.getName()))
+            || moved.getChangeDescription().getFieldsDeleted().stream()
+                .anyMatch(f -> "parent".equals(f.getName()));
+    assertTrue(
+        parentInChangeDescription, "change description should record the parent field change");
   }
 
   // ===================================================================

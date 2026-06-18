@@ -11,19 +11,58 @@
  *  limitations under the License.
  */
 import '@testing-library/jest-dom';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import ExploreSearchCard from './ExploreSearchCard';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
+
+const mockPrefetchTable = jest.fn();
+const mockPrefetchDashboard = jest.fn();
+const mockPrefetchPipeline = jest.fn();
+const mockPrefetchTopic = jest.fn();
+
+jest.mock('../../../rest/queries/tableQuery', () => ({
+  prefetchTable: (...args: unknown[]) => mockPrefetchTable(...args),
+}));
+
+jest.mock('../../../rest/queries/dashboardQuery', () => ({
+  prefetchDashboard: (...args: unknown[]) => mockPrefetchDashboard(...args),
+}));
+
+jest.mock('../../../rest/queries/pipelineQuery', () => ({
+  prefetchPipeline: (...args: unknown[]) => mockPrefetchPipeline(...args),
+}));
+
+jest.mock('../../../rest/queries/topicQuery', () => ({
+  prefetchTopic: (...args: unknown[]) => mockPrefetchTopic(...args),
+}));
 
 jest.mock('../../../utils/RouterUtils', () => ({
   getDomainPath: jest.fn().mockReturnValue('/mock-domain'),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Mock Entity'),
+}));
+jest.mock('../../../utils/EntitySearchUtils', () => ({
   highlightSearchText: jest.fn().mockReturnValue(''),
+  highlightEntityNameAndDescription: jest.fn((source, highlight) => {
+    if (!highlight) {
+      return source;
+    }
+
+    return {
+      ...source,
+      displayName:
+        highlight?.displayName?.join(' ') ||
+        highlight?.name?.join(' ') ||
+        source.displayName ||
+        source.name,
+      description: highlight?.description?.[0] || source.description,
+    };
+  }),
 }));
 
 jest.mock('../../../utils/SearchClassBase', () => ({
@@ -64,7 +103,7 @@ const defaultProps: Omit<ExploreSearchCardProps, 'source'> = {
 const renderCard = (
   sourceOverrides: Partial<ExploreSearchCardProps['source']>
 ) =>
-  render(
+  renderWithQueryClient(
     <MemoryRouter>
       <ExploreSearchCard
         {...defaultProps}
@@ -106,5 +145,333 @@ describe('ExploreSearchCard - Domain section', () => {
     renderCard({ domains: [] });
 
     expect(screen.queryByText('Domain')).not.toBeInTheDocument();
+  });
+});
+
+describe('ExploreSearchCard - Highlight functionality', () => {
+  const { highlightEntityNameAndDescription } = jest.requireMock(
+    '../../../utils/EntitySearchUtils'
+  );
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('uses base source when highlight is not provided', () => {
+    renderWithQueryClient(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          source={{
+            ...baseSource,
+            name: 'test-table',
+            description: 'Base description',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(highlightEntityNameAndDescription).not.toHaveBeenCalled();
+  });
+
+  it('applies highlight to displayName when highlight.displayName is provided', () => {
+    const highlightData = {
+      displayName: ['<span class="highlight">Test</span> Table'],
+    };
+
+    renderWithQueryClient(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          highlight={highlightData}
+          source={{
+            ...baseSource,
+            name: 'test-table',
+            displayName: 'Test Table',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(highlightEntityNameAndDescription).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'test-table',
+        displayName: 'Test Table',
+      }),
+      highlightData
+    );
+  });
+
+  it('applies highlight to name when highlight.name is provided and displayName is absent', () => {
+    const highlightData = {
+      name: ['<span class="highlight">test</span>-table'],
+    };
+
+    renderWithQueryClient(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          highlight={highlightData}
+          source={{
+            ...baseSource,
+            name: 'test-table',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(highlightEntityNameAndDescription).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'test-table',
+      }),
+      highlightData
+    );
+  });
+
+  it('applies highlight to description when highlight.description is provided', () => {
+    const highlightData = {
+      description: [
+        'This is a <span class="highlight">test</span> description',
+      ],
+    };
+
+    renderWithQueryClient(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          highlight={highlightData}
+          source={{
+            ...baseSource,
+            description: 'This is a test description',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(highlightEntityNameAndDescription).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: 'This is a test description',
+      }),
+      highlightData
+    );
+  });
+
+  it('prioritizes displayName over name in highlight', () => {
+    const highlightData = {
+      displayName: ['<span class="highlight">Display</span> Name'],
+      name: ['<span class="highlight">name</span>'],
+    };
+
+    renderWithQueryClient(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          highlight={highlightData}
+          source={{
+            ...baseSource,
+            name: 'name',
+            displayName: 'Display Name',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(highlightEntityNameAndDescription).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'name',
+        displayName: 'Display Name',
+      }),
+      highlightData
+    );
+  });
+
+  it('applies all highlights when name, displayName, and description are all present', () => {
+    const highlightData = {
+      displayName: ['<span class="highlight">Highlighted</span> Display'],
+      name: ['<span class="highlight">highlighted</span>-name'],
+      description: [
+        '<span class="highlight">Highlighted</span> description text',
+      ],
+    };
+
+    renderWithQueryClient(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          highlight={highlightData}
+          source={{
+            ...baseSource,
+            name: 'highlighted-name',
+            displayName: 'Highlighted Display',
+            description: 'Highlighted description text',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(highlightEntityNameAndDescription).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'highlighted-name',
+        displayName: 'Highlighted Display',
+        description: 'Highlighted description text',
+      }),
+      highlightData
+    );
+  });
+
+  it('handles empty highlight object', () => {
+    const highlightData = {};
+
+    renderWithQueryClient(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          highlight={highlightData}
+          source={{
+            ...baseSource,
+            name: 'test-table',
+            description: 'Test description',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(highlightEntityNameAndDescription).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'test-table',
+        description: 'Test description',
+      }),
+      highlightData
+    );
+  });
+
+  it('memoizes source correctly when highlight changes', () => {
+    const { rerender } = renderWithQueryClient(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          highlight={{
+            name: ['<span class="highlight">first</span>'],
+          }}
+          source={{
+            ...baseSource,
+            name: 'first',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(highlightEntityNameAndDescription).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          highlight={{
+            name: ['<span class="highlight">second</span>'],
+          }}
+          source={{
+            ...baseSource,
+            name: 'second',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(highlightEntityNameAndDescription).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('ExploreSearchCard - Prefetch on hover', () => {
+  beforeEach(() => {
+    mockPrefetchTable.mockClear();
+    mockPrefetchDashboard.mockClear();
+    mockPrefetchPipeline.mockClear();
+    mockPrefetchTopic.mockClear();
+  });
+
+  it.each<{ entityType: string; mockFn: jest.Mock; fqn: string }>([
+    {
+      entityType: 'table',
+      mockFn: mockPrefetchTable,
+      fqn: 'svc.db.schema.users',
+    },
+    {
+      entityType: 'dashboard',
+      mockFn: mockPrefetchDashboard,
+      fqn: 'svc.dash.daily-active',
+    },
+    {
+      entityType: 'pipeline',
+      mockFn: mockPrefetchPipeline,
+      fqn: 'svc.pipe.etl',
+    },
+    {
+      entityType: 'topic',
+      mockFn: mockPrefetchTopic,
+      fqn: 'svc.topic.events',
+    },
+  ])(
+    'prefetches details when hovering a $entityType card',
+    ({ entityType, mockFn, fqn }) => {
+      renderWithQueryClient(
+        <MemoryRouter>
+          <ExploreSearchCard
+            {...defaultProps}
+            source={{
+              ...baseSource,
+              entityType,
+              fullyQualifiedName: fqn,
+            }}
+          />
+        </MemoryRouter>
+      );
+
+      fireEvent.mouseEnter(screen.getByTestId('entity-link'));
+
+      expect(mockFn).toHaveBeenCalledTimes(1);
+      expect(mockFn).toHaveBeenCalledWith(expect.anything(), fqn);
+    }
+  );
+
+  it('also prefetches on keyboard focus for accessibility', () => {
+    renderWithQueryClient(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          source={{
+            ...baseSource,
+            entityType: 'table',
+            fullyQualifiedName: 'svc.db.schema.users',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    fireEvent.focus(screen.getByTestId('entity-link'));
+
+    expect(mockPrefetchTable).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not prefetch when entityType has no useQuery integration yet', () => {
+    renderWithQueryClient(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          source={{
+            ...baseSource,
+            entityType: 'mlmodel',
+            fullyQualifiedName: 'svc.ml.churn-v1',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    fireEvent.mouseEnter(screen.getByTestId('entity-link'));
+
+    expect(mockPrefetchTable).not.toHaveBeenCalled();
+    expect(mockPrefetchDashboard).not.toHaveBeenCalled();
+    expect(mockPrefetchPipeline).not.toHaveBeenCalled();
+    expect(mockPrefetchTopic).not.toHaveBeenCalled();
   });
 });

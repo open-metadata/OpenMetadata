@@ -32,19 +32,15 @@ import { IngestionPipeline } from '../../../../generated/entity/services/ingesti
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
 import { IngestionWorkflowData } from '../../../../interface/service.interface';
+import { getScheduleOptionsFromSchedules } from '../../../../utils/CronExpressionUtils';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
-import {
-  getDefaultFilterPropertyValues,
-  getSuccessMessage,
-} from '../../../../utils/IngestionUtils';
+import { getDefaultFilterPropertyValues } from '../../../../utils/IngestionConfigUtils';
+import { getSuccessMessage } from '../../../../utils/IngestionUtils';
 import { cleanWorkFlowData } from '../../../../utils/IngestionWorkflowUtils';
-import {
-  getRaiseOnErrorFormField,
-  getScheduleOptionsFromSchedules,
-} from '../../../../utils/SchedularUtils';
-import { getIngestionName } from '../../../../utils/ServiceUtils';
-import { generateUUID } from '../../../../utils/StringsUtils';
+import { getRaiseOnErrorFormField } from '../../../../utils/SchedularUtils';
+import { getIngestionName } from '../../../../utils/ServicePureUtils';
+import { generateUUID } from '../../../../utils/StringUtils';
 import SuccessScreen from '../../../common/SuccessScreen/SuccessScreen';
 import DeployIngestionLoaderModal from '../../../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
 import IngestionStepper from '../Ingestion/IngestionStepper/IngestionStepper.component';

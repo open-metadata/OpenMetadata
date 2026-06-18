@@ -63,8 +63,12 @@ jest.mock(
   }
 );
 
-jest.mock('../../rest/userAPI', () => ({
+jest.mock('../../rest/botsAPI', () => ({
   getBotByName: jest.fn().mockImplementation(() => Promise.resolve(botData)),
+  updateBotDetail: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
+
+jest.mock('../../rest/userAPI', () => ({
   getUserByName: jest.fn().mockImplementation(() => Promise.resolve()),
   revokeUserToken: jest.fn().mockImplementation(() => Promise.resolve()),
   updateUserDetail: jest.fn().mockImplementation(() => Promise.resolve()),

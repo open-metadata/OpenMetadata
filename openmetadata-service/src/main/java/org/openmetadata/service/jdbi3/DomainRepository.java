@@ -14,6 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
@@ -60,6 +61,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.IntakeFormValidator;
 import org.openmetadata.service.util.LineageUtil;
 
 @Slf4j
@@ -145,6 +147,7 @@ public class DomainRepository extends EntityRepository<Domain> {
   @Override
   public void prepare(Domain entity, boolean update) {
     // Parent, Experts, Owner are already validated
+    IntakeFormValidator.validate(entity, Entity.DOMAIN);
   }
 
   @Override
@@ -284,6 +287,12 @@ public class DomainRepository extends EntityRepository<Domain> {
         new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(dryRun);
     List<BulkResponse> success = new ArrayList<>();
 
+    if (nullOrEmpty(request.getAssets())) {
+      // Nothing to Validate — schema marks assets optional, so a request without it is valid
+      return result.withSuccessRequest(
+          List.of(new BulkResponse().withMessage("Nothing to Validate.")));
+    }
+
     EntityUtil.populateEntityReferences(request.getAssets());
 
     for (EntityReference ref : request.getAssets()) {
@@ -336,19 +345,34 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   private BulkResponse buildDryRunImpactResponse(
       UUID targetDomainId, EntityReference ref, Relationship relationship, boolean isAdd) {
-    EntityReference currentDomain =
-        getFromEntityRef(ref.getId(), ref.getType(), relationship, DOMAIN, false);
-    List<EntityReference> affectedDataProducts =
-        getAffectedDataProductsForDryRun(targetDomainId, ref, relationship, isAdd);
-    boolean isMove =
-        isAdd && currentDomain != null && !currentDomain.getId().equals(targetDomainId);
-    boolean hasSideEffects = isMove || !affectedDataProducts.isEmpty();
-    String message =
-        buildDryRunImpactMessage(ref, currentDomain, targetDomainId, affectedDataProducts, isAdd);
-    return new BulkResponse()
-        .withRequest(ref)
-        .withMessage(message)
-        .withHasSideEffects(hasSideEffects);
+    BulkResponse response;
+    try {
+      EntityReference currentDomain =
+          getFromEntityRef(ref.getId(), ref.getType(), relationship, DOMAIN, false);
+      List<EntityReference> affectedDataProducts =
+          getAffectedDataProductsForDryRun(targetDomainId, ref, relationship, isAdd);
+      boolean isMove =
+          isAdd && currentDomain != null && !currentDomain.getId().equals(targetDomainId);
+      boolean hasSideEffects = isMove || !affectedDataProducts.isEmpty();
+      String message =
+          buildDryRunImpactMessage(ref, currentDomain, targetDomainId, affectedDataProducts, isAdd);
+      response =
+          new BulkResponse()
+              .withRequest(ref)
+              .withMessage(message)
+              .withHasSideEffects(hasSideEffects);
+    } catch (Exception e) {
+      // Dry-run is a best-effort preview — a single asset whose impact can't be
+      // computed (e.g. a dangling relationship) must not abort the whole batch.
+      // Surface the failure on that asset's response and keep going.
+      LOG.warn("Failed to compute dry-run impact for asset {}", ref.getId(), e);
+      response =
+          new BulkResponse()
+              .withRequest(ref)
+              .withMessage("Impact could not be computed: " + e.getMessage())
+              .withHasSideEffects(false);
+    }
+    return response;
   }
 
   private List<EntityReference> getAffectedDataProductsForDryRun(
@@ -536,6 +560,11 @@ public class DomainRepository extends EntityRepository<Domain> {
       super(original, updated, operation);
     }
 
+    @Override
+    protected void resetForRetryAttempt() {
+      renameProcessed = false;
+    }
+
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
@@ -574,8 +603,14 @@ public class DomainRepository extends EntityRepository<Domain> {
       // Drop cache entries for every descendant before we rewrite the DB: child domains and any
       // data product under this domain. Must happen BEFORE updateFqn so the descendant lookup
       // matches the old FQN prefix. The publish() fan-out handles peer instances.
-      invalidateCacheForRenameCascade(Entity.DOMAIN, oldFqn);
-      invalidateCacheForRenameCascade(Entity.DATA_PRODUCT, oldFqn);
+      // Capture the descendants so the post-write pass can re-evict any entry a racing reader
+      // re-populated with the pre-rename row between this call and the DAO updateFqn below.
+      // The pass below runs after updateFqn but inside this transaction — see
+      // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit window.
+      List<EntityDAO.EntityIdFqnPair> renamedDomains =
+          invalidateCacheForRenameCascade(Entity.DOMAIN, oldFqn);
+      List<EntityDAO.EntityIdFqnPair> renamedDataProducts =
+          invalidateCacheForRenameCascade(Entity.DATA_PRODUCT, oldFqn);
 
       // Update all child domains' FQNs and FQN hashes
       daoCollection.domainDAO().updateFqn(oldFqn, newFqn);
@@ -596,6 +631,9 @@ public class DomainRepository extends EntityRepository<Domain> {
       for (Domain child : getNestedDomains(updated)) {
         invalidateDomainReferencers(child.getId());
       }
+
+      finishInvalidateCacheForRenameCascade(Entity.DOMAIN, renamedDomains);
+      finishInvalidateCacheForRenameCascade(Entity.DATA_PRODUCT, renamedDataProducts);
     }
 
     private void invalidateDomainReferencers(UUID domainId) {

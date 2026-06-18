@@ -66,7 +66,7 @@ const CoreRadioWidget = ({
       <RadioGroup
         className={
           isHorizontal
-            ? 'tw:flex tw:flex-row tw:flex-wrap tw:gap-3'
+            ? 'tw:flex tw:flex-row tw:flex-wrap tw:gap-3 tw:bg-white'
             : 'tw:flex tw:flex-col tw:gap-3'
         }
         isDisabled={disabled || readonly}

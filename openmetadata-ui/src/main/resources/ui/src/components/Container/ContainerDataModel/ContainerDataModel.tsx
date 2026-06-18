@@ -21,7 +21,7 @@ import {
   uniqBy,
 } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   HIGHLIGHTED_ROW_SELECTOR,
@@ -45,28 +45,35 @@ import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import {
   updateContainerColumnDescription,
   updateContainerColumnTags,
-} from '../../../utils/ContainerDetailUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+} from '../../../utils/ContainerDetailPureUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
+import {
+  getHighlightedRowClassName,
+  pruneEmptyChildren,
+} from '../../../utils/TablePureUtils';
 import {
   getAllTags,
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
-import {
-  getHighlightedRowClassName,
-  getTableExpandableConfig,
-  pruneEmptyChildren,
-} from '../../../utils/TableUtils';
+import { getTableExpandableConfig } from '../../../utils/TableUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../common/Table/Table';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
-import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { ContainerDataModelProps } from './ContainerDataModel.interface';
+const ModalWithMarkdownEditor = withSuspenseFallback(
+  lazy(() =>
+    import('../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor').then(
+      (m) => ({ default: m.ModalWithMarkdownEditor })
+    )
+  )
+);
 
 const ContainerDataModel: FC<ContainerDataModelProps> = ({
   dataModel,

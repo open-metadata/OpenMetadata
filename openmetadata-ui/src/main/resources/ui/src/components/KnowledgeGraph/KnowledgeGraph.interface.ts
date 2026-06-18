@@ -61,6 +61,17 @@ export type GraphInteractionCtx = {
   pendingHighlightRef: React.MutableRefObject<string | null>;
   selectedNodeIdRef: React.MutableRefObject<string | null>;
   setSelectedNode: (node: GraphNode | null) => void;
+  setEdgeTooltip: (state: EdgeTooltipState | null) => void;
+  canvasRef: React.RefObject<HTMLDivElement | null>;
 };
+
+export interface EdgeTooltipState {
+  x: number;
+  y: number;
+  labels: string[];
+  sourceLabel: string;
+  targetLabel: string;
+  edgeId: string;
+}
 
 export type KnowledgeGraphLayout = 'dagre' | 'radial';

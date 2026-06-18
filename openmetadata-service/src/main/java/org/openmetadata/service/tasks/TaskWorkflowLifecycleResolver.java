@@ -271,7 +271,6 @@ public final class TaskWorkflowLifecycleResolver {
         "DomainUpdateTaskWorkflow",
         "GlossaryApprovalTaskWorkflow",
         "RequestApprovalTaskWorkflow",
-        "DataAccessRequestTaskWorkflow",
         "SuggestionTaskWorkflow",
         "TestCaseResolutionTaskWorkflow",
         "IncidentResolutionTaskWorkflow",
@@ -412,6 +411,7 @@ public final class TaskWorkflowLifecycleResolver {
       case Rejected, AutoRejected -> "reject";
       case Completed -> "complete";
       case Cancelled -> "cancel";
+      case Revoked -> "revoke";
       case TimedOut -> "timeout";
     };
   }

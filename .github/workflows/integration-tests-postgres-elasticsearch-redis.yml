@@ -1,0 +1,178 @@
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Runs the full integration test suite with the Redis cache enabled (postgres + elasticsearch +
+# redis), via the cache-tests Maven profile. Catches cache-invalidation and stale-data bugs that
+# only surface when every test path goes through the cache layer.
+#
+# Security note (CodeQL "pull_request_target + checkout untrusted code"):
+# This workflow uses `pull_request_target` so PRs from forks can produce a required check.
+# CodeQL flags the pattern as risky because it checks out PR-controlled code while having
+# access to secrets. The mitigation is the explicit `safe to test` label gate below — the
+# verify-pr-label step rejects the workflow run before any PR code is checked out unless a
+# maintainer has applied the label. This matches the mitigation used by every other
+# integration-tests-*.yml workflow in this repo. If you remove the label gate, you reopen
+# the vulnerability.
+name: Integration Tests - PostgreSQL + Elasticsearch + Redis
+
+on:
+  merge_group:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "openmetadata-service/**"
+      - "openmetadata-integration-tests/**"
+      - "openmetadata-spec/src/main/resources/json/schema/**"
+      - "openmetadata-sdk/**"
+      - "common/**"
+      - "pom.xml"
+      - "bootstrap/**"
+  # `pull_request_target` is intentional and required so the workflow runs against PRs from
+  # forks (which `pull_request` cannot for security reasons). The `safe to test` label gate
+  # below is what makes this safe — see security note in the file header.
+  pull_request_target:
+    types: [labeled, opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  checks: write
+
+concurrency:
+  group: integration-tests-pg-es-redis-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
+jobs:
+  # Detect whether relevant paths changed. When no matching files are modified
+  # the downstream job is skipped via its `if` condition.
+  # A job skipped by `if` reports as "Success", so required checks still pass.
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    outputs:
+      backend: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.backend }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        with:
+          filters: |
+            backend:
+              - 'openmetadata-service/**'
+              - 'openmetadata-integration-tests/**'
+              - 'openmetadata-spec/src/main/resources/json/schema/**'
+              - 'openmetadata-sdk/**'
+              - 'common/**'
+              - 'pom.xml'
+              - 'bootstrap/**'
+
+  integration-tests-postgres-elasticsearch-redis:
+    needs: changes
+    runs-on: ubuntu-latest
+    if: ${{ needs.changes.outputs.backend == 'true' }}
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: true
+
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@v1.7.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 90
+
+      - name: Verify PR labels
+        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+          valid-labels: 'safe to test'
+          pull-request-number: '${{ github.event.pull_request.number }}'
+          disable-reviews: true  # To not auto approve changes
+
+      # SECURITY: this step checks out PR-controlled code while the workflow runs with
+      # `pull_request_target` privileges (secrets access). The `Verify PR labels` step above
+      # gates this — the workflow halts before we get here unless a maintainer has applied
+      # the `safe to test` label. CodeQL flags the pattern; the label gate is the accepted
+      # mitigation, mirroring how every other integration-tests-*.yml workflow in this repo
+      # handles fork PRs.
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+
+      - name: Cache Maven dependencies
+        id: cache-output
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      # Run unconditionally. The previous `if: steps.cache-output.outputs.exit-code == 0` was a
+      # bug — `actions/cache@v4` exposes `cache-hit` (boolean) and `cache-primary-key`, never
+      # `exit-code`. The expression always evaluated to false and the steps never ran. Maven
+      # then ran against whatever JDK the runner happened to ship with, masking the issue.
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Install Ubuntu dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+          librdkafka-dev unixodbc-dev libevent-dev jq
+          sudo make install_antlr_cli
+
+      - name: Build for Integration Tests (PostgreSQL + Elasticsearch + Redis)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn -DskipTests clean install -pl :openmetadata-integration-tests -am
+
+      - name: Free build artifacts
+        run: |
+          rm -rf openmetadata-service/target/lib openmetadata-service/target/classes
+          rm -rf openmetadata-spec/target openmetadata-sdk/target common/target
+          rm -rf openmetadata-shaded-deps/*/target
+          df -h /
+
+      - name: Run Integration Tests (PostgreSQL + Elasticsearch + Redis)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn verify -pl :openmetadata-integration-tests -Pcache-tests
+
+      - name: Clean Up
+        run: |
+          cd ./docker/development
+          docker compose down --remove-orphans
+          sudo rm -rf ${PWD}/docker-volume
+
+      - name: Publish Test Report
+        if: ${{ always() }}
+        uses: scacap/action-surefire-report@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_test_failures: true
+          report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'

@@ -57,10 +57,11 @@ class BaseTableColumnCountToBeBetweenValidator(BaseTestValidator):
         min_bound = self.get_min_bound("minColValue")
         max_bound = self.get_max_bound("maxColValue")
 
+        column_word = "column" if count == 1 else "columns"
         return self.get_test_case_result_object(
             self.execution_date,
-            self.get_test_case_status(min_bound <= count <= max_bound),
-            f"Found columnCount={count} column vs. the expected  min={min_bound} and max={max_bound}].",
+            self.get_test_case_status(min_bound <= count <= max_bound),  # type: ignore
+            f"Found columnCount={count} {column_word} vs. the expected min={min_bound} and max={max_bound}",
             [TestResultValue(name=COLUMN_COUNT, value=str(count))],
         )
 

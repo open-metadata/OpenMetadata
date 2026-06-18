@@ -62,6 +62,7 @@ import { patchDataProduct } from '../rest/dataProductAPI';
 import { patchDomains } from '../rest/domainAPI';
 import { patchDriveAssetDetails } from '../rest/driveAPI';
 import { patchGlossaries, patchGlossaryTerm } from '../rest/glossaryAPI';
+import { patchKnowledgePage } from '../rest/knowledgeCenterAPI';
 import { patchKPI } from '../rest/KpiAPI';
 import { patchMetric } from '../rest/metricsAPI';
 import { patchMlModelDetails } from '../rest/mlModelAPI';
@@ -76,11 +77,11 @@ import { patchTableDetails } from '../rest/tableAPI';
 import { patchClassification, patchTag } from '../rest/tagAPI';
 import { patchTeamDetail } from '../rest/teamsAPI';
 import { patchTopicDetails } from '../rest/topicsAPI';
-import { ExtraDatabaseDropdownOptions } from './Database/Database.util';
-import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDetailsUtils';
+import { ExtraDatabaseDropdownOptions } from './Database/DatabaseDropdownOptions';
+import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDropdownOptions';
 import { ExtraDatabaseServiceDropdownOptions } from './DatabaseServiceUtils';
 import { getEntityByFqnUtil } from './EntityByFqnUtils';
-import { EntityTypeName } from './EntityUtils';
+import { EntityTypeName } from './EntityNameUtils';
 import {
   FormattedAPIServiceType,
   FormattedDashboardServiceType,
@@ -94,6 +95,7 @@ import {
   FormattedStorageServiceType,
 } from './EntityUtils.interface';
 import Fqn from './Fqn';
+import { getKnowledgePagePath } from './KnowledgePagePureUtils';
 import {
   getApplicationDetailsPath,
   getBotsPath,
@@ -116,9 +118,8 @@ import {
   getTestCaseDetailPagePath,
   getUserPath,
 } from './RouterUtils';
-import { ExtraTableDropdownOptions } from './TableUtils';
+import { ExtraTableDropdownOptions } from './TableDropdownOptions';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
-
 type PatchAPIFunction = (id: string, patch: Operation[]) => Promise<unknown>;
 
 class EntityUtilClassBase {
@@ -200,6 +201,7 @@ class EntityUtilClassBase {
       patchPolicy(patch, id),
     [EntityType.CLASSIFICATION]: patchClassification,
     [EntityType.TEAM]: patchTeamDetail,
+    [EntityType.KNOWLEDGE_PAGE]: patchKnowledgePage,
   };
 
   private createNormalizedLookupMap<T extends Record<string, string>>(
@@ -447,6 +449,9 @@ class EntityUtilClassBase {
       case EntityType.KPI:
         return getKpiPath(fullyQualifiedName);
 
+      case EntityType.KNOWLEDGE_PAGE:
+        return getKnowledgePagePath(fullyQualifiedName, tab, subTab);
+
       case SearchIndex.TABLE:
       case EntityType.TABLE:
       default:
@@ -588,6 +593,10 @@ class EntityUtilClassBase {
       }
       case EntityType.WORKSHEET: {
         return ResourceEntity.WORKSHEET;
+      }
+      case EntityType.KNOWLEDGE_PAGE:
+      case 'knowledge-center': {
+        return ResourceEntity.KNOWLEDGE_PAGE;
       }
 
       default: {

@@ -163,8 +163,8 @@ class DatalakeSource(DatabaseServiceSource):
                 )
 
                 if filter_by_schema(
-                    self.config.sourceConfig.config.schemaFilterPattern,
-                    (schema_fqn if self.config.sourceConfig.config.useFqnForFiltering else schema_name),
+                    self.config.sourceConfig.config.schemaFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+                    (schema_fqn if self.config.sourceConfig.config.useFqnForFiltering else schema_name),  # pyright: ignore[reportAttributeAccessIssue]
                 ):
                     self.status.filter(schema_fqn, "Bucket Filtered Out")
                     continue
@@ -341,8 +341,8 @@ class DatalakeSource(DatabaseServiceSource):
         )
 
         if filter_by_table(
-            self.config.sourceConfig.config.tableFilterPattern,
-            (table_fqn if self.config.sourceConfig.config.useFqnForFiltering else table_name),
+            self.config.sourceConfig.config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+            (table_fqn if self.config.sourceConfig.config.useFqnForFiltering else table_name),  # pyright: ignore[reportAttributeAccessIssue]
         ):
             self.status.filter(
                 table_fqn,

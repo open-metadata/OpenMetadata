@@ -642,6 +642,11 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       renameAllowed = true;
     }
 
+    @Override
+    protected void resetForRetryAttempt() {
+      renameProcessed = false;
+    }
+
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
@@ -675,7 +680,12 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       // Glossary name changed - update tag names starting from glossary and all the children tags
       LOG.info("Glossary FQN changed from {} to {}", oldFqn, newFqn);
       // Drop cache entries for every glossary term under this glossary BEFORE we rewrite the DB.
-      invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
+      // Capture the descendants so the post-write pass can re-evict any entry a racing reader
+      // re-populated with the pre-rename row between this call and glossaryTermDAO.updateFqn.
+      // The pass below runs after updateFqn but inside this transaction — see
+      // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit window.
+      List<EntityDAO.EntityIdFqnPair> renamedTerms =
+          invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
       daoCollection.glossaryTermDAO().updateFqn(oldFqn, newFqn);
       daoCollection.tagUsageDAO().updateTagPrefix(TagSource.GLOSSARY.ordinal(), oldFqn, newFqn);
       recordChange("name", FullyQualifiedName.unquoteName(oldFqn), updated.getName());
@@ -695,6 +705,14 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           condition ->
               PolicyConditionUpdater.renamePrefixInCondition(
                   condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
+
+      // Cascade rename into the search index — child term FQNs and the embedded glossary denorm
+      // (glossary.name / glossary.fullyQualifiedName) must reflect the new name. This used to be
+      // driven by entityRelationshipReindex, which has no caller since PR #19550, so the call has
+      // to happen inline here (mirroring Domain / Classification / GlossaryTerm renames).
+      updateAssetIndexes(original, updated);
+
+      finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
     }
 
     public void invalidateGlossary(UUID classificationId) {

@@ -30,13 +30,17 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreMetric } from '../../../rest/metricsAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtilsPure';
 import metricDetailsClassBase from '../../../utils/MetricEntityUtils/MetricDetailsClassBase';
 import {
   getPrioritizedEditPermission,
@@ -46,7 +50,7 @@ import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import {
   updateCertificationTag,
   updateTierTag,
-} from '../../../utils/TagsUtils';
+} from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
@@ -58,7 +62,6 @@ import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interfa
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import './metric.less';
 import { MetricDetailsProps } from './MetricDetails.interface';
-
 const MetricDetails: React.FC<MetricDetailsProps> = ({
   metricDetails,
   metricPermissions,
@@ -191,6 +194,22 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
   const getEntityFeedCount = () =>
     getFeedCounts(EntityType.METRIC, decodedMetricFqn, handleFeedCount);
 
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedMetricFqn) {
+      fetchEntityTaskCountsInto(decodedMetricFqn, setFeedCount);
+    }
+  }, [decodedMetricFqn]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedMetricFqn) {
+      fetchEntityActivityCountInto(
+        EntityType.METRIC,
+        decodedMetricFqn,
+        setFeedCount
+      );
+    }
+  }, [decodedMetricFqn]);
+
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate(ROUTES.METRICS),
     []
@@ -231,7 +250,8 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
   );
 
   useEffect(() => {
-    getEntityFeedCount();
+    fetchTaskCounts();
+    fetchActivityCount();
   }, [metricPermissions, decodedMetricFqn]);
 
   const tabs = useMemo(() => {

@@ -56,8 +56,8 @@ import {
   getServiceType,
   getTestConnectionName,
   shouldTestConnection,
-} from '../../../utils/ServiceUtils';
-import { getErrorText } from '../../../utils/StringsUtils';
+} from '../../../utils/ServicePureUtils';
+import { getErrorText } from '../../../utils/StringUtils';
 import Loader from '../Loader/Loader';
 import './test-connection.style.less';
 import { TestConnectionProps, TestStatus } from './TestConnection.interface';
@@ -443,7 +443,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   return (
     <>
       {showDetails ? (
-        <Space className="w-full justify-between bg-white border border-main rounded-4 p-sm mt-4">
+        <Space className="w-full justify-between bg-white border border-main tw:rounded-lg p-sm mt-4">
           <Space
             align={testStatus ? 'start' : 'center'}
             data-testid="message-container"

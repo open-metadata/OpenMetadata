@@ -138,8 +138,8 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                             database_name=schema.CatalogId,
                         )
                         if filter_by_database(
-                            self.config.sourceConfig.config.databaseFilterPattern,
-                            database_fqn if self.config.sourceConfig.config.useFqnForFiltering else schema.CatalogId,
+                            self.config.sourceConfig.config.databaseFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+                            database_fqn if self.config.sourceConfig.config.useFqnForFiltering else schema.CatalogId,  # pyright: ignore[reportAttributeAccessIssue]
                         ):
                             self.status.filter(
                                 database_fqn,
@@ -190,8 +190,8 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                         schema_name=schema.Name,
                     )
                     if filter_by_schema(
-                        self.config.sourceConfig.config.schemaFilterPattern,
-                        schema_fqn if self.config.sourceConfig.config.useFqnForFiltering else schema.Name,
+                        self.config.sourceConfig.config.schemaFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+                        schema_fqn if self.config.sourceConfig.config.useFqnForFiltering else schema.Name,  # pyright: ignore[reportAttributeAccessIssue]
                     ):
                         self.status.filter(schema_fqn, "Schema Filtered Out")
                         continue
@@ -256,8 +256,8 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                         table_name=table_name,
                     )
                     if filter_by_table(
-                        self.config.sourceConfig.config.tableFilterPattern,
-                        table_fqn if self.config.sourceConfig.config.useFqnForFiltering else table_name,
+                        self.config.sourceConfig.config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+                        table_fqn if self.config.sourceConfig.config.useFqnForFiltering else table_name,  # pyright: ignore[reportAttributeAccessIssue]
                     ):
                         self.status.filter(
                             table_fqn,

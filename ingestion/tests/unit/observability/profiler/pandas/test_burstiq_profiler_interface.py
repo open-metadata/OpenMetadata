@@ -121,15 +121,9 @@ def _make_interface(df_factory, table_entity=FULL_TABLE_ENTITY):
     sampler.get_dataset.return_value = df_factory
     sampler.raw_dataset = df_factory
 
-    with (
-        patch(
-            "metadata.profiler.interface.profiler_interface.get_ssl_connection",
-            return_value=FakeConnection(),
-        ),
-        patch(
-            "metadata.sampler.sampler_interface.get_ssl_connection",
-            return_value=FakeConnection(),
-        ),
+    with patch(
+        "metadata.profiler.interface.profiler_interface.get_ssl_connection",
+        return_value=FakeConnection(),
     ):
         interface = BurstIQProfilerInterface(
             service_connection_config=BURSTIQ_CONNECTION,

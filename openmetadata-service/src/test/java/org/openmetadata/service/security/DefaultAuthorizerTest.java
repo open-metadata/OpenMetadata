@@ -24,9 +24,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.entity.policies.Policy;
-import org.openmetadata.schema.entity.policies.accessControl.Rule;
-import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -228,7 +225,7 @@ class DefaultAuthorizerTest {
                   Entity.getEntityByName(
                       Entity.USER,
                       "missing-bot",
-                      "id,name,isBot,allowImpersonation,roles",
+                      "id,name,isBot,allowImpersonation",
                       org.openmetadata.schema.type.Include.ALL))
           .thenThrow(new IllegalArgumentException("missing"));
 
@@ -250,7 +247,7 @@ class DefaultAuthorizerTest {
                   Entity.getEntityByName(
                       Entity.USER,
                       "missing-bot",
-                      "id,name,isBot,allowImpersonation,roles",
+                      "id,name,isBot,allowImpersonation",
                       org.openmetadata.schema.type.Include.ALL))
           .thenReturn(null);
 
@@ -277,7 +274,7 @@ class DefaultAuthorizerTest {
                   Entity.getEntityByName(
                       Entity.USER,
                       "bot-user",
-                      "id,name,isBot,allowImpersonation,roles",
+                      "id,name,isBot,allowImpersonation",
                       org.openmetadata.schema.type.Include.ALL))
           .thenReturn(bot);
 
@@ -290,10 +287,10 @@ class DefaultAuthorizerTest {
   }
 
   @Test
-  void authorizeRejectsBotsWithoutImpersonatePermission() {
+  void authorizeRejectsBotsNotAllowedToImpersonateTarget() {
     SecurityContext securityContext = securityContext("target-user");
     SubjectContext impersonatedContext =
-        new SubjectContext(new User().withName("target-user"), "bot-user");
+        new SubjectContext(new User().withName("target-user").withIsAdmin(true), "bot-user");
     ResourceContextInterface resourceContext = mock(ResourceContextInterface.class);
     when(resourceContext.getEntity()).thenReturn(null);
     OperationContext operationContext =
@@ -301,17 +298,12 @@ class DefaultAuthorizerTest {
 
     User bot = new User().withName("bot-user").withIsBot(true);
     bot.setAllowImpersonation(true);
-    EntityReference roleRef = entityReference(Entity.ROLE, "bot-role");
-    bot.setRoles(List.of(roleRef));
-    Role role =
-        new Role()
-            .withName("bot-role")
-            .withPolicies(List.of(entityReference(Entity.POLICY, "view-only")));
-    Rule rule = new Rule().withName("viewOnly").withOperations(List.of(MetadataOperation.VIEW_ALL));
-    Policy policy = new Policy().withName("view-only").withRules(List.of(rule));
+    SubjectContext botSubjectContext = subjectContext("bot-user", false, true, null);
 
     try (MockedStatic<DefaultAuthorizer> mockedAuthorizer = mockStatic(DefaultAuthorizer.class);
-        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+        MockedStatic<SubjectContext> mockedSubjectContext = mockStatic(SubjectContext.class);
+        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class);
+        MockedStatic<PolicyEvaluator> mockedPolicyEvaluator = mockStatic(PolicyEvaluator.class)) {
       mockedAuthorizer
           .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
           .thenReturn(impersonatedContext);
@@ -321,29 +313,26 @@ class DefaultAuthorizerTest {
                   Entity.getEntityByName(
                       Entity.USER,
                       "bot-user",
-                      "id,name,isBot,allowImpersonation,roles",
+                      "id,name,isBot,allowImpersonation",
                       org.openmetadata.schema.type.Include.ALL))
           .thenReturn(bot);
-      mockedEntity
+      mockedSubjectContext
+          .when(() -> SubjectContext.getSubjectContext("bot-user"))
+          .thenReturn(botSubjectContext);
+      mockedPolicyEvaluator
           .when(
               () ->
-                  Entity.getEntities(
-                      List.of(roleRef), "policies", org.openmetadata.schema.type.Include.ALL))
-          .thenReturn(List.of(role));
-      mockedEntity
-          .when(
-              () ->
-                  Entity.getEntities(
-                      List.of(role.getPolicies().get(0)),
-                      "rules",
-                      org.openmetadata.schema.type.Include.ALL))
-          .thenReturn(List.of(policy));
+                  PolicyEvaluator.hasPermission(
+                      eq(botSubjectContext),
+                      any(ResourceContextInterface.class),
+                      any(OperationContext.class)))
+          .thenThrow(new AuthorizationException("denied"));
 
       AuthorizationException exception =
           assertThrows(
               AuthorizationException.class,
               () -> authorizer.authorize(securityContext, operationContext, resourceContext));
-      assertTrue(exception.getMessage().contains("Impersonate permission"));
+      assertTrue(exception.getMessage().contains("not authorized to impersonate user target-user"));
     }
   }
 
@@ -359,15 +348,13 @@ class DefaultAuthorizerTest {
 
     User bot = new User().withName("bot-user").withIsBot(true);
     bot.setAllowImpersonation(true);
-    EntityReference roleRef = entityReference(Entity.ROLE, "bot-role");
-    EntityReference policyRef = entityReference(Entity.POLICY, "impersonate-policy");
-    bot.setRoles(List.of(roleRef));
-    Role role = new Role().withName("bot-role").withPolicies(List.of(policyRef));
-    Rule rule =
-        new Rule().withName("impersonate").withOperations(List.of(MetadataOperation.IMPERSONATE));
-    Policy policy = new Policy().withName("impersonate-policy").withRules(List.of(rule));
+    SubjectContext botSubjectContext = subjectContext("bot-user", false, true, null);
+    AtomicReference<ResourceContextInterface> impersonationResourceContext =
+        new AtomicReference<>();
+    AtomicReference<OperationContext> impersonationOperationContext = new AtomicReference<>();
 
     try (MockedStatic<DefaultAuthorizer> mockedAuthorizer = mockStatic(DefaultAuthorizer.class);
+        MockedStatic<SubjectContext> mockedSubjectContext = mockStatic(SubjectContext.class);
         MockedStatic<Entity> mockedEntity = mockStatic(Entity.class);
         MockedStatic<PolicyEvaluator> mockedPolicyEvaluator = mockStatic(PolicyEvaluator.class)) {
       mockedAuthorizer
@@ -379,25 +366,34 @@ class DefaultAuthorizerTest {
                   Entity.getEntityByName(
                       Entity.USER,
                       "bot-user",
-                      "id,name,isBot,allowImpersonation,roles",
+                      "id,name,isBot,allowImpersonation",
                       org.openmetadata.schema.type.Include.ALL))
           .thenReturn(bot);
-      mockedEntity
+      mockedSubjectContext
+          .when(() -> SubjectContext.getSubjectContext("bot-user"))
+          .thenReturn(botSubjectContext);
+      mockedPolicyEvaluator
           .when(
               () ->
-                  Entity.getEntities(
-                      List.of(roleRef), "policies", org.openmetadata.schema.type.Include.ALL))
-          .thenReturn(List.of(role));
-      mockedEntity
-          .when(
-              () ->
-                  Entity.getEntities(
-                      List.of(policyRef), "rules", org.openmetadata.schema.type.Include.ALL))
-          .thenReturn(List.of(policy));
+                  PolicyEvaluator.hasPermission(
+                      eq(botSubjectContext),
+                      any(ResourceContextInterface.class),
+                      any(OperationContext.class)))
+          .thenAnswer(
+              invocation -> {
+                impersonationResourceContext.set(invocation.getArgument(1));
+                impersonationOperationContext.set(invocation.getArgument(2));
+                return null;
+              });
 
       assertDoesNotThrow(
           () -> authorizer.authorize(securityContext, operationContext, resourceContext));
 
+      assertNotNull(impersonationResourceContext.get());
+      assertEquals(Entity.USER, impersonationResourceContext.get().getResource());
+      assertEquals(
+          List.of(MetadataOperation.IMPERSONATE),
+          impersonationOperationContext.get().getOperations(impersonationResourceContext.get()));
       mockedPolicyEvaluator.verify(
           () ->
               PolicyEvaluator.hasPermission(
@@ -540,8 +536,12 @@ class DefaultAuthorizerTest {
   void authorizeImpersonationRequiresBotsAndUsesImpersonateOperation() {
     SecurityContext userSecurityContext = securityContext("analyst");
     SecurityContext botSecurityContext = securityContext("ingestion-bot");
+    SecurityContext flaglessBotSecurityContext = securityContext("flagless-bot");
     SubjectContext userContext = subjectContext("analyst", false, false, null);
-    SubjectContext botContext = subjectContext("ingestion-bot", false, true, null);
+    User botUser = new User().withName("ingestion-bot").withIsBot(true);
+    botUser.setAllowImpersonation(true);
+    SubjectContext botContext = new SubjectContext(botUser, null);
+    SubjectContext flaglessBotContext = subjectContext("flagless-bot", false, true, null);
     EntityRepository<?> repository = mock(EntityRepository.class);
     AtomicReference<ResourceContextInterface> capturedResourceContext = new AtomicReference<>();
     AtomicReference<OperationContext> capturedOperationContext = new AtomicReference<>();
@@ -555,6 +555,9 @@ class DefaultAuthorizerTest {
       mockedSubjectContext
           .when(() -> SubjectContext.getSubjectContext("ingestion-bot"))
           .thenReturn(botContext);
+      mockedSubjectContext
+          .when(() -> SubjectContext.getSubjectContext("flagless-bot"))
+          .thenReturn(flaglessBotContext);
       mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(repository);
       mockedPolicyEvaluator
           .when(
@@ -575,6 +578,12 @@ class DefaultAuthorizerTest {
               AuthorizationException.class,
               () -> authorizer.authorizeImpersonation(userSecurityContext, "owner"));
       assertEquals("Only bot users can impersonate", exception.getMessage());
+
+      AuthorizationException flaglessException =
+          assertThrows(
+              AuthorizationException.class,
+              () -> authorizer.authorizeImpersonation(flaglessBotSecurityContext, "owner"));
+      assertTrue(flaglessException.getMessage().contains("does not have impersonation enabled"));
 
       assertDoesNotThrow(() -> authorizer.authorizeImpersonation(botSecurityContext, "owner"));
       assertNotNull(capturedResourceContext.get());

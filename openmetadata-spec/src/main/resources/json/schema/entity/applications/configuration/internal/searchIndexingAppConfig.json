@@ -28,11 +28,6 @@
       "default": ["all"],
       "uniqueItems": true
     },
-    "recreateIndex": {
-      "description": "This schema publisher run modes.",
-      "type": "boolean",
-      "default": true
-    },
     "batchSize": {
       "description": "Maximum number of events sent in a batch (Default 100).",
       "type": "integer",
@@ -87,7 +82,7 @@
       "default": 100
     },
     "searchIndexMappingLanguage": {
-      "description": "Recreate Indexes with updated Language",
+      "description": "Search index mapping language.",
       "$ref": "../../../../configuration/elasticSearchConfiguration.json#/definitions/searchIndexMappingLanguage"
     },
     "autoTune": {
@@ -95,12 +90,6 @@
       "description": "Enable automatic performance tuning based on cluster capabilities and database entity count",
       "type": "boolean",
       "default": false
-    },
-    "useDistributedIndexing": {
-      "title": "Use Distributed Indexing",
-      "description": "Enable distributed indexing to scale reindexing across multiple servers with fault tolerance and parallel processing",
-      "type": "boolean",
-      "default": true
     },
     "partitionSize": {
       "title": "Partition Size",

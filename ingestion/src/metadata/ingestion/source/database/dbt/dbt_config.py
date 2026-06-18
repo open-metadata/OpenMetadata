@@ -146,18 +146,17 @@ def _(config: DbtHttpConfig):  # noqa: C901
                 f"Unable to connect to '{manifest_url}'. Please verify the URL is correct and accessible."
             ) from exc
         except requests.exceptions.HTTPError as exc:
-            if exc.response.status_code == 404:
+            status_code = exc.response.status_code if exc.response is not None else None
+            if status_code == 404:
                 raise DBTConfigException(
                     f"Manifest file not found at '{manifest_url}'. Please verify the URL is correct."
                 ) from exc
-            if exc.response.status_code in (401, 403):
+            if status_code in (401, 403):
                 raise DBTConfigException(
                     f"Access denied to '{manifest_url}'. "
                     "Check your dbtHttpHeaders contain the correct authentication headers."
                 ) from exc
-            raise DBTConfigException(
-                f"HTTP error {exc.response.status_code} fetching manifest from '{manifest_url}'."
-            ) from exc
+            raise DBTConfigException(f"HTTP error {status_code} fetching manifest from '{manifest_url}'.") from exc
 
         try:
             manifest_json = dbt_manifest.json()

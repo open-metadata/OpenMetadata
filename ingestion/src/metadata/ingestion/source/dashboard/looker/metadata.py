@@ -314,7 +314,7 @@ class LookerSource(DashboardServiceSource):
                     # For remote repositories, clone the dependency as before
                     url_parsed = giturlparse.parse(remote_git_url)
                     _clone_repo(
-                        f"{url_parsed.owner}/{url_parsed.repo}",  # pylint: disable=E1101
+                        f"{url_parsed.owner}/{url_parsed.repo}",  # type: ignore
                         f"{repo.path}/{IMPORTED_PROJECTS_DIR}/{remote_name}",
                         credentials,
                     )

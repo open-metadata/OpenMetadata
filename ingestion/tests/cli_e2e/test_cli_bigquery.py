@@ -30,6 +30,11 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
 from metadata.generated.schema.type.basic import ProfileSampleType, Timestamp
+from metadata.generated.schema.type.samplingConfig import (
+    ProfileSampleConfig,
+    SampleConfigType,
+)
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 
 from .common.test_cli_db import CliCommonDB  # noqa: TID252
 from .common_e2e_sqa_mixins import SQACommonMethods  # noqa: TID252
@@ -189,8 +194,13 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         self.openmetadata.create_or_update_table_profiler_config(
             self.get_data_quality_table(),
             TableProfilerConfig(
-                profileSampleType=ProfileSampleType.ROWS,
-                profileSample=100,
+                profileSampleConfig=ProfileSampleConfig(
+                    sampleConfigType=SampleConfigType.STATIC,
+                    config=StaticSamplingConfig(
+                        profileSample=100,
+                        profileSampleType=ProfileSampleType.ROWS,
+                    ),
+                ),
             ),
         )
 

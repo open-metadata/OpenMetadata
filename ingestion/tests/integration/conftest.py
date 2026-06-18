@@ -166,12 +166,19 @@ logger = logging.getLogger(__name__)
 
 
 def _safe_delete(metadata, entity, entity_id, retries=3, **kwargs):
-    """Delete with retry logic to handle transient server errors during parallel teardown."""
+    """Delete with retry logic to handle transient server errors during parallel teardown.
+
+    A 404 here means the entity is already gone (e.g., wiped as part of an earlier
+    cascade or another worker's teardown); treat it as success rather than retrying.
+    """
     for attempt in range(retries):
         try:
             metadata.delete(entity=entity, entity_id=entity_id, **kwargs)
             return  # noqa: TRY300
-        except Exception:
+        except Exception as exc:
+            if _is_not_found(exc):
+                logger.debug("Skipping %s %s delete — already gone", entity.__name__, entity_id)
+                return
             if attempt < retries - 1:
                 logger.warning(
                     "Retry %d/%d: delete %s %s",
@@ -183,6 +190,13 @@ def _safe_delete(metadata, entity, entity_id, retries=3, **kwargs):
                 time.sleep(0.5 * (attempt + 1))
             else:
                 raise
+
+
+def _is_not_found(exc: BaseException) -> bool:
+    status = getattr(getattr(exc, "response", None), "status_code", None)
+    if status == 404:
+        return True
+    return "404" in str(exc)
 
 
 @pytest.fixture(scope="module")

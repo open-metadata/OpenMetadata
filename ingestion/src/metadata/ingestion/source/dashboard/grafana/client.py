@@ -80,8 +80,9 @@ class GrafanaApiClient:
             response.raise_for_status()
             return response  # noqa: TRY300
         except requests.exceptions.HTTPError as err:
-            if err.response.status_code in (401, 403):
-                logger.warning(f"Permission denied for {endpoint}. Status: {err.response.status_code}")
+            status_code = err.response.status_code if err.response is not None else None
+            if status_code in (401, 403):
+                logger.warning(f"Permission denied for {endpoint}. Status: {status_code}")
             else:
                 logger.error(f"HTTP error for {endpoint}: {err}")
             return None

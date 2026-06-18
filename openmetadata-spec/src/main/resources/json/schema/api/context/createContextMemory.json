@@ -1,0 +1,104 @@
+{
+  "$id": "https://open-metadata.org/schema/api/context/createContextMemory.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateContextMemory",
+  "description": "Request to create a reusable Context Center memory.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.context.CreateContextMemory",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "description": "Stable system name for the memory.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display name for the memory.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Optional markdown description for the memory.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "title": {
+      "description": "Short title shown in Context Center.",
+      "type": "string"
+    },
+    "summary": {
+      "description": "Optional summary of the memory.",
+      "type": "string"
+    },
+    "question": {
+      "description": "Canonical question or instruction represented by this memory.",
+      "type": "string"
+    },
+    "answer": {
+      "description": "Canonical answer or retained guidance represented by this memory.",
+      "type": "string"
+    },
+    "memoryType": {
+      "$ref": "../../entity/context/contextMemory.json#/definitions/memoryType"
+    },
+    "memoryScope": {
+      "$ref": "../../entity/context/contextMemory.json#/definitions/memoryScope"
+    },
+    "status": {
+      "$ref": "../../entity/context/contextMemory.json#/definitions/memoryStatus"
+    },
+    "shareConfig": {
+      "$ref": "../../entity/context/contextMemory.json#/definitions/shareConfig"
+    },
+    "primaryEntity": {
+      "$ref": "../../type/entityReference.json"
+    },
+    "relatedEntities": {
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "sourceType": {
+      "$ref": "../../entity/context/contextMemory.json#/definitions/sourceType"
+    },
+    "sourceConversation": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "sourceHumanMessage": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "sourceAssistantMessage": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "sourceFile": {
+      "description": "The Context Center file this memory was extracted from.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "rootMemory": {
+      "$ref": "../../type/entityReference.json"
+    },
+    "parentMemory": {
+      "$ref": "../../type/entityReference.json"
+    },
+    "machineRepresentation": {
+      "$ref": "../../entity/context/contextMemory.json#/definitions/machineRepresentation"
+    },
+    "owners": {
+      "description": "Owners of this memory.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "tags": {
+      "description": "Tags associated with this memory.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "domains": {
+      "description": "Fully qualified names of the domains this memory belongs to.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": ["name", "question", "answer"],
+  "additionalProperties": false
+}

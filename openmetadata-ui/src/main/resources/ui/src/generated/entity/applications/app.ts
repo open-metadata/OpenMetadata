@@ -222,6 +222,10 @@ export enum AgentType {
  * Cache Warmup Application Configuration.
  *
  * Configuration for the AutoPilot Application.
+ *
+ * Configuration for the MCP Chat Application. The LLM provider and credentials are
+ * configured at the platform level via `llmConfiguration`; this app only governs chat
+ * behavior.
  */
 export interface CollateAIAppConfig {
     /**
@@ -363,11 +367,7 @@ export interface CollateAIAppConfig {
      */
     queueSize?: number;
     /**
-     * This schema publisher run modes.
-     */
-    recreateIndex?: boolean;
-    /**
-     * Recreate Indexes with updated Language
+     * Search index mapping language.
      */
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
     /**
@@ -381,11 +381,6 @@ export interface CollateAIAppConfig {
      * Set to a positive value like 15 to limit to recent data only.
      */
     timeSeriesMaxDays?: number;
-    /**
-     * Enable distributed indexing to scale reindexing across multiple servers with fault
-     * tolerance and parallel processing
-     */
-    useDistributedIndexing?: boolean;
     /**
      * In multi-instance deployments, claim each entity type via Redis SETNX so only one
      * instance warms it. Disable to let every instance warm independently (idempotent but
@@ -401,6 +396,12 @@ export interface CollateAIAppConfig {
      * deploy doesn't fan out to the DB. Disable for very large installs.
      */
     warmBundles?: boolean;
+    /**
+     * Optionally pre-warm common relationship fields in the read bundle cache. Requires Warm
+     * Read Bundles. This adds extra relationship-table and entity-reference reads during
+     * warmup, so enable it only when first-read relationship latency matters.
+     */
+    warmRelationships?: boolean;
     /**
      * Enter the retention period for Activity Threads of type = 'Conversation' records in days
      * (e.g., 30 for one month, 60 for two months).
@@ -429,6 +430,10 @@ export interface CollateAIAppConfig {
      * Service Entity Link for which to trigger the application.
      */
     entityLink?: string;
+    /**
+     * The system prompt that guides the assistant behavior.
+     */
+    systemPrompt?: string;
     [property: string]: any;
 }
 
@@ -1380,7 +1385,7 @@ export interface Resource {
 }
 
 /**
- * Recreate Indexes with updated Language
+ * Search index mapping language.
  *
  * This schema defines the language options available for search index mappings.
  */

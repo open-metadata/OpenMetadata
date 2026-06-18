@@ -27,17 +27,21 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.factories.PipelineServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
@@ -873,6 +877,57 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
   }
 
   @Test
+  void test_listTeams_ownsEntityTypeFilter_preservesDomainsAndFiltersOwns(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String domainFqn = testDomain().getFullyQualifiedName();
+    CreateTeam createTeam =
+        new CreateTeam()
+            .withName(ns.prefix("ownsFilterTeam"))
+            .withTeamType(TeamType.GROUP)
+            .withDomains(List.of(domainFqn))
+            .withDescription("Team for ownsEntityType filter regression test (#28381)");
+    Team team = createEntity(createTeam);
+
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    CreatePipeline createPipeline =
+        new CreatePipeline()
+            .withName(ns.prefix("ownedPipeline"))
+            .withService(service.getFullyQualifiedName())
+            .withOwners(List.of(team.getEntityReference()));
+    Pipeline pipeline = client.pipelines().create(createPipeline);
+
+    ListParams params = new ListParams();
+    params.setLimit(1000000);
+    params.setFields("owns,domains");
+    params.addFilter("ownsEntityType", "pipeline");
+    ListResponse<Team> response = listEntities(params);
+
+    Team listed =
+        response.getData().stream()
+            .filter(t -> t.getId().equals(team.getId()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(listed, "Team must be present in the list response");
+
+    // Regression guard (#28381): the ownsEntityType filter must not drop relationship-bulk
+    // fields like domains, which Team populates only via the batched relationship fetch.
+    assertNotNull(
+        listed.getDomains(), "domains must not be dropped when the ownsEntityType filter is set");
+    assertTrue(
+        listed.getDomains().stream().anyMatch(d -> d.getFullyQualifiedName().equals(domainFqn)),
+        "Team domains should be preserved alongside the ownsEntityType filter");
+
+    assertNotNull(listed.getOwns(), "owns should be populated");
+    assertTrue(
+        listed.getOwns().stream().anyMatch(o -> o.getId().equals(pipeline.getId())),
+        "owns should include the owned pipeline");
+    assertTrue(
+        listed.getOwns().stream().allMatch(o -> "pipeline".equals(o.getType())),
+        "owns should contain only pipelines when ownsEntityType=pipeline");
+  }
+
+  @Test
   void test_teamWithOwner(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -1457,5 +1512,136 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
           imported.getPolicies().size(),
           "Team policies count should match");
     }
+  }
+
+  // ===================================================================
+  // BULK REMOVE ASSETS — dryRun behavior (issue #27954)
+  // ===================================================================
+
+  @Test
+  void test_bulkRemoveAssets_dryRunTrue_doesNotDetachUser(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Team team = createTeam(ns, "dr_true");
+    User user = createTestUser(ns, "dr_true_user");
+
+    BulkAssets addRequest =
+        new BulkAssets().withAssets(List.of(user.getEntityReference())).withDryRun(false);
+    bulkAddAssetsWithResult(client, team.getName(), addRequest);
+
+    BulkAssets dryRunRemove =
+        new BulkAssets().withAssets(List.of(user.getEntityReference())).withDryRun(true);
+    BulkOperationResult result = bulkRemoveAssetsWithResult(client, team.getName(), dryRunRemove);
+
+    assertNotNull(result);
+    assertTrue(result.getDryRun(), "Result must propagate dryRun=true");
+    assertEquals(1, result.getNumberOfRowsProcessed());
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    User refreshed = client.users().get(user.getId().toString(), "teams");
+    assertNotNull(refreshed.getTeams(), "User teams field must be populated");
+    assertTrue(
+        refreshed.getTeams().stream().anyMatch(t -> team.getId().equals(t.getId())),
+        "User must still belong to the team after dryRun=true remove");
+  }
+
+  @Test
+  void test_bulkRemoveAssets_dryRunFalse_detachesUser(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Team team = createTeam(ns, "dr_false");
+    User user = createTestUser(ns, "dr_false_user");
+
+    BulkAssets addRequest =
+        new BulkAssets().withAssets(List.of(user.getEntityReference())).withDryRun(false);
+    bulkAddAssetsWithResult(client, team.getName(), addRequest);
+
+    BulkAssets realRemove =
+        new BulkAssets().withAssets(List.of(user.getEntityReference())).withDryRun(false);
+    BulkOperationResult result = bulkRemoveAssetsWithResult(client, team.getName(), realRemove);
+
+    assertNotNull(result);
+    assertFalse(Boolean.TRUE.equals(result.getDryRun()));
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    User refreshed = client.users().get(user.getId().toString(), "teams");
+    assertTrue(
+        refreshed.getTeams() == null
+            || refreshed.getTeams().stream().noneMatch(t -> team.getId().equals(t.getId())),
+        "User should no longer belong to the team when dryRun=false");
+  }
+
+  @Test
+  void test_bulkAddAssets_dryRunTrue_doesNotAttachUser(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Team team = createTeam(ns, "add_dr_true");
+    User user = createTestUser(ns, "add_dr_true_user");
+
+    BulkAssets dryRunAdd =
+        new BulkAssets().withAssets(List.of(user.getEntityReference())).withDryRun(true);
+    BulkOperationResult result = bulkAddAssetsWithResult(client, team.getName(), dryRunAdd);
+
+    assertNotNull(result);
+    assertTrue(result.getDryRun(), "Result must propagate dryRun=true");
+    assertEquals(1, result.getNumberOfRowsProcessed());
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    User refreshed = client.users().get(user.getId().toString(), "teams");
+    assertTrue(
+        refreshed.getTeams() == null
+            || refreshed.getTeams().stream().noneMatch(t -> team.getId().equals(t.getId())),
+        "User must NOT belong to the team on dryRun=true add");
+  }
+
+  @Test
+  void test_bulkRemoveAssets_dryRunOmitted_defaultsToDetachUser(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Team team = createTeam(ns, "dr_omit");
+    User user = createTestUser(ns, "dr_omit_user");
+
+    BulkAssets addRequest =
+        new BulkAssets().withAssets(List.of(user.getEntityReference())).withDryRun(false);
+    bulkAddAssetsWithResult(client, team.getName(), addRequest);
+
+    String rawBody = "{\"assets\":[{\"id\":\"" + user.getId() + "\",\"type\":\"user\"}]}";
+    String path = "/v1/teams/" + team.getName() + "/assets/remove";
+    BulkOperationResult result =
+        client.getHttpClient().execute(HttpMethod.PUT, path, rawBody, BulkOperationResult.class);
+
+    assertNotNull(result);
+    assertFalse(
+        Boolean.TRUE.equals(result.getDryRun()),
+        "Omitted dryRun must deserialize to schema default=false (destructive)");
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    User refreshed = client.users().get(user.getId().toString(), "teams");
+    assertTrue(
+        refreshed.getTeams() == null
+            || refreshed.getTeams().stream().noneMatch(t -> team.getId().equals(t.getId())),
+        "User should be detached when dryRun is omitted (default destructive)");
+  }
+
+  @Test
+  void test_bulkAssets_omittedAssets_returnsNothingToValidate(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Team team = createTeam(ns, "no_assets");
+
+    String rawBody = "{\"dryRun\":true}";
+    String path = "/v1/teams/" + team.getName() + "/assets/remove";
+    BulkOperationResult result =
+        client.getHttpClient().execute(HttpMethod.PUT, path, rawBody, BulkOperationResult.class);
+
+    assertNotNull(result, "Request with omitted assets must not NPE");
+    assertEquals(0, result.getNumberOfRowsProcessed());
+    assertEquals(0, result.getNumberOfRowsPassed());
+  }
+
+  private Team createTeam(TestNamespace ns, String suffix) {
+    return SdkClients.adminClient()
+        .teams()
+        .create(
+            new CreateTeam()
+                .withName(ns.prefix("br_team_" + suffix))
+                .withTeamType(TeamType.GROUP)
+                .withProfile(PROFILE)
+                .withDescription("Team for bulk remove dryRun test"));
   }
 }

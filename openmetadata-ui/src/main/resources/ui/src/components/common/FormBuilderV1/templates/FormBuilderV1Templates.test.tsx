@@ -18,43 +18,139 @@ import {
   FieldTemplateProps,
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,
+  WrapIfAdditionalTemplateProps,
 } from '@rjsf/utils';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { CoreArrayFieldTemplate } from './CoreArrayFieldTemplate';
 import { CoreFieldErrorTemplate } from './CoreFieldErrorTemplate';
 import { CoreFieldTemplate } from './CoreFieldTemplate';
 import { CoreObjectFieldTemplate } from './CoreObjectFieldTemplate';
+import { CoreWrapIfAdditionalTemplate } from './CoreWrapIfAdditionalTemplate';
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  Button: jest.fn(
-    ({
-      children,
-      onClick,
-      ...props
-    }: {
-      children: React.ReactNode;
-      onClick?: () => void;
-    }) => (
-      <button type="button" onClick={onClick} {...props}>
-        {children}
-      </button>
-    )
-  ),
-  Typography: jest.fn(
-    ({
-      children,
-      as: Tag = 'span',
-      ...props
-    }: {
-      children: React.ReactNode;
-      as?: React.ElementType;
-    }) => <Tag {...props}>{children}</Tag>
-  ),
-}));
+const wrapIfAdditionalRegistry = {
+  templates: {
+    WrapIfAdditionalTemplate: ({ children }: { children: React.ReactNode }) => (
+      <div>{children}</div>
+    ),
+  },
+} as unknown as FieldTemplateProps['registry'];
+
+jest.mock('@openmetadata/ui-core-components', () => {
+  const ActualReact = jest.requireActual('react');
+  const AccordionContext = ActualReact.createContext({
+    expandedItem: undefined,
+    setExpandedItem: jest.fn(),
+  });
+  const AccordionItemContext = ActualReact.createContext(undefined);
+
+  return {
+    Accordion: jest.fn(({ children }: { children: React.ReactNode }) => {
+      const [expandedItem, setExpandedItem] = ActualReact.useState(
+        undefined as string | undefined
+      );
+
+      return (
+        <AccordionContext.Provider value={{ expandedItem, setExpandedItem }}>
+          {children}
+        </AccordionContext.Provider>
+      );
+    }),
+    AccordionHeader: jest.fn(({ children }: { children: React.ReactNode }) => {
+      const { expandedItem, setExpandedItem } =
+        ActualReact.useContext(AccordionContext);
+      const itemId = ActualReact.useContext(AccordionItemContext);
+      const isExpanded = expandedItem === itemId;
+
+      return (
+        <button
+          aria-expanded={isExpanded}
+          type="button"
+          onClick={() => setExpandedItem(isExpanded ? undefined : itemId)}>
+          {children}
+        </button>
+      );
+    }),
+    AccordionItem: jest.fn(
+      ({ children, id }: { children: React.ReactNode; id: string }) => (
+        <AccordionItemContext.Provider value={id}>
+          {children}
+        </AccordionItemContext.Provider>
+      )
+    ),
+    AccordionPanel: jest.fn(
+      ({ children, ...props }: { children: React.ReactNode }) => {
+        const { expandedItem } = ActualReact.useContext(AccordionContext);
+        const itemId = ActualReact.useContext(AccordionItemContext);
+
+        return expandedItem === itemId ? (
+          <div {...props}>{children}</div>
+        ) : null;
+      }
+    ),
+    Button: jest.fn(
+      ({
+        children,
+        onClick,
+        ...props
+      }: {
+        children: React.ReactNode;
+        onClick?: () => void;
+      }) => (
+        <button type="button" onClick={onClick} {...props}>
+          {children}
+        </button>
+      )
+    ),
+    Input: jest.fn(
+      ({
+        id,
+        label,
+        placeholder,
+        value,
+        onBlur,
+        onChange,
+      }: {
+        id?: string;
+        label?: string;
+        placeholder?: string;
+        value?: string;
+        onBlur?: () => void;
+        onChange?: (v: string) => void;
+      }) => (
+        <div>
+          {label && <label htmlFor={id}>{label}</label>}
+          <input
+            id={id}
+            placeholder={placeholder}
+            value={value}
+            onBlur={onBlur}
+            onChange={(e) => onChange?.(e.target.value)}
+          />
+        </div>
+      )
+    ),
+    Typography: jest.fn(
+      ({
+        children,
+        as: Tag = 'span',
+        ...props
+      }: {
+        children: React.ReactNode;
+        as?: React.ElementType;
+      }) => <Tag {...props}>{children}</Tag>
+    ),
+  };
+});
 
 jest.mock('@untitledui/icons', () => ({
+  ChevronDown: () => <span aria-hidden="true">chevron-down-icon</span>,
   Plus: () => <span>plus-icon</span>,
   Trash01: () => <span>trash-icon</span>,
+}));
+
+jest.mock('@rjsf/utils', () => ({
+  ...jest.requireActual('@rjsf/utils'),
+  ADDITIONAL_PROPERTY_FLAG: '__additional_property',
 }));
 
 jest.mock('react-i18next', () => ({
@@ -153,7 +249,7 @@ describe('FormBuilderV1 templates', () => {
       rawErrors: [],
       rawHelp: undefined,
       readonly: false,
-      registry: {} as FieldTemplateProps['registry'],
+      registry: wrapIfAdditionalRegistry,
       required: false,
       schema: { type: 'string' as const },
       onDropPropertyClick: jest.fn(),
@@ -169,8 +265,7 @@ describe('FormBuilderV1 templates', () => {
       </CoreFieldTemplate>
     );
 
-    expect(container.firstChild).toHaveClass('field-wrapper');
-    expect(container.firstChild).toHaveStyle({ marginTop: '8px' });
+    expect(container.firstChild).not.toHaveClass('field-wrapper');
     expect(screen.getByText('content')).toBeVisible();
 
     rerender(
@@ -217,21 +312,78 @@ describe('FormBuilderV1 templates', () => {
 
     expect(onAddClick).toHaveBeenCalledWith({ additionalProperties: true });
 
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'label.show-entity:label.advanced-config',
-      })
-    );
+    const advancedConfigToggle = screen.getByRole('button', {
+      name: 'Connection label.advanced-config',
+    });
+
+    expect(advancedConfigToggle).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(advancedConfigToggle);
 
     expect(screen.getByText('advanced property')).toBeInTheDocument();
+    expect(advancedConfigToggle).toHaveAttribute('aria-expanded', 'true');
 
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'label.hide-entity:label.advanced-config',
-      })
-    );
+    fireEvent.click(advancedConfigToggle);
 
     expect(screen.queryByText('advanced property')).not.toBeInTheDocument();
+    expect(advancedConfigToggle).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('renders wrap-if-additional as plain children when not an additional property', () => {
+    render(
+      <CoreWrapIfAdditionalTemplate
+        {...({
+          id: 'field-id',
+          label: 'myKey',
+          schema: {},
+          disabled: false,
+          readonly: false,
+          onKeyChange: jest.fn(),
+          onDropPropertyClick: jest.fn(() => jest.fn()),
+          registry: {} as WrapIfAdditionalTemplateProps['registry'],
+        } as unknown as WrapIfAdditionalTemplateProps)}>
+        <div>plain child</div>
+      </CoreWrapIfAdditionalTemplate>
+    );
+
+    expect(screen.getByText('plain child')).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('label.key')).not.toBeInTheDocument();
+  });
+
+  it('renders wrap-if-additional key input and calls handlers for additional properties', () => {
+    const onKeyChange = jest.fn();
+    const onDropIndexFn = jest.fn();
+    const onDropPropertyClick = jest.fn(() => onDropIndexFn);
+
+    render(
+      <CoreWrapIfAdditionalTemplate
+        {...({
+          id: 'field-id',
+          label: 'myKey',
+          schema: { __additional_property: true },
+          disabled: false,
+          readonly: false,
+          onKeyChange,
+          onDropPropertyClick,
+          registry: {} as WrapIfAdditionalTemplateProps['registry'],
+        } as unknown as WrapIfAdditionalTemplateProps)}>
+        <div>value child</div>
+      </CoreWrapIfAdditionalTemplate>
+    );
+
+    expect(screen.getByText('value child')).toBeInTheDocument();
+
+    const keyInput = screen.getByDisplayValue('myKey');
+
+    fireEvent.change(keyInput, { target: { value: 'newKey' } });
+    fireEvent.blur(keyInput);
+
+    expect(onKeyChange).toHaveBeenCalledWith('newKey');
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.remove' }));
+
+    expect(onDropPropertyClick).toHaveBeenCalledWith('myKey');
+    expect(onDropIndexFn).toHaveBeenCalled();
   });
 
   it('renders de-duplicated field errors only when errors exist', () => {

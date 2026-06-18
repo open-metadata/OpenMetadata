@@ -41,6 +41,7 @@ import {
   TaskPayload,
   TaskPriority,
 } from '../../../rest/tasksAPI';
+import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   applyTaskFormSchemaDefaults,
@@ -149,8 +150,7 @@ const UpdateDescription = () => {
         category: TaskCategory.MetadataUpdate,
         type: TaskEntityType.DescriptionUpdate,
         priority: TaskPriority.Medium,
-        about: entityFQN,
-        aboutType: entityType,
+        about: getEntityFeedLink(entityType, entityFQN),
         assignees: assignees.map((assignee) => assignee.name ?? ''),
         payload: applyTaskFormSchemaDefaults(
           payload,

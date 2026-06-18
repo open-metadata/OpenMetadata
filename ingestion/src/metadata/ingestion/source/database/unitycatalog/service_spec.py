@@ -1,6 +1,9 @@
 from metadata.data_quality.interface.sqlalchemy.unity_catalog.test_suite_interface import (
     UnityCatalogTestSuiteInterface,
 )
+from metadata.ingestion.source.database.unitycatalog.connection import (
+    UnityCatalogConnection,
+)
 from metadata.ingestion.source.database.unitycatalog.data_diff.data_diff import (
     UnityCatalogTableParameter,
 )
@@ -27,4 +30,5 @@ ServiceSpec = DefaultDatabaseSpec(
     test_suite_class=UnityCatalogTestSuiteInterface,
     sampler_class=UnityCatalogSamplerInterface,
     data_diff=UnityCatalogTableParameter,
+    connection_class=UnityCatalogConnection,  # pyright: ignore[reportArgumentType]
 )

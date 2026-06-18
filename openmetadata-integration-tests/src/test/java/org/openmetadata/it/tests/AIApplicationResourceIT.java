@@ -15,8 +15,12 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.ai.AIApplication;
+import org.openmetadata.schema.entity.ai.AgentExecution;
 import org.openmetadata.schema.entity.ai.ApplicationType;
+import org.openmetadata.schema.entity.ai.ExecutionStatus;
 import org.openmetadata.sdk.fluent.AIApplications;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Integration tests for AIApplication entity using SDK fluent API.
@@ -242,6 +246,51 @@ public class AIApplicationResourceIT {
         Exception.class,
         () -> AIApplications.get(created.getId().toString()),
         "Hard deleted AI application should not be retrievable");
+  }
+
+  @Test
+  void test_recursiveHardDeleteCascadesPastAgentExecutionChildren(TestNamespace ns)
+      throws Exception {
+    AIApplication app =
+        AIApplications.create()
+            .name(ns.prefix("agentExecCascadeApp"))
+            .withApplicationType(ApplicationType.Chatbot)
+            .withDescription("App for agent-execution cascade delete test")
+            .execute();
+
+    // Writes an AI_APPLICATION --CONTAINS--> agentExecution row. agentExecution is a time-series
+    // entity (registered in ENTITY_TS_REPOSITORY_MAP, not ENTITY_REPOSITORY_MAP), so the bulk
+    // hard-delete cascade used to throw EntityRepositoryNotFound the moment it walked CONTAINS
+    // children of an AI Application.
+    AgentExecution execution =
+        new AgentExecution()
+            .withAgent(app.getEntityReference())
+            .withAgentId(app.getId())
+            .withTimestamp(System.currentTimeMillis())
+            .withStatus(ExecutionStatus.Success)
+            .withInput("cascade-delete test")
+            .withOutput("cascade-delete test");
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST, "/v1/agentExecutions", execution, RequestOptions.builder().build());
+
+    String appId = app.getId().toString();
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.DELETE,
+            "/v1/aiApplications/" + appId,
+            null,
+            RequestOptions.builder()
+                .queryParam("recursive", "true")
+                .queryParam("hardDelete", "true")
+                .build());
+
+    assertThrows(
+        Exception.class,
+        () -> AIApplications.get(appId),
+        "AI Application should be deleted along with its agent-execution children");
   }
 
   @Test

@@ -94,12 +94,16 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.search.vector.TestCaseBodyTextContributor;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -109,8 +113,9 @@ import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class TestCaseRepository extends EntityRepository<TestCase> {
-  private static final String TEST_SUITE_FIELD = "testSuite";
-  private static final String INCIDENTS_FIELD = "incidentId";
+  public static final String TEST_SUITE_FIELD = "testSuite";
+  public static final String TEST_DEFINITION_FIELD = "testDefinition";
+  public static final String INCIDENTS_FIELD = "incidentId";
   private static final String UPDATE_FIELDS =
       "owners,entityLink,testSuite,testSuites,testDefinition,dimensionColumns,topDimensions";
   private static final String PATCH_FIELDS =
@@ -129,6 +134,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
+    TestCaseBodyTextContributor.INSTANCE.register();
     // Add the canonical name for test case results
     // As test case result` does not have its own repository
     EntityTimeSeriesInterface.CANONICAL_ENTITY_NAME_MAP.put(
@@ -141,7 +147,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         fields.contains(Entity.FIELD_TEST_SUITES) ? getTestSuites(test) : test.getTestSuites());
     test.setTestSuite(
         fields.contains(TEST_SUITE_FIELD)
-            ? getTestSuite(test.getId(), entityType, TEST_SUITE, Direction.FROM)
+            ? findExecutableTestSuiteForTestCase(test.getId())
             : test.getTestSuite());
     test.setTestDefinition(
         fields.contains(TEST_DEFINITION) ? getTestDefinition(test) : test.getTestDefinition());
@@ -151,7 +157,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         fields.contains(INCIDENTS_FIELD) ? getIncidentId(test) : test.getIncidentId());
   }
 
-  private final ThreadLocal<Map<String, Table>> linkedTablesCache = new ThreadLocal<>();
+  private static final ThreadLocal<Map<String, Table>> linkedTablesCache = new ThreadLocal<>();
 
   @Override
   public void setFieldsInBulk(Fields fields, List<TestCase> testCases) {
@@ -311,6 +317,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     List<TestSuite> allSuites =
         testSuiteRepo.getDao().findEntitiesByIds(new ArrayList<>(uniqueSuiteIds), ALL);
 
+    Set<UUID> liveSuiteIds = allSuites.stream().map(TestSuite::getId).collect(Collectors.toSet());
+    cleanupOrphanTestSuiteRelationships(testSuiteRecords, liveSuiteIds);
+
     if (setAllSuites) {
       testSuiteRepo.setFieldsInBulk(
           new Fields(Set.of(FIELD_OWNERS, "domains"), "owners,domains"), allSuites);
@@ -358,6 +367,32 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       for (TestCase testCase : testCases) {
         List<TestSuite> suiteList = testCaseToTestSuites.get(testCase.getId());
         testCase.setTestSuites(suiteList != null ? suiteList : new ArrayList<>());
+      }
+    }
+  }
+
+  private void cleanupOrphanTestSuiteRelationships(
+      List<CollectionDAO.EntityRelationshipObject> records, Set<UUID> liveSuiteIds) {
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID suiteId = UUID.fromString(record.getFromId());
+      if (liveSuiteIds.contains(suiteId)) {
+        continue;
+      }
+      UUID testCaseId = UUID.fromString(record.getToId());
+      LOG.warn(
+          "Cleaning up orphan relationship: test case {} -> missing test suite {}",
+          testCaseId,
+          suiteId);
+      try {
+        daoCollection
+            .relationshipDAO()
+            .delete(suiteId, TEST_SUITE, testCaseId, TEST_CASE, Relationship.CONTAINS.ordinal());
+      } catch (Exception ex) {
+        LOG.debug(
+            "Failed to delete orphan relationship {}->{}: {}",
+            suiteId,
+            testCaseId,
+            ex.getMessage());
       }
     }
   }
@@ -712,23 +747,85 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             + "No executable test suite was found.");
   }
 
+  /**
+   * Resolve the executable test suite for a test case while tolerating relationships that point
+   * to a hard-deleted test suite. Returns null when no live executable suite is found; orphan
+   * relationships discovered along the way are deleted so the next read self-heals.
+   */
+  private EntityReference findExecutableTestSuiteForTestCase(UUID testCaseId) {
+    List<CollectionDAO.EntityRelationshipRecord> records =
+        findFromRecords(testCaseId, entityType, Relationship.CONTAINS, TEST_SUITE);
+    for (CollectionDAO.EntityRelationshipRecord record : records) {
+      TestSuite testSuite = loadTestSuiteOrCleanup(testCaseId, record.getId());
+      if (testSuite != null && Boolean.TRUE.equals(testSuite.getBasic())) {
+        return testSuite.getEntityReference();
+      }
+    }
+    return null;
+  }
+
+  private TestSuite loadTestSuiteOrCleanup(UUID testCaseId, UUID testSuiteId) {
+    try {
+      return Entity.getEntity(TEST_SUITE, testSuiteId, "", Include.ALL);
+    } catch (EntityNotFoundException ex) {
+      LOG.warn(
+          "Cleaning up orphan relationship: test case {} -> missing test suite {}",
+          testCaseId,
+          testSuiteId);
+      try {
+        daoCollection
+            .relationshipDAO()
+            .delete(
+                testSuiteId, TEST_SUITE, testCaseId, TEST_CASE, Relationship.CONTAINS.ordinal());
+      } catch (Exception cleanupEx) {
+        LOG.debug(
+            "Failed to delete orphan relationship {}->{}: {}",
+            testSuiteId,
+            testCaseId,
+            cleanupEx.getMessage());
+      }
+      return null;
+    }
+  }
+
   private List<TestSuite> getTestSuites(TestCase test) {
     // `testSuites` field returns all the `testSuite` (executable and logical) linked to that
     // testCase
     List<CollectionDAO.EntityRelationshipRecord> records =
         findFromRecords(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
-    return records.stream()
-        .map(
-            testSuiteId ->
-                Entity.<TestSuite>getEntity(
-                        TEST_SUITE,
-                        testSuiteId.getId(),
-                        "owners,domains,reviewers",
-                        Include.ALL,
-                        false)
-                    .withInherited(true)
-                    .withChangeDescription(null))
-        .toList();
+    List<TestSuite> suites = new ArrayList<>(records.size());
+    for (CollectionDAO.EntityRelationshipRecord record : records) {
+      try {
+        TestSuite suite =
+            Entity.<TestSuite>getEntity(
+                    TEST_SUITE, record.getId(), "owners,domains,reviewers", Include.ALL, false)
+                .withInherited(true)
+                .withChangeDescription(null);
+        suites.add(suite);
+      } catch (EntityNotFoundException ex) {
+        LOG.warn(
+            "Cleaning up orphan relationship: test case {} -> missing test suite {}",
+            test.getId(),
+            record.getId());
+        try {
+          daoCollection
+              .relationshipDAO()
+              .delete(
+                  record.getId(),
+                  TEST_SUITE,
+                  test.getId(),
+                  TEST_CASE,
+                  Relationship.CONTAINS.ordinal());
+        } catch (Exception cleanupEx) {
+          LOG.debug(
+              "Failed to delete orphan relationship {}->{}: {}",
+              record.getId(),
+              test.getId(),
+              cleanupEx.getMessage());
+        }
+      }
+    }
+    return suites;
   }
 
   private EntityReference getTestDefinition(TestCase test) {
@@ -874,10 +971,17 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private void updateTestSuite(TestCase testCase) {
-    var testSuiteRepository = (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
-    TestSuite testSuite = Entity.getEntity(testCase.getTestSuite(), "*", ALL);
-    var original = TestSuiteRepository.copyTestSuite(testSuite);
-    testSuiteRepository.postUpdate(original, testSuite);
+    if (testCase.getTestSuite() != null) {
+      try {
+        var testSuiteRepository =
+            (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+        TestSuite testSuite = Entity.getEntity(testCase.getTestSuite(), "*", ALL);
+        var original = TestSuiteRepository.copyTestSuite(testSuite);
+        testSuiteRepository.postUpdate(original, testSuite);
+      } catch (EntityNotFoundException ignored) {
+        // TestSuite already deleted as part of the same cascade — nothing to update.
+      }
+    }
   }
 
   private void updateLogicalTestSuite(UUID testSuiteId) {
@@ -1009,7 +1113,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             .toList();
 
     List<TestCase> updatedTestCases = getLogicalSuiteUpdatedTestCase(testCaseReferences);
-    postUpdateMany(updatedTestCases);
+    postLogicalSuiteRelationshipUpdate(updatedTestCases);
     updateLogicalTestSuite(testSuite.getId());
     return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
   }
@@ -1069,7 +1173,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     int batchSize = 100;
     for (List<EntityReference> batch : Lists.partition(newTestCaseReferences, batchSize)) {
       List<TestCase> updatedTestCases = getLogicalSuiteUpdatedTestCase(batch);
-      postUpdateMany(updatedTestCases);
+      postLogicalSuiteRelationshipUpdate(updatedTestCases);
     }
     updateLogicalTestSuite(testSuite.getId());
 
@@ -1146,6 +1250,33 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           tc.setChangeDescription(change);
         });
     return testCases;
+  }
+
+  /**
+   * Lifecycle hook for the "test case added to a logical test suite" bulk flow. Bypasses
+   * {@code postUpdateMany}'s {@code writeThroughCacheMany} because adding a CONTAINS row to the
+   * {@code test_suite ↔ test_case} relationship table does not modify the {@link TestCase}
+   * entity's stored JSON — {@code testSuites} is stripped from storage JSON (see {@link
+   * #getFieldsStrippedFromStorageJson}) and is rehydrated from {@code entity_relationship} on
+   * read. Writing the pre-read snapshot back to cache here races against any concurrent PATCH
+   * that landed on the same test case during this transaction — exactly the staleness pattern
+   * that previously caused {@code BaseEntityIT.testBulkFluentAPI} to time out for TestCase when
+   * {@code test_bulkAddAllTestCasesWithExcludeIds} executed in parallel. Invalidate the
+   * read-bundle (where {@code testSuites} is fanned out) instead so the next read picks up the
+   * new relationship without clobbering concurrent writers.
+   */
+  private void postLogicalSuiteRelationshipUpdate(List<TestCase> updatedTestCases) {
+    if (updatedTestCases == null || updatedTestCases.isEmpty()) {
+      return;
+    }
+    var cachedReadBundle = CacheBundle.getCachedReadBundle();
+    if (cachedReadBundle != null) {
+      for (TestCase tc : updatedTestCases) {
+        cachedReadBundle.invalidate(entityType, tc.getId());
+      }
+    }
+    EntityLifecycleEventDispatcher.getInstance().onEntitiesUpdated(updatedTestCases, null, null);
+    updatedTestCases.forEach(RdfUpdater::updateEntity);
   }
 
   @Override
@@ -1589,6 +1720,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public void postUpdate(TestCase original, TestCase updated) {
+    hydrateTestSuiteFieldsForSearch(updated);
     super.postUpdate(original, updated);
     if (EntityStatus.IN_REVIEW.equals(original.getEntityStatus())) {
       if (EntityStatus.APPROVED.equals(updated.getEntityStatus())) {
@@ -1610,6 +1742,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       } catch (EntityNotFoundException ignored) {
       } // No ApprovalTask is present, and thus we don't need to worry about this.
     }
+  }
+
+  private void hydrateTestSuiteFieldsForSearch(TestCase updated) {
+    setFieldsInternal(updated, getFields(TEST_SUITE_FIELD + "," + Entity.FIELD_TEST_SUITES));
   }
 
   private void closeApprovalTask(TestCase entity, String comment) {

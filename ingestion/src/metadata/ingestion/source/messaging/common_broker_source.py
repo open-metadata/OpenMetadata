@@ -17,7 +17,7 @@ import concurrent.futures
 import time
 import traceback
 from abc import ABC
-from typing import Iterable, Optional  # noqa: UP035
+from typing import Any, Iterable, Optional  # noqa: UP035
 
 import confluent_kafka
 from confluent_kafka import KafkaError, KafkaException
@@ -80,7 +80,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
-        self.generate_sample_data = self.config.sourceConfig.config.generateSampleData
+        self.generate_sample_data = self.config.sourceConfig.config.generateSampleData  # pyright: ignore[reportAttributeAccessIssue]
         if self.generate_sample_data and self._is_sample_data_storing_globally_disabled():
             self.generate_sample_data = False
         self.service_connection = self.config.serviceConnection.root.config
@@ -299,14 +299,19 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 )
             )
 
-    def decode_message(self, record: bytes, schema: str, schema_type: SchemaType):
+    def decode_message(self, record: Any, schema: str, schema_type: SchemaType):
         if schema_type == SchemaType.Avro:
+            # DeserializingConsumer may already return decoded dict/object values.
+            if not isinstance(record, (bytes, bytearray, memoryview)):
+                return str(record)
             deserializer = AvroDeserializer(schema_str=schema, schema_registry_client=self.schema_registry_client)
             return str(deserializer(record, None))
         if schema_type == SchemaType.Protobuf:
             logger.debug("Protobuf deserializing sample data is not supported")
             return ""
-        return str(record.decode("utf-8"))
+        if isinstance(record, (bytes, bytearray, memoryview)):
+            return bytes(record).decode("utf-8")
+        return str(record)
 
     def close(self):
         if self.generate_sample_data and self.consumer_client:

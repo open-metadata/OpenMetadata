@@ -103,7 +103,7 @@ class SaphanaLineageSource(Source):
                     lineage_model = SapHanaLineageModel.validate(row._asdict())
 
                     if filter_by_table(
-                        self.source_config.tableFilterPattern,
+                        self.source_config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
                         lineage_model.name,
                     ):
                         self.status.filter(

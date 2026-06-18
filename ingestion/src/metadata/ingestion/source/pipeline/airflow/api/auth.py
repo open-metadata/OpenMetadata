@@ -102,8 +102,8 @@ def build_gcp_token_callback(gcp_credentials) -> TokenCallback:
         else:
             credentials, _ = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
 
-        credentials.refresh(AuthRequest())
+        credentials.refresh(AuthRequest())  # type: ignore
         expiry = getattr(credentials, "expiry", None) or (datetime.now(timezone.utc) + timedelta(minutes=55))
-        return (credentials.token, expiry)
+        return (credentials.token, expiry)  # type: ignore
 
     return _callback

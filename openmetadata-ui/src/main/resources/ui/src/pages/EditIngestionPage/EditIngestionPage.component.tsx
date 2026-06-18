@@ -49,14 +49,14 @@ import {
   updateIngestionPipeline,
 } from '../../rest/ingestionPipelineAPI';
 import { getServiceByFQN } from '../../rest/serviceAPI';
-import { getEntityMissingError } from '../../utils/CommonUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
 import {
   getBreadCrumbsArray,
   getIngestionHeadingName,
   getSettingsPathFromPipelineType,
-} from '../../utils/IngestionUtils';
+} from '../../utils/IngestionConfigUtils';
 import { getServiceDetailsPath } from '../../utils/RouterUtils';
-import { getServiceType } from '../../utils/ServiceUtils';
+import { getServiceType } from '../../utils/ServicePureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 

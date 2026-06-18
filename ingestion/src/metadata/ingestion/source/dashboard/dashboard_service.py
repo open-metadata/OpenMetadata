@@ -60,6 +60,7 @@ from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import C, TopologyRunnerMixin
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
@@ -113,7 +114,6 @@ class DashboardServiceTopology(ServiceTopology):
                 processor="yield_create_request_dashboard_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             ),
             NodeStage(
                 type_=OMetaTagAndClassification,
@@ -142,7 +142,6 @@ class DashboardServiceTopology(ServiceTopology):
                 processor="yield_bulk_datamodel",
                 consumer=["dashboard_service"],
                 nullable=True,
-                use_cache=True,
             )
         ],
     )
@@ -162,7 +161,6 @@ class DashboardServiceTopology(ServiceTopology):
                 nullable=True,
                 store_all_in_context=True,
                 clear_context=True,
-                use_cache=True,
             ),
             NodeStage(
                 type_=DashboardDataModel,
@@ -172,14 +170,12 @@ class DashboardServiceTopology(ServiceTopology):
                 nullable=True,
                 store_all_in_context=True,
                 clear_context=True,
-                use_cache=True,
             ),
             NodeStage(
                 type_=Dashboard,
                 context="dashboard",
                 processor="yield_dashboard",
                 consumer=["dashboard_service"],
-                use_cache=True,
             ),
             NodeStage(
                 type_=AddLineageRequest,
@@ -372,6 +368,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         We will look for the data in all the services
         we have informed.
         """
+        # Flush the sink buffer so charts, datamodels and dashboards created in this
+        # stage are persisted before lineage resolution looks them up via get_by_name.
+        yield Either(right=Barrier(reason="dashboard_lineage_flush"))  # pyright: ignore[reportCallIssue]
+
         # yield datamodel dashboard lineage
         for lineage in self.yield_datamodel_dashboard_lineage() or []:
             yield from self.yield_lineage_request(lineage)
@@ -438,7 +438,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=Dashboard,
                 entity_source_state=self.dashboard_source_state,
-                mark_deleted_entity=self.source_config.markDeletedDashboards,
+                recursive=self.source_config.markDeletedDashboards,
                 params={"service": self.context.get().dashboard_service},
             )
 
@@ -452,7 +452,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=DashboardDataModel,
                 entity_source_state=self.datamodel_source_state,
-                mark_deleted_entity=self.source_config.markDeletedDataModels,
+                recursive=self.source_config.markDeletedDataModels,
                 params={"service": self.context.get().dashboard_service},
             )
 
@@ -466,7 +466,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=Chart,
                 entity_source_state=self.chart_source_state,
-                mark_deleted_entity=self.source_config.markDeletedCharts,
+                recursive=self.source_config.markDeletedCharts,
                 params={"service": self.context.get().dashboard_service},
             )
 

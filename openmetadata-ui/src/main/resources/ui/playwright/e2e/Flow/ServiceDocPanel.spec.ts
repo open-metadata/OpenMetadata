@@ -13,7 +13,10 @@
 
 import { expect, Page, test } from '@playwright/test';
 import { redirectToHomePage } from '../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  copyAndGetClipboardText,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -210,14 +213,8 @@ test.describe('ServiceDocPanel', () => {
       await codeBlock.hover();
       await expect(copyButton).toBeVisible();
 
-      // Click and verify copied state + tooltip
-      await copyButton.hover();
-      await copyButton.click();
-
-      // Verify clipboard is non-empty
-      const clipboardText = await page.evaluate(() =>
-        navigator.clipboard.readText()
-      );
+      // Click and verify copied text
+      const clipboardText = await copyAndGetClipboardText(page, copyButton);
 
       expect(clipboardText.length).toBeGreaterThan(0);
     });

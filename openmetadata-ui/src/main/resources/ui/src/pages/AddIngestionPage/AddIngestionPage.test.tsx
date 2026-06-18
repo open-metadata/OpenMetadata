@@ -58,8 +58,11 @@ jest.mock('../../components/common/ServiceDocPanel/ServiceDocPanel', () =>
   jest.fn().mockImplementation(() => <div>ServiceDocPanel</div>)
 );
 
-jest.mock('../../utils/ServiceUtils', () => ({
+jest.mock('../../utils/ServicePureUtils', () => ({
   getServiceType: jest.fn(),
+  getServiceRouteFromServiceType: jest
+    .fn()
+    .mockReturnValue('/services/databases'),
 }));
 
 jest.mock(
@@ -92,7 +95,7 @@ jest.mock('../../utils/IngestionUtils', () => ({
   getSettingsPathFromPipelineType: jest.fn().mockImplementation(() => ''),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('../../utils/EntityDisplayUtils', () => ({
   getEntityMissingError: jest.fn().mockImplementation(() => <div>Error</div>),
 }));
 

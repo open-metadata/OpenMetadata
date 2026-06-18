@@ -17,6 +17,7 @@ import {
   DESCRIPTION_WIDGET,
   GLOSSARY_TERMS_WIDGET,
   GridSizes,
+  KNOWLEDGE_ARTICLE_WIDGET,
   TAGS_WIDGET,
 } from '../constants/CustomizeWidgets.constants';
 import { TOPIC_DUMMY_DATA } from '../constants/Topic.constant';
@@ -25,7 +26,7 @@ import { EntityTabs } from '../enums/entity.enum';
 import { Topic } from '../generated/entity/data/topic';
 import { Tab } from '../generated/system/ui/uiCustomization';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
+import { getTabLabelFromId } from './CustomizePage/CustomizePagePureUtils';
 import i18n from './i18next/LocalUtil';
 import {
   getTopicDetailsPageTabs,
@@ -53,7 +54,8 @@ type TopicWidgetKeys =
   | DetailPageWidgetKeys.DATA_PRODUCTS
   | DetailPageWidgetKeys.TAGS
   | DetailPageWidgetKeys.GLOSSARY_TERMS
-  | DetailPageWidgetKeys.CUSTOM_PROPERTIES;
+  | DetailPageWidgetKeys.CUSTOM_PROPERTIES
+  | DetailPageWidgetKeys.KNOWLEDGE_ARTICLE;
 
 class TopicClassBase {
   defaultWidgetHeight: Record<TopicWidgetKeys, number>;
@@ -66,6 +68,7 @@ class TopicClassBase {
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
+      [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]: 2,
     };
   }
 
@@ -153,6 +156,14 @@ class TopicClassBase {
         static: false,
       },
       {
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.KNOWLEDGE_ARTICLE],
+        i: DetailPageWidgetKeys.KNOWLEDGE_ARTICLE,
+        w: 2,
+        x: 6,
+        y: 5,
+        static: false,
+      },
+      {
         h: this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES],
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
@@ -185,6 +196,14 @@ class TopicClassBase {
       TAGS_WIDGET,
       GLOSSARY_TERMS_WIDGET,
       CUSTOM_PROPERTIES_WIDGET,
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.KNOWLEDGE_ARTICLE,
+        name: i18n.t('label.knowledge-page-plural'),
+        data: {
+          gridSizes: ['large'] as GridSizes[],
+        },
+      },
+      KNOWLEDGE_ARTICLE_WIDGET,
     ];
   }
 

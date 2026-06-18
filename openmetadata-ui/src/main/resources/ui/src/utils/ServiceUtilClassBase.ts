@@ -12,12 +12,16 @@
  */
 
 import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
+import { MenuProps } from 'antd';
 import { get, isEmpty } from 'lodash';
 import { ServiceTypes } from 'Models';
+import React from 'react';
 import GlossaryIcon from '../assets/svg/book.svg';
 import ChartIcon from '../assets/svg/chart.svg';
+import KnowledgePageIcon from '../assets/svg/ic-articles.svg';
 import DataProductIcon from '../assets/svg/ic-data-product.svg';
 import DatabaseIcon from '../assets/svg/ic-database.svg';
+import LinkIcon from '../assets/svg/ic-link.svg';
 import DatabaseSchemaIcon from '../assets/svg/ic-schema.svg';
 import MetricIcon from '../assets/svg/metric.svg';
 import TagIcon from '../assets/svg/tag-grey.svg';
@@ -38,6 +42,7 @@ import {
   PipelineServiceTypeSmallCaseType,
   SearchServiceTypeSmallCaseType,
   SecurityServiceTypeSmallCaseType,
+  ServiceCategory,
   StorageServiceTypeSmallCaseType,
 } from '../enums/service.enum';
 import { DriveServiceType } from '../generated/api/services/createDriveService';
@@ -56,6 +61,8 @@ import { APIServiceType } from '../generated/entity/services/apiService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
 import { ServiceType } from '../generated/entity/services/serviceType';
+import { PageType } from '../interface/knowledge-center.interface';
+import { KnowledgePageSearchSource } from '../interface/search.interface';
 import {
   ConfigData,
   ExtraInfoType,
@@ -63,7 +70,7 @@ import {
 } from '../interface/service.interface';
 import { getAPIConfig } from './APIServiceUtils';
 import { getDashboardConfig } from './DashboardServiceUtils';
-import { getDatabaseConfig } from './DatabaseServiceUtils';
+import { getDatabaseConfig } from './DatabaseServicePureUtils';
 import { getDriveConfig } from './DriveServiceUtils';
 import { getMessagingConfig } from './MessagingServiceUtils';
 import { getMetadataConfig } from './MetadataServiceUtils';
@@ -75,9 +82,9 @@ import { getServiceIcon } from './ServiceIconUtils';
 import {
   getSearchIndexFromService,
   getTestConnectionName,
-} from './ServiceUtils';
+} from './ServicePureUtils';
 import { getStorageConfig } from './StorageServiceUtils';
-import { customServiceComparator } from './StringsUtils';
+import { customServiceComparator } from './StringUtils';
 
 class ServiceUtilClassBase {
   unSupportedServices: string[] = [
@@ -105,6 +112,8 @@ class ServiceUtilClassBase {
     DatabaseServiceType.Dremio,
     MetadataServiceType.Collibra,
     PipelineServiceType.Mulesoft,
+    DatabaseServiceType.MicrosoftFabric,
+    PipelineServiceType.MicrosoftFabricPipeline,
     DatabaseServiceType.MicrosoftAccess,
     DashboardServiceType.SapS4Hana,
     DatabaseServiceType.SapSuccessFactors,
@@ -364,6 +373,14 @@ class ServiceUtilClassBase {
     const type = get(searchSource, 'serviceType', '');
     const entityType = get(searchSource, 'entityType', '');
 
+    if (searchSource?.entityType === EntityType.KNOWLEDGE_PAGE) {
+      const isQuickLink =
+        (searchSource as KnowledgePageSearchSource)?.pageType ===
+        PageType.QUICK_LINK;
+
+      return isQuickLink ? LinkIcon : KnowledgePageIcon;
+    }
+
     // Handle entities that don't have serviceType by using entity-specific icons
     if (isEmpty(type)) {
       switch (entityType) {
@@ -544,6 +561,15 @@ class ServiceUtilClassBase {
     };
 
     return widgets;
+  }
+
+  public getExtraIngestionMenuItems(
+    _serviceCategory: ServiceCategory,
+    _serviceName?: string,
+    _navigate?: (path: string) => void,
+    _serviceDetails?: ServicesType
+  ): MenuProps['items'] {
+    return [];
   }
 
   public getSearchIndexFromEntityType(entityType: EntityType | string) {

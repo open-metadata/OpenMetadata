@@ -15,33 +15,87 @@ import { WidgetProps } from '@rjsf/utils';
 import { fireEvent, render, screen } from '@testing-library/react';
 import CoreCheckboxWidget from './CoreCheckboxWidget';
 import CoreInputWidget from './CoreInputWidget';
+import CorePasswordWidget from './CorePasswordWidget';
 import CoreRadioWidget from './CoreRadioWidget';
 import CoreSelectWidget from './CoreSelectWidget';
 import CoreTextAreaWidget from './CoreTextAreaWidget';
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  Checkbox: jest.fn(
+jest.mock('@untitledui/icons', () => ({
+  Eye: () => <span>eye-icon</span>,
+  EyeOff: () => <span>eye-off-icon</span>,
+  UploadCloud01: () => <span>upload-icon</span>,
+}));
+
+jest.mock('react-aria-components', () => ({
+  Group: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  )),
+  Input: jest.fn(
     ({
-      hint,
-      isDisabled,
-      isSelected,
-      label,
+      placeholder,
+      ...rest
+    }: React.InputHTMLAttributes<HTMLInputElement> & {
+      placeholder?: string;
+    }) => <input placeholder={placeholder} {...rest} />
+  ),
+  TextField: jest.fn(
+    ({
+      children,
+      value,
       onChange,
     }: {
-      hint?: string;
-      isDisabled?: boolean;
-      isSelected?: boolean;
-      label?: string;
-      onChange?: (value: boolean) => void;
+      children: React.ReactNode;
+      value?: string;
+      onChange?: (v: string) => void;
     }) => (
-      <button
-        data-disabled={String(Boolean(isDisabled))}
-        data-selected={String(Boolean(isSelected))}
-        type="button"
-        onClick={() => onChange?.(!isSelected)}>
-        {label}
-        {hint ? <span>{hint}</span> : null}
+      <div>
+        {children}
+        <input
+          readOnly
+          data-testid="hidden-value"
+          value={value ?? ''}
+          onChange={(e) => onChange?.(e.target.value)}
+        />
+      </div>
+    )
+  ),
+}));
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Box: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  )),
+  Button: jest.fn(
+    ({
+      children,
+      isDisabled,
+      onClick,
+    }: {
+      children: React.ReactNode;
+      isDisabled?: boolean;
+      onClick?: () => void;
+    }) => (
+      <button disabled={isDisabled} type="button" onClick={onClick}>
+        {children}
       </button>
+    )
+  ),
+  FileTrigger: jest.fn(
+    ({
+      children,
+      onSelect,
+    }: {
+      children: React.ReactNode;
+      onSelect?: (files: FileList | null) => void;
+    }) => (
+      <div>
+        {children}
+        <input
+          data-testid="file-input"
+          type="file"
+          onChange={(e) => onSelect?.(e.target.files)}
+        />
+      </div>
     )
   ),
   HintText: jest.fn(
@@ -52,45 +106,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       children: React.ReactNode;
       isInvalid?: boolean;
     }) => <div data-invalid={String(Boolean(isInvalid))}>{children}</div>
-  ),
-  Input: jest.fn(
-    ({
-      autoFocus,
-      hint,
-      id,
-      isDisabled,
-      isInvalid,
-      isRequired,
-      label,
-      onBlur,
-      onChange,
-      onFocus,
-      placeholder,
-      type,
-      value,
-    }: Record<string, unknown>) => (
-      <div>
-        {label ? <label htmlFor={id as string}>{label as string}</label> : null}
-        {hint ? <span>{hint as string}</span> : null}
-        <input
-          aria-invalid={isInvalid as boolean}
-          autoFocus={autoFocus as boolean}
-          data-required={String(Boolean(isRequired))}
-          disabled={isDisabled as boolean}
-          id={id as string}
-          placeholder={placeholder as string}
-          type={type as string}
-          value={value as string}
-          onBlur={() => (onBlur as (() => void) | undefined)?.()}
-          onChange={(event) =>
-            (onChange as ((v: string) => void) | undefined)?.(
-              event.target.value
-            )
-          }
-          onFocus={() => (onFocus as (() => void) | undefined)?.()}
-        />
-      </div>
-    )
   ),
   Label: jest.fn(
     ({
@@ -140,6 +155,72 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         <button type="button" onClick={() => onChange?.('2')}>
           select-radio
         </button>
+      </div>
+    )
+  ),
+  Typography: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <span>{children}</span>
+  )),
+  Checkbox: jest.fn(
+    ({
+      hint,
+      isDisabled,
+      isSelected,
+      label,
+      onChange,
+    }: {
+      hint?: string;
+      isDisabled?: boolean;
+      isSelected?: boolean;
+      label?: string;
+      onChange?: (value: boolean) => void;
+    }) => (
+      <button
+        data-disabled={String(Boolean(isDisabled))}
+        data-selected={String(Boolean(isSelected))}
+        type="button"
+        onClick={() => onChange?.(!isSelected)}>
+        {label}
+        {hint ? <span>{hint}</span> : null}
+      </button>
+    )
+  ),
+  Input: jest.fn(
+    ({
+      autoFocus,
+      hint,
+      id,
+      isDisabled,
+      isInvalid,
+      isRequired,
+      label,
+      onBlur,
+      onChange,
+      onFocus,
+      placeholder,
+      type,
+      value,
+    }: Record<string, unknown>) => (
+      <div>
+        {label ? <label htmlFor={id as string}>{label as string}</label> : null}
+        {hint ? <span>{hint as string}</span> : null}
+        <input
+          aria-invalid={isInvalid as boolean}
+          autoFocus={autoFocus as boolean}
+          data-required={String(Boolean(isRequired))}
+          disabled={isDisabled as boolean}
+          id={id as string}
+          placeholder={placeholder as string}
+          type={type as string}
+          value={value as string}
+          onBlur={() => (onBlur as (() => void) | undefined)?.()}
+          onChange={(event) =>
+            (onChange as ((v: string) => void) | undefined)?.(
+              event.target.value
+            )
+          }
+          onFocus={() => (onFocus as (() => void) | undefined)?.()}
+        />
       </div>
     )
   ),
@@ -370,7 +451,13 @@ describe('FormBuilderV1 widgets', () => {
       />
     );
 
-    expect(screen.getByText('Widget label*')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        (_, element) =>
+          element?.tagName.toLowerCase() === 'div' &&
+          element.textContent?.replace(/\s/g, '') === 'Widgetlabel*'
+      )
+    ).toBeInTheDocument();
     expect(screen.getByText('First option')).toBeInTheDocument();
     expect(screen.getByText('Choose one')).toBeInTheDocument();
 
@@ -430,5 +517,72 @@ describe('FormBuilderV1 widgets', () => {
     expect(onFocus).toHaveBeenCalledWith('widget-id', 'hello');
     expect(onChange).toHaveBeenCalledWith('updated text');
     expect(onBlur).toHaveBeenCalledWith('widget-id', 'hello');
+  });
+
+  it('renders password widget default mode with show/hide toggle', () => {
+    const onChange = jest.fn();
+    const onBlur = jest.fn();
+    const onFocus = jest.fn();
+
+    render(
+      <CorePasswordWidget
+        {...widgetBaseProps}
+        required
+        placeholder="Enter password"
+        rawErrors={['Too short']}
+        value="secret"
+        onBlur={onBlur}
+        onChange={onChange}
+        onFocus={onFocus}
+      />
+    );
+
+    expect(screen.getByText('eye-icon')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button'));
+
+    expect(screen.getByText('eye-off-icon')).toBeInTheDocument();
+  });
+
+  it('renders password widget file-only mode', () => {
+    render(
+      <CorePasswordWidget
+        {...widgetBaseProps}
+        schema={
+          {
+            type: 'string' as const,
+            uiFieldType: 'file',
+          } as WidgetProps['schema']
+        }
+        value={undefined}
+        onChange={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('message.upload-file')).toBeInTheDocument();
+    expect(screen.getByTestId('file-input')).toBeInTheDocument();
+  });
+
+  it('renders password widget fileOrInput mode and switches between upload and text input', () => {
+    render(
+      <CorePasswordWidget
+        {...widgetBaseProps}
+        schema={
+          {
+            type: 'string' as const,
+            uiFieldType: 'fileOrInput',
+          } as WidgetProps['schema']
+        }
+        value={undefined}
+        onChange={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('file-input')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'select-radio' }));
+
+    expect(screen.queryByTestId('file-input')).not.toBeInTheDocument();
+    expect(screen.getByText('eye-icon')).toBeInTheDocument();
   });
 });

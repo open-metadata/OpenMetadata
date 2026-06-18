@@ -2,6 +2,8 @@ package org.openmetadata.service.migration.mysql.v200;
 
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.migration.utils.v1130.MigrationUtil.addTableColumnSearchSettings;
+import static org.openmetadata.service.migration.utils.v200.MigrationUtil.addCreateTaskRuleToDataConsumerPolicy;
+import static org.openmetadata.service.migration.utils.v200.MigrationUtil.addTaskAuthorPolicyToDataConsumerRole;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.backfillAnnouncementRelationships;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateLegacyActivityThreadsToActivityStream;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateSuggestionsToTaskEntity;
@@ -31,5 +33,7 @@ public class Migration extends MigrationProcessImpl {
     migrateThreadTasksToTaskEntity(handle, MYSQL);
     migrateLegacyActivityThreadsToActivityStream(handle, MYSQL);
     backfillAnnouncementRelationships(handle);
+    addTaskAuthorPolicyToDataConsumerRole(collectionDAO);
+    addCreateTaskRuleToDataConsumerPolicy(collectionDAO);
   }
 }

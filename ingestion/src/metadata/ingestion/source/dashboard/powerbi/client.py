@@ -542,11 +542,11 @@ class PowerBiApiClient:
         return None
 
     def fetch_workspace_scan_result(self, scan_id: str) -> Optional[Workspaces]:  # noqa: UP045
-        """Get Workspace scan result by id method
-        Args:
-            scan_id:
-        Returns:
-            Workspaces
+        """Get Workspace scan result by id method.
+
+        Parse each workspace individually so a single malformed workspace
+        (or any nested entity that still fails validation) does not invalidate
+        the whole scan-result response and drop the entire chunk of workspaces.
         """
         try:
             logger.debug(
@@ -554,7 +554,29 @@ class PowerBiApiClient:
                 " to get workspace scan result"
             )
             response_data = self.client.get(f"/myorg/admin/workspaces/scanResult/{scan_id}")
-            return Workspaces(**response_data)
+            if not response_data:
+                return None
+            parsed_workspaces: List[Group] = []  # noqa: UP006
+            for raw_ws in response_data.get("workspaces", []) or []:  # pyright: ignore[reportAttributeAccessIssue]
+                if isinstance(raw_ws, dict) and raw_ws.get("id") is not None:
+                    try:
+                        parsed_workspaces.append(Group(**raw_ws))
+                    except Exception as ws_exc:  # pylint: disable=broad-except
+                        logger.debug(traceback.format_exc())
+                        logger.warning(
+                            "Skipping workspace [id=%s] in scan [%s] due to parse error: %s",
+                            raw_ws.get("id"),
+                            scan_id,
+                            ws_exc,
+                        )
+                else:
+                    workspace_entry_type = type(raw_ws).__name__
+                    logger.warning(
+                        "Skipping a workspace in scan [%s] due to missing 'id' field or invalid format. Entry type: %s",
+                        scan_id,
+                        workspace_entry_type,
+                    )
+            return Workspaces(workspaces=parsed_workspaces)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching workspace scan result: {exc}")

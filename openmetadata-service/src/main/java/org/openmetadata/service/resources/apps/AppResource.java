@@ -271,8 +271,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("agentType", agentTypes);
-    return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    ResultList<App> applications =
+        super.listInternal(
+            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    applications
+        .getData()
+        .forEach(app -> app.setEnabled(ApplicationHandler.getInstance().isEnabled(app.getName())));
+    return applications;
   }
 
   @GET
@@ -588,12 +593,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
                 && ingestionPipelineRepository.isIngestionRunnerStreamableLogsEnabled(
                     ingestionPipeline.getIngestionRunner()));
     if (useStreamableLogs) {
+      PipelineStatus latestStatus =
+          IngestionPipelineRepository.latestPipelineStatus(ingestionPipeline);
       String effectiveRunId =
-          !nullOrEmpty(runId)
-              ? runId
-              : (ingestionPipeline.getPipelineStatuses() != null
-                  ? ingestionPipeline.getPipelineStatuses().getRunId()
-                  : null);
+          !nullOrEmpty(runId) ? runId : (latestStatus != null ? latestStatus.getRunId() : null);
       if (!nullOrEmpty(effectiveRunId)) {
         UUID runUuid;
         try {
@@ -1504,11 +1507,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
           service.setIngestionRunner(app.getIngestionRunner());
         }
 
+        IngestionPipelineRepository ingestionPipelineRepository =
+            (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
         PipelineServiceClientResponse status =
-            pipelineServiceClient.deployPipeline(ingestionPipeline, service);
+            ingestionPipelineRepository.deployIngestionPipeline(ingestionPipeline, service);
         if (status.getCode() == 200) {
-          IngestionPipelineRepository ingestionPipelineRepository =
-              (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
           ingestionPipelineRepository.createOrUpdate(
               uriInfo, ingestionPipeline, securityContext.getUserPrincipal().getName());
         } else {

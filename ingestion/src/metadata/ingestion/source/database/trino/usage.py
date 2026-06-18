@@ -51,7 +51,7 @@ class TrinoUsageSource(TrinoQueryParserSource, UsageSource):
             query = None
             offset = 0
             total_fetched = 0
-            max_results = self.source_config.resultLimit
+            max_results = self.source_config.resultLimit  # pyright: ignore[reportAttributeAccessIssue]
             try:
                 for engine in self.get_engine():
                     while total_fetched < max_results:

@@ -384,7 +384,8 @@ public class SearchIndexRetryWorker implements Managed {
 
       EntityInterface entity;
       try {
-        entity = Entity.getEntity(current, "*", Include.ALL);
+        String fields = String.join(",", ReindexingUtil.getSearchIndexFields(current.getType()));
+        entity = Entity.getEntity(current, fields, Include.ALL);
       } catch (Exception ex) {
         continue;
       }
@@ -468,6 +469,7 @@ public class SearchIndexRetryWorker implements Managed {
       for (Map.Entry<String, List<EntityInterface>> entry : entitiesByType.entrySet()) {
         Map<String, Object> context = new HashMap<>();
         context.put(ReindexingUtil.ENTITY_TYPE_KEY, entry.getKey());
+        ReindexingUtil.populateDocBuildContext(context, entry.getKey(), entry.getValue());
         bulkSink.write(entry.getValue(), context);
       }
 

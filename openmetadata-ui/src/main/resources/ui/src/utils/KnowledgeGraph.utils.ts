@@ -28,6 +28,8 @@ import {
   MIN_NODE_WIDTH,
   NODE_HEIGHT,
   NODE_WIDTH,
+  ZOOM_DURATION_MS,
+  ZOOM_EASING,
 } from '../components/KnowledgeGraph/KnowledgeGraph.constants';
 import {
   GraphData,
@@ -35,7 +37,7 @@ import {
 } from '../components/KnowledgeGraph/KnowledgeGraph.interface';
 import { PRIMARY_COLOR } from '../constants/Color.constants';
 import { EntityType } from '../enums/entity.enum';
-import { getEntityLinkFromType } from './EntityUtils';
+import { getEntityLinkFromType } from './EntityLinkUtils';
 import ELKLayout from './Lineage/Layout/ELKUtil/ELKUtil';
 
 // Layout: padding(8) + icon(14) + gap(8) + label + gap(8) + typeChip + padding(8)
@@ -71,8 +73,8 @@ export const getColorSetForType = (
   type: string
 ): { main: string; light: string } => {
   let hash = 0;
-  for (let i = 0; i < type.length; i++) {
-    hash = (hash * 31 + (type.codePointAt(i) ?? 0)) >>> 0;
+  for (const ch of type) {
+    hash = (hash * 31 + (ch.codePointAt(0) ?? 0)) >>> 0;
   }
 
   return COLOR_SETS[hash % COLOR_SETS.length];
@@ -748,10 +750,21 @@ export const applyInitialFocus = async (
 };
 
 export const setupGraphEventHandlers = (ctx: GraphInteractionCtx): void => {
-  const { graph, graphDataNodes, selectedNodeIdRef, setSelectedNode } = ctx;
+  const {
+    graph,
+    graphDataNodes,
+    selectedNodeIdRef,
+    setSelectedNode,
+    setEdgeTooltip,
+    canvasRef,
+  } = ctx;
   const activeHighlightEdges = new Set<string>();
   const activeHighlightNodes = new Set<string>();
   const nodeMap = new Map(ctx.g6Nodes.map((n) => [n.id, n]));
+  let hoveredEdgeId: string | null = null;
+  let hoveredEndpoints: [string, string] | null = null;
+  const nodeLabelMap = new Map(graphDataNodes.map((n) => [n.id, n.label]));
+  const edgeMap = new Map(ctx.g6Edges.map((e) => [String(e.id), e]));
 
   const fwdAdj = new Map<string, Array<{ target: string; edgeId: string }>>();
   ctx.g6Nodes.forEach((n) => fwdAdj.set(n.id, []));
@@ -815,6 +828,7 @@ export const setupGraphEventHandlers = (ctx: GraphInteractionCtx): void => {
       newPathNodes.forEach((id) => activeHighlightNodes.add(id));
     }
 
+    // Guard against stale async draws: if the user moved to a different node before this draw runs, skip it.
     if (ctx.pendingHighlightRef.current !== nodeId) {
       return;
     }
@@ -884,6 +898,138 @@ export const setupGraphEventHandlers = (ctx: GraphInteractionCtx): void => {
     } else {
       clearAllHighlights();
     }
+  });
+
+  graph.on('edge:pointerover', (evt: IElementEvent) => {
+    const edgeId = evt.target.id;
+    if (!edgeId) {
+      return;
+    }
+    const edge = edgeMap.get(edgeId);
+    if (!edge) {
+      return;
+    }
+
+    const srcId = String(edge.source);
+    const tgtId = String(edge.target);
+    const rawLabels = edge.data?.['mergedLabels'];
+    const labels: string[] = (
+      Array.isArray(rawLabels)
+        ? (rawLabels as string[])
+        : [String(edge.data?.['label'] ?? '')]
+    ).filter((s) => s.length > 0);
+
+    // Restore previous edge's visual state before applying the new one;
+    // prevents permanently-highlighted edges when switching edges without a gap.
+    if (hoveredEdgeId && hoveredEdgeId !== edgeId) {
+      if (!activeHighlightEdges.has(hoveredEdgeId)) {
+        graph.updateEdgeData([{ id: hoveredEdgeId, style: EDGE_STYLE_RESET }]);
+      }
+      if (hoveredEndpoints) {
+        const staleNodes = hoveredEndpoints.filter(
+          (id) => !activeHighlightNodes.has(id)
+        );
+        if (staleNodes.length > 0) {
+          graph.updateNodeData(
+            staleNodes.map((id) => buildNodeUpdateData(id, nodeMap, false))
+          );
+        }
+      }
+    }
+
+    hoveredEdgeId = edgeId;
+    hoveredEndpoints = [srcId, tgtId];
+
+    graph.updateEdgeData([
+      {
+        id: edgeId,
+        style: buildEdgeHighlightStyle(
+          ctx.brandColors?.primaryColor ?? PRIMARY_COLOR
+        ),
+      },
+    ]);
+    graph.updateNodeData([
+      buildNodeUpdateData(srcId, nodeMap, true),
+      buildNodeUpdateData(tgtId, nodeMap, true),
+    ]);
+    void graph.draw();
+
+    const canvasEl = canvasRef.current?.querySelector('canvas');
+    if (canvasEl) {
+      canvasEl.style.cursor = 'pointer';
+    }
+
+    setEdgeTooltip({
+      x: evt.client.x,
+      y: evt.client.y,
+      labels,
+      sourceLabel: nodeLabelMap.get(srcId) ?? srcId,
+      targetLabel: nodeLabelMap.get(tgtId) ?? tgtId,
+      edgeId,
+    });
+  });
+
+  graph.on('edge:pointerleave', () => {
+    const canvasEl = canvasRef.current?.querySelector('canvas');
+    if (canvasEl) {
+      canvasEl.style.cursor = '';
+    }
+
+    setEdgeTooltip(null);
+
+    if (hoveredEdgeId && !activeHighlightEdges.has(hoveredEdgeId)) {
+      graph.updateEdgeData([{ id: hoveredEdgeId, style: EDGE_STYLE_RESET }]);
+    }
+
+    if (hoveredEndpoints) {
+      const [srcId, tgtId] = hoveredEndpoints;
+      const nodesToReset = [srcId, tgtId].filter(
+        (id) => !activeHighlightNodes.has(id)
+      );
+      if (nodesToReset.length > 0) {
+        graph.updateNodeData(
+          nodesToReset.map((id) => buildNodeUpdateData(id, nodeMap, false))
+        );
+      }
+    }
+
+    hoveredEdgeId = null;
+    hoveredEndpoints = null;
+
+    void graph.draw();
+
+    // Re-apply the selected node's path highlight because edge hover temporarily overrides it.
+    const highlightTarget = selectedNodeIdRef.current;
+    if (highlightTarget) {
+      applyPathHighlight(highlightTarget);
+    }
+  });
+
+  graph.on('edge:click', (evt: IElementEvent) => {
+    const edgeId = evt.target.id;
+    if (!edgeId) {
+      return;
+    }
+    const edge = edgeMap.get(edgeId);
+    if (!edge) {
+      return;
+    }
+
+    const srcId = String(edge.source);
+    const tgtId = String(edge.target);
+    // Focus the endpoint that isn't currently selected; default to target when nothing is selected.
+    const farId =
+      selectedNodeIdRef.current === srcId
+        ? tgtId
+        : selectedNodeIdRef.current === tgtId
+        ? srcId
+        : tgtId;
+
+    void graph.focusElement(farId, {
+      duration: ZOOM_DURATION_MS,
+      easing: ZOOM_EASING,
+    });
+    selectedNodeIdRef.current = farId;
   });
 
   graph.on('canvas:click', () => {

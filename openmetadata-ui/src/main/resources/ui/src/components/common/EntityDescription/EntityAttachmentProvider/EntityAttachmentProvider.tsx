@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EditorView } from '@tiptap/pm/view';
+import type { EditorView } from '@tiptap/pm/view';
 import { AxiosError } from 'axios';
 import { isString, isUndefined, noop } from 'lodash';
 import { createContext, ReactNode, useContext, useState } from 'react';

@@ -36,9 +36,10 @@ import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPa
 import { searchQuery } from '../../rest/searchAPI';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
 import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
+import { highlightSearchText } from '../../utils/EntitySearchUtils';
+import { getColumnSorter } from '../../utils/EntitySortUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getColumnSorter, highlightSearchText } from '../../utils/EntityUtils';
-import { stringToHTML } from '../../utils/StringsUtils';
+import { stringToHTML } from '../../utils/StringUtils';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
 

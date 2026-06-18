@@ -78,8 +78,6 @@ test.describe('Data Product Comprehensive Tests', () => {
       await page.getByRole('button', { name: 'Save' }).click();
       await createRes;
 
-      await toastNotification(page, /Data Product created successfully/i);
-
       // Verify data product was created - navigate to Data Products tab
       await page.getByTestId('data_products').click();
 

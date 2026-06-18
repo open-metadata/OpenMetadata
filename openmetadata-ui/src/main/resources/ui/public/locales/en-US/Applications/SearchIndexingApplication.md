@@ -71,14 +71,9 @@ $$section
 $$
 
 $$section
-### Recreate Indexes $(id="recreateIndex")
-
-$$
-
-$$section
 ### Search Index Language $(id="searchIndexMappingLanguage")
 
-Recreate Indexes with updated Language
+Search index mapping language.
 
 $$
 
@@ -86,13 +81,6 @@ $$section
 ### Auto Tune $(id="autoTune")
 
 Enable automatic performance tuning based on cluster capabilities and database entity count
-
-$$
-
-$$section
-### Use Distributed Indexing $(id="useDistributedIndexing")
-
-Enable distributed indexing to scale reindexing across multiple servers with fault tolerance and parallel processing
 
 $$
 

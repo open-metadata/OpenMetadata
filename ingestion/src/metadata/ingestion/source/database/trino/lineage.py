@@ -61,7 +61,7 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
         for engine in self.get_engine():
             offset = 0
             total_fetched = 0
-            max_results = self.source_config.resultLimit
+            max_results = self.source_config.resultLimit  # pyright: ignore[reportAttributeAccessIssue]
             while total_fetched < max_results:
                 batch_size = min(TRINO_QUERY_BATCH_SIZE, max_results - total_fetched)
                 row_count = 0
@@ -99,7 +99,7 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
                 )
 
     def get_cross_database_fqn_from_service_names(self) -> List[str]:  # noqa: UP006
-        database_service_names = self.source_config.crossDatabaseServiceNames
+        database_service_names = self.source_config.crossDatabaseServiceNames  # pyright: ignore[reportAttributeAccessIssue]
         return [
             database.fullyQualifiedName.root
             for service in database_service_names

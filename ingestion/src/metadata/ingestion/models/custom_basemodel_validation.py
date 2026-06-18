@@ -22,6 +22,9 @@ RESTRICTED_KEYWORDS = ["::", ">"]
 RESERVED_COLON_KEYWORD = "__reserved__colon__"
 RESERVED_ARROW_KEYWORD = "__reserved__arrow__"
 RESERVED_QUOTE_KEYWORD = "__reserved__quote__"
+RESERVED_NEWLINE_KEYWORD = "__reserved__newline__"
+RESERVED_CARRIAGE_RETURN_KEYWORD = "__reserved__carriage_return__"
+RESERVED_TAB_KEYWORD = "__reserved__tab__"
 
 
 class TransformDirection(Enum):
@@ -115,6 +118,9 @@ def revert_separators(value):
         value.replace(RESERVED_COLON_KEYWORD, "::")
         .replace(RESERVED_ARROW_KEYWORD, ">")
         .replace(RESERVED_QUOTE_KEYWORD, '"')
+        .replace(RESERVED_NEWLINE_KEYWORD, "\n")
+        .replace(RESERVED_CARRIAGE_RETURN_KEYWORD, "\r")
+        .replace(RESERVED_TAB_KEYWORD, "\t")
     )
 
 
@@ -123,6 +129,9 @@ def replace_separators(value):
         value.replace("::", RESERVED_COLON_KEYWORD)
         .replace(">", RESERVED_ARROW_KEYWORD)
         .replace('"', RESERVED_QUOTE_KEYWORD)
+        .replace("\n", RESERVED_NEWLINE_KEYWORD)
+        .replace("\r", RESERVED_CARRIAGE_RETURN_KEYWORD)
+        .replace("\t", RESERVED_TAB_KEYWORD)
     )
 
 

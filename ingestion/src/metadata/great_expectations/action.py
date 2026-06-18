@@ -22,7 +22,7 @@ from datetime import datetime
 from typing import Dict, List, Optional, Union, cast  # noqa: UP035
 
 from great_expectations.checkpoint.actions import ValidationAction
-from great_expectations.core import ExpectationConfiguration
+from great_expectations.core import ExpectationConfiguration  # type: ignore
 from great_expectations.core.batch import Batch
 from great_expectations.core.batch_spec import (
     RuntimeDataBatchSpec,
@@ -32,8 +32,8 @@ from great_expectations.core.batch_spec import (
 from great_expectations.core.expectation_validation_result import (
     ExpectationSuiteValidationResult,
 )
-from great_expectations.data_asset.data_asset import DataAsset
-from great_expectations.data_context.data_context import DataContext
+from great_expectations.data_asset.data_asset import DataAsset  # type: ignore
+from great_expectations.data_context.data_context import DataContext  # type: ignore
 
 from metadata.generated.schema.type.basic import Timestamp
 
@@ -115,7 +115,7 @@ class OpenMetadataValidationAction(ValidationAction):
         table_name: Optional[str] = None,  # noqa: UP045
         expectation_suite_table_config_map: Optional[Dict[str, Dict[str, str]]] = None,  # noqa: UP006, UP045
     ):
-        super().__init__(data_context, name=name)
+        super().__init__(data_context, name=name)  # type: ignore
         self.database_service_name = database_service_name
         self.database_name = database_name
         self.table_name = table_name
@@ -131,7 +131,7 @@ class OpenMetadataValidationAction(ValidationAction):
         self.ometa_conn = self._create_ometa_connection()
         self.expectation_suite = None
 
-    def _run(  # pylint: disable=unused-argument
+    def _run(  # pylint: disable=unused-argument # pyright: ignore[reportIncompatibleMethodOverride]
         self,
         validation_result_suite: ExpectationSuiteValidationResult,
         validation_result_suite_identifier: Union[ValidationResultIdentifier, GeCloudIdentifier],  # noqa: UP007
@@ -153,7 +153,7 @@ class OpenMetadataValidationAction(ValidationAction):
         expectation_suite_name = None
 
         if expectation_suite_identifier:
-            expectation_suite_name = expectation_suite_identifier.expectation_suite_name
+            expectation_suite_name = expectation_suite_identifier.expectation_suite_name  # type: ignore
             self.expectation_suite = self.data_context.get_expectation_suite(expectation_suite_name)
 
         check_point_spec = self._get_checkpoint_batch_spec(data_asset)
@@ -182,7 +182,7 @@ class OpenMetadataValidationAction(ValidationAction):
 
         if table_entity:
             for result in validation_result_suite.results:
-                self._handle_test_case(result, table_entity)
+                self._handle_test_case(result, table_entity)  # type: ignore
 
     @staticmethod
     def _get_checkpoint_batch_spec(
@@ -197,7 +197,7 @@ class OpenMetadataValidationAction(ValidationAction):
         Raises:
             ValueError: if datasource not a supported batch spec type
         """
-        batch_spec = data_asset.active_batch_spec
+        batch_spec = data_asset.active_batch_spec  # pyright: ignore[reportAttributeAccessIssue]
         if isinstance(batch_spec, SqlAlchemyDatasourceBatchSpec):
             return batch_spec
         if isinstance(batch_spec, RuntimeDataBatchSpec):
@@ -294,10 +294,10 @@ class OpenMetadataValidationAction(ValidationAction):
         Raises:
             ValueError: if expectation is not ran against DB
         """
-        if isinstance(data_asset.execution_engine.engine, Engine):
-            return data_asset.execution_engine.engine.url
-        if isinstance(data_asset.execution_engine.engine, Connection):
-            return data_asset.execution_engine.engine.engine.url
+        if isinstance(data_asset.execution_engine.engine, Engine):  # pyright: ignore[reportAttributeAccessIssue]
+            return data_asset.execution_engine.engine.url  # pyright: ignore[reportAttributeAccessIssue]
+        if isinstance(data_asset.execution_engine.engine, Connection):  # pyright: ignore[reportAttributeAccessIssue]
+            return data_asset.execution_engine.engine.engine.url  # pyright: ignore[reportAttributeAccessIssue]
         raise ValueError("Type is not supported. Make sur you ran your expectations against a relational database")
 
     def _create_ometa_connection(self) -> OpenMetadata:
@@ -333,7 +333,7 @@ class OpenMetadataValidationAction(ValidationAction):
         if self.expectation_suite:
             expectation = self._get_expectation_config(result)
             if expectation:
-                meta: Optional[Dict] = expectation.get("meta")  # noqa: UP006, UP045
+                meta: Optional[Dict] = expectation.get("meta")  # noqa: UP006, UP045  # pyright: ignore[reportAssignmentType]
                 if meta:
                     return meta.get("description", "")
         return ""
