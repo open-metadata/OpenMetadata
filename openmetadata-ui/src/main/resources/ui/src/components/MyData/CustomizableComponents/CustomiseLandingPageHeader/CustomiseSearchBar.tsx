@@ -25,12 +25,11 @@ import { CurrentTourPageType } from '../../../../enums/tour.enum';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useSearchStore } from '../../../../hooks/useSearchStore';
-import { getNLPEnabledStatus } from '../../../../rest/searchAPI';
 import { addToRecentSearched } from '../../../../utils/RecentActivityUtils';
 import {
-  getExplorePath,
-  inPageSearchOptions,
-  isInPageSearchAllowed,
+    getExplorePath,
+    inPageSearchOptions,
+    isInPageSearchAllowed
 } from '../../../../utils/RouterUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import SearchOptions from '../../../AppBar/SearchOptions';
@@ -40,7 +39,7 @@ import './customise-search-bar.less';
 export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const { currentUser, searchCriteria } = useApplicationStore();
-  const { isNLPEnabled, isNLPActive, setNLPActive, setNLPEnabled } =
+  const { isNLPEnabled, isNLPActive, setNLPActive, initNLP } =
     useSearchStore();
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
@@ -159,17 +158,11 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
     handleSearchChange,
   ]);
 
-  const fetchNLPEnabledStatus = useCallback(() => {
-    if (!isEmpty(currentUser)) {
-      getNLPEnabledStatus().then((enabled) => {
-        setNLPEnabled(enabled);
-      });
-    }
-  }, [setNLPEnabled, currentUser]);
-
   useEffect(() => {
-    fetchNLPEnabledStatus();
-  }, [fetchNLPEnabledStatus]);
+    if (!isEmpty(currentUser)) {
+      initNLP();
+    }
+  }, [currentUser]);
 
   return (
     <div

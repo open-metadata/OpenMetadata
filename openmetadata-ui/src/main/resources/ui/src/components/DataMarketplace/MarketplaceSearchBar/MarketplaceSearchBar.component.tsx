@@ -30,11 +30,7 @@ import { Domain } from '../../../generated/entity/domains/domain';
 import { useMarketplaceRecentSearches } from '../../../hooks/useMarketplaceRecentSearches';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { useSearchStore } from '../../../hooks/useSearchStore';
-import {
-  getNLPEnabledStatus,
-  nlqSearch,
-  searchQuery,
-} from '../../../rest/searchAPI';
+import { nlqSearch, searchQuery } from '../../../rest/searchAPI';
 import { getDataProductIconByUrl } from '../../../utils/DataProductUtils';
 import { getDomainIcon } from '../../../utils/DomainUtils';
 import { getDomainDetailsPath } from '../../../utils/RouterUtils';
@@ -47,7 +43,7 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { dataProductBasePath } = useMarketplaceStore();
-  const { isNLPEnabled, isNLPActive, setNLPActive, setNLPEnabled } =
+  const { isNLPEnabled, isNLPActive, setNLPActive, initNLP } =
     useSearchStore();
   const [searchValue, setSearchValue] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -59,12 +55,8 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
 
   // GlobalSearchBar is absent on marketplace pages, so bootstrap the store if not yet populated.
   useEffect(() => {
-    if (!isNLPEnabled) {
-      getNLPEnabledStatus()
-        .then(setNLPEnabled)
-        .catch(() => setNLPEnabled(false));
-    }
-  }, []);
+    initNLP();
+  }, [initNLP]);
 
   const fetchResults = useCallback(
     async (query: string) => {

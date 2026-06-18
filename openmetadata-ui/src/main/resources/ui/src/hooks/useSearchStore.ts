@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { create } from 'zustand';
+import { getNLPEnabledStatus } from '../rest/searchAPI';
 
 interface SearchState {
   // NLP flags
@@ -19,15 +20,21 @@ interface SearchState {
 
   // Actions
   setNLPActive: (active: boolean) => void;
-  setNLPEnabled: (enabled: boolean) => void;
+  initNLP: () => Promise<void>;
 }
 
-export const useSearchStore = create<SearchState>((set) => ({
+export const useSearchStore = create<SearchState>((set, get) => ({
   // NLP flags
   isNLPActive: false,
   isNLPEnabled: false,
 
-  // Actions to update the state
   setNLPActive: (active) => set({ isNLPActive: active }),
-  setNLPEnabled: (enabled) => set({ isNLPEnabled: enabled }),
+
+  initNLP: async () => {
+    if (get().isNLPEnabled) {
+      return;
+    }
+    const enabled = await getNLPEnabledStatus().catch(() => false);
+    set({ isNLPEnabled: enabled });
+  },
 }));
