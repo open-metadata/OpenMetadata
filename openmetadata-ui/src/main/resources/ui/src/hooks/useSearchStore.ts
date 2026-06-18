@@ -17,6 +17,7 @@ interface SearchState {
   // NLP flags
   isNLPActive: boolean;
   isNLPEnabled: boolean;
+  isNLPInitialized: boolean;
 
   // Actions
   setNLPActive: (active: boolean) => void;
@@ -27,14 +28,17 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   // NLP flags
   isNLPActive: false,
   isNLPEnabled: false,
+  isNLPInitialized: false,
 
   setNLPActive: (active) => set({ isNLPActive: active }),
 
   initNLP: async () => {
-    if (get().isNLPEnabled) {
+    // Guard on isNLPInitialized (not isNLPEnabled) so a false response from
+    // the API also prevents a redundant second fetch.
+    if (get().isNLPInitialized) {
       return;
     }
     const enabled = await getNLPEnabledStatus().catch(() => false);
-    set({ isNLPEnabled: enabled });
+    set({ isNLPEnabled: enabled, isNLPInitialized: true });
   },
 }));
