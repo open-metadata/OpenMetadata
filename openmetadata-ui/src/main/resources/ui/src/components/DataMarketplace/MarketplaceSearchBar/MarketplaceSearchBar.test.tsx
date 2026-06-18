@@ -142,7 +142,11 @@ const renderComponent = (props = {}) =>
 describe('MarketplaceSearchBar', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    useSearchStore.setState({ isNLPEnabled: true, isNLPActive: false });
+    useSearchStore.setState({
+      isNLPEnabled: true,
+      isNLPActive: false,
+      isNLPInitialized: true,
+    });
     (getNLPEnabledStatus as jest.Mock).mockResolvedValue(true);
     (searchQuery as jest.Mock).mockResolvedValue({ hits: { hits: [] } });
     (nlqSearch as jest.Mock).mockResolvedValue({ hits: { hits: [] } });
@@ -176,7 +180,11 @@ describe('MarketplaceSearchBar', () => {
   });
 
   it('bootstraps isNLPEnabled from API when store is cold (direct marketplace navigation)', async () => {
-    useSearchStore.setState({ isNLPEnabled: false, isNLPActive: false });
+    useSearchStore.setState({
+      isNLPEnabled: false,
+      isNLPActive: false,
+      isNLPInitialized: false,
+    });
     (getNLPEnabledStatus as jest.Mock).mockResolvedValue(true);
 
     renderComponent();
@@ -187,8 +195,12 @@ describe('MarketplaceSearchBar', () => {
     });
   });
 
-  it('skips the API call when isNLPEnabled is already set in the store', () => {
-    useSearchStore.setState({ isNLPEnabled: true, isNLPActive: false });
+  it('skips the API call when store is already initialized', () => {
+    useSearchStore.setState({
+      isNLPEnabled: false,
+      isNLPActive: false,
+      isNLPInitialized: true,
+    });
 
     renderComponent();
 
