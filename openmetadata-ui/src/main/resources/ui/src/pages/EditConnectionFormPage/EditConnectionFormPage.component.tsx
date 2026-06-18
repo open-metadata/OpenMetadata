@@ -20,7 +20,7 @@ import {
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
-import { LoadingState, ServicesUpdateRequest, ServiceTypes } from 'Models';
+import { LoadingState, ServicesUpdateRequest } from 'Models';
 import React, {
   useCallback,
   useEffect,
@@ -141,7 +141,7 @@ function EditConnectionFormPage() {
     try {
       setSaveServiceState('waiting');
       const response = await patchService(
-        serviceCategory as ServiceCategory,
+        serviceCategory,
         serviceDetails.id,
         jsonPatch
       );
@@ -152,7 +152,7 @@ function EditConnectionFormPage() {
 
       navigate(
         connectionsRouterClassBase.getPathByServiceFQN(
-          serviceCategory as ServiceCategory,
+          serviceCategory,
           serviceFQN
         )
       );
@@ -166,13 +166,9 @@ function EditConnectionFormPage() {
   const fetchServiceDetail = async () => {
     setIsLoading(true);
     try {
-      const response = await getServiceByFQN(
-        serviceCategory as ServiceCategory,
-        serviceFQN,
-        {
-          fields: TabSpecificField.OWNERS,
-        }
-      );
+      const response = await getServiceByFQN(serviceCategory, serviceFQN, {
+        fields: TabSpecificField.OWNERS,
+      });
       setServiceDetails(response);
       setSlashedBreadcrumb([
         {
@@ -226,13 +222,11 @@ function EditConnectionFormPage() {
         navigate(
           getSettingPath(
             GlobalSettingsMenuCategory.SERVICES,
-            getServiceRouteFromServiceType(serviceCategory as ServiceTypes)
+            getServiceRouteFromServiceType(serviceCategory)
           )
         );
       } else if (id === 'service-name') {
-        navigate(
-          getPathByServiceFQN(serviceCategory as ServiceCategory, serviceFQN)
-        );
+        navigate(getPathByServiceFQN(serviceCategory, serviceFQN));
       }
     },
     [navigate, serviceCategory, serviceFQN]
@@ -253,7 +247,7 @@ function EditConnectionFormPage() {
   if (isError && !isLoading) {
     return (
       <ErrorPlaceHolder>
-        {getEntityMissingError(serviceCategory as ServiceCategory, serviceFQN)}
+        {getEntityMissingError(serviceCategory, serviceFQN)}
       </ErrorPlaceHolder>
     );
   }
@@ -317,7 +311,7 @@ function EditConnectionFormPage() {
                 hideFooter
                 data={serviceDetails}
                 ref={connectionFormRef}
-                serviceCategory={serviceCategory as ServiceCategory}
+                serviceCategory={serviceCategory}
                 serviceType={serviceDetails?.serviceType ?? ''}
                 status={saveServiceState}
                 onFocus={handleFieldFocus}
@@ -332,7 +326,7 @@ function EditConnectionFormPage() {
                 hideFooter
                 data={serviceDetails}
                 ref={filtersFormRef}
-                serviceCategory={serviceCategory as ServiceCategory}
+                serviceCategory={serviceCategory}
                 serviceType={serviceDetails?.serviceType ?? ''}
                 status={saveServiceState}
                 onFocus={handleFieldFocus}
@@ -396,7 +390,7 @@ function EditConnectionFormPage() {
                 focusedMode
                 activeField={activeField}
                 serviceName={serviceDetails?.serviceType ?? ''}
-                serviceType={getServiceType(serviceCategory as ServiceCategory)}
+                serviceType={getServiceType(serviceCategory)}
               />
             ),
             className: 'service-doc-panel content-resizable-panel-container',

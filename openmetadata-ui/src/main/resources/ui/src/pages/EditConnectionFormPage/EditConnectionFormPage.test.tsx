@@ -10,13 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act } from 'react';
 import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
 import EditConnectionFormPage from './EditConnectionFormPage.component';
 
@@ -78,22 +73,32 @@ jest.mock('../../components/common/Loader/Loader', () =>
 
 jest.mock(
   '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm',
-  () =>
-    jest.fn().mockImplementation(({ onSave, onFocus }) => (
-      <div>
-        <div>ConnectionConfigForm</div>
-        <button
-          data-testid="next-button"
-          onClick={() => onSave({ formData: { testData: 'test' } })}>
-          label.next
-        </button>
-        <input
-          data-testid="connection-field"
-          type="text"
-          onFocus={() => onFocus('testField')}
-        />
-      </div>
-    ))
+  () => {
+    const { forwardRef } = require('react');
+
+    type Props = { onFocus: (field: string) => void; onSave: (e: { formData: unknown }) => void };
+    type Handle = { submit: () => void; isSubmitDisabled: boolean };
+
+    return forwardRef(({ onFocus, onSave }: Props, ref: React.MutableRefObject<Handle>) => {
+      if (ref) {
+        ref.current = {
+          submit: () => onSave({ formData: {} }),
+          isSubmitDisabled: false,
+        };
+      }
+
+      return (
+        <div>
+          <div>ConnectionConfigForm</div>
+          <input
+            data-testid="connection-field"
+            type="text"
+            onFocus={() => onFocus('testField')}
+          />
+        </div>
+      );
+    });
+  }
 );
 
 jest.mock(
