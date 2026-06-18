@@ -44,7 +44,7 @@ const AnnouncementsWidgetV3Body = ({
     return (
       <div
         className={classNames(
-          'tw:rounded-[10px] tw:border tw:border-gray-blue-100 tw:bg-linear-to-b tw:from-brand-50 tw:to-bg-primary tw:px-4 tw:py-3.5',
+          'tw:rounded-[10px] tw:border tw:border-gray-blue-100 tw:bg-linear-to-b tw:from-blue-50 tw:to-bg-primary tw:px-4 tw:py-3.5',
           className
         )}
         data-testid={testId}>
@@ -84,7 +84,7 @@ const AnnouncementsWidgetV3Body = ({
   return (
     <div
       className={classNames(
-        'tw:rounded-[10px] tw:border tw:border-gray-blue-100 tw:bg-linear-to-b tw:from-brand-50 tw:to-bg-primary tw:px-4 tw:py-3.5',
+        'tw:rounded-[10px] tw:border tw:border-gray-blue-100 tw:bg-linear-to-b tw:from-blue-50 tw:to-bg-primary tw:px-4 tw:py-3.5',
         className
       )}
       data-testid={testId}>
