@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect, Page } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
@@ -28,9 +28,7 @@ import {
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { clickUpdateButtonIfVisible } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
-
-// use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
+import { test } from '../fixtures/pages';
 
 const TIER_FIELD = 'tier.tagFQN';
 const TAG_FIELD = 'tags.tagFQN';
@@ -40,20 +38,16 @@ const TIER1_KEY = 'tier.tier1';
 const TIER2_KEY = 'tier.tier2';
 const PERSONAL_TAG_KEY = 'personaldata.personal';
 
-const tierOneTable = new TableClass();
-const tierTwoTable = new TableClass();
-const tierOneDashboard = new DashboardClass();
-const tierTwoTopic = new TopicClass();
-const untieredTable = new TableClass();
-const assetDomain = new Domain();
-const compositionGlossary = new Glossary(`pwCompositionGlossary${uuid()}`);
-const compositionTerm = new GlossaryTerm(
-  compositionGlossary,
-  undefined,
-  `pwCompositionTerm${uuid()}`
-);
-const goldCertification = new TagClass({ classification: 'Certification' });
-const silverCertification = new TagClass({ classification: 'Certification' });
+let tierOneTable: TableClass;
+let tierTwoTable: TableClass;
+let tierOneDashboard: DashboardClass;
+let tierTwoTopic: TopicClass;
+let untieredTable: TableClass;
+let assetDomain: Domain;
+let compositionGlossary: Glossary;
+let compositionTerm: GlossaryTerm;
+let goldCertification: TagClass;
+let silverCertification: TagClass;
 
 const classificationTagPatch = (tagFQN: string, index: number): Operation => ({
   op: 'add',
@@ -230,6 +224,21 @@ test.beforeAll(
   'Setup tagged fixtures across asset types',
   async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
+    tierOneTable = new TableClass();
+    tierTwoTable = new TableClass();
+    tierOneDashboard = new DashboardClass();
+    tierTwoTopic = new TopicClass();
+    untieredTable = new TableClass();
+    assetDomain = new Domain();
+    compositionGlossary = new Glossary(`pwCompositionGlossary${uuid()}`);
+    compositionTerm = new GlossaryTerm(
+      compositionGlossary,
+      undefined,
+      `pwCompositionTerm${uuid()}`
+    );
+    goldCertification = new TagClass({ classification: 'Certification' });
+    silverCertification = new TagClass({ classification: 'Certification' });
+
     await tierOneTable.create(apiContext);
     await tierTwoTable.create(apiContext);
     await tierOneDashboard.create(apiContext);

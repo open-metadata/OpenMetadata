@@ -116,7 +116,7 @@ test.describe('search dropdown quick filters - index readiness', () => {
       } else {
         await waitForAllLoadersToDisappear(page);
       }
-      await page.click('[data-testid="clear-all-chips"]');
+      await page.getByTestId('clear-all-chips').click();
     }
   });
 });

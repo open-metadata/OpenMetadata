@@ -10,20 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
+import { test } from '../fixtures/pages';
 
-// use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
-
-const table = new TableClass();
+let table: TableClass;
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
+  table = new TableClass();
   await table.create(apiContext);
   await afterAction();
 });
