@@ -14,7 +14,11 @@ import { APIRequestContext, expect, Page } from '@playwright/test';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage, uuid } from '../../utils/common';
+import {
+  redirectToHomePage,
+  toastNotification,
+  uuid,
+} from '../../utils/common';
 import { test } from '../fixtures/pages';
 
 // ODPS (Open Data Product Specification) export/import and the data-product
@@ -384,10 +388,14 @@ test.describe('DataProduct ODPS & metadata — UI', () => {
       page.on('response', listener);
       await page.getByTestId('odps-import-submit').click();
 
-      // The guard short-circuits before any API call: no PUT, modal stays open.
-      await expect(async () => {
-        expect(putFired).toBe(false);
-      }).toPass({ timeout: 3000, intervals: [300] });
+      // Positive signal: the guard raises a name-mismatch toast and returns
+      // before any API call. Waiting for that toast (which only appears when the
+      // guard fires) is the real regression check — if the guard regressed, the
+      // import would proceed and this would time out. By the time the toast is
+      // visible a real PUT would already have fired, so the no-PUT assertion
+      // below is now meaningful rather than passing instantly.
+      await toastNotification(page, /match the current data product/i);
+      expect(putFired).toBe(false);
       page.off('response', listener);
       await expect(page.getByTestId('odps-import-modal')).toBeVisible();
     } finally {
