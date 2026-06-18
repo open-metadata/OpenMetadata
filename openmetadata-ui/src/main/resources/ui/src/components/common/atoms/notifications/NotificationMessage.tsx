@@ -26,7 +26,7 @@ const VARIANT_COLOR_CLASS: Record<VariantType, string> = {
   error: 'tw:text-error-primary',
   warning: 'tw:text-warning-primary',
   info: 'tw:text-primary',
-  default: 'tw:text-gray-700',
+  default: 'tw:text-secondary',
 };
 
 interface NotificationMessageProps {

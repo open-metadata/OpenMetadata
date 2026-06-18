@@ -22,7 +22,6 @@ import { TopicClass } from '../../support/entity/TopicClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
   assignDataProduct,
-  assignSingleSelectDomain,
   createNewPage,
   descriptionBox,
   getApiContext,
@@ -33,7 +32,6 @@ import {
 } from '../../utils/common';
 import {
   addMultiOwner,
-  removeOwner,
   visitEntityPage,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
@@ -130,7 +128,38 @@ test.describe('Knowledge Center', () => {
       // add title
       await addTitle(page, knowledgePageArticle.title);
 
-      await assignSingleSelectDomain(page, domain.responseData);
+      // assign domain via the edit button on the article details header
+      await page.getByTestId('edit-domain-btn').click();
+      await waitForAllLoadersToDisappear(page);
+
+      const searchDomain = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes(encodeURIComponent(domain.responseData.name))
+      );
+
+      await page
+        .getByTestId('domain-selectable-tree')
+        .getByTestId('searchbar')
+        .fill(domain.responseData.name);
+
+      await searchDomain;
+
+      const domainTagSelector = page.getByTestId(
+        `tag-${domain.responseData.fullyQualifiedName}`
+      );
+      await domainTagSelector.waitFor({ state: 'visible' });
+
+      const domainPatchReq = page.waitForResponse(
+        (req) => req.request().method() === 'PATCH'
+      );
+      await domainTagSelector.click();
+      await domainPatchReq;
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page.getByTestId('domain-link')).toContainText(
+        domain.responseData.displayName
+      );
 
       await assignDataProduct(
         page,
@@ -145,25 +174,32 @@ test.describe('Knowledge Center', () => {
       await addMultiOwner({
         page,
         ownerNames: [user.responseData.displayName],
-        activatorBtnDataTestId: 'edit-owner',
+        activatorBtnDataTestId: 'edit-owner-btn',
         endpoint: 'contextCenter/pages' as EntityTypeEndpoint,
         type: 'Users',
       });
 
-      // remove owner
-      await removeOwner({
-        page,
-        endpoint: 'contextCenter/pages' as EntityTypeEndpoint,
-        ownerName: user.responseData.displayName,
-        type: 'Users',
-        dataTestId: 'add-owner',
-      });
+      // remove owner via the edit button on the article details header
+      await page.getByTestId('edit-owner-btn').click();
+      await waitForAllLoadersToDisappear(page);
+
+      const removeOwnerPatchReq = page.waitForResponse(
+        (req) => req.request().method() === 'PATCH'
+      );
+      await page.click('[data-testid="clear-all-button"]');
+      await page.click('[data-testid="selectable-list-update-btn"]');
+      await removeOwnerPatchReq;
+
+      await page
+        .getByTestId('owner-label')
+        .getByTestId(user.responseData.displayName)
+        .waitFor({ state: 'hidden' });
 
       // update owner
       await addMultiOwner({
         page,
         ownerNames: [user.responseData.displayName],
-        activatorBtnDataTestId: 'add-owner',
+        activatorBtnDataTestId: 'edit-owner-btn',
         endpoint: 'contextCenter/pages' as EntityTypeEndpoint,
         type: 'Users',
       });
