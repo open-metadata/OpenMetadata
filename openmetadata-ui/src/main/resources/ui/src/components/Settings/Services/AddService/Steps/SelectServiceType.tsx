@@ -14,6 +14,7 @@
 import {
   Badge,
   Box,
+  Card,
   Input,
   Select,
   SelectItem,
@@ -52,7 +53,6 @@ const categorySelectItems: SelectItemType[] = SERVICE_CATEGORY_OPTIONS.map(
 
 const SelectServiceType = ({
   serviceCategory,
-  selectServiceType,
   showError,
   serviceCategoryHandler,
   handleServiceTypeClick,
@@ -150,40 +150,38 @@ const SelectServiceType = ({
           className="tw:mt-4 tw:grid tw:grid-cols-5 tw:gap-3"
           data-testid="select-service">
           {filteredConnectors.map((type) => (
-            <button
+            <Card
+              isClickable
               className={classNames(
-                'tw:relative tw:flex tw:h-[100px] tw:w-full tw:cursor-pointer tw:flex-col tw:items-center tw:justify-center',
-                'tw:gap-3 tw:rounded-lg tw:border tw:bg-primary tw:px-2.5 tw:py-4',
-                'tw:shadow-xs tw:transition-[border-color,background-color,box-shadow] tw:duration-[120ms]',
-                'tw:whitespace-normal hover:tw:bg-utility-brand-50 hover:tw:border-utility-brand-300',
-                type === selectServiceType
-                  ? 'tw:border-2 tw:border-utility-brand-300'
-                  : 'tw:border tw:border-secondary'
+                'tw:h-[100px] tw:w-full tw:flex-col tw:px-2.5 tw:py-4',
+                'tw:hover:bg-utility-brand-50 tw:hover:border-utility-brand-300'
               )}
               data-testid={type}
               key={type}
-              type="button"
+              size="sm"
               onClick={() => handleServiceTypeClick(type)}>
-              <div
-                className="tw:flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:border tw:border-secondary tw:bg-secondary"
-                data-testid="service-icon">
-                <div className="tw:flex tw:size-6 tw:items-center tw:justify-center">
-                  {getServiceLogo(type || '', 'tw:size-6 tw:object-contain')}
+              <div className="tw:flex tw:flex-col tw:items-center tw:justify-center tw:gap-3 tw:w-full">
+                <div
+                  className="tw:flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:border tw:border-secondary tw:bg-secondary"
+                  data-testid="service-icon">
+                  <div className="tw:flex tw:size-6 tw:items-center tw:justify-center">
+                    {getServiceLogo(type || '', 'tw:size-6 tw:object-contain')}
+                  </div>
                 </div>
+                <Box align="center" gap={2} justify="center">
+                  <Typography size="text-xs" weight="semibold">
+                    {getServiceName(type)}
+                  </Typography>
+                  {BETA_SERVICES.includes(
+                    type as DatabaseServiceType | PipelineServiceType
+                  ) ? (
+                    <Badge color="brand" size="xs" type="pill-color">
+                      {t('label.beta')}
+                    </Badge>
+                  ) : null}
+                </Box>
               </div>
-              <Box align="center" gap={2} justify="center">
-                <Typography size="text-xs" weight="semibold">
-                  {getServiceName(type)}
-                </Typography>
-                {BETA_SERVICES.includes(
-                  type as DatabaseServiceType | PipelineServiceType
-                ) ? (
-                  <Badge color="brand" size="xs" type="pill-color">
-                    {t('label.beta')}
-                  </Badge>
-                ) : null}
-              </Box>
-            </button>
+            </Card>
           ))}
         </div>
 

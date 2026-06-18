@@ -81,6 +81,7 @@ const FiltersConfigForm = forwardRef<
     okText,
     cancelText,
     hideFooter = false,
+    showConnectedMessage = false,
     serviceType,
     serviceCategory,
     status,
@@ -206,19 +207,21 @@ const FiltersConfigForm = forwardRef<
         </p>
       </div>
 
-      <div className="tw:flex tw:items-start tw:gap-3 tw:rounded-xl tw:border tw:border-utility-success-200 tw:bg-utility-success-50 tw:px-4 tw:py-3.5">
-        <span className="tw:grid tw:size-8 tw:shrink-0 tw:place-items-center tw:rounded-full tw:bg-white tw:text-utility-success-600">
-          <CheckCircle size={17} />
-        </span>
-        <div>
-          <div className="tw:font-medium tw:leading-5 tw:text-primary">
-            {t('message.connected-to-host', { host: connectionHost })}
-          </div>
-          <div className="tw:mt-px tw:text-xs tw:font-normal tw:text-tertiary">
-            {t('message.connection-verified-ingestion-scope')}
+      {showConnectedMessage && (
+        <div className="tw:flex tw:items-start tw:gap-3 tw:rounded-xl tw:border tw:border-utility-success-200 tw:bg-utility-success-50 tw:px-4 tw:py-3.5">
+          <span className="tw:grid tw:size-8 tw:shrink-0 tw:place-items-center tw:rounded-full tw:bg-white tw:text-utility-success-600">
+            <CheckCircle size={17} />
+          </span>
+          <div>
+            <div className="tw:font-medium tw:leading-5 tw:text-primary">
+              {t('message.connected-to-host', { host: connectionHost })}
+            </div>
+            <div className="tw:mt-px tw:text-xs tw:font-normal tw:text-tertiary">
+              {t('message.connection-verified-ingestion-scope')}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {isEmpty(filterEntries) ? (
         <div

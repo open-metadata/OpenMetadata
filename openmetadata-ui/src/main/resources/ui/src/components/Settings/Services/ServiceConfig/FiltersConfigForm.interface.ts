@@ -23,6 +23,7 @@ export interface FiltersConfigFormProps {
   okText?: string;
   cancelText?: string;
   hideFooter?: boolean;
+  showConnectedMessage?: boolean;
   serviceType: string;
   serviceCategory: ServiceCategory;
   status: LoadingState;

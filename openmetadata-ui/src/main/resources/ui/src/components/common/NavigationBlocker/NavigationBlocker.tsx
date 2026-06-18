@@ -19,7 +19,6 @@ import { NavigationBlockerProps } from './NavigationBlocker.interface';
 export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
   children,
   enabled = false,
-  message: _message = 'Do you want to save or discard changes?',
   onConfirm,
   onCancel,
   renderModal,
@@ -40,9 +39,11 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
       return;
     }
 
-    const originalPushState = window.history.pushState.bind(window.history);
-    const originalReplaceState = window.history.replaceState.bind(
-      window.history
+    const originalPushState = globalThis.history.pushState.bind(
+      globalThis.history
+    );
+    const originalReplaceState = globalThis.history.replaceState.bind(
+      globalThis.history
     );
 
     // Push a guard entry with the same URL. When the user presses browser back
@@ -50,37 +51,45 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
     // has the identical URL. React Router sees no location change and does NOT
     // unmount the current page, so our popstate handler fires while the page is
     // still alive and can show the modal.
-    originalPushState(null, '', window.location.href);
+    originalPushState(null, '', globalThis.location.href);
 
     // Intercept programmatic React Router navigate(path) calls.
-    window.history.pushState = function (
+    globalThis.history.pushState = function (
       state: unknown,
       title: string,
       url?: string | URL | null
     ) {
-      if (!isNavigatingRef.current && url && url !== window.location.pathname) {
+      if (
+        !isNavigatingRef.current &&
+        url &&
+        url !== globalThis.location.pathname
+      ) {
         setIsModalVisible(true);
         pendingNavigationRef.current = url.toString();
 
         return;
       }
 
-      return originalPushState(state, title, url as string);
+      return originalPushState(state, title, url);
     };
 
-    window.history.replaceState = function (
+    globalThis.history.replaceState = function (
       state: unknown,
       title: string,
       url?: string | URL | null
     ) {
-      if (!isNavigatingRef.current && url && url !== window.location.pathname) {
+      if (
+        !isNavigatingRef.current &&
+        url &&
+        url !== globalThis.location.pathname
+      ) {
         setIsModalVisible(true);
         pendingNavigationRef.current = url.toString();
 
         return;
       }
 
-      return originalReplaceState(state, title, url as string);
+      return originalReplaceState(state, title, url);
     };
 
     const handlePopState = () => {
@@ -89,7 +98,7 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
       }
 
       // Re-push a guard entry so that repeated back presses are also intercepted.
-      originalPushState(null, '', window.location.href);
+      originalPushState(null, '', globalThis.location.href);
       setIsModalVisible(true);
       pendingNavigationRef.current = 'back';
     };
@@ -147,18 +156,18 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
       return undefined;
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    window.addEventListener('popstate', handlePopState);
+    globalThis.addEventListener('beforeunload', handleBeforeUnload);
+    globalThis.addEventListener('popstate', handlePopState);
     document.addEventListener('click', handleClick, true);
     document.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      window.removeEventListener('popstate', handlePopState);
+      globalThis.removeEventListener('beforeunload', handleBeforeUnload);
+      globalThis.removeEventListener('popstate', handlePopState);
       document.removeEventListener('click', handleClick, true);
       document.removeEventListener('keydown', handleKeyDown);
-      window.history.pushState = originalPushState;
-      window.history.replaceState = originalReplaceState;
+      globalThis.history.pushState = originalPushState;
+      globalThis.history.replaceState = originalReplaceState;
     };
   }, [isBlocking]);
 
@@ -173,19 +182,19 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
     setTimeout(() => {
       if (pendingUrl === 'back') {
         // go(-2): past the re-pushed guard entry AND past the original page entry.
-        window.history.go(-2);
+        globalThis.history.go(-2);
       } else if (pendingUrl === 'reload') {
-        window.location.reload();
+        globalThis.location.reload();
       } else if (pendingUrl?.startsWith('http')) {
         try {
           const parsed = new URL(pendingUrl);
-          if (parsed.origin === window.location.origin) {
+          if (parsed.origin === globalThis.location.origin) {
             navigate(parsed.pathname + parsed.search + parsed.hash);
           } else {
-            window.location.href = pendingUrl;
+            globalThis.location.href = pendingUrl;
           }
         } catch {
-          window.location.href = pendingUrl;
+          globalThis.location.href = pendingUrl;
         }
       } else if (pendingUrl) {
         navigate(pendingUrl);
@@ -207,19 +216,19 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
 
       setTimeout(() => {
         if (pendingUrl === 'back') {
-          window.history.go(-2);
+          globalThis.history.go(-2);
         } else if (pendingUrl === 'reload') {
-          window.location.reload();
+          globalThis.location.reload();
         } else if (pendingUrl?.startsWith('http')) {
           try {
             const parsed = new URL(pendingUrl);
-            if (parsed.origin === window.location.origin) {
+            if (parsed.origin === globalThis.location.origin) {
               navigate(parsed.pathname + parsed.search + parsed.hash);
             } else {
-              window.location.href = pendingUrl;
+              globalThis.location.href = pendingUrl;
             }
           } catch {
-            window.location.href = pendingUrl;
+            globalThis.location.href = pendingUrl;
           }
         } else if (pendingUrl) {
           navigate(pendingUrl);

@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
+import { Alert } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
-import { RJSFSchema } from '@rjsf/utils';
-import { Alert } from 'antd';
+import { RegistryFieldsType, RJSFSchema } from '@rjsf/utils';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
 import {
   forwardRef,
@@ -56,6 +56,8 @@ import {
 import { shouldTestConnection } from '../../../../utils/ServicePureUtils';
 import AirflowMessageBanner from '../../../common/AirflowMessageBanner/AirflowMessageBanner';
 import AuthSelectField from '../../../common/Form/JSONSchema/JSONSchemaFields/AuthSelectField/AuthSelectField';
+import BooleanFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
+import ConnectionObjectFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/ConnectionObjectFieldTemplate';
 import FormBuilderV1 from '../../../common/FormBuilderV1/FormBuilderV1';
 import InlineAlert from '../../../common/InlineAlert/InlineAlert';
 import Loader from '../../../common/Loader/Loader';
@@ -83,6 +85,7 @@ const EmbeddedConnectionConfigForm = forwardRef<
       onFocus,
       disableTestConnection = false,
       isSubmitDisabled: isSubmitDisabledFromParent = false,
+      onTestConnectionStatusChange,
     }: Readonly<ConnectionConfigFormProps>,
     ref
   ) => {
@@ -227,8 +230,10 @@ const EmbeddedConnectionConfigForm = forwardRef<
     );
 
     const handleTestConnectionStatusChange = useCallback(
-      (_isSuccessful: boolean) => {},
-      []
+      (isSuccessful: boolean) => {
+        onTestConnectionStatusChange?.(isSuccessful);
+      },
+      [onTestConnectionStatusChange]
     );
 
     const missingRequiredFieldsCount = useMemo(() => {
@@ -290,6 +295,11 @@ const EmbeddedConnectionConfigForm = forwardRef<
       [isSubmitDisabled]
     );
 
+    const customFields: RegistryFieldsType = {
+      BooleanField: BooleanFieldTemplate,
+      authSelect: AuthSelectField,
+    };
+
     if (isSchemaLoading) {
       return (
         <>
@@ -308,8 +318,7 @@ const EmbeddedConnectionConfigForm = forwardRef<
         <AirflowMessageBanner />
         <FormBuilderV1
           cancelText={cancelText ?? ''}
-          fields={{ authSelect: AuthSelectField }}
-          formContext={{ handleFocus: onFocus }}
+          fields={customFields}
           formData={currentFormData}
           hideFooter={hideFooter}
           isSubmitDisabled={isSubmitDisabled}
@@ -318,6 +327,9 @@ const EmbeddedConnectionConfigForm = forwardRef<
           ref={formRef}
           schema={schemaWithoutDefaultFilterPatternFields}
           status={status}
+          templates={{
+            ObjectFieldTemplate: ConnectionObjectFieldTemplate,
+          }}
           uiSchema={uiSchema}
           onCancel={onCancel}
           onChange={handleFormChange}
@@ -335,15 +347,14 @@ const EmbeddedConnectionConfigForm = forwardRef<
               <Alert
                 className="tw:mt-2 tw:rounded-lg"
                 data-testid="ip-address"
-                description={
-                  <Transi18next
-                    i18nKey="message.airflow-host-ip-address"
-                    renderElement={<strong />}
-                    values={{ hostIp }}
-                  />
-                }
-                type="info"
-              />
+                title={t('label.pipeline-server-ip-address')}
+                variant="brand">
+                <Transi18next
+                  i18nKey="message.airflow-host-ip-address"
+                  renderElement={<strong />}
+                  values={{ hostIp }}
+                />
+              </Alert>
             )}
             {shouldShowTestConnection && (
               <TestConnection

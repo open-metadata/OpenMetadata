@@ -18,6 +18,8 @@ import classNames from 'classnames';
 import { isUndefined, omit, omitBy } from 'lodash';
 import {
   forwardRef,
+  lazy,
+  Suspense,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -41,24 +43,86 @@ import {
 import ProfilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { transformErrors } from '../../../../../utils/formPureUtils';
 import { getSchemaByWorkflowType } from '../../../../../utils/IngestionWorkflowUtils';
-import BooleanFieldTemplate from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
-import WorkflowArrayFieldTemplate from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate';
-import CodeWidget from '../../../../common/Form/JSONSchema/JsonSchemaWidgets/CodeWidget/CodeWidget';
-import ManifestJsonWidget from '../../../../common/Form/JSONSchema/JsonSchemaWidgets/ManifestJsonWidget/ManifestJsonWidget';
-import CoreOneOfField from '../../../../common/FormBuilderV1/fields/CoreOneOfField';
-import { CoreArrayFieldTemplate } from '../../../../common/FormBuilderV1/templates/CoreArrayFieldTemplate';
-import { CoreFieldErrorTemplate } from '../../../../common/FormBuilderV1/templates/CoreFieldErrorTemplate';
-import { CoreFieldTemplate } from '../../../../common/FormBuilderV1/templates/CoreFieldTemplate';
-import { CoreWrapIfAdditionalTemplate } from '../../../../common/FormBuilderV1/templates/CoreWrapIfAdditionalTemplate';
-import CoreCheckboxWidget from '../../../../common/FormBuilderV1/widgets/CoreCheckboxWidget';
-import CoreInputWidget from '../../../../common/FormBuilderV1/widgets/CoreInputWidget';
-import CorePasswordWidget from '../../../../common/FormBuilderV1/widgets/CorePasswordWidget';
-import CoreRadioWidget from '../../../../common/FormBuilderV1/widgets/CoreRadioWidget';
-import CoreSelectWidget from '../../../../common/FormBuilderV1/widgets/CoreSelectWidget';
-import CoreTextAreaWidget from '../../../../common/FormBuilderV1/widgets/CoreTextAreaWidget';
-import { IngestionObjectFieldTemplate } from '../../AddIngestion/IngestionObjectFieldTemplate/IngestionObjectFieldTemplate';
-import { FilterPatternField } from '../../ServiceConfig/FilterPatternField';
-import ProfileSampleConfigField from './ProfileSampleConfigField';
+import Loader from '../../../../common/Loader/Loader';
+
+const BooleanFieldTemplate = lazy(
+  () =>
+    import(
+      '../../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate'
+    )
+);
+const WorkflowArrayFieldTemplate = lazy(
+  () =>
+    import(
+      '../../../../common/Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate'
+    )
+);
+const CodeWidget = lazy(
+  () =>
+    import(
+      '../../../../common/Form/JSONSchema/JsonSchemaWidgets/CodeWidget/CodeWidget'
+    )
+);
+const ManifestJsonWidget = lazy(
+  () =>
+    import(
+      '../../../../common/Form/JSONSchema/JsonSchemaWidgets/ManifestJsonWidget/ManifestJsonWidget'
+    )
+);
+const CoreOneOfField = lazy(
+  () => import('../../../../common/FormBuilderV1/fields/CoreOneOfField')
+);
+const CoreArrayFieldTemplate = lazy(() =>
+  import(
+    '../../../../common/FormBuilderV1/templates/CoreArrayFieldTemplate'
+  ).then((m) => ({ default: m.CoreArrayFieldTemplate }))
+);
+const CoreFieldErrorTemplate = lazy(() =>
+  import(
+    '../../../../common/FormBuilderV1/templates/CoreFieldErrorTemplate'
+  ).then((m) => ({ default: m.CoreFieldErrorTemplate }))
+);
+const CoreFieldTemplate = lazy(() =>
+  import('../../../../common/FormBuilderV1/templates/CoreFieldTemplate').then(
+    (m) => ({ default: m.CoreFieldTemplate })
+  )
+);
+const CoreWrapIfAdditionalTemplate = lazy(() =>
+  import(
+    '../../../../common/FormBuilderV1/templates/CoreWrapIfAdditionalTemplate'
+  ).then((m) => ({ default: m.CoreWrapIfAdditionalTemplate }))
+);
+const CoreCheckboxWidget = lazy(
+  () => import('../../../../common/FormBuilderV1/widgets/CoreCheckboxWidget')
+);
+const CoreInputWidget = lazy(
+  () => import('../../../../common/FormBuilderV1/widgets/CoreInputWidget')
+);
+const CorePasswordWidget = lazy(
+  () => import('../../../../common/FormBuilderV1/widgets/CorePasswordWidget')
+);
+const CoreRadioWidget = lazy(
+  () => import('../../../../common/FormBuilderV1/widgets/CoreRadioWidget')
+);
+const CoreSelectWidget = lazy(
+  () => import('../../../../common/FormBuilderV1/widgets/CoreSelectWidget')
+);
+const CoreTextAreaWidget = lazy(
+  () => import('../../../../common/FormBuilderV1/widgets/CoreTextAreaWidget')
+);
+const IngestionObjectFieldTemplate = lazy(() =>
+  import(
+    '../../AddIngestion/IngestionObjectFieldTemplate/IngestionObjectFieldTemplate'
+  ).then((m) => ({ default: m.IngestionObjectFieldTemplate }))
+);
+const FilterPatternField = lazy(() =>
+  import('../../ServiceConfig/FilterPatternField').then((m) => ({
+    default: m.FilterPatternField,
+  }))
+);
+const ProfileSampleConfigField = lazy(
+  () => import('./ProfileSampleConfigField')
+);
 
 const IngestionWorkflowForm = forwardRef<
   IngestionWorkflowFormHandle,
@@ -227,59 +291,61 @@ const IngestionWorkflowForm = forwardRef<
   };
 
   return (
-    <Form
-      focusOnFirstError
-      noHtml5Validate
-      className={classNames('rjsf no-header', className)}
-      fields={customFields}
-      formContext={{ handleFocus: onFocus }}
-      formData={internalData}
-      idSeparator="/"
-      ref={formRef}
-      schema={schema}
-      showErrorList={false}
-      templates={{
-        ArrayFieldTemplate: CoreArrayFieldTemplate,
-        FieldErrorTemplate: CoreFieldErrorTemplate,
-        FieldTemplate: CoreFieldTemplate,
-        ObjectFieldTemplate: IngestionObjectFieldTemplate,
-        WrapIfAdditionalTemplate: CoreWrapIfAdditionalTemplate,
-      }}
-      transformErrors={transformErrors}
-      uiSchema={uiSchema}
-      validator={validator}
-      widgets={{
-        CheckboxWidget: CoreCheckboxWidget,
-        EmailWidget: CoreInputWidget,
-        PasswordWidget: CorePasswordWidget,
-        RadioWidget: CoreRadioWidget,
-        SelectWidget: CoreSelectWidget,
-        TextWidget: CoreInputWidget,
-        TextareaWidget: CoreTextAreaWidget,
-        URLWidget: CoreInputWidget,
-        UpDownWidget: CoreInputWidget,
-        code: CodeWidget,
-        manifestJson: ManifestJsonWidget,
-      }}
-      onChange={handleOnChange}
-      onFocus={onFocus}
-      onSubmit={handleSubmit}>
-      {/* When hideFooter is true, the parent card renders the footer to span full width
-       * and keep the card's bottom border-radius visible during scroll. */}
-      {!hideFooter && (
-        <div className="d-flex w-full justify-end">
-          <Space>
-            <Button type="link" onClick={onCancel}>
-              {cancelText ?? t('label.cancel')}
-            </Button>
+    <Suspense fallback={<Loader />}>
+      <Form
+        focusOnFirstError
+        noHtml5Validate
+        className={classNames('rjsf no-header', className)}
+        fields={customFields}
+        formContext={{ handleFocus: onFocus }}
+        formData={internalData}
+        idSeparator="/"
+        ref={formRef}
+        schema={schema}
+        showErrorList={false}
+        templates={{
+          ArrayFieldTemplate: CoreArrayFieldTemplate,
+          FieldErrorTemplate: CoreFieldErrorTemplate,
+          FieldTemplate: CoreFieldTemplate,
+          ObjectFieldTemplate: IngestionObjectFieldTemplate,
+          WrapIfAdditionalTemplate: CoreWrapIfAdditionalTemplate,
+        }}
+        transformErrors={transformErrors}
+        uiSchema={uiSchema}
+        validator={validator}
+        widgets={{
+          CheckboxWidget: CoreCheckboxWidget,
+          EmailWidget: CoreInputWidget,
+          PasswordWidget: CorePasswordWidget,
+          RadioWidget: CoreRadioWidget,
+          SelectWidget: CoreSelectWidget,
+          TextWidget: CoreInputWidget,
+          TextareaWidget: CoreTextAreaWidget,
+          URLWidget: CoreInputWidget,
+          UpDownWidget: CoreInputWidget,
+          code: CodeWidget,
+          manifestJson: ManifestJsonWidget,
+        }}
+        onChange={handleOnChange}
+        onFocus={onFocus}
+        onSubmit={handleSubmit}>
+        {/* When hideFooter is true, the parent card renders the footer to span full width
+         * and keep the card's bottom border-radius visible during scroll. */}
+        {!hideFooter && (
+          <div className="d-flex w-full justify-end">
+            <Space>
+              <Button type="link" onClick={onCancel}>
+                {cancelText ?? t('label.cancel')}
+              </Button>
 
-            <Button data-testid="submit-btn" htmlType="submit" type="primary">
-              {okText ?? t('label.save')}
-            </Button>
-          </Space>
-        </div>
-      )}
-    </Form>
+              <Button data-testid="submit-btn" htmlType="submit" type="primary">
+                {okText ?? t('label.save')}
+              </Button>
+            </Space>
+          </div>
+        )}
+      </Form>
+    </Suspense>
   );
 });
 

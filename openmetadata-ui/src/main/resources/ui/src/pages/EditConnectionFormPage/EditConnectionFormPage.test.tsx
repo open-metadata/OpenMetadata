@@ -76,28 +76,33 @@ jest.mock(
   () => {
     const { forwardRef } = require('react');
 
-    type Props = { onFocus: (field: string) => void; onSave: (e: { formData: unknown }) => void };
+    type Props = {
+      onFocus: (field: string) => void;
+      onSave: (e: { formData: unknown }) => void;
+    };
     type Handle = { submit: () => void; isSubmitDisabled: boolean };
 
-    return forwardRef(({ onFocus, onSave }: Props, ref: React.MutableRefObject<Handle>) => {
-      if (ref) {
-        ref.current = {
-          submit: () => onSave({ formData: {} }),
-          isSubmitDisabled: false,
-        };
-      }
+    return forwardRef(
+      ({ onFocus, onSave }: Props, ref: React.MutableRefObject<Handle>) => {
+        if (ref) {
+          ref.current = {
+            submit: () => onSave({ formData: {} }),
+            isSubmitDisabled: false,
+          };
+        }
 
-      return (
-        <div>
-          <div>ConnectionConfigForm</div>
-          <input
-            data-testid="connection-field"
-            type="text"
-            onFocus={() => onFocus('testField')}
-          />
-        </div>
-      );
-    });
+        return (
+          <div>
+            <div>ConnectionConfigForm</div>
+            <input
+              data-testid="connection-field"
+              type="text"
+              onFocus={() => onFocus('testField')}
+            />
+          </div>
+        );
+      }
+    );
   }
 );
 

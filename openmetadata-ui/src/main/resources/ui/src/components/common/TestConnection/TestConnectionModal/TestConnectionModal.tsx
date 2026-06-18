@@ -186,7 +186,6 @@ const TestConnectionModal = ({
 
   return (
     <ModalOverlay
-      className="tw:z-1100"
       isOpen={isOpen}
       onOpenChange={(open) => !open && handleModalClose()}>
       <Modal>

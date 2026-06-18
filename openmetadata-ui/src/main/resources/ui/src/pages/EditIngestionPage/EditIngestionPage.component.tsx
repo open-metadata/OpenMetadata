@@ -271,7 +271,7 @@ const EditIngestionPage = () => {
   };
 
   const firstPanelChildren = (
-    <Card className="add-service-page-card max-width-lg m-x-auto tw:p-0 tw:h-full tw:flex tw:flex-col tw:overflow-hidden">
+    <Card className="add-service-page-card tw:max-w-screen-lg m-x-auto tw:p-0 tw:h-full tw:flex tw:flex-col tw:overflow-hidden">
       <div className="tw:flex-1 tw:overflow-y-auto tw:p-5">
         <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
         <div className="tw:mt-4">

@@ -16,7 +16,6 @@ import { LinkProps, NavigateOptions } from 'react-router-dom';
 export type TitleLink = {
   name: string;
   url: LinkProps['to'];
-  onClick?: LinkProps['onClick'];
   options?: NavigateOptions;
   imgSrc?: string;
   activeTitle?: boolean;

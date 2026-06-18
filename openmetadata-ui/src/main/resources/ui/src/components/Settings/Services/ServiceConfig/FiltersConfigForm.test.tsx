@@ -222,6 +222,7 @@ const renderForm = async (props: Partial<FiltersConfigFormProps> = {}) => {
     onCancel: jest.fn(),
     onFocus: jest.fn(),
     onSave: jest.fn(),
+    showConnectedMessage: true,
   };
 
   await act(async () => {
@@ -1085,5 +1086,13 @@ describe('FiltersConfigForm', () => {
     await renderForm();
 
     expect(screen.getByTestId('inline-alert')).toBeInTheDocument();
+  });
+
+  it('does not render the connection message banner when showConnectedMessage is false', async () => {
+    await renderForm({ showConnectedMessage: false });
+
+    expect(
+      screen.queryByText('Connected to localhost:3306')
+    ).not.toBeInTheDocument();
   });
 });

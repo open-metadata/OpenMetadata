@@ -17,6 +17,5 @@ export type SelectServiceTypeProps = {
   showError: boolean;
   serviceCategory: ServiceCategory;
   serviceCategoryHandler: (category: ServiceCategory) => void;
-  selectServiceType: string;
   handleServiceTypeClick: (type: string) => void;
 };

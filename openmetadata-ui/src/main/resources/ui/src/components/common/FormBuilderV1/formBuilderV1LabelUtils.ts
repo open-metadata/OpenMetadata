@@ -17,7 +17,7 @@ const FORM_LABEL_ACRONYMS: Record<string, string> = {
   api: 'API',
   arn: 'ARN',
   aws: 'AWS',
-  dbt: 'DBT',
+  dbt: 'dbt',
   gcp: 'GCP',
   gcs: 'GCS',
   iam: 'IAM',

@@ -22,6 +22,8 @@ import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { LoadingState, ServicesUpdateRequest } from 'Models';
 import React, {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -35,11 +37,8 @@ import Loader from '../../components/common/Loader/Loader';
 import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
 import { NavigationGuardModal } from '../../components/common/NavigationGuardModal/NavigationGuardModal';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
-import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
 import ServiceFlowStepper from '../../components/Settings/Services/AddService/ServiceFlowStepper/ServiceFlowStepper';
-import ConnectionConfigForm from '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm';
 import { ConnectionConfigFormHandle } from '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm.interface';
-import FiltersConfigForm from '../../components/Settings/Services/ServiceConfig/FiltersConfigForm';
 import { FiltersConfigFormHandle } from '../../components/Settings/Services/ServiceConfig/FiltersConfigForm.interface';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
@@ -68,6 +67,20 @@ import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 
+const ConnectionConfigForm = lazy(
+  () =>
+    import(
+      '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm'
+    )
+);
+const FiltersConfigForm = lazy(
+  () =>
+    import('../../components/Settings/Services/ServiceConfig/FiltersConfigForm')
+);
+const ServiceDocPanel = lazy(
+  () => import('../../components/common/ServiceDocPanel/ServiceDocPanel')
+);
+
 type BreadcrumbItem = { label: string; id: string; href?: string };
 
 function EditConnectionFormPage() {
@@ -83,6 +96,7 @@ function EditConnectionFormPage() {
   const navigate = useNavigate();
   const [saveServiceState, setSaveServiceState] =
     useState<LoadingState>('initial');
+  const [isConnectionVerified, setIsConnectionVerified] = useState(false);
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const connectionFormRef = useRef<ConnectionConfigFormHandle>(null);
   const filtersFormRef = useRef<FiltersConfigFormHandle>(null);
@@ -276,7 +290,7 @@ function EditConnectionFormPage() {
   // flex-col layout bounds the scroll area so the footer stays anchored at the card bottom,
   // keeping the card's rounded corners visible at all times during scroll.
   const firstPanelChildren = (
-    <Card className="add-service-page-card max-width-lg m-x-auto tw:p-0 tw:h-full tw:flex tw:flex-col tw:overflow-hidden">
+    <Card className="add-service-page-card tw:max-w-screen-lg m-x-auto tw:p-0 tw:h-full tw:flex tw:flex-col tw:overflow-hidden">
       <div className="tw:flex-1 tw:overflow-y-auto tw:p-5">
         <Breadcrumbs
           items={slashedBreadcrumb}
@@ -305,37 +319,41 @@ function EditConnectionFormPage() {
             steps={translatedSteps}
           />
 
-          <div className="tw:mt-8">
-            {activeServiceStep === 1 && (
-              <ConnectionConfigForm
-                hideFooter
-                data={serviceDetails}
-                ref={connectionFormRef}
-                serviceCategory={serviceCategory}
-                serviceType={serviceDetails?.serviceType ?? ''}
-                status={saveServiceState}
-                onFocus={handleFieldFocus}
-                onSave={async (e) => {
-                  e.formData && handleConfigSave(e.formData);
-                }}
-              />
-            )}
+          <Suspense fallback={<Loader />}>
+            <div className="tw:mt-8">
+              {activeServiceStep === 1 && (
+                <ConnectionConfigForm
+                  hideFooter
+                  data={serviceDetails}
+                  ref={connectionFormRef}
+                  serviceCategory={serviceCategory}
+                  serviceType={serviceDetails?.serviceType ?? ''}
+                  status={saveServiceState}
+                  onFocus={handleFieldFocus}
+                  onSave={async (e) => {
+                    e.formData && handleConfigSave(e.formData);
+                  }}
+                  onTestConnectionStatusChange={setIsConnectionVerified}
+                />
+              )}
 
-            {activeServiceStep === 2 && (
-              <FiltersConfigForm
-                hideFooter
-                data={serviceDetails}
-                ref={filtersFormRef}
-                serviceCategory={serviceCategory}
-                serviceType={serviceDetails?.serviceType ?? ''}
-                status={saveServiceState}
-                onFocus={handleFieldFocus}
-                onSave={async (e) => {
-                  e.formData && handleFiltersSave(e.formData);
-                }}
-              />
-            )}
-          </div>
+              {activeServiceStep === 2 && (
+                <FiltersConfigForm
+                  hideFooter
+                  data={serviceDetails}
+                  ref={filtersFormRef}
+                  serviceCategory={serviceCategory}
+                  serviceType={serviceDetails?.serviceType ?? ''}
+                  showConnectedMessage={isConnectionVerified}
+                  status={saveServiceState}
+                  onFocus={handleFieldFocus}
+                  onSave={async (e) => {
+                    e.formData && handleFiltersSave(e.formData);
+                  }}
+                />
+              )}
+            </div>
+          </Suspense>
         </div>
       </div>
       <div className="tw:flex tw:flex-shrink-0 tw:items-center tw:justify-end tw:gap-5 tw:border-t tw:border-secondary tw:bg-primary tw:px-5 tw:py-4">
@@ -386,12 +404,14 @@ function EditConnectionFormPage() {
           pageTitle={t('label.edit-entity', { entity: t('label.connection') })}
           secondPanel={{
             children: (
-              <ServiceDocPanel
-                focusedMode
-                activeField={activeField}
-                serviceName={serviceDetails?.serviceType ?? ''}
-                serviceType={getServiceType(serviceCategory)}
-              />
+              <Suspense fallback={<Loader />}>
+                <ServiceDocPanel
+                  focusedMode
+                  activeField={activeField}
+                  serviceName={serviceDetails?.serviceType ?? ''}
+                  serviceType={getServiceType(serviceCategory)}
+                />
+              </Suspense>
             ),
             className: 'service-doc-panel content-resizable-panel-container',
             minWidth: 400,

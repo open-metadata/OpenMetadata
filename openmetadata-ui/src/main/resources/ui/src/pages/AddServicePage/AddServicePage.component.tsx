@@ -21,6 +21,8 @@ import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
 import React, {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -29,16 +31,14 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import Loader from '../../components/common/Loader/Loader';
 import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
 import { NavigationGuardModal } from '../../components/common/NavigationGuardModal/NavigationGuardModal';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
-import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
 import ServiceFlowStepper from '../../components/Settings/Services/AddService/ServiceFlowStepper/ServiceFlowStepper';
 import ServiceNameCard from '../../components/Settings/Services/AddService/ServiceNameCard/ServiceNameCard';
 import SelectServiceType from '../../components/Settings/Services/AddService/Steps/SelectServiceType';
-import ConnectionConfigForm from '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm';
 import { ConnectionConfigFormHandle } from '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm.interface';
-import FiltersConfigForm from '../../components/Settings/Services/ServiceConfig/FiltersConfigForm';
 import { FiltersConfigFormHandle } from '../../components/Settings/Services/ServiceConfig/FiltersConfigForm.interface';
 import { AUTO_PILOT_APP_NAME } from '../../constants/Applications.constant';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
@@ -71,6 +71,20 @@ import { useRequiredParams } from '../../utils/useRequiredParams';
 import { ServiceConfig } from './AddServicePage.interface';
 import { useServiceNameValidation } from './useServiceNameValidation';
 
+const ConnectionConfigForm = lazy(
+  () =>
+    import(
+      '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm'
+    )
+);
+const FiltersConfigForm = lazy(
+  () =>
+    import('../../components/Settings/Services/ServiceConfig/FiltersConfigForm')
+);
+const ServiceDocPanel = lazy(
+  () => import('../../components/common/ServiceDocPanel/ServiceDocPanel')
+);
+
 const AddServicePage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -88,11 +102,12 @@ const AddServicePage = () => {
     description: '',
     serviceType: '',
     connection: {
-      config: {} as ConfigData,
+      config: {},
     },
   });
   const [saveServiceState, setSaveServiceState] =
     useState<LoadingState>('initial');
+  const [isConnectionVerified, setIsConnectionVerified] = useState(false);
   const [activeField, setActiveField] = useState<string>('');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showBackStepConfirm, setShowBackStepConfirm] = useState(false);
@@ -114,6 +129,7 @@ const AddServicePage = () => {
     resetNameValidation();
     setActiveField('');
     setActiveServiceStep(1);
+    setIsConnectionVerified(false);
     setServiceConfig({
       name: '',
       description: '',
@@ -165,6 +181,7 @@ const AddServicePage = () => {
 
   const handleServiceTypeClick = (type: string) => {
     resetNameValidation();
+    setIsConnectionVerified(false);
     setServiceConfig({
       name: '',
       description: '',
@@ -360,7 +377,7 @@ const AddServicePage = () => {
   // flex-col layout bounds the scroll area so the footer stays anchored at the card bottom,
   // keeping the card's rounded corners visible at all times during scroll.
   const firstPanelChildren = (
-    <Card className="add-service-page-card max-width-lg m-x-auto tw:p-0 tw:h-full tw:flex tw:flex-col tw:overflow-hidden">
+    <Card className="add-service-page-card tw:max-w-screen-lg m-x-auto tw:p-0 tw:h-full tw:flex tw:flex-col tw:overflow-hidden">
       <div className="tw:flex-1 tw:overflow-y-auto tw:p-5">
         <Breadcrumbs
           items={serviceBreadcrumb}
@@ -401,60 +418,62 @@ const AddServicePage = () => {
               {activeServiceStep === 1 && (
                 <SelectServiceType
                   handleServiceTypeClick={handleServiceTypeClick}
-                  selectServiceType={serviceConfig.serviceType}
                   serviceCategory={serviceCategory}
                   serviceCategoryHandler={handleServiceCategoryChange}
                   showError={showErrorMessage.serviceType}
                 />
               )}
 
-              {activeServiceStep === 2 && (
-                <div className="tw:flex tw:flex-col tw:gap-4">
-                  <ServiceNameCard
-                    description={serviceConfig.description}
-                    name={serviceConfig.name}
-                    nameError={nameError}
-                    serviceType={serviceConfig.serviceType}
-                    onDescriptionChange={(description) =>
-                      setServiceConfig((prev) => ({ ...prev, description }))
-                    }
-                    onFocus={handleFieldFocus}
-                    onNameChange={(name) => {
-                      resetNameValidation();
-                      setServiceConfig((prev) => ({ ...prev, name }));
-                    }}
-                  />
-                  <ConnectionConfigForm
+              <Suspense fallback={<Loader />}>
+                {activeServiceStep === 2 && (
+                  <div className="tw:flex tw:flex-col tw:gap-4">
+                    <ServiceNameCard
+                      description={serviceConfig.description}
+                      name={serviceConfig.name}
+                      nameError={nameError}
+                      serviceType={serviceConfig.serviceType}
+                      onDescriptionChange={(description) =>
+                        setServiceConfig((prev) => ({ ...prev, description }))
+                      }
+                      onFocus={handleFieldFocus}
+                      onNameChange={(name) => {
+                        resetNameValidation();
+                        setServiceConfig((prev) => ({ ...prev, name }));
+                      }}
+                    />
+                    <ConnectionConfigForm
+                      hideFooter
+                      data={serviceConfig as ServicesType}
+                      isSubmitDisabled={isStep2NextDisabled}
+                      ref={connectionFormRef}
+                      serviceCategory={serviceCategory}
+                      serviceType={serviceConfig.serviceType}
+                      status={saveServiceState}
+                      onFocus={handleFieldFocus}
+                      onSave={async (e) => {
+                        e.formData && (await handleConfigUpdate(e.formData));
+                      }}
+                      onTestConnectionStatusChange={setIsConnectionVerified}
+                    />
+                  </div>
+                )}
+
+                {activeServiceStep === 3 && (
+                  <FiltersConfigForm
                     hideFooter
-                    requireTestConnection
                     data={serviceConfig as ServicesType}
-                    isSubmitDisabled={isStep2NextDisabled}
-                    ref={connectionFormRef}
+                    ref={filtersFormRef}
                     serviceCategory={serviceCategory}
                     serviceType={serviceConfig.serviceType}
+                    showConnectedMessage={isConnectionVerified}
                     status={saveServiceState}
                     onFocus={handleFieldFocus}
                     onSave={async (e) => {
-                      e.formData && (await handleConfigUpdate(e.formData));
+                      e.formData && handleFiltersInputNextClick(e.formData);
                     }}
                   />
-                </div>
-              )}
-
-              {activeServiceStep === 3 && (
-                <FiltersConfigForm
-                  hideFooter
-                  data={serviceConfig as ServicesType}
-                  ref={filtersFormRef}
-                  serviceCategory={serviceCategory}
-                  serviceType={serviceConfig.serviceType}
-                  status={saveServiceState}
-                  onFocus={handleFieldFocus}
-                  onSave={async (e) => {
-                    e.formData && handleFiltersInputNextClick(e.formData);
-                  }}
-                />
-              )}
+                )}
+              </Suspense>
             </div>
           </div>
         </div>
@@ -513,12 +532,14 @@ const AddServicePage = () => {
           pageTitle={t('label.add-entity', { entity: t('label.service') })}
           secondPanel={{
             children: (
-              <ServiceDocPanel
-                focusedMode
-                activeField={activeField}
-                serviceName={serviceConfig.serviceType}
-                serviceType={getServiceType(serviceCategory)}
-              />
+              <Suspense fallback={<Loader />}>
+                <ServiceDocPanel
+                  focusedMode
+                  activeField={activeField}
+                  serviceName={serviceConfig.serviceType}
+                  serviceType={getServiceType(serviceCategory)}
+                />
+              </Suspense>
             ),
             className: 'service-doc-panel content-resizable-panel-container',
             minWidth: 400,

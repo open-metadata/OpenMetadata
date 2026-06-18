@@ -87,6 +87,7 @@ const ConnectionConfigForm = forwardRef<
       onFocus,
       disableTestConnection = false,
       isSubmitDisabled: isSubmitDisabledFromParent = false,
+      onTestConnectionStatusChange,
     }: Readonly<ConnectionConfigFormProps>,
     ref
   ) => {
@@ -236,8 +237,10 @@ const ConnectionConfigForm = forwardRef<
     );
 
     const handleTestConnectionStatusChange = useCallback(
-      (_isSuccessful: boolean) => {},
-      []
+      (isSuccessful: boolean) => {
+        onTestConnectionStatusChange?.(isSuccessful);
+      },
+      [onTestConnectionStatusChange]
     );
 
     const missingRequiredFieldsCount = useMemo(() => {
