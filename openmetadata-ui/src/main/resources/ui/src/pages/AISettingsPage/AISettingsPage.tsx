@@ -39,9 +39,9 @@ import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils'
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const DELETION_POLICY_OPTIONS = [
-  { id: AIDeletionPolicy.Cascade, label: 'cascade' },
-  { id: AIDeletionPolicy.Orphan, label: 'orphan' },
-  { id: AIDeletionPolicy.Deprecate, label: 'deprecate' },
+  { id: AIDeletionPolicy.Cascade, labelKey: 'label.cascade' },
+  { id: AIDeletionPolicy.Orphan, labelKey: 'label.orphan' },
+  { id: AIDeletionPolicy.Deprecate, labelKey: 'label.deprecate' },
 ];
 
 const AISettingsPage = () => {
@@ -259,7 +259,11 @@ const AISettingsPage = () => {
                   })
                 }>
                 {DELETION_POLICY_OPTIONS.map((opt) => (
-                  <Select.Item id={opt.id} key={opt.id} label={opt.label} />
+                  <Select.Item
+                    id={opt.id}
+                    key={opt.id}
+                    label={t(opt.labelKey)}
+                  />
                 ))}
               </Select>
             </div>
