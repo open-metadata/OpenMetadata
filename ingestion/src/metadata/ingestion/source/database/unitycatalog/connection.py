@@ -229,7 +229,7 @@ class UnityCatalogConnection(BaseConnection[UnityCatalogConnectionConfig, Worksp
 
         def get_tags(service_connection: UnityCatalogConnectionConfig, table_obj: DatabricksTable):
             engine = get_sqlalchemy_connection(service_connection)
-            with engine.connect() as connection:  # noqa: PLR1704
+            with engine.connect() as connection:
                 connection.execute(
                     text(
                         UNITY_CATALOG_GET_CATALOGS_TAGS.format(database=table_obj.catalog_name).replace(
