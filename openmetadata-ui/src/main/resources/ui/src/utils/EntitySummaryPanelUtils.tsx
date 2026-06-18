@@ -140,15 +140,6 @@ const RelatedMetrics = withSuspenseFallback(
   lazy(() => import('../components/Metric/RelatedMetrics/RelatedMetrics'))
 );
 
-export {
-  getHighlightOfListItem,
-  getMapOfListHighlights,
-  getSortedTagsWithHighlight,
-  getSummaryListItemType,
-  toEntityData,
-} from './EntitySummaryPanelPureUtils';
-export type { ListItemHighlights, SummaryListItem };
-
 const { Text } = Typography;
 
 /*
