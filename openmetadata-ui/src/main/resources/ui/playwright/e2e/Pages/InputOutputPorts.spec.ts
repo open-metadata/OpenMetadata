@@ -764,13 +764,25 @@ test.describe('Input Output Ports', () => {
       await test.step('Verify input ports list', async () => {
         await expect(page.getByTestId('input-ports-list')).toBeVisible();
 
-        const table1Name = get(tables[0], 'entityResponseData.name');
-        const table2Name = get(tables[1], 'entityResponseData.name');
-        const table3Name = get(tables[2], 'entityResponseData.name');
+        const table1Name = get(
+          tables[0],
+          'entityResponseData.fullyQualifiedName',
+          ''
+        );
+        const table2Name = get(
+          tables[1],
+          'entityResponseData.fullyQualifiedName',
+          ''
+        );
+        const table3Name = get(
+          tables[2],
+          'entityResponseData.fullyQualifiedName',
+          ''
+        );
 
-        await expect(page.locator(`text=${table1Name}`).first()).toBeVisible();
-        await expect(page.locator(`text=${table2Name}`).first()).toBeVisible();
-        await expect(page.locator(`text=${table3Name}`).first()).toBeVisible();
+        await expect(page.getByTestId(table1Name)).toBeVisible();
+        await expect(page.getByTestId(table2Name)).toBeVisible();
+        await expect(page.getByTestId(table3Name)).toBeVisible();
       });
     });
 
