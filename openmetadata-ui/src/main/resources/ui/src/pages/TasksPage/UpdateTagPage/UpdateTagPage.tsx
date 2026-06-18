@@ -44,10 +44,7 @@ import {
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import i18n from '../../../utils/i18next/LocalUtil';
-import {
-  applyTaskFormSchemaDefaults,
-  getResolvedTaskFormSchema,
-} from '../../../utils/TaskFormSchemaUtils';
+import { fetchOptions } from '../../../utils/TaskAssigneeUtils';
 import {
   fetchEntityDetail,
   getBreadCrumbList,
@@ -60,7 +57,10 @@ import {
   getTaskFieldColumns,
   getTaskMessage,
 } from '../../../utils/TaskFieldUtils';
-import { fetchOptions } from '../../../utils/TaskAssigneeUtils';
+import {
+  applyTaskFormSchemaDefaults,
+  getResolvedTaskFormSchema,
+} from '../../../utils/TaskFormSchemaUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Assignees from '../shared/Assignees';

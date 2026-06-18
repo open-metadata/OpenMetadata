@@ -23,13 +23,13 @@ import { EntityField } from '../../../constants/Feeds.constants';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { getFieldThreadElement } from '../../../utils/FeedElementUtils';
 import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
+import { getEntityTaskDetails } from '../../../utils/TaskFieldUtils';
 import {
   getRequestDescriptionPath,
   getRequestTagsPath,
   getUpdateDescriptionPath,
   getUpdateTagsPath,
 } from '../../../utils/TaskNavigationUtils';
-import { getEntityTaskDetails } from '../../../utils/TaskFieldUtils';
 import { EntityTasksProps } from './EntityTasks.interface';
 
 const EntityTasks = ({

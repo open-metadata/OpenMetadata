@@ -31,7 +31,10 @@ import type { Column, Table } from '../generated/entity/data/table';
 import type { Field, Topic } from '../generated/entity/data/topic';
 import type { EntityReference } from '../generated/entity/type';
 import type { TagLabel } from '../generated/type/tagLabel';
-import type { EntityData, Option } from '../pages/TasksPage/TasksPage.interface';
+import type {
+  EntityData,
+  Option,
+} from '../pages/TasksPage/TasksPage.interface';
 import { getEntityName } from './EntityNameUtils';
 import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
 import { getPartialNameFromTableFQN } from './FqnUtils';

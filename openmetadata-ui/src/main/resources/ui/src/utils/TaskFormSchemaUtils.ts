@@ -38,8 +38,8 @@ import {
   TaskEntityType,
   TaskPayload,
 } from '../rest/tasksAPI';
-import { getDefaultTaskFormSchema } from './TaskFormSchemaRegistry';
 import { isRecognizerFeedbackTask } from './TaskActionUtils';
+import { getDefaultTaskFormSchema } from './TaskFormSchemaRegistry';
 import { getNormalizedTaskPayload } from './TaskPayloadUtils';
 
 export { getDefaultTaskFormSchema };
