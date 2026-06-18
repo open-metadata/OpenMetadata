@@ -73,6 +73,10 @@
         "lastExtractedAt": {
           "description": "Time of the last extraction run in Unix epoch time milliseconds.",
           "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "sourceHash": {
+          "description": "Hash of the source content used for the most recent extraction. Lets the processing engine skip re-extraction when the content is unchanged.",
+          "type": "string"
         }
       },
       "additionalProperties": false
