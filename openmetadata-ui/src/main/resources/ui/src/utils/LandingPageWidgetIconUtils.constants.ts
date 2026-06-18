@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
+import defaultServiceIconUrl from '../assets/svg/default-service-icon.svg';
 import apiCollectionIconUrl from '../assets/svg/ic-api-collection-default.svg';
 import apiEndpointIconUrl from '../assets/svg/ic-api-endpoint-default.svg';
-import defaultServiceIconUrl from '../assets/svg/default-service-icon.svg';
 import dashboardIconUrl from '../assets/svg/ic-dashboard.svg';
 import dataProductIconUrl from '../assets/svg/ic-data-product.svg';
 import databaseIconUrl from '../assets/svg/ic-database.svg';

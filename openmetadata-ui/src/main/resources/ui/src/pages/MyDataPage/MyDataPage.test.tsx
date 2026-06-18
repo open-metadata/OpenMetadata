@@ -99,9 +99,11 @@ jest.mock(
 jest.mock(
   '../../components/MyData/LandingPageWidgetRenderer/LandingPageWidgetRenderer',
   () => {
-    return jest.fn().mockImplementation(({ widgetConfig }) => (
-      <div data-testid={widgetConfig.i}>{widgetConfig.i}</div>
-    ));
+    return jest
+      .fn()
+      .mockImplementation(({ widgetConfig }) => (
+        <div data-testid={widgetConfig.i}>{widgetConfig.i}</div>
+      ));
   }
 );
 
@@ -246,11 +248,11 @@ describe('MyDataPage component', () => {
     expect(screen.queryByText('WelcomeScreen')).toBeNull();
   });
 
-  it('MyDataPage should display dashboard shell immediately while loading data', async () => {
+  it('MyDataPage should display skeleton while resolving the landing page layout', async () => {
     render(<MyDataPage />);
 
-    expect(screen.queryByText('MyDataPageSkeleton')).toBeNull();
-    expect(screen.getByTestId('react-grid-layout')).toBeInTheDocument();
+    expect(screen.getByText('MyDataPageSkeleton')).toBeInTheDocument();
+    expect(screen.queryByTestId('react-grid-layout')).not.toBeInTheDocument();
     expect(screen.queryByText('WelcomeScreen')).toBeNull();
     expect(
       screen.getByTestId('customise-landing-page-header')
@@ -350,9 +352,7 @@ describe('MyDataPage component', () => {
     expect(
       screen.getByTestId('KnowledgePanel.ActivityFeed')
     ).toBeInTheDocument();
-    expect(
-      screen.getByTestId('KnowledgePanel.DataAssets')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('KnowledgePanel.DataAssets')).toBeInTheDocument();
     expect(
       screen.getByTestId('KnowledgePanel.KnowledgeCenter')
     ).toBeInTheDocument();

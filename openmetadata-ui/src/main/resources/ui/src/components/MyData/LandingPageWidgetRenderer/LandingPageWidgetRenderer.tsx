@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { getWidgetFromKey } from '../../../utils/CustomizableLandingPageUtils';
 import type { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import { getWidgetFromKey } from '../../../utils/CustomizableLandingPageUtils';
 
 interface LandingPageWidgetRendererProps {
   currentLayout: WidgetConfig[];

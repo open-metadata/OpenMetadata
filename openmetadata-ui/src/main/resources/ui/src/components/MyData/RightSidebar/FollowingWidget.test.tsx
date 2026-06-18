@@ -104,9 +104,11 @@ jest.mock('../../../utils/ServiceUtilClassBase', () => ({
 }));
 
 jest.mock('../../common/EntitySummaryDetails/EntitySummaryDetails', () => {
-  return jest.fn().mockImplementation(({ data }) => (
-    <div data-testid={`entity-summary-${data.key}`}>{data.key}</div>
-  ));
+  return jest
+    .fn()
+    .mockImplementation(({ data }) => (
+      <div data-testid={`entity-summary-${data.key}`}>{data.key}</div>
+    ));
 });
 
 jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({

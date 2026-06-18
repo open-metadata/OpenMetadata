@@ -77,7 +77,7 @@ const MyDataPage = () => {
     useApplicationStore();
   const { isWelcomeVisible } = useWelcomeStore();
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [layout, setLayout] = useState<Array<WidgetConfig>>(
     DEFAULT_LANDING_PAGE_LAYOUT
   );
@@ -118,6 +118,8 @@ const MyDataPage = () => {
   }, [userPersonaBackgroundColor, adminPersonaBackgroundColor]);
 
   const fetchDocument = async () => {
+    setIsLoading(true);
+
     try {
       if (selectedPersona) {
         const pageFQN = `${EntityType.PERSONA}.${selectedPersona.fullyQualifiedName}`;

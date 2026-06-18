@@ -346,12 +346,22 @@ describe('CuratedAssetsWidget', () => {
       expect(mockHandleLayoutUpdate).toHaveBeenCalledWith([
         {
           i: 'test-widget',
+          x: 2,
+          y: 0,
+          w: 1,
+          h: 3,
+          static: false,
           config: { title: 'Test Widget' },
         },
       ]);
       expect(mockHandleSaveLayout).toHaveBeenCalledWith([
         {
           i: 'test-widget',
+          x: 2,
+          y: 0,
+          w: 1,
+          h: 3,
+          static: false,
           config: { title: 'Test Widget' },
         },
       ]);

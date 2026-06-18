@@ -13,6 +13,7 @@
 import { startCase } from 'lodash';
 import { useEffect, useState } from 'react';
 import { ExplorePageTabs } from '../enums/Explore.enum';
+import { LANDING_WIDGET_DEFAULT_ICON_URL } from './LandingPageWidgetIconUtils.constants';
 
 type DataAssetServiceCategory =
   | 'api'
@@ -25,68 +26,6 @@ type DataAssetServiceCategory =
   | 'security'
   | 'storage'
   | 'topic';
-
-const DATABASE_SERVICE_TYPES = new Set([
-  'athena',
-  'azuresql',
-  'bigquery',
-  'bigtable',
-  'burstiq',
-  'cassandra',
-  'clickhouse',
-  'cockroach',
-  'couchbase',
-  'customdatabase',
-  'databricks',
-  'datalake',
-  'db2',
-  'dbt',
-  'deltalake',
-  'dremio',
-  'domodatabase',
-  'doris',
-  'druid',
-  'dynamodb',
-  'epic',
-  'exasol',
-  'glue',
-  'greenplum',
-  'hive',
-  'iceberg',
-  'impala',
-  'informix',
-  'iomete',
-  'mariadb',
-  'microsoftaccess',
-  'microsoftfabric',
-  'mongodb',
-  'mssql',
-  'mysql',
-  'oracle',
-  'pinotdb',
-  'postgres',
-  'presto',
-  'querylog',
-  'questdb',
-  'redshift',
-  'salesforce',
-  'saperp',
-  'saphana',
-  'sapsuccessfactors',
-  'sas',
-  'servicenow',
-  'singlestore',
-  'snowflake',
-  'sqlite',
-  'ssas',
-  'starrocks',
-  'synapse',
-  'teradata',
-  'timescale',
-  'trino',
-  'unitycatalog',
-  'vertica',
-]);
 
 const MESSAGING_SERVICE_TYPES = new Set([
   'custommessaging',
@@ -152,12 +91,7 @@ const ML_MODEL_SERVICE_TYPES = new Set([
   'vertexai',
 ]);
 
-const STORAGE_SERVICE_TYPES = new Set([
-  'adls',
-  'customstorage',
-  'gcs',
-  's3',
-]);
+const STORAGE_SERVICE_TYPES = new Set(['adls', 'customstorage', 'gcs', 's3']);
 
 const SEARCH_SERVICE_TYPES = new Set([
   'customsearch',
@@ -213,8 +147,7 @@ const SERVICE_ICON_IMPORTS: Record<string, () => Promise<{ default: string }>> =
   {
     airflow: () => import('../assets/img/service-icon-airflow.webp'),
     airbyte: () => import('../assets/img/Airbyte.webp'),
-    alationsink: () =>
-      import('../assets/img/service-icon-alation-sink.webp'),
+    alationsink: () => import('../assets/img/service-icon-alation-sink.webp'),
     amundsen: () => import('../assets/img/service-icon-amundsen.webp'),
     athena: () => import('../assets/img/service-icon-athena.webp'),
     atlas: () => import('../assets/img/service-icon-atlas.svg'),
@@ -260,8 +193,7 @@ const SERVICE_ICON_IMPORTS: Record<string, () => Promise<{ default: string }>> =
     looker: () => import('../assets/img/service-icon-looker.webp'),
     mariadb: () => import('../assets/img/service-icon-mariadb.webp'),
     metabase: () => import('../assets/img/service-icon-metabase.webp'),
-    microstrategy: () =>
-      import('../assets/img/service-icon-microstrategy.svg'),
+    microstrategy: () => import('../assets/img/service-icon-microstrategy.svg'),
     mlflow: () => import('../assets/svg/service-icon-mlflow.svg'),
     mongodb: () => import('../assets/img/service-icon-mongodb.webp'),
     mssql: () => import('../assets/img/service-icon-mssql.webp'),
@@ -303,8 +235,7 @@ const SERVICE_ICON_IMPORTS: Record<string, () => Promise<{ default: string }>> =
     teradata: () => import('../assets/svg/teradata.svg'),
     timescale: () => import('../assets/img/service-icon-timescale.webp'),
     trino: () => import('../assets/img/service-icon-trino.webp'),
-    unitycatalog: () =>
-      import('../assets/img/service-icon-unitycatalog.svg'),
+    unitycatalog: () => import('../assets/img/service-icon-unitycatalog.svg'),
     vertica: () => import('../assets/img/service-icon-vertica.webp'),
   };
 
@@ -360,21 +291,19 @@ export const getDataAssetServiceCategory = (
     return 'security';
   }
 
-  if (DATABASE_SERVICE_TYPES.has(normalizedServiceType)) {
-    return 'database';
-  }
-
   return 'database';
 };
 
-export const getDataAssetExploreTab = (serviceType: string): ExplorePageTabs => {
+export const getDataAssetExploreTab = (
+  serviceType: string
+): ExplorePageTabs => {
   const category = getDataAssetServiceCategory(serviceType);
 
   const tabByCategory: Record<DataAssetServiceCategory, ExplorePageTabs> = {
     api: ExplorePageTabs.API_ENDPOINT,
     dashboard: ExplorePageTabs.DASHBOARDS,
     database: ExplorePageTabs.TABLES,
-    drive: ExplorePageTabs.TABLES,
+    drive: ExplorePageTabs.DIRECTORIES,
     mlmodel: ExplorePageTabs.MLMODELS,
     pipeline: ExplorePageTabs.PIPELINES,
     search: ExplorePageTabs.SEARCH_INDEX,
@@ -404,7 +333,7 @@ export const DataAssetServiceLogo = ({
 }): JSX.Element | null => {
   const category = getDataAssetServiceCategory(serviceType);
   const normalizedServiceType = normalizeServiceType(serviceType);
-  const [logo, setLogo] = useState<string>();
+  const [logo, setLogo] = useState<string>(LANDING_WIDGET_DEFAULT_ICON_URL);
 
   useEffect(() => {
     let isMounted = true;
@@ -420,7 +349,7 @@ export const DataAssetServiceLogo = ({
       })
       .catch(() => {
         if (isMounted) {
-          setLogo(undefined);
+          setLogo(LANDING_WIDGET_DEFAULT_ICON_URL);
         }
       });
 
@@ -429,5 +358,5 @@ export const DataAssetServiceLogo = ({
     };
   }, [category, normalizedServiceType]);
 
-  return logo ? <img alt="" className={className} src={logo} /> : null;
+  return <img alt="" className={className} src={logo} />;
 };

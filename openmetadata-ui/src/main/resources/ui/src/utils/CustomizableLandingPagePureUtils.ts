@@ -75,7 +75,8 @@ export const getNewWidgetPlacement = (
 
   // Check if there's enough space to place the new widget on the same row
   if (
-    LANDING_PAGE_MAX_GRID_SIZE - (lowestWidgetLayout.x + lowestWidgetLayout.w) >=
+    LANDING_PAGE_MAX_GRID_SIZE -
+      (lowestWidgetLayout.x + lowestWidgetLayout.w) >=
     widgetWidth
   ) {
     return {
@@ -163,9 +164,7 @@ const packWidgetsTightly = (widgets: WidgetConfig[]): WidgetConfig[] => {
     }
 
     // Check if widget fits in current row
-    if (
-      currentX + widget.w > LANDING_PAGE_MAX_GRID_SIZE
-    ) {
+    if (currentX + widget.w > LANDING_PAGE_MAX_GRID_SIZE) {
       // Move to next row
       currentX = 0;
       currentY += maxHeightInRow;
@@ -236,8 +235,7 @@ export const ensurePlaceholderAtEnd = (
   });
 
   // Check if there's space in the last row
-  const canFitInLastRow =
-    rightmostInLastRow + 1 <= LANDING_PAGE_MAX_GRID_SIZE;
+  const canFitInLastRow = rightmostInLastRow + 1 <= LANDING_PAGE_MAX_GRID_SIZE;
 
   const placeholderWidget = createPlaceholderWidget(
     canFitInLastRow ? rightmostInLastRow : 0,

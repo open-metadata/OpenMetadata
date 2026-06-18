@@ -116,15 +116,13 @@ const CustomiseLandingPageHeader = ({
 
     return entities.map((entity) => {
       return {
-        icon: (
-          getLandingPageWidgetIcon(
-            {
-              entityType: entity.entityType,
-              name: entity.displayName,
-              serviceType: entity.serviceType,
-            },
-            'entity-icon'
-          )
+        icon: getLandingPageWidgetIcon(
+          {
+            entityType: entity.entityType,
+            name: entity.displayName,
+            serviceType: entity.serviceType,
+          },
+          'entity-icon'
         ),
         name: entity.displayName,
         entityType: entity.entityType,

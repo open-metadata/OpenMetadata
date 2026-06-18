@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
+import { DataAssetServiceLogo } from './DataAssetServiceUtils';
 import {
   LANDING_WIDGET_DEFAULT_ICON_URL,
   LANDING_WIDGET_ENTITY_ICON_URL_MAP,
 } from './LandingPageWidgetIconUtils.constants';
-import { DataAssetServiceLogo } from './DataAssetServiceUtils';
 
 interface LandingPageWidgetIconSource {
   name?: string;
@@ -43,10 +43,6 @@ export const getLandingPageWidgetIcon = (
   }
 
   return (
-    <img
-      alt={item.name ?? entityType}
-      className={className}
-      src={iconUrl}
-    />
+    <img alt={item.name ?? entityType} className={className} src={iconUrl} />
   );
 };

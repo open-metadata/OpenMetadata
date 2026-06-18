@@ -24,12 +24,12 @@ import { ReactComponent as CuratedAssetsNoDataIcon } from '../../../../assets/sv
 import { ReactComponent as StarOutlinedIcon } from '../../../../assets/svg/star-outlined.svg';
 import withSuspenseFallback from '../../../../components/AppRouter/withSuspenseFallback';
 import { CURATED_ASSETS_LIST } from '../../../../constants/AdvancedSearch.constants';
-import { CURATED_ASSETS_WIDGET_DEFAULT_VALUES } from '../../../../constants/CustomizeMyDataPage.constants';
 import {
   PAGE_SIZE_BASE,
   PAGE_SIZE_MEDIUM,
   ROUTES,
 } from '../../../../constants/constants';
+import { CURATED_ASSETS_WIDGET_DEFAULT_VALUES } from '../../../../constants/CustomizeMyDataPage.constants';
 import {
   getSortField,
   getSortOrder,
@@ -362,10 +362,7 @@ const CuratedAssetsWidget = ({
           <div
             className="curated-assets-list-item flex items-center w-full"
             data-testid={`Curated Assets-${title}`}>
-            {getLandingPageWidgetIcon(
-              item as SearchSourceAlias,
-              'entity-icon'
-            )}
+            {getLandingPageWidgetIcon(item as SearchSourceAlias, 'entity-icon')}
             <div className="flex flex-col curated-assets-list-item-content">
               <div className="flex items-center gap-1">
                 <Typography.Text

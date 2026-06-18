@@ -14,7 +14,9 @@
 import { ExplorePageTabs } from '../../../../enums/Explore.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 
-type SearchIndexPathMap = Partial<Record<SearchIndex, ExplorePageTabs | string>>;
+type SearchIndexPathMap = Partial<
+  Record<SearchIndex, ExplorePageTabs | string>
+>;
 
 // Keep this map near the landing search component instead of SearchClassBase so
 // the /my-data shell does not import advanced-search setup before interaction.

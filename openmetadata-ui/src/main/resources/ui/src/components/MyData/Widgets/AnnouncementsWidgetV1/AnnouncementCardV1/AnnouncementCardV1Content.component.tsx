@@ -26,8 +26,8 @@ import './announcement-card-v1-content.less';
 const PRIMARY_COLOR = 'var(--ant-primary-color)';
 
 const RichTextEditorPreviewerV1 = withSuspenseFallback(
-  lazy(() =>
-    import('../../../../common/RichTextEditor/RichTextEditorPreviewerV1')
+  lazy(
+    () => import('../../../../common/RichTextEditor/RichTextEditorPreviewerV1')
   )
 );
 
