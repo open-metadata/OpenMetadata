@@ -24,9 +24,11 @@ from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import SqlQuery, Timestamp
 from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
     EntitiesEdge,
@@ -63,6 +65,7 @@ from metadata.ingestion.source.database.stored_procedures_mixin import (
 from metadata.utils import fqn
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.time_utils import datetime_to_timestamp
 
 logger = ingestion_logger()
 
@@ -71,6 +74,10 @@ USE_ACCESS_HISTORY_OPTION_KEY = "useAccessHistory"
 ACCESS_HISTORY_CHUNK_DAYS_OPTION_KEY = "accessHistoryChunkDays"
 
 TABLE_CACHE_MAX_SIZE = 100
+
+QUERY_DEDUP_CACHE_MAX_SIZE = 1000
+
+USER_CACHE_MAX_SIZE = 1000
 
 ACCESS_HISTORY_CHUNK_DAYS = 2
 
@@ -121,6 +128,10 @@ class SnowflakeLineageSource(
         self._access_history_chunk_days = self._pop_access_history_chunk_days(config)
         super().__init__(config, metadata, get_engine=get_engine)
         self._table_cache: LRUCache = LRUCache(maxsize=TABLE_CACHE_MAX_SIZE)
+        self._seen_query_checksums: LRUCache = LRUCache(
+            maxsize=QUERY_DEDUP_CACHE_MAX_SIZE
+        )
+        self._user_cache: LRUCache = LRUCache(maxsize=USER_CACHE_MAX_SIZE)
         if self._use_access_history and self.engine is not None:
             available = probe_access_history_available(
                 self.engine, self.service_connection.accountUsageSchema
@@ -286,11 +297,15 @@ class SnowflakeLineageSource(
             return
         yield from super().yield_query_lineage()
 
-    def _yield_access_history_lineage(self) -> Iterable[Either[AddLineageRequest]]:
+    def _yield_access_history_lineage(
+        self,
+    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:  # noqa: UP007
         """
         Stream one row per directed table edge from the combined ACCESS_HISTORY
         SQL — column-pairs are aggregated into a VARIANT array per edge inside
-        Snowflake, so client memory stays O(1) regardless of catalog size.
+        Snowflake, so client memory stays O(1) regardless of catalog size. Each
+        edge with representative SQL also yields a CreateQueryRequest so the
+        query surfaces in OpenMetadata, matching the legacy parser path.
         """
         yield from self._yield_combined_access_history()
         yield from self._yield_copy_history_lineage()
@@ -315,13 +330,19 @@ class SnowflakeLineageSource(
             yield window_start, window_end
             window_start = window_end
 
-    def _yield_combined_access_history(self) -> Iterable[Either[AddLineageRequest]]:
+    def _yield_combined_access_history(
+        self,
+    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:  # noqa: UP007
         """
         Stream the combined ACCESS_HISTORY query per date window and emit one
-        `AddLineageRequest` per row, accumulating counters across all windows.
+        `AddLineageRequest` per row, plus a `CreateQueryRequest` for each edge's
+        representative SQL (deduped by checksum) so the originating query lands
+        in OpenMetadata just as the legacy parser path does. Counters accumulate
+        across all windows.
         """
         emitted = 0
         emitted_with_sql = 0
+        queries_emitted = 0
         skipped = 0
         for window_start, window_end in self._iter_lineage_date_windows():
             for row in self._fetch_access_history_rows(window_start, window_end):
@@ -330,16 +351,112 @@ class SnowflakeLineageSource(
                     skipped += 1
                     continue
                 emitted += 1
+                yield Either(right=edge)  # pyright: ignore[reportCallIssue]
                 if row.query_text:
                     emitted_with_sql += 1
-                yield Either(right=edge)  # pyright: ignore[reportCallIssue]
+                    query_request = self._build_query_request(row)
+                    if query_request is not None:
+                        queries_emitted += 1
+                        yield Either(
+                            right=query_request
+                        )  # pyright: ignore[reportCallIssue]
         logger.info(
             "ACCESS_HISTORY lineage: emitted %d edges (%d with SQL text), "
-            "skipped %d (unresolvable downstream/upstream tables)",
+            "%d queries created, skipped %d (unresolvable downstream/upstream tables)",
             emitted,
             emitted_with_sql,
+            queries_emitted,
             skipped,
         )
+
+    def _build_query_request(
+        self, row: AccessHistoryRow
+    ) -> Optional[CreateQueryRequest]:  # noqa: UP045
+        """
+        Build a CreateQueryRequest for an edge's representative SQL so the query
+        is registered in OpenMetadata like the legacy parser path does. Deduped
+        within the run by SQL checksum via a bounded LRU — one Query entity per
+        unique statement, mirroring the sink's checksum dedup. `processedLineage`
+        is True because the edge was derived from ACCESS_HISTORY directly, so the
+        legacy parser must not re-process it.
+
+        `queryUsedIn` references the edge's downstream and upstream tables so the
+        backend creates the MENTIONED_IN relationship that the table "Queries" tab
+        reads — without it the Query entity is created but attached to no table and
+        never surfaces in the UI. Both tables are already in `_table_cache` from
+        building the edge, so resolution here is a cache hit.
+        """
+        if not row.query_text:
+            return None
+        checksum = fqn.get_query_checksum(row.query_text)
+        if checksum in self._seen_query_checksums:
+            return None
+        self._seen_query_checksums[checksum] = True
+        query_date = (
+            Timestamp(
+                root=datetime_to_timestamp(row.query_start_time, milliseconds=True)
+            )
+            if row.query_start_time
+            else None
+        )
+        users, used_by = self._resolve_query_user(row.user_name)
+        return CreateQueryRequest(
+            query=SqlQuery(row.query_text),
+            query_type=row.query_type,
+            duration=row.query_duration,
+            queryDate=query_date,
+            users=users,
+            usedBy=used_by,
+            queryUsedIn=self._build_query_used_in(row) or None,
+            processedLineage=True,
+            service=self.config.serviceName,
+        )
+
+    def _build_query_used_in(
+        self, row: AccessHistoryRow
+    ) -> List[EntityReference]:  # noqa: UP006
+        """
+        Resolve the edge's downstream and upstream tables to EntityReferences for
+        the query's `queryUsedIn`, so the query is linked to both tables in OM.
+        Resolution hits `_table_cache` (populated while building the edge), so this
+        adds no extra API calls.
+        """
+        references: List[EntityReference] = []  # noqa: UP006
+        for snowflake_fqn in (row.downstream_table, row.upstream_table):
+            if not snowflake_fqn:
+                continue
+            entity = self._resolve_snowflake_table(snowflake_fqn)
+            if entity is not None:
+                references.append(
+                    EntityReference(id=entity.id.root, type="table")
+                )  # pyright: ignore[reportCallIssue]
+        return references
+
+    def _resolve_query_user(
+        self, username: Optional[str]  # noqa: UP045
+    ) -> Tuple[Optional[List[str]], Optional[List[str]]]:  # noqa: UP006, UP045
+        """
+        Map the Snowflake `USER_NAME` that ran the query to the CreateQueryRequest
+        `(users, usedBy)` pair, mirroring the usage stage's `_get_user_entity`:
+        `users` is the matching OpenMetadata user FQN (when one exists) and
+        `usedBy` is the raw Snowflake username. Both hits and misses are cached
+        in a bounded LRU — the same handful of service accounts run most queries,
+        so this stays a hot path.
+        """
+        if not username:
+            return None, None
+        if username in self._user_cache:
+            return self._user_cache[username]
+        try:
+            user = self.metadata.get_by_name(entity=User, fqn=username)
+        except Exception as exc:
+            logger.debug("Failed to resolve user `%s`: %s", username, exc)
+            user = None
+        resolved = (
+            ([user.fullyQualifiedName.root], [username]) if user else (None, [username])
+        )
+        self._user_cache[username] = resolved
+        return resolved
 
     def _fetch_access_history_rows(
         self, window_start: datetime, window_end: datetime

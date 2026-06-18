@@ -171,7 +171,9 @@ class SnowflakeQueryResult(QueryResult):
 
 class AccessHistoryRow(BaseModel):
     """One row from SNOWFLAKE_ACCESS_HISTORY_LINEAGE — a directed table edge
-    with pre-aggregated column pairs (VARIANT) and a representative query text."""
+    with pre-aggregated column pairs (VARIANT) and the representative query's
+    text, type, duration, start time and executing user (pinned to the latest
+    query on the edge)."""
 
     model_config = ConfigDict(extra="ignore")
 
@@ -179,6 +181,10 @@ class AccessHistoryRow(BaseModel):
     upstream_table: Optional[str] = None  # noqa: UP045
     column_pairs: Optional[Any] = None  # noqa: UP045
     query_text: Optional[str] = None  # noqa: UP045
+    query_type: Optional[str] = None  # noqa: UP045
+    query_duration: Optional[float] = None  # noqa: UP045
+    query_start_time: Optional[datetime] = None  # noqa: UP045
+    user_name: Optional[str] = None  # noqa: UP045
 
 
 class CopyHistoryRow(BaseModel):

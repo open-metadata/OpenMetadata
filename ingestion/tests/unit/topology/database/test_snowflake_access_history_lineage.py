@@ -23,9 +23,11 @@ the flag is on.
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
+from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.basic import (
     EntityName,
     FullyQualifiedEntityName,
@@ -34,6 +36,9 @@ from metadata.generated.schema.type.basic import (
 from metadata.generated.schema.type.entityLineage import Source as LineageEdgeSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.lineage_source import LineageSource
+from metadata.ingestion.source.database.snowflake.connection import (
+    probe_access_history_available,
+)
 from metadata.ingestion.source.database.snowflake.lineage import (
     ACCESS_HISTORY_CHUNK_DAYS,
     ACCESS_HISTORY_CHUNK_DAYS_OPTION_KEY,
@@ -112,6 +117,8 @@ def _make_lineage_source(
     src.start = datetime(2025, 1, 1)
     src.end = datetime(2025, 1, 2)
     src._table_cache = {}
+    src._seen_query_checksums = {}
+    src._user_cache = {}
     src._use_access_history = False
     src._access_history_chunk_days = ACCESS_HISTORY_CHUNK_DAYS
     return src
@@ -247,6 +254,29 @@ def test_combined_lineage_left_joins_query_history_for_text_only():
     assert '"app": "OpenMetadata"' not in rendered
 
 
+def test_combined_lineage_sql_surfaces_query_metadata():
+    """
+    The combined SQL must surface the representative query's type, duration and
+    start time alongside its text so the client can build a CreateQueryRequest.
+    """
+    rendered = SNOWFLAKE_ACCESS_HISTORY_LINEAGE.format(
+        account_usage="SNOWFLAKE.ACCOUNT_USAGE",
+        start_time="2025-01-01",
+        end_time="2025-01-31",
+        filter_condition="",
+    )
+    assert "qh.QUERY_TYPE" in rendered
+    assert "qh.TOTAL_ELAPSED_TIME AS QUERY_DURATION" in rendered
+    assert "ah.USER_NAME" in rendered
+    assert "MAX_BY(ah.QUERY_TYPE, ah.QUERY_START_TIME)" in rendered
+    assert "MAX_BY(ah.QUERY_DURATION, ah.QUERY_START_TIME)" in rendered
+    assert "MAX_BY(ah.USER_NAME, ah.QUERY_START_TIME)" in rendered
+    assert "te.QUERY_TYPE" in rendered
+    assert "te.QUERY_DURATION" in rendered
+    assert "te.QUERY_START_TIME" in rendered
+    assert "te.USER_NAME" in rendered
+
+
 def test_build_filter_condition_clause_empty_when_unset():
     src = _make_lineage_source()
     src.source_config.filterCondition = None
@@ -278,6 +308,31 @@ def test_probe_sql_is_lightweight():
     )
     assert "ACCESS_HISTORY" in rendered
     assert "LIMIT 1" in rendered
+
+
+def test_probe_executes_and_returns_true_on_success():
+    """
+    Run the real probe (not a mock) so a missing import or rendering bug is
+    caught: it must execute the probe SQL and return True when the query
+    succeeds. Regression for the unimported `text(...)` NameError that silently
+    demoted every run to the legacy parser path.
+    """
+    engine = _make_mock_engine({"ACCESS_HISTORY": [_Row(dummy=1)]})
+
+    assert probe_access_history_available(engine, "SNOWFLAKE.ACCOUNT_USAGE") is True
+
+    conn = engine.connect.return_value
+    executed = [str(call.args[0]) for call in conn.execute.call_args_list]
+    assert any("ACCESS_HISTORY" in sql and "LIMIT 1" in sql for sql in executed)
+
+
+def test_probe_returns_false_when_query_raises():
+    """A genuine privilege/edition failure surfaces as a swallowed False."""
+    engine = _make_mock_engine({})
+    conn = engine.connect.return_value
+    conn.execute = MagicMock(side_effect=RuntimeError("insufficient privileges"))
+
+    assert probe_access_history_available(engine, "SNOWFLAKE.ACCOUNT_USAGE") is False
 
 
 # ---------------------------------------------------------------------------
@@ -557,11 +612,220 @@ def test_sql_query_text_attaches_when_present_in_row():
             ],
         },
     )
-    edges = list(src._yield_combined_access_history())
-    assert len(edges) == 1
-    details = edges[0].right.edge.lineageDetails
+    results = list(src._yield_combined_access_history())
+    lineage_requests = [
+        r.right for r in results if isinstance(r.right, AddLineageRequest)
+    ]
+    assert len(lineage_requests) == 1
+    details = lineage_requests[0].edge.lineageDetails
     assert details.sqlQuery is not None
     assert str(details.sqlQuery.root) == representative_sql
+
+
+def test_edge_with_query_text_also_creates_query_entity():
+    """
+    An edge whose row carries representative SQL must also emit a
+    CreateQueryRequest so the query surfaces in OpenMetadata exactly like the
+    legacy parser path. processedLineage stays True so the legacy parser never
+    re-processes an edge already derived from ACCESS_HISTORY.
+    """
+    upstream_entity = _make_table_entity(
+        "11111111-1111-1111-1111-111111111111", "DB", "SCHEMA", "ORDERS"
+    )
+    downstream_entity = _make_table_entity(
+        "22222222-2222-2222-2222-222222222222", "DB", "SCHEMA", "REVENUE"
+    )
+    metadata = MagicMock()
+    metadata.get_by_name = MagicMock(
+        side_effect=lambda entity, fqn: {
+            "test_service.DB.SCHEMA.ORDERS": upstream_entity,
+            "test_service.DB.SCHEMA.REVENUE": downstream_entity,
+        }.get(fqn)
+    )
+    representative_sql = "INSERT INTO REVENUE SELECT * FROM ORDERS"
+    src = _make_lineage_source(
+        metadata=metadata,
+        rows_by_sql={
+            "ACCESS_HISTORY": [
+                _Row(
+                    upstream_table="DB.SCHEMA.ORDERS",
+                    upstream_domain="Table",
+                    downstream_table="DB.SCHEMA.REVENUE",
+                    downstream_domain="Table",
+                    query_id="abc",
+                    query_text=representative_sql,
+                    query_type="INSERT",
+                    query_duration=1234.0,
+                    query_start_time=datetime(2025, 1, 1, 12, 0, 0),
+                    user_name="ETL_USER",
+                    column_pairs=None,
+                ),
+            ],
+        },
+    )
+
+    results = list(src._yield_combined_access_history())
+
+    queries = [r.right for r in results if isinstance(r.right, CreateQueryRequest)]
+    assert len(queries) == 1
+    query = queries[0]
+    assert str(query.query.root) == representative_sql
+    assert query.query_type == "INSERT"
+    assert query.duration == 1234.0
+    assert query.queryDate is not None
+    assert query.processedLineage is True
+    assert str(query.service.root) == "test_service"
+    # USER_NAME flows through to usedBy even when no matching OM user exists.
+    assert [str(u) for u in query.usedBy] == ["ETL_USER"]
+    # queryUsedIn links the query to both edge tables so it shows in their
+    # "Queries" tab (backend MENTIONED_IN relationship).
+    linked_ids = {str(ref.id.root) for ref in query.queryUsedIn.root}
+    assert linked_ids == {
+        "11111111-1111-1111-1111-111111111111",
+        "22222222-2222-2222-2222-222222222222",
+    }
+
+
+def test_query_entity_resolves_executing_user_to_om_user():
+    """
+    When the Snowflake USER_NAME matches an OpenMetadata user, the created
+    Query carries that user's FQN in `users`; the raw name always lands in
+    `usedBy`.
+    """
+    upstream_entity = _make_table_entity(
+        "11111111-1111-1111-1111-111111111111", "DB", "SCHEMA", "ORDERS"
+    )
+    downstream_entity = _make_table_entity(
+        "22222222-2222-2222-2222-222222222222", "DB", "SCHEMA", "REVENUE"
+    )
+    om_user = MagicMock()
+    om_user.fullyQualifiedName = FullyQualifiedEntityName("jdoe")
+
+    def _get_by_name(entity, fqn):
+        if entity is User:
+            return om_user if fqn == "jdoe" else None
+        return {
+            "test_service.DB.SCHEMA.ORDERS": upstream_entity,
+            "test_service.DB.SCHEMA.REVENUE": downstream_entity,
+        }.get(fqn)
+
+    metadata = MagicMock()
+    metadata.get_by_name = MagicMock(side_effect=_get_by_name)
+    src = _make_lineage_source(
+        metadata=metadata,
+        rows_by_sql={
+            "ACCESS_HISTORY": [
+                _Row(
+                    upstream_table="DB.SCHEMA.ORDERS",
+                    upstream_domain="Table",
+                    downstream_table="DB.SCHEMA.REVENUE",
+                    downstream_domain="Table",
+                    query_id="abc",
+                    query_text="INSERT INTO REVENUE SELECT * FROM ORDERS",
+                    user_name="jdoe",
+                    column_pairs=None,
+                ),
+            ],
+        },
+    )
+
+    results = list(src._yield_combined_access_history())
+    query = next(r.right for r in results if isinstance(r.right, CreateQueryRequest))
+    assert [str(u.root) for u in query.users] == ["jdoe"]
+    assert [str(u) for u in query.usedBy] == ["jdoe"]
+
+
+def test_query_entity_deduped_by_checksum_within_run():
+    """The same SQL spanning multiple edges must create a single Query entity."""
+    upstream_entity = _make_table_entity(
+        "11111111-1111-1111-1111-111111111111", "DB", "SCHEMA", "ORDERS"
+    )
+    downstream_a = _make_table_entity(
+        "22222222-2222-2222-2222-222222222222", "DB", "SCHEMA", "REVENUE"
+    )
+    downstream_b = _make_table_entity(
+        "33333333-3333-3333-3333-333333333333", "DB", "SCHEMA", "PROFIT"
+    )
+    metadata = MagicMock()
+    metadata.get_by_name = MagicMock(
+        side_effect=lambda entity, fqn: {
+            "test_service.DB.SCHEMA.ORDERS": upstream_entity,
+            "test_service.DB.SCHEMA.REVENUE": downstream_a,
+            "test_service.DB.SCHEMA.PROFIT": downstream_b,
+        }.get(fqn)
+    )
+    shared_sql = "INSERT INTO REVENUE SELECT * FROM ORDERS"
+    src = _make_lineage_source(
+        metadata=metadata,
+        rows_by_sql={
+            "ACCESS_HISTORY": [
+                _Row(
+                    upstream_table="DB.SCHEMA.ORDERS",
+                    upstream_domain="Table",
+                    downstream_table="DB.SCHEMA.REVENUE",
+                    downstream_domain="Table",
+                    query_id="abc",
+                    query_text=shared_sql,
+                    column_pairs=None,
+                ),
+                _Row(
+                    upstream_table="DB.SCHEMA.ORDERS",
+                    upstream_domain="Table",
+                    downstream_table="DB.SCHEMA.PROFIT",
+                    downstream_domain="Table",
+                    query_id="abc",
+                    query_text=shared_sql,
+                    column_pairs=None,
+                ),
+            ],
+        },
+    )
+
+    results = list(src._yield_combined_access_history())
+
+    lineage_requests = [
+        r.right for r in results if isinstance(r.right, AddLineageRequest)
+    ]
+    queries = [r.right for r in results if isinstance(r.right, CreateQueryRequest)]
+    assert len(lineage_requests) == 2
+    assert len(queries) == 1
+
+
+def test_no_query_entity_when_row_has_no_sql():
+    """An edge with no representative SQL must not emit a CreateQueryRequest."""
+    upstream_entity = _make_table_entity(
+        "11111111-1111-1111-1111-111111111111", "DB", "SCHEMA", "ORDERS"
+    )
+    downstream_entity = _make_table_entity(
+        "22222222-2222-2222-2222-222222222222", "DB", "SCHEMA", "REVENUE"
+    )
+    metadata = MagicMock()
+    metadata.get_by_name = MagicMock(
+        side_effect=lambda entity, fqn: {
+            "test_service.DB.SCHEMA.ORDERS": upstream_entity,
+            "test_service.DB.SCHEMA.REVENUE": downstream_entity,
+        }.get(fqn)
+    )
+    src = _make_lineage_source(
+        metadata=metadata,
+        rows_by_sql={
+            "ACCESS_HISTORY": [
+                _Row(
+                    upstream_table="DB.SCHEMA.ORDERS",
+                    upstream_domain="Table",
+                    downstream_table="DB.SCHEMA.REVENUE",
+                    downstream_domain="Table",
+                    query_id="abc",
+                    column_pairs=None,
+                ),
+            ],
+        },
+    )
+
+    results = list(src._yield_combined_access_history())
+
+    assert all(isinstance(r.right, AddLineageRequest) for r in results)
+    assert not [r for r in results if isinstance(r.right, CreateQueryRequest)]
 
 
 def test_table_edges_skip_when_either_side_unresolvable():
