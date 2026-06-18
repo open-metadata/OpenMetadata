@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.resources.settings;
 
+import static org.openmetadata.schema.settings.SettingsType.AI_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.ASSET_CERTIFICATION_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
@@ -54,6 +55,7 @@ import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.configuration.AISettings;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
@@ -73,6 +75,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.resources.system.AISettingsHandler;
 import org.openmetadata.service.resources.system.SearchSettingsHandler;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.SearchIndex;
@@ -199,6 +202,37 @@ public class SettingsCache {
       }
     } catch (IOException e) {
       LOG.error("Failed to read default search settings. Message: {}", e.getMessage(), e);
+    }
+
+    // Initialise AI Settings
+    Settings storedAiSettings =
+        Entity.getSystemRepository().getConfigWithKey(AI_SETTINGS.toString());
+    try {
+      List<String> aiJsonDataFiles =
+          EntityUtil.getJsonDataResources(".*json/data/settings/aiSettings.json$");
+      if (!aiJsonDataFiles.isEmpty()) {
+        String aiJson =
+            CommonUtil.getResourceAsStream(
+                EntityRepository.class.getClassLoader(), aiJsonDataFiles.get(0));
+        AISettings defaultAiSettings = JsonUtils.readValue(aiJson, AISettings.class);
+        if (storedAiSettings == null) {
+          Settings setting =
+              new Settings().withConfigType(AI_SETTINGS).withConfigValue(defaultAiSettings);
+          Entity.getSystemRepository().createNewSetting(setting);
+        } else {
+          AISettings existingAiSettings =
+              JsonUtils.convertValue(storedAiSettings.getConfigValue(), AISettings.class);
+          AISettings mergedAiSettings =
+              new AISettingsHandler().mergeAISettings(defaultAiSettings, existingAiSettings);
+          if (!JsonUtils.pojoToJson(mergedAiSettings)
+              .equals(JsonUtils.pojoToJson(existingAiSettings))) {
+            storedAiSettings.setConfigValue(mergedAiSettings);
+            Entity.getSystemRepository().createOrUpdate(storedAiSettings);
+          }
+        }
+      }
+    } catch (IOException e) {
+      LOG.error("Failed to read default AI settings. Message: {}", e.getMessage(), e);
     }
 
     // Initialise Certification Settings

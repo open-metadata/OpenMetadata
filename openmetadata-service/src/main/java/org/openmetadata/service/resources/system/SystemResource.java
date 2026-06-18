@@ -1,6 +1,7 @@
 package org.openmetadata.service.resources.system;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.settings.SettingsType.AI_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.GLOSSARY_TERM_RELATION_SETTINGS;
@@ -48,6 +49,7 @@ import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.auth.EmailRequest;
+import org.openmetadata.schema.configuration.AISettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
@@ -112,6 +114,7 @@ public class SystemResource {
   private JwtFilter jwtFilter;
   private SearchSettings defaultSearchSettingsCache = new SearchSettings();
   private final SearchSettingsHandler searchSettingsHandler = new SearchSettingsHandler();
+  private final AISettingsHandler aiSettingsHandler = new AISettingsHandler();
   private boolean isNlqEnabled = false;
 
   public SystemResource(Authorizer authorizer) {
@@ -176,6 +179,25 @@ public class SystemResource {
     systemRepository.createOrUpdate(settings);
     LOG.info("Default searchSettings loaded successfully.");
     return searchSettings;
+  }
+
+  public AISettings loadDefaultAiSettings() {
+    AISettings defaultAiSettings;
+    try {
+      List<String> jsonDataFiles =
+          EntityUtil.getJsonDataResources(".*json/data/settings/aiSettings.json$");
+      if (jsonDataFiles.isEmpty()) {
+        throw new IllegalArgumentException("Default AI settings file not found.");
+      }
+      String json =
+          CommonUtil.getResourceAsStream(
+              EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
+      defaultAiSettings = JsonUtils.readValue(json, AISettings.class);
+    } catch (IOException e) {
+      LOG.error("Failed to read default AI settings. Message: {}", e.getMessage(), e);
+      defaultAiSettings = new AISettings();
+    }
+    return defaultAiSettings;
   }
 
   @GET
@@ -415,6 +437,14 @@ public class SystemResource {
       settingName.setConfigValue(relationSettings);
       validateGlossaryTermRelationSettingsUpdate(settingName);
     }
+
+    if (AI_SETTINGS.value().equalsIgnoreCase(settingName.getConfigType().toString())) {
+      AISettings defaults = loadDefaultAiSettings();
+      AISettings incoming = JsonUtils.convertValue(settingName.getConfigValue(), AISettings.class);
+      aiSettingsHandler.validateAISettings(incoming);
+      settingName.setConfigValue(aiSettingsHandler.mergeAISettings(defaults, incoming));
+    }
+
     Response response = systemRepository.createOrUpdate(settingName);
     SettingsCache.invalidateSettings(settingName.getConfigType().value());
 
@@ -451,11 +481,15 @@ public class SystemResource {
 
     authorizer.authorizeAdmin(securityContext);
 
-    if (!SettingsType.SEARCH_SETTINGS.value().equalsIgnoreCase(name)) {
-      throw new SystemSettingsException("Resetting of setting '" + name + "' is not supported.");
+    if (SettingsType.SEARCH_SETTINGS.value().equalsIgnoreCase(name)) {
+      SearchSettings settings = loadDefaultSearchSettings(true);
+      return Response.ok(settings).build();
     }
-    SearchSettings settings = loadDefaultSearchSettings(true);
-    return Response.ok(settings).build();
+    if (AI_SETTINGS.value().equalsIgnoreCase(name)) {
+      AISettings settings = loadDefaultAiSettings();
+      return Response.ok(settings).build();
+    }
+    throw new SystemSettingsException("Resetting of setting '" + name + "' is not supported.");
   }
 
   @PUT
