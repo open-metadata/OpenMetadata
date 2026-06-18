@@ -482,7 +482,7 @@ const TestSuiteDetailsPage = () => {
         ),
         key: EntityTabs.TEST_CASES,
         children: (
-          <div className="tw:flex tw:w-full tw:flex-col tw:gap-4 tw:rounded-[10px] tw:border tw:border-gray-200 tw:bg-white tw:p-4">
+          <div className="tw:flex tw:w-full tw:flex-col tw:gap-4 tw:rounded-[10px] tw:border tw:border-gray-200 tw:bg-primary tw:p-4">
             {renderDescription()}
             <div className="tw:w-full">
               <DataQualityTab
@@ -511,7 +511,7 @@ const TestSuiteDetailsPage = () => {
         ),
         key: EntityTabs.PIPELINE,
         children: (
-          <div className="tw:flex tw:w-full tw:flex-col tw:gap-4 tw:rounded-[10px] tw:border tw:border-gray-200 tw:bg-white tw:p-4">
+          <div className="tw:flex tw:w-full tw:flex-col tw:gap-4 tw:rounded-[10px] tw:border tw:border-gray-200 tw:bg-primary tw:p-4">
             {renderDescription()}
             <div className="tw:w-full">
               <TestSuitePipelineTab isLogicalTestSuite testSuite={testSuite} />
@@ -637,7 +637,7 @@ const TestSuiteDetailsPage = () => {
             />
           </div>
 
-          <div className="test-suite-details-domain-owner-section tw:mt-3 tw:flex tw:flex-wrap tw:gap-4 tw:rounded-[12px] tw:border tw:border-gray-200 tw:bg-white tw:p-4 tw:sm:p-5">
+          <div className="test-suite-details-domain-owner-section tw:mt-3 tw:flex tw:flex-wrap tw:gap-4 tw:rounded-[12px] tw:border tw:border-gray-200 tw:bg-primary tw:p-4 tw:sm:p-5">
             <DomainLabel
               headerLayout
               showDashPlaceholder
