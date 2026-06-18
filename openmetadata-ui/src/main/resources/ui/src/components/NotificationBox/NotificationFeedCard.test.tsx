@@ -32,6 +32,10 @@ import { MentionNotification } from './NotificationFeedCard.interface';
 jest.mock('../../utils/date-time/DateTimeUtils', () => ({
   formatDateTime: jest.fn().mockImplementation((date) => date),
   getRelativeTime: jest.fn().mockImplementation((date) => date),
+  getEpochMillisForPastDays: jest.fn().mockImplementation((days) => days),
+  getStartOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getCurrentMillis: jest.fn().mockReturnValue(0),
 }));
 
 const mockPrepareFeedLink = jest.fn();

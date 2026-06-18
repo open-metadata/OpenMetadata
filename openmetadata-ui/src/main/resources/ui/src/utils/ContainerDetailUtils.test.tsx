@@ -18,7 +18,7 @@ import {
 } from '../generated/entity/data/container';
 import { EntityReference } from '../generated/type/entityReference';
 import { LabelType, State } from '../generated/type/tagLabel';
-import { extractContainerColumns } from './ContainerDetailUtils';
+import { extractContainerColumns } from './ContainerDetailPureUtils';
 
 type ContainerTestData = Partial<Container> &
   Pick<Omit<EntityReference, 'type'>, 'id'>;

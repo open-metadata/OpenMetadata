@@ -21,9 +21,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.net.ssl.SSLSession;
 import org.junit.jupiter.api.Test;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
-import org.openmetadata.schema.service.configuration.elasticsearch.Openai;
+import org.openmetadata.schema.configuration.LLMConfiguration;
+import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
+import org.openmetadata.schema.configuration.LLMOpenAIConfig;
+import org.openmetadata.schema.configuration.LLMOpenAIEmbeddingConfig;
 
 class OpenAIEmbeddingClientTest {
 
@@ -163,7 +164,7 @@ class OpenAIEmbeddingClientTest {
 
   @Test
   void testClientCreationWithConfig() {
-    ElasticSearchConfiguration config = buildConfig("test-key", "text-embedding-3-small", 1536);
+    LLMConfiguration config = buildConfig("test-key", "text-embedding-3-small", 1536);
     OpenAIEmbeddingClient client = new OpenAIEmbeddingClient(config);
 
     assertEquals(1536, client.getDimension());
@@ -172,7 +173,7 @@ class OpenAIEmbeddingClientTest {
 
   @Test
   void testClientCreationWithCustomModel() {
-    ElasticSearchConfiguration config = buildConfig("test-key", "text-embedding-ada-002", 768);
+    LLMConfiguration config = buildConfig("test-key", "text-embedding-ada-002", 768);
     OpenAIEmbeddingClient client = new OpenAIEmbeddingClient(config);
 
     assertEquals(768, client.getDimension());
@@ -181,20 +182,21 @@ class OpenAIEmbeddingClientTest {
 
   @Test
   void testAzureEndpointResolution() {
-    Openai openaiCfg =
-        new Openai()
-            .withApiKey("test-key")
-            .withEmbeddingModelId("text-embedding-3-small")
-            .withEmbeddingDimension(1536)
-            .withEndpoint("https://my-resource.openai.azure.com")
-            .withDeploymentName("my-deployment")
-            .withApiVersion("2024-02-01");
-
-    NaturalLanguageSearchConfiguration nlsCfg = new NaturalLanguageSearchConfiguration();
-    nlsCfg.setOpenai(openaiCfg);
-
-    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
-    config.setNaturalLanguageSearch(nlsCfg);
+    LLMConfiguration config =
+        new LLMConfiguration()
+            .withOpenai(
+                new LLMOpenAIConfig()
+                    .withApiKey("test-key")
+                    .withEndpoint("https://my-resource.openai.azure.com")
+                    .withDeploymentName("my-deployment")
+                    .withApiVersion("2024-02-01"))
+            .withEmbeddings(
+                new LLMEmbeddingsConfig()
+                    .withProvider(LLMEmbeddingsConfig.Provider.OPENAI)
+                    .withOpenai(
+                        new LLMOpenAIEmbeddingConfig()
+                            .withEmbeddingModelId("text-embedding-3-small")
+                            .withEmbeddingDimension(1536)));
 
     OpenAIEmbeddingClient client = new OpenAIEmbeddingClient(config);
     assertNotNull(client);
@@ -202,72 +204,76 @@ class OpenAIEmbeddingClientTest {
 
   @Test
   void testAzureWithoutApiVersionThrows() {
-    Openai openaiCfg =
-        new Openai()
-            .withApiKey("test-key")
-            .withEmbeddingModelId("text-embedding-3-small")
-            .withEmbeddingDimension(1536)
-            .withEndpoint("https://my-resource.openai.azure.com")
-            .withDeploymentName("my-deployment")
-            .withApiVersion(null);
-
-    NaturalLanguageSearchConfiguration nlsCfg = new NaturalLanguageSearchConfiguration();
-    nlsCfg.setOpenai(openaiCfg);
-
-    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
-    config.setNaturalLanguageSearch(nlsCfg);
+    LLMConfiguration config =
+        new LLMConfiguration()
+            .withOpenai(
+                new LLMOpenAIConfig()
+                    .withApiKey("test-key")
+                    .withEndpoint("https://my-resource.openai.azure.com")
+                    .withDeploymentName("my-deployment")
+                    .withApiVersion(null))
+            .withEmbeddings(
+                new LLMEmbeddingsConfig()
+                    .withProvider(LLMEmbeddingsConfig.Provider.OPENAI)
+                    .withOpenai(
+                        new LLMOpenAIEmbeddingConfig()
+                            .withEmbeddingModelId("text-embedding-3-small")
+                            .withEmbeddingDimension(1536)));
 
     assertThrows(IllegalArgumentException.class, () -> new OpenAIEmbeddingClient(config));
   }
 
   @Test
   void testMissingApiKeyThrows() {
-    Openai openaiCfg =
-        new Openai().withEmbeddingModelId("text-embedding-3-small").withEmbeddingDimension(1536);
-
-    NaturalLanguageSearchConfiguration nlsCfg = new NaturalLanguageSearchConfiguration();
-    nlsCfg.setOpenai(openaiCfg);
-
-    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
-    config.setNaturalLanguageSearch(nlsCfg);
+    LLMConfiguration config =
+        new LLMConfiguration()
+            .withOpenai(new LLMOpenAIConfig())
+            .withEmbeddings(
+                new LLMEmbeddingsConfig()
+                    .withProvider(LLMEmbeddingsConfig.Provider.OPENAI)
+                    .withOpenai(
+                        new LLMOpenAIEmbeddingConfig()
+                            .withEmbeddingModelId("text-embedding-3-small")
+                            .withEmbeddingDimension(1536)));
 
     assertThrows(IllegalArgumentException.class, () -> new OpenAIEmbeddingClient(config));
   }
 
   @Test
   void testMissingModelIdThrows() {
-    Openai openaiCfg =
-        new Openai().withApiKey("test-key").withEmbeddingModelId(null).withEmbeddingDimension(1536);
-
-    NaturalLanguageSearchConfiguration nlsCfg = new NaturalLanguageSearchConfiguration();
-    nlsCfg.setOpenai(openaiCfg);
-
-    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
-    config.setNaturalLanguageSearch(nlsCfg);
+    LLMConfiguration config =
+        new LLMConfiguration()
+            .withOpenai(new LLMOpenAIConfig().withApiKey("test-key"))
+            .withEmbeddings(
+                new LLMEmbeddingsConfig()
+                    .withProvider(LLMEmbeddingsConfig.Provider.OPENAI)
+                    .withOpenai(
+                        new LLMOpenAIEmbeddingConfig()
+                            .withEmbeddingModelId(null)
+                            .withEmbeddingDimension(1536)));
 
     assertThrows(IllegalArgumentException.class, () -> new OpenAIEmbeddingClient(config));
   }
 
   @Test
   void testInvalidDimensionThrows() {
-    Openai openaiCfg =
-        new Openai()
-            .withApiKey("test-key")
-            .withEmbeddingModelId("text-embedding-3-small")
-            .withEmbeddingDimension(0);
-
-    NaturalLanguageSearchConfiguration nlsCfg = new NaturalLanguageSearchConfiguration();
-    nlsCfg.setOpenai(openaiCfg);
-
-    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
-    config.setNaturalLanguageSearch(nlsCfg);
+    LLMConfiguration config =
+        new LLMConfiguration()
+            .withOpenai(new LLMOpenAIConfig().withApiKey("test-key"))
+            .withEmbeddings(
+                new LLMEmbeddingsConfig()
+                    .withProvider(LLMEmbeddingsConfig.Provider.OPENAI)
+                    .withOpenai(
+                        new LLMOpenAIEmbeddingConfig()
+                            .withEmbeddingModelId("text-embedding-3-small")
+                            .withEmbeddingDimension(0)));
 
     assertThrows(IllegalArgumentException.class, () -> new OpenAIEmbeddingClient(config));
   }
 
   @Test
   void testNullTextThrows() {
-    ElasticSearchConfiguration config = buildConfig("test-key", "text-embedding-3-small", 1536);
+    LLMConfiguration config = buildConfig("test-key", "text-embedding-3-small", 1536);
     OpenAIEmbeddingClient client = new OpenAIEmbeddingClient(config);
 
     assertThrows(IllegalArgumentException.class, () -> client.embed(null));
@@ -275,7 +281,7 @@ class OpenAIEmbeddingClientTest {
 
   @Test
   void testBlankTextThrows() {
-    ElasticSearchConfiguration config = buildConfig("test-key", "text-embedding-3-small", 1536);
+    LLMConfiguration config = buildConfig("test-key", "text-embedding-3-small", 1536);
     OpenAIEmbeddingClient client = new OpenAIEmbeddingClient(config);
 
     assertThrows(IllegalArgumentException.class, () -> client.embed("   "));
@@ -283,18 +289,17 @@ class OpenAIEmbeddingClientTest {
 
   @Test
   void testEmbeddingWithUnreachableEndpoint() {
-    Openai openaiCfg =
-        new Openai()
-            .withApiKey("test-key")
-            .withEmbeddingModelId("text-embedding-3-small")
-            .withEmbeddingDimension(1536)
-            .withEndpoint("http://localhost:1");
-
-    NaturalLanguageSearchConfiguration nlsCfg = new NaturalLanguageSearchConfiguration();
-    nlsCfg.setOpenai(openaiCfg);
-
-    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
-    config.setNaturalLanguageSearch(nlsCfg);
+    LLMConfiguration config =
+        new LLMConfiguration()
+            .withOpenai(
+                new LLMOpenAIConfig().withApiKey("test-key").withEndpoint("http://localhost:1"))
+            .withEmbeddings(
+                new LLMEmbeddingsConfig()
+                    .withProvider(LLMEmbeddingsConfig.Provider.OPENAI)
+                    .withOpenai(
+                        new LLMOpenAIEmbeddingConfig()
+                            .withEmbeddingModelId("text-embedding-3-small")
+                            .withEmbeddingDimension(1536)));
 
     OpenAIEmbeddingClient client = new OpenAIEmbeddingClient(config);
     assertThrows(RuntimeException.class, () -> client.embed("test text"));
@@ -302,18 +307,19 @@ class OpenAIEmbeddingClientTest {
 
   @Test
   void testCustomEndpointWithoutDeployment() {
-    Openai openaiCfg =
-        new Openai()
-            .withApiKey("test-key")
-            .withEmbeddingModelId("text-embedding-3-small")
-            .withEmbeddingDimension(1536)
-            .withEndpoint("https://custom.api.example.com");
-
-    NaturalLanguageSearchConfiguration nlsCfg = new NaturalLanguageSearchConfiguration();
-    nlsCfg.setOpenai(openaiCfg);
-
-    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
-    config.setNaturalLanguageSearch(nlsCfg);
+    LLMConfiguration config =
+        new LLMConfiguration()
+            .withOpenai(
+                new LLMOpenAIConfig()
+                    .withApiKey("test-key")
+                    .withEndpoint("https://custom.api.example.com"))
+            .withEmbeddings(
+                new LLMEmbeddingsConfig()
+                    .withProvider(LLMEmbeddingsConfig.Provider.OPENAI)
+                    .withOpenai(
+                        new LLMOpenAIEmbeddingConfig()
+                            .withEmbeddingModelId("text-embedding-3-small")
+                            .withEmbeddingDimension(1536)));
 
     OpenAIEmbeddingClient client = new OpenAIEmbeddingClient(config);
     assertNotNull(client);
@@ -455,27 +461,31 @@ class OpenAIEmbeddingClientTest {
 
   @Test
   void testResolveMaxConcurrentFromConfig() {
-    NaturalLanguageSearchConfiguration nlsCfg = new NaturalLanguageSearchConfiguration();
-    nlsCfg.setMaxConcurrentRequests(5);
-    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
-    config.setNaturalLanguageSearch(nlsCfg);
+    LLMConfiguration config =
+        new LLMConfiguration()
+            .withEmbeddings(new LLMEmbeddingsConfig().withMaxConcurrentRequests(5));
 
     assertEquals(5, EmbeddingClient.resolveMaxConcurrent(config));
   }
 
   @Test
-  void testResolveMaxConcurrentDefaultWhenNullNls() {
-    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
+  void testResolveMaxConcurrentDefaultWhenNullEmbeddings() {
+    LLMConfiguration config = new LLMConfiguration();
     assertEquals(
         EmbeddingClient.DEFAULT_MAX_CONCURRENT_REQUESTS,
         EmbeddingClient.resolveMaxConcurrent(config));
   }
 
   @Test
+  void testResolveMaxConcurrentDefaultWhenNullConfig() {
+    assertEquals(
+        EmbeddingClient.DEFAULT_MAX_CONCURRENT_REQUESTS,
+        EmbeddingClient.resolveMaxConcurrent(null));
+  }
+
+  @Test
   void testResolveMaxConcurrentDefaultWhenNullValue() {
-    NaturalLanguageSearchConfiguration nlsCfg = new NaturalLanguageSearchConfiguration();
-    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
-    config.setNaturalLanguageSearch(nlsCfg);
+    LLMConfiguration config = new LLMConfiguration().withEmbeddings(new LLMEmbeddingsConfig());
 
     assertEquals(
         EmbeddingClient.DEFAULT_MAX_CONCURRENT_REQUESTS,
@@ -484,10 +494,9 @@ class OpenAIEmbeddingClientTest {
 
   @Test
   void testResolveMaxConcurrentDefaultWhenZero() {
-    NaturalLanguageSearchConfiguration nlsCfg = new NaturalLanguageSearchConfiguration();
-    nlsCfg.setMaxConcurrentRequests(0);
-    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
-    config.setNaturalLanguageSearch(nlsCfg);
+    LLMConfiguration config =
+        new LLMConfiguration()
+            .withEmbeddings(new LLMEmbeddingsConfig().withMaxConcurrentRequests(0));
 
     assertEquals(
         EmbeddingClient.DEFAULT_MAX_CONCURRENT_REQUESTS,
@@ -496,10 +505,9 @@ class OpenAIEmbeddingClientTest {
 
   @Test
   void testResolveMaxConcurrentDefaultWhenNegative() {
-    NaturalLanguageSearchConfiguration nlsCfg = new NaturalLanguageSearchConfiguration();
-    nlsCfg.setMaxConcurrentRequests(-3);
-    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
-    config.setNaturalLanguageSearch(nlsCfg);
+    LLMConfiguration config =
+        new LLMConfiguration()
+            .withEmbeddings(new LLMEmbeddingsConfig().withMaxConcurrentRequests(-3));
 
     assertEquals(
         EmbeddingClient.DEFAULT_MAX_CONCURRENT_REQUESTS,
@@ -621,18 +629,15 @@ class OpenAIEmbeddingClientTest {
     assertTrue(ex.getMessage().contains("no embedding array"));
   }
 
-  private ElasticSearchConfiguration buildConfig(String apiKey, String modelId, int dimension) {
-    Openai openaiCfg =
-        new Openai()
-            .withApiKey(apiKey)
-            .withEmbeddingModelId(modelId)
-            .withEmbeddingDimension(dimension);
-
-    NaturalLanguageSearchConfiguration nlsCfg = new NaturalLanguageSearchConfiguration();
-    nlsCfg.setOpenai(openaiCfg);
-
-    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
-    config.setNaturalLanguageSearch(nlsCfg);
-    return config;
+  private LLMConfiguration buildConfig(String apiKey, String modelId, int dimension) {
+    return new LLMConfiguration()
+        .withOpenai(new LLMOpenAIConfig().withApiKey(apiKey))
+        .withEmbeddings(
+            new LLMEmbeddingsConfig()
+                .withProvider(LLMEmbeddingsConfig.Provider.OPENAI)
+                .withOpenai(
+                    new LLMOpenAIEmbeddingConfig()
+                        .withEmbeddingModelId(modelId)
+                        .withEmbeddingDimension(dimension)));
   }
 }
