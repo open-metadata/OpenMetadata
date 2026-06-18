@@ -14,7 +14,7 @@ import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { ExtraInfo } from 'Models';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as FollowingAssetsIcon } from '../../../assets/svg/ic-following-assets.svg';
@@ -35,7 +35,6 @@ import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import type { EntityReference } from '../../../generated/entity/type';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useDashboardWidgetData } from '../../../hooks/useDashboardWidgetData';
 import {
   WidgetCommonProps,
   WidgetConfig,
@@ -71,11 +70,18 @@ function FollowingWidget({
   const [selectedEntityFilter, setSelectedEntityFilter] = useState<string>(
     CURATED_ASSETS_SORT_BY_KEYS.LATEST
   );
+  const [followedData, setFollowedData] = useState<SourceType[]>([]);
+  const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(true);
 
   const fetchUserFollowedData = useCallback(async () => {
     if (!currentUser?.id) {
-      return [];
+      setFollowedData([]);
+      setIsLoadingOwnedData(false);
+
+      return;
     }
+
+    setIsLoadingOwnedData(true);
 
     try {
       const sortField = getSortField(selectedEntityFilter);
@@ -96,23 +102,17 @@ function FollowingWidget({
 
       const sourceData = res.hits.hits.map((hit) => hit._source);
 
-      return applySortToData(sourceData, selectedEntityFilter);
+      setFollowedData(applySortToData(sourceData, selectedEntityFilter));
     } catch (err) {
       showErrorToast(err as AxiosError);
-
-      throw err;
+    } finally {
+      setIsLoadingOwnedData(false);
     }
   }, [currentUser?.id, selectedEntityFilter]);
 
-  const { data: followedData, isLoading: isLoadingOwnedData } =
-    useDashboardWidgetData<SourceType[]>({
-      cacheKey: `my-data:following:${
-        currentUser?.id ?? ''
-      }:${selectedEntityFilter}`,
-      enabled: Boolean(currentUser?.id),
-      fetcher: fetchUserFollowedData,
-      initialData: [],
-    });
+  useEffect(() => {
+    fetchUserFollowedData();
+  }, [fetchUserFollowedData]);
   // Check if widget is in expanded form (full size)
   const isExpanded = useMemo(() => {
     const currentWidget = currentLayout?.find(
@@ -291,7 +291,7 @@ function FollowingWidget({
     return (
       <div
         className="following-widget-container"
-        data-testId="following-widget">
+        data-testid="following-widget">
         <div className="widget-content flex-1">
           {isEmpty(followedData) ? emptyState : followingContent}
           <WidgetFooter

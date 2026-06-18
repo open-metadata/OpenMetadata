@@ -96,6 +96,15 @@ jest.mock(
   }
 );
 
+jest.mock(
+  '../../components/MyData/LandingPageWidgetRenderer/LandingPageWidgetRenderer',
+  () => {
+    return jest.fn().mockImplementation(({ widgetConfig }) => (
+      <div data-testid={widgetConfig.i}>{widgetConfig.i}</div>
+    ));
+  }
+);
+
 let mockSelectedPersona: Record<string, string> | null = {
   fullyQualifiedName: mockPersonaName,
 };
@@ -205,6 +214,9 @@ jest.mock(
 describe('MyDataPage component', () => {
   beforeEach(() => {
     localStorage.setItem('loggedInUsers', mockUserData.name);
+    mockSelectedPersona = {
+      fullyQualifiedName: mockPersonaName,
+    };
     // Reset all mocks before each test
     jest.clearAllMocks();
   });
@@ -246,9 +258,7 @@ describe('MyDataPage component', () => {
   });
 
   it('MyDataPage should render CustomiseLandingPageHeader component', async () => {
-    await act(async () => {
-      render(<MyDataPage />);
-    });
+    render(<MyDataPage />);
 
     expect(
       screen.getByTestId('customise-landing-page-header')
@@ -312,7 +322,10 @@ describe('MyDataPage component', () => {
       await screen.findByText('KnowledgePanel.ActivityFeed')
     ).toBeInTheDocument();
     expect(
-      await screen.findByText('KnowledgePanel.RecentlyViewed')
+      await screen.findByText('KnowledgePanel.DataAssets')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('KnowledgePanel.KnowledgeCenter')
     ).toBeInTheDocument();
     expect(
       await screen.findByText('KnowledgePanel.Following')
@@ -328,7 +341,9 @@ describe('MyDataPage component', () => {
 
   it('MyDataPage should render default widgets when there is no selected persona', async () => {
     mockSelectedPersona = null;
-    render(<MyDataPage />);
+    await act(async () => {
+      render(<MyDataPage />);
+    });
 
     await screen.findByTestId('page-layout-v1');
 
@@ -336,7 +351,10 @@ describe('MyDataPage component', () => {
       screen.getByTestId('KnowledgePanel.ActivityFeed')
     ).toBeInTheDocument();
     expect(
-      screen.getByTestId('KnowledgePanel.RecentlyViewed')
+      screen.getByTestId('KnowledgePanel.DataAssets')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('KnowledgePanel.KnowledgeCenter')
     ).toBeInTheDocument();
     expect(screen.getByTestId('KnowledgePanel.Following')).toBeInTheDocument();
     expect(screen.getByTestId('KnowledgePanel.KPI')).toBeInTheDocument();

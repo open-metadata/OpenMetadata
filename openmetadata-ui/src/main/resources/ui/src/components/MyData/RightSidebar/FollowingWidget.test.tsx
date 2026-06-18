@@ -14,7 +14,6 @@ import { act, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import { User } from '../../../generated/entity/teams/user';
-import { clearDashboardWidgetCache } from '../../../hooks/useDashboardWidgetData';
 import { searchQuery } from '../../../rest/searchAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import FollowingWidget from './FollowingWidget';
@@ -68,6 +67,19 @@ jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockImplementation((obj) => obj.name),
 }));
 
+jest.mock('../../../utils/EntityLinkUtils', () => ({
+  getEntityLinkFromType: jest
+    .fn()
+    .mockImplementation((fqn, type) => `/entity/${type}/${fqn}`),
+}));
+
+jest.mock('../../../utils/RouterUtils', () => ({
+  getDomainPath: jest.fn().mockImplementation((fqn) => `/domain/${fqn}`),
+  getUserPath: jest
+    .fn()
+    .mockImplementation((name, tab) => `/user/${name}/${tab}`),
+}));
+
 jest.mock('../../../utils/SearchClassBase', () => ({
   __esModule: true,
   default: {
@@ -91,6 +103,16 @@ jest.mock('../../../utils/ServiceUtilClassBase', () => ({
   },
 }));
 
+jest.mock('../../common/EntitySummaryDetails/EntitySummaryDetails', () => {
+  return jest.fn().mockImplementation(({ data }) => (
+    <div data-testid={`entity-summary-${data.key}`}>{data.key}</div>
+  ));
+});
+
+jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest.fn().mockImplementation(() => <div>OwnerLabel</div>),
+}));
+
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
@@ -111,7 +133,6 @@ jest.mock(
 describe('FollowingWidget component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    clearDashboardWidgetCache();
   });
 
   it('should fetch data', async () => {
@@ -273,7 +294,7 @@ describe('FollowingWidget component', () => {
     const mockUseApplicationStore = jest.requireMock(
       '../../../hooks/useApplicationStore'
     ).useApplicationStore;
-    mockUseApplicationStore.mockReturnValueOnce({
+    mockUseApplicationStore.mockReturnValue({
       currentUser: undefined,
     });
 

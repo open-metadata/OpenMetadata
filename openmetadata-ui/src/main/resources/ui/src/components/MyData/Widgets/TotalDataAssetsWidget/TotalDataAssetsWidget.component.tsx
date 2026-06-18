@@ -22,7 +22,7 @@ import {
   sortBy,
   startCase,
 } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -40,7 +40,6 @@ import { ROUTES } from '../../../../constants/constants';
 import { SIZE } from '../../../../enums/common.enum';
 import { SystemChartType } from '../../../../enums/DataInsight.enum';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { useDashboardWidgetData } from '../../../../hooks/useDashboardWidgetData';
 import {
   DataInsightCustomChartResult,
   getChartPreviewByName,
@@ -72,6 +71,8 @@ const TotalDataAssetsWidget = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { applicationConfig } = useApplicationStore();
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [chartData, setChartData] = useState<DataInsightCustomChartResult>();
   const [selectedDate, setSelectedDate] = useState<number | undefined>();
   const [selectedSortBy, setSelectedSortBy] = useState<string>(
     DATA_ASSETS_SORT_BY_KEYS.LAST_7_DAYS
@@ -96,39 +97,6 @@ const TotalDataAssetsWidget = ({
   const isFullSizeWidget = useMemo(() => {
     return currentLayout?.find((item) => item.i === widgetKey)?.w === 2;
   }, [currentLayout, widgetKey]);
-
-  const fetchData = useCallback(async () => {
-    try {
-      const daysMap: Record<string, number> = {
-        [DATA_ASSETS_SORT_BY_KEYS.LAST_7_DAYS]: 7,
-        [DATA_ASSETS_SORT_BY_KEYS.LAST_14_DAYS]: 14,
-      };
-
-      const days = daysMap[selectedSortBy] ?? 7;
-
-      const filter = {
-        start: getEpochMillisForPastDays(days),
-        end: getCurrentMillis(),
-      };
-
-      return await getChartPreviewByName(
-        SystemChartType.TotalDataAssets,
-        filter
-      );
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-
-      throw error;
-    }
-  }, [selectedSortBy]);
-
-  const { data: chartData, isLoading } = useDashboardWidgetData<
-    DataInsightCustomChartResult | undefined
-  >({
-    cacheKey: `my-data:total-assets:${selectedSortBy}`,
-    fetcher: fetchData,
-    initialData: undefined,
-  });
 
   const { graphData, dataByDate, availableDates } = useMemo(() => {
     const results = chartData?.results ?? [];
@@ -198,6 +166,34 @@ const TotalDataAssetsWidget = ({
       totalDatAssets: total,
     };
   }, [selectedDate, dataByDate]);
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const daysMap: Record<string, number> = {
+        [DATA_ASSETS_SORT_BY_KEYS.LAST_7_DAYS]: 7,
+        [DATA_ASSETS_SORT_BY_KEYS.LAST_14_DAYS]: 14,
+      };
+
+      const days = daysMap[selectedSortBy] ?? 7;
+
+      const filter = {
+        start: getEpochMillisForPastDays(days),
+        end: getCurrentMillis(),
+      };
+
+      const response = await getChartPreviewByName(
+        SystemChartType.TotalDataAssets,
+        filter
+      );
+
+      setChartData(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const emptyState = useMemo(() => {
     return (
@@ -327,6 +323,10 @@ const TotalDataAssetsWidget = ({
     isFullSizeWidget,
     pieChartColors,
   ]);
+
+  useEffect(() => {
+    fetchData();
+  }, [selectedSortBy]);
 
   useEffect(() => {
     if (!selectedDate && graphData.length > 0) {

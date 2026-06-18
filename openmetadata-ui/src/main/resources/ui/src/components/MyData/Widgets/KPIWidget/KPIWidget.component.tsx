@@ -14,7 +14,7 @@
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, round } from 'lodash';
-import { useCallback, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -40,7 +40,6 @@ import {
   KpiResult,
   KpiTargetType,
 } from '../../../../generated/dataInsight/kpi/kpi';
-import { useDashboardWidgetData } from '../../../../hooks/useDashboardWidgetData';
 import { UIKpiResult } from '../../../../interface/data-insight.interface';
 import { DataInsightCustomChartResult } from '../../../../rest/DataInsightAPI';
 import {
@@ -73,6 +72,14 @@ const KPIWidget = ({
 }: KPIWidgetProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
+  const [isKPIListLoading, setIsKPIListLoading] = useState<boolean>(true);
+  const [kpiResults, setKpiResults] = useState<
+    Record<string, DataInsightCustomChartResult['results']>
+  >({});
+  const [kpiLatestResults, setKpiLatestResults] =
+    useState<Record<string, UIKpiResult>>();
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const widgetData = useMemo(() => {
     return currentLayout?.find((item) => item.i === widgetKey);
@@ -102,51 +109,23 @@ const KPIWidget = ({
     []
   );
 
+  const getKPIResult = async (kpi: Kpi) => {
+    const response = await getListKpiResult(kpi.fullyQualifiedName ?? '', {
+      startTs: getEpochMillisForPastDays(selectedDays),
+      endTs: getCurrentMillis(),
+    });
+
+    return { name: kpi.name, data: response.results };
+  };
+
   const handleTitleClick = () => {
     navigate(ROUTES.KPI_LIST);
   };
 
-  const fetchKpiList = useCallback(async () => {
+  const fetchKpiResults = async () => {
+    setIsLoading(true);
     try {
-      const response = await getListKPIs({
-        fields: TabSpecificField.DATA_INSIGHT_CHART,
-      });
-
-      return response.data;
-    } catch (_err) {
-      showErrorToast(_err as AxiosError);
-
-      throw _err;
-    }
-  }, []);
-
-  const { data: kpiList, isLoading: isKPIListLoading } = useDashboardWidgetData<
-    Array<Kpi>
-  >({
-    cacheKey: 'my-data:kpi-list',
-    fetcher: fetchKpiList,
-    initialData: [],
-  });
-
-  const kpiCacheKey = useMemo(
-    () =>
-      kpiList
-        .map((kpi) => kpi.fullyQualifiedName ?? kpi.name)
-        .sort()
-        .join(','),
-    [kpiList]
-  );
-
-  const fetchKpiResults = useCallback(async () => {
-    try {
-      const promises = kpiList.map(async (kpi) => {
-        const response = await getListKpiResult(kpi.fullyQualifiedName ?? '', {
-          startTs: getEpochMillisForPastDays(selectedDays),
-          endTs: getCurrentMillis(),
-        });
-
-        return { name: kpi.name, data: response.results };
-      });
+      const promises = kpiList.map(getKPIResult);
       const responses = await Promise.allSettled(promises);
       const kpiResultsList: Record<
         string,
@@ -159,15 +138,16 @@ const KPIWidget = ({
         }
       });
 
-      return kpiResultsList;
+      setKpiResults(kpiResultsList);
     } catch (error) {
       showErrorToast(error as AxiosError);
-
-      throw error;
+    } finally {
+      setIsLoading(false);
     }
-  }, [kpiList, selectedDays]);
+  };
 
-  const fetchKpiLatestResults = useCallback(async () => {
+  const fetchKpiLatestResults = async () => {
+    setIsLoading(true);
     try {
       const promises = kpiList.map((kpi) =>
         getLatestKpiResult(kpi.fullyQualifiedName ?? '')
@@ -202,32 +182,31 @@ const KPIWidget = ({
 
         return previous;
       }, {} as Record<string, UIKpiResult>);
-
-      return latestResults;
+      setKpiLatestResults(latestResults);
     } catch (error) {
       showErrorToast(error as AxiosError);
-
-      throw error;
+    } finally {
+      setIsLoading(false);
     }
-  }, [kpiList]);
+  };
 
-  const { data: kpiResults, isLoading: isKPIResultsLoading } =
-    useDashboardWidgetData<
-      Record<string, DataInsightCustomChartResult['results']>
-    >({
-      cacheKey: `my-data:kpi-results:${selectedDays}:${kpiCacheKey}`,
-      enabled: kpiList.length > 0,
-      fetcher: fetchKpiResults,
-      initialData: {},
-    });
-
-  const { data: kpiLatestResults, isLoading: isKpiLatestResultsLoading } =
-    useDashboardWidgetData<Record<string, UIKpiResult>>({
-      cacheKey: `my-data:kpi-latest-results:${kpiCacheKey}`,
-      enabled: kpiList.length > 0,
-      fetcher: fetchKpiLatestResults,
-      initialData: {},
-    });
+  const fetchKpiList = async () => {
+    try {
+      setIsKPIListLoading(true);
+      const response = await getListKPIs({
+        fields: TabSpecificField.DATA_INSIGHT_CHART,
+      });
+      setKpiList(response.data);
+      if (response?.data?.length) {
+        setIsLoading(true);
+      }
+    } catch (_err) {
+      setKpiList([]);
+      showErrorToast(_err as AxiosError);
+    } finally {
+      setIsKPIListLoading(false);
+    }
+  };
 
   const { domain, ticks } = useMemo(() => {
     if (kpiResults) {
@@ -430,6 +409,24 @@ const KPIWidget = ({
     kpiTooltipValueFormatter,
   ]);
 
+  useEffect(() => {
+    fetchKpiList().catch(() => {
+      // catch handled in parent function
+    });
+  }, []);
+
+  useEffect(() => {
+    setKpiResults({});
+    setKpiLatestResults(undefined);
+  }, [selectedDays]);
+
+  useEffect(() => {
+    if (kpiList.length) {
+      fetchKpiResults();
+      fetchKpiLatestResults();
+    }
+  }, [kpiList, selectedDays]);
+
   const widgetHeader = useMemo(
     () => (
       <WidgetHeader
@@ -461,9 +458,7 @@ const KPIWidget = ({
       dataLength={kpiList.length > 0 ? kpiList.length : 10}
       dataTestId="KnowledgePanel.KPI"
       header={widgetHeader}
-      loading={
-        isKPIListLoading || isKPIResultsLoading || isKpiLatestResultsLoading
-      }>
+      loading={isKPIListLoading || isLoading}>
       <div className="kpi-widget-container" data-testid="kpi-widget">
         <div className="widget-content flex-1 h-full">
           {isEmpty(kpiList) || isEmpty(kpiResults) ? emptyState : kpiChartData}

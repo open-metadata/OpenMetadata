@@ -13,7 +13,7 @@
 import { Button, Typography } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as MyDataIcon } from '../../../assets/svg/ic-my-data.svg';
@@ -35,7 +35,6 @@ import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import type { EntityReference } from '../../../generated/tests/testCase';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useDashboardWidgetData } from '../../../hooks/useDashboardWidgetData';
 import {
   WidgetCommonProps,
   WidgetConfig,
@@ -74,6 +73,8 @@ const MyDataWidgetInternal = ({
   const [selectedFilter, setSelectedFilter] = useState<string>(
     CURATED_ASSETS_SORT_BY_KEYS.LATEST
   );
+  const [isLoading, setIsLoading] = useState(true);
+  const [data, setData] = useState<SourceType[]>([]);
 
   const handleFilterChange = useCallback(({ key }: { key: string }) => {
     setSelectedFilter(key);
@@ -129,36 +130,48 @@ const MyDataWidgetInternal = ({
 
   const fetchMyDataAssets = useCallback(async () => {
     if (isUndefined(currentUser)) {
-      return [];
+      setData([]);
+      setIsLoading(false);
+
+      return;
     }
 
-    const queryFilterObj = getTermQuery({ 'owners.id': ownerIds }, 'should', 1);
+    setIsLoading(true);
 
-    const sortField = getSortField(selectedFilter);
-    const sortOrder = getSortOrder(selectedFilter);
+    try {
+      const queryFilterObj = getTermQuery(
+        { 'owners.id': ownerIds },
+        'should',
+        1
+      );
 
-    const res = await searchQuery({
-      query: '',
-      pageNumber: INITIAL_PAGING_VALUE,
-      pageSize: PAGE_SIZE_MEDIUM,
-      queryFilter: queryFilterObj,
-      sortField,
-      sortOrder,
-      searchIndex: SearchIndex.ALL,
-    });
+      const sortField = getSortField(selectedFilter);
+      const sortOrder = getSortOrder(selectedFilter);
 
-    const ownedAssets = res?.hits?.hits ?? [];
-    const sourceData = ownedAssets.map((hit) => hit._source);
+      const res = await searchQuery({
+        query: '',
+        pageNumber: INITIAL_PAGING_VALUE,
+        pageSize: PAGE_SIZE_MEDIUM,
+        queryFilter: queryFilterObj,
+        sortField,
+        sortOrder,
+        searchIndex: SearchIndex.ALL,
+      });
 
-    return applySortToData(sourceData, selectedFilter);
+      const ownedAssets = res?.hits?.hits ?? [];
+      const sourceData = ownedAssets.map((hit) => hit._source);
+
+      setData(applySortToData(sourceData, selectedFilter));
+    } catch {
+      setData([]);
+    } finally {
+      setIsLoading(false);
+    }
   }, [currentUser, ownerIds, selectedFilter]);
 
-  const { data, isLoading } = useDashboardWidgetData<SourceType[]>({
-    cacheKey: `my-data:owned-assets:${ownerIds.join(',')}:${selectedFilter}`,
-    enabled: !isUndefined(currentUser),
-    fetcher: fetchMyDataAssets,
-    initialData: [],
-  });
+  useEffect(() => {
+    fetchMyDataAssets();
+  }, [fetchMyDataAssets]);
 
   const emptyState = useMemo(
     () => (
