@@ -45,10 +45,8 @@ import { searchQuery } from '../rest/searchAPI';
 import { getTags } from '../rest/tagAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { t } from './i18next/LocalUtil';
-import {
-  getFieldsByKeys,
-  renderJSONLogicQueryBuilderButtons,
-} from './QueryBuilderUtils';
+import { getFieldsByKeys } from './QueryBuilderPureUtils';
+import { renderJSONLogicQueryBuilderButtons } from './QueryBuilderUtils';
 
 class JSONLogicSearchClassBase {
   baseConfig = AntdConfig as Config;

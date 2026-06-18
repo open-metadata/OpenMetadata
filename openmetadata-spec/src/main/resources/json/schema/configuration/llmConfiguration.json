@@ -92,6 +92,61 @@
         "timeoutSeconds": { "type": "integer", "default": 60 }
       },
       "additionalProperties": false
+    },
+    "embeddings": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.configuration.LLMEmbeddingsConfig",
+      "description": "Vector embedding configuration for semantic search. Credentials are reused from the sibling provider blocks (bedrock.awsConfig, openai.apiKey/endpoint, google.apiKey/endpoint); this section selects the embedding provider and per-provider embedding model. The embedding provider may differ from the chat completion provider.",
+      "properties": {
+        "provider": {
+          "description": "Embedding provider to use for semantic search vectors.",
+          "type": "string",
+          "enum": ["bedrock", "openai", "google", "djl"],
+          "default": "bedrock"
+        },
+        "maxConcurrentRequests": {
+          "description": "Maximum number of concurrent embedding requests.",
+          "type": "integer",
+          "default": 10,
+          "minimum": 1
+        },
+        "bedrock": {
+          "type": "object",
+          "javaType": "org.openmetadata.schema.configuration.LLMBedrockEmbeddingConfig",
+          "properties": {
+            "embeddingModelId": { "type": "string", "default": "amazon.titan-embed-text-v2:0" },
+            "embeddingDimension": { "type": "integer", "default": 512 }
+          },
+          "additionalProperties": false
+        },
+        "openai": {
+          "type": "object",
+          "javaType": "org.openmetadata.schema.configuration.LLMOpenAIEmbeddingConfig",
+          "properties": {
+            "embeddingModelId": { "type": "string", "default": "text-embedding-3-small" },
+            "embeddingDimension": { "type": "integer", "default": 1536 }
+          },
+          "additionalProperties": false
+        },
+        "google": {
+          "type": "object",
+          "javaType": "org.openmetadata.schema.configuration.LLMGoogleEmbeddingConfig",
+          "properties": {
+            "embeddingModelId": { "type": "string", "default": "gemini-embedding-001" },
+            "embeddingDimension": { "type": "integer", "default": 768 }
+          },
+          "additionalProperties": false
+        },
+        "djl": {
+          "type": "object",
+          "javaType": "org.openmetadata.schema.configuration.LLMDjlEmbeddingConfig",
+          "properties": {
+            "embeddingModel": { "type": "string", "default": "ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false

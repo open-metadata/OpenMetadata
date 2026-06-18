@@ -18,7 +18,7 @@ import {
 } from '../../generated/entity/data/apiEndpoint';
 import { EntityReference } from '../../generated/type/entityReference';
 import { LabelType, State } from '../../generated/type/tagLabel';
-import { extractApiEndpointFields } from './APIEndpointUtils';
+import { extractApiEndpointFields } from './APIEndpointFieldUtils';
 
 type APIEndpointTestData = Partial<APIEndpoint> &
   Pick<Omit<EntityReference, 'type'>, 'id'>;

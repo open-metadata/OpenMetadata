@@ -44,13 +44,12 @@ import {
   patchTestDefinition,
 } from '../../../rest/testAPI';
 import { handleSearchFilterOption } from '../../../utils/FilterQueryUtils';
-import { createScrollToErrorHandler } from '../../../utils/formUtils';
+import { createScrollToErrorHandler } from '../../../utils/formPureUtils';
 import { isExternalTestDefinition } from '../../../utils/TestDefinitionUtils';
 import { showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import FormItemLabel from '../../common/Form/FormItemLabel';
-
 const CodeEditor = withSuspenseFallback(
   lazy(() => import('../../Database/SchemaEditor/CodeEditor'))
 );
