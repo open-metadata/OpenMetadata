@@ -1324,6 +1324,33 @@ ON_ERROR = CONTINUE"""
             skip_graph_check=True,
         )
 
+    def test_snowflake_copy_into_stage_subpath_date_partitioned(self):
+        """Test COPY INTO from @stage/YYYY/MM/DD/file.csv date-partitioned path.
+
+        Regression for https://github.com/open-metadata/OpenMetadata/issues/27380.
+        Verifies that date-partitioned stage subpaths (e.g. /2026/04/11/events.csv) are
+        stripped so the source resolves to the stage root rather than the full path.
+        Internal graph structures differ across parsers.
+        """
+        query = """COPY INTO ANALYTICS_DB.PUBLIC.FACT_EVENTS
+FROM (SELECT $1 FROM @ANALYTICS_DB.PUBLIC.STG_EVENTS/2026/04/11/events.csv)
+FILE_FORMAT = (TYPE = CSV)"""
+
+        assert_table_lineage_equal(
+            query,
+            {Location("@ANALYTICS_DB.PUBLIC.STG_EVENTS")},
+            {"analytics_db.public.fact_events"},
+            dialect=Dialect.SNOWFLAKE.value,
+            skip_graph_check=True,
+        )
+
+        assert_column_lineage_equal(
+            query,
+            [],
+            dialect=Dialect.SNOWFLAKE.value,
+            skip_graph_check=True,
+        )
+
     # -----------------------------------------------------------------------
     # StarRocks dialect tests
     # Regression for https://github.com/open-metadata/OpenMetadata/issues/28934
@@ -1859,31 +1886,4 @@ ON_ERROR = CONTINUE"""
                 (TestColumnQualifierTuple("id", "analytics.s1"), TestColumnQualifierTuple("id", "analytics.t")),
             ],
             dialect=Dialect.STARROCKS.value,
-        )
-
-    def test_snowflake_copy_into_stage_subpath_date_partitioned(self):
-        """Test COPY INTO from @stage/YYYY/MM/DD/file.csv date-partitioned path.
-
-        Regression for https://github.com/open-metadata/OpenMetadata/issues/27380.
-        Verifies that date-partitioned stage subpaths (e.g. /2026/04/11/events.csv) are
-        stripped so the source resolves to the stage root rather than the full path.
-        Internal graph structures differ across parsers.
-        """
-        query = """COPY INTO ANALYTICS_DB.PUBLIC.FACT_EVENTS
-FROM (SELECT $1 FROM @ANALYTICS_DB.PUBLIC.STG_EVENTS/2026/04/11/events.csv)
-FILE_FORMAT = (TYPE = CSV)"""
-
-        assert_table_lineage_equal(
-            query,
-            {Location("@ANALYTICS_DB.PUBLIC.STG_EVENTS")},
-            {"analytics_db.public.fact_events"},
-            dialect=Dialect.SNOWFLAKE.value,
-            skip_graph_check=True,
-        )
-
-        assert_column_lineage_equal(
-            query,
-            [],
-            dialect=Dialect.SNOWFLAKE.value,
-            skip_graph_check=True,
         )
