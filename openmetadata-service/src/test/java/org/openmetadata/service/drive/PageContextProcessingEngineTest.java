@@ -99,7 +99,7 @@ class PageContextProcessingEngineTest {
   }
 
   @Test
-  void clearedBodyArchivesPillsInsteadOfSkipping() {
+  void clearedBodyReconcilesToEmptyInsteadOfSkipping() {
     pageReturns(page("", "prior-content-hash"));
     when(extractor.derive(eq(""), any(), eq(ContextMemorySourceType.PAGE_EXTRACTION)))
         .thenReturn(new ContextMemoryExtractor.DeriveResult(List.<ContextMemory>of(), 0, 0));

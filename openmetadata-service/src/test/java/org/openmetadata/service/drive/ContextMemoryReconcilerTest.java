@@ -96,19 +96,17 @@ class ContextMemoryReconcilerTest {
   }
 
   @Test
-  void archivesPillNoLongerDerived() {
+  void deletesPillNoLongerDerived() {
     ContextMemory gone =
         pill("gone", "A", ContextMemorySourceType.PAGE_EXTRACTION, ContextMemoryStatus.ACTIVE);
     existing(gone);
 
     ContextMemoryReconciler.ReconcileResult result = reconcile(List.of(derived("fresh", "A")));
 
-    assertEquals(1, result.archived());
+    assertEquals(1, result.deleted());
     assertEquals(1, result.created());
-    ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
-    verify(memoryRepository)
-        .update(isNull(), eq(gone), captor.capture(), eq(Entity.ADMIN_USER_NAME));
-    assertEquals(ContextMemoryStatus.ARCHIVED, captor.getValue().getStatus());
+    verify(memoryRepository).delete(Entity.ADMIN_USER_NAME, gone.getId(), false, true);
+    verify(memoryRepository, never()).update(any(), any(), any(), any());
   }
 
   @Test

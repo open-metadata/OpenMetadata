@@ -18,8 +18,10 @@ import org.openmetadata.service.jdbi3.ContextMemoryRepository;
  * Reconciles a freshly-derived set of knowledge pills against the pills already linked to a Context
  * Center source, instead of deleting and recreating them wholesale on every run. Matching by
  * normalized question preserves pill identity — and the usageCount/lastUsedAt retrieval telemetry
- * that rides it — across re-extractions, and a pill a human has edited (sourceType flipped to
- * Manual) is left untouched.
+ * that rides it — across re-extractions. An automated pill that is no longer derived from the
+ * source is hard-deleted (these pills are regenerable from the source, so a tombstone would only
+ * leave an invisible row polluting search and counts). A pill a human has edited (sourceType
+ * flipped to Manual) is left untouched.
  */
 @Slf4j
 public class ContextMemoryReconciler {
@@ -30,7 +32,7 @@ public class ContextMemoryReconciler {
   }
 
   /** Counts of what the run did, by reconciliation outcome. */
-  public record ReconcileResult(int created, int updated, int kept, int archived) {}
+  public record ReconcileResult(int created, int updated, int kept, int deleted) {}
 
   public ReconcileResult reconcile(
       EntityReference sourceRef, String sourceType, List<ContextMemory> derived) {
@@ -46,25 +48,26 @@ public class ContextMemoryReconciler {
       counts.created++;
     }
     LOG.info(
-        "Reconciled pills for {} {}: {} created, {} updated, {} kept, {} archived",
+        "Reconciled pills for {} {}: {} created, {} updated, {} kept, {} deleted",
         sourceRef.getType(),
         sourceRef.getId(),
         counts.created,
         counts.updated,
         counts.kept,
-        counts.archived);
-    return new ReconcileResult(counts.created, counts.updated, counts.kept, counts.archived);
+        counts.deleted);
+    return new ReconcileResult(counts.created, counts.updated, counts.kept, counts.deleted);
   }
 
   private void reconcileExisting(
       ContextMemory pill, Map<String, ContextMemory> derivedByQuestion, Counts counts) {
     // Always claim the matching question, even for a human-owned (Manual) pill: it stops a
     // re-derived duplicate from being created alongside it. Only automated pills are then updated
-    // or archived; a pill a human edited (sourceType flipped to Manual) is left exactly as-is.
+    // or deleted; a pill a human edited (sourceType flipped to Manual) is left exactly as-is.
     ContextMemory match = derivedByQuestion.remove(questionKey(pill));
     if (isAutomated(pill)) {
       if (match == null) {
-        archiveIfActive(pill, counts);
+        deleteRetired(pill);
+        counts.deleted++;
       } else if (applyDerived(pill, match)) {
         counts.updated++;
       } else {
@@ -73,11 +76,13 @@ public class ContextMemoryReconciler {
     }
   }
 
-  private void archiveIfActive(ContextMemory pill, Counts counts) {
-    if (pill.getStatus() != ContextMemoryStatus.ARCHIVED) {
-      archive(pill);
-      counts.archived++;
-    }
+  /**
+   * Hard-deletes an automated pill the source no longer yields. These pills are regenerable from the
+   * source, so removing the row (and its search/vector index entry) is cleaner than an invisible
+   * ARCHIVED tombstone that would still pollute retrieval and counts.
+   */
+  private void deleteRetired(ContextMemory pill) {
+    memoryRepository.delete(Entity.ADMIN_USER_NAME, pill.getId(), false, true);
   }
 
   private Map<String, ContextMemory> indexByQuestion(List<ContextMemory> derived) {
@@ -110,14 +115,6 @@ public class ContextMemoryReconciler {
     return changed;
   }
 
-  private void archive(ContextMemory pill) {
-    ContextMemory updated = JsonUtils.deepCopy(pill, ContextMemory.class);
-    updated.setStatus(ContextMemoryStatus.ARCHIVED);
-    updated.setUpdatedBy(Entity.ADMIN_USER_NAME);
-    updated.setUpdatedAt(System.currentTimeMillis());
-    memoryRepository.update(null, pill, updated, Entity.ADMIN_USER_NAME);
-  }
-
   private boolean sameContent(ContextMemory a, ContextMemory b) {
     return Objects.equals(a.getTitle(), b.getTitle())
         && Objects.equals(a.getAnswer(), b.getAnswer())
@@ -140,6 +137,6 @@ public class ContextMemoryReconciler {
     private int created;
     private int updated;
     private int kept;
-    private int archived;
+    private int deleted;
   }
 }
