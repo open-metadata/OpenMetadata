@@ -4423,6 +4423,7 @@ public interface CollectionDAO {
     int updateAboutFqnHash(
         @Bind("oldFqnHash") String oldFqnHash, @Bind("newFqnHash") String newFqnHash);
 
+    @Transaction
     @ConnectionAwareSqlBatch(
         value =
             "UPDATE task_entity SET json = JSON_SET(json, '$.aboutFqnHash', :newFqnHash) "
