@@ -4667,7 +4667,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       throw new IllegalArgumentException(CatalogExceptionMessage.entityIsNotEmpty(entityType));
     }
     if (hardDelete) {
-      childrenRecords = prepareChildrenForHardDeleteCascade(id, childrenRecords);
+      childrenRecords = prepareChildrenForHardDeleteCascade(id, childrenRecords, updatedBy);
       if (childrenRecords.isEmpty()) {
         LOG.debug("No children to delete for {} {} after hard-delete preparation", entityType, id);
         return;
@@ -6392,14 +6392,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   private void dispatchToContainedChildren(
       List<T> parents, String phaseName, BiConsumer<EntityRepository<?>, List<UUID>> dispatcher) {
-    dispatchToContainedChildren(parents, phaseName, dispatcher, false);
+    dispatchToContainedChildren(parents, phaseName, dispatcher, false, null);
   }
 
   private void dispatchToContainedChildren(
       List<T> parents,
       String phaseName,
       BiConsumer<EntityRepository<?>, List<UUID>> dispatcher,
-      boolean hardDelete) {
+      boolean hardDelete,
+      String updatedBy) {
     List<String> parentIds = new ArrayList<>(parents.size());
     for (T parent : parents) {
       parentIds.add(parent.getId().toString());
@@ -6410,7 +6411,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           daoCollection.relationshipDAO().findToBatchAllTypes(parentIds, SUBTREE_RELATIONS, ALL);
     }
     if (hardDelete) {
-      relationships = prepareChildrenForHardDeleteCascade(parents, relationships);
+      relationships = prepareChildrenForHardDeleteCascade(parents, relationships, updatedBy);
     }
     if (relationships.isEmpty()) {
       return;
@@ -6435,12 +6436,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected List<EntityRelationshipRecord> prepareChildrenForHardDeleteCascade(
-      UUID parentId, List<EntityRelationshipRecord> children) {
+      UUID parentId, List<EntityRelationshipRecord> children, String updatedBy) {
     return children;
   }
 
   protected List<CollectionDAO.EntityRelationshipObject> prepareChildrenForHardDeleteCascade(
-      List<T> parents, List<CollectionDAO.EntityRelationshipObject> children) {
+      List<T> parents, List<CollectionDAO.EntityRelationshipObject> children, String updatedBy) {
     return children;
   }
 
@@ -6617,7 +6618,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
           entities,
           "bulkHardDeleteFindChildren",
           (childRepo, childIds) -> childRepo.bulkHardDeleteSubtree(childIds, updatedBy),
-          true);
+          true,
+          updatedBy);
       bulkEntitySpecificCleanup(entities);
       // Run BEFORE bulkCleanupReferences: hooks like DashboardRepository.cascadeChartCleanup
       // walk HAS relationships to discover linked entities, and bulkCleanupReferences wipes

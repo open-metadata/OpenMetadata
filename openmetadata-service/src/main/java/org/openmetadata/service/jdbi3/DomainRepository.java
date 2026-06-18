@@ -507,7 +507,7 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   @Override
   protected List<CollectionDAO.EntityRelationshipRecord> prepareChildrenForHardDeleteCascade(
-      UUID parentId, List<CollectionDAO.EntityRelationshipRecord> children) {
+      UUID parentId, List<CollectionDAO.EntityRelationshipRecord> children, String updatedBy) {
     List<String> dataProductIds =
         children.stream()
             .filter(child -> DATA_PRODUCT.equals(child.getType()))
@@ -525,7 +525,7 @@ public class DomainRepository extends EntityRepository<Domain> {
       return children;
     }
     detachRetainedDataProductsFromDeletingDomains(
-        plan.retainedDataProductIds(), plan.deletingParentsByDataProduct(), context);
+        plan.retainedDataProductIds(), plan.deletingParentsByDataProduct(), context, updatedBy);
 
     return children.stream()
         .filter(
@@ -537,7 +537,9 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   @Override
   protected List<CollectionDAO.EntityRelationshipObject> prepareChildrenForHardDeleteCascade(
-      List<Domain> parents, List<CollectionDAO.EntityRelationshipObject> children) {
+      List<Domain> parents,
+      List<CollectionDAO.EntityRelationshipObject> children,
+      String updatedBy) {
     List<String> dataProductIds =
         children.stream()
             .filter(this::isDomainDataProductContainment)
@@ -555,7 +557,7 @@ public class DomainRepository extends EntityRepository<Domain> {
       return children;
     }
     detachRetainedDataProductsFromDeletingDomains(
-        plan.retainedDataProductIds(), plan.deletingParentsByDataProduct(), context);
+        plan.retainedDataProductIds(), plan.deletingParentsByDataProduct(), context, updatedBy);
 
     return children.stream()
         .filter(
@@ -622,12 +624,14 @@ public class DomainRepository extends EntityRepository<Domain> {
   private void detachRetainedDataProductsFromDeletingDomains(
       Set<UUID> retainedDataProductIds,
       Map<UUID, List<UUID>> deletingParentsByDataProduct,
-      DomainHardDeleteContext context) {
+      DomainHardDeleteContext context,
+      String updatedBy) {
     DataProductRepository dataProductRepository =
         (DataProductRepository) Entity.getEntityRepository(DATA_PRODUCT);
+    String detachUpdatedBy = updatedBy != null ? updatedBy : context.updatedBy;
     for (UUID dataProductId : retainedDataProductIds) {
       dataProductRepository.detachFromDeletingDomains(
-          dataProductId, deletingParentsByDataProduct.get(dataProductId), context.updatedBy);
+          dataProductId, deletingParentsByDataProduct.get(dataProductId), detachUpdatedBy);
       context.dataProductsToReindex.add(dataProductId);
     }
   }

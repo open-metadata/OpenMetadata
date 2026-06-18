@@ -78,6 +78,8 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.search.QueryFilterBuilder;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -254,18 +256,25 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   /**
-   * Re-index data products detached during a domain hard-delete cascade. Called at the end of the
-   * cascade rather than inline during detach, so the search-index write matches the timing of the
-   * cascade's existing {@code deleteFromSearch} calls (after the DB delete work). This narrows the
-   * DB/search divergence window; it does not make the write post-commit (the single-entity delete
-   * path is one transaction and the bulk path is non-transactional).
+   * Re-index data products detached during a domain hard-delete cascade. If a post-commit search
+   * deferral scope is active, use it. Otherwise record a durable retry row so the document is rebuilt
+   * from committed DB state instead of mutating Elasticsearch inside the delete transaction.
    */
   public void reindexAfterDomainDetach(Set<UUID> dataProductIds) {
-    if (searchRepository != null && !nullOrEmpty(dataProductIds)) {
-      for (UUID dataProductId : dataProductIds) {
+    if (nullOrEmpty(dataProductIds)) {
+      return;
+    }
+    for (UUID dataProductId : dataProductIds) {
+      if (searchRepository != null && SearchRepository.isSearchWriteDeferralActive()) {
         DataProduct dataProduct = find(dataProductId, ALL, false);
         setFieldsInternal(dataProduct, getPutFields());
         searchRepository.updateEntityIndex(dataProduct);
+      } else {
+        SearchIndexRetryQueue.enqueue(
+            dataProductId.toString(),
+            null,
+            DATA_PRODUCT,
+            "domainDetach: deferred reindex after domain hard-delete");
       }
     }
   }

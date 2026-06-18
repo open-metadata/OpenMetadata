@@ -50,6 +50,7 @@ import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
@@ -1208,6 +1209,7 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
 
     DataProduct sharedDataProduct =
         client.dataProducts().get(dataProduct.getId().toString(), "domains");
+    Double versionBeforeDomainDelete = sharedDataProduct.getVersion();
     assertEquals(2, sharedDataProduct.getDomains().size());
     assertTrue(
         sharedDataProduct.getDomains().stream()
@@ -1216,6 +1218,7 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         sharedDataProduct.getDomains().stream()
             .anyMatch(domain -> domain.getId().equals(domain2.getId())));
 
+    long eventsSince = System.currentTimeMillis();
     client
         .domains()
         .delete(domain1.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
@@ -1224,6 +1227,9 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     assertFalse(Boolean.TRUE.equals(fetched.getDeleted()));
     assertEquals(1, fetched.getDomains().size());
     assertEquals(domain2.getId(), fetched.getDomains().getFirst().getId());
+    assertTrue(fetched.getVersion() > versionBeforeDomainDelete);
+    assertDomainDetachChangeEvent(
+        client, dataProduct.getId(), versionBeforeDomainDelete, fetched.getVersion(), eventsSince);
 
     ListResponse<DataProduct> listed =
         client
@@ -1244,6 +1250,33 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     assertThrows(
         Exception.class,
         () -> client.dataProducts().get(dataProduct.getId().toString(), "domains"));
+  }
+
+  private void assertDomainDetachChangeEvent(
+      OpenMetadataClient client,
+      UUID dataProductId,
+      Double previousVersion,
+      Double currentVersion,
+      long eventsSince) {
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(10))
+        .untilAsserted(
+            () -> {
+              ListResponse<ChangeEvent> events =
+                  client.changeEvents().listUpdated("dataProduct", eventsSince);
+              assertTrue(
+                  events.getData().stream()
+                      .anyMatch(
+                          event ->
+                              dataProductId.equals(event.getEntityId())
+                                  && previousVersion.equals(event.getPreviousVersion())
+                                  && currentVersion.equals(event.getCurrentVersion())
+                                  && event.getChangeDescription() != null
+                                  && event.getChangeDescription().getFieldsDeleted() != null
+                                  && event.getChangeDescription().getFieldsDeleted().stream()
+                                      .anyMatch(field -> "domains".equals(field.getName()))),
+                  "Domain detach should emit a data product change event");
+            });
   }
 
   private DataProduct updateDataProductDomainsWithMultiDomainRuleDisabled(
