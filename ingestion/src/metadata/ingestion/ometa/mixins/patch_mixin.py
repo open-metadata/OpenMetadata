@@ -534,19 +534,26 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
     def patch_column_tags(
         self,
-        table: ClassifiableEntityType,
-        column_tags: List[ColumnTag],  # noqa: UP006
+        table: Optional[ClassifiableEntityType] = None,  # noqa: UP045
+        column_tags: Optional[List[ColumnTag]] = None,  # noqa: UP006, UP045
         operation: Union[PatchOperation.ADD, PatchOperation.REMOVE] = PatchOperation.ADD,  # noqa: UP007
+        entity: Optional[ClassifiableEntityType] = None,  # noqa: UP045
     ) -> Optional[T]:  # noqa: UP045
         """Given an Entity ID, JSON PATCH the tag of the column
 
         Args
-            entity: Classifiable entity (Table, Container, …) to update
+            table: Classifiable entity (Table, Container, …) to update
             column_tags: List of ColumnTag to add or remove
             operation: Patch Operation to add or remove
+            entity: Backward-compatible alias for table
         Returns
             Updated Entity
         """
+
+        table = table if table is not None else entity
+        if table is None:
+            logger.warning("No entity provided for column tag patching")
+            return None
 
         if isinstance(table, Table):
             fields = ["tags", "columns"]
