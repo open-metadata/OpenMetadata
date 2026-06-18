@@ -32,6 +32,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
@@ -870,9 +871,33 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
     if (LLMClientHolder.isEnabled()) {
       PageContextProcessingEngineHolder.get().cancel(entity.getId());
     }
-    ContextMemoryRepository memoryRepository =
-        (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
-    memoryRepository.deleteExtractedMemories(entity.getId(), KNOWLEDGE_PAGE_ENTITY, hardDelete);
+  }
+
+  // Knowledge-pill cleanup runs in the *AdditionalChildren hooks rather than postDelete because
+  // those fire while the page -> memory MENTIONED_IN edges still exist. postDelete runs after
+  // cleanup() has already deleted those edges on a hard delete, so a findTo there would match
+  // nothing and orphan the pills. The pills track the page's lifecycle: soft-deleted with it,
+  // hard-deleted with it, restored with it. Mirrors DashboardRepository's chart cascade.
+  @Override
+  @Transaction
+  protected void softDeleteAdditionalChildren(UUID pageId, String deletedBy) {
+    contextMemoryRepository().deleteExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY, false);
+  }
+
+  @Override
+  @Transaction
+  protected void hardDeleteAdditionalChildren(UUID pageId, String deletedBy) {
+    contextMemoryRepository().deleteExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY, true);
+  }
+
+  @Override
+  @Transaction
+  protected void restoreAdditionalChildren(UUID pageId, String updatedBy) {
+    contextMemoryRepository().restoreExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY);
+  }
+
+  private ContextMemoryRepository contextMemoryRepository() {
+    return (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
   }
 
   /** True when an article's markdown body changed — the only edit that warrants re-extraction. */

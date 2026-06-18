@@ -636,4 +636,17 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       delete(Entity.ADMIN_USER_NAME, ref.getId(), false, hardDelete);
     }
   }
+
+  /**
+   * Restores the soft-deleted knowledge pills linked to a Context Center source when that source is
+   * restored. Uses Include.ALL because the pills are deleted at lookup time; restoreEntity is a
+   * no-op on any that are already active.
+   */
+  public void restoreExtractedMemories(UUID sourceId, String sourceType) {
+    List<EntityReference> refs =
+        findTo(sourceId, sourceType, Relationship.MENTIONED_IN, Entity.CONTEXT_MEMORY, Include.ALL);
+    for (EntityReference ref : refs) {
+      restoreEntity(Entity.ADMIN_USER_NAME, ref.getId());
+    }
+  }
 }
