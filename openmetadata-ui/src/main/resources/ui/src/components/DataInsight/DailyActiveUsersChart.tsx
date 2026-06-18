@@ -39,13 +39,12 @@ import { DailyActiveUsers } from '../../generated/dataInsight/type/dailyActiveUs
 import { ChartFilter } from '../../interface/data-insight.interface';
 import { getAggregateChartData } from '../../rest/DataInsightAPI';
 import { CustomTooltip, renderLegend } from '../../utils/DataInsightChartUtils';
-import { getFormattedActiveUsersData } from '../../utils/DataInsightUtils';
+import { getFormattedActiveUsersData } from '../../utils/DataInsightPureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import PageHeader from '../PageHeader/PageHeader.component';
 import CustomStatistic from './CustomStatistic';
 import './data-insight-detail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
-
 interface Props {
   chartFilter: ChartFilter;
   selectedDays: number;
