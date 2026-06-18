@@ -1,0 +1,319 @@
+{
+  "$id": "https://open-metadata.org/schema/api/lineage/lineageScene.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LineageScene",
+  "description": "Semantic lineage scene response for map-style lineage navigation.",
+  "javaType": "org.openmetadata.schema.api.lineage.LineageScene",
+  "type": "object",
+  "definitions": {
+    "lineageLens": {
+      "javaType": "org.openmetadata.schema.api.lineage.LineageLens",
+      "description": "Container lens used to group lineage.",
+      "type": "string",
+      "enum": ["service", "domain", "dataProduct"]
+    },
+    "lineageBand": {
+      "javaType": "org.openmetadata.schema.api.lineage.LineageBand",
+      "description": "Semantic altitude band for lineage map scenes.",
+      "type": "string",
+      "enum": ["LAYER", "ASSET", "FIELD"]
+    },
+    "lineageLevelKind": {
+      "javaType": "org.openmetadata.schema.api.lineage.LineageLevelKind",
+      "description": "Concrete hierarchy level rendered in a lineage scene.",
+      "type": "string",
+      "enum": [
+        "service",
+        "database",
+        "schema",
+        "table",
+        "column",
+        "topic",
+        "field",
+        "dashboard",
+        "chart",
+        "model",
+        "feature",
+        "pipeline",
+        "task",
+        "domain",
+        "dataProduct",
+        "container",
+        "searchIndex",
+        "apiEndpoint",
+        "metric",
+        "directory",
+        "file",
+        "spreadsheet",
+        "worksheet",
+        "asset"
+      ]
+    },
+    "lineageSceneField": {
+      "javaType": "org.openmetadata.schema.api.lineage.LineageSceneField",
+      "description": "Typed field rendered inside a field-level lineage node.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Stable field identifier.",
+          "type": "string"
+        },
+        "name": {
+          "description": "Field display name.",
+          "type": "string"
+        },
+        "fullyQualifiedName": {
+          "description": "Field fully qualified name.",
+          "type": "string"
+        },
+        "dataType": {
+          "description": "Field data type label.",
+          "type": "string"
+        }
+      },
+      "required": ["id", "name"],
+      "additionalProperties": false
+    },
+    "lineageSceneBreadcrumb": {
+      "javaType": "org.openmetadata.schema.api.lineage.LineageSceneBreadcrumb",
+      "description": "Breadcrumb item for lineage scene navigation.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Stable breadcrumb identifier.",
+          "type": "string"
+        },
+        "label": {
+          "description": "Display label.",
+          "type": "string"
+        },
+        "fullyQualifiedName": {
+          "description": "Entity or container fully qualified name.",
+          "type": "string"
+        },
+        "entityType": {
+          "description": "OpenMetadata entity type.",
+          "type": "string"
+        },
+        "levelKind": {
+          "$ref": "#/definitions/lineageLevelKind"
+        },
+        "band": {
+          "$ref": "#/definitions/lineageBand"
+        }
+      },
+      "required": ["id", "label", "levelKind", "band"],
+      "additionalProperties": false
+    },
+    "lineageSceneNode": {
+      "javaType": "org.openmetadata.schema.api.lineage.LineageSceneNode",
+      "description": "Node rendered in a lineage map scene.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Stable node identifier.",
+          "type": "string"
+        },
+        "fullyQualifiedName": {
+          "description": "Entity or synthetic container FQN.",
+          "type": "string"
+        },
+        "entityType": {
+          "description": "OpenMetadata entity type.",
+          "type": "string"
+        },
+        "levelKind": {
+          "$ref": "#/definitions/lineageLevelKind"
+        },
+        "band": {
+          "$ref": "#/definitions/lineageBand"
+        },
+        "serviceType": {
+          "description": "Connector/service type for type-aware drilling and icons.",
+          "type": "string"
+        },
+        "label": {
+          "description": "Display label.",
+          "type": "string"
+        },
+        "displayName": {
+          "description": "Optional display name from the entity.",
+          "type": "string"
+        },
+        "parentId": {
+          "description": "Parent node id in the lineage ladder.",
+          "type": "string"
+        },
+        "parentFqn": {
+          "description": "Parent FQN in the lineage ladder.",
+          "type": "string"
+        },
+        "childrenCount": {
+          "description": "Known child count for the next meaningful level.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "hiddenChildrenCount": {
+          "description": "Children hidden by scene size limits.",
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "counts": {
+          "description": "Counts by concrete level kind.",
+          "existingJavaType": "java.util.Map<String, Integer>",
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer"
+          }
+        },
+        "fields": {
+          "description": "Fields rendered for field-level scenes.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/lineageSceneField"
+          }
+        },
+        "isFocus": {
+          "description": "Whether this node is the current scene focus.",
+          "type": "boolean",
+          "default": false
+        },
+        "isOrigin": {
+          "description": "Whether this node contains or equals the originally opened asset.",
+          "type": "boolean",
+          "default": false
+        },
+        "isExpandable": {
+          "description": "Whether drilling into this node can load a deeper meaningful scene.",
+          "type": "boolean",
+          "default": false
+        },
+        "isGhost": {
+          "description": "Whether this node is contextual and visually de-emphasized.",
+          "type": "boolean",
+          "default": false
+        },
+        "certification": {
+          "description": "Certification badge label when present.",
+          "type": "string"
+        },
+        "sourceEntity": {
+          "description": "Original search entity payload for existing lineage UI behavior.",
+          "existingJavaType": "java.util.Map<String, Object>",
+          "type": "object"
+        }
+      },
+      "required": ["id", "levelKind", "band", "label"],
+      "additionalProperties": false
+    },
+    "lineageSceneEdge": {
+      "javaType": "org.openmetadata.schema.api.lineage.LineageSceneEdge",
+      "description": "Edge rendered in a lineage map scene.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Stable edge identifier.",
+          "type": "string"
+        },
+        "from": {
+          "description": "Source node id or field id.",
+          "type": "string"
+        },
+        "to": {
+          "description": "Target node id or field id.",
+          "type": "string"
+        },
+        "band": {
+          "$ref": "#/definitions/lineageBand"
+        },
+        "isRollup": {
+          "description": "Whether this edge aggregates lower-level lineage edges.",
+          "type": "boolean",
+          "default": false
+        },
+        "weight": {
+          "description": "Number of concrete edges represented by this scene edge.",
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        },
+        "label": {
+          "description": "Optional edge label.",
+          "type": "string"
+        },
+        "source": {
+          "description": "Lineage source.",
+          "type": "string"
+        },
+        "sqlQuery": {
+          "description": "SQL or transform text associated with this edge.",
+          "type": "string"
+        },
+        "transform": {
+          "description": "Field-level transform expression.",
+          "type": "string"
+        },
+        "underlyingEdgeIds": {
+          "description": "Concrete edge ids represented by this scene edge.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["id", "from", "to", "band"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "lens": {
+      "$ref": "#/definitions/lineageLens"
+    },
+    "band": {
+      "$ref": "#/definitions/lineageBand"
+    },
+    "focusFqn": {
+      "description": "Focused entity or container FQN.",
+      "type": "string"
+    },
+    "focusEntityType": {
+      "description": "Focused entity type.",
+      "type": "string"
+    },
+    "originFqn": {
+      "description": "Originally opened asset FQN.",
+      "type": "string"
+    },
+    "originEntityType": {
+      "description": "Originally opened asset entity type.",
+      "type": "string"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/lineageSceneNode"
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/lineageSceneEdge"
+      }
+    },
+    "breadcrumb": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/lineageSceneBreadcrumb"
+      }
+    },
+    "hiddenNodeCount": {
+      "description": "Number of nodes hidden by scene size limits.",
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    }
+  },
+  "required": ["lens", "band", "nodes", "edges", "breadcrumb"],
+  "additionalProperties": false
+}

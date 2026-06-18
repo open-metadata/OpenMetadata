@@ -11,12 +11,22 @@
  *  limitations under the License.
  */
 
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import classNames from 'classnames';
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type MouseEvent,
+} from 'react';
 import { Handle, NodeProps, Position } from 'reactflow';
+import { ReactComponent as ZoomInIcon } from '../../../assets/svg/ic-zoom-in.svg';
 import { NODE_WIDTH } from '../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
+import { LineageBand } from '../../../generated/api/lineage/lineageScene';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import LineageNodeRemoveButton from '../../Lineage/LineageNodeRemoveButton';
 import './custom-node.less';
@@ -174,6 +184,14 @@ const CustomNodeV1 = (props: NodeProps) => {
     hasIncomers = false,
     isUpstreamNode = false,
     isDownstreamNode = false,
+    sceneNode,
+    sceneBand,
+    nodeWidth,
+    onSceneDrill,
+    sceneDrillLabel,
+    onSceneColumnHover,
+    onSceneColumnSelect,
+    isPathHighlighted = false,
   } = data;
 
   // sync expand state based on edit or column layer active
@@ -221,13 +239,23 @@ const CustomNodeV1 = (props: NodeProps) => {
     [isDQEnabled, dataQualityLineage, id]
   );
 
-  const containerClass = getNodeClassNames({
-    isSelected,
-    showDqTracing: showDqTracing ?? false,
-    isTraced: tracedNodes.has(id),
-    isBaseNode: isRootNode,
-    isChildrenListExpanded: columnsExpanded || isColumnLevelLineage,
-  });
+  const containerClass = classNames(
+    getNodeClassNames({
+      isSelected,
+      showDqTracing: showDqTracing ?? false,
+      isTraced: tracedNodes.has(id),
+      isBaseNode: isRootNode,
+      isChildrenListExpanded: columnsExpanded || isColumnLevelLineage,
+    }),
+    {
+      'lineage-path-highlight': isPathHighlighted,
+      'lineage-scene-node': Boolean(sceneNode),
+      'lineage-scene-layer-node':
+        Boolean(sceneNode) && sceneBand === LineageBand.Layer,
+    }
+  );
+  const renderedNodeWidth = nodeWidth ?? NODE_WIDTH;
+  const isSceneNodeDrillable = Boolean(sceneNode?.isExpandable && onSceneDrill);
 
   const onExpand = useCallback(
     (direction: LineageDirection, depth = 1) => {
@@ -253,6 +281,16 @@ const CustomNodeV1 = (props: NodeProps) => {
   const handleNodeRemove = useCallback(() => {
     removeNodeHandler(props);
   }, [removeNodeHandler, props]);
+
+  const handleSceneDrill = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      event.stopPropagation();
+      if (sceneNode && isSceneNodeDrillable && onSceneDrill) {
+        onSceneDrill(sceneNode);
+      }
+    },
+    [isSceneNodeDrillable, onSceneDrill, sceneNode]
+  );
 
   const nodeLabel = useMemo(() => {
     if (isNewNode) {
@@ -334,21 +372,40 @@ const CustomNodeV1 = (props: NodeProps) => {
         isConnectable={isConnectable}
         isOnlyShowColumnsWithLineageFilterActive={showColumnsWithLineageOnly}
         node={node}
+        onColumnHover={onSceneColumnHover}
+        onColumnSelect={onSceneColumnSelect}
       />
     );
-  }, [columnsExpanded, isConnectable, showColumnsWithLineageOnly, node]);
+  }, [
+    columnsExpanded,
+    isConnectable,
+    node,
+    onSceneColumnHover,
+    onSceneColumnSelect,
+    showColumnsWithLineageOnly,
+  ]);
 
   return (
     <div
       className={containerClass}
       data-testid={`lineage-node-${fullyQualifiedName}`}
-      style={{ width: NODE_WIDTH }}>
+      style={{ width: renderedNodeWidth }}>
       {isRootNode && (
         <div className="lineage-node-badge-container">
           <div className="lineage-node-badge" />
         </div>
       )}
       <div className="lineage-node-content">
+        {isSceneNodeDrillable && (
+          <button
+            aria-label={sceneDrillLabel}
+            className="lineage-scene-drill-button nodrag nopan"
+            title={sceneDrillLabel}
+            type="button"
+            onClick={handleSceneDrill}>
+            <ZoomInIcon />
+          </button>
+        )}
         <div className="label-container bg-white">{nodeLabel}</div>
         <NodeHandles
           expandCollapseHandles={handlesElement}

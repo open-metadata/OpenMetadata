@@ -1882,8 +1882,17 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                     )
                     continue
                 edge_entity_ref = get_lineage_entity_ref(edge["edge_meta"], self.metadata)
+                columns_lineage = [
+                    ColumnLineage(**column_lineage)
+                    for column_lineage in edge.get("columnsLineage", edge.get("columns_lineage", []))
+                ]
                 lineage_details = None
-                if edge_entity_ref or edge.get("sql_query") or edge.get("temp_lineage_tables"):
+                if (
+                    edge_entity_ref
+                    or edge.get("sql_query")
+                    or edge.get("temp_lineage_tables")
+                    or columns_lineage
+                ):
                     temp_tables = None
                     if edge.get("temp_lineage_tables"):
                         from metadata.generated.schema.type.entityLineage import (  # noqa: PLC0415
@@ -1895,6 +1904,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                         pipeline=edge_entity_ref if edge_entity_ref else None,
                         sqlQuery=edge.get("sql_query"),
                         tempLineageTables=temp_tables,
+                        columnsLineage=columns_lineage or None,
                     )
                 lineage = AddLineageRequest(
                     edge=EntitiesEdge(

@@ -206,6 +206,8 @@ interface ColumnContentProps {
   summary?: ColumnTestSummaryDefinition;
   depth?: number;
   className?: string;
+  onColumnHover?: (columnFqn?: string) => void;
+  onColumnSelect?: (columnFqn?: string) => void;
 }
 
 const ColumnContentInner = ({
@@ -216,6 +218,8 @@ const ColumnContentInner = ({
   summary,
   depth = 0,
   className = '',
+  onColumnHover,
+  onColumnSelect,
 }: ColumnContentProps) => {
   const { onColumnMouseEnter } = useLineageProvider();
   const {
@@ -234,23 +238,26 @@ const ColumnContentInner = ({
     (e: React.MouseEvent) => {
       e.stopPropagation();
       setSelectedColumn(fullyQualifiedName ?? '');
+      onColumnSelect?.(fullyQualifiedName);
     },
-    [fullyQualifiedName, setSelectedColumn]
+    [fullyQualifiedName, onColumnSelect, setSelectedColumn]
   );
 
   const handleMouseEnter = useCallback(() => {
     if (selectedColumn) {
       return;
     }
+    onColumnHover?.(fullyQualifiedName);
     onColumnMouseEnter(fullyQualifiedName ?? '');
-  }, [selectedColumn, fullyQualifiedName, onColumnMouseEnter]);
+  }, [fullyQualifiedName, onColumnHover, onColumnMouseEnter, selectedColumn]);
 
   const handleMouseLeave = useCallback(() => {
     if (selectedColumn) {
       return;
     }
+    onColumnHover?.(undefined);
     setTracedColumns(new Set());
-  }, [selectedColumn, setTracedColumns]);
+  }, [onColumnHover, selectedColumn, setTracedColumns]);
 
   const columnNameContentRender = useMemo(
     () => getColumnNameContent(column, isLoading),
@@ -322,7 +329,9 @@ export const ColumnContent = memo(
     prev.showDataObservabilitySummary === next.showDataObservabilitySummary &&
     prev.summary === next.summary &&
     prev.depth === next.depth &&
-    prev.className === next.className
+    prev.className === next.className &&
+    prev.onColumnHover === next.onColumnHover &&
+    prev.onColumnSelect === next.onColumnSelect
 );
 
 export function getNodeClassNames({
