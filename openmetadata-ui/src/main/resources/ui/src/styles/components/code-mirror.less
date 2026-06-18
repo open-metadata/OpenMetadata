@@ -10,54 +10,83 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+// CodeMirror v5 → v6 class mapping:
+//   .CodeMirror          → .cm-editor
+//   .CodeMirror-scroll   → .cm-scroller
+//   .CodeMirror-gutters  → .cm-gutters
+//   .CodeMirror-linenumber → .cm-gutterElement
+//   .CodeMirror-line     → .cm-line
+
 @import '../variables.less';
 
-.table-query-editor > .CodeMirror {
+.table-query-editor .cm-editor {
   height: auto !important;
 }
+
+.table-query-editor .cm-scroller {
+  overflow: visible !important;
+}
+
 .custom-query-editor {
   border: @global-border;
   border-radius: @border-rad-base;
-  .CodeMirror {
+  .cm-editor {
     border-radius: @border-rad-base;
     height: 200px;
   }
 }
 .query-editor-h-200 {
-  .CodeMirror {
+  .cm-editor {
     height: 200px;
   }
 }
 
 .query-editor-min-h-60 {
-  .CodeMirror {
+  .cm-editor {
     min-height: 60px;
   }
 }
-.full-screen-editor-height > .CodeMirror,
-.full-screen-editor-height > .react-codemirror2 > .CodeMirror {
+.full-screen-editor-height .cm-editor {
   height: calc(100vh - 250px) !important;
 }
 
-.CodeMirror-wrap pre.CodeMirror-line {
+.cm-editor.cm-lineWrapping .cm-line {
   padding-right: 100px;
 }
 
+.cm-foldGutter .cm-gutterElement {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 0;
+  padding-bottom: 0;
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 12px;
+    height: 12px;
+    line-height: 12px;
+  }
+}
+
 .custom-code-mirror-theme {
-  .CodeMirror {
+  .cm-editor {
     background: #f4f7f9;
   }
-  .CodeMirror-gutters {
+  .cm-gutters {
     background-color: @white;
   }
-  .CodeMirror-linenumber {
+  .cm-gutterElement {
     color: @text-color;
   }
 }
 
 .code-editor-new-style {
   border-radius: @border-rad-sm;
-  .CodeMirror-gutters {
+  .cm-gutters {
     display: none;
   }
 

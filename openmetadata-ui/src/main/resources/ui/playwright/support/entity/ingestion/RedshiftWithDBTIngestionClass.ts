@@ -244,8 +244,8 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       await page.click('[data-testid="dbt"]');
 
       // Verify query is present in the DBT tab
-      await page.locator('.CodeMirror').waitFor();
-      const codeMirrorText = await page.textContent('.CodeMirror');
+      await page.locator('.cm-editor').waitFor();
+      const codeMirrorText = await page.textContent('.cm-editor');
 
       expect(codeMirrorText).toContain(DBT.dbtQuery);
 

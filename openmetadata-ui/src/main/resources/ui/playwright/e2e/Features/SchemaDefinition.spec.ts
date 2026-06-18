@@ -38,12 +38,8 @@ test.describe('Schema definition (views)', () => {
 
     await page.click('[data-testid="schema_definition"]');
 
-    await expect(
-      page.locator('.CodeMirror-line > [role="presentation"]').first()
-    ).toBeVisible();
+    await expect(page.locator('.cm-line').first()).toBeVisible();
 
-    await expect(
-      page.locator('.CodeMirror-line > [role="presentation"]')
-    ).toContainText(query);
+    await expect(page.locator('.cm-content')).toContainText(query);
   });
 });
