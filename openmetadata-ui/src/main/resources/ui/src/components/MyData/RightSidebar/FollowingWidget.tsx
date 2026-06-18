@@ -73,62 +73,45 @@ function FollowingWidget({
   const [followedData, setFollowedData] = useState<SourceType[]>([]);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(true);
 
-  const fetchUserFollowedData = useCallback(
-    async (isStale: () => boolean) => {
-      if (!currentUser?.id) {
-        if (!isStale()) {
-          setFollowedData([]);
-          setIsLoadingOwnedData(false);
-        }
+  const fetchUserFollowedData = useCallback(async () => {
+    if (!currentUser?.id) {
+      setFollowedData([]);
+      setIsLoadingOwnedData(false);
 
-        return;
-      }
+      return;
+    }
 
-      setIsLoadingOwnedData(true);
+    setIsLoadingOwnedData(true);
 
-      try {
-        const sortField = getSortField(selectedEntityFilter);
-        const sortOrder = getSortOrder(selectedEntityFilter);
+    try {
+      const sortField = getSortField(selectedEntityFilter);
+      const sortOrder = getSortOrder(selectedEntityFilter);
 
-        const queryFilterObj = getTermQuery(
-          { followers: currentUser.id },
-          'must'
-        );
+      const queryFilterObj = getTermQuery(
+        { followers: currentUser.id },
+        'must'
+      );
 
-        const res = await searchQuery({
-          pageSize: PAGE_SIZE_MEDIUM,
-          searchIndex: SearchIndex.ALL,
-          queryFilter: queryFilterObj,
-          sortField,
-          sortOrder,
-        });
+      const res = await searchQuery({
+        pageSize: PAGE_SIZE_MEDIUM,
+        searchIndex: SearchIndex.ALL,
+        queryFilter: queryFilterObj,
+        sortField,
+        sortOrder,
+      });
 
-        const sourceData = res.hits.hits.map((hit) => hit._source);
+      const sourceData = res.hits.hits.map((hit) => hit._source);
 
-        if (!isStale()) {
-          setFollowedData(applySortToData(sourceData, selectedEntityFilter));
-        }
-      } catch (err) {
-        if (!isStale()) {
-          showErrorToast(err as AxiosError);
-        }
-      } finally {
-        if (!isStale()) {
-          setIsLoadingOwnedData(false);
-        }
-      }
-    },
-    [currentUser?.id, selectedEntityFilter]
-  );
+      setFollowedData(applySortToData(sourceData, selectedEntityFilter));
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsLoadingOwnedData(false);
+    }
+  }, [currentUser?.id, selectedEntityFilter]);
 
   useEffect(() => {
-    let ignore = false;
-
-    fetchUserFollowedData(() => ignore);
-
-    return () => {
-      ignore = true;
-    };
+    fetchUserFollowedData();
   }, [fetchUserFollowedData]);
   // Check if widget is in expanded form (full size)
   const isExpanded = useMemo(() => {
