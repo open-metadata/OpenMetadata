@@ -128,66 +128,49 @@ const MyDataWidgetInternal = ({
     return [];
   }, [currentUser]);
 
-  const fetchMyDataAssets = useCallback(
-    async (isStale: () => boolean) => {
-      if (isUndefined(currentUser)) {
-        if (!isStale()) {
-          setData([]);
-          setIsLoading(false);
-        }
+  const fetchMyDataAssets = useCallback(async () => {
+    if (isUndefined(currentUser)) {
+      setData([]);
+      setIsLoading(false);
 
-        return;
-      }
+      return;
+    }
 
-      setIsLoading(true);
+    setIsLoading(true);
 
-      try {
-        const queryFilterObj = getTermQuery(
-          { 'owners.id': ownerIds },
-          'should',
-          1
-        );
+    try {
+      const queryFilterObj = getTermQuery(
+        { 'owners.id': ownerIds },
+        'should',
+        1
+      );
 
-        const sortField = getSortField(selectedFilter);
-        const sortOrder = getSortOrder(selectedFilter);
+      const sortField = getSortField(selectedFilter);
+      const sortOrder = getSortOrder(selectedFilter);
 
-        const res = await searchQuery({
-          query: '',
-          pageNumber: INITIAL_PAGING_VALUE,
-          pageSize: PAGE_SIZE_MEDIUM,
-          queryFilter: queryFilterObj,
-          sortField,
-          sortOrder,
-          searchIndex: SearchIndex.ALL,
-        });
+      const res = await searchQuery({
+        query: '',
+        pageNumber: INITIAL_PAGING_VALUE,
+        pageSize: PAGE_SIZE_MEDIUM,
+        queryFilter: queryFilterObj,
+        sortField,
+        sortOrder,
+        searchIndex: SearchIndex.ALL,
+      });
 
-        const ownedAssets = res?.hits?.hits ?? [];
-        const sourceData = ownedAssets.map((hit) => hit._source);
+      const ownedAssets = res?.hits?.hits ?? [];
+      const sourceData = ownedAssets.map((hit) => hit._source);
 
-        if (!isStale()) {
-          setData(applySortToData(sourceData, selectedFilter));
-        }
-      } catch {
-        if (!isStale()) {
-          setData([]);
-        }
-      } finally {
-        if (!isStale()) {
-          setIsLoading(false);
-        }
-      }
-    },
-    [currentUser, ownerIds, selectedFilter]
-  );
+      setData(applySortToData(sourceData, selectedFilter));
+    } catch {
+      setData([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentUser, ownerIds, selectedFilter]);
 
   useEffect(() => {
-    let ignore = false;
-
-    fetchMyDataAssets(() => ignore);
-
-    return () => {
-      ignore = true;
-    };
+    fetchMyDataAssets();
   }, [fetchMyDataAssets]);
 
   const emptyState = useMemo(
