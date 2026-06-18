@@ -1870,7 +1870,11 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
   private DataProduct findExistingByName(String name) {
     if (nullOrEmpty(name)) return null;
     try {
-      return repository.getByName(null, name, repository.getFields("id,name,version"));
+      // Hydrate the full relationship field set. smartMerge/fullReplace copy
+      // owners/domains/experts/reviewers/certification/tags from the existing
+      // product; these are lazy fields that come back null unless requested, so
+      // a sparse load would wipe them (and drop the required domain) on merge.
+      return repository.getByName(null, name, repository.getFields(EXPORT_FIELDS));
     } catch (EntityNotFoundException ignored) {
       return null;
     }

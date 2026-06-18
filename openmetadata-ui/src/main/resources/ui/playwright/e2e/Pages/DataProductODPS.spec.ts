@@ -188,26 +188,47 @@ test.describe('DataProduct ODPS — REST contract', () => {
     );
   });
 
-  test('merge strategy preserves fields absent from the imported document', async () => {
-    const dp = await createDataProductWithOdpsFields(
-      apiContext,
-      domain.responseData.fullyQualifiedName ?? ''
-    );
+  test('merge preserves the existing product domain and owners', async () => {
+    const domainFqn = domain.responseData.fullyQualifiedName ?? '';
+    const adminRef = await (
+      await apiContext.get('/api/v1/users/name/admin')
+    ).json();
+
+    // Owners/domains are lazy relationship fields; a merge that loads the
+    // existing product sparsely would silently wipe them. Guard against that.
+    const name = `pw-odps-merge-${uuid()}`;
+    const created = await apiContext.post('/api/v1/dataProducts', {
+      data: {
+        name,
+        displayName: name,
+        description: 'ODPS merge owner-preservation test',
+        domains: [domainFqn],
+        dataProductType: 'DATASET',
+        owners: [{ id: adminRef.id, type: 'user' }],
+      },
+    });
+    expect(created.ok()).toBeTruthy();
+    const dp = await created.json();
     const yaml = await exportOdpsYaml(apiContext, dp.id);
 
     const merged = await apiContext.put('/api/v1/dataProducts/odps/yaml', {
       headers: YAML_HEADERS,
-      params: {
-        strategy: 'merge',
-        domain: domain.responseData.fullyQualifiedName ?? '',
-      },
+      params: { strategy: 'merge', domain: domainFqn },
       data: yaml,
     });
 
     expect(merged.status()).toBe(200);
-    const mergedBody = await merged.json();
+    expect((await merged.json()).id).toBe(dp.id);
 
-    expect(mergedBody.id).toBe(dp.id);
+    const refetched = await (
+      await apiContext.get(
+        `/api/v1/dataProducts/${dp.id}?fields=domains,owners`
+      )
+    ).json();
+
+    expect(refetched.domains?.length).toBeGreaterThan(0);
+    expect(refetched.owners?.length).toBeGreaterThan(0);
+    expect(refetched.owners[0].id).toBe(adminRef.id);
 
     await apiContext.delete(
       `/api/v1/dataProducts/${dp.id}?hardDelete=true&recursive=true`
