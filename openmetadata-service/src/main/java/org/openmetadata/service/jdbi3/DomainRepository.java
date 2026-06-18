@@ -37,7 +37,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
-import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -73,10 +72,26 @@ public class DomainRepository extends EntityRepository<Domain> {
   private static final String UPDATE_FIELDS = "parent,children,experts";
 
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
-  private final ThreadLocal<Set<UUID>> domainHardDeleteSubtree = new ThreadLocal<>();
+  private final ThreadLocal<DomainHardDeleteContext> domainHardDeleteSubtree = new ThreadLocal<>();
 
   private record RetainedDataProductCascadePlan(
       Set<UUID> retainedDataProductIds, Map<UUID, List<UUID>> deletingParentsByDataProduct) {}
+
+  /**
+   * Per-thread context for a single root domain hard-delete cascade: the full subtree of domain ids
+   * being deleted, the user that triggered the delete, and the set of shared data products detached
+   * during the cascade that must be re-indexed once the cascade completes.
+   */
+  private static final class DomainHardDeleteContext {
+    private final Set<UUID> deletingDomainIds;
+    private final String updatedBy;
+    private final Set<UUID> dataProductsToReindex = new HashSet<>();
+
+    private DomainHardDeleteContext(Set<UUID> deletingDomainIds, String updatedBy) {
+      this.deletingDomainIds = deletingDomainIds;
+      this.updatedBy = updatedBy;
+    }
+  }
 
   public DomainRepository() {
     super(
@@ -461,13 +476,16 @@ public class DomainRepository extends EntityRepository<Domain> {
   protected void deleteChildren(UUID id, boolean recursive, boolean hardDelete, String updatedBy) {
     boolean rootDomainHardDelete = hardDelete && domainHardDeleteSubtree.get() == null;
     if (rootDomainHardDelete) {
-      domainHardDeleteSubtree.set(collectDomainSubtreeIds(List.of(id)));
+      domainHardDeleteSubtree.set(
+          new DomainHardDeleteContext(collectDomainSubtreeIds(List.of(id)), updatedBy));
     }
     try {
       super.deleteChildren(id, recursive, hardDelete, updatedBy);
     } finally {
       if (rootDomainHardDelete) {
+        DomainHardDeleteContext context = domainHardDeleteSubtree.get();
         domainHardDeleteSubtree.remove();
+        reindexDetachedDataProducts(context);
       }
     }
   }
@@ -477,9 +495,14 @@ public class DomainRepository extends EntityRepository<Domain> {
     if (domainHardDeleteSubtree.get() != null) {
       return () -> {};
     }
-    domainHardDeleteSubtree.set(
-        collectDomainSubtreeIds(domains.stream().map(Domain::getId).toList()));
-    return domainHardDeleteSubtree::remove;
+    DomainHardDeleteContext context =
+        new DomainHardDeleteContext(
+            collectDomainSubtreeIds(domains.stream().map(Domain::getId).toList()), null);
+    domainHardDeleteSubtree.set(context);
+    return () -> {
+      domainHardDeleteSubtree.remove();
+      reindexDetachedDataProducts(context);
+    };
   }
 
   @Override
@@ -495,13 +518,14 @@ public class DomainRepository extends EntityRepository<Domain> {
       return children;
     }
 
+    DomainHardDeleteContext context = requireContext();
     RetainedDataProductCascadePlan plan =
-        retainedSharedDataProductCascadePlan(dataProductIds, currentDomainHardDeleteSubtree());
+        retainedSharedDataProductCascadePlan(dataProductIds, context.deletingDomainIds);
     if (plan.retainedDataProductIds().isEmpty()) {
       return children;
     }
     detachRetainedDataProductsFromDeletingDomains(
-        plan.retainedDataProductIds(), plan.deletingParentsByDataProduct());
+        plan.retainedDataProductIds(), plan.deletingParentsByDataProduct(), context);
 
     return children.stream()
         .filter(
@@ -524,13 +548,14 @@ public class DomainRepository extends EntityRepository<Domain> {
       return children;
     }
 
+    DomainHardDeleteContext context = requireContext();
     RetainedDataProductCascadePlan plan =
-        retainedSharedDataProductCascadePlan(dataProductIds, currentDomainHardDeleteSubtree());
+        retainedSharedDataProductCascadePlan(dataProductIds, context.deletingDomainIds);
     if (plan.retainedDataProductIds().isEmpty()) {
       return children;
     }
     detachRetainedDataProductsFromDeletingDomains(
-        plan.retainedDataProductIds(), plan.deletingParentsByDataProduct());
+        plan.retainedDataProductIds(), plan.deletingParentsByDataProduct(), context);
 
     return children.stream()
         .filter(
@@ -546,12 +571,12 @@ public class DomainRepository extends EntityRepository<Domain> {
         && DATA_PRODUCT.equals(child.getToEntity());
   }
 
-  private Set<UUID> currentDomainHardDeleteSubtree() {
-    Set<UUID> deletingDomainIds = domainHardDeleteSubtree.get();
-    if (deletingDomainIds == null) {
+  private DomainHardDeleteContext requireContext() {
+    DomainHardDeleteContext context = domainHardDeleteSubtree.get();
+    if (context == null) {
       throw new IllegalStateException("Domain hard-delete subtree context is not initialized");
     }
-    return deletingDomainIds;
+    return context;
   }
 
   private Set<UUID> collectDomainSubtreeIds(List<UUID> rootIds) {
@@ -595,24 +620,23 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   private void detachRetainedDataProductsFromDeletingDomains(
-      Set<UUID> retainedDataProductIds, Map<UUID, List<UUID>> deletingParentsByDataProduct) {
-    if (retainedDataProductIds.isEmpty()) {
-      return;
-    }
-
+      Set<UUID> retainedDataProductIds,
+      Map<UUID, List<UUID>> deletingParentsByDataProduct,
+      DomainHardDeleteContext context) {
     DataProductRepository dataProductRepository =
         (DataProductRepository) Entity.getEntityRepository(DATA_PRODUCT);
     for (UUID dataProductId : retainedDataProductIds) {
-      for (UUID domainId : listOrEmpty(deletingParentsByDataProduct.get(dataProductId))) {
-        deleteRelationship(domainId, DOMAIN, dataProductId, DATA_PRODUCT, Relationship.CONTAINS);
-        deleteRelationship(domainId, DOMAIN, dataProductId, DATA_PRODUCT, Relationship.HAS);
-      }
-      DataProduct dataProduct = dataProductRepository.find(dataProductId, ALL, false);
-      dataProduct.setDomains(dataProductRepository.getDomains(dataProduct, ALL));
-      dataProductRepository.storeEntity(dataProduct, true);
-      if (searchRepository != null) {
-        searchRepository.updateEntityIndex(dataProduct);
-      }
+      dataProductRepository.detachFromDeletingDomains(
+          dataProductId, deletingParentsByDataProduct.get(dataProductId), context.updatedBy);
+      context.dataProductsToReindex.add(dataProductId);
+    }
+  }
+
+  private void reindexDetachedDataProducts(DomainHardDeleteContext context) {
+    if (context != null && !context.dataProductsToReindex.isEmpty()) {
+      DataProductRepository dataProductRepository =
+          (DataProductRepository) Entity.getEntityRepository(DATA_PRODUCT);
+      dataProductRepository.reindexAfterDomainDetach(context.dataProductsToReindex);
     }
   }
 

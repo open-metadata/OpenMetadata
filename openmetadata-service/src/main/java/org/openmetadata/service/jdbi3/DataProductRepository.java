@@ -15,15 +15,18 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_EXPERTS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNameAlreadyExists;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
+import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.mergedInheritedEntityRefs;
 import static org.openmetadata.service.util.LineageUtil.addDomainLineage;
 import static org.openmetadata.service.util.LineageUtil.removeDomainLineage;
@@ -184,6 +187,87 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   public final EntityReference getDomain(Domain domain) {
     return getFromEntityRef(domain.getId(), Relationship.CONTAINS, DOMAIN, false);
+  }
+
+  /**
+   * Detach this data product from a set of domains that are being hard-deleted, while it still
+   * belongs to at least one surviving domain. Removes the containment relationships, then bumps the
+   * version, writes version history and emits an {@code ENTITY_UPDATED} change event using the same
+   * {@code domains} field shape as an explicit domain PATCH, so audit/version history and downstream
+   * consumers (webhooks, alerts) stay consistent with a normal domain change.
+   */
+  public void detachFromDeletingDomains(
+      UUID dataProductId, List<UUID> deletingDomainIds, String updatedBy) {
+    DataProduct original = loadForDomainDetach(dataProductId);
+    List<EntityReference> originalDomains = listOrEmpty(original.getDomains());
+    removeDomainContainment(dataProductId, deletingDomainIds);
+    List<EntityReference> updatedDomains = getDomains(original, ALL);
+    List<EntityReference> removedDomains = subtractById(originalDomains, updatedDomains);
+    if (!removedDomains.isEmpty()) {
+      persistDomainDetachVersion(original, updatedDomains, removedDomains, updatedBy);
+    }
+  }
+
+  private DataProduct loadForDomainDetach(UUID dataProductId) {
+    DataProduct dataProduct = find(dataProductId, ALL, false);
+    setFieldsInternal(dataProduct, getPutFields());
+    setInheritedFields(dataProduct, getPutFields());
+    return dataProduct;
+  }
+
+  private void removeDomainContainment(UUID dataProductId, List<UUID> deletingDomainIds) {
+    for (UUID domainId : listOrEmpty(deletingDomainIds)) {
+      deleteRelationship(domainId, DOMAIN, dataProductId, DATA_PRODUCT, Relationship.CONTAINS);
+      deleteRelationship(domainId, DOMAIN, dataProductId, DATA_PRODUCT, Relationship.HAS);
+    }
+  }
+
+  private List<EntityReference> subtractById(
+      List<EntityReference> from, List<EntityReference> toRemove) {
+    return from.stream()
+        .filter(ref -> toRemove.stream().noneMatch(kept -> kept.getId().equals(ref.getId())))
+        .toList();
+  }
+
+  private void persistDomainDetachVersion(
+      DataProduct original,
+      List<EntityReference> updatedDomains,
+      List<EntityReference> removedDomains,
+      String updatedBy) {
+    DataProduct updated = JsonUtils.deepCopy(original, DataProduct.class);
+    updated.setDomains(updatedDomains);
+    updated.setVersion(EntityUtil.nextVersion(original.getVersion()));
+    updated.setUpdatedAt(System.currentTimeMillis());
+    updated.setUpdatedBy(updatedBy != null ? updatedBy : original.getUpdatedBy());
+
+    ChangeDescription change = new ChangeDescription().withPreviousVersion(original.getVersion());
+    fieldDeleted(change, FIELD_DOMAINS, JsonUtils.pojoToJson(removedDomains));
+    updated.setChangeDescription(change);
+
+    String versionExtension = EntityUtil.getVersionExtension(DATA_PRODUCT, original.getVersion());
+    daoCollection
+        .entityExtensionDAO()
+        .insert(original.getId(), versionExtension, DATA_PRODUCT, JsonUtils.pojoToJson(original));
+    storeEntity(updated, true);
+    invalidate(updated);
+    createAndInsertChangeEvent(original, updated, change, ENTITY_UPDATED);
+  }
+
+  /**
+   * Re-index data products detached during a domain hard-delete cascade. Called at the end of the
+   * cascade rather than inline during detach, so the search-index write matches the timing of the
+   * cascade's existing {@code deleteFromSearch} calls (after the DB delete work). This narrows the
+   * DB/search divergence window; it does not make the write post-commit (the single-entity delete
+   * path is one transaction and the bulk path is non-transactional).
+   */
+  public void reindexAfterDomainDetach(Set<UUID> dataProductIds) {
+    if (searchRepository != null && !nullOrEmpty(dataProductIds)) {
+      for (UUID dataProductId : dataProductIds) {
+        DataProduct dataProduct = find(dataProductId, ALL, false);
+        setFieldsInternal(dataProduct, getPutFields());
+        searchRepository.updateEntityIndex(dataProduct);
+      }
+    }
   }
 
   @Override
