@@ -17,30 +17,35 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.StreamingOutput;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.UncheckedIOException;
 
 /**
- * Streams a search response directly to the HTTP output instead of materializing it into a single
- * in-memory String.
+ * Returns a search response either as a buffered String (the common case) or as a stream (the
+ * oversized case), so a very large document can no longer OOM the node.
  *
  * <p>The previous pattern built the entire response as one String before returning it
- * ({@code searchResponse.toJsonString()} on OpenSearch, {@code serializeSearchResponse(...)} on
- * ElasticSearch). For a single very large document — e.g. a container carrying a 170MB+ {@code
- * dataModel} — that String is hundreds of MB allocated in one shot, on top of the already-parsed
- * response object, and OOMs the node under concurrency. Writing the JSON straight to the response
- * {@link OutputStream} removes that second full-size copy of the payload.
+ * ({@code serializeSearchResponse}/{@code toJsonString}). For a single very large document — e.g. a
+ * container carrying a 170MB+ {@code dataModel} — that String is hundreds of MB allocated in one
+ * shot, on top of the already-parsed response object, and OOMs the node under concurrency.
  *
- * <p>The serialization itself is engine-specific (the OpenSearch and ElasticSearch client types are
- * distinct), so each manager supplies a {@link JsonWriter} that writes its typed response using its
- * own JSON-P mapper; this helper owns the shared JAX-RS streaming plumbing.
- *
- * <p><b>Error semantics.</b> A {@link StreamingOutput} commits the HTTP status and headers once the
- * first buffer flushes. If serialization fails after that point the status can no longer be changed,
- * so a mid-stream failure surfaces as a 200 with a truncated body rather than a clean 5xx. The
- * caller-side cache path mitigates this for the common case by serializing into a bounded buffer
- * <i>before</i> the response is committed (see {@link CapBufferingOutputStream}); only oversized
- * responses, which cannot be buffered, carry the inherent streaming trade-off.
+ * <p>{@link #bufferOrStream} serializes into a {@link CapBufferingOutputStream} first: a normal
+ * response (under {@link #MAX_BUFFERED_RESPONSE_BYTES}) is returned as a String, so the HTTP status
+ * still reflects a serialization failure (a clean 5xx with a {@code Content-Length}) and the body is
+ * cacheable. Only a response that exceeds the cap streams — there the intermediate String is exactly
+ * the allocation that OOMs, so it is avoided. Streaming carries an inherent trade-off: the status
+ * and headers are committed before the body is written, so a mid-stream failure yields a {@code 200}
+ * with a truncated body rather than a clean 5xx. This is bounded to oversized responses, and the
+ * truncation is still detectable by clients (the JSON is left incomplete/unparseable). Each manager
+ * supplies a {@link JsonWriter} that serializes its engine-specific typed response.
  */
 public final class SearchResponseStreamer {
+
+  /**
+   * Responses up to this size are buffered and returned as a String (clean error semantics);
+   * larger ones stream. Well above any normal search response — only a pathologically large single
+   * document (e.g. a 170MB {@code dataModel}) crosses it.
+   */
+  public static final int MAX_BUFFERED_RESPONSE_BYTES = 4 * 1024 * 1024;
 
   private SearchResponseStreamer() {}
 
@@ -50,8 +55,52 @@ public final class SearchResponseStreamer {
     void writeTo(OutputStream output) throws IOException;
   }
 
+  /**
+   * Buffers the response into a bounded buffer and returns it as a String, falling back to streaming
+   * only when the payload exceeds {@link #MAX_BUFFERED_RESPONSE_BYTES}. A genuine serialization
+   * failure (not a cap overflow) propagates before any bytes are committed, preserving clean 5xx
+   * semantics for the common case.
+   */
+  public static Response bufferOrStream(JsonWriter writer) {
+    CapBufferingOutputStream buffer = new CapBufferingOutputStream(MAX_BUFFERED_RESPONSE_BYTES);
+    Response response;
+    try {
+      writer.writeTo(buffer);
+      response = Response.ok(buffer.toUtf8String(), MediaType.APPLICATION_JSON_TYPE).build();
+    } catch (RuntimeException | IOException error) {
+      response = onBufferFailure(error, writer);
+    }
+    return response;
+  }
+
+  /** Streams a JSON payload straight to the HTTP output, with no intermediate full-size String. */
   public static Response stream(JsonWriter writer) {
     StreamingOutput body = writer::writeTo;
     return Response.ok(body, MediaType.APPLICATION_JSON_TYPE).build();
+  }
+
+  private static Response onBufferFailure(Throwable error, JsonWriter writer) {
+    if (!isOverCapacity(error)) {
+      throw asUnchecked(error);
+    }
+    // Too large to buffer — stream it instead. The JSON-P generator may flush an incomplete
+    // prefix into the discarded buffer; the stream below re-serializes from the in-memory response.
+    return stream(writer);
+  }
+
+  private static boolean isOverCapacity(Throwable error) {
+    // The JSON-P generator wraps an OutputStream IOException in an unchecked JsonException, so the
+    // cap signal can arrive either directly or as a cause.
+    Throwable cause = error;
+    while (cause != null && !(cause instanceof CapBufferingOutputStream.OverCapacityException)) {
+      cause = cause.getCause();
+    }
+    return cause != null;
+  }
+
+  private static RuntimeException asUnchecked(Throwable error) {
+    return error instanceof RuntimeException runtime
+        ? runtime
+        : new UncheckedIOException("Failed to serialize search response", (IOException) error);
   }
 }

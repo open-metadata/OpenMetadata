@@ -749,6 +749,9 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     }
     processedNode.add(fqn);
     SearchResponse<JsonData> searchResponse = performLineageSearchForDQ(fqn, queryFilter, deleted);
+    if (searchResponse.hits() == null || searchResponse.hits().hits() == null) {
+      return;
+    }
     for (Hit<JsonData> hit : searchResponse.hits().hits()) {
       if (hit.source() == null) {
         continue;
@@ -954,7 +957,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
    */
   private Response streamSearchResponse(SearchResponse<JsonData> searchResponse) {
     JsonpMapper mapper = client._transport().jsonpMapper();
-    return SearchResponseStreamer.stream(
+    return SearchResponseStreamer.bufferOrStream(
         output -> {
           try (JsonGenerator generator = mapper.jsonProvider().createGenerator(output)) {
             searchResponse.serialize(generator, mapper);

@@ -495,13 +495,30 @@ const ContainerFieldCardsV1: React.FC<{
     if (!isUndefined(inlineColumns) || !containerFqn) {
       return;
     }
+    // Guard against a stale fetch: if the user switches containers while this request is in flight,
+    // ignore its result so the panel never shows the previous container's columns.
+    let cancelled = false;
     setIsColumnsLoading(true);
     getContainerByFQN(containerFqn, { fields: TabSpecificField.DATAMODEL })
-      .then((container) =>
-        setFetchedColumns(container.dataModel?.columns ?? [])
-      )
-      .catch(() => setFetchedColumns([]))
-      .finally(() => setIsColumnsLoading(false));
+      .then((container) => {
+        if (!cancelled) {
+          setFetchedColumns(container.dataModel?.columns ?? []);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setFetchedColumns([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsColumnsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [containerFqn, inlineColumns]);
 
   const columns = inlineColumns ?? fetchedColumns ?? [];
