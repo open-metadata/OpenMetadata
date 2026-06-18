@@ -183,7 +183,10 @@ const BulkEntityImportPage = () => {
   );
 
   const metricBulkEditScope = routeState?.metricBulkEditScope;
-  const selectedMetricNamesForBulkEdit = routeState?.selectedMetricNames ?? [];
+  const selectedMetricNamesForBulkEdit = useMemo(
+    () => routeState?.selectedMetricNames ?? [],
+    [routeState]
+  );
 
   const [activeStep, setActiveStep] = useState<VALIDATION_STEP>(
     VALIDATION_STEP.UPLOAD
