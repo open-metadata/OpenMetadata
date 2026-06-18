@@ -249,7 +249,7 @@ export const InputOutputPortsTab = forwardRef<
                     {isLineageCollapsed && (
                       <Typography
                         as="p"
-                        className="tw:text-xs tw:text-gray-700 tw:font-light">
+                        className="tw:text-xs tw:text-secondary tw:font-light">
                         ({inputPortsCount} {t('label.input').toLowerCase()},{' '}
                         {outputPortsCount} {t('label.output').toLowerCase()})
                       </Typography>
@@ -304,7 +304,7 @@ export const InputOutputPortsTab = forwardRef<
                       </Typography>
                       <Typography
                         as="p"
-                        className="tw:text-xs tw:text-gray-700 tw:font-light"
+                        className="tw:text-xs tw:text-secondary tw:font-light"
                         data-testid="input-port-count">
                         ({inputPortsCount})
                       </Typography>
@@ -394,7 +394,7 @@ export const InputOutputPortsTab = forwardRef<
                       </Typography>
                       <Typography
                         as="p"
-                        className="tw:text-xs tw:text-gray-700 tw:font-light"
+                        className="tw:text-xs tw:text-secondary tw:font-light"
                         data-testid="output-port-count">
                         ({outputPortsCount})
                       </Typography>

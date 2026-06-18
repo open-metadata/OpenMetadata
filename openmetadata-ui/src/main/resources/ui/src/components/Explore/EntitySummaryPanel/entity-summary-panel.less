@@ -17,12 +17,12 @@
 .entity-summary-panel-container,
 .column-detail-panel-container {
   height: 100%;
-  background: @white;
+  background: var(--tw-color-bg-primary);
   &.explore,
   &.lineage,
   &.glossary-term-assets-tab,
   &.ontology-explorer {
-    background: @background-primary;
+    background: var(--tw-color-utility-gray-blue-50);
 
     .summary-panel-container.drawer-summary-panel-container {
       flex: 1;
@@ -67,7 +67,7 @@
             border-radius: 0px;
           }
           .ant-tabs-tabpane {
-            background-color: @white;
+            background-color: var(--tw-color-bg-primary);
             overflow-y: auto;
             margin: 0px;
           }
@@ -98,7 +98,7 @@
       height: 100%;
       border-radius: 8px;
       position: relative;
-      background: @white;
+      background: var(--tw-color-bg-primary);
       &::-webkit-scrollbar {
         width: 0px;
         background: transparent;
@@ -193,7 +193,7 @@
     z-index: 999;
     top: 0;
     flex: 1;
-    background-color: @white;
+    background-color: var(--tw-color-bg-primary);
   }
   .title-container {
     display: flex;
