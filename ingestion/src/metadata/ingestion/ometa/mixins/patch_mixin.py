@@ -498,39 +498,51 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
     def _prepare_destination_for_column_tags(
         self,
-        table: ClassifiableEntityType,
         instance: ClassifiableEntityType,
         column_tags: List[ColumnTag],  # noqa: UP006
         operation: PatchOperation,
     ) -> ClassifiableEntityType | None:
-        if isinstance(table, Table) and isinstance(instance, Table):
-            table.columns = instance.columns
-            destination = table.model_copy(deep=True)
-            columns = destination.columns
-        elif isinstance(table, Container) and isinstance(instance, Container):
-            if table.dataModel is None or instance.dataModel is None:
-                columns = None
-            else:
-                table.dataModel.columns = instance.dataModel.columns
-                destination = table.model_copy(deep=True)
-                columns = destination.dataModel.columns if destination.dataModel else None
-        else:
-            logger.warning(
-                "Unsupported entity type for column tag patching: %s",
-                type(table).__name__,
-            )
+        patch_info = self._column_tag_patch_info(instance)
+        if patch_info is None:
             return None
+        _, columns = patch_info
 
         if columns is None:
             logger.warning(
                 "Entity %s has no columns, skipping column tag patch",
-                table.fullyQualifiedName.root if table.fullyQualifiedName else type(table).__name__,
+                instance.fullyQualifiedName.root if instance.fullyQualifiedName else type(instance).__name__,
+            )
+            return None
+
+        destination = instance.model_copy(deep=True)
+        destination_info = self._column_tag_patch_info(destination)
+        if destination_info is None:
+            return None
+        _, destination_columns = destination_info
+        if destination_columns is None:
+            logger.warning(
+                "Entity %s has no columns, skipping column tag patch",
+                destination.fullyQualifiedName.root if destination.fullyQualifiedName else type(destination).__name__,
             )
             return None
 
         for column_tag in column_tags or []:
-            update_column_tags(columns, column_tag, operation)
+            update_column_tags(destination_columns, column_tag, operation)
         return destination
+
+    def _column_tag_patch_info(
+        self, entity: ClassifiableEntityType
+    ) -> tuple[List[str], Optional[List[Column]]] | None:  # noqa: UP006, UP045
+        if isinstance(entity, Table):
+            return ["tags", "columns"], entity.columns
+        if isinstance(entity, Container):
+            return ["tags", "dataModel"], entity.dataModel.columns if entity.dataModel else None
+
+        logger.warning(
+            "Unsupported entity type for column tag patching: %s",
+            type(entity).__name__,
+        )
+        return None
 
     def patch_column_tags(
         self,
@@ -555,16 +567,10 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             logger.warning("No entity provided for column tag patching")
             return None
 
-        if isinstance(table, Table):
-            fields = ["tags", "columns"]
-        elif isinstance(table, Container):
-            fields = ["tags", "dataModel"]
-        else:
-            logger.warning(
-                "Unsupported entity type for column tag patching: %s",
-                type(table).__name__,
-            )
+        patch_info = self._column_tag_patch_info(table)
+        if patch_info is None:
             return None
+        fields, _ = patch_info
 
         entity_type = type(table)
         entity_label = table.fullyQualifiedName.root if table.fullyQualifiedName else entity_type.__name__
@@ -577,7 +583,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             if not instance:
                 return None
 
-            destination = self._prepare_destination_for_column_tags(table, instance, column_tags, operation)
+            destination = self._prepare_destination_for_column_tags(instance, column_tags, operation)
             if destination is None:
                 return None
 
@@ -597,7 +603,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             try:
                 patched_entity = self.patch(
                     entity=entity_type,
-                    source=table,
+                    source=instance,
                     destination=destination,
                     if_match=None if falling_back else instance_etag,
                 )
