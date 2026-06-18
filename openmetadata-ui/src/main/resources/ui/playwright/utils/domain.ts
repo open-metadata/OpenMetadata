@@ -326,11 +326,11 @@ export const selectDataProduct = async (
     );
   }
 
-  const searchBox = page
-    .getByTestId('page-layout-v1')
-    .getByPlaceholder('Search');
+  await page.waitForURL('**/dataProduct');
 
   await waitForAllLoadersToDisappear(page);
+
+  const searchBox = page.getByTestId('data-product-list-search-bar');
   await searchBox.waitFor({ state: 'visible' });
 
   await Promise.all([
