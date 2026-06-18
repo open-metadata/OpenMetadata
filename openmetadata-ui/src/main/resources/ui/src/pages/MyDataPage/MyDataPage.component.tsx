@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import DeferredWidget from '../../components/common/DeferredWidget/DeferredWidget.component';
 import CustomiseLandingPageHeader from '../../components/MyData/CustomizableComponents/CustomiseLandingPageHeader/CustomiseLandingPageHeader';
+import LandingPageWidgetRenderer from '../../components/MyData/LandingPageWidgetRenderer/LandingPageWidgetRenderer';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
 import {
@@ -55,15 +56,6 @@ const WelcomeScreen = withSuspenseFallback(
   lazy(
     () =>
       import('../../components/MyData/WelcomeScreen/WelcomeScreen.component')
-  )
-);
-
-const LandingPageWidgetRenderer = withSuspenseFallback(
-  lazy(
-    () =>
-      import(
-        '../../components/MyData/LandingPageWidgetRenderer/LandingPageWidgetRenderer'
-      )
   )
 );
 
