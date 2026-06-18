@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.util;
 
+import org.openmetadata.schema.configuration.AIDeletionPolicy;
 import org.openmetadata.schema.configuration.AISettings;
 import org.openmetadata.schema.configuration.PromptConfig;
 import org.openmetadata.schema.settings.SettingsType;
@@ -48,6 +49,24 @@ public final class AISettingsUtil {
     return masterOn(s)
         && s.getOntologyAgent() != null
         && Boolean.TRUE.equals(s.getOntologyAgent().getEnabled());
+  }
+
+  /**
+   * Returns the configured {@link AIDeletionPolicy}, defaulting to {@link AIDeletionPolicy#CASCADE}
+   * when the setting is absent. Shared between {@link
+   * org.openmetadata.service.drive.ontology.OntologyProcessingEngine} and {@link
+   * org.openmetadata.service.jdbi3.ContextMemoryRepository} to avoid duplication.
+   */
+  public static AIDeletionPolicy deletionPolicy(final AISettings s) {
+    final AIDeletionPolicy result;
+    if (s != null
+        && s.getOntologyAgent() != null
+        && s.getOntologyAgent().getDeletionPolicy() != null) {
+      result = s.getOntologyAgent().getDeletionPolicy();
+    } else {
+      result = AIDeletionPolicy.CASCADE;
+    }
+    return result;
   }
 
   public static String memoryExtractionPrompt(AISettings s, String fallback) {

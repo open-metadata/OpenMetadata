@@ -284,6 +284,39 @@ public class OntologyReconciler {
     dropReusedLinks(memory, Entity.METRIC, metricRepo);
   }
 
+  /**
+   * Restores CASCADE-soft-deleted owned entities when their source memory is restored. Only
+   * automation-owned entities that still have a {@code DERIVED_FROM} edge back to this memory are
+   * restored — ORPHAN/DEPRECATE-released entities lost that edge during deletion, so they are
+   * correctly NOT re-linked. {@link EntityRepository#restoreEntity} is a no-op on already-active
+   * entities, so calling it unconditionally on all {@code Include.ALL} results is safe.
+   */
+  public void onMemoryRestored(final ContextMemory memory) {
+    restoreOwnedByType(memory, Entity.GLOSSARY_TERM, termRepo);
+    restoreOwnedByType(memory, Entity.METRIC, metricRepo);
+  }
+
+  private void restoreOwnedByType(
+      final ContextMemory memory, final String entityType, final EntityRepository<?> repo) {
+    for (final EntityReference ref :
+        repo.findFrom(
+            memory.getId(),
+            Entity.CONTEXT_MEMORY,
+            Relationship.DERIVED_FROM,
+            entityType,
+            Include.ALL)) {
+      if (isAutomationOwnedIncludeAll(repo, ref)) {
+        repo.restoreEntity(ONTOLOGY_BOT_NAME, ref.getId());
+      }
+    }
+  }
+
+  private boolean isAutomationOwnedIncludeAll(
+      final EntityRepository<?> repo, final EntityReference ref) {
+    final EntityInterface entity = repo.find(ref.getId(), Include.ALL);
+    return entity.getProvider() == ProviderType.AUTOMATION;
+  }
+
   private void retireAllOwned(
       final ContextMemory memory,
       final String entityType,

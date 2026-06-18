@@ -27,6 +27,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.configuration.AIDeletionPolicy;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
@@ -37,8 +38,11 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.drive.ontology.OntologyProcessingEngine;
+import org.openmetadata.service.drive.ontology.OntologyReconciler;
 import org.openmetadata.service.resources.context.ContextMemoryResource;
 import org.openmetadata.service.search.vector.ContextMemoryBodyTextContributor;
+import org.openmetadata.service.util.AISettingsUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -442,6 +446,65 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
   private static List<EntityReference> asRefList(EntityReference ref) {
     return ref == null ? List.of() : List.of(ref);
+  }
+
+  // ------------------------------------------------------------------
+  // Ontology Agent lifecycle hooks
+  // ------------------------------------------------------------------
+
+  @Override
+  protected void postCreate(ContextMemory entity) {
+    super.postCreate(entity);
+    scheduleOntology(entity);
+  }
+
+  @Override
+  protected void postUpdate(ContextMemory original, ContextMemory updated) {
+    super.postUpdate(original, updated);
+    scheduleOntology(updated);
+  }
+
+  private void scheduleOntology(final ContextMemory entity) {
+    if (AISettingsUtil.isOntologyAgentEnabled(AISettingsUtil.get())) {
+      OntologyProcessingEngine.instance().schedule(entity.getId());
+    }
+  }
+
+  // Knowledge-pill cascade hooks fire BEFORE relationshipDAO().deleteAll(id) so the
+  // DERIVED_FROM edges are still queryable when the reconciler runs (see design spec §9).
+  @Override
+  @org.jdbi.v3.sqlobject.transaction.Transaction
+  protected void softDeleteAdditionalChildren(final UUID memoryId, final String deletedBy) {
+    cascadeOntology(memoryId, false);
+  }
+
+  @Override
+  @org.jdbi.v3.sqlobject.transaction.Transaction
+  protected void hardDeleteAdditionalChildren(final UUID memoryId, final String deletedBy) {
+    cascadeOntology(memoryId, true);
+  }
+
+  @Override
+  @org.jdbi.v3.sqlobject.transaction.Transaction
+  protected void restoreAdditionalChildren(final UUID memoryId, final String restoredBy) {
+    final ContextMemory memory = get(null, memoryId, getFields(""), Include.ALL, false);
+    ontologyReconciler().onMemoryRestored(memory);
+  }
+
+  private void cascadeOntology(final UUID memoryId, final boolean hardDelete) {
+    final ContextMemory memory = get(null, memoryId, getFields(""), Include.ALL, false);
+    final AIDeletionPolicy policy = AISettingsUtil.deletionPolicy(AISettingsUtil.get());
+    ontologyReconciler().onMemoryDeleted(memory, hardDelete, policy);
+  }
+
+  private OntologyReconciler ontologyReconciler() {
+    final GlossaryTermRepository termRepo =
+        (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
+    final MetricRepository metricRepo =
+        (MetricRepository) Entity.getEntityRepository(Entity.METRIC);
+    final GlossaryRepository glossaryRepo =
+        (GlossaryRepository) Entity.getEntityRepository(Entity.GLOSSARY);
+    return new OntologyReconciler(termRepo, metricRepo, glossaryRepo);
   }
 
   // ------------------------------------------------------------------

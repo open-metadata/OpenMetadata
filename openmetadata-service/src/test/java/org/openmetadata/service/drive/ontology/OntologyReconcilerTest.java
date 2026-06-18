@@ -92,6 +92,18 @@ class OntologyReconcilerTest {
         .thenReturn(result);
   }
 
+  private void stubFindFromAll(
+      EntityRepository<?> repo,
+      Relationship relationship,
+      String fromType,
+      List<EntityReference> result) {
+    lenient()
+        .when(
+            repo.findFrom(
+                memory.getId(), Entity.CONTEXT_MEMORY, relationship, fromType, Include.ALL))
+        .thenReturn(result);
+  }
+
   private OntologyReconciler reconciler() {
     return new OntologyReconciler(termRepo, metricRepo, glossaryRepo);
   }
@@ -583,5 +595,54 @@ class OntologyReconcilerTest {
     assertEquals(0, result.created());
     assertEquals(0, result.reused());
     verify(termRepo, never()).createInternal(any());
+  }
+
+  @Test
+  void onMemoryRestoredRestoresOwnedAutomationEntities() {
+    EntityReference ownedTermRef = ref("OwnedTerm", Entity.GLOSSARY_TERM);
+    EntityReference ownedMetricRef = ref("OwnedMetric", Entity.METRIC);
+    stubFindFromAll(
+        termRepo, Relationship.DERIVED_FROM, Entity.GLOSSARY_TERM, List.of(ownedTermRef));
+    stubFindFromAll(metricRepo, Relationship.DERIVED_FROM, Entity.METRIC, List.of(ownedMetricRef));
+    GlossaryTerm ownedTerm =
+        new GlossaryTerm().withId(ownedTermRef.getId()).withProvider(ProviderType.AUTOMATION);
+    Metric ownedMetric =
+        new Metric().withId(ownedMetricRef.getId()).withProvider(ProviderType.AUTOMATION);
+    when(termRepo.find(ownedTermRef.getId(), Include.ALL)).thenReturn(ownedTerm);
+    when(metricRepo.find(ownedMetricRef.getId(), Include.ALL)).thenReturn(ownedMetric);
+
+    reconciler().onMemoryRestored(memory);
+
+    verify(termRepo).restoreEntity(BOT, ownedTermRef.getId());
+    verify(metricRepo).restoreEntity(BOT, ownedMetricRef.getId());
+  }
+
+  @Test
+  void onMemoryRestoredDoesNotRestoreHumanAdoptedEntities() {
+    EntityReference adoptedRef = ref("AdoptedTerm", Entity.GLOSSARY_TERM);
+    stubFindFromAll(termRepo, Relationship.DERIVED_FROM, Entity.GLOSSARY_TERM, List.of(adoptedRef));
+    stubFindFromAll(metricRepo, Relationship.DERIVED_FROM, Entity.METRIC, List.of());
+    GlossaryTerm adopted =
+        new GlossaryTerm().withId(adoptedRef.getId()).withProvider(ProviderType.USER);
+    when(termRepo.find(adoptedRef.getId(), Include.ALL)).thenReturn(adopted);
+
+    reconciler().onMemoryRestored(memory);
+
+    verify(termRepo, never()).restoreEntity(any(), any());
+    verify(metricRepo, never()).restoreEntity(any(), any());
+  }
+
+  @Test
+  void onMemoryRestoredDoesNotRestoreOrphanReleasedEntities() {
+    // ORPHAN/DEPRECATE policy drops the DERIVED_FROM edge during delete; findFrom returns nothing.
+    stubFindFromAll(termRepo, Relationship.DERIVED_FROM, Entity.GLOSSARY_TERM, List.of());
+    stubFindFromAll(metricRepo, Relationship.DERIVED_FROM, Entity.METRIC, List.of());
+
+    reconciler().onMemoryRestored(memory);
+
+    verify(termRepo, never()).restoreEntity(any(), any());
+    verify(metricRepo, never()).restoreEntity(any(), any());
+    verify(termRepo, never()).find(any(UUID.class), any(Include.class));
+    verify(metricRepo, never()).find(any(UUID.class), any(Include.class));
   }
 }

@@ -220,15 +220,7 @@ public class OntologyProcessingEngine {
   }
 
   private AIDeletionPolicy deletionPolicy() {
-    final AISettings settings = AISettingsUtil.get();
-    final AIDeletionPolicy result;
-    if (settings.getOntologyAgent() != null
-        && settings.getOntologyAgent().getDeletionPolicy() != null) {
-      result = settings.getOntologyAgent().getDeletionPolicy();
-    } else {
-      result = AIDeletionPolicy.CASCADE;
-    }
-    return result;
+    return AISettingsUtil.deletionPolicy(AISettingsUtil.get());
   }
 
   private OntologyStats buildStats(final String hash, final OntologyReconciler.ReconcileResult r) {
