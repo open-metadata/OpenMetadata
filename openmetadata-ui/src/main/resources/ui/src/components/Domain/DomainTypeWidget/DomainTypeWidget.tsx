@@ -21,7 +21,7 @@ import { domainTypeTooltipDataRender } from '../../../utils/DomainUtils';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import FormItemLabel from '../../common/Form/FormItemLabel';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import DomainTypeSelectForm from '../DomainTypeSelectForm/DomainTypeSelectForm.component';
 
 export const DomainTypeWidget = () => {

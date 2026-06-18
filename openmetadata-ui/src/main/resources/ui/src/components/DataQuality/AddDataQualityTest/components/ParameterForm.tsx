@@ -27,7 +27,14 @@ import {
 import { FormListProps, RuleRender } from 'antd/lib/form';
 import 'codemirror/addon/fold/foldgutter.css';
 import { debounce, isUndefined } from 'lodash';
-import { ReactElement, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  lazy,
+  ReactElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { WILD_CARD_CHAR } from '../../../../constants/char.constants';
@@ -48,7 +55,7 @@ import {
 } from '../../../../interface/search.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { getPopupContainer } from '../../../../utils/formUtils';
+import { getPopupContainer } from '../../../../utils/formPureUtils';
 import {
   getSelectedColumnsSet,
   validateEquals,
@@ -56,9 +63,12 @@ import {
   validateLessThanOrEquals,
   validateNotEquals,
 } from '../../../../utils/ParameterForm/ParameterFormUtils';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import '../../../Database/Profiler/TableProfiler/table-profiler.less';
-import CodeEditor from '../../../Database/SchemaEditor/CodeEditor';
 import { ParameterFormProps } from '../AddDataQualityTest.interface';
+const CodeEditor = withSuspenseFallback(
+  lazy(() => import('../../../Database/SchemaEditor/CodeEditor'))
+);
 
 const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
   const { t } = useTranslation();

@@ -38,13 +38,15 @@ import { createEntityWithCoverImage } from '../../utils/CoverImageUploadUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { submitAndClose } from '../../utils/FormDrawerUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
-import { getClassificationTags, getGlossaryTags } from '../../utils/TagsUtils';
+import {
+  getClassificationTags,
+  getGlossaryTags,
+} from '../../utils/TagsPureUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
 import { useFormDrawerWithHook } from '../common/atoms/drawer';
 import { useFilterSelection } from '../common/atoms/filters/useFilterSelection';
-import { useBreadcrumbs } from '../common/atoms/navigation/useBreadcrumbs';
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useSearch } from '../common/atoms/navigation/useSearch';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
@@ -55,6 +57,7 @@ import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.interface';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import TagBadgeList from '../common/TagBadgeList/TagBadgeList.component';
 import AddDomainForm, {
@@ -155,20 +158,6 @@ const DataProductListPage = () => {
         ),
       loading: isLoading,
     });
-
-  const { breadcrumbs } = useBreadcrumbs({
-    items: [
-      ...(isMarketplace
-        ? [
-            {
-              name: t('label.data-marketplace'),
-              url: ROUTES.DATA_MARKETPLACE,
-            },
-          ]
-        : []),
-      { name: t('label.data-product-plural'), url: dataProductBasePath },
-    ],
-  });
 
   const { pageHeader } = usePageHeader({
     titleKey: 'label.data-product-plural',
@@ -385,7 +374,19 @@ const DataProductListPage = () => {
 
   return (
     <>
-      {breadcrumbs}
+      <HeaderBreadcrumb
+        items={[
+          ...(isMarketplace
+            ? [
+                {
+                  label: t('label.data-marketplace'),
+                  href: ROUTES.DATA_MARKETPLACE,
+                },
+              ]
+            : []),
+          { label: t('label.data-product-plural'), href: dataProductBasePath },
+        ]}
+      />
       {pageHeader}
 
       <Card style={{ marginBottom: 20 }} variant="elevated">

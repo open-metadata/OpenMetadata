@@ -21,7 +21,7 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Clock, Link04, Pin01, Trash01 } from '@untitledui/icons';
+import { Clock, Copy06, Pin01, Trash01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -212,7 +212,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
             {(memory.owners?.[0]?.displayName ??
               memory.owners?.[0]?.name ??
               memory.updatedBy) && (
-              <Typography className="tw:text-gray-700" size="text-sm">
+              <Typography className="tw:text-secondary" size="text-sm">
                 {memory.owners?.[0]?.displayName ??
                   memory.owners?.[0]?.name ??
                   memory.updatedBy}
@@ -235,7 +235,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
           </Typography>
 
           <Typography
-            className="tw:text-gray-600 tw:line-clamp-2"
+            className="tw:text-tertiary tw:line-clamp-2"
             size="text-xs">
             {stripMarkdown(memory.summary ?? memory.answer ?? '')}
           </Typography>
@@ -258,7 +258,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
                   )}
                   <Typography
                     ellipsis
-                    className="tw:text-gray-700"
+                    className="tw:text-secondary"
                     size="text-xs">
                     {getEntityName(tag)}
                   </Typography>
@@ -297,13 +297,8 @@ const MemoryRow: FC<MemoryRowProps> = ({
               setPinAnimKey((prev) => prev + 1);
             }}
           />
-          <CopyLinkButton url={memoryUrl}>
-            <Link04
-              aria-hidden="true"
-              className="tw:-rotate-45"
-              size={17}
-              strokeWidth={1.8}
-            />
+          <CopyLinkButton className="tw:w-7 tw:h-7" url={memoryUrl}>
+            <Copy06 aria-hidden="true" size={17} strokeWidth={1.8} />
           </CopyLinkButton>
           {canActOnMemory && onEditMemory && (
             <Tooltip title={t('label.edit')}>
@@ -355,7 +350,10 @@ const MemoriesView: FC<MemoriesViewProps> = ({
         direction="col"
         gap={1}
         justify="center">
-        <Typography className="tw:text-gray-700" size="text-sm" weight="medium">
+        <Typography
+          className="tw:text-secondary"
+          size="text-sm"
+          weight="medium">
           {t('label.no-entity-available', {
             entity: t('label.memory-plural'),
           })}

@@ -14,8 +14,9 @@ Databricks Unity Catalog Source source methods.
 
 import json
 import traceback
+from functools import partial
 from threading import RLock
-from typing import Any, Iterable, List, Optional, Tuple  # noqa: UP035
+from typing import Any, Callable, Iterable, List, Optional, Tuple  # noqa: UP035
 
 from databricks.sdk.service.catalog import ColumnInfo
 from databricks.sdk.service.catalog import TableConstraint as DBTableConstraint
@@ -176,8 +177,25 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
     def get_configured_database(self) -> Optional[str]:  # noqa: UP045
         return self.service_connection.catalog
 
+    def _iterate_listing(self, list_call: Callable[[], Iterable[Any]], listing_name: str) -> Iterable[Any]:
+        """
+        Iterate a Databricks SDK listing, recording a failure and stopping gracefully
+        instead of aborting the whole ingestion when the API call or its pagination
+        raises mid-iteration.
+        """
+        try:
+            yield from list_call()
+        except Exception as exc:
+            self.status.failed(
+                StackTraceError(
+                    name=listing_name,
+                    error=f"Error while listing {listing_name}, results may be partial: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
     def get_database_names_raw(self) -> Iterable[str]:
-        for catalog in self.client.catalogs.list():
+        for catalog in self._iterate_listing(self.client.catalogs.list, "catalogs"):
             catalog_name = catalog.name
             if not catalog_name:
                 continue
@@ -260,7 +278,6 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             with self._state_lock:
                 self.incremental_table_processor = incremental_table_processor
 
-
     def yield_database(self, database_name: str) -> Iterable[Either[CreateDatabaseRequest]]:
         """
         From topology.
@@ -283,7 +300,8 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         return schema names
         """
         catalog_name = self.context.get().database
-        for schema in self.client.schemas.list(catalog_name=catalog_name):
+        schema_listing = partial(self.client.schemas.list, catalog_name=catalog_name)
+        for schema in self._iterate_listing(schema_listing, f"schemas in catalog [{catalog_name}]"):
             try:
                 schema_name = schema.name
                 if not schema_name:
@@ -392,10 +410,16 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             yield from self._get_incremental_tables(catalog_name, schema_name)
         else:
             table_with_constraints = self._get_tables_with_constraints()
-            for table in self.client.tables.list(
+            # max_results=0 makes the server paginate with its configured page
+            # size; leaving it unset returns every table of the schema in one
+            # response, which OOMs the pod on schemas with many wide tables.
+            table_listing = partial(
+                self.client.tables.list,
                 catalog_name=catalog_name,
                 schema_name=schema_name,
-            ):
+                max_results=0,
+            )
+            for table in self._iterate_listing(table_listing, f"tables in schema [{catalog_name}.{schema_name}]"):
                 if (table.catalog_name, table.schema_name, table.name) in table_with_constraints:
                     # Only tables with constraints require full fetch; list() doesn't include constraint details
                     try:
@@ -403,8 +427,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                     except Exception as exc:
                         msg = (
                             f"Unexpected exception in fetching constraints "
-                            f"Constraints will be ignored."
-                            f"table [{table.full_name}]: {exc}."
+                            f"Constraints will be ignored. table [{table.full_name}]: {exc}."
                         )
                         logger.warning(msg)
                         self.status.warning(table.name, msg)
@@ -713,28 +736,35 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         process table regular columns info
         """
         for column in column_data:
-            parsed_string = {}
-            if column.type_text:
-                if column.type_text.lower().startswith("union"):
-                    column.type_text = column.type_text.replace(" ", "")
-                if column.type_text.lower() == "struct" or column.type_text.lower() == "array":
-                    column.type_text = column.type_text.lower() + "<>"
+            try:
+                parsed_string = {}
+                if column.type_text:
+                    if column.type_text.lower().startswith("union"):
+                        column.type_text = column.type_text.replace(" ", "")
+                    if column.type_text.lower() == "struct" or column.type_text.lower() == "array":
+                        column.type_text = column.type_text.lower() + "<>"
 
-                parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
-                    column.type_text.lower()
+                    parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
+                        column.type_text.lower()
+                    )
+                parsed_string["name"] = column.name[:256]
+                parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
+                if column.comment:
+                    parsed_string["description"] = Markdown(column.comment)
+                parsed_string["tags"] = self.get_column_tag_labels(table_name=table_name, column={"name": column.name})
+                parsed_string["ordinalPosition"] = column.position
+                parsed_column = Column(**parsed_string)
+                self.add_complex_datatype_descriptions(
+                    column=parsed_column,
+                    column_json=ColumnJson.model_validate(json.loads(column.type_json)),
                 )
-            parsed_string["name"] = column.name[:256]
-            parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
-            if column.comment:
-                parsed_string["description"] = Markdown(column.comment)
-            parsed_string["tags"] = self.get_column_tag_labels(table_name=table_name, column={"name": column.name})
-            parsed_string["ordinalPosition"] = column.position
-            parsed_column = Column(**parsed_string)
-            self.add_complex_datatype_descriptions(
-                column=parsed_column,
-                column_json=ColumnJson.model_validate(json.loads(column.type_json)),
-            )
-            yield parsed_column
+                yield parsed_column
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Error processing column [{getattr(column, 'name', None)}] "
+                    f"of table [{table_name}], skipping it: {exc}"
+                )
 
     @staticmethod
     def _ometa_tag_call_args(tag_name: str, tag_value: str | None) -> dict:
@@ -755,6 +785,27 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             "classification_description": UNITY_CATALOG_VALUELESS_CLASSIFICATION_DESCRIPTION,
         }
 
+    def _yield_tags_for_queries(
+        self,
+        query_tag_fqn_builder_mapping: Tuple[Tuple[str, Callable[[Any], List[Any]]], ...],  # noqa: UP006
+        error_context: str,
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Run each tag query independently so one failing query does not abort the rest."""
+        for query, tag_fqn_builder in query_tag_fqn_builder_mapping:
+            try:
+                for tag in self.sql_connection.execute(text(query)):
+                    if not tag.tag_name:
+                        continue
+                    yield from get_ometa_tag_and_classification(
+                        tag_fqn=FullyQualifiedEntityName(fqn._build(*tag_fqn_builder(tag))),
+                        **self._ometa_tag_call_args(tag.tag_name, tag.tag_value),
+                        metadata=self.metadata,
+                        system_tags=True,
+                    )
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error getting tags for {error_context}: {exc}")
+
     def yield_database_tag(self, database_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """Get Unity Catalog database/catalog tags using SQL query"""
         query_tag_fqn_builder_mapping = (
@@ -771,20 +822,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                 ],
             ),
         )
-        try:
-            for query, tag_fqn_builder in query_tag_fqn_builder_mapping:
-                for tag in self.sql_connection.execute(text(query)):
-                    if not tag.tag_name:
-                        continue
-                    yield from get_ometa_tag_and_classification(
-                        tag_fqn=FullyQualifiedEntityName(fqn._build(*tag_fqn_builder(tag))),
-                        **self._ometa_tag_call_args(tag.tag_name, tag.tag_value),
-                        metadata=self.metadata,
-                        system_tags=True,
-                    )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Error getting tags for catalog/schema {database_name}: {exc}")
+        yield from self._yield_tags_for_queries(query_tag_fqn_builder_mapping, f"catalog/schema {database_name}")
 
     def yield_tag(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """Get Unity Catalog schema tags using SQL query"""
@@ -810,20 +848,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                 ],
             ),
         )
-        try:
-            for query, tag_fqn_builder in query_tag_fqn_builder_mapping:
-                for tag in self.sql_connection.execute(text(query)):
-                    if not tag.tag_name:
-                        continue
-                    yield from get_ometa_tag_and_classification(
-                        tag_fqn=FullyQualifiedEntityName(fqn._build(*tag_fqn_builder(tag))),
-                        **self._ometa_tag_call_args(tag.tag_name, tag.tag_value),
-                        metadata=self.metadata,
-                        system_tags=True,
-                    )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Error getting tags for schema {schema_name}: {exc}")
+        yield from self._yield_tags_for_queries(query_tag_fqn_builder_mapping, f"schema {schema_name}")
 
     def get_stored_procedures(self) -> Iterable[Any]:
         """Not implemented"""

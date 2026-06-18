@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 import { Space, Typography } from 'antd';
+import { lazy } from 'react';
 import { ReactComponent as IconTerm } from '../../assets/svg/book.svg';
-import { useGenericContext } from '../../components/Customization/GenericProvider/GenericProvider';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
+import { useGenericContext } from '../../components/Customization/GenericProvider/GenericContext';
 import { CommonWidgets } from '../../components/DataAssets/CommonWidgets/CommonWidgets';
 import { DomainLabelV2 } from '../../components/DataAssets/DomainLabelV2/DomainLabelV2';
 import { OwnerLabelV2 } from '../../components/DataAssets/OwnerLabelV2/OwnerLabelV2';
@@ -20,7 +22,6 @@ import { ReviewerLabelV2 } from '../../components/DataAssets/ReviewerLabelV2/Rev
 import GlossaryTermReferences from '../../components/Glossary/GlossaryTerms/tabs/GlossaryTermReferences';
 import GlossaryTermSynonyms from '../../components/Glossary/GlossaryTerms/tabs/GlossaryTermSynonyms';
 import RelatedTerms from '../../components/Glossary/GlossaryTerms/tabs/RelatedTerms';
-import WorkflowHistory from '../../components/Glossary/GlossaryTerms/tabs/WorkFlowTab/WorkflowHistory.component';
 import { DE_ACTIVE_COLOR } from '../../constants/constants';
 import { GlossaryTermDetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../enums/entity.enum';
@@ -33,6 +34,15 @@ import {
   convertEntityReferencesToTagLabels,
   convertTagLabelsToEntityReferences,
 } from '../EntityReferenceUtils';
+
+const WorkflowHistory = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/Glossary/GlossaryTerms/tabs/WorkFlowTab/WorkflowHistory.component'
+      )
+  )
+);
 
 export const getGlossaryTermWidgetFromKey = (widgetConfig: WidgetConfig) => {
   if (

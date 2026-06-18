@@ -15,21 +15,13 @@
 import Icon from '@ant-design/icons';
 import { Col, Row, Typography } from 'antd';
 import { get, isEmpty } from 'lodash';
+import { lazy } from 'react';
 import { Link } from 'react-router-dom';
 import { SearchedDataProps } from '../../src/components/SearchedData/SearchedData.interface';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
+import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import { GenericProvider } from '../components/Customization/GenericProvider/GenericProvider';
-import SchemaEditor from '../components/Database/SchemaEditor/SchemaEditor';
-import APIEndpointSummary from '../components/Explore/EntitySummaryPanel/APIEndpointSummary/APIEndpointSummary';
-import { ColumnSummaryList } from '../components/Explore/EntitySummaryPanel/ColumnSummaryList/ColumnsSummaryList';
-import DataProductSummary from '../components/Explore/EntitySummaryPanel/DataProductSummary/DataProductSummary.component';
-import DomainSummary from '../components/Explore/EntitySummaryPanel/DomainSummary/DomainSummary.component';
-import GlossaryTermSummary from '../components/Explore/EntitySummaryPanel/GlossaryTermSummary/GlossaryTermSummary.component';
-import SummaryList from '../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.component';
 import type { BasicEntityInfo } from '../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
-import TagsSummary from '../components/Explore/EntitySummaryPanel/TagsSummary/TagsSummary.component';
-import MetricExpression from '../components/Metric/MetricExpression/MetricExpression';
-import RelatedMetrics from '../components/Metric/RelatedMetrics/RelatedMetrics';
 import { ICON_DIMENSION, NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { CustomizeEntityType } from '../constants/Customize.constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
@@ -74,14 +66,79 @@ import { t } from './i18next/LocalUtil';
 import searchClassBase from './SearchClassBase';
 import { stringToHTML } from './StringUtils';
 
-export {
-  getHighlightOfListItem,
-  getMapOfListHighlights,
-  getSortedTagsWithHighlight,
-  getSummaryListItemType,
-  toEntityData,
-} from './EntitySummaryPanelPureUtils';
-export type { ListItemHighlights, SummaryListItem };
+const APIEndpointSummary = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/Explore/EntitySummaryPanel/APIEndpointSummary/APIEndpointSummary'
+      )
+  )
+);
+
+const ColumnSummaryList = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../components/Explore/EntitySummaryPanel/ColumnSummaryList/ColumnsSummaryList'
+    ).then((m) => ({ default: m.ColumnSummaryList }))
+  )
+);
+
+const DataProductSummary = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/Explore/EntitySummaryPanel/DataProductSummary/DataProductSummary.component'
+      )
+  )
+);
+
+const DomainSummary = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/Explore/EntitySummaryPanel/DomainSummary/DomainSummary.component'
+      )
+  )
+);
+
+const GlossaryTermSummary = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/Explore/EntitySummaryPanel/GlossaryTermSummary/GlossaryTermSummary.component'
+      )
+  )
+);
+
+const SummaryList = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.component'
+      )
+  )
+);
+
+const TagsSummary = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/Explore/EntitySummaryPanel/TagsSummary/TagsSummary.component'
+      )
+  )
+);
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../components/Database/SchemaEditor/SchemaEditor'))
+);
+
+const MetricExpression = withSuspenseFallback(
+  lazy(() => import('../components/Metric/MetricExpression/MetricExpression'))
+);
+
+const RelatedMetrics = withSuspenseFallback(
+  lazy(() => import('../components/Metric/RelatedMetrics/RelatedMetrics'))
+);
 
 const { Text } = Typography;
 

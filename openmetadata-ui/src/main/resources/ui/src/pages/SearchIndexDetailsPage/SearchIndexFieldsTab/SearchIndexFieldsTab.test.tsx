@@ -30,8 +30,11 @@ jest.mock('../../../utils/EntitySearchUtils', () => ({
 }));
 
 jest.mock(
-  '../../../components/Customization/GenericProvider/GenericProvider',
+  '../../../components/Customization/GenericProvider/GenericContext',
   () => ({
+    ...jest.requireActual(
+      '../../../components/Customization/GenericProvider/GenericProvider'
+    ),
     useGenericContext: jest.fn(() => ({
       data: {
         fields: MOCK_SEARCH_INDEX_FIELDS,
@@ -51,9 +54,11 @@ jest.mock('../../../hooks/useFqn', () => ({
 }));
 
 describe('SearchIndexFieldsTab component', () => {
-  it('SearchIndexFieldsTab should be visible', () => {
+  it('SearchIndexFieldsTab should be visible', async () => {
     render(<SearchIndexFieldsTab />);
 
-    expect(screen.getByText('SearchIndexFieldsTable')).toBeInTheDocument();
+    expect(
+      await screen.findByText('SearchIndexFieldsTable')
+    ).toBeInTheDocument();
   });
 });

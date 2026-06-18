@@ -27,13 +27,12 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   ChevronRight,
+  Copy06,
   Download01,
   Pin02,
-  Share06,
   Trash01,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { FC, useMemo, useState } from 'react';
 import { SubmenuTrigger } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -41,10 +40,12 @@ import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { moveFileToFolder } from '../../../rest/assetAPI';
-import { formatBytes } from '../../../utils/ContextCenterUtils';
+import { formatBytes } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
+import DocumentStatusBadge from '../DocumentStatusBadge/DocumentStatusBadge.component';
 import {
   DocumentsViewProps,
   FileActionsProps,
@@ -97,7 +98,6 @@ const FileActions: FC<FileActionsProps> = ({
   folders = [],
   onDeleteFile,
   onFileMoved,
-  onShareFile,
 }) => {
   const { t } = useTranslation();
   const [isMoving, setIsMoving] = useState(false);
@@ -133,19 +133,10 @@ const FileActions: FC<FileActionsProps> = ({
       <Dropdown.Popover className="tw:w-46">
         <Dropdown.Menu
           onAction={(key) => {
-            if (key === 'share') {
-              onShareFile?.(file);
-            } else if (key === 'delete') {
+            if (key === 'delete') {
               onDeleteFile?.(file);
             }
           }}>
-          <Dropdown.Item
-            data-testid="share-btn"
-            icon={Share06}
-            id="share"
-            label={t('label.share-file')}
-          />
-
           <SubmenuTrigger>
             <Dropdown.Item
               data-testid="move-btn"
@@ -341,17 +332,23 @@ const FileRow: FC<FileRowProps> = ({
   onFileMoved,
   onPreview,
   onSelectFile,
-  onShareFile,
 }) => {
   const { t } = useTranslation();
 
-  const { folderName, fileName, formattedFileSize, relativeTime } =
+  const { folderName, fileName, formattedFileSize, relativeTime, rowUrl } =
     useMemo(() => {
+      const params = new URLSearchParams(window.location.search);
+      params.set('document', file.id);
+      const url = `${window.location.origin}${
+        window.location.pathname
+      }?${params.toString()}`;
+
       return {
         folderName: getEntityName(file.folder),
         fileName: getEntityName(file),
         formattedFileSize: formatBytes(file.fileSize),
         relativeTime: getShortRelativeTime(file.updatedAt),
+        rowUrl: url,
       };
     }, [file]);
 
@@ -386,13 +383,20 @@ const FileRow: FC<FileRowProps> = ({
       />
 
       <Box className="tw:min-w-0 tw:flex-1" direction="col">
-        <Typography
-          className="tw:truncate"
-          data-testid="document-name"
-          size="text-sm"
-          weight="medium">
-          {fileName}
-        </Typography>
+        <Box align="center" className="tw:min-w-0" gap={2}>
+          <Typography
+            className="tw:truncate"
+            data-testid="document-name"
+            size="text-sm"
+            weight="medium">
+            {fileName}
+          </Typography>
+          <DocumentStatusBadge
+            error={file.processingError}
+            stats={file.extractionStats}
+            status={file.processingStatus}
+          />
+        </Box>
         <Box align="center" gap={2}>
           <Typography
             className="tw:text-gray-500"
@@ -400,6 +404,17 @@ const FileRow: FC<FileRowProps> = ({
             size="text-xs">
             {formattedFileSize}
           </Typography>
+          {Boolean(file.memoryCount) && (
+            <>
+              <Dot className="tw:text-gray-500" size="micro" />
+              <Typography
+                className="tw:text-gray-500"
+                data-testid="document-memory-count"
+                size="text-xs">
+                {file.memoryCount} {t('label.memory-plural').toLowerCase()}
+              </Typography>
+            </>
+          )}
           {file.updatedBy && (
             <>
               <Dot className="tw:text-gray-500" size="micro" />
@@ -456,13 +471,15 @@ const FileRow: FC<FileRowProps> = ({
             />
           </TooltipTrigger>
         </Tooltip>
+        <CopyLinkButton className="tw:w-8 tw:h-8" url={rowUrl}>
+          <Copy06 aria-hidden="true" size={20} strokeWidth={1.8} />
+        </CopyLinkButton>
         <FileActions
           canDelete={canDelete}
           file={file}
           folders={folders}
           onDeleteFile={onDeleteFile}
           onFileMoved={onFileMoved}
-          onShareFile={onShareFile}
         />
       </div>
     </Box>
@@ -493,7 +510,6 @@ const DocumentsView: FC<DocumentsViewProps> = ({
   onFileMoved,
   onPreview,
   onSelectFile,
-  onShareFile,
 }) => {
   const selectedCount = selectedIds?.size ?? 0;
 
@@ -507,10 +523,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
 
   return (
     <Card
-      className={classNames(
-        'tw:flex tw:overflow-hidden tw:h-full tw:flex-1 tw:min-w-0',
-        { 'tw:rounded-tr-none tw:rounded-br-none': previewFileId }
-      )}
+      className="tw:flex tw:overflow-hidden tw:h-full tw:flex-1 tw:min-w-0"
       data-testid="documents-view">
       {data.length > 0 || isLoading ? (
         <Box
@@ -546,7 +559,6 @@ const DocumentsView: FC<DocumentsViewProps> = ({
                   onFileMoved={onFileMoved}
                   onPreview={onPreview}
                   onSelectFile={onSelectFile}
-                  onShareFile={onShareFile}
                 />
               ))
             )}

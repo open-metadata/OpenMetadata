@@ -14,8 +14,9 @@
 import { Button, Card, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import { useCallback, useMemo, useState } from 'react';
+import { lazy, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import withSuspenseFallback from '../../../../components/AppRouter/withSuspenseFallback';
 import { ASSET_CARD_STYLES } from '../../../../constants/Feeds.constants';
 import { ActivityEventType } from '../../../../generated/entity/activity/activityEvent';
 import { CardStyle } from '../../../../generated/entity/feed/thread';
@@ -24,7 +25,7 @@ import {
   getEntityType,
   getFrontEndFormat,
   MarkdownToHTMLConverter,
-} from '../../../../utils/FeedUtils';
+} from '../../../../utils/FeedUtilsPure';
 import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import ActivityDescriptionFeed from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/ActivityDescriptionFeed';
 import DescriptionFeedNew from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/DescriptionFeedNew';
@@ -32,9 +33,11 @@ import ActivityOwnersFeed from '../../ActivityFeedCardV2/FeedCardBody/OwnerFeed/
 import OwnersFeed from '../../ActivityFeedCardV2/FeedCardBody/OwnerFeed/OwnersFeed';
 import ActivityTagsFeed from '../../ActivityFeedCardV2/FeedCardBody/TagsFeed/ActivityTagsFeed';
 import TagsFeed from '../../ActivityFeedCardV2/FeedCardBody/TagsFeed/TagsFeed';
-import ActivityFeedEditor from '../../ActivityFeedEditor/ActivityFeedEditor';
 import './feed-card-body-v1.less';
 import { FeedCardBodyV1Props } from './FeedCardBodyV1.interface';
+const ActivityFeedEditor = withSuspenseFallback(
+  lazy(() => import('../../ActivityFeedEditor/ActivityFeedEditor'))
+);
 
 const FeedCardBodyNew = ({
   isPost = false,

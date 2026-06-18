@@ -23,10 +23,12 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -46,10 +48,24 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
   static final String FIELD_PRIMARY_ENTITY = "primaryEntity";
   static final String FIELD_RELATED_ENTITIES = "relatedEntities";
+  static final String FIELD_SOURCE_FILE = "sourceFile";
+  static final String FIELD_SOURCE_ENTITY = "sourceEntity";
   private static final String PATCH_FIELDS =
-      FIELD_PRIMARY_ENTITY + "," + FIELD_RELATED_ENTITIES + ",rootMemory,parentMemory";
+      FIELD_PRIMARY_ENTITY
+          + ","
+          + FIELD_RELATED_ENTITIES
+          + ",rootMemory,parentMemory,"
+          + FIELD_SOURCE_FILE
+          + ","
+          + FIELD_SOURCE_ENTITY;
   private static final String UPDATE_FIELDS =
-      FIELD_PRIMARY_ENTITY + "," + FIELD_RELATED_ENTITIES + ",rootMemory,parentMemory";
+      FIELD_PRIMARY_ENTITY
+          + ","
+          + FIELD_RELATED_ENTITIES
+          + ",rootMemory,parentMemory,"
+          + FIELD_SOURCE_FILE
+          + ","
+          + FIELD_SOURCE_ENTITY;
 
   static {
     ContextMemoryBodyTextContributor.INSTANCE.register();
@@ -74,6 +90,15 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     if (fields.contains(FIELD_RELATED_ENTITIES)) {
       entity.setRelatedEntities(getRelatedEntities(entity));
     }
+    if (fields.contains(FIELD_SOURCE_ENTITY) || fields.contains(FIELD_SOURCE_FILE)) {
+      EntityReference source = getSourceEntity(entity);
+      if (fields.contains(FIELD_SOURCE_ENTITY)) {
+        entity.setSourceEntity(source);
+      }
+      if (fields.contains(FIELD_SOURCE_FILE)) {
+        entity.setSourceFile(asContextFileRef(source));
+      }
+    }
   }
 
   @Override
@@ -84,6 +109,12 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     if (!fields.contains(FIELD_RELATED_ENTITIES)) {
       entity.setRelatedEntities(null);
     }
+    if (!fields.contains(FIELD_SOURCE_ENTITY)) {
+      entity.setSourceEntity(null);
+    }
+    if (!fields.contains(FIELD_SOURCE_FILE)) {
+      entity.setSourceFile(null);
+    }
   }
 
   @Override
@@ -93,6 +124,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     }
     fetchAndSetPrimaryEntities(entities, fields);
     fetchAndSetRelatedEntities(entities, fields);
+    fetchAndSetSources(entities, fields);
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
     for (ContextMemory entity : entities) {
@@ -211,6 +243,53 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     return findFrom(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.RELATED_TO, null);
   }
 
+  /** The single Context Center source (file or page) a memory was extracted from, via MENTIONED_IN. */
+  private EntityReference getSourceEntity(ContextMemory entity) {
+    List<EntityReference> refs =
+        findFrom(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.MENTIONED_IN, null);
+    return nullOrEmpty(refs) ? null : refs.getFirst();
+  }
+
+  /** Back-compat view: the deprecated sourceFile is the source only when it is a ContextFile. */
+  private EntityReference asContextFileRef(EntityReference source) {
+    return source != null && Entity.CONTEXT_FILE.equals(source.getType()) ? source : null;
+  }
+
+  private void fetchAndSetSources(List<ContextMemory> entities, Fields fields) {
+    if (!fields.contains(FIELD_SOURCE_ENTITY) && !fields.contains(FIELD_SOURCE_FILE)) {
+      return;
+    }
+    Map<UUID, EntityReference> sourceById = batchFetchSources(entities);
+    for (ContextMemory memory : entities) {
+      EntityReference source = sourceById.get(memory.getId());
+      if (fields.contains(FIELD_SOURCE_ENTITY)) {
+        memory.setSourceEntity(source);
+      }
+      if (fields.contains(FIELD_SOURCE_FILE)) {
+        memory.setSourceFile(asContextFileRef(source));
+      }
+    }
+  }
+
+  private Map<UUID, EntityReference> batchFetchSources(List<ContextMemory> entities) {
+    Map<UUID, EntityReference> sourceById = new HashMap<>();
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(entities),
+                Relationship.MENTIONED_IN.ordinal(),
+                Include.NON_DELETED);
+    Map<String, EntityReference> refById = resolveReferencesByType(records);
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      EntityReference ref = refById.get(record.getFromId());
+      if (ref != null) {
+        sourceById.putIfAbsent(UUID.fromString(record.getToId()), ref);
+      }
+    }
+    return sourceById;
+  }
+
   @Override
   public void setFullyQualifiedName(ContextMemory entity) {
     if (!nullOrEmpty(entity.getFullyQualifiedName())) {
@@ -233,6 +312,13 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       EntityReference primaryEntity =
           Entity.getEntityReference(entity.getPrimaryEntity(), Include.NON_DELETED);
       entity.setPrimaryEntity(primaryEntity);
+    }
+    if (entity.getSourceEntity() == null && entity.getSourceFile() != null) {
+      entity.setSourceEntity(entity.getSourceFile());
+    }
+    if (entity.getSourceEntity() != null) {
+      entity.setSourceEntity(
+          Entity.getEntityReference(entity.getSourceEntity(), Include.NON_DELETED));
     }
     entity.setRelatedEntities(EntityUtil.populateEntityReferences(entity.getRelatedEntities()));
 
@@ -341,6 +427,15 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           Entity.CONTEXT_MEMORY,
           Relationship.PARENT_OF);
     }
+
+    if (entity.getSourceEntity() != null) {
+      addRelationship(
+          entity.getSourceEntity().getId(),
+          entity.getId(),
+          entity.getSourceEntity().getType(),
+          Entity.CONTEXT_MEMORY,
+          Relationship.MENTIONED_IN);
+    }
   }
 
   private static List<EntityReference> asRefList(EntityReference ref) {
@@ -401,6 +496,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      flipToManualOnUserEdit();
       recordChange("title", original.getTitle(), updated.getTitle());
       recordChange("summary", original.getSummary(), updated.getSummary());
       recordChange("question", original.getQuestion(), updated.getQuestion());
@@ -466,9 +562,91 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           Relationship.PARENT_OF,
           Entity.CONTEXT_MEMORY,
           original.getId());
+      updateSourceEntityRelationship();
 
       // usageCount and lastUsedAt are AI-retrieval telemetry, intentionally excluded from
       // version history so routine retrieval does not churn the entity version.
+    }
+
+    /**
+     * A user editing the content of a machine-generated pill through the PATCH endpoint takes
+     * ownership of it: the sourceType flips to Manual so re-extraction never clobbers the human
+     * edit. updatedBy cannot tell this apart (the extraction engine also writes as admin) — the
+     * operation does, since the engine only ever creates/PUTs, never PATCHes. The flip is gated on
+     * an actual content change so unrelated PATCHes (tagging, starring, re-scoping, sharing) leave
+     * the pill under engine management.
+     */
+    private void flipToManualOnUserEdit() {
+      if (operation == Operation.PATCH
+          && updated.getSourceType() == original.getSourceType()
+          && isAutomatedSource(original.getSourceType())
+          && extractionManagedFieldChanged()) {
+        updated.setSourceType(ContextMemorySourceType.MANUAL);
+      }
+    }
+
+    /** True when a PATCH edited a field the extraction reconciler would otherwise overwrite. */
+    private boolean extractionManagedFieldChanged() {
+      return !Objects.equals(original.getTitle(), updated.getTitle())
+          || !Objects.equals(original.getQuestion(), updated.getQuestion())
+          || !Objects.equals(original.getAnswer(), updated.getAnswer())
+          || !Objects.equals(original.getSummary(), updated.getSummary())
+          || !Objects.equals(original.getMemoryType(), updated.getMemoryType());
+    }
+
+    private void updateSourceEntityRelationship() {
+      // Plural form with single-element lists so the stale edge is removed under its OWN entity
+      // type and the new one added under its own. The singular updateFromRelationship took one
+      // fromType for both delete and add, which orphaned the old edge when the source changed type
+      // (e.g. ContextFile -> Page). Mirrors how primaryEntity is reconciled above.
+      updateFromRelationships(
+          FIELD_SOURCE_ENTITY,
+          Entity.CONTEXT_MEMORY,
+          asRefList(original.getSourceEntity()),
+          asRefList(updated.getSourceEntity()),
+          Relationship.MENTIONED_IN,
+          Entity.CONTEXT_MEMORY,
+          original.getId());
+    }
+  }
+
+  private static boolean isAutomatedSource(ContextMemorySourceType type) {
+    return type == ContextMemorySourceType.FILE_EXTRACTION
+        || type == ContextMemorySourceType.PAGE_EXTRACTION;
+  }
+
+  /** Loads the knowledge pills currently linked to a Context Center source (file or page). */
+  public List<ContextMemory> listExtractedMemories(UUID sourceId, String sourceType) {
+    List<EntityReference> refs =
+        findTo(sourceId, sourceType, Relationship.MENTIONED_IN, Entity.CONTEXT_MEMORY);
+    if (refs.isEmpty()) {
+      return new ArrayList<>();
+    }
+    // Batch-load in one query instead of a get() per ref (avoids N+1). Reconciliation only reads
+    // stored fields (question/status/answer/...), so the relationship-free fetch is sufficient.
+    List<UUID> ids = refs.stream().map(EntityReference::getId).toList();
+    return find(ids, Include.NON_DELETED);
+  }
+
+  /** Deletes every knowledge pill linked to a Context Center source, propagating the delete flag. */
+  public void deleteExtractedMemories(UUID sourceId, String sourceType, boolean hardDelete) {
+    List<EntityReference> refs =
+        findTo(sourceId, sourceType, Relationship.MENTIONED_IN, Entity.CONTEXT_MEMORY);
+    for (EntityReference ref : refs) {
+      delete(Entity.ADMIN_USER_NAME, ref.getId(), false, hardDelete);
+    }
+  }
+
+  /**
+   * Restores the soft-deleted knowledge pills linked to a Context Center source when that source is
+   * restored. Uses Include.ALL because the pills are deleted at lookup time; restoreEntity is a
+   * no-op on any that are already active.
+   */
+  public void restoreExtractedMemories(UUID sourceId, String sourceType) {
+    List<EntityReference> refs =
+        findTo(sourceId, sourceType, Relationship.MENTIONED_IN, Entity.CONTEXT_MEMORY, Include.ALL);
+    for (EntityReference ref : refs) {
+      restoreEntity(Entity.ADMIN_USER_NAME, ref.getId());
     }
   }
 }

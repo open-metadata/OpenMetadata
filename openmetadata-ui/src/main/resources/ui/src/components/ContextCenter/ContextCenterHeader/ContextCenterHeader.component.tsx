@@ -73,9 +73,7 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
   );
 
   return (
-    <div
-      className="tw:flex tw:flex-col tw:gap-3"
-      data-testid="context-center-header">
+    <div className="tw:flex tw:flex-col" data-testid="context-center-header">
       {!breadcrumbInsideCard && breadcrumbEl}
 
       <Card className={`tw:mb-5 tw:p-5 ${className}`} style={cardStyle}>
@@ -86,7 +84,7 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
               <Typography as="h3">{title}</Typography>
             </div>
             {subtitle && (
-              <Typography className="tw:text-gray-700">{subtitle}</Typography>
+              <Typography className="tw:text-secondary">{subtitle}</Typography>
             )}
           </div>
           <div className="tw:flex tw:items-center tw:gap-3 tw:ml-auto tw:shrink-0">

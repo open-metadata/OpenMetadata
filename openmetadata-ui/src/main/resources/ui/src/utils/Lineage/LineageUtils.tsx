@@ -10,12 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export {
-  getSearchNameEsQuery,
-  prepareColumnLevelNodesFromEdges,
-  prepareDownstreamColumnLevelNodesFromDownstreamEdges,
-  prepareUpstreamColumnLevelNodesFromUpstreamEdges,
-} from './LineagePureUtils';
 
 import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { ChevronRight } from '@untitledui/icons';
@@ -64,5 +58,17 @@ export const getTruncatedPath = (path: string, className?: string) => {
       items={parts}
       separator={<ChevronRight className="right-arrow-icon" size={12} />}
     />
+  );
+};
+
+export const addBaseNodeDepthToNodes = (
+  baseNodeDepth: number,
+  nodes: Record<string, NodeData>
+): Record<string, NodeData> => {
+  return Object.fromEntries(
+    Object.entries(nodes).map(([key, nodeData]) => [
+      key,
+      { ...nodeData, nodeDepth: (nodeData.nodeDepth ?? 0) + baseNodeDepth },
+    ])
   );
 };
