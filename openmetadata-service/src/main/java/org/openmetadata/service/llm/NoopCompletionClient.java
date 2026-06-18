@@ -7,8 +7,9 @@ public class NoopCompletionClient extends LLMCompletionClient {
   }
 
   @Override
-  protected String doComplete(String systemPrompt, String userPrompt) {
-    return "[]";
+  protected CompletionResult doComplete(
+      String systemPrompt, String userPrompt, CompletionOptions options) {
+    return new CompletionResult("[]", 0, 0);
   }
 
   @Override

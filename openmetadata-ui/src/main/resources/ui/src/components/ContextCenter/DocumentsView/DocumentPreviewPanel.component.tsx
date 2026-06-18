@@ -24,7 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getListContextMemories } from '../../../rest/contextMemoryAPI';
-import { formatBytes } from '../../../utils/ContextCenterUtils';
+import { formatBytes } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
@@ -40,7 +40,7 @@ const MetaRow: FC<MetaRowProps> = ({ label, value }) => (
     <Typography className="tw:text-gray-500" size="text-sm">
       {label}
     </Typography>
-    <Typography className="tw:text-gray-900" size="text-sm" weight="medium">
+    <Typography className="tw:text-primary" size="text-sm" weight="medium">
       {value}
     </Typography>
   </Box>
@@ -137,7 +137,7 @@ const ExtractedMemoriesCard: FC<{ fileId: string }> = ({ fileId }) => {
               }}>
               <Typography
                 ellipsis
-                className="tw:text-gray-900"
+                className="tw:text-primary"
                 size="text-sm"
                 weight="medium">
                 {memory.title ?? getEntityName(memory)}

@@ -43,9 +43,9 @@ import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { getTags } from '../../../rest/tagAPI';
+import { getClassificationInfo } from '../../../utils/ClassificationPureUtils';
 import {
   getClassificationExtraDropdownContent,
-  getClassificationInfo,
   getTagsTableColumn,
 } from '../../../utils/ClassificationUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';

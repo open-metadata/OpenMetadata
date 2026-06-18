@@ -63,8 +63,8 @@ import i18n from '../../../utils/i18next/LocalUtil';
 import {
   getKnowledgePageName,
   getKnowledgeVersionsPath,
-  updateKnowledgeCenterRecentViewed,
-} from '../../../utils/KnowledgePageUtils';
+} from '../../../utils/KnowledgePagePureUtils';
+import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
 
 export interface KnowledgeDetailPageHeaderProps {
   isLoading: boolean;
