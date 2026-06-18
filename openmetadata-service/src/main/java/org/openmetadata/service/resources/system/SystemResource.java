@@ -485,7 +485,12 @@ public class SystemResource {
       defaults = loadDefaultSearchSettings(true);
     } else if (AI_SETTINGS.value().equalsIgnoreCase(name)) {
       try {
-        defaults = loadDefaultAiSettings();
+        AISettings defaultAiSettings = loadDefaultAiSettings();
+        Settings setting =
+            new Settings().withConfigType(AI_SETTINGS).withConfigValue(defaultAiSettings);
+        systemRepository.createOrUpdate(setting);
+        SettingsCache.invalidateSettings(AI_SETTINGS.value());
+        defaults = defaultAiSettings;
       } catch (IOException e) {
         LOG.error("Failed to read default AI settings. Message: {}", e.getMessage(), e);
         throw new SystemSettingsException("Failed to load default AI settings: " + e.getMessage());
