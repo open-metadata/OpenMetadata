@@ -20,7 +20,11 @@ import {
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { useSearchStore } from '../../../hooks/useSearchStore';
-import { nlqSearch, searchQuery } from '../../../rest/searchAPI';
+import {
+  getNLPEnabledStatus,
+  nlqSearch,
+  searchQuery,
+} from '../../../rest/searchAPI';
 import MarketplaceSearchBar from './MarketplaceSearchBar.component';
 
 const mockNavigate = jest.fn();
@@ -31,6 +35,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock('../../../rest/searchAPI', () => ({
+  getNLPEnabledStatus: jest.fn().mockResolvedValue(true),
   nlqSearch: jest.fn().mockResolvedValue({ hits: { hits: [] } }),
   searchQuery: jest.fn().mockResolvedValue({ hits: { hits: [] } }),
 }));
@@ -138,6 +143,7 @@ describe('MarketplaceSearchBar', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     useSearchStore.setState({ isNLPEnabled: true, isNLPActive: false });
+    (getNLPEnabledStatus as jest.Mock).mockResolvedValue(true);
     (searchQuery as jest.Mock).mockResolvedValue({ hits: { hits: [] } });
     (nlqSearch as jest.Mock).mockResolvedValue({ hits: { hits: [] } });
   });
@@ -167,6 +173,26 @@ describe('MarketplaceSearchBar', () => {
     expect(
       screen.queryByTestId('marketplace-nlq-toggle')
     ).not.toBeInTheDocument();
+  });
+
+  it('bootstraps isNLPEnabled from API when store is cold (direct marketplace navigation)', async () => {
+    useSearchStore.setState({ isNLPEnabled: false, isNLPActive: false });
+    (getNLPEnabledStatus as jest.Mock).mockResolvedValue(true);
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(getNLPEnabledStatus).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId('marketplace-nlq-toggle')).toBeInTheDocument();
+    });
+  });
+
+  it('skips the API call when isNLPEnabled is already set in the store', () => {
+    useSearchStore.setState({ isNLPEnabled: true, isNLPActive: false });
+
+    renderComponent();
+
+    expect(getNLPEnabledStatus).not.toHaveBeenCalled();
   });
 
   it('toggles NLQ active state when the toggle button is clicked', async () => {

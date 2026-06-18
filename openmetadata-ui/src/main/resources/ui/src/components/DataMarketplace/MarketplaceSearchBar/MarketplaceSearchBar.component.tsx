@@ -30,7 +30,11 @@ import { Domain } from '../../../generated/entity/domains/domain';
 import { useMarketplaceRecentSearches } from '../../../hooks/useMarketplaceRecentSearches';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { useSearchStore } from '../../../hooks/useSearchStore';
-import { nlqSearch, searchQuery } from '../../../rest/searchAPI';
+import {
+  getNLPEnabledStatus,
+  nlqSearch,
+  searchQuery,
+} from '../../../rest/searchAPI';
 import { getDataProductIconByUrl } from '../../../utils/DataProductUtils';
 import { getDomainIcon } from '../../../utils/DomainUtils';
 import { getDomainDetailsPath } from '../../../utils/RouterUtils';
@@ -43,7 +47,8 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { dataProductBasePath } = useMarketplaceStore();
-  const { isNLPEnabled, isNLPActive, setNLPActive } = useSearchStore();
+  const { isNLPEnabled, isNLPActive, setNLPActive, setNLPEnabled } =
+    useSearchStore();
   const [searchValue, setSearchValue] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [dataProducts, setDataProducts] = useState<DataProduct[]>([]);
@@ -51,6 +56,15 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
   const [isSearching, setIsSearching] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const { addSearch } = useMarketplaceRecentSearches();
+
+  // GlobalSearchBar is absent on marketplace pages, so bootstrap the store if not yet populated.
+  useEffect(() => {
+    if (!isNLPEnabled) {
+      getNLPEnabledStatus()
+        .then(setNLPEnabled)
+        .catch(() => setNLPEnabled(false));
+    }
+  }, []);
 
   const fetchResults = useCallback(
     async (query: string) => {
