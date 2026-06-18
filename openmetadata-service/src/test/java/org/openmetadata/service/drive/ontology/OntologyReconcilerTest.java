@@ -48,6 +48,7 @@ import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.MetricRepository;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.OntologyOwnership;
 
 @ExtendWith(MockitoExtension.class)
 class OntologyReconcilerTest {
@@ -56,7 +57,7 @@ class OntologyReconcilerTest {
   @Mock MetricRepository metricRepo;
   @Mock GlossaryRepository glossaryRepo;
 
-  private static final String BOT = "ontology-bot";
+  private static final String BOT = OntologyOwnership.ONTOLOGY_BOT_NAME;
 
   private final ContextMemory memory = new ContextMemory().withId(UUID.randomUUID()).withName("m1");
 

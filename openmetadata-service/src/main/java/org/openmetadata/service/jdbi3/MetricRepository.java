@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -44,6 +45,7 @@ import org.openmetadata.service.resources.metrics.MetricResource;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.OntologyOwnership;
 
 @Slf4j
 public class MetricRepository extends EntityRepository<Metric> {
@@ -219,6 +221,15 @@ public class MetricRepository extends EntityRepository<Metric> {
             }
           });
       compareAndUpdate("relatedMetrics", () -> updateRelatedMetrics(original, updated));
+      OntologyOwnership.releaseIfHumanEdited(updated, operation.isPatch(), managedFieldChanged());
+    }
+
+    private boolean managedFieldChanged() {
+      return !Objects.equals(original.getName(), updated.getName())
+          || !Objects.equals(original.getDisplayName(), updated.getDisplayName())
+          || !Objects.equals(original.getDescription(), updated.getDescription())
+          || !Objects.equals(original.getMetricType(), updated.getMetricType())
+          || !Objects.equals(original.getMetricExpression(), updated.getMetricExpression());
     }
 
     private void updateRelatedMetrics(Metric original, Metric updated) {

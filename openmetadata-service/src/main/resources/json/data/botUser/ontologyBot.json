@@ -1,0 +1,9 @@
+{
+  "name": "ontology-bot",
+  "roles": [
+    {
+        "name": "IngestionBotRole",
+        "type": "role"
+    }
+  ]
+}

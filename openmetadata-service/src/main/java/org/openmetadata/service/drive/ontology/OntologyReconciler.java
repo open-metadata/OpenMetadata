@@ -41,6 +41,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.MetricRepository;
+import org.openmetadata.service.util.OntologyOwnership;
 
 /**
  * Owns every ontology write: it turns an {@link OntologyDerivation} into real Glossary Terms and
@@ -61,7 +62,6 @@ import org.openmetadata.service.jdbi3.MetricRepository;
  */
 @Slf4j
 public class OntologyReconciler {
-  private static final String ONTOLOGY_BOT_NAME = "ontology-bot";
   private static final String CORE_FIELDS = "";
 
   private final GlossaryTermRepository termRepo;
@@ -161,7 +161,7 @@ public class OntologyReconciler {
               .withDescription(verdict.description())
               .withGlossary(glossary)
               .withProvider(ProviderType.AUTOMATION)
-              .withUpdatedBy(ONTOLOGY_BOT_NAME);
+              .withUpdatedBy(OntologyOwnership.ONTOLOGY_BOT_NAME);
       final GlossaryTerm created = termRepo.createInternal(term);
       addDerivedFromEdge(created.getId(), memory.getId(), Entity.GLOSSARY_TERM, termRepo);
       counts.createdTerms++;
@@ -183,7 +183,7 @@ public class OntologyReconciler {
               .withUnitOfMeasurement(toUnit(verdict.unitOfMeasurement()))
               .withMetricExpression(toExpression(verdict.metricExpressionCode()))
               .withProvider(ProviderType.AUTOMATION)
-              .withUpdatedBy(ONTOLOGY_BOT_NAME);
+              .withUpdatedBy(OntologyOwnership.ONTOLOGY_BOT_NAME);
       final Metric created = metricRepo.createInternal(metric);
       addDerivedFromEdge(created.getId(), memory.getId(), Entity.METRIC, metricRepo);
       counts.createdMetrics++;
@@ -224,7 +224,7 @@ public class OntologyReconciler {
               .withDisplayName(verdict.newGlossaryName())
               .withDescription(verdict.newGlossaryDescription())
               .withProvider(ProviderType.AUTOMATION)
-              .withUpdatedBy(ONTOLOGY_BOT_NAME);
+              .withUpdatedBy(OntologyOwnership.ONTOLOGY_BOT_NAME);
       glossary = glossaryRepo.createInternal(minted).getEntityReference();
     }
     return glossary;
@@ -306,7 +306,7 @@ public class OntologyReconciler {
             entityType,
             Include.ALL)) {
       if (isAutomationOwnedIncludeAll(repo, ref)) {
-        repo.restoreEntity(ONTOLOGY_BOT_NAME, ref.getId());
+        repo.restoreEntity(OntologyOwnership.ONTOLOGY_BOT_NAME, ref.getId());
       }
     }
   }
@@ -338,7 +338,8 @@ public class OntologyReconciler {
       final boolean hardDelete,
       final AIDeletionPolicy policy) {
     switch (policy) {
-      case CASCADE -> repo.delete(ONTOLOGY_BOT_NAME, owned.getId(), false, hardDelete);
+      case CASCADE -> repo.delete(
+          OntologyOwnership.ONTOLOGY_BOT_NAME, owned.getId(), false, hardDelete);
       case ORPHAN -> {
         editOwned(repo, owned.getId(), entity -> setProvider(entity, ProviderType.USER));
         dropDerivedFromEdge(memory, entityType, repo, owned.getId());
@@ -370,9 +371,9 @@ public class OntologyReconciler {
     final T original = repo.get(null, id, repo.getFields(CORE_FIELDS));
     final T updated = JsonUtils.deepCopy(original, repo.getEntityClass());
     mutation.accept(updated);
-    updated.setUpdatedBy(ONTOLOGY_BOT_NAME);
+    updated.setUpdatedBy(OntologyOwnership.ONTOLOGY_BOT_NAME);
     updated.setUpdatedAt(System.currentTimeMillis());
-    repo.update(null, original, updated, ONTOLOGY_BOT_NAME);
+    repo.update(null, original, updated, OntologyOwnership.ONTOLOGY_BOT_NAME);
   }
 
   private void dropDerivedFromEdge(

@@ -1,0 +1,11 @@
+{
+  "name": "ontology-bot",
+  "displayName": "OntologyBot",
+  "description": "Bot used by the Ontology Agent to derive glossary terms and metrics from memories.",
+  "fullyQualifiedName": "ontology-bot",
+  "botUser": {
+    "name" : "ontology-bot",
+    "type" : "user"
+  },
+  "provider": "system"
+}
