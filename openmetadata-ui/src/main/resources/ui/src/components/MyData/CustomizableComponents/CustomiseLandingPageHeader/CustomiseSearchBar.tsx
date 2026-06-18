@@ -27,9 +27,9 @@ import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLoca
 import { useSearchStore } from '../../../../hooks/useSearchStore';
 import { addToRecentSearched } from '../../../../utils/RecentActivityUtils';
 import {
-    getExplorePath,
-    inPageSearchOptions,
-    isInPageSearchAllowed
+  getExplorePath,
+  inPageSearchOptions,
+  isInPageSearchAllowed,
 } from '../../../../utils/RouterUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import SearchOptions from '../../../AppBar/SearchOptions';
@@ -39,8 +39,7 @@ import './customise-search-bar.less';
 export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const { currentUser, searchCriteria } = useApplicationStore();
-  const { isNLPEnabled, isNLPActive, setNLPActive, initNLP } =
-    useSearchStore();
+  const { isNLPEnabled, isNLPActive, setNLPActive, initNLP } = useSearchStore();
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
   const [suggestionSearch, setSuggestionSearch] = useState<string>('');

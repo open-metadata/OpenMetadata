@@ -58,8 +58,7 @@ export const GlobalSearchBar = () => {
         currentUser: state.currentUser,
       }))
     );
-  const { isNLPEnabled, isNLPActive, setNLPActive, initNLP } =
-    useSearchStore();
+  const { isNLPEnabled, isNLPActive, setNLPActive, initNLP } = useSearchStore();
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const { t, i18n } = useTranslation();
   const [isSearchBlur, setIsSearchBlur] = useState<boolean>(true);

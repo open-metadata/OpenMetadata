@@ -43,8 +43,7 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { dataProductBasePath } = useMarketplaceStore();
-  const { isNLPEnabled, isNLPActive, setNLPActive, initNLP } =
-    useSearchStore();
+  const { isNLPEnabled, isNLPActive, setNLPActive, initNLP } = useSearchStore();
   const [searchValue, setSearchValue] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [dataProducts, setDataProducts] = useState<DataProduct[]>([]);
