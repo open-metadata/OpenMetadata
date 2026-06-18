@@ -14,6 +14,7 @@ import { act, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import { User } from '../../../generated/entity/teams/user';
+import { clearDashboardWidgetCache } from '../../../hooks/useDashboardWidgetData';
 import { searchQuery } from '../../../rest/searchAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import FollowingWidget from './FollowingWidget';
@@ -133,6 +134,7 @@ jest.mock(
 describe('FollowingWidget component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    clearDashboardWidgetCache();
   });
 
   it('should fetch data', async () => {
@@ -294,7 +296,7 @@ describe('FollowingWidget component', () => {
     const mockUseApplicationStore = jest.requireMock(
       '../../../hooks/useApplicationStore'
     ).useApplicationStore;
-    mockUseApplicationStore.mockReturnValue({
+    mockUseApplicationStore.mockReturnValueOnce({
       currentUser: undefined,
     });
 
