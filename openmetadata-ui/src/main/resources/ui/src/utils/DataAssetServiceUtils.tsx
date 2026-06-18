@@ -12,19 +12,103 @@
  */
 import { startCase } from 'lodash';
 import { useEffect, useState } from 'react';
-import { EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
-import { APIServiceType } from '../generated/entity/services/apiService';
-import { DashboardServiceType } from '../generated/entity/services/dashboardService';
-import { DriveServiceType } from '../generated/entity/services/driveService';
-import { MessagingServiceType } from '../generated/entity/services/messagingService';
-import { MlModelServiceType } from '../generated/entity/services/mlmodelService';
-import { PipelineServiceType } from '../generated/entity/services/pipelineService';
-import { SearchServiceType } from '../generated/entity/services/searchService';
-import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
-import { ServiceType } from '../generated/entity/services/serviceType';
-import { StorageServiceType } from '../generated/entity/services/storageService';
 import { LANDING_WIDGET_DEFAULT_ICON_URL } from './LandingPageWidgetIconUtils.constants';
+
+type DataAssetServiceCategory =
+  | 'api'
+  | 'dashboard'
+  | 'database'
+  | 'drive'
+  | 'mlmodel'
+  | 'pipeline'
+  | 'search'
+  | 'security'
+  | 'storage'
+  | 'topic';
+
+const MESSAGING_SERVICE_TYPES = new Set([
+  'custommessaging',
+  'kafka',
+  'kinesis',
+  'pubsub',
+  'redpanda',
+]);
+
+const DASHBOARD_SERVICE_TYPES = new Set([
+  'customdashboard',
+  'domodashboard',
+  'grafana',
+  'hex',
+  'lightdash',
+  'looker',
+  'metabase',
+  'microstrategy',
+  'mode',
+  'powerbi',
+  'powerbireportserver',
+  'qliksense',
+  'quicksight',
+  'redash',
+  'saps4hana',
+  'sigma',
+  'ssrs',
+  'superset',
+  'tableau',
+  'thoughtspot',
+]);
+
+const PIPELINE_SERVICE_TYPES = new Set([
+  'airbyte',
+  'airflow',
+  'custompipeline',
+  'dagster',
+  'datafactory',
+  'databrickspipeline',
+  'dbtcloud',
+  'fivetran',
+  'flink',
+  'gluepipeline',
+  'kafkaconnect',
+  'matillion',
+  'microsoftfabricpipeline',
+  'mulesoft',
+  'nifi',
+  'openlineage',
+  'snowplow',
+  'spark',
+  'spline',
+  'ssis',
+  'stitch',
+  'wherescape',
+]);
+
+const ML_MODEL_SERVICE_TYPES = new Set([
+  'custommlmodel',
+  'mlflow',
+  'sagemaker',
+  'scikit',
+  'vertexai',
+]);
+
+const STORAGE_SERVICE_TYPES = new Set(['adls', 'customstorage', 'gcs', 's3']);
+
+const SEARCH_SERVICE_TYPES = new Set([
+  'customsearch',
+  'elasticsearch',
+  'opensearch',
+]);
+
+const API_SERVICE_TYPES = new Set(['customapi', 'rest', 'webhook']);
+
+const DRIVE_SERVICE_TYPES = new Set([
+  'customdrive',
+  'googledrive',
+  'sftp',
+  'sharepoint',
+]);
+
+const SECURITY_SERVICE_TYPES = new Set(['customsecurity', 'ranger']);
 
 const SERVICE_TYPE_LABELS: Record<string, string> = {
   azuresql: 'Azure SQL',
@@ -155,144 +239,77 @@ const SERVICE_ICON_IMPORTS: Record<string, () => Promise<{ default: string }>> =
     vertica: () => import('../assets/img/service-icon-vertica.webp'),
   };
 
-type ServiceTypeEnum = Record<string, string>;
-
-const normalizeServiceType = <T extends string>(serviceType: T) =>
-  serviceType.toLowerCase().replaceAll(/[_\s-]/g, '') as Lowercase<T>;
-
-const DATA_ASSET_SERVICE_KEY = {
-  API: normalizeServiceType(ServiceType.API),
-  DASHBOARD: normalizeServiceType(ServiceType.Dashboard),
-  DATABASE: normalizeServiceType(ServiceType.Database),
-  DRIVE: normalizeServiceType(ServiceType.Drive),
-  ML_MODEL: normalizeServiceType(ServiceType.MlModel),
-  PIPELINE: normalizeServiceType(ServiceType.Pipeline),
-  SEARCH: normalizeServiceType(ServiceType.Search),
-  SECURITY: normalizeServiceType(ServiceType.Security),
-  STORAGE: normalizeServiceType(ServiceType.Storage),
-  TOPIC: EntityType.TOPIC,
-} as const;
-
-type DataAssetServiceKey =
-  (typeof DATA_ASSET_SERVICE_KEY)[keyof typeof DATA_ASSET_SERVICE_KEY];
-
 const DEFAULT_ICON_IMPORTS: Record<
-  DataAssetServiceKey,
-  () => Promise<{
-    default: string;
-  }>
+  DataAssetServiceCategory,
+  () => Promise<{ default: string }>
 > = {
-  [DATA_ASSET_SERVICE_KEY.API]: () =>
-    import('../assets/svg/ic-service-rest-api.svg'),
-  [DATA_ASSET_SERVICE_KEY.DASHBOARD]: () =>
-    import('../assets/svg/dashboard.svg'),
-  [DATA_ASSET_SERVICE_KEY.DATABASE]: () =>
-    import('../assets/svg/ic-custom-database.svg'),
-  [DATA_ASSET_SERVICE_KEY.DRIVE]: () =>
-    import('../assets/svg/ic-drive-service.svg'),
-  [DATA_ASSET_SERVICE_KEY.ML_MODEL]: () =>
-    import('../assets/svg/ic-custom-model.svg'),
-  [DATA_ASSET_SERVICE_KEY.PIPELINE]: () => import('../assets/svg/pipeline.svg'),
-  [DATA_ASSET_SERVICE_KEY.SEARCH]: () =>
-    import('../assets/svg/ic-custom-search.svg'),
-  [DATA_ASSET_SERVICE_KEY.SECURITY]: () =>
-    import('../assets/svg/security-safe.svg'),
-  [DATA_ASSET_SERVICE_KEY.STORAGE]: () =>
-    import('../assets/svg/ic-custom-storage.svg'),
-  [DATA_ASSET_SERVICE_KEY.TOPIC]: () => import('../assets/svg/topic.svg'),
+  api: () => import('../assets/svg/ic-service-rest-api.svg'),
+  dashboard: () => import('../assets/svg/dashboard.svg'),
+  database: () => import('../assets/svg/ic-custom-database.svg'),
+  drive: () => import('../assets/svg/ic-drive-service.svg'),
+  mlmodel: () => import('../assets/svg/ic-custom-model.svg'),
+  pipeline: () => import('../assets/svg/pipeline.svg'),
+  search: () => import('../assets/svg/ic-custom-search.svg'),
+  security: () => import('../assets/svg/security-safe.svg'),
+  storage: () => import('../assets/svg/ic-custom-storage.svg'),
+  topic: () => import('../assets/svg/topic.svg'),
 };
 
-const matchesLegacyServiceKey = (
-  normalizedServiceType: string,
-  legacyKeys: string[] = []
-) => legacyKeys.includes(normalizedServiceType);
+const normalizeServiceType = (serviceType: string) =>
+  serviceType.toLowerCase().replaceAll(/[_\s-]/g, '');
 
-const isGeneratedServiceType = (
-  normalizedServiceType: string,
-  serviceTypes: ServiceTypeEnum,
-  ignoredServiceTypes: string[] = []
-) => {
-  const ignoredKeys = ignoredServiceTypes.map(normalizeServiceType);
-
-  return Object.values(serviceTypes).some(
-    (serviceType) =>
-      normalizeServiceType(serviceType) === normalizedServiceType &&
-      !ignoredKeys.includes(normalizedServiceType)
-  );
-};
-
-export const getDataAssetServiceKey = (
+export const getDataAssetServiceCategory = (
   serviceType: string
-): DataAssetServiceKey => {
+): DataAssetServiceCategory => {
   const normalizedServiceType = normalizeServiceType(serviceType);
 
-  if (isGeneratedServiceType(normalizedServiceType, MessagingServiceType)) {
-    return DATA_ASSET_SERVICE_KEY.TOPIC;
+  if (MESSAGING_SERVICE_TYPES.has(normalizedServiceType)) {
+    return 'topic';
   }
-  if (
-    isGeneratedServiceType(normalizedServiceType, DashboardServiceType, [
-      DashboardServiceType.QlikCloud,
-    ])
-  ) {
-    return DATA_ASSET_SERVICE_KEY.DASHBOARD;
+  if (DASHBOARD_SERVICE_TYPES.has(normalizedServiceType)) {
+    return 'dashboard';
   }
-  if (
-    isGeneratedServiceType(normalizedServiceType, PipelineServiceType, [
-      PipelineServiceType.DomoPipeline,
-      PipelineServiceType.KinesisFirehose,
-    ])
-  ) {
-    return DATA_ASSET_SERVICE_KEY.PIPELINE;
+  if (PIPELINE_SERVICE_TYPES.has(normalizedServiceType)) {
+    return 'pipeline';
   }
-  if (
-    matchesLegacyServiceKey(normalizedServiceType, ['scikit']) ||
-    isGeneratedServiceType(normalizedServiceType, MlModelServiceType, [
-      MlModelServiceType.Sklearn,
-    ])
-  ) {
-    return DATA_ASSET_SERVICE_KEY.ML_MODEL;
+  if (ML_MODEL_SERVICE_TYPES.has(normalizedServiceType)) {
+    return 'mlmodel';
   }
-  if (isGeneratedServiceType(normalizedServiceType, StorageServiceType)) {
-    return DATA_ASSET_SERVICE_KEY.STORAGE;
+  if (STORAGE_SERVICE_TYPES.has(normalizedServiceType)) {
+    return 'storage';
   }
-  if (isGeneratedServiceType(normalizedServiceType, SearchServiceType)) {
-    return DATA_ASSET_SERVICE_KEY.SEARCH;
+  if (SEARCH_SERVICE_TYPES.has(normalizedServiceType)) {
+    return 'search';
   }
-  if (
-    matchesLegacyServiceKey(normalizedServiceType, ['customapi']) ||
-    isGeneratedServiceType(normalizedServiceType, APIServiceType)
-  ) {
-    return DATA_ASSET_SERVICE_KEY.API;
+  if (API_SERVICE_TYPES.has(normalizedServiceType)) {
+    return 'api';
   }
-  if (isGeneratedServiceType(normalizedServiceType, DriveServiceType)) {
-    return DATA_ASSET_SERVICE_KEY.DRIVE;
+  if (DRIVE_SERVICE_TYPES.has(normalizedServiceType)) {
+    return 'drive';
   }
-  if (
-    matchesLegacyServiceKey(normalizedServiceType, ['customsecurity']) ||
-    isGeneratedServiceType(normalizedServiceType, SecurityServiceType)
-  ) {
-    return DATA_ASSET_SERVICE_KEY.SECURITY;
+  if (SECURITY_SERVICE_TYPES.has(normalizedServiceType)) {
+    return 'security';
   }
 
-  return DATA_ASSET_SERVICE_KEY.DATABASE;
+  return 'database';
 };
 
 export const getDataAssetExploreTab = (
   serviceType: string
 ): ExplorePageTabs => {
-  const category = getDataAssetServiceKey(serviceType);
+  const category = getDataAssetServiceCategory(serviceType);
 
-  const tabByCategory: Record<DataAssetServiceKey, ExplorePageTabs> = {
-    [DATA_ASSET_SERVICE_KEY.API]: ExplorePageTabs.API_ENDPOINT,
-    [DATA_ASSET_SERVICE_KEY.DASHBOARD]: ExplorePageTabs.DASHBOARDS,
-    [DATA_ASSET_SERVICE_KEY.DATABASE]: ExplorePageTabs.TABLES,
-    [DATA_ASSET_SERVICE_KEY.DRIVE]: ExplorePageTabs.DIRECTORIES,
-    [DATA_ASSET_SERVICE_KEY.ML_MODEL]: ExplorePageTabs.MLMODELS,
-    [DATA_ASSET_SERVICE_KEY.PIPELINE]: ExplorePageTabs.PIPELINES,
-    [DATA_ASSET_SERVICE_KEY.SEARCH]: ExplorePageTabs.SEARCH_INDEX,
-    [DATA_ASSET_SERVICE_KEY.SECURITY]: ExplorePageTabs.TABLES,
-    [DATA_ASSET_SERVICE_KEY.STORAGE]: ExplorePageTabs.CONTAINERS,
-    [DATA_ASSET_SERVICE_KEY.TOPIC]: ExplorePageTabs.TOPICS,
+  const tabByCategory: Record<DataAssetServiceCategory, ExplorePageTabs> = {
+    api: ExplorePageTabs.API_ENDPOINT,
+    dashboard: ExplorePageTabs.DASHBOARDS,
+    database: ExplorePageTabs.TABLES,
+    drive: ExplorePageTabs.DIRECTORIES,
+    mlmodel: ExplorePageTabs.MLMODELS,
+    pipeline: ExplorePageTabs.PIPELINES,
+    search: ExplorePageTabs.SEARCH_INDEX,
+    security: ExplorePageTabs.TABLES,
+    storage: ExplorePageTabs.CONTAINERS,
+    topic: ExplorePageTabs.TOPICS,
   };
 
   return tabByCategory[category];
@@ -314,19 +331,17 @@ export const DataAssetServiceLogo = ({
   serviceType: string;
   className?: string;
 }): JSX.Element | null => {
-  const category = getDataAssetServiceKey(serviceType);
+  const category = getDataAssetServiceCategory(serviceType);
   const normalizedServiceType = normalizeServiceType(serviceType);
   const [logo, setLogo] = useState<string>(LANDING_WIDGET_DEFAULT_ICON_URL);
 
   useEffect(() => {
     let isMounted = true;
-    const defaultIconImport =
-      DEFAULT_ICON_IMPORTS[category] ??
-      DEFAULT_ICON_IMPORTS[DATA_ASSET_SERVICE_KEY.DATABASE];
     const loadIcon =
-      SERVICE_ICON_IMPORTS[normalizedServiceType] ?? defaultIconImport;
+      SERVICE_ICON_IMPORTS[normalizedServiceType] ??
+      DEFAULT_ICON_IMPORTS[category];
 
-    loadIcon?.()
+    loadIcon()
       .then((icon) => {
         if (isMounted) {
           setLogo(icon.default);
