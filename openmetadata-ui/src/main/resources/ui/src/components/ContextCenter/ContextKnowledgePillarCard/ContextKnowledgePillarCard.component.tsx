@@ -200,8 +200,8 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
           type="button"
           onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
             e.stopPropagation();
-            onClick()
-            }}>
+            onClick();
+          }}>
           {cta}
         </Button>
       </Box>
