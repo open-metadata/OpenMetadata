@@ -36,7 +36,7 @@ const MetaRow: FC<MetaRowProps> = ({ label, value }) => (
     <Typography className="tw:text-gray-500" size="text-sm">
       {label}
     </Typography>
-    <Typography className="tw:text-gray-900" size="text-sm" weight="medium">
+    <Typography className="tw:text-primary" size="text-sm" weight="medium">
       {value}
     </Typography>
   </Box>

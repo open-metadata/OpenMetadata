@@ -22,7 +22,6 @@ import { getApiEndPoints } from '../../rest/apiEndpointsAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
 import { fetchEntityTaskCountsInto } from '../../utils/FeedUtilsPure';
 import APICollectionPage from './APICollectionPage';
-
 jest.mock('../../rest/apiCollectionsAPI', () => ({
   getApiCollectionByFQN: jest.fn().mockResolvedValue({}),
   restoreApiCollection: jest.fn().mockResolvedValue({ version: 1 }),
