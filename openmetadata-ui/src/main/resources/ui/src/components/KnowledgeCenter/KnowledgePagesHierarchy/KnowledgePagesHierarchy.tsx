@@ -672,7 +672,7 @@ const KnowledgePagesHierarchy = forwardRef<
               <File06 className="tw:text-gray-600" size={20} />
             </div>
             <div>
-              <Typography size="text-md" weight="semibold">
+              <Typography size="text-md" weight="medium">
                 {t('label.article-plural')}
               </Typography>
               <Typography
