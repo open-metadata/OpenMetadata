@@ -56,7 +56,7 @@ import {
 import {
   getCountBadge,
   getEntityDeleteMessage,
-} from '../../utils/EntityDisplayPureUtils';
+} from '../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   checkPermission,

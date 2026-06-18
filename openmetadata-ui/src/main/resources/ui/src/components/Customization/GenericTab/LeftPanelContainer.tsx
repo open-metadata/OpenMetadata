@@ -13,8 +13,8 @@
 import { Col, Row } from 'antd';
 import { isUndefined } from 'lodash';
 import { lazy, useMemo } from 'react';
-import RGL, { WidthProvider } from 'react-grid-layout';
 import type { ReactGridLayoutProps } from 'react-grid-layout';
+import RGL, { WidthProvider } from 'react-grid-layout';
 import { PageType } from '../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import type { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';

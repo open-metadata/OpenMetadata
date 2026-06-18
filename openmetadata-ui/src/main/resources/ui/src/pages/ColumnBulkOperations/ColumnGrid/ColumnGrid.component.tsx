@@ -248,8 +248,7 @@ const getDescriptionPreview = (description?: string): string => {
   }
 
   return (
-    stringToDOMElement(formatClientContent(description))
-      .textContent ?? ''
+    stringToDOMElement(formatClientContent(description)).textContent ?? ''
   ).slice(0, 100);
 };
 

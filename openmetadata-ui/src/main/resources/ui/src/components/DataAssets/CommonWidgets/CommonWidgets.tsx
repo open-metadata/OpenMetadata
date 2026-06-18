@@ -40,10 +40,6 @@ import {
 } from '../../../generated/entity/type';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
-import type {
-  CustomPropertyProps,
-  ExtentionEntitiesKeys,
-} from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import commonWidgetClassBase from '../../../utils/CommonWidget/CommonWidgetClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
@@ -56,6 +52,10 @@ import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import { createTagObject } from '../../../utils/TagsPureUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import type {
+  CustomPropertyProps,
+  ExtentionEntitiesKeys,
+} from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
 
@@ -69,9 +69,11 @@ const CertificationWidget = withSuspenseFallback(
 
 const CustomPropertyTable = withSuspenseFallback(
   lazy(() =>
-    import('../../common/CustomPropertyTable/CustomPropertyTable').then((m) => ({
-      default: m.CustomPropertyTable,
-    }))
+    import('../../common/CustomPropertyTable/CustomPropertyTable').then(
+      (m) => ({
+        default: m.CustomPropertyTable,
+      })
+    )
   )
 ) as CustomPropertyTableComponent;
 
@@ -94,7 +96,9 @@ const LeftPanelContainer = withSuspenseFallback(
 const DataProductsContainer = withSuspenseFallback(
   lazy(
     () =>
-      import('../../DataProducts/DataProductsContainer/DataProductsContainer.component')
+      import(
+        '../../DataProducts/DataProductsContainer/DataProductsContainer.component'
+      )
   )
 );
 

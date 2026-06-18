@@ -32,7 +32,7 @@ import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getTags } from '../rest/tagAPI';
-import { getCountBadge } from '../utils/EntityDisplayPureUtils';
+import { getCountBadge } from '../utils/EntityDisplayUtils';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { getSearchLabel } from './AdvancedSearchPureUtils';
 import { t } from './i18next/LocalUtil';

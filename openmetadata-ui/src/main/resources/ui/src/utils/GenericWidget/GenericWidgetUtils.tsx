@@ -13,8 +13,10 @@
 import classNames from 'classnames';
 import { lazy, type ComponentType } from 'react';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
+import type { PropertyValueProps } from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import type { DomainLabelProps } from '../../components/common/DomainLabel/DomainLabel.interface';
 import type { PreviewerProp } from '../../components/common/RichTextEditor/RichTextEditor.interface';
+import type { TagButtonProps } from '../../components/common/TagButton/TagButton.component';
 import type { EntityUnion } from '../../components/Explore/ExplorePage.interface';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import {
@@ -27,8 +29,8 @@ import {
   GlossaryTermDetailPageWidgetKeys,
 } from '../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../enums/entity.enum';
-import { TagSource } from '../../generated/tests/testCase';
 import type { EntityReference } from '../../generated/tests/testCase';
+import { TagSource } from '../../generated/tests/testCase';
 import domainClassBase from '../Domain/DomainClassBase';
 import { renderReferenceElement } from '../GlossaryUtils';
 import tableClassBase from '../TableClassBase';
@@ -39,7 +41,7 @@ const PropertyValue = withSuspenseFallback(
       (m) => ({ default: m.PropertyValue })
     )
   )
-) as ComponentType<Record<string, unknown>>;
+) as ComponentType<PropertyValueProps>;
 
 const DomainLabel = withSuspenseFallback(
   lazy(() =>
@@ -52,15 +54,13 @@ const DomainLabel = withSuspenseFallback(
 const RichTextEditorPreviewerV1 = withSuspenseFallback(
   lazy(
     () =>
-      import(
-        '../../components/common/RichTextEditor/RichTextEditorPreviewerV1'
-      )
+      import('../../components/common/RichTextEditor/RichTextEditorPreviewerV1')
   )
 ) as ComponentType<PreviewerProp>;
 
 const TagButton = withSuspenseFallback(
   lazy(() => import('../../components/common/TagButton/TagButton.component'))
-) as ComponentType<Record<string, unknown>>;
+) as ComponentType<TagButtonProps>;
 
 const ContainerWidget = withSuspenseFallback(
   lazy(() =>

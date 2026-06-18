@@ -25,7 +25,7 @@ import { ReactComponent as SuccessIcon } from '../../../../assets/svg/success-ba
 import { TestConnectionStepResult } from '../../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../../generated/entity/services/connections/testConnectionDefinition';
 import { useClipboard } from '../../../../hooks/useClipBoard';
-import { requiredField } from '../../../../utils/EntityDisplayPureUtils';
+import { requiredField } from '../../../../utils/EntityDisplayUtils';
 import './connection-step-card.less';
 
 const { Panel } = Collapse;

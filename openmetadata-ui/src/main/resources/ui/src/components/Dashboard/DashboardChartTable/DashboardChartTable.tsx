@@ -29,8 +29,8 @@ import { usePermissionProvider } from '../../../context/PermissionProvider/Permi
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
-import { TagSource } from '../../../generated/entity/data/chart';
 import type { TagLabel } from '../../../generated/entity/data/chart';
+import { TagSource } from '../../../generated/entity/data/chart';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { useTableFilters } from '../../../hooks/useTableFilters';
 import { updateChart } from '../../../rest/chartAPI';

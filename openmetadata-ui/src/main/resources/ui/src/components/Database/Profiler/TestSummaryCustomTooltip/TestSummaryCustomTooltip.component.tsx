@@ -31,7 +31,7 @@ import {
 } from '../../../../utils/date-time/DateTimeUtils';
 import { formatNumberWithComma } from '../../../../utils/NumberUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
-import { getTaskDetailPath } from '../../../../utils/TaskNavigationUtils';
+import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import './test-summary-custom-tooltip.less';
 

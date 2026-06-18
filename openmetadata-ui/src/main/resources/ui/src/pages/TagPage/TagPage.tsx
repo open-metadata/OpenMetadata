@@ -101,7 +101,7 @@ import { deleteTag, patchTag } from '../../rest/tagAPI';
 import {
   getEntityDeleteMessage,
   getEntityMissingError,
-} from '../../utils/EntityDisplayPureUtils';
+} from '../../utils/EntityDisplayUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import {
   fetchEntityActivityCountInto,

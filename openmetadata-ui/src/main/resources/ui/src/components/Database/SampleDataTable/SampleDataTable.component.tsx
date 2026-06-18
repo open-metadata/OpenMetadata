@@ -37,7 +37,7 @@ import {
   deleteSampleDataByTableId,
   getSampleDataByTableId,
 } from '../../../rest/tableAPI';
-import { getEntityDeleteMessage } from '../../../utils/EntityDisplayPureUtils';
+import { getEntityDeleteMessage } from '../../../utils/EntityDisplayUtils';
 import { downloadFile } from '../../../utils/Export/ExportUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';

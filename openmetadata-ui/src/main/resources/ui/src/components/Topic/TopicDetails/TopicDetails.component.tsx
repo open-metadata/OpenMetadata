@@ -15,14 +15,7 @@ import { Col, Row, Tabs } from 'antd';
 import type { AxiosError } from 'axios';
 import type { EntityTags } from 'Models';
 import type { ComponentType } from 'react';
-import {
-  lazy,
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
@@ -127,15 +120,18 @@ const DataAssetsHeader = withSuspenseFallback(
 
 const SampleDataWithMessages = withSuspenseFallback(
   lazy(
-    () =>
-      import('../../Database/SampleDataWithMessages/SampleDataWithMessages')
+    () => import('../../Database/SampleDataWithMessages/SampleDataWithMessages')
   )
 );
 
-const EntityLineageTab = lazy(() =>
-  import('../../Lineage/EntityLineageTab/EntityLineageTab').then((module) => ({
-    default: module.EntityLineageTab,
-  }))
+const EntityLineageTab = withSuspenseFallback(
+  lazy(() =>
+    import('../../Lineage/EntityLineageTab/EntityLineageTab').then(
+      (module) => ({
+        default: module.EntityLineageTab,
+      })
+    )
+  )
 );
 
 const QueryViewer = withSuspenseFallback(
@@ -441,14 +437,12 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         />
       ),
       lineageTab: (
-        <Suspense fallback={<Loader />}>
-          <EntityLineageTab
-            deleted={Boolean(deleted)}
-            entity={topicDetails as SourceType}
-            entityType={EntityType.TOPIC}
-            hasEditAccess={editLineagePermission}
-          />
-        </Suspense>
+        <EntityLineageTab
+          deleted={Boolean(deleted)}
+          entity={topicDetails as SourceType}
+          entityType={EntityType.TOPIC}
+          hasEditAccess={editLineagePermission}
+        />
       ),
       customPropertiesTab: topicDetails && (
         <CustomPropertyTable<EntityType.TOPIC>

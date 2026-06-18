@@ -39,18 +39,28 @@ export const GenericWidget = (props: WidgetCommonProps) => {
   const data = getDummyDataByPage(currentPageType as PageType);
 
   useEffect(() => {
+    let isMounted = true;
+
     if (
       props.isEditView &&
       props.widgetKey.startsWith(GlossaryTermDetailPageWidgetKeys.TERMS_TABLE)
     ) {
       import(
         '../../../utils/CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass'
-      ).then(({ default: customizeGlossaryTermPageClassBase }) => {
-        setGlossaryChildTerms(
-          customizeGlossaryTermPageClassBase.getGlossaryChildTerms()
-        );
-      });
+      )
+        .then(({ default: customizeGlossaryTermPageClassBase }) => {
+          if (isMounted) {
+            setGlossaryChildTerms(
+              customizeGlossaryTermPageClassBase.getGlossaryChildTerms()
+            );
+          }
+        })
+        .catch(noop);
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [props.widgetKey, props.isEditView, setGlossaryChildTerms]);
 
   const widgetName = startCase(

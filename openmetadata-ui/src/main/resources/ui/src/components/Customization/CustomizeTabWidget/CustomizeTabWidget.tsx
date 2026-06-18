@@ -44,8 +44,8 @@ import {
 import { getTabDisplayName } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getAddWidgetHandler } from '../../../utils/CustomizePage/CustomizePageWidgetUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { TabItem } from '../../common/DraggableTabs/DraggableTabs';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import { TabItem } from '../../common/DraggableTabs/DraggableTabs';
 
 const EmptyWidgetPlaceholder = withSuspenseFallback(
   lazy(
