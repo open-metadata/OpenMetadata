@@ -28,6 +28,7 @@ import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.llm.LLMClientHolder;
+import org.openmetadata.service.util.AISettingsUtil;
 
 /**
  * Orchestrates asynchronous processing of an uploaded {@link ContextFile}: text extraction
@@ -168,7 +169,8 @@ public class ContextFileProcessingService {
       markAnalyzing(fileId, contentId);
       ProcessingStatus textStatus = extractText(fileId, contentId);
       if (textStatus == ProcessingStatus.Processed
-          && Boolean.TRUE.equals(llmEnabledSupplier.get())) {
+          && Boolean.TRUE.equals(llmEnabledSupplier.get())
+          && AISettingsUtil.isFileExtractionEnabled(AISettingsUtil.get())) {
         submitMemoryExtraction(fileId, contentId);
       }
     }
@@ -337,7 +339,9 @@ public class ContextFileProcessingService {
 
   private ProcessingStatus fileStatusAfterText(ProcessingStatus textStatus) {
     ProcessingStatus result = textStatus;
-    if (textStatus == ProcessingStatus.Processed && Boolean.TRUE.equals(llmEnabledSupplier.get())) {
+    if (textStatus == ProcessingStatus.Processed
+        && Boolean.TRUE.equals(llmEnabledSupplier.get())
+        && AISettingsUtil.isFileExtractionEnabled(AISettingsUtil.get())) {
       result = ProcessingStatus.ExtractingContext;
     }
     return result;

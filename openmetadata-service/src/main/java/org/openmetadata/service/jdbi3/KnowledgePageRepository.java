@@ -68,6 +68,7 @@ import org.openmetadata.service.resources.knowledge.KnowledgePageResource;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.search.vector.PageBodyTextContributor;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.util.AISettingsUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -911,7 +912,8 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
    * body settles. A no-op when the LLM is disabled, mirroring the file pipeline.
    */
   private void schedulePillExtraction(UUID pageId) {
-    if (LLMClientHolder.isEnabled()) {
+    if (LLMClientHolder.isEnabled()
+        && AISettingsUtil.isPageExtractionEnabled(AISettingsUtil.get())) {
       PageContextProcessingEngineHolder.get().schedule(pageId);
     }
   }
