@@ -33,10 +33,15 @@ import {
   Tag01,
 } from '@untitledui/icons';
 import React from 'react';
+import { ReactComponent as APIService } from '../assets/svg/entity/api-service.svg';
 import { ReactComponent as Chart } from '../assets/svg/entity/chart.svg';
 import { ReactComponent as DashboardService } from '../assets/svg/entity/dashboard-service.svg';
 import { ReactComponent as Dashboard } from '../assets/svg/entity/dashboard.svg';
 import { ReactComponent as DatabaseService } from '../assets/svg/entity/database-service.svg';
+import { ReactComponent as DriveService } from '../assets/svg/entity/drive-service.svg';
+import { ReactComponent as MetadataService } from '../assets/svg/entity/metadata-service.svg';
+import { ReactComponent as MLModelService } from '../assets/svg/entity/ml-model-service.svg';
+import { ReactComponent as PipelineService } from '../assets/svg/entity/pipeline-service.svg';
 import { ReactComponent as SpreadSheet } from '../assets/svg/entity/spreadsheet.svg';
 import { ReactComponent as StoredProcedure } from '../assets/svg/entity/stored-procedure.svg';
 import { AssetsUnion } from '../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
@@ -367,7 +372,7 @@ export const ENTITY_ICON_MAPPER: Record<
     iconClass: 'tw:text-fuchsia-600',
     bgClass: 'tw:bg-fuchsia-50',
     borderClass: 'tw:border-fuchsia-200',
-    icon: ClipboardMinus, // TODO: icon
+    icon: DriveService,
   },
   [EntityType.SPREADSHEET]: {
     iconClass: 'tw:text-fuchsia-600',
@@ -397,13 +402,13 @@ export const ENTITY_ICON_MAPPER: Record<
     iconClass: 'tw:text-rose-600',
     bgClass: 'tw:bg-rose-50',
     borderClass: 'tw:border-rose-200',
-    icon: Folder, // TODO: icon
+    icon: MLModelService,
   },
   [EntityType.PIPELINE_SERVICE]: {
     iconClass: 'tw:text-fuchsia-600',
     bgClass: 'tw:bg-fuchsia-50',
     borderClass: 'tw:border-fuchsia-200',
-    icon: Folder, // TODO: icon
+    icon: PipelineService,
   },
   [EntityType.DOMAIN]: {
     iconClass: 'tw:text-pink-600',
@@ -415,7 +420,7 @@ export const ENTITY_ICON_MAPPER: Record<
     iconClass: 'tw:text-pink-600',
     bgClass: 'tw:bg-pink-50',
     borderClass: 'tw:border-pink-200',
-    icon: Folder, // TODO: icon
+    icon: MetadataService,
   },
   [EntityType.API_ENDPOINT]: {
     iconClass: 'tw:text-teal-600',
@@ -427,7 +432,7 @@ export const ENTITY_ICON_MAPPER: Record<
     iconClass: 'tw:text-fuchsia-600',
     bgClass: 'tw:bg-fuchsia-50',
     borderClass: 'tw:border-fuchsia-200',
-    icon: CodeCircle01, // TODO: icon
+    icon: APIService,
   },
   [EntityType.API_COLLECTION]: {
     iconClass: 'tw:text-fuchsia-600',
