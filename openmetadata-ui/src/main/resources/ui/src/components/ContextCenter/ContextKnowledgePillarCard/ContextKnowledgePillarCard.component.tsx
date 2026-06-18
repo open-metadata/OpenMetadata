@@ -198,7 +198,10 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
           isDisabled={hasNoData}
           size="xs"
           type="button"
-          onClick={onClick}>
+          onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+            e.stopPropagation();
+            onClick()
+            }}>
           {cta}
         </Button>
       </Box>
