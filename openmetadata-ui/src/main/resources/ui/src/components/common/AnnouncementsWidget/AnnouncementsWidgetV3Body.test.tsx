@@ -52,16 +52,16 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ButtonUtility: ({
     isDisabled,
     onClick,
-    tooltip,
+    'aria-label': ariaLabel,
     'data-testid': dataTestId,
   }: {
     isDisabled?: boolean;
     onClick?: () => void;
-    tooltip?: string;
+    'aria-label'?: string;
     'data-testid'?: string;
   }) => (
     <button
-      aria-label={tooltip}
+      aria-label={ariaLabel}
       data-testid={dataTestId}
       disabled={isDisabled}
       onClick={onClick}

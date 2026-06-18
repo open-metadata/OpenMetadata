@@ -101,13 +101,13 @@ const AnnouncementsWidgetV3Body = ({
           {total > 1 && (
             <Box align="center" className="tw:gap-px">
               <ButtonUtility
+                aria-label={t('label.previous')}
                 className="tw:p-1 tw:pr-0"
                 color="tertiary"
                 data-testid="announcement-prev-btn"
                 icon={ChevronLeft}
                 isDisabled={index === 0}
                 size="xs"
-                tooltip={t('label.previous')}
                 onClick={() => setCurrentIndex(Math.max(0, index - 1))}
               />
               <Typography
@@ -118,13 +118,13 @@ const AnnouncementsWidgetV3Body = ({
                 {`${index + 1}/${total}`}
               </Typography>
               <ButtonUtility
+                aria-label={t('label.next')}
                 className="tw:p-1 tw:pl-0"
                 color="tertiary"
                 data-testid="announcement-next-btn"
                 icon={ChevronRight}
                 isDisabled={index === total - 1}
                 size="xs"
-                tooltip={t('label.next')}
                 onClick={() => setCurrentIndex(Math.min(total - 1, index + 1))}
               />
             </Box>
