@@ -203,39 +203,42 @@ class TagAnalyzer:
                 )
         return results
 
-    def analyze_content(self, values: Sequence[str]) -> TagAnalysis:
-        recognizers = self.content_recognizers
-
-        if not recognizers:
-            return self._build_tag_analysis([], 1, recognizer.Target.content)
-
-        context = split_column_name(self._column_name)
-        results = self._analyze_with(values, recognizers, context=context)
-
-        return self._build_tag_analysis(results, len(values), recognizer.Target.content)
-
-    def analyze_column(self) -> TagAnalysis:
-        recognizers = self.column_recognizers
-
-        if not recognizers:
-            return self._build_tag_analysis([], 1, recognizer.Target.column_name)
-
-        results = self._analyze_with(self._column_name, recognizers)
-
-        return self._build_tag_analysis(results, 1, recognizer.Target.column_name)
-
-    def _build_tag_analysis(
+    def analyze(
         self,
-        results: list[RecognizerResult],
-        analysis_count: int,
-        target: recognizer.Target,
+        str_values: Sequence[str],
+        column_name: Optional[str] = None,  # noqa: UP045
     ) -> TagAnalysis:
+        content_results: list[RecognizerResult] = []
+        content_score = 0.0
+        if str_values:
+            content_recognizers = self.content_recognizers
+            if content_recognizers:
+                context = split_column_name(self._column_name)
+                content_results = self._analyze_with(str_values, content_recognizers, context=context)
+                content_score = sum(r.score for r in content_results) / len(str_values)
+
+        column_results: list[RecognizerResult] = []
+        column_score = 0.0
+        if column_name is not None:
+            column_recognizers = self.column_recognizers
+            if column_recognizers:
+                column_results = self._analyze_with(self._column_name, column_recognizers)
+                column_score = sum(r.score for r in column_results)
+
+        all_results = content_results + column_results
+        score = max(content_score, column_score)
+        target = (
+            recognizer.Target.column_name
+            if column_score >= content_score and column_results
+            else recognizer.Target.content
+        )
+
         return TagAnalysis(
             tag=self.tag,
-            score=sum(r.score for r in results) / analysis_count,
-            explanation=explain_recognition_results(results) if results else None,
-            recognizer_results=results,
-            target=target,
+            score=score,
+            explanation=explain_recognition_results(all_results) if all_results else None,
+            recognizer_results=all_results,
+            target=target if all_results else None,
         )
 
     def __repr__(self) -> str:

@@ -164,7 +164,6 @@ class TestTagScorer:
         """Create a TagClassifier instance with tag analyzers"""
         return TagScorer(
             tag_analyzers=tag_analyzers,
-            column_name_contribution=0.5,
             score_cutoff=0.1,
             relative_cardinality_cutoff=0.01,
         )
@@ -237,11 +236,9 @@ class TestTagScorer:
 
     def test_score_cutoff_filtering(self, tag_analyzers):
         """Test that scores below cutoff are filtered"""
-        # Create a classifier with high cutoff
         high_cutoff_classifier = TagScorer(
             tag_analyzers=tag_analyzers,
-            column_name_contribution=0.5,
-            score_cutoff=0.95,  # Very high cutoff
+            score_cutoff=0.95,
             relative_cardinality_cutoff=0.01,
         )
 
@@ -251,19 +248,23 @@ class TestTagScorer:
         # With such a high cutoff, weak matches should be filtered
         assert len(scored_tags) == 0 or all(scored_tag.score >= 0.95 for scored_tag in scored_tags)
 
-    def test_column_name_contribution(self, classifier):
-        """Test that column name contributes to score"""
-        email_data = ["user1@domain.com", "user2@domain.org"]
+    def test_column_name_only_classifies_independently(self, email_tag, nlp_engine):
+        """Column name recognizer fires on its own without any sample data."""
+        column = Column(
+            name=ColumnName(root="email_address"),
+            dataType=DataType.STRING,
+            fullyQualifiedName="test.table.email_address",
+        )
+        analyzer = TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
+        scorer = TagScorer(tag_analyzers=[analyzer], score_cutoff=0.1)
 
-        # First without column name match
-        scores_without = classifier.predict_scores(email_data, column_name="random_field")
+        scores = scorer.predict_scores([], column_name="email_address")
 
-        # Then with column name that matches email pattern
-        scores_with = classifier.predict_scores(email_data, column_name="email_address")
-
-        # Email tag should have higher score when column name matches
-        if "PII.EmailTag" in scores_with and "PII.EmailTag" in scores_without:
-            assert scores_with["PII.EmailTag"] >= scores_without["PII.EmailTag"]
+        assert len(scores) == 1
+        assert scores[0] == IsInstance(ScoredTag) & HasAttributes(
+            tag=IsInstance(Tag) & HasAttributes(name=EntityName(root="EmailTag")),
+            score=IsNumeric(gt=0.5),
+        )
 
 
 class TestTagAnalyzer:
@@ -320,7 +321,7 @@ class TestTagAnalyzer:
     def test_analyze_content_with_emails(self, tag_analyzer, email_tag: Tag):
         """Test content analysis with email data"""
         values = ["john@example.com", "jane@test.org", "bob@company.co.uk"]
-        analysis = tag_analyzer.analyze_content(values)
+        analysis = tag_analyzer.analyze(str_values=values)
         assert analysis == IsInstance(TagAnalysis) & HasAttributes(
             score=IsFloat(gt=0.8),
             tag=email_tag,
@@ -334,7 +335,7 @@ class TestTagAnalyzer:
     def test_analyze_content_no_match(self, tag_analyzer, email_tag: Tag):
         """Test content analysis with non-matching data"""
         values = ["random text", "no patterns here", "just words"]
-        analysis = tag_analyzer.analyze_content(values)
+        analysis = tag_analyzer.analyze(str_values=values)
         assert analysis == IsInstance(TagAnalysis) & HasAttributes(
             score=0.0,
             tag=email_tag,
@@ -342,8 +343,7 @@ class TestTagAnalyzer:
         )
 
     def test_analyze_column_name(self, email_tag, nlp_engine):
-        """Test column name analysis"""
-        # Create column with email-related name
+        """Test column name analysis fires independently via the unified analyze() method."""
         column = Column(
             name=ColumnName(root="email_address"),
             displayName="Email Address",
@@ -351,7 +351,6 @@ class TestTagAnalyzer:
             fullyQualifiedName="test.table.email_address",
         )
 
-        # Add column name recognizer to tag
         column_name_pattern = PatternFactory.create(
             name="Email column pattern",
             regex=".*email.*",
@@ -374,7 +373,7 @@ class TestTagAnalyzer:
         email_tag.recognizers.append(column_name_recognizer)
 
         analyzer = TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
-        analysis = analyzer.analyze_column()
+        analysis = analyzer.analyze(str_values=[], column_name="email_address")
         assert analysis == IsInstance(TagAnalysis) & HasAttributes(
             score=IsFloat(gt=0.5),
             tag=email_tag,

@@ -123,3 +123,24 @@ WHERE JSON_VALUE(json, '$.classification.name' RETURNING CHAR) = 'PII'
     JSON_EXTRACT(json, '$.autoClassificationEnabled') IS NULL
     OR JSON_EXTRACT(json, '$.autoClassificationEnabled') = false
   );
+
+-- Remove default column_name recognizers from PII tags (no longer used as boosters)
+UPDATE tag
+SET json = JSON_SET(
+    json,
+    '$.recognizers',
+    COALESCE(
+        (
+            SELECT JSON_ARRAYAGG(r)
+            FROM JSON_TABLE(
+                JSON_EXTRACT(json, '$.recognizers'),
+                '$[*]' COLUMNS (r JSON PATH '$')
+            ) AS jt
+            WHERE JSON_VALUE(r, '$.target') != 'column_name'
+        ),
+        JSON_ARRAY()
+    )
+)
+WHERE JSON_VALUE(json, '$.classification.name' RETURNING CHAR) = 'PII'
+  AND JSON_VALUE(json, '$.name' RETURNING CHAR) IN ('NonSensitive', 'Sensitive')
+  AND JSON_SEARCH(json, 'one', 'column_name', NULL, '$.recognizers[*].target') IS NOT NULL;

@@ -236,7 +236,7 @@ class TestAnalyzeWithAnyLanguage:
 
         analyzer.build_analyzer_with = tracking_build
 
-        result = analyzer.analyze_content(["john@example.com"])  # noqa: F841
+        result = analyzer.analyze(str_values=["john@example.com"])  # noqa: F841
 
         assert len(build_calls) == 1
         _, used_nlp_engine = build_calls[0]
@@ -253,7 +253,7 @@ class TestAnalyzeWithAnyLanguage:
             nlp_engine=mock_nlp_engine,
             language=ClassificationLanguage.any,
         )
-        result = analyzer.analyze_content(["test@example.com", "not-an-email"])
+        result = analyzer.analyze(str_values=["test@example.com", "not-an-email"])
         assert result is not None
         assert result.score >= 0
 
@@ -270,7 +270,7 @@ class TestAnalyzeWithAnyLanguage:
             nlp_engine=mock_nlp_engine,
             language=ClassificationLanguage.any,
         )
-        result = analyzer.analyze_content(["some data"])
+        result = analyzer.analyze(str_values=["some data"])
         assert result.score == 0
         assert result.recognizer_results == []
 
@@ -317,7 +317,7 @@ class TestAnalyzeWithAnyLanguage:
             nlp_engine=mock_nlp_engine,
             language=ClassificationLanguage.any,
         )
-        result = analyzer.analyze_column()
+        result = analyzer.analyze(str_values=[], column_name="email_address")
         assert result is not None
 
 
