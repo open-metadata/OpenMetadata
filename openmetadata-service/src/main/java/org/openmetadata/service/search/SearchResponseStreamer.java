@@ -15,7 +15,11 @@ package org.openmetadata.service.search;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.StreamingOutput;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /**
  * Streams a search response directly to the HTTP output instead of materializing it into a single
@@ -53,6 +57,27 @@ public final class SearchResponseStreamer {
           output.flush();
         };
     return Response.ok(body, MediaType.APPLICATION_JSON_TYPE).build();
+  }
+
+  /**
+   * Materializes a (possibly streamed) search {@link Response} into a JSON String for internal,
+   * bounded callers that parse the body in-process. Handles both the streaming entity and the
+   * legacy String entity. Intended only for small/targeted internal queries — never the
+   * user-facing path, where streaming exists precisely to avoid this allocation.
+   */
+  public static String toJsonString(Response response) throws IOException {
+    Object entity = response.getEntity();
+    String result;
+    if (entity instanceof String s) {
+      result = s;
+    } else if (entity instanceof StreamingOutput streamingOutput) {
+      ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+      streamingOutput.write(buffer);
+      result = buffer.toString(StandardCharsets.UTF_8);
+    } else {
+      result = JsonUtils.pojoToJson(entity);
+    }
+    return result;
   }
 
   /** Wraps a failure that occurs while streaming the response body. */

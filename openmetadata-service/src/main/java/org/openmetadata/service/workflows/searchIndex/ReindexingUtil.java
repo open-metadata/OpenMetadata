@@ -19,7 +19,6 @@ import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
-import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -247,8 +246,7 @@ public class ReindexingUtil {
             .withSortOrder("desc")
             .withIncludeSourceFields(new ArrayList<>());
     List<EntityReference> entities = new ArrayList<>();
-    Response response = Entity.getSearchRepository().search(searchRequest, null);
-    String json = (String) response.getEntity();
+    String json = Entity.getSearchRepository().searchAsString(searchRequest, null);
 
     for (Iterator<JsonNode> it =
             ((ArrayNode) JsonUtils.extractValue(json, "hits", "hits")).elements();

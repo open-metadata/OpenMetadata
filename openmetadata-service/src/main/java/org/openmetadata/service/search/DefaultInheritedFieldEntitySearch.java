@@ -28,6 +28,7 @@ import jakarta.json.JsonObject;
 import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
 import jakarta.ws.rs.core.Response;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -156,9 +157,10 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
     }
   }
 
-  private String extractResponseBody(Response response) {
-    Object entity = response.getEntity();
-    return entity != null ? entity.toString() : EMPTY_JSON;
+  private String extractResponseBody(Response response) throws IOException {
+    return response.getEntity() != null
+        ? SearchResponseStreamer.toJsonString(response)
+        : EMPTY_JSON;
   }
 
   private List<EntityReference> extractEntityReferencesFromSearchResponse(JsonNode searchResponse) {

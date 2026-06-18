@@ -2919,6 +2919,16 @@ public class SearchRepository {
     return searchClient.search(request, subjectContext);
   }
 
+  /**
+   * Runs a search and returns the response body as a JSON String. For internal, bounded callers
+   * that parse the body in-process — the user-facing path streams the response instead (see {@link
+   * SearchResponseStreamer}).
+   */
+  public String searchAsString(SearchRequest request, SubjectContext subjectContext)
+      throws IOException {
+    return SearchResponseStreamer.toJsonString(search(request, subjectContext));
+  }
+
   public int countSearchResults(SearchRequest baseRequest, SubjectContext subjectContext)
       throws IOException {
     SearchRequest countRequest =
@@ -3332,8 +3342,7 @@ public class SearchRepository {
               .withIncludeSourceFields(new ArrayList<>());
 
       // Execute the search and parse the response
-      Response response = search(searchRequest, null);
-      String json = (String) response.getEntity();
+      String json = searchAsString(searchRequest, null);
       Set<EntityReference> fqns = new TreeSet<>(compareEntityReferenceById);
 
       // Extract hits from the response JSON and create entity references

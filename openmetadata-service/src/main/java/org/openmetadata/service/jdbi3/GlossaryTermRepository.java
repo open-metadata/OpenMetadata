@@ -1346,8 +1346,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
               .withDeleted(softDeleted)
               .withSortOrder("desc")
               .withIncludeSourceFields(new ArrayList<>());
-      Response response = searchRepository.search(searchRequest, null);
-      String json = (String) response.getEntity();
+      String json = searchRepository.searchAsString(searchRequest, null);
       Set<EntityReference> fqns = new TreeSet<>(compareEntityReferenceById);
       for (Iterator<JsonNode> it =
               ((ArrayNode) JsonUtils.extractValue(json, "hits", "hits")).elements();

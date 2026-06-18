@@ -19,7 +19,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import org.glassfish.jersey.message.internal.OutboundJaxrsResponse;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.entity.app.App;
@@ -36,6 +35,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.datainsight.system.DataInsightSystemChartResource;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchResponseStreamer;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.socket.messages.ChartDataStreamMessage;
 import org.openmetadata.service.util.EntityUtil;
@@ -185,8 +185,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
               break;
             }
 
-            String responseBody =
-                (String) ((OutboundJaxrsResponse) response).getContext().getEntity();
+            String responseBody = SearchResponseStreamer.toJsonString(response);
             List<Map> pageStatuses = parseIngestionPipelineResponse(responseBody);
             if (pageStatuses.isEmpty()) {
               break;
