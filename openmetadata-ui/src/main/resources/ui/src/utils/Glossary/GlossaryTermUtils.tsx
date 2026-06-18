@@ -27,7 +27,7 @@ import GlossaryTermTab from '../../components/Glossary/GlossaryTermTab/GlossaryT
 import OntologyExplorer from '../../components/OntologyExplorer/OntologyExplorer';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { PageType } from '../../generated/system/ui/page';
-import { getCountBadge } from '../../utils/EntityDisplayUtils';
+import { getCountBadge } from '../../utils/EntityDisplayPureUtils';
 import i18n from '../i18next/LocalUtil';
 import { GlossaryTermDetailPageTabProps } from './GlossaryTermClassBase';
 

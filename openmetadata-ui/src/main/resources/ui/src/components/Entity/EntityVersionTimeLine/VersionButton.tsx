@@ -106,3 +106,5 @@ export const VersionButton = forwardRef<
     );
   }
 );
+
+VersionButton.displayName = 'VersionButton';
