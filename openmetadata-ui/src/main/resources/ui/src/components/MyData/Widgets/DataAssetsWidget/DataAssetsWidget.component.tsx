@@ -14,7 +14,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { Bucket } from 'Models';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DataAssetIcon } from '../../../../assets/svg/ic-data-assets.svg';
@@ -26,6 +26,7 @@ import {
 } from '../../../../constants/Widgets.constant';
 import { SIZE } from '../../../../enums/common.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { useDashboardWidgetData } from '../../../../hooks/useDashboardWidgetData';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchData } from '../../../../rest/miscAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -49,8 +50,6 @@ const DataAssetsWidget = ({
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState<boolean>(true);
-  const [services, setServices] = useState<Bucket[]>([]);
   const [selectedSortBy, setSelectedSortBy] = useState<string>(
     DATA_ASSETS_SORT_BY_KEYS.HIGH_TO_LOW
   );
@@ -63,24 +62,30 @@ const DataAssetsWidget = ({
   const isFullSize = widgetData?.w === 2;
 
   const fetchDataAssets = useCallback(async () => {
-    setLoading(true);
     try {
       const sortField = getSortField(selectedSortBy);
       const sortOrder = getSortOrder(selectedSortBy);
       const res = await searchData('', 0, 0, '', sortField, sortOrder, [
         SearchIndex.DATA_ASSET,
       ]);
-      setServices(res?.data.aggregations?.['sterms#serviceType'].buckets);
+
+      return res?.data.aggregations?.['sterms#serviceType'].buckets ?? [];
     } catch (error) {
       showErrorToast(error as AxiosError);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
-  useEffect(() => {
-    fetchDataAssets();
-  }, [fetchDataAssets]);
+      throw error;
+    }
+  }, [selectedSortBy]);
+
+  const { data: services, isLoading: loading } = useDashboardWidgetData<
+    Bucket[]
+  >({
+    // Dashboard SWR cache lets repeat visits paint this widget from memory while
+    // the aggregation refreshes in the background.
+    cacheKey: `my-data:data-assets:${selectedSortBy}`,
+    fetcher: fetchDataAssets,
+    initialData: [],
+  });
 
   const handleSortByClick = useCallback(
     (key: string) => {
