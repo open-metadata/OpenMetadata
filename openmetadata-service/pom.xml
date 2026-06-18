@@ -469,14 +469,6 @@
       <version>0.16.0</version>
     </dependency>
 
-    <dependency>
-      <groupId>io.micrometer</groupId>
-      <artifactId>micrometer-bom</artifactId>
-      <version>1.14.5</version>
-      <type>pom</type>
-      <scope>import</scope>
-    </dependency>
-
     <!-- Flyway dependencies - only for SQL parsing, not migration management -->
     <dependency>
       <groupId>org.flywaydb</groupId>
@@ -491,20 +483,20 @@
     <dependency>
       <groupId>io.micrometer</groupId>
       <artifactId>micrometer-observation</artifactId>
-      <version>1.14.5</version>
+      <version>${micrometer.version}</version>
     </dependency>
 
     <!-- Micrometer Prometheus -->
     <dependency>
       <groupId>io.micrometer</groupId>
       <artifactId>micrometer-registry-prometheus</artifactId>
-      <version>1.14.5</version>
+      <version>${micrometer.version}</version>
     </dependency>
 
     <dependency>
       <groupId>io.micrometer</groupId>
       <artifactId>micrometer-core</artifactId>
-      <version>1.14.5</version>
+      <version>${micrometer.version}</version>
     </dependency>
 
 
