@@ -56,7 +56,9 @@ const CommonWidgets = withSuspenseFallback(
 );
 
 const MetricExpression = withSuspenseFallback(
-  lazy(() => import('../../components/Metric/MetricExpression/MetricExpression'))
+  lazy(
+    () => import('../../components/Metric/MetricExpression/MetricExpression')
+  )
 );
 
 const RelatedMetrics = withSuspenseFallback(

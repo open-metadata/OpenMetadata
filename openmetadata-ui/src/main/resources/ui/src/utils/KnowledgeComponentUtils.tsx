@@ -14,8 +14,8 @@ import { lazy } from 'react';
 import { ReactComponent as IconArticle } from '../assets/svg/ic-articles.svg';
 import { ReactComponent as LinkIcon } from '../assets/svg/ic-link.svg';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
-import { PageType } from '../interface/knowledge-center.interface';
 import type { KnowledgePage } from '../interface/knowledge-center.interface';
+import { PageType } from '../interface/knowledge-center.interface';
 
 const KnowledgePageSummary = withSuspenseFallback(
   lazy(

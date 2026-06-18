@@ -46,7 +46,9 @@ const ActivityFeedTab = withSuspenseFallback(
 );
 
 const ErrorPlaceHolder = withSuspenseFallback(
-  lazy(() => import('../components/common/ErrorWithPlaceholder/ErrorPlaceHolder'))
+  lazy(
+    () => import('../components/common/ErrorWithPlaceholder/ErrorPlaceHolder')
+  )
 );
 
 const GenericTab = withSuspenseFallback(
@@ -140,9 +142,9 @@ const FrequentlyJoinedTables = withSuspenseFallback(
 
 const PartitionedKeys = withSuspenseFallback(
   lazy(() =>
-    import('../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component').then(
-      (module) => ({ default: module.PartitionedKeys })
-    )
+    import(
+      '../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component'
+    ).then((module) => ({ default: module.PartitionedKeys }))
   )
 );
 

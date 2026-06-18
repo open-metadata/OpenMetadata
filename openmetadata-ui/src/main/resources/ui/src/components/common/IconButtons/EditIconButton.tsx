@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { PlusOutlined } from '@ant-design/icons';
-import { Button, Tooltip } from 'antd';
 import type { ButtonProps } from 'antd';
+import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';

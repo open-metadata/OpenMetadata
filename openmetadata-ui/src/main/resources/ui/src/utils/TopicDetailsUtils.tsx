@@ -26,7 +26,9 @@ import i18n from './i18next/LocalUtil';
 import type { TopicDetailPageTabProps } from './TopicClassBase';
 
 const ErrorPlaceHolder = withSuspenseFallback(
-  lazy(() => import('../components/common/ErrorWithPlaceholder/ErrorPlaceHolder'))
+  lazy(
+    () => import('../components/common/ErrorWithPlaceholder/ErrorPlaceHolder')
+  )
 );
 
 const TabsLabel = withSuspenseFallback(

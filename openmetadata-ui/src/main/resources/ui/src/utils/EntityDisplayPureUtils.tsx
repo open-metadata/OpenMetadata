@@ -14,7 +14,7 @@
 import classNames from 'classnames';
 import { capitalize, isUndefined } from 'lodash';
 import type { CurrentState } from 'Models';
-import { lazy, type ReactNode, Suspense } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { getPartialNameFromFQN, getPartialNameFromTableFQN } from './FqnUtils';
 import { t, Transi18next } from './i18next/LocalUtil';

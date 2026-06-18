@@ -48,8 +48,7 @@ const OwnerLabel = withSuspenseFallback(
 
 const RichTextEditorPreviewerNew = withSuspenseFallback(
   lazy(
-    () =>
-      import('../components/common/RichTextEditor/RichTextEditorPreviewNew')
+    () => import('../components/common/RichTextEditor/RichTextEditorPreviewNew')
   )
 );
 
