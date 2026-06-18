@@ -662,6 +662,21 @@ test.describe('Input Output Ports', () => {
           page.getByTestId('search-dropdown-Entity Type')
         ).toBeVisible();
 
+        // The quick-filter popover must stay interactive inside the react-aria
+        // drawer. Regression guard for the inert document.body-portal bug: a
+        // popup rendered outside the dialog subtree becomes inert and cannot be
+        // typed into. Filling the search box proves the popover is live.
+        await page.getByTestId('search-dropdown-Entity Type').click();
+        const filterPopover = page.getByTestId('drop-down-menu');
+        await expect(filterPopover).toBeVisible();
+
+        const filterSearch = filterPopover.getByRole('textbox');
+        await filterSearch.fill('table');
+        await expect(filterSearch).toHaveValue('table');
+
+        await page.getByTestId('close-btn').click();
+        await expect(filterPopover).toBeHidden();
+
         await page.getByTestId('cancel-btn').click();
       });
 
