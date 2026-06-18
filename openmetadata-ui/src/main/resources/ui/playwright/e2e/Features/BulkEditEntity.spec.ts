@@ -121,17 +121,9 @@ test.describe('Bulk Edit Entity', () => {
     test.slow(true);
 
     const table = new TableClass();
-    let customPropertyRecord: Record<string, string> = {};
 
     const { apiContext, afterAction } = await getApiContext(page);
     await table.create(apiContext);
-
-    await test.step('create custom properties for extension edit', async () => {
-      customPropertyRecord = await createCustomPropertiesForEntity(
-        page,
-        GlobalSettingOptions.DATABASES
-      );
-    });
 
     await test.step('Perform bulk edit action', async () => {
       const databaseDetails = {
@@ -180,7 +172,7 @@ test.describe('Bulk Edit Entity', () => {
           sourceUrl: undefined,
         },
         page,
-        customPropertyRecord,
+        undefined,
         undefined,
         true
       );
@@ -261,19 +253,10 @@ test.describe('Bulk Edit Entity', () => {
   test('Database', async ({ page }) => {
     test.slow(true);
 
-    let customPropertyRecord: Record<string, string> = {};
-
     const table = new TableClass();
 
     const { apiContext, afterAction } = await getApiContext(page);
     await table.create(apiContext);
-
-    await test.step('create custom properties for extension edit', async () => {
-      customPropertyRecord = await createCustomPropertiesForEntity(
-        page,
-        GlobalSettingOptions.DATABASE_SCHEMA
-      );
-    });
 
     await test.step('Perform bulk edit action', async () => {
       // visit entity Page
@@ -324,7 +307,7 @@ test.describe('Bulk Edit Entity', () => {
           domains: domain1.responseData,
         },
         page,
-        customPropertyRecord,
+        undefined,
         undefined,
         true
       );
@@ -414,18 +397,10 @@ test.describe('Bulk Edit Entity', () => {
   test('Database Schema', async ({ page }) => {
     test.slow(true);
 
-    let customPropertyRecord: Record<string, string> = {};
     const table = new TableClass();
 
     const { apiContext, afterAction } = await getApiContext(page);
     await table.create(apiContext);
-
-    await test.step('create custom properties for extension edit', async () => {
-      customPropertyRecord = await createCustomPropertiesForEntity(
-        page,
-        GlobalSettingOptions.TABLES
-      );
-    });
 
     await test.step('Perform bulk edit action', async () => {
       // visit entity page
@@ -477,7 +452,7 @@ test.describe('Bulk Edit Entity', () => {
           domains: domain1.responseData,
         },
         page,
-        customPropertyRecord,
+        undefined,
         undefined,
         true
       );

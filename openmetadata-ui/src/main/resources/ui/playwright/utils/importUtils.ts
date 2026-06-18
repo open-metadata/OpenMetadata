@@ -590,9 +590,9 @@ export const fillCustomPropertyDetails = async (
   page: Page,
   propertyListName: Record<string, string>
 ) => {
-
-  await page.keyboard.press('Enter', { delay: 100 });
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).first().click({ force: true });
+  
+   await page.keyboard.press('Enter', { delay: 100 });
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).first().click();
 
   await page
     .getByTestId('custom-property-editor')
