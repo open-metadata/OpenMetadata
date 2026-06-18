@@ -12,6 +12,7 @@
  */
 
 import {
+  Box,
   Button,
   ButtonUtility,
   Skeleton,
@@ -47,26 +48,27 @@ const AnnouncementsWidgetV3Body = ({
           className
         )}
         data-testid={testId}>
-        <div
-          className="tw:flex tw:flex-col tw:gap-[9px] tw:pl-[3px]"
-          data-testid={`${testId}-loading`}>
-          <div className="tw:flex tw:items-center tw:gap-[9px]">
+        <Box
+          className="tw:gap-[9px] tw:pl-[3px]"
+          data-testid={`${testId}-loading`}
+          direction="col">
+          <Box align="center" className="tw:gap-[9px]">
             <Skeleton
               className="tw:shrink-0 tw:rounded-[1px]"
               height={35}
               variant="rectangular"
               width={4}
             />
-            <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1">
+            <Box className="tw:min-w-0 tw:flex-1 tw:gap-1" direction="col">
               <Skeleton height={14} variant="text" width="55%" />
               <Skeleton height={12} variant="text" width="90%" />
-            </div>
-          </div>
-          <div className="tw:flex tw:items-center tw:gap-1.5">
+            </Box>
+          </Box>
+          <Box align="center" className="tw:gap-1.5">
             <Skeleton variant="circular" width={14} />
             <Skeleton height={12} variant="text" width={120} />
-          </div>
-        </div>
+          </Box>
+        </Box>
       </div>
     );
   }
@@ -86,8 +88,8 @@ const AnnouncementsWidgetV3Body = ({
         className
       )}
       data-testid={testId}>
-      <div className="tw:mb-3 tw:flex tw:items-center tw:justify-between">
-        <div className="tw:flex tw:items-center tw:gap-2">
+      <Box align="center" className="tw:mb-3" justify="between">
+        <Box align="center" className="tw:gap-2">
           <Announcement02 className="tw:size-5 tw:text-fg-brand-primary" />
           <Typography
             as="span"
@@ -97,7 +99,7 @@ const AnnouncementsWidgetV3Body = ({
             {t('label.announcement-plural')}
           </Typography>
           {total > 1 && (
-            <div className="tw:flex tw:items-center tw:gap-px">
+            <Box align="center" className="tw:gap-px">
               <ButtonUtility
                 className="tw:p-1 tw:pr-0"
                 color="tertiary"
@@ -125,9 +127,9 @@ const AnnouncementsWidgetV3Body = ({
                 tooltip={t('label.next')}
                 onClick={() => setCurrentIndex(Math.min(total - 1, index + 1))}
               />
-            </div>
+            </Box>
           )}
-        </div>
+        </Box>
 
         {onViewAll && (
           <Button
@@ -138,7 +140,7 @@ const AnnouncementsWidgetV3Body = ({
             {t('label.view-all')}
           </Button>
         )}
-      </div>
+      </Box>
 
       <AnnouncementItemV3
         announcement={current}

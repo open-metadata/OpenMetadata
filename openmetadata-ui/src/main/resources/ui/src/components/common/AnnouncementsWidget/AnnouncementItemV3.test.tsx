@@ -27,6 +27,33 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Box: ({
+    children,
+    className,
+    role,
+    tabIndex,
+    onClick,
+    onKeyDown,
+    'data-testid': dataTestId,
+  }: {
+    children?: React.ReactNode;
+    className?: string;
+    role?: React.AriaRole;
+    tabIndex?: number;
+    onClick?: () => void;
+    onKeyDown?: (e: React.KeyboardEvent) => void;
+    'data-testid'?: string;
+  }) => (
+    <div
+      className={className}
+      data-testid={dataTestId}
+      role={role}
+      tabIndex={tabIndex}
+      onClick={onClick}
+      onKeyDown={onKeyDown}>
+      {children}
+    </div>
+  ),
   Typography: ({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   ),

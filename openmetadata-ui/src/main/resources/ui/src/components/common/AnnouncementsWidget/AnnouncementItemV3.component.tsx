@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { ArrowRight } from '@untitledui/icons';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -40,9 +40,10 @@ const AnnouncementItemV3 = ({
   const timestamp = announcement.createdAt ?? announcement.updatedAt;
 
   return (
-    <div
-      className="tw:flex tw:cursor-pointer tw:flex-col tw:gap-[9px] tw:pl-[3px]"
+    <Box
+      className="tw:cursor-pointer tw:gap-[9px] tw:pl-[3px]"
       data-testid={`announcement-item-${announcement.id}`}
+      direction="col"
       role="button"
       tabIndex={0}
       onClick={onClick}
@@ -55,10 +56,10 @@ const AnnouncementItemV3 = ({
           onClick();
         }
       }}>
-      <div className="tw:flex tw:items-center tw:gap-[9px]">
+      <Box align="center" className="tw:gap-[9px]">
         <span className="tw:h-[35px] tw:w-1 tw:shrink-0 tw:rounded-[1px] tw:bg-utility-blue-dark-500" />
 
-        <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1">
+        <Box className="tw:min-w-0 tw:flex-1 tw:gap-1" direction="col">
           <Typography
             ellipsis
             as="span"
@@ -76,34 +77,40 @@ const AnnouncementItemV3 = ({
               showReadMoreBtn={false}
             />
           )}
-        </div>
+        </Box>
 
         <ArrowRight className="tw:size-4 tw:shrink-0 tw:text-fg-brand-primary" />
-      </div>
+      </Box>
 
       {createdBy && (
-        <div className="tw:flex tw:items-center tw:gap-1.5">
+        <Box align="center" className="tw:gap-1.5">
           <ProfilePicture
             displayName={postedBy}
             name={createdBy}
             type="circle"
             width="14"
           />
-          <span className="tw:text-xs tw:text-text-secondary">
+          <Typography
+            as="span"
+            className="tw:text-text-secondary"
+            size="text-xs">
             {t('label.posted-by')}{' '}
             <Link
-              className="tw:text-fg-brand-primary"
+              className="tw:text-fg-brand-primary tw:no-underline"
               to={getUserPath(createdBy)}
               onClick={(e) => e.stopPropagation()}>
               {postedBy}
             </Link>
-          </span>
-          <span className="tw:text-xs tw:text-text-secondary">
+          </Typography>
+          <Typography
+            as="span"
+            className="tw:text-text-secondary"
+            size="text-xs">
             {getShortRelativeTime(timestamp)}
-          </span>
-        </div>
+          </Typography>
+        </Box>
       )}
-    </div>
+    </Box>
   );
 };
 
