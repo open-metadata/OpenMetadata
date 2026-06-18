@@ -86,6 +86,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.EntityWithType;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.IntakeFormValidator;
 import org.openmetadata.service.util.LineageUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
@@ -151,6 +152,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   @Override
   public void prepare(DataProduct entity, boolean update) {
     // Parent, Experts, Owner, Assets are already validated
+    IntakeFormValidator.validate(entity, Entity.DATA_PRODUCT);
   }
 
   @Override
@@ -834,6 +836,13 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate("name", () -> updateName(updated));
+      // These ODPS-aligned scalar fields are not handled by the base updater;
+      // without recordChange they are reverted by change consolidation and a
+      // PATCH that sets them returns 200 but never persists.
+      recordChange("dataProductType", original.getDataProductType(), updated.getDataProductType());
+      recordChange("visibility", original.getVisibility(), updated.getVisibility());
+      recordChange(
+          "portfolioPriority", original.getPortfolioPriority(), updated.getPortfolioPriority());
       // Ports are managed via dedicated bulk add/remove APIs, not via entity PATCH
       // Handle domain change with asset migration
       // Skip during consolidation to avoid incorrect intermediate migrations.
