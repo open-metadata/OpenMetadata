@@ -26,6 +26,7 @@ import {
   setUserDefaultPersona,
   verifyDataProductCountInDataProductWidget,
   verifyDomainCountInDomainWidget,
+  waitForLandingPageWidget,
 } from '../../../utils/customizeLandingPage';
 import {
   addAssetsToDataProduct,
@@ -122,9 +123,7 @@ const setWidgetSortOnCurrentPage = async (
   widgetKey: string,
   label: string
 ) => {
-  const widget = page.getByTestId(widgetKey);
-  await expect(widget).toBeVisible();
-  await widget.scrollIntoViewIfNeeded().catch(() => undefined);
+  const widget = await waitForLandingPageWidget(page, widgetKey);
 
   const dropdown = widget.getByTestId('widget-sort-by-dropdown');
   await expect(dropdown).toBeVisible();
@@ -148,9 +147,7 @@ const verifyWidgetCountOnCurrentPage = async (
   selector: string,
   expectedCount: number
 ) => {
-  const widget = page.getByTestId(widgetKey);
-  await expect(widget).toBeVisible();
-  await widget.scrollIntoViewIfNeeded().catch(() => undefined);
+  const widget = await waitForLandingPageWidget(page, widgetKey);
 
   await expect
     .poll(

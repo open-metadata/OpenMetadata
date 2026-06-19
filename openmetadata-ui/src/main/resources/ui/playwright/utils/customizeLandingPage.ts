@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 import {
   redirectToHomePage,
   removeLandingBanner,
@@ -167,18 +167,52 @@ export const removeAndCheckWidget = async (
   await expect(page.getByTestId(`${widgetKey}`)).not.toBeVisible();
 };
 
+export const waitForLandingPageWidget = async (
+  page: Page,
+  widgetKey: string
+): Promise<Locator> => {
+  const widget = page.getByTestId('page-layout-v1').getByTestId(widgetKey);
+
+  await expect
+    .poll(
+      async () => {
+        await widget.scrollIntoViewIfNeeded().catch(() => undefined);
+
+        return widget.isVisible().catch(() => false);
+      },
+      { timeout: 30_000, intervals: [500, 1_000, 2_000] }
+    )
+    .toBe(true);
+
+  await widget.scrollIntoViewIfNeeded().catch(() => undefined);
+  await waitForAllLoadersToDisappear(page).catch(() => undefined);
+  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton').catch(
+    () => undefined
+  );
+
+  await expect(
+    widget
+      .locator(
+        '[data-testid="widget-header"], [data-testid="widget-empty-state"]'
+      )
+      .first()
+  ).toBeVisible();
+
+  return widget;
+};
+
 export const checkAllDefaultWidgets = async (page: Page) => {
   await removeLandingBanner(page);
   await waitForAllLoadersToDisappear(page);
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
   await expect(page.getByTestId('page-layout-v1')).toBeVisible();
-  await expect(page.getByTestId('KnowledgePanel.ActivityFeed')).toBeVisible();
-  await expect(page.getByTestId('KnowledgePanel.Following')).toBeVisible();
-  await expect(page.getByTestId('KnowledgePanel.DataAssets')).toBeVisible();
-  await expect(page.getByTestId('KnowledgePanel.MyData')).toBeVisible();
-  await expect(page.getByTestId('KnowledgePanel.KPI')).toBeVisible();
-  await expect(page.getByTestId('KnowledgePanel.TotalAssets')).toBeVisible();
+  await waitForLandingPageWidget(page, 'KnowledgePanel.ActivityFeed');
+  await waitForLandingPageWidget(page, 'KnowledgePanel.Following');
+  await waitForLandingPageWidget(page, 'KnowledgePanel.DataAssets');
+  await waitForLandingPageWidget(page, 'KnowledgePanel.MyData');
+  await waitForLandingPageWidget(page, 'KnowledgePanel.KPI');
+  await waitForLandingPageWidget(page, 'KnowledgePanel.TotalAssets');
 };
 
 export const setUserDefaultPersona = async (
@@ -311,6 +345,8 @@ export const addAndVerifyWidget = async (
       { timeout: 30_000, intervals: [1_000, 2_000, 5_000] }
     )
     .toBe(true);
+
+  await waitForLandingPageWidget(page, widgetKey);
 };
 
 export const addCuratedAssetPlaceholder = async ({
@@ -417,9 +453,7 @@ export const verifyWidgetFooterViewMore = async (
   // Wait for the page to load
   await waitForAllLoadersToDisappear(page);
 
-  const widget = page.getByTestId(widgetKey);
-
-  await expect(widget).toBeVisible();
+  const widget = await waitForLandingPageWidget(page, widgetKey);
 
   // Wait for the data to appear in the widget
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
@@ -522,10 +556,7 @@ export const verifyWidgetEntityNavigation = async (
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
   // Get widget after navigation to home page
-  const widget = page.getByTestId(widgetKey);
-
-  // Wait for widget to be visible
-  await expect(widget).toBeVisible();
+  const widget = await waitForLandingPageWidget(page, widgetKey);
 
   // Wait again for any widget-specific loaders
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
@@ -585,9 +616,7 @@ export const verifyWidgetHeaderNavigation = async (
   expectedTitle: string,
   navigationUrl: string
 ) => {
-  const widget = page.getByTestId(widgetKey);
-
-  await expect(widget).toBeVisible();
+  const widget = await waitForLandingPageWidget(page, widgetKey);
 
   // Wait for loaders before interacting with widget header
   await waitForAllLoadersToDisappear(page);
@@ -676,9 +705,7 @@ export const verifyDataProductCountInDataProductWidget = async (
   await expect
     .poll(
       async () => {
-        const dataProductWidget = page.getByTestId(
-          'KnowledgePanel.DataProducts'
-        );
+        const dataProductWidget = page.getByTestId('KnowledgePanel.DataProducts');
         await dataProductWidget.scrollIntoViewIfNeeded().catch(() => undefined);
         const isWidgetVisible = await dataProductWidget
           .isVisible()

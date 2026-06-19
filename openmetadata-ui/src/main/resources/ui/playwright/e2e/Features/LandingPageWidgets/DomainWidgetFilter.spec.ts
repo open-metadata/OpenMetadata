@@ -22,6 +22,7 @@ import {
 import {
   addAndVerifyWidget,
   setUserDefaultPersona,
+  waitForLandingPageWidget,
 } from '../../../utils/customizeLandingPage';
 import { selectDomainFromNavbar } from '../../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
@@ -76,8 +77,10 @@ test.describe.serial('Domain Widget Filter', () => {
     await waitForAllLoadersToDisappear(page);
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
-    const domainWidget = page.getByTestId('KnowledgePanel.Domains');
-    await expect(domainWidget).toBeVisible();
+    let domainWidget = await waitForLandingPageWidget(
+      page,
+      'KnowledgePanel.Domains'
+    );
 
     await expect(
       domainWidget.getByTestId(`domain-card-${domainA.responseData.id}`)
@@ -96,6 +99,10 @@ test.describe.serial('Domain Widget Filter', () => {
     await redirectToHomePage(page);
     await waitForAllLoadersToDisappear(page);
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+    domainWidget = await waitForLandingPageWidget(
+      page,
+      'KnowledgePanel.Domains'
+    );
 
     await expect(
       domainWidget.getByTestId(`domain-card-${domainA.responseData.id}`)
