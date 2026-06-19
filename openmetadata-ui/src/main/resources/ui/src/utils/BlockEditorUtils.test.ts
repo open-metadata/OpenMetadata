@@ -18,7 +18,7 @@ import {
   isHTMLString,
 } from './BlockEditorPureUtils';
 import {
-  formatContent,
+  formatServerContent,
   formatValueBasedOnContent,
   getHtmlStringFromMarkdownString,
   setEditorContent,
@@ -155,12 +155,12 @@ describe('formatClientContent', () => {
   });
 });
 
-describe('formatContent', () => {
+describe('formatServerContent', () => {
   it('should format mention for server storage correctly', () => {
     const input =
       '<p>This <a data-type="mention" data-label="Infrastructure" href="http://localhost:3000/settings/members/teams/Infrastructure" data-entitytype="team" data-fqn="Infrastructure">@Infrastructure</a> team</p>';
 
-    const result = formatContent(input);
+    const result = formatServerContent(input);
 
     // Should convert to server format with markdown link structure
     expect(result).toContain(

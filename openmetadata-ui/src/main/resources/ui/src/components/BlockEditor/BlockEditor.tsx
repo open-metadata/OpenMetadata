@@ -23,7 +23,10 @@ import {
 } from '../../constants/BlockEditor.constants';
 import blockEditorExtensionsClassBase from '../../utils/BlockEditorExtensionsClassBase';
 import { formatClientContent } from '../../utils/BlockEditorPureUtils';
-import { formatContent, setEditorContent } from '../../utils/BlockEditorUtils';
+import {
+  formatServerContent,
+  setEditorContent,
+} from '../../utils/BlockEditorUtils';
 import Banner from '../common/Banner/Banner';
 import { useEntityAttachment } from '../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import BarMenu from './BarMenu/BarMenu';
@@ -75,7 +78,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       onUpdate({ editor }) {
         handleErrorMessage?.(undefined);
         const htmlContent = editor.getHTML();
-        const backendFormat = formatContent(htmlContent);
+        const backendFormat = formatServerContent(htmlContent);
         onChange?.(backendFormat);
       },
       onFocus() {

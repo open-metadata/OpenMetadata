@@ -57,7 +57,7 @@ const escapeMarkdownLinkText = (text: string): string =>
 const sanitizeEntityLinkField = (value: string): string =>
   value.replace(/[<>|]/g, '');
 
-export const formatContent = (htmlString: string) => {
+export const formatServerContent = (htmlString: string) => {
   // Create a new DOMParser
   const parser = new DOMParser();
 
