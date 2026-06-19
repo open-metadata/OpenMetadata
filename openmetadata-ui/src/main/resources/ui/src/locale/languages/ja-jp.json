@@ -3264,7 +3264,7 @@
     "odps-validation-successful": "ODPS ドキュメントは有効です。",
     "odps-yaml-invalid": "ODPS YAML ドキュメントの検証に失敗しました。",
     "odps-yaml-name-mismatch": "YAML の名前「{{yamlName}}」は現在のデータプロダクト「{{existingName}}」と一致しません。別のプロダクトを上書きしないよう、YAML を更新するか、「{{yamlName}}」のデータプロダクトページを使用してください。",
-    "odps-yaml-name-missing": "Could not read a product name from the YAML (product.details.<language>.name). Add a name matching the current data product '{{existingName}}' before importing, to avoid overwriting a different product.",
+    "odps-yaml-name-missing": "YAML から製品名を読み取れませんでした (product.details.<language>.name)。別のプロダクトを上書きしないよう、インポートの前に現在のデータプロダクト「{{existingName}}」と一致する名前を追加してください。",
     "odps-yaml-valid-description": "有効な ODPS v{{version}} ドキュメント、言語: {{languages}}。",
     "om-description": "中央集約型のメタデータストアで、データの発見・連携・管理を実現します。",
     "om-url-configuration-message": "{{brandName}} の URL 設定を構成してください。",

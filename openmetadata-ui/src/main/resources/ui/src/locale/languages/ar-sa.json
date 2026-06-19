@@ -3264,7 +3264,7 @@
     "odps-validation-successful": "مستند ODPS صالح.",
     "odps-yaml-invalid": "فشل التحقق من مستند YAML الخاص بـ ODPS.",
     "odps-yaml-name-mismatch": "اسم '{{yamlName}}' في ملف YAML لا يطابق منتج البيانات الحالي '{{existingName}}'. حدّث ملف YAML أو استخدم صفحة منتج البيانات الخاصة بـ '{{yamlName}}' لتجنّب الكتابة فوق منتج مختلف.",
-    "odps-yaml-name-missing": "Could not read a product name from the YAML (product.details.<language>.name). Add a name matching the current data product '{{existingName}}' before importing, to avoid overwriting a different product.",
+    "odps-yaml-name-missing": "تعذّر قراءة اسم المنتج من ملف YAML (product.details.<language>.name). أضِف اسمًا يطابق منتج البيانات الحالي '{{existingName}}' قبل الاستيراد لتجنّب الكتابة فوق منتج مختلف.",
     "odps-yaml-valid-description": "مستند ODPS v{{version}} صالح باللغات: {{languages}}.",
     "om-description": "متجر مركزي للبيانات الوصفية، للاكتشاف والتعاون والحصول على بياناتك بشكل صحيح.",
     "om-url-configuration-message": "قم بتكوين إعدادات عنوان URL لـ {{brandName}}.",
