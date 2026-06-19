@@ -38,7 +38,6 @@ import { prefetchTable } from '../../../rest/queries/tableQuery';
 import { prefetchTopic } from '../../../rest/queries/topicQuery';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { highlightEntityNameAndDescription } from '../../../utils/EntitySearchUtils';
-import { getExploreAssetIcon } from '../../../utils/ExploreIconUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringUtils';
 import { getUsagePercentile } from '../../../utils/TablePureUtils';
@@ -308,11 +307,10 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
 
         return (
           <span className="w-6 h-6 m-r-xs d-inline-flex text-xl align-middle">
-            {getExploreAssetIcon(source.entityType ?? '', 'text-link-color') ??
-              searchClassBase.getEntityIcon(
-                source.entityType ?? '',
-                'text-link-color'
-              )}
+            {searchClassBase.getEntityIcon(
+              source.entityType ?? '',
+              'text-link-color'
+            )}
           </span>
         );
       }

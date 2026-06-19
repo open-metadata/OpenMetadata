@@ -83,7 +83,6 @@ import { TabsInfoData } from '../pages/ExplorePage/ExplorePage.interface';
 import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
 import { getEntityLinkFromType } from './EntityLinkUtils';
 import { getEntityName } from './EntityNameUtils';
-import { getExploreAssetIcon } from './ExploreIconUtils';
 import { t } from './i18next/LocalUtil';
 import { getPageSummaryComponent } from './KnowledgeComponentUtils';
 import { getKnowledgePagePath } from './KnowledgePagePureUtils';
@@ -261,7 +260,7 @@ class SearchClassBase {
             EntityType.TABLE_COLUMN,
           ],
         },
-        icon: getExploreAssetIcon(EntityType.DATABASE, 'service-icon w-4 h-4'),
+        icon: getEntityIcon(EntityType.DATABASE, 'service-icon w-4 h-4'),
       },
       {
         title: t('label.dashboard-plural'),
@@ -274,40 +273,37 @@ class SearchClassBase {
             EntityType.CHART,
           ],
         },
-        icon: getExploreAssetIcon(EntityType.DASHBOARD, 'service-icon w-4 h-4'),
+        icon: getEntityIcon(EntityType.DASHBOARD, 'service-icon w-4 h-4'),
       },
       {
         title: t('label.pipeline-plural'),
         key: SearchIndex.PIPELINE,
         data: { isRoot: true, childEntities: [EntityType.PIPELINE] },
-        icon: getExploreAssetIcon(EntityType.PIPELINE, 'service-icon w-4 h-4'),
+        icon: getEntityIcon(EntityType.PIPELINE, 'service-icon w-4 h-4'),
       },
       {
         title: t('label.topic-plural'),
         key: SearchIndex.TOPIC,
         data: { isRoot: true, childEntities: [EntityType.TOPIC] },
-        icon: getExploreAssetIcon(EntityType.TOPIC, 'service-icon w-4 h-4'),
+        icon: getEntityIcon(EntityType.TOPIC, 'service-icon w-4 h-4'),
       },
       {
         title: t('label.ml-model-plural'),
         key: SearchIndex.MLMODEL,
         data: { isRoot: true, childEntities: [EntityType.MLMODEL] },
-        icon: getExploreAssetIcon(EntityType.MLMODEL, 'service-icon w-4 h-4'),
+        icon: getEntityIcon(EntityType.MLMODEL, 'service-icon w-4 h-4'),
       },
       {
         title: t('label.container-plural'),
         key: SearchIndex.CONTAINER,
         data: { isRoot: true, childEntities: [EntityType.CONTAINER] },
-        icon: getExploreAssetIcon(EntityType.CONTAINER, 'service-icon w-4 h-4'),
+        icon: getEntityIcon(EntityType.CONTAINER, 'service-icon w-4 h-4'),
       },
       {
         title: t('label.search-index-plural'),
         key: SearchIndex.SEARCH_INDEX,
         data: { isRoot: true, childEntities: [EntityType.SEARCH_INDEX] },
-        icon: getExploreAssetIcon(
-          EntityType.SEARCH_INDEX,
-          'service-icon w-4 h-4'
-        ),
+        icon: getEntityIcon(EntityType.SEARCH_INDEX, 'service-icon w-4 h-4'),
       },
       {
         title: t('label.api-uppercase-plural'),
@@ -316,10 +312,7 @@ class SearchClassBase {
           isRoot: true,
           childEntities: [EntityType.API_ENDPOINT, EntityType.API_COLLECTION],
         },
-        icon: getExploreAssetIcon(
-          EntityType.API_COLLECTION,
-          'service-icon w-4 h-4'
-        ),
+        icon: getEntityIcon(EntityType.API_COLLECTION, 'service-icon w-4 h-4'),
       },
       {
         title: t('label.drive-plural'),
@@ -333,7 +326,7 @@ class SearchClassBase {
             EntityType.WORKSHEET,
           ],
         },
-        icon: getExploreAssetIcon(EntityType.DIRECTORY, 'service-icon w-4 h-4'),
+        icon: getEntityIcon(EntityType.DIRECTORY, 'service-icon w-4 h-4'),
       },
       {
         title: t('label.governance'),
@@ -346,13 +339,13 @@ class SearchClassBase {
             EntityType.METRIC,
           ],
         },
-        icon: getExploreAssetIcon(EntityType.TAG, 'service-icon w-4 h-4'),
+        icon: getEntityIcon(EntityType.TAG, 'service-icon w-4 h-4'),
         children: [
           {
             title: t('label.glossary-plural'),
             key: EntityType.GLOSSARY_TERM,
             isLeaf: true,
-            icon: getExploreAssetIcon(
+            icon: getEntityIcon(
               EntityType.GLOSSARY_TERM,
               'service-icon w-4 h-4'
             ),
@@ -366,7 +359,7 @@ class SearchClassBase {
             title: t('label.tag-plural'),
             key: EntityType.TAG,
             isLeaf: true,
-            icon: getExploreAssetIcon(EntityType.TAG, 'service-icon w-4 h-4'),
+            icon: getEntityIcon(EntityType.TAG, 'service-icon w-4 h-4'),
             data: {
               entityType: EntityType.TAG,
               isStatic: true,
@@ -377,10 +370,7 @@ class SearchClassBase {
             title: t('label.metric-plural'),
             key: EntityType.METRIC,
             isLeaf: true,
-            icon: getExploreAssetIcon(
-              EntityType.METRIC,
-              'service-icon w-4 h-4'
-            ),
+            icon: getEntityIcon(EntityType.METRIC, 'service-icon w-4 h-4'),
             data: {
               entityType: EntityType.METRIC,
               isStatic: true,
@@ -393,13 +383,13 @@ class SearchClassBase {
         title: t('label.domain-plural'),
         key: 'Domain',
         data: { isRoot: true, childEntities: [EntityType.DATA_PRODUCT] },
-        icon: getExploreAssetIcon(EntityType.DOMAIN, 'service-icon w-4 h-4'),
+        icon: getEntityIcon(EntityType.DOMAIN, 'service-icon w-4 h-4'),
         children: [
           {
             title: t('label.data-product-plural'),
             key: EntityType.DATA_PRODUCT,
             isLeaf: true,
-            icon: getExploreAssetIcon(
+            icon: getEntityIcon(
               EntityType.DATA_PRODUCT,
               'service-icon w-4 h-4'
             ),
@@ -417,16 +407,13 @@ class SearchClassBase {
           isRoot: true,
           childEntities: [EntityType.KNOWLEDGE_PAGE],
         },
-        icon: getExploreAssetIcon(
-          EntityType.KNOWLEDGE_PAGE,
-          'service-icon w-4 h-4'
-        ),
+        icon: getEntityIcon(EntityType.KNOWLEDGE_PAGE, 'service-icon w-4 h-4'),
         children: [
           {
             title: t('label.knowledge-page'),
             key: EntityType.KNOWLEDGE_PAGE,
             isLeaf: true,
-            icon: getExploreAssetIcon(
+            icon: getEntityIcon(
               EntityType.KNOWLEDGE_PAGE,
               'service-icon w-4 h-4'
             ),

@@ -30,7 +30,6 @@ import { searchQuery } from '../../../rest/searchAPI';
 import { getCountBadge } from '../../../utils/EntityDisplayUtils';
 import { getPluralizeEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getExploreAssetIcon } from '../../../utils/ExploreIconUtils';
 import {
   findTreeNodeKeyByBrowsePath,
   getAggregations,
@@ -195,8 +194,9 @@ const ExploreTree = ({
             const iconClass = classNames('service-icon w-4 h-4', {
               'text-grey-500': isColumn,
             });
-            logo = getExploreAssetIcon(bucket.key, iconClass) ??
-              searchClassBase.getEntityIcon(bucket.key, iconClass) ?? <></>;
+            logo = searchClassBase.getEntityIcon(bucket.key, iconClass) ?? (
+              <></>
+            );
           } else if (isServiceType) {
             const serviceIcon = serviceUtilClassBase.getServiceLogo(bucket.key);
             logo = (
@@ -208,14 +208,15 @@ const ExploreTree = ({
             );
           } else if (bucketToFind === EntityFields.DATABASE_DISPLAY_NAME) {
             type = 'Database';
-            logo = getExploreAssetIcon('database', 'service-icon w-4 h-4') ?? (
-              <></>
-            );
+            logo = searchClassBase.getEntityIcon(
+              'database',
+              'service-icon w-4 h-4'
+            ) ?? <></>;
           } else if (
             bucketToFind === EntityFields.DATABASE_SCHEMA_DISPLAY_NAME
           ) {
             type = 'Database Schema';
-            logo = getExploreAssetIcon(
+            logo = searchClassBase.getEntityIcon(
               'databaseSchema',
               'service-icon w-4 h-4'
             ) ?? <></>;
