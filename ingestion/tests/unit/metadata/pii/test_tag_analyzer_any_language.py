@@ -406,7 +406,7 @@ class TestAnalyzeWithAnyLanguageRecognizerRealPresidia:
         return _make_any_language_tag(pii_classification)
 
     def test_any_language_recognizer_does_not_raise_with_specific_language_agent(self, any_language_email_tag, column):
-        """When agent language is 'en' and recognizer is 'any', analyze_content must
+        """When agent language is 'en' and recognizer is 'any', analyze() must
         not raise ValueError from Presidio's registry."""
         nlp = _make_presidio_nlp_mock()
         analyzer = TagAnalyzer(
@@ -415,7 +415,7 @@ class TestAnalyzeWithAnyLanguageRecognizerRealPresidia:
             nlp_engine=nlp,
             language=ClassificationLanguage.en,
         )
-        result = analyzer.analyze_content(["user@example.com", "not-an-email"])
+        result = analyzer.analyze(str_values=["user@example.com", "not-an-email"])
         assert result is not None
 
     def test_any_language_recognizer_matches_content_with_specific_language_agent(self, any_language_email_tag, column):
@@ -427,7 +427,7 @@ class TestAnalyzeWithAnyLanguageRecognizerRealPresidia:
             nlp_engine=nlp,
             language=ClassificationLanguage.en,
         )
-        result = analyzer.analyze_content(["user@example.com"])
+        result = analyzer.analyze(str_values=["user@example.com"])
         assert result.score > 0
 
     def test_any_language_recognizer_no_match_scores_zero(self, any_language_email_tag, column):
@@ -439,7 +439,7 @@ class TestAnalyzeWithAnyLanguageRecognizerRealPresidia:
             nlp_engine=nlp,
             language=ClassificationLanguage.en,
         )
-        result = analyzer.analyze_content(["no-match-here", "also-not-an-email"])
+        result = analyzer.analyze(str_values=["no-match-here", "also-not-an-email"])
         assert result.score == 0
 
     def test_any_language_recognizer_with_fr_agent_does_not_raise(self, any_language_email_tag, column):
@@ -451,7 +451,7 @@ class TestAnalyzeWithAnyLanguageRecognizerRealPresidia:
             nlp_engine=nlp,
             language=ClassificationLanguage.fr,
         )
-        result = analyzer.analyze_content(["user@example.com", "not-an-email"])
+        result = analyzer.analyze(str_values=["user@example.com", "not-an-email"])
         assert result is not None
 
     def test_any_language_recognizer_matches_content_with_fr_agent(self, any_language_email_tag, column):
@@ -463,7 +463,7 @@ class TestAnalyzeWithAnyLanguageRecognizerRealPresidia:
             nlp_engine=nlp,
             language=ClassificationLanguage.fr,
         )
-        result = analyzer.analyze_content(["user@example.com"])
+        result = analyzer.analyze(str_values=["user@example.com"])
         assert result.score > 0
 
     def test_any_agent_with_any_recognizer_scores_on_match(self, any_language_email_tag, column):
@@ -479,5 +479,5 @@ class TestAnalyzeWithAnyLanguageRecognizerRealPresidia:
             nlp_engine=MagicMock(),
             language=ClassificationLanguage.any,
         )
-        result = analyzer.analyze_content(["user@example.com"])
+        result = analyzer.analyze(str_values=["user@example.com"])
         assert result.score > 0

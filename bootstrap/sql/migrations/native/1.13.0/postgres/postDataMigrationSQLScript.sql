@@ -135,7 +135,7 @@ SET json = jsonb_set(
         (
             SELECT jsonb_agg(r)
             FROM jsonb_array_elements(json::jsonb->'recognizers') AS r
-            WHERE r->>'target' != 'column_name'
+            WHERE r->>'target' IS NULL OR r->>'target' != 'column_name'
         ),
         '[]'::jsonb
     )

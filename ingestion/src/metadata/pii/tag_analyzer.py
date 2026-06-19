@@ -228,14 +228,15 @@ class TagAnalyzer:
         column_wins = column_score >= content_score and bool(column_results)
         score = max(content_score, column_score)
         target = recognizer.Target.column_name if column_wins else recognizer.Target.content
+        winning_results = column_results if column_wins else content_results
         all_results = (column_results + content_results) if column_wins else (content_results + column_results)
 
         return TagAnalysis(
             tag=self.tag,
             score=score,
             explanation=explain_recognition_results(all_results) if all_results else None,
-            recognizer_results=all_results,
-            target=target if all_results else None,
+            recognizer_results=winning_results,
+            target=target if winning_results else None,
         )
 
     def __repr__(self) -> str:

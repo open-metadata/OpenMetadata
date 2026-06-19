@@ -136,7 +136,7 @@ SET json = JSON_SET(
                 JSON_EXTRACT(json, '$.recognizers'),
                 '$[*]' COLUMNS (r JSON PATH '$')
             ) AS jt
-            WHERE JSON_VALUE(r, '$.target') != 'column_name'
+            WHERE JSON_VALUE(r, '$.target') IS NULL OR JSON_VALUE(r, '$.target') != 'column_name'
         ),
         JSON_ARRAY()
     )
