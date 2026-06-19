@@ -14,10 +14,12 @@ import { ExploreQuickFilterField } from '../components/Explore/ExplorePage.inter
 import { ExploreTreeNode } from '../components/Explore/ExploreTree/ExploreTree.interface';
 import { EntityType } from '../enums/entity.enum';
 import {
+  buildTreeCountQueryFilter,
   findTreeNodeKeyByBrowsePath,
   getBrowsePathQueryFilter,
   getCanonicalEntityType,
   getDisabledExploreTreeKeys,
+  getQuickFilterMust,
   isEntityTypeBucketSelected,
   parseBrowsePathFields,
   truncateBrowsePath,
@@ -69,6 +71,85 @@ const treeNodes = [
     },
   },
 ] as ExploreTreeNode[];
+
+describe('getQuickFilterMust', () => {
+  it('returns an empty array for missing or invalid input', () => {
+    expect(getQuickFilterMust(undefined)).toEqual([]);
+    expect(getQuickFilterMust('')).toEqual([]);
+    expect(getQuickFilterMust('not-json')).toEqual([]);
+    expect(getQuickFilterMust('{"query":{"bool":{}}}')).toEqual([]);
+  });
+
+  it('extracts the must clauses from a serialized quick filter', () => {
+    const must = [
+      { bool: { should: [{ term: { 'tier.tagFQN': 'Tier.Tier1' } }] } },
+    ];
+
+    expect(
+      getQuickFilterMust(JSON.stringify({ query: { bool: { must } } }))
+    ).toEqual(must);
+  });
+});
+
+describe('buildTreeCountQueryFilter', () => {
+  const base = {
+    query: { bool: { must: [{ term: { serviceType: 'bigquery' } }] } },
+  };
+
+  it('keeps the hierarchy filter and scopes a root to its childEntities', () => {
+    const result = buildTreeCountQueryFilter({
+      baseQueryFilter: base,
+      isRoot: true,
+      childEntities: ['table', 'tableColumn'],
+    });
+    const must = result.query.bool.must;
+
+    expect(must[0]).toEqual({ term: { serviceType: 'bigquery' } });
+    expect(must[1]).toEqual({
+      bool: {
+        should: [
+          { term: { 'entityType.keyword': 'table' } },
+          { term: { 'entityType.keyword': 'tablecolumn' } },
+        ],
+      },
+    });
+  });
+
+  it('does not add the childEntities scope for a non-root node', () => {
+    const result = buildTreeCountQueryFilter({
+      baseQueryFilter: base,
+      isRoot: false,
+      childEntities: ['table', 'tableColumn'],
+    });
+
+    expect(result.query.bool.must).toEqual([
+      { term: { serviceType: 'bigquery' } },
+    ]);
+  });
+
+  it('merges the active quick filter so counts reflect entity-type/tier/owner', () => {
+    const quickFilter = JSON.stringify({
+      query: {
+        bool: {
+          must: [
+            { bool: { should: [{ term: { 'entityType.keyword': 'table' } }] } },
+          ],
+        },
+      },
+    });
+    const result = buildTreeCountQueryFilter({
+      baseQueryFilter: base,
+      isRoot: false,
+      childEntities: [],
+      activeQuickFilter: quickFilter,
+    });
+
+    expect(result.query.bool.must).toEqual([
+      { term: { serviceType: 'bigquery' } },
+      { bool: { should: [{ term: { 'entityType.keyword': 'table' } }] } },
+    ]);
+  });
+});
 
 describe('isEntityTypeBucketSelected', () => {
   it('allows every bucket when nothing is selected', () => {

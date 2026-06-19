@@ -31,6 +31,7 @@ import { getCountBadge } from '../../../utils/EntityDisplayUtils';
 import { getPluralizeEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
+  buildTreeCountQueryFilter,
   findTreeNodeKeyByBrowsePath,
   getAggregations,
   getDisabledExploreTreeKeys,
@@ -142,10 +143,6 @@ const ExploreTree = ({
           rootIndex,
         } = (treeNode as ExploreTreeNode)?.data as TreeNodeData;
 
-        const searchIndex = isRoot
-          ? treeNode.key
-          : (treeNode as ExploreTreeNode)?.data?.parentSearchIndex;
-
         const { bucket: bucketToFind, queryFilter } =
           searchQueryParam !== ''
             ? {
@@ -161,12 +158,24 @@ const ExploreTree = ({
                 currentBucketValue
               );
 
+        // Count every matching object in each node's subtree over the dataAsset
+        // index (so a parent's count is never less than its child's) and reflect
+        // the active filters, instead of the per-entity index that counted only
+        // the immediate child entities (e.g. databases under a service).
+        const countQueryFilter = buildTreeCountQueryFilter({
+          baseQueryFilter: queryFilter,
+          isRoot,
+          childEntities:
+            (treeNode as ExploreTreeNode).data?.childEntities ?? [],
+          activeQuickFilter: parsedSearch.quickFilter,
+        });
+
         const res = await searchQuery({
           query: searchQueryParam ?? '',
           pageNumber: 0,
           pageSize: 0,
-          queryFilter: queryFilter,
-          searchIndex: searchIndex as SearchIndex,
+          queryFilter: countQueryFilter,
+          searchIndex: SearchIndex.DATA_ASSET,
           includeDeleted: false,
           trackTotalHits: true,
           fetchSource: false,
@@ -282,6 +291,7 @@ const ExploreTree = ({
       defaultServiceType,
       setTreeData,
       selectedEntityTypes,
+      parsedSearch,
     ]
   );
 
@@ -350,8 +360,15 @@ const ExploreTree = ({
       });
 
       const buckets = res.aggregations['entityType'].buckets;
-      setTreeData((origin) => {
-        const updatedData = updateTreeDataWithCounts(origin, buckets);
+      // Rebuild from the static tree so any previously-loaded children are
+      // dropped and re-fetched with the current filter on the next expand —
+      // antd caches loaded children, so a filter change would otherwise leave
+      // stale (unfiltered) counts deeper in the tree.
+      setTreeData(() => {
+        const updatedData = updateTreeDataWithCounts(
+          searchClassBase.getExploreTree(),
+          buckets
+        );
 
         return updatedData.filter(
           (node) => node.totalCount !== undefined && node.totalCount > 0
@@ -370,6 +387,21 @@ const ExploreTree = ({
       fetchEntityCounts();
     }
   }, []);
+
+  const quickFilterSignature = useMemo(
+    () => (isString(parsedSearch.quickFilter) ? parsedSearch.quickFilter : ''),
+    [parsedSearch.quickFilter]
+  );
+  const previousQuickFilterRef = useRef(quickFilterSignature);
+
+  useEffect(() => {
+    // When the active quick filter changes, rebuild the tree so the deeper
+    // levels (cached by antd) re-fetch and their counts reflect the filter.
+    if (previousQuickFilterRef.current !== quickFilterSignature) {
+      previousQuickFilterRef.current = quickFilterSignature;
+      fetchEntityCounts();
+    }
+  }, [quickFilterSignature, fetchEntityCounts]);
 
   useEffect(() => {
     // Hierarchical selections live in browsePath, static leaves in quickFilter

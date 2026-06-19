@@ -405,6 +405,73 @@ export const isEntityTypeBucketSelected = (
     (entityType) => entityType.toLowerCase() === bucketKey.toLowerCase()
   );
 
+/**
+ * Parse the active quick-filter URL param into its `must` clauses so the
+ * explore tree counts can reflect the same filters the result list does
+ * (entity type, tier, owner, …). Returns [] for an absent/invalid param.
+ */
+export const getQuickFilterMust = (
+  quickFilter?: unknown
+): QueryFieldInterface[] => {
+  let must: QueryFieldInterface[] = [];
+  if (isString(quickFilter) && !isEmpty(quickFilter)) {
+    try {
+      const parsedMust = get(JSON.parse(quickFilter), 'query.bool.must');
+      must = Array.isArray(parsedMust)
+        ? parsedMust
+        : parsedMust
+        ? [parsedMust]
+        : [];
+    } catch {
+      must = [];
+    }
+  }
+
+  return must;
+};
+
+/**
+ * Build the explore-tree count query. Every level aggregates over the
+ * dataAsset index so a node's count is the total matching objects in its
+ * subtree (parent >= child), not the immediate children of a per-entity index.
+ * It ANDs: the node's browse hierarchy, the active quick filters, and — at a
+ * category root — the category's own entity types so e.g. Databases stays
+ * scoped to its family.
+ */
+export const buildTreeCountQueryFilter = ({
+  baseQueryFilter,
+  isRoot,
+  childEntities,
+  activeQuickFilter,
+}: {
+  baseQueryFilter: { query: { bool: EsBoolQuery } };
+  isRoot: boolean;
+  childEntities: string[];
+  activeQuickFilter?: unknown;
+}): { query: { bool: { must: QueryFieldInterface[] } } } => {
+  const must: QueryFieldInterface[] = [];
+  const baseMust = baseQueryFilter?.query?.bool?.must;
+  if (baseMust) {
+    must.push(
+      ...((Array.isArray(baseMust)
+        ? baseMust
+        : [baseMust]) as QueryFieldInterface[])
+    );
+  }
+  if (isRoot && !isEmpty(childEntities)) {
+    must.push({
+      bool: {
+        should: childEntities.map((entityType) => ({
+          term: { 'entityType.keyword': entityType.toLowerCase() },
+        })),
+      },
+    });
+  }
+  must.push(...getQuickFilterMust(activeQuickFilter));
+
+  return { query: { bool: { must } } };
+};
+
 export const isElasticsearchError = (error: unknown): boolean => {
   if (!error) {
     return false;
