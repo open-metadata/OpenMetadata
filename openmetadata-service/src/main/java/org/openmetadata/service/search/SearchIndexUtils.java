@@ -111,22 +111,24 @@ public final class SearchIndexUtils {
         return json;
       }
     }
-    doc.remove("upstreamLineage");
-    json = JsonUtils.pojoToJson(doc);
-    size = json.getBytes(StandardCharsets.UTF_8).length;
-    LOG.warn(
-        "Document {} ({}) still too large, stripped upstreamLineage (size now {} bytes)",
-        docId,
-        entityType,
-        size);
+    if (doc.remove("upstreamLineage") != null) {
+      json = JsonUtils.pojoToJson(doc);
+      size = json.getBytes(StandardCharsets.UTF_8).length;
+      LOG.warn(
+          "Document {} ({}) still too large, stripped upstreamLineage (size now {} bytes)",
+          docId,
+          entityType,
+          size);
+    }
     if (size > maxBytes) {
       stripColumnTreeForSize(doc);
       json = JsonUtils.pojoToJson(doc);
+      size = json.getBytes(StandardCharsets.UTF_8).length;
       LOG.warn(
           "Document {} ({}) still too large, stripped column children and columnNames (size now {} bytes)",
           docId,
           entityType,
-          json.getBytes(StandardCharsets.UTF_8).length);
+          size);
     }
     return json;
   }
@@ -159,11 +161,12 @@ public final class SearchIndexUtils {
     }
     if (size > maxBytes) {
       stripColumnTreeForSize(doc);
+      size = JsonUtils.pojoToJson(doc).getBytes(StandardCharsets.UTF_8).length;
       LOG.warn(
           "Live index doc {} ({}) still too large, stripped column children and columnNames ({} bytes)",
           docId,
           entityType,
-          JsonUtils.pojoToJson(doc).getBytes(StandardCharsets.UTF_8).length);
+          size);
     }
     return doc;
   }
