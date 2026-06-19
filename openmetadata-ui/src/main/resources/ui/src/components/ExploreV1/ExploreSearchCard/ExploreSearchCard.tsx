@@ -321,16 +321,24 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           )}
           {!hideBreadcrumbs && (
             <Col className="d-flex justify-between items-center" flex="auto">
-              <div className="d-flex gap-2 items-center">
+              <div
+                className={classNames(
+                  'd-flex gap-2 items-center tw:min-w-0',
+                  classNameForBreadcrumb
+                )}>
                 {breadcrumbs.length > 0 && serviceIcon}
+                {/* Always collapse the middle crumbs into a clickable "…" menu
+                    (first / … / last) so a deep path stays compact and the
+                    summary side-panel keeps its room; the hidden crumbs expand
+                    on click. autoCollapse only collapses on overflow, so a wide
+                    card would otherwise show the whole trail. */}
                 <Breadcrumbs
-                  autoCollapse
                   items={breadcrumbs.map((b) => ({
                     id: b.name,
                     label: getEntityName(b),
                     href: typeof b.url === 'string' ? b.url : b.url.pathname,
                   }))}
-                  maxItems={3}
+                  maxItems={2}
                 />
               </div>
               {score && (

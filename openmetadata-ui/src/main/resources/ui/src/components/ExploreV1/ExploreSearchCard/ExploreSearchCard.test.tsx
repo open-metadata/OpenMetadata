@@ -550,21 +550,28 @@ describe('ExploreSearchCard - Breadcrumbs', () => {
     expect(screen.getByTestId('breadcrumbs')).toBeInTheDocument();
   });
 
-  it('passes autoCollapse and maxItems={3} to Breadcrumbs', () => {
+  it('collapses the middle crumbs by passing maxItems={2} to Breadcrumbs', () => {
     renderCard({});
 
     expect(MockBreadcrumbs).toHaveBeenCalledWith(
       expect.objectContaining({
-        autoCollapse: true,
-        maxItems: 3,
+        maxItems: 2,
       }),
+      expect.anything()
+    );
+    expect(MockBreadcrumbs).not.toHaveBeenCalledWith(
+      expect.objectContaining({ autoCollapse: true }),
       expect.anything()
     );
   });
 
   it('maps breadcrumb items with id=name and href from a string url', () => {
     (searchClassBase.getEntityBreadcrumbs as jest.Mock).mockReturnValue([
-      { name: 'my-service', displayName: 'My Service', url: '/service/my-service' },
+      {
+        name: 'my-service',
+        displayName: 'My Service',
+        url: '/service/my-service',
+      },
     ]);
 
     renderCard({});

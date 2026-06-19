@@ -168,6 +168,33 @@ test.describe(
       expect(filteredCount).toBeLessThan(unfilteredCount);
     });
 
+    test('result-card breadcrumb collapses a deep path and expands on click', async ({
+      page,
+    }) => {
+      test.slow();
+
+      // Search the fixture table so its service / database / schema breadcrumb
+      // (a deep path) renders on the result card.
+      const searchRes = page.waitForResponse('/api/v1/search/query?*');
+      await page.getByTestId('searchBox').fill(table.entityResponseData.name);
+      await page.getByTestId('searchBox').press('Enter');
+      await searchRes;
+      await waitForAllLoadersToDisappear(page);
+
+      // The middle crumbs are collapsed into a clickable "…" menu — the trail
+      // stays compact (first / … / last) instead of spanning the whole card.
+      const collapseButton = page
+        .getByRole('button', { name: 'Show hidden breadcrumbs' })
+        .first();
+      await expect(collapseButton).toBeVisible();
+
+      // Clicking the "…" reveals the hidden middle crumbs.
+      await collapseButton.click();
+      await expect(
+        page.getByRole('menu', { name: 'Hidden breadcrumbs' })
+      ).toBeVisible();
+    });
+
     test('browsing the tree stacks removable QUERY chips and filters results', async ({
       page,
     }) => {
