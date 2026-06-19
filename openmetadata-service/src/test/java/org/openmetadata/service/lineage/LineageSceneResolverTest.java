@@ -384,6 +384,44 @@ class LineageSceneResolverTest {
   }
 
   @Test
+  void aggregationCountParserReadsPlainAndTypedBucketKeys() {
+    String plainResponse =
+        """
+        {
+          "aggregations": {
+            "database.fullyQualifiedName": {
+              "buckets": [
+                { "key": "snowflake.shop", "doc_count": 40 },
+                { "key": "snowflake.finance", "doc_count": 3 }
+              ]
+            }
+          }
+        }
+        """;
+    String typedResponse =
+        """
+        {
+          "aggregations": {
+            "sterms#databaseSchema.fullyQualifiedName.keyword": {
+              "buckets": [
+                { "key": "snowflake.shop.shopify", "doc_count": 8 },
+                { "key": "snowflake.shop.analytics", "doc_count": 12 }
+              ]
+            }
+          }
+        }
+        """;
+
+    assertEquals(
+        Map.of("snowflake.shop", 40, "snowflake.finance", 3),
+        LineageSceneResolver.parseAggregationCounts(plainResponse, "database.fullyQualifiedName"));
+    assertEquals(
+        Map.of("snowflake.shop.shopify", 8, "snowflake.shop.analytics", 12),
+        LineageSceneResolver.parseAggregationCounts(
+            typedResponse, "databaseSchema.fullyQualifiedName.keyword"));
+  }
+
+  @Test
   void serviceFocusedRelationalSceneProjectsTableEdgesToDatabaseEdges() {
     String shopOrders = "snowflake.shop.collate_shop.orders";
     String financeAccounts = "snowflake.finance.banking.accounts";

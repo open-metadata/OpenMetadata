@@ -25,6 +25,7 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -47,6 +48,7 @@ import org.openmetadata.schema.api.lineage.LineageSceneField;
 import org.openmetadata.schema.api.lineage.LineageSceneNode;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -93,7 +95,6 @@ public class LineageSceneResolver {
   private static final int FOCUSED_CHILD_LINEAGE_PARALLELISM = 6;
   private static final int FOCUSED_CHILD_LINEAGE_SIZE = 25;
   private static final int CONTAINER_TOTAL_LOOKUP_LIMIT = 100;
-  private static final int CONTAINER_TOTAL_LOOKUP_PARALLELISM = 6;
   private static final int FIELD_ENDPOINTS_PER_NODE = 10;
   private static final int FIELD_EDGE_LIMIT = 120;
 
@@ -345,7 +346,12 @@ public class LineageSceneResolver {
     List<SceneAsset> databaseAssets = toCountableContainerAssets(databases.assets());
     Map<String, Integer> tableCounts =
         fetchContainerAssetCounts(
-            databaseAssets, "database.fullyQualifiedName", Entity.TABLE, includeDeleted);
+            "service.name.keyword",
+            serviceFqn,
+            "database.fullyQualifiedName",
+            Entity.TABLE,
+            includeDeleted,
+            Math.max(1, Math.min(size + 1, CONTAINER_TOTAL_LOOKUP_LIMIT)));
     for (SceneAsset database : databaseAssets) {
       int tableCount = tableCounts.getOrDefault(database.self().fqn(), 0);
       if (tableCount > 0) {
@@ -376,10 +382,12 @@ public class LineageSceneResolver {
     List<SceneAsset> schemaAssets = toCountableContainerAssets(schemas.assets());
     Map<String, Integer> tableCounts =
         fetchContainerAssetCounts(
-            schemaAssets,
+            "database.fullyQualifiedName",
+            databaseFqn,
             "databaseSchema.fullyQualifiedName.keyword",
             Entity.TABLE,
-            includeDeleted);
+            includeDeleted,
+            Math.max(1, Math.min(size + 1, CONTAINER_TOTAL_LOOKUP_LIMIT)));
     for (SceneAsset schema : schemaAssets) {
       int tableCount = tableCounts.getOrDefault(schema.self().fqn(), 0);
       if (tableCount > 0) {
@@ -405,40 +413,77 @@ public class LineageSceneResolver {
   }
 
   private static Map<String, Integer> fetchContainerAssetCounts(
-      List<SceneAsset> containers, String fieldName, String entityType, boolean includeDeleted)
+      String parentFieldName,
+      String parentFqn,
+      String bucketFieldName,
+      String entityType,
+      boolean includeDeleted,
+      int size)
       throws IOException {
-    if (containers.isEmpty()) {
+    if (nullOrEmpty(parentFieldName) || nullOrEmpty(parentFqn) || nullOrEmpty(bucketFieldName)) {
       return Map.of();
     }
-    ExecutorService executor =
-        Executors.newFixedThreadPool(
-            Math.min(CONTAINER_TOTAL_LOOKUP_PARALLELISM, containers.size()));
-    try {
-      Map<String, CompletableFuture<Integer>> futures = new LinkedHashMap<>();
-      for (SceneAsset container : containers) {
-        String containerFqn = container.self().fqn();
-        futures.put(
-            containerFqn,
-            CompletableFuture.supplyAsync(
-                () -> {
-                  try {
-                    return searchRootAssets(fieldName, containerFqn, entityType, includeDeleted, 0)
-                        .total();
-                  } catch (IOException exception) {
-                    throw new CompletionException(exception);
-                  }
-                },
-                executor));
-      }
-
-      Map<String, Integer> counts = new LinkedHashMap<>();
-      for (Map.Entry<String, CompletableFuture<Integer>> entry : futures.entrySet()) {
-        counts.put(entry.getKey(), joinFuture(entry.getValue()));
-      }
-      return counts;
-    } finally {
-      executor.shutdownNow();
+    Response response =
+        Entity.getSearchRepository()
+            .aggregate(
+                new AggregationRequest()
+                    .withIndex(entityType)
+                    .withQuery(parentFieldQuery(parentFieldName, parentFqn))
+                    .withFieldName(bucketFieldName)
+                    .withFieldValue(".*")
+                    .withDeleted(includeDeleted)
+                    .withSize(size));
+    if (!(response.getEntity() instanceof String responseJson)) {
+      return Map.of();
     }
+    return parseAggregationCounts(responseJson, bucketFieldName);
+  }
+
+  private static String parentFieldQuery(String fieldName, String fieldValue) {
+    return JsonUtils.pojoToJson(
+        Map.of(
+            "query",
+            Map.of(
+                "bool",
+                Map.of("must", List.of(Map.of("wildcard", Map.of(fieldName, fieldValue)))))));
+  }
+
+  static Map<String, Integer> parseAggregationCounts(String responseJson, String fieldName) {
+    JsonNode buckets = aggregationBuckets(JsonUtils.readTree(responseJson), fieldName);
+    if (buckets == null || !buckets.isArray()) {
+      return Map.of();
+    }
+
+    Map<String, Integer> counts = new LinkedHashMap<>();
+    for (JsonNode bucket : buckets) {
+      String key = bucket.path("key").asText();
+      if (!nullOrEmpty(key)) {
+        counts.put(key, bucket.path("doc_count").asInt(0));
+      }
+    }
+    return counts;
+  }
+
+  private static JsonNode aggregationBuckets(JsonNode responseRoot, String fieldName) {
+    JsonNode aggregations = responseRoot.path("aggregations");
+    if (!aggregations.isObject()) {
+      return null;
+    }
+
+    JsonNode directBuckets = aggregations.path(fieldName).path("buckets");
+    if (directBuckets.isArray()) {
+      return directBuckets;
+    }
+
+    Iterator<Map.Entry<String, JsonNode>> iterator = aggregations.fields();
+    while (iterator.hasNext()) {
+      Map.Entry<String, JsonNode> entry = iterator.next();
+      JsonNode buckets = entry.getValue().path("buckets");
+      if (buckets.isArray()) {
+        return buckets;
+      }
+    }
+    return null;
   }
 
   private static void addSyntheticCountEntity(
