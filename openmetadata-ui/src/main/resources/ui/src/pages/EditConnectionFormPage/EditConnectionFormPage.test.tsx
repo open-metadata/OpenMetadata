@@ -137,8 +137,11 @@ jest.mock('../../rest/serviceAPI', () => ({
 }));
 
 jest.mock('../../utils/EntityDisplayUtils', () => ({
-  getEntityMissingError: jest.fn(),
   getServiceLogo: jest.fn().mockReturnValue(''),
+}));
+
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
+  getEntityMissingError: jest.fn(),
 }));
 
 jest.mock('../../utils/EntityNameUtils', () => ({
