@@ -32,6 +32,8 @@ import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TermRelation;
+import org.openmetadata.schema.type.csv.CsvFile;
+import org.openmetadata.schema.type.csv.CsvHeader;
 
 public class CsvUtilTest {
   @Test
@@ -321,5 +323,42 @@ public class CsvUtilTest {
     for (int i = 0; i < expectedCsvRecords.size(); i++) {
       assertEquals(expectedCsvRecords.get(i), actualCsvRecords.get(i));
     }
+  }
+
+  @Test
+  void testFormatCsvPreservesChineseCharacters() throws Exception {
+    CsvFile csvFile =
+        new CsvFile()
+            .withHeaders(
+                List.of(
+                    new CsvHeader().withName("name"),
+                    new CsvHeader().withName("description"),
+                    new CsvHeader().withName("owner")))
+            .withRecords(List.of(List.of("中文表", "这是中文描述", "数据平台团队")));
+
+    String csv = CsvUtil.formatCsv(csvFile);
+
+    assertTrue(csv.contains("中文表"));
+    assertTrue(csv.contains("这是中文描述"));
+    assertTrue(csv.contains("数据平台团队"));
+  }
+
+  @Test
+  void testStripUtf8Bom() {
+    String csv = "name,description\n中文表,中文描述";
+    assertEquals(csv, CsvUtil.stripUtf8Bom(CsvUtil.UTF8_BOM + csv));
+    assertEquals(csv, CsvUtil.stripUtf8Bom(csv));
+    assertEquals("", CsvUtil.stripUtf8Bom(""));
+    assertNull(CsvUtil.stripUtf8Bom(null));
+  }
+
+  @Test
+  void testWithUtf8Bom() {
+    String csv = "name,description\nunicode-name,unicode-description";
+
+    assertEquals(CsvUtil.UTF8_BOM + csv, CsvUtil.withUtf8Bom(csv));
+    assertEquals(CsvUtil.UTF8_BOM + csv, CsvUtil.withUtf8Bom(CsvUtil.UTF8_BOM + csv));
+    assertEquals(CsvUtil.UTF8_BOM, CsvUtil.withUtf8Bom(""));
+    assertNull(CsvUtil.withUtf8Bom(null));
   }
 }

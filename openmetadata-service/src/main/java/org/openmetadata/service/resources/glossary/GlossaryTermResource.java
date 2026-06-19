@@ -91,6 +91,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.MoveGlossaryTermResponse;
@@ -1324,7 +1325,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
 
   @GET
   @Path("/name/{fqn}/export")
-  @Produces(MediaType.TEXT_PLAIN)
+  @Produces({"text/csv; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "exportGlossaryTerm",
@@ -1334,7 +1335,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         @ApiResponse(
             responseCode = "200",
             description = "Exported csv with glossary terms",
-            content = @Content(mediaType = "text/plain"))
+            content = @Content(mediaType = "text/csv; charset=UTF-8"))
       })
   public String exportCsv(
       @Context SecurityContext securityContext,
@@ -1349,7 +1350,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
 
   @GET
   @Path("/name/{fqn}/exportAsync")
-  @Produces(MediaType.TEXT_PLAIN)
+  @Produces(MediaType.APPLICATION_JSON)
   @Valid
   @Operation(
       operationId = "exportGlossaryTermAsync",
@@ -1362,10 +1363,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema =
-                        @Schema(
-                            implementation =
-                                org.openmetadata.service.util.CSVExportResponse.class)))
+                    schema = @Schema(implementation = CSVExportResponse.class)))
       })
   public Response exportCsvAsync(
       @Context SecurityContext securityContext,
@@ -1379,7 +1377,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
 
   @PUT
   @Path("/name/{fqn}/import")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "importGlossaryTerm",
@@ -1417,7 +1415,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
 
   @PUT
   @Path("/name/{fqn}/importAsync")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Produces(MediaType.APPLICATION_JSON)
   @Valid
   @Operation(

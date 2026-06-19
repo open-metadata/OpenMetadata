@@ -536,15 +536,15 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
 
   @GET
   @Path("/name/{name}/exportAsync")
-  @Produces(MediaType.TEXT_PLAIN)
+  @Produces(MediaType.APPLICATION_JSON)
   @Valid
   @Operation(
       operationId = "exportGlossary",
       summary = "Export glossary in CSV format",
       responses = {
         @ApiResponse(
-            responseCode = "200",
-            description = "Exported csv with glossary terms",
+            responseCode = "202",
+            description = "Export initiated successfully",
             content =
                 @Content(
                     mediaType = "application/json",
@@ -560,7 +560,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
 
   @GET
   @Path("/name/{name}/export")
-  @Produces(MediaType.TEXT_PLAIN)
+  @Produces({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "exportGlossary",
@@ -571,7 +571,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
             description = "Exported csv with glossary terms",
             content =
                 @Content(
-                    mediaType = "application/json",
+                    mediaType = "text/plain; charset=UTF-8",
                     schema = @Schema(implementation = String.class)))
       })
   public String exportCsv(
@@ -585,7 +585,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
 
   @PUT
   @Path("/name/{name}/import")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "importGlossary",
@@ -619,7 +619,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
 
   @PUT
   @Path("/name/{name}/importAsync")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Produces(MediaType.APPLICATION_JSON)
   @Valid
   @Operation(

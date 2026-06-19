@@ -90,6 +90,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Path("/v1/tables")
@@ -620,19 +621,19 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @GET
   @Path("/name/{name}/exportAsync")
-  @Produces(MediaType.TEXT_PLAIN)
+  @Produces(MediaType.APPLICATION_JSON)
   @Valid
   @Operation(
       operationId = "exportTable",
       summary = "Export table in CSV format",
       responses = {
         @ApiResponse(
-            responseCode = "200",
-            description = "Exported csv with columns from the table",
+            responseCode = "202",
+            description = "Export initiated successfully",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = String.class)))
+                    schema = @Schema(implementation = CSVExportResponse.class)))
       })
   public Response exportCsvAsync(
       @Context SecurityContext securityContext,
@@ -644,7 +645,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @GET
   @Path("/name/{name}/export")
-  @Produces(MediaType.TEXT_PLAIN)
+  @Produces({"text/csv; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "exportTable",
@@ -655,7 +656,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             description = "Exported csv with columns from the table",
             content =
                 @Content(
-                    mediaType = "application/json",
+                    mediaType = "text/csv; charset=UTF-8",
                     schema = @Schema(implementation = String.class)))
       })
   public String exportCsv(
@@ -669,7 +670,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @PUT
   @Path("/name/{name}/import")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "importTable",
@@ -703,7 +704,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @PUT
   @Path("/name/{name}/importAsync")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "importTableAsync",

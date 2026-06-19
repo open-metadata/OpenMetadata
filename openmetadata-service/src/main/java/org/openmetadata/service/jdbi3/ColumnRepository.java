@@ -37,6 +37,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.BulkColumnUpdatePreview;
 import org.openmetadata.schema.api.data.BulkColumnUpdateRequest;
@@ -943,7 +944,7 @@ public class ColumnRepository {
     result.setNumberOfRowsPassed(0);
     result.setNumberOfRowsFailed(0);
 
-    String[] lines = csv.split("\n");
+    String[] lines = CsvUtil.stripUtf8Bom(csv).split("\n");
     if (lines.length <= 1) {
       result.setStatus(ApiStatus.ABORTED);
       result.setAbortReason("No data to import");

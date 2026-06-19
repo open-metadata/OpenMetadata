@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.schema.api.data.BulkColumnUpdatePreview;
 import org.openmetadata.schema.api.data.BulkColumnUpdateRequest;
 import org.openmetadata.schema.api.data.ColumnGridResponse;
@@ -412,7 +413,7 @@ public class ColumnResource {
 
   @GET
   @Path("/export")
-  @Produces(MediaType.TEXT_PLAIN)
+  @Produces({"text/csv; charset=UTF-8"})
   @Operation(
       operationId = "exportUniqueColumns",
       summary = "Export unique column names to CSV",
@@ -426,7 +427,7 @@ public class ColumnResource {
             description = "CSV export of unique columns",
             content =
                 @Content(
-                    mediaType = "text/plain",
+                    mediaType = "text/csv; charset=UTF-8",
                     schema = @Schema(implementation = String.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
@@ -452,13 +453,20 @@ public class ColumnResource {
           String schemaName,
       @Parameter(description = "Filter by domain ID") @QueryParam("domainId") String domainId) {
 
-    return repository.exportUniqueColumnsCSV(
-        securityContext, columnName, entityTypes, serviceName, databaseName, schemaName, domainId);
+    return CsvUtil.withUtf8Bom(
+        repository.exportUniqueColumnsCSV(
+            securityContext,
+            columnName,
+            entityTypes,
+            serviceName,
+            databaseName,
+            schemaName,
+            domainId));
   }
 
   @POST
   @Path("/import")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Operation(
       operationId = "importUniqueColumns",
       summary = "Import column metadata from CSV (with dry-run)",
@@ -498,11 +506,12 @@ public class ColumnResource {
       @Parameter(description = "Filter by domain ID") @QueryParam("domainId") String domainId,
       String csv) {
 
+    String normalizedCsv = CsvUtil.stripUtf8Bom(csv);
     CsvImportResult result =
         repository.importColumnsCSV(
             uriInfo,
             securityContext,
-            csv,
+            normalizedCsv,
             dryRun,
             entityTypes,
             serviceName,
@@ -515,7 +524,7 @@ public class ColumnResource {
 
   @POST
   @Path("/import-async")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Operation(
       operationId = "importUniqueColumnsAsync",
       summary = "Import column metadata from CSV asynchronously",
@@ -548,6 +557,7 @@ public class ColumnResource {
       @Parameter(description = "Filter by domain ID") @QueryParam("domainId") String domainId,
       String csv) {
 
+    String normalizedCsv = CsvUtil.stripUtf8Bom(csv);
     String jobId = UUID.randomUUID().toString();
     CSVImportResponse responseEntity =
         new CSVImportResponse(jobId, "CSV column import is in progress.");
@@ -564,7 +574,7 @@ public class ColumnResource {
                 repository.importColumnsCSV(
                     uriInfo,
                     securityContext,
-                    csv,
+                    normalizedCsv,
                     false,
                     entityTypes,
                     serviceName,
