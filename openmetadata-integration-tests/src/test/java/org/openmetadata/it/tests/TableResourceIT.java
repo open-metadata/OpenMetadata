@@ -3918,7 +3918,9 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     // Try to disable multi-domain rule for this test
     boolean rulesAvailable = false;
+    boolean originalRuleState = false;
     try {
+      originalRuleState = EntityRulesUtil.isMultiDomainRuleEnabled(client);
       EntityRulesUtil.toggleMultiDomainRule(client, false);
       rulesAvailable = true;
     } catch (Exception e) {
@@ -4032,13 +4034,13 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
                 return searchResponse.contains("\"id\":\"" + tableId + "\"");
               });
     } finally {
-      // Re-enable multi-domain rule after test (only if we successfully disabled it)
+      // Restore multi-domain rule after test (only if we successfully disabled it)
       if (rulesAvailable) {
         try {
-          EntityRulesUtil.toggleMultiDomainRule(client, true);
+          EntityRulesUtil.toggleMultiDomainRule(client, originalRuleState);
         } catch (Exception e) {
           // Ignore - test is finishing anyway
-          System.out.println("Could not re-enable multi-domain rule: " + e.getMessage());
+          System.out.println("Could not restore multi-domain rule: " + e.getMessage());
         }
       }
     }
