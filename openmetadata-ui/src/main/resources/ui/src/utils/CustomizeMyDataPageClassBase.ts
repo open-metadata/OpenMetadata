@@ -27,6 +27,7 @@ import type {
   WidgetCommonProps,
   WidgetConfig,
 } from '../pages/CustomizablePage/CustomizablePage.interface';
+import { getMyDataWidgetImageFromKey } from './CustomizeMyDataPageImageUtils';
 import { getMyDataWidgetFromKey } from './CustomizeMyDataPageWidgetUtils';
 
 class CustomizeMyDataPageClassBase {
@@ -70,6 +71,10 @@ class CustomizeMyDataPageClassBase {
     widgetKey: string
   ): ComponentType<WidgetCommonProps> {
     return getMyDataWidgetFromKey(widgetKey);
+  }
+
+  public getWidgetImageFromKey(widgetKey: string, size?: number): string {
+    return getMyDataWidgetImageFromKey(widgetKey, size);
   }
 
   public getWidgetHeight(widgetName: string) {

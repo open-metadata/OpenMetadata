@@ -20,7 +20,7 @@ import { Document as DocStoreDocument } from '../../../../generated/entity/docSt
 import { PageType } from '../../../../generated/system/ui/page';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import customizeDetailPageClassBase from '../../../../utils/CustomizeDetailPage/CustomizeDetailPageClassBase';
-import { getMyDataWidgetImageFromKey } from '../../../../utils/CustomizeMyDataPageImageUtils';
+import customizePageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import './widget-card.less';
 
 interface WidgetCardProps {
@@ -46,7 +46,10 @@ const WidgetCard = ({
           1
         );
       case PageType.LandingPage:
-        return getMyDataWidgetImageFromKey(widget.fullyQualifiedName, 1);
+        return customizePageClassBase.getWidgetImageFromKey(
+          widget.fullyQualifiedName,
+          1
+        );
       default:
         return customizeDetailPageClassBase.getDetailPageWidgetImageFromKey(
           widget.fullyQualifiedName,

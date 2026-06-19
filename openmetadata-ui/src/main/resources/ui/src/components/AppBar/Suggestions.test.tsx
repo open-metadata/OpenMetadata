@@ -126,17 +126,6 @@ describe('Suggestions Component', () => {
 
       expect(mockSearchQuery).not.toHaveBeenCalled();
     });
-
-    it('should not fetch or show loader when NLP mode becomes active with search text', () => {
-      const { rerender } = render(
-        <Suggestions {...defaultProps} searchText="" />
-      );
-
-      rerender(<Suggestions {...defaultProps} isNLPActive searchText="test" />);
-
-      expect(mockSearchQuery).not.toHaveBeenCalled();
-      expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
-    });
   });
 
   describe('Component Behavior', () => {

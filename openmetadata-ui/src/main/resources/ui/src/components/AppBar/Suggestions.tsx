@@ -393,12 +393,12 @@ const Suggestions = ({
   }, [searchText, searchCriteria]);
 
   useEffect(() => {
-    if (!isMounting.current && searchText && !isTourOpen && !isNLPActive) {
+    if (!isMounting.current && searchText && !isTourOpen) {
       fetchSearchData();
     } else {
       setIsLoading(false);
     }
-  }, [searchText, searchCriteria, isTourOpen, isNLPActive, fetchSearchData]);
+  }, [searchText, searchCriteria]);
 
   // always Keep this useEffect at the end...
   useEffect(() => {

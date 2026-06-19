@@ -41,6 +41,10 @@ const mockWidgetWithoutId: DocStoreDocument = {
   data: {},
 };
 
+jest.mock('../../../../utils/CustomizeMyDataPageClassBase', () => ({
+  getWidgetImageFromKey: jest.fn().mockImplementation(() => ''),
+}));
+
 describe('WidgetCard', () => {
   const mockOnSelectWidget = jest.fn();
 
