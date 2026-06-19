@@ -591,7 +591,6 @@ export const fillCustomPropertyDetails = async (
   propertyListName: Record<string, string>
 ) => {
   await page.keyboard.press('Enter', { delay: 100 });
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).first().click();
 
   await page
     .getByTestId('custom-property-editor')
@@ -622,10 +621,6 @@ export const fillExtensionDetails = async (
   propertyListName: Record<string, string>
 ) => {
   await page.keyboard.press('Enter', { delay: 100 });
-
-  await page
-    .getByTestId('custom-property-editor')
-    .waitFor({ state: 'attached' });
 
   // Verify header text
   await expect(page.getByTestId('header')).toContainText('Edit CustomProperty');
@@ -689,6 +684,7 @@ export const fillGlossaryRowDetails = async (
   await fillTextInputDetails(page, row.displayName);
 
   // Navigate to next cell and make cell editable
+  await moveToNextColumnWithVerification(page);
   await moveToNextColumnWithVerification(page);
   await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 

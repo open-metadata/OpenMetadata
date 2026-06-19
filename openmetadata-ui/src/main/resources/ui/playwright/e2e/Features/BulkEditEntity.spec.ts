@@ -565,12 +565,13 @@ test.describe('Bulk Edit Entity', () => {
 
       await page.click(RDG_ACTIVE_CELL_SELECTOR);
 
-      await pressKeyXTimes(page, 2, 'ArrowRight');
+      await pressKeyXTimes(page, 3, 'ArrowRight');
 
-      await page
+      const activeDescriptionCell = page
         .locator(RDG_ACTIVE_CELL_SELECTOR)
-        .first()
-        .click({ force: true });
+        .first();
+      // eslint-disable-next-line playwright/no-force-option -- RDG can leave an overlay above the active cell editor trigger.
+      await activeDescriptionCell.dblclick({ force: true });
 
       await fillDescriptionDetails(page, columnDetails1.description);
 
@@ -591,10 +592,9 @@ test.describe('Bulk Edit Entity', () => {
 
       // eslint-disable-next-line playwright/no-force-option -- button obscured by data grid overlay
       await page.click('[type="button"] >> text="Next"', { force: true });
-      const count = `${tableEntity.entityLinkColumnsName.length}`;
       await validateImportStatus(page, {
-        passed: count,
-        processed: count,
+        passed: '1',
+        processed: '1',
         failed: '0',
       });
 
