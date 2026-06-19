@@ -108,7 +108,8 @@ function CustomizeMyData({
           placeholderWidgetKey,
           widgetSize,
           customizeMyDataPageClassBase.landingPageMaxGridSize,
-          (widgetName) => customizeMyDataPageClassBase.getWidgetHeight(widgetName)
+          (widgetName) =>
+            customizeMyDataPageClassBase.getWidgetHeight(widgetName)
         )
       );
       setIsWidgetModalOpen(false);
