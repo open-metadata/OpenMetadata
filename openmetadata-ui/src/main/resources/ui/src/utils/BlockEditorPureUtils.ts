@@ -94,7 +94,12 @@ export const isHTMLString = (content: string) => {
     );
 
     return hasHtmlElements && !hasMarkdownSyntax;
-  } catch {
+  } catch (error) {
+    if (process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.warn('Error parsing content to check HTML string:', error);
+    }
+
     return false;
   }
 };
