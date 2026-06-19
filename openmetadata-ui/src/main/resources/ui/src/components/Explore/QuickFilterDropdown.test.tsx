@@ -22,7 +22,7 @@ jest.mock('../../constants/AdvancedSearch.constants', () => ({
   NULL_OPTION_KEY: 'null_option_key',
 }));
 
-jest.mock('../../utils/AdvancedSearchPureUtils', () => ({
+jest.mock('../../utils/AdvancedSearchUtils', () => ({
   getSelectedOptionLabelString: (options: { label: string }[]) =>
     (options ?? []).map((option) => option.label).join(', '),
 }));
