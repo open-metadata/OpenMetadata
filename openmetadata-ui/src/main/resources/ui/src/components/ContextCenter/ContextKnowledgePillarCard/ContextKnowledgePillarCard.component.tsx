@@ -46,7 +46,8 @@ function RecentItem({
           ellipsis
           as="span"
           className="tw:min-w-0 tw:flex-1 tw:text-secondary"
-          size="text-xs">
+          size="text-xs"
+          weight='medium'>
           {item.title}
         </Typography>
         <Typography
@@ -149,7 +150,7 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
               as="div"
               className="tw:text-primary"
               size="text-sm"
-              weight="medium">
+              weight="semibold">
               {title}
             </Typography>
             <Typography as="div" className="tw:text-quaternary" size="text-xs">

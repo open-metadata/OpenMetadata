@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Badge,
-  Card,
-  Tabs,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Card, Tabs } from '@openmetadata/ui-core-components';
 import { File06 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -188,7 +183,7 @@ const ContextCenterArchivePage: FC = () => {
 
   return (
     <div
-      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:bg-secondary tw:p-5 tw:pt-0 ${contextCenterClassBase.getContainerClassName()}`}
+      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:overflow-scroll tw:bg-secondary tw:p-5 tw:pt-0 ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-archive-page">
       <ContextCenterHeader
         breadcrumbs={[
@@ -204,59 +199,52 @@ const ContextCenterArchivePage: FC = () => {
         subtitle={t('message.context-center-archive-subtitle')}
         title={t('label.archive-plural')}
       />
-      <Card>
-        <div className="tw:flex tw:items-end tw:gap-2 tw:px-6 tw:py-5">
-          <Typography size="text-md" weight="medium">
-            {t('label.archive-file-plural')}
-          </Typography>
-          <Badge color="brand" type="pill-color">
-            {filteredItems.length}
-          </Badge>
-        </div>
-        <div className="tw:px-5 tw:py-3 tw:bg-tertiary">
-          <Tabs
-            className="tw:w-max"
-            selectedKey={activeFilter}
-            onSelectionChange={(key) => setActiveFilter(key as FilterKey)}>
-            <Tabs.List
-              className="tw:gap-2"
-              items={[
-                { id: 'all', label: t('label.all') },
-                { id: 'mine', label: t('label.created-by-me') },
-                {
-                  id: 'article',
-                  label: (
-                    <div className="tw:flex tw:items-center tw:gap-1.5">
-                      <File06 size={14} />
-                      {t('label.article-plural')}
-                    </div>
-                  ),
-                },
-                {
-                  id: 'document',
-                  label: (
-                    <div className="tw:flex tw:items-center tw:gap-1.5">
-                      <FolderIcon height={14} width={14} />
-                      {t('label.document-plural')}
-                    </div>
-                  ),
-                },
-              ]}
-              type="button-brand">
-              {(tab) => (
-                <Tabs.Item
-                  {...tab}
-                  className={({ isSelected }) =>
-                    isSelected
-                      ? 'tw:rounded-md tw:border tw:border-utility-brand-100 tw:bg-utility-brand-50 tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold tw:text-utility-brand-700 tw:cursor-pointer'
-                      : 'tw:rounded-md tw:border tw:border-primary tw:bg-primary tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold tw:text-quaternary tw:cursor-pointer'
-                  }
-                />
-              )}
-            </Tabs.List>
-          </Tabs>
-        </div>
-
+      <div className="tw:pb-5">
+        <Tabs
+          className="tw:w-max"
+          selectedKey={activeFilter}
+          onSelectionChange={(key) => setActiveFilter(key as FilterKey)}>
+          <Tabs.List
+            className="tw:gap-2"
+            items={[
+              { id: 'all', label: t('label.all') },
+              { id: 'mine', label: t('label.created-by-me') },
+              {
+                id: 'article',
+                label: (
+                  <div className="tw:flex tw:items-center tw:gap-1.5">
+                    <File06 size={14} />
+                    {t('label.article-plural')}
+                  </div>
+                ),
+              },
+              {
+                id: 'document',
+                label: (
+                  <div className="tw:flex tw:items-center tw:gap-1.5">
+                    <FolderIcon height={14} width={14} />
+                    {t('label.document-plural')}
+                  </div>
+                ),
+              },
+            ]}
+            type="button-brand">
+            {(tab) => (
+              <Tabs.Item
+                {...tab}
+                className={({ isSelected }) =>
+                  isSelected
+                    ? 'tw:rounded-md tw:border tw:border-brand tw:bg-brand-primary_alt tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold tw:text-brand-secondary tw:cursor-pointer'
+                    : 'tw:rounded-md tw:border tw:border-primary tw:bg-primary tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold tw:text-quaternary tw:cursor-pointer'
+                }
+              />
+            )}
+          </Tabs.List>
+        </Tabs>
+      </div>
+      <Card
+        className="tw:flex tw:flex-col tw:h-auto"
+        style={{ overflow: 'unset' }}>
         <ArchiveView
           canDelete={permissions?.Delete}
           canRestore={permissions?.EditAll}
@@ -271,8 +259,11 @@ const ContextCenterArchivePage: FC = () => {
         <DeleteModal
           entityTitle={itemToDelete.name}
           isDeleting={isDeleting}
-          message={t('message.delete-entity-message', {
-            entity: itemToDelete.name,
+          message={t('message.are-you-sure-you-want-to-delete-this-entity', {
+            entity:
+              itemToDelete.type === 'article'
+                ? t('label.article').toLowerCase()
+                : t('label.document').toLowerCase(),
           })}
           open={Boolean(itemToDelete)}
           onCancel={handleCancelDelete}

@@ -23,9 +23,11 @@ import {
 import {
   ChevronDown,
   ChevronRight,
+  Database01,
   FilterFunnel02,
   Pin01,
   Plus,
+  User03,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -588,9 +590,9 @@ const ContextCenterMemoriesPage: FC = () => {
                 {...tab}
                 className={({ isSelected }) =>
                   classNames(
-                    'tw:rounded-full tw:border tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold tw:cursor-pointer',
+                    'tw:rounded-md tw:border tw:px-3 tw:py-1.5 tw:text-sm tw:font-medium tw:cursor-pointer',
                     {
-                      'tw:border-utility-brand-100 tw:bg-utility-brand-50 tw:text-utility-brand-700':
+                      'tw:border-utility-brand-100 tw:bg-brand-primary_alt tw:text-brand-secondary':
                         isSelected,
                       'tw:border-primary tw:bg-primary tw:text-secondary':
                         !isSelected,
@@ -608,16 +610,26 @@ const ContextCenterMemoriesPage: FC = () => {
               className={
                 selectedAsset ? FILTER_BUTTON_ACTIVE_CLS : FILTER_BUTTON_CLS
               }>
-              <Typography
-                className={
-                  selectedAsset
-                    ? 'tw:text-utility-brand-700'
-                    : 'tw:text-secondary'
-                }
-                weight="medium">
-                {assetOptions.find((o) => o.id === selectedAsset)?.label ??
-                  t('label.all-entity', { entity: t('label.asset-plural') })}
-              </Typography>
+              <Database01
+                className={classNames('tw:shrink-0', {
+                  'tw:text-brand-secondary': selectedAsset,
+                  'tw:text-secondary': !selectedAsset,
+                })}
+                size={14}
+              />
+              <div className="tw:max-w-50">
+                <Typography
+                  ellipsis
+                  className={
+                    selectedAsset
+                      ? 'tw:text-brand-secondary'
+                      : 'tw:text-secondary'
+                  }
+                  weight="medium">
+                  {assetOptions.find((o) => o.id === selectedAsset)?.label ??
+                    t('label.all-entity', { entity: t('label.asset-plural') })}
+                </Typography>
+              </div>
               <ChevronDown
                 className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
                 size={16}
@@ -689,16 +701,26 @@ const ContextCenterMemoriesPage: FC = () => {
               className={
                 selectedAuthor ? FILTER_BUTTON_ACTIVE_CLS : FILTER_BUTTON_CLS
               }>
-              <Typography
-                className={
-                  selectedAuthor
-                    ? 'tw:text-utility-brand-700'
-                    : 'tw:text-secondary'
-                }
-                weight="medium">
-                {authorOptions.find((o) => o.id === selectedAuthor)?.label ??
-                  t('label.all-entity', { entity: t('label.author') })}
-              </Typography>
+              <User03
+                className={classNames('tw:shrink-0', {
+                  'tw:text-brand-secondary': selectedAuthor,
+                  'tw:text-secondary': !selectedAuthor,
+                })}
+                size={14}
+              />
+              <div className="tw:max-w-50">
+                <Typography
+                  ellipsis
+                  className={
+                    selectedAuthor
+                      ? 'tw:text-brand-secondary'
+                      : 'tw:text-secondary'
+                  }
+                  weight="medium">
+                  {authorOptions.find((o) => o.id === selectedAuthor)?.label ??
+                    t('label.all-entity', { entity: t('label.author') })}
+                </Typography>
+              </div>
               <ChevronDown
                 className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
                 size={16}
