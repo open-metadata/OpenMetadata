@@ -15,7 +15,7 @@ import type { AuthenticationResult, Configuration } from '@azure/msal-browser';
 import { CookieStorage } from 'cookie-storage';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { first, get, isEmpty, isNil } from 'lodash';
-import type { WebStorageStateStore } from 'oidc-client';
+import { WebStorageStateStore } from 'oidc-client';
 import {
   AuthenticationConfigurationWithScope,
   OidcUser,
@@ -85,14 +85,10 @@ export const getUserManagerConfig = (
  * admin to register an extra one. Isolation is achieved by diverting the popup
  * at the callback (see isSsoTestLoginPopup), not by using a separate route.
  */
-export const getCandidateUserManagerConfig = async (
+export const getCandidateUserManagerConfig = (
   authClient: AuthenticationConfigurationWithScope
-): Promise<Record<string, string | boolean | WebStorageStateStore>> => {
+): Record<string, string | boolean | WebStorageStateStore> => {
   const { authority = '', clientId = '', callbackUrl, scope } = authClient;
-  // Only the SSO test-login flow needs the oidc-client store constructor. Keep
-  // it out of the normal app bootstrap so authenticated /my-data does not fetch
-  // vendor-oidc-client before first paint.
-  const { WebStorageStateStore } = await import('oidc-client');
   const testStore = new WebStorageStateStore({
     store: globalThis.localStorage,
     prefix: SSO_TEST_LOGIN_STORE_PREFIX,

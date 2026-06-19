@@ -44,9 +44,7 @@ const acquireIdToken = async (
     SSO_TEST_LOGIN_CANDIDATE_KEY,
     JSON.stringify(candidate)
   );
-  const userManager = new UserManager(
-    await getCandidateUserManagerConfig(candidate)
-  );
+  const userManager = new UserManager(getCandidateUserManagerConfig(candidate));
   const user = await userManager.signinPopup();
 
   return user?.id_token;
