@@ -172,14 +172,28 @@ const ExploreTree = ({
         });
 
         const aggregations = getAggregations(res.aggregations);
-        const buckets = (aggregations[bucketToFind]?.buckets ?? []).filter(
-          (item) =>
-            !searchClassBase
-              .notIncludeAggregationExploreTree()
-              .includes(item.key as EntityType)
-        );
         const isServiceType = bucketToFind === EntityFields.SERVICE_TYPE;
         const isEntityType = bucketToFind === EntityFields.ENTITY_TYPE;
+        // Leaf entity-type buckets are camelCase (tableColumn) while the
+        // Data Assets quick-filter values are lowercased (tablecolumn).
+        const selectedEntityTypeSet = new Set(
+          selectedEntityTypes.map((value) => value.toLowerCase())
+        );
+        const buckets = (aggregations[bucketToFind]?.buckets ?? []).filter(
+          (item) => {
+            const isAllowedAggregation = !searchClassBase
+              .notIncludeAggregationExploreTree()
+              .includes(item.key as EntityType);
+            // When specific asset types are picked, the entity-type leaf only
+            // lists those types — a Table-only filter must not surface Columns.
+            const matchesSelectedType =
+              !isEntityType ||
+              selectedEntityTypeSet.size === 0 ||
+              selectedEntityTypeSet.has(item.key.toLowerCase());
+
+            return isAllowedAggregation && matchesSelectedType;
+          }
+        );
 
         const sortedBuckets = buckets.sort((a, b) =>
           a.key.localeCompare(b.key, undefined, { sensitivity: 'base' })
@@ -267,7 +281,13 @@ const ExploreTree = ({
         showErrorToast(error as AxiosError);
       }
     },
-    [updateTreeData, searchQueryParam, defaultServiceType, setTreeData]
+    [
+      updateTreeData,
+      searchQueryParam,
+      defaultServiceType,
+      setTreeData,
+      selectedEntityTypes,
+    ]
   );
 
   const switcherIcon = useCallback(({ expanded }: { expanded?: boolean }) => {

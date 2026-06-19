@@ -93,10 +93,17 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   const menuOptions: MenuProps['items'] = useMemo(() => {
     // Filtering out selected options. Immediate-apply facets exclude their
     // own field from the aggregation, so a selected value may not be in the
-    // fetched options — keep it visible (and uncheckable) regardless.
+    // fetched options — keep it visible (and uncheckable) regardless. When the
+    // value IS present in the fetched options, render that copy so the selected
+    // row keeps its aggregation count and human-readable label instead of the
+    // raw key with a 0 count.
     const selectedOptionsObj =
       independent || immediateApply
-        ? selectedOptions
+        ? selectedOptions.map(
+            (selectedOpt) =>
+              options.find((option) => option.key === selectedOpt.key) ??
+              selectedOpt
+          )
         : options.filter((option) =>
             selectedOptions.some(
               (selectedOpt) => option.key === selectedOpt.key
