@@ -11,7 +11,58 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { SidebarItem } from '../constant/sidebar';
+import { redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
+import { sidebarClick } from './sidebar';
+
+const closeWelcomeScreenIfVisible = async (page: Page) => {
+  const isWelcomeScreenVisible = await page
+    .getByTestId('welcome-screen')
+    .isVisible();
+
+  if (isWelcomeScreenVisible) {
+    await page.getByTestId('welcome-screen-close-btn').click();
+  }
+};
+
+/**
+ * Navigate the given (already-logged-in) user to the Explore page, search for an
+ * entity by FQN, and assert whether its result card is shown — used to verify
+ * that browse/search results honor the per-user search RBAC policies.
+ */
+export const exploreShouldShowEntity = async (
+  page: Page,
+  fqn: string,
+  displayName: string,
+  shouldSee: boolean
+) => {
+  await closeWelcomeScreenIfVisible(page);
+  await redirectToHomePage(page);
+
+  const exploreRes = page.waitForResponse('/api/v1/search/query?*');
+  await sidebarClick(page, SidebarItem.EXPLORE);
+  await exploreRes;
+  await waitForAllLoadersToDisappear(page);
+
+  const searchRes = page.waitForResponse('/api/v1/search/query?*');
+  await page.getByTestId('searchBox').fill(fqn);
+  await page.getByTestId('searchBox').press('Enter');
+  await searchRes;
+  await waitForAllLoadersToDisappear(page);
+
+  const resultCard = page
+    .getByTestId('search-container')
+    .locator('[data-testid="entity-header-display-name"]', {
+      hasText: displayName,
+    });
+
+  if (shouldSee) {
+    await expect(resultCard.first()).toBeVisible();
+  } else {
+    await expect(resultCard).toHaveCount(0);
+  }
+};
 
 export const enableDisableSearchRBAC = async (
   apiContext: APIRequestContext,
