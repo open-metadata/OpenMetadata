@@ -550,8 +550,7 @@ public class McpCallbackServlet extends HttpServlet {
                 + "Please close this tab and retry the authentication flow.</p>';"
                 + "  }"
                 + "} catch(e) {"
-                + "  document.body.innerHTML = '<h2>MCP OAuth Error</h2><p>Fragment extraction "
-                + "failed: ' + e.message + '. Please retry.</p>';"
+                + "  document.body.textContent = 'MCP OAuth Error: Fragment extraction failed. Please retry.';"
                 + "}"
                 + "</script></body></html>");
   }
