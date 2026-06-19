@@ -19,8 +19,10 @@ import { queryClient } from './queryClient';
 import { idlePrefetchRoutes } from './utils/idlePrefetchRoutes';
 
 const App: FC = () => {
-  // Keep the existing post-paint route prefetch until the remaining dashboard
-  // LCP splits land, then remove it in the final cleanup branch.
+  // After first paint, warm the chunk cache for Explore / Settings / EntityRouter
+  // during browser idle. Most users land on /my-data and click into Explore or an
+  // entity link next; pre-fetching those route chunks turns the click into a cache
+  // hit (~5ms) instead of a network round-trip (~200–500ms).
   useEffect(() => {
     idlePrefetchRoutes();
   }, []);
