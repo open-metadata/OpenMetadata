@@ -26,6 +26,7 @@ import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinit
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Post;
+import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskComment;
 import org.openmetadata.schema.type.TaskDetails;
@@ -55,6 +56,7 @@ public class MigrationUtil {
   private static final String USER_APPROVAL_TASK_SUBTYPE = "userApprovalTask";
   private static final String RECOGNIZER_APPROVAL_TASK_SUBTYPE =
       "createRecognizerFeedbackApprovalTask";
+  private static final String FEEDBACK_PAYLOAD_KEY = "feedback";
   private static final int BATCH_SIZE = 200;
 
   private static final String NOTIFICATION_ALERT_TYPE = "Notification";
@@ -85,17 +87,29 @@ public class MigrationUtil {
     int seededDefaults = ensureDefaultTaskWorkflows();
     int redeployedWorkflows = redeployUserApprovalWorkflows();
     MigrationStats stats = migrateLegacyThreadTasks();
+    int rewrittenRecognizerFeedbackTasks = rewriteRecognizerFeedbackDataQualityReviewTasks();
     int backfilledOpenTasks = backfillOpenTasksToWorkflowInstances();
 
     LOG.info(
-        "Completed task workflow cutover migration. seededDefaults={}, workflowsRedeployed={}, migrated={}, alreadyMigrated={}, skipped={}, failures={}, backfilledOpenTasks={}",
+        "Completed task workflow cutover migration. seededDefaults={}, workflowsRedeployed={}, migrated={}, alreadyMigrated={}, skipped={}, failures={}, rewrittenRecognizerFeedbackTasks={}, backfilledOpenTasks={}",
         seededDefaults,
         redeployedWorkflows,
         stats.migrated,
         stats.alreadyMigrated,
         stats.skipped,
         stats.failed,
+        rewrittenRecognizerFeedbackTasks,
         backfilledOpenTasks);
+  }
+
+  public void runRecognizerFeedbackTaskTypeMigration() {
+    int seededDefaults = ensureDefaultTaskWorkflows();
+    int rewrittenRecognizerFeedbackTasks = rewriteRecognizerFeedbackDataQualityReviewTasks();
+
+    LOG.info(
+        "Completed recognizer feedback task type migration. seededDefaults={}, rewrittenRecognizerFeedbackTasks={}",
+        seededDefaults,
+        rewrittenRecognizerFeedbackTasks);
   }
 
   private int ensureDefaultTaskWorkflows() {
@@ -207,7 +221,7 @@ public class MigrationUtil {
       ListFilter filter = new ListFilter(Include.NON_DELETED);
       filter.addQueryParam("taskStatusGroup", "open");
       List<Task> openTasks =
-          taskRepository.listAll(taskRepository.getFields("about,payload"), filter);
+          listOrEmpty(taskRepository.listAll(taskRepository.getFields("about,payload"), filter));
       for (Task task : openTasks) {
         if (task.getWorkflowInstanceId() != null || task.getAbout() == null) {
           continue;
@@ -252,6 +266,54 @@ public class MigrationUtil {
       LOG.error("Failed to backfill open tasks to workflow instances", e);
     }
     return backfilled;
+  }
+
+  private int rewriteRecognizerFeedbackDataQualityReviewTasks() {
+    int rewritten = 0;
+    try {
+      ListFilter filter = new ListFilter(Include.NON_DELETED);
+      filter.addQueryParam("taskStatusGroup", "open");
+      filter.addQueryParam("taskType", TaskEntityType.DataQualityReview.value());
+
+      List<Task> openDataQualityReviewTasks =
+          listOrEmpty(taskRepository.listAll(taskRepository.getFields("about,payload"), filter));
+      for (Task task : openDataQualityReviewTasks) {
+        if (task.getId() == null || !isRecognizerFeedbackDataQualityReviewTask(task)) {
+          continue;
+        }
+
+        task.setType(TaskEntityType.RecognizerFeedbackApproval);
+        task.setCategory(TaskCategory.Review);
+        collectionDAO.taskDAO().updateTask(task.getId().toString(), JsonUtils.pojoToJson(task));
+        rewritten++;
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to rewrite recognizer feedback review task types", e);
+    }
+    return rewritten;
+  }
+
+  private boolean isRecognizerFeedbackDataQualityReviewTask(Task task) {
+    if (task == null || task.getType() != TaskEntityType.DataQualityReview) {
+      return false;
+    }
+
+    try {
+      Map<String, Object> payload = JsonUtils.readOrConvertValue(task.getPayload(), Map.class);
+      if (payload == null || !payload.containsKey(FEEDBACK_PAYLOAD_KEY)) {
+        return false;
+      }
+
+      RecognizerFeedback feedback =
+          JsonUtils.convertValue(payload.get(FEEDBACK_PAYLOAD_KEY), RecognizerFeedback.class);
+      return feedback != null
+          && !nullOrEmpty(feedback.getTagFQN())
+          && !nullOrEmpty(feedback.getEntityLink());
+    } catch (Exception e) {
+      LOG.debug(
+          "Unable to inspect task '{}' payload for recognizer feedback keys", task.getId(), e);
+      return false;
+    }
   }
 
   private List<String> listTaskThreadWithOffset(String tableName, int limit, int offset) {
