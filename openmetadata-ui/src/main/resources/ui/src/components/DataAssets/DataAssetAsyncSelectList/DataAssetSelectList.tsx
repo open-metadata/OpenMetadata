@@ -225,7 +225,7 @@ const DataAssetSelectList: FC<DataAssetAsyncSelectListProps> = ({
       </Button>
 
       {isOpen && (
-        <div className="tw:absolute tw:-top-76 tw:left-1 tw:mt-1 tw:z-50 tw:w-[95%] tw:rounded-lg tw:bg-white tw:shadow-lg tw:ring-1 tw:ring-gray-200 tw:overflow-hidden tw:h-74">
+        <div className="tw:absolute tw:-top-76 tw:left-1 tw:mt-1 tw:z-50 tw:w-[95%] tw:rounded-lg tw:bg-primary tw:shadow-lg tw:ring-1 tw:ring-gray-200 tw:overflow-hidden tw:h-74">
           <div className="tw:flex tw:flex-col">
             <div className="tw:p-2 tw:border-b tw:border-gray-100">
               <Input

@@ -319,7 +319,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           <>
             <div className="tw:absolute tw:inset-0 tw:z-1 tw:cursor-wait" />
             <div className="tw:pointer-events-none tw:absolute tw:bottom-20 tw:left-1/2 tw:z-2 tw:-translate-x-1/2">
-              <div className="tw:flex tw:items-center tw:gap-2 tw:rounded-full tw:border tw:border-utility-gray-blue-100 tw:bg-white tw:px-4 tw:py-2 tw:shadow-md">
+              <div className="tw:flex tw:items-center tw:gap-2 tw:rounded-full tw:border tw:border-utility-gray-blue-100 tw:bg-primary tw:px-4 tw:py-2 tw:shadow-md">
                 <div
                   aria-label={t('label.loading')}
                   className="tw:h-4 tw:w-4 tw:animate-spin tw:rounded-full tw:border-2 tw:border-border-secondary tw:border-t-(--color-bg-brand-solid)"

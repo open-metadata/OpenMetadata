@@ -544,7 +544,7 @@ const ContextCenterMemoriesPage: FC = () => {
                     {
                       'tw:border-brand-100 tw:bg-brand-50 tw:text-brand-700':
                         isSelected,
-                      'tw:border-gray-300 tw:bg-white tw:text-gray-700':
+                      'tw:border-gray-300 tw:bg-primary tw:text-secondary':
                         !isSelected,
                     }
                   )
@@ -562,7 +562,7 @@ const ContextCenterMemoriesPage: FC = () => {
               }>
               <Typography
                 className={
-                  selectedAsset ? 'tw:text-brand-700' : 'tw:text-gray-700'
+                  selectedAsset ? 'tw:text-brand-700' : 'tw:text-secondary'
                 }
                 weight="medium">
                 {assetOptions.find((o) => o.id === selectedAsset)?.label ??
@@ -638,7 +638,7 @@ const ContextCenterMemoriesPage: FC = () => {
               }>
               <Typography
                 className={
-                  selectedAuthor ? 'tw:text-brand-700' : 'tw:text-gray-700'
+                  selectedAuthor ? 'tw:text-brand-700' : 'tw:text-secondary'
                 }
                 weight="medium">
                 {authorOptions.find((o) => o.id === selectedAuthor)?.label ??
@@ -685,10 +685,10 @@ const ContextCenterMemoriesPage: FC = () => {
           <Dropdown.Root>
             <AriaButton className={FILTER_BUTTON_CLS}>
               <FilterFunnel02 size={16} />
-              <Typography className="tw:text-gray-700" weight="medium">
+              <Typography className="tw:text-secondary" weight="medium">
                 {t('label.sort')}:
               </Typography>
-              <Typography className="tw:text-gray-700" weight="medium">
+              <Typography className="tw:text-secondary" weight="medium">
                 {SORT_OPTIONS.find((o) => o.id === sortBy)?.label ?? ''}
               </Typography>
             </AriaButton>

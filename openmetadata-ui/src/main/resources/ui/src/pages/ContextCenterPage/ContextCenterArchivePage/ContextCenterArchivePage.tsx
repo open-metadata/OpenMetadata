@@ -249,7 +249,7 @@ const ContextCenterArchivePage: FC = () => {
                   className={({ isSelected }) =>
                     isSelected
                       ? 'tw:rounded-md tw:border tw:border-brand-100 tw:bg-brand-50 tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold tw:text-brand-700 tw:cursor-pointer'
-                      : 'tw:rounded-md tw:border tw:border-gray-300 tw:bg-white tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold tw:text-quaternary tw:cursor-pointer'
+                      : 'tw:rounded-md tw:border tw:border-gray-300 tw:bg-primary tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold tw:text-quaternary tw:cursor-pointer'
                   }
                 />
               )}
