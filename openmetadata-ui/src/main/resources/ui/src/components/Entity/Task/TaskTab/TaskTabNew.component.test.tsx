@@ -345,14 +345,22 @@ jest.mock('../../../../utils/EntityLink', () => {
   };
 });
 
-jest.mock('../../../../utils/TasksUtils', () => ({
-  ...jest.requireActual('../../../../utils/TasksUtils'),
-  getTaskDetailPathFromTask: jest.fn().mockReturnValue('/tasks/1'),
+jest.mock('../../../../utils/TaskActionUtils', () => ({
+  ...jest.requireActual('../../../../utils/TaskActionUtils'),
   isTagsTaskType: jest.fn().mockReturnValue(true),
   isDescriptionTaskType: jest.fn().mockReturnValue(false),
   isRecognizerFeedbackTask: jest.fn().mockReturnValue(false),
+}));
+
+jest.mock('../../../../utils/TaskAssigneeUtils', () => ({
+  ...jest.requireActual('../../../../utils/TaskAssigneeUtils'),
   fetchOptions: jest.fn(),
   generateOptions: jest.fn().mockReturnValue([]),
+}));
+
+jest.mock('../../../../utils/TaskNavigationUtils', () => ({
+  ...jest.requireActual('../../../../utils/TaskNavigationUtils'),
+  getTaskDetailPathFromTask: jest.fn().mockReturnValue('/tasks/1'),
 }));
 
 jest.mock('../../../../utils/FqnUtils', () => ({
@@ -459,7 +467,7 @@ describe('TaskTabNew Component', () => {
       isTagsTaskType,
       isDescriptionTaskType,
       isRecognizerFeedbackTask,
-    } = require('../../../../utils/TasksUtils');
+    } = require('../../../../utils/TaskActionUtils');
     const {
       isRecognizerFeedbackTask: isRecognizerFeedbackTaskFromActionUtils,
     } = require('../../../../utils/TaskActionUtils');
@@ -582,7 +590,7 @@ describe('TaskTabNew Component', () => {
     const {
       isTagsTaskType,
       isDescriptionTaskType,
-    } = require('../../../../utils/TasksUtils');
+    } = require('../../../../utils/TaskActionUtils');
     isTagsTaskType.mockReturnValue(false);
     isDescriptionTaskType.mockReturnValue(true);
 
@@ -944,7 +952,7 @@ describe('TaskTabNew Component', () => {
     const {
       isTagsTaskType,
       isDescriptionTaskType,
-    } = require('../../../../utils/TasksUtils');
+    } = require('../../../../utils/TaskActionUtils');
     isTagsTaskType.mockReturnValue(false);
     isDescriptionTaskType.mockReturnValue(false);
 
