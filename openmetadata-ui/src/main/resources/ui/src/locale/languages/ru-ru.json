@@ -3265,6 +3265,7 @@
     "odps-validation-successful": "Документ ODPS действителен.",
     "odps-yaml-invalid": "Не удалось проверить документ YAML ODPS.",
     "odps-yaml-name-mismatch": "Имя '{{yamlName}}' в YAML не совпадает с текущим продуктом данных '{{existingName}}'. Обновите YAML или используйте страницу продукта данных '{{yamlName}}', чтобы не перезаписать другой продукт.",
+    "odps-yaml-name-missing": "Could not read a product name from the YAML (product.details.<language>.name). Add a name matching the current data product '{{existingName}}' before importing, to avoid overwriting a different product.",
     "odps-yaml-valid-description": "Действительный документ ODPS v{{version}} с языками: {{languages}}.",
     "om-description": "Централизованное хранилище метаданных для обнаружения, совместной работы и правильной обработки ваших данных.",
     "om-url-configuration-message": "Настройте параметры URL {{brandName}}.",

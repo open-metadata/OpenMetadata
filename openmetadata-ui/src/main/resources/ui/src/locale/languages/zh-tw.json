@@ -3265,6 +3265,7 @@
     "odps-validation-successful": "ODPS 文件有效。",
     "odps-yaml-invalid": "ODPS YAML 文件未通過驗證。",
     "odps-yaml-name-mismatch": "YAML 的名稱「{{yamlName}}」與目前的資料產品「{{existingName}}」不符。請更新 YAML，或使用「{{yamlName}}」的資料產品頁面，以避免覆寫其他產品。",
+    "odps-yaml-name-missing": "Could not read a product name from the YAML (product.details.<language>.name). Add a name matching the current data product '{{existingName}}' before importing, to avoid overwriting a different product.",
     "odps-yaml-valid-description": "有效的 ODPS v{{version}} 文件，語言：{{languages}}。",
     "om-description": "集中的元資料儲存庫，用於探索、協作並確保您的資料正確。",
     "om-url-configuration-message": "設定 {{brandName}} URL 設定。",

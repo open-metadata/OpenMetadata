@@ -3265,6 +3265,7 @@
     "odps-validation-successful": "Het ODPS-document is geldig.",
     "odps-yaml-invalid": "Validatie van het ODPS YAML-document is mislukt.",
     "odps-yaml-name-mismatch": "De naam '{{yamlName}}' in de YAML komt niet overeen met het huidige dataproduct '{{existingName}}'. Werk de YAML bij of gebruik de dataproductpagina voor '{{yamlName}}' om te voorkomen dat een ander product wordt overschreven.",
+    "odps-yaml-name-missing": "Could not read a product name from the YAML (product.details.<language>.name). Add a name matching the current data product '{{existingName}}' before importing, to avoid overwriting a different product.",
     "odps-yaml-valid-description": "Geldig ODPS v{{version}}-document met talen: {{languages}}.",
     "om-description": "Gecentraliseerde metadatastore, om data te ontdekken, samen te werken en op orde te brengen.",
     "om-url-configuration-message": "Configureer de {{brandName}} URL-instellingen.",

@@ -3265,6 +3265,7 @@
     "odps-validation-successful": "El documento ODPS es válido.",
     "odps-yaml-invalid": "El documento YAML de ODPS no superó la validación.",
     "odps-yaml-name-mismatch": "El nombre '{{yamlName}}' del YAML no coincide con el producto de datos actual '{{existingName}}'. Actualiza el YAML o usa la página del producto de datos de '{{yamlName}}' para evitar sobrescribir un producto diferente.",
+    "odps-yaml-name-missing": "Could not read a product name from the YAML (product.details.<language>.name). Add a name matching the current data product '{{existingName}}' before importing, to avoid overwriting a different product.",
     "odps-yaml-valid-description": "Documento ODPS v{{version}} válido con idiomas: {{languages}}.",
     "om-description": "Almacenamiento centralizado de metadatos para descubrir, colaborar y tener los datos correctos.",
     "om-url-configuration-message": "Configura los Ajustes de la URL de {{brandName}}.",

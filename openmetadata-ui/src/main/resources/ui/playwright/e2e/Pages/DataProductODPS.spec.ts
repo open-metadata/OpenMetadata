@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { dump as yamlDump, load as yamlLoad } from 'js-yaml';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { performAdminLogin } from '../../utils/admin';
@@ -62,6 +63,26 @@ const exportOdpsYaml = async (apiContext: APIRequestContext, id: string) => {
   expect(response.status()).toBe(200);
 
   return response.text();
+};
+
+// Rename only the ODPS product name (product.details.<lang>.name) rather than
+// string-replacing every occurrence of the old name in the exported document.
+// The backend derives the imported entity name by slugifying this single field
+// (ODPSConverter.fromODPS → findExistingByName), so mutating it is enough to
+// give the round-trip a fresh identity — without corrupting another field
+// (productID mirrors the FQN, description, etc.) that happens to echo the name.
+const renameOdpsProduct = (yaml: string, newName: string): string => {
+  const doc = yamlLoad(yaml) as {
+    product?: { details?: Record<string, { name?: string }> };
+  };
+  const details = doc?.product?.details ?? {};
+  Object.values(details).forEach((detail) => {
+    if (detail) {
+      detail.name = newName;
+    }
+  });
+
+  return yamlDump(doc);
 };
 
 const openManageMenu = async (page: Page, itemTestId: string) => {
@@ -170,7 +191,7 @@ test.describe('DataProduct ODPS — REST contract', () => {
     // export → import round-trip preserves the mapped fields, without colliding
     // with the source product.
     const newName = `pw-odps-imported-${uuid()}`;
-    const importYaml = yaml.split(dp.name).join(newName);
+    const importYaml = renameOdpsProduct(yaml, newName);
 
     const imported = await apiContext.post('/api/v1/dataProducts/odps/yaml', {
       headers: YAML_HEADERS,
@@ -395,6 +416,69 @@ test.describe('DataProduct ODPS & metadata — UI', () => {
       // visible a real PUT would already have fired, so the no-PUT assertion
       // below is now meaningful rather than passing instantly.
       await toastNotification(page, /match the current data product/i);
+      expect(putFired).toBe(false);
+      page.off('response', listener);
+      await expect(page.getByTestId('odps-import-modal')).toBeVisible();
+    } finally {
+      await dataProduct.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('name guard blocks a YAML with no readable product name', async ({
+    page,
+    browser,
+  }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const dataProduct = new DataProduct();
+    const cleanName = `pwodpsnoname${uuid()}`;
+    dataProduct.data.name = cleanName;
+    dataProduct.data.displayName = cleanName;
+    dataProduct.data.fullyQualifiedName = cleanName;
+
+    try {
+      await dataProduct.create(apiContext);
+      await dataProduct.visitEntityPage(page);
+      await openManageMenu(page, 'import-odps-button');
+      await page.getByTestId('import-odps-button').click();
+      await expect(page.getByTestId('odps-import-modal')).toBeVisible();
+
+      // A structurally ODPS-ish document whose product.details omits `name`.
+      // The backend would still resolve (and overwrite) some product from the
+      // document, so an unreadable name must block the import rather than
+      // silently bypass the guard.
+      const noNameYaml = [
+        'schema: "https://opendataproducts.org/v4.1/schema/odps.json"',
+        'version: "4.1"',
+        'product:',
+        '  details:',
+        '    en:',
+        '      productID: "some-other-product"',
+        '      visibility: "private"',
+        '      status: "development"',
+        '      type: "dataset"',
+        '      description: "name-guard no-name decoy"',
+      ].join('\n');
+
+      const yamlField = page
+        .getByTestId('odps-yaml-content')
+        .locator('textarea');
+      await yamlField.click();
+      await yamlField.fill(noNameYaml);
+
+      let putFired = false;
+      const listener = (r: import('@playwright/test').Response) => {
+        if (
+          r.url().includes('/dataProducts/odps/yaml') &&
+          r.request().method() === 'PUT'
+        ) {
+          putFired = true;
+        }
+      };
+      page.on('response', listener);
+      await page.getByTestId('odps-import-submit').click();
+
+      await toastNotification(page, /could not read a product name/i);
       expect(putFired).toBe(false);
       page.off('response', listener);
       await expect(page.getByTestId('odps-import-modal')).toBeVisible();

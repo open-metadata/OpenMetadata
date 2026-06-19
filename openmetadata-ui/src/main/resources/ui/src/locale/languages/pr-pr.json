@@ -3265,6 +3265,7 @@
     "odps-validation-successful": "سند ODPS معتبر است.",
     "odps-yaml-invalid": "اعتبارسنجی سند YAML استاندارد ODPS ناموفق بود.",
     "odps-yaml-name-mismatch": "نام '{{yamlName}}' در YAML با محصول داده فعلی '{{existingName}}' مطابقت ندارد. برای جلوگیری از بازنویسی محصولی دیگر، YAML را به‌روزرسانی کنید یا از صفحه محصول داده '{{yamlName}}' استفاده کنید.",
+    "odps-yaml-name-missing": "Could not read a product name from the YAML (product.details.<language>.name). Add a name matching the current data product '{{existingName}}' before importing, to avoid overwriting a different product.",
     "odps-yaml-valid-description": "سند معتبر ODPS v{{version}} با زبان‌های: {{languages}}.",
     "om-description": "ذخیره متمرکز متادیتا، برای کشف، همکاری و درست کردن داده‌های شما.",
     "om-url-configuration-message": "تنظیمات URL {{brandName}} را پیکربندی کنید.",
