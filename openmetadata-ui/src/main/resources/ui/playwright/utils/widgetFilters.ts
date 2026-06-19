@@ -91,7 +91,11 @@ export const verifyActivityFeedFilters = async (
   });
 };
 
-export const verifyDataFilters = async (page: Page, widgetKey: string) => {
+export const verifyDataFilters = async (
+  page: Page,
+  widgetKey: string,
+  searchIndex = 'dataAsset'
+) => {
   // Wait for the widget data to appear
   await page.getByTestId(widgetKey).locator('entity-list-skeleton').waitFor({
     state: 'detached',
@@ -108,7 +112,7 @@ export const verifyDataFilters = async (page: Page, widgetKey: string) => {
   const aToZFilter = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes('index=dataAsset') &&
+      response.url().includes(`index=${searchIndex}`) &&
       response.url().includes('sort_field=name.keyword') &&
       response.url().includes('sort_order=asc')
   );
@@ -125,7 +129,7 @@ export const verifyDataFilters = async (page: Page, widgetKey: string) => {
   const zToAFilter = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes('index=dataAsset') &&
+      response.url().includes(`index=${searchIndex}`) &&
       response.url().includes('sort_field=name.keyword') &&
       response.url().includes('sort_order=desc')
   );
@@ -142,7 +146,7 @@ export const verifyDataFilters = async (page: Page, widgetKey: string) => {
   const latestFilter = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes('index=dataAsset') &&
+      response.url().includes(`index=${searchIndex}`) &&
       response.url().includes('sort_field=updatedAt') &&
       response.url().includes('sort_order=desc')
   );
