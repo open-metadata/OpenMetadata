@@ -15,6 +15,7 @@ import { DataNode } from 'antd/es/tree';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isString, isUndefined } from 'lodash';
+import { Bucket } from 'Models';
 import Qs from 'qs';
 import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -100,6 +101,11 @@ const ExploreTree = ({
 }: ExploreTreeProps) => {
   const hasFetchedRef = useRef(false); // Use a ref to track if we've already fetched, in dev mode as it will fetch twice
   const hadBrowsePathRef = useRef(false);
+  // Caches the unfiltered estate aggregation (category visibility) keyed by the
+  // text query, so toggling a filter costs one aggregation instead of two.
+  const presenceBucketsRef = useRef<{ key: string; buckets: Bucket[] } | null>(
+    null
+  );
   const { t } = useTranslation();
   const { tab } = useRequiredParams<UrlParams>();
   const initTreeData = searchClassBase.getExploreTree();
@@ -367,22 +373,33 @@ const ExploreTree = ({
       // in the tree (grayed for an incompatible asset type, or showing 0 for an
       // unrelated Tier/Owner filter) rather than disappear — so derive it from
       // an unfiltered aggregation while the displayed counts above honor the
-      // filter. The extra call is skipped when no filter is active (the first
-      // response is already unfiltered).
-      const presenceBuckets = isEmpty(filterMust)
-        ? countBuckets
-        : (
-            await searchQuery({
-              query: searchQueryParam ?? '',
-              pageNumber: 0,
-              pageSize: 0,
-              queryFilter: {},
-              searchIndex: SearchIndex.DATA_ASSET,
-              includeDeleted: false,
-              trackTotalHits: true,
-              fetchSource: false,
-            })
-          ).aggregations['entityType'].buckets;
+      // filter. The unfiltered estate only changes with the text query, so it is
+      // cached per query: a no-filter response is reused directly, and a filter
+      // change reuses the cache instead of paying for a second aggregation.
+      const presenceCacheKey = searchQueryParam ?? '';
+      let presenceBuckets: Bucket[];
+      if (isEmpty(filterMust)) {
+        presenceBuckets = countBuckets;
+      } else if (presenceBucketsRef.current?.key === presenceCacheKey) {
+        presenceBuckets = presenceBucketsRef.current.buckets;
+      } else {
+        presenceBuckets = (
+          await searchQuery({
+            query: searchQueryParam ?? '',
+            pageNumber: 0,
+            pageSize: 0,
+            queryFilter: {},
+            searchIndex: SearchIndex.DATA_ASSET,
+            includeDeleted: false,
+            trackTotalHits: true,
+            fetchSource: false,
+          })
+        ).aggregations['entityType'].buckets;
+      }
+      presenceBucketsRef.current = {
+        key: presenceCacheKey,
+        buckets: presenceBuckets,
+      };
 
       // Rebuild from the static tree so any previously-loaded children are
       // dropped and re-fetched with the current filter on the next expand —

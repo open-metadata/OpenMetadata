@@ -28,6 +28,12 @@ const buildAggregationResponse = (
     hits: { hits: [], total: { value: 0 } },
   } as never);
 
+const mustLength = (arg: { queryFilter?: unknown }): number =>
+  (
+    (arg.queryFilter as { query?: { bool?: { must?: unknown[] } } })?.query
+      ?.bool?.must ?? []
+  ).length;
+
 afterEach(() => {
   jest.restoreAllMocks();
   window.history.pushState({}, '', '/');
@@ -182,18 +188,10 @@ describe('ExploreTree', () => {
     });
 
     const filteredCall = searchQuerySpy.mock.calls.find(
-      ([arg]) =>
-        (
-          (arg.queryFilter as { query?: { bool?: { must?: unknown[] } } })
-            ?.query?.bool?.must ?? []
-        ).length > 0
+      ([arg]) => mustLength(arg) > 0
     );
     const presenceCall = searchQuerySpy.mock.calls.find(
-      ([arg]) =>
-        (
-          (arg.queryFilter as { query?: { bool?: { must?: unknown[] } } })
-            ?.query?.bool?.must ?? []
-        ).length === 0
+      ([arg]) => mustLength(arg) === 0
     );
 
     // The count aggregation carries the active filter (the bug: it sent {}).
@@ -203,5 +201,64 @@ describe('ExploreTree', () => {
     // A category with no matches under the filter (Dashboards has 0 tables) is
     // still rendered, because visibility tracks the unfiltered estate.
     expect(getByText('label.dashboard-plural')).toBeInTheDocument();
+  });
+
+  it('reuses the cached unfiltered presence aggregation across filter changes', async () => {
+    const filterA = {
+      query: { bool: { must: [{ term: { 'tier.tagFQN': 'Tier.Tier1' } }] } },
+    };
+    const filterB = {
+      query: { bool: { must: [{ term: { 'tier.tagFQN': 'Tier.Tier2' } }] } },
+    };
+    const searchQuerySpy = jest
+      .spyOn(searchAPI, 'searchQuery')
+      .mockImplementation(({ queryFilter }) =>
+        Promise.resolve(
+          buildAggregationResponse(
+            mustLength({ queryFilter }) > 0
+              ? [{ key: 'table', doc_count: 5 }]
+              : [
+                  { key: 'table', doc_count: 50 },
+                  { key: 'dashboard', doc_count: 10 },
+                ]
+          )
+        )
+      );
+
+    window.history.pushState(
+      {},
+      '',
+      `/explore?quickFilter=${encodeURIComponent(JSON.stringify(filterA))}`
+    );
+    const { queryByTestId, rerender } = render(
+      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+    );
+    await waitFor(() => {
+      expect(queryByTestId('loader')).not.toBeInTheDocument();
+    });
+
+    window.history.pushState(
+      {},
+      '',
+      `/explore?quickFilter=${encodeURIComponent(JSON.stringify(filterB))}`
+    );
+    rerender(
+      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+    );
+
+    // Wait until the second filter change (Tier2) has fired its count query.
+    await waitFor(() => {
+      expect(
+        searchQuerySpy.mock.calls.some(([arg]) =>
+          JSON.stringify(arg.queryFilter).includes('Tier.Tier2')
+        )
+      ).toBe(true);
+    });
+
+    // The unfiltered presence aggregation (empty query_filter) is fetched once
+    // on the first filtered load and reused across the filter change.
+    expect(
+      searchQuerySpy.mock.calls.filter(([arg]) => mustLength(arg) === 0)
+    ).toHaveLength(1);
   });
 });
