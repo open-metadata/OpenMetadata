@@ -56,6 +56,7 @@ import org.openmetadata.service.cache.AncestorsCache;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.ChildrenPageCache;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
@@ -271,10 +272,15 @@ public class ContainerRepository extends EntityRepository<Container> {
       }
       UUID containerId = UUID.fromString(record.getToId());
       UUID serviceId = UUID.fromString(record.getFromId());
-      EntityReference serviceRef =
-          serviceRefById.computeIfAbsent(
-              serviceId, id -> getEntityReferenceById(STORAGE_SERVICE, id, NON_DELETED));
-      serviceMap.put(containerId, serviceRef);
+      try {
+        EntityReference serviceRef =
+            serviceRefById.computeIfAbsent(
+                serviceId, id -> getEntityReferenceById(STORAGE_SERVICE, id, NON_DELETED));
+        serviceMap.put(containerId, serviceRef);
+      } catch (EntityNotFoundException e) {
+        // Service concurrently hard-deleted mid-list; skip the now-dangling reference.
+        LOG.debug("Skipping deleted service {} for container {}", serviceId, containerId);
+      }
     }
 
     return serviceMap;
