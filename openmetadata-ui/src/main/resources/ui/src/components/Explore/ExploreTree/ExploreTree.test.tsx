@@ -335,4 +335,23 @@ describe('ExploreTree', () => {
     expect(tagsNode).toHaveTextContent('5');
     expect(tagsNode).not.toHaveTextContent('10');
   });
+
+  it('degrades to the browsable static tree when the count aggregation fails', async () => {
+    jest
+      .spyOn(searchAPI, 'searchQuery')
+      .mockRejectedValue(new Error('network down'));
+
+    const { getByText, queryByTestId } = render(
+      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+    );
+
+    // The spinner clears (no hang) and the categories still render, so the user
+    // can keep browsing even though counts could not be fetched.
+    await waitFor(() => {
+      expect(queryByTestId('loader')).not.toBeInTheDocument();
+    });
+
+    expect(getByText('label.database-plural')).toBeInTheDocument();
+    expect(getByText('label.governance')).toBeInTheDocument();
+  });
 });

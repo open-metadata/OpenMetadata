@@ -194,8 +194,12 @@ test.describe('Explore Tree scenarios', () => {
 
     await test.step('Click parent classification breadcrumb from a tag result', async () => {
       await waitForAllLoadersToDisappear(page);
+      // The result-card breadcrumb migrated to the core Breadcrumbs component,
+      // which renders plain anchors (no breadcrumb-link testid). The parent
+      // classification link is the plural /tags/ path (a tag entity is /tag/).
       const classificationBreadcrumb = page
-        .locator('[data-testid="breadcrumb-link"] a[href*="/tags/"]')
+        .getByTestId('search-container')
+        .locator('a[href*="/tags/"]')
         .first();
 
       await expect(classificationBreadcrumb).toBeVisible();

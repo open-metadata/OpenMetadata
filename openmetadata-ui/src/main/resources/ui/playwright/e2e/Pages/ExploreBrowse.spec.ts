@@ -135,6 +135,39 @@ test.describe(
       });
     });
 
+    test('a non-leaf node count reflects the active Data Assets filter', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const schemaCount = async () => {
+        const badge = page
+          .getByTestId(`explore-tree-title-${table.schemaResponseData.name}`)
+          .locator('..')
+          .locator('.explore-node-count');
+        await expect(badge).toBeVisible();
+        const text = await badge.innerText();
+
+        return Number.parseInt(text.replace(/[^0-9]/g, ''), 10);
+      };
+
+      // Unfiltered, the schema subtree counts every object under it — the table
+      // and its columns.
+      await expandServiceInExploreTree(page, table.serviceResponseData.name);
+      await expandDatabaseInExploreTree(page, table.databaseResponseData.name);
+      const unfilteredCount = await schemaCount();
+
+      // Filtering to Table re-counts the same node over tables only, so the
+      // column documents drop out and the badge shrinks.
+      await selectDataAssetType(page, 'table');
+      await expandServiceInExploreTree(page, table.serviceResponseData.name);
+      await expandDatabaseInExploreTree(page, table.databaseResponseData.name);
+      const filteredCount = await schemaCount();
+
+      expect(filteredCount).toBeGreaterThan(0);
+      expect(filteredCount).toBeLessThan(unfilteredCount);
+    });
+
     test('browsing the tree stacks removable QUERY chips and filters results', async ({
       page,
     }) => {
