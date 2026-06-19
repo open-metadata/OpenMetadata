@@ -37,7 +37,7 @@ import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import {
   getRequestTagsPath,
   getUpdateTagsPath,
-} from '../../../utils/TaskTagNavigationUtils';
+} from '../../../utils/TaskNavigationUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { SelectOption } from '../../common/AsyncSelectList/AsyncSelectList.interface';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
