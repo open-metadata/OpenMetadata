@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import * as searchAPI from '../../../rest/searchAPI';
 import ExploreTree from './ExploreTree';
 
@@ -260,5 +260,79 @@ describe('ExploreTree', () => {
     expect(
       searchQuerySpy.mock.calls.filter(([arg]) => mustLength(arg) === 0)
     ).toHaveLength(1);
+  });
+
+  it('drops a superseded count fetch so out-of-order responses settle on the latest filter', async () => {
+    const tierResolvers: Record<string, () => void> = {};
+    const unfiltered = [
+      { key: 'tag', doc_count: 50 },
+      { key: 'table', doc_count: 100 },
+    ];
+    jest
+      .spyOn(searchAPI, 'searchQuery')
+      .mockImplementation(({ queryFilter }) => {
+        const serialized = JSON.stringify(queryFilter);
+        const isFilteredCount =
+          !serialized.includes('should') && serialized.includes('Tier');
+        if (isFilteredCount) {
+          const tier = serialized.includes('Tier1') ? 'Tier1' : 'Tier2';
+
+          return new Promise((resolve) => {
+            tierResolvers[tier] = () =>
+              resolve(
+                buildAggregationResponse([
+                  { key: 'tag', doc_count: tier === 'Tier1' ? 10 : 5 },
+                ])
+              );
+          });
+        }
+
+        return Promise.resolve(buildAggregationResponse(unfiltered));
+      });
+
+    const urlFor = (tier: string) =>
+      `/explore?quickFilter=${encodeURIComponent(
+        JSON.stringify({
+          query: {
+            bool: { must: [{ term: { 'tier.tagFQN': `Tier.${tier}` } }] },
+          },
+        })
+      )}`;
+
+    window.history.pushState({}, '', urlFor('Tier1'));
+    const { getByText, queryByTestId, rerender } = render(
+      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+    );
+    await waitFor(() => expect(tierResolvers.Tier1).toBeDefined());
+
+    window.history.pushState({}, '', urlFor('Tier2'));
+    rerender(
+      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+    );
+    await waitFor(() => expect(tierResolvers.Tier2).toBeDefined());
+
+    // Resolve the newer fetch first, then the older (now stale) one.
+    await act(async () => {
+      tierResolvers.Tier2();
+    });
+    await act(async () => {
+      tierResolvers.Tier1();
+    });
+
+    await waitFor(() => {
+      expect(queryByTestId('loader')).not.toBeInTheDocument();
+    });
+
+    const governanceSwitcher = getByText('label.governance')
+      .closest('.ant-tree-treenode')
+      ?.querySelector('.ant-tree-switcher');
+    fireEvent.click(governanceSwitcher as Element);
+
+    const tagsNode =
+      getByText('label.tag-plural').closest('.ant-tree-treenode');
+
+    // The latest filter (Tier2 → 5) wins; the stale Tier1 (→ 10) is dropped.
+    expect(tagsNode).toHaveTextContent('5');
+    expect(tagsNode).not.toHaveTextContent('10');
   });
 });

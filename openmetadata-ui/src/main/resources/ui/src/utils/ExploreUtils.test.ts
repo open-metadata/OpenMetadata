@@ -833,4 +833,30 @@ describe('fetchEntityData', () => {
       fieldList: ['owner'],
     });
   });
+
+  it('issues the results query without waiting for the count when a tab is selected', async () => {
+    let resolveCount: (value: unknown) => void = () => undefined;
+    mockSearchQuery
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveCount = resolve;
+          })
+      )
+      .mockResolvedValueOnce(RESULTS_RESPONSE);
+    const params = buildParams({ searchQueryParam: 'customer', tab: 'tables' });
+
+    const pending = fetchEntityData(params);
+
+    // Results query is already in flight while the count is still pending.
+    expect(mockSearchQuery).toHaveBeenCalledTimes(2);
+
+    resolveCount(COUNT_RESPONSE);
+    await pending;
+
+    expect(params.setSearchResults).toHaveBeenCalledWith(RESULTS_RESPONSE);
+    expect(params.setSearchHitCounts).toHaveBeenCalledWith({
+      [SearchIndex.TABLE]: 42,
+    });
+  });
 });

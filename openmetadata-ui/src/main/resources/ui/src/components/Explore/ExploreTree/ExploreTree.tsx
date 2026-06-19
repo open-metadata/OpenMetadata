@@ -106,6 +106,10 @@ const ExploreTree = ({
   const presenceBucketsRef = useRef<{ key: string; buckets: Bucket[] } | null>(
     null
   );
+  // Monotonic id for the latest count fetch. Rapid filter toggles fire
+  // overlapping fetches; only the newest may commit so a slow earlier response
+  // can't overwrite the tree with stale counts.
+  const countFetchSeqRef = useRef(0);
   const { t } = useTranslation();
   const { tab } = useRequiredParams<UrlParams>();
   const initTreeData = searchClassBase.getExploreTree();
@@ -353,6 +357,8 @@ const ExploreTree = ({
   );
 
   const fetchEntityCounts = useCallback(async () => {
+    const fetchSeq = ++countFetchSeqRef.current;
+    const isLatestFetch = () => fetchSeq === countFetchSeqRef.current;
     try {
       setIsLoading(true);
       const filterMust = getQuickFilterMust(parsedSearch.quickFilter);
@@ -396,6 +402,12 @@ const ExploreTree = ({
           })
         ).aggregations['entityType'].buckets;
       }
+      // A newer filter change superseded this fetch while it was in flight —
+      // drop its result so the tree reflects the latest filter, not this one.
+      if (!isLatestFetch()) {
+        return;
+      }
+
       presenceBucketsRef.current = {
         key: presenceCacheKey,
         buckets: presenceBuckets,
@@ -421,9 +433,15 @@ const ExploreTree = ({
         ).filter((node) => presentKeys.has(node.key));
       });
     } catch {
-      // Do nothing
+      // Count fetch is best-effort: on failure the tree degrades to its current
+      // structure (browse still works, each node refetches on expand) and the
+      // page-level fetch surfaces the user-facing error.
     } finally {
-      setIsLoading(false);
+      // Only the latest fetch owns the loading flag; a superseded fetch
+      // resolving later must not clear the spinner for the in-flight one.
+      if (isLatestFetch()) {
+        setIsLoading(false);
+      }
     }
   }, [searchQueryParam, setTreeData, parsedSearch.quickFilter]);
 

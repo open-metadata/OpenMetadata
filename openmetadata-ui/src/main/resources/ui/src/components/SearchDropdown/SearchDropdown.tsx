@@ -35,6 +35,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -232,13 +233,22 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     }
   };
 
-  // handle search
-  const handleSearch = (value: string) => {
-    setSearchText(value);
-    onSearch(value, searchKey);
-  };
+  // Keep the latest search handler in a ref so the debounced function can stay
+  // stable across renders. Creating debounce() inline on every render resets
+  // its internal timer, which silently defeats debouncing the moment the
+  // component re-renders mid-typing.
+  const handleSearchRef = useRef<(value: string) => void>(() => undefined);
+  useEffect(() => {
+    handleSearchRef.current = (value: string) => {
+      setSearchText(value);
+      onSearch(value, searchKey);
+    };
+  }, [onSearch, searchKey]);
 
-  const debouncedOnSearch = debounce(handleSearch, 500);
+  const debouncedOnSearch = useMemo(
+    () => debounce((value: string) => handleSearchRef.current(value), 500),
+    []
+  );
 
   // Handle null option change
   const handleNullOptionChange = (checked: boolean) => {
