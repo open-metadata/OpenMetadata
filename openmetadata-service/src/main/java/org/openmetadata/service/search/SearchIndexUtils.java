@@ -117,6 +117,15 @@ public final class SearchIndexUtils {
         docId,
         entityType,
         json.getBytes(StandardCharsets.UTF_8).length);
+    if (json.getBytes(StandardCharsets.UTF_8).length > maxBytes) {
+      stripColumnTreeForSize(doc);
+      json = JsonUtils.pojoToJson(doc);
+      LOG.warn(
+          "Document {} ({}) still too large, stripped column children and columnNames (size now {} bytes)",
+          docId,
+          entityType,
+          json.getBytes(StandardCharsets.UTF_8).length);
+    }
     return json;
   }
 
@@ -146,6 +155,14 @@ public final class SearchIndexUtils {
           entityType,
           JsonUtils.pojoToJson(doc).getBytes(StandardCharsets.UTF_8).length);
     }
+    if (JsonUtils.pojoToJson(doc).getBytes(StandardCharsets.UTF_8).length > maxBytes) {
+      stripColumnTreeForSize(doc);
+      LOG.warn(
+          "Live index doc {} ({}) still too large, stripped column children and columnNames ({} bytes)",
+          docId,
+          entityType,
+          JsonUtils.pojoToJson(doc).getBytes(StandardCharsets.UTF_8).length);
+    }
     return doc;
   }
 
@@ -156,6 +173,36 @@ public final class SearchIndexUtils {
       for (Object edge : edges) {
         if (edge instanceof Map<?, ?> edgeMap) {
           ((Map<String, Object>) edgeMap).remove("sqlQueryKey");
+        }
+      }
+    }
+  }
+
+  /**
+   * Last-resort size reduction for pathological column schemas. Drops the nested column {@code
+   * children} (mapped {@code enabled:false} — stored in _source but never indexed/searchable) and
+   * the flattened {@code columnNames}/{@code columnNamesFuzzy} derived from them. Reached only after
+   * lineage stripping leaves the doc still over the cap — e.g. a container whose columns each carry
+   * tens of thousands of children, where the column tree dwarfs the rest of the document and would
+   * otherwise OOM the serializer on read. Top-level columns are kept, so column search and the
+   * column grid still work; the full schema remains available via the entity API.
+   */
+  @SuppressWarnings("unchecked")
+  static void stripColumnTreeForSize(Map<String, Object> doc) {
+    stripChildrenFromColumns(doc.get("columns"));
+    if (doc.get("dataModel") instanceof Map<?, ?> dataModel) {
+      stripChildrenFromColumns(((Map<String, Object>) dataModel).get("columns"));
+    }
+    doc.remove("columnNames");
+    doc.remove("columnNamesFuzzy");
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void stripChildrenFromColumns(Object columns) {
+    if (columns instanceof List<?> columnList) {
+      for (Object column : columnList) {
+        if (column instanceof Map<?, ?> columnMap) {
+          ((Map<String, Object>) columnMap).remove("children");
         }
       }
     }
