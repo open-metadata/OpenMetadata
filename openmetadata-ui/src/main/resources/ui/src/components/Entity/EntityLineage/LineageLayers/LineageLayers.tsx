@@ -10,13 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Popover,
-  styled,
-  ToggleButton,
-  ToggleButtonGroup,
-  ToggleButtonProps,
-} from '@mui/material';
+import { Popover, ToggleButton, ToggleButtonGroup } from '@mui/material';
 import classNames from 'classnames';
 import { isEmpty, xor } from 'lodash';
 import React from 'react';
@@ -37,58 +31,41 @@ import { AssetsUnion } from '../../../DataAssets/AssetsSelectionModal/AssetSelec
 import './lineage-layers.less';
 import { LineageLayersProps } from './LineageLayers.interface';
 
-const StyledButton = styled((props: ToggleButtonProps) => (
-  <ToggleButton {...props} />
-))(({ theme }) => ({
+const TOGGLE_BUTTON_SX = {
   display: 'inline-flex',
   flexDirection: 'column',
   alignItems: 'center',
   gap: '4px',
-  backgroundColor: theme.palette.allShades.white,
-  fontSize: theme.typography.pxToRem(10),
-  color: theme.palette.text.primary,
+  backgroundColor: '#ffffff',
+  fontSize: '0.625rem',
+  color: 'var(--color-text-primary)',
   wordBreak: 'break-word',
   padding: '8px 16px',
-
-  svg: {
-    height: 20,
-  },
-
+  '& svg': { height: 20 },
   '&:hover': {
     border: '1px solid',
-    borderColor: theme.palette.primary.main + ' !important',
-    // To show all the border on hover
+    borderColor: '#1570ef !important',
     zIndex: 1,
     margin: '0',
-    backgroundColor: theme.palette.allShades.white,
-
-    svg: {
-      color: theme.palette.primary.main,
-    },
+    backgroundColor: '#ffffff',
+    '& svg': { color: '#1570ef' },
   },
-
   '&.Mui-selected': {
-    backgroundColor: theme.palette.allShades.brand[100],
-
+    backgroundColor: '#d1e9ff',
     '&:hover': {
-      border: '1px solid' + ' ' + theme.palette.primary.main,
-      backgroundColor: theme.palette.allShades.brand[100],
+      border: '1px solid #1570ef',
+      backgroundColor: '#d1e9ff',
     },
   },
-
   '&.highlight': {
     border: '1px solid',
-    borderColor: theme.palette.primary.main + ' !important',
-    // To show all the border on hover
+    borderColor: '#1570ef !important',
     zIndex: 1,
     margin: '0',
-    backgroundColor: theme.palette.allShades.white,
-
-    svg: {
-      color: theme.palette.primary.main,
-    },
+    backgroundColor: '#ffffff',
+    '& svg': { color: '#1570ef' },
   },
-}));
+};
 
 const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
   const {
@@ -169,56 +146,61 @@ const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
 
     if (showColumnAndObservability) {
       buttons.push([
-        <StyledButton
+        <ToggleButton
           data-testid="lineage-layer-column-btn"
           key={LineageLayer.ColumnLevelLineage}
+          sx={TOGGLE_BUTTON_SX}
           value={LineageLayer.ColumnLevelLineage}>
           <TableIcon />
           {t('label.column')}
-        </StyledButton>,
-        <StyledButton
+        </ToggleButton>,
+        <ToggleButton
           data-testid="lineage-layer-observability-btn"
           key={LineageLayer.DataObservability}
+          sx={TOGGLE_BUTTON_SX}
           value={LineageLayer.DataObservability}>
           <DataQualityIcon />
           {t('label.observability')}
-        </StyledButton>,
+        </ToggleButton>,
       ]);
     }
 
     if (showService) {
       buttons.push(
-        <StyledButton
+        <ToggleButton
           data-testid="lineage-layer-service-btn"
           key={LineagePlatformView.Service}
+          sx={TOGGLE_BUTTON_SX}
           value={LineagePlatformView.Service}>
           <ServiceView />
           {t('label.service')}
-        </StyledButton>
+        </ToggleButton>
       );
     }
 
     if (showDomain) {
       buttons.push(
-        <StyledButton
+        <ToggleButton
           data-testid="lineage-layer-domain-btn"
           key={LineagePlatformView.Domain}
+          sx={TOGGLE_BUTTON_SX}
           value={LineagePlatformView.Domain}>
           <DomainIcon />
           {t('label.domain')}
-        </StyledButton>
+        </ToggleButton>
       );
     }
 
     if (showDataProduct) {
       buttons.push(
-        <StyledButton
+        <ToggleButton
           data-testid="lineage-layer-data-product-btn"
           key={LineagePlatformView.DataProduct}
+          sx={TOGGLE_BUTTON_SX}
           value={LineagePlatformView.DataProduct}>
           <DataProductIcon />
           {t('label.data-product')}
-        </StyledButton>
+        </ToggleButton>
       );
     }
 
@@ -240,17 +222,18 @@ const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
 
   return (
     <>
-      <StyledButton
+      <ToggleButton
         className={classNames({
           highlight: Boolean(layersAnchorEl),
         })}
         data-testid="lineage-layer-btn"
+        sx={TOGGLE_BUTTON_SX}
         value=""
         onClick={(e) => setLayersAnchorEl(e.currentTarget)}>
         <Layers width={20} />
 
         {t('label.layer-plural')}
-      </StyledButton>
+      </ToggleButton>
       <Popover
         anchorEl={layersAnchorEl}
         anchorOrigin={{
