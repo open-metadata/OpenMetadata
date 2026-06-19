@@ -41,8 +41,11 @@ const mockProps: SearchDropdownProps = {
 
 jest.mock('lodash', () => ({
   ...jest.requireActual('lodash'),
-  // Assign the import a new implementation, in this case it's execute the function given to you
-  debounce: jest.fn().mockImplementation((fn) => fn),
+  // Run the debounced fn synchronously, but still expose a no-op cancel() so
+  // the unmount cleanup (debouncedOnSearch.cancel()) works under the mock.
+  debounce: jest
+    .fn()
+    .mockImplementation((fn) => Object.assign(fn, { cancel: jest.fn() })),
 }));
 
 describe('Search DropDown Component', () => {

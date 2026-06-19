@@ -250,6 +250,10 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     []
   );
 
+  // Cancel a pending trailing call on unmount so it can't fire onSearch /
+  // setSearchText after the dropdown is gone.
+  useEffect(() => () => debouncedOnSearch.cancel(), [debouncedOnSearch]);
+
   // Handle null option change
   const handleNullOptionChange = (checked: boolean) => {
     setNullOptionSelected(checked);
