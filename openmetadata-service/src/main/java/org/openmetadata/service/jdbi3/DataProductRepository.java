@@ -206,7 +206,15 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     List<EntityReference> updatedDomains = getDomains(original, ALL);
     List<EntityReference> removedDomains = subtractById(originalDomains, updatedDomains);
     if (!removedDomains.isEmpty()) {
+      removeDomainLineageForDetached(dataProductId, removedDomains);
       persistDomainDetachVersion(original, updatedDomains, removedDomains, updatedBy);
+    }
+  }
+
+  private void removeDomainLineageForDetached(
+      UUID dataProductId, List<EntityReference> removedDomains) {
+    for (EntityReference removedDomain : removedDomains) {
+      removeDomainLineage(dataProductId, DATA_PRODUCT, removedDomain);
     }
   }
 
@@ -266,9 +274,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     }
     for (UUID dataProductId : dataProductIds) {
       if (searchRepository != null && SearchRepository.isSearchWriteDeferralActive()) {
-        DataProduct dataProduct = find(dataProductId, ALL, false);
-        setFieldsInternal(dataProduct, getPutFields());
-        searchRepository.updateEntityIndex(dataProduct);
+        reindexDetachedProduct(dataProductId);
       } else {
         SearchIndexRetryQueue.enqueue(
             dataProductId.toString(),
@@ -276,6 +282,20 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
             DATA_PRODUCT,
             "domainDetach: deferred reindex after domain hard-delete");
       }
+    }
+  }
+
+  private void reindexDetachedProduct(UUID dataProductId) {
+    try {
+      DataProduct dataProduct = find(dataProductId, ALL, false);
+      setFieldsInternal(dataProduct, getPutFields());
+      searchRepository.updateEntityIndex(dataProduct);
+    } catch (EntityNotFoundException e) {
+      // A retained product can still be hard-deleted elsewhere in the same domain cascade.
+      // This loop runs post-commit, so skip the vanished product and keep reindexing the rest.
+      LOG.debug(
+          "Skipping post-detach reindex for data product {} which no longer exists after the domain delete cascade",
+          dataProductId);
     }
   }
 
