@@ -355,7 +355,7 @@ const FileRow: FC<FileRowProps> = ({
   return (
     <Box
       align="center"
-      className={`tw:relative tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:cursor-pointer tw:transition-colors tw:duration-100 ${
+      className={`tw:relative tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:last:border-0 tw:cursor-pointer tw:transition-colors tw:duration-100 ${
         isActive ? 'tw:bg-blue-50' : 'tw:bg-primary hover:tw:bg-gray-25'
       }`}
       data-testid={`document-row-${file.id}`}
@@ -455,22 +455,18 @@ const FileRow: FC<FileRowProps> = ({
         className="tw:flex tw:items-center tw:gap-2 tw:shrink-0"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}>
-        <Tooltip title={t('label.download')}>
-          <TooltipTrigger>
+
             <ButtonUtility
-              color="secondary"
+              color="tertiary"
               data-testid="download-btn"
               icon={
                 <Download01
-                  className="tw:text-gray-500"
-                  height={16}
-                  width={16}
+                  size={20}
                 />
               }
+              tooltip={t('label.download')}
               onClick={() => onDownload?.(file)}
             />
-          </TooltipTrigger>
-        </Tooltip>
         <CopyLinkButton className="tw:w-8 tw:h-8" url={rowUrl}>
           <Copy06 aria-hidden="true" size={20} strokeWidth={1.8} />
         </CopyLinkButton>

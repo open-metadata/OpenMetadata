@@ -47,6 +47,15 @@ export const TitleComponent = forwardRef<HTMLTextAreaElement, Props>(
     const [titleValue, setTitleValue] = useState<string>(value);
     const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
+    // Re-sync from the prop when it changes externally (e.g. after a save
+    // resolves or the page is refetched) so the input never drifts from the
+    // persisted displayName. Safe to do unconditionally because the parent
+    // only updates `value` once typing has settled (debounced save / fetch),
+    // never on every keystroke.
+    useEffect(() => {
+      setTitleValue(value);
+    }, [value]);
+
     useAutoSizeTextArea('title-input', textAreaRef.current, titleValue);
 
     // Defer focus by 100ms to ensure TipTap/ProseMirror (sibling BlockEditor) has
