@@ -26,6 +26,7 @@ import {
   setUserDefaultPersona,
   verifyDataProductCountInDataProductWidget,
   verifyDomainCountInDomainWidget,
+  waitForLandingPageWidget,
 } from '../../../utils/customizeLandingPage';
 import {
   addAssetsToDataProduct,
@@ -117,40 +118,13 @@ const waitForEntitySearchable = async (
   }
 };
 
-const setWidgetSortOnCurrentPage = async (
-  page: Page,
-  widgetKey: string,
-  label: string
-) => {
-  const widget = page.getByTestId(widgetKey);
-  await expect(widget).toBeVisible();
-  await widget.scrollIntoViewIfNeeded().catch(() => undefined);
-
-  const dropdown = widget.getByTestId('widget-sort-by-dropdown');
-  await expect(dropdown).toBeVisible();
-
-  if (((await dropdown.textContent()) ?? '').includes(label)) {
-    return;
-  }
-
-  await dropdown.click();
-  const option = widget.locator('.widget-sort-filter-menu').getByText(label, {
-    exact: true,
-  });
-  await expect(option).toBeVisible();
-  await option.click();
-  await expect(dropdown).toContainText(label);
-};
-
 const verifyWidgetCountOnCurrentPage = async (
   page: Page,
   widgetKey: string,
   selector: string,
   expectedCount: number
 ) => {
-  const widget = page.getByTestId(widgetKey);
-  await expect(widget).toBeVisible();
-  await widget.scrollIntoViewIfNeeded().catch(() => undefined);
+  const widget = await waitForLandingPageWidget(page, widgetKey);
 
   await expect
     .poll(

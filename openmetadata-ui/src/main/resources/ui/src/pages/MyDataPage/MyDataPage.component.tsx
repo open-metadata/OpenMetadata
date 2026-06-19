@@ -25,12 +25,6 @@ import CustomiseLandingPageHeader from '../../components/MyData/CustomizableComp
 import LandingPageWidgetRenderer from '../../components/MyData/LandingPageWidgetRenderer/LandingPageWidgetRenderer';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
-import {
-  DEFAULT_LANDING_PAGE_LAYOUT,
-  LANDING_PAGE_MAX_GRID_SIZE,
-  LANDING_PAGE_ROW_HEIGHT,
-  LANDING_PAGE_WIDGET_MARGIN,
-} from '../../constants/CustomizeMyDataPage.constants';
 import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { EntityType } from '../../enums/entity.enum';
 import type { Page } from '../../generated/system/ui/page';
@@ -47,6 +41,7 @@ import {
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { updateUserDetail } from '../../rest/userAPI';
 import { getConstrainedWidgetWidth } from '../../utils/CustomizableLandingPagePureUtils';
+import customizeMyDataPageClassBase from '../../utils/CustomizeMyDataPageClassBase';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import type { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './my-data.less';
@@ -63,6 +58,9 @@ const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
   ReactGridLayoutProps & { children?: ReactNode }
 >;
 
+const getDefaultLandingPageLayout = () =>
+  customizeMyDataPageClassBase.defaultLayout.map((widget) => ({ ...widget }));
+
 const MyDataPage = () => {
   const { t } = useTranslation();
   const { currentUser, selectedPersona, setCurrentUser } =
@@ -71,7 +69,7 @@ const MyDataPage = () => {
 
   const [isLoading, setIsLoading] = useState(true);
   const [layout, setLayout] = useState<Array<WidgetConfig>>(
-    DEFAULT_LANDING_PAGE_LAYOUT
+    getDefaultLandingPageLayout
   );
 
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
@@ -138,13 +136,15 @@ const MyDataPage = () => {
           });
 
         setLayout(
-          isEmpty(filteredLayout) ? DEFAULT_LANDING_PAGE_LAYOUT : filteredLayout
+          isEmpty(filteredLayout)
+            ? getDefaultLandingPageLayout()
+            : filteredLayout
         );
       } else {
-        setLayout(DEFAULT_LANDING_PAGE_LAYOUT);
+        setLayout(getDefaultLandingPageLayout());
       }
     } catch {
-      setLayout(DEFAULT_LANDING_PAGE_LAYOUT);
+      setLayout(getDefaultLandingPageLayout());
     } finally {
       setIsLoading(false);
     }
@@ -174,7 +174,8 @@ const MyDataPage = () => {
   const widgets = useMemo(
     () =>
       layout.map((widget) => {
-        const reservedHeight = widget.h * LANDING_PAGE_ROW_HEIGHT;
+        const reservedHeight =
+          widget.h * customizeMyDataPageClassBase.landingPageRowHeight;
 
         return (
           <div data-grid={widget} key={widget.i}>
@@ -303,12 +304,15 @@ const MyDataPage = () => {
         ) : (
           <ReactGridLayout
             className="grid-container p-x-box"
-            cols={LANDING_PAGE_MAX_GRID_SIZE}
+            cols={customizeMyDataPageClassBase.landingPageMaxGridSize}
             containerPadding={[0, 0]}
             isDraggable={false}
             isResizable={false}
-            margin={[LANDING_PAGE_WIDGET_MARGIN, LANDING_PAGE_WIDGET_MARGIN]}
-            rowHeight={LANDING_PAGE_ROW_HEIGHT}>
+            margin={[
+              customizeMyDataPageClassBase.landingPageWidgetMargin,
+              customizeMyDataPageClassBase.landingPageWidgetMargin,
+            ]}
+            rowHeight={customizeMyDataPageClassBase.landingPageRowHeight}>
             {widgets}
           </ReactGridLayout>
         )}
