@@ -2,8 +2,11 @@ import json
 import uuid
 from typing import List, Optional
 from unittest import TestCase
+from urllib.parse import quote_plus
 
 import pytest
+from pydantic import BaseModel as PydanticBaseModel
+from pydantic import SecretStr
 
 from metadata.generated.schema.api.data.createDashboardDataModel import (
     CreateDashboardDataModelRequest,
@@ -250,6 +253,45 @@ def test_model_dump_json_secrets():
         ).root_secret.get_secret_value()
         == "root_password"
     )
+
+
+class _LeakedSecretConnection(BaseModel):
+    password: CustomSecretStr
+
+
+class _LeakedSecretParams(PydanticBaseModel):
+    """Mirrors data-quality runtime-param models: a vanilla pydantic model
+    (no mask-by-default ``model_dump_json``) wrapping a generated connection."""
+
+    conn_config: _LeakedSecretConnection
+
+
+class TestPlainSecretStrInCustomSecretStrField:
+    """Regression test for the data-quality serialization crash.
+
+    Connection builders (snowflake/oracle/impala/hive) assign a plain pydantic
+    ``SecretStr`` to a ``CustomSecretStr``-typed field when auth has no password.
+    Data-quality runtime-param setters then serialize that config through a
+    vanilla ``model_dump_json()``. ``handle_secret`` must not pass
+    ``skip_secret_manager`` to a plain ``SecretStr`` whose base
+    ``get_secret_value`` rejects the kwarg.
+    """
+
+    def test_model_dump_json_does_not_crash_on_plain_secret(self):
+        connection = _LeakedSecretConnection(password=CustomSecretStr("real_password"))
+        connection.password = SecretStr("")
+
+        serialized = json.loads(_LeakedSecretParams(conn_config=connection).model_dump_json())
+
+        assert serialized["conn_config"]["password"] == ""
+
+    def test_python_dump_does_not_crash_on_plain_secret(self):
+        connection = _LeakedSecretConnection(password=CustomSecretStr("real_password"))
+        connection.password = SecretStr("plain_value")
+
+        dumped = _LeakedSecretParams(conn_config=connection).model_dump()
+
+        assert dumped["conn_config"]["password"] == "plain_value"
 
 
 # Additional comprehensive tests for enhanced functionality
@@ -721,10 +763,11 @@ class CustomSecretStrExtendedTest(TestCase):
         assert empty_secret.get_secret_value() == ""
         assert str(empty_secret) == ""
 
-        # Test None secret handling
+        # Test None secret handling: a null secret resolves to an empty string
+        # instead of propagating None (see the get_secret_value null guard).
         try:
             none_secret = CustomSecretStr(None)
-            assert none_secret.get_secret_value() is None
+            assert none_secret.get_secret_value() == ""
         except (TypeError, ValueError, AttributeError):
             # This is acceptable behavior for None values
             pass
@@ -960,6 +1003,43 @@ class TestExternalSecretReferenceResolution:
 
         assert serialized["authType"]["password"] == self.EXTERNAL_SECRET_REFERENCE
         assert serialized["authType"]["password"] != RESOLVED_EXTERNAL_SECRET
+
+
+class _NullExternalSecretsManager(SecretsManager):
+    """Test double for a secrets manager holding a secret stored as ``null``."""
+
+    def get_string_value(self, secret_id: str) -> str:
+        return None
+
+
+class TestNullSecretResolution:
+    """Regression test for a secret stored as ``null`` in the secrets manager.
+
+    Resolving it must yield an empty string (with a warning), not ``None``.
+    A ``None`` value crashes downstream string callers such as URL building
+    with ``quote_plus`` (``TypeError: quote_from_bytes() expected bytes``).
+    """
+
+    EXTERNAL_SECRET_REFERENCE = "secret:/external/path/to/db/password"
+
+    @pytest.fixture(autouse=True)
+    def null_secrets_manager(self):
+        Singleton.clear_all()
+        factory = SecretsManagerFactory(SecretsManagerProvider.db, SecretsManagerClientLoader.noop)
+        factory.secrets_manager = _NullExternalSecretsManager()
+        yield
+        Singleton.clear_all()
+
+    def test_null_secret_resolves_to_empty_string(self):
+        resolved = CustomSecretStr(self.EXTERNAL_SECRET_REFERENCE).get_secret_value()
+
+        assert resolved == ""
+        assert isinstance(resolved, str)
+
+    def test_null_secret_is_quote_plus_safe(self):
+        resolved = CustomSecretStr(self.EXTERNAL_SECRET_REFERENCE).get_secret_value()
+
+        assert quote_plus(resolved) == ""
 
 
 class DashboardDataModelTransformationTest(TestCase):
