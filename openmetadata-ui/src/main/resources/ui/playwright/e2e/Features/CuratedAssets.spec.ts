@@ -25,7 +25,6 @@ import {
   saveCustomizeLayoutPage,
   selectAssetTypes,
   setUserDefaultPersona,
-  waitForLandingPageWidget,
 } from '../../utils/customizeLandingPage';
 import {
   getEntityDisplayName,
@@ -197,21 +196,21 @@ test.describe('Curated Assets Widget', () => {
 
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
-      const landingCuratedAssetsWidget = await waitForLandingPageWidget(
-        page,
-        'KnowledgePanel.CuratedAssets'
-      );
+      await expect(
+        page.getByTestId('KnowledgePanel.CuratedAssets')
+      ).toBeVisible();
 
       await expect(
-        landingCuratedAssetsWidget.getByText(
-          `${entityType.displayName} - Display Name Filter`
-        )
+        page
+          .getByTestId('KnowledgePanel.CuratedAssets')
+          .getByText(`${entityType.displayName} - Display Name Filter`)
       ).toBeVisible();
 
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
       await expect(
-        landingCuratedAssetsWidget
+        page
+          .getByTestId('KnowledgePanel.CuratedAssets')
           .locator('.entity-list-item-title')
           .filter({ hasText: entityDisplayName })
           .first()
@@ -390,13 +389,15 @@ test.describe('Curated Assets Widget', () => {
 
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
-    const landingCuratedAssetsWidget = await waitForLandingPageWidget(
-      page,
-      'KnowledgePanel.CuratedAssets'
-    );
+    await expect(
+      page.getByTestId('KnowledgePanel.CuratedAssets')
+    ).toBeVisible();
 
     await expect(
-      landingCuratedAssetsWidget.locator('.entity-list-item-title').first()
+      page
+        .getByTestId('KnowledgePanel.CuratedAssets')
+        .locator('.entity-list-item-title')
+        .first()
     ).toBeVisible();
 
     // Navigate back, delete the widget and save at the end
@@ -506,13 +507,15 @@ test.describe('Curated Assets Widget', () => {
 
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
-    const landingCuratedAssetsWidget = await waitForLandingPageWidget(
-      page,
-      'KnowledgePanel.CuratedAssets'
-    );
+    await expect(
+      page.getByTestId('KnowledgePanel.CuratedAssets')
+    ).toBeVisible();
 
     await expect(
-      landingCuratedAssetsWidget.locator('.entity-list-item-title').first()
+      page
+        .getByTestId('KnowledgePanel.CuratedAssets')
+        .locator('.entity-list-item-title')
+        .first()
     ).toBeVisible();
 
     // Navigate back, delete the widget and save at the end
@@ -649,13 +652,15 @@ test.describe('Curated Assets Widget', () => {
 
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
-    const landingCuratedAssetsWidget = await waitForLandingPageWidget(
-      page,
-      'KnowledgePanel.CuratedAssets'
-    );
+    await expect(
+      page.getByTestId('KnowledgePanel.CuratedAssets')
+    ).toBeVisible();
 
     await expect(
-      landingCuratedAssetsWidget.locator('.entity-list-item-title').first()
+      page
+        .getByTestId('KnowledgePanel.CuratedAssets')
+        .locator('.entity-list-item-title')
+        .first()
     ).toBeVisible();
 
     // Navigate back, delete the widget and save at the end

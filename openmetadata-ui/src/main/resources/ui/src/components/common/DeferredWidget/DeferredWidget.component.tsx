@@ -155,14 +155,11 @@ export const DeferredWidget = ({
   }, [inView, hasBeenVisible]);
 
   const shouldRender = hasBeenVisible || initialInView || ioUnsupported.current;
-  // Keep deferred slots discoverable before reveal. In no-IO/Jest fallback mode
-  // the child may not expose the same id, so the wrapper keeps it there too.
-  const shouldExposeWrapperTestId = !shouldRender || ioUnsupported.current;
 
   return (
     <div
       className={className}
-      data-testid={shouldExposeWrapperTestId ? dataTestId : undefined}
+      data-testid={dataTestId}
       ref={ref}
       style={{
         height: '100%',

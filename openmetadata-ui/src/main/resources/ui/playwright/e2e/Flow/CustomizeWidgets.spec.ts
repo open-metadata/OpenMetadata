@@ -31,7 +31,6 @@ import {
   verifyWidgetEntityNavigation,
   verifyWidgetFooterViewMore,
   verifyWidgetHeaderNavigation,
-  waitForLandingPageWidget,
 } from '../../utils/customizeLandingPage';
 import { addKpi, deleteKpiRequest } from '../../utils/dataInsight';
 import { followEntity, waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -185,10 +184,9 @@ test('Activity Feed Widget', async ({ page }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.ActivityFeed';
+  const widget = page.getByTestId(widgetKey);
 
   await waitForAllLoadersToDisappear(page);
-
-  const widget = await waitForLandingPageWidget(page, widgetKey);
 
   await expect(widget).toBeVisible();
 
@@ -230,10 +228,9 @@ test('Data Assets Widget', async ({ page }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.DataAssets';
+  const widget = page.getByTestId(widgetKey);
 
   await waitForAllLoadersToDisappear(page);
-
-  const widget = await waitForLandingPageWidget(page, widgetKey);
 
   await expect(widget).toBeVisible();
 
@@ -285,10 +282,9 @@ test('My Data Widget', async ({ page }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.MyData';
+  const widget = page.getByTestId(widgetKey);
 
   await waitForAllLoadersToDisappear(page);
-
-  const widget = await waitForLandingPageWidget(page, widgetKey);
 
   await expect(widget).toBeVisible();
 
@@ -449,11 +445,10 @@ test('Total Data Assets Widget', async ({ page }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.TotalAssets';
+  const widget = page.getByTestId(widgetKey);
 
   // Wait for the widgets data to appear
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-
-  const widget = await waitForLandingPageWidget(page, widgetKey);
 
   await expect(widget).toBeVisible();
 
@@ -504,11 +499,10 @@ test('Following Assets Widget', async ({ page }) => {
   await waitForAllLoadersToDisappear(page);
 
   const widgetKey = 'KnowledgePanel.Following';
+  const widget = page.getByTestId(widgetKey);
 
   // Wait for the widgets data to appear
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-
-  const widget = await waitForLandingPageWidget(page, widgetKey);
 
   await expect(widget).toBeVisible();
 

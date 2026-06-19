@@ -178,7 +178,9 @@ const MyDataPage = () => {
 
         return (
           <div data-grid={widget} key={widget.i}>
-            <DeferredWidget data-testid={widget.i} minHeight={reservedHeight}>
+            <DeferredWidget
+              data-testid={`deferred-widget-${widget.i}`}
+              minHeight={reservedHeight}>
               <LandingPageWidgetRenderer
                 currentLayout={layout}
                 widgetConfig={widget}

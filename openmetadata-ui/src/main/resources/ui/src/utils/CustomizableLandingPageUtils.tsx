@@ -54,12 +54,7 @@ export const getWidgetFromKey = ({
     !isUndefined(handlePlaceholderWidgetKey)
   ) {
     return (
-      <Suspense
-        fallback={
-          <WidgetWrapper loading dataTestId={widgetConfig.i}>
-            {null}
-          </WidgetWrapper>
-        }>
+      <Suspense fallback={<WidgetWrapper loading>{null}</WidgetWrapper>}>
         <EmptyWidgetPlaceholderV1
           handleOpenAddWidgetModal={handleOpenAddWidgetModal}
           handlePlaceholderWidgetKey={handlePlaceholderWidgetKey}
@@ -73,12 +68,7 @@ export const getWidgetFromKey = ({
   const Widget = getMyDataWidgetFromKey(widgetConfig.i);
 
   return (
-    <Suspense
-      fallback={
-        <WidgetWrapper loading dataTestId={widgetConfig.i}>
-          {null}
-        </WidgetWrapper>
-      }>
+    <Suspense fallback={<WidgetWrapper loading>{null}</WidgetWrapper>}>
       <Widget
         currentLayout={currentLayout}
         handleLayoutUpdate={handleLayoutUpdate}
