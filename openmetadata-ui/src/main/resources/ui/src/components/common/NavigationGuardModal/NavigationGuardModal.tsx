@@ -13,10 +13,12 @@
 import {
   Button,
   Dialog,
+  FeaturedIcon,
   Modal,
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as SaveIcon } from '../../../assets/svg/ic-save.svg';
 
 interface NavigationGuardModalProps {
   isOpen: boolean;
@@ -34,20 +36,33 @@ export const NavigationGuardModal = ({
   return (
     <ModalOverlay isOpen={isOpen} onOpenChange={(open) => !open && onStay()}>
       <Modal>
-        <Dialog title={t('message.unsaved-changes')} width={480}>
-          <Dialog.Content>
-            <p className="tw:text-sm tw:text-[var(--color-text-secondary)]">
-              {t('message.unsaved-form-data')}
-            </p>
-          </Dialog.Content>
-          <Dialog.Footer>
-            <Button color="primary" onPress={onStay}>
+        <Dialog showCloseButton width={480}>
+          <Dialog.Header>
+            <div className="tw:relative tw:w-max">
+              <FeaturedIcon
+                color="warning"
+                icon={SaveIcon}
+                size="lg"
+                theme="light"
+              />
+            </div>
+            <div className="tw:z-10 tw:flex tw:flex-col tw:gap-0.5 tw:mt-4">
+              <span className="tw:text-md tw:font-semibold tw:text-primary">
+                {t('message.unsaved-changes')}
+              </span>
+              <p className="tw:text-sm tw:text-tertiary">
+                {t('message.unsaved-changes-description')}
+              </p>
+            </div>
+          </Dialog.Header>
+          <div className="tw:z-10 tw:flex tw:flex-1 tw:flex-col-reverse tw:gap-3 tw:p-4 tw:pt-6 tw:*:grow tw:sm:grid tw:sm:grid-cols-2 tw:sm:px-6 tw:sm:pt-8 tw:sm:pb-6">
+            <Button color="secondary" size="lg" onPress={onLeave}>
+              {t('label.discard')}
+            </Button>
+            <Button color="primary" size="lg" onPress={onStay}>
               {t('label.continue-editing')}
             </Button>
-            <Button color="secondary-destructive" onPress={onLeave}>
-              {t('label.leave')}
-            </Button>
-          </Dialog.Footer>
+          </div>
         </Dialog>
       </Modal>
     </ModalOverlay>
