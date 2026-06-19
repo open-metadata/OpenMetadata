@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
-import { first, last, noop } from 'lodash';
-import { FC, lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import { first, last } from 'lodash';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ENDS_WITH_NUMBER_REGEX,
@@ -23,24 +23,15 @@ import { fetchMarkdownFile } from '../../../rest/miscAPI';
 import { SupportedLocales } from '../../../utils/i18next/LocalUtil.interface';
 import { getActiveFieldNameForAppDocs } from '../../../utils/ServicePureUtils';
 import { processDocMarkdown } from '../../../utils/ServiceUtils';
-import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import Loader from '../Loader/Loader';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import './service-doc-panel.less';
-const EntitySummaryPanel = withSuspenseFallback(
-  lazy(
-    () =>
-      import('../../Explore/EntitySummaryPanel/EntitySummaryPanel.component')
-  )
-);
 interface ServiceDocPanelProp {
   serviceName: string;
   serviceType: string;
   activeField?: string;
   isWorkflow?: boolean;
   workflowType?: PipelineType;
-  selectedEntity?: SearchedDataProps['data'][number]['_source'];
 }
 
 const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
@@ -49,7 +40,6 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   activeField,
   isWorkflow,
   workflowType,
-  selectedEntity,
 }) => {
   const { i18n } = useTranslation();
 
@@ -181,30 +171,18 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
 
   const docsPanel = useMemo(() => {
     return (
-      <>
-        <div className="entity-summary-in-docs" data-id="selected-entity">
-          {selectedEntity && (
-            <EntitySummaryPanel
-              entityDetails={{
-                details: selectedEntity,
-              }}
-              handleClosePanel={noop}
-            />
-          )}
-        </div>
-        <RichTextEditorPreviewerV1
-          className="service-doc-content"
-          enableSeeMoreVariant={false}
-          extensionOptions={{
-            enableAdmonitionNode: true,
-            enableCodeBlockCopy: true,
-            enableSectionNode: true,
-          }}
-          markdown={processedHtml}
-        />
-      </>
+      <RichTextEditorPreviewerV1
+        className="service-doc-content"
+        enableSeeMoreVariant={false}
+        extensionOptions={{
+          enableAdmonitionNode: true,
+          enableCodeBlockCopy: true,
+          enableSectionNode: true,
+        }}
+        markdown={processedHtml}
+      />
     );
-  }, [processedHtml, serviceName, selectedEntity]);
+  }, [processedHtml]);
 
   if (isLoading) {
     return <Loader />;
