@@ -364,7 +364,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         );
 
         setKnowledgePage((prev) => ({
-          ...((prev ?? currentKnowledgePage)),
+          ...(prev ?? currentKnowledgePage),
           description: response.description,
           version: response.version,
         }));
@@ -411,7 +411,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       const response = await patchKnowledgePage(currentKnowledgePage.id, patch);
 
       setKnowledgePage((prev) => ({
-        ...((prev ?? currentKnowledgePage)),
+        ...(prev ?? currentKnowledgePage),
         tags: response.tags,
         owners: response.owners,
         reviewers: response.reviewers,
@@ -441,7 +441,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       const response = await patchKnowledgePage(currentKnowledgePage.id, patch);
 
       setKnowledgePage((prev) => ({
-        ...((prev ?? currentKnowledgePage)),
+        ...(prev ?? currentKnowledgePage),
         tags: response.tags,
         version: response.version,
       }));
@@ -482,7 +482,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         );
 
         setKnowledgePage((prev) => ({
-          ...((prev ?? currentKnowledgePage)),
+          ...(prev ?? currentKnowledgePage),
           displayName: response.displayName,
           version: response.version,
         }));

@@ -47,7 +47,7 @@ function RecentItem({
           as="span"
           className="tw:min-w-0 tw:flex-1 tw:text-secondary"
           size="text-xs"
-          weight='medium'>
+          weight="medium">
           {item.title}
         </Typography>
         <Typography

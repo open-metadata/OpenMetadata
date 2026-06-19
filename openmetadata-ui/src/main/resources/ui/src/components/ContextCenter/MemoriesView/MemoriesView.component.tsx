@@ -244,25 +244,27 @@ const MemoryRow: FC<MemoryRowProps> = ({
           {memory.tags && memory.tags.length > 0 && (
             <Box align="center" className="tw:mt-0.5" gap={2} wrap="wrap">
               {memory.tags.map((tag) => (
-                  <Badge
-                    className="tw:max-w-60 tw:min-w-0"
-                    key={tag.name}
-                    size="md"
-                    type="color">
-                    {tag.style?.color && (<div className="tw:shrink-0">
+                <Badge
+                  className="tw:max-w-60 tw:min-w-0"
+                  key={tag.name}
+                  size="md"
+                  type="color">
+                  {tag.style?.color && (
+                    <div className="tw:shrink-0">
                       <Dot
                         size="sm"
                         style={{ color: tag.style?.color, marginRight: '6px' }}
                       />
-                    </div>)}
-                    <Typography
-                      ellipsis
-                      className="tw:text-secondary"
-                      size="text-xs">
-                      {getEntityName(tag)}
-                    </Typography>
-                  </Badge>
-                ))}
+                    </div>
+                  )}
+                  <Typography
+                    ellipsis
+                    className="tw:text-secondary"
+                    size="text-xs">
+                    {getEntityName(tag)}
+                  </Typography>
+                </Badge>
+              ))}
               {memory?.tags?.length > VISIBLE_LINKED_ENTITIES_COUNT && (
                 <Badge size="md" type="color">
                   <Typography className="tw:text-secondary" size="text-xs">
