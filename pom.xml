@@ -114,7 +114,7 @@
     <log4j.version>2.25.4</log4j.version>
     <org.junit.jupiter.version>5.11.4</org.junit.jupiter.version>
     <dropwizard-health.version>5.0.0</dropwizard-health.version>
-    <handlebars.version>4.5.0</handlebars.version>
+    <handlebars.version>4.5.2</handlebars.version>
     <fernet.version>1.5.0</fernet.version>
     <antlr.version>4.13.2</antlr.version>
 
