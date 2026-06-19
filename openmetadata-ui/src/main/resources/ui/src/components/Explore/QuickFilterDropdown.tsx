@@ -22,7 +22,7 @@ import { debounce, isUndefined } from 'lodash';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NULL_OPTION_KEY } from '../../constants/AdvancedSearch.constants';
-import { getSelectedOptionLabelString } from '../../utils/AdvancedSearchPureUtils';
+import { getSelectedOptionLabelString } from '../../utils/AdvancedSearchUtils';
 import Loader from '../common/Loader/Loader';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
 import { QuickFilterDropdownProps } from './QuickFilterDropdown.interface';
