@@ -42,13 +42,11 @@ export const CUSTOM_PROPERTY_NAME_REGEX =
   /^[A-Za-z0-9][A-Za-z0-9 _\-.,;%#@!'(){}[\]|=+?`]*$/;
 
 /**
- * Matches any string that does NOT contain the following:
- * - Double colon (::)
- * - Double quote (")
- * - Greater-than symbol (>)
- * Useful for restricting names from including these forbidden characters.
+ * Validates test case names. Reuses ENTITY_NAME_REGEX to stay in sync
+ * with the backend's testCaseEntityName pattern (blocks ::, ><"|, and
+ * ASCII control characters).
  */
-export const TEST_CASE_NAME_REGEX = /^((?!::)(?!")(?!>).)*$/;
+export const TEST_CASE_NAME_REGEX = ENTITY_NAME_REGEX;
 
 export const TAG_NAME_REGEX = /^[\p{L}\p{M}\w\- .&()]+$/u;
 export const NAME_LENGTH_REGEX = /^.{2,64}$/;
