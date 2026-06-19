@@ -12,20 +12,20 @@
  */
 
 import { List, Space, Typography } from 'antd';
-import { FC, useCallback, useMemo, useRef } from 'react';
+import { startCase } from 'lodash';
+import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { EntityType } from '../../enums/entity.enum';
-import { TaskType, ThreadType } from '../../generated/entity/feed/thread';
 import {
   formatDateTime,
   getRelativeTime,
 } from '../../utils/date-time/DateTimeUtils';
-import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { entityDisplayName, prepareFeedLink } from '../../utils/FeedUtilsPure';
-import Fqn from '../../utils/Fqn';
-import { getTaskDetailPath } from '../../utils/TasksUtils';
+import {
+  getTaskDetailPathFromTask,
+  getTaskDisplayId,
+} from '../../utils/TaskNavigationUtils';
 import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { SourceType } from '../SearchedData/SearchedData.interface';
@@ -35,59 +35,25 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
   entityFQN,
   entityType,
   timestamp,
-  feedType,
-  task,
-  isConversationFeed = false,
+  mentionNotification,
+  taskEntity,
 }) => {
   const { t } = useTranslation();
-  const { task: taskDetails } = task ?? {};
   const navigate = useNavigate();
-  const lastNavigatedKeyRef = useRef<number | undefined>(undefined);
-  const taskLink = useMemo(() => getTaskDetailPath(task), [task]);
+  const isMentionNotification = Boolean(mentionNotification && !taskEntity);
+  const taskLink = useMemo(() => {
+    return taskEntity ? getTaskDetailPathFromTask(taskEntity) : '';
+  }, [taskEntity]);
 
   const handleTaskLinkClick = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
-      const key = Date.now();
-      lastNavigatedKeyRef.current = key;
-      navigate(taskLink, { state: { tasksRefreshKey: key } });
+      navigate(taskLink, { state: { tasksRefreshKey: Date.now() } });
     },
     [navigate, taskLink]
   );
 
   const taskContent = useMemo(() => {
-    if (task.task?.type === TaskType.RequestApproval) {
-      return (
-        <>
-          <span className="p-x-xss">
-            {task.message?.trimStart().startsWith('{')
-              ? t('message.request-approval-notification')
-              : task.message}
-          </span>{' '}
-          <Link
-            className='className="p-r-xss"'
-            to={getEntityLinkFromType(
-              task?.entityRef?.fullyQualifiedName ?? '',
-              task?.entityRef?.type as EntityType,
-              task?.entityRef as SourceType
-            )}>
-            <span className="m-r-xss">{task?.entityRef?.displayName}</span>
-          </Link>
-          <span>{t('label.of-lowercase')}</span>
-          <Link
-            to={getEntityLinkFromType(
-              Fqn.split(task?.entityRef?.fullyQualifiedName ?? '')[0],
-              task?.entityRef?.type as EntityType,
-              task?.entityRef as SourceType
-            )}>
-            <span className="m-l-xss">
-              {Fqn.split(task?.entityRef?.fullyQualifiedName ?? '')[0]}
-            </span>
-          </Link>
-        </>
-      );
-    }
-
     return (
       <>
         <span className="p-x-xss">
@@ -99,27 +65,33 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
             e.stopPropagation();
             handleTaskLinkClick(e);
           }}>
-          {`#${taskDetails?.id}`} {taskDetails?.type}
+          {`#${getTaskDisplayId(taskEntity?.taskId ?? '')} ${startCase(
+            taskEntity?.type ?? ''
+          )}`}
         </Link>
       </>
     );
-  }, [entityType, task, taskDetails, taskLink, handleTaskLinkClick, t]);
+  }, [taskEntity, taskLink, handleTaskLinkClick, t]);
 
   const entityName = useMemo(() => {
-    return task?.entityRef
-      ? getEntityName(task?.entityRef)
+    const entityRef = (taskEntity?.about ?? mentionNotification?.entityRef) as
+      | SourceType
+      | undefined;
+
+    return entityRef
+      ? getEntityName(entityRef as SourceType)
       : entityDisplayName(entityType, entityFQN);
-  }, [task, entityType, entityFQN]);
+  }, [entityFQN, entityType, mentionNotification, taskEntity]);
 
   return (
     <Link
       className="no-underline"
       to={
-        isConversationFeed
+        isMentionNotification
           ? prepareFeedLink(entityType, entityFQN, ActivityFeedTabs.ALL)
           : taskLink
       }
-      onClick={!isConversationFeed ? handleTaskLinkClick : undefined}>
+      onClick={!isMentionNotification ? handleTaskLinkClick : undefined}>
       <List.Item.Meta
         avatar={<ProfilePicture name={createdBy} width="32" />}
         className="m-0"
@@ -132,7 +104,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
               className="m-0"
               style={{ color: '#37352F', marginBottom: 0 }}>
               <>{createdBy}</>
-              {feedType === ThreadType.Conversation ? (
+              {isMentionNotification ? (
                 <>
                   <span> {t('message.mentioned-you-on-the-lowercase')} </span>{' '}
                   <span>{entityType} </span>
