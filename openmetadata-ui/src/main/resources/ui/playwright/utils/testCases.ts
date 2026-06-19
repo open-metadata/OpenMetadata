@@ -753,7 +753,7 @@ export const performE2EExportImportFlow = async (
     const displayNameCell1 = page
       .locator('.rdg-row')
       .nth(0)
-      .locator('[aria-colindex="2"]');
+      .locator('[aria-colindex="3"]');
     await displayNameCell1.dblclick();
     await page.keyboard.type(' - Updated via Bulk Edit');
     await page.keyboard.press('Enter');
@@ -763,7 +763,7 @@ export const performE2EExportImportFlow = async (
     const displayNameCell2 = page
       .locator('.rdg-row')
       .nth(1)
-      .locator('[aria-colindex="2"]');
+      .locator('[aria-colindex="3"]');
     await displayNameCell2.dblclick();
     await page.keyboard.type(' - Bulk Edited');
     await page.keyboard.press('Enter');
@@ -773,8 +773,8 @@ export const performE2EExportImportFlow = async (
     await page
       .locator('.rdg-row')
       .nth(0)
-      .locator('[aria-colindex="1"]')
-      .click(); // Click Name column to ensure focus
+      .locator('[aria-colindex="2"]')
+      .click(); // Click Name column (colindex=2) to ensure focus
     await pressKeyXTimes(page, 9, 'ArrowRight'); // Navigate from Name (2) to Tags (11) = 9 presses
     await fillTagDetails(page, 'PII.Sensitive');
 
