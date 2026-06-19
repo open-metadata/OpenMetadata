@@ -68,14 +68,14 @@ import {
 } from '../../../rest/glossaryAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { addAssetsToTags, getTagByFqn } from '../../../rest/tagAPI';
-import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
+import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchPureUtils';
 import { getDomainDryRunImpacts } from '../../../utils/Domain/DomainDryRunUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import { getCombinedQueryFilterObject } from '../../../utils/ExplorePage/ExplorePageUtils';
 import {
   getAggregations,
   getQuickFilterQuery,
-} from '../../../utils/ExploreUtils';
+} from '../../../utils/ExplorePureUtils';
 import { showNotistackError } from '../../../utils/NotistackUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Banner from '../../common/Banner/Banner';
@@ -717,6 +717,7 @@ export const useAssetSelectionContent = ({
           fields={filters}
           index={SearchIndex.ALL}
           showDeleted={false}
+          untitledDropdown={variant === 'drawer'}
           onFieldValueSelect={handleQuickFiltersValueSelect}
         />
         {quickFilterQuery && (

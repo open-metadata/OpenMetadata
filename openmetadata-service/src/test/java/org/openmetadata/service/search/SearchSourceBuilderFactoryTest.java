@@ -327,6 +327,20 @@ public class SearchSourceBuilderFactoryTest {
   }
 
   @Test
+  public void testOpenSearchHighlightDropsFlattenedExtensionField() {
+    // `extension` is flat_object on OpenSearch (no analyzer); highlighting it (or any extension.*
+    // subfield) fails the whole shard with a 500. buildHighlightsV2 must drop those while keeping
+    // the real analyzable fields. Regression guard for ExtensionHighlightSearchIT.
+    tableConfig.setHighlightFields(List.of("name", "extension", "extension.foundry_rid"));
+
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+    OpenSearchRequestBuilder osBuilder =
+        osFactory.buildDataAssetSearchBuilderV2("table", "customer", 0, 10, false, false);
+
+    assertHighlightFields(osBuilder, "name");
+  }
+
+  @Test
   public void testElasticDataAssetBuilderHandlesMatchAllAndComplexSyntaxQueries() {
     ElasticSearchSourceBuilderFactory esFactory =
         new ElasticSearchSourceBuilderFactory(searchSettings);
