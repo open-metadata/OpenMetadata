@@ -93,6 +93,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: "${{ env.UI_WORKING_DIRECTORY }}/.nvmrc"
+          cache: yarn
+          cache-dependency-path: |
+            ${{ env.UI_WORKING_DIRECTORY }}/yarn.lock
+            ${{ env.CORE_COMPONENTS_WORKING_DIRECTORY }}/yarn.lock
 
       - name: Install Antlr4 CLI
         run: sudo make install_antlr_cli
