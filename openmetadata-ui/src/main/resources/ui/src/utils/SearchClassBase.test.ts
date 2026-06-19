@@ -40,9 +40,11 @@ jest.mock('./TestSuiteUtils', () => ({
 jest.mock('./EntityLinkUtils', () => ({
   getEntityLinkFromType: jest.fn(),
 }));
+
 jest.mock('./EntityBreadcrumbPureUtils', () => ({
   getEntityBreadcrumbs: jest.fn(),
 }));
+
 jest.mock('./EntityNameUtils', () => ({
   getEntityName: jest.fn(),
 }));

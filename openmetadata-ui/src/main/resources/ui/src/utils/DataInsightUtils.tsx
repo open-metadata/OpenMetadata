@@ -101,17 +101,3 @@ export const getKpiResultFeedback = (day: number, isTargetMet: boolean) => {
     return t('label.day-left', { day: pluralize(day, 'day') });
   }
 };
-
-// Re-exports from DataInsightPureUtils (backward compat)
-export {
-  getDataInsightPathWithFqn,
-  getDisabledDates,
-  getEntryFormattedValue,
-  getFormattedActiveUsersData,
-  getGraphDataByEntityType,
-  getOptionalDataInsightTabFlag,
-  getQueryFilterForDataInsightChart,
-  getRandomHexColor,
-  isPercentageSystemGraph,
-  sortEntityByValue,
-} from './DataInsightPureUtils';

@@ -55,7 +55,6 @@ import { DataAssetsHeader } from '../../../DataAssets/DataAssetsHeader/DataAsset
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import { DataModelDetailsProps } from './DataModelDetails.interface';
-
 const DataModelDetails = ({
   updateDataModelDetailsState,
   dataModelData,

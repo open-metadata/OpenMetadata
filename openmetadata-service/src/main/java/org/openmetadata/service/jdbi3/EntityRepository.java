@@ -241,8 +241,8 @@ import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityLockedException;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.EntityRelationshipNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
-import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
@@ -963,13 +963,33 @@ public abstract class EntityRepository<T extends EntityInterface> {
     EntityReference parentRef = getParentReference(entity);
     EntityInterface parent = getCachedInheritanceParent(parentRef, inheritableFields);
     if (parent == null) {
-      parent = getParentEntity(entity, inheritableFields);
+      parent = resolveInheritanceParentLeniently(entity, inheritableFields);
       cacheInheritanceParent(parentRef, inheritableFields, parent);
     }
     if (parent != null) {
       // Keep single-entity inheritance path aligned with batch/recursive inheritance path.
       applyInheritance(entity, fields, parent);
     }
+  }
+
+  /**
+   * Resolve the inheritance parent, tolerating concurrent hard-deletion. A reader loads the entity,
+   * then loads its parent in a separate statement; if the parent is hard-deleted in between,
+   * {@link #getParentEntity} throws {@link EntityNotFoundException}. Returning null (skip
+   * inheritance) instead of 500'ing the reader matches getContainer's CONTAINS-row tolerance and the
+   * batch inheritance path (whose batched parent load already omits missing parents). The batch
+   * {@link #setInheritedFields(List, Fields)} routes entities without a {@code getParentReference}
+   * override through this per-entity path, so this is also the list path's guard.
+   */
+  private EntityInterface resolveInheritanceParentLeniently(T entity, String inheritableFields) {
+    EntityInterface parent;
+    try {
+      parent = getParentEntity(entity, inheritableFields);
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Inheritance parent not found (concurrently deleted): {}", e.getMessage());
+      parent = null;
+    }
+    return parent;
   }
 
   /**
@@ -4538,7 +4558,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String deletedBy, T original, boolean recursive, boolean hardDelete) {
     checkSystemEntityDeletion(original);
     preDelete(original, deletedBy);
-    setFieldsInternal(original, putFields);
+    setFieldsForDelete(original);
 
     // Acquire deletion lock to prevent concurrent modifications
     DeletionLock lock = null;
@@ -4560,7 +4580,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       deleteChildren(original.getId(), recursive, hardDelete, deletedBy);
 
       EventType changeType;
-      T updated = get(null, original.getId(), putFields, ALL, false);
+      T updated = loadForDelete(original.getId());
       if (supportsSoftDelete && !hardDelete) {
         updated.setUpdatedBy(deletedBy);
         updated.setUpdatedAt(System.currentTimeMillis());
@@ -4599,6 +4619,49 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
       }
     }
+  }
+
+  /**
+   * Hydrate {@code entity} for the delete pipeline, tolerating references that have already been
+   * removed. Deleting an entity must never be blocked by a dependency it points to being gone —
+   * e.g. an orphaned test case whose table and testDefinition were hard-deleted out from under it,
+   * where the {@code mustHaveRelationship=true} testDefinition lookup would otherwise throw and
+   * abort the teardown. On a dangling reference we log and proceed with whatever resolved;
+   * {@link #cleanup} still removes every {@code entity_relationship} row and time-series record.
+   * This does NOT relax the relationship invariant on reads, creates, or indexing — only the
+   * delete path tolerates a broken reference.
+   */
+  private void setFieldsForDelete(final T entity) {
+    try {
+      setFieldsInternal(entity, putFields);
+    } catch (EntityNotFoundException | EntityRelationshipNotFoundException e) {
+      LOG.warn(
+          "Proceeding with delete of {} {} despite a dangling reference while resolving fields: {}",
+          entityType,
+          entity.getId(),
+          e.getMessage());
+    }
+  }
+
+  /**
+   * Load {@code id} for the delete pipeline, falling back to the stored row (no relationship
+   * resolution) when a dangling reference makes full hydration impossible. The returned entity
+   * still carries its id and fullyQualifiedName, which is all {@link #cleanup} needs to remove the
+   * relationships and time-series. See {@link #setFieldsForDelete} for the rationale.
+   */
+  private T loadForDelete(final UUID id) {
+    T entity;
+    try {
+      entity = get(null, id, putFields, ALL, false);
+    } catch (EntityNotFoundException | EntityRelationshipNotFoundException e) {
+      LOG.warn(
+          "Loading {} {} with stored fields only for delete due to a dangling reference: {}",
+          entityType,
+          id,
+          e.getMessage());
+      entity = find(id, ALL);
+    }
+    return entity;
   }
 
   @Transaction
@@ -6525,22 +6588,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * {@code (id, *)} and {@code (*, id)} entity_relationship rows in a single statement; one
    * batched extension delete; one batched entity row delete; per-entity loops for tag_usage /
    * usage / field_relationship / feed threads (those tables key on FQN strings rather than ids
-   * so they can't share a single IN-list query, but they stay inside the same {@code @Transaction}
-   * which removes the per-entity transaction overhead that dominated the old path).
+   * so they can't share a single IN-list query, but they run as a tight per-entity loop rather than
+   * the independent JDBI transaction per descendant that dominated the old path).
    *
    * <p>Subclasses with non-CONTAINS related entities (e.g., dashboard charts attached via HAS)
    * should override {@link #hardDeleteAdditionalChildren(UUID, String)}. Subclasses that need true
    * batched external cleanup (Airflow DAGs, S3, secrets stores) can override
    * {@link #bulkEntitySpecificCleanup(List)}; the default loops the per-entity hook.
    *
-   * <p><b>Failure semantics:</b> the entire bulk hard-delete runs in a single
-   * {@code @Transaction}, so a mid-walk failure rolls back every row + relationship deletion.
-   * This is stronger than the previous {@code processDeletionBatch} contract, which only
-   * guaranteed per-child atomicity and could leave the operator with a partially-deleted subtree
-   * after a failure. See also {@link #bulkRestoreSubtree(List, String)} for the same operational
+   * <p><b>Concurrency:</b> relationship rows and entity rows are deleted as separate auto-committed
+   * statements (these are plain {@code EntityRepository} calls, not JDBI SqlObject proxies, so a
+   * {@code @Transaction} annotation would be inert). A concurrent reader resolving a required parent
+   * via {@link #getContainer(UUID)} therefore tolerates the relationship row being already gone — it
+   * returns {@code null} rather than throwing a 500, mirroring the parent-entity-gone handling in
+   * {@link #getFromEntityRef}. See also {@link #bulkRestoreSubtree(List, String)} for the operational
    * ceiling note around single-connection holding for the duration of the walk.
    */
-  @Transaction
   public final void bulkHardDeleteSubtree(List<UUID> ids, String updatedBy) {
     if (ids == null || ids.isEmpty()) {
       return;
@@ -6972,12 +7035,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .findFrom(toId, toEntityType, relationship.ordinal(), fromEntityType);
   }
 
+  // mustHaveRelationship=false: a read must tolerate the CONTAINS row being concurrently
+  // hard-deleted. The reader loads the entity row, then resolves its parent in a separate
+  // statement;
+  // if the entity is deleted in between, the row was seen but its relationship is gone. Returning
+  // null there — rather than a 500 "does not have expected relationship contains" — mirrors
+  // getFromEntityRef's existing tolerance of the parent entity being concurrently deleted
+  // (EntityNotFoundException -> null), and deflakes concurrent list/get vs cascade hard-delete.
   public final EntityReference getContainer(UUID toId) {
-    return getFromEntityRef(toId, Relationship.CONTAINS, null, true);
+    return getFromEntityRef(toId, Relationship.CONTAINS, null, false);
   }
 
   public final EntityReference getContainer(UUID toId, String fromEntityType) {
-    return getFromEntityRef(toId, Relationship.CONTAINS, fromEntityType, true);
+    return getFromEntityRef(toId, Relationship.CONTAINS, fromEntityType, false);
   }
 
   protected final Map<UUID, EntityReference> batchFetchContainers(
@@ -7155,7 +7225,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       boolean mustHaveRelationship) {
     // An entity can have only one relationship
     if (mustHaveRelationship && relations.isEmpty()) {
-      throw new UnhandledServerException(
+      throw new EntityRelationshipNotFoundException(
           CatalogExceptionMessage.entityRelationshipNotFound(
               entityType, id, relationshipName, toEntityType));
     }
