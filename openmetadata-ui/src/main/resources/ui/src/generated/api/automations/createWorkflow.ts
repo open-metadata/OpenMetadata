@@ -302,6 +302,8 @@ export interface RequestConnection {
  *
  * QuestDB Connection Config
  *
+ * SAP BW/4HANA Database Connection Config
+ *
  * Looker Connection Config
  *
  * Metabase Connection Config
@@ -403,6 +405,8 @@ export interface RequestConnection {
  * MuleSoft Anypoint Platform Connection Config
  *
  * Microsoft Fabric Data Factory Pipeline Connection Config
+ *
+ * SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.
  *
  * MlFlow Connection Config
  *
@@ -651,6 +655,8 @@ export interface ConfigObject {
      *
      * Host and port of the QuestDB service (default PostgreSQL wire protocol port is 8812).
      *
+     * Host and port of the SAP HANA instance underlying BW/4HANA, e.g. hana-host:30015.
+     *
      * URL to the Looker instance.
      *
      * Host and Port of the Metabase instance.
@@ -738,6 +744,8 @@ export interface ConfigObject {
      *
      * Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match
      * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
+     *
+     * Regex to only include/exclude InfoAreas that match the pattern.
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -775,6 +783,9 @@ export interface ConfigObject {
      * Regex to only include/exclude tables that match the pattern.
      *
      * Regex to only include/exclude dictionaries (tables) that matches the pattern.
+     *
+     * Regex to only include/exclude InfoProviders (ADSOs, CompositeProviders) that match the
+     * pattern.
      */
     tableFilterPattern?: FilterPattern;
     /**
@@ -946,6 +957,8 @@ export interface ConfigObject {
      *
      * Password to connect to IOMETE.
      *
+     * Password for the HANA database user.
+     *
      * Password to connect to Metabase. Required for basic authentication.
      *
      * Password to connect to PowerBI report server.
@@ -1074,6 +1087,8 @@ export interface ConfigObject {
      * Username to connect to IOMETE.
      *
      * Username to connect to QuestDB.
+     *
+     * HANA database username with access to BW metadata tables.
      *
      * Username to connect to Metabase. Required for basic authentication.
      *
@@ -1700,6 +1715,11 @@ export interface ConfigObject {
      */
     dataPlane?: string;
     /**
+     * Schema name in HANA where BW/4HANA ABAP metadata tables reside (e.g. SAPHANADB). Check
+     * your system with: SELECT SCHEMA_NAME FROM SYS.TABLES WHERE TABLE_NAME = 'RSOADSO'.
+     */
+    abapSchema?: string;
+    /**
      * Regex exclude or include charts that matches the pattern.
      *
      * Regex to exclude or include charts that matches the pattern.
@@ -1971,6 +1991,8 @@ export interface ConfigObject {
      * Regex to filter MuleSoft applications by name.
      *
      * Regex to only include/exclude pipelines that matches the pattern.
+     *
+     * Regex to only include/exclude Process Chains that match the pattern.
      */
     pipelineFilterPattern?: FilterPattern;
     /**
@@ -2455,6 +2477,11 @@ export interface UsernamePasswordAuthentication {
  * Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match
  * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
  *
+ * Regex to only include/exclude InfoAreas that match the pattern.
+ *
+ * Regex to only include/exclude InfoProviders (ADSOs, CompositeProviders) that match the
+ * pattern.
+ *
  * Regex exclude or include charts that matches the pattern.
  *
  * Regex to exclude or include dashboards that matches the pattern.
@@ -2472,6 +2499,8 @@ export interface UsernamePasswordAuthentication {
  * Regex to filter MuleSoft applications by name.
  *
  * Regex to only include/exclude pipelines that matches the pattern.
+ *
+ * Regex to only include/exclude Process Chains that match the pattern.
  *
  * Regex to only fetch MlModels with names matching the pattern.
  *
@@ -5024,6 +5053,8 @@ export enum TokenType {
  *
  * Custom pipeline service type
  *
+ * SAP BW/4HANA pipeline service type.
+ *
  * Custom Ml model service type
  *
  * Amundsen service type
@@ -5165,6 +5196,8 @@ export enum ConfigType {
     SQLite = "SQLite",
     SageMaker = "SageMaker",
     Salesforce = "Salesforce",
+    SapBw4Hana = "SapBw4Hana",
+    SapBw4HanaPipeline = "SapBw4HanaPipeline",
     SapERP = "SapErp",
     SapHana = "SapHana",
     SapS4Hana = "SapS4Hana",
