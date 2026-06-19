@@ -21,6 +21,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -215,23 +216,7 @@ class MigrationUtilTest {
       throws Exception {
     stubTables(Set.of());
     UUID taskId = UUID.randomUUID();
-    Task openTask =
-        new Task()
-            .withId(taskId)
-            .withName("recognizer-feedback")
-            .withType(TaskEntityType.DataQualityReview)
-            .withCategory(TaskCategory.Review)
-            .withStatus(TaskEntityStatus.Open)
-            .withAbout(new EntityReference().withType("tag").withFullyQualifiedName("PII.Email"))
-            .withUpdatedBy("alice")
-            .withPayload(
-                Map.of(
-                    "feedback",
-                    Map.of(
-                        "tagFQN",
-                        "PII.Email",
-                        "entityLink",
-                        "<#E::table::sample_data.ecommerce_db.shopify.raw_product_catalog::tags>")));
+    Task openTask = recognizerFeedbackDataQualityTask(taskId, "PII.Email");
 
     WorkflowDefinition workflowDefinition =
         new WorkflowDefinition()
@@ -265,6 +250,33 @@ class MigrationUtilTest {
           .triggerByKey(
               eq("RecognizerFeedbackReviewWorkflowTrigger"), eq(taskId.toString()), any());
     }
+  }
+
+  @Test
+  void runRecognizerFeedbackTaskTypeMigrationContinuesAfterSingleRewriteFailure() throws Exception {
+    UUID failingTaskId = UUID.randomUUID();
+    UUID rewrittenTaskId = UUID.randomUUID();
+    Task failingTask = recognizerFeedbackDataQualityTask(failingTaskId, "PII.Email");
+    Task rewrittenTask = recognizerFeedbackDataQualityTask(rewrittenTaskId, "PII.Phone");
+
+    when(workflowDefinitionRepository.getEntitiesFromSeedData()).thenReturn(List.of());
+    when(taskRepository.listAll(any(), any())).thenReturn(List.of(failingTask, rewrittenTask));
+    doThrow(new RuntimeException("update failed"))
+        .when(taskDAO)
+        .updateTask(eq(failingTaskId.toString()), anyString());
+
+    MigrationUtil migrationUtil = newMigrationUtil();
+
+    migrationUtil.runRecognizerFeedbackTaskTypeMigration();
+
+    assertEquals(TaskEntityType.DataQualityReview, failingTask.getType());
+    assertEquals(TaskEntityType.RecognizerFeedbackApproval, rewrittenTask.getType());
+    verify(taskDAO)
+        .updateTask(
+            eq(failingTaskId.toString()), contains("\"type\":\"RecognizerFeedbackApproval\""));
+    verify(taskDAO)
+        .updateTask(
+            eq(rewrittenTaskId.toString()), contains("\"type\":\"RecognizerFeedbackApproval\""));
   }
 
   @Test
@@ -308,6 +320,25 @@ class MigrationUtilTest {
     method.setAccessible(true);
 
     return (String) method.invoke(migrationUtil);
+  }
+
+  private Task recognizerFeedbackDataQualityTask(UUID taskId, String tagFqn) {
+    return new Task()
+        .withId(taskId)
+        .withName("recognizer-feedback")
+        .withType(TaskEntityType.DataQualityReview)
+        .withCategory(TaskCategory.Review)
+        .withStatus(TaskEntityStatus.Open)
+        .withAbout(new EntityReference().withType("tag").withFullyQualifiedName(tagFqn))
+        .withUpdatedBy("alice")
+        .withPayload(
+            Map.of(
+                "feedback",
+                Map.of(
+                    "tagFQN",
+                    tagFqn,
+                    "entityLink",
+                    "<#E::table::sample_data.ecommerce_db.shopify.raw_product_catalog::tags>")));
   }
 
   private void stubTables(Set<String> tables) throws Exception {

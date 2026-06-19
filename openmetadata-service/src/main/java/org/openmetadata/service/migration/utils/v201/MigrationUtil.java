@@ -278,17 +278,27 @@ public class MigrationUtil {
       List<Task> openDataQualityReviewTasks =
           listOrEmpty(taskRepository.listAll(taskRepository.getFields("about,payload"), filter));
       for (Task task : openDataQualityReviewTasks) {
-        if (task.getId() == null || !isRecognizerFeedbackDataQualityReviewTask(task)) {
+        if (task == null
+            || task.getId() == null
+            || !isRecognizerFeedbackDataQualityReviewTask(task)) {
           continue;
         }
 
-        task.setType(TaskEntityType.RecognizerFeedbackApproval);
-        task.setCategory(TaskCategory.Review);
-        collectionDAO.taskDAO().updateTask(task.getId().toString(), JsonUtils.pojoToJson(task));
-        rewritten++;
+        TaskEntityType previousType = task.getType();
+        TaskCategory previousCategory = task.getCategory();
+        try {
+          task.setType(TaskEntityType.RecognizerFeedbackApproval);
+          task.setCategory(TaskCategory.Review);
+          collectionDAO.taskDAO().updateTask(task.getId().toString(), JsonUtils.pojoToJson(task));
+          rewritten++;
+        } catch (Exception e) {
+          task.setType(previousType);
+          task.setCategory(previousCategory);
+          LOG.error("Failed to rewrite recognizer feedback task '{}'", task.getId(), e);
+        }
       }
     } catch (Exception e) {
-      LOG.error("Failed to rewrite recognizer feedback review task types", e);
+      LOG.error("Failed to list recognizer feedback review tasks for type rewrite", e);
     }
     return rewritten;
   }
