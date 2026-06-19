@@ -31,6 +31,7 @@ import {
   verifyWidgetEntityNavigation,
   verifyWidgetFooterViewMore,
   verifyWidgetHeaderNavigation,
+  waitForLandingPageWidget,
 } from '../../utils/customizeLandingPage';
 import { addKpi, deleteKpiRequest } from '../../utils/dataInsight';
 import { followEntity, waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -184,11 +185,10 @@ test('Activity Feed Widget', async ({ page }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.ActivityFeed';
-  const widget = page.getByTestId(widgetKey);
 
   await waitForAllLoadersToDisappear(page);
 
-  await expect(widget).toBeVisible();
+  await waitForLandingPageWidget(page, widgetKey);
 
   await test.step('Test widget header and navigation', async () => {
     await waitForAllLoadersToDisappear(page);
@@ -228,11 +228,10 @@ test('Data Assets Widget', async ({ page }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.DataAssets';
-  const widget = page.getByTestId(widgetKey);
 
   await waitForAllLoadersToDisappear(page);
 
-  await expect(widget).toBeVisible();
+  await waitForLandingPageWidget(page, widgetKey);
 
   await test.step('Test widget header and navigation', async () => {
     await waitForAllLoadersToDisappear(page);
@@ -282,11 +281,10 @@ test('My Data Widget', async ({ page }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.MyData';
-  const widget = page.getByTestId(widgetKey);
 
   await waitForAllLoadersToDisappear(page);
 
-  await expect(widget).toBeVisible();
+  await waitForLandingPageWidget(page, widgetKey);
 
   await test.step('Test widget header and navigation', async () => {
     await waitForAllLoadersToDisappear(page);
@@ -353,9 +351,8 @@ test.fixme('KPI Widget', async ({ page }) => {
   await waitForAllLoadersToDisappear(page);
 
   const widgetKey = 'KnowledgePanel.KPI';
-  const widget = page.getByTestId(widgetKey);
 
-  await expect(widget).toBeVisible();
+  await waitForLandingPageWidget(page, widgetKey);
 
   await test.step('Test widget header and navigation', async () => {
     await waitForAllLoadersToDisappear(page);
@@ -395,9 +392,7 @@ test.fixme('KPI Widget', async ({ page }) => {
 
     await waitForAllLoadersToDisappear(page);
 
-    const widget = page.getByTestId(widgetKey);
-
-    await expect(widget).toBeVisible();
+    const widget = await waitForLandingPageWidget(page, widgetKey);
 
     await kpiListResponse;
     await kpiResultsResponse;
@@ -445,12 +440,11 @@ test('Total Data Assets Widget', async ({ page }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.TotalAssets';
-  const widget = page.getByTestId(widgetKey);
 
   // Wait for the widgets data to appear
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
-  await expect(widget).toBeVisible();
+  await waitForLandingPageWidget(page, widgetKey);
 
   await test.step('Test widget header and navigation', async () => {
     await waitForAllLoadersToDisappear(page);
@@ -499,12 +493,11 @@ test('Following Assets Widget', async ({ page }) => {
   await waitForAllLoadersToDisappear(page);
 
   const widgetKey = 'KnowledgePanel.Following';
-  const widget = page.getByTestId(widgetKey);
 
   // Wait for the widgets data to appear
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
-  await expect(widget).toBeVisible();
+  await waitForLandingPageWidget(page, widgetKey);
 
   await test.step('Test widget header and navigation', async () => {
     await waitForAllLoadersToDisappear(page);
