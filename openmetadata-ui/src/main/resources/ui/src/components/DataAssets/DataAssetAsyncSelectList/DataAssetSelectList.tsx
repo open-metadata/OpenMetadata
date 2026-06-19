@@ -16,7 +16,7 @@ import {
   Input,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Check, Plus, SearchLg } from '@untitledui/icons';
+import { Check, CornerDownLeft, Plus, SearchLg } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -83,6 +83,20 @@ const DataAssetSelectList: FC<DataAssetAsyncSelectListProps> = ({
     }
 
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
   const fetchOptions = useCallback(
@@ -217,7 +231,8 @@ const DataAssetSelectList: FC<DataAssetAsyncSelectListProps> = ({
   return (
     <div className="tw:relative" ref={wrapperRef}>
       <Button
-        color="secondary"
+        className="tw:px-2.5 tw:py-1.5"
+        color="tertiary"
         iconLeading={Plus}
         size="sm"
         onPress={handleOpen}>
@@ -225,18 +240,21 @@ const DataAssetSelectList: FC<DataAssetAsyncSelectListProps> = ({
       </Button>
 
       {isOpen && (
-        <div className="tw:absolute tw:-top-76 tw:left-1 tw:mt-1 tw:z-50 tw:w-[95%] tw:rounded-lg tw:bg-primary tw:shadow-lg tw:ring-1 tw:ring-gray-200 tw:overflow-hidden tw:h-74">
-          <div className="tw:flex tw:flex-col">
-            <div className="tw:p-2 tw:border-b tw:border-gray-100">
+        <div className="tw:absolute tw:-top-86 tw:left-1 tw:mt-1 tw:z-50 tw:w-95 tw:rounded-lg tw:bg-primary tw:shadow-lg tw:ring-1 tw:ring-gray-200 tw:overflow-hidden tw:h-104">
+          <div className="tw:flex tw:flex-col tw:h-full">
+            <div>
               <Input
                 autoFocus
                 className="tw:w-full"
                 icon={SearchLg}
+                iconClassName="tw:size-3.5"
+                inputClassName="tw:text-xs tw:placeholder:text-xs"
                 placeholder={
                   placeholder ??
                   t('label.search-entity', { entity: t('label.asset-plural') })
                 }
                 value={searchText}
+                wrapperClassName="tw:rounded-none tw:bg-transparent tw:shadow-none tw:ring-0"
                 onChange={(value) => {
                   setSearchText(value);
                   debouncedLoad(value);
@@ -244,8 +262,17 @@ const DataAssetSelectList: FC<DataAssetAsyncSelectListProps> = ({
               />
             </div>
 
+            <div className="tw:px-3.5 tw:py-1.5 tw:bg-utility-gray-blue-50 tw:border-b tw:border-t tw:border-utility-gray-200">
+              <Typography className="tw:text-gray-500" size="text-xs">
+                {t('label.showing-count-of-total-assets', {
+                  count: visibleOptions.length,
+                  total: paging.total ?? 0,
+                })}
+              </Typography>
+            </div>
+
             <div
-              className="tw:overflow-y-auto tw:max-h-60"
+              className="tw:overflow-y-auto tw:flex-1 tw:p-1"
               onScroll={handleScroll}>
               {isLoading && (
                 <div className="tw:flex tw:items-center tw:justify-center tw:py-4">
@@ -263,14 +290,14 @@ const DataAssetSelectList: FC<DataAssetAsyncSelectListProps> = ({
               )}
               {!isLoading &&
                 visibleOptions.map((opt) => {
-                  const { reference, displayName } = opt;
+                  const { reference, displayName, name } = opt;
                   const fqn = String(opt.value ?? '');
                   const isSelected = selectedFqns.has(fqn);
 
                   return (
                     <button
                       className={[
-                        'tw:w-full tw:flex tw:items-center tw:gap-2 tw:px-3 tw:py-2',
+                        'tw:w-full tw:flex tw:items-center tw:gap-2 tw:px-2.5 tw:py-2 tw:rounded-md tw:mb-1',
                         'tw:cursor-pointer tw:text-left tw:transition tw:duration-100',
                         'hover:tw:bg-gray-50 tw:outline-hidden',
                         isSelected ? 'tw:bg-blue-50' : '',
@@ -280,27 +307,27 @@ const DataAssetSelectList: FC<DataAssetAsyncSelectListProps> = ({
                       onClick={() => handleToggle(opt)}>
                       {getEntityIconWithBg(reference.type)}
 
-                      <div className="tw:flex tw:flex-1 tw:justify-between tw:items-center">
-                        <div className="tw:max-w-75">
+                      <div className="tw:flex tw:flex-1 tw:min-w-0 tw:justify-between tw:items-center tw:gap-3">
+                        <div className="tw:min-w-0 tw:flex-1 tw:flex tw:flex-col tw:[&_.prose]:leading-tight">
                           <Typography
                             ellipsis
-                            className="tw:truncate tw:text-gray-800"
+                            className="tw:truncate tw:leading-tight"
                             size="text-xs"
                             weight="medium">
-                            {displayName}
+                            {displayName || name}
                           </Typography>
                           <Typography
                             ellipsis
-                            className="tw:text-gray-400 tw:truncate"
+                            className="tw:text-gray-500 tw:truncate tw:leading-tight"
                             size="text-xs">
                             {reference.fullyQualifiedName ?? ''}
                           </Typography>
                         </div>
                         {reference.type && (
                           <Badge
-                            className="tw:shrink-0 tw:capitalize tw:font-medium"
+                            className="tw:shrink-0 tw:uppercase tw:font-medium"
                             color="gray"
-                            size="sm"
+                            size="xs"
                             type="color">
                             {reference.type}
                           </Badge>
@@ -308,14 +335,33 @@ const DataAssetSelectList: FC<DataAssetAsyncSelectListProps> = ({
                       </div>
                       {isSelected && (
                         <Check
-                          className="tw:shrink-0 tw:text-blue-600"
+                          className="tw:shrink-0"
                           size={16}
-                          strokeWidth={2.5}
+                          strokeWidth={1.5}
                         />
                       )}
                     </button>
                   );
                 })}
+            </div>
+
+            <div className="tw:flex tw:items-center tw:gap-3 tw:px-3 tw:py-2 tw:border-t tw:border-utility-gray-200 tw:bg-utility-gray-blue-50 tw:shrink-0">
+              <div className="tw:flex tw:items-center tw:gap-1">
+                <Badge size="xs" type="color">
+                  <CornerDownLeft className="tw:text-gray-500" size={12} />
+                </Badge>
+                <Typography className="tw:text-gray-500" size="text-xs">
+                  {t('label.select-lowercase')}
+                </Typography>
+              </div>
+              <div className="tw:flex tw:items-center tw:gap-1">
+                <Badge size="xs" type="color">
+                  {t('label.esc')}
+                </Badge>
+                <Typography className="tw:text-gray-500" size="text-xs">
+                  {t('label.close-lowercase')}
+                </Typography>
+              </div>
             </div>
           </div>
         </div>

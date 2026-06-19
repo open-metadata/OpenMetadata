@@ -113,6 +113,8 @@ const PinButton: FC<PinButtonProps> = ({ pinned, animKey, onClick }) => {
 
 const SKELETON_KEYS = Array.from({ length: 8 }, (_, i) => `skeleton-${i}`);
 
+const MAX_VISIBLE_LINKED_ENTITIES = 4;
+
 const MemoryRowSkeleton: FC = () => (
   <Box
     align="start"
@@ -260,27 +262,39 @@ const MemoryRow: FC<MemoryRowProps> = ({
 
           {linkedEntities.length > 0 && (
             <Box align="center" className="tw:mt-0.5" gap={2} wrap="wrap">
-              {linkedEntities.map((entity) => (
-                <Badge
-                  className="tw:max-w-90 tw:min-w-0"
-                  key={entity.id}
-                  size="md"
-                  type="color">
-                  <div className="tw:shrink-0">
-                    <Dot
-                      className={ENTITY_ICON_MAPPER[entity.type].iconClass}
-                      size="sm"
-                      style={{ marginRight: '6px' }}
-                    />
-                  </div>
-                  <Typography
-                    ellipsis
-                    className="tw:text-secondary"
-                    size="text-xs">
-                    {getEntityName(entity)}
+              {linkedEntities
+                .slice(0, MAX_VISIBLE_LINKED_ENTITIES)
+                .map((entity) => (
+                  <Badge
+                    className="tw:max-w-60 tw:min-w-0"
+                    key={entity.id}
+                    size="md"
+                    type="color">
+                    <div className="tw:shrink-0">
+                      <Dot
+                        className={ENTITY_ICON_MAPPER[entity.type].iconClass}
+                        size="sm"
+                        style={{ marginRight: '6px' }}
+                      />
+                    </div>
+                    <Typography
+                      ellipsis
+                      className="tw:text-secondary"
+                      size="text-xs">
+                      {getEntityName(entity)}
+                    </Typography>
+                  </Badge>
+                ))}
+              {linkedEntities.length > MAX_VISIBLE_LINKED_ENTITIES && (
+                <Badge size="md" type="color">
+                  <Typography className="tw:text-secondary" size="text-xs">
+                    {t('label.plus-count', {
+                      count:
+                        linkedEntities.length - MAX_VISIBLE_LINKED_ENTITIES,
+                    })}
                   </Typography>
                 </Badge>
-              ))}
+              )}
             </Box>
           )}
 
