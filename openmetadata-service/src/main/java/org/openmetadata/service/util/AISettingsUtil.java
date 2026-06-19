@@ -27,7 +27,7 @@ public final class AISettingsUtil {
     AISettings settings;
     try {
       settings = SettingsCache.getSetting(SettingsType.AI_SETTINGS, AISettings.class);
-    } catch (Exception ex) {
+    } catch (RuntimeException ex) {
       settings = new AISettings().withEnabled(true);
     }
     return settings;

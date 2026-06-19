@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.MetricExpression;
@@ -85,25 +86,42 @@ public class OntologyReconciler {
     }
   }
 
+  /**
+   * Convenience overload with both axes enabled; used by unit tests and any caller that does not
+   * need per-axis gating.
+   */
   public ReconcileResult reconcile(
       final ContextMemory memory, final OntologyDerivation verdict, final AIDeletionPolicy policy) {
+    return reconcile(memory, verdict, policy, true, true);
+  }
+
+  public ReconcileResult reconcile(
+      final ContextMemory memory,
+      final OntologyDerivation verdict,
+      final AIDeletionPolicy policy,
+      final boolean deriveTerms,
+      final boolean deriveMetrics) {
     final ReconcileResult result;
     if (isAllSkip(verdict)) {
       LOG.info("All-SKIP derivation for memory {}; skipping reconcile entirely", memory.getId());
       result = new ReconcileResult(0, 0, 0, 0);
     } else {
-      result = reconcileNonSkip(memory, verdict, policy);
+      result = reconcileNonSkip(memory, verdict, policy, deriveTerms, deriveMetrics);
     }
     return result;
   }
 
   private ReconcileResult reconcileNonSkip(
-      final ContextMemory memory, final OntologyDerivation verdict, final AIDeletionPolicy policy) {
+      final ContextMemory memory,
+      final OntologyDerivation verdict,
+      final AIDeletionPolicy policy,
+      final boolean deriveTerms,
+      final boolean deriveMetrics) {
     final Counts counts = new Counts();
-    final String impliedTerm = applyTermAxis(memory, verdict.termVerdict(), counts);
-    final String impliedMetric = applyMetricAxis(memory, verdict.metricVerdict(), counts);
-    retireStaleOwned(memory, Entity.GLOSSARY_TERM, termRepo, impliedTerm, policy, counts);
-    retireStaleOwned(memory, Entity.METRIC, metricRepo, impliedMetric, policy, counts);
+    reconcileAxis(
+        memory, verdict.termVerdict(), Entity.GLOSSARY_TERM, termRepo, deriveTerms, policy, counts);
+    reconcileAxis(
+        memory, verdict.metricVerdict(), Entity.METRIC, metricRepo, deriveMetrics, policy, counts);
     LOG.info(
         "Reconciled ontology for memory {}: {} terms created, {} metrics created, {} reused, {} retired",
         memory.getId(),
@@ -113,6 +131,26 @@ public class OntologyReconciler {
         counts.retired);
     return new ReconcileResult(
         counts.createdTerms, counts.createdMetrics, counts.reused, counts.retired);
+  }
+
+  private void reconcileAxis(
+      final ContextMemory memory,
+      final OntologyVerdict verdict,
+      final String entityType,
+      final EntityRepository<?> repo,
+      final boolean enabled,
+      final AIDeletionPolicy policy,
+      final Counts counts) {
+    if (!enabled) {
+      return;
+    }
+    final String implied;
+    if (Entity.GLOSSARY_TERM.equals(entityType)) {
+      implied = applyTermAxis(memory, verdict, counts);
+    } else {
+      implied = applyMetricAxis(memory, verdict, counts);
+    }
+    retireStaleOwned(memory, entityType, repo, implied, policy, counts);
   }
 
   private boolean isAllSkip(final OntologyDerivation verdict) {
@@ -150,48 +188,77 @@ public class OntologyReconciler {
 
   private String createTerm(
       final ContextMemory memory, final OntologyVerdict verdict, final Counts counts) {
+    if (!isValidName(verdict.name())) {
+      LOG.warn("Skipping CREATE term: invalid LLM name '{}'", verdict.name());
+      return null;
+    }
     final EntityReference existingOwned =
         findOwnedByName(memory, Entity.GLOSSARY_TERM, termRepo, verdict.name());
+    final String result;
     if (existingOwned == null) {
-      final EntityReference glossary = resolveOrMintGlossary(verdict);
-      final GlossaryTerm term =
-          new GlossaryTerm()
-              .withId(UUID.randomUUID())
-              .withName(verdict.name())
-              .withDisplayName(verdict.displayName())
-              .withDescription(verdict.description())
-              .withGlossary(glossary)
-              .withProvider(ProviderType.AUTOMATION)
-              .withUpdatedBy(OntologyOwnership.ONTOLOGY_BOT_NAME)
-              .withUpdatedAt(System.currentTimeMillis());
-      final GlossaryTerm created = termRepo.createInternal(term);
-      addDerivedFromEdge(created.getId(), memory.getId(), Entity.GLOSSARY_TERM, termRepo);
-      counts.createdTerms++;
+      result = mintTerm(memory, verdict, counts);
+    } else {
+      result = verdict.name();
     }
+    return result;
+  }
+
+  private String mintTerm(
+      final ContextMemory memory, final OntologyVerdict verdict, final Counts counts) {
+    final EntityReference glossary = resolveOrMintGlossary(verdict);
+    if (glossary == null) {
+      return null;
+    }
+    final GlossaryTerm term =
+        new GlossaryTerm()
+            .withId(UUID.randomUUID())
+            .withName(verdict.name())
+            .withDisplayName(verdict.displayName())
+            .withDescription(verdict.description())
+            .withGlossary(glossary)
+            .withProvider(ProviderType.AUTOMATION)
+            .withUpdatedBy(OntologyOwnership.ONTOLOGY_BOT_NAME)
+            .withUpdatedAt(System.currentTimeMillis());
+    final GlossaryTerm created = termRepo.createInternal(term);
+    addDerivedFromEdge(created.getId(), memory.getId(), Entity.GLOSSARY_TERM, termRepo);
+    counts.createdTerms++;
     return verdict.name();
   }
 
   private String createMetric(
       final ContextMemory memory, final OntologyVerdict verdict, final Counts counts) {
+    if (!isValidName(verdict.name())) {
+      LOG.warn("Skipping CREATE metric: invalid LLM name '{}'", verdict.name());
+      return null;
+    }
     final EntityReference existingOwned =
         findOwnedByName(memory, Entity.METRIC, metricRepo, verdict.name());
+    final String result;
     if (existingOwned == null) {
-      final Metric metric =
-          new Metric()
-              .withId(UUID.randomUUID())
-              .withName(verdict.name())
-              .withDisplayName(verdict.displayName())
-              .withDescription(verdict.description())
-              .withMetricType(toMetricType(verdict.metricType()))
-              .withUnitOfMeasurement(toUnit(verdict.unitOfMeasurement()))
-              .withMetricExpression(toExpression(verdict.metricExpressionCode()))
-              .withProvider(ProviderType.AUTOMATION)
-              .withUpdatedBy(OntologyOwnership.ONTOLOGY_BOT_NAME)
-              .withUpdatedAt(System.currentTimeMillis());
-      final Metric created = metricRepo.createInternal(metric);
-      addDerivedFromEdge(created.getId(), memory.getId(), Entity.METRIC, metricRepo);
-      counts.createdMetrics++;
+      result = mintMetric(memory, verdict, counts);
+    } else {
+      result = verdict.name();
     }
+    return result;
+  }
+
+  private String mintMetric(
+      final ContextMemory memory, final OntologyVerdict verdict, final Counts counts) {
+    final Metric metric =
+        new Metric()
+            .withId(UUID.randomUUID())
+            .withName(verdict.name())
+            .withDisplayName(verdict.displayName())
+            .withDescription(verdict.description())
+            .withMetricType(toMetricType(verdict.metricType()))
+            .withUnitOfMeasurement(toUnit(verdict.unitOfMeasurement()))
+            .withMetricExpression(toExpression(verdict.metricExpressionCode()))
+            .withProvider(ProviderType.AUTOMATION)
+            .withUpdatedBy(OntologyOwnership.ONTOLOGY_BOT_NAME)
+            .withUpdatedAt(System.currentTimeMillis());
+    final Metric created = metricRepo.createInternal(metric);
+    addDerivedFromEdge(created.getId(), memory.getId(), Entity.METRIC, metricRepo);
+    counts.createdMetrics++;
     return verdict.name();
   }
 
@@ -222,6 +289,10 @@ public class OntologyReconciler {
   private EntityReference resolveOrMintGlossary(final OntologyVerdict verdict) {
     EntityReference glossary = resolveGlossary(verdict.targetFqn());
     if (glossary == null) {
+      if (!isValidName(verdict.newGlossaryName())) {
+        LOG.warn("Skipping glossary mint: invalid LLM name '{}'", verdict.newGlossaryName());
+        return null;
+      }
       final Glossary minted =
           new Glossary()
               .withId(UUID.randomUUID())
@@ -419,6 +490,10 @@ public class OntologyReconciler {
     }
   }
 
+  private boolean isValidName(final String name) {
+    return !nullOrEmpty(name) && name.chars().noneMatch(c -> c == '.' || c == '"' || c == '/');
+  }
+
   private MetricExpression toExpression(final String code) {
     MetricExpression expression = null;
     if (!nullOrEmpty(code)) {
@@ -428,11 +503,38 @@ public class OntologyReconciler {
   }
 
   private MetricType toMetricType(final String value) {
-    return nullOrEmpty(value) ? null : MetricType.fromValue(value);
+    return resolveEnum(value, MetricType.values(), MetricType::value, "metricType");
   }
 
   private MetricUnitOfMeasurement toUnit(final String value) {
-    return nullOrEmpty(value) ? null : MetricUnitOfMeasurement.fromValue(value);
+    return resolveEnum(
+        value,
+        MetricUnitOfMeasurement.values(),
+        MetricUnitOfMeasurement::value,
+        "unitOfMeasurement");
+  }
+
+  /**
+   * Promotes a raw LLM enum string to a schema enum, matching case-insensitively against the enum's
+   * JSON values. Returns {@code null} (with a warning) when nothing matches instead of letting the
+   * generated {@code fromValue} throw {@link IllegalArgumentException} and abort the entire
+   * derivation — both fields are optional on the Metric schema, so an unset value is valid.
+   */
+  private static <E extends Enum<E>> E resolveEnum(
+      final String raw, final E[] values, final Function<E, String> valueOf, final String label) {
+    E result = null;
+    if (!nullOrEmpty(raw)) {
+      final String normalized = raw.trim();
+      for (final E candidate : values) {
+        if (valueOf.apply(candidate).equalsIgnoreCase(normalized)) {
+          result = candidate;
+        }
+      }
+      if (result == null) {
+        LOG.warn("Ontology: ignoring unrecognized {} '{}' from LLM; leaving it unset", label, raw);
+      }
+    }
+    return result;
   }
 
   /** Mutable tally threaded through reconciliation to keep each step a small single-purpose method. */

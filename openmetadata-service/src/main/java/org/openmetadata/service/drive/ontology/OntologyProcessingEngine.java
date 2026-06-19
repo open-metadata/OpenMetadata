@@ -24,8 +24,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.openmetadata.schema.configuration.AIDeletionPolicy;
 import org.openmetadata.schema.configuration.AISettings;
+import org.openmetadata.schema.configuration.OntologyAgentSettings;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.OntologyStats;
 import org.openmetadata.service.Entity;
@@ -212,15 +212,27 @@ public class OntologyProcessingEngine {
   }
 
   private void derive(final ContextMemory memory, final String hash) {
+    final AISettings settings = AISettingsUtil.get();
     final OntologyContext ctx = grounding.fetchCandidates(memory);
     final OntologyDerivation verdict = extractor.derive(memory, ctx);
     final OntologyReconciler.ReconcileResult r =
-        reconciler.reconcile(memory, verdict, deletionPolicy());
+        reconciler.reconcile(
+            memory,
+            verdict,
+            AISettingsUtil.deletionPolicy(settings),
+            deriveTermsEnabled(settings),
+            deriveMetricsEnabled(settings));
     memoryRepo.stampOntologyStats(memory, buildStats(hash, r));
   }
 
-  private AIDeletionPolicy deletionPolicy() {
-    return AISettingsUtil.deletionPolicy(AISettingsUtil.get());
+  private boolean deriveTermsEnabled(final AISettings settings) {
+    final OntologyAgentSettings agent = settings == null ? null : settings.getOntologyAgent();
+    return agent == null || !Boolean.FALSE.equals(agent.getDeriveGlossaryTerms());
+  }
+
+  private boolean deriveMetricsEnabled(final AISettings settings) {
+    final OntologyAgentSettings agent = settings == null ? null : settings.getOntologyAgent();
+    return agent == null || !Boolean.FALSE.equals(agent.getDeriveMetrics());
   }
 
   private OntologyStats buildStats(final String hash, final OntologyReconciler.ReconcileResult r) {
@@ -236,7 +248,8 @@ public class OntologyProcessingEngine {
     pending.remove(memoryId, firedFuture);
     try {
       run(memoryId);
-    } catch (Exception e) {
+    } catch (RuntimeException e) {
+      // Intentional broad catch: an uncaught exception here would kill the scheduler thread.
       LOG.error("Ontology derivation failed for memory {}", memoryId, e);
     }
   }

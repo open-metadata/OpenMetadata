@@ -14,6 +14,7 @@
 package org.openmetadata.service.drive.ontology;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -72,14 +73,14 @@ class OntologyProcessingEngineTest {
 
     when(grounding.fetchCandidates(any())).thenReturn(ctx);
     when(extractor.derive(any(), any())).thenReturn(verdict);
-    when(reconciler.reconcile(any(), any(), any())).thenReturn(result);
+    when(reconciler.reconcile(any(), any(), any(), anyBoolean(), anyBoolean())).thenReturn(result);
 
     OntologyProcessingEngine engine =
         OntologyProcessingEngine.forTest(memoryRepo, grounding, extractor, reconciler);
     engine.run(id);
 
     verify(extractor, times(1)).derive(any(), any());
-    verify(reconciler, times(1)).reconcile(any(), any(), any());
+    verify(reconciler, times(1)).reconcile(any(), any(), any(), anyBoolean(), anyBoolean());
     verify(memoryRepo, times(1)).stampOntologyStats(any(), any());
   }
 }

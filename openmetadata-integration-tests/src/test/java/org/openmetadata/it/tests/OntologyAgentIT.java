@@ -31,9 +31,11 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.data.CreateGlossary;
+import org.openmetadata.schema.configuration.AIDeletionPolicy;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
@@ -42,7 +44,13 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.services.context.ContextMemoryService;
 import org.openmetadata.sdk.services.glossary.GlossaryService;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.drive.ontology.OntologyAction;
+import org.openmetadata.service.drive.ontology.OntologyDerivation;
+import org.openmetadata.service.drive.ontology.OntologyReconciler;
+import org.openmetadata.service.drive.ontology.OntologyVerdict;
+import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
+import org.openmetadata.service.jdbi3.MetricRepository;
 import org.openmetadata.service.util.OntologyOwnership;
 
 /**
@@ -184,6 +192,62 @@ public class OntologyAgentIT {
   }
 
   // ═══════════════════════════════════════════════════════════════════
+  // Scenario E — axis-toggle: deriveMetrics=false skips metric CREATE,
+  //              leaves pre-existing owned metric untouched (no mass-retire)
+  //
+  // Fully deterministic: passes the axis flags directly to reconcile(),
+  // bypassing the settings cache to avoid race conditions in concurrent runs.
+  //
+  // Setup:  one AUTOMATION-owned metric seeded with a DERIVED_FROM edge.
+  // Action: reconcile with deriveMetrics=false and CREATE verdict for metric.
+  // Assert: metric axis gated → 0 new metrics created, 0 retired, owned metric alive.
+  // ═══════════════════════════════════════════════════════════════════
+
+  @Test
+  void scenarioE_deriveMetricsDisabled_skipsMetricAndPreservesExistingOwnedMetric(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    ContextMemory memory = createMemory(client, ns.prefix("mem-toggle"));
+    Metric existingOwnedMetric = createAutomationMetric(ns.prefix("owned-metric"));
+    seedDerivedFromMetricEdge(existingOwnedMetric.getId(), memory.getId());
+
+    OntologyReconciler reconciler = buildReconciler();
+    OntologyVerdict createMetricVerdict =
+        new OntologyVerdict(
+            OntologyAction.CREATE,
+            null,
+            null,
+            null,
+            ns.prefix("new-m"),
+            "NewM",
+            "desc",
+            "COUNT",
+            null,
+            null);
+    OntologyVerdict skipTermVerdict =
+        new OntologyVerdict(
+            OntologyAction.SKIP, null, null, null, null, null, null, null, null, null);
+    OntologyReconciler.ReconcileResult result =
+        reconciler.reconcile(
+            memory,
+            new OntologyDerivation(skipTermVerdict, createMetricVerdict),
+            AIDeletionPolicy.CASCADE,
+            true,
+            false);
+
+    assertEquals(0, result.createdMetrics(), "metric axis disabled: no metrics must be created");
+    assertEquals(0, result.retired(), "disabled axis must NOT retire pre-existing owned metric");
+    boolean metricStillAlive = isMetricAlive(existingOwnedMetric.getId());
+    assertTrue(
+        metricStillAlive, "pre-existing owned metric must survive when metric axis is disabled");
+
+    MetricRepository metricRepo = (MetricRepository) Entity.getEntityRepository(Entity.METRIC);
+    metricRepo.delete(OntologyOwnership.ONTOLOGY_BOT_NAME, existingOwnedMetric.getId(), false, true);
+    hardDeleteMemory(client, memory.getId());
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
   // Private helpers
   // ═══════════════════════════════════════════════════════════════════
 
@@ -226,6 +290,19 @@ public class OntologyAgentIT {
     return termRepo.createInternal(term);
   }
 
+  private Metric createAutomationMetric(String name) {
+    MetricRepository metricRepo = (MetricRepository) Entity.getEntityRepository(Entity.METRIC);
+    Metric metric =
+        new Metric()
+            .withId(UUID.randomUUID())
+            .withName(name)
+            .withDescription("Automation-derived metric for " + name)
+            .withProvider(ProviderType.AUTOMATION)
+            .withUpdatedBy(OntologyOwnership.ONTOLOGY_BOT_NAME)
+            .withUpdatedAt(System.currentTimeMillis());
+    return metricRepo.createInternal(metric);
+  }
+
   /**
    * Seeds the {@code DERIVED_FROM} edge that the Ontology Agent's CREATE path produces:
    * {@code from=term → to=memory} via {@link Relationship#DERIVED_FROM}.
@@ -244,6 +321,12 @@ public class OntologyAgentIT {
         Entity.CONTEXT_MEMORY,
         Relationship.DERIVED_FROM,
         false);
+  }
+
+  private void seedDerivedFromMetricEdge(UUID metricId, UUID memoryId) {
+    MetricRepository metricRepo = (MetricRepository) Entity.getEntityRepository(Entity.METRIC);
+    metricRepo.addRelationship(
+        metricId, memoryId, Entity.METRIC, Entity.CONTEXT_MEMORY, Relationship.DERIVED_FROM, false);
   }
 
   private void hardDeleteMemory(OpenMetadataClient client, UUID memoryId) {
@@ -277,5 +360,24 @@ public class OntologyAgentIT {
     } catch (Exception e) {
       return false;
     }
+  }
+
+  private boolean isMetricAlive(UUID metricId) {
+    try {
+      MetricRepository metricRepo = (MetricRepository) Entity.getEntityRepository(Entity.METRIC);
+      Metric metric = metricRepo.find(metricId, Include.NON_DELETED);
+      return metric != null && (metric.getDeleted() == null || !metric.getDeleted());
+    } catch (Exception e) {
+      return false;
+    }
+  }
+
+  private OntologyReconciler buildReconciler() {
+    GlossaryTermRepository termRepo =
+        (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
+    MetricRepository metricRepo = (MetricRepository) Entity.getEntityRepository(Entity.METRIC);
+    GlossaryRepository glossaryRepo =
+        (GlossaryRepository) Entity.getEntityRepository(Entity.GLOSSARY);
+    return new OntologyReconciler(termRepo, metricRepo, glossaryRepo);
   }
 }

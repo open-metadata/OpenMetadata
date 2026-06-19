@@ -65,7 +65,7 @@ public class OntologyGrounding {
       final SearchRequest request = buildRequest(index, text);
       final Response response = Entity.getSearchRepository().search(request, null);
       result = parseHits((String) response.getEntity(), type);
-    } catch (Exception ex) {
+    } catch (java.io.IOException | RuntimeException ex) {
       LOG.warn(
           "OntologyGrounding: keyword search failed for index '{}': {}", index, ex.getMessage());
     }

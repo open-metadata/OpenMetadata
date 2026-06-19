@@ -14,6 +14,7 @@
 package org.openmetadata.service.drive.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -40,6 +41,8 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetricExpressionLanguage;
+import org.openmetadata.schema.type.MetricType;
+import org.openmetadata.schema.type.MetricUnitOfMeasurement;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
@@ -645,5 +648,163 @@ class OntologyReconcilerTest {
     verify(metricRepo, never()).restoreEntity(any(), any());
     verify(termRepo, never()).find(any(UUID.class), any(Include.class));
     verify(metricRepo, never()).find(any(UUID.class), any(Include.class));
+  }
+
+  @Test
+  void createTermWithInvalidNameIsSkippedNoExceptionNoCreate() {
+    OntologyVerdict dotName =
+        new OntologyVerdict(
+            OntologyAction.CREATE,
+            "Business",
+            null,
+            null,
+            "bad.name",
+            "Bad Name",
+            "desc",
+            null,
+            null,
+            null);
+
+    OntologyReconciler.ReconcileResult result =
+        reconciler()
+            .reconcile(memory, new OntologyDerivation(dotName, skip()), AIDeletionPolicy.CASCADE);
+
+    assertEquals(0, result.created());
+    assertEquals(0, result.retired());
+    verify(termRepo, never()).createInternal(any());
+  }
+
+  @Test
+  void createTermWithNullNameIsSkippedNoExceptionNoCreate() {
+    OntologyVerdict nullName =
+        new OntologyVerdict(
+            OntologyAction.CREATE, "Business", null, null, null, null, "desc", null, null, null);
+
+    OntologyReconciler.ReconcileResult result =
+        reconciler()
+            .reconcile(memory, new OntologyDerivation(nullName, skip()), AIDeletionPolicy.CASCADE);
+
+    assertEquals(0, result.created());
+    assertEquals(0, result.retired());
+    verify(termRepo, never()).createInternal(any());
+  }
+
+  @Test
+  void createMetricWithInvalidNameIsSkippedNoExceptionNoCreate() {
+    OntologyVerdict slashName =
+        new OntologyVerdict(
+            OntologyAction.CREATE,
+            null,
+            null,
+            null,
+            "bad/metric",
+            "Bad Metric",
+            "desc",
+            "COUNT",
+            null,
+            null);
+
+    OntologyReconciler.ReconcileResult result =
+        reconciler()
+            .reconcile(memory, new OntologyDerivation(skip(), slashName), AIDeletionPolicy.CASCADE);
+
+    assertEquals(0, result.created());
+    assertEquals(0, result.retired());
+    verify(metricRepo, never()).createInternal(any());
+  }
+
+  @Test
+  void createMetricWithNullNameIsSkippedNoExceptionNoCreate() {
+    OntologyVerdict nullName =
+        new OntologyVerdict(
+            OntologyAction.CREATE, null, null, null, null, null, "desc", "COUNT", null, null);
+
+    OntologyReconciler.ReconcileResult result =
+        reconciler()
+            .reconcile(memory, new OntologyDerivation(skip(), nullName), AIDeletionPolicy.CASCADE);
+
+    assertEquals(0, result.created());
+    assertEquals(0, result.retired());
+    verify(metricRepo, never()).createInternal(any());
+  }
+
+  @Test
+  void createMetricWithUnknownMetricTypeStillCreatesMetricWithNullType() {
+    echoMetricOnCreate();
+    OntologyVerdict metric =
+        new OntologyVerdict(
+            OntologyAction.CREATE,
+            null,
+            null,
+            null,
+            "churn_rate",
+            "Churn Rate",
+            "Rate of churn",
+            "gauge",
+            null,
+            null);
+
+    OntologyReconciler.ReconcileResult result =
+        reconciler()
+            .reconcile(memory, new OntologyDerivation(skip(), metric), AIDeletionPolicy.CASCADE);
+
+    assertEquals(1, result.createdMetrics());
+    ArgumentCaptor<Metric> captor = ArgumentCaptor.forClass(Metric.class);
+    verify(metricRepo).createInternal(captor.capture());
+    assertNull(captor.getValue().getMetricType());
+  }
+
+  @Test
+  void createMetricWithUnknownUnitKeepsValidTypeAndLeavesUnitUnset() {
+    echoMetricOnCreate();
+    OntologyVerdict metric =
+        new OntologyVerdict(
+            OntologyAction.CREATE,
+            null,
+            null,
+            null,
+            "churn_rate",
+            "Churn Rate",
+            "Rate of churn",
+            "COUNT",
+            "bananas",
+            null);
+
+    OntologyReconciler.ReconcileResult result =
+        reconciler()
+            .reconcile(memory, new OntologyDerivation(skip(), metric), AIDeletionPolicy.CASCADE);
+
+    assertEquals(1, result.createdMetrics());
+    ArgumentCaptor<Metric> captor = ArgumentCaptor.forClass(Metric.class);
+    verify(metricRepo).createInternal(captor.capture());
+    assertEquals(MetricType.COUNT, captor.getValue().getMetricType());
+    assertNull(captor.getValue().getUnitOfMeasurement());
+  }
+
+  @Test
+  void createMetricResolvesEnumsCaseInsensitively() {
+    echoMetricOnCreate();
+    OntologyVerdict metric =
+        new OntologyVerdict(
+            OntologyAction.CREATE,
+            null,
+            null,
+            null,
+            "churn_rate",
+            "Churn Rate",
+            "Rate of churn",
+            "count",
+            "percentage",
+            null);
+
+    OntologyReconciler.ReconcileResult result =
+        reconciler()
+            .reconcile(memory, new OntologyDerivation(skip(), metric), AIDeletionPolicy.CASCADE);
+
+    assertEquals(1, result.createdMetrics());
+    ArgumentCaptor<Metric> captor = ArgumentCaptor.forClass(Metric.class);
+    verify(metricRepo).createInternal(captor.capture());
+    assertEquals(MetricType.COUNT, captor.getValue().getMetricType());
+    assertEquals(MetricUnitOfMeasurement.PERCENTAGE, captor.getValue().getUnitOfMeasurement());
   }
 }
