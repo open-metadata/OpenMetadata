@@ -18,7 +18,7 @@ from functools import singledispatch
 from typing import Any, Optional
 from urllib.parse import quote_plus
 
-from pydantic import SecretStr, ValidationError
+from pydantic import ValidationError
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -47,6 +47,7 @@ from metadata.ingestion.connections.builders import (
 from metadata.ingestion.connections.test_connections import (
     test_connection_db_schema_sources,
 )
+from metadata.ingestion.models.custom_pydantic import _CustomSecretStr
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.hive.custom_hive_connection import (
     CustomHiveConnection,
@@ -75,7 +76,7 @@ def get_connection_url(connection: HiveConnection) -> str:
     ):
         url += quote_plus(connection.username)
         if not connection.password:
-            connection.password = SecretStr("")
+            connection.password = _CustomSecretStr("")
         url += f":{quote_plus(connection.password.get_secret_value())}"
         url += "@"
 

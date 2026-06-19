@@ -15,7 +15,6 @@ Source connection handler
 from typing import Optional
 from urllib.parse import quote_plus
 
-from pydantic import SecretStr
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -36,6 +35,7 @@ from metadata.ingestion.connections.builders import (
 from metadata.ingestion.connections.test_connections import (
     test_connection_db_schema_sources,
 )
+from metadata.ingestion.models.custom_pydantic import _CustomSecretStr
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
 
@@ -52,7 +52,7 @@ def get_connection_url(connection: ImpalaConnection) -> str:
     ):
         url += quote_plus(connection.username)
         if not connection.password:
-            connection.password = SecretStr("")
+            connection.password = _CustomSecretStr("")
         url += f":{quote_plus(connection.password.get_secret_value())}"
         url += "@"
 
