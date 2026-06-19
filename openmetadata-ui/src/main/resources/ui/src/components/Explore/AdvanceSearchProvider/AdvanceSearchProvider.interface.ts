@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Config, ImmutableTree } from '@react-awesome-query-builder/antd';
+import type { Config, ImmutableTree } from '@react-awesome-query-builder/antd';
 import { ReactNode } from 'react';
 import { SearchIndex } from '../../../enums/search.enum';
 
