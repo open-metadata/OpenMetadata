@@ -661,6 +661,7 @@ export const useAssetSelectionContent = ({
           fields={filters}
           index={SearchIndex.ALL}
           showDeleted={false}
+          untitledDropdown={variant === 'drawer'}
           onFieldValueSelect={handleQuickFiltersValueSelect}
         />
         {quickFilterQuery && (
