@@ -82,7 +82,13 @@ public class McpCallbackServlet extends HttpServlet {
     LOG.info("Initialized McpCallbackServlet (runtime SSO dispatch)");
   }
 
-  private AuthenticationCodeFlowHandler resolveSsoHandler() {
+  McpCallbackServlet(
+      UserSSOOAuthProvider userSSOProvider, McpPendingAuthRequestRepository pendingAuthRepository) {
+    this.userSSOProvider = userSSOProvider;
+    this.pendingAuthRepository = pendingAuthRepository;
+  }
+
+  protected AuthenticationCodeFlowHandler resolveSsoHandler() {
     try {
       var authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
       if (authConfig == null
@@ -228,21 +234,21 @@ public class McpCallbackServlet extends HttpServlet {
       response.sendError(
           HttpServletResponse.SC_SERVICE_UNAVAILABLE,
           "MCP SSO not available. Please restart the server.");
-      return;
-    }
-    String idTokenParam = request.getParameter("id_token");
-    if (idTokenParam == null || idTokenParam.isEmpty()) {
-      response.sendError(
-          HttpServletResponse.SC_BAD_REQUEST, "Invalid MCP OAuth callback - missing id_token");
-      return;
-    }
-    try {
-      LOG.info("Handling MCP OAuth fragment POST callback (id_token extracted from hash)");
-      handleDirectIdTokenFlow(request, response, idTokenParam, ssoHandler);
-    } catch (Exception e) {
-      LOG.error("MCP OAuth fragment POST callback failed", e);
-      response.sendError(
-          HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "MCP OAuth callback processing failed");
+    } else {
+      String idTokenParam = request.getParameter("id_token");
+      if (idTokenParam == null || idTokenParam.isEmpty()) {
+        response.sendError(
+            HttpServletResponse.SC_BAD_REQUEST, "Invalid MCP OAuth callback - missing id_token");
+      } else {
+        try {
+          LOG.info("Handling MCP OAuth fragment POST callback (id_token extracted from hash)");
+          handleDirectIdTokenFlow(request, response, idTokenParam, ssoHandler);
+        } catch (Exception e) {
+          LOG.error("MCP OAuth fragment POST callback failed", e);
+          response.sendError(
+              HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "MCP OAuth callback processing failed");
+        }
+      }
     }
   }
 
@@ -545,9 +551,7 @@ public class McpCallbackServlet extends HttpServlet {
                 + "    document.body.appendChild(f);"
                 + "    f.submit();"
                 + "  } else {"
-                + "    document.body.innerHTML = '<h2>MCP OAuth Error</h2>"
-                + "<p>Authentication failed: the SSO provider did not return an id_token. "
-                + "Please close this tab and retry the authentication flow.</p>';"
+                + "    document.body.textContent = 'MCP OAuth Error: Authentication failed — the SSO provider did not return an id_token. Please close this tab and retry.';"
                 + "  }"
                 + "} catch(e) {"
                 + "  document.body.textContent = 'MCP OAuth Error: Fragment extraction failed. Please retry.';"
