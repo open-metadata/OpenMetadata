@@ -18,6 +18,7 @@ import {
   getBrowsePathQueryFilter,
   getCanonicalEntityType,
   getDisabledExploreTreeKeys,
+  isEntityTypeBucketSelected,
   parseBrowsePathFields,
   truncateBrowsePath,
 } from './ExplorePureUtils';
@@ -68,6 +69,34 @@ const treeNodes = [
     },
   },
 ] as ExploreTreeNode[];
+
+describe('isEntityTypeBucketSelected', () => {
+  it('allows every bucket when nothing is selected', () => {
+    expect(isEntityTypeBucketSelected('table', [])).toBe(true);
+    expect(isEntityTypeBucketSelected('tableColumn', [])).toBe(true);
+  });
+
+  it('hides Columns when only Table is selected', () => {
+    expect(isEntityTypeBucketSelected('table', ['table'])).toBe(true);
+    expect(isEntityTypeBucketSelected('tableColumn', ['table'])).toBe(false);
+  });
+
+  it('shows both when Table and Column are selected', () => {
+    const selected = ['table', 'tablecolumn'];
+
+    expect(isEntityTypeBucketSelected('table', selected)).toBe(true);
+    expect(isEntityTypeBucketSelected('tableColumn', selected)).toBe(true);
+  });
+
+  it('matches case-insensitively (camelCase bucket vs lowercase selection)', () => {
+    expect(isEntityTypeBucketSelected('tableColumn', ['tablecolumn'])).toBe(
+      true
+    );
+    expect(isEntityTypeBucketSelected('storedProcedure', ['table'])).toBe(
+      false
+    );
+  });
+});
 
 describe('getDisabledExploreTreeKeys', () => {
   it('disables nothing when no entity type is selected', () => {

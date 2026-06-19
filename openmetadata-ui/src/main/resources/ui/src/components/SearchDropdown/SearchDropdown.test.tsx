@@ -467,6 +467,32 @@ describe('Search DropDown Component', () => {
       expect(await screen.findByTestId('glossaryterm-checkbox')).toBeChecked();
     });
 
+    it('renders the selected option with its fetched count and label, not the raw selected value', async () => {
+      // Regression: selecting a value must keep the aggregation count + human
+      // label (Table / 307), not fall back to the raw chip value (table / 0).
+      render(
+        <SearchDropdown
+          {...mockProps}
+          immediateApply
+          hideCounts={false}
+          options={[
+            { key: 'table', label: 'Table', count: 307 },
+            { key: 'column', label: 'Column', count: 52535 },
+          ]}
+          selectedKeys={[{ key: 'table', label: 'table' }]}
+        />
+      );
+
+      const container = await screen.findByTestId('search-dropdown-Owner');
+
+      await act(async () => {
+        fireEvent.click(container);
+      });
+
+      expect(await screen.findByTestId('table-checkbox')).toBeChecked();
+      expect(await screen.findByText('307')).toBeInTheDocument();
+    });
+
     it('renders the helper text in immediateApply mode', async () => {
       render(
         <SearchDropdown

@@ -389,6 +389,22 @@ export const getDisabledExploreTreeKeys = (
   return disabledKeys;
 };
 
+/**
+ * Whether an entity-type leaf bucket should appear in the explore tree given
+ * the Data Assets selection. With no selection every type shows; otherwise
+ * only the selected types do (Table-only must not surface Columns). Compared
+ * case-insensitively because leaf buckets are camelCase (tableColumn) while
+ * the quick-filter values are lowercased (tablecolumn).
+ */
+export const isEntityTypeBucketSelected = (
+  bucketKey: string,
+  selectedEntityTypes: string[]
+): boolean =>
+  isEmpty(selectedEntityTypes) ||
+  selectedEntityTypes.some(
+    (entityType) => entityType.toLowerCase() === bucketKey.toLowerCase()
+  );
+
 export const isElasticsearchError = (error: unknown): boolean => {
   if (!error) {
     return false;

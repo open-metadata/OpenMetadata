@@ -37,6 +37,7 @@ import {
   getQuickFilterObject,
   getQuickFilterObjectForEntities,
   getSubLevelHierarchyKey,
+  isEntityTypeBucketSelected,
   parseBrowsePathFields,
   updateTreeData,
   updateTreeDataWithCounts,
@@ -174,11 +175,6 @@ const ExploreTree = ({
         const aggregations = getAggregations(res.aggregations);
         const isServiceType = bucketToFind === EntityFields.SERVICE_TYPE;
         const isEntityType = bucketToFind === EntityFields.ENTITY_TYPE;
-        // Leaf entity-type buckets are camelCase (tableColumn) while the
-        // Data Assets quick-filter values are lowercased (tablecolumn).
-        const selectedEntityTypeSet = new Set(
-          selectedEntityTypes.map((value) => value.toLowerCase())
-        );
         const buckets = (aggregations[bucketToFind]?.buckets ?? []).filter(
           (item) => {
             const isAllowedAggregation = !searchClassBase
@@ -188,8 +184,7 @@ const ExploreTree = ({
             // lists those types — a Table-only filter must not surface Columns.
             const matchesSelectedType =
               !isEntityType ||
-              selectedEntityTypeSet.size === 0 ||
-              selectedEntityTypeSet.has(item.key.toLowerCase());
+              isEntityTypeBucketSelected(item.key, selectedEntityTypes);
 
             return isAllowedAggregation && matchesSelectedType;
           }
