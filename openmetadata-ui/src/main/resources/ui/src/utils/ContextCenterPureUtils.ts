@@ -15,12 +15,12 @@ import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isNull, isUndefined } from 'lodash';
 import { PagingResponse } from 'Models';
-import { ListParams } from 'src/interface/API.interface';
 import { CREATE_PAGE_HASH } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import type { Asset } from '../generated/attachments/asset';
 import { AssetType } from '../generated/attachments/asset';
 import type { ContextFile } from '../generated/entity/data/contextFile';
+import { ListParams } from '../interface/API.interface';
 import type {
   CreateKnowledgePage,
   QuickLink,
