@@ -42,6 +42,8 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.Users;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.TestUtils;
 
 /**
@@ -164,6 +166,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       true; // Override if include=deleted query param not supported
   protected boolean supportsImportExport =
       false; // Override in subclasses that support CSV import/export
+  protected boolean supportsCsvImportSessionConsolidationRegression = false;
   protected boolean supportsListHistoryByTimestamp =
       false; // Override in subclasses that support listing all versions by timestamp
 
@@ -5283,6 +5286,42 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     return null; // Override in subclasses that support import/export
   }
 
+  protected String getCsvImportContainerName(TestNamespace ns, EntityInterface entity) {
+    return getImportExportContainerName(ns);
+  }
+
+  protected String importCsvForEntity(String containerName, String csvData, boolean dryRun) {
+    return getEntityService().importCsv(containerName, csvData, dryRun);
+  }
+
+  protected EntityInterface createCsvImportRegressionEntity(TestNamespace ns) {
+    return createEntity(createRequest(ns.prefix("csvNullChangeDescription"), ns));
+  }
+
+  @SuppressWarnings("unchecked")
+  protected EntityInterface patchCsvImportRegressionEntity(EntityInterface entity) {
+    return patchEntity(entity.getId().toString(), (T) entity);
+  }
+
+  protected String getCsvImportRegressionEntityType() {
+    return getEntityType();
+  }
+
+  protected EntityInterface getCsvImportRegressionEntityByName(String fqn) {
+    return getEntityByName(fqn);
+  }
+
+  @SuppressWarnings("unchecked")
+  protected String generateCsvImportRegressionData(TestNamespace ns, EntityInterface entity) {
+    T csvUpdate = prepareCsvImportRegressionUpdate(ns, (T) entity);
+    return generateValidCsvData(ns, List.of(csvUpdate));
+  }
+
+  protected T prepareCsvImportRegressionUpdate(TestNamespace ns, T entity) {
+    entity.setDescription("Updated by CSV import regression - " + ns.shortPrefix());
+    return entity;
+  }
+
   // ===================================================================
   // ABSTRACT CSV HELPER METHODS - Override in subclasses
   // Each entity type has different CSV structure and fields
@@ -5511,6 +5550,19 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     }
   }
 
+  @SuppressWarnings("unchecked")
+  private void persistEntityWithoutChangeDescription(String entityType, EntityInterface entity) {
+    // These integration tests run in-process with the OpenMetadata server, so this can seed
+    // persisted state that is not reachable through public APIs. invalidateCacheForEntity
+    // drops the cross-thread Guava L1 entry and bumps the write epoch, which is what the
+    // CSV import request (handled on a different Jetty thread) actually reads through.
+    EntityRepository<EntityInterface> repository =
+        (EntityRepository<EntityInterface>) Entity.getEntityRepository(entityType);
+    repository.getDao().update(entity);
+    EntityRepository.invalidateCacheForEntity(
+        entityType, entity.getId(), entity.getFullyQualifiedName());
+  }
+
   /**
    * Validate CSV structure and headers.
    *
@@ -5666,6 +5718,57 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     } catch (org.openmetadata.sdk.exceptions.OpenMetadataException e) {
       fail("Import/export round-trip failed: " + e.getMessage());
     }
+  }
+
+  @Test
+  void test_importCsv_skipsSessionConsolidationWhenChangeDescriptionIsMissing(TestNamespace ns) {
+    Assumptions.assumeTrue(supportsImportExport, "Entity does not support import/export");
+    Assumptions.assumeTrue(
+        supportsCsvImportSessionConsolidationRegression,
+        "Entity CSV import does not update the same entity through session consolidation");
+    Assumptions.assumeTrue(supportsPatch, "Entity does not support patch operations");
+
+    org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
+    Assumptions.assumeTrue(service != null, "Entity service not provided");
+
+    EntityInterface entity = createCsvImportRegressionEntity(ns);
+    entity.setDescription("Versioned for CSV import regression");
+    EntityInterface versioned = patchCsvImportRegressionEntity(entity);
+    Double versionBeforeImport = versioned.getVersion();
+    String fqn = versioned.getFullyQualifiedName();
+    String entityType = getCsvImportRegressionEntityType();
+
+    versioned.setChangeDescription(null);
+    versioned.setIncrementalChangeDescription(null);
+    persistEntityWithoutChangeDescription(entityType, versioned);
+
+    String csvData = generateCsvImportRegressionData(ns, versioned);
+    Assumptions.assumeTrue(
+        csvData != null && !csvData.isBlank(), "Entity does not provide CSV data generation");
+
+    String containerName = getCsvImportContainerName(ns, versioned);
+    Assumptions.assumeTrue(containerName != null, "Container name not provided");
+
+    CsvImportResult importResult =
+        JsonUtils.readValue(
+            importCsvForEntity(containerName, csvData, false), CsvImportResult.class);
+
+    assertEquals(
+        ApiStatus.SUCCESS,
+        importResult.getStatus(),
+        "Import should succeed: " + importResult.getImportResultsCsv());
+    assertEquals(0, importResult.getNumberOfRowsFailed());
+
+    EntityInterface updated = getCsvImportRegressionEntityByName(fqn);
+    assertTrue(
+        updated.getVersion() > versionBeforeImport, "CSV import should create a new version");
+    assertNotNull(updated.getChangeDescription(), "CSV import should record a changeDescription");
+    assertNotNull(
+        updated.getChangeDescription().getPreviousVersion(),
+        "CSV import should record a previousVersion");
+    assertTrue(
+        updated.getChangeDescription().getPreviousVersion() >= versionBeforeImport,
+        "CSV import should skip consolidation and avoid rolling back to an older session version");
   }
 
   // ===================================================================
