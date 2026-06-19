@@ -187,6 +187,28 @@ test.describe('Long Description Visibility', () => {
     await verifyDescriptionRequiresScroll(descContainer, page);
   });
 
+  test('Domain description comment-thread button opens the activity feed drawer', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    await selectDomain(page, domain.responseData);
+
+    const descContainer = page.getByTestId('asset-description-container');
+    await expect(descContainer).toBeVisible();
+
+    await descContainer.getByTestId('description-thread').click();
+
+    const drawer = page.locator('.feed-drawer');
+    await expect(drawer).toBeVisible();
+    await expect(drawer.locator('#thread-panel')).toBeVisible();
+
+    await drawer.getByRole('tab', { name: 'Conversations' }).click();
+    await drawer.getByTestId('closeDrawer').click();
+
+    await expect(drawer).toBeHidden();
+  });
+
   // ── Data Product ──
 
   test('Data Product truncates long description and end of text is not visible before expand', async ({
