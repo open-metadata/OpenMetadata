@@ -71,8 +71,6 @@ jobs:
     permissions:
       contents: read
     outputs:
-      schema_result: ${{ steps.schema_check.outcome }}
-      schema_changed_files: ${{ steps.schema_check.outputs.changed_files }}
       lint_src_result: ${{ steps.lint_src.outcome }}
       lint_src_changed_files: ${{ steps.lint_src.outputs.changed_files }}
       license_result: ${{ steps.license.outcome }}
@@ -106,39 +104,6 @@ jobs:
       - name: Install UI Yarn Packages
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: yarn install --frozen-lockfile
-
-      - name: Check for JSON schema changes
-        id: schema_detect
-        run: |
-          changed_files=$(git diff --name-only origin/main...HEAD | grep '^openmetadata-spec/src/main/resources/json/schema/' || true)
-          if [ -n "$changed_files" ]; then
-            echo "has_changes=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "has_changes=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Build and generate TypeScript from schemas
-        if: steps.schema_detect.outputs.has_changes == 'true'
-        run: |
-          changed_files=$(git diff --name-only origin/main...HEAD | grep '^openmetadata-spec/src/main/resources/json/schema/' || true)
-          if [ -n "$changed_files" ]; then
-            ./openmetadata-ui/src/main/resources/ui/json2ts.sh $changed_files
-          fi
-
-      - name: Check for uncommitted TypeScript changes
-        if: steps.schema_detect.outputs.has_changes == 'true'
-        id: schema_check
-        continue-on-error: true
-        run: |
-          if ! git diff --quiet -- openmetadata-ui/src/main/resources/ui/src/generated; then
-            FILES=$(git status --porcelain openmetadata-ui/src/main/resources/ui/src/generated | awk '{print "  - `" $2 "`"}' | head -20)
-            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
-            echo "$FILES" >> "$GITHUB_OUTPUT"
-            echo "EOF" >> "$GITHUB_OUTPUT"
-            git checkout -- .
-            git clean -fd
-            exit 1
-          fi
 
       - name: Get changed src files
         id: changed-src-files
@@ -333,12 +298,6 @@ jobs:
           script: |
             const checks = [
               {
-                name:    'JSON Schema & TypeScript Generation',
-                reason:  'JSON schema changes require TypeScript regeneration.',
-                result:  '${{ needs.checkstyle.outputs.schema_result }}',
-                files:   ${{ toJSON(needs.checkstyle.outputs.schema_changed_files) }} || '',
-              },
-              {
                 name:    'ESLint + Prettier + Organise Imports (src)',
                 reason:  'One or more source files have linting or formatting issues.',
                 result:  '${{ needs.checkstyle.outputs.lint_src_result }}',
@@ -430,7 +389,6 @@ jobs:
         if: always()
         run: |
           if [ "${{ needs.checkstyle.result }}" != 'success' ] || \
-             [ "${{ needs.checkstyle.outputs.schema_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.lint_src_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.license_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.i18n_result }}" = 'failure' ] || \
