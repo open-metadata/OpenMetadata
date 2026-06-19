@@ -126,11 +126,19 @@ public class LineageResource {
 
   private void authorizeLineageReference(
       SecurityContext securityContext, String entityType, String entityFQN) {
-    authorizeLineageReference(securityContext, getLineageReferenceByName(entityType, entityFQN));
+    authorizeLineageReference(
+        securityContext, getLineageReferenceByName(entityType, entityFQN, Include.NON_DELETED));
   }
 
-  private EntityReference getLineageReferenceByName(String entityType, String entityFQN) {
-    return Entity.getEntityReferenceByName(entityType, entityFQN, Include.NON_DELETED);
+  private void authorizeLineageReference(
+      SecurityContext securityContext, String entityType, String entityFQN, Include include) {
+    authorizeLineageReference(
+        securityContext, getLineageReferenceByName(entityType, entityFQN, include));
+  }
+
+  private EntityReference getLineageReferenceByName(
+      String entityType, String entityFQN, Include include) {
+    return Entity.getEntityReferenceByName(entityType, entityFQN, include);
   }
 
   @GET
@@ -969,8 +977,8 @@ public class LineageResource {
           @PathParam("toFQN")
           String toFQN,
       @Valid LineageDetails lineageDetails) {
-    authorizeLineageReference(securityContext, fromEntity, fromFQN);
-    authorizeLineageReference(securityContext, toEntity, toFQN);
+    authorizeLineageReference(securityContext, fromEntity, fromFQN, Include.ALL);
+    authorizeLineageReference(securityContext, toEntity, toFQN, Include.ALL);
     dao.addLineageByFQN(
         fromEntity,
         fromFQN,
@@ -1345,7 +1353,7 @@ public class LineageResource {
               schema = @Schema(type = "string", example = "ViewLineage"))
           @PathParam("lineageSource")
           String lineageSource) {
-    authorizeLineageReference(securityContext, entityType, entityFQN);
+    authorizeLineageReference(securityContext, entityType, entityFQN, Include.ALL);
     dao.deleteLineageBySourceByFQN(
         entityType, entityFQN, lineageSource, securityContext.getUserPrincipal().getName());
     return Response.status(Status.OK).build();

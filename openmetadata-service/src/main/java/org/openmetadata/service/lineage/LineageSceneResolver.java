@@ -32,6 +32,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageBand;
 import org.openmetadata.schema.api.lineage.LineageLens;
@@ -86,7 +90,10 @@ public class LineageSceneResolver {
           Entity.WORKSHEET);
   private static final int ROOT_ASSET_PAGE_SIZE = 25;
   private static final int FOCUSED_CHILD_LINEAGE_LOOKUP_LIMIT = 50;
+  private static final int FOCUSED_CHILD_LINEAGE_PARALLELISM = 6;
   private static final int FOCUSED_CHILD_LINEAGE_SIZE = 25;
+  private static final int CONTAINER_TOTAL_LOOKUP_LIMIT = 100;
+  private static final int CONTAINER_TOTAL_LOOKUP_PARALLELISM = 6;
   private static final int FIELD_ENDPOINTS_PER_NODE = 10;
   private static final int FIELD_EDGE_LIMIT = 120;
 
@@ -334,20 +341,13 @@ public class LineageSceneResolver {
             serviceFqn,
             Entity.DATABASE,
             includeDeleted,
-            Math.max(1, size + 1));
-    for (Map<String, Object> databaseEntity : databases.assets()) {
-      SceneAsset database = toAsset(databaseEntity);
-      if (database.self() == null || nullOrEmpty(database.self().fqn())) {
-        continue;
-      }
-      int tableCount =
-          searchRootAssets(
-                  "database.fullyQualifiedName",
-                  database.self().fqn(),
-                  Entity.TABLE,
-                  includeDeleted,
-                  0)
-              .total();
+            Math.max(1, Math.min(size + 1, CONTAINER_TOTAL_LOOKUP_LIMIT)));
+    List<SceneAsset> databaseAssets = toCountableContainerAssets(databases.assets());
+    Map<String, Integer> tableCounts =
+        fetchContainerAssetCounts(
+            databaseAssets, "database.fullyQualifiedName", Entity.TABLE, includeDeleted);
+    for (SceneAsset database : databaseAssets) {
+      int tableCount = tableCounts.getOrDefault(database.self().fqn(), 0);
       if (tableCount > 0) {
         addSyntheticCountEntity(
             lineage,
@@ -372,20 +372,16 @@ public class LineageSceneResolver {
             databaseFqn,
             Entity.DATABASE_SCHEMA,
             includeDeleted,
-            Math.max(1, size + 1));
-    for (Map<String, Object> schemaEntity : schemas.assets()) {
-      SceneAsset schema = toAsset(schemaEntity);
-      if (schema.self() == null || nullOrEmpty(schema.self().fqn())) {
-        continue;
-      }
-      int tableCount =
-          searchRootAssets(
-                  "databaseSchema.fullyQualifiedName.keyword",
-                  schema.self().fqn(),
-                  Entity.TABLE,
-                  includeDeleted,
-                  0)
-              .total();
+            Math.max(1, Math.min(size + 1, CONTAINER_TOTAL_LOOKUP_LIMIT)));
+    List<SceneAsset> schemaAssets = toCountableContainerAssets(schemas.assets());
+    Map<String, Integer> tableCounts =
+        fetchContainerAssetCounts(
+            schemaAssets,
+            "databaseSchema.fullyQualifiedName.keyword",
+            Entity.TABLE,
+            includeDeleted);
+    for (SceneAsset schema : schemaAssets) {
+      int tableCount = tableCounts.getOrDefault(schema.self().fqn(), 0);
       if (tableCount > 0) {
         addSyntheticCountEntity(
             lineage,
@@ -398,6 +394,50 @@ public class LineageSceneResolver {
             null,
             null);
       }
+    }
+  }
+
+  private static List<SceneAsset> toCountableContainerAssets(List<Map<String, Object>> entities) {
+    return entities.stream()
+        .map(LineageSceneResolver::toAsset)
+        .filter(asset -> asset.self() != null && !nullOrEmpty(asset.self().fqn()))
+        .toList();
+  }
+
+  private static Map<String, Integer> fetchContainerAssetCounts(
+      List<SceneAsset> containers, String fieldName, String entityType, boolean includeDeleted)
+      throws IOException {
+    if (containers.isEmpty()) {
+      return Map.of();
+    }
+    ExecutorService executor =
+        Executors.newFixedThreadPool(
+            Math.min(CONTAINER_TOTAL_LOOKUP_PARALLELISM, containers.size()));
+    try {
+      Map<String, CompletableFuture<Integer>> futures = new LinkedHashMap<>();
+      for (SceneAsset container : containers) {
+        String containerFqn = container.self().fqn();
+        futures.put(
+            containerFqn,
+            CompletableFuture.supplyAsync(
+                () -> {
+                  try {
+                    return searchRootAssets(fieldName, containerFqn, entityType, includeDeleted, 0)
+                        .total();
+                  } catch (IOException exception) {
+                    throw new CompletionException(exception);
+                  }
+                },
+                executor));
+      }
+
+      Map<String, Integer> counts = new LinkedHashMap<>();
+      for (Map.Entry<String, CompletableFuture<Integer>> entry : futures.entrySet()) {
+        counts.put(entry.getKey(), joinFuture(entry.getValue()));
+      }
+      return counts;
+    } finally {
+      executor.shutdownNow();
     }
   }
 
@@ -437,27 +477,62 @@ public class LineageSceneResolver {
       String queryFilter,
       boolean includeDeleted)
       throws IOException {
-    int lookupCount = 0;
-    for (LineageSeed seed : lineageSeeds) {
-      if (lookupCount >= FOCUSED_CHILD_LINEAGE_LOOKUP_LIMIT) {
-        return;
-      }
-      if (nullOrEmpty(seed.fqn()) || nullOrEmpty(seed.entityType())) {
-        continue;
-      }
-      mergeLineage(
-          lineage,
-          fetchLineage(
-              seed.fqn(),
-              seed.entityType(),
-              lens,
-              upstreamDepth,
-              downstreamDepth,
-              FOCUSED_CHILD_LINEAGE_SIZE,
-              queryFilter,
-              includeDeleted));
-      lookupCount++;
+    List<LineageSeed> seeds =
+        lineageSeeds.stream()
+            .filter(seed -> !nullOrEmpty(seed.fqn()) && !nullOrEmpty(seed.entityType()))
+            .limit(FOCUSED_CHILD_LINEAGE_LOOKUP_LIMIT)
+            .toList();
+    if (seeds.isEmpty()) {
+      return;
     }
+    ExecutorService executor =
+        Executors.newFixedThreadPool(Math.min(FOCUSED_CHILD_LINEAGE_PARALLELISM, seeds.size()));
+    try {
+      List<CompletableFuture<SearchLineageResult>> futures =
+          seeds.stream()
+              .map(
+                  seed ->
+                      CompletableFuture.supplyAsync(
+                          () -> {
+                            try {
+                              return fetchLineage(
+                                  seed.fqn(),
+                                  seed.entityType(),
+                                  lens,
+                                  upstreamDepth,
+                                  downstreamDepth,
+                                  FOCUSED_CHILD_LINEAGE_SIZE,
+                                  queryFilter,
+                                  includeDeleted);
+                            } catch (IOException exception) {
+                              throw new CompletionException(exception);
+                            }
+                          },
+                          executor))
+              .toList();
+      for (CompletableFuture<SearchLineageResult> future : futures) {
+        mergeLineage(lineage, joinLineageFuture(future));
+      }
+    } finally {
+      executor.shutdownNow();
+    }
+  }
+
+  private static <T> T joinFuture(CompletableFuture<T> future) throws IOException {
+    try {
+      return future.join();
+    } catch (CompletionException exception) {
+      Throwable cause = exception.getCause();
+      if (cause instanceof IOException ioException) {
+        throw ioException;
+      }
+      throw new IOException(cause);
+    }
+  }
+
+  private static SearchLineageResult joinLineageFuture(
+      CompletableFuture<SearchLineageResult> future) throws IOException {
+    return joinFuture(future);
   }
 
   private static void mergeLineage(SearchLineageResult target, SearchLineageResult source) {

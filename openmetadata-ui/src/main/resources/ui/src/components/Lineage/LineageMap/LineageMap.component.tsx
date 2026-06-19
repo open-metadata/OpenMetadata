@@ -101,6 +101,7 @@ const ZOOM_IN_THRESHOLD = 1.9;
 const ZOOM_OUT_THRESHOLD = 0.5;
 const SEMANTIC_ZOOM_COOLDOWN = 450;
 const PROGRAMMATIC_ZOOM_SUPPRESSION_MS = 1200;
+const SCENE_CACHE_LIMIT = 50;
 const CONTROL_INSET_PADDING = 0.2;
 const SCENE_LAYER_FIT_VIEW_MIN_ZOOM = MIN_ZOOM_VALUE;
 const SCENE_ASSET_FIT_VIEW_MIN_ZOOM = 0.55;
@@ -327,14 +328,45 @@ const getSceneCacheKey = (request: SceneRequest) =>
     request.entityType ?? '',
   ].join('|');
 
+const getCachedScene = (
+  cache: Map<string, LineageScene>,
+  key: string
+): LineageScene | undefined => {
+  const cachedScene = cache.get(key);
+  if (!cachedScene) {
+    return undefined;
+  }
+  cache.delete(key);
+  cache.set(key, cachedScene);
+
+  return cachedScene;
+};
+
+const setCachedScene = (
+  cache: Map<string, LineageScene>,
+  key: string,
+  value: LineageScene
+) => {
+  cache.delete(key);
+  cache.set(key, value);
+  if (cache.size > SCENE_CACHE_LIMIT) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey) {
+      cache.delete(oldestKey);
+    }
+  }
+};
+
 const toFlowEdge = (
-  scene: LineageScene,
+  nodeById: Map<string, LineageSceneNode>,
   edge: LineageScene['edges'][number]
 ): Edge => {
   const source = getEndpointNodeId(edge.from);
   const target = getEndpointNodeId(edge.to);
   const sourceHandle = getEndpointHandle(edge.from);
   const targetHandle = getEndpointHandle(edge.to);
+  const sourceNode = nodeById.get(source);
+  const targetNode = nodeById.get(target);
 
   return {
     id: edge.id,
@@ -347,17 +379,13 @@ const toFlowEdge = (
       edge: {
         fromEntity: {
           id: source,
-          type:
-            scene.nodes.find((node) => node.id === source)?.entityType ?? '',
-          fullyQualifiedName: scene.nodes.find((node) => node.id === source)
-            ?.fullyQualifiedName,
+          type: sourceNode?.entityType ?? '',
+          fullyQualifiedName: sourceNode?.fullyQualifiedName,
         },
         toEntity: {
           id: target,
-          type:
-            scene.nodes.find((node) => node.id === target)?.entityType ?? '',
-          fullyQualifiedName: scene.nodes.find((node) => node.id === target)
-            ?.fullyQualifiedName,
+          type: targetNode?.entityType ?? '',
+          fullyQualifiedName: targetNode?.fullyQualifiedName,
         },
         source: edge.source,
         sqlQuery: edge.sqlQuery,
@@ -767,6 +795,7 @@ const LineageMapCanvas = ({
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance>();
   const cacheRef = useRef(new Map<string, LineageScene>());
+  const sceneRequestIdRef = useRef(0);
   const lastSemanticZoomAtRef = useRef(0);
   const previousZoomRef = useRef<number>();
   const semanticZoomSuppressedRef = useRef(false);
@@ -848,10 +877,13 @@ const LineageMapCanvas = ({
 
   const fetchScene = useCallback(
     async (nextRequest: SceneRequest) => {
+      const requestId = sceneRequestIdRef.current + 1;
+      sceneRequestIdRef.current = requestId;
       const cacheKey = getSceneCacheKey(nextRequest);
-      const cachedScene = cacheRef.current.get(cacheKey);
+      const cachedScene = getCachedScene(cacheRef.current, cacheKey);
       if (cachedScene) {
         setScene(cachedScene);
+        setLoading(false);
 
         return;
       }
@@ -861,12 +893,18 @@ const LineageMapCanvas = ({
           ...nextRequest,
           config,
         });
-        cacheRef.current.set(cacheKey, response);
-        setScene(response);
+        setCachedScene(cacheRef.current, cacheKey, response);
+        if (sceneRequestIdRef.current === requestId) {
+          setScene(response);
+        }
       } catch (error) {
-        showErrorToast(error as AxiosError);
+        if (sceneRequestIdRef.current === requestId) {
+          showErrorToast(error as AxiosError);
+        }
       } finally {
-        setLoading(false);
+        if (sceneRequestIdRef.current === requestId) {
+          setLoading(false);
+        }
       }
     },
     [config]
@@ -884,7 +922,9 @@ const LineageMapCanvas = ({
           const cacheKey = getSceneCacheKey(nextRequest);
           if (!cacheRef.current.has(cacheKey)) {
             getLineageScene({ ...nextRequest, config })
-              .then((response) => cacheRef.current.set(cacheKey, response))
+              .then((response) =>
+                setCachedScene(cacheRef.current, cacheKey, response)
+              )
               .catch(() => undefined);
           }
         });
@@ -977,7 +1017,8 @@ const LineageMapCanvas = ({
     setHoveredFieldId(undefined);
     setSelectedColumn(undefined);
     setTracedColumns(new Set());
-    const nextEdges = scene.edges.map((edge) => toFlowEdge(scene, edge));
+    const nodeById = new Map(scene.nodes.map((node) => [node.id, node]));
+    const nextEdges = scene.edges.map((edge) => toFlowEdge(nodeById, edge));
     setColumnsHavingLineage(getColumnsHavingLineage(scene.edges));
     setColumnsInCurrentPages(new Map());
 
