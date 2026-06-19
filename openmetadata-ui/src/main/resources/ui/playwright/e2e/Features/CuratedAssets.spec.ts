@@ -203,8 +203,9 @@ test.describe('Curated Assets Widget', () => {
       );
 
       await expect(
-        landingCuratedAssetsWidget
-          .getByText(`${entityType.displayName} - Display Name Filter`)
+        landingCuratedAssetsWidget.getByText(
+          `${entityType.displayName} - Display Name Filter`
+        )
       ).toBeVisible();
 
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
@@ -395,9 +396,7 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      landingCuratedAssetsWidget
-        .locator('.entity-list-item-title')
-        .first()
+      landingCuratedAssetsWidget.locator('.entity-list-item-title').first()
     ).toBeVisible();
 
     // Navigate back, delete the widget and save at the end
@@ -513,9 +512,7 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      landingCuratedAssetsWidget
-        .locator('.entity-list-item-title')
-        .first()
+      landingCuratedAssetsWidget.locator('.entity-list-item-title').first()
     ).toBeVisible();
 
     // Navigate back, delete the widget and save at the end
@@ -658,9 +655,7 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      landingCuratedAssetsWidget
-        .locator('.entity-list-item-title')
-        .first()
+      landingCuratedAssetsWidget.locator('.entity-list-item-title').first()
     ).toBeVisible();
 
     // Navigate back, delete the widget and save at the end

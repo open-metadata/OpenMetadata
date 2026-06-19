@@ -705,7 +705,9 @@ export const verifyDataProductCountInDataProductWidget = async (
   await expect
     .poll(
       async () => {
-        const dataProductWidget = page.getByTestId('KnowledgePanel.DataProducts');
+        const dataProductWidget = page.getByTestId(
+          'KnowledgePanel.DataProducts'
+        );
         await dataProductWidget.scrollIntoViewIfNeeded().catch(() => undefined);
         const isWidgetVisible = await dataProductWidget
           .isVisible()
