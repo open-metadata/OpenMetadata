@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { dump as yamlDump, load as yamlLoad } from 'js-yaml';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { performAdminLogin } from '../../utils/admin';
@@ -20,6 +21,23 @@ import {
   uuid,
 } from '../../utils/common';
 import { test } from '../fixtures/pages';
+
+// Rename an exported ODPS document by mutating only the product name fields
+// (product.details.<lang>.name / productID) rather than blind string-replacing
+// the slug everywhere it might appear (description, etc.).
+const renameOdpsProduct = (yamlContent: string, newName: string): string => {
+  const doc = yamlLoad(yamlContent) as {
+    product?: {
+      details?: Record<string, { name?: string; productID?: string }>;
+    };
+  };
+  Object.values(doc?.product?.details ?? {}).forEach((detail) => {
+    detail.name = newName;
+    detail.productID = newName;
+  });
+
+  return yamlDump(doc);
+};
 
 // ODPS (Open Data Product Specification) export/import and the data-product
 // metadata-edit modal are the critical surface of the data_products feature.
@@ -170,7 +188,7 @@ test.describe('DataProduct ODPS — REST contract', () => {
     // export → import round-trip preserves the mapped fields, without colliding
     // with the source product.
     const newName = `pw-odps-imported-${uuid()}`;
-    const importYaml = yaml.split(dp.name).join(newName);
+    const importYaml = renameOdpsProduct(yaml, newName);
 
     const imported = await apiContext.post('/api/v1/dataProducts/odps/yaml', {
       headers: YAML_HEADERS,
