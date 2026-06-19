@@ -265,9 +265,11 @@ public class McpCallbackServlet extends HttpServlet {
   }
 
   /**
-   * Returns {@code true} when the request Origin is absent (same-origin browsers may omit it for
-   * non-CORS requests) or matches this server's own base URL. A present, non-matching Origin
-   * indicates a cross-origin form submission and must be rejected.
+   * Returns {@code true} when the request {@code Origin} is absent (same-origin, allowed) or
+   * matches this server's own origin. A present, non-matching {@code Origin} is cross-origin and
+   * must be rejected. When the server origin cannot be resolved (misconfiguration, startup race,
+   * DB error) and a non-null {@code Origin} is present, the request is rejected rather than
+   * silently bypassing CSRF protection.
    */
   boolean isOriginAllowed(HttpServletRequest request) {
     String origin = request.getHeader("Origin");
@@ -275,7 +277,13 @@ public class McpCallbackServlet extends HttpServlet {
       return true;
     }
     String serverOrigin = resolveServerOrigin();
-    return serverOrigin == null || origin.equals(serverOrigin);
+    if (serverOrigin == null) {
+      LOG.warn(
+          "MCP OAuth CSRF check: server origin unknown; " + "rejecting cross-origin POST from '{}'",
+          origin);
+      return false;
+    }
+    return origin.equals(serverOrigin);
   }
 
   String resolveServerOrigin() {
@@ -296,7 +304,14 @@ public class McpCallbackServlet extends HttpServlet {
       }
       URI uri = URI.create(baseUrl);
       int port = uri.getPort();
-      return uri.getScheme() + "://" + uri.getHost() + (port != -1 ? ":" + port : "");
+      // Browsers omit default ports from the Origin header (443 for https, 80 for http).
+      // Strip them from the reconstructed origin so the comparison cannot fail on
+      // a baseUrl written with an explicit default port (e.g. https://example.com:443).
+      boolean isDefaultPort =
+          ("https".equals(uri.getScheme()) && port == 443)
+              || ("http".equals(uri.getScheme()) && port == 80);
+      String portPart = (port != -1 && !isDefaultPort) ? ":" + port : "";
+      return uri.getScheme() + "://" + uri.getHost() + portPart;
     } catch (Exception e) {
       LOG.warn("Could not resolve server origin for CSRF check: {}", e.getMessage());
       return null;

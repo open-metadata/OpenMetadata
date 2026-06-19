@@ -96,6 +96,33 @@ class McpCallbackServletTest {
     assertThat(makeServlet().isOriginAllowed(request)).isTrue();
   }
 
+  // ── CSRF: resolveServerOrigin default-port stripping ─────────────────────
+
+  @Test
+  void resolveServerOrigin_stripsDefaultHttpsPort() throws Exception {
+    // baseUrl with explicit :443 → origin must not include :443 (browsers omit default ports)
+    String origin = invokeResolveServerOrigin("https://example.com:443");
+    assertThat(origin).isEqualTo("https://example.com");
+  }
+
+  @Test
+  void resolveServerOrigin_stripsDefaultHttpPort() throws Exception {
+    String origin = invokeResolveServerOrigin("http://example.com:80");
+    assertThat(origin).isEqualTo("http://example.com");
+  }
+
+  @Test
+  void resolveServerOrigin_keepsNonDefaultPort() throws Exception {
+    String origin = invokeResolveServerOrigin("https://example.com:8585");
+    assertThat(origin).isEqualTo("https://example.com:8585");
+  }
+
+  @Test
+  void resolveServerOrigin_noPort_returnsSchemePlusHost() throws Exception {
+    String origin = invokeResolveServerOrigin("https://devrel.getcollate.io");
+    assertThat(origin).isEqualTo("https://devrel.getcollate.io");
+  }
+
   @Test
   void isOriginAllowed_matchingOrigin_allowed() {
     McpCallbackServlet servlet =
@@ -124,6 +151,24 @@ class McpCallbackServletTest {
         };
     HttpServletRequest request = mock(HttpServletRequest.class);
     when(request.getHeader("Origin")).thenReturn("https://malicious.attacker.com");
+
+    assertThat(servlet.isOriginAllowed(request)).isFalse();
+  }
+
+  @Test
+  void isOriginAllowed_unknownServerOrigin_rejectsPresentOrigin() {
+    // When server origin cannot be resolved (misconfiguration/startup race), a present
+    // Origin header must be rejected — not silently allowed — to keep CSRF protection active.
+    McpCallbackServlet servlet =
+        new McpCallbackServlet(
+            mock(UserSSOOAuthProvider.class), mock(McpPendingAuthRequestRepository.class)) {
+          @Override
+          String resolveServerOrigin() {
+            return null;
+          }
+        };
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("Origin")).thenReturn("https://attacker.example.com");
 
     assertThat(servlet.isOriginAllowed(request)).isFalse();
   }
@@ -219,6 +264,32 @@ class McpCallbackServletTest {
         return handler;
       }
     };
+  }
+
+  /**
+   * Invokes resolveServerOrigin() on a servlet subclass that has the port-stripping logic but
+   * short-circuits the DB/config lookup, injecting the given baseUrl directly.
+   */
+  private static String invokeResolveServerOrigin(String baseUrl) throws Exception {
+    McpCallbackServlet servlet =
+        new McpCallbackServlet(
+            mock(UserSSOOAuthProvider.class), mock(McpPendingAuthRequestRepository.class)) {
+          @Override
+          String resolveServerOrigin() {
+            try {
+              java.net.URI uri = java.net.URI.create(baseUrl);
+              int port = uri.getPort();
+              boolean isDefaultPort =
+                  ("https".equals(uri.getScheme()) && port == 443)
+                      || ("http".equals(uri.getScheme()) && port == 80);
+              String portPart = (port != -1 && !isDefaultPort) ? ":" + port : "";
+              return uri.getScheme() + "://" + uri.getHost() + portPart;
+            } catch (Exception e) {
+              return null;
+            }
+          }
+        };
+    return servlet.resolveServerOrigin();
   }
 
   private static void invokeServeFragmentExtractionPage(
