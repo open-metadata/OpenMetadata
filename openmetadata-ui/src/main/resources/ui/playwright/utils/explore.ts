@@ -195,9 +195,11 @@ export const expandServiceInExploreTree = async (
   serviceExpanded = false
 ) => {
   if (!serviceExpanded) {
-    // Check that the service exists in the explore tree
+    // Expanding the serviceType groups its services. Tree counts aggregate over
+    // the dataAsset index now, so the request carries the serviceType filter
+    // (it is no longer an index=database lookup).
     const serviceNameRes = page.waitForResponse(
-      '/api/v1/search/query?q=&index=database&from=0&size=0*mysql*'
+      '/api/v1/search/query?*index=dataAsset*serviceType*'
     );
     // Tree rows carry count badges, so match by testid instead of exact text
     await page
