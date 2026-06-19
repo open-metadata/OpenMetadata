@@ -1039,7 +1039,8 @@ export const isRecognizerFeedbackTask = (task: TaskEntity) => {
 
   return (
     hasFeedbackPayload &&
-    (task.type === TaskEntityType.DataQualityReview ||
+    (task.type === TaskEntityType.RecognizerFeedbackApproval ||
+      task.type === TaskEntityType.DataQualityReview ||
       taskType === 'RecognizerFeedbackApproval')
   );
 };

@@ -356,7 +356,7 @@ public class MigrationUtil {
       case RequestApproval -> new TypeAndCategory(
           TaskEntityType.GlossaryApproval, TaskCategory.Approval);
       case RecognizerFeedbackApproval -> new TypeAndCategory(
-          TaskEntityType.DataQualityReview, TaskCategory.Review);
+          TaskEntityType.RecognizerFeedbackApproval, TaskCategory.Review);
       case RequestDescription, UpdateDescription -> new TypeAndCategory(
           TaskEntityType.DescriptionUpdate, TaskCategory.MetadataUpdate);
       case RequestTag, UpdateTag -> new TypeAndCategory(
