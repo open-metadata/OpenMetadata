@@ -187,6 +187,9 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
 
   private void setDefaultFields(StoredProcedure storedProcedure) {
     EntityReference schemaRef = getContainer(storedProcedure.getId());
+    if (schemaRef == null || schemaRef.getId() == null) {
+      return;
+    }
     DatabaseSchema schema = Entity.getEntity(schemaRef, "", ALL);
     storedProcedure
         .withDatabaseSchema(schemaRef)

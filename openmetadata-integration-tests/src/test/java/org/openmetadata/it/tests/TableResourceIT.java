@@ -110,6 +110,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     // Table CSV export exports columns from a specific table, not tables from a schema
     // Enable import/export for table column CSV testing
     supportsImportExport = true;
+    supportsCsvImportSessionConsolidationRegression = true;
     supportsBatchImport = true;
     supportsRecursiveImport = false; // Tables don't support recursive import
     supportsLifeCycle = true;
@@ -276,6 +277,21 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
       lastCreatedTable = createEntity(tableRequest);
     }
     return lastCreatedTable.getFullyQualifiedName();
+  }
+
+  @Override
+  protected String getCsvImportContainerName(
+      TestNamespace ns, org.openmetadata.schema.EntityInterface entity) {
+    return entity.getFullyQualifiedName();
+  }
+
+  @Override
+  protected Table prepareCsvImportRegressionUpdate(TestNamespace ns, Table entity) {
+    entity
+        .getColumns()
+        .get(0)
+        .setDescription("Updated by CSV import regression - " + ns.shortPrefix());
+    return entity;
   }
 
   // ===================================================================
