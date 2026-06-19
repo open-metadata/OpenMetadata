@@ -224,6 +224,7 @@ describe('MyDataWidget component', () => {
     await waitFor(() => {
       expect(applySortToData).toHaveBeenCalledWith([], expect.any(String));
     });
+
     expect(screen.getByTestId('entity-list-skeleton')).toHaveAttribute(
       'data-loading',
       'false'
