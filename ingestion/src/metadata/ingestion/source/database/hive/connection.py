@@ -51,7 +51,7 @@ from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import (
     test_connection_db_schema_sources,
 )
-from metadata.ingestion.models.custom_pydantic import CustomSecretStr
+from metadata.ingestion.models.custom_pydantic import _CustomSecretStr
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.hive.custom_hive_connection import (
     CustomHiveConnection,
@@ -78,7 +78,7 @@ class HiveConnection(BaseConnection[HiveConnectionConfig, Engine]):
         if connection.username and connection.auth and connection.auth.value in ("LDAP", "CUSTOM"):
             url += quote_plus(connection.username)
             if not connection.password:
-                connection.password = CustomSecretStr("")  # pyright: ignore[reportAttributeAccessIssue]
+                connection.password = _CustomSecretStr("")
             url += f":{quote_plus(connection.password.get_secret_value())}"  # pyright: ignore[reportOptionalMemberAccess]
             url += "@"
 

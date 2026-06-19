@@ -45,7 +45,7 @@ from metadata.ingestion.connections.builders import (
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.secrets import connection_with_options_secrets
 from metadata.ingestion.connections.test_connections import test_connection_db_common
-from metadata.ingestion.models.custom_pydantic import CustomSecretStr
+from metadata.ingestion.models.custom_pydantic import _CustomSecretStr
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.oracle.queries import (
     CHECK_ACCESS_TO_ALL,
@@ -164,7 +164,7 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
         if connection.username:
             url += f"{quote_plus(connection.username)}"
             if not connection.password:
-                connection.password = CustomSecretStr("")
+                connection.password = _CustomSecretStr("")
             url += f":{quote_plus(connection.password.get_secret_value())}"
             url += "@"
 
