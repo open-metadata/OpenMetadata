@@ -26,6 +26,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import CoreInputWidget from 'src/components/common/FormBuilderV1/widgets/CoreInputWidget';
 import {
   EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA,
   INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA,
@@ -94,9 +95,6 @@ const CoreWrapIfAdditionalTemplate = lazy(() =>
 );
 const CoreCheckboxWidget = lazy(
   () => import('../../../../common/FormBuilderV1/widgets/CoreCheckboxWidget')
-);
-const CoreInputWidget = lazy(
-  () => import('../../../../common/FormBuilderV1/widgets/CoreInputWidget')
 );
 const CorePasswordWidget = lazy(
   () => import('../../../../common/FormBuilderV1/widgets/CorePasswordWidget')

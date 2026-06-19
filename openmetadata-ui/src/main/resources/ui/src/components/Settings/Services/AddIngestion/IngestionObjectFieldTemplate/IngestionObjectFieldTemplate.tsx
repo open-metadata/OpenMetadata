@@ -295,7 +295,7 @@ const SectionCard = ({ section }: { section: IngestionSectionConfig }) => {
 
   return (
     <Card
-      className="tw:p-6"
+      className="tw:p-5"
       color={active ? 'brandOutlined' : 'default'}
       data-testid={`ingestion-section-${section.key}`}
       onBlurCapture={handleBlur}

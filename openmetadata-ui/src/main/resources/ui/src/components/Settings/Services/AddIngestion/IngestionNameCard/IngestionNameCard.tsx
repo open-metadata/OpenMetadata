@@ -29,7 +29,7 @@ const IngestionNameCard = ({
 
   return (
     <div
-      className="tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:p-4 tw:shadow-xs"
+      className="tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:p-5 tw:shadow-xs"
       data-testid="ingestion-name-card">
       <div className="tw:text-sm tw:font-semibold tw:leading-6 tw:text-primary">
         {t('label.name-this-ingestion')}
