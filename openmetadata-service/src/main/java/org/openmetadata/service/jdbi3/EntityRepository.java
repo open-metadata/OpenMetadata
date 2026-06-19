@@ -410,9 +410,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private final String collectionPath;
 
-  // Fields whose change rewrites an entity's FQN: "name" (rename) and "parent"/"glossary" (move).
-  // In-session consolidation must not revert a change touching any of these.
-  private static final Set<String> FQN_AFFECTING_FIELDS = Set.of("name", "parent", "glossary");
+  // Fields whose change rewrites a glossary term's FQN during move operations.
+  private static final Set<String> GLOSSARY_TERM_MOVE_FIELDS = Set.of("parent", "glossary");
 
   @Getter public final Class<T> entityClass;
   @Getter protected final String entityType;
@@ -6761,11 +6760,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
      * This is detected by checking if the changeDescription contains a 'name' field update.
      */
     private boolean wasRenamedInSession(T original) {
-      // A rename ("name") or a move ("parent"/"glossary") both rewrite the entity FQN. Reverting
-      // either during in-session consolidation resurrects the stale FQN and strands references
-      // already repointed to the new FQN (tasks, workflow instances, tag usages), so consolidation
-      // must be skipped for both. The change may live in the main changeDescription or, when
-      // renameProcessed suppresses it there, in the incrementalChangeDescription.
+      // A rename or glossary-term move rewrites the entity FQN. Reverting either during in-session
+      // consolidation resurrects the stale FQN and strands references already repointed to the new
+      // FQN (tasks, workflow instances, tag usages), so consolidation must be skipped for both. The
+      // change may live in the main changeDescription or, when renameProcessed suppresses it there,
+      // in the incrementalChangeDescription.
       return hasFqnAffectingChange(original.getChangeDescription())
           || hasFqnAffectingChange(original.getIncrementalChangeDescription());
     }
@@ -6779,7 +6778,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
                     listOrEmpty(changeDescription.getFieldsUpdated()),
                     listOrEmpty(changeDescription.getFieldsDeleted()))
                 .flatMap(List::stream)
-                .anyMatch(fieldChange -> FQN_AFFECTING_FIELDS.contains(fieldChange.getName()));
+                .anyMatch(
+                    fieldChange ->
+                        "name".equals(fieldChange.getName())
+                            || (Entity.GLOSSARY_TERM.equals(entityType)
+                                && GLOSSARY_TERM_MOVE_FIELDS.contains(fieldChange.getName())));
       }
       return affected;
     }

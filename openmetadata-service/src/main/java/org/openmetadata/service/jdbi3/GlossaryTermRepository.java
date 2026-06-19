@@ -1280,10 +1280,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
                       validateParent();
                       updateParent(original, updated);
                       storeUpdate();
+                      postUpdate(original, updated);
                     });
             return null;
           });
-      postUpdate(original, updated);
     }
 
     private boolean validateIfTagsAreEqual(
