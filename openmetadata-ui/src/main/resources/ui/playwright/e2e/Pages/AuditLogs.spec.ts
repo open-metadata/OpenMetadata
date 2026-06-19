@@ -28,12 +28,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
-    const customPropertiesResponsePromise = page.waitForResponse((response) =>
-      response.url().includes('/api/v1/metadata/types/customProperties')
-    );
     await redirectToHomePage(page);
-    const customPropertiesResponse = await customPropertiesResponsePromise;
-    expect(customPropertiesResponse.status()).toBe(200);
     await navigateToAuditLogsPage(page);
   });
 

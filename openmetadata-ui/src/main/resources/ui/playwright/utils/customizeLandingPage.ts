@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 import {
   redirectToHomePage,
   removeLandingBanner,
@@ -18,6 +18,26 @@ import {
   visitOwnProfilePage,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
+
+const DEFAULT_LANDING_PAGE_WIDGETS = [
+  'KnowledgePanel.ActivityFeed',
+  'KnowledgePanel.DataAssets',
+  'KnowledgePanel.MyData',
+  'KnowledgePanel.KPI',
+  'KnowledgePanel.TotalAssets',
+  'KnowledgePanel.Following',
+];
+
+const LANDING_PAGE_WIDGET_SCROLL_ATTEMPTS = 8;
+const LANDING_PAGE_WIDGET_SCROLL_OFFSET = 600;
+
+const waitForNextAnimationFrame = async (page: Page) =>
+  page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        requestAnimationFrame(resolve);
+      })
+  );
 
 // Entity types mapping from CURATED_ASSETS_LIST
 export const ENTITY_TYPE_CONFIGS = [
@@ -157,14 +177,44 @@ export const removeAndCheckWidget = async (
   page: Page,
   { widgetKey }: { widgetKey: string }
 ) => {
+  const widget = page.locator(`[data-testid="${widgetKey}"]`);
+
+  await widget.scrollIntoViewIfNeeded();
+
   // Click on remove widget button
-  await page
-    .locator(`[data-testid="${widgetKey}"] [data-testid="more-options-button"]`)
-    .click();
+  await widget.locator('[data-testid="more-options-button"]').click();
 
   await page.locator('.ant-dropdown:visible [data-menu-id*="remove"]').click();
 
   await expect(page.getByTestId(`${widgetKey}`)).not.toBeVisible();
+};
+
+export const waitForLandingPageWidget = async (
+  page: Page,
+  widgetKey: string
+): Promise<Locator> => {
+  const widget = page.getByTestId(widgetKey);
+
+  for (let index = 0; index < LANDING_PAGE_WIDGET_SCROLL_ATTEMPTS; index++) {
+    if (await widget.isVisible().catch(() => false)) {
+      return widget;
+    }
+
+    if ((await widget.count()) > 0) {
+      await widget.scrollIntoViewIfNeeded().catch(() => undefined);
+
+      if (await widget.isVisible().catch(() => false)) {
+        return widget;
+      }
+    }
+
+    await page.mouse.wheel(0, LANDING_PAGE_WIDGET_SCROLL_OFFSET);
+    await waitForNextAnimationFrame(page);
+  }
+
+  await expect(widget).toBeVisible();
+
+  return widget;
 };
 
 export const checkAllDefaultWidgets = async (page: Page) => {
@@ -173,12 +223,11 @@ export const checkAllDefaultWidgets = async (page: Page) => {
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
   await expect(page.getByTestId('page-layout-v1')).toBeVisible();
-  await expect(page.getByTestId('KnowledgePanel.ActivityFeed')).toBeVisible();
-  await expect(page.getByTestId('KnowledgePanel.Following')).toBeVisible();
-  await expect(page.getByTestId('KnowledgePanel.DataAssets')).toBeVisible();
-  await expect(page.getByTestId('KnowledgePanel.MyData')).toBeVisible();
-  await expect(page.getByTestId('KnowledgePanel.KPI')).toBeVisible();
-  await expect(page.getByTestId('KnowledgePanel.TotalAssets')).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 0));
+
+  for (const widgetKey of DEFAULT_LANDING_PAGE_WIDGETS) {
+    await waitForLandingPageWidget(page, widgetKey);
+  }
 };
 
 export const setUserDefaultPersona = async (

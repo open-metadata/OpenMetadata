@@ -73,13 +73,14 @@ export const visitEntityPage = async (data: {
     await page.getByTestId('welcome-screen-close-btn').click();
   }
 
-  await page.getByTestId('searchBox').fill(searchTerm);
-  await page.waitForResponse(
+  const searchResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
       response.url().includes('index=dataAsset') &&
       response.url().includes('exclude_source_fields')
   );
+  await page.getByTestId('searchBox').fill(searchTerm);
+  await searchResponse;
 
   // Adding a failsafe for the operation below to avoid a tooltip overlap issue.
   // A tooltip over the option can cause Playwright click failures:
