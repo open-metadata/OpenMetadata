@@ -285,15 +285,22 @@ export const getBreadcrumbForClassification = (entityName: string) => [
   },
 ];
 
-export const getBreadcrumbForMetric = (entityName: string) => [
+export const getBreadcrumbForMetric = (
+  entityName: string,
+  includeCurrent = false
+) => [
   {
     name: i18n.t('label.metric-plural'),
     url: ROUTES.METRICS,
   },
-  {
-    name: entityName,
-    url: '',
-  },
+  ...(includeCurrent
+    ? [
+        {
+          name: entityName,
+          url: '',
+        },
+      ]
+    : []),
 ];
 
 export const getBreadcrumbForKnowledgePage = (

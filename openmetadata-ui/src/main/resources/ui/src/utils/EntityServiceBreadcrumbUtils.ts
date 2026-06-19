@@ -57,19 +57,30 @@ export const getBreadcrumbForDatabaseService = (
   return items;
 };
 
-export const getBreadcrumbForDatabase = (entity: Database) => [
+export const getBreadcrumbForDatabase = (
+  entity: Database,
+  includeCurrent = false
+) => [
   ...getServiceCategoryBreadcrumb(ServiceCategory.DATABASE_SERVICES),
   ...getBreadcrumbForEntitiesWithServiceOnly(entity),
-  {
-    name: entity.name,
-    url: getEntityLinkFromType(
-      entity.fullyQualifiedName ?? '',
-      ((entity as SourceType).entityType as EntityType) ?? EntityType.DATABASE
-    ),
-  },
+  ...(includeCurrent
+    ? [
+        {
+          name: entity.name,
+          url: getEntityLinkFromType(
+            entity.fullyQualifiedName ?? '',
+            ((entity as SourceType).entityType as EntityType) ??
+              EntityType.DATABASE
+          ),
+        },
+      ]
+    : []),
 ];
 
-export const getBreadcrumbForDatabaseSchema = (entity: DatabaseSchema) => [
+export const getBreadcrumbForDatabaseSchema = (
+  entity: DatabaseSchema,
+  includeCurrent = false
+) => [
   ...getServiceCategoryBreadcrumb(ServiceCategory.DATABASE_SERVICES),
   {
     name: getEntityName(entity.service),
@@ -89,12 +100,16 @@ export const getBreadcrumbForDatabaseSchema = (entity: DatabaseSchema) => [
       entity.database?.fullyQualifiedName ?? ''
     ),
   },
-  {
-    name: entity.name,
-    url: getEntityLinkFromType(
-      entity.fullyQualifiedName ?? '',
-      ((entity as unknown as SourceType).entityType as EntityType) ??
-        EntityType.DATABASE_SCHEMA
-    ),
-  },
+  ...(includeCurrent
+    ? [
+        {
+          name: entity.name,
+          url: getEntityLinkFromType(
+            entity.fullyQualifiedName ?? '',
+            ((entity as unknown as SourceType).entityType as EntityType) ??
+              EntityType.DATABASE_SCHEMA
+          ),
+        },
+      ]
+    : []),
 ];

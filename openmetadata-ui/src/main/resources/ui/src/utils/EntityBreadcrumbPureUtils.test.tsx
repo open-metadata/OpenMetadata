@@ -47,7 +47,7 @@ describe('EntityBreadcrumbPureUtils unit tests', () => {
       jest.clearAllMocks();
     });
 
-    it('should return breadcrumbs for EntityType.DATABASE', () => {
+    it('should return ancestor-only breadcrumbs for EntityType.DATABASE', () => {
       (getServiceRouteFromServiceType as jest.Mock).mockReturnValue(mockUrl);
       (getSettingPath as jest.Mock).mockReturnValue(mockSettingUrl);
       (getServiceDetailsPath as jest.Mock).mockReturnValue(
@@ -66,10 +66,6 @@ describe('EntityBreadcrumbPureUtils unit tests', () => {
           url: mockSettingUrl,
         },
         { name: 'mysql_sample', url: '/service/databaseServices/mysql_sample' },
-        {
-          name: 'default',
-          url: '/database/default',
-        },
       ]);
 
       expect(getServiceRouteFromServiceType).toHaveBeenCalledWith(
@@ -77,7 +73,23 @@ describe('EntityBreadcrumbPureUtils unit tests', () => {
       );
     });
 
-    it('should return breadcrumbs for EntityType.DATABASE_SCHEMA', () => {
+    it('should append the current entity for EntityType.DATABASE when includeCurrent is true', () => {
+      (getServiceRouteFromServiceType as jest.Mock).mockReturnValue(mockUrl);
+      (getSettingPath as jest.Mock).mockReturnValue(mockSettingUrl);
+      (getServiceDetailsPath as jest.Mock).mockReturnValue(
+        '/service/databaseServices/mysql_sample'
+      );
+
+      const result = getEntityBreadcrumbs(
+        mockEntityForDatabase,
+        EntityType.DATABASE,
+        true
+      );
+
+      expect(result[result.length - 1].name).toBe('default');
+    });
+
+    it('should return ancestor-only breadcrumbs for EntityType.DATABASE_SCHEMA', () => {
       (getSettingPath as jest.Mock).mockReturnValue(mockSettingUrl);
       (getServiceDetailsPath as jest.Mock).mockReturnValue(mockServiceUrl);
       (getEntityDetailsPath as jest.Mock).mockReturnValue(mockDatabaseUrl);
@@ -100,10 +112,6 @@ describe('EntityBreadcrumbPureUtils unit tests', () => {
           name: 'ecommerce_db',
           url: mockDatabaseUrl,
         },
-        {
-          name: 'shopify',
-          url: '/entity/MockDatabase',
-        },
       ]);
 
       expect(getServiceDetailsPath).toHaveBeenCalledWith(
@@ -114,6 +122,20 @@ describe('EntityBreadcrumbPureUtils unit tests', () => {
         EntityType.DATABASE,
         'sample_data.ecommerce_db'
       );
+    });
+
+    it('should append the current entity for EntityType.DATABASE_SCHEMA when includeCurrent is true', () => {
+      (getSettingPath as jest.Mock).mockReturnValue(mockSettingUrl);
+      (getServiceDetailsPath as jest.Mock).mockReturnValue(mockServiceUrl);
+      (getEntityDetailsPath as jest.Mock).mockReturnValue(mockDatabaseUrl);
+
+      const result = getEntityBreadcrumbs(
+        mockEntityForDatabaseSchema,
+        EntityType.DATABASE_SCHEMA,
+        true
+      );
+
+      expect(result[result.length - 1].name).toBe('shopify');
     });
   });
 });
