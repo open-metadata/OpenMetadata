@@ -2840,6 +2840,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   protected void deleteChildren(
       List<EntityRelationshipRecord> children, boolean hardDelete, String updatedBy) {
+    if (hardDelete) {
+      children = prepareChildrenForHardDeleteCascade(children, updatedBy);
+      if (children.isEmpty()) {
+        return;
+      }
+    }
     // Use batch deletion only for hard deletes with large numbers of children
     // For soft deletes, we must maintain the correct order for restoration to work properly
     if (hardDelete && children.size() > 100) {
@@ -2862,6 +2868,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
             hardDelete);
       }
     }
+  }
+
+  /**
+   * Hook for subclasses to filter/transform the children handled by a hard-delete cascade before
+   * they are deleted. Lets a parent repository detach (rather than delete) children that must
+   * survive the cascade. Default: no-op pass-through. Invoked only on the hard-delete path.
+   */
+  protected List<EntityRelationshipRecord> prepareChildrenForHardDeleteCascade(
+      List<EntityRelationshipRecord> children, String updatedBy) {
+    return children;
   }
 
   /**
