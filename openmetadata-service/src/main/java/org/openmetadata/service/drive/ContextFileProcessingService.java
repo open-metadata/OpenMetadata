@@ -18,7 +18,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
-import org.openmetadata.schema.entity.data.ExtractionStats;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -45,6 +44,8 @@ public class ContextFileProcessingService {
   private final Executor llmExecutor;
   private final Supplier<ContextMemoryExtractor> memoryExtractorSupplier;
   private final Supplier<Boolean> llmEnabledSupplier;
+  private final Supplier<FileContextProcessingEngine> fileEngineSupplier;
+  private volatile FileContextProcessingEngine fileEngine;
 
   public ContextFileProcessingService(ContextFileRepository repository) {
     this(
@@ -54,7 +55,8 @@ public class ContextFileProcessingService {
         new ContextFileTextExtractor(),
         LLM_EXECUTOR,
         ContextFileProcessingService::buildDefaultExtractor,
-        LLMClientHolder::isEnabled);
+        LLMClientHolder::isEnabled,
+        null);
   }
 
   ContextFileProcessingService(
@@ -64,7 +66,8 @@ public class ContextFileProcessingService {
       ContextFileTextExtractor textExtractor,
       Executor llmExecutor,
       Supplier<ContextMemoryExtractor> memoryExtractorSupplier,
-      Supplier<Boolean> llmEnabledSupplier) {
+      Supplier<Boolean> llmEnabledSupplier,
+      Supplier<FileContextProcessingEngine> fileEngineSupplier) {
     this.repository = repository;
     this.assetServiceSupplier = assetServiceSupplier;
     this.executor = executor;
@@ -72,6 +75,7 @@ public class ContextFileProcessingService {
     this.llmExecutor = llmExecutor;
     this.memoryExtractorSupplier = memoryExtractorSupplier;
     this.llmEnabledSupplier = llmEnabledSupplier;
+    this.fileEngineSupplier = fileEngineSupplier;
   }
 
   /**
@@ -116,9 +120,7 @@ public class ContextFileProcessingService {
   }
 
   private static ContextMemoryExtractor buildDefaultExtractor() {
-    return new ContextMemoryExtractor(
-        (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY),
-        LLMClientHolder.get());
+    return new ContextMemoryExtractor(LLMClientHolder.get());
   }
 
   public void submit(UUID fileId, UUID contentId) {
@@ -254,33 +256,51 @@ public class ContextFileProcessingService {
       return;
     }
     try {
-      ContextMemoryExtractor extractor = memoryExtractorSupplier.get();
-      // Derive first so a failed LLM pass leaves the previous pills untouched; only a
-      // successful pass replaces them. Hard-delete: stale machine-generated pills are
-      // replaced wholesale on every re-extraction, so soft-deleted rows would only
-      // accumulate with no restore path.
-      ContextMemoryExtractor.DeriveResult derived =
-          extractor.derive(file, canonicalText(contentId, file));
-      repository.deleteExtractedMemories(file, true);
-      int pillsCreated = extractor.persist(file, derived.memories());
-      finishExtraction(fileId, contentId, derived, pillsCreated);
+      // The shared engine skips the LLM when the content hash is unchanged, derives pills
+      // otherwise, and reconciles them against the file's existing pills (preserving identity and
+      // retrieval telemetry) rather than the previous wholesale delete-and-recreate.
+      fileEngine().runExtraction(fileId);
+      markProcessed(fileId, contentId);
     } catch (Exception e) {
       LOG.error("Knowledge pill extraction failed for file {}", fileId, e);
       applyFailure(fileId, contentId, describeFailure(e), false);
     }
   }
 
-  /**
-   * Prefers the content snapshot's canonical extracted text (capped at 1M chars) over the file's
-   * indexed text (capped at 200K), so large documents lose less tail content to truncation.
-   */
-  private String canonicalText(UUID contentId, ContextFile file) {
-    String result = file.getExtractedText();
-    ContextFileContent content = getContent(contentId);
-    if (content != null && content.getExtractedText() != null) {
-      result = content.getExtractedText();
+  private FileContextProcessingEngine fileEngine() {
+    FileContextProcessingEngine engine = fileEngine;
+    if (engine == null) {
+      engine = buildFileEngine();
     }
-    return result;
+    return engine;
+  }
+
+  private synchronized FileContextProcessingEngine buildFileEngine() {
+    if (fileEngine == null) {
+      fileEngine = fileEngineSupplier != null ? fileEngineSupplier.get() : defaultFileEngine();
+    }
+    return fileEngine;
+  }
+
+  private FileContextProcessingEngine defaultFileEngine() {
+    ContextMemoryRepository memoryRepository =
+        (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
+    return new FileContextProcessingEngine(
+        repository, memoryExtractorSupplier.get(), new ContextMemoryReconciler(memoryRepository));
+  }
+
+  private void markProcessed(UUID fileId, UUID contentId) {
+    updateFile(
+        fileId,
+        current -> {
+          if (!contentId.toString().equals(current.getHeadContentId())) {
+            return null;
+          }
+          ContextFile updated = JsonUtils.deepCopy(current, ContextFile.class);
+          updated.setProcessingStatus(ProcessingStatus.Processed);
+          updated.setProcessingError(null);
+          return updated;
+        });
   }
 
   private String describeFailure(Throwable t) {
@@ -321,27 +341,6 @@ public class ContextFileProcessingService {
       result = ProcessingStatus.ExtractingContext;
     }
     return result;
-  }
-
-  private void finishExtraction(
-      UUID fileId, UUID contentId, ContextMemoryExtractor.DeriveResult derived, int pillsCreated) {
-    updateFile(
-        fileId,
-        current -> {
-          if (!contentId.toString().equals(current.getHeadContentId())) {
-            return null;
-          }
-          ContextFile updated = JsonUtils.deepCopy(current, ContextFile.class);
-          updated.setProcessingStatus(ProcessingStatus.Processed);
-          updated.setProcessingError(null);
-          updated.setExtractionStats(
-              new ExtractionStats()
-                  .withChunksTotal(derived.chunksTotal())
-                  .withChunksProcessed(derived.chunksProcessed())
-                  .withPillsCreated(pillsCreated)
-                  .withLastExtractedAt(System.currentTimeMillis()));
-          return updated;
-        });
   }
 
   private void applyFailure(UUID fileId, UUID contentId, String reason) {

@@ -183,6 +183,7 @@ const ContextCenterArticlesPage = () => {
           onSetThreadLink={page.handlers?.onSetThreadLink ?? (() => undefined)}
           onTabChange={page.onTabChange}
           onToggleRightPanel={handleToggleRightPanel}
+          onUpdate={page.handlers?.onUpdate}
           onVoteChange={page.handlers?.onVoteChange ?? (async () => undefined)}
         />
       );
