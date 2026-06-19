@@ -65,6 +65,8 @@ const MyDataWidgetInternal = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
+  const [isLoading, setIsLoading] = useState(true);
+  const [data, setData] = useState<SourceType[]>([]);
 
   const widgetData = useMemo(
     () => currentLayout?.find((w) => w.i === widgetKey),
@@ -73,8 +75,6 @@ const MyDataWidgetInternal = ({
   const [selectedFilter, setSelectedFilter] = useState<string>(
     CURATED_ASSETS_SORT_BY_KEYS.LATEST
   );
-  const [isLoading, setIsLoading] = useState(true);
-  const [data, setData] = useState<SourceType[]>([]);
 
   const handleFilterChange = useCallback(({ key }: { key: string }) => {
     setSelectedFilter(key);
@@ -118,56 +118,52 @@ const MyDataWidgetInternal = ({
     return extraInfo;
   };
 
-  const ownerIds = useMemo(() => {
-    if (!isUndefined(currentUser)) {
-      const teamsIds = (currentUser.teams ?? []).map((team) => team.id);
-
-      return [...teamsIds, currentUser.id];
-    }
-
-    return [];
-  }, [currentUser]);
-
   const fetchMyDataAssets = useCallback(async () => {
-    if (isUndefined(currentUser)) {
-      setData([]);
-      setIsLoading(false);
+    if (!isUndefined(currentUser)) {
+      setIsLoading(true);
+      try {
+        const teamsIds = (currentUser.teams ?? []).map((team) => team.id);
+        const ownerIds = [...teamsIds, currentUser.id];
 
-      return;
+        const queryFilterObj = getTermQuery(
+          { 'owners.id': ownerIds },
+          'should',
+          1
+        );
+
+        const sortField = getSortField(selectedFilter);
+        const sortOrder = getSortOrder(selectedFilter);
+
+        const res = await searchQuery({
+          query: '',
+          pageNumber: INITIAL_PAGING_VALUE,
+          pageSize: PAGE_SIZE_MEDIUM,
+          queryFilter: queryFilterObj,
+          sortField,
+          sortOrder,
+          searchIndex: SearchIndex.ALL,
+        });
+
+        // Extract useful details from the Response
+        const ownedAssets = res?.hits?.hits;
+        const sourceData = ownedAssets.map((hit) => hit._source);
+
+        // Apply client-side sorting as well to ensure consistent results
+        const sortedData = applySortToData(sourceData, selectedFilter);
+        setData(sortedData);
+      } catch {
+        setData([]);
+      } finally {
+        setIsLoading(false);
+      }
     }
-
-    setIsLoading(true);
-
-    try {
-      const queryFilterObj = getTermQuery(
-        { 'owners.id': ownerIds },
-        'should',
-        1
-      );
-
-      const sortField = getSortField(selectedFilter);
-      const sortOrder = getSortOrder(selectedFilter);
-
-      const res = await searchQuery({
-        query: '',
-        pageNumber: INITIAL_PAGING_VALUE,
-        pageSize: PAGE_SIZE_MEDIUM,
-        queryFilter: queryFilterObj,
-        sortField,
-        sortOrder,
-        searchIndex: SearchIndex.ALL,
-      });
-
-      const ownedAssets = res?.hits?.hits ?? [];
-      const sourceData = ownedAssets.map((hit) => hit._source);
-
-      setData(applySortToData(sourceData, selectedFilter));
-    } catch {
-      setData([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [currentUser, ownerIds, selectedFilter]);
+  }, [
+    currentUser,
+    selectedFilter,
+    getSortField,
+    getSortOrder,
+    applySortToData,
+  ]);
 
   useEffect(() => {
     fetchMyDataAssets();
