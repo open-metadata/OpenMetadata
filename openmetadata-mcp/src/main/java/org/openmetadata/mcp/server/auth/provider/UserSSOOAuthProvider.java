@@ -15,6 +15,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -396,8 +397,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       if (pac4jState != null) {
         pendingAuthRepository.updatePac4jSession(
             authRequestId, pac4jState, pac4jNonce, pac4jCodeVerifier);
-        LOG.info(
-            "Stored pac4j session data in database for auth request: {}", authRequestId);
+        LOG.info("Stored pac4j session data in database for auth request: {}", authRequestId);
       } else {
         HttpServletResponse resp = currentResponse.get();
         if (resp != null && resp.isCommitted()) {
@@ -417,9 +417,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
               "Could not find pac4j state in session after handleLogin() "
                   + "for auth request {}. Session attributes: {}",
               authRequestId,
-              java.util.Collections.list(session.getAttributeNames()));
-          throw new AuthorizeException(
-              "server_error", "Failed to initialize SSO session state");
+              Collections.list(session.getAttributeNames()));
+          throw new AuthorizeException("server_error", "Failed to initialize SSO session state");
         }
       }
 

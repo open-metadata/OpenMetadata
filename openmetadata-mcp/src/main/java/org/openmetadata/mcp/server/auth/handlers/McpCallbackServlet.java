@@ -218,6 +218,35 @@ public class McpCallbackServlet extends HttpServlet {
   }
 
   @Override
+  protected void doPost(HttpServletRequest request, HttpServletResponse response)
+      throws ServletException, IOException {
+    // Handles the form POST from serveFragmentExtractionPage() — the JS page extracts the
+    // id_token from window.location.hash and submits it here via a hidden form so the token
+    // never appears in a URL, browser history, access logs, or Referer headers.
+    AuthenticationCodeFlowHandler ssoHandler = resolveSsoHandler();
+    if (ssoHandler == null) {
+      response.sendError(
+          HttpServletResponse.SC_SERVICE_UNAVAILABLE,
+          "MCP SSO not available. Please restart the server.");
+      return;
+    }
+    String idTokenParam = request.getParameter("id_token");
+    if (idTokenParam == null || idTokenParam.isEmpty()) {
+      response.sendError(
+          HttpServletResponse.SC_BAD_REQUEST, "Invalid MCP OAuth callback - missing id_token");
+      return;
+    }
+    try {
+      LOG.info("Handling MCP OAuth fragment POST callback (id_token extracted from hash)");
+      handleDirectIdTokenFlow(request, response, idTokenParam, ssoHandler);
+    } catch (Exception e) {
+      LOG.error("MCP OAuth fragment POST callback failed", e);
+      response.sendError(
+          HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "MCP OAuth callback processing failed");
+    }
+  }
+
+  @Override
   protected void doGet(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
     AuthenticationCodeFlowHandler ssoHandler = resolveSsoHandler();
@@ -244,12 +273,12 @@ public class McpCallbackServlet extends HttpServlet {
       String pac4jState = request.getParameter("state");
       String idTokenParam = request.getParameter("id_token");
       LOG.debug(
-          "MCP callback request: method={}, queryString={}, hasFragment={}",
+          "MCP callback request: method={}, queryString={}, refererPresent={}",
           request.getMethod(),
           request.getQueryString() != null
               ? request.getQueryString().replaceAll("(id_token|code|token)=[^&]*", "$1=[REDACTED]")
               : "none",
-          request.getHeader("Referer") != null ? "unknown (referer present)" : "unknown");
+          request.getHeader("Referer") != null);
       LOG.debug(
           "Received SSO callback with pac4j state: {}, id_token present: {}",
           pac4jState,
@@ -491,6 +520,8 @@ public class McpCallbackServlet extends HttpServlet {
   private void serveFragmentExtractionPage(HttpServletResponse response) throws IOException {
     response.setContentType("text/html;charset=UTF-8");
     response.setStatus(HttpServletResponse.SC_OK);
+    // POST the token in the form body so it never appears in a URL, browser history,
+    // access logs, or Referer headers (cf. RFC 6819 §5.3.5).
     response
         .getWriter()
         .write(
@@ -505,8 +536,14 @@ public class McpCallbackServlet extends HttpServlet {
                 + "  var params = new URLSearchParams(hash);"
                 + "  var idToken = params.get('id_token');"
                 + "  if (idToken) {"
-                + "    window.location.replace("
-                + "      window.location.pathname + '?id_token=' + encodeURIComponent(idToken));"
+                + "    var f = document.createElement('form');"
+                + "    f.method = 'POST';"
+                + "    f.action = window.location.pathname;"
+                + "    var i = document.createElement('input');"
+                + "    i.type = 'hidden'; i.name = 'id_token'; i.value = idToken;"
+                + "    f.appendChild(i);"
+                + "    document.body.appendChild(f);"
+                + "    f.submit();"
                 + "  } else {"
                 + "    document.body.innerHTML = '<h2>MCP OAuth Error</h2>"
                 + "<p>Authentication failed: the SSO provider did not return an id_token. "
