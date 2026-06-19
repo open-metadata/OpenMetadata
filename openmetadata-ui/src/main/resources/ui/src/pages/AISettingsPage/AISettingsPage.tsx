@@ -27,8 +27,8 @@ import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
-  AIDeletionPolicy,
   AISettings,
+  DeletionPolicy,
 } from '../../generated/configuration/aiSettings';
 import { Settings, SettingType } from '../../generated/settings/settings';
 import {
@@ -40,9 +40,9 @@ import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils'
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const DELETION_POLICY_OPTIONS = [
-  { id: AIDeletionPolicy.Cascade, labelKey: 'label.cascade' },
-  { id: AIDeletionPolicy.Orphan, labelKey: 'label.orphan' },
-  { id: AIDeletionPolicy.Deprecate, labelKey: 'label.deprecate' },
+  { id: DeletionPolicy.Cascade, labelKey: 'label.cascade' },
+  { id: DeletionPolicy.Orphan, labelKey: 'label.orphan' },
+  { id: DeletionPolicy.Deprecate, labelKey: 'label.deprecate' },
 ];
 
 const AISettingsPage = () => {
@@ -261,14 +261,14 @@ const AISettingsPage = () => {
                 label=""
                 value={
                   aiConfig.ontologyAgent?.deletionPolicy ??
-                  AIDeletionPolicy.Cascade
+                  DeletionPolicy.Cascade
                 }
                 onChange={(key) =>
                   setAiConfig({
                     ...aiConfig,
                     ontologyAgent: {
                       ...aiConfig.ontologyAgent,
-                      deletionPolicy: key as AIDeletionPolicy,
+                      deletionPolicy: key as DeletionPolicy,
                     },
                   })
                 }>
