@@ -1382,6 +1382,8 @@ FILE_FORMAT = (TYPE = CSV)"""
             set(),  # No target table for SELECT query
             dialect=Dialect.STARROCKS.value,
         )
+        # A SELECT has no target table, so column lineage is empty.
+        assert_column_lineage_equal(query, [], dialect=Dialect.STARROCKS.value)
 
     def test_starrocks_ctas_bitmap_union(self):
         """Test StarRocks CREATE TABLE AS SELECT with bitmap aggregation."""
@@ -1396,6 +1398,20 @@ FILE_FORMAT = (TYPE = CSV)"""
             query,
             {"analytics.user_events"},
             {"analytics.uv_daily"},
+            dialect=Dialect.STARROCKS.value,
+        )
+        assert_column_lineage_equal(
+            query,
+            [
+                (
+                    TestColumnQualifierTuple("dt", "analytics.user_events"),
+                    TestColumnQualifierTuple("dt", "analytics.uv_daily"),
+                ),
+                (
+                    TestColumnQualifierTuple("user_id", "analytics.user_events"),
+                    TestColumnQualifierTuple("uv", "analytics.uv_daily"),
+                ),
+            ],
             dialect=Dialect.STARROCKS.value,
         )
 
