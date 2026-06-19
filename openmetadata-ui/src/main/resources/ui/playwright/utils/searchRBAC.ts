@@ -64,6 +64,36 @@ export const exploreShouldShowEntity = async (
   }
 };
 
+/**
+ * Navigate the (already-logged-in) user to Explore and assert which top-level
+ * browse-tree categories are shown. A category only appears when its filtered
+ * count is non-zero, so this proves the tree counts honor search RBAC — a user
+ * with no access to an asset type never sees that category (no count leakage).
+ */
+export const exploreTreeCategories = async (
+  page: Page,
+  { visible, hidden }: { visible: string[]; hidden: string[] }
+) => {
+  await closeWelcomeScreenIfVisible(page);
+  await redirectToHomePage(page);
+
+  const exploreRes = page.waitForResponse('/api/v1/search/query?*');
+  await sidebarClick(page, SidebarItem.EXPLORE);
+  await exploreRes;
+  await waitForAllLoadersToDisappear(page);
+
+  for (const category of visible) {
+    await expect(
+      page.getByTestId(`explore-tree-title-${category}`)
+    ).toBeVisible();
+  }
+  for (const category of hidden) {
+    await expect(
+      page.getByTestId(`explore-tree-title-${category}`)
+    ).toHaveCount(0);
+  }
+};
+
 export const enableDisableSearchRBAC = async (
   apiContext: APIRequestContext,
   enable: boolean

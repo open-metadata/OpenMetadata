@@ -12,6 +12,7 @@
  */
 import { expect, Page, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
+import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -25,6 +26,23 @@ import { sidebarClick } from '../../utils/sidebar';
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const table = new TableClass();
+const dashboard = new DashboardClass();
+
+// Expand any tree node by its title testid (works for categories, service
+// types, services and entity-type leaves) and wait for the count query.
+const expandTreeNode = async (page: Page, titleTestId: string) => {
+  const queryRes = page.waitForResponse(
+    '/api/v1/search/query?*index=dataAsset*'
+  );
+  await page
+    .locator('.ant-tree-treenode')
+    .filter({ has: page.getByTestId(`explore-tree-title-${titleTestId}`) })
+    .locator('.ant-tree-switcher svg')
+    .first()
+    .click();
+  await queryRes;
+  await waitForAllLoadersToDisappear(page);
+};
 
 const goToExplore = async (page: Page) => {
   await redirectToHomePage(page);
@@ -66,12 +84,14 @@ const removeQueryChip = async (page: Page, chipKey: string) => {
 test.beforeAll('Setup data-asset fixtures', async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
   await table.create(apiContext);
+  await dashboard.create(apiContext);
   await afterAction();
 });
 
 test.afterAll('Cleanup', async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
   await table.delete(apiContext);
+  await dashboard.delete(apiContext);
   await afterAction();
 });
 
@@ -228,6 +248,25 @@ test.describe(
           page.getByTestId('browse-chip-serviceType')
         ).not.toBeVisible();
       });
+    });
+
+    test('drills a non-database hierarchy (Dashboards) down to the entity-type leaf', async ({
+      page,
+    }) => {
+      test.slow();
+
+      // Dashboards collapse straight to an entity-type leaf under their service
+      // (no database/schema levels), so this exercises a different tree shape
+      // than the table hierarchy.
+      await expandTreeNode(page, 'Dashboards');
+      await expandTreeNode(page, 'superset');
+      await expandTreeNode(page, dashboard.serviceResponseData.name);
+
+      const dashboardLeaf = page.getByTestId('explore-tree-title-dashboard');
+      await expect(dashboardLeaf).toBeVisible();
+      await expect(
+        dashboardLeaf.locator('..').locator('.explore-node-count')
+      ).toBeVisible();
     });
   }
 );

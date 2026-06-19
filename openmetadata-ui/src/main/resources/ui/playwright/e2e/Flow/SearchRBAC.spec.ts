@@ -22,6 +22,7 @@ import { uuid } from '../../utils/common';
 import {
   enableDisableSearchRBAC,
   exploreShouldShowEntity,
+  exploreTreeCategories,
   searchForEntityShouldWork,
   searchForEntityShouldWorkShowNoResult,
 } from '../../utils/searchRBAC';
@@ -401,5 +402,30 @@ test.describe('Explore browse respects search RBAC across users', () => {
     await exploreShouldShowEntity(page, dashboardFqn(), dashboardName(), false);
 
     await page.close();
+  });
+
+  test('the browse tree only shows the asset-type categories a user can access', async ({
+    browser,
+  }) => {
+    test.slow();
+
+    // A table-scoped user's tree has Databases but never Dashboards — the
+    // Dashboards count is RBAC-filtered to zero, so the category drops out.
+    const tablePage = await browser.newPage();
+    await userTableOnly.login(tablePage);
+    await exploreTreeCategories(tablePage, {
+      visible: ['Databases'],
+      hidden: ['Dashboards'],
+    });
+    await tablePage.close();
+
+    // A dashboard-scoped user sees the mirror image — no Databases category.
+    const dashboardPage = await browser.newPage();
+    await userDashboardOnly.login(dashboardPage);
+    await exploreTreeCategories(dashboardPage, {
+      visible: ['Dashboards'],
+      hidden: ['Databases'],
+    });
+    await dashboardPage.close();
   });
 });
