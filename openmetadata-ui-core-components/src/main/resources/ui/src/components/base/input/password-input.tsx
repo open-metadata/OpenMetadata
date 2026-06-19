@@ -68,7 +68,7 @@ export const PasswordInput = ({
       tabIndex={-1}
       type="button"
       onClick={() => setShowPassword((v) => !v)}>
-      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
     </button>
   );
 
