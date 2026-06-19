@@ -349,21 +349,71 @@ public class RBACConditionEvaluator {
 
   public void hasDomain(ConditionCollector collector) {
     User user = (User) spelContext.lookupVariable("user");
-    if (user == null || nullOrEmpty(user.getDomains())) {
-      OMQueryBuilder existsQuery = queryBuilderFactory.existsQuery("domains.id");
-      collector.addMustNot(existsQuery);
-    } else {
-      List<OMQueryBuilder> domainQueries = new ArrayList<>();
-      for (EntityReference domain : user.getDomains()) {
-        String domainId = domain.getId().toString();
-        domainQueries.add(queryBuilderFactory.termQuery("domains.id", domainId));
-      }
-      domainQueries.add(
-          queryBuilderFactory
-              .boolQuery()
-              .mustNot(List.of(queryBuilderFactory.existsQuery("domains.id"))));
-      collector.addMust(queryBuilderFactory.boolQuery().should(domainQueries));
+    List<String> userDomainFqns = userDomainFqns(user);
+
+    List<OMQueryBuilder> branches = new ArrayList<>();
+    branches.add(buildNonDomainIndexBranch(userDomainFqns));
+    OMQueryBuilder domainBranch = buildDomainIndexBranch(userDomainFqns);
+    if (domainBranch != null) {
+      branches.add(domainBranch);
     }
+    collector.addMust(queryBuilderFactory.boolQuery().should(branches));
+  }
+
+  private List<String> userDomainFqns(User user) {
+    if (user == null || nullOrEmpty(user.getDomains())) {
+      return List.of();
+    }
+    List<String> fqns = new ArrayList<>();
+    for (EntityReference domain : user.getDomains()) {
+      if (domain.getFullyQualifiedName() != null) {
+        fqns.add(domain.getFullyQualifiedName());
+      }
+    }
+    return fqns;
+  }
+
+  private OMQueryBuilder buildNonDomainIndexBranch(List<String> userDomainFqns) {
+    OMQueryBuilder nonDomainEntity =
+        queryBuilderFactory
+            .boolQuery()
+            .mustNot(List.of(queryBuilderFactory.termQuery("entityType", Entity.DOMAIN)));
+    OMQueryBuilder noDomain =
+        queryBuilderFactory
+            .boolQuery()
+            .mustNot(List.of(queryBuilderFactory.existsQuery("domains.id")));
+
+    List<OMQueryBuilder> shoulds = new ArrayList<>();
+    shoulds.add(noDomain);
+    shoulds.addAll(hierarchyShoulds("domains.fullyQualifiedName", userDomainFqns));
+
+    return queryBuilderFactory
+        .boolQuery()
+        .must(List.of(nonDomainEntity, queryBuilderFactory.boolQuery().should(shoulds)));
+  }
+
+  private OMQueryBuilder buildDomainIndexBranch(List<String> userDomainFqns) {
+    if (userDomainFqns.isEmpty()) {
+      return null;
+    }
+    OMQueryBuilder domainEntity = queryBuilderFactory.termQuery("entityType", Entity.DOMAIN);
+    OMQueryBuilder fqnMatch =
+        queryBuilderFactory
+            .boolQuery()
+            .should(hierarchyShoulds("fullyQualifiedName", userDomainFqns));
+    return queryBuilderFactory.boolQuery().must(List.of(domainEntity, fqnMatch));
+  }
+
+  private List<OMQueryBuilder> hierarchyShoulds(String field, List<String> fqns) {
+    List<OMQueryBuilder> shoulds = new ArrayList<>();
+    if (fqns.isEmpty()) {
+      return shoulds;
+    }
+    shoulds.add(queryBuilderFactory.termsQuery(field, fqns));
+    for (String fqn : fqns) {
+      shoulds.add(queryBuilderFactory.prefixQuery(field, fqn + "."));
+    }
+    return shoulds;
   }
 
   public void inAnyTeam(List<String> teamNames, ConditionCollector collector) {
