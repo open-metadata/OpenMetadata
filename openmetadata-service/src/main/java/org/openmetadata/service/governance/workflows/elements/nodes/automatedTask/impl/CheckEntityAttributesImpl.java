@@ -16,7 +16,6 @@ import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.rules.RuleEngine;
@@ -38,7 +37,7 @@ public class CheckEntityAttributesImpl implements JavaDelegate {
               (String)
                   varHandler.getNamespacedVariable(
                       inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
-      varHandler.setNodeVariable(RESULT_VARIABLE, checkAttributes(entityLink, rules));
+      varHandler.setNodeVariable(RESULT_VARIABLE, checkAttributes(varHandler, entityLink, rules));
     } catch (Exception exc) {
       LOG.error(
           String.format(
@@ -49,8 +48,9 @@ public class CheckEntityAttributesImpl implements JavaDelegate {
     }
   }
 
-  private Boolean checkAttributes(MessageParser.EntityLink entityLink, String rules) {
-    EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
+  private Boolean checkAttributes(
+      WorkflowVariableHandler varHandler, MessageParser.EntityLink entityLink, String rules) {
+    EntityInterface entity = varHandler.getRelatedEntity(entityLink, "*", Include.ALL);
 
     boolean result;
     try {

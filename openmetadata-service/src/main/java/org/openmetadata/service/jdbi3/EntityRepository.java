@@ -231,6 +231,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.lock.HierarchicalLockManager;
 import org.openmetadata.service.rdf.RdfUpdater;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.resources.teams.RoleResource;
@@ -408,6 +409,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
               });
 
   private final String collectionPath;
+
+  // Fields whose change rewrites an entity's FQN: "name" (rename) and "parent"/"glossary" (move).
+  // In-session consolidation must not revert a change touching any of these.
+  private static final Set<String> FQN_AFFECTING_FIELDS = Set.of("name", "parent", "glossary");
+
   @Getter public final Class<T> entityClass;
   @Getter protected final String entityType;
   @Getter protected final EntityDAO<T> dao;
@@ -1194,6 +1200,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
     String startHash = fqnPrefixHash + ".00000000000000000000000000000000";
     String endHash = fqnPrefixHash + ".ffffffffffffffffffffffffffffffff";
     return dao.listAll(startHash, endHash, filter);
+  }
+
+  protected void repointWorkflowInstancesForFqnChange(
+      String entityType, String oldFqn, String newFqn) {
+    String oldLink = new MessageParser.EntityLink(entityType, oldFqn).getLinkString();
+    String newLink = new MessageParser.EntityLink(entityType, newFqn).getLinkString();
+    String oldStem = oldLink.substring(0, oldLink.length() - 1);
+    String newStem = newLink.substring(0, newLink.length() - 1);
+    String oldChildPrefix = escapeLikePattern(oldStem + Entity.SEPARATOR) + "%";
+    int instances =
+        daoCollection
+            .workflowInstanceTimeSeriesDAO()
+            .repointRelatedEntitySubtree(oldLink, oldChildPrefix, oldStem, newStem);
+    if (instances > 0) {
+      LOG.info(
+          "[fqn-change] repointed workflow instances {} -> {} rows={}", oldFqn, newFqn, instances);
+    }
+  }
+
+  private static String escapeLikePattern(String value) {
+    return value.replace("!", "!!").replace("%", "!%").replace("_", "!_");
   }
 
   public ResultList<T> listAfter(
@@ -6734,25 +6761,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
      * This is detected by checking if the changeDescription contains a 'name' field update.
      */
     private boolean wasRenamedInSession(T original) {
-      ChangeDescription changeDesc = original.getChangeDescription();
-      ChangeDescription incChangeDesc = original.getIncrementalChangeDescription();
+      // A rename ("name") or a move ("parent"/"glossary") both rewrite the entity FQN. Reverting
+      // either during in-session consolidation resurrects the stale FQN and strands references
+      // already repointed to the new FQN (tasks, workflow instances, tag usages), so consolidation
+      // must be skipped for both. The change may live in the main changeDescription or, when
+      // renameProcessed suppresses it there, in the incrementalChangeDescription.
+      return hasFqnAffectingChange(original.getChangeDescription())
+          || hasFqnAffectingChange(original.getIncrementalChangeDescription());
+    }
 
-      // Check main changeDescription first
-      if (changeDesc != null && changeDesc.getFieldsUpdated() != null) {
-        if (changeDesc.getFieldsUpdated().stream().anyMatch(fc -> "name".equals(fc.getName()))) {
-          return true;
-        }
+    private boolean hasFqnAffectingChange(ChangeDescription changeDescription) {
+      boolean affected = false;
+      if (changeDescription != null) {
+        affected =
+            Stream.of(
+                    listOrEmpty(changeDescription.getFieldsAdded()),
+                    listOrEmpty(changeDescription.getFieldsUpdated()),
+                    listOrEmpty(changeDescription.getFieldsDeleted()))
+                .flatMap(List::stream)
+                .anyMatch(fieldChange -> FQN_AFFECTING_FIELDS.contains(fieldChange.getName()));
       }
-
-      // Also check incrementalChangeDescription - this captures the name change
-      // even when renameProcessed prevents it from being in the main changeDescription
-      if (incChangeDesc != null && incChangeDesc.getFieldsUpdated() != null) {
-        if (incChangeDesc.getFieldsUpdated().stream().anyMatch(fc -> "name".equals(fc.getName()))) {
-          return true;
-        }
-      }
-
-      return false;
+      return affected;
     }
 
     /**

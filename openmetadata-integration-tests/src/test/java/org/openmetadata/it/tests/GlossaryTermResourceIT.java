@@ -11,6 +11,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.awaitility.Awaitility;
@@ -19,15 +21,24 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.CreateTaskDetails;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.MoveGlossaryTermRequest;
 import org.openmetadata.schema.api.data.TermReference;
+import org.openmetadata.schema.api.feed.CreateThread;
+import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.TaskStatus;
+import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
@@ -617,6 +628,318 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     // Fetch with reviewers field
     GlossaryTerm fetched = client.glossaryTerms().get(term.getId().toString(), "reviewers");
     assertNotNull(fetched.getReviewers());
+  }
+
+  @Test
+  void test_glossaryApprovalTaskRemainsVisibleInGlossaryFeed(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    CreateGlossary glossaryRequest =
+        new CreateGlossary()
+            .withName(ns.prefix("glossary_task_visibility"))
+            .withDescription("Glossary to validate approval task feed consistency")
+            .withReviewers(List.of(testUser1().getEntityReference()));
+    Glossary glossary = client.glossaries().create(glossaryRequest);
+
+    GlossaryTerm term = null;
+    Thread approvalTaskThread = null;
+    try {
+      CreateGlossaryTerm termRequest =
+          new CreateGlossaryTerm()
+              .withName(ns.prefix("term_task_visibility"))
+              .withGlossary(glossary.getFullyQualifiedName())
+              .withDescription("Term that should keep an open approval task visible in feed");
+      term = client.glossaryTerms().create(termRequest);
+      final String termName = term.getName();
+      assertEquals(EntityStatus.DRAFT, term.getEntityStatus());
+
+      User assigneeUser = SdkClients.adminClient().users().getByName(testUser1().getName());
+      CreateThread createThread =
+          new CreateThread()
+              .withMessage("Please approve glossary term")
+              .withAbout(String.format("<#E::glossaryTerm::%s>", term.getFullyQualifiedName()))
+              .withType(ThreadType.Task)
+              .withTaskDetails(
+                  new CreateTaskDetails()
+                      .withType(TaskType.RequestApproval)
+                      .withAssignees(List.of(assigneeUser.getEntityReference()))
+                      .withOldValue(term.getEntityStatus().value())
+                      .withSuggestion(EntityStatus.APPROVED.value()));
+      approvalTaskThread =
+          SdkClients.adminClient()
+              .getHttpClient()
+              .execute(HttpMethod.POST, "/v1/feed", createThread, Thread.class);
+      assertNotNull(approvalTaskThread);
+      assertNotNull(approvalTaskThread.getTask());
+
+      Awaitility.await("wait for open approval task to appear in glossary feed")
+          .atMost(java.time.Duration.ofSeconds(60))
+          .pollInterval(java.time.Duration.ofSeconds(2))
+          .untilAsserted(
+              () ->
+                  assertTrue(
+                      getOpenGlossaryTaskEntityNames(glossary.getFullyQualifiedName())
+                          .contains(termName),
+                      "Expected open approval task for created glossary term"));
+
+      Awaitility.await("open approval task should not disappear before reviewer action")
+          .during(java.time.Duration.ofSeconds(5))
+          .atMost(java.time.Duration.ofSeconds(20))
+          .pollInterval(java.time.Duration.ofMillis(500))
+          .untilAsserted(
+              () ->
+                  assertTrue(
+                      getOpenGlossaryTaskEntityNames(glossary.getFullyQualifiedName())
+                          .contains(termName),
+                      "Open approval task disappeared from glossary feed before resolution"));
+    } finally {
+      if (approvalTaskThread != null) {
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.DELETE,
+                "/v1/feed/" + approvalTaskThread.getId(),
+                null,
+                RequestOptions.builder().build());
+      }
+      if (term != null) {
+        client
+            .glossaryTerms()
+            .delete(term.getId().toString(), java.util.Map.of("hardDelete", "true"));
+      }
+      client
+          .glossaries()
+          .delete(glossary.getId().toString(), java.util.Map.of("hardDelete", "true"));
+    }
+  }
+
+  private List<String> getOpenGlossaryTaskEntityNames(String glossaryFqn) throws Exception {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("entityLink", String.format("<#E::glossary::%s>", glossaryFqn))
+            .queryParam("type", "Task")
+            .queryParam("taskStatus", "Open")
+            .build();
+
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/feed", null, options);
+    JsonNode data = new ObjectMapper().readTree(response).path("data");
+
+    List<String> entityNames = new ArrayList<>();
+    if (data.isArray()) {
+      for (JsonNode taskNode : data) {
+        entityNames.add(taskNode.path("entityRef").path("name").asText());
+      }
+    }
+    return entityNames;
+  }
+
+  @Test
+  void test_approveGlossaryTermAfterMove(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+    CreateGlossary glossaryRequest =
+        new CreateGlossary()
+            .withName("gm_" + suffix)
+            .withDescription("Glossary to validate approval after ancestor term move")
+            .withReviewers(List.of(testUser1().getEntityReference()));
+    Glossary glossary = client.glossaries().create(glossaryRequest);
+    GlossaryTerm newParent = null;
+    GlossaryTerm sourceParent = null;
+    GlossaryTerm term = null;
+
+    try {
+      newParent =
+          client
+              .glossaryTerms()
+              .create(
+                  new CreateGlossaryTerm()
+                      .withName("np_" + suffix)
+                      .withGlossary(glossary.getFullyQualifiedName())
+                      .withDescription("New parent for moved approval term ancestor"));
+      sourceParent =
+          client
+              .glossaryTerms()
+              .create(
+                  new CreateGlossaryTerm()
+                      .withName("sp_" + suffix)
+                      .withGlossary(glossary.getFullyQualifiedName())
+                      .withDescription("Parent that moves while child approval is open"));
+      term =
+          client
+              .glossaryTerms()
+              .create(
+                  new CreateGlossaryTerm()
+                      .withName("c_" + suffix)
+                      .withGlossary(glossary.getFullyQualifiedName())
+                      .withParent(sourceParent.getFullyQualifiedName())
+                      .withDescription("Term that should remain approvable after ancestor move"));
+      assertEquals(EntityStatus.DRAFT, term.getEntityStatus());
+
+      UUID termId = term.getId();
+      String oldEntityLink = getGlossaryTermEntityLink(term);
+      Thread approvalTask = awaitApprovalTask(client, oldEntityLink);
+      int approvalTaskId = approvalTask.getTask().getId();
+      UUID workflowInstanceId = awaitWorkflowInstance(client, oldEntityLink);
+
+      moveGlossaryTerm(client, sourceParent.getId(), newParent.getEntityReference());
+      String movedFqn =
+          newParent.getFullyQualifiedName() + "." + sourceParent.getName() + "." + term.getName();
+      Awaitility.await("wait for glossary term move to finish")
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () ->
+                  assertEquals(
+                      movedFqn,
+                      client.glossaryTerms().get(termId.toString()).getFullyQualifiedName()));
+
+      String movedEntityLink = String.format("<#E::glossaryTerm::%s>", movedFqn);
+      Awaitility.await("wait for approval task to follow moved glossary term")
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () ->
+                  assertFalse(
+                      client
+                          .feed()
+                          .listTasks(movedEntityLink, TaskStatus.Open, null)
+                          .getData()
+                          .isEmpty(),
+                      "Expected approval task on moved glossary term link"));
+      UUID movedWorkflowInstanceId = awaitWorkflowInstance(client, movedEntityLink);
+      assertEquals(
+          workflowInstanceId,
+          movedWorkflowInstanceId,
+          "Expected workflow instance card to follow moved glossary term link");
+      awaitWorkflowInstanceStates(client, movedWorkflowInstanceId);
+
+      resolveApprovalTask(SdkClients.user1Client(), approvalTaskId, EntityStatus.APPROVED.value());
+
+      Awaitility.await("wait for moved glossary term approval")
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () ->
+                  assertEquals(
+                      EntityStatus.APPROVED,
+                      client.glossaryTerms().get(termId.toString()).getEntityStatus()));
+    } finally {
+      if (term != null) {
+        hardDeleteEntity(term.getId().toString());
+      }
+      if (sourceParent != null) {
+        hardDeleteEntity(sourceParent.getId().toString());
+      }
+      if (newParent != null) {
+        hardDeleteEntity(newParent.getId().toString());
+      }
+      client
+          .glossaries()
+          .delete(glossary.getId().toString(), java.util.Map.of("hardDelete", "true"));
+    }
+  }
+
+  private Thread awaitApprovalTask(OpenMetadataClient client, String entityLink) {
+    return Awaitility.await("wait for glossary approval task")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(
+            () ->
+                client.feed().listTasks(entityLink, TaskStatus.Open, null).getData().stream()
+                    .filter(
+                        thread ->
+                            thread.getTask() != null
+                                && TaskType.RequestApproval.equals(thread.getTask().getType()))
+                    .findFirst()
+                    .orElse(null),
+            java.util.Objects::nonNull);
+  }
+
+  private UUID awaitWorkflowInstance(OpenMetadataClient client, String entityLink) {
+    return Awaitility.await("wait for workflow instance on glossary term")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(() -> getFirstWorkflowInstanceId(client, entityLink), java.util.Objects::nonNull);
+  }
+
+  private UUID getFirstWorkflowInstanceId(OpenMetadataClient client, String entityLink)
+      throws Exception {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("entityLink", entityLink)
+            .queryParam("workflowDefinitionName", "GlossaryTermApprovalWorkflow")
+            .queryParam("startTs", "0")
+            .queryParam("endTs", String.valueOf(System.currentTimeMillis()))
+            .build();
+
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/governance/workflowInstances", null, options);
+    JsonNode data = new ObjectMapper().readTree(response).path("data");
+    if (!data.isArray() || data.isEmpty()) {
+      return null;
+    }
+    return UUID.fromString(data.get(0).path("id").asText());
+  }
+
+  private void awaitWorkflowInstanceStates(OpenMetadataClient client, UUID workflowInstanceId) {
+    Awaitility.await("wait for workflow instance states")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () ->
+                assertFalse(
+                    getWorkflowInstanceStates(client, workflowInstanceId).isEmpty(),
+                    "Expected workflow instance states for workflow history card"));
+  }
+
+  private JsonNode getWorkflowInstanceStates(OpenMetadataClient client, UUID workflowInstanceId)
+      throws Exception {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("startTs", "0")
+            .queryParam("endTs", String.valueOf(System.currentTimeMillis()))
+            .build();
+
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/governance/workflowInstanceStates/GlossaryTermApprovalWorkflow/"
+                    + workflowInstanceId,
+                null,
+                options);
+    return new ObjectMapper().readTree(response).path("data");
+  }
+
+  private void moveGlossaryTerm(OpenMetadataClient client, UUID termId, EntityReference newParent)
+      throws Exception {
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/glossaryTerms/" + termId + "/moveAsync",
+            new MoveGlossaryTermRequest().withParent(newParent),
+            RequestOptions.builder().build());
+  }
+
+  private void resolveApprovalTask(OpenMetadataClient client, int taskId, String newValue)
+      throws Exception {
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/feed/tasks/" + taskId + "/resolve",
+            new ResolveTask().withNewValue(newValue),
+            RequestOptions.builder().build());
+  }
+
+  private String getGlossaryTermEntityLink(GlossaryTerm term) {
+    return String.format("<#E::glossaryTerm::%s>", term.getFullyQualifiedName());
   }
 
   @Test

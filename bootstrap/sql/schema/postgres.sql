@@ -838,7 +838,7 @@ ALTER TABLE public.tag OWNER TO openmetadata_user;
 
 CREATE TABLE public.tag_usage (
     source smallint NOT NULL,
-    tagfqn character varying(256) NOT NULL,
+    tagfqn character varying(512) NOT NULL,
     labeltype smallint NOT NULL,
     state smallint NOT NULL,
     tagfqnhash character varying(382),

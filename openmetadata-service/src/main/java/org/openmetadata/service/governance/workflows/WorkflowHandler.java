@@ -10,8 +10,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -1146,6 +1149,21 @@ public class WorkflowHandler {
   public void updateBusinessKey(String processInstanceId, UUID workflowInstanceBusinessKey) {
     RuntimeService runtimeService = processEngine.getRuntimeService();
     runtimeService.updateBusinessKey(processInstanceId, workflowInstanceBusinessKey.toString());
+  }
+
+  public Map<String, Map<String, Object>> getRunningInstanceVariables() {
+    RuntimeService runtimeService = processEngine.getRuntimeService();
+    List<ProcessInstance> instances =
+        runtimeService.createProcessInstanceQuery().includeProcessVariables().list();
+    Map<String, Map<String, Object>> instanceVariables = new LinkedHashMap<>();
+    for (ProcessInstance instance : instances) {
+      instanceVariables.put(instance.getId(), instance.getProcessVariables());
+    }
+    return instanceVariables;
+  }
+
+  public void setProcessInstanceVariable(String instanceId, String variableName, Object value) {
+    processEngine.getRuntimeService().setVariable(instanceId, variableName, value);
   }
 
   public boolean hasProcessInstanceFinished(String processInstanceId) {
