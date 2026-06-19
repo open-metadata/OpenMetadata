@@ -244,9 +244,22 @@ public class McpCallbackServlet extends HttpServlet {
       String pac4jState = request.getParameter("state");
       String idTokenParam = request.getParameter("id_token");
       LOG.debug(
+          "MCP callback request: method={}, queryString={}, hasFragment={}",
+          request.getMethod(),
+          request.getQueryString() != null
+              ? request.getQueryString().replaceAll("(id_token|code|token)=[^&]*", "$1=[REDACTED]")
+              : "none",
+          request.getHeader("Referer") != null ? "unknown (referer present)" : "unknown");
+      LOG.debug(
           "Received SSO callback with pac4j state: {}, id_token present: {}",
           pac4jState,
           idTokenParam != null);
+
+      if (pac4jState == null && idTokenParam == null) {
+        LOG.debug(
+            "MCP callback has neither state nor id_token in query params. "
+                + "Likely an implicit-flow redirect with id_token in URL fragment.");
+      }
 
       if ((pac4jState == null || pac4jState.isEmpty()) && idTokenParam != null) {
         LOG.info("Handling direct ID token flow (user already authenticated)");
@@ -255,9 +268,15 @@ public class McpCallbackServlet extends HttpServlet {
       }
 
       if (pac4jState == null || pac4jState.isEmpty()) {
-        LOG.warn("SSO callback without state parameter and no id_token");
-        response.sendError(
-            HttpServletResponse.SC_BAD_REQUEST, "Invalid MCP OAuth callback - missing state");
+        // The id_token may be in the URL fragment (e.g., Google/Azure implicit flow delivers
+        // the token as #id_token=... after an active-session shortcut). Fragments are
+        // client-side only — the server never receives them. Serve a tiny JS page that
+        // reads window.location.hash, extracts the id_token, and retries this endpoint as
+        // a query param so the server can process it via handleDirectIdTokenFlow().
+        LOG.info(
+            "MCP OAuth callback arrived with no state/id_token query params; "
+                + "serving fragment-extraction page to handle implicit-flow redirect");
+        serveFragmentExtractionPage(response);
         return;
       }
 
@@ -460,6 +479,44 @@ public class McpCallbackServlet extends HttpServlet {
                 request, wrappedResponse, userName, email, "mcp:" + authRequestId));
 
     LOG.info("MCP OAuth direct ID token flow completed successfully");
+  }
+
+  /**
+   * Serves a minimal HTML page with JavaScript that extracts the {@code id_token} from the URL
+   * fragment ({@code window.location.hash}) and retries {@code /mcp/callback} with the token as a
+   * real query parameter. This is needed because SSO providers using the implicit or hybrid flow
+   * return the id_token in the URL fragment (e.g., {@code /mcp/callback#id_token=eyJ...}), which
+   * the server never receives — only client-side JavaScript can read {@code window.location.hash}.
+   */
+  private void serveFragmentExtractionPage(HttpServletResponse response) throws IOException {
+    response.setContentType("text/html;charset=UTF-8");
+    response.setStatus(HttpServletResponse.SC_OK);
+    response
+        .getWriter()
+        .write(
+            "<!DOCTYPE html><html><head>"
+                + "<meta charset=\"UTF-8\">"
+                + "<title>MCP OAuth – Completing authentication...</title>"
+                + "</head><body>"
+                + "<p>Completing authentication, please wait...</p>"
+                + "<script>"
+                + "try {"
+                + "  var hash = window.location.hash.slice(1);"
+                + "  var params = new URLSearchParams(hash);"
+                + "  var idToken = params.get('id_token');"
+                + "  if (idToken) {"
+                + "    window.location.replace("
+                + "      window.location.pathname + '?id_token=' + encodeURIComponent(idToken));"
+                + "  } else {"
+                + "    document.body.innerHTML = '<h2>MCP OAuth Error</h2>"
+                + "<p>Authentication failed: the SSO provider did not return an id_token. "
+                + "Please close this tab and retry the authentication flow.</p>';"
+                + "  }"
+                + "} catch(e) {"
+                + "  document.body.innerHTML = '<h2>MCP OAuth Error</h2><p>Fragment extraction "
+                + "failed: ' + e.message + '. Please retry.</p>';"
+                + "}"
+                + "</script></body></html>");
   }
 
   private void processBufferedCallbackResponse(
