@@ -3733,6 +3733,7 @@
     "sinks": "Receptores",
     "size-evolution-description": "Evolución del tamaño de los activos en la organización.",
     "smart-sampling-hint": "Optimiza los recursos según el tamaño de los datos",
+    "soft-delete-archive-message": "This action will disable access to the {{entity}}. You can restore it later from Archives.",
     "soft-delete-message-for-entity": "La eliminación suave desactivará la {{entity}}. Esto deshabilitará cualquier operación de descubrimiento, lectura o escritura en {{entity}}.",
     "soft-delete-message-for-n-entities": "La eliminación temporal desactivará estos {{count}} {{entity}}. Esto deshabilitará cualquier operación de descubrimiento, lectura o escritura sobre ellos.",
     "something-went-wrong": "Algo salió mal",

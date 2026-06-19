@@ -3733,6 +3733,7 @@
     "sinks": "シンク",
     "size-evolution-description": "組織内アセットのサイズの推移。",
     "smart-sampling-hint": "データサイズに基づいてリソースを最適化します",
+    "soft-delete-archive-message": "This action will disable access to the {{entity}}. You can restore it later from Archives.",
     "soft-delete-message-for-entity": "ソフトデリートは{{entity}}を非アクティブ化します。これにより、データの探索や{{entity}}に対する読み取りおよび書き込み操作が無効になります。",
     "soft-delete-message-for-n-entities": "ソフト削除すると、これらの {{count}} 件の{{entity}}が無効化されます。これにより、それらに対する検出、読み取り、書き込みの操作が無効になります。",
     "something-went-wrong": "問題が発生しました。",

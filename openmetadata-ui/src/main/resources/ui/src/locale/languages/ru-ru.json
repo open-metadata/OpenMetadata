@@ -3733,6 +3733,7 @@
     "sinks": "Приёмники",
     "size-evolution-description": "Размер эволюции объектов в организации.",
     "smart-sampling-hint": "Оптимизирует ресурсы в зависимости от объёма данных",
+    "soft-delete-archive-message": "This action will disable access to the {{entity}}. You can restore it later from Archives.",
     "soft-delete-message-for-entity": "Мягкое удаление деактивирует объект «{{entity}}». Обнаружение объекта, чтение или запись его данных отключатся.",
     "soft-delete-message-for-n-entities": "Мягкое удаление деактивирует {{count}} {{entity}}. Это отключит все операции обнаружения, чтения или записи для них.",
     "something-went-wrong": "Что-то пошло не так",

@@ -3733,6 +3733,7 @@
     "sinks": "مقاصد",
     "size-evolution-description": "تحول اندازه دارایی‌ها در سازمان.",
     "smart-sampling-hint": "Optimizes yer resources based on the size o' yer data, arrr",
+    "soft-delete-archive-message": "This action will disable access to the {{entity}}. You can restore it later from Archives.",
     "soft-delete-message-for-entity": "حذف نرم، {{entity}} را غیرفعال می‌کند. این اقدام هرگونه عملیات کشف، خواندن یا نوشتن روی {{entity}} را غیرفعال خواهد کرد.",
     "soft-delete-message-for-n-entities": "Soft deleting will deactivate these {{count}} {{entity}}. This will disable any discovery, read or write operations on them.",
     "something-went-wrong": "یک خطا رخ داده است.",

@@ -3733,6 +3733,7 @@
     "sinks": "Sumidoiros",
     "size-evolution-description": "Evolución do tamaño dos activos na organización.",
     "smart-sampling-hint": "Optimiza os recursos segundo o tamaño dos datos",
+    "soft-delete-archive-message": "This action will disable access to the {{entity}}. You can restore it later from Archives.",
     "soft-delete-message-for-entity": "A eliminación suave desactivará {{entity}}. Isto desactivará calquera operación de descubrimento, lectura ou escritura en {{entity}}.",
     "soft-delete-message-for-n-entities": "A eliminación suave desactivará estes {{count}} {{entity}}. Isto desactivará calquera operación de descubrimento, lectura ou escritura sobre eles.",
     "something-went-wrong": "Algo saíu mal",

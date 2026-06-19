@@ -654,7 +654,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             <DeleteModal
               entityTitle={getKnowledgePageName(knowledgePage, t)}
               isDeleting={isDeleting}
-              message={t('message.soft-delete-message-for-entity', {
+              message={t('message.soft-delete-archive-message', {
                 entity: t('label.article').toLowerCase(),
               })}
               open={isDeleteModalOpen}
