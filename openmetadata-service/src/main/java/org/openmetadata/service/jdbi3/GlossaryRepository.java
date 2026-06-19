@@ -622,6 +622,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       newAbout = new MessageParser.EntityLink(GLOSSARY_TERM, child.getFullyQualifiedName());
       daoCollection.feedDAO().updateByEntityId(newAbout.getLinkString(), child.getId().toString());
     }
+    repointWorkflowInstancesForFqnChange(GLOSSARY_TERM, oldFqn, newFqn);
   }
 
   private List<GlossaryTerm> getAllTerms(Glossary glossary) {
