@@ -253,10 +253,28 @@ export const getUISchemaWithAuthFieldsAsSelect = (
       isAuthSelectorProperty(key, properties[key])
     ),
     (acc, key) => {
+      const oneOfOptions = (properties[key].oneOf ?? []) as Array<
+        Record<string, Record<string, unknown>>
+      >;
+      const recommendedOption = oneOfOptions.find((option) => {
+        const optionProps = (option.properties ?? {}) as Record<
+          string,
+          Record<string, unknown>
+        >;
+
+        return Object.values(optionProps).some(
+          (prop) => prop.recommended === true
+        );
+      });
+      const recommendedTitle = recommendedOption?.title as string | undefined;
+
       acc[key] = {
         ...(uiSchema[key] as Record<string, unknown> | undefined),
         'ui:field': AUTH_SELECT_FIELD,
         'ui:fieldReplacesAnyOrOneOf': true,
+        ...(recommendedTitle
+          ? { 'ui:options': { recommended: recommendedTitle } }
+          : {}),
       };
 
       return acc;

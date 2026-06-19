@@ -1,6 +1,7 @@
 import { Button } from '@/components/base/buttons/button';
 import { HintText } from '@/components/base/input/hint-text';
 import { Label } from '@/components/base/input/label';
+import { TextAreaBase } from '@/components/base/textarea/textarea';
 import { cx } from '@/utils/cx';
 import { Eye, EyeOff, UploadCloud01 } from '@untitledui/icons';
 import { useState } from 'react';
@@ -17,6 +18,10 @@ interface BaseProps {
   acceptedFileTypes?: string[];
   /** Label for the upload button. Defaults to "Upload key file". */
   uploadLabel?: string;
+  /** When true, renders a multiline TextAreaBase instead of single-line InputBase. */
+  multiline?: boolean;
+  /** Number of visible rows for the textarea (only used when multiline=true). */
+  rows?: number;
 }
 
 export interface PasswordInputProps
@@ -25,7 +30,7 @@ export interface PasswordInputProps
 
 export const PasswordInput = ({
   size = 'sm',
-  fontSize = 'md',
+  fontSize = 'sm',
   placeholder,
   label,
   hint,
@@ -33,6 +38,8 @@ export const PasswordInput = ({
   allowUpload = false,
   acceptedFileTypes,
   uploadLabel = 'Upload key file',
+  multiline = false,
+  rows,
   ref,
   groupRef,
   iconClassName,
@@ -54,7 +61,10 @@ export const PasswordInput = ({
 
   const revealButton = (
     <button
-      className="tw:absolute tw:right-3 tw:flex tw:cursor-pointer tw:items-center tw:text-fg-quaternary tw:transition-colors tw:duration-200 hover:tw:text-fg-quaternary_hover tw:border-0 tw:bg-transparent tw:p-0"
+      className={cx(
+        'tw:flex tw:cursor-pointer tw:items-center tw:text-fg-quaternary tw:transition-colors tw:duration-200 hover:tw:text-fg-quaternary_hover tw:border-0 tw:bg-transparent tw:p-0',
+        multiline ? 'tw:absolute tw:right-2 tw:top-2' : 'tw:absolute tw:right-3'
+      )}
       tabIndex={-1}
       type="button"
       onClick={() => setShowPassword((v) => !v)}>
@@ -66,7 +76,7 @@ export const PasswordInput = ({
   // never enters AriaTextField's InputContext and doesn't receive the controlled value.
   const labelRow =
     label || allowUpload ? (
-      <div className="tw:flex tw:w-full tw:items-baseline tw:justify-between tw:gap-2">
+      <div className="tw:flex tw:w-full tw:items-center tw:justify-between tw:gap-2">
         {label && (
           <Label
             isRequired={
@@ -81,7 +91,7 @@ export const PasswordInput = ({
             onSelect={handleFileSelect}>
             <Button
               color="link-color"
-              iconLeading={<UploadCloud01 data-icon size={13} />}
+              iconLeading={<UploadCloud01 data-icon size={12} />}
               isDisabled={isDisabled}
               size="xs"
               type="button">
@@ -99,22 +109,37 @@ export const PasswordInput = ({
         aria-label={label ? undefined : placeholder}
         {...props}
         value={value ?? ''}>
-        <InputBase
-          fontSize={fontSize}
-          groupRef={groupRef}
-          iconClassName={iconClassName}
-          inputClassName={cx('tw:pr-9', inputClassName)}
-          isDisabled={isDisabled}
-          isInvalid={isInvalid}
-          isRequired={isRequired}
-          placeholder={placeholder}
-          ref={ref}
-          size={size}
-          tooltipClassName={tooltipClassName}
-          trailingSlot={revealButton}
-          type={showPassword ? 'text' : 'password'}
-          wrapperClassName={wrapperClassName}
-        />
+        {multiline ? (
+          <div className="tw:relative tw:w-full">
+            <TextAreaBase
+              className={cx(
+                'tw:pr-8',
+                !showPassword && 'tw:[-webkit-text-security:disc]',
+                inputClassName
+              )}
+              placeholder={placeholder}
+              rows={rows}
+            />
+            {revealButton}
+          </div>
+        ) : (
+          <InputBase
+            fontSize={fontSize}
+            groupRef={groupRef}
+            iconClassName={iconClassName}
+            inputClassName={cx('tw:pr-9', inputClassName)}
+            isDisabled={isDisabled}
+            isInvalid={isInvalid}
+            isRequired={isRequired}
+            placeholder={placeholder}
+            ref={ref}
+            size={size}
+            tooltipClassName={tooltipClassName}
+            trailingSlot={revealButton}
+            type={showPassword ? 'text' : 'password'}
+            wrapperClassName={wrapperClassName}
+          />
+        )}
       </TextField>
       {hint && <HintText isInvalid={isInvalid}>{hint}</HintText>}
     </div>

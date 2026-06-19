@@ -11,14 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  FileTrigger,
-  Label,
-  PasswordInput,
-} from '@openmetadata/ui-core-components';
+import { PasswordInput } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
-import { UploadCloud01 } from '@untitledui/icons';
 import { useTranslation } from 'react-i18next';
 import { getWidgetHint, getWidgetLabel } from './coreWidgetUtils';
 
@@ -48,29 +42,27 @@ const CorePasswordWidget = (props: WidgetProps) => {
   const hint = getWidgetHint({ rawErrors, schema, options });
   const isInvalid = !!rawErrors?.length;
 
-  const handleFileSelect = (files: FileList | null) => {
-    if (!files?.length) {
-      return;
-    }
-
-    files[0].text().then(onChange);
-  };
-
-  if (isInputTypeFile) {
+  if (isInputTypeFile || isInputTypeFileOrInput) {
     return (
-      <div className="tw:flex tw:flex-col tw:gap-1.5">
-        {displayLabel && <Label isRequired={required}>{displayLabel}</Label>}
-        <FileTrigger onSelect={handleFileSelect}>
-          <Button
-            color="secondary"
-            isDisabled={disabled || readonly}
-            size="sm"
-            type="button">
-            <UploadCloud01 data-icon size={14} />
-            {t('message.upload-file')}
-          </Button>
-        </FileTrigger>
-      </div>
+      <PasswordInput
+        allowUpload
+        multiline
+        acceptedFileTypes={schema.accept as string[] | undefined}
+        autoFocus={autofocus}
+        hint={hint}
+        id={id}
+        isDisabled={disabled || readonly}
+        isInvalid={isInvalid}
+        isRequired={required}
+        label={displayLabel}
+        placeholder={placeholder}
+        rows={6}
+        uploadLabel={t('label.upload-key-file')}
+        value={value ?? ''}
+        onBlur={() => onBlur(id, value)}
+        onChange={onChange}
+        onFocus={() => onFocus(id, value)}
+      />
     );
   }
 

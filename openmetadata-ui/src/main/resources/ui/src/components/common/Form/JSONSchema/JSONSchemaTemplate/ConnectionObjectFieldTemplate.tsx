@@ -150,7 +150,7 @@ const ReqBadge = ({
   return (
     <span
       className={classNames(
-        'tw:rounded-full tw:border tw:px-2 tw:py-0.5 tw:text-xs tw:font-medium tw:leading-4',
+        'tw:rounded-full tw:border tw:px-1 tw:py-0.25 tw:text-xs tw:font-semibold',
         toneClass
       )}>
       {children}
@@ -178,7 +178,7 @@ const SectionHeader = ({
   onFocus?: () => void;
 }) => (
   <button
-    className="connection-section-header tw:flex tw:w-full tw:gap-2.5 tw:border-0 tw:bg-transparent tw:p-0 tw:text-left"
+    className="connection-section-header tw:flex tw:items-center tw:justify-between tw:w-full tw:gap-2.5 tw:border-0 tw:bg-transparent tw:p-0 tw:text-left"
     type="button"
     onClick={() => {
       onFocus?.();
@@ -186,23 +186,25 @@ const SectionHeader = ({
         onToggle();
       }
     }}>
-    {index != null && (
-      <span className="tw:grid tw:size-5 tw:flex-shrink-0 tw:place-items-center tw:rounded-full tw:bg-utility-brand-50 tw:text-xs tw:font-medium tw:text-utility-brand-700 tw:mt-1">
-        {index}
-      </span>
-    )}
-    <span className="tw:flex-1">
-      <span className="tw:flex tw:items-center tw:gap-2">
-        <span className="connection-section-header-title tw:text-sm tw:font-medium tw:leading-5 tw:text-primary">
-          {title}
-        </span>
-        {badge}
-      </span>
-      {description && (
-        <span className="connection-section-header-description tw:mt-0.5 tw:block tw:text-xs tw:text-tertiary">
-          {description}
+    <span className="tw:flex tw:gap-2.5">
+      {index != null && (
+        <span className="tw:grid tw:size-6 tw:flex-shrink-0 tw:place-items-center tw:rounded-full tw:bg-utility-brand-50 tw:text-xs tw:font-semibold tw:text-utility-brand-700 tw:mt-1">
+          {index}
         </span>
       )}
+      <span className="tw:flex-1">
+        <span className="tw:flex tw:items-center tw:gap-2">
+          <span className="connection-section-header-title tw:text-md tw:font-semibold tw:leading-4 tw:text-primary">
+            {title}
+          </span>
+          {badge}
+        </span>
+        {description && (
+          <span className="connection-section-header-description tw:mt-0.5 tw:block tw:text-xs tw:text-tertiary">
+            {description}
+          </span>
+        )}
+      </span>
     </span>
     {collapsible && (
       <ChevronDown
@@ -378,7 +380,7 @@ const SectionFields = ({
           </div>
         )}
         {scalarProperties.length > 0 && (
-          <div className="connection-advanced-secondary-grid tw:grid tw:grid-flow-row-dense tw:[grid-template-columns:repeat(2,minmax(0,1fr))] tw:gap-5 tw:items-start">
+          <div className="connection-advanced-secondary-grid tw:grid tw:grid-flow-row-dense tw:[grid-template-columns:repeat(3,minmax(0,1fr))] tw:gap-5 tw:items-start">
             {scalarProperties.map((element, index) =>
               renderProperty(element, index)
             )}
@@ -407,7 +409,7 @@ const SectionFields = ({
       {orderedFieldGroups.map((group, groupIndex) =>
         group.type === 'grid' ? (
           <div
-            className="connection-section-field-grid tw:grid tw:grid-flow-row-dense tw:gap-3 tw:[grid-template-columns:repeat(2,minmax(0,1fr))]"
+            className="connection-section-field-grid tw:grid tw:grid-flow-row-dense tw:gap-3 tw:[grid-template-columns:repeat(3,minmax(0,1fr))]"
             key={`grid-${groupIndex}`}>
             {group.properties.map((element, index) =>
               renderProperty(element, index)
@@ -575,7 +577,7 @@ const SectionCard = ({ section }: { section: SectionConfig }) => {
   return (
     <Card
       className={classNames(
-        'connection-section-card tw:p-6',
+        'connection-section-card tw:p-5',
         `connection-section-card-${section.key}`
       )}
       color={active ? 'brandOutlined' : 'default'}

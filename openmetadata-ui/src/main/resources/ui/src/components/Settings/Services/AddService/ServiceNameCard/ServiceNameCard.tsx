@@ -44,9 +44,9 @@ const ServiceNameCard = ({
 
   return (
     <div
-      className="tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:p-4 tw:shadow-xs"
+      className="tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:p-5 tw:shadow-xs"
       data-testid="service-name-card">
-      <div className="tw:text-sm tw:font-medium tw:leading-5 tw:text-primary">
+      <div className="tw:text-md tw:font-semibold tw:text-primary">
         {t('label.name-this-service')}
       </div>
       <div className="tw:mt-0.5 tw:text-xs tw:text-tertiary">

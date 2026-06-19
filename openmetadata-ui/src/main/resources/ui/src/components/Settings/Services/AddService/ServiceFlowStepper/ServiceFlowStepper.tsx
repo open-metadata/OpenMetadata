@@ -94,7 +94,7 @@ const ServiceFlowStepper = ({
 
       return (
         <Fragment key={item.name}>
-          <div className="tw:flex tw:w-[120px] tw:flex-col tw:items-center tw:gap-2.5">
+          <div className="tw:flex tw:w-[150px] tw:flex-col tw:items-center tw:gap-2.5">
             <StepNode state={state} />
             <span
               className={classNames(

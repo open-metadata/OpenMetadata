@@ -250,7 +250,7 @@ const SectionFields = ({
       {orderedFieldGroups.map((group) =>
         group.type === 'grid' ? (
           <div
-            className="tw:grid tw:grid-flow-row-dense tw:gap-3 tw:[grid-template-columns:repeat(2,minmax(0,1fr))]"
+            className="tw:grid tw:grid-flow-row-dense tw:gap-3 tw:[grid-template-columns:repeat(3,minmax(0,1fr))]"
             key={group.properties[0].name}>
             {group.properties.map((element) => renderProperty(element))}
           </div>

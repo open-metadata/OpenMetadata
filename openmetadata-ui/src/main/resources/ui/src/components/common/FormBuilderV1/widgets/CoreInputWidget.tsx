@@ -15,8 +15,6 @@ import { Input } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
 import { getWidgetLabel } from './coreWidgetUtils';
 
-const HINT_TOOLTIP_THRESHOLD = 100;
-
 const CoreInputWidget = ({
   id,
   value,
@@ -64,11 +62,7 @@ const CoreInputWidget = ({
   };
 
   const description = schema.description ?? options.help;
-  const isLongHint =
-    typeof description === 'string' &&
-    description.length > HINT_TOOLTIP_THRESHOLD;
-  const hint = rawErrors?.[0] ?? (isLongHint ? undefined : description);
-  const tooltip = isLongHint && !rawErrors?.length ? description : undefined;
+  const hint = rawErrors?.[0] ?? description;
 
   return (
     <div>
@@ -82,7 +76,7 @@ const CoreInputWidget = ({
         isRequired={required}
         label={getWidgetLabel({ hideLabel, label })}
         placeholder={placeholder}
-        tooltip={tooltip}
+        // tooltip={tooltip}
         tooltipClassName="tw:h-4"
         type={inputType}
         value={value ?? ''}

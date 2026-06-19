@@ -1,3 +1,5 @@
+import { cx, sortCx } from '@/utils/cx';
+import { isReactComponent } from '@/utils/is-react-component';
 import type {
   AnchorHTMLAttributes,
   ButtonHTMLAttributes,
@@ -5,14 +7,12 @@ import type {
   FC,
   ReactNode,
 } from 'react';
-import React, { isValidElement } from 'react';
+import { isValidElement } from 'react';
 import type {
   ButtonProps as AriaButtonProps,
   LinkProps as AriaLinkProps,
 } from 'react-aria-components';
 import { Button as AriaButton, Link as AriaLink } from 'react-aria-components';
-import { cx, sortCx } from '@/utils/cx';
-import { isReactComponent } from '@/utils/is-react-component';
 
 export const styles = sortCx({
   common: {

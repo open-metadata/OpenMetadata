@@ -17,7 +17,7 @@ import {
   getDiscriminatorFieldFromSchema,
   RJSFSchema,
 } from '@rjsf/utils';
-import { InfoCircle, Key01, Lock01 } from '@untitledui/icons';
+import { InfoCircle } from '@untitledui/icons';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -25,12 +25,14 @@ import {
   Radio as AriaRadio,
   RadioGroup as AriaRadioGroup,
 } from 'react-aria-components';
+import { ReactComponent as LockIcon } from '../../../../../../assets/svg/closed-lock.svg';
+import { ReactComponent as KeyIcon } from '../../../../../../assets/svg/key.svg';
 import { Transi18next } from '../../../../../../utils/i18next/LocalUtil';
 
 const KEY_BASED_METHOD = /(key|iam|token|certificate|azure|gcp|jwt|oauth|sso)/i;
 
 const getMethodIcon = (title: string) =>
-  KEY_BASED_METHOD.test(title) ? Key01 : Lock01;
+  KEY_BASED_METHOD.test(title) ? KeyIcon : LockIcon;
 
 const getOptionTitle = (option: RJSFSchema, index: number): string =>
   option.title ??
@@ -240,7 +242,7 @@ const AuthSelectField = (props: FieldProps) => {
               <AriaRadio
                 className={({ isSelected }) =>
                   classNames(
-                    'tw:flex tw:cursor-pointer tw:items-center tw:justify-center tw:gap-2 tw:rounded-[7px] tw:border tw:px-3 tw:py-2.5 tw:transition-colors',
+                    'tw:flex tw:cursor-pointer tw:items-center tw:justify-center tw:gap-2 tw:rounded-[7px] tw:border tw:px-3 tw:py-1.5 tw:transition-colors',
                     isSelected
                       ? 'tw:border-primary tw:bg-primary tw:shadow-xs'
                       : 'tw:border-transparent'
@@ -252,12 +254,12 @@ const AuthSelectField = (props: FieldProps) => {
                 {({ isSelected }) => (
                   <>
                     <MethodIcon
-                      className={
+                      className={classNames(
+                        'tw:h-4 tw:w-4',
                         isSelected
                           ? 'tw:text-brand-secondary'
                           : 'tw:text-fg-quaternary'
-                      }
-                      size={16}
+                      )}
                     />
                     <Typography
                       as="span"

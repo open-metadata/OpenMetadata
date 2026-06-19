@@ -14,7 +14,6 @@
 import {
   Breadcrumbs,
   Button,
-  Card,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
@@ -377,8 +376,8 @@ const AddServicePage = () => {
   // flex-col layout bounds the scroll area so the footer stays anchored at the card bottom,
   // keeping the card's rounded corners visible at all times during scroll.
   const firstPanelChildren = (
-    <Card className="add-service-page-card tw:max-w-screen-lg m-x-auto tw:p-0 tw:h-full tw:flex tw:flex-col tw:overflow-hidden">
-      <div className="tw:flex-1 tw:overflow-y-auto tw:p-5">
+    <div className="tw:max-w-screen-lg m-x-auto tw:p-0 tw:flex tw:flex-col tw:h-full tw:overflow-y-scroll no-scrollbar">
+      <div className="tw:flex-1">
         <Breadcrumbs
           items={serviceBreadcrumb}
           onAction={handleBreadcrumbAction}
@@ -479,7 +478,7 @@ const AddServicePage = () => {
         </div>
       </div>
       {showFooter && (
-        <div className="tw:flex tw:flex-shrink-0 tw:items-center tw:justify-end tw:gap-5 tw:border-t tw:border-secondary tw:bg-primary tw:px-5 tw:py-4">
+        <div className="tw:flex tw:flex-shrink-0 tw:items-center tw:justify-end tw:gap-5 tw:py-4">
           <Button
             color="secondary"
             data-testid="previous-button"
@@ -500,7 +499,7 @@ const AddServicePage = () => {
           </Button>
         </div>
       )}
-    </Card>
+    </div>
   );
 
   useEffect(() => {

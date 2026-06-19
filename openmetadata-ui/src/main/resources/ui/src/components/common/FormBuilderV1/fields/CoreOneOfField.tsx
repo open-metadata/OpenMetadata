@@ -159,6 +159,9 @@ const CoreOneOfField = (props: FieldProps) => {
   const isStorageConfigSelector = idSchema.$id.endsWith(
     STORAGE_CONFIG_ID_SUFFIX
   );
+  const recommendedTitle = (uiSchema?.['ui:options']?.recommended ??
+    undefined) as string | undefined;
+
   const optionItems = useMemo(
     () =>
       resolvedOptions.map((option, index) => {
@@ -170,13 +173,15 @@ const CoreOneOfField = (props: FieldProps) => {
               <Hexagon01
                 aria-hidden="true"
                 data-testid="storage-config-title-icon"
+                size={16}
               />
             ) : undefined,
           id: String(index),
+          isRecommended: recommendedTitle === label,
           label,
         };
       }),
-    [isStorageConfigSelector, resolvedOptions]
+    [isStorageConfigSelector, recommendedTitle, resolvedOptions]
   );
 
   const selectedIdSchema = useMemo(
@@ -254,7 +259,7 @@ const CoreOneOfField = (props: FieldProps) => {
       className={classNames(
         'core-one-of-field',
         shouldRenderInlineSelectedBranch
-          ? 'core-one-of-field-inline-selected tw:grid tw:[grid-template-columns:repeat(2,minmax(0,1fr))] tw:[gap:16px] tw:items-start tw:w-full tw:min-w-0'
+          ? 'core-one-of-field-inline-selected tw:grid tw:[grid-template-columns:repeat(3,minmax(0,1fr))] tw:[gap:16px] tw:items-start tw:w-full tw:min-w-0'
           : 'tw:flex tw:flex-col tw:gap-4'
       )}
       data-field-id={idSchema.$id}>
@@ -293,6 +298,12 @@ const CoreOneOfField = (props: FieldProps) => {
                   type="button"
                   onClick={() => handleOptionChange(Number(item.id))}>
                   {item.label}
+                  {item.isRecommended && isSelected && (
+                    <span
+                      className="tw:size-1.5 tw:rounded-full tw:bg-fg-success-primary"
+                      data-testid="recommended-indicator"
+                    />
+                  )}
                 </button>
               );
             })}
