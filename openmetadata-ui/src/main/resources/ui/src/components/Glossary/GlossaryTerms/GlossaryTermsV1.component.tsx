@@ -302,12 +302,16 @@ const GlossaryTermsV1 = ({
 
         {glossaryTerm.derivedFrom && (
           <Col data-testid="derived-from-link" span={24}>
-            <span className="tw:text-xs tw:text-gray-500">
+            <span className="tw:text-xs tw:text-tertiary">
               {`${t('label.derived-from-memory')}: `}
             </span>
             <Link
-              className="tw:text-xs tw:text-brand-600 hover:tw:underline"
-              to={ROUTES.CONTEXT_CENTER_MEMORIES}>
+              className="tw:text-xs tw:text-brand-secondary hover:tw:underline"
+              to={`${
+                ROUTES.CONTEXT_CENTER_MEMORIES
+              }?memory=${encodeURIComponent(
+                glossaryTerm.derivedFrom.name ?? ''
+              )}`}>
               {getEntityName(glossaryTerm.derivedFrom)}
             </Link>
           </Col>

@@ -56,7 +56,7 @@ const EntityList: FC<EntityListProps> = ({ entities, labelKey }) => {
   return (
     <Box direction="col" gap={1}>
       <Typography
-        className="tw:text-gray-500 tw:uppercase"
+        className="tw:text-tertiary tw:uppercase"
         size="text-xs"
         weight="semibold">
         {t(labelKey)}
@@ -64,7 +64,7 @@ const EntityList: FC<EntityListProps> = ({ entities, labelKey }) => {
       <Box direction="col">
         {entities.map((entity) => (
           <Link
-            className="tw:text-sm tw:text-brand-600 hover:tw:underline tw:py-0.5 tw:block"
+            className="tw:text-sm tw:text-brand-secondary hover:tw:underline tw:py-0.5 tw:block"
             data-testid={`ontology-entity-${entity.id}`}
             key={entity.id}
             to={getEntityPath(entity)}>
@@ -127,7 +127,7 @@ const DerivedOntologyCard: FC<DerivedOntologyCardProps> = ({ memoryId }) => {
     <Card className="tw:p-4 tw:shrink-0" data-testid="derived-ontology-card">
       <div className="tw:mb-3">
         <Typography
-          className="tw:text-gray-500 tw:uppercase"
+          className="tw:text-tertiary tw:uppercase"
           size="text-xs"
           weight="semibold">
           {t('label.derived-ontology')}
@@ -139,7 +139,7 @@ const DerivedOntologyCard: FC<DerivedOntologyCardProps> = ({ memoryId }) => {
           <Skeleton height="14px" variant="rounded" width="60%" />
         </Box>
       ) : !hasEntities ? (
-        <Typography className="tw:text-gray-400" size="text-sm">
+        <Typography className="tw:text-tertiary" size="text-sm">
           {t('message.no-derived-ontology')}
         </Typography>
       ) : (
