@@ -206,7 +206,7 @@ class TagAnalyzer:
     def analyze(
         self,
         str_values: Sequence[str],
-        column_name: Optional[str] = None,  # noqa: UP045
+        run_column_analysis: bool = False,
     ) -> TagAnalysis:
         content_results: list[RecognizerResult] = []
         content_score = 0.0
@@ -219,19 +219,16 @@ class TagAnalyzer:
 
         column_results: list[RecognizerResult] = []
         column_score = 0.0
-        if column_name is not None:
+        if run_column_analysis:
             column_recognizers = self.column_recognizers
             if column_recognizers:
                 column_results = self._analyze_with(self._column_name, column_recognizers)
                 column_score = sum(r.score for r in column_results)
 
-        all_results = content_results + column_results
+        column_wins = column_score >= content_score and bool(column_results)
         score = max(content_score, column_score)
-        target = (
-            recognizer.Target.column_name
-            if column_score >= content_score and column_results
-            else recognizer.Target.content
-        )
+        target = recognizer.Target.column_name if column_wins else recognizer.Target.content
+        all_results = (column_results + content_results) if column_wins else (content_results + column_results)
 
         return TagAnalysis(
             tag=self.tag,

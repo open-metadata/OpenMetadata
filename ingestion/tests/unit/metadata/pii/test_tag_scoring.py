@@ -176,7 +176,7 @@ class TestTagScorer:
             "bob@company.co.uk",
         ]
 
-        scores = classifier.predict_scores(sample_data, column_name="customer_email")
+        scores = classifier.predict_scores(sample_data, run_column_analysis=True)
 
         assert len(scores) == 1
         scored_tag = scores[0]
@@ -195,7 +195,7 @@ class TestTagScorer:
         """Test classification with phone data using TagAnalyzer"""
         sample_data = ["555-123-4567", "555.987.6543", "5551234567"]
 
-        scores = classifier.predict_scores(sample_data, column_name="contact_phone")
+        scores = classifier.predict_scores(sample_data, run_column_analysis=True)
 
         assert len(scores) == 1
         scored_tag = scores[0]
@@ -229,7 +229,7 @@ class TestTagScorer:
             "Email support@company.org or call 555.987.6543",
         ]
 
-        scores = classifier.predict_scores(sample_data, column_name="contact_info")
+        scores = classifier.predict_scores(sample_data, run_column_analysis=True)
 
         # Should detect patterns through tag analyzers
         assert len(scores) > 0
@@ -243,7 +243,7 @@ class TestTagScorer:
         )
 
         sample_data = ["maybe an email@somewhere", "could be phone 123456"]
-        scored_tags = high_cutoff_classifier.predict_scores(sample_data, column_name="data")
+        scored_tags = high_cutoff_classifier.predict_scores(sample_data, run_column_analysis=True)
 
         # With such a high cutoff, weak matches should be filtered
         assert len(scored_tags) == 0 or all(scored_tag.score >= 0.95 for scored_tag in scored_tags)
@@ -258,7 +258,7 @@ class TestTagScorer:
         analyzer = TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
         scorer = TagScorer(tag_analyzers=[analyzer], score_cutoff=0.1)
 
-        scores = scorer.predict_scores([], column_name="email_address")
+        scores = scorer.predict_scores([], run_column_analysis=True)
 
         assert len(scores) == 1
         assert scores[0] == IsInstance(ScoredTag) & HasAttributes(
@@ -373,7 +373,7 @@ class TestTagAnalyzer:
         email_tag.recognizers.append(column_name_recognizer)
 
         analyzer = TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
-        analysis = analyzer.analyze(str_values=[], column_name="email_address")
+        analysis = analyzer.analyze(str_values=[], run_column_analysis=True)
         assert analysis == IsInstance(TagAnalysis) & HasAttributes(
             score=IsFloat(gt=0.5),
             tag=email_tag,

@@ -58,7 +58,7 @@ class TagScorer:
     def predict_scores(
         self,
         sample_data: Sequence[Any],
-        column_name: Optional[str] = None,  # noqa: UP045
+        run_column_analysis: bool = False,
         _column_data_type: Optional[DataType] = None,  # noqa: UP045
     ) -> List[ScoredTag]:  # noqa: UP006
         str_values = preprocess_values(sample_data)
@@ -68,21 +68,18 @@ class TagScorer:
             len(unique_values) / len(str_values) >= self._relative_cardinality_cutoff
         )
 
-        if not has_valid_content and column_name is None:
+        if not has_valid_content and not run_column_analysis:
             return []
 
         results: List[ScoredTag] = []  # noqa: UP006
         for analyzer in self._analyzers:
             analysis = analyzer.analyze(
                 str_values=str_values if has_valid_content else [],
-                column_name=column_name,
+                run_column_analysis=run_column_analysis,
             )
 
             if analysis.score > self._score_cutoff:
-                recognizer_metadata = self._build_recognizer_metadata(
-                    analysis=analysis,
-                    total_score=analysis.score,
-                )
+                recognizer_metadata = self._build_recognizer_metadata(analysis)
 
                 results.append(
                     ScoredTag(
@@ -98,7 +95,6 @@ class TagScorer:
     def _build_recognizer_metadata(
         self,
         analysis: TagAnalysis,
-        total_score: float,
     ) -> Optional[TagLabelRecognizerMetadata]:  # noqa: UP045
         if not analysis.recognizer_results:
             return None
@@ -147,7 +143,7 @@ class TagScorer:
         return TagLabelRecognizerMetadata(
             recognizerId=recognizer_id,
             recognizerName=recognizer_name,
-            score=min(total_score, 1),
+            score=min(analysis.score, 1),
             target=TARGET_MAP[analysis.target] if analysis.target else None,
             patterns=pattern_matches if pattern_matches else None,
         )
@@ -180,9 +176,8 @@ class ScoreTagsForColumnService:
         )
 
         classifier = TagScorer(tag_analyzers=tag_analyzers)
-        column_name_str = column.fullyQualifiedName.root if column.fullyQualifiedName else None
         return classifier.predict_scores(
             sample_data=data,
-            column_name=column_name_str,
+            run_column_analysis=column.fullyQualifiedName is not None,
             _column_data_type=column.dataType,
         )

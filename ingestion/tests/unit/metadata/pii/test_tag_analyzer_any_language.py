@@ -317,7 +317,7 @@ class TestAnalyzeWithAnyLanguage:
             nlp_engine=mock_nlp_engine,
             language=ClassificationLanguage.any,
         )
-        result = analyzer.analyze(str_values=[], column_name="email_address")
+        result = analyzer.analyze(str_values=[], run_column_analysis=True)
         assert result is not None
 
 
