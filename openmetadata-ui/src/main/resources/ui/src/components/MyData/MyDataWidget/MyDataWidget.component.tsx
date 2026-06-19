@@ -119,43 +119,48 @@ const MyDataWidgetInternal = ({
   };
 
   const fetchMyDataAssets = useCallback(async () => {
-    if (!isUndefined(currentUser)) {
-      setIsLoading(true);
-      try {
-        const teamsIds = (currentUser.teams ?? []).map((team) => team.id);
-        const ownerIds = [...teamsIds, currentUser.id];
+    if (isUndefined(currentUser)) {
+      setData([]);
+      setIsLoading(false);
 
-        const queryFilterObj = getTermQuery(
-          { 'owners.id': ownerIds },
-          'should',
-          1
-        );
+      return;
+    }
 
-        const sortField = getSortField(selectedFilter);
-        const sortOrder = getSortOrder(selectedFilter);
+    setIsLoading(true);
+    try {
+      const teamsIds = (currentUser.teams ?? []).map((team) => team.id);
+      const ownerIds = [...teamsIds, currentUser.id];
 
-        const res = await searchQuery({
-          query: '',
-          pageNumber: INITIAL_PAGING_VALUE,
-          pageSize: PAGE_SIZE_MEDIUM,
-          queryFilter: queryFilterObj,
-          sortField,
-          sortOrder,
-          searchIndex: SearchIndex.ALL,
-        });
+      const queryFilterObj = getTermQuery(
+        { 'owners.id': ownerIds },
+        'should',
+        1
+      );
 
-        // Extract useful details from the Response
-        const ownedAssets = res?.hits?.hits;
-        const sourceData = ownedAssets.map((hit) => hit._source);
+      const sortField = getSortField(selectedFilter);
+      const sortOrder = getSortOrder(selectedFilter);
 
-        // Apply client-side sorting as well to ensure consistent results
-        const sortedData = applySortToData(sourceData, selectedFilter);
-        setData(sortedData);
-      } catch {
-        setData([]);
-      } finally {
-        setIsLoading(false);
-      }
+      const res = await searchQuery({
+        query: '',
+        pageNumber: INITIAL_PAGING_VALUE,
+        pageSize: PAGE_SIZE_MEDIUM,
+        queryFilter: queryFilterObj,
+        sortField,
+        sortOrder,
+        searchIndex: SearchIndex.ALL,
+      });
+
+      // Extract useful details from the Response
+      const ownedAssets = res?.hits?.hits ?? [];
+      const sourceData = ownedAssets.map((hit) => hit._source);
+
+      // Apply client-side sorting as well to ensure consistent results
+      const sortedData = applySortToData(sourceData, selectedFilter);
+      setData(sortedData);
+    } catch {
+      setData([]);
+    } finally {
+      setIsLoading(false);
     }
   }, [
     currentUser,

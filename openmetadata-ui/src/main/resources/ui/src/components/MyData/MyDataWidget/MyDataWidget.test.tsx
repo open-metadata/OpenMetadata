@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_MEDIUM,
 } from '../../../constants/constants';
+import { applySortToData } from '../../../constants/Widgets.constant';
 import { SearchIndex } from '../../../enums/search.enum';
 import { User } from '../../../generated/entity/teams/user';
 import { searchQuery } from '../../../rest/searchAPI';
@@ -26,6 +27,7 @@ const mockUserData: User = {
   email: 'testUser1@email.com',
   id: '113',
 };
+let mockCurrentUser: User | undefined = mockUserData;
 
 const mockSearchAPIResponse = {
   data: {
@@ -72,8 +74,21 @@ jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockImplementation((obj) => obj.name),
 }));
 
+jest.mock('../../../utils/EntityLinkUtils', () => ({
+  getEntityLinkFromType: jest.fn().mockReturnValue('/entity/test'),
+}));
+
 jest.mock('../../../utils/SearchClassBase', () => ({
   getEntityIcon: jest.fn().mockImplementation((obj) => obj.name),
+}));
+
+jest.mock('../../../utils/RouterUtils', () => ({
+  getDomainPath: jest.fn().mockReturnValue('/domain/test'),
+  getUserPath: jest.fn().mockReturnValue('/user/test'),
+}));
+
+jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest.fn().mockImplementation(() => <span>OwnerLabel</span>),
 }));
 
 jest.mock('../../../constants/Widgets.constant', () => ({
@@ -85,18 +100,27 @@ jest.mock('../../../constants/Widgets.constant', () => ({
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn(() => ({
-    currentUser: mockUserData,
+    currentUser: mockCurrentUser,
   })),
 }));
 
 jest.mock(
   '../../common/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component',
   () => {
-    return jest.fn().mockImplementation(({ children }) => <>{children}</>);
+    return jest.fn().mockImplementation(({ children, loading }) => (
+      <div data-loading={loading} data-testid="entity-list-skeleton">
+        {children}
+      </div>
+    ));
   }
 );
 
 describe('MyDataWidget component', () => {
+  beforeEach(() => {
+    mockCurrentUser = mockUserData;
+    jest.clearAllMocks();
+  });
+
   it('should fetch data', async () => {
     await act(async () => {
       render(<MyDataWidget widgetKey="widgetKey" />, { wrapper: MemoryRouter });
@@ -139,6 +163,25 @@ describe('MyDataWidget component', () => {
     expect(screen.getByText('label.my-data')).toBeInTheDocument();
   });
 
+  it('should not fetch data or stay loading when current user is unavailable', async () => {
+    mockCurrentUser = undefined;
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <MyDataWidget widgetKey="widgetKey" />
+        </MemoryRouter>
+      );
+    });
+
+    expect(searchQuery).not.toHaveBeenCalled();
+    expect(screen.getByTestId('entity-list-skeleton')).toHaveAttribute(
+      'data-loading',
+      'false'
+    );
+    expect(screen.getByText('label.no-records')).toBeInTheDocument();
+  });
+
   it('should not render view all for 0 length data', async () => {
     await act(async () => {
       render(
@@ -165,5 +208,26 @@ describe('MyDataWidget component', () => {
 
     expect(await screen.findByText('test 1')).toBeInTheDocument();
     expect(await screen.findByText('test 2')).toBeInTheDocument();
+  });
+
+  it('should treat missing search hits as an empty result set', async () => {
+    (searchQuery as jest.Mock).mockResolvedValueOnce({});
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <MyDataWidget widgetKey="widgetKey" />
+        </MemoryRouter>
+      );
+    });
+
+    await waitFor(() => {
+      expect(applySortToData).toHaveBeenCalledWith([], expect.any(String));
+    });
+    expect(screen.getByTestId('entity-list-skeleton')).toHaveAttribute(
+      'data-loading',
+      'false'
+    );
+    expect(screen.getByText('label.no-records')).toBeInTheDocument();
   });
 });
