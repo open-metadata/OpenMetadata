@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.drive.ontology;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
@@ -43,7 +45,7 @@ public class OntologyExtractor {
     final List<OntologyDerivation> verdicts =
         llmClient.completeStructured(prompt, userPrompt, OntologyDerivation.class);
     OntologyDerivation result = empty();
-    if (!verdicts.isEmpty()) {
+    if (!nullOrEmpty(verdicts)) {
       result = verdicts.getFirst();
     }
     return result;
