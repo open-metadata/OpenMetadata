@@ -855,11 +855,8 @@ public class DatabaseServiceResourceIT
   void test_csvImportEntityRuleValidation(TestNamespace ns)
       throws IOException, InterruptedException {
 
-    final String MULTI_DOMAIN_RULE = "Multiple Domains are not allowed";
-
     // Check if rule is currently enabled and store original state
-    boolean originalRuleState =
-        EntityRulesUtil.isRuleEnabled(SdkClients.adminClient(), MULTI_DOMAIN_RULE);
+    boolean originalRuleState = EntityRulesUtil.isMultiDomainRuleEnabled(SdkClients.adminClient());
 
     try {
       // Enable the multi-domain rule for testing
