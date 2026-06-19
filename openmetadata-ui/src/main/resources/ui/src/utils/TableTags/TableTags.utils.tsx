@@ -89,9 +89,7 @@ export const getFilteredTagsData = <T extends TagsData>(
       selectedTags.includes(tag.tagFQN)
     );
 
-    if (isSelfTagged || filteredChildren.length) {
-      acc.push({ ...item, children: filteredChildren });
-    }
-
-    return acc;
+    return isSelfTagged || filteredChildren.length
+      ? acc.concat({ ...item, children: filteredChildren })
+      : acc;
   }, []);
