@@ -14,17 +14,28 @@
 import { Button, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import { FC, useEffect, useMemo, useState } from 'react';
+import { FC, lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../../utils/FeedUtilsPure';
-import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import ActivityFeedEditor from '../../ActivityFeedEditor/ActivityFeedEditor';
-import Reactions from '../../Reactions/Reactions';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import { FeedBodyProp } from '../ActivityFeedCard.interface';
+
+const RichTextEditorPreviewerV1 = withSuspenseFallback(
+  lazy(() => import('../../../common/RichTextEditor/RichTextEditorPreviewerV1'))
+);
+
+const Reactions = withSuspenseFallback(
+  lazy(() => import('../../Reactions/Reactions'))
+);
+
+const ActivityFeedEditor = withSuspenseFallback(
+  lazy(() => import('../../ActivityFeedEditor/ActivityFeedEditor'))
+);
+
 const FeedCardBody: FC<FeedBodyProp> = ({
   message,
   announcementDetails,
