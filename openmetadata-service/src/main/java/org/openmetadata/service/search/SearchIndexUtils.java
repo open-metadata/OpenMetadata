@@ -92,7 +92,8 @@ public final class SearchIndexUtils {
    */
   public static String stripLineageForSize(
       String json, long maxBytes, String docId, String entityType) {
-    if (json.getBytes(StandardCharsets.UTF_8).length <= maxBytes) {
+    int size = json.getBytes(StandardCharsets.UTF_8).length;
+    if (size <= maxBytes) {
       return json;
     }
     TypeReference<Map<String, Object>> mapType = new TypeReference<>() {};
@@ -100,24 +101,25 @@ public final class SearchIndexUtils {
     if (doc.remove("lineageSqlQueries") != null) {
       stripSqlQueryKeysFromEdges(doc);
       json = JsonUtils.pojoToJson(doc);
-      int sizeAfterStrip = json.getBytes(StandardCharsets.UTF_8).length;
+      size = json.getBytes(StandardCharsets.UTF_8).length;
       LOG.warn(
           "Document {} ({}) too large, stripped lineageSqlQueries (size now {} bytes)",
           docId,
           entityType,
-          sizeAfterStrip);
-      if (sizeAfterStrip <= maxBytes) {
+          size);
+      if (size <= maxBytes) {
         return json;
       }
     }
     doc.remove("upstreamLineage");
     json = JsonUtils.pojoToJson(doc);
+    size = json.getBytes(StandardCharsets.UTF_8).length;
     LOG.warn(
         "Document {} ({}) still too large, stripped upstreamLineage (size now {} bytes)",
         docId,
         entityType,
-        json.getBytes(StandardCharsets.UTF_8).length);
-    if (json.getBytes(StandardCharsets.UTF_8).length > maxBytes) {
+        size);
+    if (size > maxBytes) {
       stripColumnTreeForSize(doc);
       json = JsonUtils.pojoToJson(doc);
       LOG.warn(
@@ -131,31 +133,31 @@ public final class SearchIndexUtils {
 
   public static Map<String, Object> stripDocMapIfOversized(
       Map<String, Object> doc, long maxBytes, String docId, String entityType) {
-    String json = JsonUtils.pojoToJson(doc);
-    if (json.getBytes(StandardCharsets.UTF_8).length <= maxBytes) {
+    int size = JsonUtils.pojoToJson(doc).getBytes(StandardCharsets.UTF_8).length;
+    if (size <= maxBytes) {
       return doc;
     }
     if (doc.remove("lineageSqlQueries") != null) {
       stripSqlQueryKeysFromEdges(doc);
-      json = JsonUtils.pojoToJson(doc);
-      int strippedSize = json.getBytes(StandardCharsets.UTF_8).length;
+      size = JsonUtils.pojoToJson(doc).getBytes(StandardCharsets.UTF_8).length;
       LOG.warn(
           "Live index doc {} ({}) too large, stripped lineageSqlQueries ({} bytes)",
           docId,
           entityType,
-          strippedSize);
-      if (strippedSize <= maxBytes) {
+          size);
+      if (size <= maxBytes) {
         return doc;
       }
     }
     if (doc.remove("upstreamLineage") != null) {
+      size = JsonUtils.pojoToJson(doc).getBytes(StandardCharsets.UTF_8).length;
       LOG.warn(
           "Live index doc {} ({}) still too large, stripped upstreamLineage ({} bytes)",
           docId,
           entityType,
-          JsonUtils.pojoToJson(doc).getBytes(StandardCharsets.UTF_8).length);
+          size);
     }
-    if (JsonUtils.pojoToJson(doc).getBytes(StandardCharsets.UTF_8).length > maxBytes) {
+    if (size > maxBytes) {
       stripColumnTreeForSize(doc);
       LOG.warn(
           "Live index doc {} ({}) still too large, stripped column children and columnNames ({} bytes)",
