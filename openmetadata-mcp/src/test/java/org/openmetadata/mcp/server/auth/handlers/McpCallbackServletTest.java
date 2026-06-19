@@ -86,6 +86,75 @@ class McpCallbackServletTest {
     assertThat(html).doesNotContain("innerHTML");
   }
 
+  // ── CSRF: isOriginAllowed ─────────────────────────────────────────────────
+
+  @Test
+  void isOriginAllowed_noOriginHeader_allowed() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("Origin")).thenReturn(null);
+
+    assertThat(makeServlet().isOriginAllowed(request)).isTrue();
+  }
+
+  @Test
+  void isOriginAllowed_matchingOrigin_allowed() {
+    McpCallbackServlet servlet =
+        new McpCallbackServlet(
+            mock(UserSSOOAuthProvider.class), mock(McpPendingAuthRequestRepository.class)) {
+          @Override
+          String resolveServerOrigin() {
+            return "https://example.getcollate.io";
+          }
+        };
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("Origin")).thenReturn("https://example.getcollate.io");
+
+    assertThat(servlet.isOriginAllowed(request)).isTrue();
+  }
+
+  @Test
+  void isOriginAllowed_mismatchedOrigin_rejected() {
+    McpCallbackServlet servlet =
+        new McpCallbackServlet(
+            mock(UserSSOOAuthProvider.class), mock(McpPendingAuthRequestRepository.class)) {
+          @Override
+          String resolveServerOrigin() {
+            return "https://example.getcollate.io";
+          }
+        };
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("Origin")).thenReturn("https://malicious.attacker.com");
+
+    assertThat(servlet.isOriginAllowed(request)).isFalse();
+  }
+
+  @Test
+  void doPost_mismatchedOrigin_sends403() throws Exception {
+    McpCallbackServlet servlet =
+        new McpCallbackServlet(
+            mock(UserSSOOAuthProvider.class), mock(McpPendingAuthRequestRepository.class)) {
+          @Override
+          protected AuthenticationCodeFlowHandler resolveSsoHandler() {
+            return mock(AuthenticationCodeFlowHandler.class);
+          }
+
+          @Override
+          String resolveServerOrigin() {
+            return "https://example.getcollate.io";
+          }
+        };
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    when(request.getHeader("Origin")).thenReturn("https://malicious.attacker.com");
+
+    servlet.doPost(request, response);
+
+    verify(response)
+        .sendError(
+            HttpServletResponse.SC_FORBIDDEN,
+            "CSRF protection: request origin does not match server origin");
+  }
+
   // ── doPost: null SSO handler → 503 ───────────────────────────────────────
 
   @Test

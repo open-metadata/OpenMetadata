@@ -1,13 +1,7 @@
 package org.openmetadata.mcp.server.transport;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import java.lang.reflect.Method;
 import org.junit.jupiter.api.Test;
 
@@ -32,29 +26,9 @@ class OAuthHttpStatelessServerTransportProviderTest {
     assertThat(sanitize(null)).isEqualTo("null");
   }
 
-  // ── committed-response guard in handleAuthorizeRequest ───────────────────
-  //
-  // When the SSO provider (active-session shortcut) has already committed the
-  // response, handleAuthorizeRequest must NOT call sendRedirect() even if
-  // AuthorizationHandler produced a non-null error redirect URL.
-
-  @Test
-  void handleAuthorizeRequest_committedResponseWithRedirectUrl_doesNotCallSendRedirect()
-      throws Exception {
-    HttpServletRequest request = mock(HttpServletRequest.class);
-    HttpServletResponse response = mock(HttpServletResponse.class);
-
-    when(request.getMethod()).thenReturn("GET");
-    when(response.isCommitted()).thenReturn(true);
-
-    // The guard at the start of handleAuthorizeRequest checks isCommitted() before
-    // attempting sendRedirect(). Verify sendRedirect is never invoked on a committed response.
-    // (Indirect validation via the sanitizeRedirectUrlForLogging helper path.)
-    // Direct verification: response.isCommitted() == true means sendRedirect must not be called.
-    if (response.isCommitted()) {
-      verify(response, never()).sendRedirect(org.mockito.ArgumentMatchers.anyString());
-    }
-  }
+  // Note: the committed-response guard in handleAuthorizeRequest() cannot be meaningfully
+  // exercised at unit level because handleAuthorizeRequest is private and the class constructor
+  // requires a full running auth stack. The guard is covered by integration tests.
 
   // ── helpers ──────────────────────────────────────────────────────────────
 

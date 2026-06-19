@@ -20,6 +20,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -234,6 +235,17 @@ public class McpCallbackServlet extends HttpServlet {
       response.sendError(
           HttpServletResponse.SC_SERVICE_UNAVAILABLE,
           "MCP SSO not available. Please restart the server.");
+    } else if (!isOriginAllowed(request)) {
+      // CSRF protection: the form is always submitted from the same origin as this server.
+      // Reject any POST whose Origin header does not match the server's own base URL so a
+      // malicious cross-origin page cannot submit an attacker-controlled id_token to hijack
+      // a victim's pending MCP auth session.
+      LOG.warn(
+          "MCP OAuth doPost rejected: Origin '{}' does not match server origin",
+          request.getHeader("Origin"));
+      response.sendError(
+          HttpServletResponse.SC_FORBIDDEN,
+          "CSRF protection: request origin does not match server origin");
     } else {
       String idTokenParam = request.getParameter("id_token");
       if (idTokenParam == null || idTokenParam.isEmpty()) {
@@ -249,6 +261,45 @@ public class McpCallbackServlet extends HttpServlet {
               HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "MCP OAuth callback processing failed");
         }
       }
+    }
+  }
+
+  /**
+   * Returns {@code true} when the request Origin is absent (same-origin browsers may omit it for
+   * non-CORS requests) or matches this server's own base URL. A present, non-matching Origin
+   * indicates a cross-origin form submission and must be rejected.
+   */
+  boolean isOriginAllowed(HttpServletRequest request) {
+    String origin = request.getHeader("Origin");
+    if (origin == null) {
+      return true;
+    }
+    String serverOrigin = resolveServerOrigin();
+    return serverOrigin == null || origin.equals(serverOrigin);
+  }
+
+  String resolveServerOrigin() {
+    try {
+      MCPConfiguration mcpConfig = SecurityConfigurationManager.getCurrentMcpConfig();
+      String baseUrl = mcpConfig != null ? mcpConfig.getBaseUrl() : null;
+      if (baseUrl == null) {
+        SystemRepository systemRepo = Entity.getSystemRepository();
+        Settings settings = systemRepo != null ? systemRepo.getOMBaseUrlConfigInternal() : null;
+        if (settings != null) {
+          OpenMetadataBaseUrlConfiguration urlConfig =
+              (OpenMetadataBaseUrlConfiguration) settings.getConfigValue();
+          baseUrl = urlConfig != null ? urlConfig.getOpenMetadataUrl() : null;
+        }
+      }
+      if (baseUrl == null) {
+        return null;
+      }
+      URI uri = URI.create(baseUrl);
+      int port = uri.getPort();
+      return uri.getScheme() + "://" + uri.getHost() + (port != -1 ? ":" + port : "");
+    } catch (Exception e) {
+      LOG.warn("Could not resolve server origin for CSRF check: {}", e.getMessage());
+      return null;
     }
   }
 
