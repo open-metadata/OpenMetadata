@@ -10,14 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Card } from '@openmetadata/ui-core-components';
+import { Breadcrumbs, Card } from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isObject, isString, startCase, uniqueId } from 'lodash';
-import { ExtraInfo } from 'Models';
-import { forwardRef, useCallback, useMemo, useState } from 'react';
+import type { ExtraInfo } from 'Models';
+import { forwardRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ScoreIcon } from '../../../assets/svg/score.svg';
@@ -45,7 +44,6 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import { DomainDisplay } from '../../common/DomainDisplay/DomainDisplay.component';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
-import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
@@ -260,32 +258,6 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       [source]
     );
 
-    // Long paths collapse to "first / … / last"; clicking the ellipsis
-    // reveals the full path. Keeps every card a single breadcrumb line.
-    const [isBreadcrumbExpanded, setIsBreadcrumbExpanded] = useState(false);
-    const displayBreadcrumbs = useMemo(() => {
-      if (isBreadcrumbExpanded || breadcrumbs.length <= 3) {
-        return breadcrumbs;
-      }
-
-      return [
-        breadcrumbs[0],
-        { name: '…', url: '' },
-        breadcrumbs[breadcrumbs.length - 1],
-      ];
-    }, [breadcrumbs, isBreadcrumbExpanded]);
-
-    const handleBreadcrumbEllipsisClick = useCallback(
-      (event: React.MouseEvent<HTMLDivElement>) => {
-        if ((event.target as HTMLElement).textContent === '…') {
-          event.preventDefault();
-          event.stopPropagation();
-          setIsBreadcrumbExpanded(true);
-        }
-      },
-      []
-    );
-
     const entityIcon = useMemo(() => {
       if (showEntityIcon) {
         if (source.entityType === 'glossaryTerm') {
@@ -351,20 +323,20 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             <Col className="d-flex justify-between items-center" flex="auto">
               <div className="d-flex gap-2 items-center">
                 {breadcrumbs.length > 0 && serviceIcon}
-                <div
-                  className="entity-breadcrumb"
-                  data-testid="category-name"
-                  onClick={handleBreadcrumbEllipsisClick}>
-                  <TitleBreadcrumb
-                    className={classNameForBreadcrumb}
-                    titleLinks={displayBreadcrumbs}
-                    widthDeductions={780}
-                  />
-                </div>
+                <Breadcrumbs
+                  autoCollapse
+                  items={breadcrumbs.map((b) => ({
+                    id: b.name,
+                    label: getEntityName(b),
+                    href: typeof b.url === 'string' ? b.url : b.url.pathname,
+                  }))}
+                  maxItems={3}
+                />
               </div>
               {score && (
                 <div className="flex items-center gap-1 score-container">
-                  <Icon className="text-xs" component={ScoreIcon} />
+                  <ScoreIcon />
+
                   <Typography.Text className="text-xs score">
                     <span className="font-normal">
                       {t('label.score-label').toUpperCase()}
