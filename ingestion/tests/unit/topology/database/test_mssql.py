@@ -362,14 +362,16 @@ class TestUpdateMssqlIschemaNames:
 
     @patch("metadata.ingestion.source.database.mssql.connection.test_connection_db_common")
     def test_test_connection_uses_current_db_query_when_not_ingest_all(self, mock_test_connection_db_common):
-        from metadata.ingestion.source.database.mssql.connection import MssqlConnection
+        from metadata.ingestion.source.database.mssql.connection import test_connection
 
         mock_service_connection = MagicMock()
         mock_service_connection.ingestAllDatabases = False
 
-        handler = MssqlConnection(mock_service_connection)
-        handler._client = MagicMock()
-        handler.test_connection(metadata=MagicMock())
+        test_connection(
+            metadata=MagicMock(),
+            engine=MagicMock(),
+            service_connection=mock_service_connection,
+        )
 
         call_kwargs = mock_test_connection_db_common.call_args
         queries = call_kwargs.kwargs["queries"]
@@ -378,14 +380,16 @@ class TestUpdateMssqlIschemaNames:
 
     @patch("metadata.ingestion.source.database.mssql.connection.test_connection_db_common")
     def test_test_connection_uses_all_dbs_query_when_ingest_all(self, mock_test_connection_db_common):
-        from metadata.ingestion.source.database.mssql.connection import MssqlConnection
+        from metadata.ingestion.source.database.mssql.connection import test_connection
 
         mock_service_connection = MagicMock()
         mock_service_connection.ingestAllDatabases = True
 
-        handler = MssqlConnection(mock_service_connection)
-        handler._client = MagicMock()
-        handler.test_connection(metadata=MagicMock())
+        test_connection(
+            metadata=MagicMock(),
+            engine=MagicMock(),
+            service_connection=mock_service_connection,
+        )
 
         call_kwargs = mock_test_connection_db_common.call_args
         queries = call_kwargs.kwargs["queries"]

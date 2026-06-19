@@ -22,72 +22,72 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.database.couchbaseConnection import (
-    CouchbaseConnection as CouchbaseConnectionConfig,
+    CouchbaseConnection,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
-from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
 
 
-class CouchbaseConnection(BaseConnection[CouchbaseConnectionConfig, Any]):
-    def _get_client(self) -> Any:
-        # pylint: disable=import-outside-toplevel
-        from couchbase.auth import PasswordAuthenticator  # noqa: PLC0415
-        from couchbase.cluster import Cluster  # noqa: PLC0415
-        from couchbase.options import ClusterOptions  # noqa: PLC0415
+def get_connection(connection: CouchbaseConnection):
+    """
+    Create connection
+    """
+    # pylint: disable=import-outside-toplevel
+    from couchbase.auth import PasswordAuthenticator  # noqa: PLC0415
+    from couchbase.cluster import Cluster  # noqa: PLC0415
+    from couchbase.options import ClusterOptions  # noqa: PLC0415
 
-        connection = self.service_connection
-        auth = PasswordAuthenticator(connection.username, connection.password.get_secret_value())
-        url = f"{connection.scheme.value}://{connection.hostport}"  # pyright: ignore[reportOptionalMemberAccess]
-        cluster = Cluster.connect(url, ClusterOptions(auth))  # pyright: ignore[reportArgumentType]
-        self._on_close(cluster.close)
-        return cluster
+    auth = PasswordAuthenticator(connection.username, connection.password.get_secret_value())
+    url = f"{connection.scheme.value}://{connection.hostport}"
+    couchbase_cluster = Cluster.connect(url, ClusterOptions(auth))
+    return couchbase_cluster  # noqa: RET504
 
-    def test_connection(
-        self,
-        metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
-    ) -> TestConnectionResult:
-        """
-        Test connection. This can be executed either as part
-        of a metadata workflow or during an Automation Workflow
-        """
-        # pylint: disable=import-outside-toplevel
-        from couchbase.cluster import Cluster  # noqa: PLC0415
 
-        client = self.client
+def test_connection(
+    metadata: OpenMetadata,
+    client: Any,
+    service_connection: CouchbaseConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+) -> TestConnectionResult:
+    """
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
+    """
 
-        class SchemaHolder(BaseModel):
-            database: Optional[str] = None  # noqa: UP045
+    # pylint: disable=import-outside-toplevel
+    from couchbase.cluster import Cluster  # noqa: PLC0415
 
-        holder = SchemaHolder()
+    class SchemaHolder(BaseModel):
+        database: Optional[str] = None  # noqa: UP045
 
-        def test_get_databases(client: Cluster, holder: SchemaHolder):
-            buckets = client.buckets()
-            list_bucket = buckets.get_all_buckets()
-            for database in list_bucket:
-                holder.database = database.name
-                break
+    holder = SchemaHolder()
 
-        def test_get_collections(client: Cluster, holder: SchemaHolder):
-            database = client.bucket(holder.database)  # pyright: ignore[reportArgumentType]
-            collection_manager = database.collections()
-            collection_manager.get_all_scopes()
+    def test_get_databases(client: Cluster, holder: SchemaHolder):
+        buckets = client.buckets()
+        list_bucket = buckets.get_all_buckets()
+        for database in list_bucket:
+            holder.database = database.name
+            break
 
-        test_fn = {
-            "GetDatabases": partial(test_get_databases, client, holder),
-            "GetCollections": partial(test_get_collections, client, holder),
-        }
+    def test_get_collections(client: Cluster, holder: SchemaHolder):
+        database = client.bucket(holder.database)
+        collection_manager = database.collections()
+        collection_manager.get_all_scopes()
 
-        return test_connection_steps(
-            metadata=metadata,
-            test_fn=test_fn,
-            service_type=self.service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
-            automation_workflow=automation_workflow,
-            timeout_seconds=timeout_seconds,
-        )
+    test_fn = {
+        "GetDatabases": partial(test_get_databases, client, holder),
+        "GetCollections": partial(test_get_collections, client, holder),
+    }
+
+    return test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_type=service_connection.type.value,
+        automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
+    )

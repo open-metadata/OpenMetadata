@@ -50,7 +50,10 @@ export const getAggregationOptions = async (
   deleted = false,
   size = 10,
   isNLPEnabled = false,
-  queryText?: string
+  queryText?: string,
+  // sourceFields is only supported in non-independent mode; postAggregateFieldOptions
+  // (independent mode) uses SearchRequest which does not have a sourceFields field.
+  sourceFields?: string
 ) => {
   return isIndependent
     ? postAggregateFieldOptions({
@@ -65,7 +68,7 @@ export const getAggregationOptions = async (
         key,
         value,
         filter,
-        undefined,
+        sourceFields,
         deleted,
         isNLPEnabled,
         queryText

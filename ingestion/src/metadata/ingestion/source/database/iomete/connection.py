@@ -24,12 +24,11 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.database.iometeConnection import (
-    IometeConnection as IometeConnectionConfig,
+    IometeConnection,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
-from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import (
     test_connection_db_schema_sources,
 )
@@ -37,51 +36,46 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
 
 
-class IometeConnection(BaseConnection[IometeConnectionConfig, Engine]):
-    def _get_client(self) -> Engine:
-        """
-        Return the SQLAlchemy Engine for IOMETE.
-        """
-        return sqlalchemy.create_engine(self.get_connection_url(self.service_connection))
+def get_connection(connection: IometeConnection) -> Engine:
+    host_port = connection.hostPort
+    if ":" in host_port:
+        host, port_str = host_port.rsplit(":", 1)
+        if not port_str.isdigit():
+            raise ValueError(f"Invalid port '{port_str}' in hostPort '{host_port}'")
+        port = int(port_str)
+    else:
+        host = host_port
+        port = 443
 
-    @staticmethod
-    def get_connection_url(connection: IometeConnectionConfig) -> URL:
-        host_port = connection.hostPort
-        if ":" in host_port:
-            host, port_str = host_port.rsplit(":", 1)
-            if not port_str.isdigit():
-                raise ValueError(f"Invalid port '{port_str}' in hostPort '{host_port}'")
-            port = int(port_str)
-        else:
-            host = host_port
-            port = 443
+    query = {}
+    if connection.cluster:
+        query["cluster"] = connection.cluster
+    if connection.dataPlane:
+        query["data_plane"] = connection.dataPlane
 
-        query = {}
-        if connection.cluster:
-            query["cluster"] = connection.cluster
-        if connection.dataPlane:
-            query["data_plane"] = connection.dataPlane
+    url = URL.create(
+        "iomete",
+        username=connection.username,
+        password=connection.password.get_secret_value() if connection.password else None,
+        host=host,
+        port=port,
+        database=connection.catalog if connection.catalog else None,
+        query=query,
+    )
+    return sqlalchemy.create_engine(url)
 
-        return URL.create(
-            "iomete",
-            username=connection.username,
-            password=connection.password.get_secret_value() if connection.password else None,
-            host=host,
-            port=port,
-            database=connection.catalog if connection.catalog else None,
-            query=query,
-        )
 
-    def test_connection(
-        self,
-        metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
-    ) -> TestConnectionResult:
-        return test_connection_db_schema_sources(
-            metadata=metadata,
-            engine=self.client,
-            service_connection=self.service_connection,
-            automation_workflow=automation_workflow,
-            timeout_seconds=timeout_seconds,
-        )
+def test_connection(
+    metadata: OpenMetadata,
+    engine: Engine,
+    service_connection: IometeConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+) -> TestConnectionResult:
+    return test_connection_db_schema_sources(
+        metadata=metadata,
+        engine=engine,
+        service_connection=service_connection,
+        automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
+    )

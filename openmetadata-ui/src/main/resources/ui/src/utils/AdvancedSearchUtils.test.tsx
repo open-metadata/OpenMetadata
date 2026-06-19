@@ -50,6 +50,10 @@ import {
 import {
   highlightedItemLabel,
   mockBucketOptions,
+  mockBucketsWithFlatStringArray,
+  mockBucketsWithoutTopHits,
+  mockBucketsWithTopHitsArray,
+  mockBucketsWithTopHitsScalar,
   mockGetChartsOptionsData,
   mockGetChartsOptionsDataWithoutDN,
   mockGetChartsOptionsDataWithoutNameDN,
@@ -263,6 +267,86 @@ describe('AdvancedSearchUtils tests', () => {
       { count: 1, key: 'pipeline', label: 'pipeline' },
       { count: 3, key: 'chart', label: 'chart' },
     ]);
+  });
+
+  describe('getOptionsFromAggregationBucket with sourceFields', () => {
+    it('should use bucket.key as label when no sourceFields provided', () => {
+      const result = getOptionsFromAggregationBucket(
+        mockBucketsWithTopHitsScalar
+      );
+
+      expect(result).toStrictEqual([
+        { count: 5, key: 'my service', label: 'my service' },
+        { count: 3, key: 'another service', label: 'another service' },
+      ]);
+    });
+
+    it('should extract proper-cased label from scalar nested path in top_hits source', () => {
+      const result = getOptionsFromAggregationBucket(
+        mockBucketsWithTopHitsScalar,
+        'service.displayName'
+      );
+
+      expect(result).toStrictEqual([
+        { count: 5, key: 'my service', label: 'My Service' },
+        { count: 3, key: 'another service', label: 'Another Service' },
+      ]);
+    });
+
+    it('should find matching element in array field using sourceFields', () => {
+      const result = getOptionsFromAggregationBucket(
+        mockBucketsWithTopHitsArray,
+        'domains.displayName'
+      );
+
+      expect(result).toStrictEqual([
+        { count: 10, key: 'finance', label: 'Finance' },
+        { count: 7, key: 'operations', label: 'Operations' },
+      ]);
+    });
+
+    it('should find matching value in flat string array using sourceFields', () => {
+      const result = getOptionsFromAggregationBucket(
+        mockBucketsWithFlatStringArray,
+        'ownerDisplayName'
+      );
+
+      expect(result).toStrictEqual([
+        { count: 4, key: 'john doe', label: 'John Doe' },
+      ]);
+    });
+
+    it('should fall back to bucket.key when top_hits source is absent', () => {
+      const result = getOptionsFromAggregationBucket(
+        mockBucketsWithoutTopHits,
+        'database.displayName'
+      );
+
+      expect(result).toStrictEqual([
+        { count: 2, key: 'my database', label: 'my database' },
+      ]);
+    });
+
+    it('should fall back to bucket.key when sourceFields path not found in source', () => {
+      const bucketsWithMismatchedSource: Bucket[] = [
+        {
+          key: 'unknown',
+          doc_count: 1,
+          'top_hits#top': {
+            hits: { hits: [{ _source: { unrelated: 'field' } }] },
+          },
+        },
+      ];
+
+      const result = getOptionsFromAggregationBucket(
+        bucketsWithMismatchedSource,
+        'service.displayName'
+      );
+
+      expect(result).toStrictEqual([
+        { count: 1, key: 'unknown', label: 'unknown' },
+      ]);
+    });
   });
 
   describe('getEmptyJsonTree', () => {
