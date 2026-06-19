@@ -23,6 +23,8 @@ import type { Document } from '../generated/entity/docStore/document';
 import type { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import i18n from './i18next/LocalUtil';
 
+type WidgetHeightResolver = (widgetName: string) => number;
+
 /**
  * Ensures widget width doesn't exceed the maximum allowed width of 2
  */
@@ -292,7 +294,8 @@ export const getAddWidgetHandler =
     newWidgetData: Document,
     placeholderWidgetKey: string,
     widgetWidth: number,
-    maxGridSize: number
+    maxGridSize: number,
+    getWidgetHeightForName: WidgetHeightResolver = getWidgetHeight
   ) =>
   (currentLayout: Array<WidgetConfig>) => {
     if (!newWidgetData) {
@@ -302,7 +305,7 @@ export const getAddWidgetHandler =
     const widgetFQN = uniqueId(
       `${newWidgetData.fullyQualifiedName || 'widget'}-`
     );
-    const widgetHeight = getWidgetHeight(newWidgetData.name);
+    const widgetHeight = getWidgetHeightForName(newWidgetData.name);
 
     if (!currentLayout || currentLayout.length === 0) {
       return [
@@ -345,7 +348,7 @@ export const getAddWidgetHandler =
         return {
           ...widget,
           i: widgetFQN,
-          h: 3,
+          h: widgetHeight,
           w: widgetWidth,
           x: Math.min(widget.x, maxGridSize - widgetWidth),
           static: false,

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { ComponentType } from 'react';
 import {
   CURATED_ASSETS_WIDGET_DEFAULT_VALUES,
   DEFAULT_LANDING_PAGE_LAYOUT,
@@ -22,7 +23,11 @@ import {
   LANDING_PAGE_WIDGET_MARGIN,
   MY_TASK_WIDGET_DEFAULT_VALUES,
 } from '../constants/CustomizeMyDataPage.constants';
-import type { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
+import type {
+  WidgetCommonProps,
+  WidgetConfig,
+} from '../pages/CustomizablePage/CustomizablePage.interface';
+import { getMyDataWidgetFromKey } from './CustomizeMyDataPageWidgetUtils';
 
 class CustomizeMyDataPageClassBase {
   defaultWidgetHeight = LANDING_PAGE_DEFAULT_WIDGET_HEIGHT;
@@ -59,6 +64,12 @@ class CustomizeMyDataPageClassBase {
 
   protected updateLandingPageWidgetDefaultHeights(obj: Record<string, number>) {
     this.landingPageWidgetDefaultHeights = obj;
+  }
+
+  public getWidgetsFromKey(
+    widgetKey: string
+  ): ComponentType<WidgetCommonProps> {
+    return getMyDataWidgetFromKey(widgetKey);
   }
 
   public getWidgetHeight(widgetName: string) {
