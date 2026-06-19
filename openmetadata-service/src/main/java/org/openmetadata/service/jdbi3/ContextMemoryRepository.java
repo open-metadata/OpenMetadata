@@ -520,13 +520,18 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   @Override
   @Transaction
   protected void softDeleteAdditionalChildren(final UUID memoryId, final String deletedBy) {
-    cascadeOntology(memoryId, false);
+    cancelAndCascadeOntology(memoryId, false);
   }
 
   @Override
   @Transaction
   protected void hardDeleteAdditionalChildren(final UUID memoryId, final String deletedBy) {
-    cascadeOntology(memoryId, true);
+    cancelAndCascadeOntology(memoryId, true);
+  }
+
+  private void cancelAndCascadeOntology(final UUID memoryId, final boolean hardDelete) {
+    OntologyProcessingEngine.instance().cancel(memoryId);
+    cascadeOntology(memoryId, hardDelete);
   }
 
   @Override

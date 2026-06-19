@@ -42,6 +42,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.MetricRepository;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.OntologyOwnership;
 
 /**
@@ -195,12 +196,41 @@ public class OntologyReconciler {
     final EntityReference existingOwned =
         findOwnedByName(memory, Entity.GLOSSARY_TERM, termRepo, verdict.name());
     final String result;
-    if (existingOwned == null) {
-      result = mintTerm(memory, verdict, counts);
-    } else {
+    if (existingOwned != null) {
       result = verdict.name();
+    } else {
+      result = createTermWithFqnPrecheck(memory, verdict, counts);
     }
     return result;
+  }
+
+  private String createTermWithFqnPrecheck(
+      final ContextMemory memory, final OntologyVerdict verdict, final Counts counts) {
+    final String glossaryFqn = resolveGlossaryFqn(verdict);
+    final String termFqn =
+        nullOrEmpty(glossaryFqn) ? null : FullyQualifiedName.build(glossaryFqn, verdict.name());
+    final EntityInterface existing = findByFqn(termRepo, termFqn);
+    final String result;
+    if (existing != null) {
+      LOG.info("Term FQN '{}' already exists; reusing instead of creating", termFqn);
+      reuseExisting(memory, existing, Entity.GLOSSARY_TERM, termRepo, counts);
+      result = verdict.name();
+    } else {
+      result = mintTerm(memory, verdict, counts);
+    }
+    return result;
+  }
+
+  private String resolveGlossaryFqn(final OntologyVerdict verdict) {
+    final String fqn;
+    if (!nullOrEmpty(verdict.targetFqn())) {
+      fqn = verdict.targetFqn();
+    } else if (!nullOrEmpty(verdict.newGlossaryName())) {
+      fqn = verdict.newGlossaryName();
+    } else {
+      fqn = null;
+    }
+    return fqn;
   }
 
   private String mintTerm(
@@ -234,10 +264,24 @@ public class OntologyReconciler {
     final EntityReference existingOwned =
         findOwnedByName(memory, Entity.METRIC, metricRepo, verdict.name());
     final String result;
-    if (existingOwned == null) {
-      result = mintMetric(memory, verdict, counts);
-    } else {
+    if (existingOwned != null) {
       result = verdict.name();
+    } else {
+      result = createMetricWithFqnPrecheck(memory, verdict, counts);
+    }
+    return result;
+  }
+
+  private String createMetricWithFqnPrecheck(
+      final ContextMemory memory, final OntologyVerdict verdict, final Counts counts) {
+    final EntityInterface existing = findByFqn(metricRepo, verdict.name());
+    final String result;
+    if (existing != null) {
+      LOG.info("Metric FQN '{}' already exists; reusing instead of creating", verdict.name());
+      reuseExisting(memory, existing, Entity.METRIC, metricRepo, counts);
+      result = verdict.name();
+    } else {
+      result = mintMetric(memory, verdict, counts);
     }
     return result;
   }
@@ -275,36 +319,60 @@ public class OntologyReconciler {
           entityType,
           verdict.targetFqn());
     } else {
-      repo.addRelationship(
-          memory.getId(),
-          target.getId(),
-          Entity.CONTEXT_MEMORY,
-          entityType,
-          Relationship.RELATED_TO,
-          false);
-      counts.reused++;
+      reuseExisting(memory, target, entityType, repo, counts);
     }
+  }
+
+  private void reuseExisting(
+      final ContextMemory memory,
+      final EntityInterface target,
+      final String entityType,
+      final EntityRepository<?> repo,
+      final Counts counts) {
+    repo.addRelationship(
+        memory.getId(),
+        target.getId(),
+        Entity.CONTEXT_MEMORY,
+        entityType,
+        Relationship.RELATED_TO,
+        false);
+    counts.reused++;
   }
 
   private EntityReference resolveOrMintGlossary(final OntologyVerdict verdict) {
     EntityReference glossary = resolveGlossary(verdict.targetFqn());
     if (glossary == null) {
-      if (!isValidName(verdict.newGlossaryName())) {
-        LOG.warn("Skipping glossary mint: invalid LLM name '{}'", verdict.newGlossaryName());
-        return null;
-      }
-      final Glossary minted =
-          new Glossary()
-              .withId(UUID.randomUUID())
-              .withName(verdict.newGlossaryName())
-              .withDisplayName(verdict.newGlossaryName())
-              .withDescription(verdict.newGlossaryDescription())
-              .withProvider(ProviderType.AUTOMATION)
-              .withUpdatedBy(OntologyOwnership.ONTOLOGY_BOT_NAME)
-              .withUpdatedAt(System.currentTimeMillis());
-      glossary = glossaryRepo.createInternal(minted).getEntityReference();
+      glossary = resolveOrMintByName(verdict);
     }
     return glossary;
+  }
+
+  private EntityReference resolveOrMintByName(final OntologyVerdict verdict) {
+    if (!isValidName(verdict.newGlossaryName())) {
+      LOG.warn("Skipping glossary mint: invalid LLM name '{}'", verdict.newGlossaryName());
+      return null;
+    }
+    final EntityReference existing = resolveGlossary(verdict.newGlossaryName());
+    final EntityReference result;
+    if (existing != null) {
+      result = existing;
+    } else {
+      result = mintGlossary(verdict);
+    }
+    return result;
+  }
+
+  private EntityReference mintGlossary(final OntologyVerdict verdict) {
+    final Glossary minted =
+        new Glossary()
+            .withId(UUID.randomUUID())
+            .withName(verdict.newGlossaryName())
+            .withDisplayName(verdict.newGlossaryName())
+            .withDescription(verdict.newGlossaryDescription())
+            .withProvider(ProviderType.AUTOMATION)
+            .withUpdatedBy(OntologyOwnership.ONTOLOGY_BOT_NAME)
+            .withUpdatedAt(System.currentTimeMillis());
+    return glossaryRepo.createInternal(minted).getEntityReference();
   }
 
   private EntityReference resolveGlossary(final String fqn) {

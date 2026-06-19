@@ -807,4 +807,115 @@ class OntologyReconcilerTest {
     assertEquals(MetricType.COUNT, captor.getValue().getMetricType());
     assertEquals(MetricUnitOfMeasurement.PERCENTAGE, captor.getValue().getUnitOfMeasurement());
   }
+
+  @Test
+  void createTermFqnAlreadyExistsReuseInsteadOfCreate() {
+    GlossaryTerm alreadyExists =
+        new GlossaryTerm()
+            .withId(UUID.randomUUID())
+            .withName("Churn")
+            .withProvider(ProviderType.USER);
+    // targetFqn=Business → resolveGlossaryFqn returns "Business", term FQN = "Business.Churn"
+    when(termRepo.findByNameOrNull("Business.Churn", Include.NON_DELETED))
+        .thenReturn(alreadyExists);
+    OntologyVerdict term =
+        new OntologyVerdict(
+            OntologyAction.CREATE,
+            "Business",
+            null,
+            null,
+            "Churn",
+            "Churn",
+            "Customer churn",
+            null,
+            null,
+            null);
+
+    OntologyReconciler.ReconcileResult result =
+        reconciler()
+            .reconcile(memory, new OntologyDerivation(term, skip()), AIDeletionPolicy.CASCADE);
+
+    assertEquals(0, result.created(), "createInternal must NOT be called for an existing FQN");
+    assertEquals(1, result.reused(), "collision must count as reused");
+    verify(termRepo, never()).createInternal(any());
+    verify(termRepo)
+        .addRelationship(
+            eq(memory.getId()),
+            eq(alreadyExists.getId()),
+            eq(Entity.CONTEXT_MEMORY),
+            eq(Entity.GLOSSARY_TERM),
+            eq(Relationship.RELATED_TO),
+            eq(false));
+  }
+
+  @Test
+  void createMetricFqnAlreadyExistsReuseInsteadOfCreate() {
+    Metric alreadyExists =
+        new Metric()
+            .withId(UUID.randomUUID())
+            .withName("churn_rate")
+            .withProvider(ProviderType.USER);
+    // metric FQN == name for standalone metrics
+    when(metricRepo.findByNameOrNull("churn_rate", Include.NON_DELETED)).thenReturn(alreadyExists);
+    OntologyVerdict metric =
+        new OntologyVerdict(
+            OntologyAction.CREATE,
+            null,
+            null,
+            null,
+            "churn_rate",
+            "Churn Rate",
+            "desc",
+            "COUNT",
+            null,
+            null);
+
+    OntologyReconciler.ReconcileResult result =
+        reconciler()
+            .reconcile(memory, new OntologyDerivation(skip(), metric), AIDeletionPolicy.CASCADE);
+
+    assertEquals(0, result.created(), "createInternal must NOT be called for an existing FQN");
+    assertEquals(1, result.reused(), "collision must count as reused");
+    verify(metricRepo, never()).createInternal(any());
+    verify(metricRepo)
+        .addRelationship(
+            eq(memory.getId()),
+            eq(alreadyExists.getId()),
+            eq(Entity.CONTEXT_MEMORY),
+            eq(Entity.METRIC),
+            eq(Relationship.RELATED_TO),
+            eq(false));
+  }
+
+  @Test
+  void resolveOrMintGlossaryReuseExistingByNameInsteadOfMinting() {
+    Glossary existingGlossary = new Glossary().withId(UUID.randomUUID()).withName("Finance");
+    // targetFqn is null → resolveGlossary(null) returns null → falls into resolveOrMintByName
+    // resolveOrMintByName checks newGlossaryName="Finance" → finds it
+    when(glossaryRepo.findByNameOrNull("Finance", Include.NON_DELETED))
+        .thenReturn(existingGlossary);
+    echoTermOnCreate();
+    OntologyVerdict term =
+        new OntologyVerdict(
+            OntologyAction.CREATE,
+            null,
+            "Finance",
+            "Finance concepts",
+            "ARR",
+            "ARR",
+            "Annual recurring revenue",
+            null,
+            null,
+            null);
+
+    OntologyReconciler.ReconcileResult result =
+        reconciler()
+            .reconcile(memory, new OntologyDerivation(term, skip()), AIDeletionPolicy.CASCADE);
+
+    assertEquals(1, result.created(), "term must still be created");
+    verify(glossaryRepo, never()).createInternal(any());
+    ArgumentCaptor<GlossaryTerm> termCaptor = ArgumentCaptor.forClass(GlossaryTerm.class);
+    verify(termRepo).createInternal(termCaptor.capture());
+    assertEquals(existingGlossary.getId(), termCaptor.getValue().getGlossary().getId());
+  }
 }

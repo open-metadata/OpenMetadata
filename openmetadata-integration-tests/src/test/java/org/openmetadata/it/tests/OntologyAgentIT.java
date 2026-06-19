@@ -243,7 +243,8 @@ public class OntologyAgentIT {
         metricStillAlive, "pre-existing owned metric must survive when metric axis is disabled");
 
     MetricRepository metricRepo = (MetricRepository) Entity.getEntityRepository(Entity.METRIC);
-    metricRepo.delete(OntologyOwnership.ONTOLOGY_BOT_NAME, existingOwnedMetric.getId(), false, true);
+    metricRepo.delete(
+        OntologyOwnership.ONTOLOGY_BOT_NAME, existingOwnedMetric.getId(), false, true);
     hardDeleteMemory(client, memory.getId());
   }
 
