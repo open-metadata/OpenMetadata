@@ -201,7 +201,6 @@ const AddServicePage = () => {
     navigate(connectionsRouterClassBase.getAddServicePath(category));
   };
 
-  const handleConnectionDetailsBackClick = () => setActiveServiceStep(1);
   const handleConfigUpdate = async (newConfigData: ConfigData) => {
     const serviceName = serviceConfig.name.trim();
 
@@ -319,10 +318,13 @@ const AddServicePage = () => {
     [activeServiceStep, serviceConfig.serviceType]
   );
 
+  const activeServiceStepRef = useRef(activeServiceStep);
+  activeServiceStepRef.current = activeServiceStep;
+
   const handleBreadcrumbAction = useCallback(
     (id: React.Key) => {
       if (id === 'add-service') {
-        if (activeServiceStep > 1) {
+        if (activeServiceStepRef.current > 1) {
           setShowResetConfirm(true);
         } else {
           handleConnectorChangeClick();
@@ -336,7 +338,7 @@ const AddServicePage = () => {
         );
       }
     },
-    [activeServiceStep, handleConnectorChangeClick, navigate, serviceCategory]
+    [handleConnectorChangeClick, navigate, serviceCategory]
   );
 
   const isStep2NextDisabled =
@@ -351,7 +353,7 @@ const AddServicePage = () => {
   const handleConfirmedStepBack = () => {
     setShowBackStepConfirm(false);
     if (activeServiceStep === 2) {
-      handleConnectionDetailsBackClick();
+      handleConnectorChangeClick();
     } else {
       handleFiltersInputBackClick();
     }
