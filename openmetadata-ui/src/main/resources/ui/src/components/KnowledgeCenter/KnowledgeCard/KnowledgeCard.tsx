@@ -293,7 +293,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
               }
               data-testid="domain-name"
               size="text-xs"
-              weight='medium'>
+              weight="medium">
               {firstDomain?.displayName ??
                 firstDomain?.name ??
                 t('label.no-entity', { entity: t('label.domain') })}
@@ -301,7 +301,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
           </div>
 
           <span className="tw:flex-1" />
-          <Box align='center' className='tw:gap-1.5'>
+          <Box align="center" className="tw:gap-1.5">
             {(knowledgePage.tags ?? []).slice(0, 2).map((tag) => (
               <Badge
                 className="tw:max-w-30"
@@ -318,9 +318,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
             ))}
             {(knowledgePage.tags ?? []).length > 2 && (
               <Badge size="md" type="modern">
-                <Typography
-                  className="tw:text-secondary"
-                  size="text-xs">
+                <Typography className="tw:text-secondary" size="text-xs">
                   +{(knowledgePage.tags ?? []).length - 2}
                 </Typography>
               </Badge>

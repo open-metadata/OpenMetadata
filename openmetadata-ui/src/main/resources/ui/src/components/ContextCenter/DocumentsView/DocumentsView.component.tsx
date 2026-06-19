@@ -480,18 +480,13 @@ const FileRow: FC<FileRowProps> = ({
         className="tw:flex tw:items-center tw:gap-2 tw:shrink-0"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}>
-
-            <ButtonUtility
-              color="tertiary"
-              data-testid="download-btn"
-              icon={
-                <Download01
-                  size={20}
-                />
-              }
-              tooltip={t('label.download')}
-              onClick={() => onDownload?.(file)}
-            />
+        <ButtonUtility
+          color="tertiary"
+          data-testid="download-btn"
+          icon={<Download01 size={20} />}
+          tooltip={t('label.download')}
+          onClick={() => onDownload?.(file)}
+        />
         <CopyLinkButton className="tw:w-8 tw:h-8" url={rowUrl}>
           <Copy06 aria-hidden="true" size={20} strokeWidth={1.8} />
         </CopyLinkButton>

@@ -189,8 +189,7 @@ const DocumentFolderView = ({
                           <div className="tw:w-full">
                             <Typography
                               as="p"
-                              className="tw:truncate tw:flex-1"
-                              >
+                              className="tw:truncate tw:flex-1">
                               {folder.displayName ?? folder.name}
                             </Typography>
                           </div>
