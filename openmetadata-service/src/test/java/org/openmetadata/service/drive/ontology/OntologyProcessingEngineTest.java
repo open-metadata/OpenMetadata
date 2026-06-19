@@ -13,8 +13,11 @@
 
 package org.openmetadata.service.drive.ontology;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -23,6 +26,7 @@ import static org.mockito.Mockito.when;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.context.ContextMemory;
@@ -82,5 +86,42 @@ class OntologyProcessingEngineTest {
     verify(extractor, times(1)).derive(any(), any());
     verify(reconciler, times(1)).reconcile(any(), any(), any(), anyBoolean(), anyBoolean());
     verify(memoryRepo, times(1)).stampOntologyStats(any(), any());
+  }
+
+  @Test
+  void stampsHashEvenWhenReconcileThrows() {
+    UUID id = UUID.randomUUID();
+    ContextMemory memory =
+        new ContextMemory().withId(id).withTitle("title").withQuestion("q").withAnswer("a");
+    memory.setOntologyStats(new OntologyStats().withSourceHash("stale-hash"));
+    when(memoryRepo.get(any(), any(), any())).thenReturn(memory);
+
+    OntologyContext ctx =
+        new OntologyContext(java.util.List.of(), java.util.List.of(), java.util.List.of());
+    OntologyDerivation verdict =
+        new OntologyDerivation(
+            new OntologyVerdict(
+                OntologyAction.SKIP, null, null, null, null, null, null, null, null, null),
+            new OntologyVerdict(
+                OntologyAction.SKIP, null, null, null, null, null, null, null, null, null));
+
+    when(grounding.fetchCandidates(any())).thenReturn(ctx);
+    when(extractor.derive(any(), any())).thenReturn(verdict);
+    doThrow(new RuntimeException("simulated deterministic reconcile failure"))
+        .when(reconciler)
+        .reconcile(any(), any(), any(), anyBoolean(), anyBoolean());
+
+    OntologyProcessingEngine engine =
+        OntologyProcessingEngine.forTest(memoryRepo, grounding, extractor, reconciler);
+    engine.run(id);
+
+    ArgumentCaptor<OntologyStats> statsCaptor = ArgumentCaptor.forClass(OntologyStats.class);
+    verify(memoryRepo, times(1)).stampOntologyStats(any(), statsCaptor.capture());
+    OntologyStats stamped = statsCaptor.getValue();
+    assertNotNull(stamped.getSourceHash());
+    assertEquals(OntologyProcessingEngine.hashOf(memory), stamped.getSourceHash());
+    assertEquals(0, stamped.getDerivedTermCount());
+    assertEquals(0, stamped.getDerivedMetricCount());
+    assertEquals(0, stamped.getReusedCount());
   }
 }

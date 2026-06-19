@@ -215,14 +215,28 @@ public class OntologyProcessingEngine {
     final AISettings settings = AISettingsUtil.get();
     final OntologyContext ctx = grounding.fetchCandidates(memory);
     final OntologyDerivation verdict = extractor.derive(memory, ctx);
-    final OntologyReconciler.ReconcileResult r =
-        reconciler.reconcile(
-            memory,
-            verdict,
-            AISettingsUtil.deletionPolicy(settings),
-            deriveTermsEnabled(settings),
-            deriveMetricsEnabled(settings));
-    memoryRepo.stampOntologyStats(memory, buildStats(hash, r));
+    final OntologyReconciler.ReconcileResult result = reconcileSafely(memory, verdict, settings);
+    memoryRepo.stampOntologyStats(memory, buildStats(hash, result));
+  }
+
+  private OntologyReconciler.ReconcileResult reconcileSafely(
+      final ContextMemory memory, final OntologyDerivation verdict, final AISettings settings) {
+    OntologyReconciler.ReconcileResult result = null;
+    try {
+      result =
+          reconciler.reconcile(
+              memory,
+              verdict,
+              AISettingsUtil.deletionPolicy(settings),
+              deriveTermsEnabled(settings),
+              deriveMetricsEnabled(settings));
+    } catch (RuntimeException ex) {
+      LOG.error(
+          "Ontology reconcile failed for memory {}; stamping the content hash to prevent an infinite re-derive loop (a deterministic reconcile failure would otherwise retry forever)",
+          memory.getId(),
+          ex);
+    }
+    return result;
   }
 
   private boolean deriveTermsEnabled(final AISettings settings) {
@@ -236,11 +250,14 @@ public class OntologyProcessingEngine {
   }
 
   private OntologyStats buildStats(final String hash, final OntologyReconciler.ReconcileResult r) {
+    final int terms = r == null ? 0 : r.createdTerms();
+    final int metrics = r == null ? 0 : r.createdMetrics();
+    final int reused = r == null ? 0 : r.reused();
     return new OntologyStats()
         .withSourceHash(hash)
-        .withDerivedTermCount(r.createdTerms())
-        .withDerivedMetricCount(r.createdMetrics())
-        .withReusedCount(r.reused())
+        .withDerivedTermCount(terms)
+        .withDerivedMetricCount(metrics)
+        .withReusedCount(reused)
         .withLastRunAt(System.currentTimeMillis());
   }
 
