@@ -283,11 +283,6 @@ jest.mock('../../../../hooks/useApplicationStore', () => ({
   })),
 }));
 
-jest.mock('../../../../utils/TaskActionUtils', () => ({
-  ...jest.requireActual('../../../../utils/TaskActionUtils'),
-  isRecognizerFeedbackTask: jest.fn().mockReturnValue(false),
-}));
-
 jest.mock('../../../../utils/TaskFormSchemaUtils', () => {
   const actual = jest.requireActual('../../../../utils/TaskFormSchemaUtils');
 
@@ -468,9 +463,6 @@ describe('TaskTabNew Component', () => {
       isDescriptionTaskType,
       isRecognizerFeedbackTask,
     } = require('../../../../utils/TaskActionUtils');
-    const {
-      isRecognizerFeedbackTask: isRecognizerFeedbackTaskFromActionUtils,
-    } = require('../../../../utils/TaskActionUtils');
     const actualTaskFormSchemaUtils = jest.requireActual(
       '../../../../utils/TaskFormSchemaUtils'
     );
@@ -494,7 +486,6 @@ describe('TaskTabNew Component', () => {
     isTagsTaskType.mockReturnValue(true);
     isDescriptionTaskType.mockReturnValue(false);
     isRecognizerFeedbackTask.mockReturnValue(false);
-    isRecognizerFeedbackTaskFromActionUtils.mockReturnValue(false);
   });
 
   it('should render the component', async () => {
