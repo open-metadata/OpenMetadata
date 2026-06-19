@@ -3456,6 +3456,7 @@
     "sinks": "Destinos",
     "size-evolution-description": "Evolução do tamanho dos ativos na organização.",
     "smart-sampling-hint": "Otimiza recursos com base no tamanho dos dados",
+    "soft-delete-archive-message": "This action will disable access to the {{entity}}. You can restore it later from Archives.",
     "soft-delete-message-for-entity": "A exclusão suave desativará o {{entity}}. Isso desabilitará qualquer operação de descoberta, leitura ou gravação no {{entity}}.",
     "soft-delete-message-for-n-entities": "A exclusão suave desativará estes {{count}} {{entity}}. Isso desabilitará quaisquer operações de descoberta, leitura ou escrita sobre eles.",
     "something-went-wrong": "Algo deu errado",

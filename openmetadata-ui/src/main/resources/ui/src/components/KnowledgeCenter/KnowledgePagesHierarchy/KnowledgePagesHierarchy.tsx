@@ -773,7 +773,7 @@ const KnowledgePagesHierarchy = forwardRef<
         <DeleteModal
           entityTitle={getKnowledgePageName(deletePage, t)}
           isDeleting={isDeleting}
-          message={t('message.soft-delete-message-for-entity', {
+          message={t('message.soft-delete-archive-message', {
             entity: (deletePage?.pageType === PageType.QUICK_LINK
               ? t('label.quick-link')
               : t('label.article')

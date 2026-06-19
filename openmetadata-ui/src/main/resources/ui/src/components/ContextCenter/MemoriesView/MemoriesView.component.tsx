@@ -108,7 +108,6 @@ const PinButton: FC<PinButtonProps> = ({ pinned, animKey, onClick }) => {
 };
 
 const SKELETON_KEYS = Array.from({ length: 8 }, (_, i) => `skeleton-${i}`);
-const VISIBLE_LINKED_ENTITIES_COUNT = 4;
 
 const MemoryRowSkeleton: FC = () => (
   <Box
@@ -246,7 +245,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
               {memory.tags.map((tag) => (
                 <Badge
                   className="tw:max-w-60 tw:min-w-0"
-                  key={tag.name}
+                  key={tag.tagFQN}
                   size="md"
                   type="color">
                   {tag.style?.color && (
@@ -265,13 +264,6 @@ const MemoryRow: FC<MemoryRowProps> = ({
                   </Typography>
                 </Badge>
               ))}
-              {memory?.tags?.length > VISIBLE_LINKED_ENTITIES_COUNT && (
-                <Badge size="md" type="color">
-                  <Typography className="tw:text-secondary" size="text-xs">
-                    +{memory.tags.length - VISIBLE_LINKED_ENTITIES_COUNT}
-                  </Typography>
-                </Badge>
-              )}
             </Box>
           )}
 
