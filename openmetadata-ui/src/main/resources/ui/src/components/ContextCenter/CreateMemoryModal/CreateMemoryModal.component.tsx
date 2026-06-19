@@ -112,23 +112,27 @@ const LinkedAssetCard: FC<{
   const fqn = asset.reference?.fullyQualifiedName ?? String(asset.value ?? '');
 
   return (
-    <Card className="tw:flex tw:items-center tw:gap-3 tw:p-3">
+    <Card className="tw:flex tw:items-center tw:gap-2.5 tw:px-3 tw:py-2.5">
       <div className="tw:shrink-0">
-        {getEntityIconWithBg(asset.reference?.type)}
+        {getEntityIconWithBg(asset.reference?.type, { className: 'tw:w-8 tw:h-8' }, { size: 18 })}
       </div>
-      <div className="tw:flex tw:flex-1 tw:justify-between tw:items-center tw:min-w-0">
-        <div className="tw:min-w-0 tw:flex-1 tw:pr-2">
-          <Typography ellipsis size="text-sm" weight="medium">
+      <div className="tw:flex tw:flex-1 tw:justify-between tw:items-center tw:min-w-0 tw:gap-2.5">
+        <div className="tw:min-w-0 tw:flex-1 tw:pr-2 tw:[&_.prose]:leading-tight">
+          <Typography
+            ellipsis
+            className="tw:leading-tight"
+            size="text-xs"
+            weight="medium">
             {displayName}
           </Typography>
           <Typography
             ellipsis
-            className="tw:text-utility-gray-400"
+            className="tw:text-utility-gray-700 tw:leading-tight"
             size="text-xs">
             {asset.reference?.fullyQualifiedName ?? ''}
           </Typography>
         </div>
-        <div className="tw:flex tw:items-center tw:gap-2 tw:shrink-0">
+        <div className="tw:flex tw:items-center tw:gap-2.5 tw:shrink-0">
           {asset.reference?.type && (
             <Badge
               className="tw:capitalize"
