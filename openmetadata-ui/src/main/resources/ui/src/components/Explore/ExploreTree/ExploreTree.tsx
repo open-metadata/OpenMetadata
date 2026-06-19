@@ -35,6 +35,7 @@ import {
   findTreeNodeKeyByBrowsePath,
   getAggregations,
   getDisabledExploreTreeKeys,
+  getQuickFilterMust,
   getQuickFilterObject,
   getQuickFilterObjectForEntities,
   getSubLevelHierarchyKey,
@@ -348,38 +349,66 @@ const ExploreTree = ({
   const fetchEntityCounts = useCallback(async () => {
     try {
       setIsLoading(true);
-      const res = await searchQuery({
+      const filterMust = getQuickFilterMust(parsedSearch.quickFilter);
+      const countRes = await searchQuery({
         query: searchQueryParam ?? '',
         pageNumber: 0,
         pageSize: 0,
-        queryFilter: {},
+        queryFilter: { query: { bool: { must: filterMust } } },
         searchIndex: SearchIndex.DATA_ASSET,
         includeDeleted: false,
         trackTotalHits: true,
         fetchSource: false,
       });
+      const countBuckets = countRes.aggregations['entityType'].buckets;
 
-      const buckets = res.aggregations['entityType'].buckets;
+      // Category visibility tracks the whole estate, not the filtered view: a
+      // category that simply has no matches under the active filter must stay
+      // in the tree (grayed for an incompatible asset type, or showing 0 for an
+      // unrelated Tier/Owner filter) rather than disappear — so derive it from
+      // an unfiltered aggregation while the displayed counts above honor the
+      // filter. The extra call is skipped when no filter is active (the first
+      // response is already unfiltered).
+      const presenceBuckets = isEmpty(filterMust)
+        ? countBuckets
+        : (
+            await searchQuery({
+              query: searchQueryParam ?? '',
+              pageNumber: 0,
+              pageSize: 0,
+              queryFilter: {},
+              searchIndex: SearchIndex.DATA_ASSET,
+              includeDeleted: false,
+              trackTotalHits: true,
+              fetchSource: false,
+            })
+          ).aggregations['entityType'].buckets;
+
       // Rebuild from the static tree so any previously-loaded children are
       // dropped and re-fetched with the current filter on the next expand —
       // antd caches loaded children, so a filter change would otherwise leave
       // stale (unfiltered) counts deeper in the tree.
       setTreeData(() => {
-        const updatedData = updateTreeDataWithCounts(
-          searchClassBase.getExploreTree(),
-          buckets
+        const presentKeys = new Set(
+          updateTreeDataWithCounts(
+            searchClassBase.getExploreTree(),
+            presenceBuckets
+          )
+            .filter((node) => (node.totalCount ?? 0) > 0)
+            .map((node) => node.key)
         );
 
-        return updatedData.filter(
-          (node) => node.totalCount !== undefined && node.totalCount > 0
-        );
+        return updateTreeDataWithCounts(
+          searchClassBase.getExploreTree(),
+          countBuckets
+        ).filter((node) => presentKeys.has(node.key));
       });
     } catch {
       // Do nothing
     } finally {
       setIsLoading(false);
     }
-  }, [searchQueryParam, setTreeData]);
+  }, [searchQueryParam, setTreeData, parsedSearch.quickFilter]);
 
   useEffect(() => {
     if (!hasFetchedRef.current) {

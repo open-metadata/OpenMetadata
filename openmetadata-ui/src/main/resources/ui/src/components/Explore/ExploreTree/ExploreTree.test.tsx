@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, waitFor } from '@testing-library/react';
+import * as searchAPI from '../../../rest/searchAPI';
 import ExploreTree from './ExploreTree';
 
 jest.mock('react-router-dom', () => ({
@@ -18,6 +19,19 @@ jest.mock('react-router-dom', () => ({
     tab: 'tables',
   }),
 }));
+
+const buildAggregationResponse = (
+  buckets: { key: string; doc_count: number }[]
+) =>
+  ({
+    aggregations: { entityType: { buckets } },
+    hits: { hits: [], total: { value: 0 } },
+  } as never);
+
+afterEach(() => {
+  jest.restoreAllMocks();
+  window.history.pushState({}, '', '/');
+});
 
 describe('ExploreTree', () => {
   it('renders the correct tree nodes', async () => {
@@ -123,5 +137,71 @@ describe('ExploreTree', () => {
     expect(fields).toHaveLength(1);
     expect(fields[0].key).toBe('entityType');
     expect(fields[0].value[0].key).toBe('glossaryTerm');
+  });
+
+  it('counts honor the active quick filter while category visibility tracks the whole estate', async () => {
+    const quickFilter = {
+      query: { bool: { must: [{ term: { 'tier.tagFQN': 'Tier.Tier1' } }] } },
+    };
+    const filteredBuckets = [{ key: 'table', doc_count: 5 }];
+    const unfilteredBuckets = [
+      { key: 'table', doc_count: 50 },
+      { key: 'dashboard', doc_count: 10 },
+      { key: 'topic', doc_count: 3 },
+      { key: 'pipeline', doc_count: 4 },
+      { key: 'mlmodel', doc_count: 2 },
+      { key: 'container', doc_count: 6 },
+      { key: 'searchIndex', doc_count: 1 },
+    ];
+    const searchQuerySpy = jest
+      .spyOn(searchAPI, 'searchQuery')
+      .mockImplementation(({ queryFilter }) => {
+        const must = (
+          queryFilter as { query?: { bool?: { must?: unknown[] } } }
+        )?.query?.bool?.must;
+
+        return Promise.resolve(
+          buildAggregationResponse(
+            (must ?? []).length > 0 ? filteredBuckets : unfilteredBuckets
+          )
+        );
+      });
+
+    window.history.pushState(
+      {},
+      '',
+      `/explore?quickFilter=${encodeURIComponent(JSON.stringify(quickFilter))}`
+    );
+
+    const { getByText, queryByTestId } = render(
+      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+    );
+
+    await waitFor(() => {
+      expect(queryByTestId('loader')).not.toBeInTheDocument();
+    });
+
+    const filteredCall = searchQuerySpy.mock.calls.find(
+      ([arg]) =>
+        (
+          (arg.queryFilter as { query?: { bool?: { must?: unknown[] } } })
+            ?.query?.bool?.must ?? []
+        ).length > 0
+    );
+    const presenceCall = searchQuerySpy.mock.calls.find(
+      ([arg]) =>
+        (
+          (arg.queryFilter as { query?: { bool?: { must?: unknown[] } } })
+            ?.query?.bool?.must ?? []
+        ).length === 0
+    );
+
+    // The count aggregation carries the active filter (the bug: it sent {}).
+    expect(filteredCall?.[0].queryFilter).toEqual(quickFilter);
+    // A second unfiltered aggregation backs category visibility.
+    expect(presenceCall).toBeDefined();
+    // A category with no matches under the filter (Dashboards has 0 tables) is
+    // still rendered, because visibility tracks the unfiltered estate.
+    expect(getByText('label.dashboard-plural')).toBeInTheDocument();
   });
 });
