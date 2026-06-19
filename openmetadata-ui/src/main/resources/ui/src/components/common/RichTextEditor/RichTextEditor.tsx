@@ -53,7 +53,7 @@ const RichTextEditor = forwardRef<EditorContentRef, RichTextEditorProp>(
     useImperativeHandle(ref, () => ({
       getEditorContent() {
         const htmlContent = editorRef.current?.editor?.getHTML() ?? '';
-        const backendFormat = formatContent(htmlContent, 'server');
+        const backendFormat = formatContent(htmlContent);
 
         return formatValueBasedOnContent(backendFormat);
       },

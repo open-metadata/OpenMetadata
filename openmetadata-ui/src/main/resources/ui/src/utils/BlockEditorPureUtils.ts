@@ -20,7 +20,7 @@ import {
 } from './FeedUtilsPure';
 import { getSanitizeContent } from './sanitize.utils';
 
-const convertMarkdownFormatToHtmlString = (markdown: string) => {
+export const convertMarkdownFormatToHtmlString = (markdown: string) => {
   let updatedMessage = markdown;
   const urlEntries = Object.entries(ENTITY_URL_MAP);
 

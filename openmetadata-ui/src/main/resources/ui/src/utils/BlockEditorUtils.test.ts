@@ -12,14 +12,15 @@
  */
 import { Editor } from '@tiptap/react';
 import {
+  formatClientContent,
   getTextFromHtmlString,
   isDescriptionContentEmpty,
+  isHTMLString,
 } from './BlockEditorPureUtils';
 import {
   formatContent,
   formatValueBasedOnContent,
   getHtmlStringFromMarkdownString,
-  isHTMLString,
   setEditorContent,
   transformImgTagsToFileAttachment,
 } from './BlockEditorUtils';
@@ -141,23 +142,25 @@ describe('formatValueBasedOnContent', () => {
   });
 });
 
-describe('formatContent', () => {
+describe('formatClientContent', () => {
   it('should format mention for client display correctly', () => {
     const input =
       '<p>This <a data-type="mention" data-label="Infrastructure" href="http://localhost:3000/settings/members/teams/Infrastructure" data-entitytype="team" data-fqn="Infrastructure">@Infrastructure</a> team</p>';
 
-    const result = formatContent(input, 'client');
+    const result = formatClientContent(input);
 
     // Should replace the anchor tag content with just @Infrastructure
     expect(result).toContain('@Infrastructure');
     expect(result.match(/@Infrastructure/g) || []).toHaveLength(1);
   });
+});
 
+describe('formatContent', () => {
   it('should format mention for server storage correctly', () => {
     const input =
       '<p>This <a data-type="mention" data-label="Infrastructure" href="http://localhost:3000/settings/members/teams/Infrastructure" data-entitytype="team" data-fqn="Infrastructure">@Infrastructure</a> team</p>';
 
-    const result = formatContent(input, 'server');
+    const result = formatContent(input);
 
     // Should convert to server format with markdown link structure
     expect(result).toContain(

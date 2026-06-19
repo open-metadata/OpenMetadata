@@ -22,6 +22,7 @@ import {
   TEXT_TYPES,
 } from '../../constants/BlockEditor.constants';
 import blockEditorExtensionsClassBase from '../../utils/BlockEditorExtensionsClassBase';
+import { formatClientContent } from '../../utils/BlockEditorPureUtils';
 import { formatContent, setEditorContent } from '../../utils/BlockEditorUtils';
 import Banner from '../common/Banner/Banner';
 import { useEntityAttachment } from '../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
@@ -74,7 +75,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       onUpdate({ editor }) {
         handleErrorMessage?.(undefined);
         const htmlContent = editor.getHTML();
-        const backendFormat = formatContent(htmlContent, 'server');
+        const backendFormat = formatContent(htmlContent);
         onChange?.(backendFormat);
       },
       onFocus() {
@@ -200,7 +201,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       // mentioned here https://github.com/ueberdosis/tiptap/issues/3764#issuecomment-1546854730
       setTimeout(() => {
         if (content !== undefined) {
-          const htmlContent = formatContent(content, 'client');
+          const htmlContent = formatClientContent(content);
           setEditorContent(editor, htmlContent);
         }
       });
