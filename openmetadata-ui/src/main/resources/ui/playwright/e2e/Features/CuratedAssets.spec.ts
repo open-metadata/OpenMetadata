@@ -19,12 +19,14 @@ import { selectOption } from '../../utils/advancedSearch';
 import { redirectToHomePage, removeLandingBanner } from '../../utils/common';
 import {
   addCuratedAssetPlaceholder,
+  CURATED_ASSETS_WIDGET_KEY,
   ENTITY_TYPE_CONFIGS,
   navigateToCustomizeLandingPage,
   removeAndCheckWidget,
   saveCustomizeLayoutPage,
   selectAssetTypes,
   setUserDefaultPersona,
+  toNameableEntity,
   waitForLandingPageWidget,
 } from '../../utils/customizeLandingPage';
 import {
@@ -34,7 +36,6 @@ import {
 
 const adminUser = new UserClass();
 const persona = new PersonaClass();
-const CURATED_ASSETS_WIDGET_KEY = 'KnowledgePanel.CuratedAssets';
 
 // Define the type for test entities using EntityDataClass properties
 type TestEntity = (typeof EntityDataClass)[keyof typeof EntityDataClass];
@@ -59,22 +60,6 @@ const entityTypeToTestEntity: Record<string, TestEntity> = {
   Table: EntityDataClass.table1,
   Topic: EntityDataClass.topic1,
 };
-
-function toNameableEntity(
-  entity: TestEntity
-): { name?: string; displayName?: string } | undefined {
-  if (!entity) {
-    return undefined;
-  }
-  const holder = entity as unknown as {
-    entityResponseData?: { name?: string; displayName?: string };
-  };
-
-  return holder?.entityResponseData;
-}
-
-const waitForCuratedAssetsWidget = (page: Page) =>
-  waitForLandingPageWidget(page, CURATED_ASSETS_WIDGET_KEY);
 
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
@@ -138,7 +123,10 @@ test.describe('Curated Assets Widget', () => {
         personaName: persona.responseData.name,
       });
 
-      let curatedAssetsWidget = await waitForCuratedAssetsWidget(page);
+      let curatedAssetsWidget = await waitForLandingPageWidget(
+        page,
+        CURATED_ASSETS_WIDGET_KEY
+      );
 
       await curatedAssetsWidget.getByText('Create').click();
 
@@ -187,7 +175,10 @@ test.describe('Curated Assets Widget', () => {
 
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
-      curatedAssetsWidget = await waitForCuratedAssetsWidget(page);
+      curatedAssetsWidget = await waitForLandingPageWidget(
+        page,
+        CURATED_ASSETS_WIDGET_KEY
+      );
 
       await expect(
         curatedAssetsWidget
@@ -201,7 +192,10 @@ test.describe('Curated Assets Widget', () => {
 
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
-      curatedAssetsWidget = await waitForCuratedAssetsWidget(page);
+      curatedAssetsWidget = await waitForLandingPageWidget(
+        page,
+        CURATED_ASSETS_WIDGET_KEY
+      );
 
       await expect(
         curatedAssetsWidget.getByText(
@@ -211,7 +205,10 @@ test.describe('Curated Assets Widget', () => {
 
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
-      curatedAssetsWidget = await waitForCuratedAssetsWidget(page);
+      curatedAssetsWidget = await waitForLandingPageWidget(
+        page,
+        CURATED_ASSETS_WIDGET_KEY
+      );
 
       await expect(
         curatedAssetsWidget
@@ -241,7 +238,10 @@ test.describe('Curated Assets Widget', () => {
       personaName: persona.responseData.name,
     });
 
-    let curatedAssetsWidget = await waitForCuratedAssetsWidget(page);
+    let curatedAssetsWidget = await waitForLandingPageWidget(
+      page,
+      CURATED_ASSETS_WIDGET_KEY
+    );
 
     await curatedAssetsWidget.getByText('Create').click();
 
@@ -290,7 +290,10 @@ test.describe('Curated Assets Widget', () => {
     await waitForAllLoadersToDisappear(page);
 
     // Save and verify widget creation
-    curatedAssetsWidget = await waitForCuratedAssetsWidget(page);
+    curatedAssetsWidget = await waitForLandingPageWidget(
+      page,
+      CURATED_ASSETS_WIDGET_KEY
+    );
 
     await expect(
       curatedAssetsWidget.getByText('All Entity Types - Initial')
@@ -313,7 +316,10 @@ test.describe('Curated Assets Widget', () => {
       personaName: persona.responseData.name,
     });
 
-    let curatedAssetsWidget = await waitForCuratedAssetsWidget(page);
+    let curatedAssetsWidget = await waitForLandingPageWidget(
+      page,
+      CURATED_ASSETS_WIDGET_KEY
+    );
 
     await curatedAssetsWidget.getByText('Create').click();
 
@@ -376,7 +382,7 @@ test.describe('Curated Assets Widget', () => {
 
     await queryResponse;
 
-    await waitForCuratedAssetsWidget(page);
+    await waitForLandingPageWidget(page, CURATED_ASSETS_WIDGET_KEY);
 
     // Wait for auto-save to complete before navigating
 
@@ -385,7 +391,10 @@ test.describe('Curated Assets Widget', () => {
 
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
-    curatedAssetsWidget = await waitForCuratedAssetsWidget(page);
+    curatedAssetsWidget = await waitForLandingPageWidget(
+      page,
+      CURATED_ASSETS_WIDGET_KEY
+    );
 
     await expect(
       curatedAssetsWidget.locator('.entity-list-item-title').first()
@@ -410,7 +419,10 @@ test.describe('Curated Assets Widget', () => {
       personaName: persona.responseData.name,
     });
 
-    let curatedAssetsWidget = await waitForCuratedAssetsWidget(page);
+    let curatedAssetsWidget = await waitForLandingPageWidget(
+      page,
+      CURATED_ASSETS_WIDGET_KEY
+    );
 
     await curatedAssetsWidget.getByText('Create').click();
 
@@ -478,7 +490,10 @@ test.describe('Curated Assets Widget', () => {
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
     // Verify on customize page: widget and at least one entity item
-    curatedAssetsWidget = await waitForCuratedAssetsWidget(page);
+    curatedAssetsWidget = await waitForLandingPageWidget(
+      page,
+      CURATED_ASSETS_WIDGET_KEY
+    );
 
     await expect(
       curatedAssetsWidget.locator('.entity-list-item-title').first()
@@ -492,7 +507,10 @@ test.describe('Curated Assets Widget', () => {
 
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
-    curatedAssetsWidget = await waitForCuratedAssetsWidget(page);
+    curatedAssetsWidget = await waitForLandingPageWidget(
+      page,
+      CURATED_ASSETS_WIDGET_KEY
+    );
 
     await expect(
       curatedAssetsWidget.locator('.entity-list-item-title').first()
@@ -517,7 +535,10 @@ test.describe('Curated Assets Widget', () => {
       personaName: persona.responseData.name,
     });
 
-    let curatedAssetsWidget = await waitForCuratedAssetsWidget(page);
+    let curatedAssetsWidget = await waitForLandingPageWidget(
+      page,
+      CURATED_ASSETS_WIDGET_KEY
+    );
 
     await curatedAssetsWidget.getByText('Create').click();
 
@@ -612,7 +633,10 @@ test.describe('Curated Assets Widget', () => {
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
     // Verify on customize page: widget and at least one entity item
-    curatedAssetsWidget = await waitForCuratedAssetsWidget(page);
+    curatedAssetsWidget = await waitForLandingPageWidget(
+      page,
+      CURATED_ASSETS_WIDGET_KEY
+    );
 
     await expect(
       curatedAssetsWidget.locator('.entity-list-item-title').first()
@@ -626,7 +650,10 @@ test.describe('Curated Assets Widget', () => {
 
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
-    curatedAssetsWidget = await waitForCuratedAssetsWidget(page);
+    curatedAssetsWidget = await waitForLandingPageWidget(
+      page,
+      CURATED_ASSETS_WIDGET_KEY
+    );
 
     await expect(
       curatedAssetsWidget.locator('.entity-list-item-title').first()

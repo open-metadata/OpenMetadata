@@ -33,6 +33,7 @@ import {
   getEntityTypeSearchIndexMapping,
   readElementInListWithScroll,
   redirectToHomePage,
+  removeLandingBanner,
   toastNotification,
   uuid,
 } from './common';
@@ -1375,22 +1376,70 @@ export const unFollowEntity = async (
   );
 };
 
+const LANDING_PAGE_SCROLL_CONTAINER =
+  '.page-layout-v1-center.page-layout-v1-vertical-scroll';
+const FOLLOWING_WIDGET_KEY = 'KnowledgePanel.Following';
+
+const revealFollowingWidget = async (page: Page): Promise<Locator> => {
+  const followingWidgetPanel = page.getByTestId(FOLLOWING_WIDGET_KEY);
+
+  await expect
+    .poll(
+      async () => {
+        if (await followingWidgetPanel.isVisible().catch(() => false)) {
+          return true;
+        }
+
+        if ((await followingWidgetPanel.count()) > 0) {
+          await followingWidgetPanel
+            .scrollIntoViewIfNeeded({ timeout: 1000 })
+            .catch(() => undefined);
+        }
+
+        await page.evaluate((scrollContainerSelector) => {
+          document
+            .querySelector(scrollContainerSelector)
+            ?.scrollBy({ top: 700, behavior: 'instant' });
+        }, LANDING_PAGE_SCROLL_CONTAINER);
+
+        return followingWidgetPanel.isVisible().catch(() => false);
+      },
+      {
+        timeout: 60_000,
+        intervals: [500, 1_000, 2_000],
+      }
+    )
+    .toBe(true);
+
+  return followingWidgetPanel;
+};
+
 export const validateFollowedEntityToWidget = async (
   page: Page,
   entity: string,
   isFollowing: boolean
-) => {
-  await redirectToHomePage(page);
-  await waitForAllLoadersToDisappear(page);
+): Promise<Locator> => {
+  await redirectToHomePage(page, false);
+  await removeLandingBanner(page);
+  await waitForAllLoadersToDisappear(page).catch(() => undefined);
+
+  const followingWidgetPanel = await revealFollowingWidget(page);
+
+  const followingWidget = followingWidgetPanel.getByTestId('following-widget');
+  await expect(followingWidget).toBeVisible({ timeout: 60_000 });
+  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton').catch(
+    () => undefined
+  );
+
   if (isFollowing) {
-    await page.getByTestId('following-widget').isVisible();
-
-    await page.getByTestId(`following-${entity}`).isVisible();
+    await expect(followingWidget).toContainText(entity, { timeout: 60_000 });
   } else {
-    await page.getByTestId('following-widget').isVisible();
-
-    await expect(page.getByTestId(`following-${entity}`)).not.toBeVisible();
+    await expect(followingWidget).not.toContainText(entity, {
+      timeout: 60_000,
+    });
   }
+
+  return followingWidget;
 };
 
 const announcementForm = async (

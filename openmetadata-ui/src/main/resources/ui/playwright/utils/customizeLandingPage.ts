@@ -30,6 +30,12 @@ const DEFAULT_LANDING_PAGE_WIDGETS = [
 
 const LANDING_PAGE_WIDGET_SCROLL_ATTEMPTS = 8;
 const LANDING_PAGE_WIDGET_SCROLL_OFFSET = 600;
+export const CURATED_ASSETS_WIDGET_KEY = 'KnowledgePanel.CuratedAssets';
+
+export type NameableEntityResponse = {
+  name?: string;
+  displayName?: string;
+};
 
 const waitForNextAnimationFrame = async (page: Page) =>
   page.evaluate(
@@ -246,6 +252,18 @@ export const waitForLandingPageWidget = async (
   await expect(widget).toBeVisible();
 
   return widget;
+};
+
+export const toNameableEntity = (
+  entity?: unknown
+): NameableEntityResponse | undefined => {
+  const holder = entity as
+    | {
+        entityResponseData?: NameableEntityResponse;
+      }
+    | undefined;
+
+  return holder?.entityResponseData;
 };
 
 export const checkAllDefaultWidgets = async (page: Page) => {
@@ -763,6 +781,31 @@ export const verifyDataProductCountInDataProductWidget = async (
         const text = await card.textContent();
 
         return text?.trim() ?? null;
+      },
+      { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
+    )
+    .toContain(expectedCount.toString());
+};
+
+export const verifyWidgetCountOnCurrentPage = async (
+  page: Page,
+  widgetKey: string,
+  selector: string,
+  expectedCount: number
+) => {
+  const widget = await waitForLandingPageWidget(page, widgetKey);
+
+  await expect
+    .poll(
+      async () => {
+        const element = widget.locator(selector).first();
+        const isVisible = await element.isVisible().catch(() => false);
+
+        if (!isVisible) {
+          return null;
+        }
+
+        return (await element.textContent())?.trim() ?? null;
       },
       { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
     )
