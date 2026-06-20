@@ -49,10 +49,16 @@ const ENTITY_TYPE_FILTER_KEYS: ReadonlySet<string> = new Set([
 const formatEntityTypeLabel = (value: string): string =>
   getEntityNameLabel(getCanonicalEntityType(value));
 
+// Human-readable entity-type labels are an Explore-page affordance. The
+// Untitled-UI drawer dropdown (Add Assets) keys its options off the raw label,
+// so keep raw entity-type values there to preserve its stable option ids.
 const getOptionLabelFormatter = (
-  key: string
+  key: string,
+  skipEntityTypeLabel = false
 ): ((value: string) => string) | undefined =>
-  ENTITY_TYPE_FILTER_KEYS.has(key) ? formatEntityTypeLabel : undefined;
+  ENTITY_TYPE_FILTER_KEYS.has(key) && !skipEntityTypeLabel
+    ? formatEntityTypeLabel
+    : undefined;
 
 const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   fields,
@@ -181,7 +187,10 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
 
     setOptions(
       uniqWith(
-        getOptionsFromAggregationBucket(buckets, getOptionLabelFormatter(key)),
+        getOptionsFromAggregationBucket(
+          buckets,
+          getOptionLabelFormatter(key, untitledDropdown)
+        ),
         isEqual
       )
     );
@@ -258,7 +267,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         uniqWith(
           getOptionsFromAggregationBucket(
             buckets,
-            getOptionLabelFormatter(key)
+            getOptionLabelFormatter(key, untitledDropdown)
           ),
           isEqual
         )
