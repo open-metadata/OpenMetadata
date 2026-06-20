@@ -129,6 +129,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
@@ -1569,13 +1570,21 @@ public class SearchRepository {
     }
     List<EntityInterface> entities = new ArrayList<>(references.size());
     for (EntityReference reference : references) {
-      EntityRepository<?> entityRepository = Entity.getEntityRepository(reference.getType());
-      String fields = String.join(",", searchIndexFactory.getReindexFieldsFor(reference.getType()));
-      EntityInterface entity =
-          entityRepository.get(
-              null, reference.getId(), entityRepository.getOnlySupportedFields(fields));
-      entity.setChangeDescription(null);
-      entities.add(entity);
+      try {
+        EntityRepository<?> entityRepository = Entity.getEntityRepository(reference.getType());
+        String fields =
+            String.join(",", searchIndexFactory.getReindexFieldsFor(reference.getType()));
+        EntityInterface entity =
+            entityRepository.get(
+                null, reference.getId(), entityRepository.getOnlySupportedFields(fields));
+        entity.setChangeDescription(null);
+        entities.add(entity);
+      } catch (EntityNotFoundException e) {
+        // A reference concurrently deleted (e.g. a child term removed mid glossary-rename) must
+        // not abort the whole bulk: skip it so the surviving siblings still re-index. The deleted
+        // entity's own delete cascade removes its document.
+        LOG.debug("Skipping concurrently-deleted entity {} during bulk reindex", reference.getId());
+      }
     }
     updateEntitiesIndex(entities);
   }
