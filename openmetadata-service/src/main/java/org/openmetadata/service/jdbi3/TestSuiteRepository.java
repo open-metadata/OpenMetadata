@@ -33,9 +33,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -45,10 +48,14 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.tests.DataQualityReport;
+import org.openmetadata.schema.tests.DataQualityReportBatchRequest;
+import org.openmetadata.schema.tests.DataQualityReportBatchResponse;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.ColumnTestSummaryDefinition;
+import org.openmetadata.schema.tests.type.DataQualityReportRequest;
+import org.openmetadata.schema.tests.type.DataQualityReportResult;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -370,6 +377,43 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggQuery);
     return searchRepository.genericAggregation(
         queryWithDomain, index, searchAggregation, subjectContext);
+  }
+
+  public DataQualityReportBatchResponse getDataQualityReportBatch(
+      DataQualityReportBatchRequest request, SubjectContext subjectContext) {
+    List<DataQualityReportResult> results =
+        runReportsConcurrently(request.getRequests(), subjectContext);
+    return new DataQualityReportBatchResponse().withResults(results);
+  }
+
+  private List<DataQualityReportResult> runReportsConcurrently(
+      List<DataQualityReportRequest> requests, SubjectContext subjectContext) {
+    Queue<DataQualityReportResult> results = new ConcurrentLinkedQueue<>();
+    try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+      for (DataQualityReportRequest item : requests) {
+        executor.submit(() -> results.add(runSingleReport(item, subjectContext)));
+      }
+    }
+    return new ArrayList<>(results);
+  }
+
+  private DataQualityReportResult runSingleReport(
+      DataQualityReportRequest item, SubjectContext subjectContext) {
+    DataQualityReportResult result = new DataQualityReportResult().withKey(item.getKey());
+    try {
+      DataQualityReport report =
+          getDataQualityReport(
+              item.getQ(),
+              item.getAggregationQuery(),
+              item.getIndex(),
+              item.getDomain(),
+              subjectContext);
+      result.withReport(report);
+    } catch (IOException | RuntimeException e) {
+      LOG.error("Failed to compute data quality report for key '{}'", item.getKey(), e);
+      result.withError(e.getMessage());
+    }
+    return result;
   }
 
   private String addDomainFilter(String query, String domain, String index) {
