@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import test, { expect, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
@@ -28,7 +28,8 @@ import {
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { clickUpdateButtonIfVisible } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
-import { test } from '../fixtures/pages';
+
+test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const TIER_FIELD = 'tier.tagFQN';
 const TAG_FIELD = 'tags.tagFQN';
