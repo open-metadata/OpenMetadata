@@ -215,7 +215,7 @@ class TagAnalyzer:
             if content_recognizers:
                 context = split_column_name(self._column_name)
                 content_results = self._analyze_with(str_values, content_recognizers, context=context)
-                content_score = sum(r.score for r in content_results) / len(str_values)
+                content_score = min(sum(r.score for r in content_results) / len(str_values), 1.0)
 
         column_results: list[RecognizerResult] = []
         column_score = 0.0
@@ -223,7 +223,7 @@ class TagAnalyzer:
             column_recognizers = self.column_recognizers
             if column_recognizers:
                 column_results = self._analyze_with(self._column_name, column_recognizers)
-                column_score = sum(r.score for r in column_results)
+                column_score = min(sum(r.score for r in column_results), 1.0)
 
         column_wins = column_score >= content_score and bool(column_results)
         score = max(content_score, column_score)
