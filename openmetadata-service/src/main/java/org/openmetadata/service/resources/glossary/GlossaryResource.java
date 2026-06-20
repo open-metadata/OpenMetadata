@@ -67,6 +67,7 @@ import org.openmetadata.service.rdf.OntologyImportResult;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.CSVExportResponse;
 
@@ -701,6 +702,9 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
         new OperationContext(Entity.GLOSSARY, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     String updatedBy = securityContext.getUserPrincipal().getName();
-    return new GlossaryRdfImporter(uriInfo, updatedBy).importRdf(rdf, format, name, dryRun);
+    boolean allowGlobalSchemaChanges =
+        DefaultAuthorizer.getSubjectContext(securityContext).isAdmin();
+    return new GlossaryRdfImporter(uriInfo, updatedBy, allowGlobalSchemaChanges)
+        .importRdf(rdf, format, name, dryRun);
   }
 }

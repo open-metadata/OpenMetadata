@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -88,6 +89,9 @@ public class GlossaryRdfImporter {
   private static final String RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
   private static final String OWL = "http://www.w3.org/2002/07/owl#";
   private static final String DCT = "http://purl.org/dc/terms/";
+  private static final int MAX_RDF_PAYLOAD_CHARS = 10 * 1024 * 1024;
+  private static final String DOCTYPE_TOKEN = "<!DOCTYPE";
+  private static final String RDF_XML_LANG = "RDF/XML";
 
   private static final Set<String> STRUCTURAL_PREDICATES =
       Set.of(
@@ -110,79 +114,127 @@ public class GlossaryRdfImporter {
 
   private final UriInfo uriInfo;
   private final String user;
+  private final boolean allowGlobalSchemaChanges;
   private final OntologyImportResult result = new OntologyImportResult();
   private final Map<String, EntityReference> termRefByIri = new HashMap<>();
   private final Map<String, String> termFqnByIri = new HashMap<>();
   private EntityReference targetGlossaryRef;
 
-  public GlossaryRdfImporter(UriInfo uriInfo, String user) {
+  /**
+   * @param allowGlobalSchemaChanges whether the caller may mutate global, admin-scoped settings
+   *     (the {@code GlossaryTerm} type's custom properties and the glossary relation-type settings).
+   *     Glossary {@code EDIT_ALL} alone is not sufficient for those side effects.
+   */
+  public GlossaryRdfImporter(UriInfo uriInfo, String user, boolean allowGlobalSchemaChanges) {
     this.uriInfo = uriInfo;
     this.user = user;
+    this.allowGlobalSchemaChanges = allowGlobalSchemaChanges;
   }
 
   public OntologyImportResult importRdf(
       String rdf, String format, String targetGlossaryName, boolean dryRun) {
     result.setDryRun(dryRun);
+    validatePayloadSize(rdf);
     Model model = parseModel(rdf, format);
-    Map<String, EntityReference> glossaryByScheme = createGlossaries(model, targetGlossaryName);
+    Map<String, EntityReference> glossaryByScheme =
+        createGlossaries(model, targetGlossaryName, dryRun);
     List<TermIntent> intents = buildTermIntents(model);
     persistTerms(intents, glossaryByScheme, dryRun);
-    if (!dryRun) {
-      registerRelationTypes(model, intents);
-      registerDatatypeProperties(model);
-      wireRelations(intents);
-    }
+    registerRelationTypes(model, intents, dryRun);
+    registerDatatypeProperties(model, dryRun);
+    wireRelations(intents, dryRun);
     return result;
   }
 
+  private void validatePayloadSize(String rdf) {
+    if (rdf != null && rdf.length() > MAX_RDF_PAYLOAD_CHARS) {
+      throw new BadRequestException(
+          String.format(
+              "Ontology payload of %d characters exceeds the maximum of %d",
+              rdf.length(), MAX_RDF_PAYLOAD_CHARS));
+    }
+  }
+
   private Model parseModel(String rdf, String format) {
+    String lang = jenaLang(format);
+    rejectExternalEntities(rdf, lang);
     Model model = ModelFactory.createDefaultModel();
     try {
-      model.read(new StringReader(rdf), null, jenaLang(format));
+      model.read(new StringReader(rdf), null, lang);
     } catch (JenaException ex) {
       throw new BadRequestException("Failed to parse the ontology payload: " + ex.getMessage());
     }
     return model;
   }
 
+  private void rejectExternalEntities(String rdf, String lang) {
+    if (RDF_XML_LANG.equals(lang)
+        && rdf != null
+        && rdf.toUpperCase(Locale.ROOT).contains(DOCTYPE_TOKEN)) {
+      throw new BadRequestException(
+          "RDF/XML payloads with a DOCTYPE declaration are rejected to prevent XXE/SSRF");
+    }
+  }
+
   private String jenaLang(String format) {
-    String normalized = format == null ? "turtle" : format.toLowerCase();
+    String normalized = format == null ? "turtle" : format.toLowerCase(Locale.ROOT);
     return switch (normalized) {
-      case "rdfxml", "xml", "rdf", "application/rdf+xml" -> "RDF/XML";
+      case "rdfxml", "xml", "rdf", "application/rdf+xml" -> RDF_XML_LANG;
       case "ntriples", "nt", "application/n-triples" -> "N-TRIPLES";
       case "jsonld", "json-ld", "application/ld+json" -> "JSON-LD";
       default -> "TURTLE";
     };
   }
 
-  private Map<String, EntityReference> createGlossaries(Model model, String targetGlossaryName) {
+  private Map<String, EntityReference> createGlossaries(
+      Model model, String targetGlossaryName, boolean dryRun) {
     Map<String, EntityReference> glossaryByScheme = new HashMap<>();
-    Resource conceptScheme = model.getResource(SKOS + "ConceptScheme");
-    var schemes = model.listResourcesWithProperty(model.getProperty(RDF, "type"), conceptScheme);
     List<Map<String, String>> namespaces = collectNamespaces(model);
-    while (schemes.hasNext()) {
-      Resource scheme = schemes.next();
-      if (scheme.isURIResource()) {
-        String name = sanitizeName(localName(scheme.getURI()));
-        String label = firstLiteral(scheme, model, RDFS + "label", DCT + "title");
-        String definition = firstLiteral(scheme, model, SKOS + "definition", RDFS + "comment");
-        EntityReference ref = ensureGlossary(name, label, definition, namespaces);
-        glossaryByScheme.put(scheme.getURI(), ref);
-      }
-    }
-    if (!nullOrEmpty(targetGlossaryName)) {
-      targetGlossaryRef = resolveTargetGlossary(targetGlossaryName, namespaces);
+    if (nullOrEmpty(targetGlossaryName)) {
+      collectSchemeGlossaries(model, namespaces, glossaryByScheme, dryRun);
+    } else {
+      targetGlossaryRef = resolveTargetGlossary(targetGlossaryName, namespaces, dryRun);
     }
     return glossaryByScheme;
   }
 
+  private void collectSchemeGlossaries(
+      Model model,
+      List<Map<String, String>> namespaces,
+      Map<String, EntityReference> glossaryByScheme,
+      boolean dryRun) {
+    Resource conceptScheme = model.getResource(SKOS + "ConceptScheme");
+    var schemes = model.listResourcesWithProperty(model.getProperty(RDF, "type"), conceptScheme);
+    while (schemes.hasNext()) {
+      Resource scheme = schemes.next();
+      if (scheme.isURIResource()) {
+        addSchemeGlossary(model, scheme, namespaces, glossaryByScheme, dryRun);
+      }
+    }
+  }
+
+  private void addSchemeGlossary(
+      Model model,
+      Resource scheme,
+      List<Map<String, String>> namespaces,
+      Map<String, EntityReference> glossaryByScheme,
+      boolean dryRun) {
+    String name = sanitizeName(localName(scheme.getURI()));
+    String label = firstLiteral(scheme, model, RDFS + "label", DCT + "title");
+    String definition = firstLiteral(scheme, model, SKOS + "definition", RDFS + "comment");
+    EntityReference ref = ensureGlossary(name, label, definition, namespaces, dryRun);
+    glossaryByScheme.put(scheme.getURI(), ref);
+  }
+
   private EntityReference resolveTargetGlossary(
-      String targetGlossaryName, List<Map<String, String>> namespaces) {
+      String targetGlossaryName, List<Map<String, String>> namespaces, boolean dryRun) {
     EntityReference ref;
     try {
       ref = Entity.getEntityReferenceByName(GLOSSARY, targetGlossaryName, Include.NON_DELETED);
     } catch (EntityNotFoundException ex) {
-      ref = ensureGlossary(sanitizeName(targetGlossaryName), targetGlossaryName, null, namespaces);
+      ref =
+          ensureGlossary(
+              sanitizeName(targetGlossaryName), targetGlossaryName, null, namespaces, dryRun);
     }
     return ref;
   }
@@ -196,6 +248,32 @@ public class GlossaryRdfImporter {
   }
 
   private EntityReference ensureGlossary(
+      String name,
+      String displayName,
+      String description,
+      List<Map<String, String>> namespaces,
+      boolean dryRun) {
+    EntityReference ref;
+    if (dryRun) {
+      ref = previewGlossary(name);
+    } else {
+      ref = persistGlossary(name, displayName, description, namespaces);
+    }
+    return ref;
+  }
+
+  private EntityReference previewGlossary(String name) {
+    EntityReference ref;
+    try {
+      ref = Entity.getEntityReferenceByName(GLOSSARY, name, Include.NON_DELETED);
+    } catch (EntityNotFoundException ex) {
+      result.setGlossariesCreated(result.getGlossariesCreated() + 1);
+      ref = new EntityReference().withName(name).withFullyQualifiedName(name).withType(GLOSSARY);
+    }
+    return ref;
+  }
+
+  private EntityReference persistGlossary(
       String name, String displayName, String description, List<Map<String, String>> namespaces) {
     GlossaryRepository repository = (GlossaryRepository) Entity.getEntityRepository(GLOSSARY);
     Glossary glossary =
@@ -333,7 +411,7 @@ public class GlossaryRdfImporter {
     };
   }
 
-  private void registerRelationTypes(Model model, List<TermIntent> intents) {
+  private void registerRelationTypes(Model model, List<TermIntent> intents, boolean dryRun) {
     Set<String> existing = existingRelationTypeNames();
     Map<String, GlossaryTermRelationType> toAdd = new LinkedHashMap<>();
     for (TermIntent intent : intents) {
@@ -342,6 +420,19 @@ public class GlossaryRdfImporter {
       }
     }
     if (!toAdd.isEmpty()) {
+      applyRelationTypes(toAdd, dryRun);
+    }
+  }
+
+  private void applyRelationTypes(Map<String, GlossaryTermRelationType> toAdd, boolean dryRun) {
+    if (!allowGlobalSchemaChanges) {
+      result.addMessage(
+          String.format(
+              "%d relation type(s) require admin privileges and were not registered",
+              toAdd.size()));
+    } else if (dryRun) {
+      result.setRelationTypesRegistered(result.getRelationTypesRegistered() + toAdd.size());
+    } else {
       persistRelationTypes(toAdd.values());
     }
   }
@@ -476,20 +567,50 @@ public class GlossaryRdfImporter {
     if (glossaryRef == null) {
       result.addMessage(
           String.format("Skipped %s: no glossary (missing inScheme/target)", intent.iri));
-      return;
+    } else {
+      persistResolvedTerm(repository, intent, glossaryRef, dryRun, batch);
     }
+  }
+
+  private void persistResolvedTerm(
+      GlossaryTermRepository repository,
+      TermIntent intent,
+      EntityReference glossaryRef,
+      boolean dryRun,
+      Map<String, GlossaryTerm> batch) {
     GlossaryTerm term = buildTerm(intent, glossaryRef);
     try {
       if (dryRun) {
-        repository.validateForDryRun(term, batch);
-        batch.put(term.getFullyQualifiedName(), term);
-        result.setTermsCreated(result.getTermsCreated() + 1);
+        validateTermForDryRun(repository, term, batch);
       } else {
         commitTerm(repository, term, intent);
       }
     } catch (Exception ex) {
       result.addMessage(String.format("Failed %s: %s", intent.iri, ex.getMessage()));
     }
+  }
+
+  private void validateTermForDryRun(
+      GlossaryTermRepository repository, GlossaryTerm term, Map<String, GlossaryTerm> batch) {
+    boolean exists = entityExists(GLOSSARY_TERM, term.getFullyQualifiedName());
+    repository.validateForDryRun(term, batch);
+    batch.put(term.getFullyQualifiedName(), term);
+    if (exists) {
+      result.setTermsUpdated(result.getTermsUpdated() + 1);
+    } else {
+      result.setTermsCreated(result.getTermsCreated() + 1);
+    }
+  }
+
+  private boolean entityExists(String entityType, String fqn) {
+    boolean exists;
+    try {
+      Entity.getEntityReferenceByName(entityType, fqn, Include.NON_DELETED);
+      exists = true;
+    } catch (EntityNotFoundException ex) {
+      exists = false;
+    }
+    return exists;
   }
 
   private void commitTerm(GlossaryTermRepository repository, GlossaryTerm term, TermIntent intent) {
@@ -552,7 +673,20 @@ public class GlossaryRdfImporter {
     return result;
   }
 
-  private void wireRelations(List<TermIntent> intents) {
+  private void wireRelations(List<TermIntent> intents, boolean dryRun) {
+    if (dryRun) {
+      countRelationsForDryRun(intents);
+    } else {
+      persistRelations(intents);
+    }
+  }
+
+  private void countRelationsForDryRun(List<TermIntent> intents) {
+    int total = intents.stream().mapToInt(intent -> intent.relations.size()).sum();
+    result.setRelationsAdded(result.getRelationsAdded() + total);
+  }
+
+  private void persistRelations(List<TermIntent> intents) {
     GlossaryTermRepository repository =
         (GlossaryTermRepository) Entity.getEntityRepository(GLOSSARY_TERM);
     for (TermIntent intent : intents) {
@@ -581,11 +715,27 @@ public class GlossaryRdfImporter {
     }
   }
 
-  private void registerDatatypeProperties(Model model) {
+  private void registerDatatypeProperties(Model model, boolean dryRun) {
     List<DatatypeIntent> intents = buildDatatypeIntents(model);
-    if (intents.isEmpty()) {
-      return;
+    if (!intents.isEmpty()) {
+      applyDatatypeProperties(intents, dryRun);
     }
+  }
+
+  private void applyDatatypeProperties(List<DatatypeIntent> intents, boolean dryRun) {
+    if (!allowGlobalSchemaChanges) {
+      result.addMessage(
+          String.format(
+              "%d datatype attribute(s) require admin privileges and were not created",
+              intents.size()));
+    } else if (dryRun) {
+      result.setCustomPropertiesCreated(result.getCustomPropertiesCreated() + intents.size());
+    } else {
+      persistDatatypeProperties(intents);
+    }
+  }
+
+  private void persistDatatypeProperties(List<DatatypeIntent> intents) {
     TypeRepository typeRepository = (TypeRepository) Entity.getEntityRepository(Entity.TYPE);
     EntityReference glossaryTermType =
         Entity.getEntityReferenceByName(Entity.TYPE, GLOSSARY_TERM, Include.NON_DELETED);

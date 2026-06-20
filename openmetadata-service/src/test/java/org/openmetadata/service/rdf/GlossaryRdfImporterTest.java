@@ -15,6 +15,7 @@ package org.openmetadata.service.rdf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.StringReader;
@@ -24,6 +25,7 @@ import org.apache.jena.rdf.model.ModelFactory;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.rdf.GlossaryRdfImporter.DatatypeIntent;
 import org.openmetadata.service.rdf.GlossaryRdfImporter.TermIntent;
 
@@ -111,7 +113,7 @@ class GlossaryRdfImporterTest {
     model.read(new StringReader(ONTOLOGY), null, "TURTLE");
 
     GlossaryTermRelationType type =
-        new GlossaryRdfImporter(null, "test").buildRelationType(model, "prescribes");
+        new GlossaryRdfImporter(null, "test", true).buildRelationType(model, "prescribes");
 
     assertEquals("prescribes", type.getDisplayName(), "rdfs:label -> displayName");
     assertEquals("prescribedBy", type.getInverseRelation(), "owl:inverseOf -> inverseRelation");
@@ -125,7 +127,7 @@ class GlossaryRdfImporterTest {
   void parsesDatatypePropertiesAndMapsXsdTypes() {
     Model model = ModelFactory.createDefaultModel();
     model.read(new StringReader(ONTOLOGY), null, "TURTLE");
-    GlossaryRdfImporter importer = new GlossaryRdfImporter(null, "test");
+    GlossaryRdfImporter importer = new GlossaryRdfImporter(null, "test", true);
 
     List<DatatypeIntent> datatypes = importer.buildDatatypeIntents(model);
     assertEquals(2, datatypes.size(), "both owl:DatatypeProperty become attribute intents");
@@ -152,10 +154,36 @@ class GlossaryRdfImporterTest {
         "xsd:double -> number");
   }
 
+  @Test
+  void rejectsOversizedPayload() {
+    String huge = "x".repeat(10 * 1024 * 1024 + 1);
+    GlossaryRdfImporter importer = new GlossaryRdfImporter(null, "test", true);
+
+    BadRequestException ex =
+        assertThrows(
+            BadRequestException.class, () -> importer.importRdf(huge, "turtle", "g", true));
+    assertTrue(ex.getMessage().contains("exceeds the maximum"), ex.getMessage());
+  }
+
+  @Test
+  void rejectsRdfXmlWithDoctypeToPreventXxe() {
+    String xxe =
+        """
+        <?xml version="1.0"?>
+        <!DOCTYPE rdf:RDF [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>
+        <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"/>
+        """;
+    GlossaryRdfImporter importer = new GlossaryRdfImporter(null, "test", true);
+
+    BadRequestException ex =
+        assertThrows(BadRequestException.class, () -> importer.importRdf(xxe, "rdfxml", "g", true));
+    assertTrue(ex.getMessage().contains("DOCTYPE"), ex.getMessage());
+  }
+
   private List<TermIntent> parse(String turtle) {
     Model model = ModelFactory.createDefaultModel();
     model.read(new StringReader(turtle), null, "TURTLE");
-    return new GlossaryRdfImporter(null, "test").buildTermIntents(model);
+    return new GlossaryRdfImporter(null, "test", true).buildTermIntents(model);
   }
 
   private TermIntent find(List<TermIntent> intents, String iri) {

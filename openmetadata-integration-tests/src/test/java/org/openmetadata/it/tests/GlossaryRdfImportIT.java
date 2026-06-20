@@ -128,6 +128,81 @@ public class GlossaryRdfImportIT {
   }
 
   @Test
+  void dryRunReportsRelationAndCustomPropertyCounts(TestNamespace ns) throws Exception {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+
+    JsonNode result = importRdf(glossary.getName(), true);
+
+    assertTrue(result.get("dryRun").asBoolean());
+    assertTrue(
+        result.get("relationsAdded").asInt() >= 1,
+        "dry-run preview must report relations that would be added: " + result);
+    assertTrue(
+        result.get("customPropertiesCreated").asInt() >= 1,
+        "dry-run preview must report datatype attributes that would be created: " + result);
+    assertTrue(result.get("termsCreated").asInt() >= 3, "all concepts previewed: " + result);
+    assertEquals(
+        404,
+        termStatus(glossary.getName() + ".HealthcareProvider"),
+        "dry-run still must not persist terms");
+  }
+
+  @Test
+  void dryRunWithConceptSchemeDoesNotCreateGlossary(TestNamespace ns) throws Exception {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    String schemeOntology =
+        """
+        @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+        @prefix hcp:  <http://example.com/ontology/hcp#> .
+
+        hcp:DryRunSchemeProbe a skos:ConceptScheme ;
+            rdfs:label "Dry Run Scheme Probe" .
+        hcp:DryRunProvider a skos:Concept ;
+            skos:prefLabel "Dry Run Provider" ;
+            skos:inScheme hcp:DryRunSchemeProbe .
+        """;
+
+    HttpResponse<String> response =
+        sendImportRdf(glossary.getName(), SdkClients.getAdminToken(), schemeOntology, true);
+
+    assertEquals(200, response.statusCode(), response.body());
+    assertEquals(
+        404,
+        glossaryStatus("DryRunSchemeProbe"),
+        "a dry-run must not persist a glossary for a declared skos:ConceptScheme");
+  }
+
+  @Test
+  void importRoutesConceptSchemeTermsIntoSelectedTarget(TestNamespace ns) throws Exception {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    String schemeOntology =
+        """
+        @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+        @prefix hcp:  <http://example.com/ontology/hcp#> .
+
+        hcp:TargetRouteSchemeProbe a skos:ConceptScheme ;
+            rdfs:label "Target Route Scheme Probe" .
+        hcp:RoutedProvider a skos:Concept ;
+            skos:prefLabel "Routed Provider" ;
+            skos:inScheme hcp:TargetRouteSchemeProbe .
+        """;
+
+    JsonNode result = importRdfBody(glossary.getName(), schemeOntology);
+
+    assertTrue(result.get("termsCreated").asInt() >= 1, result.toString());
+    assertEquals(
+        200,
+        termStatus(glossary.getName() + ".RoutedProvider"),
+        "an inScheme term is materialized in the user-selected target glossary");
+    assertEquals(
+        404,
+        glossaryStatus("TargetRouteSchemeProbe"),
+        "no separate ConceptScheme glossary is created when a target is selected");
+  }
+
+  @Test
   void rejectsMalformedRdfWithBadRequest(TestNamespace ns) throws Exception {
     Glossary glossary = GlossaryTestFactory.createSimple(ns);
 
@@ -155,6 +230,31 @@ public class GlossaryRdfImportIT {
         403,
         response.statusCode(),
         "import must require glossary EDIT permission: " + response.body());
+  }
+
+  @Test
+  void nonAdminOwnerImportsTermsButCannotMutateGlobalSchema(TestNamespace ns) throws Exception {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    User owner = UserTestFactory.createUser(ns, "ontologyOwner");
+    setGlossaryOwner(glossary.getId().toString(), owner);
+    String ownerToken =
+        JwtAuthProvider.tokenFor(owner.getEmail(), owner.getEmail(), new String[] {}, 3600);
+
+    HttpResponse<String> response = sendImportRdf(glossary.getName(), ownerToken, ONTOLOGY, false);
+
+    assertEquals(200, response.statusCode(), response.body());
+    JsonNode result = OBJECT_MAPPER.readTree(response.body());
+    assertTrue(
+        result.get("termsCreated").asInt() >= 3,
+        "a non-admin glossary owner may still materialize terms: " + result);
+    assertEquals(
+        0,
+        result.get("relationTypesRegistered").asInt(),
+        "a non-admin owner must not register global relation types: " + result);
+    assertEquals(
+        0,
+        result.get("customPropertiesCreated").asInt(),
+        "a non-admin owner must not create global custom properties: " + result);
   }
 
   @Test
@@ -273,6 +373,25 @@ public class GlossaryRdfImportIT {
     return OBJECT_MAPPER.readTree(response.body());
   }
 
+  private void setGlossaryOwner(String glossaryId, User owner) throws Exception {
+    String body =
+        String.format(
+            "[{\"op\":\"add\",\"path\":\"/owners\",\"value\":[{\"id\":\"%s\",\"type\":\"user\"}]}]",
+            owner.getId());
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(
+                URI.create(
+                    String.format("%s/v1/glossaries/%s", SdkClients.getServerUrl(), glossaryId)))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", "application/json-patch+json")
+            .timeout(Duration.ofSeconds(30))
+            .method("PATCH", HttpRequest.BodyPublishers.ofString(body))
+            .build();
+    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, response.statusCode(), "failed to set glossary owner: " + response.body());
+  }
+
   private GlossaryTerm getTerm(String fqn) throws Exception {
     String url =
         String.format(
@@ -285,6 +404,11 @@ public class GlossaryRdfImportIT {
 
   private int termStatus(String fqn) throws Exception {
     return get(String.format("%s/v1/glossaryTerms/name/%s", SdkClients.getServerUrl(), fqn))
+        .statusCode();
+  }
+
+  private int glossaryStatus(String name) throws Exception {
+    return get(String.format("%s/v1/glossaries/name/%s", SdkClients.getServerUrl(), name))
         .statusCode();
   }
 
