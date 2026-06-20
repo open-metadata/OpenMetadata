@@ -10305,6 +10305,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return false;
       }
 
+      ChangeDescription changeDescription = original.getChangeDescription();
+      if (changeDescription == null || changeDescription.getPreviousVersion() == null) {
+        LOG.debug(
+            "Skipping consolidation for {} - missing previous change version", original.getId());
+        return false;
+      }
+
       // If user is the same and the new update is with in the user session timeout
       return original.getVersion() > 0.1 // First update on an entity that
           && operation == Operation.PATCH
