@@ -102,7 +102,7 @@ describe('CopyLinkButton', () => {
     renderComponent();
 
     expect(screen.getByTestId('copy-link-btn').className).toContain(
-      'tw:rounded-full'
+      'tw:rounded-md'
     );
   });
 
