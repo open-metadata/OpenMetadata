@@ -37,7 +37,7 @@ export interface DataQualityReportRequest {
      */
     index: string;
     /**
-     * Key used to correlate this request with its result in the response.
+     * Client provided key used to correlate this request with its result in the response.
      */
     key: string;
     /**
