@@ -81,7 +81,7 @@ public final class SearchUtils {
    * the three-sub-aggregation best-match strategy be used.
    */
   public static boolean isBestMatchSearchPattern(String includeValue) {
-    return !includeValue.isEmpty() && !includeValue.equals(".*");
+    return includeValue != null && !includeValue.isEmpty() && !includeValue.equals(".*");
   }
 
   /**
@@ -98,17 +98,55 @@ public final class SearchUtils {
    * Merges three ranked aggregation buckets — exact, prefix, contains — from a response produced
    * by {@link #exactAggKey}, {@link #prefixAggKey}, {@link #containsAggKey} sub-aggregations into
    * a single {@code sterms#fieldName} bucket list ordered exact → prefix → contains, deduped, and
-   * trimmed to {@code limit}. Falls back silently to the original JSON on any parse error.
+   * trimmed to {@code limit}. On failure degrades to renaming the {@code __contains} sub-agg under
+   * the canonical {@code sterms#fieldName} key so the UI always receives the key it expects.
    */
   public static String mergeBestMatchAggregations(
       String responseJson, String fieldName, int limit, ObjectMapper mapper) {
-    String result = responseJson;
     try {
-      result = doMergeBestMatch(responseJson, fieldName, limit, mapper);
+      return doMergeBestMatch(responseJson, fieldName, limit, mapper);
     } catch (Exception e) {
-      LOG.warn("Failed to merge best-match aggregations: {}", e.getMessage());
+      LOG.warn(
+          "Failed to merge best-match aggregations, falling back to contains agg: {}",
+          e.getMessage());
+      return fallbackToContainsAgg(responseJson, fieldName, mapper);
+    }
+  }
+
+  private static String fallbackToContainsAgg(
+      String responseJson, String fieldName, ObjectMapper mapper) {
+    try {
+      ObjectNode root = (ObjectNode) mapper.readTree(responseJson);
+      ObjectNode aggregations = (ObjectNode) root.get("aggregations");
+      String result = responseJson;
+      if (aggregations != null) {
+        result = renameContainsAggToField(root, aggregations, fieldName, mapper);
+      }
+      return result;
+    } catch (Exception e) {
+      LOG.warn("Best-match fallback also failed: {}", e.getMessage());
+      return responseJson;
+    }
+  }
+
+  private static String renameContainsAggToField(
+      ObjectNode root, ObjectNode aggregations, String fieldName, ObjectMapper mapper)
+      throws Exception {
+    String containsKey = STERMS_PREFIX + containsAggKey(fieldName);
+    JsonNode containsAgg = aggregations.get(containsKey);
+    String result = responseJson(root, mapper);
+    if (containsAgg != null) {
+      aggregations.remove(STERMS_PREFIX + exactAggKey(fieldName));
+      aggregations.remove(STERMS_PREFIX + prefixAggKey(fieldName));
+      aggregations.remove(containsKey);
+      aggregations.set(STERMS_PREFIX + fieldName, containsAgg);
+      result = responseJson(root, mapper);
     }
     return result;
+  }
+
+  private static String responseJson(ObjectNode root, ObjectMapper mapper) throws Exception {
+    return mapper.writeValueAsString(root);
   }
 
   private static String doMergeBestMatch(

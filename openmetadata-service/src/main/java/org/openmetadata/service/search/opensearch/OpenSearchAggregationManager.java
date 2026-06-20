@@ -192,7 +192,8 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
   private void buildBestMatchAggregations(
       Map<String, Aggregation> aggregations, String field, String containsPattern, int size) {
     String rawValue = SearchUtils.extractRawSearchValue(containsPattern);
-    String prefixPattern = rawValue + ".*";
+    String escapedRaw = rawValue.replace(".", "\\.");
+    String prefixPattern = escapedRaw + ".*";
 
     aggregations.put(
         SearchUtils.exactAggKey(field),
@@ -203,7 +204,7 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
                         t.field(field)
                             .size(1)
                             .order(Collections.singletonMap("_key", SortOrder.Asc))
-                            .include(tb -> tb.regexp(rawValue)))));
+                            .include(tb -> tb.regexp(escapedRaw)))));
     aggregations.put(
         SearchUtils.prefixAggKey(field),
         Aggregation.of(
