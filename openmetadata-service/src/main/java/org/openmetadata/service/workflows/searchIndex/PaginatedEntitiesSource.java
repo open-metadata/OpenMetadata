@@ -279,6 +279,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
           new IndexingError()
               .withErrorSource(READER)
               .withSuccessCount(0)
+              .withFailedCount(batchSize)
               .withMessage(
                   String.format(
                       "Failed to read batch for entityType: %s. Error: %s",
@@ -340,6 +341,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
           new IndexingError()
               .withErrorSource(READER)
               .withSuccessCount(0)
+              .withFailedCount(batchSize)
               .withMessage(
                   String.format(
                       "Failed to read keyset batch for entityType: %s. Error: %s",
