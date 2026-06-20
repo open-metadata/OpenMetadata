@@ -105,6 +105,27 @@ class DomainRepositoryListingTest {
     assertEquals(0, c1.getChildrenCount());
   }
 
+  @Test
+  void childrenCount_forPageSpanningMultipleParents_usesOneFullScan() {
+    Domain c1 = domain("org.p1.c1");
+    Domain c2 = domain("org.p2.c2");
+    when(domainDAO.listAllFqnHashes())
+        .thenReturn(
+            List.of(
+                FullyQualifiedName.buildHash("org.p1.c1"),
+                FullyQualifiedName.buildHash("org.p2.c2"),
+                FullyQualifiedName.buildHash("org.p1.c1.g")));
+
+    repository.setFieldsInBulk(
+        new Fields(Set.of("childrenCount")), new ArrayList<>(List.of(c1, c2)));
+
+    verify(domainDAO, times(1)).listAllFqnHashes();
+    verify(domainDAO, never()).listFqnHashesByPrefix(anyString());
+    verify(domainDAO, never()).countNestedDomains(anyString());
+    assertEquals(1, c1.getChildrenCount());
+    assertEquals(0, c2.getChildrenCount());
+  }
+
   private Domain domain(String fqn) {
     String name = fqn.substring(fqn.lastIndexOf('.') + 1);
     return new Domain().withId(UUID.randomUUID()).withName(name).withFullyQualifiedName(fqn);

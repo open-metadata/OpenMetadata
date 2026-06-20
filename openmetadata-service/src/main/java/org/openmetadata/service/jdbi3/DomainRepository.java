@@ -16,7 +16,6 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
-import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_EXPERTS;
@@ -162,30 +161,40 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   /**
-   * Count nested (all-depth) descendant domains for a page of domains in a single scan instead of
-   * one {@code COUNT(*)} per domain. The descendant fqnHashes are pulled once — scoped to the
-   * shared parent prefix when the page is a set of siblings (the hierarchy tree-expand case), or
-   * via an index-only full scan of {@code fqnHash} for the root page — then bucketed in memory by
-   * each domain's own hash prefix.
+   * Count nested (all-depth) descendant domains for a page of domains with a single DB read plus a
+   * single in-memory pass. The descendant fqnHashes are pulled once — scoped to the shared parent
+   * prefix when the page is a set of siblings (the hierarchy tree-expand case), or via an
+   * index-only full scan of {@code fqnHash} otherwise — then each descendant is attributed to any
+   * page domain that is one of its hash prefixes. This is O(descendants × depth), not
+   * O(entities × descendants), so it stays linear even for a flat list of every domain.
    */
   private Map<UUID, Integer> batchCountNestedDomains(List<Domain> entities) {
     Map<UUID, String> hashById = new HashMap<>();
     for (Domain entity : entities) {
       hashById.put(entity.getId(), FullyQualifiedName.buildHash(entity.getFullyQualifiedName()));
     }
-    List<String> descendantHashes = fetchDescendantHashes(hashById.values());
+    Map<String, Integer> countByHash =
+        countDescendantsByAncestorHash(fetchDescendantHashes(hashById.values()), hashById.values());
     Map<UUID, Integer> counts = new HashMap<>();
-    for (Domain entity : entities) {
-      String childPrefix = hashById.get(entity.getId()) + Entity.SEPARATOR;
-      int count = 0;
-      for (String descendantHash : descendantHashes) {
-        if (descendantHash.startsWith(childPrefix)) {
-          count++;
-        }
-      }
-      counts.put(entity.getId(), count);
-    }
+    hashById.forEach((id, hash) -> counts.put(id, countByHash.getOrDefault(hash, 0)));
     return counts;
+  }
+
+  private Map<String, Integer> countDescendantsByAncestorHash(
+      List<String> descendantHashes, Collection<String> ancestorHashes) {
+    Set<String> ancestors = new HashSet<>(ancestorHashes);
+    Map<String, Integer> countByHash = new HashMap<>();
+    for (String descendantHash : descendantHashes) {
+      int separator = descendantHash.indexOf(Entity.SEPARATOR);
+      while (separator > 0) {
+        String prefix = descendantHash.substring(0, separator);
+        if (ancestors.contains(prefix)) {
+          countByHash.merge(prefix, 1, Integer::sum);
+        }
+        separator = descendantHash.indexOf(Entity.SEPARATOR, separator + 1);
+      }
+    }
+    return countByHash;
   }
 
   private List<String> fetchDescendantHashes(Collection<String> childHashes) {
@@ -199,15 +208,15 @@ public class DomainRepository extends EntityRepository<Domain> {
         hasRootDomain = true;
       }
     }
+    // A single shared parent (the tree-expand case) → one selective prefix scan. A root page or a
+    // flat page spanning multiple parents → one index-only full scan, never a query-per-parent
+    // fan-out (which would re-introduce an N pattern for mixed-hierarchy pages).
     List<String> descendantHashes;
-    if (hasRootDomain) {
-      descendantHashes = daoCollection.domainDAO().listAllFqnHashes();
+    if (!hasRootDomain && parentPrefixes.size() == 1) {
+      descendantHashes =
+          daoCollection.domainDAO().listFqnHashesByPrefix(parentPrefixes.iterator().next() + ".%");
     } else {
-      descendantHashes = new ArrayList<>();
-      for (String parentPrefix : parentPrefixes) {
-        descendantHashes.addAll(
-            daoCollection.domainDAO().listFqnHashesByPrefix(parentPrefix + ".%"));
-      }
+      descendantHashes = daoCollection.domainDAO().listAllFqnHashes();
     }
     return descendantHashes;
   }
@@ -787,9 +796,12 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   private EntityReference resolveParentRef(Domain entity) {
-    // Use the cache-aware CONTAINS container fast-path (fromEntityType == null) so warm reads hit
-    // the relationship-container cache when distributed caching is enabled. A domain's only
-    // CONTAINS parent is its parent domain, so a null fromEntityType is unambiguous here.
+    // fromEntityType MUST be null here: the cache-aware container fast-path in the 5-arg
+    // getFromEntityRef only engages for a type-agnostic CONTAINS lookup. Passing DOMAIN would be
+    // "clearer" but would bypass the relationship-container cache entirely, defeating the warm-read
+    // optimization. A domain's only CONTAINS parent is its parent domain, so the lookup is
+    // unambiguous today; if another entity type is ever allowed to CONTAIN a domain, the container
+    // cache contract itself (not just this call) would need revisiting.
     return getFromEntityRef(entity.getId(), DOMAIN, Relationship.CONTAINS, null, false);
   }
 
@@ -992,8 +1004,12 @@ public class DomainRepository extends EntityRepository<Domain> {
 
     List<UUID> parentIds =
         records.stream().map(record -> UUID.fromString(record.getFromId())).distinct().toList();
+    // Resolve with ALL to match the single-read cache-aware path (getFromEntityRef resolves the
+    // container with ALL), so entries this batch warms into the container cache are consistent
+    // with what a subsequent single read expects. Domains don't support soft delete, so ALL and
+    // NON_DELETED are equivalent here today.
     Map<UUID, EntityReference> parentRefsById =
-        Entity.getEntityReferencesByIds(DOMAIN, parentIds, NON_DELETED).stream()
+        Entity.getEntityReferencesByIds(DOMAIN, parentIds, ALL).stream()
             .collect(Collectors.toMap(EntityReference::getId, Function.identity(), (a, b) -> a));
 
     CachedRelationshipDao containerCache = CacheBundle.getCachedRelationshipDao();
