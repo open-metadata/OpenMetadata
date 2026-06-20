@@ -199,7 +199,11 @@ public class SearchIndexRetryWorker implements Managed {
   private void handleProcessingError(SearchIndexRetryRecord record, Exception e) {
     String reason = SearchIndexRetryQueue.failureReason("retryFailed", e);
     if (isRetryable(e)) {
-      String nextStatus = nextRetryStatus(record.getRetryCount());
+      // A retryable failure (cluster timeout / 5xx / IO) is transient. Keep the row retryable
+      // rather than escalating to terminal FAILED after a fixed count, so an entity that keeps
+      // failing throughout an outage is still re-indexed once the cluster recovers — claimPending
+      // re-claims PENDING_RETRY_2. Only the non-retryable (4xx document) branch below abandons.
+      String nextStatus = retryableNextStatus(record.getRetryCount());
       recordRetryFailure(record, reason, nextStatus);
       LOG.debug(
           "Retry failed for entityId={} entityFqn={} nextStatus={}: {}",
@@ -663,5 +667,14 @@ public class SearchIndexRetryWorker implements Managed {
       case 1 -> STATUS_PENDING_RETRY_2;
       default -> STATUS_FAILED;
     };
+  }
+
+  /**
+   * Next status for a transient (retryable) failure: escalate PENDING → RETRY_1 → RETRY_2, then
+   * stay at RETRY_2 (never FAILED). claimPending keeps re-claiming RETRY_2, so the row retries
+   * until the cluster recovers instead of being abandoned after a fixed count during an outage.
+   */
+  private String retryableNextStatus(int retryCount) {
+    return retryCount == 0 ? STATUS_PENDING_RETRY_1 : STATUS_PENDING_RETRY_2;
   }
 }
