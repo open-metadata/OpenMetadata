@@ -12,65 +12,92 @@
  */
 package org.openmetadata.service.workflows.searchIndex;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.openmetadata.schema.system.IndexingError;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.SearchIndexException;
+import org.openmetadata.service.jdbi3.EntityRepository;
 
 /**
- * Regression test for the NPE caused by IndexingError.getFailedCount() returning null when
+ * Regression tests for the NPE caused by IndexingError.getFailedCount() returning null when
  * PaginatedEntitiesSource catch blocks omitted .withFailedCount(). DataAssetsWorkflow
- * auto-unboxes the Integer to int, which threw a NullPointerException on every batch read
- * failure.
- *
- * <p>This test verifies the contract: any IndexingError built in a reader catch block must have
- * failedCount set so callers can safely unbox it.
+ * auto-unboxes the returned Integer to primitive int, causing NPE on every batch read failure.
  */
 class PaginatedEntitiesSourceErrorTest {
 
-  @Test
-  void indexingError_readBatchFailure_failedCountIsNotNull() {
-    int batchSize = 100;
-    IndexingError indexingError =
-        new IndexingError()
-            .withErrorSource(IndexingError.ErrorSource.READER)
-            .withSuccessCount(0)
-            .withFailedCount(batchSize)
-            .withMessage("Failed to read batch for entityType: table. Error: connection reset");
+  private static final int BATCH_SIZE = 100;
+  private static final String ENTITY_TYPE = "table";
 
-    assertNotNull(
-        indexingError.getFailedCount(),
-        "failedCount must not be null — DataAssetsWorkflow unboxes it to primitive int");
+  @Test
+  void readWithCursor_batchReadThrows_indexingErrorHasFailedCount() {
+    EntityRepository<?> mockRepo = mock(EntityRepository.class);
+    when(mockRepo.listWithOffset(any(), any(), any(), anyInt(), anyString(), anyBoolean(), any(), any()))
+        .thenThrow(new RuntimeException("connection reset"));
+
+    try (MockedStatic<Entity> entityStatic = Mockito.mockStatic(Entity.class)) {
+      entityStatic.when(() -> Entity.getEntityRepository(ENTITY_TYPE)).thenReturn(mockRepo);
+      entityStatic.when(() -> Entity.getOnlySupportedFields(anyString(), any())).thenReturn(List.of());
+
+      PaginatedEntitiesSource source =
+          new PaginatedEntitiesSource(ENTITY_TYPE, BATCH_SIZE, List.of(), BATCH_SIZE);
+
+      SearchIndexException ex =
+          assertThrows(SearchIndexException.class, () -> source.readWithCursor("0"));
+
+      IndexingError err = ex.getIndexingError();
+      assertNotNull(err.getFailedCount(), "failedCount must not be null — unboxing null Integer to int causes NPE");
+      assertEquals(BATCH_SIZE, err.getFailedCount());
+    }
   }
 
   @Test
-  void indexingError_readNextKeysetFailure_failedCountIsNotNull() {
-    int batchSize = 50;
-    IndexingError indexingError =
-        new IndexingError()
-            .withErrorSource(IndexingError.ErrorSource.READER)
-            .withSuccessCount(0)
-            .withFailedCount(batchSize)
-            .withMessage(
-                "Failed to read keyset batch for entityType: table. Error: connection reset");
+  void readNextKeyset_batchReadThrows_indexingErrorHasFailedCount() {
+    EntityRepository<?> mockRepo = mock(EntityRepository.class);
+    when(mockRepo.listAfterKeyset(any(), anyInt(), anyString(), anyInt(), anyBoolean(), any()))
+        .thenThrow(new RuntimeException("connection reset"));
 
-    assertNotNull(
-        indexingError.getFailedCount(),
-        "failedCount must not be null — DataAssetsWorkflow unboxes it to primitive int");
+    try (MockedStatic<Entity> entityStatic = Mockito.mockStatic(Entity.class)) {
+      entityStatic.when(() -> Entity.getEntityRepository(ENTITY_TYPE)).thenReturn(mockRepo);
+      entityStatic.when(() -> Entity.getOnlySupportedFields(anyString(), any())).thenReturn(List.of());
+
+      PaginatedEntitiesSource source =
+          new PaginatedEntitiesSource(ENTITY_TYPE, BATCH_SIZE, List.of(), BATCH_SIZE);
+
+      SearchIndexException ex =
+          assertThrows(SearchIndexException.class, () -> source.readNextKeyset("cursor-abc"));
+
+      IndexingError err = ex.getIndexingError();
+      assertNotNull(err.getFailedCount(), "failedCount must not be null — unboxing null Integer to int causes NPE");
+      assertEquals(BATCH_SIZE, err.getFailedCount());
+    }
   }
 
   @Test
-  void indexingError_withoutFailedCount_isNullDemonstratingOriginalBug() {
+  void indexingError_withoutFailedCount_isNull() {
     IndexingError broken =
         new IndexingError()
             .withErrorSource(IndexingError.ErrorSource.READER)
             .withSuccessCount(0)
             .withMessage("no failedCount set");
 
-    // This documents the original bug: getFailedCount() returns null,
-    // and Integer-to-int unboxing in DataAssetsWorkflow causes NPE.
-    // The fix ensures this path is never reached in production.
-    int failedCount = broken.getFailedCount() != null ? broken.getFailedCount() : 0;
-    assertNotNull(failedCount);
+    // Documents the original bug: getFailedCount() returns null,
+    // and Integer-to-int unboxing in DataAssetsWorkflow caused the NPE.
+    assertNull(
+        broken.getFailedCount(),
+        "original bug: failedCount is null when withFailedCount() is omitted");
   }
 }
