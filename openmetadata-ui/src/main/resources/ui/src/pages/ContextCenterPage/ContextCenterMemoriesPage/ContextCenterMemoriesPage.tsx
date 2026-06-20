@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import {
-  Badge,
   Box,
   Button,
   Card,
@@ -33,7 +32,6 @@ import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
-import { getEntityIconWithBg } from 'src/utils/Assets/AssetsUtils';
 import AlertBar from '../../../components/AlertBar/AlertBar';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
@@ -44,6 +42,7 @@ import {
   MemoryFilterTab,
   MemorySortBy,
 } from '../../../components/ContextCenter/MemoriesView/MemoriesView.interface';
+import DataAssetFilterPopover from '../../../components/DataAssets/DataAssetPicker/DataAssetFilterPopover';
 import {
   ContextMemory,
   MemoryStatus,
@@ -156,23 +155,15 @@ const ContextCenterMemoriesPage: FC = () => {
       m.relatedEntities?.forEach(addRef);
     });
 
-    return [
-      {
-        id: '',
-        label: t('label.all-entity', { entity: t('label.asset-plural') }),
-        displayName: '',
-        type: '',
-      },
-      ...Array.from(seen.entries())
-        .sort(([, a], [, b]) => a.displayName.localeCompare(b.displayName))
-        .map(([fqn, meta]) => ({
-          id: fqn,
-          label: meta.displayName,
-          displayName: meta.displayName,
-          type: meta.type,
-        })),
-    ];
-  }, [memories, t]);
+    return Array.from(seen.entries())
+      .sort(([, a], [, b]) => a.displayName.localeCompare(b.displayName))
+      .map(([fqn, meta]) => ({
+        id: fqn,
+        label: meta.displayName,
+        displayName: meta.displayName,
+        type: meta.type,
+      }));
+  }, [memories]);
 
   const authorOptions = useMemo(() => {
     const seen = new Map<string, string>();
@@ -184,7 +175,6 @@ const ContextCenterMemoriesPage: FC = () => {
     });
 
     return [
-      { id: '', label: t('label.all-entity', { entity: t('label.author') }) },
       ...Array.from(seen.entries())
         .sort(([, a], [, b]) => a.localeCompare(b))
         .map(([name, displayName]) => ({ id: name, label: displayName })),
@@ -555,81 +545,18 @@ const ContextCenterMemoriesPage: FC = () => {
         </Tabs>
 
         <Box align="center" gap={2}>
-          <Dropdown.Root>
-            <AriaButton
-              className={
-                selectedAsset ? FILTER_BUTTON_ACTIVE_CLS : FILTER_BUTTON_CLS
-              }>
-              <Typography
-                className={
-                  selectedAsset ? 'tw:text-brand-700' : 'tw:text-secondary'
-                }
-                weight="medium">
-                {assetOptions.find((o) => o.id === selectedAsset)?.label ??
-                  t('label.all-entity', { entity: t('label.asset-plural') })}
-              </Typography>
-              <ChevronDown
-                className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
-                size={16}
-                strokeWidth={2.5}
-              />
-            </AriaButton>
-            <Dropdown.Popover className="tw:w-100">
-              <Dropdown.Menu
-                selectedKeys={selectedAsset ? [selectedAsset] : []}
-                selectionMode="single"
-                onAction={(key) => {
-                  const next = String(key);
-                  const value = next === selectedAsset ? '' : next;
-                  setSelectedAsset(value);
-                  if (activeFilter === 'all') {
-                    setActiveFilter('');
-                  }
-                  setCurrentPage(1);
-                }}>
-                {assetOptions.map((opt) => (
-                  <Dropdown.Item id={opt.id} key={opt.id} textValue={opt.label}>
-                    {opt.type ? (
-                      <Box align="center" className="tw:min-w-0" gap={2}>
-                        <div className="tw:shrink-0">
-                          {getEntityIconWithBg(opt.type)}
-                        </div>
-                        <Box
-                          align="center"
-                          className="tw:flex-1"
-                          justify="between">
-                          <div className="tw:max-w-55">
-                            <Typography
-                              ellipsis
-                              className="tw:truncate tw:text-gray-800"
-                              size="text-xs"
-                              weight="medium">
-                              {opt.displayName}
-                            </Typography>
-                            <Typography
-                              ellipsis
-                              className="tw:text-gray-400 tw:truncate"
-                              size="text-xs">
-                              {opt.id}
-                            </Typography>
-                          </div>
-                          <Badge
-                            className="tw:shrink-0 tw:capitalize"
-                            color="gray"
-                            size="sm"
-                            type="color">
-                            {opt.type}
-                          </Badge>
-                        </Box>
-                      </Box>
-                    ) : (
-                      <span>{opt.label}</span>
-                    )}
-                  </Dropdown.Item>
-                ))}
-              </Dropdown.Menu>
-            </Dropdown.Popover>
-          </Dropdown.Root>
+          <DataAssetFilterPopover
+            allowAllOption
+            options={assetOptions}
+            selectedId={selectedAsset}
+            onChange={(value) => {
+              setSelectedAsset(value);
+              if (activeFilter === 'all') {
+                setActiveFilter('');
+              }
+              setCurrentPage(1);
+            }}
+          />
 
           <Dropdown.Root>
             <AriaButton
@@ -652,6 +579,7 @@ const ContextCenterMemoriesPage: FC = () => {
             </AriaButton>
             <Dropdown.Popover>
               <Dropdown.Menu
+                className="tw:p-1.5"
                 selectedKeys={selectedAuthor ? [selectedAuthor] : []}
                 selectionMode="single"
                 onAction={(key) => {
@@ -663,6 +591,19 @@ const ContextCenterMemoriesPage: FC = () => {
                   }
                   setCurrentPage(1);
                 }}>
+                <Dropdown.Item
+                  id="all-author"
+                  key="all-author"
+                  textValue={t('label.all-entity', {
+                    entity: t('label.author'),
+                  })}>
+                  <Box align="center" gap={2}>
+                    <span>
+                      {t('label.all-entity', { entity: t('label.author') })}
+                    </span>
+                  </Box>
+                </Dropdown.Item>
+                <Dropdown.Separator />
                 {authorOptions.map((opt) => (
                   <Dropdown.Item id={opt.id} key={opt.id} textValue={opt.label}>
                     <Box align="center" gap={2}>
