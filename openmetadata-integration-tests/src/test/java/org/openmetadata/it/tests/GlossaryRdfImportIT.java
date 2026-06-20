@@ -148,6 +148,25 @@ public class GlossaryRdfImportIT {
   }
 
   @Test
+  void dryRunReImportCountsExistingNestedTermsAsUpdates(TestNamespace ns) throws Exception {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    importRdf(glossary.getName(), false);
+
+    JsonNode result = importRdf(glossary.getName(), true);
+
+    assertTrue(result.get("dryRun").asBoolean());
+    assertEquals(
+        0,
+        result.get("termsCreated").asInt(),
+        "a re-import dry-run must not count existing terms as creates: " + result);
+    assertTrue(
+        result.get("termsUpdated").asInt() >= 3,
+        "a re-import dry-run must count existing nested terms (e.g. the child Physician) "
+            + "as updates, which requires the correct nested FQN: "
+            + result);
+  }
+
+  @Test
   void dryRunWithConceptSchemeDoesNotCreateGlossary(TestNamespace ns) throws Exception {
     Glossary glossary = GlossaryTestFactory.createSimple(ns);
     String schemeOntology =

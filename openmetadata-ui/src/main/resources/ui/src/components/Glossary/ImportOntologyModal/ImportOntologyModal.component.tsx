@@ -30,14 +30,27 @@ interface ImportOntologyModalProps {
   onSuccess: () => void;
 }
 
-const getOntologyFormat = (fileName: string): string => {
+const looksLikeRdfXml = (content: string): boolean => {
+  const head = content.trimStart();
+
+  return (
+    head.startsWith('<?xml') ||
+    head.startsWith('<rdf:RDF') ||
+    head.startsWith('<RDF')
+  );
+};
+
+const getOntologyFormat = (fileName: string, content: string): string => {
   const extension = fileName.split('.').pop()?.toLowerCase();
 
   switch (extension) {
     case 'rdf':
     case 'xml':
-    case 'owl':
       return 'rdfxml';
+    case 'owl':
+      // .owl is not tied to one serialization: classic OWL is RDF/XML, but most
+      // modern OWL 2 files are Turtle. Detect from the content instead of guessing.
+      return looksLikeRdfXml(content) ? 'rdfxml' : 'turtle';
     case 'nt':
       return 'ntriples';
     case 'jsonld':
@@ -98,10 +111,10 @@ const ImportOntologyModal = ({
 
   const handleBeforeUpload = useCallback(
     (file: RcFile) => {
-      const ontologyFormat = getOntologyFormat(file.name);
       const reader = new FileReader();
       reader.onload = (event) => {
         const content = (event.target?.result as string) ?? '';
+        const ontologyFormat = getOntologyFormat(file.name, content);
         setFileName(file.name);
         setFileContent(content);
         setFormat(ontologyFormat);

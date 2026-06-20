@@ -74,11 +74,14 @@ const renderModal = (props: Record<string, unknown> = {}) =>
     />
   );
 
-const uploadFile = async (name = 'hcp.ttl') => {
+const uploadFile = async (
+  name = 'hcp.ttl',
+  content = '@prefix x: <http://x#> .'
+) => {
   const input = document.querySelector(
     'input[type="file"]'
   ) as HTMLInputElement;
-  const file = new File(['@prefix x: <http://x#> .'], name, {
+  const file = new File([content], name, {
     type: 'text/turtle',
   });
 
@@ -225,14 +228,14 @@ describe('ImportOntologyModal', () => {
     it.each([
       ['ttl', 'turtle'],
       ['rdf', 'rdfxml'],
-      ['owl', 'rdfxml'],
+      ['owl', 'turtle'],
       ['xml', 'rdfxml'],
       ['nt', 'ntriples'],
       ['jsonld', 'jsonld'],
       ['json', 'jsonld'],
       ['unknown', 'turtle'],
     ])(
-      'should map a .%s file to the %s format',
+      'should map a .%s file with Turtle content to the %s format',
       async (ext, expectedFormat) => {
         mockImport.mockResolvedValueOnce(VALID_RESULT);
         renderModal();
@@ -246,6 +249,22 @@ describe('ImportOntologyModal', () => {
         );
       }
     );
+
+    it('should map a .owl file with RDF/XML content to the rdfxml format', async () => {
+      mockImport.mockResolvedValueOnce(VALID_RESULT);
+      renderModal();
+
+      await uploadFile(
+        'ontology.owl',
+        '<?xml version="1.0"?>\n<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"/>'
+      );
+
+      await waitFor(() =>
+        expect(mockImport).toHaveBeenCalledWith(
+          expect.objectContaining({ format: 'rdfxml' })
+        )
+      );
+    });
   });
 
   describe('failure scenarios', () => {

@@ -582,6 +582,11 @@ public class GlossaryRdfImporter {
     try {
       if (dryRun) {
         validateTermForDryRun(repository, term, batch);
+        // Backfill the FQN so depth-later children resolve their parent FQN and
+        // are previewed with the correct nested FQN (commitTerm does this for the
+        // non-dry-run path); otherwise nested terms get a flat FQN and the
+        // exists-check miscounts every re-imported child as a create.
+        termFqnByIri.put(intent.iri, term.getFullyQualifiedName());
       } else {
         commitTerm(repository, term, intent);
       }
