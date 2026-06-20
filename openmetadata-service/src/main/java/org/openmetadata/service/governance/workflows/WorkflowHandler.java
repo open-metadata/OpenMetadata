@@ -660,6 +660,26 @@ public class WorkflowHandler {
     }
   }
 
+  /**
+   * Snapshot of every running process instance keyed by its id, with its process variables. Lets
+   * callers (e.g. one-time migrations) inspect or repair instance state without exposing the
+   * Flowable engine.
+   */
+  public Map<String, Map<String, Object>> getRunningInstanceVariables() {
+    final RuntimeService runtimeService = processEngine.getRuntimeService();
+    final List<ProcessInstance> instances =
+        runtimeService.createProcessInstanceQuery().includeProcessVariables().list();
+    final Map<String, Map<String, Object>> instanceVariables = new LinkedHashMap<>();
+    for (final ProcessInstance instance : instances) {
+      instanceVariables.put(instance.getId(), instance.getProcessVariables());
+    }
+    return instanceVariables;
+  }
+
+  public void setProcessInstanceVariable(String instanceId, String variableName, Object value) {
+    processEngine.getRuntimeService().setVariable(instanceId, variableName, value);
+  }
+
   public String getParentActivityId(String executionId) {
     RuntimeService runtimeService = processEngine.getRuntimeService();
     String activityId = null;
