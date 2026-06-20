@@ -35,7 +35,13 @@ import {
   WidgetCommonProps,
   WidgetConfig,
 } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
+import { queryClient } from '../../../../queryClient';
 import { getAllDomainsWithAssetsCount } from '../../../../rest/domainAPI';
+import {
+  domainAssetsCountQueryKey,
+  domainWidgetSearchQueryKey,
+  DOMAIN_WIDGET_STALE_TIME,
+} from '../../../../rest/queries/domainQuery';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getDomainIcon } from '../../../../utils/DomainUtils';
 import {
@@ -78,15 +84,26 @@ const DomainsWidget = ({
       const sortOrder = getSortOrder(selectedSortBy);
 
       const [res, counts] = await Promise.all([
-        searchQuery({
-          query: '',
-          pageNumber: INITIAL_PAGING_VALUE,
-          pageSize: PAGE_SIZE_MEDIUM,
-          sortField,
-          sortOrder,
-          searchIndex: SearchIndex.DOMAIN,
+        queryClient.fetchQuery({
+          queryKey: domainWidgetSearchQueryKey(selectedSortBy),
+          queryFn: () =>
+            searchQuery({
+              query: '',
+              pageNumber: INITIAL_PAGING_VALUE,
+              pageSize: PAGE_SIZE_MEDIUM,
+              sortField,
+              sortOrder,
+              searchIndex: SearchIndex.DOMAIN,
+            }),
+          staleTime: DOMAIN_WIDGET_STALE_TIME,
+          retry: false,
         }),
-        getAllDomainsWithAssetsCount(),
+        queryClient.fetchQuery({
+          queryKey: domainAssetsCountQueryKey,
+          queryFn: getAllDomainsWithAssetsCount,
+          staleTime: DOMAIN_WIDGET_STALE_TIME,
+          retry: false,
+        }),
       ]);
 
       const domains = res?.hits?.hits.map((hit) => hit._source);

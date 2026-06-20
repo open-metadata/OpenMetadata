@@ -19,11 +19,15 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_EXPERTS;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
+import static org.openmetadata.service.Entity.FIELD_PARENT;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNameAlreadyExists;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -52,6 +56,8 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.cache.CachedRelationshipDao;
 import org.openmetadata.service.resources.domains.DomainResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
@@ -117,7 +123,7 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   @Override
   public void setFields(Domain entity, Fields fields, RelationIncludes relationIncludes) {
-    entity.withParent(getParent(entity));
+    entity.withParent(resolveParentRef(entity));
     entity.withChildrenCount(
         fields.contains("childrenCount") ? getChildrenCount(entity) : entity.getChildrenCount());
   }
@@ -126,18 +132,15 @@ public class DomainRepository extends EntityRepository<Domain> {
     return daoCollection.domainDAO().countNestedDomains(entity.getFullyQualifiedName());
   }
 
-  @Override
-  public void setFieldsInBulk(Fields fields, List<Domain> entities) {
-    fetchAndSetFields(entities, fields);
-    entities.forEach(
-        entity -> {
-          setInheritedFields(entity, fields);
-          clearFieldsInternal(entity, fields);
-        });
-  }
-
   private void fetchAndSetParents(List<Domain> domains, Fields fields) {
-    if (!fields.contains("parent") || domains == null || domains.isEmpty()) {
+    // Parent is needed both when explicitly requested and as the source for owners/experts
+    // inheritance. Batch-loading it here lets the base inheritance path dedup parent loads instead
+    // of resolving each domain's parent with a separate query.
+    boolean parentNeeded =
+        fields.contains(FIELD_PARENT)
+            || fields.contains(FIELD_OWNERS)
+            || fields.contains(FIELD_EXPERTS);
+    if (!parentNeeded || nullOrEmpty(domains)) {
       return;
     }
     setFieldFromMap(true, domains, batchFetchParents(domains), Domain::setParent);
@@ -151,14 +154,62 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   private void fetchAndSetChildrenCount(List<Domain> entities, Fields fields) {
-    if (!fields.contains("childrenCount") || entities.isEmpty()) {
+    if (!fields.contains("childrenCount") || nullOrEmpty(entities)) {
       return;
     }
+    Map<UUID, Integer> counts = batchCountNestedDomains(entities);
+    entities.forEach(entity -> entity.setChildrenCount(counts.getOrDefault(entity.getId(), 0)));
+  }
 
+  /**
+   * Count nested (all-depth) descendant domains for a page of domains in a single scan instead of
+   * one {@code COUNT(*)} per domain. The descendant fqnHashes are pulled once — scoped to the
+   * shared parent prefix when the page is a set of siblings (the hierarchy tree-expand case), or
+   * via an index-only full scan of {@code fqnHash} for the root page — then bucketed in memory by
+   * each domain's own hash prefix.
+   */
+  private Map<UUID, Integer> batchCountNestedDomains(List<Domain> entities) {
+    Map<UUID, String> hashById = new HashMap<>();
     for (Domain entity : entities) {
-      int count = daoCollection.domainDAO().countNestedDomains(entity.getFullyQualifiedName());
-      entity.setChildrenCount(count);
+      hashById.put(entity.getId(), FullyQualifiedName.buildHash(entity.getFullyQualifiedName()));
     }
+    List<String> descendantHashes = fetchDescendantHashes(hashById.values());
+    Map<UUID, Integer> counts = new HashMap<>();
+    for (Domain entity : entities) {
+      String childPrefix = hashById.get(entity.getId()) + Entity.SEPARATOR;
+      int count = 0;
+      for (String descendantHash : descendantHashes) {
+        if (descendantHash.startsWith(childPrefix)) {
+          count++;
+        }
+      }
+      counts.put(entity.getId(), count);
+    }
+    return counts;
+  }
+
+  private List<String> fetchDescendantHashes(Collection<String> childHashes) {
+    Set<String> parentPrefixes = new HashSet<>();
+    boolean hasRootDomain = false;
+    for (String childHash : childHashes) {
+      int lastSeparator = childHash.lastIndexOf(Entity.SEPARATOR);
+      if (lastSeparator > 0) {
+        parentPrefixes.add(childHash.substring(0, lastSeparator));
+      } else {
+        hasRootDomain = true;
+      }
+    }
+    List<String> descendantHashes;
+    if (hasRootDomain) {
+      descendantHashes = daoCollection.domainDAO().listAllFqnHashes();
+    } else {
+      descendantHashes = new ArrayList<>();
+      for (String parentPrefix : parentPrefixes) {
+        descendantHashes.addAll(
+            daoCollection.domainDAO().listFqnHashesByPrefix(parentPrefix + ".%"));
+      }
+    }
+    return descendantHashes;
   }
 
   @Override
@@ -207,15 +258,31 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   @Override
-  public void setInheritedFields(Domain domain, Fields fields) {
-    // If subdomain does not have owners and experts, then inherit it from parent
-    // domain
-    EntityReference parentRef = domain.getParent() != null ? domain.getParent() : getParent(domain);
-    if (parentRef != null) {
-      Domain parent = Entity.getEntity(DOMAIN, parentRef.getId(), "owners,experts", ALL);
-      inheritOwners(domain, fields, parent);
-      inheritExperts(domain, fields, parent);
+  protected String getInheritableFields() {
+    return FIELD_OWNERS + "," + FIELD_EXPERTS;
+  }
+
+  @Override
+  protected boolean requiresParentForInheritance(Domain entity, Fields fields) {
+    boolean needsOwners = fields.contains(FIELD_OWNERS) && nullOrEmpty(entity.getOwners());
+    boolean needsExperts = fields.contains(FIELD_EXPERTS) && nullOrEmpty(entity.getExperts());
+    return needsOwners || needsExperts;
+  }
+
+  @Override
+  public void fetchInheritableRelationships(List<Domain> entities, Fields fields) {
+    // Base fetches owners (and domains); a subdomain also inherits experts from its parent, so the
+    // parent must carry experts when loaded for inheritance.
+    super.fetchInheritableRelationships(entities, fields);
+    if (fields.contains(FIELD_EXPERTS)) {
+      fetchAndSetExperts(entities, fields);
     }
+  }
+
+  @Override
+  protected void applyInheritance(Domain entity, Fields fields, EntityInterface parent) {
+    inheritOwners(entity, fields, parent);
+    inheritExperts(entity, fields, parent);
   }
 
   public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request, String userName) {
@@ -266,10 +333,9 @@ public class DomainRepository extends EntityRepository<Domain> {
       return new HashMap<>();
     }
 
-    List<Domain> allDomains = listAll(getFields("fullyQualifiedName"), new ListFilter(null));
+    List<String> allFqns = daoCollection.domainDAO().listAllFqns();
     Map<String, Integer> domainAssetCounts = new LinkedHashMap<>();
-    for (Domain domain : allDomains) {
-      String fullyQualifiedName = domain.getFullyQualifiedName();
+    for (String fullyQualifiedName : allFqns) {
       domainAssetCounts.put(fullyQualifiedName, 0);
     }
 
@@ -720,6 +786,13 @@ public class DomainRepository extends EntityRepository<Domain> {
     return entity.getParent();
   }
 
+  private EntityReference resolveParentRef(Domain entity) {
+    // Use the cache-aware CONTAINS container fast-path (fromEntityType == null) so warm reads hit
+    // the relationship-container cache when distributed caching is enabled. A domain's only
+    // CONTAINS parent is its parent domain, so a null fromEntityType is unambiguous here.
+    return getFromEntityRef(entity.getId(), DOMAIN, Relationship.CONTAINS, null, false);
+  }
+
   @Override
   public EntityInterface getParentEntity(Domain entity, String fields) {
     return entity.getParent() != null
@@ -908,23 +981,36 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   private Map<UUID, EntityReference> batchFetchParents(List<Domain> domains) {
     var parentsMap = new HashMap<UUID, EntityReference>();
-    if (domains == null || domains.isEmpty()) {
+    if (nullOrEmpty(domains)) {
       return parentsMap;
     }
 
-    // Single batch query to get all parent relationships
     var records =
         daoCollection
             .relationshipDAO()
             .findFromBatch(entityListToStrings(domains), Relationship.CONTAINS.ordinal());
 
-    // Map domain to its parent
+    List<UUID> parentIds =
+        records.stream().map(record -> UUID.fromString(record.getFromId())).distinct().toList();
+    Map<UUID, EntityReference> parentRefsById =
+        Entity.getEntityReferencesByIds(DOMAIN, parentIds, NON_DELETED).stream()
+            .collect(Collectors.toMap(EntityReference::getId, Function.identity(), (a, b) -> a));
+
+    CachedRelationshipDao containerCache = CacheBundle.getCachedRelationshipDao();
     records.forEach(
         record -> {
-          var domainId = UUID.fromString(record.getToId());
-          var parentRef =
-              getEntityReferenceById(DOMAIN, UUID.fromString(record.getFromId()), NON_DELETED);
-          parentsMap.put(domainId, parentRef);
+          var parentRef = parentRefsById.get(UUID.fromString(record.getFromId()));
+          if (parentRef != null) {
+            UUID childId = UUID.fromString(record.getToId());
+            parentsMap.put(childId, parentRef);
+            // Warm the container cache so a later single read of this domain hits the cache
+            // instead of the DB. The batch resolves the same CONTAINS parent that the 5-arg
+            // getFromEntityRef caches; no-op when distributed caching is disabled.
+            if (containerCache != null) {
+              containerCache.putContainer(
+                  DOMAIN, childId, Relationship.CONTAINS.ordinal(), parentRef);
+            }
+          }
         });
 
     return parentsMap;
