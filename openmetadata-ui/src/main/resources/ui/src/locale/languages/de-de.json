@@ -3456,7 +3456,7 @@
     "sinks": "Senken",
     "size-evolution-description": "Größenentwicklung der Assets in der Organisation.",
     "smart-sampling-hint": "Optimiert Ressourcen basierend auf der Datengröße",
-    "soft-delete-archive-message": "This action will disable access to the {{entity}}. You can restore it later from Archives.",
+    "soft-delete-archive-message": "Diese Aktion deaktiviert den Zugriff auf {{entity}}. Sie können es später aus dem Archiv wiederherstellen.",
     "soft-delete-message-for-entity": "Durch das Soft-Löschen wird {{entity}} deaktiviert. Dadurch werden alle Entdeckungs-, Lese- oder Schreibvorgänge auf {{entity}} deaktiviert.",
     "soft-delete-message-for-n-entities": "Das vorläufige Löschen deaktiviert diese {{count}} {{entity}}. Dadurch werden alle Erkennungs-, Lese- oder Schreibvorgänge für sie deaktiviert.",
     "something-went-wrong": "Etwas ist schiefgelaufen",

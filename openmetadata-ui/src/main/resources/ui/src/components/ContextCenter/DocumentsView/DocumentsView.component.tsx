@@ -355,7 +355,7 @@ const FileRow: FC<FileRowProps> = ({
   return (
     <Box
       align="center"
-      className={`tw:relative tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:last:border-0 tw:cursor-pointer tw:transition-colors tw:duration-100 ${
+      className={`tw:relative tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:cursor-pointer tw:transition-colors tw:duration-100 ${
         isActive ? 'tw:bg-blue-50' : 'tw:bg-primary hover:tw:bg-gray-25'
       }`}
       data-testid={`document-row-${file.id}`}
@@ -385,7 +385,7 @@ const FileRow: FC<FileRowProps> = ({
       <Box className="tw:min-w-0 tw:flex-1" direction="col">
         <Box align="center" className="tw:min-w-0" gap={2}>
           <Typography
-            className="tw:truncate"
+            ellipsis
             data-testid="document-name"
             size="text-sm"
             weight="medium">
