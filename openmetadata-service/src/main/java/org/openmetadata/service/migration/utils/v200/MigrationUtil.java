@@ -839,12 +839,10 @@ public class MigrationUtil {
       case "RecognizerFeedbackApproval" -> {
         ObjectNode payload = JsonUtils.getObjectNode();
         if (taskDetails.has("feedback") && !taskDetails.get("feedback").isNull()) {
-          payload.set("data", taskDetails.get("feedback"));
+          payload.set("feedback", taskDetails.get("feedback"));
         }
         if (taskDetails.has("recognizer") && !taskDetails.get("recognizer").isNull()) {
-          ObjectNode metadata = JsonUtils.getObjectNode();
-          metadata.set("recognizer", taskDetails.get("recognizer"));
-          payload.set("metadata", metadata);
+          payload.set("recognizer", taskDetails.get("recognizer"));
         }
         yield payload;
       }

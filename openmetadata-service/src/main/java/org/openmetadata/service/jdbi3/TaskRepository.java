@@ -24,6 +24,9 @@ import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
@@ -273,6 +276,7 @@ public class TaskRepository extends EntityRepository<Task> {
 
   @Override
   public void setFields(Task task, Fields fields, RelationIncludes relationIncludes) {
+    normalizeDataQualityReviewPayload(task);
     task.setAssignees(fields.contains(FIELD_ASSIGNEES) ? getAssignees(task) : task.getAssignees());
     task.setReviewers(
         fields.contains(FIELD_REVIEWERS) ? getTaskReviewers(task) : task.getReviewers());
@@ -282,6 +286,46 @@ public class TaskRepository extends EntityRepository<Task> {
     task.setComments(fields.contains(FIELD_COMMENTS) ? getComments(task) : task.getComments());
     task.setCreatedBy(
         fields.contains(FIELD_CREATED_BY) ? getTaskCreatedBy(task) : task.getCreatedBy());
+  }
+
+  private void normalizeDataQualityReviewPayload(Task task) {
+    if (task == null || task.getType() != TaskEntityType.DataQualityReview) {
+      return;
+    }
+
+    Object payload = task.getPayload();
+    if (payload == null) {
+      return;
+    }
+
+    JsonNode payloadNode = JsonUtils.valueToTree(payload);
+    if (!payloadNode.isObject()) {
+      return;
+    }
+
+    ObjectNode normalizedPayload = ((ObjectNode) payloadNode).deepCopy();
+    boolean updated = false;
+
+    if (!normalizedPayload.has("feedback")
+        && normalizedPayload.has("data")
+        && !normalizedPayload.get("data").isNull()) {
+      normalizedPayload.set("feedback", normalizedPayload.get("data"));
+      updated = true;
+    }
+
+    JsonNode metadataNode = normalizedPayload.get("metadata");
+    if (!normalizedPayload.has("recognizer")
+        && metadataNode != null
+        && metadataNode.has("recognizer")
+        && !metadataNode.get("recognizer").isNull()) {
+      normalizedPayload.set("recognizer", metadataNode.get("recognizer"));
+      updated = true;
+    }
+
+    if (updated) {
+      task.setPayload(
+          JsonUtils.convertValue(normalizedPayload, new TypeReference<Map<String, Object>>() {}));
+    }
   }
 
   @Override

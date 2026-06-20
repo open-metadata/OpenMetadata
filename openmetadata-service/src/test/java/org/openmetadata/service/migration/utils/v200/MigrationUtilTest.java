@@ -353,6 +353,37 @@ class MigrationUtilTest {
   }
 
   @Test
+  void buildThreadTaskPayloadMapsRecognizerFeedbackPayloadToModernKeys() throws Exception {
+    JsonNode taskDetails =
+        JsonUtilsHolder.readTree(
+            """
+            {
+              "feedback": {
+                "feedbackType": "FalsePositive"
+              },
+              "recognizer": {
+                "id": "pii-recognizer"
+              }
+            }
+            """);
+
+    ObjectNode payload =
+        (ObjectNode)
+            invokePrivateStatic(
+                "buildThreadTaskPayload",
+                new Class[] {String.class, JsonNode.class, MessageParser.EntityLink.class},
+                "RecognizerFeedbackApproval",
+                taskDetails,
+                null);
+
+    assertNotNull(payload);
+    assertEquals("FalsePositive", payload.get("feedback").get("feedbackType").asText());
+    assertEquals("pii-recognizer", payload.get("recognizer").get("id").asText());
+    assertNull(payload.get("data"));
+    assertNull(payload.get("metadata"));
+  }
+
+  @Test
   void buildActivityEventFromLegacyThreadMapsDescriptionUpdate() throws Exception {
     UUID threadId = UUID.randomUUID();
     UUID entityId = UUID.randomUUID();
