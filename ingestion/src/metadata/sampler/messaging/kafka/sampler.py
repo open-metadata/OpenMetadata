@@ -56,6 +56,10 @@ class KafkaSampler(MessagingSampler):
             topic_name = topic_name[1:-1]
         return topic_name
 
+    def _consumer_group_id(self) -> str:
+        fqn = self.entity.fullyQualifiedName.root if self.entity.fullyQualifiedName else ""
+        return f"openmetadata-auto-classification-{fqn}" if fqn else "openmetadata-auto-classification"
+
     def _build_consumer_config(self) -> dict[str, Any]:
         from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (  # noqa: PLC0415
             SecurityProtocol,
@@ -63,7 +67,7 @@ class KafkaSampler(MessagingSampler):
 
         config = {
             "bootstrap.servers": self.service_connection_config.bootstrapServers,
-            "group.id": "openmetadata-auto-classification",
+            "group.id": self._consumer_group_id(),
             "auto.offset.reset": "earliest",
             "enable.auto.commit": False,
             "session.timeout.ms": 10000,

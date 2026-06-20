@@ -101,23 +101,29 @@ class AutoClassificationProcessor(Processor, ABC):
         Recursively search for a column using dotted path notation (e.g., 'parent.child.field').
         Uniquely identifies columns in nested RECORD structures without collisions.
         Compatible with the sampler's dotted-path column naming scheme.
+
+        An exact match on the full name is always preferred so leaf columns whose
+        own name contains literal dots (e.g. 'first.last') are not mis-split.
         """
         if depth > max_depth:
             return None
 
-        parts = dotted_path.split(".", 1)
-        first_part = parts[0]
+        exact_match = next((c for c in columns if c.name.root == dotted_path), None)
+        if exact_match:
+            return exact_match
 
+        parts = dotted_path.split(".", 1)
+        if len(parts) == 1:
+            return None
+
+        first_part, remainder = parts
         for col in columns:
-            if col.name.root == first_part:
-                if len(parts) == 1:
-                    return col
-                if col.children:
-                    found = AutoClassificationProcessor._find_column_by_dotted_path(
-                        [c for c in col.children if c], parts[1], depth=depth + 1, max_depth=max_depth
-                    )
-                    if found:
-                        return found
+            if col.name.root == first_part and col.children:
+                found = AutoClassificationProcessor._find_column_by_dotted_path(
+                    [c for c in col.children if c], remainder, depth=depth + 1, max_depth=max_depth
+                )
+                if found:
+                    return found
         return None
 
     @final

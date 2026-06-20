@@ -994,13 +994,28 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             return True
         return False
 
+    @staticmethod
+    def _unflatten_dotted_row(columns, row) -> dict:
+        """
+        Rebuild the original (possibly nested) message structure from the sampler's
+        dotted-path column names so nested RECORD topics keep their real shape.
+        """
+        message = {}
+        for idx, col in enumerate(columns):
+            parts = col.root.split(".")
+            cursor = message
+            for part in parts[:-1]:
+                cursor = cursor.setdefault(part, {})
+            cursor[parts[-1]] = row[idx]
+        return message
+
     @_ingest_entity_sample_data.register
     def _(self, entity: Topic, sample_data: TableData) -> bool:
         """Topic-specific sample data ingestion implementation"""
         messages = []
         if sample_data.rows and sample_data.columns:
             for row in sample_data.rows:
-                row_dict = {col.root: row[idx] for idx, col in enumerate(sample_data.columns)}
+                row_dict = self._unflatten_dotted_row(sample_data.columns, row)
                 messages.append(json.dumps(row_dict))
         topic_sample_data = TopicSampleData(messages=messages)
         result = self.metadata.ingest_topic_sample_data(topic=entity, sample_data=topic_sample_data)
