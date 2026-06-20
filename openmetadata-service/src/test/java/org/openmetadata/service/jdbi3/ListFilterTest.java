@@ -197,14 +197,19 @@ class ListFilterTest {
   }
 
   @Test
-  void test_serverIdConditionOnlyAppliesToMcpExecutionTable() {
+  void test_serverIdConditionAppliesWhenServerIdParamPresent() {
     ListFilter filter = new ListFilter();
     filter.addQueryParam("serverId", "mcp-server-1");
 
-    assertFalse(filter.getCondition("table_entity").contains("serverId = :serverId"));
-    assertEquals(
-        "WHERE mcp_execution_entity.deleted = FALSE AND serverId = :serverId",
-        filter.getCondition("mcp_execution_entity"));
+    // The MCP execution time-series list/delete path builds its WHERE via the no-arg
+    // getCondition() (null table name, to avoid a deleted-column clause time-series tables lack).
+    // serverId is an MCP-execution-only query param, so gating the predicate on the table name
+    // silently dropped the server scope and leaked other servers' rows into the result.
+    assertTrue(filter.getCondition().contains("serverId = :serverId"));
+    assertTrue(filter.getCondition("mcp_execution_entity").contains("serverId = :serverId"));
+
+    ListFilter noServerId = new ListFilter();
+    assertFalse(noServerId.getCondition().contains("serverId = :serverId"));
   }
 
   /**
