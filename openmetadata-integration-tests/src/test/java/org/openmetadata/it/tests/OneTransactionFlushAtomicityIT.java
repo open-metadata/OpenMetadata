@@ -112,10 +112,19 @@ public class OneTransactionFlushAtomicityIT {
 
   @AfterAll
   static void restoreProductionRepositories() {
-    Entity.registerEntity(Chart.class, Entity.CHART, productionChartRepository);
-    Entity.registerEntity(
-        GlossaryTerm.class, Entity.GLOSSARY_TERM, productionGlossaryTermRepository);
-    Entity.registerEntity(DataProduct.class, Entity.DATA_PRODUCT, productionDataProductRepository);
+    // @AfterAll still runs if @BeforeAll threw partway through capture, so guard each field —
+    // registering a null repository into the global map would poison every subsequent test class.
+    if (productionChartRepository != null) {
+      Entity.registerEntity(Chart.class, Entity.CHART, productionChartRepository);
+    }
+    if (productionGlossaryTermRepository != null) {
+      Entity.registerEntity(
+          GlossaryTerm.class, Entity.GLOSSARY_TERM, productionGlossaryTermRepository);
+    }
+    if (productionDataProductRepository != null) {
+      Entity.registerEntity(
+          DataProduct.class, Entity.DATA_PRODUCT, productionDataProductRepository);
+    }
   }
 
   @Test
