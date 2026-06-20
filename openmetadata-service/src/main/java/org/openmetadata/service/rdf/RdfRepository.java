@@ -1257,9 +1257,23 @@ public class RdfRepository {
       result = cached;
     } else {
       result = computeEntityGraph(entityUri, depth, entityTypes, relationshipTypes);
-      entityGraphCache.put(cacheKey, result);
+      // Partial graphs (row-cap or time-budget truncation) are usually caused by
+      // transient store pressure; don't pin a degraded result for the whole TTL.
+      if (!isTruncatedResult(result)) {
+        entityGraphCache.put(cacheKey, result);
+      }
     }
     return result;
+  }
+
+  private boolean isTruncatedResult(String graphJson) {
+    boolean truncated = false;
+    try {
+      truncated = JsonUtils.readTree(graphJson).path("truncated").asBoolean(false);
+    } catch (Exception e) {
+      LOG.debug("Could not read truncated flag from graph result: {}", e.getMessage());
+    }
+    return truncated;
   }
 
   private String computeEntityGraph(
@@ -2245,7 +2259,7 @@ public class RdfRepository {
       String entityType = node.get("type").asText();
       EntityInterface entity = entitiesById.get(entityId);
       if (entity != null) {
-        populateNodeFromEntity(node, entity, entityType);
+        populateNodeFromEntity(node, entity);
       } else {
         node.put("label", entityType + ": " + entityId);
       }
@@ -2295,9 +2309,7 @@ public class RdfRepository {
   }
 
   private void populateNodeFromEntity(
-      com.fasterxml.jackson.databind.node.ObjectNode node,
-      EntityInterface entity,
-      String entityType) {
+      com.fasterxml.jackson.databind.node.ObjectNode node, EntityInterface entity) {
     String displayLabel =
         entity.getDisplayName() != null ? entity.getDisplayName() : entity.getName();
     node.put("label", displayLabel);
@@ -2307,7 +2319,6 @@ public class RdfRepository {
       node.put("description", entity.getDescription());
     }
     applyNodeTags(node, entity);
-    node.put("title", buildNodeTitle(entity, entityType, displayLabel));
   }
 
   private void applyNodeTags(
@@ -2326,30 +2337,6 @@ public class RdfRepository {
     tagNode.put("tagFQN", tag.getTagFQN());
     tagNode.put("name", tag.getLabelType() + "." + tag.getTagFQN());
     return tagNode;
-  }
-
-  private String buildNodeTitle(EntityInterface entity, String entityType, String displayLabel) {
-    StringBuilder titleBuilder = new StringBuilder();
-    titleBuilder
-        .append("<div style='padding: 8px; min-width: 200px;'>")
-        .append("<div style='font-weight: 600; margin-bottom: 4px;'>")
-        .append(displayLabel)
-        .append("</div>")
-        .append("<div style='font-size: 12px; color: #8c8c8c; margin-bottom: 4px;'>")
-        .append("Type: ")
-        .append(entityType)
-        .append("</div>")
-        .append("<div style='font-size: 11px; color: #999; margin-bottom: 4px;'>")
-        .append(entity.getFullyQualifiedName())
-        .append("</div>");
-    if (!nullOrEmpty(entity.getDescription())) {
-      titleBuilder
-          .append("<div style='font-size: 12px; margin-top: 4px;'>")
-          .append(entity.getDescription())
-          .append("</div>");
-    }
-    titleBuilder.append("</div>");
-    return titleBuilder.toString();
   }
 
   /**
@@ -2570,7 +2557,14 @@ public class RdfRepository {
     if (resultsJson.has("results") && resultsJson.get("results").has("bindings")) {
       JsonNode bindings = resultsJson.get("results").get("bindings");
       reachedLimit = bindings.size() > GRAPH_QUERY_ROW_LIMIT;
+      int processed = 0;
       for (JsonNode binding : bindings) {
+        // We query one row past the cap only to detect truncation; never include
+        // that sentinel row, so the returned subset stays at the documented cap.
+        if (processed >= GRAPH_QUERY_ROW_LIMIT) {
+          break;
+        }
+        processed++;
         String subjectUri =
             binding.has("subject") ? binding.get("subject").get("value").asText() : null;
         String objectUri =

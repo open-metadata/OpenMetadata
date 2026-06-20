@@ -235,6 +235,9 @@ const humanizeLabel = (label: string): string => {
 const intersectLevels = (a: Level[], b: Level[]): Level[] =>
   ALL_LEVELS.filter((level) => a.includes(level) && b.includes(level));
 
+const idOf = (endpoint: string | GraphNode3D): string =>
+  typeof endpoint === 'object' ? endpoint.id : endpoint;
+
 export const classifyEdge = (
   rawLabel: string,
   sourceType: NodeType,
@@ -309,7 +312,12 @@ const markCoverage = (nodes: GraphNode3D[], links: GraphLink3D[]): void => {
   const mappedTables = new Set<string>();
   links.forEach((link) => {
     if (link.kind === 'ontology' && link.label === MAPPED_TO_LABEL) {
-      mappedTables.add(link.source);
+      // "Mapped to" links can be emitted in either direction (table->concept
+      // for `mappedTo`, concept->table for `hasGlossaryTerm`/`glossaryTerm`), so
+      // mark both endpoints; the concept id is harmless since only `table`
+      // nodes consult this set below.
+      mappedTables.add(idOf(link.source));
+      mappedTables.add(idOf(link.target));
     }
   });
   nodes.forEach((node) => {
@@ -426,9 +434,6 @@ export const enrichWithEntityFields = (
 
   return result;
 };
-
-const idOf = (endpoint: string | GraphNode3D): string =>
-  typeof endpoint === 'object' ? endpoint.id : endpoint;
 
 const expandSharedConcepts = (
   links: GraphLink3D[],

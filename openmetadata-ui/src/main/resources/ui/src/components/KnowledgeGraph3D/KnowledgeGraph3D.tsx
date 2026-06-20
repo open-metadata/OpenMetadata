@@ -167,6 +167,11 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
 
   useEffect(() => {
     if (!entity?.id) {
+      // A truthy-but-partial entity (no id) has nothing to fetch; clear the
+      // initial loader so we fall through to the empty state instead of
+      // spinning forever.
+      setLoading(false);
+
       return undefined;
     }
     const controller = new AbortController();

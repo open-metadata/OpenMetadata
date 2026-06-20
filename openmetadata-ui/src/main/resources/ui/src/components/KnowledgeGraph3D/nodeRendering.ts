@@ -100,6 +100,10 @@ const avatarTexture = (name: string, isTeam: boolean): THREE.CanvasTexture => {
     if (avatarTextureCache.size >= AVATAR_TEXTURE_CACHE_MAX) {
       const oldest = avatarTextureCache.keys().next().value;
       if (oldest !== undefined) {
+        // Release the evicted texture's GPU handle — three.js textures are not
+        // garbage-collected. The oldest entry belongs to a node no longer in
+        // the current capped window, so it is safe to dispose.
+        avatarTextureCache.get(oldest)?.dispose();
         avatarTextureCache.delete(oldest);
       }
     }

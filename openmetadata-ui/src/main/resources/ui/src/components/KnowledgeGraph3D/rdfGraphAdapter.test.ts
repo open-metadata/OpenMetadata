@@ -175,6 +175,20 @@ describe('adaptRdfGraph', () => {
     expect(byId.get('T3')?.mapped).toBe(false);
   });
 
+  it('should flag a table mapped via a reverse-direction (concept to table) edge', () => {
+    const graph = {
+      nodes: [
+        { id: 'CONX', label: 'PII', type: 'glossaryTerm' },
+        { id: 'TX', label: 'orders', type: 'table' },
+      ],
+      edges: [{ from: 'CONX', to: 'TX', label: 'hasGlossaryTerm' }],
+    };
+    const { nodes } = adaptRdfGraph(graph);
+    const byId = new Map(nodes.map((node) => [node.id, node]));
+
+    expect(byId.get('TX')?.mapped).toBe(true);
+  });
+
   it('should intersect endpoint levels to compute link visibility levels', () => {
     const { links } = adaptRdfGraph(SAMPLE);
     const columnLink = links.find(
