@@ -304,12 +304,11 @@ test('an impossible filter combination shows the no-results placeholder and reco
   await test.step('Compose a unique owner with an asset type that owner has none of', async () => {
     // ownerUser was created for this run and owns only tier1Table (a table),
     // so owner + Topic is deterministically empty regardless of sample data.
-    await selectOptionAndWaitForQuery(
-      page,
-      'Owners',
-      ownerUser.responseData.displayName,
-      ownerUser.responseData.displayName
-    );
+    // The Owners facet aggregates on `ownerDisplayName`, whose terms ES
+    // lower-cases, so the dropdown option testid is the lower-cased display
+    // name (e.g. "JohnSmith" -> "johnsmith").
+    const ownerName = ownerUser.getUserDisplayName().toLowerCase();
+    await selectOptionAndWaitForQuery(page, 'Owners', ownerName, ownerName);
     await page.keyboard.press('Escape');
     await selectOptionAndWaitForQuery(page, 'Data Assets', 'topic');
     await page.keyboard.press('Escape');
@@ -355,7 +354,9 @@ test('owner filter spans asset types and ANDs with an asset-type filter', async 
 }) => {
   test.slow();
 
-  const ownerName = ownerUser.responseData.displayName;
+  // The Owners facet aggregates on `ownerDisplayName`, whose terms ES
+  // lower-cases, so the dropdown option testid is the lower-cased display name.
+  const ownerName = ownerUser.getUserDisplayName().toLowerCase();
 
   await test.step('Filter by owner', async () => {
     await selectOptionAndWaitForQuery(page, 'Owners', ownerName, ownerName);

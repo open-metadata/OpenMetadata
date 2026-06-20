@@ -502,18 +502,17 @@ test.describe('Metric search result highlight', () => {
       );
       await entityCard.waitFor({ state: 'visible' });
 
-      const breadcrumb = entityCard.getByTestId('breadcrumb');
+      // The result-card breadcrumb migrated to the core Breadcrumbs component:
+      // the category ("Metrics") renders as a link and the entity name is the
+      // current (last) crumb marked aria-current="page".
+      await expect(
+        entityCard.getByRole('link', { name: 'Metrics' })
+      ).toBeVisible();
 
-      const firstLink = breadcrumb
-        .getByTestId('breadcrumb-link')
-        .first()
-        .getByRole('link');
-      await expect(firstLink).toHaveText('Metrics');
-
-      const inactiveLink = breadcrumb.getByTestId('inactive-link');
-      await expect(inactiveLink).toHaveText(metric.entity.name);
-      await expect(inactiveLink).not.toContainText('<span');
-      await expect(inactiveLink).not.toContainText('text-highlighter');
+      const currentCrumb = entityCard.locator('[aria-current="page"]');
+      await expect(currentCrumb).toHaveText(metric.entity.name);
+      await expect(currentCrumb).not.toContainText('<span');
+      await expect(currentCrumb).not.toContainText('text-highlighter');
     });
 
     await test.step('Verify display name header has highlighted search terms', async () => {
