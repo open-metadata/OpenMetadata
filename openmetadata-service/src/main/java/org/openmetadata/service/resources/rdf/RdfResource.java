@@ -254,6 +254,11 @@ public class RdfResource {
       @Parameter(description = "Comma-separated relationship types to keep in the graph")
           @QueryParam("relationshipTypes")
           String relationshipTypes) {
+    // Admin-only by design: graph node hydration (RdfRepository.getEntityGraph)
+    // resolves entity details with Include.ALL and does NOT re-apply the
+    // caller's per-entity view authorization. Relaxing this to non-admins would
+    // require RBAC-aware filtering of the returned nodes/edges first, otherwise
+    // the graph could leak entities the caller cannot otherwise see.
     authorizer.authorizeAdmin(securityContext);
     try {
       String validatedEntityType = validateEntityType(entityType);
@@ -374,7 +379,7 @@ public class RdfResource {
     return JsonUtils.pojoToJson(Map.of("error", message));
   }
 
-  private int clampGraphDepth(int depth) {
+  static int clampGraphDepth(int depth) {
     return Math.min(Math.max(depth, MIN_GRAPH_DEPTH), MAX_GRAPH_DEPTH);
   }
 

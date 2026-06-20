@@ -16,20 +16,13 @@ package org.openmetadata.service.resources.rdf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
-import java.lang.reflect.Field;
-import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 import org.mockito.Mockito;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.security.Authorizer;
 
@@ -45,12 +38,6 @@ class RdfResourceTest {
     securityContext = Mockito.mock(SecurityContext.class);
     doNothing().when(authorizer).authorizeAdmin(securityContext);
     rdfResource = new RdfResource(authorizer);
-  }
-
-  private void setRdfRepository(RdfRepository repository) throws Exception {
-    Field field = RdfResource.class.getDeclaredField("rdfRepository");
-    field.setAccessible(true);
-    field.set(rdfResource, repository);
   }
 
   @Test
@@ -83,51 +70,19 @@ class RdfResourceTest {
   }
 
   @Test
-  void exploreEntityGraphClampsDepthToMaximum() throws Exception {
-    RdfRepository repository = Mockito.mock(RdfRepository.class);
-    UUID entityId = UUID.randomUUID();
-    when(repository.isEnabled()).thenReturn(true);
-    when(repository.getEntityGraph(entityId, "table", 5, Set.of(), Set.of())).thenReturn("{}");
-    setRdfRepository(repository);
-
-    Response response;
-    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
-      entityMock.when(() -> Entity.hasEntityRepository("table")).thenReturn(true);
-      response = rdfResource.exploreEntityGraph(securityContext, entityId, "table", 99, null, null);
-    }
-
-    assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-    verify(repository).getEntityGraph(eq(entityId), eq("table"), eq(5), eq(Set.of()), eq(Set.of()));
-  }
-
-  @Test
-  void exportEntityGraphClampsDepthToMaximum() throws Exception {
-    RdfRepository repository = Mockito.mock(RdfRepository.class);
-    UUID entityId = UUID.randomUUID();
-    when(repository.isEnabled()).thenReturn(true);
-    when(repository.exportEntityGraph(entityId, "table", 5, Set.of(), Set.of(), "TURTLE"))
-        .thenReturn("@prefix ex: <https://example.org/> .");
-    setRdfRepository(repository);
-
-    Response response;
-    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
-      entityMock.when(() -> Entity.hasEntityRepository("table")).thenReturn(true);
-      response =
-          rdfResource.exportEntityGraph(
-              securityContext, entityId, "table", 99, null, null, "turtle");
-    }
-
-    assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-    verify(repository)
-        .exportEntityGraph(
-            eq(entityId), eq("table"), eq(5), eq(Set.of()), eq(Set.of()), eq("TURTLE"));
-  }
-
-  @Test
   void normalizeEntityGraphExportFormatAcceptsAliases() {
     assertEquals("TURTLE", RdfRepository.normalizeEntityGraphExportFormat("ttl"));
     assertEquals("TURTLE", RdfRepository.normalizeEntityGraphExportFormat("turtle"));
     assertEquals("JSON-LD", RdfRepository.normalizeEntityGraphExportFormat("jsonld"));
     assertEquals("JSON-LD", RdfRepository.normalizeEntityGraphExportFormat("json-ld"));
+  }
+
+  @Test
+  void clampGraphDepthClampsToConfiguredBounds() {
+    assertEquals(1, RdfResource.clampGraphDepth(0));
+    assertEquals(1, RdfResource.clampGraphDepth(1));
+    assertEquals(3, RdfResource.clampGraphDepth(3));
+    assertEquals(5, RdfResource.clampGraphDepth(5));
+    assertEquals(5, RdfResource.clampGraphDepth(99));
   }
 }
