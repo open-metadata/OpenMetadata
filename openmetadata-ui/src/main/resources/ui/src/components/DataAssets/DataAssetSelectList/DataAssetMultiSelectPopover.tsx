@@ -14,32 +14,24 @@ import { Button } from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
 import {
   FC,
-  ReactNode,
   useCallback,
   useEffect,
   useMemo,
-  useState,
+  useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
-  DataAssetAsyncSelectListProps,
-  DataAssetOption,
+  DataAssetOption
 } from '../DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import {
+  DataAssetMultiSelectPopoverProps,
   DataAssetPickerOption,
   DataAssetPickerTriggerState,
 } from './DataAssetPicker.interface';
 import DataAssetPickerShell from './DataAssetPickerShell';
 import { useAsyncDataAssetOptions } from './useAsyncDataAssetOptions';
 
-interface DataAssetMultiSelectPopoverProps
-  extends DataAssetAsyncSelectListProps {
-  renderTrigger?: (state: DataAssetPickerTriggerState) => ReactNode;
-  popoverClassName?: string;
-  popoverAlign?: 'left' | 'right';
-  popoverPlacement?: 'top' | 'bottom';
-}
 
 const DataAssetMultiSelectPopover: FC<DataAssetMultiSelectPopoverProps> = ({
   onChange,

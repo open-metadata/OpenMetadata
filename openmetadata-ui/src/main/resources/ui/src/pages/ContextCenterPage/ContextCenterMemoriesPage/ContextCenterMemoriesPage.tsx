@@ -42,7 +42,7 @@ import {
   MemoryFilterTab,
   MemorySortBy,
 } from '../../../components/ContextCenter/MemoriesView/MemoriesView.interface';
-import DataAssetFilterPopover from '../../../components/DataAssets/DataAssetPicker/DataAssetFilterPopover';
+import DataAssetFilterPopover from '../../../components/DataAssets/DataAssetSelectList/DataAssetFilterPopover';
 import {
   ContextMemory,
   MemoryStatus,

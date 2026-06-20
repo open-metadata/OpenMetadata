@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { FC } from 'react';
-import DataAssetMultiSelectPopover from '../DataAssetPicker/DataAssetMultiSelectPopover';
-import { DataAssetAsyncSelectListProps } from './DataAssetAsyncSelectList.interface';
+import { DataAssetAsyncSelectListProps } from '../DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
+import DataAssetMultiSelectPopover from './DataAssetMultiSelectPopover';
 
 const DataAssetSelectList: FC<DataAssetAsyncSelectListProps> = (props) => (
   <DataAssetMultiSelectPopover {...props} />

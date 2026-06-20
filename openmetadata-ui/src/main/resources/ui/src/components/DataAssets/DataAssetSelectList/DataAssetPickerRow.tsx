@@ -14,13 +14,7 @@ import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
 import { Check } from '@untitledui/icons';
 import { FC } from 'react';
 import { getEntityIconWithBg } from 'src/utils/Assets/AssetsUtils';
-import { DataAssetPickerOption } from './DataAssetPicker.interface';
-
-interface DataAssetPickerRowProps {
-  option: DataAssetPickerOption;
-  isSelected: boolean;
-  onSelect: (option: DataAssetPickerOption) => void;
-}
+import { DataAssetPickerRowProps } from './DataAssetPicker.interface';
 
 const DataAssetPickerRow: FC<DataAssetPickerRowProps> = ({
   option,
