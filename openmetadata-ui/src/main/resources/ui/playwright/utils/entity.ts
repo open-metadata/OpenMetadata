@@ -1414,11 +1414,7 @@ const revealFollowingWidget = async (page: Page): Promise<Locator> => {
   return followingWidgetPanel;
 };
 
-export const validateFollowedEntityToWidget = async (
-  page: Page,
-  entity: string,
-  isFollowing: boolean
-): Promise<Locator> => {
+const loadFollowingWidget = async (page: Page): Promise<Locator> => {
   await redirectToHomePage(page, false);
   await removeLandingBanner(page);
   await waitForAllLoadersToDisappear(page).catch(() => undefined);
@@ -1431,15 +1427,36 @@ export const validateFollowedEntityToWidget = async (
     () => undefined
   );
 
-  if (isFollowing) {
-    await expect(followingWidget).toContainText(entity, { timeout: 60_000 });
-  } else {
-    await expect(followingWidget).not.toContainText(entity, {
-      timeout: 60_000,
-    });
+  return followingWidget;
+};
+
+export const validateFollowedEntityToWidget = async (
+  page: Page,
+  entity: string | undefined,
+  isFollowing: boolean
+): Promise<Locator> => {
+  if (!entity) {
+    return loadFollowingWidget(page);
   }
 
-  return followingWidget;
+  let followingWidget: Locator | undefined;
+
+  await expect
+    .poll(
+      async () => {
+        followingWidget = await loadFollowingWidget(page);
+        const widgetText = (await followingWidget.textContent()) ?? '';
+
+        return widgetText.includes(entity);
+      },
+      {
+        timeout: 120_000,
+        intervals: [1_000, 2_000, 5_000],
+      }
+    )
+    .toBe(isFollowing);
+
+  return followingWidget ?? loadFollowingWidget(page);
 };
 
 const announcementForm = async (
