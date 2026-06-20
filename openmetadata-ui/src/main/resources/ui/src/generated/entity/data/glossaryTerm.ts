@@ -93,6 +93,13 @@ export interface GlossaryTerm {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * Canonical IRI of this term in its source ontology (e.g.,
+     * `http://example.com/ontology/hcp#HealthcareProvider`). Preserves identity across ontology
+     * import/export round-trips and is used as the RDF subject when present. Empty for terms
+     * not sourced from an external ontology.
+     */
+    iri?: string;
+    /**
      * Glossary terms that are children of this term are mutually exclusive. When mutually
      * exclusive is `true` only one term can be used to label an entity from this group. When
      * mutually exclusive is `false`, multiple terms from this group can be used to label an
