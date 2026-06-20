@@ -32,7 +32,8 @@ describe('ELKLayout', () => {
       'elk.direction': 'RIGHT',
       'elk.spacing.nodeNode': '80',
       'elk.layered.spacing.nodeNodeBetweenLayers': '200',
-      'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
+      'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
+      'elk.layered.nodePlacement.bk.fixedAlignment': 'BALANCED',
     });
   });
 
@@ -343,10 +344,13 @@ describe('ELKLayout', () => {
     ).toBe('200');
   });
 
-  it('uses network-simplex node placement strategy', () => {
+  it('uses brandes-koepf node placement with balanced alignment', () => {
     expect(ELKLayout.layoutOptions['elk.layered.nodePlacement.strategy']).toBe(
-      'NETWORK_SIMPLEX'
+      'BRANDES_KOEPF'
     );
+    expect(
+      ELKLayout.layoutOptions['elk.layered.nodePlacement.bk.fixedAlignment']
+    ).toBe('BALANCED');
   });
 
   it('does not activate partitioning so ELK derives layers from edges', () => {

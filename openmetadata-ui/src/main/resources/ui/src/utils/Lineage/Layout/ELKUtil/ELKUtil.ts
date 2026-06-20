@@ -26,10 +26,13 @@ class ELKLayout {
     'elk.layered.spacing.nodeNodeBetweenLayers': '200',
     // Let ELK derive layers from edge topology instead of pinning nodes to a
     // backend-provided nodeDepth. Partitioning forced a multi-branch node into
-    // the column of its first depth, misaligning its other edges. NETWORK_SIMPLEX
-    // node placement centers a node on the cross axis relative to its neighbors,
-    // so a source keeps its children vertically balanced around it.
-    'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
+    // the column of its first depth, misaligning its other edges.
+    'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
+    // BALANCED averages Brandes-Köpf's four extreme alignments into a centroid.
+    // Without it, a symmetric source (e.g. equal upstream/downstream branches)
+    // has multiple optimal placements and ELK snaps to a top-aligned corner
+    // instead of sitting vertically centered between its neighbors.
+    'elk.layered.nodePlacement.bk.fixedAlignment': 'BALANCED',
   };
 
   constructor() {}
