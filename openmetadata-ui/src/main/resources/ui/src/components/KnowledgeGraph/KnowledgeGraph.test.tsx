@@ -326,23 +326,6 @@ jest.mock('@openmetadata/ui-core-components', () => {
     );
   };
 
-  const Slider = ({
-    value,
-    onChange,
-    'data-testid': testId,
-  }: {
-    value?: number[];
-    onChange?: (val: number | number[]) => void;
-    'data-testid'?: string;
-  }) =>
-    R.createElement('input', {
-      type: 'range',
-      'data-testid': testId,
-      value: value?.[0] ?? 1,
-      onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-        onChange?.(Number(e.target.value)),
-    });
-
   const TabsList = ({
     children,
     items,
@@ -407,7 +390,6 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Divider,
     Dropdown,
     SlideoutMenu,
-    Slider,
     Tabs,
     Tooltip,
     TooltipTrigger,
@@ -795,16 +777,14 @@ describe('KnowledgeGraph', () => {
   });
 
   describe('Depth change', () => {
-    it('handleDepthChange updates selectedDepth and triggers re-fetch', async () => {
+    it('handleDepthSelectionChange updates selectedDepth and triggers re-fetch', async () => {
       renderKG();
       await waitFor(() =>
-        expect(screen.getByTestId('depth-slider')).toBeInTheDocument()
+        expect(screen.getByTestId('depth-dropdown')).toBeInTheDocument()
       );
 
       (getEntityGraphData as jest.Mock).mockClear();
-      fireEvent.change(screen.getByTestId('depth-slider'), {
-        target: { value: '3' },
-      });
+      fireEvent.click(screen.getByTestId('menu-item-3'));
 
       await waitFor(() =>
         expect(getEntityGraphData).toHaveBeenCalledWith(
@@ -980,12 +960,10 @@ describe('KnowledgeGraph', () => {
     it('shows clear-all button when hasActiveFilters is true (depth changed)', async () => {
       renderKG();
       await waitFor(() =>
-        expect(screen.getByTestId('depth-slider')).toBeInTheDocument()
+        expect(screen.getByTestId('depth-dropdown')).toBeInTheDocument()
       );
 
-      fireEvent.change(screen.getByTestId('depth-slider'), {
-        target: { value: '3' },
-      });
+      fireEvent.click(screen.getByTestId('menu-item-3'));
 
       await waitFor(() =>
         expect(screen.getByText('label.clear-entity')).toBeInTheDocument()
@@ -995,12 +973,10 @@ describe('KnowledgeGraph', () => {
     it('handleClearAll resets depth to prop value', async () => {
       renderKG({ depth: 1 });
       await waitFor(() =>
-        expect(screen.getByTestId('depth-slider')).toBeInTheDocument()
+        expect(screen.getByTestId('depth-dropdown')).toBeInTheDocument()
       );
 
-      fireEvent.change(screen.getByTestId('depth-slider'), {
-        target: { value: '3' },
-      });
+      fireEvent.click(screen.getByTestId('menu-item-3'));
       await waitFor(() =>
         expect(screen.getByText('label.clear-entity')).toBeInTheDocument()
       );

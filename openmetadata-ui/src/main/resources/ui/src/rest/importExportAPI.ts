@@ -137,3 +137,43 @@ export const importGlossaryTermInCSVFormat = async ({
 
   return response.data;
 };
+
+export interface OntologyImportResult {
+  dryRun: boolean;
+  glossariesCreated: number;
+  termsCreated: number;
+  termsUpdated: number;
+  relationsAdded: number;
+  conceptMappingsAdded: number;
+  customPropertiesCreated: number;
+  relationTypesRegistered: number;
+  messages: string[];
+}
+
+export const importGlossaryOntology = async ({
+  name,
+  data,
+  dryRun = true,
+  format = 'turtle',
+}: {
+  name: string;
+  data: string;
+  dryRun?: boolean;
+  format?: string;
+}) => {
+  const configOptions = {
+    headers: { 'Content-type': 'text/plain' },
+  };
+  const response = await APIClient.put<
+    string,
+    AxiosResponse<OntologyImportResult>
+  >(
+    `/glossaries/name/${getEncodedFqn(
+      name
+    )}/importRdf?dryRun=${dryRun}&format=${format}`,
+    data,
+    configOptions
+  );
+
+  return response.data;
+};

@@ -27,7 +27,6 @@ import {
   Divider,
   Dropdown,
   SlideoutMenu,
-  Slider,
   Tabs,
   Tooltip,
   TooltipTrigger,
@@ -36,7 +35,6 @@ import {
 import { ChevronDown } from '@untitledui/icons';
 import classNames from 'classnames';
 import { toPng } from 'html-to-image';
-import { isArray } from 'lodash';
 import Qs from 'qs';
 import React, {
   lazy,
@@ -98,6 +96,7 @@ import {
   ENTITY_UUID_REGEX,
   EXPORT_FORMAT_MAP,
   FIT_SCALE_FACTOR,
+  MAX_GRAPH_DEPTH,
   MAX_NODE_WIDTH,
   NODE_HEIGHT,
   PANEL_WIDTH,
@@ -143,6 +142,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   const [entityDropdownOpen, setEntityDropdownOpen] = useState(false);
   const [relationshipDropdownOpen, setRelationshipDropdownOpen] =
     useState(false);
+  const [depthDropdownOpen, setDepthDropdownOpen] = useState(false);
   const [entityFilterText, setEntityFilterText] = useState('');
   const [relationshipFilterText, setRelationshipFilterText] = useState('');
   const location = useLocation();
@@ -376,8 +376,13 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     void fetchGraphData();
   }, [fetchGraphData]);
 
-  const handleDepthChange = useCallback((value: number | number[]) => {
-    setSelectedDepth(isArray(value) ? value[0] : value);
+  const handleDepthSelectionChange = useCallback((keys: Selection) => {
+    if (keys !== 'all') {
+      const [first] = Array.from(keys as Set<string>);
+      if (first !== undefined) {
+        setSelectedDepth(Number(first));
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -642,6 +647,15 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
         label: `${option.label} (${option.count})`,
       })) ?? [],
     [graphData?.filterOptions]
+  );
+
+  const depthOptions = useMemo(
+    () =>
+      Array.from({ length: MAX_GRAPH_DEPTH }, (_, index) => ({
+        id: String(index + 1),
+        label: String(index + 1),
+      })),
+    []
   );
 
   const filteredEntityTypeOptions = useMemo(
@@ -987,24 +1001,40 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
 
                 <Box align="center" gap={5}>
                   <Typography className="depth-label">
-                    {t('label.node-depth') + ':'}
+                    {t('label.depth') + ':'}
                   </Typography>
-                  <Slider
-                    showHoverPreview
-                    showRange
-                    className="depth-slider"
-                    data-testid="depth-slider"
-                    labelPosition="top-floating"
-                    maxValue={5}
-                    minValue={1}
-                    rangeCount={5}
-                    step={1}
-                    style={{
-                      width: '150px',
-                    }}
-                    value={[selectedDepth]}
-                    onChange={handleDepthChange}
-                  />
+                  <Dropdown.Root
+                    isOpen={depthDropdownOpen}
+                    onOpenChange={setDepthDropdownOpen}>
+                    <Button
+                      aria-label={t('label.depth')}
+                      color="secondary"
+                      data-testid="depth-dropdown"
+                      size="sm">
+                      <Box align="center" gap={4}>
+                        {selectedDepth}
+                        <ChevronDown
+                          aria-hidden="true"
+                          className="tw:size-4 tw:shrink-0 tw:stroke-[2.5px] tw:text-fg-quaternary"
+                        />
+                      </Box>
+                    </Button>
+                    <Dropdown.Popover>
+                      <Dropdown.Menu
+                        items={depthOptions}
+                        selectedKeys={new Set([String(selectedDepth)])}
+                        selectionMode="single"
+                        onSelectionChange={handleDepthSelectionChange}>
+                        {(item) => (
+                          <Dropdown.Item
+                            id={item.id}
+                            key={item.id}
+                            label={item.label}
+                          />
+                        )}
+                      </Dropdown.Menu>
+                    </Dropdown.Popover>
+                  </Dropdown.Root>
                 </Box>
                 <Divider orientation="vertical" />
                 <ExportGraphPanel

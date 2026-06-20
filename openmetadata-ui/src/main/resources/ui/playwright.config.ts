@@ -97,7 +97,12 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
       dependencies: ['setup', 'entity-data-setup'],
-      grepInvert: [/@data-insight/, /@basic/, /@knowledge-graph/],
+      grepInvert: [
+        /@data-insight/,
+        /@basic/,
+        /@knowledge-graph/,
+        /@ontology-rdf/,
+      ],
       teardown: 'entity-data-teardown',
       testIgnore: [
         '**/nightly/**',
@@ -162,6 +167,13 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup', 'entity-data-setup'],
       grep: /knowledge-graph/,
+      teardown: 'entity-data-teardown',
+    },
+    {
+      name: 'Ontology RDF',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup', 'entity-data-setup'],
+      grep: /ontology-rdf/,
       teardown: 'entity-data-teardown',
     },
     {

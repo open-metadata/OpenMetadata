@@ -14,6 +14,8 @@
 import { EntityGraphExportFormat } from '../../rest/rdfAPI.interface';
 import { ExportFormat } from '../OntologyExplorer/ExportGraphPanel.interface';
 
+export const MAX_GRAPH_DEPTH = 5;
+
 export const GRAPH_NODE_COLORS = {
   table: {
     background: '#52c41a',

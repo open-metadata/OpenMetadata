@@ -86,6 +86,11 @@
       "description": "A unique name that identifies a glossary term. It captures name hierarchy of glossary of terms in the form of `glossaryName.parentTerm.childTerm`.",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
+    "iri": {
+      "description": "Canonical IRI of this term in its source ontology (e.g., `http://example.com/ontology/hcp#HealthcareProvider`). Preserves identity across ontology import/export round-trips and is used as the RDF subject when present. Empty for terms not sourced from an external ontology.",
+      "type": "string",
+      "format": "uri"
+    },
     "synonyms": {
       "description": "Alternate names that are synonyms or near-synonyms for the glossary term.",
       "type": "array",

@@ -22,6 +22,7 @@ import org.apache.jena.rdf.model.Resource;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
+import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.configuration.RelationCardinality;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -3378,6 +3379,7 @@ public class RdfRepository {
     model.setNsPrefix("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#");
     model.setNsPrefix("dct", "http://purl.org/dc/terms/");
     model.setNsPrefix("sh", "http://www.w3.org/ns/shacl#");
+    model.setNsPrefix("owl", "http://www.w3.org/2002/07/owl#");
 
     Property rdfType = model.createProperty("http://www.w3.org/1999/02/22-rdf-syntax-ns#", "type");
     Property skosConceptScheme =
@@ -3398,6 +3400,7 @@ public class RdfRepository {
     Property dctCreated = model.createProperty("http://purl.org/dc/terms/", "created");
     Property dctModified = model.createProperty("http://purl.org/dc/terms/", "modified");
     Property rdfsLabel = model.createProperty("http://www.w3.org/2000/01/rdf-schema#", "label");
+    Property owlSameAs = model.createProperty("http://www.w3.org/2002/07/owl#", "sameAs");
 
     try {
       Glossary glossary = Entity.getEntity("glossary", glossaryId, "*", null);
@@ -3425,10 +3428,14 @@ public class RdfRepository {
 
       for (var entity : terms) {
         var term = (GlossaryTerm) entity;
-        String termUri = config.getBaseUri().toString() + "glossaryTerm/" + term.getId();
+        String omTermUri = config.getBaseUri().toString() + "glossaryTerm/" + term.getId();
+        String termUri = term.getIri() != null ? term.getIri().toString() : omTermUri;
         Resource termResource = model.createResource(termUri);
 
         termResource.addProperty(rdfType, skosConcept);
+        if (!termUri.equals(omTermUri)) {
+          termResource.addProperty(owlSameAs, model.createResource(omTermUri));
+        }
         termResource.addProperty(
             skosPrefLabel, term.getDisplayName() != null ? term.getDisplayName() : term.getName());
         termResource.addProperty(skosInScheme, glossaryResource);
@@ -3483,6 +3490,7 @@ public class RdfRepository {
           }
         }
         addRelationCardinalityShapes(model);
+        addRelationTypeAxioms(model);
       }
 
       java.io.StringWriter writer = new java.io.StringWriter();
@@ -3539,6 +3547,75 @@ public class RdfRepository {
         yield model.createProperty("https://open-metadata.org/ontology/", relationType);
       }
     };
+  }
+
+  private void addRelationTypeAxioms(Model model) {
+    GlossaryTermRelationSettings settings =
+        SettingsCache.getSetting(
+            SettingsType.GLOSSARY_TERM_RELATION_SETTINGS, GlossaryTermRelationSettings.class);
+    if (settings == null || settings.getRelationTypes() == null) {
+      return;
+    }
+    String owlNs = "http://www.w3.org/2002/07/owl#";
+    String rdfsNs = "http://www.w3.org/2000/01/rdf-schema#";
+    Property rdfType = model.createProperty("http://www.w3.org/1999/02/22-rdf-syntax-ns#", "type");
+    Resource objectProperty = model.createResource(owlNs + "ObjectProperty");
+    Property owlInverseOf = model.createProperty(owlNs, "inverseOf");
+    Property rdfsDomain = model.createProperty(rdfsNs, "domain");
+    Property rdfsRange = model.createProperty(rdfsNs, "range");
+    for (GlossaryTermRelationType type : settings.getRelationTypes()) {
+      Resource prop = model.createResource(getSkosRelationProperty(type.getName(), model).getURI());
+      prop.addProperty(rdfType, objectProperty);
+      addRelationCharacteristics(model, prop, rdfType, owlNs, type);
+      addRelationInverse(model, prop, owlInverseOf, type);
+      addRelationClassConstraints(model, prop, rdfsDomain, type.getDomain());
+      addRelationClassConstraints(model, prop, rdfsRange, type.getRange());
+    }
+  }
+
+  private void addRelationCharacteristics(
+      Model model, Resource prop, Property rdfType, String owlNs, GlossaryTermRelationType type) {
+    addOwlCharacteristic(model, prop, rdfType, owlNs, "SymmetricProperty", type.getIsSymmetric());
+    addOwlCharacteristic(model, prop, rdfType, owlNs, "TransitiveProperty", type.getIsTransitive());
+    addOwlCharacteristic(model, prop, rdfType, owlNs, "FunctionalProperty", type.getIsFunctional());
+    addOwlCharacteristic(
+        model, prop, rdfType, owlNs, "InverseFunctionalProperty", type.getIsInverseFunctional());
+    addOwlCharacteristic(model, prop, rdfType, owlNs, "ReflexiveProperty", type.getIsReflexive());
+    addOwlCharacteristic(
+        model, prop, rdfType, owlNs, "IrreflexiveProperty", type.getIsIrreflexive());
+    addOwlCharacteristic(model, prop, rdfType, owlNs, "AsymmetricProperty", type.getIsAsymmetric());
+  }
+
+  private void addOwlCharacteristic(
+      Model model,
+      Resource prop,
+      Property rdfType,
+      String owlNs,
+      String characteristic,
+      Boolean present) {
+    if (Boolean.TRUE.equals(present)) {
+      prop.addProperty(rdfType, model.createResource(owlNs + characteristic));
+    }
+  }
+
+  private void addRelationInverse(
+      Model model, Resource prop, Property owlInverseOf, GlossaryTermRelationType type) {
+    if (type.getInverseRelation() != null && !type.getInverseRelation().isEmpty()) {
+      prop.addProperty(
+          owlInverseOf,
+          model.createResource(getSkosRelationProperty(type.getInverseRelation(), model).getURI()));
+    }
+  }
+
+  private void addRelationClassConstraints(
+      Model model, Resource prop, Property predicate, List<String> values) {
+    if (values != null) {
+      for (String value : values) {
+        if (value != null && value.contains("://")) {
+          prop.addProperty(predicate, model.createResource(value));
+        }
+      }
+    }
   }
 
   private void addRelationCardinalityShapes(Model model) {
