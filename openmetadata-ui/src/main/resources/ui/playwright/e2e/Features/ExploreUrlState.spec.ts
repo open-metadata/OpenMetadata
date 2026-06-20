@@ -128,6 +128,30 @@ const treeNode = (page: Page, title: string) =>
     .getByTestId(`explore-tree-title-${title}`)
     .locator('xpath=ancestor::*[contains(@class, "ant-tree-treenode")]');
 
+// A global-search term scopes every facet aggregation, so clear it before any
+// post-search facet interaction (the searchAndExpect* helpers leave the box
+// filled with the last asserted entity name).
+const clearGlobalSearch = async (page: Page) => {
+  const queryRes = page.waitForResponse(
+    '/api/v1/search/query?*index=dataAsset*'
+  );
+  await page.getByTestId('searchBox').fill('');
+  await page.getByTestId('searchBox').press('Enter');
+  await queryRes;
+  await waitForAllLoadersToDisappear(page);
+};
+
+// Read the ES `query.bool.must[]` the app serialised into the quickFilter URL
+// param. Used to compose a deliberately-empty AND combination that the facet
+// dropdowns refuse to build (each facet self-scopes to the other filters).
+const readQuickFilterMust = (page: Page): unknown[] => {
+  const raw = new URL(page.url()).searchParams.get('quickFilter') ?? '{}';
+  const parsed = JSON.parse(raw) as { query?: { bool?: { must?: unknown } } };
+  const must = parsed.query?.bool?.must;
+
+  return Array.isArray(must) ? must : must ? [must] : [];
+};
+
 test.beforeAll('Setup url-state fixtures', async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
   await ownerUser.create(apiContext);
@@ -301,17 +325,33 @@ test('an impossible filter combination shows the no-results placeholder and reco
 }) => {
   test.slow();
 
-  await test.step('Compose a unique owner with an asset type that owner has none of', async () => {
-    // ownerUser was created for this run and owns only tier1Table (a table),
-    // so owner + Topic is deterministically empty regardless of sample data.
-    // The Owners facet aggregates on `ownerDisplayName`, whose terms ES
-    // lower-cases, so the dropdown option testid is the lower-cased display
-    // name (e.g. "JohnSmith" -> "johnsmith").
+  await test.step('Deep-link owner + an asset type the owner has none of', async () => {
+    // ownerUser owns only tier1Table (a table), so owner + Topic is
+    // deterministically empty. The facet dropdowns self-scope (the Data Assets
+    // facet ANDs the active owner filter), so they never offer "topic" once the
+    // owner is selected — capture each filter's quickFilter independently and
+    // deep-link the AND combination. (Owners aggregates on `ownerDisplayName`,
+    // whose ES terms are lower-cased, so its option testid is the lower-cased
+    // display name.)
     const ownerName = ownerUser.getUserDisplayName().toLowerCase();
     await selectOptionAndWaitForQuery(page, 'Owners', ownerName, ownerName);
     await page.keyboard.press('Escape');
+    const impossibleUrl = new URL(page.url());
+    const ownerMust = readQuickFilterMust(page);
+
+    await openExplore(page);
     await selectOptionAndWaitForQuery(page, 'Data Assets', 'topic');
     await page.keyboard.press('Escape');
+    const topicMust = readQuickFilterMust(page);
+
+    impossibleUrl.searchParams.set(
+      'quickFilter',
+      JSON.stringify({
+        query: { bool: { must: [...ownerMust, ...topicMust] } },
+      })
+    );
+    await page.goto(impossibleUrl.pathname + impossibleUrl.search);
+    await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('no-search-results')).toBeVisible();
   });
@@ -367,6 +407,9 @@ test('owner filter spans asset types and ANDs with an asset-type filter', async 
   });
 
   await test.step('Add a Table type filter — owned table stays visible', async () => {
+    // The previous step left the owned table's name in the search box, which
+    // scopes the Data Assets facet to nothing — clear it before opening it.
+    await clearGlobalSearch(page);
     await selectOptionAndWaitForQuery(page, 'Data Assets', 'table');
     await page.keyboard.press('Escape');
 

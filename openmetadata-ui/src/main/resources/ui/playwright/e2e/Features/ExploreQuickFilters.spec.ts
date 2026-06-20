@@ -504,9 +504,10 @@ test.describe('Metric search result highlight', () => {
 
       // The result-card breadcrumb migrated to the core Breadcrumbs component:
       // the category ("Metrics") renders as a link and the entity name is the
-      // current (last) crumb marked aria-current="page".
+      // current (last) crumb marked aria-current="page". `exact` keeps the link
+      // match off the entity-name link (which contains "metric").
       await expect(
-        entityCard.getByRole('link', { name: 'Metrics' })
+        entityCard.getByRole('link', { exact: true, name: 'Metrics' })
       ).toBeVisible();
 
       const currentCrumb = entityCard.locator('[aria-current="page"]');
