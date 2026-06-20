@@ -103,10 +103,14 @@ class KafkaSampler(MessagingSampler):
 
         if AvroDeserializer and len(raw_value) > 4:
             try:
-                client = self.get_client()
-                if client and hasattr(client, "schema_registry_client"):
-                    deserializer = AvroDeserializer(client.schema_registry_client)
-                    avro_obj = deserializer(raw_value, None)
+                if not hasattr(self, "_avro_deserializer"):
+                    client = self.get_client()
+                    if client and hasattr(client, "schema_registry_client"):
+                        self._avro_deserializer = AvroDeserializer(client.schema_registry_client)
+                    else:
+                        self._avro_deserializer = None
+                if self._avro_deserializer:
+                    avro_obj = self._avro_deserializer(raw_value, None)
                     if isinstance(avro_obj, dict):
                         return avro_obj
             except Exception as exc:
