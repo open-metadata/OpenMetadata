@@ -55,10 +55,19 @@ public class AuditLogConsumer implements Job {
   /**
    * How long a gap in the {@code change_event.offset} sequence may stay unfilled before the consumer
    * treats it as a permanent hole (e.g. a rolled-back insert that consumed an AUTO_INCREMENT value)
-   * and skips past it. Must comfortably exceed the commit-visibility delay of a single
-   * {@code change_event} insert (a standalone auto-commit statement, sub-second even for batched bulk
-   * inserts) so an in-flight lower offset is never skipped, while staying well under the audit
-   * pipeline's tolerance so a genuine hole never stalls the consumer for long.
+   * and skips past it.
+   *
+   * <p>Correctness depends on this exceeding the longest time any write path can hold a {@code
+   * change_event} row in an uncommitted transaction; a row that commits later than this could have
+   * its offset skipped and its audit event dropped. All known inserters satisfy that with large
+   * margin: the REST response filter ({@code ChangeEventHandler}) inserts as a standalone auto-commit
+   * AFTER the entity transaction has already committed; CSV import inserts on an async executor thread
+   * (auto-commit); per-request repository inserts ride the single entity transaction (bounded by
+   * request processing, p99 a few seconds); and bulk operations commit per {@code
+   * BULK_CREATE_TXN_CHUNK_SIZE} (100) chunk with the change-event batch insert at the end of the
+   * chunk transaction. 30s leaves roughly 10x headroom over the slowest of these while keeping a
+   * genuine hole from stalling the consumer for long. Raise it if a longer-running single transaction
+   * ever inserts {@code change_event} rows.
    */
   private static final long GAP_RESOLVE_TIMEOUT_MS = 30_000;
 
@@ -138,13 +147,7 @@ public class AuditLogConsumer implements Job {
     int contiguousCount = countContiguousPrefix(currentOffset, records);
     int advanced = writeContiguousRecords(auditLogRepository, records, contiguousCount);
     OffsetUpdate update =
-        planAdvance(
-            currentOffset,
-            stored.pendingGapSince(),
-            records,
-            contiguousCount,
-            advanced,
-            System.currentTimeMillis());
+        planAdvance(stored, records, contiguousCount, advanced, System.currentTimeMillis());
     logGapSkipIfNeeded(currentOffset, advanced, update);
     persistIfChanged(collectionDAO, stored, update);
     return advanced;
@@ -204,8 +207,7 @@ public class AuditLogConsumer implements Job {
    * follows the prefix and the gap-wait/skip policy applies.
    */
   static OffsetUpdate planAdvance(
-      long currentOffset,
-      long pendingGapSince,
+      AuditLogOffset stored,
       List<ChangeEventRecord> records,
       int contiguousCount,
       int advanced,
@@ -214,9 +216,9 @@ public class AuditLogConsumer implements Job {
     boolean gapAfterPrefix = !stoppedOnWriteError && contiguousCount < records.size();
     OffsetUpdate result;
     if (gapAfterPrefix) {
-      result = planGapAdvance(currentOffset, pendingGapSince, records, advanced, now);
+      result = planGapAdvance(stored, records, advanced, now);
     } else {
-      result = new OffsetUpdate(currentOffset + advanced, 0L);
+      result = new OffsetUpdate(stored.currentOffset() + advanced, 0L);
     }
     return result;
   }
@@ -228,11 +230,9 @@ public class AuditLogConsumer implements Job {
    * #GAP_RESOLVE_TIMEOUT_MS}.
    */
   static OffsetUpdate planGapAdvance(
-      long currentOffset,
-      long pendingGapSince,
-      List<ChangeEventRecord> records,
-      int advanced,
-      long now) {
+      AuditLogOffset stored, List<ChangeEventRecord> records, int advanced, long now) {
+    long currentOffset = stored.currentOffset();
+    long pendingGapSince = stored.pendingGapSince();
     OffsetUpdate result;
     if (advanced > 0) {
       result = new OffsetUpdate(currentOffset + advanced, 0L);

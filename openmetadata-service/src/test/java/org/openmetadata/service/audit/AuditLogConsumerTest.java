@@ -145,7 +145,8 @@ class AuditLogConsumerTest {
   @Test
   void planAdvance_fullyContiguousBatch_advancesToLastOffsetWithNoGapWait() {
     List<ChangeEventRecord> records = recordsAtOffsets(11, 12, 13);
-    AuditLogConsumer.OffsetUpdate update = AuditLogConsumer.planAdvance(10, 0L, records, 3, 3, NOW);
+    AuditLogConsumer.OffsetUpdate update =
+        AuditLogConsumer.planAdvance(offset(10, 0L), records, 3, 3, NOW);
     assertEquals(13L, update.offset());
     assertEquals(0L, update.pendingGapSince());
   }
@@ -153,7 +154,8 @@ class AuditLogConsumerTest {
   @Test
   void planAdvance_writeErrorBeforeGap_advancesOnlyOverWrittenWithNoGapWait() {
     List<ChangeEventRecord> records = recordsAtOffsets(11, 12, 13);
-    AuditLogConsumer.OffsetUpdate update = AuditLogConsumer.planAdvance(10, 0L, records, 3, 1, NOW);
+    AuditLogConsumer.OffsetUpdate update =
+        AuditLogConsumer.planAdvance(offset(10, 0L), records, 3, 1, NOW);
     assertEquals(11L, update.offset(), "advance only across the records actually written");
     assertEquals(0L, update.pendingGapSince(), "a write error is retried, not treated as a gap");
   }
@@ -162,7 +164,7 @@ class AuditLogConsumerTest {
   void planAdvance_gapAfterMakingProgress_advancesPrefixAndResetsGapClock() {
     List<ChangeEventRecord> records = recordsAtOffsets(11, 12, 14);
     AuditLogConsumer.OffsetUpdate update =
-        AuditLogConsumer.planAdvance(10, 5_000L, records, 2, 2, NOW);
+        AuditLogConsumer.planAdvance(offset(10, 5_000L), records, 2, 2, NOW);
     assertEquals(12L, update.offset());
     assertEquals(0L, update.pendingGapSince(), "forward progress resets a stale gap clock");
   }
@@ -170,7 +172,8 @@ class AuditLogConsumerTest {
   @Test
   void planGapAdvance_headGapFirstSeen_startsWaitWithoutSkipping() {
     List<ChangeEventRecord> records = recordsAtOffsets(13, 14);
-    AuditLogConsumer.OffsetUpdate update = AuditLogConsumer.planGapAdvance(10, 0L, records, 0, NOW);
+    AuditLogConsumer.OffsetUpdate update =
+        AuditLogConsumer.planGapAdvance(offset(10, 0L), records, 0, NOW);
     assertEquals(10L, update.offset(), "do not skip the not-yet-committed offset 11/12");
     assertEquals(NOW, update.pendingGapSince(), "start the gap-wait clock");
   }
@@ -180,7 +183,7 @@ class AuditLogConsumerTest {
     List<ChangeEventRecord> records = recordsAtOffsets(13, 14);
     long gapSince = NOW - 5_000L;
     AuditLogConsumer.OffsetUpdate update =
-        AuditLogConsumer.planGapAdvance(10, gapSince, records, 0, NOW);
+        AuditLogConsumer.planGapAdvance(offset(10, gapSince), records, 0, NOW);
     assertEquals(10L, update.offset(), "still waiting: a late insert may yet fill the gap");
     assertEquals(gapSince, update.pendingGapSince(), "preserve the original wait clock");
   }
@@ -190,7 +193,7 @@ class AuditLogConsumerTest {
     List<ChangeEventRecord> records = recordsAtOffsets(13, 14);
     long gapSince = NOW - 30_000L;
     AuditLogConsumer.OffsetUpdate update =
-        AuditLogConsumer.planGapAdvance(10, gapSince, records, 0, NOW);
+        AuditLogConsumer.planGapAdvance(offset(10, gapSince), records, 0, NOW);
     assertEquals(
         12L, update.offset(), "skip the unfilled hole [11..12] so the consumer never stalls");
     assertEquals(0L, update.pendingGapSince(), "clear the wait clock after skipping");
@@ -203,7 +206,7 @@ class AuditLogConsumerTest {
     // 11.
     List<ChangeEventRecord> pass1 = recordsAtOffsets(12, 13);
     AuditLogConsumer.OffsetUpdate afterPass1 =
-        AuditLogConsumer.planAdvance(10, 0L, pass1, 0, 0, NOW);
+        AuditLogConsumer.planAdvance(offset(10, 0L), pass1, 0, 0, NOW);
     assertEquals(
         10L, afterPass1.offset(), "must not skip offset 11 just because 12/13 are visible");
 
@@ -212,7 +215,11 @@ class AuditLogConsumerTest {
     int contiguous = AuditLogConsumer.countContiguousPrefix(afterPass1.offset(), pass2);
     AuditLogConsumer.OffsetUpdate afterPass2 =
         AuditLogConsumer.planAdvance(
-            afterPass1.offset(), afterPass1.pendingGapSince(), pass2, contiguous, contiguous, NOW);
+            offset(afterPass1.offset(), afterPass1.pendingGapSince()),
+            pass2,
+            contiguous,
+            contiguous,
+            NOW);
     assertEquals(
         3, contiguous, "the previously-missing offset 11 is now part of the contiguous run");
     assertEquals(13L, afterPass2.offset(), "offset 11 is consumed, not permanently skipped");
@@ -310,6 +317,10 @@ class AuditLogConsumerTest {
     // Should continue if processed >= batchSize
     boolean shouldContinue = processedInBatch >= batchSize;
     assertTrue(shouldContinue);
+  }
+
+  private static AuditLogConsumer.AuditLogOffset offset(long currentOffset, long pendingGapSince) {
+    return new AuditLogConsumer.AuditLogOffset(0L, currentOffset, pendingGapSince);
   }
 
   private static List<ChangeEventRecord> recordsAtOffsets(long... offsets) {
