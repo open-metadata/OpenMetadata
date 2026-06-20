@@ -32,7 +32,7 @@ describe('ELKLayout', () => {
       'elk.direction': 'RIGHT',
       'elk.spacing.nodeNode': '80',
       'elk.layered.spacing.nodeNodeBetweenLayers': '200',
-      'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
+      'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
     });
   });
 
@@ -343,9 +343,9 @@ describe('ELKLayout', () => {
     ).toBe('200');
   });
 
-  it('uses brandes-koepf node placement strategy', () => {
+  it('uses network-simplex node placement strategy', () => {
     expect(ELKLayout.layoutOptions['elk.layered.nodePlacement.strategy']).toBe(
-      'BRANDES_KOEPF'
+      'NETWORK_SIMPLEX'
     );
   });
 

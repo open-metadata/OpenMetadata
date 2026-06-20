@@ -26,9 +26,10 @@ class ELKLayout {
     'elk.layered.spacing.nodeNodeBetweenLayers': '200',
     // Let ELK derive layers from edge topology instead of pinning nodes to a
     // backend-provided nodeDepth. Partitioning forced a multi-branch node into
-    // the column of its first depth, misaligning its other edges. BRANDES_KOEPF
-    // balances node placement for a cleaner, less rigid horizontal flow.
-    'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
+    // the column of its first depth, misaligning its other edges. NETWORK_SIMPLEX
+    // node placement centers a node on the cross axis relative to its neighbors,
+    // so a source keeps its children vertically balanced around it.
+    'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
   };
 
   constructor() {}
