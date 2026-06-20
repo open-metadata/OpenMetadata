@@ -270,14 +270,11 @@ test('selecting an asset type grays out and collapses incompatible categories', 
   // it as the node that must expand-then-collapse when a non-database type is
   // chosen (Dashboard belongs to the Dashboards category, so it disables
   // Databases).
-  await test.step('Expand the Databases category', async () => {
-    await page
-      .getByTestId('explore-tree-title-Databases')
-      .locator(
-        'xpath=ancestor::*[contains(@class, "ant-tree-treenode")]//*[contains(@class, "ant-tree-switcher")]'
-      )
-      .click();
-
+  await test.step('Databases category is expanded', async () => {
+    // Databases auto-expands on load, so wait for that rather than clicking its
+    // switcher: clicking would toggle the already-open node closed, and the
+    // loading-state spinner (class ant-tree-switcher-loading-icon, a substring
+    // match for "ant-tree-switcher") makes a switcher click ambiguous.
     await expect(treeNode(page, 'Databases')).toHaveClass(
       /ant-tree-treenode-switcher-open/
     );
