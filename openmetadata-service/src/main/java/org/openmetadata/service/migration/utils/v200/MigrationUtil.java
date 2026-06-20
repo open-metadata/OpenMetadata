@@ -36,6 +36,7 @@ import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.tasks.RecognizerFeedbackTaskPayloadKeys;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -838,18 +839,26 @@ public class MigrationUtil {
       }
       case "RecognizerFeedbackApproval" -> {
         ObjectNode payload = JsonUtils.getObjectNode();
-        if (taskDetails.has("feedback") && !taskDetails.get("feedback").isNull()) {
-          payload.set("feedback", taskDetails.get("feedback"));
+        if (taskDetails.has(RecognizerFeedbackTaskPayloadKeys.FEEDBACK)
+            && !taskDetails.get(RecognizerFeedbackTaskPayloadKeys.FEEDBACK).isNull()) {
+          payload.set(
+              RecognizerFeedbackTaskPayloadKeys.FEEDBACK,
+              taskDetails.get(RecognizerFeedbackTaskPayloadKeys.FEEDBACK));
         }
-        if (taskDetails.has("recognizer") && !taskDetails.get("recognizer").isNull()) {
-          payload.set("recognizer", taskDetails.get("recognizer"));
+        if (taskDetails.has(RecognizerFeedbackTaskPayloadKeys.RECOGNIZER)
+            && !taskDetails.get(RecognizerFeedbackTaskPayloadKeys.RECOGNIZER).isNull()) {
+          payload.set(
+              RecognizerFeedbackTaskPayloadKeys.RECOGNIZER,
+              taskDetails.get(RecognizerFeedbackTaskPayloadKeys.RECOGNIZER));
         }
         yield payload;
       }
       case "Generic" -> {
         ObjectNode payload = JsonUtils.getObjectNode();
         if (taskDetails.has("suggestion") && !taskDetails.get("suggestion").isNull()) {
-          payload.put("data", taskDetails.get("suggestion").asText());
+          payload.put(
+              RecognizerFeedbackTaskPayloadKeys.LEGACY_DATA,
+              taskDetails.get("suggestion").asText());
         }
         yield payload;
       }

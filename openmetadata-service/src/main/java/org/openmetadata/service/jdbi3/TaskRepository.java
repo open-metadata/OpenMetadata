@@ -24,7 +24,6 @@ import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.JsonPatch;
@@ -78,6 +77,7 @@ import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext
 import org.openmetadata.service.tasks.TaskFieldValidator;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver;
 import org.openmetadata.service.tasks.TaskIdGenerator;
+import org.openmetadata.service.tasks.RecognizerFeedbackTaskPayloadKeys;
 import org.openmetadata.service.tasks.TaskWorkflowHandler;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.util.EntityUtil;
@@ -303,28 +303,31 @@ public class TaskRepository extends EntityRepository<Task> {
       return;
     }
 
-    ObjectNode normalizedPayload = ((ObjectNode) payloadNode).deepCopy();
+    ObjectNode normalizedPayload = (ObjectNode) payloadNode;
     boolean updated = false;
 
-    if (!normalizedPayload.has("feedback")
-        && normalizedPayload.has("data")
-        && !normalizedPayload.get("data").isNull()) {
-      normalizedPayload.set("feedback", normalizedPayload.get("data"));
+    if (!normalizedPayload.has(RecognizerFeedbackTaskPayloadKeys.FEEDBACK)
+        && normalizedPayload.has(RecognizerFeedbackTaskPayloadKeys.LEGACY_DATA)
+        && !normalizedPayload.get(RecognizerFeedbackTaskPayloadKeys.LEGACY_DATA).isNull()) {
+      normalizedPayload.set(
+          RecognizerFeedbackTaskPayloadKeys.FEEDBACK,
+          normalizedPayload.get(RecognizerFeedbackTaskPayloadKeys.LEGACY_DATA));
       updated = true;
     }
 
-    JsonNode metadataNode = normalizedPayload.get("metadata");
-    if (!normalizedPayload.has("recognizer")
+    JsonNode metadataNode = normalizedPayload.get(RecognizerFeedbackTaskPayloadKeys.METADATA);
+    if (!normalizedPayload.has(RecognizerFeedbackTaskPayloadKeys.RECOGNIZER)
         && metadataNode != null
-        && metadataNode.has("recognizer")
-        && !metadataNode.get("recognizer").isNull()) {
-      normalizedPayload.set("recognizer", metadataNode.get("recognizer"));
+        && metadataNode.has(RecognizerFeedbackTaskPayloadKeys.RECOGNIZER)
+        && !metadataNode.get(RecognizerFeedbackTaskPayloadKeys.RECOGNIZER).isNull()) {
+      normalizedPayload.set(
+          RecognizerFeedbackTaskPayloadKeys.RECOGNIZER,
+          metadataNode.get(RecognizerFeedbackTaskPayloadKeys.RECOGNIZER));
       updated = true;
     }
 
     if (updated) {
-      task.setPayload(
-          JsonUtils.convertValue(normalizedPayload, new TypeReference<Map<String, Object>>() {}));
+      task.setPayload(JsonUtils.convertValue(normalizedPayload, Map.class));
     }
   }
 
