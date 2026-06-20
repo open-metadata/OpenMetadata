@@ -146,9 +146,9 @@ public class AuditLogConsumer implements Job {
     long currentOffset = stored.currentOffset();
     int contiguousCount = countContiguousPrefix(currentOffset, records);
     int advanced = writeContiguousRecords(auditLogRepository, records, contiguousCount);
-    OffsetUpdate update =
-        planAdvance(stored, records, contiguousCount, advanced, System.currentTimeMillis());
-    logGapSkipIfNeeded(currentOffset, advanced, update);
+    long now = System.currentTimeMillis();
+    OffsetUpdate update = planAdvance(stored, records, contiguousCount, advanced, now);
+    logGapSkipIfNeeded(currentOffset, advanced, update, now - stored.pendingGapSince());
     persistIfChanged(collectionDAO, stored, update);
     return advanced;
   }
@@ -246,14 +246,17 @@ public class AuditLogConsumer implements Job {
     return result;
   }
 
-  private void logGapSkipIfNeeded(long currentOffset, int advanced, OffsetUpdate update) {
+  private void logGapSkipIfNeeded(
+      long currentOffset, int advanced, OffsetUpdate update, long gapOpenMs) {
     boolean skippedHole = advanced == 0 && update.offset() > currentOffset;
     if (skippedHole) {
       LOG.warn(
-          "Audit log skipping unfilled change_event gap [{} .. {}] after {}ms; treating it as a "
-              + "permanent hole (e.g. a rolled-back insert that consumed an auto-increment value)",
+          "Audit log skipping unfilled change_event gap [{} .. {}] open for {}ms (threshold {}ms); "
+              + "treating it as a permanent hole (e.g. a rolled-back insert that consumed an "
+              + "auto-increment value)",
           currentOffset + 1,
           update.offset(),
+          gapOpenMs,
           GAP_RESOLVE_TIMEOUT_MS);
     }
   }
