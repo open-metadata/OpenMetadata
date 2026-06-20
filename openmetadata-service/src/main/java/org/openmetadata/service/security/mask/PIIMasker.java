@@ -302,7 +302,7 @@ public class PIIMasker {
   }
 
   private static boolean hasPiiSensitiveTag(Query query) {
-    return query.getTags() != null && query.getTags().stream().map(TagLabel::getTagFQN).anyMatch(SENSITIVE_PII_TAG::equals);
+    return listOrEmpty(query.getTags()).stream().map(TagLabel::getTagFQN).anyMatch(SENSITIVE_PII_TAG::equals);
   }
 
   private static boolean hasPiiSensitiveTag(Column column) {
