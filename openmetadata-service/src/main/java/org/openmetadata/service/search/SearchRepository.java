@@ -1556,6 +1556,31 @@ public class SearchRepository {
   }
 
   /**
+   * Re-read each referenced entity with the same bounded field set {@link
+   * #updateEntity(EntityReference)} uses, then push one bulk index update. Use this in place of a
+   * per-entity {@code updateEntity} loop when a cascade (e.g. a glossary rename) must re-index many
+   * siblings: it keeps the rebuilt-from-DB correctness but collapses N individual ES round-trips
+   * into a single bulk request. Callers inside a transaction should wrap the call in {@link
+   * #deferIfFlushScopeActive} so the re-reads see committed rows.
+   */
+  public void updateEntitiesByReference(List<EntityReference> references) {
+    if (nullOrEmpty(references)) {
+      return;
+    }
+    List<EntityInterface> entities = new ArrayList<>(references.size());
+    for (EntityReference reference : references) {
+      EntityRepository<?> entityRepository = Entity.getEntityRepository(reference.getType());
+      String fields = String.join(",", searchIndexFactory.getReindexFieldsFor(reference.getType()));
+      EntityInterface entity =
+          entityRepository.get(
+              null, reference.getId(), entityRepository.getOnlySupportedFields(fields));
+      entity.setChangeDescription(null);
+      entities.add(entity);
+    }
+    updateEntitiesIndex(entities);
+  }
+
+  /**
    * Bulk update multiple entities in the search index. This is much more efficient than calling
    * updateEntity() for each entity individually.
    *

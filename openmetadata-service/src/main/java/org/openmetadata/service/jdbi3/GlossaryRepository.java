@@ -569,16 +569,23 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     String oldFqn = original.getFullyQualifiedName();
     String newFqn = updated.getFullyQualifiedName();
 
-    // Re-index the glossary and every nested child term in-line from the DB so each doc's own
-    // fullyQualifiedName and the embedded glossary denorm (glossary.name /
-    // glossary.fullyQualifiedName) reflect the new name before the rename request returns. These
-    // search writes are drained synchronously on the request thread post-commit, giving
-    // read-your-write — unlike the previous fire-and-forget reindexAcrossIndices, whose async task
-    // raced the commit, read pre-commit rows, and left child terms stuck at the old glossary name.
+    // Re-index the glossary and all nested child terms from the renamed DB rows so each doc's own
+    // FQN and the glossary/parent denorm reflect the new name. Drained on the request thread
+    // post-commit = read-your-write, unlike the previous fire-and-forget reindexAcrossIndices that
+    // raced the commit and left child terms stale. Rebuilding from the authoritative rows is
+    // boundary-safe — getAllTerms matches on fixed-width fqnHash segments, where an ES
+    // prefix-rewrite over the raw FQN would also hit sibling glossaries sharing a name prefix
+    // (e.g. "Finance" vs "FinanceReports") and can't refresh glossary.name/fullyQualifiedName at
+    // all. The child terms go out as one bulk request, not N individual ES round-trips.
     searchRepository.updateEntity(updated.getEntityReference());
-    for (GlossaryTerm child : getAllTerms(updated)) {
-      searchRepository.updateEntity(child.getEntityReference());
-    }
+    searchRepository.deferIfFlushScopeActive(
+        () ->
+            searchRepository.updateEntitiesByReference(
+                getAllTerms(updated).stream().map(GlossaryTerm::getEntityReference).toList()),
+        "updateEntitiesByReference",
+        updated.getId().toString(),
+        newFqn,
+        GLOSSARY_TERM);
 
     // Rewrite tags.tagFQN on every asset tagged with this glossary's terms in one synchronous
     // prefix update-by-query (refresh=true) — the same in-line mechanism GlossaryTerm rename uses.
