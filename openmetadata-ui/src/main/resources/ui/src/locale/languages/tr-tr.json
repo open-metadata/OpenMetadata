@@ -3733,7 +3733,7 @@
     "sinks": "Havuzlar",
     "size-evolution-description": "Kuruluştaki varlıkların boyut evrimi.",
     "smart-sampling-hint": "Kaynakları veri boyutuna göre optimize eder",
-    "soft-delete-archive-message": "This action will disable access to the {{entity}}. You can restore it later from Archives.",
+    "soft-delete-archive-message": "Bu işlem {{entity}} öğesine erişimi devre dışı bırakacaktır. Daha sonra Arşivler'den geri yükleyebilirsiniz.",
     "soft-delete-message-for-entity": "Geçici silme işlemi, {{entity}} öğesini devre dışı bırakacaktır. Bu, {{entity}} üzerindeki tüm keşif, okuma veya yazma işlemlerini devre dışı bırakacaktır.",
     "soft-delete-message-for-n-entities": "Geçici silme, bu {{count}} {{entity}} öğesini devre dışı bırakacak. Bu, bunlar üzerindeki tüm keşif, okuma veya yazma işlemlerini devre dışı bırakacaktır.",
     "something-went-wrong": "Bir şeyler ters gitti",

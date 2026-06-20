@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { Card, Tabs } from '@openmetadata/ui-core-components';
+import { Box, Card, Tabs } from '@openmetadata/ui-core-components';
 import { File06 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
@@ -57,6 +58,32 @@ const ContextCenterArchivePage: FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [permissions, setPermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
+  );
+
+  const filterTabItems = useMemo(
+    () => [
+      { id: 'all', label: t('label.all') },
+      { id: 'mine', label: t('label.created-by-me') },
+      {
+        id: 'article',
+        label: (
+          <Box align="center" className="tw:gap-1.5">
+            <File06 size={14} />
+            {t('label.article-plural')}
+          </Box>
+        ),
+      },
+      {
+        id: 'document',
+        label: (
+          <Box align="center" className="tw:gap-1.5">
+            <FolderIcon height={14} width={14} />
+            {t('label.document-plural')}
+          </Box>
+        ),
+      },
+    ],
+    [t]
   );
 
   const fetchPermission = useCallback(async () => {
@@ -206,36 +233,21 @@ const ContextCenterArchivePage: FC = () => {
           onSelectionChange={(key) => setActiveFilter(key as FilterKey)}>
           <Tabs.List
             className="tw:gap-2"
-            items={[
-              { id: 'all', label: t('label.all') },
-              { id: 'mine', label: t('label.created-by-me') },
-              {
-                id: 'article',
-                label: (
-                  <div className="tw:flex tw:items-center tw:gap-1.5">
-                    <File06 size={14} />
-                    {t('label.article-plural')}
-                  </div>
-                ),
-              },
-              {
-                id: 'document',
-                label: (
-                  <div className="tw:flex tw:items-center tw:gap-1.5">
-                    <FolderIcon height={14} width={14} />
-                    {t('label.document-plural')}
-                  </div>
-                ),
-              },
-            ]}
+            items={filterTabItems}
             type="button-brand">
             {(tab) => (
               <Tabs.Item
                 {...tab}
                 className={({ isSelected }) =>
-                  isSelected
-                    ? 'tw:rounded-md tw:border tw:border-brand tw:bg-brand-primary_alt tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold tw:text-brand-secondary tw:cursor-pointer'
-                    : 'tw:rounded-md tw:border tw:border-primary tw:bg-primary tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold tw:text-quaternary tw:cursor-pointer'
+                  classNames(
+                    'tw:rounded-md tw:border tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:cursor-pointer',
+                    {
+                      'tw:border-utility-brand-100 tw:bg-brand-primary_alt tw:text-brand-secondary':
+                        isSelected,
+                      'tw:border-primary tw:bg-primary tw:text-secondary':
+                        !isSelected,
+                    }
+                  )
                 }
               />
             )}

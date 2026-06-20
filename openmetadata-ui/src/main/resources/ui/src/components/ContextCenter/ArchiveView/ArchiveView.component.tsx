@@ -12,8 +12,10 @@
  */
 
 import {
+  Box,
   ButtonUtility,
   Card,
+  Dot,
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -66,16 +68,20 @@ const ArchiveRow: FC<ArchiveRowProps> = ({
   const Icon = item.type === 'article' ? File06 : FolderIcon;
 
   return (
-    <div
-      className="tw:flex tw:items-center tw:gap-4 tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:last:border-0"
-      data-testid={`archive-row-${item.id}`}>
-      <div
+    <Box
+      align="center"
+      className="tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:last:border-0"
+      data-testid={`archive-row-${item.id}`}
+      gap={4}>
+      <Box
+        align="center"
         className={classNames(
-          'tw:flex tw:h-8 tw:w-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg',
+          'tw:h-8 tw:w-8 tw:shrink-0 tw:rounded-lg',
           item.type === 'article'
             ? 'tw:bg-utility-brand-50'
             : 'tw:bg-utility-purple-50'
-        )}>
+        )}
+        justify='center'>
         <Icon
           className={classNames(
             'tw:size-4',
@@ -84,26 +90,28 @@ const ArchiveRow: FC<ArchiveRowProps> = ({
               : 'tw:text-utility-purple-500'
           )}
         />
-      </div>
+      </Box>
 
-      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
-        <Typography className="tw:truncate" size="text-sm" weight="medium">
+      <Box className="tw:min-w-0 tw:flex-1" direction="col">
+        <Typography ellipsis size="text-sm" weight="medium">
           {item.name}
         </Typography>
-        <Typography className="tw:text-quaternary" size="text-xs">
+        <Box align="center" gap={2}>
           {item.updatedBy && (
-            <>
+            <Typography className="tw:text-quaternary" size="text-xs">
               {t('label.archived-by', { name: item.updatedBy })}
-              {item.updatedAt && (
-                <>&nbsp;&middot;&nbsp;{getShortRelativeTime(item.updatedAt)}</>
-              )}
+            </Typography>
+          )}
+          {item.updatedAt && (
+            <>
+              <Dot className="tw:text-quaternary" size="micro" />
+              <Typography className="tw:text-quaternary" size="text-xs">
+                {getShortRelativeTime(item.updatedAt)}
+              </Typography>
             </>
           )}
-          {!item.updatedBy &&
-            item.updatedAt &&
-            getShortRelativeTime(item.updatedAt)}
-        </Typography>
-      </div>
+        </Box>
+      </Box>
 
       <div className="tw:flex tw:items-center tw:gap-2 tw:shrink-0">
         {canRestore && (<ButtonUtility
@@ -123,7 +131,7 @@ const ArchiveRow: FC<ArchiveRowProps> = ({
           onClick={() => onDelete(item)}
         />)}
       </div>
-    </div>
+    </Box>
   );
 };
 

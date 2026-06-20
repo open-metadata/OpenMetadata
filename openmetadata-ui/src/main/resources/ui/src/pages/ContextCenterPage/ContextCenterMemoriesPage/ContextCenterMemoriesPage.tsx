@@ -576,12 +576,12 @@ const ContextCenterMemoriesPage: FC = () => {
               id: tab.id,
               label:
                 'icon' in tab ? (
-                  <Box align="center" gap={1}>
+                  <Box align="center" className="tw:gap-1.5 tw:leading-4.5">
                     <tab.icon size={12} strokeWidth={2} />
                     {t(tab.label)}
                   </Box>
                 ) : (
-                  t(tab.label)
+                  <div className="tw:leading-4.5">{t(tab.label)}</div>
                 ),
             }))}
             type="button-brand">
@@ -590,7 +590,7 @@ const ContextCenterMemoriesPage: FC = () => {
                 {...tab}
                 className={({ isSelected }) =>
                   classNames(
-                    'tw:rounded-md tw:border tw:px-3 tw:py-1.5 tw:text-sm tw:font-medium tw:cursor-pointer',
+                    'tw:rounded-md tw:border tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:cursor-pointer',
                     {
                       'tw:border-utility-brand-100 tw:bg-brand-primary_alt tw:text-brand-secondary':
                         isSelected,

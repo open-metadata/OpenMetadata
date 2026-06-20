@@ -3733,7 +3733,7 @@
     "sinks": "ซิงค์",
     "size-evolution-description": "การพัฒนาขนาดของสินทรัพย์ในองค์กร",
     "smart-sampling-hint": "เพิ่มประสิทธิภาพทรัพยากรตามขนาดของข้อมูล",
-    "soft-delete-archive-message": "This action will disable access to the {{entity}}. You can restore it later from Archives.",
+    "soft-delete-archive-message": "การดำเนินการนี้จะปิดการเข้าถึง {{entity}} คุณสามารถกู้คืนได้ภายหลังจากที่เก็บถาวร",
     "soft-delete-message-for-entity": "การลบแบบนุ่มนวลจะทำให้ {{entity}} ถูกปิดการใช้งาน ซึ่งจะปิดการค้นหา, อ่าน หรือการเขียนข้อมูลใน {{entity}}",
     "soft-delete-message-for-n-entities": "การลบแบบ Soft Delete จะปิดการใช้งาน {{count}} {{entity}} เหล่านี้ ซึ่งจะปิดการใช้งานการค้นหา การอ่าน หรือการเขียนทั้งหมดบนรายการเหล่านั้น",
     "something-went-wrong": "เกิดข้อผิดพลาดบางอย่าง",

@@ -783,12 +783,15 @@ const KnowledgePagesHierarchy = forwardRef<
         <DeleteModal
           entityTitle={getKnowledgePageName(deletePage, t)}
           isDeleting={isDeleting}
-          message={t('message.soft-delete-archive-message', {
-            entity: (deletePage?.pageType === PageType.QUICK_LINK
-              ? t('label.quick-link')
-              : t('label.article')
-            ).toLowerCase(),
-          })}
+          message={
+            deletePage?.pageType === PageType.QUICK_LINK
+              ? t('message.delete-entity-permanently', {
+                  entityType: t('label.quick-link'),
+                })
+              : t('message.soft-delete-archive-message', {
+                  entity: t('label.article').toLowerCase(),
+                })
+          }
           open={!isUndefined(deletePage)}
           onCancel={() => setDeletePage(undefined)}
           onDelete={async () => {
@@ -797,7 +800,11 @@ const KnowledgePagesHierarchy = forwardRef<
             }
             setIsDeleting(true);
             try {
-              await deleteKnowledgePage(deletePage.id);
+              if (deletePage.pageType === PageType.QUICK_LINK) {
+                await deleteKnowledgePage(deletePage.id, false, true);
+              } else {
+                await deleteKnowledgePage(deletePage.id);
+              }
               await handleAfterDeletePage(deletePage);
               setDeletePage(undefined);
             } catch (error) {

@@ -3733,7 +3733,7 @@
     "sinks": "Récepteurs",
     "size-evolution-description": "Evolution de la taille des actifs dans l'organisation.",
     "smart-sampling-hint": "Optimise les ressources en fonction de la taille des données",
-    "soft-delete-archive-message": "This action will disable access to the {{entity}}. You can restore it later from Archives.",
+    "soft-delete-archive-message": "Cette action désactivera l'accès à {{entity}}. Vous pourrez le restaurer plus tard depuis les Archives.",
     "soft-delete-message-for-entity": "La suppression logique désactivera le {{entity}}. Cela désactivera toute découverte, lecture ou écriture sur le {{entity}}.",
     "soft-delete-message-for-n-entities": "La suppression logique désactivera ces {{count}} {{entity}}. Cela désactivera toutes les opérations de découverte, de lecture ou d'écriture sur eux.",
     "something-went-wrong": "Quelque chose s'est mal passé",

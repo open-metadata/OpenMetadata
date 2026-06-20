@@ -410,7 +410,7 @@ const FileRow: FC<FileRowProps> = ({
       <Box className="tw:min-w-0 tw:flex-1" direction="col">
         <Box align="center" className="tw:min-w-0" gap={2}>
           <Typography
-            className="tw:truncate"
+            ellipsis
             data-testid="document-name"
             size="text-sm"
             weight="medium">
