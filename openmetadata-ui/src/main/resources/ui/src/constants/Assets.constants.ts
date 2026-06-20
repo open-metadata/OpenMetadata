@@ -43,6 +43,7 @@ import { ReactComponent as MetadataService } from '../assets/svg/entity/metadata
 import { ReactComponent as MLModelService } from '../assets/svg/entity/ml-model-service.svg';
 import { ReactComponent as PipelineService } from '../assets/svg/entity/pipeline-service.svg';
 import { ReactComponent as SpreadSheet } from '../assets/svg/entity/spreadsheet.svg';
+import { ReactComponent as StorageService } from '../assets/svg/entity/storage-service.svg';
 import { ReactComponent as StoredProcedure } from '../assets/svg/entity/stored-procedure.svg';
 import { AssetsUnion } from '../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { EntityType } from '../enums/entity.enum';
@@ -288,7 +289,7 @@ export const ENTITY_ICON_MAPPER: Record<
     iconClass: 'tw:text-fuchsia-600',
     bgClass: 'tw:bg-fuchsia-50',
     borderClass: 'tw:border-fuchsia-200',
-    icon: Browser, // TODO: icon
+    icon: StorageService,
   },
   [EntityType.CONTAINER]: {
     iconClass: 'tw:text-warning-600',

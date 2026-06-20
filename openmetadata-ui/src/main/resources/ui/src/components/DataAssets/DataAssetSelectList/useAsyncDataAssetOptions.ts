@@ -15,7 +15,6 @@ import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { Paging } from '../../../generated/type/paging';
 import { searchQuery } from '../../../rest/searchAPI';
@@ -26,13 +25,7 @@ import {
   DataAssetOption,
   FetchOptionsResponse,
 } from '../DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
-
-interface UseAsyncDataAssetOptionsParams {
-  isOpen: boolean;
-  searchIndex: SearchIndex;
-  queryFilter?: Record<string, unknown>;
-  debounceTimeout: number;
-}
+import { UseAsyncDataAssetOptionsParams } from './DataAssetPicker.interface';
 
 export const useAsyncDataAssetOptions = ({
   isOpen,

@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import { ReactNode } from 'react';
+import { SearchIndex } from 'src/enums/search.enum';
+import { DataAssetAsyncSelectListProps } from '../DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 
 export interface DataAssetPickerOption {
   id: string;
@@ -47,4 +49,37 @@ export interface DataAssetPickerShellProps {
   popoverAlign?: 'left' | 'right';
   popoverPlacement?: 'top' | 'bottom';
   placeholder?: string;
+}
+
+export interface DataAssetFilterPopoverProps {
+  options: DataAssetPickerOption[];
+  selectedId: string;
+  onChange: (id: string) => void;
+  allowAllOption?: boolean;
+  allOptionLabel?: string;
+  popoverClassName?: string;
+  popoverAlign?: 'left' | 'right';
+  placeholder?: string;
+  renderTrigger?: (state: DataAssetPickerTriggerState) => ReactNode;
+}
+
+export interface DataAssetMultiSelectPopoverProps
+  extends DataAssetAsyncSelectListProps {
+  renderTrigger?: (state: DataAssetPickerTriggerState) => ReactNode;
+  popoverClassName?: string;
+  popoverAlign?: 'left' | 'right';
+  popoverPlacement?: 'top' | 'bottom';
+}
+
+export interface DataAssetPickerRowProps {
+  option: DataAssetPickerOption;
+  isSelected: boolean;
+  onSelect: (option: DataAssetPickerOption) => void;
+}
+
+export interface UseAsyncDataAssetOptionsParams {
+  isOpen: boolean;
+  searchIndex: SearchIndex;
+  queryFilter?: Record<string, unknown>;
+  debounceTimeout: number;
 }

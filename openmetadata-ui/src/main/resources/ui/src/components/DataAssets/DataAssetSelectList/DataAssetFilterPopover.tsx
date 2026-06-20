@@ -13,10 +13,11 @@
 import { Typography } from '@openmetadata/ui-core-components';
 import { ChevronDown, Database01 } from '@untitledui/icons';
 import classNames from 'classnames';
-import { FC, ReactNode, useCallback, useMemo, useState } from 'react';
+import { FC, useCallback, useMemo, useState } from 'react';
 import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import {
+  DataAssetFilterPopoverProps,
   DataAssetPickerOption,
   DataAssetPickerTriggerState,
 } from './DataAssetPicker.interface';
@@ -30,18 +31,6 @@ const FILTER_BUTTON_BASE_CLS =
 
 const FILTER_BUTTON_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-primary tw:ring-primary`;
 const FILTER_BUTTON_ACTIVE_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-utility-brand-50 tw:ring-utility-brand-200`;
-
-interface DataAssetFilterPopoverProps {
-  options: DataAssetPickerOption[];
-  selectedId: string;
-  onChange: (id: string) => void;
-  allowAllOption?: boolean;
-  allOptionLabel?: string;
-  popoverClassName?: string;
-  popoverAlign?: 'left' | 'right';
-  placeholder?: string;
-  renderTrigger?: (state: DataAssetPickerTriggerState) => ReactNode;
-}
 
 const DataAssetFilterPopover: FC<DataAssetFilterPopoverProps> = ({
   options,

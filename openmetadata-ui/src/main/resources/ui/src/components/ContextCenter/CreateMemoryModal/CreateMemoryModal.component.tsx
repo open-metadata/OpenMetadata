@@ -14,6 +14,7 @@ import {
   Alert,
   Badge,
   BadgeWithButton,
+  Box,
   Button,
   ButtonUtility,
   Card,
@@ -62,7 +63,6 @@ import {
 } from '../../../components/common/MarkdownEditor/markdownComponents';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
-import DataAssetSelectList from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetSelectList';
 import { ROUTES } from '../../../constants/constants';
 import {
   MEMORY_TYPE_OPTIONS,
@@ -92,7 +92,11 @@ import { getErrorText } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showSuccessToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+<<<<<<< HEAD
 import DerivedOntologyCard from '../DerivedOntologyCard/DerivedOntologyCard.component';
+=======
+import DataAssetSelectList from '../../DataAssets/DataAssetSelectList/DataAssetSelectList';
+>>>>>>> bf6404c19e (code refactor)
 import { CreateMemoryModalProps } from './CreateMemoryModal.interface';
 
 const TagSelectForm = withSuspenseFallback(
@@ -116,7 +120,7 @@ const LinkedAssetCard: FC<{
       <div className="tw:shrink-0">
         {getEntityIconWithBg(asset.reference?.type, { className: 'tw:w-8 tw:h-8' }, { size: 18 })}
       </div>
-      <div className="tw:flex tw:flex-1 tw:justify-between tw:items-center tw:min-w-0 tw:gap-2.5">
+      <Box align='center' className="tw:flex-1 tw:min-w-0 tw:gap-2.5" justify='between'>
         <div className="tw:min-w-0 tw:flex-1 tw:pr-2 tw:[&_.prose]:leading-tight">
           <Typography
             ellipsis
@@ -150,7 +154,7 @@ const LinkedAssetCard: FC<{
             />
           )}
         </div>
-      </div>
+      </Box>
     </Card>
   );
 };
