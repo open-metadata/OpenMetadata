@@ -3264,6 +3264,7 @@
     "odps-validation-successful": "ODPS 文档有效。",
     "odps-yaml-invalid": "ODPS YAML 文档未通过验证。",
     "odps-yaml-name-mismatch": "YAML 的名称“{{yamlName}}”与当前数据产品“{{existingName}}”不匹配。请更新 YAML，或使用“{{yamlName}}”的数据产品页面，以避免覆盖其他产品。",
+    "odps-yaml-name-missing": "无法从 YAML 中读取产品名称 (product.details.<language>.name)。请在导入前添加与当前数据产品“{{existingName}}”匹配的名称，以避免覆盖其他产品。",
     "odps-yaml-valid-description": "有效的 ODPS v{{version}} 文档，语言：{{languages}}。",
     "om-description": "统一的元数据存储平台, 更好地探索、协作和处理数据",
     "om-url-configuration-message": "配置{{brandName}} URL设置。",
