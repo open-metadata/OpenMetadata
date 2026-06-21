@@ -495,6 +495,10 @@ const ContainerFieldCardsV1: React.FC<{
     // dataModel is excluded from Explore search payloads because it can be very large, so when it is
     // absent on the search hit we fetch it on demand from the entity API.
     if (!isUndefined(inlineColumns) || !containerFqn) {
+      // No on-demand fetch needed (columns already inline, or no FQN). Clear any loading flag left
+      // set by a now-cancelled in-flight fetch so the loader can't get stuck on.
+      setIsColumnsLoading(false);
+
       return;
     }
     // Drop any previously-fetched columns and show the loader so the prior container's schema isn't
