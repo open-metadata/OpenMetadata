@@ -635,6 +635,7 @@ export interface PipelineServiceClientConfiguration {
      * List of configured glossary term relation types.
      */
     relationTypes?:    GlossaryTermRelationType[];
+    mcpChat?:          MCPChat;
     memoryExtraction?: MemoryExtraction;
     ontologyAgent?:    OntologyAgent;
     prompts?:          Prompts;
@@ -2061,6 +2062,15 @@ export enum StorageClass {
 export enum LogStorageConfigurationType {
     Default = "default",
     S3 = "s3",
+}
+
+/**
+ * MCP Chat assistant. The LLM provider and credentials are configured at the platform level
+ * via llmConfiguration; this only governs chat enablement and behavior.
+ */
+export interface MCPChat {
+    enabled?:      boolean;
+    systemPrompt?: string;
 }
 
 export interface MemoryExtraction {
