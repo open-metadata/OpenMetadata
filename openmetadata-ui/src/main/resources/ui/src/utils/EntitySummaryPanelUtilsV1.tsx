@@ -19,7 +19,7 @@ import {
   Table,
   Typography as AntTypography,
 } from 'antd';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as NestedIcon } from '../assets/svg/nested.svg';
 import { FieldCard } from '../components/common/FieldCard';
@@ -28,7 +28,7 @@ import Loader from '../components/common/Loader/Loader';
 import '../components/Explore/EntitySummaryPanel/entity-summary-panel.less';
 import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
 import { PAGE_SIZE_LARGE } from '../constants/constants';
-import { EntityType } from '../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../enums/entity.enum';
 import { APICollection } from '../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import { Container } from '../generated/entity/data/container';
@@ -48,6 +48,7 @@ import {
   getDataModelColumnsByFQN,
   searchDataModelColumnsByFQN,
 } from '../rest/dataModelsAPI';
+import { getContainerByFQN } from '../rest/storageAPI';
 import {
   getTableColumnsByFQN,
   getTableList,
@@ -482,7 +483,45 @@ const ContainerFieldCardsV1: React.FC<{
   searchText?: string;
 }> = ({ entityInfo, highlights, loading, searchText }) => {
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
-  const columns = entityInfo.dataModel?.columns || [];
+  const [fetchedColumns, setFetchedColumns] = useState<Column[]>();
+  const [isColumnsLoading, setIsColumnsLoading] = useState(false);
+
+  const inlineColumns = entityInfo.dataModel?.columns;
+  const containerFqn = entityInfo.fullyQualifiedName;
+
+  useEffect(() => {
+    // dataModel is excluded from Explore search payloads because it can be very large, so when it is
+    // absent on the search hit we fetch it on demand from the entity API.
+    if (!isUndefined(inlineColumns) || !containerFqn) {
+      return;
+    }
+    // Guard against a stale fetch: if the user switches containers while this request is in flight,
+    // ignore its result so the panel never shows the previous container's columns.
+    let cancelled = false;
+    setIsColumnsLoading(true);
+    getContainerByFQN(containerFqn, { fields: TabSpecificField.DATAMODEL })
+      .then((container) => {
+        if (!cancelled) {
+          setFetchedColumns(container.dataModel?.columns ?? []);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setFetchedColumns([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsColumnsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [containerFqn, inlineColumns]);
+
+  const columns = inlineColumns ?? fetchedColumns ?? [];
 
   const filteredColumns = useMemo(
     () =>
@@ -498,7 +537,7 @@ const ContainerFieldCardsV1: React.FC<{
     );
   }, []);
 
-  if (loading) {
+  if (loading || isColumnsLoading) {
     return (
       <div className="flex-center p-lg">
         <Loader size="default" />
