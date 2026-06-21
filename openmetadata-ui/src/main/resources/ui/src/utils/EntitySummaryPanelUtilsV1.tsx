@@ -19,6 +19,7 @@ import {
   Table,
   Typography as AntTypography,
 } from 'antd';
+import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as NestedIcon } from '../assets/svg/nested.svg';
@@ -61,6 +62,7 @@ import {
 } from './EntitySummaryPanelPureUtilsV1';
 import type { GenericNestedField } from './EntitySummaryPanelUtilsV1.interface';
 import { t } from './i18next/LocalUtil';
+import { showErrorToast } from './ToastUtils';
 
 import { pruneEmptyChildren } from './TablePureUtils';
 const { Text } = AntTypography;
@@ -495,9 +497,11 @@ const ContainerFieldCardsV1: React.FC<{
     if (!isUndefined(inlineColumns) || !containerFqn) {
       return;
     }
-    // Guard against a stale fetch: if the user switches containers while this request is in flight,
-    // ignore its result so the panel never shows the previous container's columns.
+    // Drop any previously-fetched columns and show the loader so the prior container's schema isn't
+    // shown while the new one loads; the cancelled guard also ignores a stale in-flight result if
+    // the user switches containers again before it resolves.
     let cancelled = false;
+    setFetchedColumns(undefined);
     setIsColumnsLoading(true);
     getContainerByFQN(containerFqn, { fields: TabSpecificField.DATAMODEL })
       .then((container) => {
@@ -505,9 +509,10 @@ const ContainerFieldCardsV1: React.FC<{
           setFetchedColumns(container.dataModel?.columns ?? []);
         }
       })
-      .catch(() => {
+      .catch((error) => {
         if (!cancelled) {
           setFetchedColumns([]);
+          showErrorToast(error as AxiosError);
         }
       })
       .finally(() => {

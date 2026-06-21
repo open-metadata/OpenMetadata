@@ -84,11 +84,12 @@ public final class SearchIndexUtils {
   }
 
   /**
-   * Progressively strips lineage fields from a search document JSON to bring it under maxBytes.
+   * Progressively strips oversized fields from a search document JSON to bring it under maxBytes.
    *
-   * <p>Stripping order: lineageSqlQueries first (retains topology), then upstreamLineage.
-   * Returns the (possibly stripped) JSON — caller must re-check size and handle the still-oversized
-   * case.
+   * <p>Stripping order: lineageSqlQueries first (retains topology), then upstreamLineage, then — if
+   * still oversized — the nested column tree (column {@code children} plus the derived {@code
+   * columnNames}/{@code columnNamesFuzzy}) via {@link #stripColumnTreeForSize}. Returns the
+   * (possibly stripped) JSON — caller must re-check size and handle the still-oversized case.
    */
   public static String stripLineageForSize(
       String json, long maxBytes, String docId, String entityType) {
@@ -125,7 +126,7 @@ public final class SearchIndexUtils {
       json = JsonUtils.pojoToJson(doc);
       size = json.getBytes(StandardCharsets.UTF_8).length;
       LOG.warn(
-          "Document {} ({}) still too large, stripped column children and columnNames (size now {} bytes)",
+          "Document {} ({}) still too large, stripped column children, columnNames and columnNamesFuzzy (size now {} bytes)",
           docId,
           entityType,
           size);
@@ -163,7 +164,7 @@ public final class SearchIndexUtils {
       stripColumnTreeForSize(doc);
       size = JsonUtils.pojoToJson(doc).getBytes(StandardCharsets.UTF_8).length;
       LOG.warn(
-          "Live index doc {} ({}) still too large, stripped column children and columnNames ({} bytes)",
+          "Live index doc {} ({}) still too large, stripped column children, columnNames and columnNamesFuzzy ({} bytes)",
           docId,
           entityType,
           size);
