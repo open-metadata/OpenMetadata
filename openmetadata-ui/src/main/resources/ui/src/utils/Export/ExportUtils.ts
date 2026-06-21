@@ -109,6 +109,17 @@ export const exportPNGImageFromElement = async (exportData: ExportData) => {
     const base64Image = await toPng(exportElement as HTMLElement, toPngOptions);
 
     if (renderEdgesOverlay) {
+      const physicalWidth = (imageWidth + padding * 2) * pixelRatio;
+      const physicalHeight = (imageHeight + padding * 2) * pixelRatio;
+      const composite = document.createElement('canvas');
+      composite.width = physicalWidth;
+      composite.height = physicalHeight;
+      const ctx = composite.getContext('2d');
+
+      if (!ctx) {
+        throw new Error('Failed to get 2D context for composite canvas');
+      }
+
       const edgesCanvas = renderEdgesOverlay(
         imageWidth,
         imageHeight,
@@ -116,31 +127,23 @@ export const exportPNGImageFromElement = async (exportData: ExportData) => {
         pixelRatio
       );
 
+      // Layer order: white background → edges (if available) → nodes.
+      // Node cards are opaque so they naturally occlude edges beneath them.
+      // If edgesCanvas is null, we still produce a usable white-background PNG.
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, physicalWidth, physicalHeight);
       if (edgesCanvas) {
-        const physicalWidth = (imageWidth + padding * 2) * pixelRatio;
-        const physicalHeight = (imageHeight + padding * 2) * pixelRatio;
-        const composite = document.createElement('canvas');
-        composite.width = physicalWidth;
-        composite.height = physicalHeight;
-        const ctx = composite.getContext('2d');
-
-        if (ctx) {
-          // Layer order: white background → edges → nodes (node cards are
-          // opaque so they naturally sit on top of edges passing beneath them)
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, physicalWidth, physicalHeight);
-          ctx.drawImage(edgesCanvas, 0, 0);
-          const nodesImg = await loadImage(base64Image);
-          ctx.drawImage(nodesImg, 0, 0);
-          downloadImageFromBase64(
-            composite.toDataURL('image/png', 1.0),
-            name,
-            ExportTypes.PNG
-          );
-
-          return;
-        }
+        ctx.drawImage(edgesCanvas, 0, 0);
       }
+      const nodesImg = await loadImage(base64Image);
+      ctx.drawImage(nodesImg, 0, 0);
+      downloadImageFromBase64(
+        composite.toDataURL('image/png', 1.0),
+        name,
+        ExportTypes.PNG
+      );
+
+      return;
     }
 
     downloadImageFromBase64(base64Image, name, ExportTypes.PNG);

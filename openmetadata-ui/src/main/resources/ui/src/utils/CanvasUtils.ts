@@ -700,7 +700,7 @@ export function drawEdgesForExport(
     }
 
     const isColumnLineage = edge.data?.isColumnLineage ?? false;
-    const strokeColor = 'rgba(177, 177, 183)';
+    const strokeColor = 'rgb(177, 177, 183)';
 
     ctx.strokeStyle = strokeColor;
     ctx.lineWidth = isColumnLineage ? 1 : 2;
