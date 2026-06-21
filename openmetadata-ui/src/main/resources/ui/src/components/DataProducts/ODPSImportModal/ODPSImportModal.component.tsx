@@ -149,19 +149,26 @@ const ODPSImportModal = ({
       // The backend exports the ODPS `name` from displayName ?? name
       // (ODPSConverter.buildProductDetails), so an exported YAML round-trips
       // with the product's displayName, while a hand-written YAML may use the
-      // internal name. Accept either; only block when it matches neither —
-      // i.e. the YAML targets a different product the backend would overwrite.
+      // internal name. Accept either; block otherwise.
       const expectedNames = [
         existingDataProduct.displayName,
         existingDataProduct.name,
       ].filter(Boolean);
-      if (yamlName && !expectedNames.includes(yamlName)) {
+      const existingName =
+        existingDataProduct.displayName ?? existingDataProduct.name;
+      // A YAML with no readable product.details.<lang>.name can't be verified
+      // against this product, yet the backend would still resolve — and
+      // overwrite — whichever product the document maps to. Treat an
+      // unreadable name as a mismatch rather than letting an undefined result
+      // bypass the guard.
+      if (!yamlName) {
+        showErrorToast(t('message.odps-yaml-name-missing', { existingName }));
+
+        return;
+      }
+      if (!expectedNames.includes(yamlName)) {
         showErrorToast(
-          t('message.odps-yaml-name-mismatch', {
-            yamlName,
-            existingName:
-              existingDataProduct.displayName ?? existingDataProduct.name,
-          })
+          t('message.odps-yaml-name-mismatch', { yamlName, existingName })
         );
 
         return;
