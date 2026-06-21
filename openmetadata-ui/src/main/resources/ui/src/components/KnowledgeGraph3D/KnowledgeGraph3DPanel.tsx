@@ -202,7 +202,10 @@ const KnowledgeGraph3DPanel: FC<KnowledgeGraph3DPanelProps> = ({
             count={relations.mapped.length}
             title={t('label.mapped-business-concept-plural')}>
             {relations.mapped.map((row) => (
-              <RelationRowItem key={`${row.label}-${row.other.id}`} row={row} />
+              <RelationRowItem
+                key={`${row.direction}-${row.label}-${row.other.id}`}
+                row={row}
+              />
             ))}
           </Section>
         )}
@@ -224,7 +227,10 @@ const KnowledgeGraph3DPanel: FC<KnowledgeGraph3DPanelProps> = ({
             count={relations.hierarchy.length}
             title={hierarchyTitle}>
             {relations.hierarchy.map((row) => (
-              <RelationRowItem key={`${row.label}-${row.other.id}`} row={row} />
+              <RelationRowItem
+                key={`${row.direction}-${row.label}-${row.other.id}`}
+                row={row}
+              />
             ))}
           </Section>
         )}
@@ -235,7 +241,10 @@ const KnowledgeGraph3DPanel: FC<KnowledgeGraph3DPanelProps> = ({
             count={relations.technical.length}
             title={t('label.knowledge-graph-relation-plural')}>
             {relations.technical.map((row) => (
-              <RelationRowItem key={`${row.label}-${row.other.id}`} row={row} />
+              <RelationRowItem
+                key={`${row.direction}-${row.label}-${row.other.id}`}
+                row={row}
+              />
             ))}
           </Section>
         )}
@@ -246,7 +255,10 @@ const KnowledgeGraph3DPanel: FC<KnowledgeGraph3DPanelProps> = ({
             count={relations.members.length}
             title={membersTitle}>
             {relations.members.map((row) => (
-              <RelationRowItem key={`${row.label}-${row.other.id}`} row={row} />
+              <RelationRowItem
+                key={`${row.direction}-${row.label}-${row.other.id}`}
+                row={row}
+              />
             ))}
           </Section>
         )}

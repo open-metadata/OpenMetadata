@@ -32,6 +32,7 @@ import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.RelationCardinality;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
@@ -75,6 +76,7 @@ public class RdfRepository {
   // repeated traversals (pan/zoom, depth toggling back and forth) into one.
   private static final int GRAPH_CACHE_MAX_SIZE = 500;
   private static final long GRAPH_CACHE_TTL_SECONDS = 60L;
+  private static final long TRUNCATED_GRAPH_CACHE_TTL_SECONDS = 5L;
   static final int DEFAULT_BULK_ENTITY_BATCH_SIZE = 50;
   static final int DEFAULT_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE = 25;
 
@@ -127,6 +129,11 @@ public class RdfRepository {
       Caffeine.newBuilder()
           .maximumSize(GRAPH_CACHE_MAX_SIZE)
           .expireAfterWrite(Duration.ofSeconds(GRAPH_CACHE_TTL_SECONDS))
+          .build();
+  private final Cache<String, String> truncatedGraphCache =
+      Caffeine.newBuilder()
+          .maximumSize(GRAPH_CACHE_MAX_SIZE)
+          .expireAfterWrite(Duration.ofSeconds(TRUNCATED_GRAPH_CACHE_TTL_SECONDS))
           .build();
   private static RdfRepository INSTANCE;
 
@@ -1251,26 +1258,43 @@ public class RdfRepository {
         config.getBaseUri().toString() + "entity/" + validatedEntityType + "/" + entityId;
 
     String cacheKey = buildGraphCacheKey(entityUri, depth, entityTypes, relationshipTypes);
-    String cached = entityGraphCache.getIfPresent(cacheKey);
+    String cached = getCachedGraph(cacheKey);
     String result;
     if (cached != null) {
       result = cached;
     } else {
       result = computeEntityGraph(entityUri, depth, entityTypes, relationshipTypes);
-      // Partial graphs (row-cap or time-budget truncation) are usually caused by
-      // transient store pressure; don't pin a degraded result for the whole TTL.
-      if (!isTruncatedResult(result)) {
-        entityGraphCache.put(cacheKey, result);
-      }
+      cacheGraphResult(cacheKey, result);
     }
     return result;
+  }
+
+  private String getCachedGraph(String cacheKey) {
+    String cached = entityGraphCache.getIfPresent(cacheKey);
+    if (cached == null) {
+      cached = truncatedGraphCache.getIfPresent(cacheKey);
+    }
+    return cached;
+  }
+
+  // Complete graphs get the full TTL. Partial graphs (row-cap or time-budget
+  // truncation, usually transient store pressure) go to a short-TTL cache: long
+  // enough to absorb a burst of repeat interactions (pan/zoom, depth toggling)
+  // against a stressed store, short enough to recover to a complete graph well
+  // before the full TTL.
+  private void cacheGraphResult(String cacheKey, String result) {
+    if (isTruncatedResult(result)) {
+      truncatedGraphCache.put(cacheKey, result);
+    } else {
+      entityGraphCache.put(cacheKey, result);
+    }
   }
 
   private boolean isTruncatedResult(String graphJson) {
     boolean truncated = false;
     try {
       truncated = JsonUtils.readTree(graphJson).path("truncated").asBoolean(false);
-    } catch (Exception e) {
+    } catch (JsonParsingException e) {
       LOG.debug("Could not read truncated flag from graph result: {}", e.getMessage());
     }
     return truncated;
