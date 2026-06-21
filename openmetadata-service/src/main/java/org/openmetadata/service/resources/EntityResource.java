@@ -731,6 +731,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 if (hardDelete) {
                   limits.invalidateCache(entityType);
                 }
+                repository.storeChangeEventForAsyncOperation(
+                    deleteResponse.entity(), deleteResponse.changeType(), recursive, userName);
                 WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
                     jobId, securityContext, deleteResponse.entity());
               } catch (Exception e) {
@@ -871,6 +873,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                   return;
                 }
                 repository.restoreFromSearch(response.getEntity());
+                repository.storeChangeEventForAsyncOperation(
+                    response.getEntity(), response.getChangeType(), false, userName);
                 LOG.info(
                     "[AsyncRestore] Restored {}:{} (jobId={})",
                     Entity.getEntityTypeFromObject(response.getEntity()),

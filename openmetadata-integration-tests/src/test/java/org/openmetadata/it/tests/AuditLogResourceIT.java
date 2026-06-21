@@ -1349,6 +1349,114 @@ public class AuditLogResourceIT {
     verifyAuditEntryHasValidUUIDs(hardDeleteEntry, glossaryId);
   }
 
+  // ==================== Delete Change Event Coverage Tests ====================
+  // Verify that DELETE operations always produce change events (and therefore audit log entries),
+  // including the async delete path, and that a recursive delete records a single event for the
+  // deleted entity rather than one event per cascaded child (so deleting a service with 100k
+  // objects writes one audit entry, not 100k).
+
+  @Test
+  void test_auditLog_asyncHardDelete_writesEntityDeleted() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String glossaryName =
+        "AuditLogAsyncDeleteTest_" + java.util.UUID.randomUUID().toString().substring(0, 8);
+    Map<String, Object> glossary = createGlossary(client, glossaryName);
+    String glossaryId = glossary.get("id").toString();
+    String glossaryFqn = glossary.get("fullyQualifiedName").toString();
+
+    waitForAuditLogEntry(client, glossaryFqn, "glossary", "entityCreated");
+
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.DELETE,
+            "/v1/glossaries/async/" + glossaryId + "?hardDelete=true&recursive=true",
+            null,
+            RequestOptions.builder().build());
+
+    Map<String, Object> auditEntry =
+        waitForAuditLogEntry(client, glossaryFqn, "glossary", "entityDeleted");
+    assertNotNull(
+        auditEntry,
+        "async hard delete should produce an entityDeleted audit log for " + glossaryFqn);
+    verifyAuditEntryHasValidUUIDs(auditEntry, glossaryId);
+    assertEquals("entityDeleted", auditEntry.get("eventType"));
+  }
+
+  @Test
+  void test_auditLog_recursiveSoftDelete_doesNotEmitPerChildEvents() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String glossaryName =
+        "AuditLogRecursiveSoftTest_" + java.util.UUID.randomUUID().toString().substring(0, 8);
+    Map<String, Object> glossary = createGlossary(client, glossaryName);
+    String glossaryId = glossary.get("id").toString();
+    String glossaryFqn = glossary.get("fullyQualifiedName").toString();
+
+    Map<String, Object> term = createGlossaryTerm(client, glossaryFqn, "child_term");
+    String termFqn = term.get("fullyQualifiedName").toString();
+    waitForAuditLogEntry(client, termFqn, "glossaryTerm", "entityCreated");
+
+    try {
+      client
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.DELETE,
+              "/v1/glossaries/" + glossaryId + "?recursive=true",
+              null,
+              RequestOptions.builder().build());
+
+      waitForAuditLogEntry(client, glossaryFqn, "glossary", "entitySoftDeleted");
+
+      // The consumer processes events in offset order and the root event is written after the
+      // cascaded children, so once the root soft-delete is visible any child event would already
+      // be queryable. The child must NOT have produced its own change event.
+      assertFalse(
+          auditLogEntryExists(client, termFqn, "glossaryTerm", "entitySoftDeleted"),
+          "Cascaded child term must not produce its own entitySoftDeleted change event");
+    } finally {
+      deleteGlossary(client, glossaryId);
+    }
+  }
+
+  @Test
+  void test_auditLog_asyncRecursiveHardDelete_recordsOnlyRootEvent() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String glossaryName =
+        "AuditLogAsyncRecursiveTest_" + java.util.UUID.randomUUID().toString().substring(0, 8);
+    Map<String, Object> glossary = createGlossary(client, glossaryName);
+    String glossaryId = glossary.get("id").toString();
+    String glossaryFqn = glossary.get("fullyQualifiedName").toString();
+
+    Map<String, Object> term = createGlossaryTerm(client, glossaryFqn, "child_term");
+    String termFqn = term.get("fullyQualifiedName").toString();
+    waitForAuditLogEntry(client, termFqn, "glossaryTerm", "entityCreated");
+
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.DELETE,
+            "/v1/glossaries/async/" + glossaryId + "?hardDelete=true&recursive=true",
+            null,
+            RequestOptions.builder().build());
+
+    Map<String, Object> auditEntry =
+        waitForAuditLogEntry(client, glossaryFqn, "glossary", "entityDeleted");
+    assertNotNull(auditEntry, "async recursive hard delete should record the root entityDeleted");
+    assertEquals("entityDeleted", auditEntry.get("eventType"));
+    assertFalse(
+        auditLogEntryExists(client, termFqn, "glossaryTerm", "entityDeleted"),
+        "Cascaded child term must not produce its own entityDeleted change event");
+
+    Object summary = auditEntry.get("summary");
+    assertNotNull(summary, "audit entry should include a summary");
+    assertTrue(
+        summary.toString().toLowerCase(java.util.Locale.ROOT).contains("recursive"),
+        "recursive delete summary should indicate it was recursive, got: " + summary);
+  }
+
   // ==================== Helper Methods for Audit Log Verification ====================
 
   private Map<String, Object> waitForAuditLogEntry(
@@ -1454,6 +1562,49 @@ public class AuditLogResourceIT {
         "entityId should not be empty - indicates UUID binding failure with @BindBean");
     assertEquals(
         expectedEntityId, entityIdStr, "entityId in audit log should match the entity's ID");
+  }
+
+  private Map<String, Object> createGlossary(OpenMetadataClient client, String name)
+      throws Exception {
+    String createJson =
+        String.format(
+            "{\"name\": \"%s\", \"displayName\": \"%s\", \"description\": \"Audit log test glossary\"}",
+            name, name);
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST, "/v1/glossaries", createJson, RequestOptions.builder().build());
+    return MAPPER.readValue(response, new TypeReference<>() {});
+  }
+
+  private Map<String, Object> createGlossaryTerm(
+      OpenMetadataClient client, String glossaryFqn, String name) throws Exception {
+    String createJson =
+        String.format(
+            "{\"name\": \"%s\", \"glossary\": \"%s\", \"description\": \"Audit log test child term\"}",
+            name, glossaryFqn);
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST, "/v1/glossaryTerms", createJson, RequestOptions.builder().build());
+    return MAPPER.readValue(response, new TypeReference<>() {});
+  }
+
+  private boolean auditLogEntryExists(
+      OpenMetadataClient client, String entityFqn, String entityType, String eventType)
+      throws Exception {
+    Map<String, String> params = new HashMap<>();
+    params.put("entityFQN", entityFqn);
+    params.put("entityType", entityType);
+    params.put("eventType", eventType);
+    params.put("limit", "1");
+    String response = executeGet(client, AUDIT_LOGS_PATH, params);
+    Map<String, Object> result = MAPPER.readValue(response, new TypeReference<>() {});
+    java.util.List<Map<String, Object>> data =
+        (java.util.List<Map<String, Object>>) result.get("data");
+    return data != null && !data.isEmpty();
   }
 
   private void deleteGlossary(OpenMetadataClient client, String glossaryId) {

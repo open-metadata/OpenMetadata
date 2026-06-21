@@ -556,14 +556,15 @@ public class AuditLogRepository {
     EventType eventType = changeEvent.getEventType();
     String entityType = changeEvent.getEntityType();
     String entityFqn = changeEvent.getEntityFullyQualifiedName();
+    String recursiveSuffix = Boolean.TRUE.equals(changeEvent.getRecursive()) ? " (recursive)" : "";
 
     switch (eventType) {
       case ENTITY_CREATED:
         return String.format("Created %s: %s", entityType, entityFqn);
       case ENTITY_DELETED:
-        return String.format("Deleted %s: %s", entityType, entityFqn);
+        return String.format("Deleted %s: %s%s", entityType, entityFqn, recursiveSuffix);
       case ENTITY_SOFT_DELETED:
-        return String.format("Soft deleted %s: %s", entityType, entityFqn);
+        return String.format("Soft deleted %s: %s%s", entityType, entityFqn, recursiveSuffix);
       case ENTITY_RESTORED:
         return String.format("Restored %s: %s", entityType, entityFqn);
       case ENTITY_UPDATED:
