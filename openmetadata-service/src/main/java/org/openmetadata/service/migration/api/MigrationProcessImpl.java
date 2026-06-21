@@ -131,8 +131,16 @@ public class MigrationProcessImpl implements MigrationProcess {
             try {
               migrationDAO.upsertServerMigrationSQL(version, sql, hash(sql));
             } catch (Exception logException) {
-              // If logging fails (table doesn't exist yet), continue - the SQL was executed
-              // successfully
+              // SERVER_MIGRATION_SQL_LOGS may legitimately not exist yet on the very first
+              // migration. In any other case a failure here (e.g. a table charset that cannot
+              // store the statement text) leaves the migration unrecorded, so the server keeps
+              // reporting it as pending on every boot. Surface it instead of failing silently.
+              LOG.warn(
+                  "Failed to record migration statement for version {} in SERVER_MIGRATION_SQL_LOGS"
+                      + " (checksum {}); it may be re-detected as pending",
+                  version,
+                  hash(sql),
+                  logException);
             }
           }
           queryStatusMap.put(
