@@ -270,25 +270,17 @@ class PIIMaskerTest {
 
     EntityReference owner = entityReference(Entity.USER, "owner");
 
-    Query query =
-            new Query()
-                    .withQuery("select email from customer")
-                    .withOwners(List.of(owner));
+    Query query = new Query().withQuery("select email from customer").withOwners(List.of(owner));
 
     query.setTags(null);
 
-    ResultList<Query> queries =
-            new ResultList<>(new ArrayList<>(List.of(query)));
+    ResultList<Query> queries = new ResultList<>(new ArrayList<>(List.of(query)));
 
-    when(authorizer.authorizePII(securityContext, List.of(owner)))
-            .thenReturn(false);
+    when(authorizer.authorizePII(securityContext, List.of(owner))).thenReturn(false);
 
-    ResultList<Query> result =
-            PIIMasker.getQueries(queries, authorizer, securityContext);
+    ResultList<Query> result = PIIMasker.getQueries(queries, authorizer, securityContext);
 
-    assertEquals(
-            "select email from customer",
-            result.getData().get(0).getQuery());
+    assertEquals("select email from customer", result.getData().get(0).getQuery());
   }
 
   @Test
