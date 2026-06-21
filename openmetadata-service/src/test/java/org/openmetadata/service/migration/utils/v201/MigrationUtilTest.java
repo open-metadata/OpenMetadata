@@ -18,8 +18,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -31,6 +33,7 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -42,7 +45,9 @@ import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskCategory;
+import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -56,6 +61,7 @@ class MigrationUtilTest {
   private Connection connection;
   private DatabaseMetaData metadata;
   private CollectionDAO collectionDAO;
+  private CollectionDAO.TaskDAO taskDAO;
   private TaskRepository taskRepository;
   private TaskFormSchemaRepository taskFormSchemaRepository;
   private WorkflowDefinitionRepository workflowDefinitionRepository;
@@ -67,12 +73,14 @@ class MigrationUtilTest {
     connection = mock(Connection.class);
     metadata = mock(DatabaseMetaData.class);
     collectionDAO = mock(CollectionDAO.class);
+    taskDAO = mock(CollectionDAO.TaskDAO.class);
     taskRepository = mock(TaskRepository.class);
     taskFormSchemaRepository = mock(TaskFormSchemaRepository.class);
     workflowDefinitionRepository = mock(WorkflowDefinitionRepository.class);
     workflowHandler = mock(WorkflowHandler.class);
 
     when(handle.attach(CollectionDAO.class)).thenReturn(collectionDAO);
+    when(collectionDAO.taskDAO()).thenReturn(taskDAO);
     when(handle.getConnection()).thenReturn(connection);
     when(connection.getMetaData()).thenReturn(metadata);
     when(workflowDefinitionRepository.listAll(any(), any())).thenReturn(List.of());
@@ -133,12 +141,19 @@ class MigrationUtilTest {
         new WorkflowDefinition().withName("DescriptionUpdateTaskWorkflow");
     WorkflowDefinition incidentWorkflow =
         new WorkflowDefinition().withName("IncidentResolutionTaskWorkflow");
+    WorkflowDefinition dataQualityWorkflow =
+        new WorkflowDefinition().withName("DataQualityReviewTaskWorkflow");
     WorkflowDefinition recognizerWorkflow =
         new WorkflowDefinition().withName("RecognizerFeedbackReviewWorkflow");
     WorkflowDefinition unrelatedWorkflow = new WorkflowDefinition().withName("SomeOtherWorkflow");
     when(workflowDefinitionRepository.getEntitiesFromSeedData())
         .thenReturn(
-            List.of(descriptionWorkflow, incidentWorkflow, recognizerWorkflow, unrelatedWorkflow));
+            List.of(
+                descriptionWorkflow,
+                incidentWorkflow,
+                dataQualityWorkflow,
+                recognizerWorkflow,
+                unrelatedWorkflow));
 
     MigrationUtil migrationUtil = newMigrationUtil();
 
@@ -146,6 +161,7 @@ class MigrationUtilTest {
 
     verify(workflowDefinitionRepository).createOrUpdate(null, descriptionWorkflow, "admin");
     verify(workflowDefinitionRepository).createOrUpdate(null, incidentWorkflow, "admin");
+    verify(workflowDefinitionRepository).createOrUpdate(null, dataQualityWorkflow, "admin");
     verify(workflowDefinitionRepository).createOrUpdate(null, recognizerWorkflow, "admin");
     verify(workflowDefinitionRepository, never()).createOrUpdate(null, unrelatedWorkflow, "admin");
   }
@@ -174,8 +190,7 @@ class MigrationUtilTest {
 
     when(taskRepository.listAll(any(), any())).thenReturn(List.of(openTask));
     when(workflowDefinitionRepository.findByNameOrNull(
-            eq("DescriptionUpdateTaskWorkflow"),
-            eq(org.openmetadata.schema.type.Include.NON_DELETED)))
+            eq("DescriptionUpdateTaskWorkflow"), eq(Include.NON_DELETED)))
         .thenReturn(workflowDefinition);
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<WorkflowHandler> workflowMock = mockStatic(WorkflowHandler.class)) {
@@ -194,6 +209,94 @@ class MigrationUtilTest {
       verify(workflowHandler)
           .triggerByKey(eq("DescriptionUpdateTaskWorkflowTrigger"), eq(taskId.toString()), any());
     }
+  }
+
+  @Test
+  void runTaskWorkflowCutoverMigrationRewritesRecognizerFeedbackTasksBeforeBackfill()
+      throws Exception {
+    stubTables(Set.of());
+    UUID taskId = UUID.randomUUID();
+    Task openTask = recognizerFeedbackDataQualityTask(taskId, "PII.Email");
+
+    WorkflowDefinition workflowDefinition =
+        new WorkflowDefinition()
+            .withId(UUID.randomUUID())
+            .withName("RecognizerFeedbackReviewWorkflow")
+            .withFullyQualifiedName("RecognizerFeedbackReviewWorkflow");
+
+    when(taskRepository.listAll(any(), any())).thenReturn(List.of(openTask));
+    when(workflowDefinitionRepository.findByNameOrNull(
+            eq("RecognizerFeedbackReviewWorkflow"), eq(Include.NON_DELETED)))
+        .thenReturn(workflowDefinition);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<WorkflowHandler> workflowMock = mockStatic(WorkflowHandler.class)) {
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.TASK_FORM_SCHEMA))
+          .thenReturn(taskFormSchemaRepository);
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION))
+          .thenReturn(workflowDefinitionRepository);
+      workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+
+      MigrationUtil migrationUtil = new MigrationUtil(handle);
+      migrationUtil.runTaskWorkflowCutoverMigration();
+
+      assertEquals(TaskEntityType.RecognizerFeedbackApproval, openTask.getType());
+      verify(taskDAO)
+          .updateTask(eq(taskId.toString()), contains("\"type\":\"RecognizerFeedbackApproval\""));
+      verify(workflowHandler)
+          .triggerByKey(
+              eq("RecognizerFeedbackReviewWorkflowTrigger"), eq(taskId.toString()), any());
+    }
+  }
+
+  @Test
+  void runRecognizerFeedbackTaskTypeMigrationContinuesAfterSingleRewriteFailure() throws Exception {
+    UUID failingTaskId = UUID.randomUUID();
+    UUID rewrittenTaskId = UUID.randomUUID();
+    Task failingTask = recognizerFeedbackDataQualityTask(failingTaskId, "PII.Email");
+    Task rewrittenTask = recognizerFeedbackDataQualityTask(rewrittenTaskId, "PII.Phone");
+
+    when(workflowDefinitionRepository.getEntitiesFromSeedData()).thenReturn(List.of());
+    when(taskRepository.listAll(any(), any())).thenReturn(List.of(failingTask, rewrittenTask));
+    doThrow(new RuntimeException("update failed"))
+        .when(taskDAO)
+        .updateTask(eq(failingTaskId.toString()), anyString());
+
+    MigrationUtil migrationUtil = newMigrationUtil();
+
+    migrationUtil.runRecognizerFeedbackTaskTypeMigration();
+
+    assertEquals(TaskEntityType.DataQualityReview, failingTask.getType());
+    assertEquals(TaskEntityType.RecognizerFeedbackApproval, rewrittenTask.getType());
+    verify(taskDAO)
+        .updateTask(
+            eq(failingTaskId.toString()), contains("\"type\":\"RecognizerFeedbackApproval\""));
+    verify(taskDAO)
+        .updateTask(
+            eq(rewrittenTaskId.toString()), contains("\"type\":\"RecognizerFeedbackApproval\""));
+  }
+
+  @Test
+  void runRecognizerFeedbackTaskTypeMigrationSeedsDataQualityWorkflow() throws Exception {
+    WorkflowDefinition dataQualityWorkflow =
+        new WorkflowDefinition().withName("DataQualityReviewTaskWorkflow");
+    WorkflowDefinition recognizerWorkflow =
+        new WorkflowDefinition().withName("RecognizerFeedbackReviewWorkflow");
+    WorkflowDefinition unrelatedWorkflow = new WorkflowDefinition().withName("SomeOtherWorkflow");
+    when(workflowDefinitionRepository.getEntitiesFromSeedData())
+        .thenReturn(List.of(dataQualityWorkflow, recognizerWorkflow, unrelatedWorkflow));
+    when(taskRepository.listAll(any(), any())).thenReturn(List.of());
+
+    MigrationUtil migrationUtil = newMigrationUtil();
+
+    migrationUtil.runRecognizerFeedbackTaskTypeMigration();
+
+    verify(workflowDefinitionRepository).createOrUpdate(null, dataQualityWorkflow, "admin");
+    verify(workflowDefinitionRepository).createOrUpdate(null, recognizerWorkflow, "admin");
+    verify(workflowDefinitionRepository, never()).createOrUpdate(null, unrelatedWorkflow, "admin");
   }
 
   private MigrationUtil newMigrationUtil() {
@@ -217,6 +320,25 @@ class MigrationUtilTest {
     method.setAccessible(true);
 
     return (String) method.invoke(migrationUtil);
+  }
+
+  private Task recognizerFeedbackDataQualityTask(UUID taskId, String tagFqn) {
+    return new Task()
+        .withId(taskId)
+        .withName("recognizer-feedback")
+        .withType(TaskEntityType.DataQualityReview)
+        .withCategory(TaskCategory.Review)
+        .withStatus(TaskEntityStatus.Open)
+        .withAbout(new EntityReference().withType("tag").withFullyQualifiedName(tagFqn))
+        .withUpdatedBy("alice")
+        .withPayload(
+            Map.of(
+                "feedback",
+                Map.of(
+                    "tagFQN",
+                    tagFqn,
+                    "entityLink",
+                    "<#E::table::sample_data.ecommerce_db.shopify.raw_product_catalog::tags>")));
   }
 
   private void stubTables(Set<String> tables) throws Exception {

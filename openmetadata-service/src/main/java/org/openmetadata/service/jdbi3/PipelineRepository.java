@@ -971,10 +971,17 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     for (CollectionDAO.EntityRelationshipObject record : records) {
       UUID pipelineId = UUID.fromString(record.getToId());
-      EntityReference serviceRef =
-          Entity.getEntityReferenceById(
-              Entity.PIPELINE_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
-      serviceMap.put(pipelineId, serviceRef);
+      try {
+        EntityReference serviceRef =
+            Entity.getEntityReferenceById(
+                Entity.PIPELINE_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
+        serviceMap.put(pipelineId, serviceRef);
+      } catch (EntityNotFoundException e) {
+        LOG.debug(
+            "Skipping pipeline {} whose service was concurrently deleted: {}",
+            pipelineId,
+            e.getMessage());
+      }
     }
 
     return serviceMap;
