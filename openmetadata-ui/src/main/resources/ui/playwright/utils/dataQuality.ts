@@ -450,9 +450,14 @@ export function captureReports(page: Page): CapturedReport[] {
       if (!body) {
         return;
       }
-      const parsed = JSON.parse(body) as {
-        requests?: Array<{ q?: string; index?: string }>;
-      };
+      let parsed: { requests?: Array<{ q?: string; index?: string }> };
+      try {
+        parsed = JSON.parse(body) as {
+          requests?: Array<{ q?: string; index?: string }>;
+        };
+      } catch {
+        return;
+      }
       for (const item of parsed.requests ?? []) {
         captured.push({ url, q: item.q ?? '', index: item.index ?? '' });
       }

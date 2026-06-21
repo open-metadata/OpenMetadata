@@ -95,6 +95,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   public static final String SUMMARY_FIELD = "summary";
   private static final String UPDATE_FIELDS = "tests";
   private static final String PATCH_FIELDS = "tests";
+  private static final int MAX_CONCURRENT_REPORT_QUERIES = 10;
 
   private static final String ENTITY_EXECUTION_SUMMARY_FILTER =
       """
@@ -389,7 +390,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   private List<DataQualityReportResult> runReportsConcurrently(
       List<DataQualityReportRequest> requests, SubjectContext subjectContext) {
     Queue<DataQualityReportResult> results = new ConcurrentLinkedQueue<>();
-    try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+    int concurrency = Math.min(requests.size(), MAX_CONCURRENT_REPORT_QUERIES);
+    try (ExecutorService executor = Executors.newFixedThreadPool(concurrency)) {
       for (DataQualityReportRequest item : requests) {
         executor.submit(() -> results.add(runSingleReport(item, subjectContext)));
       }
@@ -411,7 +413,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       result.withReport(report);
     } catch (IOException | RuntimeException e) {
       LOG.error("Failed to compute data quality report for key '{}'", item.getKey(), e);
-      result.withError(e.getMessage());
+      result.withError(e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
     }
     return result;
   }

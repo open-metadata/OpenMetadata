@@ -26,13 +26,14 @@ interface PendingReport {
 let pendingReports: PendingReport[] = [];
 let isFlushScheduled = false;
 
-const flushReports = async (): Promise<void> => {
-  const batch = pendingReports;
+// Mirror of the server-side MAX_DATA_QUALITY_REPORT_BATCH_SIZE. A render tick
+// that produces more report requests than this is split across multiple POSTs
+// so the client never trips the server's batch-size cap (which would 400 and
+// reject the whole batch).
+const MAX_BATCH_SIZE = 50;
 
-  pendingReports = [];
-  isFlushScheduled = false;
-
-  const requests: DataQualityReportRequest[] = batch.map((pending, index) => ({
+const flushChunk = async (chunk: PendingReport[]): Promise<void> => {
+  const requests: DataQualityReportRequest[] = chunk.map((pending, index) => ({
     ...pending.params,
     key: String(index),
   }));
@@ -43,7 +44,7 @@ const flushReports = async (): Promise<void> => {
       results.map((result) => [result.key, result] as const)
     );
 
-    batch.forEach((pending, index) => {
+    chunk.forEach((pending, index) => {
       const result = resultByKey.get(String(index));
 
       if (result?.report) {
@@ -55,7 +56,18 @@ const flushReports = async (): Promise<void> => {
       }
     });
   } catch (error) {
-    batch.forEach((pending) => pending.reject(error));
+    chunk.forEach((pending) => pending.reject(error));
+  }
+};
+
+const flushReports = (): void => {
+  const batch = pendingReports;
+
+  pendingReports = [];
+  isFlushScheduled = false;
+
+  for (let start = 0; start < batch.length; start += MAX_BATCH_SIZE) {
+    void flushChunk(batch.slice(start, start + MAX_BATCH_SIZE));
   }
 };
 

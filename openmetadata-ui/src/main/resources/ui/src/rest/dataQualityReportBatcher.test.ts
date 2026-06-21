@@ -98,4 +98,30 @@ describe('dataQualityReportBatcher', () => {
 
     expect(mockGetDataQualityReportBatch).toHaveBeenCalledTimes(2);
   });
+
+  it('should split a render tick larger than the server cap into multiple POSTs', async () => {
+    mockGetDataQualityReportBatch.mockImplementation((data) =>
+      Promise.resolve({
+        results: data.requests.map((request: { key: string }) => ({
+          key: request.key,
+          report: { data: [], metadata: {} },
+        })),
+      })
+    );
+
+    const pending = Array.from({ length: 51 }, (_, index) =>
+      batchedDataQualityReport({
+        index: 'testCase',
+        aggregationQuery: `agg${index}`,
+      })
+    );
+    await Promise.all(pending);
+
+    expect(mockGetDataQualityReportBatch).toHaveBeenCalledTimes(2);
+    const chunkSizes = mockGetDataQualityReportBatch.mock.calls
+      .map(([data]) => data.requests.length)
+      .sort((a: number, b: number) => b - a);
+
+    expect(chunkSizes).toEqual([50, 1]);
+  });
 });
