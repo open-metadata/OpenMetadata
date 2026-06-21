@@ -15,9 +15,12 @@ package org.openmetadata.service.drive.ontology;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.type.MetricType;
+import org.openmetadata.schema.type.MetricUnitOfMeasurement;
 
 /** Renders a compact user-prompt from a ContextMemory and its grounding candidates. */
 final class OntologyPromptBuilder {
@@ -31,8 +34,31 @@ final class OntologyPromptBuilder {
         + "EXISTING METRICS\n"
         + renderCandidates(context.metrics())
         + "\n"
-        + "AVAILABLE GLOSSARIES\n"
-        + renderCandidates(context.glossaries());
+        + "AVAILABLE GLOSSARIES (reuse one; do not mint near-duplicates)\n"
+        + renderCandidates(context.glossaries())
+        + "\n"
+        + "SAME-DOCUMENT TERMS (reuse these or set termVerdict.relatedTermFqns to their FQNs)\n"
+        + renderCandidates(context.siblingTerms())
+        + "\n"
+        + renderMetricEnums();
+  }
+
+  private static String renderMetricEnums() {
+    return "ALLOWED METRIC ENUMS (use exactly one value or null)\n"
+        + "metricType: "
+        + enumValues(MetricType.values())
+        + "\n"
+        + "unitOfMeasurement: "
+        + enumValues(MetricUnitOfMeasurement.values())
+        + "\n";
+  }
+
+  private static <E extends Enum<E>> String enumValues(E[] values) {
+    final List<String> out = new ArrayList<>();
+    for (final E value : values) {
+      out.add(value.toString());
+    }
+    return String.join(", ", out);
   }
 
   private static String renderMemory(ContextMemory memory) {

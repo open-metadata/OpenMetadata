@@ -48,13 +48,27 @@
         "ontologyAgent": { "$ref": "#/definitions/promptConfig" }
       },
       "additionalProperties": false
+    },
+    "mcpChat": {
+      "javaType": "org.openmetadata.schema.configuration.McpChatSettings",
+      "description": "MCP Chat assistant. The LLM provider and credentials are configured at the platform level via llmConfiguration; this only governs chat enablement and behavior.",
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "default": false },
+        "systemPrompt": {
+          "type": "string",
+          "default": "You are a helpful metadata assistant for OpenMetadata. Use the available tools to search, explore, and manage metadata. Be concise and actionable."
+        }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
     "enabled": { "type": "boolean", "default": true },
     "memoryExtraction": { "$ref": "#/definitions/memoryExtraction" },
     "ontologyAgent": { "$ref": "#/definitions/ontologyAgent" },
-    "prompts": { "$ref": "#/definitions/prompts" }
+    "prompts": { "$ref": "#/definitions/prompts" },
+    "mcpChat": { "$ref": "#/definitions/mcpChat" }
   },
   "additionalProperties": false
 }

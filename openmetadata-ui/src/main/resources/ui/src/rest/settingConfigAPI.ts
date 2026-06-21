@@ -18,6 +18,7 @@ import { AISettings } from '../generated/configuration/aiSettings';
 import { RelationCardinality } from '../generated/configuration/glossaryTermRelationSettings';
 import { LineageSettings } from '../generated/configuration/lineageSettings';
 import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
+import { MCPConfiguration } from '../generated/configuration/mcpConfiguration';
 import { SearchSettings } from '../generated/configuration/searchSettings';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import { Settings, SettingType } from '../generated/settings/settings';
@@ -107,6 +108,26 @@ export const restoreSettingsConfig = async (settingType: SettingType) => {
   );
 
   return response;
+};
+
+export const getMcpConfiguration = async (): Promise<MCPConfiguration> => {
+  const response = await axiosClient.get<MCPConfiguration>(
+    '/system/mcp/config'
+  );
+
+  return response.data;
+};
+
+export const updateMcpConfiguration = async (
+  config: MCPConfiguration
+): Promise<MCPConfiguration> => {
+  const response = await axiosClient.put<MCPConfiguration>(
+    '/system/mcp/config',
+    config,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
+
+  return response.data;
 };
 
 export const getSystemConfig = async () => {

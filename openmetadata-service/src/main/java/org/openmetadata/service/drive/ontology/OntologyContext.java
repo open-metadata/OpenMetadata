@@ -15,8 +15,29 @@ package org.openmetadata.service.drive.ontology;
 
 import java.util.List;
 
-/** Grounding context supplied to the ontology agent: the top-k candidates per axis. */
+/**
+ * Grounding context supplied to the ontology agent.
+ *
+ * <p>{@code terms}, {@code metrics}, and {@code glossaries} are cross-document candidates surfaced
+ * by keyword search (glossaries are the full existing set, so the agent reuses one rather than
+ * minting near-duplicates). {@code siblingTerms} are the terms already derived from OTHER memories
+ * of the SAME source document — read straight from the repository so they are visible even before
+ * the search index catches up; they give the agent concrete FQNs to relate to. {@code
+ * siblingGlossaryFqn} is the glossary those siblings already live in, used to pin a document's whole
+ * concept set into one glossary.
+ */
 public record OntologyContext(
     List<OntologyCandidate> terms,
     List<OntologyCandidate> metrics,
-    List<OntologyCandidate> glossaries) {}
+    List<OntologyCandidate> glossaries,
+    List<OntologyCandidate> siblingTerms,
+    String siblingGlossaryFqn) {
+
+  /** Backward-compatible constructor for call sites that predate sibling grounding. */
+  public OntologyContext(
+      List<OntologyCandidate> terms,
+      List<OntologyCandidate> metrics,
+      List<OntologyCandidate> glossaries) {
+    this(terms, metrics, glossaries, List.of(), null);
+  }
+}

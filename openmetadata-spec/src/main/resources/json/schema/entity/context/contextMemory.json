@@ -161,11 +161,31 @@
       },
       "additionalProperties": false
     },
+    "ontologyProcessingStatus": {
+      "javaType": "org.openmetadata.schema.entity.context.OntologyProcessingStatus",
+      "description": "Lifecycle status of the asynchronous Ontology Agent derivation for a memory.",
+      "type": "string",
+      "enum": ["Queued", "Processing", "Processed", "Failed"],
+      "javaEnums": [
+        { "name": "Queued" },
+        { "name": "Processing" },
+        { "name": "Processed" },
+        { "name": "Failed" }
+      ]
+    },
     "ontologyStats": {
       "type": "object",
       "description": "Telemetry + hash-gate for the Ontology Agent derivation of this memory.",
       "javaType": "org.openmetadata.schema.entity.context.OntologyStats",
       "properties": {
+        "status": {
+          "description": "Status of the most recent Ontology Agent derivation run on this memory.",
+          "$ref": "#/definitions/ontologyProcessingStatus"
+        },
+        "error": {
+          "description": "Error message from the most recent failed Ontology Agent derivation run, if any.",
+          "type": "string"
+        },
         "sourceHash": { "type": "string", "description": "Hash of the ontology-relevant content last processed." },
         "derivedTermCount": { "type": "integer", "default": 0 },
         "derivedMetricCount": { "type": "integer", "default": 0 },

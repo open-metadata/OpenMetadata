@@ -27,7 +27,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.configuration.AISettings;
 import org.openmetadata.schema.configuration.OntologyAgentSettings;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.OntologyProcessingStatus;
 import org.openmetadata.schema.entity.context.OntologyStats;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
@@ -52,7 +54,16 @@ import org.openmetadata.service.util.AISettingsUtil;
 public class OntologyProcessingEngine {
   static final String SYSPROP_QUIET_MILLIS = "ontology.context.quiet.period.millis";
   static final String SYSPROP_MAX_PENDING = "ontology.context.max.pending.memories";
-  static final long DEFAULT_QUIET_PERIOD_MILLIS = TimeUnit.MINUTES.toMillis(5);
+
+  /** Fetched so grounding can find the memory's same-document siblings for reuse + relations. */
+  private static final String FIELD_SOURCE_ENTITY = "sourceEntity";
+
+  // Short, not the 5-minute article-extraction debounce: a memory is a one-shot save (created by
+  // extraction, or a single manual create/edit), not autosaved keystroke-by-keystroke like an
+  // article body. So derivation runs promptly after the memory settles. The few seconds still keep
+  // the run off the request thread (post-commit), coalesce the create -> status-stamp re-arm, and
+  // let the hash gate make the re-triggered run a no-op. Override via SYSPROP_QUIET_MILLIS.
+  static final long DEFAULT_QUIET_PERIOD_MILLIS = TimeUnit.SECONDS.toMillis(2);
   static final int DEFAULT_MAX_PENDING_MEMORIES = 10_000;
 
   private final ContextMemoryRepository memoryRepo;
@@ -198,7 +209,8 @@ public class OntologyProcessingEngine {
   }
 
   private void runIfHashChanged(final UUID memoryId) {
-    final ContextMemory memory = memoryRepo.get(null, memoryId, memoryRepo.getFields(""));
+    final ContextMemory memory =
+        memoryRepo.get(null, memoryId, memoryRepo.getFields(FIELD_SOURCE_ENTITY));
     final String hash = hashOf(memory);
     final boolean unchanged = isHashUnchanged(memory, hash);
     if (!unchanged) {
@@ -213,30 +225,39 @@ public class OntologyProcessingEngine {
 
   private void derive(final ContextMemory memory, final String hash) {
     final AISettings settings = AISettingsUtil.get();
-    final OntologyContext ctx = grounding.fetchCandidates(memory);
-    final OntologyDerivation verdict = extractor.derive(memory, ctx);
-    final OntologyReconciler.ReconcileResult result = reconcileSafely(memory, verdict, settings);
-    memoryRepo.stampOntologyStats(memory, buildStats(hash, result));
-  }
-
-  private OntologyReconciler.ReconcileResult reconcileSafely(
-      final ContextMemory memory, final OntologyDerivation verdict, final AISettings settings) {
-    OntologyReconciler.ReconcileResult result = null;
+    stampStatus(memory, OntologyProcessingStatus.Processing, null);
+    OntologyStats stats;
     try {
-      result =
+      final OntologyContext ctx = grounding.fetchCandidates(memory);
+      final OntologyDerivation verdict = extractor.derive(memory, ctx);
+      final OntologyReconciler.ReconcileResult result =
           reconciler.reconcile(
               memory,
               verdict,
+              ctx,
               AISettingsUtil.deletionPolicy(settings),
               deriveTermsEnabled(settings),
               deriveMetricsEnabled(settings));
+      stats = buildStats(hash, result, OntologyProcessingStatus.Processed, null);
     } catch (RuntimeException ex) {
-      LOG.error(
-          "Ontology reconcile failed for memory {}; stamping the content hash to prevent an infinite re-derive loop (a deterministic reconcile failure would otherwise retry forever)",
-          memory.getId(),
-          ex);
+      // Stamp Failed AND the content hash: a deterministic failure would otherwise retry forever
+      // (the hash gate skips a re-derive once sourceHash == hashOf), and the error is surfaced on
+      // the memory so the UI can show why derivation did not produce ontologies.
+      LOG.error("Ontology derivation failed for memory {}", memory.getId(), ex);
+      stats = buildStats(hash, null, OntologyProcessingStatus.Failed, ex.getMessage());
     }
-    return result;
+    memoryRepo.stampOntologyStats(memory, stats);
+  }
+
+  /** Flips only the lifecycle status (preserving prior counts/hash), e.g. to mark a run Processing. */
+  private void stampStatus(
+      final ContextMemory memory, final OntologyProcessingStatus status, final String error) {
+    final OntologyStats stats =
+        memory.getOntologyStats() == null
+            ? new OntologyStats()
+            : JsonUtils.deepCopy(memory.getOntologyStats(), OntologyStats.class);
+    stats.withStatus(status).withError(error);
+    memoryRepo.stampOntologyStats(memory, stats);
   }
 
   private boolean deriveTermsEnabled(final AISettings settings) {
@@ -249,11 +270,17 @@ public class OntologyProcessingEngine {
     return agent == null || !Boolean.FALSE.equals(agent.getDeriveMetrics());
   }
 
-  private OntologyStats buildStats(final String hash, final OntologyReconciler.ReconcileResult r) {
+  private OntologyStats buildStats(
+      final String hash,
+      final OntologyReconciler.ReconcileResult r,
+      final OntologyProcessingStatus status,
+      final String error) {
     final int terms = r == null ? 0 : r.createdTerms();
     final int metrics = r == null ? 0 : r.createdMetrics();
     final int reused = r == null ? 0 : r.reused();
     return new OntologyStats()
+        .withStatus(status)
+        .withError(error)
         .withSourceHash(hash)
         .withDerivedTermCount(terms)
         .withDerivedMetricCount(metrics)

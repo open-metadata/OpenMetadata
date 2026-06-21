@@ -325,13 +325,12 @@ public class SettingsCache {
         Entity.getSystemRepository().getConfigWithKey(MCP_CONFIGURATION.toString());
     if (storedMcpConfig == null) {
       org.openmetadata.schema.api.configuration.MCPConfiguration mcpConfig =
-          applicationConfig.getMcpConfiguration();
-      if (mcpConfig != null) {
-        Settings setting =
-            new Settings().withConfigType(MCP_CONFIGURATION).withConfigValue(mcpConfig);
-
-        Entity.getSystemRepository().createNewSetting(setting);
-      }
+          applicationConfig.getMcpConfiguration() != null
+              ? applicationConfig.getMcpConfiguration()
+              : new org.openmetadata.schema.api.configuration.MCPConfiguration();
+      Settings setting =
+          new Settings().withConfigType(MCP_CONFIGURATION).withConfigValue(mcpConfig);
+      Entity.getSystemRepository().createNewSetting(setting);
     }
 
     Settings storedScimConfig =

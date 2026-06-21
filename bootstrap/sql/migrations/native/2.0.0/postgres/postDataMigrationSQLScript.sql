@@ -89,3 +89,38 @@ WHERE configtype = 'workflowSettings'
 UPDATE ingestion_pipeline_entity
 SET json = (json::jsonb #- '{pipelineStatuses}')::json
 WHERE json::jsonb #> '{pipelineStatuses}' IS NOT NULL;
+
+-- MCP Server and MCP Chat are no longer internal Applications; their enablement and
+-- configuration now live in platform settings (mcpConfiguration and aiSettings.mcpChat).
+-- Carry the prior install state + config across BEFORE retiring the app rows.
+
+-- 1. MCP Chat: if the chat app was installed, enable chat and preserve its system prompt.
+UPDATE openmetadata_settings
+SET json =
+    jsonb_set(
+        json,
+        '{mcpChat}',
+        jsonb_build_object(
+            'enabled', true,
+            'systemPrompt',
+            COALESCE(
+                (SELECT ia.json -> 'appConfiguration' ->> 'systemPrompt'
+                 FROM installed_apps ia WHERE ia.name = 'McpChatApplication'),
+                'You are a helpful metadata assistant for OpenMetadata. Use the available tools to search, explore, and manage metadata. Be concise and actionable.')))
+WHERE configtype = 'aiSettings'
+  AND EXISTS (SELECT 1 FROM installed_apps ia WHERE ia.name = 'McpChatApplication');
+
+-- 2. MCP Server: if the server app was NOT installed, keep the server disabled
+--    (mcpConfiguration defaults to enabled=true, which would otherwise turn it on).
+UPDATE openmetadata_settings
+SET json = jsonb_set(json, '{enabled}', 'false'::jsonb)
+WHERE configtype = 'mcpConfiguration'
+  AND NOT EXISTS (SELECT 1 FROM installed_apps ia WHERE ia.name = 'McpApplication');
+
+-- 3. Retire the MCP apps. Keep the bot users so the MCP server keeps its principal.
+DELETE FROM entity_relationship er USING installed_apps ia
+  WHERE (er.fromId = ia.id OR er.toId = ia.id) AND ia.name IN ('McpApplication', 'McpChatApplication');
+DELETE FROM entity_relationship er USING apps_marketplace ia
+  WHERE (er.fromId = ia.id OR er.toId = ia.id) AND ia.name IN ('McpApplication', 'McpChatApplication');
+DELETE FROM installed_apps WHERE name IN ('McpApplication', 'McpChatApplication');
+DELETE FROM apps_marketplace WHERE name IN ('McpApplication', 'McpChatApplication');

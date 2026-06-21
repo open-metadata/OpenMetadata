@@ -32,6 +32,7 @@ import org.openmetadata.schema.configuration.AIDeletionPolicy;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.context.OntologyProcessingStatus;
 import org.openmetadata.schema.entity.context.OntologyStats;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -386,6 +387,21 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     }
     validateSharedPrincipals(entity);
     setCreatorAsDefaultOwner(entity, update);
+
+    // A new memory queues an Ontology Agent run (scheduled in postCreate); stamp Queued here so the
+    // pill shows an ontology-pending state immediately, until the agent flips it to Processing then
+    // Processed/Failed. Update re-queueing is handled in the updater on a content change.
+    if (!update && AISettingsUtil.isOntologyAgentEnabled(AISettingsUtil.get())) {
+      markOntologyQueued(entity);
+    }
+  }
+
+  /** Sets the memory's ontology status to Queued (preserving prior telemetry) and clears any error. */
+  private void markOntologyQueued(ContextMemory entity) {
+    OntologyStats stats =
+        entity.getOntologyStats() == null ? new OntologyStats() : entity.getOntologyStats();
+    stats.withStatus(OntologyProcessingStatus.Queued).withError(null);
+    entity.setOntologyStats(stats);
   }
 
   private void validateNotSelfReference(ContextMemory entity, UUID referencedId, String field) {
@@ -679,10 +695,24 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           original.getId());
       updateSourceEntityRelationship();
 
+      maybeRequeueOntology();
       recordOntologyStats();
 
       // usageCount and lastUsedAt are AI-retrieval telemetry, intentionally excluded from
       // version history so routine retrieval does not churn the entity version.
+    }
+
+    /**
+     * Re-queues ontology derivation when an edit changes the memory's ontology-relevant content, so
+     * the pill shows Queued again until the agent (rescheduled in postUpdate) re-derives. Gated to a
+     * real content change so a machine status stamp (Processing/Processed/Failed) does not reset
+     * itself to Queued. Runs before {@link #recordOntologyStats()} so the new status is recorded.
+     */
+    private void maybeRequeueOntology() {
+      if (extractionManagedFieldChanged()
+          && AISettingsUtil.isOntologyAgentEnabled(AISettingsUtil.get())) {
+        markOntologyQueued(updated);
+      }
     }
 
     /**
@@ -730,6 +760,15 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     }
 
     private void updateSourceEntityRelationship() {
+      // Preserve the stored source when an update omits it. sourceEntity is a relationship-derived
+      // field that a partial fetch leaves null (e.g. the ontology hash stamp and re-extraction load
+      // the memory via getFields("")), and a null here would otherwise delete the MENTIONED_IN edge
+      // that links the pill to its source file/page -- orphaning it from memoryCount, the
+      // sourceEntityId listing, and the article's derived ontologies. A genuine re-parent still
+      // works: it supplies a non-null ref, so this guard does not fire.
+      if (updated.getSourceEntity() == null) {
+        updated.setSourceEntity(original.getSourceEntity());
+      }
       // Plural form with single-element lists so the stale edge is removed under its OWN entity
       // type and the new one added under its own. The singular updateFromRelationship took one
       // fromType for both delete and add, which orphaned the old edge when the source changed type

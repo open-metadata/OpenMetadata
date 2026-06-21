@@ -45,6 +45,7 @@ import org.openmetadata.schema.type.MetricType;
 import org.openmetadata.schema.type.MetricUnitOfMeasurement;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
@@ -212,6 +213,103 @@ class OntologyReconcilerTest {
     ArgumentCaptor<GlossaryTerm> termCaptor = ArgumentCaptor.forClass(GlossaryTerm.class);
     verify(termRepo).createInternal(termCaptor.capture());
     assertEquals(minted.getId(), termCaptor.getValue().getGlossary().getId());
+  }
+
+  @Test
+  void createTermWiresRelatedTermsAsRelatedToEdges() {
+    Glossary glossary = new Glossary().withId(UUID.randomUUID()).withName("CustomerValue");
+    when(glossaryRepo.findByNameOrNull("CustomerValue", Include.NON_DELETED)).thenReturn(glossary);
+    echoTermOnCreate();
+    GlossaryTerm related =
+        new GlossaryTerm()
+            .withId(UUID.randomUUID())
+            .withName("BaseCustomerValue")
+            .withFullyQualifiedName("CustomerValue.BaseCustomerValue");
+    when(termRepo.findByNameOrNull("CustomerValue.EngagementWeightedCLV", Include.NON_DELETED))
+        .thenReturn(null);
+    when(termRepo.findByNameOrNull("CustomerValue.BaseCustomerValue", Include.NON_DELETED))
+        .thenReturn(related);
+    OntologyVerdict term =
+        new OntologyVerdict(
+            OntologyAction.CREATE,
+            "CustomerValue",
+            null,
+            null,
+            "EngagementWeightedCLV",
+            "Engagement-Weighted CLV",
+            "CLV adjusted by engagement tier",
+            null,
+            null,
+            null,
+            List.of("CustomerValue.BaseCustomerValue"));
+
+    reconciler().reconcile(memory, new OntologyDerivation(term, skip()), AIDeletionPolicy.CASCADE);
+
+    ArgumentCaptor<TermRelation> relationCaptor = ArgumentCaptor.forClass(TermRelation.class);
+    verify(termRepo).addTermRelation(any(UUID.class), relationCaptor.capture());
+    TermRelation wired = relationCaptor.getValue();
+    assertEquals(related.getId(), wired.getTerm().getId());
+    assertEquals("relatedTo", wired.getRelationType());
+  }
+
+  @Test
+  void createTermPinsToSiblingGlossaryInsteadOfMintingNearDuplicate() {
+    Glossary sibling = new Glossary().withId(UUID.randomUUID()).withName("Customer Analytics");
+    when(glossaryRepo.findByNameOrNull("Customer Analytics", Include.NON_DELETED))
+        .thenReturn(sibling);
+    echoTermOnCreate();
+    OntologyVerdict term =
+        new OntologyVerdict(
+            OntologyAction.CREATE,
+            null,
+            "Customer Metrics",
+            "near-duplicate glossary the agent proposed",
+            "Customer Tenure",
+            "Customer Tenure",
+            "Days since signup",
+            null,
+            null,
+            null);
+    OntologyContext ctx =
+        new OntologyContext(List.of(), List.of(), List.of(), List.of(), "Customer Analytics");
+
+    reconciler()
+        .reconcile(
+            memory,
+            new OntologyDerivation(term, skip()),
+            ctx,
+            AIDeletionPolicy.CASCADE,
+            true,
+            true);
+
+    ArgumentCaptor<GlossaryTerm> captor = ArgumentCaptor.forClass(GlossaryTerm.class);
+    verify(termRepo).createInternal(captor.capture());
+    assertEquals(sibling.getId(), captor.getValue().getGlossary().getId());
+    verify(glossaryRepo, never()).createInternal(any());
+  }
+
+  @Test
+  void hallucinatedRelatedTermFqnIsDroppedNotWired() {
+    Glossary glossary = new Glossary().withId(UUID.randomUUID()).withName("Finance");
+    when(glossaryRepo.findByNameOrNull("Finance", Include.NON_DELETED)).thenReturn(glossary);
+    echoTermOnCreate();
+    OntologyVerdict term =
+        new OntologyVerdict(
+            OntologyAction.CREATE,
+            "Finance",
+            null,
+            null,
+            "ARR",
+            "ARR",
+            "Annual recurring revenue",
+            null,
+            null,
+            null,
+            List.of("Finance.Ghost"));
+
+    reconciler().reconcile(memory, new OntologyDerivation(term, skip()), AIDeletionPolicy.CASCADE);
+
+    verify(termRepo, never()).addTermRelation(any(), any());
   }
 
   @Test

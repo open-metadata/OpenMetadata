@@ -351,12 +351,32 @@ export enum MemoryType {
 export interface OntologyStats {
     derivedMetricCount?: number;
     derivedTermCount?:   number;
-    lastRunAt?:          number;
-    reusedCount?:        number;
+    /**
+     * Error message from the most recent failed Ontology Agent derivation run, if any.
+     */
+    error?:       string;
+    lastRunAt?:   number;
+    reusedCount?: number;
     /**
      * Hash of the ontology-relevant content last processed.
      */
     sourceHash?: string;
+    /**
+     * Status of the most recent Ontology Agent derivation run on this memory.
+     */
+    status?: OntologyProcessingStatus;
+}
+
+/**
+ * Status of the most recent Ontology Agent derivation run on this memory.
+ *
+ * Lifecycle status of the asynchronous Ontology Agent derivation for a memory.
+ */
+export enum OntologyProcessingStatus {
+    Failed = "Failed",
+    Processed = "Processed",
+    Processing = "Processing",
+    Queued = "Queued",
 }
 
 /**

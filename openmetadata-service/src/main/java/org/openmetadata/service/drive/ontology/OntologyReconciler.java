@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.drive.ontology;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.List;
@@ -36,6 +37,7 @@ import org.openmetadata.schema.type.MetricType;
 import org.openmetadata.schema.type.MetricUnitOfMeasurement;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -66,6 +68,12 @@ import org.openmetadata.service.util.OntologyOwnership;
 public class OntologyReconciler {
   private static final String CORE_FIELDS = "";
 
+  /** Default SKOS-style relation used when the agent links a term to its sibling concepts. */
+  private static final String RELATION_TYPE_RELATED_TO = "relatedTo";
+
+  private static final OntologyContext EMPTY_CONTEXT =
+      new OntologyContext(List.of(), List.of(), List.of());
+
   private final GlossaryTermRepository termRepo;
   private final MetricRepository metricRepo;
   private final GlossaryRepository glossaryRepo;
@@ -93,21 +101,23 @@ public class OntologyReconciler {
    */
   public ReconcileResult reconcile(
       final ContextMemory memory, final OntologyDerivation verdict, final AIDeletionPolicy policy) {
-    return reconcile(memory, verdict, policy, true, true);
+    return reconcile(memory, verdict, EMPTY_CONTEXT, policy, true, true);
   }
 
   public ReconcileResult reconcile(
       final ContextMemory memory,
       final OntologyDerivation verdict,
+      final OntologyContext context,
       final AIDeletionPolicy policy,
       final boolean deriveTerms,
       final boolean deriveMetrics) {
+    final OntologyContext ctx = context == null ? EMPTY_CONTEXT : context;
     final ReconcileResult result;
     if (isAllSkip(verdict)) {
       LOG.info("All-SKIP derivation for memory {}; skipping reconcile entirely", memory.getId());
       result = new ReconcileResult(0, 0, 0, 0);
     } else {
-      result = reconcileNonSkip(memory, verdict, policy, deriveTerms, deriveMetrics);
+      result = reconcileNonSkip(memory, verdict, ctx, policy, deriveTerms, deriveMetrics);
     }
     return result;
   }
@@ -115,14 +125,19 @@ public class OntologyReconciler {
   private ReconcileResult reconcileNonSkip(
       final ContextMemory memory,
       final OntologyDerivation verdict,
+      final OntologyContext ctx,
       final AIDeletionPolicy policy,
       final boolean deriveTerms,
       final boolean deriveMetrics) {
     final Counts counts = new Counts();
-    reconcileAxis(
-        memory, verdict.termVerdict(), Entity.GLOSSARY_TERM, termRepo, deriveTerms, policy, counts);
-    reconcileAxis(
-        memory, verdict.metricVerdict(), Entity.METRIC, metricRepo, deriveMetrics, policy, counts);
+    if (deriveTerms) {
+      final String implied = applyTermAxis(memory, verdict.termVerdict(), ctx, counts);
+      retireStaleOwned(memory, Entity.GLOSSARY_TERM, termRepo, implied, policy, counts);
+    }
+    if (deriveMetrics) {
+      final String implied = applyMetricAxis(memory, verdict.metricVerdict(), counts);
+      retireStaleOwned(memory, Entity.METRIC, metricRepo, implied, policy, counts);
+    }
     LOG.info(
         "Reconciled ontology for memory {}: {} terms created, {} metrics created, {} reused, {} retired",
         memory.getId(),
@@ -132,26 +147,6 @@ public class OntologyReconciler {
         counts.retired);
     return new ReconcileResult(
         counts.createdTerms, counts.createdMetrics, counts.reused, counts.retired);
-  }
-
-  private void reconcileAxis(
-      final ContextMemory memory,
-      final OntologyVerdict verdict,
-      final String entityType,
-      final EntityRepository<?> repo,
-      final boolean enabled,
-      final AIDeletionPolicy policy,
-      final Counts counts) {
-    if (!enabled) {
-      return;
-    }
-    final String implied;
-    if (Entity.GLOSSARY_TERM.equals(entityType)) {
-      implied = applyTermAxis(memory, verdict, counts);
-    } else {
-      implied = applyMetricAxis(memory, verdict, counts);
-    }
-    retireStaleOwned(memory, entityType, repo, implied, policy, counts);
   }
 
   private boolean isAllSkip(final OntologyDerivation verdict) {
@@ -164,13 +159,16 @@ public class OntologyReconciler {
   }
 
   private String applyTermAxis(
-      final ContextMemory memory, final OntologyVerdict verdict, final Counts counts) {
+      final ContextMemory memory,
+      final OntologyVerdict verdict,
+      final OntologyContext ctx,
+      final Counts counts) {
     final String action = verdict == null ? OntologyAction.SKIP : verdict.action();
     String implied = null;
     if (OntologyAction.CREATE.equals(action)) {
-      implied = createTerm(memory, verdict, counts);
+      implied = createTerm(memory, verdict, ctx, counts);
     } else if (OntologyAction.REUSE.equals(action)) {
-      reuse(memory, verdict, Entity.GLOSSARY_TERM, termRepo, counts);
+      reuseTerm(memory, verdict, counts);
     }
     return implied;
   }
@@ -188,7 +186,10 @@ public class OntologyReconciler {
   }
 
   private String createTerm(
-      final ContextMemory memory, final OntologyVerdict verdict, final Counts counts) {
+      final ContextMemory memory,
+      final OntologyVerdict verdict,
+      final OntologyContext ctx,
+      final Counts counts) {
     if (!isValidName(verdict.name())) {
       LOG.warn("Skipping CREATE term: invalid LLM name '{}'", verdict.name());
       return null;
@@ -197,16 +198,20 @@ public class OntologyReconciler {
         findOwnedByName(memory, Entity.GLOSSARY_TERM, termRepo, verdict.name());
     final String result;
     if (existingOwned != null) {
+      wireRelatedTerms(existingOwned.getId(), verdict.relatedTermFqns());
       result = verdict.name();
     } else {
-      result = createTermWithFqnPrecheck(memory, verdict, counts);
+      result = createTermWithFqnPrecheck(memory, verdict, ctx, counts);
     }
     return result;
   }
 
   private String createTermWithFqnPrecheck(
-      final ContextMemory memory, final OntologyVerdict verdict, final Counts counts) {
-    final String glossaryFqn = resolveGlossaryFqn(verdict);
+      final ContextMemory memory,
+      final OntologyVerdict verdict,
+      final OntologyContext ctx,
+      final Counts counts) {
+    final String glossaryFqn = resolveGlossaryFqn(verdict, ctx);
     final String termFqn =
         nullOrEmpty(glossaryFqn) ? null : FullyQualifiedName.build(glossaryFqn, verdict.name());
     final EntityInterface existing = findByFqn(termRepo, termFqn);
@@ -214,17 +219,25 @@ public class OntologyReconciler {
     if (existing != null) {
       LOG.info("Term FQN '{}' already exists; reusing instead of creating", termFqn);
       reuseExisting(memory, existing, Entity.GLOSSARY_TERM, termRepo, counts);
+      wireRelatedTerms(existing.getId(), verdict.relatedTermFqns());
       result = verdict.name();
     } else {
-      result = mintTerm(memory, verdict, counts);
+      result = mintTerm(memory, verdict, ctx, counts);
     }
     return result;
   }
 
-  private String resolveGlossaryFqn(final OntologyVerdict verdict) {
+  /**
+   * Picks the glossary FQN to file a CREATE term under: the agent's explicit choice, else the
+   * glossary the source document's sibling terms already live in (so one document maps to one
+   * glossary instead of sprawling), else the agent's proposed new glossary name.
+   */
+  private String resolveGlossaryFqn(final OntologyVerdict verdict, final OntologyContext ctx) {
     final String fqn;
     if (!nullOrEmpty(verdict.targetFqn())) {
       fqn = verdict.targetFqn();
+    } else if (ctx != null && !nullOrEmpty(ctx.siblingGlossaryFqn())) {
+      fqn = ctx.siblingGlossaryFqn();
     } else if (!nullOrEmpty(verdict.newGlossaryName())) {
       fqn = verdict.newGlossaryName();
     } else {
@@ -234,25 +247,61 @@ public class OntologyReconciler {
   }
 
   private String mintTerm(
-      final ContextMemory memory, final OntologyVerdict verdict, final Counts counts) {
-    final EntityReference glossary = resolveOrMintGlossary(verdict);
-    if (glossary == null) {
-      return null;
+      final ContextMemory memory,
+      final OntologyVerdict verdict,
+      final OntologyContext ctx,
+      final Counts counts) {
+    final EntityReference glossary = resolveOrMintGlossary(verdict, ctx);
+    String result = null;
+    if (glossary != null) {
+      final GlossaryTerm term =
+          new GlossaryTerm()
+              .withId(UUID.randomUUID())
+              .withName(verdict.name())
+              .withDisplayName(verdict.displayName())
+              .withDescription(verdict.description())
+              .withGlossary(glossary)
+              .withProvider(ProviderType.AUTOMATION)
+              .withUpdatedBy(OntologyOwnership.ONTOLOGY_BOT_NAME)
+              .withUpdatedAt(System.currentTimeMillis());
+      final GlossaryTerm created = termRepo.createInternal(term);
+      addDerivedFromEdge(created.getId(), memory.getId(), Entity.GLOSSARY_TERM, termRepo);
+      wireRelatedTerms(created.getId(), verdict.relatedTermFqns());
+      counts.createdTerms++;
+      result = verdict.name();
     }
-    final GlossaryTerm term =
-        new GlossaryTerm()
-            .withId(UUID.randomUUID())
-            .withName(verdict.name())
-            .withDisplayName(verdict.displayName())
-            .withDescription(verdict.description())
-            .withGlossary(glossary)
-            .withProvider(ProviderType.AUTOMATION)
-            .withUpdatedBy(OntologyOwnership.ONTOLOGY_BOT_NAME)
-            .withUpdatedAt(System.currentTimeMillis());
-    final GlossaryTerm created = termRepo.createInternal(term);
-    addDerivedFromEdge(created.getId(), memory.getId(), Entity.GLOSSARY_TERM, termRepo);
-    counts.createdTerms++;
-    return verdict.name();
+    return result;
+  }
+
+  /**
+   * Connects a term to the other terms the agent named, as {@code relatedTo} edges, so a document's
+   * concepts form a connected ontology instead of disconnected units. Each FQN is resolved against
+   * existing terms (so a hallucinated name is dropped, not minted) and self-links are skipped.
+   * {@link GlossaryTermRepository#addTermRelation} is idempotent, so re-derivation does not duplicate
+   * edges.
+   */
+  private void wireRelatedTerms(final UUID termId, final List<String> relatedFqns) {
+    for (final String fqn : listOrEmpty(relatedFqns)) {
+      final EntityInterface related = findByFqn(termRepo, fqn);
+      if (related != null && !related.getId().equals(termId)) {
+        termRepo.addTermRelation(
+            termId,
+            new TermRelation()
+                .withTerm(related.getEntityReference())
+                .withRelationType(RELATION_TYPE_RELATED_TO));
+      }
+    }
+  }
+
+  private void reuseTerm(
+      final ContextMemory memory, final OntologyVerdict verdict, final Counts counts) {
+    final EntityInterface target = findByFqn(termRepo, verdict.targetFqn());
+    if (target == null) {
+      LOG.warn("REUSE verdict for term could not resolve fqn '{}'; skipping", verdict.targetFqn());
+    } else {
+      reuseExisting(memory, target, Entity.GLOSSARY_TERM, termRepo, counts);
+      wireRelatedTerms(target.getId(), verdict.relatedTermFqns());
+    }
   }
 
   private String createMetric(
@@ -339,8 +388,12 @@ public class OntologyReconciler {
     counts.reused++;
   }
 
-  private EntityReference resolveOrMintGlossary(final OntologyVerdict verdict) {
+  private EntityReference resolveOrMintGlossary(
+      final OntologyVerdict verdict, final OntologyContext ctx) {
     EntityReference glossary = resolveGlossary(verdict.targetFqn());
+    if (glossary == null && ctx != null) {
+      glossary = resolveGlossary(ctx.siblingGlossaryFqn());
+    }
     if (glossary == null) {
       glossary = resolveOrMintByName(verdict);
     }

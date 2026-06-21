@@ -20,9 +20,13 @@ import { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
-import { EntityReference } from '../../../generated/entity/context/contextMemory';
+import {
+  EntityReference,
+  OntologyStats,
+} from '../../../generated/entity/context/contextMemory';
 import { getContextMemoryById } from '../../../rest/contextMemoryAPI';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import OntologyStatusBadge from '../OntologyStatusBadge/OntologyStatusBadge.component';
 import { DerivedOntologyCardProps } from './DerivedOntologyCard.interface';
 
 const ENTITY_LINK_TYPES = new Set<string>([
@@ -43,7 +47,7 @@ function getEntityPath(ref: EntityReference): string {
 
 interface EntityListProps {
   entities: EntityReference[];
-  labelKey: string;
+  labelKey?: string;
 }
 
 const EntityList: FC<EntityListProps> = ({ entities, labelKey }) => {
@@ -55,12 +59,14 @@ const EntityList: FC<EntityListProps> = ({ entities, labelKey }) => {
 
   return (
     <Box direction="col" gap={1}>
-      <Typography
-        className="tw:text-tertiary tw:uppercase"
-        size="text-xs"
-        weight="semibold">
-        {t(labelKey)}
-      </Typography>
+      {labelKey && (
+        <Typography
+          className="tw:text-tertiary tw:uppercase"
+          size="text-xs"
+          weight="semibold">
+          {t(labelKey)}
+        </Typography>
+      )}
       <Box direction="col">
         {entities.map((entity) => (
           <Link
@@ -83,6 +89,7 @@ const DerivedOntologyCard: FC<DerivedOntologyCardProps> = ({ memoryId }) => {
   const { t } = useTranslation();
   const [derivedEntities, setDerivedEntities] = useState<EntityReference[]>([]);
   const [reusedEntities, setReusedEntities] = useState<EntityReference[]>([]);
+  const [ontologyStats, setOntologyStats] = useState<OntologyStats>();
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchOntology = useCallback(
@@ -91,17 +98,19 @@ const DerivedOntologyCard: FC<DerivedOntologyCardProps> = ({ memoryId }) => {
         setIsLoading(true);
         const memory = await getContextMemoryById(
           memoryId,
-          'derivedEntities,reusedEntities'
+          'derivedEntities,reusedEntities,ontologyStats'
         );
 
         if (!isCancelled?.()) {
           setDerivedEntities(memory.derivedEntities ?? []);
           setReusedEntities(memory.reusedEntities ?? []);
+          setOntologyStats(memory.ontologyStats);
         }
       } catch {
         if (!isCancelled?.()) {
           setDerivedEntities([]);
           setReusedEntities([]);
+          setOntologyStats(undefined);
         }
       } finally {
         if (!isCancelled?.()) {
@@ -125,13 +134,17 @@ const DerivedOntologyCard: FC<DerivedOntologyCardProps> = ({ memoryId }) => {
 
   return (
     <Card className="tw:p-4 tw:shrink-0" data-testid="derived-ontology-card">
-      <div className="tw:mb-3">
+      <div className="tw:mb-3 tw:flex tw:items-center tw:justify-between tw:gap-2">
         <Typography
           className="tw:text-tertiary tw:uppercase"
           size="text-xs"
           weight="semibold">
           {t('label.derived-ontology')}
         </Typography>
+        <OntologyStatusBadge
+          error={ontologyStats?.error}
+          status={ontologyStats?.status}
+        />
       </div>
       {isLoading ? (
         <Box direction="col" gap={2}>
@@ -144,7 +157,7 @@ const DerivedOntologyCard: FC<DerivedOntologyCardProps> = ({ memoryId }) => {
         </Typography>
       ) : (
         <Box direction="col" gap={3}>
-          <EntityList entities={derivedEntities} labelKey="label.derived" />
+          <EntityList entities={derivedEntities} />
           <EntityList entities={reusedEntities} labelKey="label.reused" />
         </Box>
       )}

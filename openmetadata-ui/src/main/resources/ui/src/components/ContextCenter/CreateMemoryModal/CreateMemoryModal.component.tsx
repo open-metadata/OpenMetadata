@@ -983,15 +983,12 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                       )}
                     </Card>
                   </div>
+                  {isViewOnly && memoryToEdit?.id && (
+                    <DerivedOntologyCard memoryId={memoryToEdit.id} />
+                  )}
                 </div>
 
-                {isViewOnly && memoryToEdit?.id && (
-                  <div className="tw:px-6 tw:pb-4">
-                    <DerivedOntologyCard memoryId={memoryToEdit.id} />
-                  </div>
-                )}
-
-                {/* Sticky footer */}
+                {/* Footer */}
                 <div className="tw:flex tw:items-center tw:justify-between tw:gap-3 tw:py-4 tw:border-t tw:border-gray-100 tw:shrink-0 tw:px-6">
                   <div>
                     {(isEditMode || (isViewOnly && canDelete)) && (

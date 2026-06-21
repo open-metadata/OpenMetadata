@@ -232,6 +232,7 @@ public class OntologyAgentIT {
         reconciler.reconcile(
             memory,
             new OntologyDerivation(skipTermVerdict, createMetricVerdict),
+            null,
             AIDeletionPolicy.CASCADE,
             true,
             false);

@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.system;
 
 import org.openmetadata.schema.configuration.AIPrompts;
 import org.openmetadata.schema.configuration.AISettings;
+import org.openmetadata.schema.configuration.McpChatSettings;
 import org.openmetadata.schema.configuration.MemoryExtractionSettings;
 import org.openmetadata.schema.configuration.OntologyAgentSettings;
 import org.openmetadata.schema.configuration.PromptConfig;
@@ -35,7 +36,20 @@ public class AISettingsHandler {
                   mergeExtraction(defaults.getMemoryExtraction(), incoming.getMemoryExtraction()))
               .withOntologyAgent(
                   mergeAgent(defaults.getOntologyAgent(), incoming.getOntologyAgent()))
-              .withPrompts(mergePrompts(defaults.getPrompts(), incoming.getPrompts()));
+              .withPrompts(mergePrompts(defaults.getPrompts(), incoming.getPrompts()))
+              .withMcpChat(mergeMcpChat(defaults.getMcpChat(), incoming.getMcpChat()));
+    }
+    return result;
+  }
+
+  private McpChatSettings mergeMcpChat(McpChatSettings d, McpChatSettings i) {
+    McpChatSettings result = d;
+    if (i != null) {
+      result =
+          new McpChatSettings()
+              .withEnabled(firstNonNull(i.getEnabled(), d == null ? null : d.getEnabled()))
+              .withSystemPrompt(
+                  firstNonNull(i.getSystemPrompt(), d == null ? null : d.getSystemPrompt()));
     }
     return result;
   }

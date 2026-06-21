@@ -121,3 +121,40 @@ UPDATE ingestion_pipeline_entity
 SET json = JSON_REMOVE(json, '$.pipelineStatuses')
 WHERE JSON_CONTAINS_PATH(json, 'one', '$.pipelineStatuses');
 
+-- MCP Server and MCP Chat are no longer internal Applications; their enablement and
+-- configuration now live in platform settings (mcpConfiguration and aiSettings.mcpChat).
+-- Carry the prior install state + config across BEFORE retiring the app rows.
+
+-- 1. MCP Chat: if the chat app was installed, enable chat and preserve its system prompt.
+UPDATE openmetadata_settings
+SET json =
+    JSON_SET(
+        json,
+        '$.mcpChat',
+        JSON_OBJECT(
+            'enabled', true,
+            'systemPrompt',
+            COALESCE(
+                (SELECT ia.json ->> '$.appConfiguration.systemPrompt'
+                 FROM installed_apps ia WHERE ia.name = 'McpChatApplication'),
+                'You are a helpful metadata assistant for OpenMetadata. Use the available tools to search, explore, and manage metadata. Be concise and actionable.')))
+WHERE configType = 'aiSettings'
+  AND EXISTS (SELECT 1 FROM installed_apps ia WHERE ia.name = 'McpChatApplication');
+
+-- 2. MCP Server: if the server app was NOT installed, keep the server disabled
+--    (mcpConfiguration defaults to enabled=true, which would otherwise turn it on).
+UPDATE openmetadata_settings
+SET json = JSON_SET(json, '$.enabled', false)
+WHERE configType = 'mcpConfiguration'
+  AND NOT EXISTS (SELECT 1 FROM installed_apps ia WHERE ia.name = 'McpApplication');
+
+-- 3. Retire the MCP apps. Keep the bot users so the MCP server keeps its principal.
+DELETE er FROM entity_relationship er
+  JOIN installed_apps ia ON er.fromId = ia.id OR er.toId = ia.id
+  WHERE ia.name IN ('McpApplication', 'McpChatApplication');
+DELETE er FROM entity_relationship er
+  JOIN apps_marketplace ia ON er.fromId = ia.id OR er.toId = ia.id
+  WHERE ia.name IN ('McpApplication', 'McpChatApplication');
+DELETE FROM installed_apps WHERE name IN ('McpApplication', 'McpChatApplication');
+DELETE FROM apps_marketplace WHERE name IN ('McpApplication', 'McpChatApplication');
+

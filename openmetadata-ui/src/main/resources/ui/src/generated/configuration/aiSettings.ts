@@ -16,9 +16,19 @@
  */
 export interface AISettings {
     enabled?:          boolean;
+    mcpChat?:          McpChat;
     memoryExtraction?: MemoryExtraction;
     ontologyAgent?:    OntologyAgent;
     prompts?:          Prompts;
+}
+
+/**
+ * MCP Chat assistant. The LLM provider and credentials are configured at the platform
+ * level via llmConfiguration; this only governs chat enablement and behavior.
+ */
+export interface McpChat {
+    enabled?:      boolean;
+    systemPrompt?: string;
 }
 
 export interface MemoryExtraction {

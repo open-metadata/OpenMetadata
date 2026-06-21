@@ -24,13 +24,24 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.search.SearchRequest;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.ContextMemoryRepository;
+import org.openmetadata.service.jdbi3.GlossaryRepository;
+import org.openmetadata.service.jdbi3.GlossaryTermRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
 
 /**
  * Keyword-searches the glossary-term, metric, and glossary indexes to surface the top-k candidates
@@ -43,21 +54,131 @@ import org.openmetadata.service.Entity;
 @Slf4j
 public class OntologyGrounding {
   static final int MAX_CANDIDATES = 20;
+  static final int MAX_GLOSSARIES = 200;
 
-  private static final String GLOSSARY_SEARCH_INDEX = "glossary_search_index";
   private static final String METRIC_SEARCH_INDEX = "metric_search_index";
   private static final String TYPE_TERM = "glossaryTerm";
   private static final String TYPE_METRIC = "metric";
   private static final String TYPE_GLOSSARY = "glossary";
+  private static final String FIELD_GLOSSARY = "glossary";
 
   public OntologyContext fetchCandidates(ContextMemory memory) {
     final String text = groundingText(memory);
     final List<OntologyCandidate> terms = searchTopK(GLOSSARY_TERM_SEARCH_INDEX, TYPE_TERM, text);
     final List<OntologyCandidate> metrics = searchTopK(METRIC_SEARCH_INDEX, TYPE_METRIC, text);
-    final List<OntologyCandidate> glossaries =
-        searchTopK(GLOSSARY_SEARCH_INDEX, TYPE_GLOSSARY, text);
-    return new OntologyContext(terms, metrics, glossaries);
+    final List<OntologyCandidate> glossaries = listAllGlossaries();
+    final SiblingContext siblings = fetchSiblings(memory);
+    return new OntologyContext(
+        terms, metrics, glossaries, siblings.terms(), siblings.glossaryFqn());
   }
+
+  /**
+   * Lists every existing glossary straight from the repository (not the search index, which lags
+   * behind sibling glossaries minted moments earlier) so the agent reuses one instead of minting a
+   * near-duplicate. Bounded by {@link #MAX_GLOSSARIES}; fail-safe to empty on error.
+   */
+  private List<OntologyCandidate> listAllGlossaries() {
+    List<OntologyCandidate> result = List.of();
+    try {
+      final GlossaryRepository repo =
+          (GlossaryRepository) Entity.getEntityRepository(Entity.GLOSSARY);
+      final List<Glossary> all =
+          repo.listAll(repo.getFields(""), new ListFilter(Include.NON_DELETED));
+      result = toGlossaryCandidates(all);
+    } catch (RuntimeException ex) {
+      LOG.warn("OntologyGrounding: listing glossaries failed: {}", ex.getMessage());
+    }
+    return result;
+  }
+
+  private List<OntologyCandidate> toGlossaryCandidates(List<Glossary> all) {
+    final List<Glossary> capped =
+        all.size() > MAX_GLOSSARIES ? all.subList(0, MAX_GLOSSARIES) : all;
+    final List<OntologyCandidate> out = new ArrayList<>();
+    for (final Glossary g : capped) {
+      out.add(
+          new OntologyCandidate(
+              TYPE_GLOSSARY, g.getFullyQualifiedName(), g.getName(), g.getDescription()));
+    }
+    return out;
+  }
+
+  /**
+   * Reads the terms already derived from the memory's same-document siblings, and the glossary they
+   * predominantly live in. These come from the repository (current despite search-index lag, since
+   * derivation runs serially) so the agent can REUSE them and connect new terms to them. Fail-safe
+   * to empty.
+   */
+  private SiblingContext fetchSiblings(ContextMemory memory) {
+    SiblingContext result = new SiblingContext(List.of(), null);
+    final EntityReference source = memory.getSourceEntity();
+    if (source != null) {
+      try {
+        result = collectSiblings(memory, source);
+      } catch (RuntimeException ex) {
+        LOG.warn(
+            "OntologyGrounding: sibling lookup failed for memory {}: {}",
+            memory.getId(),
+            ex.getMessage());
+      }
+    }
+    return result;
+  }
+
+  private SiblingContext collectSiblings(ContextMemory memory, EntityReference source) {
+    final ContextMemoryRepository memoryRepo =
+        (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
+    final GlossaryTermRepository termRepo =
+        (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
+    final List<ContextMemory> siblings =
+        memoryRepo.listExtractedMemories(source.getId(), source.getType());
+    final List<OntologyCandidate> terms = new ArrayList<>();
+    final Map<String, Integer> glossaryFreq = new HashMap<>();
+    for (final ContextMemory sib : siblings) {
+      if (!sib.getId().equals(memory.getId()) && terms.size() < MAX_CANDIDATES) {
+        addSiblingTerms(sib, termRepo, terms, glossaryFreq);
+      }
+    }
+    return new SiblingContext(terms, mostFrequent(glossaryFreq));
+  }
+
+  private void addSiblingTerms(
+      ContextMemory sib,
+      GlossaryTermRepository termRepo,
+      List<OntologyCandidate> terms,
+      Map<String, Integer> glossaryFreq) {
+    final List<EntityReference> derived =
+        termRepo.findFrom(
+            sib.getId(), Entity.CONTEXT_MEMORY, Relationship.DERIVED_FROM, Entity.GLOSSARY_TERM);
+    for (final EntityReference ref : derived) {
+      final GlossaryTerm term = termRepo.get(null, ref.getId(), termRepo.getFields(FIELD_GLOSSARY));
+      terms.add(
+          new OntologyCandidate(
+              TYPE_TERM, term.getFullyQualifiedName(), term.getName(), term.getDescription()));
+      countGlossary(term, glossaryFreq);
+    }
+  }
+
+  private void countGlossary(GlossaryTerm term, Map<String, Integer> freq) {
+    if (term.getGlossary() != null && term.getGlossary().getFullyQualifiedName() != null) {
+      freq.merge(term.getGlossary().getFullyQualifiedName(), 1, Integer::sum);
+    }
+  }
+
+  private String mostFrequent(Map<String, Integer> freq) {
+    String result = null;
+    int best = 0;
+    for (final Map.Entry<String, Integer> entry : freq.entrySet()) {
+      if (entry.getValue() > best) {
+        best = entry.getValue();
+        result = entry.getKey();
+      }
+    }
+    return result;
+  }
+
+  /** The terms derived from a memory's siblings and the glossary they predominantly live in. */
+  private record SiblingContext(List<OntologyCandidate> terms, String glossaryFqn) {}
 
   private List<OntologyCandidate> searchTopK(String index, String type, String text) {
     List<OntologyCandidate> result = List.of();

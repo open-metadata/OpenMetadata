@@ -15,11 +15,16 @@ package org.openmetadata.service.drive.ontology;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.List;
 
 /**
  * Anti-corruption DTO for a single ontology verdict as returned by the LLM. All fields are raw
  * Strings for leniency; callers validate and promote to domain types. See {@link OntologyAction}
  * for the expected {@code action} values.
+ *
+ * <p>{@code relatedTermFqns} lets the agent connect a term to other terms (typically the sibling
+ * concepts surfaced from the same source document) so derivation produces a connected ontology
+ * rather than disconnected units. It applies only to the term axis; it is ignored for metrics.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record OntologyVerdict(
@@ -32,4 +37,32 @@ public record OntologyVerdict(
     @JsonProperty("description") String description,
     @JsonProperty("metricType") String metricType,
     @JsonProperty("unitOfMeasurement") String unitOfMeasurement,
-    @JsonProperty("metricExpressionCode") String metricExpressionCode) {}
+    @JsonProperty("metricExpressionCode") String metricExpressionCode,
+    @JsonProperty("relatedTermFqns") List<String> relatedTermFqns) {
+
+  /** Backward-compatible constructor for call sites that predate {@code relatedTermFqns}. */
+  public OntologyVerdict(
+      String action,
+      String targetFqn,
+      String newGlossaryName,
+      String newGlossaryDescription,
+      String name,
+      String displayName,
+      String description,
+      String metricType,
+      String unitOfMeasurement,
+      String metricExpressionCode) {
+    this(
+        action,
+        targetFqn,
+        newGlossaryName,
+        newGlossaryDescription,
+        name,
+        displayName,
+        description,
+        metricType,
+        unitOfMeasurement,
+        metricExpressionCode,
+        null);
+  }
+}

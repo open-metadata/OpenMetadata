@@ -41,6 +41,7 @@ import org.openmetadata.schema.attachments.AssetType;
 import org.openmetadata.schema.entity.data.Article;
 import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.PageHierarchy;
+import org.openmetadata.schema.entity.data.PageProcessingStatus;
 import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.data.QuickLink;
 import org.openmetadata.schema.entity.feed.Thread;
@@ -401,7 +402,7 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   }
 
   @Override
-  public void prepare(Page knowledgePage, boolean b) {
+  public void prepare(Page knowledgePage, boolean update) {
     // Validate Related Entities
     List<EntityReference> relatedEntities = knowledgePage.getRelatedEntities();
     if (!nullOrEmpty(relatedEntities)) {
@@ -417,6 +418,12 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
       EntityUtil.populateEntityReferences(article.getRelatedArticles());
 
       knowledgePage.setPage(article);
+
+      // A new article with a body queues extraction in postCreate; stamp Queued in this same create
+      // so the status is persisted atomically rather than through a racing out-of-band write.
+      if (!update && !nullOrEmpty(knowledgePage.getDescription()) && isExtractionEnabled()) {
+        knowledgePage.setProcessingStatus(PageProcessingStatus.Queued);
+      }
     }
   }
 
@@ -639,6 +646,8 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
 
       recordExtractionStats(original, updated);
 
+      recordProcessingStatus(original, updated);
+
       // Updated Quick Link
       if (original.getPageType().equals(PageType.QUICK_LINK)) {
         QuickLink originalLink = JsonUtils.convertValue(original.getPage(), QuickLink.class);
@@ -675,6 +684,46 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
           original.getExtractionStats(),
           updated.getExtractionStats(),
           true,
+          EntityUtil.objectMatch,
+          false);
+    }
+
+    /**
+     * processingStatus / processingError are machine-managed like extractionStats. An edit that
+     * changes an article's body (re)queues extraction, so stamp Queued here — in the user's own
+     * transaction — because a later out-of-band write would race the body change and could clobber
+     * it. Any other update preserves the stored values when the request omits them (so a body edit
+     * through PUT never wipes them), and both fields record with updateVersion=false so machine
+     * status transitions never churn the article's version history.
+     */
+    private void recordProcessingStatus(Page original, Page updated) {
+      boolean bodyRequeued =
+          PageType.ARTICLE.equals(updated.getPageType())
+              && !Objects.equals(original.getDescription(), updated.getDescription())
+              && isExtractionEnabled();
+      if (bodyRequeued) {
+        updated.setProcessingStatus(PageProcessingStatus.Queued);
+        updated.setProcessingError(null);
+      } else {
+        if (updated.getProcessingStatus() == null) {
+          updated.setProcessingStatus(original.getProcessingStatus());
+        }
+        if (updated.getProcessingError() == null) {
+          updated.setProcessingError(original.getProcessingError());
+        }
+      }
+      recordChange(
+          "processingStatus",
+          original.getProcessingStatus(),
+          updated.getProcessingStatus(),
+          false,
+          EntityUtil.objectMatch,
+          false);
+      recordChange(
+          "processingError",
+          original.getProcessingError(),
+          updated.getProcessingError(),
+          false,
           EntityUtil.objectMatch,
           false);
     }
@@ -912,10 +961,15 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
    * body settles. A no-op when the LLM is disabled, mirroring the file pipeline.
    */
   private void schedulePillExtraction(UUID pageId) {
-    if (LLMClientHolder.isEnabled()
-        && AISettingsUtil.isPageExtractionEnabled(AISettingsUtil.get())) {
+    if (isExtractionEnabled()) {
       PageContextProcessingEngineHolder.get().schedule(pageId);
     }
+  }
+
+  /** True when the LLM is configured and article (page) memory extraction is toggled on. */
+  private boolean isExtractionEnabled() {
+    return LLMClientHolder.isEnabled()
+        && AISettingsUtil.isPageExtractionEnabled(AISettingsUtil.get());
   }
 
   private void closeApprovalTask(Page entity, String comment) {

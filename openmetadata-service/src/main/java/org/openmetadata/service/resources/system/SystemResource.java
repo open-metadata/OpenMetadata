@@ -53,6 +53,7 @@ import org.openmetadata.schema.configuration.AISettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
+import org.openmetadata.schema.configuration.McpChatSettings;
 import org.openmetadata.schema.configuration.RelationCardinality;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.settings.Settings;
@@ -75,6 +76,7 @@ import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.cache.CacheMetrics;
 import org.openmetadata.service.cache.CacheProvider;
+import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.SystemSettingsException;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -82,6 +84,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.mcpclient.McpChatServiceHolder;
 import org.openmetadata.service.monitoring.LatencyPhase;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
@@ -446,8 +449,18 @@ public class SystemResource {
 
     Response response = systemRepository.createOrUpdate(settingName);
     SettingsCache.invalidateSettings(settingName.getConfigType().value());
+    reinitMcpChatServiceIfNeeded(settingName.getConfigType());
 
     return response;
+  }
+
+  private void reinitMcpChatServiceIfNeeded(SettingsType configType) {
+    if (configType == AI_SETTINGS) {
+      AISettings aiSettings =
+          SettingsCache.getSettingOrDefault(AI_SETTINGS, null, AISettings.class);
+      McpChatSettings mcpChat = aiSettings == null ? null : aiSettings.getMcpChat();
+      McpChatServiceHolder.initialize(LlmConfigHolder.get(), mcpChat);
+    }
   }
 
   @PUT
@@ -490,6 +503,7 @@ public class SystemResource {
             new Settings().withConfigType(AI_SETTINGS).withConfigValue(defaultAiSettings);
         systemRepository.createOrUpdate(setting);
         SettingsCache.invalidateSettings(AI_SETTINGS.value());
+        reinitMcpChatServiceIfNeeded(AI_SETTINGS);
         defaults = defaultAiSettings;
       } catch (IOException e) {
         LOG.error("Failed to read default AI settings. Message: {}", e.getMessage(), e);
