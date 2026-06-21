@@ -149,6 +149,54 @@ class DomainRepositoryListingTest {
     assertEquals(0, b.getChildrenCount());
   }
 
+  @Test
+  void childrenCount_attributesEachDescendantToEveryPageAncestor() {
+    Domain parent = domain("perf.p");
+    Domain child = domain("perf.p.c0");
+    String ancestorPrefix = FullyQualifiedName.buildHash("perf.p");
+    when(domainDAO.listFqnHashesByPrefix(ancestorPrefix + ".%"))
+        .thenReturn(
+            List.of(
+                FullyQualifiedName.buildHash("perf.p.c0"),
+                FullyQualifiedName.buildHash("perf.p.c0.g0")));
+
+    repository.setFieldsInBulk(
+        new Fields(Set.of("childrenCount")), new ArrayList<>(List.of(parent, child)));
+
+    // Grandchild g0 is a descendant of BOTH page domains from the single scan, so it counts toward
+    // each — a regression attributing it only to the nearest ancestor would drop parent's count.
+    verify(domainDAO, times(1)).listFqnHashesByPrefix(ancestorPrefix + ".%");
+    verify(domainDAO, never()).listAllFqnHashes();
+    assertEquals(2, parent.getChildrenCount());
+    assertEquals(1, child.getChildrenCount());
+  }
+
+  @Test
+  void childrenCount_forSingleDomainPage_usesSelectiveScan() {
+    Domain leaf = domain("perf.p");
+    String ownPrefix = FullyQualifiedName.buildHash("perf.p");
+    when(domainDAO.listFqnHashesByPrefix(ownPrefix + ".%"))
+        .thenReturn(
+            List.of(
+                FullyQualifiedName.buildHash("perf.p.c0"),
+                FullyQualifiedName.buildHash("perf.p.c0.g0")));
+
+    repository.setFieldsInBulk(new Fields(Set.of("childrenCount")), new ArrayList<>(List.of(leaf)));
+
+    verify(domainDAO, times(1)).listFqnHashesByPrefix(ownPrefix + ".%");
+    verify(domainDAO, never()).listAllFqnHashes();
+    assertEquals(2, leaf.getChildrenCount());
+  }
+
+  @Test
+  void childrenCount_forEmptyPage_issuesNoQuery() {
+    repository.setFieldsInBulk(new Fields(Set.of("childrenCount")), new ArrayList<>());
+
+    verify(domainDAO, never()).listAllFqnHashes();
+    verify(domainDAO, never()).listFqnHashesByPrefix(anyString());
+    verify(domainDAO, never()).countNestedDomains(anyString());
+  }
+
   private Domain domain(String fqn) {
     String name = fqn.substring(fqn.lastIndexOf('.') + 1);
     return new Domain().withId(UUID.randomUUID()).withName(name).withFullyQualifiedName(fqn);

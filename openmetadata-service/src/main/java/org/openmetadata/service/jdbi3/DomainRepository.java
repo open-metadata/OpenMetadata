@@ -75,6 +75,8 @@ import org.openmetadata.service.util.LineageUtil;
 @Slf4j
 public class DomainRepository extends EntityRepository<Domain> {
   private static final String UPDATE_FIELDS = "parent,children,experts";
+  private static final String FIELD_CHILDREN_COUNT = "childrenCount";
+  private static final String DESCENDANT_WILDCARD = "%";
 
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
   private final ThreadLocal<DomainHardDeleteContext> domainHardDeleteSubtree = new ThreadLocal<>();
@@ -115,16 +117,18 @@ public class DomainRepository extends EntityRepository<Domain> {
     }
 
     // Register bulk field fetchers for efficient database operations
-    fieldFetchers.put("parent", this::fetchAndSetParents);
-    fieldFetchers.put("experts", this::fetchAndSetExperts);
-    fieldFetchers.put("childrenCount", this::fetchAndSetChildrenCount);
+    fieldFetchers.put(FIELD_PARENT, this::fetchAndSetParents);
+    fieldFetchers.put(FIELD_EXPERTS, this::fetchAndSetExperts);
+    fieldFetchers.put(FIELD_CHILDREN_COUNT, this::fetchAndSetChildrenCount);
   }
 
   @Override
   public void setFields(Domain entity, Fields fields, RelationIncludes relationIncludes) {
     entity.withParent(resolveParentRef(entity));
     entity.withChildrenCount(
-        fields.contains("childrenCount") ? getChildrenCount(entity) : entity.getChildrenCount());
+        fields.contains(FIELD_CHILDREN_COUNT)
+            ? getChildrenCount(entity)
+            : entity.getChildrenCount());
   }
 
   private Integer getChildrenCount(Domain entity) {
@@ -146,110 +150,72 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   private void fetchAndSetExperts(List<Domain> domains, Fields fields) {
-    if (!fields.contains("experts") || domains == null || domains.isEmpty()) {
-      return;
+    if (fields.contains(FIELD_EXPERTS) && !nullOrEmpty(domains)) {
+      setFieldFromMap(true, domains, batchFetchExperts(domains), Domain::setExperts);
     }
-    setFieldFromMap(true, domains, batchFetchExperts(domains), Domain::setExperts);
   }
 
   private void fetchAndSetChildrenCount(List<Domain> entities, Fields fields) {
-    if (!fields.contains("childrenCount") || nullOrEmpty(entities)) {
-      return;
+    if (fields.contains(FIELD_CHILDREN_COUNT) && !nullOrEmpty(entities)) {
+      Map<UUID, Integer> childCountByDomainId = nestedDescendantCounts(entities);
+      entities.forEach(
+          entity -> entity.setChildrenCount(childCountByDomainId.getOrDefault(entity.getId(), 0)));
     }
-    Map<UUID, Integer> counts = batchCountNestedDomains(entities);
-    entities.forEach(entity -> entity.setChildrenCount(counts.getOrDefault(entity.getId(), 0)));
   }
 
   /**
-   * Count nested (all-depth) descendant domains for a page of domains with a single DB read plus a
-   * single in-memory pass. The descendant fqnHashes are pulled once — scoped to the shared parent
-   * prefix when the page is a set of siblings (the hierarchy tree-expand case), or via an
-   * index-only full scan of {@code fqnHash} otherwise — then each descendant is attributed to any
-   * page domain that is one of its hash prefixes. This is O(descendants × depth), not
-   * O(entities × descendants), so it stays linear even for a flat list of every domain.
+   * Nested (all-depth) descendant count for each domain on the page, computed with a single DB read
+   * plus a single in-memory pass. Candidate descendant hashes are pulled once — scoped to the page's
+   * longest common ancestor when there is one, else a full {@code fqnHash} scan — then attributed to
+   * their ancestor domains. O(descendants × depth), so it stays linear even for a flat list of every
+   * domain.
    */
-  private Map<UUID, Integer> batchCountNestedDomains(List<Domain> entities) {
-    Map<UUID, String> hashById = new HashMap<>();
-    for (Domain entity : entities) {
-      hashById.put(entity.getId(), FullyQualifiedName.buildHash(entity.getFullyQualifiedName()));
-    }
-    Map<String, Integer> countByHash =
-        countDescendantsByAncestorHash(fetchDescendantHashes(hashById.values()), hashById.values());
-    Map<UUID, Integer> counts = new HashMap<>();
-    hashById.forEach((id, hash) -> counts.put(id, countByHash.getOrDefault(hash, 0)));
-    return counts;
+  private Map<UUID, Integer> nestedDescendantCounts(List<Domain> pageDomains) {
+    Map<UUID, String> hashByDomainId =
+        pageDomains.stream()
+            .collect(
+                Collectors.toMap(
+                    Domain::getId,
+                    domain -> FullyQualifiedName.buildHash(domain.getFullyQualifiedName())));
+    Map<String, Integer> descendantCountByHash =
+        DomainHierarchyHashes.countDescendantsByAncestor(
+            fetchCandidateDescendantHashes(hashByDomainId.values()), hashByDomainId.values());
+    return hashByDomainId.entrySet().stream()
+        .collect(
+            Collectors.toMap(
+                Map.Entry::getKey,
+                entry -> descendantCountByHash.getOrDefault(entry.getValue(), 0)));
   }
 
-  private Map<String, Integer> countDescendantsByAncestorHash(
-      List<String> descendantHashes, Collection<String> ancestorHashes) {
-    Set<String> ancestors = new HashSet<>(ancestorHashes);
-    Map<String, Integer> countByHash = new HashMap<>();
-    for (String descendantHash : descendantHashes) {
-      int separator = descendantHash.indexOf(Entity.SEPARATOR);
-      while (separator > 0) {
-        String prefix = descendantHash.substring(0, separator);
-        if (ancestors.contains(prefix)) {
-          countByHash.merge(prefix, 1, Integer::sum);
-        }
-        separator = descendantHash.indexOf(Entity.SEPARATOR, separator + 1);
-      }
-    }
-    return countByHash;
-  }
-
-  private List<String> fetchDescendantHashes(Collection<String> childHashes) {
-    // Scan under the longest common ancestor of the whole page in a single query: siblings collapse
-    // to their shared parent, and a page spanning several parents collapses to the nearest shared
-    // ancestor (e.g. their common top-level domain) — a selective index range, not a full table
-    // scan. Only a page whose domains span unrelated top-level domains (no common ancestor) falls
-    // back to a full fqnHash scan, which is unavoidable in one query. Never a query-per-parent
-    // fan-out.
-    String commonAncestor = longestCommonAncestorHash(childHashes);
-    List<String> descendantHashes;
-    if (commonAncestor.isEmpty()) {
-      descendantHashes = daoCollection.domainDAO().listAllFqnHashes();
+  /**
+   * Pull the candidate descendant hashes in a single query. When the page shares a common ancestor
+   * (siblings, or domains under one top-level domain) this is a selective index range scan; only a
+   * page spanning unrelated top-level domains falls back to a full {@code fqnHash} scan. Never a
+   * query-per-parent fan-out.
+   */
+  private List<String> fetchCandidateDescendantHashes(Collection<String> domainHashes) {
+    String commonAncestorHash = DomainHierarchyHashes.longestCommonAncestor(domainHashes);
+    List<String> candidateHashes;
+    if (commonAncestorHash.isEmpty()) {
+      candidateHashes = daoCollection.domainDAO().listAllFqnHashes();
     } else {
-      descendantHashes =
-          daoCollection.domainDAO().listFqnHashesByPrefix(commonAncestor + Entity.SEPARATOR + "%");
+      candidateHashes =
+          daoCollection
+              .domainDAO()
+              .listFqnHashesByPrefix(descendantLikePattern(commonAncestorHash));
     }
-    return descendantHashes;
+    return candidateHashes;
   }
 
-  /** Longest ancestor fqnHash shared by every hash, or empty when they share no top-level segment. */
-  private String longestCommonAncestorHash(Collection<String> hashes) {
-    String common = null;
-    for (String hash : hashes) {
-      common = (common == null) ? hash : commonAncestorOf(common, hash);
-      if (common.isEmpty()) {
-        break;
-      }
-    }
-    return common == null ? "" : common;
-  }
-
-  private String commonAncestorOf(String a, String b) {
-    int max = Math.min(a.length(), b.length());
-    int i = 0;
-    while (i < max && a.charAt(i) == b.charAt(i)) {
-      i++;
-    }
-    String result;
-    if (i == a.length() && (i == b.length() || b.startsWith(Entity.SEPARATOR, i))) {
-      result = a; // a == b, or a is an ancestor of b
-    } else if (i == b.length() && a.startsWith(Entity.SEPARATOR, i)) {
-      result = b; // b is an ancestor of a
-    } else {
-      // Common chars stop mid-segment — truncate to the last whole segment they share.
-      int lastSeparator = a.lastIndexOf(Entity.SEPARATOR, i - 1);
-      result = lastSeparator > 0 ? a.substring(0, lastSeparator) : "";
-    }
-    return result;
+  private static String descendantLikePattern(String ancestorHash) {
+    return ancestorHash + Entity.SEPARATOR + DESCENDANT_WILDCARD;
   }
 
   @Override
   public void clearFields(Domain entity, Fields fields) {
-    entity.withParent(fields.contains("parent") ? entity.getParent() : null);
-    entity.withChildrenCount(fields.contains("childrenCount") ? entity.getChildrenCount() : null);
+    entity.withParent(fields.contains(FIELD_PARENT) ? entity.getParent() : null);
+    entity.withChildrenCount(
+        fields.contains(FIELD_CHILDREN_COUNT) ? entity.getChildrenCount() : null);
   }
 
   @Override
