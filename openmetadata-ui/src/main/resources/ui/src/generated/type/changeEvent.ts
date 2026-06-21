@@ -72,9 +72,9 @@ export interface ChangeEvent {
      */
     previousVersion?: number;
     /**
-     * True when this change event represents a recursive (cascade) delete of the entity together
-     * with its children. A single event is recorded for the deleted root entity; cascaded
-     * descendants do not produce individual change events.
+     * True when this change event represents a recursive (cascade) delete of the entity
+     * together with its children. A single event is recorded for the deleted root entity;
+     * cascaded descendants do not produce individual change events.
      */
     recursive?: boolean;
     /**
