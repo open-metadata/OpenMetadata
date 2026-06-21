@@ -307,8 +307,7 @@ jest.mock('../TableTags/TableTags.component', () => {
 });
 
 jest.mock('../../../utils/TableTags/TableTags.utils', () => ({
-  getAllTags: jest.fn(),
-  searchTagInData: jest.fn(),
+  getAllTags: jest.fn().mockReturnValue([]),
 }));
 
 jest.mock('../TableDescription/TableDescription.component', () => {
@@ -393,20 +392,61 @@ describe('Test EntityTable Component', () => {
 
     expect(getTableColumnsByFQN).toHaveBeenCalledWith(
       MOCK_TABLE.fullyQualifiedName,
-      {
+      expect.objectContaining({
         fields: 'tags,customMetrics,extension',
         limit: 50,
         offset: 0,
         sortBy: 'name',
         sortOrder: 'asc',
-      }
+      })
     );
 
     const entityTable = await screen.findByTestId('entity-table');
 
-    screen.debug(entityTable);
-
     expect(entityTable).toBeInTheDocument();
+  });
+
+  it('should fetch all column tags on mount for filter dropdown', async () => {
+    await act(async () => {
+      render(<SchemaTable />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    // Verify the initial tags fetch call (limit: 1000, fields: 'tags')
+    expect(getTableColumnsByFQN).toHaveBeenCalledWith(
+      MOCK_TABLE.fullyQualifiedName,
+      expect.objectContaining({
+        limit: 1000,
+        fields: 'tags',
+      })
+    );
+  });
+
+  it('should not pass tag parameter to API when no filter is active', async () => {
+    (getTableColumnsByFQN as jest.Mock).mockClear();
+
+    await act(async () => {
+      render(<SchemaTable />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    // The main columns fetch should NOT include a `tag` property
+    const mainColumnsCalls = (getTableColumnsByFQN as jest.Mock).mock.calls.filter(
+      (call: unknown[]) => {
+        const params = call[1] as Record<string, unknown>;
+
+        return params.fields === 'tags,customMetrics,extension';
+      }
+    );
+
+    expect(mainColumnsCalls.length).toBeGreaterThanOrEqual(1);
+    // When no filter is active, tag should be undefined (not sent to API)
+    mainColumnsCalls.forEach((call: unknown[]) => {
+      const params = call[1] as Record<string, unknown>;
+      expect(params.tag).toBeUndefined();
+    });
   });
 
   it('Should render tags and description components', async () => {
@@ -418,13 +458,13 @@ describe('Test EntityTable Component', () => {
 
     expect(getTableColumnsByFQN).toHaveBeenCalledWith(
       MOCK_TABLE.fullyQualifiedName,
-      {
+      expect.objectContaining({
         fields: 'tags,customMetrics,extension',
         limit: 50,
         offset: 0,
         sortBy: 'name',
         sortOrder: 'asc',
-      }
+      })
     );
 
     const tableTags = await screen.findAllByText('TableTags');
