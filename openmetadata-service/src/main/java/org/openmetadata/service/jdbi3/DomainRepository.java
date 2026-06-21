@@ -198,27 +198,52 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   private List<String> fetchDescendantHashes(Collection<String> childHashes) {
-    Set<String> parentPrefixes = new HashSet<>();
-    boolean hasRootDomain = false;
-    for (String childHash : childHashes) {
-      int lastSeparator = childHash.lastIndexOf(Entity.SEPARATOR);
-      if (lastSeparator > 0) {
-        parentPrefixes.add(childHash.substring(0, lastSeparator));
-      } else {
-        hasRootDomain = true;
-      }
-    }
-    // A single shared parent (the tree-expand case) → one selective prefix scan. A root page or a
-    // flat page spanning multiple parents → one index-only full scan, never a query-per-parent
-    // fan-out (which would re-introduce an N pattern for mixed-hierarchy pages).
+    // Scan under the longest common ancestor of the whole page in a single query: siblings collapse
+    // to their shared parent, and a page spanning several parents collapses to the nearest shared
+    // ancestor (e.g. their common top-level domain) — a selective index range, not a full table
+    // scan. Only a page whose domains span unrelated top-level domains (no common ancestor) falls
+    // back to a full fqnHash scan, which is unavoidable in one query. Never a query-per-parent
+    // fan-out.
+    String commonAncestor = longestCommonAncestorHash(childHashes);
     List<String> descendantHashes;
-    if (!hasRootDomain && parentPrefixes.size() == 1) {
-      descendantHashes =
-          daoCollection.domainDAO().listFqnHashesByPrefix(parentPrefixes.iterator().next() + ".%");
-    } else {
+    if (commonAncestor.isEmpty()) {
       descendantHashes = daoCollection.domainDAO().listAllFqnHashes();
+    } else {
+      descendantHashes =
+          daoCollection.domainDAO().listFqnHashesByPrefix(commonAncestor + Entity.SEPARATOR + "%");
     }
     return descendantHashes;
+  }
+
+  /** Longest ancestor fqnHash shared by every hash, or empty when they share no top-level segment. */
+  private String longestCommonAncestorHash(Collection<String> hashes) {
+    String common = null;
+    for (String hash : hashes) {
+      common = (common == null) ? hash : commonAncestorOf(common, hash);
+      if (common.isEmpty()) {
+        break;
+      }
+    }
+    return common == null ? "" : common;
+  }
+
+  private String commonAncestorOf(String a, String b) {
+    int max = Math.min(a.length(), b.length());
+    int i = 0;
+    while (i < max && a.charAt(i) == b.charAt(i)) {
+      i++;
+    }
+    String result;
+    if (i == a.length() && (i == b.length() || b.startsWith(Entity.SEPARATOR, i))) {
+      result = a; // a == b, or a is an ancestor of b
+    } else if (i == b.length() && a.startsWith(Entity.SEPARATOR, i)) {
+      result = b; // b is an ancestor of a
+    } else {
+      // Common chars stop mid-segment — truncate to the last whole segment they share.
+      int lastSeparator = a.lastIndexOf(Entity.SEPARATOR, i - 1);
+      result = lastSeparator > 0 ? a.substring(0, lastSeparator) : "";
+    }
+    return result;
   }
 
   @Override

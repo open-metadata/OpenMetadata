@@ -106,10 +106,11 @@ class DomainRepositoryListingTest {
   }
 
   @Test
-  void childrenCount_forPageSpanningMultipleParents_usesOneFullScan() {
+  void childrenCount_forPageUnderCommonAncestor_usesOneSelectiveScan() {
     Domain c1 = domain("org.p1.c1");
     Domain c2 = domain("org.p2.c2");
-    when(domainDAO.listAllFqnHashes())
+    String commonAncestor = FullyQualifiedName.buildHash("org");
+    when(domainDAO.listFqnHashesByPrefix(commonAncestor + ".%"))
         .thenReturn(
             List.of(
                 FullyQualifiedName.buildHash("org.p1.c1"),
@@ -119,11 +120,33 @@ class DomainRepositoryListingTest {
     repository.setFieldsInBulk(
         new Fields(Set.of("childrenCount")), new ArrayList<>(List.of(c1, c2)));
 
-    verify(domainDAO, times(1)).listAllFqnHashes();
-    verify(domainDAO, never()).listFqnHashesByPrefix(anyString());
+    // Domains under different parents but a shared top-level ancestor collapse to one selective
+    // scan under that ancestor, not a full table scan.
+    verify(domainDAO, times(1)).listFqnHashesByPrefix(commonAncestor + ".%");
+    verify(domainDAO, never()).listAllFqnHashes();
     verify(domainDAO, never()).countNestedDomains(anyString());
     assertEquals(1, c1.getChildrenCount());
     assertEquals(0, c2.getChildrenCount());
+  }
+
+  @Test
+  void childrenCount_forPageSpanningUnrelatedRoots_fallsBackToFullScan() {
+    Domain a = domain("alpha.x");
+    Domain b = domain("beta.y");
+    when(domainDAO.listAllFqnHashes())
+        .thenReturn(
+            List.of(
+                FullyQualifiedName.buildHash("alpha.x"),
+                FullyQualifiedName.buildHash("beta.y"),
+                FullyQualifiedName.buildHash("alpha.x.g")));
+
+    repository.setFieldsInBulk(new Fields(Set.of("childrenCount")), new ArrayList<>(List.of(a, b)));
+
+    // No shared ancestor across top-level domains → one full scan (still a single query).
+    verify(domainDAO, times(1)).listAllFqnHashes();
+    verify(domainDAO, never()).listFqnHashesByPrefix(anyString());
+    assertEquals(1, a.getChildrenCount());
+    assertEquals(0, b.getChildrenCount());
   }
 
   private Domain domain(String fqn) {

@@ -5240,11 +5240,11 @@ public interface CollectionDAO {
     List<String> listAllFqnHashes();
 
     @ConnectionAwareSqlQuery(
-        value = "SELECT json ->> 'fullyQualifiedName' FROM domain_entity",
+        value = "SELECT json ->> 'fullyQualifiedName' FROM domain_entity ORDER BY fqnHash",
         connectionType = POSTGRES)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) FROM domain_entity",
+            "SELECT JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) FROM domain_entity ORDER BY fqnHash",
         connectionType = MYSQL)
     List<String> listAllFqns();
   }
