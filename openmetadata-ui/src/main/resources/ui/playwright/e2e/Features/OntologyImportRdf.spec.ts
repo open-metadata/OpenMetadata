@@ -46,6 +46,8 @@ hcp:prescribes a owl:ObjectProperty ;
     rdfs:label "prescribes" .
 `;
 
+test.use({ storageState: 'playwright/.auth/admin.json' });
+
 test.describe('Ontology RDF Import', { tag: ['@ontology-rdf'] }, () => {
   const glossary = new Glossary();
   const consumerUser = new UserClass();

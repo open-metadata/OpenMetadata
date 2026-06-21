@@ -306,10 +306,8 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
         response.url().includes('depth=2')
     );
 
-    const sliderInput = page.locator(
-      '[data-testid="depth-slider"] input[type="range"]'
-    );
-    await sliderInput.press('ArrowRight');
+    await page.getByTestId('depth-dropdown').click();
+    await page.getByRole('menuitemradio', { name: '2', exact: true }).click();
 
     const depth2Response = await depth2ResponsePromise;
     const depth2Data = (await depth2Response.json()) as GraphApiResponse;
@@ -653,9 +651,8 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
           response.url().includes('depth=2')
       );
 
-      await page
-        .locator('[data-testid="depth-slider"] input[type="range"]')
-        .press('ArrowRight');
+      await page.getByTestId('depth-dropdown').click();
+      await page.getByRole('menuitemradio', { name: '2', exact: true }).click();
 
       await depth2Response;
       await waitForAllLoadersToDisappear(page);
