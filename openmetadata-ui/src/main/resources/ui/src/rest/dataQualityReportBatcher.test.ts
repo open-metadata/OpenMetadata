@@ -118,6 +118,7 @@ describe('dataQualityReportBatcher', () => {
     await Promise.all(pending);
 
     expect(mockGetDataQualityReportBatch).toHaveBeenCalledTimes(2);
+
     const chunkSizes = mockGetDataQualityReportBatch.mock.calls
       .map(([data]) => data.requests.length)
       .sort((a: number, b: number) => b - a);
