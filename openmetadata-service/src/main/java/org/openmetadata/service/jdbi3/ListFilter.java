@@ -54,6 +54,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTestSuiteTypeCondition(tableName));
     conditions.add(getTestSuiteFQNCondition());
     conditions.add(getDomainCondition(tableName));
+    conditions.add(getDomainSelfCondition(tableName));
     conditions.add(getOwnerCondition(tableName));
     conditions.add(getVisibleToCondition());
     conditions.add(getOwnedByCondition());
@@ -530,6 +531,35 @@ public class ListFilter extends Filter<ListFilter> {
         "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' AND entity_relationship.fromId IN (%s) AND "
             + "relation=10))",
         entityIdColumn, domainInClause);
+  }
+
+  private String getDomainSelfCondition(String tableName) {
+    String domainIds = getQueryParam("restrictToDomainIds");
+    String result = "";
+    if (domainIds != null) {
+      String idColumn = nullOrEmpty(tableName) ? "id" : (tableName + ".id");
+      String idInClause = buildIndexedBindParams("restrictDomainId", domainIds.replace("'", ""));
+      List<String> clauses = new ArrayList<>();
+      clauses.add(String.format("%s IN (%s)", idColumn, idInClause));
+      clauses.addAll(buildDomainFqnPrefixClauses(tableName));
+      result = "(" + String.join(" OR ", clauses) + ")";
+    }
+    return result;
+  }
+
+  private List<String> buildDomainFqnPrefixClauses(String tableName) {
+    List<String> clauses = new ArrayList<>();
+    String fqnHashes = getQueryParam("restrictToDomainFqnHashes");
+    if (!nullOrEmpty(fqnHashes)) {
+      String fqnHashColumn = nullOrEmpty(tableName) ? "fqnHash" : (tableName + ".fqnHash");
+      int index = 0;
+      for (String fqnHash : fqnHashes.split(",")) {
+        String key = "restrictDomainFqn_" + index++;
+        queryParams.put(key, fqnHash.trim() + Entity.SEPARATOR + "%");
+        clauses.add(String.format("%s LIKE :%s", fqnHashColumn, key));
+      }
+    }
+    return clauses;
   }
 
   private String getOwnerCondition(String tableName) {

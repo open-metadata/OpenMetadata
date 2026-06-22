@@ -77,6 +77,7 @@ import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
+import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
@@ -703,11 +704,17 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
   @Override
   public Response searchDataQualityLineage(
-      String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException {
+      String fqn,
+      int upstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      SubjectContext subjectContext)
+      throws IOException {
     Map<String, Object> responseMap = new HashMap<>();
     Set<EsLineageData> edges = new HashSet<>();
     Set<Map<String, Object>> nodes = new HashSet<>();
     searchDataQualityLineageInternal(fqn, upstreamDepth, queryFilter, deleted, edges, nodes);
+    LineageDomainFilter.pruneDataQualityLineage(nodes, edges, subjectContext);
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
     return Response.status(OK).entity(responseMap).build();
