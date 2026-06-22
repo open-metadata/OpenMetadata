@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.apps.bundles.mcp;
 
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 /**
@@ -26,11 +27,14 @@ public final class McpAppConstants {
   public static final String MCP_APP_NAME = "McpApplication";
 
   /**
-   * Stable synthetic id stamped on MCP usage rows. Usage is queried by {@code appName}, so this id
-   * is informational; a fixed value keeps rows consistent now that no {@code McpApplication} entity
-   * exists to own them.
+   * Id stamped on MCP usage rows. No MCP-usage query reads it (the recorder writes and the resource
+   * reads by {@code appName}), but the {@code apps_extension_time_series.appId} generated column is
+   * {@code NOT NULL}, so a value is required. Derived deterministically from {@link #MCP_APP_NAME}
+   * so it is stable across runs without a per-record lookup, now that no {@code McpApplication}
+   * entity exists to own a real id.
    */
-  public static final UUID MCP_APP_ID = UUID.fromString("8f2e4c1a-9b3d-4e6f-a7c8-1d2e3f4a5b6c");
+  public static final UUID MCP_APP_ID =
+      UUID.nameUUIDFromBytes(MCP_APP_NAME.getBytes(StandardCharsets.UTF_8));
 
   private McpAppConstants() {}
 }
