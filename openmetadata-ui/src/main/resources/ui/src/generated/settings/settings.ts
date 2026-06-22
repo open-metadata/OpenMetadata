@@ -636,8 +636,8 @@ export interface PipelineServiceClientConfiguration {
      */
     relationTypes?:    GlossaryTermRelationType[];
     mcpChat?:          MCPChat;
+    memoryAgent?:      MemoryAgent;
     memoryExtraction?: MemoryExtraction;
-    memoryAgent?:    MemoryAgent;
     prompts?:          Prompts;
 }
 
@@ -2073,6 +2073,19 @@ export interface MCPChat {
     systemPrompt?: string;
 }
 
+export interface MemoryAgent {
+    deletionPolicy?:      DeletionPolicy;
+    deriveGlossaryTerms?: boolean;
+    deriveMetrics?:       boolean;
+    enabled?:             boolean;
+}
+
+export enum DeletionPolicy {
+    Cascade = "cascade",
+    Deprecate = "deprecate",
+    Orphan = "orphan",
+}
+
 export interface MemoryExtraction {
     fromFiles?: boolean;
     fromPages?: boolean;
@@ -2453,19 +2466,6 @@ export interface TitleSection {
     [property: string]: any;
 }
 
-export interface MemoryAgent {
-    deletionPolicy?:      DeletionPolicy;
-    deriveGlossaryTerms?: boolean;
-    deriveMetrics?:       boolean;
-    enabled?:             boolean;
-}
-
-export enum DeletionPolicy {
-    Cascade = "cascade",
-    Deprecate = "deprecate",
-    Orphan = "orphan",
-}
-
 /**
  * Set how owners from OpenLineage job ownership facets update Pipeline owners. In replace
  * mode, resolved owners from the current event replace existing owners. In append mode,
@@ -2487,8 +2487,8 @@ export enum PipelineViewMode {
 }
 
 export interface Prompts {
+    memoryAgent?:      PromptConfig;
     memoryExtraction?: PromptConfig;
-    memoryAgent?:    PromptConfig;
 }
 
 export interface PromptConfig {

@@ -39,8 +39,8 @@ export interface Metric {
      */
     deleted?: boolean;
     /**
-     * Derived: the context memory from which the Memory Agent created this metric
-     * (DERIVED_FROM edge, read-only projection).
+     * Derived: the context memory from which the Memory Agent created this metric (DERIVED_FROM
+     * edge, read-only projection).
      */
     derivedFrom?: EntityReference;
     /**
@@ -438,8 +438,8 @@ export interface FieldChange {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Derived: the context memory from which the Memory Agent created this metric
- * (DERIVED_FROM edge, read-only projection).
+ * Derived: the context memory from which the Memory Agent created this metric (DERIVED_FROM
+ * edge, read-only projection).
  */
 export interface EntityReference {
     /**

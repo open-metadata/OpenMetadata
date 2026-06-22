@@ -17,8 +17,8 @@
 export interface AISettings {
     enabled?:          boolean;
     mcpChat?:          MCPChat;
+    memoryAgent?:      MemoryAgent;
     memoryExtraction?: MemoryExtraction;
-    memoryAgent?:    MemoryAgent;
     prompts?:          Prompts;
 }
 
@@ -29,11 +29,6 @@ export interface AISettings {
 export interface MCPChat {
     enabled?:      boolean;
     systemPrompt?: string;
-}
-
-export interface MemoryExtraction {
-    fromFiles?: boolean;
-    fromPages?: boolean;
 }
 
 export interface MemoryAgent {
@@ -49,9 +44,14 @@ export enum DeletionPolicy {
     Orphan = "orphan",
 }
 
+export interface MemoryExtraction {
+    fromFiles?: boolean;
+    fromPages?: boolean;
+}
+
 export interface Prompts {
+    memoryAgent?:      PromptConfig;
     memoryExtraction?: PromptConfig;
-    memoryAgent?:    PromptConfig;
 }
 
 export interface PromptConfig {

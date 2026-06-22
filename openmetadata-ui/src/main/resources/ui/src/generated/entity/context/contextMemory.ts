@@ -65,12 +65,12 @@ export interface ContextMemory {
     lastUsedAt?:            number;
     machineRepresentation?: MachineRepresentation;
     memoryScope?:           MemoryScope;
+    memoryStats?:           MemoryStats;
     memoryType?:            MemoryType;
     /**
      * Stable system name for the memory.
      */
-    name:           string;
-    memoryStats?: MemoryStats;
+    name: string;
     /**
      * Owners of this memory.
      */
@@ -335,17 +335,6 @@ export enum MemoryScope {
 }
 
 /**
- * High-level type of reusable memory.
- */
-export enum MemoryType {
-    FAQ = "Faq",
-    Note = "Note",
-    Preference = "Preference",
-    Runbook = "Runbook",
-    UseCase = "UseCase",
-}
-
-/**
  * Telemetry + hash-gate for the Memory Agent derivation of this memory.
  */
 export interface MemoryStats {
@@ -377,6 +366,17 @@ export enum MemoryProcessingStatus {
     Processed = "Processed",
     Processing = "Processing",
     Queued = "Queued",
+}
+
+/**
+ * High-level type of reusable memory.
+ */
+export enum MemoryType {
+    FAQ = "Faq",
+    Note = "Note",
+    Preference = "Preference",
+    Runbook = "Runbook",
+    UseCase = "UseCase",
 }
 
 /**
