@@ -42,6 +42,7 @@ import {
   searchDomains,
 } from '../../../rest/domainAPI';
 import { isDomainExist } from '../../../utils/DomainFilterUtils';
+import { filterDomainsToAllowed } from '../../../utils/DomainRestrictionUtils';
 import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import {
@@ -68,6 +69,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   isMultiple = false,
   initialDomains,
   showAllDomains = false,
+  restrictedDomains,
   isClearable = true,
 }) => {
   const theme = useTheme();
@@ -376,7 +378,10 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
           currentOffset
         );
 
-        const fetchedData = data.data ?? [];
+        const rawData = data.data ?? [];
+        const fetchedData = restrictedDomains?.length
+          ? filterDomainsToAllowed(rawData, restrictedDomains)
+          : rawData;
         const total = data.paging.total ?? 0;
 
         let combinedData: Domain[];
@@ -402,7 +407,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
         setLoadingState(false);
       }
     },
-    [domains, isMultiple, initialDomains]
+    [domains, isMultiple, initialDomains, restrictedDomains]
   );
 
   const onSelect = (selectedKeys: React.Key[]) => {
@@ -455,8 +460,11 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
           setIsLoading(true);
           const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
           const results: Domain[] = await searchDomains(encodedValue);
+          const filteredResults = restrictedDomains?.length
+            ? filterDomainsToAllowed(results, restrictedDomains)
+            : results;
 
-          const combinedData = [...results];
+          const combinedData = [...filteredResults];
 
           // Ensure initialDomains are included
           initialDomains?.forEach((selectedDomain) => {
@@ -483,7 +491,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
         fetchAPI();
       }
     }, 300),
-    [fetchAPI, initialDomains, isMultiple]
+    [fetchAPI, initialDomains, isMultiple, restrictedDomains]
   );
 
   const switcherIcon = useCallback(

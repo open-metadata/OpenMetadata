@@ -322,6 +322,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   private void setFieldFQN(String parentFQN, List<Field> fields) {
     fields.forEach(
         c -> {
+          FullyQualifiedName.validateFqnName(c.getName());
           String fieldFqn = FullyQualifiedName.add(parentFQN, c.getName());
           c.setFullyQualifiedName(fieldFqn);
           if (c.getChildren() != null) {
