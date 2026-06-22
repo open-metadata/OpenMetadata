@@ -274,8 +274,8 @@ const ContextCenterArchivePage: FC = () => {
           message={t('message.are-you-sure-you-want-to-delete-this-entity', {
             entity:
               itemToDelete.type === 'article'
-                ? t('label.article').toLowerCase()
-                : t('label.document').toLowerCase(),
+                ? t('label.article-lowercase')
+                : t('label.document-lowercase'),
           })}
           open={Boolean(itemToDelete)}
           onCancel={handleCancelDelete}

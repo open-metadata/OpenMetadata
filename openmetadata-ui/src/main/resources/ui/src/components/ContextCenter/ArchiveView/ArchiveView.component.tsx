@@ -145,7 +145,7 @@ const ArchiveView: FC<ArchiveViewProps> = ({
 }) => {
   if (isLoading) {
     return (
-      <Card className="tw:flex tw:flex-col tw:overflow-hidden">
+      <Card className="tw:flex tw:flex-col">
         {Array.from({ length: 8 }).map((_, idx) => (
           <ArchiveRowSkeleton key={idx} />
         ))}
