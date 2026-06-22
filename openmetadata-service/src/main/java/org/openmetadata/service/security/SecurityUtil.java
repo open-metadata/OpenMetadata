@@ -376,6 +376,7 @@ public final class SecurityUtil {
           jwtPrincipalClaimsOrder.stream()
               .filter(claims::containsKey)
               .map(c -> getClaimOrObject(claims.get(c)))
+              .filter(v -> !nullOrEmpty(v))
               .map(v -> v.split("@", 2))
               .filter(parts -> parts.length == 2 && !parts[1].isEmpty())
               .map(parts -> parts[1])
