@@ -3304,6 +3304,7 @@
     "odps-validation-successful": "מסמך ה-ODPS תקין.",
     "odps-yaml-invalid": "אימות מסמך ה-YAML של ODPS נכשל.",
     "odps-yaml-name-mismatch": "השם '{{yamlName}}' שב-YAML אינו תואם למוצר הנתונים הנוכחי '{{existingName}}'. עדכן את ה-YAML או השתמש בעמוד מוצר הנתונים של '{{yamlName}}' כדי להימנע מדריסת מוצר אחר.",
+    "odps-yaml-name-missing": "לא ניתן היה לקרוא שם מוצר מתוך ה-YAML (product.details.<language>.name). הוסף שם התואם למוצר הנתונים הנוכחי '{{existingName}}' לפני הייבוא, כדי להימנע מדריסת מוצר אחר.",
     "odps-yaml-valid-description": "מסמך ODPS v{{version}} תקין עם השפות: {{languages}}.",
     "om-description": "אחסון מטה מרכזי, לגלוש, לשתף פעולה ולהבין את הנתונים שלך כראוי.",
     "om-url-configuration-message": "הגדר את הגדרות ה-URL של {{brandName}}.",
