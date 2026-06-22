@@ -165,6 +165,16 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("aiPlatformConfiguration")
   private AiPlatformConfiguration aiPlatformConfiguration;
 
+  @JsonProperty("constructConfiguration")
+  private ConstructConfiguration constructConfiguration;
+
+  public ConstructConfiguration getConstructConfiguration() {
+    if (constructConfiguration == null) {
+      constructConfiguration = new ConstructConfiguration();
+    }
+    return constructConfiguration;
+  }
+
   @JsonProperty("adminOpsConfiguration")
   private AdminOpsConfiguration adminOpsConfiguration;
 
