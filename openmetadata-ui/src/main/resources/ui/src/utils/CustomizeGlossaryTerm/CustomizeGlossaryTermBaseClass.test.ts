@@ -19,9 +19,10 @@ import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.inte
 import customizeGlossaryTermPageClassBase from './CustomizeGlossaryTermBaseClass';
 
 describe('CustomizeGlossaryTermBaseClass.getDefaultWidgetForTab', () => {
-  const overviewLayout = customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
-    EntityTabs.OVERVIEW
-  );
+  const overviewLayout =
+    customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
+      EntityTabs.OVERVIEW
+    );
 
   const leftPanel = overviewLayout.find(
     (widget: WidgetConfig) => widget.i === DetailPageWidgetKeys.LEFT_PANEL
