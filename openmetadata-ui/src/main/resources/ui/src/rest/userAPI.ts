@@ -15,6 +15,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 
 import { PagingResponse, RestoreRequestType } from 'Models';
+import { TabSpecificField } from '../enums/entity.enum';
 import {
   AuthenticationMechanism,
   CreateUser,
@@ -23,8 +24,23 @@ import { PersonalAccessToken } from '../generated/auth/personalAccessToken';
 import { JWTTokenExpiry, User } from '../generated/entity/teams/user';
 import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
+import { makeLruCache } from '../utils/lruCacheUtils';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
+
+// 200 entries ≈ 10 MB worst case for typical user objects; covers large active-feed sessions.
+const MAX_PROFILE_ENTRIES = 200;
+
+const userProfileCache = makeLruCache<User>(MAX_PROFILE_ENTRIES);
+const userProfileRequests = new Map<string, Promise<User>>();
+let userProfileCacheEpoch = 0;
+
+/** Drop all cached user profiles. Call on logout / user switch. */
+export function clearUserProfileCache(): void {
+  userProfileCacheEpoch++;
+  userProfileCache.clear();
+  userProfileRequests.clear();
+}
 
 export interface UsersQueryParams {
   fields?: string;
@@ -70,16 +86,53 @@ export const updateUserDetail = async (id: string, data: Operation[]) => {
     data
   );
 
+  if (response.data.name) {
+    userProfileCache.delete(response.data.name);
+  }
+
   return response.data;
 };
 
 export const getUserByName = async (name: string, params?: ListParams) => {
-  const response = await APIClient.get<User>(
-    `/users/name/${getEncodedFqn(name)}`,
-    { params }
-  );
+  const cacheProfile = params?.fields === TabSpecificField.PROFILE;
 
-  return response.data;
+  if (!cacheProfile) {
+    const response = await APIClient.get<User>(
+      `/users/name/${getEncodedFqn(name)}`,
+      { params }
+    );
+
+    return response.data;
+  }
+
+  const cachedUser = userProfileCache.get(name);
+
+  if (cachedUser) {
+    return cachedUser;
+  }
+
+  const epoch = userProfileCacheEpoch;
+
+  let request = userProfileRequests.get(name);
+
+  if (!request) {
+    request = APIClient.get<User>(`/users/name/${getEncodedFqn(name)}`, {
+      params,
+    }).then((response) => {
+      if (epoch === userProfileCacheEpoch) {
+        userProfileCache.set(name, response.data);
+      }
+
+      return response.data;
+    });
+    userProfileRequests.set(name, request);
+  }
+
+  try {
+    return await request;
+  } finally {
+    userProfileRequests.delete(name);
+  }
 };
 
 export const getUserById = async (id: string, params?: ListParams) => {

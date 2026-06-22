@@ -76,12 +76,29 @@ import {
 } from '../../../rest/tasksAPI';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import { getUpdatedThread } from '../../../utils/FeedUtilsPure';
+import { makeLruCache } from '../../../utils/lruCacheUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { ActivityFeedProviderContextType } from './ActivityFeedProviderContext.interface';
 const ActivityFeedDrawer = withSuspenseFallback(
   lazy(() => import('../ActivityFeedDrawer/ActivityFeedDrawer'))
 );
+
+// 20 entries covers all realistic filter combinations (domain × date range) in one session.
+const MAX_FEED_CACHE_ENTRIES = 20;
+
+const myActivityFeedCache = makeLruCache<ActivityEvent[]>(
+  MAX_FEED_CACHE_ENTRIES
+);
+const myActivityFeedRequests = new Map<string, Promise<ActivityEvent[]>>();
+let activityFeedCacheEpoch = 0;
+
+/** Drop all cached activity feed entries and in-flight requests. Call on logout / user switch or between tests. */
+export function clearActivityFeedCache(): void {
+  activityFeedCacheEpoch++;
+  myActivityFeedCache.clear();
+  myActivityFeedRequests.clear();
+}
 
 interface Props {
   children: ReactNode;
@@ -778,15 +795,42 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
 
   const fetchMyActivityFeedHandler = useCallback(
     async (params?: { days?: number; limit?: number }) => {
-      setIsActivityLoading(true);
+      const domain =
+        activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined;
+      const cacheKey = JSON.stringify({ ...params, domain });
+      const cachedActivityEvents = myActivityFeedCache.get(cacheKey);
+
+      if (cachedActivityEvents) {
+        setActivityEvents(cachedActivityEvents);
+      }
+
+      setIsActivityLoading(!cachedActivityEvents);
+
+      const epoch = activityFeedCacheEpoch;
+
       try {
-        const domain =
-          activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined;
-        const { data } = await getMyActivityFeed({ ...params, domain });
+        let request = myActivityFeedRequests.get(cacheKey);
+
+        if (!request) {
+          request = getMyActivityFeed({ ...params, domain }).then(
+            ({ data }) => {
+              if (epoch === activityFeedCacheEpoch) {
+                myActivityFeedCache.set(cacheKey, data);
+              }
+
+              return data;
+            }
+          );
+          myActivityFeedRequests.set(cacheKey, request);
+        }
+
+        const data = await request;
+
         setActivityEvents(data);
       } catch (err) {
         showErrorToast(err as AxiosError);
       } finally {
+        myActivityFeedRequests.delete(cacheKey);
         setIsActivityLoading(false);
       }
     },

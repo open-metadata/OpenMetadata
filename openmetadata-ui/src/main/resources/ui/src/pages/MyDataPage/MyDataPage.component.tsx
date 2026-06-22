@@ -54,8 +54,10 @@ const MyDataPage = () => {
     useApplicationStore();
   const { isWelcomeVisible } = useWelcomeStore();
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [layout, setLayout] = useState<Array<WidgetConfig>>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [layout, setLayout] = useState<Array<WidgetConfig>>(
+    customizePageClassBase.defaultLayout
+  );
 
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
   const [isAnnouncementLoading, setIsAnnouncementLoading] =
@@ -94,7 +96,6 @@ const MyDataPage = () => {
 
   const fetchDocument = async () => {
     try {
-      setIsLoading(true);
       if (selectedPersona) {
         const pageFQN = `${EntityType.PERSONA}.${selectedPersona.fullyQualifiedName}`;
         const docData = await getDocumentByFQN(pageFQN);
@@ -163,35 +164,21 @@ const MyDataPage = () => {
           currentLayout: layout,
         });
 
-        // P1.3: defer below-fold widgets. The landing-page grid spans three rows on a typical
-        // viewport; rows at y=0 and y=1 are reliably visible on first paint, row y=2 is
-        // typically below the fold on common desktop resolutions. Wrapping only y>=2 widgets
-        // saves their data-fetch effects on initial load while keeping above-fold widgets
-        // eager (no wasted IO callback round-trip).
-        //
-        // {@link DeferredWidget} reserves the widget's pixel height so the page layout
-        // doesn't shift when the real content mounts, exposes a {@code data-testid} so
-        // Playwright can locate the slot before the child tree mounts, and falls back to
-        // immediate mount if {@code IntersectionObserver} isn't available (Jest, SSR).
-        const isBelowFold = widget.y >= 2;
         const reservedHeight =
           widget.h * customizePageClassBase.landingPageRowHeight;
 
         return (
           <div data-grid={widget} key={widget.i}>
-            {isBelowFold ? (
-              <DeferredWidget
-                data-testid={`deferred-widget-${widget.i}`}
-                minHeight={reservedHeight}>
-                {widgetNode}
-              </DeferredWidget>
-            ) : (
-              widgetNode
-            )}
+            <DeferredWidget
+              deferUntilAfterPaint
+              data-testid={`deferred-widget-${widget.i}`}
+              minHeight={reservedHeight}>
+              {widgetNode}
+            </DeferredWidget>
           </div>
         );
       }),
-    [layout, isAnnouncementLoading, announcements]
+    [layout]
   );
 
   const fetchAnnouncements = useCallback(async () => {
@@ -264,8 +251,25 @@ const MyDataPage = () => {
   };
 
   useEffect(() => {
-    fetchAnnouncements();
-  }, []);
+    if (typeof window.requestAnimationFrame !== 'function') {
+      const timeoutId = window.setTimeout(fetchAnnouncements, 0);
+
+      return () => window.clearTimeout(timeoutId);
+    }
+
+    let timeoutId: number | undefined;
+    const frameId = window.requestAnimationFrame(() => {
+      timeoutId = window.setTimeout(fetchAnnouncements, 0);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [fetchAnnouncements]);
 
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection(isLoading);

@@ -32,7 +32,9 @@ import {
   removeActivityReaction,
 } from '../../../rest/feedsAPI';
 import { listMyVisibleTasks, listTasks } from '../../../rest/tasksAPI';
-import ActivityFeedProvider from './ActivityFeedProvider';
+import ActivityFeedProvider, {
+  clearActivityFeedCache,
+} from './ActivityFeedProvider';
 import {
   DummyActivityCommentComponent,
   DummyActivityFeedComponent,
@@ -154,6 +156,7 @@ jest.mock('../../../utils/FeedUtilsPure', () => ({
 describe('ActivityFeedProvider', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    clearActivityFeedCache();
     mockUseDomainStore.mockImplementation((selector) =>
       selector({ activeDomain: 'All Domains' })
     );

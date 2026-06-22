@@ -71,6 +71,13 @@ interface DeferredWidgetProps {
    * result is ignored — children render immediately.
    */
   initialInView?: boolean;
+
+  /**
+   * Wait until the next paint before mounting visible children. This is useful for
+   * first-viewport widgets that fetch data on mount; the page shell can paint before those
+   * requests start.
+   */
+  deferUntilAfterPaint?: boolean;
 }
 
 /**
@@ -105,6 +112,7 @@ export const DeferredWidget = ({
   minHeight,
   'data-testid': dataTestId,
   initialInView = false,
+  deferUntilAfterPaint = false,
 }: DeferredWidgetProps) => {
   const [hasBeenVisible, setHasBeenVisible] = useState(initialInView);
 
@@ -125,6 +133,8 @@ export const DeferredWidget = ({
     typeof window === 'undefined' ||
       typeof window.IntersectionObserver === 'undefined' ||
       process.env.NODE_ENV === 'test' ||
+      (typeof navigator !== 'undefined' &&
+        navigator.userAgent.includes('jsdom')) ||
       (typeof navigator !== 'undefined' && navigator.webdriver === true)
   );
 
@@ -147,10 +157,35 @@ export const DeferredWidget = ({
   // previous setState-in-render call triggered React's "Cannot update component during render"
   // warning and an extra render pass; gitar-bot and Copilot both flagged it.
   useEffect(() => {
-    if (inView && !hasBeenVisible) {
-      setHasBeenVisible(true);
+    if (!inView || hasBeenVisible) {
+      return;
     }
-  }, [inView, hasBeenVisible]);
+
+    if (!deferUntilAfterPaint || ioUnsupported.current) {
+      setHasBeenVisible(true);
+
+      return;
+    }
+
+    if (typeof window.requestAnimationFrame !== 'function') {
+      const timeoutId = window.setTimeout(() => setHasBeenVisible(true), 0);
+
+      return () => window.clearTimeout(timeoutId);
+    }
+
+    let timeoutId: number | undefined;
+    const frameId = window.requestAnimationFrame(() => {
+      timeoutId = window.setTimeout(() => setHasBeenVisible(true), 0);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [deferUntilAfterPaint, inView, hasBeenVisible]);
 
   const shouldRender = hasBeenVisible || initialInView || ioUnsupported.current;
 
