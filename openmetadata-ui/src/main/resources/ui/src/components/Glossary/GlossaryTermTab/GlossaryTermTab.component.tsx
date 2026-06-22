@@ -370,6 +370,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         TabSpecificField.OWNERS,
         TabSpecificField.PARENT,
         TabSpecificField.CHILDREN,
+        TabSpecificField.REVIEWERS,
       ],
     });
     setGlossaryChildTerms(buildTree(data) as ModifiedGlossary[]);
