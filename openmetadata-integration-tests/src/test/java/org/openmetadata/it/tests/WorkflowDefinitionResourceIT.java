@@ -9980,4 +9980,357 @@ public class WorkflowDefinitionResourceIT {
 
     LOG.info("test_SelfApprovalPrevention completed successfully");
   }
+
+  /**
+   * Bug 2 (backport of governance supersede fix, issue #28917): a no-op change event must not
+   * invalidate a pending approval.
+   *
+   * <p>CE1 (admin) adds a gated tag, creating and parking an approval Thread. CE2 is a separate
+   * session: a different user (the owner) edits a non-gated trigger field (description). It passes
+   * the entity-level trigger filter but fails checkChangeDescription, so it creates no task. Using a
+   * different user keeps it out of admin's session consolidation. The pending Thread must survive
+   * AND stay resolvable. Before the fix, the trigger-time terminateDuplicateInstances killed CE1's
+   * Flowable process, orphaning the reused approval Thread.
+   */
+  @Test
+  void test_NoOpEventDoesNotInvalidatePendingApproval(TestNamespace ns) throws Exception {
+    LOG.info("Starting test_NoOpEventDoesNotInvalidatePendingApproval");
+    OpenMetadataClient client = SdkClients.adminClient();
+    ensureWorkflowEventConsumerIsActive(client);
+    String suffix = String.valueOf(System.currentTimeMillis());
+
+    GatedApprovalFixtures fx = createGatedApprovalFixtures(client, ns, suffix, "noop");
+    try {
+      String entityLink =
+          String.format("<#E::databaseSchema::%s>", fx.schema.getFullyQualifiedName());
+      OpenMetadataClient ownerClient =
+          SdkClients.createClient(fx.owner.getName(), fx.owner.getEmail(), new String[] {});
+
+      patchAddTag(client, fx.schema.getId(), "PII.Sensitive");
+      Thread original = awaitOpenApprovalThread(client, entityLink);
+      LOG.debug("CE1 created approval task {}", original.getId());
+
+      // CE2: a different user (the owner) edits the description — a trigger field, so it passes the
+      // entity filter, but it is not gated, so the workflow creates no task. The different user
+      // keeps it out of admin's session consolidation, so CE2 carries only the description change.
+      patchDescription(ownerClient, fx.schema.getId(), "no-op edit by owner " + suffix);
+
+      await("no-op event must leave the original approval task untouched")
+          .atMost(Duration.ofSeconds(45))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                List<Thread> open = listOpenApprovalThreads(client, entityLink);
+                assertEquals(1, open.size(), "Exactly one approval task should remain open");
+                assertEquals(
+                    original.getId(),
+                    open.get(0).getId(),
+                    "The original pending approval task must be the one still open");
+              });
+
+      ResolveTask resolve =
+          new ResolveTask()
+              .withNewValue(org.openmetadata.schema.type.EntityStatus.APPROVED.value());
+      ownerClient.feed().resolveTask(original.getTask().getId().toString(), resolve);
+
+      await("surviving task must resolve and close")
+          .atMost(Duration.ofSeconds(45))
+          .pollInterval(Duration.ofSeconds(2))
+          .until(() -> hasClosedApprovalThread(client, entityLink));
+
+      LOG.info("test_NoOpEventDoesNotInvalidatePendingApproval completed successfully");
+    } finally {
+      cleanupGatedFixtures(client, fx);
+    }
+  }
+
+  /**
+   * Bug 1 (backport of governance supersede fix, issue #28917): a new gated change supersedes the
+   * pending approval without orphaning or duplicating it.
+   *
+   * <p>On 1.13 a single approval Thread is reused per entity (CreateApprovalTaskImpl reuses the
+   * entity's open RequestApproval Thread and terminates the prior run via
+   * terminateTaskProcessInstance). So after a second gated change exactly one open Thread remains —
+   * the same reused Thread — and it stays resolvable. This guards against regressions in that reuse
+   * path after removing the trigger-time terminate.
+   */
+  @Test
+  void test_NewApprovalRunSupersedesStalePendingTask(TestNamespace ns) throws Exception {
+    LOG.info("Starting test_NewApprovalRunSupersedesStalePendingTask");
+    OpenMetadataClient client = SdkClients.adminClient();
+    ensureWorkflowEventConsumerIsActive(client);
+    String suffix = String.valueOf(System.currentTimeMillis());
+
+    GatedApprovalFixtures fx = createGatedApprovalFixtures(client, ns, suffix, "supersede");
+    try {
+      String entityLink =
+          String.format("<#E::databaseSchema::%s>", fx.schema.getFullyQualifiedName());
+      OpenMetadataClient ownerClient =
+          SdkClients.createClient(fx.owner.getName(), fx.owner.getEmail(), new String[] {});
+
+      patchAddTag(client, fx.schema.getId(), "PII.Sensitive");
+      Thread first = awaitOpenApprovalThread(client, entityLink);
+      LOG.debug("CE1 created approval task {}", first.getId());
+
+      patchAddTag(client, fx.schema.getId(), "PII.None");
+
+      await("a second gated change must supersede via the reused approval thread")
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                List<Thread> open = listOpenApprovalThreads(client, entityLink);
+                assertEquals(
+                    1,
+                    open.size(),
+                    "Exactly one approval task should be open (reused, not duplicated/orphaned)");
+                assertEquals(
+                    first.getId(),
+                    open.get(0).getId(),
+                    "1.13 reuses the same approval Thread across runs");
+              });
+
+      Thread current = listOpenApprovalThreads(client, entityLink).get(0);
+      ResolveTask resolve =
+          new ResolveTask()
+              .withNewValue(org.openmetadata.schema.type.EntityStatus.APPROVED.value());
+      ownerClient.feed().resolveTask(current.getTask().getId().toString(), resolve);
+
+      await("superseding (reused) task must resolve and close")
+          .atMost(Duration.ofSeconds(45))
+          .pollInterval(Duration.ofSeconds(2))
+          .until(() -> hasClosedApprovalThread(client, entityLink));
+
+      LOG.info("test_NewApprovalRunSupersedesStalePendingTask completed successfully");
+    } finally {
+      cleanupGatedFixtures(client, fx);
+    }
+  }
+
+  private static final class GatedApprovalFixtures {
+    final User owner;
+    final DatabaseService dbService;
+    final Database database;
+    final DatabaseSchema schema;
+    final WorkflowDefinition workflow;
+
+    GatedApprovalFixtures(
+        User owner,
+        DatabaseService dbService,
+        Database database,
+        DatabaseSchema schema,
+        WorkflowDefinition workflow) {
+      this.owner = owner;
+      this.dbService = dbService;
+      this.database = database;
+      this.schema = schema;
+      this.workflow = workflow;
+    }
+  }
+
+  private GatedApprovalFixtures createGatedApprovalFixtures(
+      OpenMetadataClient client, TestNamespace ns, String suffix, String label) throws Exception {
+    User owner =
+        client
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(label + "_owner_" + suffix)
+                    .withEmail(label + "_owner_" + suffix + "@example.com")
+                    .withDisplayName("Supersede Owner"));
+
+    DatabaseService dbService =
+        client
+            .databaseServices()
+            .create(
+                new CreateDatabaseService()
+                    .withName(ns.prefix(label + "-db-service"))
+                    .withServiceType(DatabaseServiceType.Mysql)
+                    .withConnection(
+                        new DatabaseConnection()
+                            .withConfig(
+                                new MysqlConnection()
+                                    .withHostPort("localhost:3306")
+                                    .withUsername("test")
+                                    .withAuthType(new basicAuth().withPassword("test")))));
+
+    Database database =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix(label + "-database"))
+                    .withService(dbService.getFullyQualifiedName()));
+
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix(label + "-schema"))
+                    .withDatabase(database.getFullyQualifiedName())
+                    .withOwners(List.of(owner.getEntityReference())));
+
+    String workflowName = "SupersedeApprovalWorkflow_" + label + "_" + suffix;
+    WorkflowDefinition workflow =
+        client
+            .workflowDefinitions()
+            .create(
+                MAPPER.readValue(
+                    gatedApprovalWorkflowJson(workflowName), CreateWorkflowDefinition.class));
+    waitForWorkflowDeployment(client, workflowName);
+
+    return new GatedApprovalFixtures(owner, dbService, database, schema, workflow);
+  }
+
+  private String gatedApprovalWorkflowJson(String workflowName) {
+    return """
+        {
+          "name": "%s",
+          "displayName": "Supersede Approval Workflow",
+          "description": "Creates an approval task only when gated tags change",
+          "type": "eventBasedEntity",
+          "trigger": {
+            "type": "eventBasedEntity",
+            "config": { "events": ["Updated"], "entityTypes": ["databaseSchema"] },
+            "output": ["relatedEntity", "updatedBy"]
+          },
+          "nodes": [
+            { "name": "start", "type": "startEvent", "subType": "startEvent" },
+            {
+              "name": "checkChangeDesc",
+              "type": "automatedTask",
+              "subType": "checkChangeDescriptionTask",
+              "displayName": "Check Gated Tags Changed",
+              "config": { "condition": "OR", "rules": { "tags": ["PII.Sensitive", "PII.None"] } },
+              "input": ["relatedEntity"],
+              "inputNamespaceMap": { "relatedEntity": "global" },
+              "branches": ["true", "false"]
+            },
+            {
+              "name": "userApproval",
+              "type": "userTask",
+              "subType": "userApprovalTask",
+              "displayName": "Approve Changes",
+              "input": ["relatedEntity"],
+              "output": ["updatedBy"],
+              "branches": ["true", "false"],
+              "config": {
+                "assignees": { "addReviewers": true, "addOwners": true, "candidates": [] },
+                "approvalThreshold": 1,
+                "rejectionThreshold": 1
+              },
+              "inputNamespaceMap": { "relatedEntity": "global" }
+            },
+            {
+              "name": "setApproved",
+              "type": "automatedTask",
+              "subType": "setEntityAttributeTask",
+              "displayName": "Set Status to Approved",
+              "config": { "fieldName": "status", "fieldValue": "Approved" },
+              "input": ["relatedEntity", "updatedBy"],
+              "inputNamespaceMap": { "relatedEntity": "global", "updatedBy": "userApproval" }
+            },
+            {
+              "name": "setRejected",
+              "type": "automatedTask",
+              "subType": "setEntityAttributeTask",
+              "displayName": "Set Status to Rejected",
+              "config": { "fieldName": "status", "fieldValue": "Rejected" },
+              "input": ["relatedEntity", "updatedBy"],
+              "inputNamespaceMap": { "relatedEntity": "global", "updatedBy": "userApproval" }
+            },
+            {
+              "name": "setDraft",
+              "type": "automatedTask",
+              "subType": "setEntityAttributeTask",
+              "displayName": "Set Status to Draft",
+              "config": { "fieldName": "status", "fieldValue": "Draft" },
+              "input": ["relatedEntity", "updatedBy"],
+              "inputNamespaceMap": { "relatedEntity": "global", "updatedBy": "global" }
+            },
+            { "name": "end", "type": "endEvent", "subType": "endEvent" }
+          ],
+          "edges": [
+            { "from": "start", "to": "checkChangeDesc" },
+            { "from": "checkChangeDesc", "to": "userApproval", "condition": "true" },
+            { "from": "checkChangeDesc", "to": "setDraft", "condition": "false" },
+            { "from": "userApproval", "to": "setApproved", "condition": "true" },
+            { "from": "userApproval", "to": "setRejected", "condition": "false" },
+            { "from": "setApproved", "to": "end" },
+            { "from": "setRejected", "to": "end" },
+            { "from": "setDraft", "to": "end" }
+          ]
+        }
+        """
+        .formatted(workflowName);
+  }
+
+  private void patchAddTag(OpenMetadataClient client, UUID schemaId, String tagFqn)
+      throws Exception {
+    String patch =
+        String.format(
+            "[{\"op\":\"add\",\"path\":\"/tags\",\"value\":[{\"tagFQN\":\"%s\","
+                + "\"source\":\"Classification\",\"labelType\":\"Manual\",\"state\":\"Confirmed\"}]}]",
+            tagFqn);
+    client.databaseSchemas().patch(schemaId, MAPPER.readTree(patch));
+  }
+
+  private void patchDescription(OpenMetadataClient client, UUID schemaId, String description)
+      throws Exception {
+    String patch =
+        String.format("[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"%s\"}]", description);
+    client.databaseSchemas().patch(schemaId, MAPPER.readTree(patch));
+  }
+
+  private List<Thread> listOpenApprovalThreads(OpenMetadataClient client, String entityLink) {
+    List<Thread> approvals;
+    try {
+      approvals =
+          client.feed().listTasks(entityLink, TaskStatus.Open, 10).getData().stream()
+              .filter(
+                  t ->
+                      t.getTask() != null
+                          && org.openmetadata.schema.type.TaskType.RequestApproval.equals(
+                              t.getTask().getType()))
+              .toList();
+    } catch (Exception e) {
+      approvals = List.of();
+    }
+    return approvals;
+  }
+
+  private Thread awaitOpenApprovalThread(OpenMetadataClient client, String entityLink) {
+    await("approval task to be created for " + entityLink)
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(() -> !listOpenApprovalThreads(client, entityLink).isEmpty());
+    return listOpenApprovalThreads(client, entityLink).get(0);
+  }
+
+  private boolean hasClosedApprovalThread(OpenMetadataClient client, String entityLink) {
+    boolean closed;
+    try {
+      closed = !client.feed().listTasks(entityLink, TaskStatus.Closed, 10).getData().isEmpty();
+    } catch (Exception e) {
+      closed = false;
+    }
+    return closed;
+  }
+
+  private void cleanupGatedFixtures(OpenMetadataClient client, GatedApprovalFixtures fx) {
+    try {
+      Map<String, String> params = new HashMap<>();
+      params.put("hardDelete", "true");
+      params.put("recursive", "true");
+      client.workflowDefinitions().delete(fx.workflow.getId());
+      client.databaseSchemas().delete(fx.schema.getId().toString(), params);
+      client.databases().delete(fx.database.getId().toString(), params);
+      client.databaseServices().delete(fx.dbService.getId().toString(), params);
+      client.users().delete(fx.owner.getId().toString(), params);
+    } catch (Exception e) {
+      LOG.warn("Cleanup error: {}", e.getMessage());
+    }
+  }
 }
