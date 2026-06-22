@@ -44,17 +44,17 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.services.context.ContextMemoryService;
 import org.openmetadata.sdk.services.glossary.GlossaryService;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.drive.ontology.OntologyAction;
-import org.openmetadata.service.drive.ontology.OntologyDerivation;
-import org.openmetadata.service.drive.ontology.OntologyReconciler;
-import org.openmetadata.service.drive.ontology.OntologyVerdict;
+import org.openmetadata.service.drive.memory.MemoryAction;
+import org.openmetadata.service.drive.memory.MemoryDerivation;
+import org.openmetadata.service.drive.memory.MemoryReconciler;
+import org.openmetadata.service.drive.memory.MemoryVerdict;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.MetricRepository;
-import org.openmetadata.service.util.OntologyOwnership;
+import org.openmetadata.service.util.MemoryOwnership;
 
 /**
- * Integration tests for the Ontology Agent lifecycle.
+ * Integration tests for the Memory Agent lifecycle.
  *
  * <p>These tests are FULLY DETERMINISTIC: no LLM provider is needed. Rather than triggering the
  * actual agent derivation pipeline (which requires an LLM), we seed the derived state directly via
@@ -73,18 +73,18 @@ import org.openmetadata.service.util.OntologyOwnership;
  * edge in both directions.
  *
  * <p><b>Scenario D</b> — full pipeline with a stub LLM: SKIPPED because the
- * {@link org.openmetadata.service.drive.ontology.OntologyProcessingEngine} singleton is built once
+ * {@link org.openmetadata.service.drive.memory.MemoryProcessingEngine} singleton is built once
  * with the server's quiet-period (default 5 min) and {@link
  * org.openmetadata.service.llm.LLMClientHolder} uses a static field. Resetting the singleton in an
  * integration environment that is already serving requests races with the production path: any memory
  * created concurrently by another test or background job could be ingested by the stub, producing
  * non-deterministic side-effects. Scenarios A, B, C cover the catalog-critical lifecycle end-to-end
- * through the public API hooks; the unit tests in ContextMemoryReconcilerTest and OntologyExtractorTest
+ * through the public API hooks; the unit tests in ContextMemoryReconcilerTest and MemoryExtractorTest
  * cover the LLM derivation path with full determinism.
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
-public class OntologyAgentIT {
+public class MemoryAgentIT {
 
   // ═══════════════════════════════════════════════════════════════════
   // Scenario A — CASCADE hard delete removes the automation-owned term
@@ -212,10 +212,10 @@ public class OntologyAgentIT {
     Metric existingOwnedMetric = createAutomationMetric(ns.prefix("owned-metric"));
     seedDerivedFromMetricEdge(existingOwnedMetric.getId(), memory.getId());
 
-    OntologyReconciler reconciler = buildReconciler();
-    OntologyVerdict createMetricVerdict =
-        new OntologyVerdict(
-            OntologyAction.CREATE,
+    MemoryReconciler reconciler = buildReconciler();
+    MemoryVerdict createMetricVerdict =
+        new MemoryVerdict(
+            MemoryAction.CREATE,
             null,
             null,
             null,
@@ -225,13 +225,12 @@ public class OntologyAgentIT {
             "COUNT",
             null,
             null);
-    OntologyVerdict skipTermVerdict =
-        new OntologyVerdict(
-            OntologyAction.SKIP, null, null, null, null, null, null, null, null, null);
-    OntologyReconciler.ReconcileResult result =
+    MemoryVerdict skipTermVerdict =
+        new MemoryVerdict(MemoryAction.SKIP, null, null, null, null, null, null, null, null, null);
+    MemoryReconciler.ReconcileResult result =
         reconciler.reconcile(
             memory,
-            new OntologyDerivation(skipTermVerdict, createMetricVerdict),
+            new MemoryDerivation(skipTermVerdict, createMetricVerdict),
             null,
             AIDeletionPolicy.CASCADE,
             true,
@@ -244,8 +243,7 @@ public class OntologyAgentIT {
         metricStillAlive, "pre-existing owned metric must survive when metric axis is disabled");
 
     MetricRepository metricRepo = (MetricRepository) Entity.getEntityRepository(Entity.METRIC);
-    metricRepo.delete(
-        OntologyOwnership.ONTOLOGY_BOT_NAME, existingOwnedMetric.getId(), false, true);
+    metricRepo.delete(MemoryOwnership.MEMORY_BOT_NAME, existingOwnedMetric.getId(), false, true);
     hardDeleteMemory(client, memory.getId());
   }
 
@@ -271,7 +269,7 @@ public class OntologyAgentIT {
 
   /**
    * Creates a GlossaryTerm with {@code provider=AUTOMATION} via the in-process repository,
-   * exactly replicating the path {@code OntologyReconciler.createTerm} takes. The public REST
+   * exactly replicating the path {@code MemoryReconciler.createTerm} takes. The public REST
    * {@code CreateGlossaryTerm} API does not expose {@code provider}, so we bypass it and call
    * {@code createInternal} directly — the same call the reconciler uses — so the stored JSON
    * carries {@code "provider":"automation"} and the cascade / adopt-on-touch hooks see the correct
@@ -287,7 +285,7 @@ public class OntologyAgentIT {
             .withDescription("Automation-derived term for " + name)
             .withGlossary(glossary.getEntityReference())
             .withProvider(ProviderType.AUTOMATION)
-            .withUpdatedBy(OntologyOwnership.ONTOLOGY_BOT_NAME)
+            .withUpdatedBy(MemoryOwnership.MEMORY_BOT_NAME)
             .withUpdatedAt(System.currentTimeMillis());
     return termRepo.createInternal(term);
   }
@@ -300,17 +298,17 @@ public class OntologyAgentIT {
             .withName(name)
             .withDescription("Automation-derived metric for " + name)
             .withProvider(ProviderType.AUTOMATION)
-            .withUpdatedBy(OntologyOwnership.ONTOLOGY_BOT_NAME)
+            .withUpdatedBy(MemoryOwnership.MEMORY_BOT_NAME)
             .withUpdatedAt(System.currentTimeMillis());
     return metricRepo.createInternal(metric);
   }
 
   /**
-   * Seeds the {@code DERIVED_FROM} edge that the Ontology Agent's CREATE path produces:
+   * Seeds the {@code DERIVED_FROM} edge that the Memory Agent's CREATE path produces:
    * {@code from=term → to=memory} via {@link Relationship#DERIVED_FROM}.
    *
    * <p>This uses the in-process repository directly (the same call as
-   * {@code OntologyReconciler.addDerivedFromEdge}) so the edge is queryable through the real
+   * {@code MemoryReconciler.addDerivedFromEdge}) so the edge is queryable through the real
    * relationship table, and all subsequent REST calls (GET, DELETE) exercise the real hooks.
    */
   private void seedDerivedFromEdge(UUID termId, UUID memoryId) {
@@ -374,12 +372,12 @@ public class OntologyAgentIT {
     }
   }
 
-  private OntologyReconciler buildReconciler() {
+  private MemoryReconciler buildReconciler() {
     GlossaryTermRepository termRepo =
         (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
     MetricRepository metricRepo = (MetricRepository) Entity.getEntityRepository(Entity.METRIC);
     GlossaryRepository glossaryRepo =
         (GlossaryRepository) Entity.getEntityRepository(Entity.GLOSSARY);
-    return new OntologyReconciler(termRepo, metricRepo, glossaryRepo);
+    return new MemoryReconciler(termRepo, metricRepo, glossaryRepo);
   }
 }

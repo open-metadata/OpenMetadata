@@ -11,21 +11,21 @@
  * limitations under the License.
  */
 
-package org.openmetadata.service.drive.ontology;
+package org.openmetadata.service.drive.memory;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
-class OntologyDerivationTest {
+class MemoryDerivationTest {
 
   @Test
   void parsesVerdictJsonLeniently() throws Exception {
     String json =
         "{\"termVerdict\":{\"action\":\"CREATE\",\"name\":\"Churn\",\"description\":\"Customer churn\",\"newGlossaryName\":\"Business\"},"
             + "\"metricVerdict\":{\"action\":\"SKIP\"},\"unknownField\":123}";
-    OntologyDerivation d = new ObjectMapper().readValue(json, OntologyDerivation.class);
+    MemoryDerivation d = new ObjectMapper().readValue(json, MemoryDerivation.class);
     assertEquals("CREATE", d.termVerdict().action());
     assertEquals("Churn", d.termVerdict().name());
     assertEquals("SKIP", d.metricVerdict().action());

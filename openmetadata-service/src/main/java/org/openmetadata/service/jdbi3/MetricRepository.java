@@ -45,7 +45,7 @@ import org.openmetadata.service.resources.metrics.MetricResource;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
-import org.openmetadata.service.util.OntologyOwnership;
+import org.openmetadata.service.util.MemoryOwnership;
 
 @Slf4j
 public class MetricRepository extends EntityRepository<Metric> {
@@ -115,7 +115,7 @@ public class MetricRepository extends EntityRepository<Metric> {
   }
 
   /**
-   * Returns the context memory from which the Ontology Agent created this metric.
+   * Returns the context memory from which the Memory Agent created this metric.
    * Edge direction: from=metric → to=memory via DERIVED_FROM; findTo resolves the to-side (memory).
    */
   private EntityReference getDerivedFrom(Metric metric) {
@@ -238,7 +238,7 @@ public class MetricRepository extends EntityRepository<Metric> {
             }
           });
       compareAndUpdate("relatedMetrics", () -> updateRelatedMetrics(original, updated));
-      OntologyOwnership.releaseIfHumanEdited(updated, operation.isPatch(), managedFieldChanged());
+      MemoryOwnership.releaseIfHumanEdited(updated, operation.isPatch(), managedFieldChanged());
     }
 
     private boolean managedFieldChanged() {

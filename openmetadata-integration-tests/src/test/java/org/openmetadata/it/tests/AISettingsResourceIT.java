@@ -27,7 +27,7 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.configuration.AIDeletionPolicy;
 import org.openmetadata.schema.configuration.AISettings;
-import org.openmetadata.schema.configuration.OntologyAgentSettings;
+import org.openmetadata.schema.configuration.MemoryAgentSettings;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -61,34 +61,33 @@ public class AISettingsResourceIT {
 
     assertNotNull(settings, "AISettings must not be null");
     assertTrue(settings.getEnabled(), "Top-level enabled must default to true");
-    assertNotNull(settings.getOntologyAgent(), "ontologyAgent must be present in defaults");
-    assertTrue(
-        settings.getOntologyAgent().getEnabled(), "ontologyAgent.enabled must default to true");
+    assertNotNull(settings.getMemoryAgent(), "memoryAgent must be present in defaults");
+    assertTrue(settings.getMemoryAgent().getEnabled(), "memoryAgent.enabled must default to true");
     assertEquals(
         AIDeletionPolicy.CASCADE,
-        settings.getOntologyAgent().getDeletionPolicy(),
-        "ontologyAgent.deletionPolicy must default to cascade");
+        settings.getMemoryAgent().getDeletionPolicy(),
+        "memoryAgent.deletionPolicy must default to cascade");
   }
 
   @Test
-  void put_aiSettings_persistsOntologyAgentDisabled() throws Exception {
+  void put_aiSettings_persistsMemoryAgentDisabled() throws Exception {
     resetToDefaults();
 
     AISettings modified =
         new AISettings()
             .withEnabled(true)
-            .withOntologyAgent(new OntologyAgentSettings().withEnabled(false));
+            .withMemoryAgent(new MemoryAgentSettings().withEnabled(false));
     putAiSettings(modified);
 
     AISettings fetched = fetchAiSettings();
 
     assertNotNull(fetched, "Fetched AISettings must not be null");
     assertTrue(fetched.getEnabled(), "Top-level enabled must remain true after partial PUT");
-    assertNotNull(fetched.getOntologyAgent(), "ontologyAgent must be present after PUT");
+    assertNotNull(fetched.getMemoryAgent(), "memoryAgent must be present after PUT");
     assertEquals(
         false,
-        fetched.getOntologyAgent().getEnabled(),
-        "ontologyAgent.enabled must reflect the PUT value");
+        fetched.getMemoryAgent().getEnabled(),
+        "memoryAgent.enabled must reflect the PUT value");
   }
 
   @Test
@@ -96,7 +95,7 @@ public class AISettingsResourceIT {
     AISettings modified =
         new AISettings()
             .withEnabled(true)
-            .withOntologyAgent(new OntologyAgentSettings().withEnabled(false));
+            .withMemoryAgent(new MemoryAgentSettings().withEnabled(false));
     putAiSettings(modified);
 
     resetToDefaults();
@@ -105,13 +104,13 @@ public class AISettingsResourceIT {
 
     assertNotNull(restored, "Restored AISettings must not be null");
     assertTrue(restored.getEnabled(), "Top-level enabled must be true after reset");
-    assertNotNull(restored.getOntologyAgent(), "ontologyAgent must be present after reset");
+    assertNotNull(restored.getMemoryAgent(), "memoryAgent must be present after reset");
     assertTrue(
-        restored.getOntologyAgent().getEnabled(), "ontologyAgent.enabled must be true after reset");
+        restored.getMemoryAgent().getEnabled(), "memoryAgent.enabled must be true after reset");
     assertEquals(
         AIDeletionPolicy.CASCADE,
-        restored.getOntologyAgent().getDeletionPolicy(),
-        "ontologyAgent.deletionPolicy must be cascade after reset");
+        restored.getMemoryAgent().getDeletionPolicy(),
+        "memoryAgent.deletionPolicy must be cascade after reset");
   }
 
   private AISettings fetchAiSettings() throws Exception {

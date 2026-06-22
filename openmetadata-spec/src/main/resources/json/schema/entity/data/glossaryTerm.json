@@ -222,7 +222,7 @@
       "type": "integer"
     },
     "derivedFrom": {
-      "description": "Derived: the context memory from which the Ontology Agent created this glossary term (DERIVED_FROM edge, read-only projection).",
+      "description": "Derived: the context memory from which the Memory Agent created this glossary term (DERIVED_FROM edge, read-only projection).",
       "$ref": "../../type/entityReference.json"
     }
   },

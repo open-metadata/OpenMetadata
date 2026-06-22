@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 /**
- * Configuration for AI features: memory extraction, the Ontology Agent, and tunable LLM
+ * Configuration for AI features: memory extraction, the Memory Agent, and tunable LLM
  * system prompts.
  */
 export interface AISettings {
     enabled?:          boolean;
     mcpChat?:          MCPChat;
     memoryExtraction?: MemoryExtraction;
-    ontologyAgent?:    OntologyAgent;
+    memoryAgent?:    MemoryAgent;
     prompts?:          Prompts;
 }
 
@@ -36,7 +36,7 @@ export interface MemoryExtraction {
     fromPages?: boolean;
 }
 
-export interface OntologyAgent {
+export interface MemoryAgent {
     deletionPolicy?:      DeletionPolicy;
     deriveGlossaryTerms?: boolean;
     deriveMetrics?:       boolean;
@@ -51,7 +51,7 @@ export enum DeletionPolicy {
 
 export interface Prompts {
     memoryExtraction?: PromptConfig;
-    ontologyAgent?:    PromptConfig;
+    memoryAgent?:    PromptConfig;
 }
 
 export interface PromptConfig {

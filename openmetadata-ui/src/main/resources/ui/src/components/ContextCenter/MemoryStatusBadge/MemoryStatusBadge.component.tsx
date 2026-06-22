@@ -18,37 +18,34 @@ import {
 } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { OntologyProcessingStatus } from '../../../generated/entity/context/contextMemory';
-import { OntologyStatusBadgeProps } from './OntologyStatusBadge.interface';
+import { MemoryProcessingStatus } from '../../../generated/entity/context/contextMemory';
+import { MemoryStatusBadgeProps } from './MemoryStatusBadge.interface';
 
 type BadgeColor = 'gray' | 'blue' | 'success' | 'error';
 
 const STATUS_CONFIG: Record<
-  OntologyProcessingStatus,
+  MemoryProcessingStatus,
   { color: BadgeColor; labelKey: string }
 > = {
-  [OntologyProcessingStatus.Queued]: {
+  [MemoryProcessingStatus.Queued]: {
     color: 'gray',
     labelKey: 'label.queued',
   },
-  [OntologyProcessingStatus.Processing]: {
+  [MemoryProcessingStatus.Processing]: {
     color: 'blue',
     labelKey: 'label.processing',
   },
-  [OntologyProcessingStatus.Processed]: {
+  [MemoryProcessingStatus.Processed]: {
     color: 'success',
     labelKey: 'label.processed',
   },
-  [OntologyProcessingStatus.Failed]: {
+  [MemoryProcessingStatus.Failed]: {
     color: 'error',
     labelKey: 'label.failed',
   },
 };
 
-const OntologyStatusBadge: FC<OntologyStatusBadgeProps> = ({
-  error,
-  status,
-}) => {
+const MemoryStatusBadge: FC<MemoryStatusBadgeProps> = ({ error, status }) => {
   const { t } = useTranslation();
 
   if (!status) {
@@ -64,7 +61,7 @@ const OntologyStatusBadge: FC<OntologyStatusBadgeProps> = ({
   }
 
   const tooltipTitle =
-    status === OntologyProcessingStatus.Failed && error ? error : undefined;
+    status === MemoryProcessingStatus.Failed && error ? error : undefined;
 
   const badge = (
     <Badge color={config.color} size="sm">
@@ -75,10 +72,10 @@ const OntologyStatusBadge: FC<OntologyStatusBadgeProps> = ({
   );
 
   return (
-    <span className="tw:shrink-0" data-testid="ontology-status-badge">
+    <span className="tw:shrink-0" data-testid="memory-status-badge">
       {tooltipTitle ? (
         <Tooltip title={tooltipTitle}>
-          <TooltipTrigger data-testid="ontology-status-tooltip-trigger">
+          <TooltipTrigger data-testid="memory-status-tooltip-trigger">
             {badge}
           </TooltipTrigger>
         </Tooltip>
@@ -89,4 +86,4 @@ const OntologyStatusBadge: FC<OntologyStatusBadgeProps> = ({
   );
 };
 
-export default OntologyStatusBadge;
+export default MemoryStatusBadge;

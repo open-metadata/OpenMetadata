@@ -214,22 +214,22 @@ const AISettingsPage = () => {
 
         <Col span={24}>
           <Typography.Title className="text-sm font-semibold" level={5}>
-            {t('label.ontology-agent')}
+            {t('label.memory-agent')}
           </Typography.Title>
 
           <div className="tw:flex tw:flex-col tw:gap-4 tw:mt-3">
             <Toggle
-              data-testid="ontology-agent-toggle"
+              data-testid="memory-agent-toggle"
               isDisabled={isUpdating}
-              isSelected={aiConfig.ontologyAgent?.enabled ?? false}
+              isSelected={aiConfig.memoryAgent?.enabled ?? false}
               label={t('label.enable-entity', {
-                entity: t('label.ontology-agent'),
+                entity: t('label.memory-agent'),
               })}
               onChange={(isSelected) =>
                 setAiConfig({
                   ...aiConfig,
-                  ontologyAgent: {
-                    ...aiConfig.ontologyAgent,
+                  memoryAgent: {
+                    ...aiConfig.memoryAgent,
                     enabled: isSelected,
                   },
                 })
@@ -238,13 +238,13 @@ const AISettingsPage = () => {
 
             <Toggle
               isDisabled={isUpdating}
-              isSelected={aiConfig.ontologyAgent?.deriveGlossaryTerms ?? false}
+              isSelected={aiConfig.memoryAgent?.deriveGlossaryTerms ?? false}
               label={t('label.derive-glossary-term-plural')}
               onChange={(isSelected) =>
                 setAiConfig({
                   ...aiConfig,
-                  ontologyAgent: {
-                    ...aiConfig.ontologyAgent,
+                  memoryAgent: {
+                    ...aiConfig.memoryAgent,
                     deriveGlossaryTerms: isSelected,
                   },
                 })
@@ -253,13 +253,13 @@ const AISettingsPage = () => {
 
             <Toggle
               isDisabled={isUpdating}
-              isSelected={aiConfig.ontologyAgent?.deriveMetrics ?? false}
+              isSelected={aiConfig.memoryAgent?.deriveMetrics ?? false}
               label={t('label.derive-metric-plural')}
               onChange={(isSelected) =>
                 setAiConfig({
                   ...aiConfig,
-                  ontologyAgent: {
-                    ...aiConfig.ontologyAgent,
+                  memoryAgent: {
+                    ...aiConfig.memoryAgent,
                     deriveMetrics: isSelected,
                   },
                 })
@@ -275,14 +275,13 @@ const AISettingsPage = () => {
                 isDisabled={isUpdating}
                 label=""
                 value={
-                  aiConfig.ontologyAgent?.deletionPolicy ??
-                  DeletionPolicy.Cascade
+                  aiConfig.memoryAgent?.deletionPolicy ?? DeletionPolicy.Cascade
                 }
                 onChange={(key) =>
                   setAiConfig({
                     ...aiConfig,
-                    ontologyAgent: {
-                      ...aiConfig.ontologyAgent,
+                    memoryAgent: {
+                      ...aiConfig.memoryAgent,
                       deletionPolicy: key as DeletionPolicy,
                     },
                   })
@@ -330,19 +329,19 @@ const AISettingsPage = () => {
 
             <div>
               <TextArea
-                data-testid="ontology-agent-prompt"
+                data-testid="memory-agent-prompt"
                 isDisabled={isUpdating}
-                label={t('label.ontology-agent-prompt')}
+                label={t('label.memory-agent-prompt')}
                 placeholder={t('message.enter-system-prompt')}
                 rows={6}
-                value={aiConfig.prompts?.ontologyAgent?.systemPrompt ?? ''}
+                value={aiConfig.prompts?.memoryAgent?.systemPrompt ?? ''}
                 onChange={(value) =>
                   setAiConfig({
                     ...aiConfig,
                     prompts: {
                       ...aiConfig.prompts,
-                      ontologyAgent: {
-                        ...aiConfig.prompts?.ontologyAgent,
+                      memoryAgent: {
+                        ...aiConfig.prompts?.memoryAgent,
                         systemPrompt: value,
                       },
                     },

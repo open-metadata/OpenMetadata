@@ -18,8 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.configuration.AISettings;
+import org.openmetadata.schema.configuration.MemoryAgentSettings;
 import org.openmetadata.schema.configuration.MemoryExtractionSettings;
-import org.openmetadata.schema.configuration.OntologyAgentSettings;
 
 class AISettingsHandlerTest {
 
@@ -55,7 +55,7 @@ class AISettingsHandlerTest {
             .withEnabled(true)
             .withMemoryExtraction(
                 new MemoryExtractionSettings().withFromFiles(true).withFromPages(true))
-            .withOntologyAgent(new OntologyAgentSettings().withEnabled(true));
+            .withMemoryAgent(new MemoryAgentSettings().withEnabled(true));
     AISettings incoming =
         new AISettings().withMemoryExtraction(new MemoryExtractionSettings().withFromPages(false));
 
@@ -63,6 +63,6 @@ class AISettingsHandlerTest {
 
     assertEquals(Boolean.FALSE, merged.getMemoryExtraction().getFromPages());
     assertEquals(Boolean.TRUE, merged.getMemoryExtraction().getFromFiles());
-    assertTrue(merged.getOntologyAgent().getEnabled());
+    assertTrue(merged.getMemoryAgent().getEnabled());
   }
 }

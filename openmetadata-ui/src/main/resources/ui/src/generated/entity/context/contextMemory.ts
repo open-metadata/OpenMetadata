@@ -27,7 +27,7 @@ export interface ContextMemory {
      */
     deleted?: boolean;
     /**
-     * Derived: glossary terms and metrics created by the Ontology Agent from this memory
+     * Derived: glossary terms and metrics created by the Memory Agent from this memory
      * (DERIVED_FROM edges, agent-owned).
      */
     derivedEntities?: EntityReference[];
@@ -70,7 +70,7 @@ export interface ContextMemory {
      * Stable system name for the memory.
      */
     name:           string;
-    ontologyStats?: OntologyStats;
+    memoryStats?: MemoryStats;
     /**
      * Owners of this memory.
      */
@@ -92,7 +92,7 @@ export interface ContextMemory {
      */
     relatedEntities?: EntityReference[];
     /**
-     * Derived: glossary terms and metrics reused (not created) by the Ontology Agent from this
+     * Derived: glossary terms and metrics reused (not created) by the Memory Agent from this
      * memory (RELATED_TO edges).
      */
     reusedEntities?: EntityReference[];
@@ -221,7 +221,7 @@ export interface FieldChange {
 }
 
 /**
- * Derived: glossary terms and metrics created by the Ontology Agent from this memory
+ * Derived: glossary terms and metrics created by the Memory Agent from this memory
  * (DERIVED_FROM edges, agent-owned).
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
@@ -346,13 +346,13 @@ export enum MemoryType {
 }
 
 /**
- * Telemetry + hash-gate for the Ontology Agent derivation of this memory.
+ * Telemetry + hash-gate for the Memory Agent derivation of this memory.
  */
-export interface OntologyStats {
+export interface MemoryStats {
     derivedMetricCount?: number;
     derivedTermCount?:   number;
     /**
-     * Error message from the most recent failed Ontology Agent derivation run, if any.
+     * Error message from the most recent failed Memory Agent derivation run, if any.
      */
     error?:       string;
     lastRunAt?:   number;
@@ -362,17 +362,17 @@ export interface OntologyStats {
      */
     sourceHash?: string;
     /**
-     * Status of the most recent Ontology Agent derivation run on this memory.
+     * Status of the most recent Memory Agent derivation run on this memory.
      */
-    status?: OntologyProcessingStatus;
+    status?: MemoryProcessingStatus;
 }
 
 /**
- * Status of the most recent Ontology Agent derivation run on this memory.
+ * Status of the most recent Memory Agent derivation run on this memory.
  *
- * Lifecycle status of the asynchronous Ontology Agent derivation for a memory.
+ * Lifecycle status of the asynchronous Memory Agent derivation for a memory.
  */
-export enum OntologyProcessingStatus {
+export enum MemoryProcessingStatus {
     Failed = "Failed",
     Processed = "Processed",
     Processing = "Processing",

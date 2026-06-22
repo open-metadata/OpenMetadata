@@ -11,7 +11,7 @@
  * limitations under the License.
  */
 
-package org.openmetadata.service.drive.ontology;
+package org.openmetadata.service.drive.memory;
 
 import java.util.Map;
 import java.util.UUID;
@@ -25,10 +25,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.configuration.AISettings;
-import org.openmetadata.schema.configuration.OntologyAgentSettings;
+import org.openmetadata.schema.configuration.MemoryAgentSettings;
 import org.openmetadata.schema.entity.context.ContextMemory;
-import org.openmetadata.schema.entity.context.OntologyProcessingStatus;
-import org.openmetadata.schema.entity.context.OntologyStats;
+import org.openmetadata.schema.entity.context.MemoryProcessingStatus;
+import org.openmetadata.schema.entity.context.MemoryStats;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
@@ -39,19 +39,19 @@ import org.openmetadata.service.llm.LLMClientHolder;
 import org.openmetadata.service.util.AISettingsUtil;
 
 /**
- * Orchestrates Ontology Agent derivation from {@link ContextMemory}. When memory content changes,
+ * Orchestrates Memory Agent derivation from {@link ContextMemory}. When memory content changes,
  * a trailing-throttle (debounce) collapses rapid edits into one run. Each run is guarded by a
  * content hash so an identical memory is never re-derived, protecting against cost blowout and the
  * postUpdate→schedule→run re-entry loop.
  *
- * <p>The stamp persists ontologyStats with {@code updateVersion=false}, so it does NOT bump the
+ * <p>The stamp persists memoryStats with {@code updateVersion=false}, so it does NOT bump the
  * entity version (no history churn). It DOES still fire postUpdate ({@code entityChanged=true}).
  * The recursion loop is therefore broken solely by the hash-gate: after a stamp, {@code sourceHash
  * == hashOf(memory)}, so a re-triggered ontology run skips derivation. The hash-gate is
  * load-bearing — do NOT remove it.
  */
 @Slf4j
-public class OntologyProcessingEngine {
+public class MemoryProcessingEngine {
   static final String SYSPROP_QUIET_MILLIS = "ontology.context.quiet.period.millis";
   static final String SYSPROP_MAX_PENDING = "ontology.context.max.pending.memories";
 
@@ -67,9 +67,9 @@ public class OntologyProcessingEngine {
   static final int DEFAULT_MAX_PENDING_MEMORIES = 10_000;
 
   private final ContextMemoryRepository memoryRepo;
-  private final OntologyGrounding grounding;
-  private final OntologyExtractor extractor;
-  private final OntologyReconciler reconciler;
+  private final MemoryGrounding grounding;
+  private final MemoryExtractor extractor;
+  private final MemoryReconciler reconciler;
   private final long quietPeriodMillis;
   private final int maxPendingMemories;
   private final ScheduledExecutorService scheduler;
@@ -77,13 +77,13 @@ public class OntologyProcessingEngine {
   private final Map<UUID, ScheduledFuture<?>> pending = new ConcurrentHashMap<>();
 
   /** Production singleton — lazily built on first call to {@link #instance()}. */
-  private static volatile OntologyProcessingEngine singleton;
+  private static volatile MemoryProcessingEngine singleton;
 
-  private OntologyProcessingEngine(
+  private MemoryProcessingEngine(
       final ContextMemoryRepository memoryRepo,
-      final OntologyGrounding grounding,
-      final OntologyExtractor extractor,
-      final OntologyReconciler reconciler,
+      final MemoryGrounding grounding,
+      final MemoryExtractor extractor,
+      final MemoryReconciler reconciler,
       final long quietPeriodMillis,
       final int maxPendingMemories,
       final ScheduledExecutorService scheduler,
@@ -99,9 +99,9 @@ public class OntologyProcessingEngine {
   }
 
   /** Returns the production singleton, building it on first call. */
-  public static OntologyProcessingEngine instance() {
+  public static MemoryProcessingEngine instance() {
     if (singleton == null) {
-      synchronized (OntologyProcessingEngine.class) {
+      synchronized (MemoryProcessingEngine.class) {
         if (singleton == null) {
           singleton = buildProduction();
         }
@@ -115,12 +115,12 @@ public class OntologyProcessingEngine {
    * gates (which require a running settings cache), and uses a daemon scheduler so {@link
    * #run(UUID)} can be exercised synchronously without timing dependencies.
    */
-  static OntologyProcessingEngine forTest(
+  static MemoryProcessingEngine forTest(
       final ContextMemoryRepository memoryRepo,
-      final OntologyGrounding grounding,
-      final OntologyExtractor extractor,
-      final OntologyReconciler reconciler) {
-    return new OntologyProcessingEngine(
+      final MemoryGrounding grounding,
+      final MemoryExtractor extractor,
+      final MemoryReconciler reconciler) {
+    return new MemoryProcessingEngine(
         memoryRepo,
         grounding,
         extractor,
@@ -131,7 +131,7 @@ public class OntologyProcessingEngine {
         true);
   }
 
-  private static OntologyProcessingEngine buildProduction() {
+  private static MemoryProcessingEngine buildProduction() {
     final ContextMemoryRepository memoryRepo =
         (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
     final GlossaryTermRepository termRepo =
@@ -142,11 +142,11 @@ public class OntologyProcessingEngine {
         (GlossaryRepository) Entity.getEntityRepository(Entity.GLOSSARY);
     final long quietMillis = Long.getLong(SYSPROP_QUIET_MILLIS, DEFAULT_QUIET_PERIOD_MILLIS);
     final int maxPending = Integer.getInteger(SYSPROP_MAX_PENDING, DEFAULT_MAX_PENDING_MEMORIES);
-    return new OntologyProcessingEngine(
+    return new MemoryProcessingEngine(
         memoryRepo,
-        new OntologyGrounding(),
-        new OntologyExtractor(LLMClientHolder.get()),
-        new OntologyReconciler(termRepo, metricRepo, glossaryRepo),
+        new MemoryGrounding(),
+        new MemoryExtractor(LLMClientHolder.get()),
+        new MemoryReconciler(termRepo, metricRepo, glossaryRepo),
         quietMillis,
         maxPending,
         defaultScheduler(),
@@ -205,7 +205,7 @@ public class OntologyProcessingEngine {
 
   private boolean isAgentEnabled() {
     final AISettings settings = AISettingsUtil.get();
-    return AISettingsUtil.isOntologyAgentEnabled(settings);
+    return AISettingsUtil.isMemoryAgentEnabled(settings);
   }
 
   private void runIfHashChanged(final UUID memoryId) {
@@ -219,18 +219,17 @@ public class OntologyProcessingEngine {
   }
 
   private boolean isHashUnchanged(final ContextMemory memory, final String hash) {
-    return memory.getOntologyStats() != null
-        && hash.equals(memory.getOntologyStats().getSourceHash());
+    return memory.getMemoryStats() != null && hash.equals(memory.getMemoryStats().getSourceHash());
   }
 
   private void derive(final ContextMemory memory, final String hash) {
     final AISettings settings = AISettingsUtil.get();
-    stampStatus(memory, OntologyProcessingStatus.Processing, null);
-    OntologyStats stats;
+    stampStatus(memory, MemoryProcessingStatus.Processing, null);
+    MemoryStats stats;
     try {
-      final OntologyContext ctx = grounding.fetchCandidates(memory);
-      final OntologyDerivation verdict = extractor.derive(memory, ctx);
-      final OntologyReconciler.ReconcileResult result =
+      final MemoryContext ctx = grounding.fetchCandidates(memory);
+      final MemoryDerivation verdict = extractor.derive(memory, ctx);
+      final MemoryReconciler.ReconcileResult result =
           reconciler.reconcile(
               memory,
               verdict,
@@ -238,47 +237,47 @@ public class OntologyProcessingEngine {
               AISettingsUtil.deletionPolicy(settings),
               deriveTermsEnabled(settings),
               deriveMetricsEnabled(settings));
-      stats = buildStats(hash, result, OntologyProcessingStatus.Processed, null);
+      stats = buildStats(hash, result, MemoryProcessingStatus.Processed, null);
     } catch (RuntimeException ex) {
       // Stamp Failed AND the content hash: a deterministic failure would otherwise retry forever
       // (the hash gate skips a re-derive once sourceHash == hashOf), and the error is surfaced on
       // the memory so the UI can show why derivation did not produce ontologies.
       LOG.error("Ontology derivation failed for memory {}", memory.getId(), ex);
-      stats = buildStats(hash, null, OntologyProcessingStatus.Failed, ex.getMessage());
+      stats = buildStats(hash, null, MemoryProcessingStatus.Failed, ex.getMessage());
     }
-    memoryRepo.stampOntologyStats(memory, stats);
+    memoryRepo.stampMemoryStats(memory, stats);
   }
 
   /** Flips only the lifecycle status (preserving prior counts/hash), e.g. to mark a run Processing. */
   private void stampStatus(
-      final ContextMemory memory, final OntologyProcessingStatus status, final String error) {
-    final OntologyStats stats =
-        memory.getOntologyStats() == null
-            ? new OntologyStats()
-            : JsonUtils.deepCopy(memory.getOntologyStats(), OntologyStats.class);
+      final ContextMemory memory, final MemoryProcessingStatus status, final String error) {
+    final MemoryStats stats =
+        memory.getMemoryStats() == null
+            ? new MemoryStats()
+            : JsonUtils.deepCopy(memory.getMemoryStats(), MemoryStats.class);
     stats.withStatus(status).withError(error);
-    memoryRepo.stampOntologyStats(memory, stats);
+    memoryRepo.stampMemoryStats(memory, stats);
   }
 
   private boolean deriveTermsEnabled(final AISettings settings) {
-    final OntologyAgentSettings agent = settings == null ? null : settings.getOntologyAgent();
+    final MemoryAgentSettings agent = settings == null ? null : settings.getMemoryAgent();
     return agent == null || !Boolean.FALSE.equals(agent.getDeriveGlossaryTerms());
   }
 
   private boolean deriveMetricsEnabled(final AISettings settings) {
-    final OntologyAgentSettings agent = settings == null ? null : settings.getOntologyAgent();
+    final MemoryAgentSettings agent = settings == null ? null : settings.getMemoryAgent();
     return agent == null || !Boolean.FALSE.equals(agent.getDeriveMetrics());
   }
 
-  private OntologyStats buildStats(
+  private MemoryStats buildStats(
       final String hash,
-      final OntologyReconciler.ReconcileResult r,
-      final OntologyProcessingStatus status,
+      final MemoryReconciler.ReconcileResult r,
+      final MemoryProcessingStatus status,
       final String error) {
     final int terms = r == null ? 0 : r.createdTerms();
     final int metrics = r == null ? 0 : r.createdMetrics();
     final int reused = r == null ? 0 : r.reused();
-    return new OntologyStats()
+    return new MemoryStats()
         .withStatus(status)
         .withError(error)
         .withSourceHash(hash)

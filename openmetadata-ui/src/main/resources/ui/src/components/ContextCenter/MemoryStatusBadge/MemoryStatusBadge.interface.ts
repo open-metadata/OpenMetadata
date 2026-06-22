@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { OntologyProcessingStatus } from '../../../generated/entity/context/contextMemory';
+import { MemoryProcessingStatus } from '../../../generated/entity/context/contextMemory';
 
-export interface OntologyStatusBadgeProps {
+export interface MemoryStatusBadgeProps {
   error?: string;
-  status?: OntologyProcessingStatus;
+  status?: MemoryProcessingStatus;
 }

@@ -72,7 +72,7 @@ describe('DerivedOntologyCard', () => {
     expect(screen.getByText('Retention Rate')).toBeInTheDocument();
     expect(mockGetContextMemoryById).toHaveBeenCalledWith(
       'mem-1',
-      'derivedEntities,reusedEntities,ontologyStats'
+      'derivedEntities,reusedEntities,memoryStats'
     );
   });
 

@@ -11,7 +11,7 @@
  * limitations under the License.
  */
 
-package org.openmetadata.service.drive.ontology;
+package org.openmetadata.service.drive.memory;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
@@ -27,34 +27,33 @@ import org.openmetadata.service.util.AISettingsUtil;
  * an empty response.
  */
 @Slf4j
-public class OntologyExtractor {
+public class MemoryExtractor {
   static final String FALLBACK_PROMPT =
-      "You are an ontology agent. Decide whether the memory maps to a Glossary Term and/or Metric "
+      "You are a memory agent. Decide whether the memory maps to a Glossary Term and/or Metric "
           + "(REUSE existing / CREATE new / SKIP). Return ONLY a JSON array with one object "
           + "{termVerdict, metricVerdict}.";
 
   private final LLMCompletionClient llmClient;
 
-  public OntologyExtractor(LLMCompletionClient llmClient) {
+  public MemoryExtractor(LLMCompletionClient llmClient) {
     this.llmClient = llmClient;
   }
 
-  public OntologyDerivation derive(ContextMemory memory, OntologyContext context) {
-    final String prompt = AISettingsUtil.ontologyAgentPrompt(AISettingsUtil.get(), FALLBACK_PROMPT);
-    final String userPrompt = OntologyPromptBuilder.build(memory, context);
-    final List<OntologyDerivation> verdicts =
-        llmClient.completeStructured(prompt, userPrompt, OntologyDerivation.class);
-    OntologyDerivation result = empty();
+  public MemoryDerivation derive(ContextMemory memory, MemoryContext context) {
+    final String prompt = AISettingsUtil.memoryAgentPrompt(AISettingsUtil.get(), FALLBACK_PROMPT);
+    final String userPrompt = MemoryPromptBuilder.build(memory, context);
+    final List<MemoryDerivation> verdicts =
+        llmClient.completeStructured(prompt, userPrompt, MemoryDerivation.class);
+    MemoryDerivation result = empty();
     if (!nullOrEmpty(verdicts)) {
       result = verdicts.getFirst();
     }
     return result;
   }
 
-  private OntologyDerivation empty() {
-    final OntologyVerdict skip =
-        new OntologyVerdict(
-            OntologyAction.SKIP, null, null, null, null, null, null, null, null, null);
-    return new OntologyDerivation(skip, skip);
+  private MemoryDerivation empty() {
+    final MemoryVerdict skip =
+        new MemoryVerdict(MemoryAction.SKIP, null, null, null, null, null, null, null, null, null);
+    return new MemoryDerivation(skip, skip);
   }
 }

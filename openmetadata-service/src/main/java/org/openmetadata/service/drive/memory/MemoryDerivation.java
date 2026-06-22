@@ -11,7 +11,7 @@
  * limitations under the License.
  */
 
-package org.openmetadata.service.drive.ontology;
+package org.openmetadata.service.drive.memory;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -23,6 +23,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * trusted domain objects.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record OntologyDerivation(
-    @JsonProperty("termVerdict") OntologyVerdict termVerdict,
-    @JsonProperty("metricVerdict") OntologyVerdict metricVerdict) {}
+public record MemoryDerivation(
+    @JsonProperty("termVerdict") MemoryVerdict termVerdict,
+    @JsonProperty("metricVerdict") MemoryVerdict metricVerdict) {}

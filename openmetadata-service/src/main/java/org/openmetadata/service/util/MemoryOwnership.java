@@ -20,15 +20,15 @@ import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.type.ProviderType;
 
 /**
- * Utility class centralising the ontology-bot principal name and the adopt-on-touch guard. When a
+ * Utility class centralising the memory-bot principal name and the adopt-on-touch guard. When a
  * human PATCH changes an agent-managed field on an AUTOMATION-owned entity the guard flips the
  * entity's provider from AUTOMATION to USER, releasing ownership permanently.
  */
-public final class OntologyOwnership {
+public final class MemoryOwnership {
 
-  public static final String ONTOLOGY_BOT_NAME = "ontology-bot";
+  public static final String MEMORY_BOT_NAME = "memory-bot";
 
-  private OntologyOwnership() {}
+  private MemoryOwnership() {}
 
   /**
    * Flips provider from AUTOMATION to USER when a human edits an agent-managed field via PATCH.
@@ -44,7 +44,7 @@ public final class OntologyOwnership {
     if (isPatch
         && managedFieldChanged
         && ProviderType.AUTOMATION.equals(updated.getProvider())
-        && !ONTOLOGY_BOT_NAME.equals(updated.getUpdatedBy())) {
+        && !MEMORY_BOT_NAME.equals(updated.getUpdatedBy())) {
       setProvider(updated, ProviderType.USER);
       released = true;
     }

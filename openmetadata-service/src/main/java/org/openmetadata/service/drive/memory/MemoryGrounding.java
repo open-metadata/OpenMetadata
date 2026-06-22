@@ -11,7 +11,7 @@
  * limitations under the License.
  */
 
-package org.openmetadata.service.drive.ontology;
+package org.openmetadata.service.drive.memory;
 
 import static org.openmetadata.service.search.SearchClient.GLOSSARY_TERM_SEARCH_INDEX;
 import static org.openmetadata.service.search.SearchConstants.DEFAULT_SORT_FIELD;
@@ -45,14 +45,14 @@ import org.openmetadata.service.jdbi3.ListFilter;
 
 /**
  * Keyword-searches the glossary-term, metric, and glossary indexes to surface the top-k candidates
- * that most closely match a ContextMemory. Results are passed to the ontology agent so it can
+ * that most closely match a ContextMemory. Results are passed to the memory agent so it can
  * decide REUSE / CREATE / SKIP without hallucinating new names for existing entities.
  *
  * <p>All axes fail-safe: a search error returns an empty list for THAT axis and logs a warning;
  * grounding never propagates exceptions out of {@link #fetchCandidates}.
  */
 @Slf4j
-public class OntologyGrounding {
+public class MemoryGrounding {
   static final int MAX_CANDIDATES = 20;
   static final int MAX_GLOSSARIES = 200;
 
@@ -62,14 +62,13 @@ public class OntologyGrounding {
   private static final String TYPE_GLOSSARY = "glossary";
   private static final String FIELD_GLOSSARY = "glossary";
 
-  public OntologyContext fetchCandidates(ContextMemory memory) {
+  public MemoryContext fetchCandidates(ContextMemory memory) {
     final String text = groundingText(memory);
-    final List<OntologyCandidate> terms = searchTopK(GLOSSARY_TERM_SEARCH_INDEX, TYPE_TERM, text);
-    final List<OntologyCandidate> metrics = searchTopK(METRIC_SEARCH_INDEX, TYPE_METRIC, text);
-    final List<OntologyCandidate> glossaries = listAllGlossaries();
+    final List<MemoryCandidate> terms = searchTopK(GLOSSARY_TERM_SEARCH_INDEX, TYPE_TERM, text);
+    final List<MemoryCandidate> metrics = searchTopK(METRIC_SEARCH_INDEX, TYPE_METRIC, text);
+    final List<MemoryCandidate> glossaries = listAllGlossaries();
     final SiblingContext siblings = fetchSiblings(memory);
-    return new OntologyContext(
-        terms, metrics, glossaries, siblings.terms(), siblings.glossaryFqn());
+    return new MemoryContext(terms, metrics, glossaries, siblings.terms(), siblings.glossaryFqn());
   }
 
   /**
@@ -77,8 +76,8 @@ public class OntologyGrounding {
    * behind sibling glossaries minted moments earlier) so the agent reuses one instead of minting a
    * near-duplicate. Bounded by {@link #MAX_GLOSSARIES}; fail-safe to empty on error.
    */
-  private List<OntologyCandidate> listAllGlossaries() {
-    List<OntologyCandidate> result = List.of();
+  private List<MemoryCandidate> listAllGlossaries() {
+    List<MemoryCandidate> result = List.of();
     try {
       final GlossaryRepository repo =
           (GlossaryRepository) Entity.getEntityRepository(Entity.GLOSSARY);
@@ -86,18 +85,18 @@ public class OntologyGrounding {
           repo.listAll(repo.getFields(""), new ListFilter(Include.NON_DELETED));
       result = toGlossaryCandidates(all);
     } catch (RuntimeException ex) {
-      LOG.warn("OntologyGrounding: listing glossaries failed: {}", ex.getMessage());
+      LOG.warn("MemoryGrounding: listing glossaries failed: {}", ex.getMessage());
     }
     return result;
   }
 
-  private List<OntologyCandidate> toGlossaryCandidates(List<Glossary> all) {
+  private List<MemoryCandidate> toGlossaryCandidates(List<Glossary> all) {
     final List<Glossary> capped =
         all.size() > MAX_GLOSSARIES ? all.subList(0, MAX_GLOSSARIES) : all;
-    final List<OntologyCandidate> out = new ArrayList<>();
+    final List<MemoryCandidate> out = new ArrayList<>();
     for (final Glossary g : capped) {
       out.add(
-          new OntologyCandidate(
+          new MemoryCandidate(
               TYPE_GLOSSARY, g.getFullyQualifiedName(), g.getName(), g.getDescription()));
     }
     return out;
@@ -117,7 +116,7 @@ public class OntologyGrounding {
         result = collectSiblings(memory, source);
       } catch (RuntimeException ex) {
         LOG.warn(
-            "OntologyGrounding: sibling lookup failed for memory {}: {}",
+            "MemoryGrounding: sibling lookup failed for memory {}: {}",
             memory.getId(),
             ex.getMessage());
       }
@@ -132,7 +131,7 @@ public class OntologyGrounding {
         (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
     final List<ContextMemory> siblings =
         memoryRepo.listExtractedMemories(source.getId(), source.getType());
-    final List<OntologyCandidate> terms = new ArrayList<>();
+    final List<MemoryCandidate> terms = new ArrayList<>();
     final Map<String, Integer> glossaryFreq = new HashMap<>();
     for (final ContextMemory sib : siblings) {
       if (!sib.getId().equals(memory.getId()) && terms.size() < MAX_CANDIDATES) {
@@ -145,7 +144,7 @@ public class OntologyGrounding {
   private void addSiblingTerms(
       ContextMemory sib,
       GlossaryTermRepository termRepo,
-      List<OntologyCandidate> terms,
+      List<MemoryCandidate> terms,
       Map<String, Integer> glossaryFreq) {
     final List<EntityReference> derived =
         termRepo.findFrom(
@@ -153,7 +152,7 @@ public class OntologyGrounding {
     for (final EntityReference ref : derived) {
       final GlossaryTerm term = termRepo.get(null, ref.getId(), termRepo.getFields(FIELD_GLOSSARY));
       terms.add(
-          new OntologyCandidate(
+          new MemoryCandidate(
               TYPE_TERM, term.getFullyQualifiedName(), term.getName(), term.getDescription()));
       countGlossary(term, glossaryFreq);
     }
@@ -178,17 +177,16 @@ public class OntologyGrounding {
   }
 
   /** The terms derived from a memory's siblings and the glossary they predominantly live in. */
-  private record SiblingContext(List<OntologyCandidate> terms, String glossaryFqn) {}
+  private record SiblingContext(List<MemoryCandidate> terms, String glossaryFqn) {}
 
-  private List<OntologyCandidate> searchTopK(String index, String type, String text) {
-    List<OntologyCandidate> result = List.of();
+  private List<MemoryCandidate> searchTopK(String index, String type, String text) {
+    List<MemoryCandidate> result = List.of();
     try {
       final SearchRequest request = buildRequest(index, text);
       final Response response = Entity.getSearchRepository().search(request, null);
       result = parseHits((String) response.getEntity(), type);
     } catch (java.io.IOException | RuntimeException ex) {
-      LOG.warn(
-          "OntologyGrounding: keyword search failed for index '{}': {}", index, ex.getMessage());
+      LOG.warn("MemoryGrounding: keyword search failed for index '{}': {}", index, ex.getMessage());
     }
     return result;
   }
@@ -207,8 +205,8 @@ public class OntologyGrounding {
         .withIncludeSourceFields(new ArrayList<>());
   }
 
-  private List<OntologyCandidate> parseHits(String json, String type) {
-    final List<OntologyCandidate> candidates = new ArrayList<>();
+  private List<MemoryCandidate> parseHits(String json, String type) {
+    final List<MemoryCandidate> candidates = new ArrayList<>();
     final Object hitsRaw = JsonUtils.extractValue(json, HITS, HITS);
     if (hitsRaw instanceof ArrayNode hits) {
       for (final JsonNode hit : hits) {
@@ -217,7 +215,7 @@ public class OntologyGrounding {
         final String description =
             JsonUtils.extractValue(hit, SEARCH_SOURCE, Entity.FIELD_DESCRIPTION);
         if (fqn != null && name != null) {
-          candidates.add(new OntologyCandidate(type, fqn, name, description));
+          candidates.add(new MemoryCandidate(type, fqn, name, description));
         }
       }
     }

@@ -161,9 +161,9 @@
       },
       "additionalProperties": false
     },
-    "ontologyProcessingStatus": {
-      "javaType": "org.openmetadata.schema.entity.context.OntologyProcessingStatus",
-      "description": "Lifecycle status of the asynchronous Ontology Agent derivation for a memory.",
+    "memoryProcessingStatus": {
+      "javaType": "org.openmetadata.schema.entity.context.MemoryProcessingStatus",
+      "description": "Lifecycle status of the asynchronous Memory Agent derivation for a memory.",
       "type": "string",
       "enum": ["Queued", "Processing", "Processed", "Failed"],
       "javaEnums": [
@@ -173,17 +173,17 @@
         { "name": "Failed" }
       ]
     },
-    "ontologyStats": {
+    "memoryStats": {
       "type": "object",
-      "description": "Telemetry + hash-gate for the Ontology Agent derivation of this memory.",
-      "javaType": "org.openmetadata.schema.entity.context.OntologyStats",
+      "description": "Telemetry + hash-gate for the Memory Agent derivation of this memory.",
+      "javaType": "org.openmetadata.schema.entity.context.MemoryStats",
       "properties": {
         "status": {
-          "description": "Status of the most recent Ontology Agent derivation run on this memory.",
-          "$ref": "#/definitions/ontologyProcessingStatus"
+          "description": "Status of the most recent Memory Agent derivation run on this memory.",
+          "$ref": "#/definitions/memoryProcessingStatus"
         },
         "error": {
-          "description": "Error message from the most recent failed Ontology Agent derivation run, if any.",
+          "description": "Error message from the most recent failed Memory Agent derivation run, if any.",
           "type": "string"
         },
         "sourceHash": { "type": "string", "description": "Hash of the ontology-relevant content last processed." },
@@ -286,15 +286,15 @@
     "machineRepresentation": {
       "$ref": "#/definitions/machineRepresentation"
     },
-    "ontologyStats": {
-      "$ref": "#/definitions/ontologyStats"
+    "memoryStats": {
+      "$ref": "#/definitions/memoryStats"
     },
     "derivedEntities": {
-      "description": "Derived: glossary terms and metrics created by the Ontology Agent from this memory (DERIVED_FROM edges, agent-owned).",
+      "description": "Derived: glossary terms and metrics created by the Memory Agent from this memory (DERIVED_FROM edges, agent-owned).",
       "$ref": "../../type/entityReferenceList.json"
     },
     "reusedEntities": {
-      "description": "Derived: glossary terms and metrics reused (not created) by the Ontology Agent from this memory (RELATED_TO edges).",
+      "description": "Derived: glossary terms and metrics reused (not created) by the Memory Agent from this memory (RELATED_TO edges).",
       "$ref": "../../type/entityReferenceList.json"
     },
     "usageCount": {

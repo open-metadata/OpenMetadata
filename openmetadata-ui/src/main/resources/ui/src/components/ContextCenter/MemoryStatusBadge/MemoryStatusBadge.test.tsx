@@ -12,8 +12,8 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { OntologyProcessingStatus } from '../../../generated/entity/context/contextMemory';
-import OntologyStatusBadge from './OntologyStatusBadge.component';
+import { MemoryProcessingStatus } from '../../../generated/entity/context/contextMemory';
+import MemoryStatusBadge from './MemoryStatusBadge.component';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Badge: jest.fn(
@@ -37,18 +37,16 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-describe('OntologyStatusBadge', () => {
+describe('MemoryStatusBadge', () => {
   it('renders nothing when status is undefined', () => {
-    const { container } = render(<OntologyStatusBadge />);
+    const { container } = render(<MemoryStatusBadge />);
 
     expect(container).toBeEmptyDOMElement();
   });
 
   it('renders nothing for an unknown status value', () => {
     const { container } = render(
-      <OntologyStatusBadge
-        status={'FutureStatus' as OntologyProcessingStatus}
-      />
+      <MemoryStatusBadge status={'FutureStatus' as MemoryProcessingStatus} />
     );
 
     expect(container).toBeEmptyDOMElement();
@@ -56,9 +54,9 @@ describe('OntologyStatusBadge', () => {
 
   it('shows the derivation error as a tooltip on a Failed badge', () => {
     render(
-      <OntologyStatusBadge
+      <MemoryStatusBadge
         error="LLM provider timeout"
-        status={OntologyProcessingStatus.Failed}
+        status={MemoryProcessingStatus.Failed}
       />
     );
 
@@ -69,23 +67,23 @@ describe('OntologyStatusBadge', () => {
   });
 
   it('renders no tooltip on a Processed badge', () => {
-    render(<OntologyStatusBadge status={OntologyProcessingStatus.Processed} />);
+    render(<MemoryStatusBadge status={MemoryProcessingStatus.Processed} />);
 
     expect(screen.queryByTestId('tooltip')).not.toBeInTheDocument();
-    expect(screen.getByTestId('ontology-status-badge')).toHaveTextContent(
+    expect(screen.getByTestId('memory-status-badge')).toHaveTextContent(
       'label.processed'
     );
   });
 
   it.each([
-    [OntologyProcessingStatus.Queued, 'label.queued', 'gray'],
-    [OntologyProcessingStatus.Processing, 'label.processing', 'blue'],
-    [OntologyProcessingStatus.Processed, 'label.processed', 'success'],
-    [OntologyProcessingStatus.Failed, 'label.failed', 'error'],
+    [MemoryProcessingStatus.Queued, 'label.queued', 'gray'],
+    [MemoryProcessingStatus.Processing, 'label.processing', 'blue'],
+    [MemoryProcessingStatus.Processed, 'label.processed', 'success'],
+    [MemoryProcessingStatus.Failed, 'label.failed', 'error'],
   ])('renders %s with label %s and color %s', (status, label, color) => {
-    render(<OntologyStatusBadge status={status} />);
+    render(<MemoryStatusBadge status={status} />);
 
-    const badge = screen.getByTestId('ontology-status-badge');
+    const badge = screen.getByTestId('memory-status-badge');
 
     expect(badge).toHaveTextContent(label);
     expect(badge.querySelector('[data-color]')).toHaveAttribute(

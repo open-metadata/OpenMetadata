@@ -61,7 +61,7 @@ test.describe('AI Settings', () => {
       await visitAISettings(page);
 
       await expect(page.getByTestId('ai-master-toggle')).toBeVisible();
-      await expect(page.getByTestId('ontology-agent-toggle')).toBeVisible();
+      await expect(page.getByTestId('memory-agent-toggle')).toBeVisible();
       await expect(page.getByTestId('mcp-chat-toggle')).toBeVisible();
       await expect(page.getByTestId('mcp-chat-prompt')).toBeVisible();
       await expect(page.getByTestId('mcp-server-toggle')).toBeVisible();

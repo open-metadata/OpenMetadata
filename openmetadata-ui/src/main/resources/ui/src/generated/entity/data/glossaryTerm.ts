@@ -43,7 +43,7 @@ export interface GlossaryTerm {
      */
     deleted?: boolean;
     /**
-     * Derived: the context memory from which the Ontology Agent created this glossary term
+     * Derived: the context memory from which the Memory Agent created this glossary term
      * (DERIVED_FROM edge, read-only projection).
      */
     derivedFrom?: EntityReference;
@@ -246,7 +246,7 @@ export interface FieldChange {
  *
  * Reference to the data contract for this entity.
  *
- * Derived: the context memory from which the Ontology Agent created this glossary term
+ * Derived: the context memory from which the Memory Agent created this glossary term
  * (DERIVED_FROM edge, read-only projection).
  *
  * Glossary that this term belongs to.

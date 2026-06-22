@@ -11,7 +11,7 @@
  * limitations under the License.
  */
 
-package org.openmetadata.service.drive.ontology;
+package org.openmetadata.service.drive.memory;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
@@ -23,10 +23,10 @@ import org.openmetadata.schema.type.MetricType;
 import org.openmetadata.schema.type.MetricUnitOfMeasurement;
 
 /** Renders a compact user-prompt from a ContextMemory and its grounding candidates. */
-final class OntologyPromptBuilder {
-  private OntologyPromptBuilder() {}
+final class MemoryPromptBuilder {
+  private MemoryPromptBuilder() {}
 
-  static String build(ContextMemory memory, OntologyContext context) {
+  static String build(ContextMemory memory, MemoryContext context) {
     return renderMemory(memory)
         + "EXISTING GLOSSARY TERMS\n"
         + renderCandidates(context.terms())
@@ -74,11 +74,11 @@ final class OntologyPromptBuilder {
         + "\n\n";
   }
 
-  private static String renderCandidates(List<OntologyCandidate> candidates) {
+  private static String renderCandidates(List<MemoryCandidate> candidates) {
     String result = "(none)\n";
     if (!nullOrEmpty(candidates)) {
       StringBuilder sb = new StringBuilder();
-      for (OntologyCandidate c : candidates) {
+      for (MemoryCandidate c : candidates) {
         sb.append(c.fqn())
             .append(" — ")
             .append(c.name())

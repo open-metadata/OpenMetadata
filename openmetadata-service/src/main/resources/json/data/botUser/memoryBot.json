@@ -1,5 +1,5 @@
 {
-  "name": "ontology-bot",
+  "name": "memory-bot",
   "roles": [
     {
         "name": "IngestionBotRole",

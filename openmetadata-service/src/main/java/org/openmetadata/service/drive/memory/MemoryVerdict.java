@@ -11,7 +11,7 @@
  * limitations under the License.
  */
 
-package org.openmetadata.service.drive.ontology;
+package org.openmetadata.service.drive.memory;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -19,7 +19,7 @@ import java.util.List;
 
 /**
  * Anti-corruption DTO for a single ontology verdict as returned by the LLM. All fields are raw
- * Strings for leniency; callers validate and promote to domain types. See {@link OntologyAction}
+ * Strings for leniency; callers validate and promote to domain types. See {@link MemoryAction}
  * for the expected {@code action} values.
  *
  * <p>{@code relatedTermFqns} lets the agent connect a term to other terms (typically the sibling
@@ -27,7 +27,7 @@ import java.util.List;
  * rather than disconnected units. It applies only to the term axis; it is ignored for metrics.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record OntologyVerdict(
+public record MemoryVerdict(
     @JsonProperty("action") String action,
     @JsonProperty("targetFqn") String targetFqn,
     @JsonProperty("newGlossaryName") String newGlossaryName,
@@ -41,7 +41,7 @@ public record OntologyVerdict(
     @JsonProperty("relatedTermFqns") List<String> relatedTermFqns) {
 
   /** Backward-compatible constructor for call sites that predate {@code relatedTermFqns}. */
-  public OntologyVerdict(
+  public MemoryVerdict(
       String action,
       String targetFqn,
       String newGlossaryName,

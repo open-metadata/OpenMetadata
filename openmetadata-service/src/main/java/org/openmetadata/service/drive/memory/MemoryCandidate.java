@@ -11,7 +11,7 @@
  * limitations under the License.
  */
 
-package org.openmetadata.service.drive.ontology;
+package org.openmetadata.service.drive.memory;
 
 /** A candidate glossary term, metric, or glossary surfaced by keyword grounding. */
-public record OntologyCandidate(String type, String fqn, String name, String description) {}
+public record MemoryCandidate(String type, String fqn, String name, String description) {}

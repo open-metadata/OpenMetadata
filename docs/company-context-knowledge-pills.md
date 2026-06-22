@@ -564,10 +564,10 @@ checkstyle for generated TS, `npx tsc --noEmit`.
 
 ---
 
-## 19. Follow-on: AISettings + Ontology Agent (designed)
+## 19. Follow-on: AISettings + Memory Agent (designed)
 
 **Status:** Designed, not yet built. Full design:
-`docs/superpowers/specs/2026-06-18-ai-settings-ontology-agent-design.md`. Built on
+`docs/superpowers/specs/2026-06-18-ai-settings-memory-agent-design.md`. Built on
 branch `pmbrull/ottawa`. Two capabilities layered on top of the pill pipeline above.
 
 ### 19.1 AISettings (config plane)
@@ -579,9 +579,9 @@ GET/PUT/reset, UI page under Preferences → AI). Shape:
 
 - master `enabled` kill-switch (gates extraction **and** the agent)
 - `memoryExtraction.{fromFiles, fromPages}`
-- `ontologyAgent.{enabled, deriveGlossaryTerms, deriveMetrics, deletionPolicy}`
+- `memoryAgent.{enabled, deriveGlossaryTerms, deriveMetrics, deletionPolicy}`
   (`deletionPolicy` ∈ `cascade | orphan | deprecate`, default `cascade`)
-- `prompts.{memoryExtraction, ontologyAgent}.systemPrompt`
+- `prompts.{memoryExtraction, memoryAgent}.systemPrompt`
 
 **Deltas to this doc:**
 - The hardcoded `ContextMemoryExtractor.SYSTEM_PROMPT` ([§8](#8-knowledge-pill-extraction-contextmemoryextractor))
@@ -593,7 +593,7 @@ GET/PUT/reset, UI page under Preferences → AI). Shape:
   (`enabled && memoryExtraction.fromFiles` / `fromPages`), not only on
   `LLMClientHolder.isEnabled()`.
 
-### 19.2 Ontology Agent (memory → ontology)
+### 19.2 Memory Agent (memory → ontology)
 
 On `ContextMemory` create/update, an async, throttled agent reconciles the memory
 against the **existing** instance ontology and derives Glossary Terms / Metrics —
@@ -601,8 +601,8 @@ reusing what already covers the memory, creating only what is missing.
 
 - New **`DERIVED_FROM`** relationship (appended last in `entityRelationship.json`;
   `derivedEntity → sourceMemory`).
-- `OntologyExtractor` (pure `derive`) + `OntologyReconciler` (owns writes) +
-  `OntologyProcessingEngine` (orchestrator) in the `drive` package — siblings to
+- `MemoryExtractor` (pure `derive`) + `MemoryReconciler` (owns writes) +
+  `MemoryProcessingEngine` (orchestrator) in the `drive` package — siblings to
   this pill pipeline, same hash-gate / throttle / reconcile idioms — triggered
   from new `ContextMemoryRepository.postCreate` / `postUpdate` hooks.
 - Per memory, two **independent** axes (Term, Metric), each:
@@ -613,8 +613,8 @@ reusing what already covers the memory, creating only what is missing.
 - **Ownership lifecycle:** adopt-on-touch flips `automation→user` on a human PATCH
   (mirrors the pills Manual-guard); `deletionPolicy` governs memory-delete cleanup
   of owned entities (`cascade` hard-deletes, `orphan` releases, `deprecate` flags).
-  Agent writes as a dedicated `ontology-bot`.
-- **Schema:** new `ContextMemory.ontologyStats` (hash-gate + derived/reused
+  Agent writes as a dedicated `memory-bot`.
+- **Schema:** new `ContextMemory.memoryStats` (hash-gate + derived/reused
   counts); new `provider` field on `Metric` ([§6.1](#61-schemas)) for uniform
   ownership across Terms/Metrics/Glossaries.
 - Renders the full **File → Memory → Term/Metric** provenance chain in the UI.

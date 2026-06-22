@@ -17,7 +17,7 @@ jest.mock('../../rest/settingConfigAPI', () => ({
   getSettingsByType: jest.fn().mockResolvedValue({
     enabled: true,
     memoryExtraction: { fromFiles: true, fromPages: false },
-    ontologyAgent: { enabled: true },
+    memoryAgent: { enabled: true },
     prompts: { memoryExtraction: { systemPrompt: 'p' } },
   }),
   updateSettingsConfig: jest.fn(),

@@ -45,24 +45,22 @@ public final class AISettingsUtil {
         && Boolean.TRUE.equals(s.getMemoryExtraction().getFromPages());
   }
 
-  public static boolean isOntologyAgentEnabled(AISettings s) {
+  public static boolean isMemoryAgentEnabled(AISettings s) {
     return masterOn(s)
-        && s.getOntologyAgent() != null
-        && Boolean.TRUE.equals(s.getOntologyAgent().getEnabled());
+        && s.getMemoryAgent() != null
+        && Boolean.TRUE.equals(s.getMemoryAgent().getEnabled());
   }
 
   /**
    * Returns the configured {@link AIDeletionPolicy}, defaulting to {@link AIDeletionPolicy#CASCADE}
    * when the setting is absent. Shared between {@link
-   * org.openmetadata.service.drive.ontology.OntologyProcessingEngine} and {@link
+   * org.openmetadata.service.drive.memory.MemoryProcessingEngine} and {@link
    * org.openmetadata.service.jdbi3.ContextMemoryRepository} to avoid duplication.
    */
   public static AIDeletionPolicy deletionPolicy(final AISettings s) {
     final AIDeletionPolicy result;
-    if (s != null
-        && s.getOntologyAgent() != null
-        && s.getOntologyAgent().getDeletionPolicy() != null) {
-      result = s.getOntologyAgent().getDeletionPolicy();
+    if (s != null && s.getMemoryAgent() != null && s.getMemoryAgent().getDeletionPolicy() != null) {
+      result = s.getMemoryAgent().getDeletionPolicy();
     } else {
       result = AIDeletionPolicy.CASCADE;
     }
@@ -75,9 +73,9 @@ public final class AISettingsUtil {
     return promptOrFallback(promptConfig, fallback);
   }
 
-  public static String ontologyAgentPrompt(AISettings s, String fallback) {
+  public static String memoryAgentPrompt(AISettings s, String fallback) {
     PromptConfig promptConfig =
-        s == null || s.getPrompts() == null ? null : s.getPrompts().getOntologyAgent();
+        s == null || s.getPrompts() == null ? null : s.getPrompts().getMemoryAgent();
     return promptOrFallback(promptConfig, fallback);
   }
 

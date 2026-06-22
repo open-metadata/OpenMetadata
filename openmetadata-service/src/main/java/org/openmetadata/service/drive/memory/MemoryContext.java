@@ -11,12 +11,12 @@
  * limitations under the License.
  */
 
-package org.openmetadata.service.drive.ontology;
+package org.openmetadata.service.drive.memory;
 
 import java.util.List;
 
 /**
- * Grounding context supplied to the ontology agent.
+ * Grounding context supplied to the memory agent.
  *
  * <p>{@code terms}, {@code metrics}, and {@code glossaries} are cross-document candidates surfaced
  * by keyword search (glossaries are the full existing set, so the agent reuses one rather than
@@ -26,18 +26,18 @@ import java.util.List;
  * siblingGlossaryFqn} is the glossary those siblings already live in, used to pin a document's whole
  * concept set into one glossary.
  */
-public record OntologyContext(
-    List<OntologyCandidate> terms,
-    List<OntologyCandidate> metrics,
-    List<OntologyCandidate> glossaries,
-    List<OntologyCandidate> siblingTerms,
+public record MemoryContext(
+    List<MemoryCandidate> terms,
+    List<MemoryCandidate> metrics,
+    List<MemoryCandidate> glossaries,
+    List<MemoryCandidate> siblingTerms,
     String siblingGlossaryFqn) {
 
   /** Backward-compatible constructor for call sites that predate sibling grounding. */
-  public OntologyContext(
-      List<OntologyCandidate> terms,
-      List<OntologyCandidate> metrics,
-      List<OntologyCandidate> glossaries) {
+  public MemoryContext(
+      List<MemoryCandidate> terms,
+      List<MemoryCandidate> metrics,
+      List<MemoryCandidate> glossaries) {
     this(terms, metrics, glossaries, List.of(), null);
   }
 }

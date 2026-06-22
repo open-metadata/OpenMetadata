@@ -30,7 +30,7 @@ class AISettingsUtilTest {
     AISettings off = new AISettings().withEnabled(false);
     assertFalse(AISettingsUtil.isFileExtractionEnabled(off));
     assertFalse(AISettingsUtil.isPageExtractionEnabled(off));
-    assertFalse(AISettingsUtil.isOntologyAgentEnabled(off));
+    assertFalse(AISettingsUtil.isMemoryAgentEnabled(off));
   }
 
   @Test

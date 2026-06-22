@@ -22,11 +22,11 @@ import { Link } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   EntityReference,
-  OntologyStats,
+  MemoryStats,
 } from '../../../generated/entity/context/contextMemory';
 import { getContextMemoryById } from '../../../rest/contextMemoryAPI';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import OntologyStatusBadge from '../OntologyStatusBadge/OntologyStatusBadge.component';
+import MemoryStatusBadge from '../MemoryStatusBadge/MemoryStatusBadge.component';
 import { DerivedOntologyCardProps } from './DerivedOntologyCard.interface';
 
 const ENTITY_LINK_TYPES = new Set<string>([
@@ -89,7 +89,7 @@ const DerivedOntologyCard: FC<DerivedOntologyCardProps> = ({ memoryId }) => {
   const { t } = useTranslation();
   const [derivedEntities, setDerivedEntities] = useState<EntityReference[]>([]);
   const [reusedEntities, setReusedEntities] = useState<EntityReference[]>([]);
-  const [ontologyStats, setOntologyStats] = useState<OntologyStats>();
+  const [memoryStats, setMemoryStats] = useState<MemoryStats>();
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchOntology = useCallback(
@@ -98,19 +98,19 @@ const DerivedOntologyCard: FC<DerivedOntologyCardProps> = ({ memoryId }) => {
         setIsLoading(true);
         const memory = await getContextMemoryById(
           memoryId,
-          'derivedEntities,reusedEntities,ontologyStats'
+          'derivedEntities,reusedEntities,memoryStats'
         );
 
         if (!isCancelled?.()) {
           setDerivedEntities(memory.derivedEntities ?? []);
           setReusedEntities(memory.reusedEntities ?? []);
-          setOntologyStats(memory.ontologyStats);
+          setMemoryStats(memory.memoryStats);
         }
       } catch {
         if (!isCancelled?.()) {
           setDerivedEntities([]);
           setReusedEntities([]);
-          setOntologyStats(undefined);
+          setMemoryStats(undefined);
         }
       } finally {
         if (!isCancelled?.()) {
@@ -141,9 +141,9 @@ const DerivedOntologyCard: FC<DerivedOntologyCardProps> = ({ memoryId }) => {
           weight="semibold">
           {t('label.derived-ontology')}
         </Typography>
-        <OntologyStatusBadge
-          error={ontologyStats?.error}
-          status={ontologyStats?.status}
+        <MemoryStatusBadge
+          error={memoryStats?.error}
+          status={memoryStats?.status}
         />
       </div>
       {isLoading ? (

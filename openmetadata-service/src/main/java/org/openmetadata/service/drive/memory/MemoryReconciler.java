@@ -11,7 +11,7 @@
  * limitations under the License.
  */
 
-package org.openmetadata.service.drive.ontology;
+package org.openmetadata.service.drive.memory;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
@@ -45,10 +45,10 @@ import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.MetricRepository;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.OntologyOwnership;
+import org.openmetadata.service.util.MemoryOwnership;
 
 /**
- * Owns every ontology write: it turns an {@link OntologyDerivation} into real Glossary Terms and
+ * Owns every ontology write: it turns an {@link MemoryDerivation} into real Glossary Terms and
  * Metrics, manages the {@code DERIVED_FROM} (agent-owned) and {@code RELATED_TO} (reused) edges back
  * to the source {@link ContextMemory}, and enforces the ownership lifecycle from the design's §9.
  *
@@ -60,25 +60,25 @@ import org.openmetadata.service.util.OntologyOwnership;
  * retirement and memory-deletion retirement (via {@link #onMemoryDeleted}) route through the same
  * {@code deletionPolicy}-driven {@link AIDeletionPolicy} modes; re-derive passes {@code
  * hardDelete=true} for the {@code CASCADE} case since the entity is regenerable from the memory. An
- * all-SKIP derivation (the signal {@code OntologyExtractor} emits on an empty or failed LLM result)
+ * all-SKIP derivation (the signal {@code MemoryExtractor} emits on an empty or failed LLM result)
  * is treated as carrying no actionable intent and is a complete no-op, so a transient LLM hiccup can
  * never mass-retire a memory's derived set.
  */
 @Slf4j
-public class OntologyReconciler {
+public class MemoryReconciler {
   private static final String CORE_FIELDS = "";
 
   /** Default SKOS-style relation used when the agent links a term to its sibling concepts. */
   private static final String RELATION_TYPE_RELATED_TO = "relatedTo";
 
-  private static final OntologyContext EMPTY_CONTEXT =
-      new OntologyContext(List.of(), List.of(), List.of());
+  private static final MemoryContext EMPTY_CONTEXT =
+      new MemoryContext(List.of(), List.of(), List.of());
 
   private final GlossaryTermRepository termRepo;
   private final MetricRepository metricRepo;
   private final GlossaryRepository glossaryRepo;
 
-  public OntologyReconciler(
+  public MemoryReconciler(
       final GlossaryTermRepository termRepo,
       final MetricRepository metricRepo,
       final GlossaryRepository glossaryRepo) {
@@ -100,18 +100,18 @@ public class OntologyReconciler {
    * need per-axis gating.
    */
   public ReconcileResult reconcile(
-      final ContextMemory memory, final OntologyDerivation verdict, final AIDeletionPolicy policy) {
+      final ContextMemory memory, final MemoryDerivation verdict, final AIDeletionPolicy policy) {
     return reconcile(memory, verdict, EMPTY_CONTEXT, policy, true, true);
   }
 
   public ReconcileResult reconcile(
       final ContextMemory memory,
-      final OntologyDerivation verdict,
-      final OntologyContext context,
+      final MemoryDerivation verdict,
+      final MemoryContext context,
       final AIDeletionPolicy policy,
       final boolean deriveTerms,
       final boolean deriveMetrics) {
-    final OntologyContext ctx = context == null ? EMPTY_CONTEXT : context;
+    final MemoryContext ctx = context == null ? EMPTY_CONTEXT : context;
     final ReconcileResult result;
     if (isAllSkip(verdict)) {
       LOG.info("All-SKIP derivation for memory {}; skipping reconcile entirely", memory.getId());
@@ -124,8 +124,8 @@ public class OntologyReconciler {
 
   private ReconcileResult reconcileNonSkip(
       final ContextMemory memory,
-      final OntologyDerivation verdict,
-      final OntologyContext ctx,
+      final MemoryDerivation verdict,
+      final MemoryContext ctx,
       final AIDeletionPolicy policy,
       final boolean deriveTerms,
       final boolean deriveMetrics) {
@@ -149,37 +149,37 @@ public class OntologyReconciler {
         counts.createdTerms, counts.createdMetrics, counts.reused, counts.retired);
   }
 
-  private boolean isAllSkip(final OntologyDerivation verdict) {
+  private boolean isAllSkip(final MemoryDerivation verdict) {
     return isSkip(verdict.termVerdict()) && isSkip(verdict.metricVerdict());
   }
 
-  private boolean isSkip(final OntologyVerdict verdict) {
-    final String action = verdict == null ? OntologyAction.SKIP : verdict.action();
-    return action == null || OntologyAction.SKIP.equals(action);
+  private boolean isSkip(final MemoryVerdict verdict) {
+    final String action = verdict == null ? MemoryAction.SKIP : verdict.action();
+    return action == null || MemoryAction.SKIP.equals(action);
   }
 
   private String applyTermAxis(
       final ContextMemory memory,
-      final OntologyVerdict verdict,
-      final OntologyContext ctx,
+      final MemoryVerdict verdict,
+      final MemoryContext ctx,
       final Counts counts) {
-    final String action = verdict == null ? OntologyAction.SKIP : verdict.action();
+    final String action = verdict == null ? MemoryAction.SKIP : verdict.action();
     String implied = null;
-    if (OntologyAction.CREATE.equals(action)) {
+    if (MemoryAction.CREATE.equals(action)) {
       implied = createTerm(memory, verdict, ctx, counts);
-    } else if (OntologyAction.REUSE.equals(action)) {
+    } else if (MemoryAction.REUSE.equals(action)) {
       reuseTerm(memory, verdict, counts);
     }
     return implied;
   }
 
   private String applyMetricAxis(
-      final ContextMemory memory, final OntologyVerdict verdict, final Counts counts) {
-    final String action = verdict == null ? OntologyAction.SKIP : verdict.action();
+      final ContextMemory memory, final MemoryVerdict verdict, final Counts counts) {
+    final String action = verdict == null ? MemoryAction.SKIP : verdict.action();
     String implied = null;
-    if (OntologyAction.CREATE.equals(action)) {
+    if (MemoryAction.CREATE.equals(action)) {
       implied = createMetric(memory, verdict, counts);
-    } else if (OntologyAction.REUSE.equals(action)) {
+    } else if (MemoryAction.REUSE.equals(action)) {
       reuse(memory, verdict, Entity.METRIC, metricRepo, counts);
     }
     return implied;
@@ -187,8 +187,8 @@ public class OntologyReconciler {
 
   private String createTerm(
       final ContextMemory memory,
-      final OntologyVerdict verdict,
-      final OntologyContext ctx,
+      final MemoryVerdict verdict,
+      final MemoryContext ctx,
       final Counts counts) {
     if (!isValidName(verdict.name())) {
       LOG.warn("Skipping CREATE term: invalid LLM name '{}'", verdict.name());
@@ -208,8 +208,8 @@ public class OntologyReconciler {
 
   private String createTermWithFqnPrecheck(
       final ContextMemory memory,
-      final OntologyVerdict verdict,
-      final OntologyContext ctx,
+      final MemoryVerdict verdict,
+      final MemoryContext ctx,
       final Counts counts) {
     final String glossaryFqn = resolveGlossaryFqn(verdict, ctx);
     final String termFqn =
@@ -232,7 +232,7 @@ public class OntologyReconciler {
    * glossary the source document's sibling terms already live in (so one document maps to one
    * glossary instead of sprawling), else the agent's proposed new glossary name.
    */
-  private String resolveGlossaryFqn(final OntologyVerdict verdict, final OntologyContext ctx) {
+  private String resolveGlossaryFqn(final MemoryVerdict verdict, final MemoryContext ctx) {
     final String fqn;
     if (!nullOrEmpty(verdict.targetFqn())) {
       fqn = verdict.targetFqn();
@@ -248,8 +248,8 @@ public class OntologyReconciler {
 
   private String mintTerm(
       final ContextMemory memory,
-      final OntologyVerdict verdict,
-      final OntologyContext ctx,
+      final MemoryVerdict verdict,
+      final MemoryContext ctx,
       final Counts counts) {
     final EntityReference glossary = resolveOrMintGlossary(verdict, ctx);
     String result = null;
@@ -262,7 +262,7 @@ public class OntologyReconciler {
               .withDescription(verdict.description())
               .withGlossary(glossary)
               .withProvider(ProviderType.AUTOMATION)
-              .withUpdatedBy(OntologyOwnership.ONTOLOGY_BOT_NAME)
+              .withUpdatedBy(MemoryOwnership.MEMORY_BOT_NAME)
               .withUpdatedAt(System.currentTimeMillis());
       final GlossaryTerm created = termRepo.createInternal(term);
       addDerivedFromEdge(created.getId(), memory.getId(), Entity.GLOSSARY_TERM, termRepo);
@@ -294,7 +294,7 @@ public class OntologyReconciler {
   }
 
   private void reuseTerm(
-      final ContextMemory memory, final OntologyVerdict verdict, final Counts counts) {
+      final ContextMemory memory, final MemoryVerdict verdict, final Counts counts) {
     final EntityInterface target = findByFqn(termRepo, verdict.targetFqn());
     if (target == null) {
       LOG.warn("REUSE verdict for term could not resolve fqn '{}'; skipping", verdict.targetFqn());
@@ -305,7 +305,7 @@ public class OntologyReconciler {
   }
 
   private String createMetric(
-      final ContextMemory memory, final OntologyVerdict verdict, final Counts counts) {
+      final ContextMemory memory, final MemoryVerdict verdict, final Counts counts) {
     if (!isValidName(verdict.name())) {
       LOG.warn("Skipping CREATE metric: invalid LLM name '{}'", verdict.name());
       return null;
@@ -322,7 +322,7 @@ public class OntologyReconciler {
   }
 
   private String createMetricWithFqnPrecheck(
-      final ContextMemory memory, final OntologyVerdict verdict, final Counts counts) {
+      final ContextMemory memory, final MemoryVerdict verdict, final Counts counts) {
     final EntityInterface existing = findByFqn(metricRepo, verdict.name());
     final String result;
     if (existing != null) {
@@ -336,7 +336,7 @@ public class OntologyReconciler {
   }
 
   private String mintMetric(
-      final ContextMemory memory, final OntologyVerdict verdict, final Counts counts) {
+      final ContextMemory memory, final MemoryVerdict verdict, final Counts counts) {
     final Metric metric =
         new Metric()
             .withId(UUID.randomUUID())
@@ -347,7 +347,7 @@ public class OntologyReconciler {
             .withUnitOfMeasurement(toUnit(verdict.unitOfMeasurement()))
             .withMetricExpression(toExpression(verdict.metricExpressionCode()))
             .withProvider(ProviderType.AUTOMATION)
-            .withUpdatedBy(OntologyOwnership.ONTOLOGY_BOT_NAME)
+            .withUpdatedBy(MemoryOwnership.MEMORY_BOT_NAME)
             .withUpdatedAt(System.currentTimeMillis());
     final Metric created = metricRepo.createInternal(metric);
     addDerivedFromEdge(created.getId(), memory.getId(), Entity.METRIC, metricRepo);
@@ -357,7 +357,7 @@ public class OntologyReconciler {
 
   private void reuse(
       final ContextMemory memory,
-      final OntologyVerdict verdict,
+      final MemoryVerdict verdict,
       final String entityType,
       final EntityRepository<?> repo,
       final Counts counts) {
@@ -389,7 +389,7 @@ public class OntologyReconciler {
   }
 
   private EntityReference resolveOrMintGlossary(
-      final OntologyVerdict verdict, final OntologyContext ctx) {
+      final MemoryVerdict verdict, final MemoryContext ctx) {
     EntityReference glossary = resolveGlossary(verdict.targetFqn());
     if (glossary == null && ctx != null) {
       glossary = resolveGlossary(ctx.siblingGlossaryFqn());
@@ -400,7 +400,7 @@ public class OntologyReconciler {
     return glossary;
   }
 
-  private EntityReference resolveOrMintByName(final OntologyVerdict verdict) {
+  private EntityReference resolveOrMintByName(final MemoryVerdict verdict) {
     if (!isValidName(verdict.newGlossaryName())) {
       LOG.warn("Skipping glossary mint: invalid LLM name '{}'", verdict.newGlossaryName());
       return null;
@@ -415,7 +415,7 @@ public class OntologyReconciler {
     return result;
   }
 
-  private EntityReference mintGlossary(final OntologyVerdict verdict) {
+  private EntityReference mintGlossary(final MemoryVerdict verdict) {
     final Glossary minted =
         new Glossary()
             .withId(UUID.randomUUID())
@@ -423,7 +423,7 @@ public class OntologyReconciler {
             .withDisplayName(verdict.newGlossaryName())
             .withDescription(verdict.newGlossaryDescription())
             .withProvider(ProviderType.AUTOMATION)
-            .withUpdatedBy(OntologyOwnership.ONTOLOGY_BOT_NAME)
+            .withUpdatedBy(MemoryOwnership.MEMORY_BOT_NAME)
             .withUpdatedAt(System.currentTimeMillis());
     return glossaryRepo.createInternal(minted).getEntityReference();
   }
@@ -504,7 +504,7 @@ public class OntologyReconciler {
             entityType,
             Include.ALL)) {
       if (isAutomationOwnedIncludeAll(repo, ref)) {
-        repo.restoreEntity(OntologyOwnership.ONTOLOGY_BOT_NAME, ref.getId());
+        repo.restoreEntity(MemoryOwnership.MEMORY_BOT_NAME, ref.getId());
       }
     }
   }
@@ -537,7 +537,7 @@ public class OntologyReconciler {
       final AIDeletionPolicy policy) {
     switch (policy) {
       case CASCADE -> repo.delete(
-          OntologyOwnership.ONTOLOGY_BOT_NAME, owned.getId(), false, hardDelete);
+          MemoryOwnership.MEMORY_BOT_NAME, owned.getId(), false, hardDelete);
       case ORPHAN -> {
         editOwned(repo, owned.getId(), entity -> setProvider(entity, ProviderType.USER));
         dropDerivedFromEdge(memory, entityType, repo, owned.getId());
@@ -569,9 +569,9 @@ public class OntologyReconciler {
     final T original = repo.get(null, id, repo.getFields(CORE_FIELDS));
     final T updated = JsonUtils.deepCopy(original, repo.getEntityClass());
     mutation.accept(updated);
-    updated.setUpdatedBy(OntologyOwnership.ONTOLOGY_BOT_NAME);
+    updated.setUpdatedBy(MemoryOwnership.MEMORY_BOT_NAME);
     updated.setUpdatedAt(System.currentTimeMillis());
-    repo.update(null, original, updated, OntologyOwnership.ONTOLOGY_BOT_NAME);
+    repo.update(null, original, updated, MemoryOwnership.MEMORY_BOT_NAME);
   }
 
   private void dropDerivedFromEdge(

@@ -16,8 +16,8 @@ package org.openmetadata.service.resources.system;
 import org.openmetadata.schema.configuration.AIPrompts;
 import org.openmetadata.schema.configuration.AISettings;
 import org.openmetadata.schema.configuration.McpChatSettings;
+import org.openmetadata.schema.configuration.MemoryAgentSettings;
 import org.openmetadata.schema.configuration.MemoryExtractionSettings;
-import org.openmetadata.schema.configuration.OntologyAgentSettings;
 import org.openmetadata.schema.configuration.PromptConfig;
 
 public class AISettingsHandler {
@@ -34,8 +34,7 @@ public class AISettingsHandler {
               .withEnabled(firstNonNull(incoming.getEnabled(), defaults.getEnabled()))
               .withMemoryExtraction(
                   mergeExtraction(defaults.getMemoryExtraction(), incoming.getMemoryExtraction()))
-              .withOntologyAgent(
-                  mergeAgent(defaults.getOntologyAgent(), incoming.getOntologyAgent()))
+              .withMemoryAgent(mergeAgent(defaults.getMemoryAgent(), incoming.getMemoryAgent()))
               .withPrompts(mergePrompts(defaults.getPrompts(), incoming.getPrompts()))
               .withMcpChat(mergeMcpChat(defaults.getMcpChat(), incoming.getMcpChat()));
     }
@@ -66,11 +65,11 @@ public class AISettingsHandler {
     return result;
   }
 
-  private OntologyAgentSettings mergeAgent(OntologyAgentSettings d, OntologyAgentSettings i) {
-    OntologyAgentSettings result = d;
+  private MemoryAgentSettings mergeAgent(MemoryAgentSettings d, MemoryAgentSettings i) {
+    MemoryAgentSettings result = d;
     if (i != null) {
       result =
-          new OntologyAgentSettings()
+          new MemoryAgentSettings()
               .withEnabled(firstNonNull(i.getEnabled(), d == null ? null : d.getEnabled()))
               .withDeriveGlossaryTerms(
                   firstNonNull(
@@ -90,8 +89,8 @@ public class AISettingsHandler {
           new AIPrompts()
               .withMemoryExtraction(
                   mergePrompt(d == null ? null : d.getMemoryExtraction(), i.getMemoryExtraction()))
-              .withOntologyAgent(
-                  mergePrompt(d == null ? null : d.getOntologyAgent(), i.getOntologyAgent()));
+              .withMemoryAgent(
+                  mergePrompt(d == null ? null : d.getMemoryAgent(), i.getMemoryAgent()));
     }
     return result;
   }

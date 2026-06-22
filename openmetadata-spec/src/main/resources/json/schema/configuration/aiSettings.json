@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/configuration/aiSettings.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AISettings",
-  "description": "Configuration for AI features: memory extraction, the Ontology Agent, and tunable LLM system prompts.",
+  "description": "Configuration for AI features: memory extraction, the Memory Agent, and tunable LLM system prompts.",
   "type": "object",
   "javaType": "org.openmetadata.schema.configuration.AISettings",
   "definitions": {
@@ -21,8 +21,8 @@
       },
       "additionalProperties": false
     },
-    "ontologyAgent": {
-      "javaType": "org.openmetadata.schema.configuration.OntologyAgentSettings",
+    "memoryAgent": {
+      "javaType": "org.openmetadata.schema.configuration.MemoryAgentSettings",
       "type": "object",
       "properties": {
         "enabled": { "type": "boolean", "default": true },
@@ -45,7 +45,7 @@
       "type": "object",
       "properties": {
         "memoryExtraction": { "$ref": "#/definitions/promptConfig" },
-        "ontologyAgent": { "$ref": "#/definitions/promptConfig" }
+        "memoryAgent": { "$ref": "#/definitions/promptConfig" }
       },
       "additionalProperties": false
     },
@@ -66,7 +66,7 @@
   "properties": {
     "enabled": { "type": "boolean", "default": true },
     "memoryExtraction": { "$ref": "#/definitions/memoryExtraction" },
-    "ontologyAgent": { "$ref": "#/definitions/ontologyAgent" },
+    "memoryAgent": { "$ref": "#/definitions/memoryAgent" },
     "prompts": { "$ref": "#/definitions/prompts" },
     "mcpChat": { "$ref": "#/definitions/mcpChat" }
   },

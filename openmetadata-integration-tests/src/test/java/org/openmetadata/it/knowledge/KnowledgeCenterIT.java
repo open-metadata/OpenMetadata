@@ -18,7 +18,7 @@ import org.openmetadata.schema.api.data.CreatePage;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.entity.context.ContextMemory;
-import org.openmetadata.schema.entity.context.OntologyStats;
+import org.openmetadata.schema.entity.context.MemoryStats;
 import org.openmetadata.schema.entity.data.Article;
 import org.openmetadata.schema.entity.data.ExtractionStats;
 import org.openmetadata.schema.entity.data.Page;
@@ -139,7 +139,7 @@ public class KnowledgeCenterIT {
   }
 
   /**
-   * The Ontology Agent stamps each memory's ontologyStats after deriving, loading it via {@code
+   * The Memory Agent stamps each memory's memoryStats after deriving, loading it via {@code
    * getFields("")} (no relationship fields). That machine update must NOT delete the memory's
    * sourceEntity MENTIONED_IN edge — a regression that orphaned the pill from its page, zeroing
    * memoryCount and the article's derived ontologies. Reproduces the exact stamp path in-process.
@@ -168,8 +168,8 @@ public class KnowledgeCenterIT {
     ContextMemoryRepository memoryRepo =
         (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
     ContextMemory partial = memoryRepo.get(null, memory.getId(), memoryRepo.getFields(""));
-    memoryRepo.stampOntologyStats(
-        partial, new OntologyStats().withSourceHash("test-hash").withLastRunAt(1L));
+    memoryRepo.stampMemoryStats(
+        partial, new MemoryStats().withSourceHash("test-hash").withLastRunAt(1L));
 
     assertEquals(
         Integer.valueOf(1),

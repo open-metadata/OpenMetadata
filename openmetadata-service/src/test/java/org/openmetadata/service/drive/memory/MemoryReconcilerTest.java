@@ -11,7 +11,7 @@
  * limitations under the License.
  */
 
-package org.openmetadata.service.drive.ontology;
+package org.openmetadata.service.drive.memory;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -52,16 +52,16 @@ import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.MetricRepository;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.OntologyOwnership;
+import org.openmetadata.service.util.MemoryOwnership;
 
 @ExtendWith(MockitoExtension.class)
-class OntologyReconcilerTest {
+class MemoryReconcilerTest {
 
   @Mock GlossaryTermRepository termRepo;
   @Mock MetricRepository metricRepo;
   @Mock GlossaryRepository glossaryRepo;
 
-  private static final String BOT = OntologyOwnership.ONTOLOGY_BOT_NAME;
+  private static final String BOT = MemoryOwnership.MEMORY_BOT_NAME;
 
   private final ContextMemory memory = new ContextMemory().withId(UUID.randomUUID()).withName("m1");
 
@@ -109,18 +109,18 @@ class OntologyReconcilerTest {
         .thenReturn(result);
   }
 
-  private OntologyReconciler reconciler() {
-    return new OntologyReconciler(termRepo, metricRepo, glossaryRepo);
+  private MemoryReconciler reconciler() {
+    return new MemoryReconciler(termRepo, metricRepo, glossaryRepo);
   }
 
-  private OntologyVerdict skip() {
-    return new OntologyVerdict(
-        OntologyAction.SKIP, null, null, null, null, null, null, null, null, null);
+  private MemoryVerdict skip() {
+    return new MemoryVerdict(
+        MemoryAction.SKIP, null, null, null, null, null, null, null, null, null);
   }
 
-  private OntologyVerdict createMetric(String name) {
-    return new OntologyVerdict(
-        OntologyAction.CREATE, null, null, null, name, name, null, null, null, null);
+  private MemoryVerdict createMetric(String name) {
+    return new MemoryVerdict(
+        MemoryAction.CREATE, null, null, null, name, name, null, null, null, null);
   }
 
   private void echoMetricOnCreate() {
@@ -143,9 +143,9 @@ class OntologyReconcilerTest {
     when(glossaryRepo.findByNameOrNull("Business", Include.NON_DELETED))
         .thenReturn(existingGlossary);
     echoTermOnCreate();
-    OntologyVerdict term =
-        new OntologyVerdict(
-            OntologyAction.CREATE,
+    MemoryVerdict term =
+        new MemoryVerdict(
+            MemoryAction.CREATE,
             "Business",
             null,
             null,
@@ -156,9 +156,9 @@ class OntologyReconcilerTest {
             null,
             null);
 
-    OntologyReconciler.ReconcileResult result =
+    MemoryReconciler.ReconcileResult result =
         reconciler()
-            .reconcile(memory, new OntologyDerivation(term, skip()), AIDeletionPolicy.CASCADE);
+            .reconcile(memory, new MemoryDerivation(term, skip()), AIDeletionPolicy.CASCADE);
 
     assertEquals(1, result.createdTerms());
     assertEquals(0, result.createdMetrics());
@@ -186,9 +186,9 @@ class OntologyReconcilerTest {
     when(glossaryRepo.createInternal(any(Glossary.class)))
         .thenAnswer(inv -> ((Glossary) inv.getArgument(0)).withId(UUID.randomUUID()));
     echoTermOnCreate();
-    OntologyVerdict term =
-        new OntologyVerdict(
-            OntologyAction.CREATE,
+    MemoryVerdict term =
+        new MemoryVerdict(
+            MemoryAction.CREATE,
             null,
             "Finance",
             "Finance concepts",
@@ -199,9 +199,9 @@ class OntologyReconcilerTest {
             null,
             null);
 
-    OntologyReconciler.ReconcileResult result =
+    MemoryReconciler.ReconcileResult result =
         reconciler()
-            .reconcile(memory, new OntologyDerivation(term, skip()), AIDeletionPolicy.CASCADE);
+            .reconcile(memory, new MemoryDerivation(term, skip()), AIDeletionPolicy.CASCADE);
 
     assertEquals(1, result.created());
     ArgumentCaptor<Glossary> glossaryCaptor = ArgumentCaptor.forClass(Glossary.class);
@@ -229,9 +229,9 @@ class OntologyReconcilerTest {
         .thenReturn(null);
     when(termRepo.findByNameOrNull("CustomerValue.BaseCustomerValue", Include.NON_DELETED))
         .thenReturn(related);
-    OntologyVerdict term =
-        new OntologyVerdict(
-            OntologyAction.CREATE,
+    MemoryVerdict term =
+        new MemoryVerdict(
+            MemoryAction.CREATE,
             "CustomerValue",
             null,
             null,
@@ -243,7 +243,7 @@ class OntologyReconcilerTest {
             null,
             List.of("CustomerValue.BaseCustomerValue"));
 
-    reconciler().reconcile(memory, new OntologyDerivation(term, skip()), AIDeletionPolicy.CASCADE);
+    reconciler().reconcile(memory, new MemoryDerivation(term, skip()), AIDeletionPolicy.CASCADE);
 
     ArgumentCaptor<TermRelation> relationCaptor = ArgumentCaptor.forClass(TermRelation.class);
     verify(termRepo).addTermRelation(any(UUID.class), relationCaptor.capture());
@@ -258,9 +258,9 @@ class OntologyReconcilerTest {
     when(glossaryRepo.findByNameOrNull("Customer Analytics", Include.NON_DELETED))
         .thenReturn(sibling);
     echoTermOnCreate();
-    OntologyVerdict term =
-        new OntologyVerdict(
-            OntologyAction.CREATE,
+    MemoryVerdict term =
+        new MemoryVerdict(
+            MemoryAction.CREATE,
             null,
             "Customer Metrics",
             "near-duplicate glossary the agent proposed",
@@ -270,17 +270,12 @@ class OntologyReconcilerTest {
             null,
             null,
             null);
-    OntologyContext ctx =
-        new OntologyContext(List.of(), List.of(), List.of(), List.of(), "Customer Analytics");
+    MemoryContext ctx =
+        new MemoryContext(List.of(), List.of(), List.of(), List.of(), "Customer Analytics");
 
     reconciler()
         .reconcile(
-            memory,
-            new OntologyDerivation(term, skip()),
-            ctx,
-            AIDeletionPolicy.CASCADE,
-            true,
-            true);
+            memory, new MemoryDerivation(term, skip()), ctx, AIDeletionPolicy.CASCADE, true, true);
 
     ArgumentCaptor<GlossaryTerm> captor = ArgumentCaptor.forClass(GlossaryTerm.class);
     verify(termRepo).createInternal(captor.capture());
@@ -293,9 +288,9 @@ class OntologyReconcilerTest {
     Glossary glossary = new Glossary().withId(UUID.randomUUID()).withName("Finance");
     when(glossaryRepo.findByNameOrNull("Finance", Include.NON_DELETED)).thenReturn(glossary);
     echoTermOnCreate();
-    OntologyVerdict term =
-        new OntologyVerdict(
-            OntologyAction.CREATE,
+    MemoryVerdict term =
+        new MemoryVerdict(
+            MemoryAction.CREATE,
             "Finance",
             null,
             null,
@@ -307,7 +302,7 @@ class OntologyReconcilerTest {
             null,
             List.of("Finance.Ghost"));
 
-    reconciler().reconcile(memory, new OntologyDerivation(term, skip()), AIDeletionPolicy.CASCADE);
+    reconciler().reconcile(memory, new MemoryDerivation(term, skip()), AIDeletionPolicy.CASCADE);
 
     verify(termRepo, never()).addTermRelation(any(), any());
   }
@@ -316,9 +311,9 @@ class OntologyReconcilerTest {
   void createMetricSetsAutomationProviderExpressionAndDerivedFromEdge() {
     when(metricRepo.createInternal(any(Metric.class)))
         .thenAnswer(inv -> ((Metric) inv.getArgument(0)).withId(UUID.randomUUID()));
-    OntologyVerdict metric =
-        new OntologyVerdict(
-            OntologyAction.CREATE,
+    MemoryVerdict metric =
+        new MemoryVerdict(
+            MemoryAction.CREATE,
             null,
             null,
             null,
@@ -329,9 +324,9 @@ class OntologyReconcilerTest {
             "COUNT",
             "SELECT count(*) FROM churn");
 
-    OntologyReconciler.ReconcileResult result =
+    MemoryReconciler.ReconcileResult result =
         reconciler()
-            .reconcile(memory, new OntologyDerivation(skip(), metric), AIDeletionPolicy.CASCADE);
+            .reconcile(memory, new MemoryDerivation(skip(), metric), AIDeletionPolicy.CASCADE);
 
     assertEquals(0, result.createdTerms());
     assertEquals(1, result.createdMetrics());
@@ -362,13 +357,13 @@ class OntologyReconcilerTest {
             .withName("Churn")
             .withProvider(ProviderType.USER);
     when(termRepo.findByNameOrNull("Business.Churn", Include.NON_DELETED)).thenReturn(existing);
-    OntologyVerdict term =
-        new OntologyVerdict(
-            OntologyAction.REUSE, "Business.Churn", null, null, null, null, null, null, null, null);
+    MemoryVerdict term =
+        new MemoryVerdict(
+            MemoryAction.REUSE, "Business.Churn", null, null, null, null, null, null, null, null);
 
-    OntologyReconciler.ReconcileResult result =
+    MemoryReconciler.ReconcileResult result =
         reconciler()
-            .reconcile(memory, new OntologyDerivation(term, skip()), AIDeletionPolicy.CASCADE);
+            .reconcile(memory, new MemoryDerivation(term, skip()), AIDeletionPolicy.CASCADE);
 
     assertEquals(0, result.created());
     assertEquals(1, result.reused());
@@ -386,13 +381,13 @@ class OntologyReconcilerTest {
   @Test
   void reuseUnresolvedFqnFallsBackToSkip() {
     when(termRepo.findByNameOrNull("Ghost.Term", Include.NON_DELETED)).thenReturn(null);
-    OntologyVerdict term =
-        new OntologyVerdict(
-            OntologyAction.REUSE, "Ghost.Term", null, null, null, null, null, null, null, null);
+    MemoryVerdict term =
+        new MemoryVerdict(
+            MemoryAction.REUSE, "Ghost.Term", null, null, null, null, null, null, null, null);
 
-    OntologyReconciler.ReconcileResult result =
+    MemoryReconciler.ReconcileResult result =
         reconciler()
-            .reconcile(memory, new OntologyDerivation(term, skip()), AIDeletionPolicy.CASCADE);
+            .reconcile(memory, new MemoryDerivation(term, skip()), AIDeletionPolicy.CASCADE);
 
     assertEquals(0, result.created());
     assertEquals(0, result.reused());
@@ -401,9 +396,9 @@ class OntologyReconcilerTest {
 
   @Test
   void skipBothAxesIsNoOp() {
-    OntologyReconciler.ReconcileResult result =
+    MemoryReconciler.ReconcileResult result =
         reconciler()
-            .reconcile(memory, new OntologyDerivation(skip(), skip()), AIDeletionPolicy.CASCADE);
+            .reconcile(memory, new MemoryDerivation(skip(), skip()), AIDeletionPolicy.CASCADE);
 
     assertEquals(0, result.created());
     assertEquals(0, result.reused());
@@ -419,9 +414,9 @@ class OntologyReconcilerTest {
     stubFindFrom(termRepo, Relationship.DERIVED_FROM, Entity.GLOSSARY_TERM, List.of(ownedTerm));
     stubFindFrom(metricRepo, Relationship.DERIVED_FROM, Entity.METRIC, List.of(ownedMetric));
 
-    OntologyReconciler.ReconcileResult result =
+    MemoryReconciler.ReconcileResult result =
         reconciler()
-            .reconcile(memory, new OntologyDerivation(skip(), skip()), AIDeletionPolicy.CASCADE);
+            .reconcile(memory, new MemoryDerivation(skip(), skip()), AIDeletionPolicy.CASCADE);
 
     assertEquals(0, result.created());
     assertEquals(0, result.reused());
@@ -449,11 +444,11 @@ class OntologyReconcilerTest {
     when(termRepo.get(isNull(), eq(staleRef.getId()), any(EntityUtil.Fields.class)))
         .thenReturn(stale);
 
-    OntologyReconciler.ReconcileResult result =
+    MemoryReconciler.ReconcileResult result =
         reconciler()
             .reconcile(
                 memory,
-                new OntologyDerivation(skip(), createMetric("churn_rate")),
+                new MemoryDerivation(skip(), createMetric("churn_rate")),
                 AIDeletionPolicy.CASCADE);
 
     assertEquals(1, result.retired());
@@ -473,11 +468,11 @@ class OntologyReconcilerTest {
     when(termRepo.get(isNull(), eq(staleRef.getId()), any(EntityUtil.Fields.class)))
         .thenReturn(stale);
 
-    OntologyReconciler.ReconcileResult result =
+    MemoryReconciler.ReconcileResult result =
         reconciler()
             .reconcile(
                 memory,
-                new OntologyDerivation(skip(), createMetric("churn_rate")),
+                new MemoryDerivation(skip(), createMetric("churn_rate")),
                 AIDeletionPolicy.ORPHAN);
 
     assertEquals(1, result.retired());
@@ -507,11 +502,11 @@ class OntologyReconcilerTest {
     when(termRepo.get(isNull(), eq(staleRef.getId()), any(EntityUtil.Fields.class)))
         .thenReturn(stale);
 
-    OntologyReconciler.ReconcileResult result =
+    MemoryReconciler.ReconcileResult result =
         reconciler()
             .reconcile(
                 memory,
-                new OntologyDerivation(skip(), createMetric("churn_rate")),
+                new MemoryDerivation(skip(), createMetric("churn_rate")),
                 AIDeletionPolicy.DEPRECATE);
 
     assertEquals(1, result.retired());
@@ -541,11 +536,11 @@ class OntologyReconcilerTest {
     when(termRepo.get(isNull(), eq(adoptedRef.getId()), any(EntityUtil.Fields.class)))
         .thenReturn(adopted);
 
-    OntologyReconciler.ReconcileResult result =
+    MemoryReconciler.ReconcileResult result =
         reconciler()
             .reconcile(
                 memory,
-                new OntologyDerivation(skip(), createMetric("churn_rate")),
+                new MemoryDerivation(skip(), createMetric("churn_rate")),
                 AIDeletionPolicy.CASCADE);
 
     assertEquals(0, result.retired());
@@ -642,11 +637,11 @@ class OntologyReconcilerTest {
             .withName("Churn")
             .withProvider(ProviderType.USER);
     when(termRepo.findByNameOrNull("Business.Churn", Include.NON_DELETED)).thenReturn(existing);
-    OntologyVerdict term =
-        new OntologyVerdict(
-            OntologyAction.REUSE, "Business.Churn", null, null, null, null, null, null, null, null);
+    MemoryVerdict term =
+        new MemoryVerdict(
+            MemoryAction.REUSE, "Business.Churn", null, null, null, null, null, null, null, null);
 
-    reconciler().reconcile(memory, new OntologyDerivation(term, skip()), AIDeletionPolicy.CASCADE);
+    reconciler().reconcile(memory, new MemoryDerivation(term, skip()), AIDeletionPolicy.CASCADE);
 
     ArgumentCaptor<UUID> fromId = ArgumentCaptor.forClass(UUID.class);
     ArgumentCaptor<UUID> toId = ArgumentCaptor.forClass(UUID.class);
@@ -687,12 +682,12 @@ class OntologyReconcilerTest {
 
   @Test
   void unknownActionTreatedAsNoOp() {
-    OntologyVerdict garbage =
-        new OntologyVerdict("WAT", null, null, null, null, null, null, null, null, null);
+    MemoryVerdict garbage =
+        new MemoryVerdict("WAT", null, null, null, null, null, null, null, null, null);
 
-    OntologyReconciler.ReconcileResult result =
+    MemoryReconciler.ReconcileResult result =
         reconciler()
-            .reconcile(memory, new OntologyDerivation(garbage, skip()), AIDeletionPolicy.CASCADE);
+            .reconcile(memory, new MemoryDerivation(garbage, skip()), AIDeletionPolicy.CASCADE);
 
     assertEquals(0, result.created());
     assertEquals(0, result.reused());
@@ -750,9 +745,9 @@ class OntologyReconcilerTest {
 
   @Test
   void createTermWithInvalidNameIsSkippedNoExceptionNoCreate() {
-    OntologyVerdict dotName =
-        new OntologyVerdict(
-            OntologyAction.CREATE,
+    MemoryVerdict dotName =
+        new MemoryVerdict(
+            MemoryAction.CREATE,
             "Business",
             null,
             null,
@@ -763,9 +758,9 @@ class OntologyReconcilerTest {
             null,
             null);
 
-    OntologyReconciler.ReconcileResult result =
+    MemoryReconciler.ReconcileResult result =
         reconciler()
-            .reconcile(memory, new OntologyDerivation(dotName, skip()), AIDeletionPolicy.CASCADE);
+            .reconcile(memory, new MemoryDerivation(dotName, skip()), AIDeletionPolicy.CASCADE);
 
     assertEquals(0, result.created());
     assertEquals(0, result.retired());
@@ -774,13 +769,13 @@ class OntologyReconcilerTest {
 
   @Test
   void createTermWithNullNameIsSkippedNoExceptionNoCreate() {
-    OntologyVerdict nullName =
-        new OntologyVerdict(
-            OntologyAction.CREATE, "Business", null, null, null, null, "desc", null, null, null);
+    MemoryVerdict nullName =
+        new MemoryVerdict(
+            MemoryAction.CREATE, "Business", null, null, null, null, "desc", null, null, null);
 
-    OntologyReconciler.ReconcileResult result =
+    MemoryReconciler.ReconcileResult result =
         reconciler()
-            .reconcile(memory, new OntologyDerivation(nullName, skip()), AIDeletionPolicy.CASCADE);
+            .reconcile(memory, new MemoryDerivation(nullName, skip()), AIDeletionPolicy.CASCADE);
 
     assertEquals(0, result.created());
     assertEquals(0, result.retired());
@@ -789,9 +784,9 @@ class OntologyReconcilerTest {
 
   @Test
   void createMetricWithInvalidNameIsSkippedNoExceptionNoCreate() {
-    OntologyVerdict slashName =
-        new OntologyVerdict(
-            OntologyAction.CREATE,
+    MemoryVerdict slashName =
+        new MemoryVerdict(
+            MemoryAction.CREATE,
             null,
             null,
             null,
@@ -802,9 +797,9 @@ class OntologyReconcilerTest {
             null,
             null);
 
-    OntologyReconciler.ReconcileResult result =
+    MemoryReconciler.ReconcileResult result =
         reconciler()
-            .reconcile(memory, new OntologyDerivation(skip(), slashName), AIDeletionPolicy.CASCADE);
+            .reconcile(memory, new MemoryDerivation(skip(), slashName), AIDeletionPolicy.CASCADE);
 
     assertEquals(0, result.created());
     assertEquals(0, result.retired());
@@ -813,13 +808,13 @@ class OntologyReconcilerTest {
 
   @Test
   void createMetricWithNullNameIsSkippedNoExceptionNoCreate() {
-    OntologyVerdict nullName =
-        new OntologyVerdict(
-            OntologyAction.CREATE, null, null, null, null, null, "desc", "COUNT", null, null);
+    MemoryVerdict nullName =
+        new MemoryVerdict(
+            MemoryAction.CREATE, null, null, null, null, null, "desc", "COUNT", null, null);
 
-    OntologyReconciler.ReconcileResult result =
+    MemoryReconciler.ReconcileResult result =
         reconciler()
-            .reconcile(memory, new OntologyDerivation(skip(), nullName), AIDeletionPolicy.CASCADE);
+            .reconcile(memory, new MemoryDerivation(skip(), nullName), AIDeletionPolicy.CASCADE);
 
     assertEquals(0, result.created());
     assertEquals(0, result.retired());
@@ -829,9 +824,9 @@ class OntologyReconcilerTest {
   @Test
   void createMetricWithUnknownMetricTypeStillCreatesMetricWithNullType() {
     echoMetricOnCreate();
-    OntologyVerdict metric =
-        new OntologyVerdict(
-            OntologyAction.CREATE,
+    MemoryVerdict metric =
+        new MemoryVerdict(
+            MemoryAction.CREATE,
             null,
             null,
             null,
@@ -842,9 +837,9 @@ class OntologyReconcilerTest {
             null,
             null);
 
-    OntologyReconciler.ReconcileResult result =
+    MemoryReconciler.ReconcileResult result =
         reconciler()
-            .reconcile(memory, new OntologyDerivation(skip(), metric), AIDeletionPolicy.CASCADE);
+            .reconcile(memory, new MemoryDerivation(skip(), metric), AIDeletionPolicy.CASCADE);
 
     assertEquals(1, result.createdMetrics());
     ArgumentCaptor<Metric> captor = ArgumentCaptor.forClass(Metric.class);
@@ -855,9 +850,9 @@ class OntologyReconcilerTest {
   @Test
   void createMetricWithUnknownUnitKeepsValidTypeAndLeavesUnitUnset() {
     echoMetricOnCreate();
-    OntologyVerdict metric =
-        new OntologyVerdict(
-            OntologyAction.CREATE,
+    MemoryVerdict metric =
+        new MemoryVerdict(
+            MemoryAction.CREATE,
             null,
             null,
             null,
@@ -868,9 +863,9 @@ class OntologyReconcilerTest {
             "bananas",
             null);
 
-    OntologyReconciler.ReconcileResult result =
+    MemoryReconciler.ReconcileResult result =
         reconciler()
-            .reconcile(memory, new OntologyDerivation(skip(), metric), AIDeletionPolicy.CASCADE);
+            .reconcile(memory, new MemoryDerivation(skip(), metric), AIDeletionPolicy.CASCADE);
 
     assertEquals(1, result.createdMetrics());
     ArgumentCaptor<Metric> captor = ArgumentCaptor.forClass(Metric.class);
@@ -882,9 +877,9 @@ class OntologyReconcilerTest {
   @Test
   void createMetricResolvesEnumsCaseInsensitively() {
     echoMetricOnCreate();
-    OntologyVerdict metric =
-        new OntologyVerdict(
-            OntologyAction.CREATE,
+    MemoryVerdict metric =
+        new MemoryVerdict(
+            MemoryAction.CREATE,
             null,
             null,
             null,
@@ -895,9 +890,9 @@ class OntologyReconcilerTest {
             "percentage",
             null);
 
-    OntologyReconciler.ReconcileResult result =
+    MemoryReconciler.ReconcileResult result =
         reconciler()
-            .reconcile(memory, new OntologyDerivation(skip(), metric), AIDeletionPolicy.CASCADE);
+            .reconcile(memory, new MemoryDerivation(skip(), metric), AIDeletionPolicy.CASCADE);
 
     assertEquals(1, result.createdMetrics());
     ArgumentCaptor<Metric> captor = ArgumentCaptor.forClass(Metric.class);
@@ -916,9 +911,9 @@ class OntologyReconcilerTest {
     // targetFqn=Business → resolveGlossaryFqn returns "Business", term FQN = "Business.Churn"
     when(termRepo.findByNameOrNull("Business.Churn", Include.NON_DELETED))
         .thenReturn(alreadyExists);
-    OntologyVerdict term =
-        new OntologyVerdict(
-            OntologyAction.CREATE,
+    MemoryVerdict term =
+        new MemoryVerdict(
+            MemoryAction.CREATE,
             "Business",
             null,
             null,
@@ -929,9 +924,9 @@ class OntologyReconcilerTest {
             null,
             null);
 
-    OntologyReconciler.ReconcileResult result =
+    MemoryReconciler.ReconcileResult result =
         reconciler()
-            .reconcile(memory, new OntologyDerivation(term, skip()), AIDeletionPolicy.CASCADE);
+            .reconcile(memory, new MemoryDerivation(term, skip()), AIDeletionPolicy.CASCADE);
 
     assertEquals(0, result.created(), "createInternal must NOT be called for an existing FQN");
     assertEquals(1, result.reused(), "collision must count as reused");
@@ -955,9 +950,9 @@ class OntologyReconcilerTest {
             .withProvider(ProviderType.USER);
     // metric FQN == name for standalone metrics
     when(metricRepo.findByNameOrNull("churn_rate", Include.NON_DELETED)).thenReturn(alreadyExists);
-    OntologyVerdict metric =
-        new OntologyVerdict(
-            OntologyAction.CREATE,
+    MemoryVerdict metric =
+        new MemoryVerdict(
+            MemoryAction.CREATE,
             null,
             null,
             null,
@@ -968,9 +963,9 @@ class OntologyReconcilerTest {
             null,
             null);
 
-    OntologyReconciler.ReconcileResult result =
+    MemoryReconciler.ReconcileResult result =
         reconciler()
-            .reconcile(memory, new OntologyDerivation(skip(), metric), AIDeletionPolicy.CASCADE);
+            .reconcile(memory, new MemoryDerivation(skip(), metric), AIDeletionPolicy.CASCADE);
 
     assertEquals(0, result.created(), "createInternal must NOT be called for an existing FQN");
     assertEquals(1, result.reused(), "collision must count as reused");
@@ -993,9 +988,9 @@ class OntologyReconcilerTest {
     when(glossaryRepo.findByNameOrNull("Finance", Include.NON_DELETED))
         .thenReturn(existingGlossary);
     echoTermOnCreate();
-    OntologyVerdict term =
-        new OntologyVerdict(
-            OntologyAction.CREATE,
+    MemoryVerdict term =
+        new MemoryVerdict(
+            MemoryAction.CREATE,
             null,
             "Finance",
             "Finance concepts",
@@ -1006,9 +1001,9 @@ class OntologyReconcilerTest {
             null,
             null);
 
-    OntologyReconciler.ReconcileResult result =
+    MemoryReconciler.ReconcileResult result =
         reconciler()
-            .reconcile(memory, new OntologyDerivation(term, skip()), AIDeletionPolicy.CASCADE);
+            .reconcile(memory, new MemoryDerivation(term, skip()), AIDeletionPolicy.CASCADE);
 
     assertEquals(1, result.created(), "term must still be created");
     verify(glossaryRepo, never()).createInternal(any());

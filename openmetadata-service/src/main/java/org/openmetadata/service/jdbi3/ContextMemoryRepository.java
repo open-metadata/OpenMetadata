@@ -32,16 +32,16 @@ import org.openmetadata.schema.configuration.AIDeletionPolicy;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
-import org.openmetadata.schema.entity.context.OntologyProcessingStatus;
-import org.openmetadata.schema.entity.context.OntologyStats;
+import org.openmetadata.schema.entity.context.MemoryProcessingStatus;
+import org.openmetadata.schema.entity.context.MemoryStats;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.drive.ontology.OntologyProcessingEngine;
-import org.openmetadata.service.drive.ontology.OntologyReconciler;
+import org.openmetadata.service.drive.memory.MemoryProcessingEngine;
+import org.openmetadata.service.drive.memory.MemoryReconciler;
 import org.openmetadata.service.resources.context.ContextMemoryResource;
 import org.openmetadata.service.search.vector.ContextMemoryBodyTextContributor;
 import org.openmetadata.service.util.AISettingsUtil;
@@ -278,7 +278,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   }
 
   /**
-   * Returns the glossary terms and metrics created by the Ontology Agent from this memory.
+   * Returns the glossary terms and metrics created by the Memory Agent from this memory.
    * Edge direction: from=term/metric → to=memory via DERIVED_FROM; findFrom resolves from-side.
    */
   private List<EntityReference> getDerivedEntities(ContextMemory entity) {
@@ -293,7 +293,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   }
 
   /**
-   * Returns the glossary terms and metrics reused (not created) by the Ontology Agent from this memory.
+   * Returns the glossary terms and metrics reused (not created) by the Memory Agent from this memory.
    * Edge direction: from=memory → to=term/metric via RELATED_TO; findTo resolves to-side.
    */
   private List<EntityReference> getReusedEntities(ContextMemory entity) {
@@ -388,20 +388,20 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     validateSharedPrincipals(entity);
     setCreatorAsDefaultOwner(entity, update);
 
-    // A new memory queues an Ontology Agent run (scheduled in postCreate); stamp Queued here so the
-    // pill shows an ontology-pending state immediately, until the agent flips it to Processing then
+    // A new memory queues a Memory Agent run (scheduled in postCreate); stamp Queued here so the
+    // pill shows a memory-pending state immediately, until the agent flips it to Processing then
     // Processed/Failed. Update re-queueing is handled in the updater on a content change.
-    if (!update && AISettingsUtil.isOntologyAgentEnabled(AISettingsUtil.get())) {
-      markOntologyQueued(entity);
+    if (!update && AISettingsUtil.isMemoryAgentEnabled(AISettingsUtil.get())) {
+      markMemoryQueued(entity);
     }
   }
 
   /** Sets the memory's ontology status to Queued (preserving prior telemetry) and clears any error. */
-  private void markOntologyQueued(ContextMemory entity) {
-    OntologyStats stats =
-        entity.getOntologyStats() == null ? new OntologyStats() : entity.getOntologyStats();
-    stats.withStatus(OntologyProcessingStatus.Queued).withError(null);
-    entity.setOntologyStats(stats);
+  private void markMemoryQueued(ContextMemory entity) {
+    MemoryStats stats =
+        entity.getMemoryStats() == null ? new MemoryStats() : entity.getMemoryStats();
+    stats.withStatus(MemoryProcessingStatus.Queued).withError(null);
+    entity.setMemoryStats(stats);
   }
 
   private void validateNotSelfReference(ContextMemory entity, UUID referencedId, String field) {
@@ -510,24 +510,24 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   }
 
   // ------------------------------------------------------------------
-  // Ontology Agent lifecycle hooks
+  // Memory Agent lifecycle hooks
   // ------------------------------------------------------------------
 
   @Override
   protected void postCreate(ContextMemory entity) {
     super.postCreate(entity);
-    scheduleOntology(entity);
+    scheduleMemory(entity);
   }
 
   @Override
   protected void postUpdate(ContextMemory original, ContextMemory updated) {
     super.postUpdate(original, updated);
-    scheduleOntology(updated);
+    scheduleMemory(updated);
   }
 
-  private void scheduleOntology(final ContextMemory entity) {
-    if (AISettingsUtil.isOntologyAgentEnabled(AISettingsUtil.get())) {
-      OntologyProcessingEngine.instance().schedule(entity.getId());
+  private void scheduleMemory(final ContextMemory entity) {
+    if (AISettingsUtil.isMemoryAgentEnabled(AISettingsUtil.get())) {
+      MemoryProcessingEngine.instance().schedule(entity.getId());
     }
   }
 
@@ -536,41 +536,41 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   @Override
   @Transaction
   protected void softDeleteAdditionalChildren(final UUID memoryId, final String deletedBy) {
-    cancelAndCascadeOntology(memoryId, false);
+    cancelAndCascadeMemory(memoryId, false);
   }
 
   @Override
   @Transaction
   protected void hardDeleteAdditionalChildren(final UUID memoryId, final String deletedBy) {
-    cancelAndCascadeOntology(memoryId, true);
+    cancelAndCascadeMemory(memoryId, true);
   }
 
-  private void cancelAndCascadeOntology(final UUID memoryId, final boolean hardDelete) {
-    OntologyProcessingEngine.instance().cancel(memoryId);
-    cascadeOntology(memoryId, hardDelete);
+  private void cancelAndCascadeMemory(final UUID memoryId, final boolean hardDelete) {
+    MemoryProcessingEngine.instance().cancel(memoryId);
+    cascadeMemory(memoryId, hardDelete);
   }
 
   @Override
   @Transaction
   protected void restoreAdditionalChildren(final UUID memoryId, final String restoredBy) {
     final ContextMemory memory = get(null, memoryId, getFields(""), Include.ALL, false);
-    ontologyReconciler().onMemoryRestored(memory);
+    memoryReconciler().onMemoryRestored(memory);
   }
 
-  private void cascadeOntology(final UUID memoryId, final boolean hardDelete) {
+  private void cascadeMemory(final UUID memoryId, final boolean hardDelete) {
     final ContextMemory memory = get(null, memoryId, getFields(""), Include.ALL, false);
     final AIDeletionPolicy policy = AISettingsUtil.deletionPolicy(AISettingsUtil.get());
-    ontologyReconciler().onMemoryDeleted(memory, hardDelete, policy);
+    memoryReconciler().onMemoryDeleted(memory, hardDelete, policy);
   }
 
-  private OntologyReconciler ontologyReconciler() {
+  private MemoryReconciler memoryReconciler() {
     final GlossaryTermRepository termRepo =
         (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
     final MetricRepository metricRepo =
         (MetricRepository) Entity.getEntityRepository(Entity.METRIC);
     final GlossaryRepository glossaryRepo =
         (GlossaryRepository) Entity.getEntityRepository(Entity.GLOSSARY);
-    return new OntologyReconciler(termRepo, metricRepo, glossaryRepo);
+    return new MemoryReconciler(termRepo, metricRepo, glossaryRepo);
   }
 
   // ------------------------------------------------------------------
@@ -695,8 +695,8 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           original.getId());
       updateSourceEntityRelationship();
 
-      maybeRequeueOntology();
-      recordOntologyStats();
+      maybeRequeueMemory();
+      recordMemoryStats();
 
       // usageCount and lastUsedAt are AI-retrieval telemetry, intentionally excluded from
       // version history so routine retrieval does not churn the entity version.
@@ -706,28 +706,28 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
      * Re-queues ontology derivation when an edit changes the memory's ontology-relevant content, so
      * the pill shows Queued again until the agent (rescheduled in postUpdate) re-derives. Gated to a
      * real content change so a machine status stamp (Processing/Processed/Failed) does not reset
-     * itself to Queued. Runs before {@link #recordOntologyStats()} so the new status is recorded.
+     * itself to Queued. Runs before {@link #recordMemoryStats()} so the new status is recorded.
      */
-    private void maybeRequeueOntology() {
+    private void maybeRequeueMemory() {
       if (extractionManagedFieldChanged()
-          && AISettingsUtil.isOntologyAgentEnabled(AISettingsUtil.get())) {
-        markOntologyQueued(updated);
+          && AISettingsUtil.isMemoryAgentEnabled(AISettingsUtil.get())) {
+        markMemoryQueued(updated);
       }
     }
 
     /**
-     * ontologyStats is engine-managed telemetry. Preserve the stored value when an update omits it
+     * memoryStats is engine-managed telemetry. Preserve the stored value when an update omits it
      * so a user PUT never wipes it, and persist a fresh stamp with updateVersion=false so the
-     * Ontology Agent does not churn the memory's version history on every derivation run.
+     * Memory Agent does not churn the memory's version history on every derivation run.
      */
-    private void recordOntologyStats() {
-      if (updated.getOntologyStats() == null) {
-        updated.setOntologyStats(original.getOntologyStats());
+    private void recordMemoryStats() {
+      if (updated.getMemoryStats() == null) {
+        updated.setMemoryStats(original.getMemoryStats());
       }
       recordChange(
-          "ontologyStats",
-          original.getOntologyStats(),
-          updated.getOntologyStats(),
+          "memoryStats",
+          original.getMemoryStats(),
+          updated.getMemoryStats(),
           true,
           EntityUtil.objectMatch,
           false);
@@ -825,18 +825,18 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   }
 
   /**
-   * Persists new {@link OntologyStats} on a memory WITHOUT bumping its version. The engine calls
+   * Persists new {@link MemoryStats} on a memory WITHOUT bumping its version. The engine calls
    * this after every derivation run. Using {@code updateVersion=false} inside {@link
-   * ContextMemoryUpdater#recordOntologyStats()} means the JSON store is updated but the version
+   * ContextMemoryUpdater#recordMemoryStats()} means the JSON store is updated but the version
    * counter stays flat (no history churn). {@code postUpdate} DOES still fire ({@code
    * entityChanged=true}). The recursion loop is broken solely by the hash-gate in {@link
-   * org.openmetadata.service.drive.ontology.OntologyProcessingEngine}: after the stamp, {@code
+   * org.openmetadata.service.drive.memory.MemoryProcessingEngine}: after the stamp, {@code
    * sourceHash == hashOf(memory)}, so a re-triggered run skips derivation. The hash-gate is
    * load-bearing — do NOT remove it.
    */
-  public void stampOntologyStats(final ContextMemory memory, final OntologyStats stats) {
+  public void stampMemoryStats(final ContextMemory memory, final MemoryStats stats) {
     final ContextMemory updated = JsonUtils.deepCopy(memory, ContextMemory.class);
-    updated.setOntologyStats(stats);
+    updated.setMemoryStats(stats);
     update(null, memory, updated, Entity.ADMIN_USER_NAME);
   }
 }

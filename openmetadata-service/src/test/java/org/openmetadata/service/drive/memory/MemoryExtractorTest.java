@@ -11,7 +11,7 @@
  * limitations under the License.
  */
 
-package org.openmetadata.service.drive.ontology;
+package org.openmetadata.service.drive.memory;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
@@ -25,16 +25,16 @@ import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.service.llm.LLMCompletionClient;
 
 @ExtendWith(MockitoExtension.class)
-class OntologyExtractorTest {
+class MemoryExtractorTest {
 
   @Mock LLMCompletionClient llmClient;
 
   @Test
   void deriveReturnsVerdictsFromLlm() {
-    OntologyDerivation verdict =
-        new OntologyDerivation(
-            new OntologyVerdict(
-                OntologyAction.CREATE,
+    MemoryDerivation verdict =
+        new MemoryDerivation(
+            new MemoryVerdict(
+                MemoryAction.CREATE,
                 null,
                 "Business",
                 "Business glossary",
@@ -44,25 +44,25 @@ class OntologyExtractorTest {
                 null,
                 null,
                 null),
-            new OntologyVerdict(
-                OntologyAction.SKIP, null, null, null, null, null, null, null, null, null));
+            new MemoryVerdict(
+                MemoryAction.SKIP, null, null, null, null, null, null, null, null, null));
     when(llmClient.completeStructured(
             org.mockito.ArgumentMatchers.anyString(),
             org.mockito.ArgumentMatchers.anyString(),
-            org.mockito.ArgumentMatchers.eq(OntologyDerivation.class)))
+            org.mockito.ArgumentMatchers.eq(MemoryDerivation.class)))
         .thenReturn(List.of(verdict));
 
-    OntologyExtractor extractor = new OntologyExtractor(llmClient);
+    MemoryExtractor extractor = new MemoryExtractor(llmClient);
     ContextMemory memory =
         new ContextMemory()
             .withTitle("Churn")
             .withQuestion("What is churn?")
             .withAnswer("Lost customers");
-    OntologyDerivation result =
-        extractor.derive(memory, new OntologyContext(List.of(), List.of(), List.of()));
+    MemoryDerivation result =
+        extractor.derive(memory, new MemoryContext(List.of(), List.of(), List.of()));
 
-    assertEquals(OntologyAction.CREATE, result.termVerdict().action());
-    assertEquals(OntologyAction.SKIP, result.metricVerdict().action());
+    assertEquals(MemoryAction.CREATE, result.termVerdict().action());
+    assertEquals(MemoryAction.SKIP, result.metricVerdict().action());
   }
 
   @Test
@@ -70,15 +70,15 @@ class OntologyExtractorTest {
     when(llmClient.completeStructured(
             org.mockito.ArgumentMatchers.anyString(),
             org.mockito.ArgumentMatchers.anyString(),
-            org.mockito.ArgumentMatchers.eq(OntologyDerivation.class)))
+            org.mockito.ArgumentMatchers.eq(MemoryDerivation.class)))
         .thenReturn(List.of());
 
-    OntologyExtractor extractor = new OntologyExtractor(llmClient);
+    MemoryExtractor extractor = new MemoryExtractor(llmClient);
     ContextMemory memory = new ContextMemory().withTitle("Test").withQuestion("Q").withAnswer("A");
-    OntologyDerivation result =
-        extractor.derive(memory, new OntologyContext(List.of(), List.of(), List.of()));
+    MemoryDerivation result =
+        extractor.derive(memory, new MemoryContext(List.of(), List.of(), List.of()));
 
-    assertEquals(OntologyAction.SKIP, result.termVerdict().action());
-    assertEquals(OntologyAction.SKIP, result.metricVerdict().action());
+    assertEquals(MemoryAction.SKIP, result.termVerdict().action());
+    assertEquals(MemoryAction.SKIP, result.metricVerdict().action());
   }
 }

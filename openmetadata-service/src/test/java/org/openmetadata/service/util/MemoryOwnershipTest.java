@@ -22,7 +22,7 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.type.ProviderType;
 
-class OntologyOwnershipTest {
+class MemoryOwnershipTest {
 
   // ---- helpers ----
 
@@ -57,7 +57,7 @@ class OntologyOwnershipTest {
     final GlossaryTerm term = automationTerm("alice");
     term.setDescription("new description");
 
-    final boolean released = OntologyOwnership.releaseIfHumanEdited(term, true, true);
+    final boolean released = MemoryOwnership.releaseIfHumanEdited(term, true, true);
 
     assertTrue(released);
     assertEquals(ProviderType.USER, term.getProvider());
@@ -65,10 +65,10 @@ class OntologyOwnershipTest {
 
   @Test
   void botOwnUpdateDoesNotRelease() {
-    final GlossaryTerm term = automationTerm(OntologyOwnership.ONTOLOGY_BOT_NAME);
+    final GlossaryTerm term = automationTerm(MemoryOwnership.MEMORY_BOT_NAME);
     term.setDescription("re-derived description");
 
-    final boolean released = OntologyOwnership.releaseIfHumanEdited(term, true, true);
+    final boolean released = MemoryOwnership.releaseIfHumanEdited(term, true, true);
 
     assertFalse(released);
     assertEquals(ProviderType.AUTOMATION, term.getProvider());
@@ -79,7 +79,7 @@ class OntologyOwnershipTest {
     final GlossaryTerm term = userTerm("alice");
     term.setDescription("new description");
 
-    final boolean released = OntologyOwnership.releaseIfHumanEdited(term, true, true);
+    final boolean released = MemoryOwnership.releaseIfHumanEdited(term, true, true);
 
     assertFalse(released);
     assertEquals(ProviderType.USER, term.getProvider());
@@ -89,7 +89,7 @@ class OntologyOwnershipTest {
   void noManagedFieldChangeDoesNotRelease() {
     final GlossaryTerm term = automationTerm("alice");
 
-    final boolean released = OntologyOwnership.releaseIfHumanEdited(term, true, false);
+    final boolean released = MemoryOwnership.releaseIfHumanEdited(term, true, false);
 
     assertFalse(released);
     assertEquals(ProviderType.AUTOMATION, term.getProvider());
@@ -100,7 +100,7 @@ class OntologyOwnershipTest {
     final GlossaryTerm term = automationTerm("alice");
     term.setDescription("new description");
 
-    final boolean released = OntologyOwnership.releaseIfHumanEdited(term, false, true);
+    final boolean released = MemoryOwnership.releaseIfHumanEdited(term, false, true);
 
     assertFalse(released);
     assertEquals(ProviderType.AUTOMATION, term.getProvider());
@@ -111,7 +111,7 @@ class OntologyOwnershipTest {
     final Metric metric = automationMetric("bob");
     metric.setDescription("updated description");
 
-    final boolean released = OntologyOwnership.releaseIfHumanEdited(metric, true, true);
+    final boolean released = MemoryOwnership.releaseIfHumanEdited(metric, true, true);
 
     assertTrue(released);
     assertEquals(ProviderType.USER, metric.getProvider());
@@ -119,10 +119,10 @@ class OntologyOwnershipTest {
 
   @Test
   void botMetricUpdateDoesNotRelease() {
-    final Metric metric = automationMetric(OntologyOwnership.ONTOLOGY_BOT_NAME);
+    final Metric metric = automationMetric(MemoryOwnership.MEMORY_BOT_NAME);
     metric.setDescription("re-derived description");
 
-    final boolean released = OntologyOwnership.releaseIfHumanEdited(metric, true, true);
+    final boolean released = MemoryOwnership.releaseIfHumanEdited(metric, true, true);
 
     assertFalse(released);
     assertEquals(ProviderType.AUTOMATION, metric.getProvider());

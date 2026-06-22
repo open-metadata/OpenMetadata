@@ -86,7 +86,7 @@ import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.OntologyOwnership;
+import org.openmetadata.service.util.MemoryOwnership;
 
 @Slf4j
 public class GlossaryRepository extends EntityRepository<Glossary> {
@@ -654,7 +654,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       compareAndUpdate("name", () -> updateName(updated));
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
-      OntologyOwnership.releaseIfHumanEdited(updated, operation.isPatch(), managedFieldChanged());
+      MemoryOwnership.releaseIfHumanEdited(updated, operation.isPatch(), managedFieldChanged());
     }
 
     private boolean managedFieldChanged() {

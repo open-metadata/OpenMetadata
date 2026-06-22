@@ -11,13 +11,13 @@
  * limitations under the License.
  */
 
-package org.openmetadata.service.drive.ontology;
+package org.openmetadata.service.drive.memory;
 
 /** Action constants for ontology term and metric verdicts produced by the LLM. */
-public final class OntologyAction {
+public final class MemoryAction {
   public static final String REUSE = "REUSE";
   public static final String CREATE = "CREATE";
   public static final String SKIP = "SKIP";
 
-  private OntologyAction() {}
+  private MemoryAction() {}
 }
