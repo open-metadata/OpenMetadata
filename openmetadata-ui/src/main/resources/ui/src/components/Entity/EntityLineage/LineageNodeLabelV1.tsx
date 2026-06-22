@@ -10,14 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Chip, IconButton, Tooltip } from '@mui/material';
-import { Breadcrumbs } from '@openmetadata/ui-core-components';
+import { Breadcrumbs, Button, Chip, IconButton, Tooltip } from '@mui/material';
 import { Col, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { capitalize, isUndefined } from 'lodash';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getEntityBreadcrumbs } from 'src/utils/EntityBreadcrumbPureUtils';
 import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-filter.svg';
@@ -31,6 +29,7 @@ import { useLineageStore } from '../../../hooks/useLineageStore';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { getEntityChildrenAndLabel } from '../../../utils/EntityLineageNodeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getBreadcrumbsFromFqn } from '../../../utils/EntityPureUtils';
 import { getEntityTypeIcon, getServiceIcon } from '../../../utils/TableUtils';
 import { LineageNodeType } from '../../Lineage/Lineage.interface';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
@@ -60,8 +59,20 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
   );
 
   const breadcrumbs = useMemo(
-    () => getEntityBreadcrumbs(node, node.entityType, false),
-    [node.entityType]
+    () => getBreadcrumbsFromFqn(node.fullyQualifiedName ?? ''),
+    [node.fullyQualifiedName]
+  );
+
+  const renderBreadcrumbItem = useCallback(
+    (item: string) => (
+      <Typography.Text
+        className="text-grey-muted lineage-breadcrumb-item"
+        ellipsis={{ tooltip: true }}
+        key={item}>
+        {item}
+      </Typography.Text>
+    ),
+    []
   );
 
   return (
@@ -88,13 +99,16 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
             className="d-flex items-center m-b-xs lineage-breadcrumbs"
             data-testid="lineage-breadcrumbs">
             <Breadcrumbs
-              items={breadcrumbs.map((item) => ({
-                id: item.name,
-                label: item.name,
-                href: item.url,
-              }))}
-              maxItems={3}
-            />
+              separator={<span className="lineage-breadcrumb-item-separator" />}
+              sx={{
+                '& ol': {
+                  gap: 0,
+                },
+              }}>
+              {breadcrumbs.map((breadcrumb) =>
+                renderBreadcrumbItem(breadcrumb.name)
+              )}
+            </Breadcrumbs>
           </Space>
         </Space>
         {!showDeletedIcon && showDbtIcon && (
