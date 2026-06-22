@@ -20,6 +20,13 @@ export const waitForTaskListResponse = (page: Page) =>
     { timeout: 30_000 }
   );
 
+export const waitForTaskResolveResponse = (page: Page) =>
+  page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      /\/api\/v1\/tasks\/[^/]+\/resolve(?:\?|$)/.test(response.url())
+  );
+
 export type TaskDetails = {
   term: string;
   assignee?: string;
