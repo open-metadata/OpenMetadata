@@ -30,8 +30,3 @@ CREATE INDEX IF NOT EXISTS worksheet_entity_name_index ON worksheet_entity (name
 -- learning_resource_entity is intentionally omitted: its `name` is varchar(3072), too
 -- wide to fit a btree index row, and the table is small enough that the reindex cursor
 -- sort is not a concern.
-
--- PII recognizer context keyword cleanup: remove overly broad context keywords
--- (e.g. "code", "security", "address", "name", "call", "check", "save", "social")
--- that caused false-positive PII classification on non-PII columns.
--- Handled by Java data migration in v1131.MigrationUtil.removeBroadPiiContextKeywords.
