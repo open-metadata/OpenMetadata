@@ -106,6 +106,7 @@ import {
   getEntityDetailsPath,
   getGlossaryTermDetailsPath,
   getKpiPath,
+  getLogsViewerPath,
   getNotificationAlertDetailsPath,
   getObservabilityAlertDetailsPath,
   getPersonaDetailsPath,
@@ -452,21 +453,17 @@ class EntityUtilClassBase {
       case EntityType.KNOWLEDGE_PAGE:
         return getKnowledgePagePath(fullyQualifiedName, tab, subTab);
 
-      case EntityType.INGESTION_PIPELINE: {
-        // Ingestion pipelines have no standalone detail page — the right destination
-        // is the owning service's ingestion management tab. The pipeline FQN has the
-        // service name as its first segment (e.g. "myService.uuid" or quoted
-        // '"my.service".uuid' for service names that contain dots). Use Fqn.split
-        // (ANTLR4-backed) rather than a naive String.split('.') so quoted segments
-        // are handled correctly.
-        // Service category defaults to databaseServices because it cannot be derived
-        // from the FQN alone without an async API call; subclasses can override this
-        // method to provide a more precise route when the category is known.
-        const fqnParts = Fqn.split(fullyQualifiedName);
-        const serviceFqn = fqnParts[0] ?? fullyQualifiedName;
-
-        return getServiceDetailsPath(serviceFqn, 'databaseServices', 'ingestion');
-      }
+      case EntityType.INGESTION_PIPELINE:
+        // Ingestion pipelines have no standalone detail page, and the owning service's
+        // category (databaseServices, messagingServices, …) cannot be derived
+        // synchronously from the pipeline FQN. Route to the category-independent logs
+        // viewer, which resolves the pipeline by its FQN regardless of service type —
+        // avoiding the wrong-category 404 a hard-coded service route would produce.
+        return getLogsViewerPath(
+          EntityType.INGESTION_PIPELINE,
+          fullyQualifiedName,
+          fullyQualifiedName
+        );
 
       case SearchIndex.TABLE:
       case EntityType.TABLE:
