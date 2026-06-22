@@ -143,7 +143,7 @@ const MyDataWidgetInternal = ({
           queryFilter: queryFilterObj,
           sortField,
           sortOrder,
-          searchIndex: SearchIndex.ALL,
+          searchIndex: SearchIndex.DATA_ASSET,
         });
 
         // Extract useful details from the Response
