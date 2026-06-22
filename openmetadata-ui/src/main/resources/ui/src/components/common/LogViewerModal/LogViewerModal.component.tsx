@@ -1,12 +1,16 @@
 import { LazyLog } from '@melloware/react-logviewer';
 import {
+  ButtonUtility,
   CloseButton,
   Modal,
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
+import { Download01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { FunctionComponent } from 'react';
 import { Dialog as AriaDialog } from 'react-aria-components';
+import { useTranslation } from 'react-i18next';
+import CopyToClipboardButton from '../CopyToClipboardButton/CopyToClipboardButton';
 import Loader from '../Loader/Loader';
 import { LogViewerModalProps } from './LogViewerModal.interface';
 
@@ -19,7 +23,10 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = ({
   theme = 'dark',
   follow = false,
   enableSearch = true,
+  enableCopy = true,
+  onDownload,
 }: LogViewerModalProps) => {
+  const { t } = useTranslation();
   return (
     <ModalOverlay
       isDismissable
@@ -43,6 +50,17 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = ({
                 {title}
               </span>
               <div className="tw:flex tw:items-center tw:gap-1">
+                {enableCopy && (
+                  <CopyToClipboardButton copyText={logs} position="top" />
+                )}
+                {onDownload && (
+                  <ButtonUtility
+                    data-testid="log-viewer-download"
+                    icon={Download01}
+                    tooltip={t('label.download')}
+                    onClick={onDownload}
+                  />
+                )}
                 <CloseButton
                   data-testid="log-viewer-close"
                   size="sm"

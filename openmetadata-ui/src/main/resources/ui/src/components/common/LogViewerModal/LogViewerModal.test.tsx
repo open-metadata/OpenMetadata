@@ -100,4 +100,26 @@ describe('LogViewerModal', () => {
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it('shows the copy button by default and hides it when enableCopy is false', () => {
+    const { rerender } = render(<LogViewerModal {...defaultProps} />);
+
+    expect(screen.getByTestId('copy-button')).toBeInTheDocument();
+
+    rerender(<LogViewerModal {...defaultProps} enableCopy={false} />);
+
+    expect(screen.queryByTestId('copy-button')).not.toBeInTheDocument();
+  });
+
+  it('renders the download button only when onDownload is provided and fires it', () => {
+    const onDownload = jest.fn();
+    const { rerender } = render(<LogViewerModal {...defaultProps} />);
+
+    expect(screen.queryByTestId('log-viewer-download')).not.toBeInTheDocument();
+
+    rerender(<LogViewerModal {...defaultProps} onDownload={onDownload} />);
+    fireEvent.click(screen.getByTestId('log-viewer-download'));
+
+    expect(onDownload).toHaveBeenCalledTimes(1);
+  });
 });
