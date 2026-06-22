@@ -109,6 +109,18 @@ public class McpClientResource {
     this.toolRegistration = new ToolRegistration(toolExecutor, toolDefinitions);
   }
 
+  @GET
+  @Path("/enabled")
+  @Operation(
+      operationId = "isMcpChatEnabled",
+      summary = "Whether MCP Chat is enabled",
+      description =
+          "Returns whether the MCP Chat assistant is enabled in AI settings. Readable by any"
+              + " authenticated user so the UI can gate the chat entry point.")
+  public Response isEnabled() {
+    return Response.ok(Map.of("enabled", McpChatServiceHolder.isEnabled())).build();
+  }
+
   @POST
   @Path("/chat")
   @Operation(

@@ -408,55 +408,12 @@ const AISettingsPage = () => {
 
             <div className="tw:max-w-md">
               <Input
-                data-testid="mcp-server-path"
-                isDisabled={isUpdating}
-                label={t('label.path')}
-                value={mcpConfig.path ?? ''}
-                onChange={(value) =>
-                  setMcpConfig({ ...mcpConfig, path: value })
-                }
-              />
-            </div>
-
-            <Toggle
-              data-testid="mcp-server-origin-validation-toggle"
-              isDisabled={isUpdating}
-              isSelected={mcpConfig.originValidationEnabled ?? false}
-              label={t('label.origin-validation')}
-              onChange={(isSelected) =>
-                setMcpConfig({
-                  ...mcpConfig,
-                  originValidationEnabled: isSelected,
-                })
-              }
-            />
-
-            <div className="tw:max-w-md">
-              <Input
                 data-testid="mcp-server-origin-header"
                 isDisabled={isUpdating}
                 label={t('label.origin-header-uri')}
                 value={mcpConfig.originHeaderUri ?? ''}
                 onChange={(value) =>
                   setMcpConfig({ ...mcpConfig, originHeaderUri: value })
-                }
-              />
-            </div>
-
-            <div className="tw:max-w-md">
-              <Input
-                data-testid="mcp-server-allowed-origins"
-                isDisabled={isUpdating}
-                label={t('label.allowed-origin-plural')}
-                value={(mcpConfig.allowedOrigins ?? []).join(', ')}
-                onChange={(value) =>
-                  setMcpConfig({
-                    ...mcpConfig,
-                    allowedOrigins: value
-                      .split(',')
-                      .map((origin) => origin.trim())
-                      .filter(Boolean),
-                  })
                 }
               />
             </div>
