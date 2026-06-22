@@ -90,7 +90,6 @@ import org.openmetadata.service.apps.bundles.rdf.distributed.RdfDistributedJobPa
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.DistributedJobParticipant;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
-import org.openmetadata.service.audit.AuditLogEventPublisher;
 import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.config.CacheConfiguration;
@@ -99,7 +98,6 @@ import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.csv.CsvImportExportJobHandler;
 import org.openmetadata.service.events.EventFilter;
-import org.openmetadata.service.events.EventPubSub;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.scheduled.ServicesStatusJobHandler;
@@ -129,10 +127,7 @@ import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
 import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
-import org.openmetadata.service.monitoring.EventMonitor;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
-import org.openmetadata.service.monitoring.EventMonitorFactory;
-import org.openmetadata.service.monitoring.EventMonitorPublisher;
 import org.openmetadata.service.monitoring.JettyMetricsIntegration;
 import org.openmetadata.service.monitoring.JettyQoSIntegration;
 import org.openmetadata.service.monitoring.UserMetricsServlet;
@@ -379,9 +374,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Health Check
     registerHealthCheck(environment);
 
-    // start event hub before registering publishers
-    EventPubSub.start();
-
     ApplicationHandler.initialize(catalogConfig);
     IndexResource.initialize(catalogConfig);
     registerResources(catalogConfig, environment, jdbi);
@@ -417,9 +409,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Register Distributed Job Participant for distributed search indexing
     registerDistributedJobParticipant(environment, jdbi);
     registerDistributedRdfJobParticipant(environment, jdbi);
-
-    // Register Event publishers
-    registerEventPublisher(catalogConfig);
 
     // start authorizer after event publishers
     // authorizer creates admin/bot users, ES publisher should start before to index users created
@@ -1082,22 +1071,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             });
   }
 
-  private void registerEventPublisher(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
-
-    EventPubSub.addEventHandler(new AuditLogEventPublisher(auditLogRepository));
-
-    if (openMetadataApplicationConfig.getEventMonitorConfiguration() != null) {
-      final EventMonitor eventMonitor =
-          EventMonitorFactory.createEventMonitor(
-              openMetadataApplicationConfig.getEventMonitorConfiguration(),
-              openMetadataApplicationConfig.getClusterName());
-      EventMonitorPublisher eventMonitorPublisher =
-          new EventMonitorPublisher(
-              openMetadataApplicationConfig.getEventMonitorConfiguration(), eventMonitor);
-      EventPubSub.addEventHandler(eventMonitorPublisher);
-    }
-  }
-
   private void registerResources(
       OpenMetadataApplicationConfig config, Environment environment, Jdbi jdbi) {
     CollectionRegistry.initialize();
@@ -1252,7 +1225,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       LOG.info("Cache with Id Stats {}", EntityRepository.CACHE_WITH_ID.stats());
       LOG.info("Cache with name Stats {}", EntityRepository.CACHE_WITH_NAME.stats());
       EntityCacheRepair.shutdown();
-      EventPubSub.shutdown();
       EventSubscriptionScheduler.shutDown();
       AsyncService.getInstance().shutdown();
       EntityLifecycleEventDispatcher.getInstance().shutdown();
