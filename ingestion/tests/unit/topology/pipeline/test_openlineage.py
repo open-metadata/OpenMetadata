@@ -2574,7 +2574,7 @@ def kpl_aggregate(payloads: list[bytes]) -> bytes:
     return KPL_AGGREGATED_MAGIC + protobuf + hashlib.md5(protobuf).digest()
 
 
-class TestKplDeaggregation:
+class TestKplDeaggregation(unittest.TestCase):
     def test_deaggregates_kpl_record_into_individual_events(self):
         raw = json.dumps(FULL_OL_KAFKA_EVENT).encode()
         record = kpl_aggregate([raw, raw, raw])
