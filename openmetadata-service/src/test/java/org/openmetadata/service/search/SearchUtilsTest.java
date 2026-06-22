@@ -909,13 +909,16 @@ class SearchUtilsTest {
         malformed, result, "last-resort fallback returns original when even parsing fails");
   }
 
-  @ParameterizedTest(name = "dot-escaping: extractRaw(\"{0}\") produces escaped prefix \"{1}\"")
+  @ParameterizedTest(
+      name = "dot-escaping: extractRaw(\"{0}\") produces escaped exact \"{1}\" and prefix \"{2}\"")
   @CsvSource(
       delimiter = '|',
       value = {
-        ".*user.id.* | user\\.id | user\\.id\\..*",
-        ".*name.* | name | name\\..*",
-        ".*first_name.* | first_name | first_name\\..*"
+        // dots in the search term are escaped; the trailing .* wildcard is intentional and NOT
+        // escaped
+        ".*user.id.* | user\\.id | user\\.id.*",
+        ".*name.* | name | name.*",
+        ".*first_name.* | first_name | first_name.*"
       })
   void escapedRawProducesCorrectExactAndPrefixPatterns(
       String containsPattern, String expectedEscapedExact, String expectedPrefixPattern) {
