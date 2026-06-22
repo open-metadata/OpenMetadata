@@ -472,7 +472,7 @@ const FileRow: FC<FileRowProps> = ({
       </Box>
 
       <Box
-        align='center'
+        align="center"
         className="tw:shrink-0"
         gap={2}
         onClick={(e) => e.stopPropagation()}
@@ -483,7 +483,7 @@ const FileRow: FC<FileRowProps> = ({
           status={file.processingStatus}
         />
         <ButtonUtility
-          className='tw:ml-1.5'
+          className="tw:ml-1.5"
           color="tertiary"
           data-testid="download-btn"
           icon={<Download01 size={19} />}

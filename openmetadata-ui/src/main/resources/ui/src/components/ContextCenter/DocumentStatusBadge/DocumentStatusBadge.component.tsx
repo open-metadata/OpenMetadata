@@ -14,7 +14,7 @@
 import {
   BadgeWithDot,
   Tooltip,
-  TooltipTrigger
+  TooltipTrigger,
 } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -85,7 +85,7 @@ const DocumentStatusBadge: FC<DocumentStatusBadgeProps> = ({
   }
 
   const badge = (
-    <BadgeWithDot color={config.color} size="sm" type='color'>
+    <BadgeWithDot color={config.color} size="sm" type="color">
       {t(config.labelKey)}
     </BadgeWithDot>
   );
