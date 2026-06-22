@@ -3516,6 +3516,7 @@ export enum PrincipalType {
 export enum RequestedAccess {
     Admin = "Admin",
     Read = "Read",
+    Revoke = "Revoke",
     Write = "Write",
 }
 
