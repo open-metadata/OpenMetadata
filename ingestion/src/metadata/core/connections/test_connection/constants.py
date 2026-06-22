@@ -12,3 +12,8 @@
 
 # Per-step wall-clock cap; a check exceeding it is mapped to a failed step.
 STEP_TIMEOUT_SECONDS = 60
+
+# Per-host TCP reachability preflight cap; comfortably under the per-step budget so
+# an unreachable host fails as a network problem instead of waiting out the step,
+# while leaving the handshake enough headroom for slow / cross-region hosts.
+NETWORK_PROBE_TIMEOUT_SECONDS = 20

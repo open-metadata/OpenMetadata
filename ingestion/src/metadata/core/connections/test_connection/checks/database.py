@@ -26,6 +26,10 @@ from typing import TYPE_CHECKING
 from sqlalchemy import event, inspect
 
 from metadata.core.connections.test_connection.check import CheckError, StepName
+from metadata.core.connections.test_connection.network import (
+    NetworkUnreachableError,
+    tcp_probe,
+)
 from metadata.core.connections.test_connection.records import Evidence
 
 if TYPE_CHECKING:
@@ -128,8 +132,25 @@ def run_sql(
 
 
 def ping(client: Engine) -> Evidence:
-    """Open a connection and run a trivial query to prove access."""
+    """Open a connection and run a trivial query to prove access.
+
+    A TCP reachability preflight runs first when the engine URL carries a host
+    and port, so an unreachable host fails as a network problem before the
+    driver, TLS, or auth is exercised. Engines without a host:port (file-based
+    URLs, connector-tunnelled engines) skip the preflight and go straight to the
+    query.
+    """
+    _preflight(client)
     return run_sql(client, "SELECT 1", lambda _: "connection established")
+
+
+def _preflight(client: Engine) -> None:
+    host, port = client.url.host, client.url.port
+    if host and port:
+        try:
+            tcp_probe(host, port)
+        except NetworkUnreachableError as error:
+            raise CheckError(error, Evidence(command=f"TCP connect {host}:{port}")) from error
 
 
 def _reflect(client: Engine, operation: Callable[[], list[str]]) -> tuple[list[str], str | None]:
