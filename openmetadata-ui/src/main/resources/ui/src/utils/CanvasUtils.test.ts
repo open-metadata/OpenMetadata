@@ -15,6 +15,7 @@ import {
   BoundingBox,
   boundsIntersect,
   drawArrowMarker,
+  drawEdgesForExport,
   getBezierEndTangentAngle,
   getEdgeAngle,
   getEdgeBounds,
@@ -27,6 +28,24 @@ import {
   setupCanvas,
   transformPoint,
 } from './CanvasUtils';
+
+jest.mock('./EntityLineageEdgeUtils', () => ({
+  getEdgePathData: jest.fn().mockReturnValue({
+    edgePath: 'M 0,0 C 50,0 50,100 100,100',
+    edgeCenterX: 50,
+    edgeCenterY: 50,
+  }),
+}));
+
+jest.mock('./EntityLineageNodeUtils', () => ({
+  getEntityChildrenAndLabel: jest.fn().mockReturnValue({ children: [] }),
+}));
+
+jest.mock('../hooks/useLineageStore', () => ({
+  useLineageStore: {
+    getState: jest.fn().mockReturnValue({ nodeFilterState: new Map() }),
+  },
+}));
 
 const createMockCanvas = (): HTMLCanvasElement => {
   const canvas = document.createElement('canvas');
@@ -697,6 +716,298 @@ describe('CanvasUtils', () => {
       const angle = getBezierEndTangentAngle(pathString, 0, 0, 100, 100);
 
       expect(angle).toBeDefined();
+    });
+  });
+
+  describe('drawEdgesForExport', () => {
+    const exportViewport: Viewport = { x: 10, y: 20, zoom: 0.5 };
+    const imageWidth = 800;
+    const imageHeight = 600;
+    const padding = 20;
+    const pixelRatio = 3;
+
+    let mockCtx: Record<string, jest.Mock | string | number>;
+    let mockCanvas: HTMLCanvasElement;
+
+    beforeAll(() => {
+      global.Path2D = jest.fn().mockImplementation((path?: string) => ({
+        path,
+      })) as unknown as typeof Path2D;
+    });
+
+    beforeEach(() => {
+      mockCtx = {
+        save: jest.fn(),
+        restore: jest.fn(),
+        scale: jest.fn(),
+        translate: jest.fn(),
+        rotate: jest.fn(),
+        stroke: jest.fn(),
+        fill: jest.fn(),
+        beginPath: jest.fn(),
+        moveTo: jest.fn(),
+        lineTo: jest.fn(),
+        closePath: jest.fn(),
+        setLineDash: jest.fn(),
+        strokeStyle: '',
+        fillStyle: '',
+        lineWidth: 0,
+        lineCap: '',
+        lineJoin: '',
+        globalAlpha: 1,
+        fillRect: jest.fn(),
+      };
+
+      mockCanvas = {
+        width: 0,
+        height: 0,
+        getContext: jest.fn().mockReturnValue(mockCtx),
+      } as unknown as HTMLCanvasElement;
+
+      jest
+        .spyOn(document, 'createElement')
+        .mockImplementation((tag: string) => {
+          if (tag === 'canvas') {
+            return mockCanvas as unknown as HTMLElement;
+          }
+
+          return document.createElement(tag);
+        });
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    const makeNode = (id: string, x = 0, y = 0): Node => ({
+      id,
+      position: { x, y },
+      data: { node: { columns: [] }, isRootNode: false },
+      width: 400,
+      height: 100,
+    });
+
+    const makeEdge = (
+      id: string,
+      source: string,
+      target: string,
+      isColumnLineage = false
+    ): Edge => ({
+      id,
+      source,
+      target,
+      data: { isColumnLineage },
+    });
+
+    it('sets canvas dimensions based on imageWidth, imageHeight, padding, and pixelRatio', () => {
+      drawEdgesForExport(
+        [],
+        new Map(),
+        exportViewport,
+        imageWidth,
+        imageHeight,
+        padding,
+        pixelRatio,
+        new Map()
+      );
+
+      expect(mockCanvas.width).toBe((imageWidth + padding * 2) * pixelRatio);
+      expect(mockCanvas.height).toBe((imageHeight + padding * 2) * pixelRatio);
+    });
+
+    it('applies pixelRatio scale then viewport translate then zoom scale', () => {
+      drawEdgesForExport(
+        [],
+        new Map(),
+        exportViewport,
+        imageWidth,
+        imageHeight,
+        padding,
+        pixelRatio,
+        new Map()
+      );
+
+      const scaleCalls = (mockCtx.scale as jest.Mock).mock.calls;
+
+      expect(scaleCalls[0]).toEqual([pixelRatio, pixelRatio]);
+      expect(mockCtx.translate).toHaveBeenCalledWith(
+        exportViewport.x + padding,
+        exportViewport.y + padding
+      );
+      expect(scaleCalls[1]).toEqual([exportViewport.zoom, exportViewport.zoom]);
+    });
+
+    it('skips edge when source node is missing from nodeMap', () => {
+      const edge = makeEdge('e1', 'node1', 'node2');
+      const nodeMap = new Map([['node2', makeNode('node2')]]);
+
+      drawEdgesForExport(
+        [edge],
+        nodeMap,
+        exportViewport,
+        imageWidth,
+        imageHeight,
+        padding,
+        pixelRatio,
+        new Map()
+      );
+
+      expect(mockCtx.stroke).not.toHaveBeenCalled();
+    });
+
+    it('skips edge when target node is missing from nodeMap', () => {
+      const edge = makeEdge('e1', 'node1', 'node2');
+      const nodeMap = new Map([['node1', makeNode('node1')]]);
+
+      drawEdgesForExport(
+        [edge],
+        nodeMap,
+        exportViewport,
+        imageWidth,
+        imageHeight,
+        padding,
+        pixelRatio,
+        new Map()
+      );
+
+      expect(mockCtx.stroke).not.toHaveBeenCalled();
+    });
+
+    it('draws edge with lineWidth 2 for entity-level lineage', () => {
+      const edge = makeEdge('e1', 'node1', 'node2', false);
+      const nodeMap = new Map([
+        ['node1', makeNode('node1', 0, 0)],
+        ['node2', makeNode('node2', 500, 0)],
+      ]);
+
+      // Capture lineWidth at the moment the edge path is stroked (first stroke call).
+      // drawArrowMarker later calls stroke again and may change lineWidth, so we
+      // cannot rely on the final value.
+      const lineWidthAtStroke: number[] = [];
+      (mockCtx.stroke as jest.Mock).mockImplementation(() => {
+        lineWidthAtStroke.push(mockCtx.lineWidth as number);
+      });
+
+      drawEdgesForExport(
+        [edge],
+        nodeMap,
+        exportViewport,
+        imageWidth,
+        imageHeight,
+        padding,
+        pixelRatio,
+        new Map()
+      );
+
+      expect(lineWidthAtStroke[0]).toBe(2);
+    });
+
+    it('draws edge with lineWidth 1 for column lineage', () => {
+      const edge = makeEdge('e1', 'node1', 'node2', true);
+      const nodeMap = new Map([
+        ['node1', makeNode('node1', 0, 0)],
+        ['node2', makeNode('node2', 500, 0)],
+      ]);
+
+      const lineWidthAtStroke: number[] = [];
+      (mockCtx.stroke as jest.Mock).mockImplementation(() => {
+        lineWidthAtStroke.push(mockCtx.lineWidth as number);
+      });
+
+      drawEdgesForExport(
+        [edge],
+        nodeMap,
+        exportViewport,
+        imageWidth,
+        imageHeight,
+        padding,
+        pixelRatio,
+        new Map()
+      );
+
+      expect(lineWidthAtStroke[0]).toBe(1);
+    });
+
+    it('uses dashed line for animated edges', () => {
+      const edge: Edge = {
+        ...makeEdge('e1', 'node1', 'node2'),
+        animated: true,
+      };
+      const nodeMap = new Map([
+        ['node1', makeNode('node1', 0, 0)],
+        ['node2', makeNode('node2', 500, 0)],
+      ]);
+
+      drawEdgesForExport(
+        [edge],
+        nodeMap,
+        exportViewport,
+        imageWidth,
+        imageHeight,
+        padding,
+        pixelRatio,
+        new Map()
+      );
+
+      expect(mockCtx.setLineDash).toHaveBeenCalledWith([6, 4]);
+    });
+
+    it('resets line dash after drawing each edge', () => {
+      const edge = makeEdge('e1', 'node1', 'node2');
+      const nodeMap = new Map([
+        ['node1', makeNode('node1', 0, 0)],
+        ['node2', makeNode('node2', 500, 0)],
+      ]);
+
+      drawEdgesForExport(
+        [edge],
+        nodeMap,
+        exportViewport,
+        imageWidth,
+        imageHeight,
+        padding,
+        pixelRatio,
+        new Map()
+      );
+
+      const calls = (mockCtx.setLineDash as jest.Mock).mock.calls;
+      const lastCall = calls[calls.length - 1];
+
+      expect(lastCall).toEqual([[]]);
+    });
+
+    it('calls save and restore to isolate transform state', () => {
+      drawEdgesForExport(
+        [],
+        new Map(),
+        exportViewport,
+        imageWidth,
+        imageHeight,
+        padding,
+        pixelRatio,
+        new Map()
+      );
+
+      expect(mockCtx.save).toHaveBeenCalledTimes(1);
+      expect(mockCtx.restore).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns canvas even when getContext returns null', () => {
+      (mockCanvas.getContext as jest.Mock).mockReturnValueOnce(null);
+
+      const result = drawEdgesForExport(
+        [],
+        new Map(),
+        exportViewport,
+        imageWidth,
+        imageHeight,
+        padding,
+        pixelRatio,
+        new Map()
+      );
+
+      expect(result).toBe(mockCanvas);
+      expect(result).toBeInstanceOf(Object);
     });
   });
 });

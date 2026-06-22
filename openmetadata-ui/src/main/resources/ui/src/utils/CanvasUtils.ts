@@ -653,3 +653,82 @@ export const computePathDataForEdge = (
 export const clearPathDataCache = (): void => {
   pathDataCache.clear();
 };
+
+export function drawEdgesForExport(
+  edges: Edge[],
+  nodeMap: Map<string, Node>,
+  exportViewport: Viewport,
+  imageWidth: number,
+  imageHeight: number,
+  padding: number,
+  pixelRatio: number,
+  columnsInCurrentPages: Map<string, string[]>
+): HTMLCanvasElement {
+  const finalWidth = imageWidth + padding * 2;
+  const finalHeight = imageHeight + padding * 2;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = finalWidth * pixelRatio;
+  canvas.height = finalHeight * pixelRatio;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    return canvas;
+  }
+
+  ctx.save();
+  ctx.scale(pixelRatio, pixelRatio);
+  ctx.translate(exportViewport.x + padding, exportViewport.y + padding);
+  ctx.scale(exportViewport.zoom, exportViewport.zoom);
+
+  for (const edge of edges) {
+    const sourceNode = nodeMap.get(edge.source);
+    const targetNode = nodeMap.get(edge.target);
+    const pathData = computePathDataForEdge(
+      edge,
+      sourceNode,
+      targetNode,
+      columnsInCurrentPages
+    );
+
+    if (!pathData) {
+      continue;
+    }
+
+    const isColumnLineage = edge.data?.isColumnLineage ?? false;
+    const strokeColor = 'rgb(177, 177, 183)';
+
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = isColumnLineage ? 1 : 2;
+    ctx.setLineDash(edge.animated ? [6, 4] : []);
+    ctx.globalAlpha = 1;
+
+    ctx.stroke(new Path2D(pathData.edgePath));
+    ctx.setLineDash([]);
+
+    if (
+      pathData.targetX !== undefined &&
+      pathData.targetY !== undefined &&
+      pathData.sourceX !== undefined &&
+      pathData.sourceY !== undefined
+    ) {
+      drawArrowMarker(
+        ctx,
+        pathData.targetX,
+        pathData.targetY,
+        getBezierEndTangentAngle(
+          pathData.edgePath,
+          pathData.sourceX,
+          pathData.sourceY,
+          pathData.targetX,
+          pathData.targetY
+        ),
+        strokeColor
+      );
+    }
+  }
+
+  ctx.restore();
+
+  return canvas;
+}
