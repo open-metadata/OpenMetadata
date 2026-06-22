@@ -68,7 +68,6 @@ test.afterAll('Cleanup test data', async ({ browser }) => {
   await afterAction();
 });
 
-
 async function navigateToGlossaryRelationsGraph(
   page: Parameters<typeof waitForGraphLoaded>[0]
 ) {
