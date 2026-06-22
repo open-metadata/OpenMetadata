@@ -3264,6 +3264,7 @@
     "odps-validation-successful": "ODPS दस्तऐवज वैध आहे.",
     "odps-yaml-invalid": "ODPS YAML दस्तऐवज प्रमाणीकरणात अयशस्वी झाला.",
     "odps-yaml-name-mismatch": "YAML चे नाव '{{yamlName}}' सध्याच्या डेटा उत्पादन '{{existingName}}' शी जुळत नाही. भिन्न उत्पादन अधिलिखित होऊ नये म्हणून YAML अद्यतनित करा किंवा '{{yamlName}}' च्या डेटा उत्पादन पृष्ठाचा वापर करा.",
+    "odps-yaml-name-missing": "YAML मधून उत्पादनाचे नाव वाचता आले नाही (product.details.<language>.name). भिन्न उत्पादन अधिलिखित होऊ नये म्हणून आयात करण्यापूर्वी सध्याच्या डेटा उत्पादन '{{existingName}}' शी जुळणारे नाव जोडा.",
     "odps-yaml-valid-description": "वैध ODPS v{{version}} दस्तऐवज, भाषा: {{languages}}.",
     "om-description": "केंद्रीकृत मेटाडेटा स्टोअर, शोधण्यासाठी, सहयोग करण्यासाठी आणि तुमचा डेटा योग्य मिळवण्यासाठी.",
     "om-url-configuration-message": "{{brandName}} URL सेटिंग्ज कॉन्फिगर करा.",

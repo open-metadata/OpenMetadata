@@ -1194,7 +1194,9 @@ public class TaskWorkflowHandler {
       return defaultTransitionId;
     }
 
-    if (task != null && TaskEntityType.DataQualityReview == task.getType()) {
+    if (task != null
+        && (TaskEntityType.RecognizerFeedbackApproval == task.getType()
+            || TaskEntityType.DataQualityReview == task.getType())) {
       return isPositiveResolution(resolutionType) ? "true" : "false";
     }
 
