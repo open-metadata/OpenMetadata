@@ -1,4 +1,17 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 import { fireEvent, render, screen } from '@testing-library/react';
+import { ReactNode } from 'react';
 import LogViewerModal from './LogViewerModal.component';
 
 jest.mock('react-i18next', () => ({
@@ -14,11 +27,16 @@ jest.mock('@melloware/react-logviewer', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  ModalOverlay: ({ children, isOpen }: { children: ReactNode; isOpen: boolean }) =>
-    isOpen ? <div data-testid="modal-overlay">{children}</div> : null,
+  ModalOverlay: ({
+    children,
+    isOpen,
+  }: {
+    children: ReactNode;
+    isOpen: boolean;
+  }) => (isOpen ? <div data-testid="modal-overlay">{children}</div> : null),
   Modal: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   ButtonUtility: ({
-    icon,
+    icon: _icon,
     tooltip,
     onClick,
     'data-testid': testId,
@@ -46,7 +64,13 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 }));
 
 jest.mock('react-aria-components', () => ({
-  Dialog: ({ children, className }: { children: ReactNode; className?: string }) => (
+  Dialog: ({
+    children,
+    className,
+  }: {
+    children: ReactNode;
+    className?: string;
+  }) => (
     <div className={className} data-testid="dialog">
       {children}
     </div>
@@ -66,8 +90,6 @@ jest.mock('../Loader/Loader', () => ({
   __esModule: true,
   default: () => <div data-testid="loader">loading</div>,
 }));
-
-import { ReactNode } from 'react';
 
 const defaultProps = {
   logs: 'line-one\nline-two',
@@ -144,6 +166,9 @@ describe('LogViewerModal', () => {
   it('passes the follow flag through to the log viewer', () => {
     render(<LogViewerModal {...defaultProps} follow />);
 
-    expect(screen.getByTestId('lazy-log')).toHaveAttribute('data-follow', 'true');
+    expect(screen.getByTestId('lazy-log')).toHaveAttribute(
+      'data-follow',
+      'true'
+    );
   });
 });
