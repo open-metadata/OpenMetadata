@@ -21,7 +21,11 @@ export const waitForTaskListResponse = (page: Page) =>
   );
 
 export const waitForTaskResolveResponse = (page: Page) =>
-  page.waitForResponse('/api/v1/feed/tasks/*/resolve', { timeout: 30_000 });
+  page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      /\/api\/v1\/tasks\/[^/]+\/resolve(?:\?|$)/.test(response.url())
+  );
 
 export type TaskDetails = {
   term: string;

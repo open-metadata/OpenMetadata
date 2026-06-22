@@ -343,7 +343,10 @@ public class GlossaryTermMoveApprovalIT {
   }
 
   private List<Thread> listTasks(String entityLink) {
-    return SdkClients.adminClient().feed().listTasks(entityLink, TaskStatus.Open, null).getData()
+    return SdkClients.adminClient()
+        .feed()
+        .listTasks(entityLink, TaskStatus.Open, null)
+        .getData()
         .stream()
         .filter(thread -> thread.getTask() != null)
         .filter(thread -> TaskType.RequestApproval.equals(thread.getTask().getType()))
