@@ -3458,6 +3458,7 @@
     "sinks": "싱크",
     "size-evolution-description": "조직의 자산 크기 변화.",
     "smart-sampling-hint": "데이터 크기에 따라 리소스를 최적화합니다",
+    "soft-delete-archive-message": "이 작업은 {{entity}}에 대한 액세스를 비활성화합니다. 나중에 보관함에서 복원할 수 있습니다.",
     "soft-delete-message-for-entity": "소프트 삭제는 {{entity}}를 비활성화합니다. 이는 {{entity}}에 대한 모든 검색, 읽기 또는 쓰기 작업을 비활성화합니다.",
     "soft-delete-message-for-n-entities": "소프트 삭제하면 {{count}}개의 {{entity}}이(가) 비활성화됩니다. 이렇게 하면 해당 항목에 대한 검색, 읽기 또는 쓰기 작업이 비활성화됩니다.",
     "something-went-wrong": "문제가 발생했습니다",

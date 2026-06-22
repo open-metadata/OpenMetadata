@@ -464,8 +464,8 @@ const ContextCenterDocumentsPage: FC = () => {
         <DeleteModal
           entityTitle={getEntityName(fileToDelete)}
           isDeleting={isDeletingFile}
-          message={t('message.soft-delete-message-for-entity', {
-            entity: getEntityName(fileToDelete),
+          message={t('message.soft-delete-archive-message', {
+            entity: t('label.document').toLowerCase(),
           })}
           open={Boolean(fileToDelete)}
           onCancel={handleCancelDelete}

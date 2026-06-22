@@ -3458,6 +3458,7 @@
     "sinks": "Sänkor",
     "size-evolution-description": "Storleksutveckling av tillgångar i organisationen.",
     "smart-sampling-hint": "Optimerar resurser baserat på datastorlek",
+    "soft-delete-archive-message": "Den här åtgärden inaktiverar åtkomsten till {{entity}}. Du kan återställa det senare från Arkiv.",
     "soft-delete-message-for-entity": "Mjuk borttagning inaktiverar {{entity}}. Detta inaktiverar all upptäckt, läs- eller skrivoperationer på {{entity}}.",
     "soft-delete-message-for-n-entities": "Mjuk radering inaktiverar dessa {{count}} {{entity}}. Det inaktiverar all sökning, läs- och skrivoperationer på dem.",
     "something-went-wrong": "Något gick fel",

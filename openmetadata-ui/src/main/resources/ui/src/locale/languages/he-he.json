@@ -3458,6 +3458,7 @@
     "sinks": "כיורים",
     "size-evolution-description": "אבולוציה של גודל הנכסים בארגון.",
     "smart-sampling-hint": "מייעל משאבים בהתאם לגודל הנתונים",
+    "soft-delete-archive-message": "פעולה זו תשבית את הגישה אל {{entity}}. תוכל לשחזר אותו מאוחר יותר מהארכיון.",
     "soft-delete-message-for-entity": "מחיקה רכה תשבית את {{entity}}. הפעולה תשבית כל קריאה או כתיבת הפעולות על {{entity}}.",
     "soft-delete-message-for-n-entities": "מחיקה רכה תשבית את {{count}} {{entity}} אלה. פעולה זו תשבית כל פעולות גילוי, קריאה או כתיבה עליהם.",
     "something-went-wrong": "משהו השתבש",

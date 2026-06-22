@@ -12,8 +12,10 @@
  */
 
 import {
-  Button,
+  Box,
+  ButtonUtility,
   Card,
+  Dot,
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -28,7 +30,7 @@ import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { ArchiveItem, ArchiveViewProps } from './ArchiveView.interface';
 
 const ArchiveRowSkeleton: FC = () => (
-  <div className="tw:flex tw:items-center tw:gap-4 tw:px-4 tw:py-3 tw:border-b tw:border-secondary">
+  <div className="tw:flex tw:items-center tw:gap-4 tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:last:border-0">
     <Skeleton
       className="tw:shrink-0"
       height="32px"
@@ -58,12 +60,15 @@ const ArchiveRow: FC<ArchiveRowProps> = ({ item, onDelete, onRestore }) => {
   const Icon = item.type === 'article' ? File06 : FolderIcon;
 
   return (
-    <div
-      className="tw:flex tw:items-center tw:gap-4 tw:px-4 tw:py-3 tw:border-b tw:border-secondary"
-      data-testid={`archive-row-${item.id}`}>
-      <div
+    <Box
+      align="center"
+      className="tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:last:border-0"
+      data-testid={`archive-row-${item.id}`}
+      gap={4}>
+      <Box
+        align="center"
         className={classNames(
-          'tw:flex tw:h-8 tw:w-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg',
+          'tw:h-8 tw:w-8 tw:shrink-0 tw:justify-center tw:rounded-lg',
           item.type === 'article' ? 'tw:bg-brand-50' : 'tw:bg-purple-50'
         )}>
         <Icon
@@ -72,46 +77,48 @@ const ArchiveRow: FC<ArchiveRowProps> = ({ item, onDelete, onRestore }) => {
             item.type === 'article' ? 'tw:text-brand-700' : 'tw:text-purple-500'
           )}
         />
-      </div>
+      </Box>
 
-      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
-        <Typography className="tw:truncate" size="text-sm" weight="medium">
+      <Box className="tw:min-w-0 tw:flex-1" direction="col">
+        <Typography ellipsis size="text-sm" weight="medium">
           {item.name}
         </Typography>
-        <Typography className="tw:text-gray-500" size="text-xs">
+        <Box align="center" gap={2}>
           {item.updatedBy && (
-            <>
+            <Typography className="tw:text-quaternary" size="text-xs">
               {t('label.archived-by', { name: item.updatedBy })}
-              {item.updatedAt && (
-                <>&nbsp;&middot;&nbsp;{getShortRelativeTime(item.updatedAt)}</>
-              )}
+            </Typography>
+          )}
+          {item.updatedAt && (
+            <>
+              <Dot className="tw:text-quaternary" size="micro" />
+              <Typography className="tw:text-quaternary" size="text-xs">
+                {getShortRelativeTime(item.updatedAt)}
+              </Typography>
             </>
           )}
-          {!item.updatedBy &&
-            item.updatedAt &&
-            getShortRelativeTime(item.updatedAt)}
-        </Typography>
-      </div>
+        </Box>
+      </Box>
 
       <div className="tw:flex tw:items-center tw:gap-2 tw:shrink-0">
-        <Button
-          color="secondary"
+        <ButtonUtility
+          color="tertiary"
           data-testid="restore-btn"
-          iconLeading={RefreshCcw01}
+          icon={<RefreshCcw01 size={20} />}
           size="sm"
-          onPress={() => onRestore(item)}>
-          {t('label.restore')}
-        </Button>
-        <Button
-          color="secondary-destructive"
+          tooltip={t('label.restore')}
+          onClick={() => onRestore(item)}
+        />
+        <ButtonUtility
+          color="tertiary"
           data-testid="delete-btn"
-          iconLeading={Trash01}
+          icon={<Trash01 size={20} />}
           size="sm"
-          onPress={() => onDelete(item)}>
-          {t('label.delete')}
-        </Button>
+          tooltip={t('label.delete')}
+          onClick={() => onDelete(item)}
+        />
       </div>
-    </div>
+    </Box>
   );
 };
 
@@ -123,7 +130,7 @@ const ArchiveView: FC<ArchiveViewProps> = ({
 }) => {
   if (isLoading) {
     return (
-      <Card className="tw:flex tw:flex-col tw:overflow-hidden tw:h-[calc(100vh-378px)]">
+      <Card className="tw:flex tw:flex-col tw:overflow-hidden">
         {Array.from({ length: 8 }).map((_, idx) => (
           <ArchiveRowSkeleton key={idx} />
         ))}
@@ -140,9 +147,7 @@ const ArchiveView: FC<ArchiveViewProps> = ({
   }
 
   return (
-    <div
-      className="tw:flex tw:flex-1 tw:flex-col tw:overflow-y-auto tw:h-[calc(100vh-378px)]"
-      data-testid="archive-view">
+    <div data-testid="archive-view">
       {data.map((item) => (
         <ArchiveRow
           item={item}

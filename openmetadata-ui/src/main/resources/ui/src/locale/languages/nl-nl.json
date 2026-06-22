@@ -3458,6 +3458,7 @@
     "sinks": "Uitvoerkanalen",
     "size-evolution-description": "Ontwikkeling assethoeveelheid in de organisatie.",
     "smart-sampling-hint": "Optimaliseert resources op basis van gegevensgrootte",
+    "soft-delete-archive-message": "Deze actie schakelt de toegang tot {{entity}} uit. U kunt het later herstellen vanuit Archieven.",
     "soft-delete-message-for-entity": "Zacht verwijderen zal de {{entity}} deactiveren. Hierdoor worden alle ontdekkings-, lees- of schrijfoperaties op {{entity}} uitgeschakeld.",
     "soft-delete-message-for-n-entities": "Zacht verwijderen deactiveert deze {{count}} {{entity}}. Dit schakelt alle ontdekkings-, lees- of schrijfbewerkingen op hen uit.",
     "something-went-wrong": "Er is iets misgegaan",

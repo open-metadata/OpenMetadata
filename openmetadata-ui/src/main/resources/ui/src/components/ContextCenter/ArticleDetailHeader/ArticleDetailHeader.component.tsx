@@ -37,7 +37,7 @@ import {
   User03,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { cloneDeep, isEmpty, isUndefined, toString, uniqBy } from 'lodash';
+import { cloneDeep, isUndefined, toString, uniqBy } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -58,7 +58,6 @@ import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../generated/entity/type';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useClipboard } from '../../../hooks/useClipBoard';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import {
@@ -75,6 +74,7 @@ import DomainSelectableList from '../../common/DomainSelectableList/DomainSelect
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
+import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import { ArticleDetailHeaderProps } from './ArticleDetailHeader.interface';
 
 const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
@@ -100,10 +100,8 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   const { entityRules } = useEntityRules(EntityType.KNOWLEDGE_PAGE);
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
-  const [copyTooltip, setCopyTooltip] = useState<string>('');
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [voteLoading, setVoteLoading] = useState<QueryVoteType | null>(null);
-  const { onCopyToClipBoard } = useClipboard(window.location.href);
   const {
     preferences: { recentlyViewedQuickLinks },
   } = useCurrentUserPreferences();
@@ -190,12 +188,6 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
 
   const handleVersionClick = () => {
     navigate(contextCenterClassBase.getArticleVersionPath(fqn, version));
-  };
-
-  const handleShare = async () => {
-    await onCopyToClipBoard();
-    setCopyTooltip(t('message.link-copy-to-clipboard'));
-    setTimeout(() => setCopyTooltip(''), 2000);
   };
 
   const handleFollowClick = async () => {
@@ -349,7 +341,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
           <div className="tw:flex tw:gap-4 tw:items-stretch tw:w-full tw:max-w-[60%] tw:pr-3">
             <div className="h:full tw:w-auto tw:shrink-0 tw:bg-gray-100 tw:rounded-xl tw:flex tw:items-center tw:p-2">
               <File06
-                className="tw:text-gray-500"
+                className="tw:text-quaternary"
                 height={40}
                 strokeWidth={1.2}
                 style={{ verticalAlign: 'middle', flexShrink: 0 }}
@@ -373,14 +365,14 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                   <Tooltip title={t('label.domain')}>
                     <TooltipTrigger className="tw:leading-0">
                       <Globe01
-                        className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-fg-disabled"
+                        className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-quaternary"
                         size={16}
                       />
                     </TooltipTrigger>
                   </Tooltip>
                   <Typography
                     className={
-                      firstDomain ? 'tw:text-primary-900' : 'tw:text-gray-400'
+                      firstDomain ? 'tw:text-primary-900' : 'tw:text-quaternary'
                     }
                     data-testid="domain-link"
                     size="text-sm"
@@ -422,7 +414,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                   <Tooltip title={t('label.owner-plural')}>
                     <TooltipTrigger className="tw:leading-0">
                       <User03
-                        className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-fg-disabled"
+                        className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-quaternary"
                         size={16}
                       />
                     </TooltipTrigger>
@@ -440,7 +432,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                     </div>
                   ) : (
                     <Typography
-                      className="tw:text-gray-400"
+                      className="tw:text-quaternary"
                       size="text-sm"
                       weight="regular">
                       {t('label.no-entity', { entity: t('label.owner') })}
@@ -605,22 +597,13 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               </TooltipTrigger>
             </Tooltip>
 
-            <Tooltip
-              isOpen={isEmpty(copyTooltip) ? undefined : true}
-              title={
-                isEmpty(copyTooltip)
-                  ? t('label.copy-item', { item: t('label.url') })
-                  : copyTooltip
-              }>
-              <TooltipTrigger>
-                <ButtonUtility
-                  color="secondary"
-                  data-testid="share-btn"
-                  icon={<Copy06 height={20} width={20} />}
-                  onClick={handleShare}
-                />
-              </TooltipTrigger>
-            </Tooltip>
+            <CopyLinkButton
+              className="tw:w-8 tw:h-8"
+              color="secondary"
+              testId="share-btn"
+              url={window.location.href}>
+              <Copy06 height={20} width={20} />
+            </CopyLinkButton>
 
             {permissions?.Delete && (
               <Dropdown.Root>
@@ -669,8 +652,8 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             <DeleteModal
               entityTitle={getKnowledgePageName(knowledgePage, t)}
               isDeleting={isDeleting}
-              message={t('message.soft-delete-message-for-entity', {
-                entity: getKnowledgePageName(knowledgePage, t),
+              message={t('message.soft-delete-archive-message', {
+                entity: t('label.article').toLowerCase(),
               })}
               open={isDeleteModalOpen}
               onCancel={() => setIsDeleteModalOpen(false)}

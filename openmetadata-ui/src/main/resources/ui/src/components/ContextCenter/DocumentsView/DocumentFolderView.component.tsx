@@ -168,7 +168,7 @@ const DocumentFolderView = ({
                     <Tree.ItemContent>
                       <div className="custom-group tw:flex tw:flex-1 tw:items-center tw:gap-2 tw:min-w-0">
                         <button
-                          className="tw:flex tw:flex-1 tw:items-center tw:gap-2 tw:min-w-0 tw:text-left tw:bg-transparent tw:border-none tw:cursor-pointer tw:p-0"
+                          className="tw:flex tw:flex-1 tw:items-center tw:gap-2 tw:min-w-0 tw:text-left tw:bg-transparent tw:border-none tw:cursor-pointer tw:p-0 tw:font-normal"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleFolderItemSelect(folder.id);
@@ -181,8 +181,7 @@ const DocumentFolderView = ({
                           <div className="tw:w-full">
                             <Typography
                               as="p"
-                              className="tw:truncate tw:flex-1"
-                              weight="medium">
+                              className="tw:truncate tw:flex-1">
                               {folder.displayName ?? folder.name}
                             </Typography>
                           </div>
