@@ -1,0 +1,8 @@
+# Scoped ignore file for docker/storybook/Dockerfile (BuildKit reads
+# <dockerfile>.dockerignore relative to the build context root).
+# Keeps host build artifacts from polluting the image and shrinks the context.
+
+**/node_modules
+**/storybook-static
+**/dist
+**/.git

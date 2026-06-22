@@ -13,7 +13,7 @@
 # Build context must be the repo root so both the source tree and this config
 # file are reachable.  The nightly workflow calls:
 #   docker build -f docker/storybook/Dockerfile .
-FROM node:22-alpine AS builder
+FROM node:22.17-alpine AS builder
 
 WORKDIR /app
 
@@ -31,13 +31,16 @@ COPY openmetadata-ui-core-components/src/main/resources/ui/ ./
 RUN yarn build-storybook
 
 # ── Stage 2: serve with Node ─────────────────────────────────────────────────
-FROM node:22-alpine AS server
+FROM node:22.17-alpine AS server
 
 # `serve` is the static file server Storybook recommends; pin the major so the
 # CLI flags stay stable across nightly rebuilds.
 RUN npm install -g serve@14
 
 COPY --from=builder /app/storybook-static /app/storybook-static
+
+# Drop to the built-in unprivileged user — running a public server as root is unnecessary.
+USER node
 
 EXPOSE 6006
 
