@@ -884,6 +884,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     if (tasks != null) {
       tasks.forEach(
           t -> {
+            FullyQualifiedName.validateFqnName(t.getName());
             String taskFqn = FullyQualifiedName.add(parentFQN, t.getName());
             t.setFullyQualifiedName(taskFqn);
           });

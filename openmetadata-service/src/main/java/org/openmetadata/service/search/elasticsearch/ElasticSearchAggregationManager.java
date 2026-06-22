@@ -150,52 +150,18 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
 
       int bucketSize = request.getSize();
       String includeValue = request.getFieldValue().toLowerCase();
+      boolean isSearchPattern = SearchUtils.isBestMatchSearchPattern(includeValue);
+      boolean hasSourceFields =
+          request.getSourceFields() != null && !request.getSourceFields().isEmpty();
 
       Map<String, Aggregation> aggregations = new HashMap<>();
 
-      Aggregation termsAgg;
-
-      if (request.getSourceFields() != null && !request.getSourceFields().isEmpty()) {
-        List<String> topHitFields = request.getSourceFields();
-        int topHitSize = request.getTopHits() != null ? request.getTopHits().getSize() : 10;
-
-        termsAgg =
-            Aggregation.of(
-                a ->
-                    a.terms(
-                            t ->
-                                t.field(aggregationField)
-                                    .size(bucketSize)
-                                    .order(
-                                        Collections.singletonList(
-                                            NamedValue.of("_key", SortOrder.Asc)))
-                                    .include(tb -> tb.regexp(includeValue)))
-                        .aggregations(
-                            "top",
-                            Aggregation.of(
-                                th ->
-                                    th.topHits(
-                                        topHit ->
-                                            topHit
-                                                .size(topHitSize)
-                                                .source(
-                                                    s ->
-                                                        s.filter(
-                                                            f -> f.includes(topHitFields)))))));
+      if (isSearchPattern && !hasSourceFields) {
+        buildBestMatchAggregations(aggregations, aggregationField, includeValue, bucketSize);
       } else {
-        termsAgg =
-            Aggregation.of(
-                a ->
-                    a.terms(
-                        t ->
-                            t.field(aggregationField)
-                                .size(bucketSize)
-                                .order(
-                                    Collections.singletonList(NamedValue.of("_key", SortOrder.Asc)))
-                                .include(tb -> tb.regexp(includeValue))));
+        aggregations.put(
+            aggregationField, buildSingleAgg(aggregationField, includeValue, bucketSize, request));
       }
-
-      aggregations.put(aggregationField, termsAgg);
 
       searchRequestBuilder.aggregations(aggregations);
       searchRequestBuilder.size(0);
@@ -212,11 +178,88 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
       }
 
       String responseJson = serializeSearchResponse(searchResponse);
+      if (isSearchPattern && !hasSourceFields) {
+        responseJson =
+            SearchUtils.mergeBestMatchAggregations(
+                responseJson, aggregationField, bucketSize, mapper);
+      }
       return Response.status(Response.Status.OK).entity(responseJson).build();
     } catch (Exception e) {
       LOG.error("Failed to execute aggregation", e);
       throw new IOException("Failed to execute aggregation: " + e.getMessage(), e);
     }
+  }
+
+  private void buildBestMatchAggregations(
+      Map<String, Aggregation> aggregations, String field, String containsPattern, int size) {
+    String rawValue = SearchUtils.extractRawSearchValue(containsPattern);
+    String escapedRaw = rawValue.replace(".", "\\.");
+    String prefixPattern = escapedRaw + ".*";
+
+    aggregations.put(
+        SearchUtils.exactAggKey(field),
+        Aggregation.of(
+            a ->
+                a.terms(
+                    t ->
+                        t.field(field)
+                            .size(1)
+                            .order(Collections.singletonList(NamedValue.of("_key", SortOrder.Asc)))
+                            .include(tb -> tb.regexp(escapedRaw)))));
+    aggregations.put(
+        SearchUtils.prefixAggKey(field),
+        Aggregation.of(
+            a ->
+                a.terms(
+                    t ->
+                        t.field(field)
+                            .size(size)
+                            .order(Collections.singletonList(NamedValue.of("_key", SortOrder.Asc)))
+                            .include(tb -> tb.regexp(prefixPattern)))));
+    aggregations.put(
+        SearchUtils.containsAggKey(field),
+        Aggregation.of(
+            a ->
+                a.terms(
+                    t ->
+                        t.field(field)
+                            .size(size)
+                            .order(Collections.singletonList(NamedValue.of("_key", SortOrder.Asc)))
+                            .include(tb -> tb.regexp(containsPattern)))));
+  }
+
+  private Aggregation buildSingleAgg(
+      String field, String includePattern, int size, AggregationRequest request) {
+    if (request.getSourceFields() != null && !request.getSourceFields().isEmpty()) {
+      List<String> topHitFields = request.getSourceFields();
+      int topHitSize = request.getTopHits() != null ? request.getTopHits().getSize() : 10;
+      return Aggregation.of(
+          a ->
+              a.terms(
+                      t ->
+                          t.field(field)
+                              .size(size)
+                              .order(
+                                  Collections.singletonList(NamedValue.of("_key", SortOrder.Asc)))
+                              .include(tb -> tb.regexp(includePattern)))
+                  .aggregations(
+                      "top",
+                      Aggregation.of(
+                          th ->
+                              th.topHits(
+                                  topHit ->
+                                      topHit
+                                          .size(topHitSize)
+                                          .source(s -> s.filter(f -> f.includes(topHitFields)))))));
+    }
+    return Aggregation.of(
+        a ->
+            a.terms(
+                t ->
+                    t.field(field)
+                        .size(size)
+                        .order(Collections.singletonList(NamedValue.of("_key", SortOrder.Asc)))
+                        .include(tb -> tb.regexp(includePattern))));
   }
 
   @Override
