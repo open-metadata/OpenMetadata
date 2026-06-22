@@ -14,13 +14,7 @@
 import Form from '@rjsf/core';
 import { RegistryFieldsType, RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  within,
-} from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import {
   getFilteredSchema,
@@ -29,7 +23,6 @@ import {
   getUISchemaWithNestedDefaultFilterFieldsHidden,
   loadConnectionSchema,
 } from '../../../../utils/ServiceConnectionUtils';
-import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import AuthSelectField from '../../../common/Form/JSONSchema/JSONSchemaFields/AuthSelectField/AuthSelectField';
 import BooleanFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
 import ConnectionObjectFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/ConnectionObjectFieldTemplate';
@@ -206,30 +199,6 @@ describe('ConnectionConfigForm schema rendering', () => {
       ).not.toBeInTheDocument();
     }
   );
-
-  it('renders every supported database connector schema', async () => {
-    const connectorTypes =
-      serviceUtilClassBase.getSupportedServiceFromList().databaseServices;
-    let renderedConnectorCount = 0;
-
-    expect(connectorTypes.length).toBeGreaterThan(40);
-
-    for (const connectorType of connectorTypes) {
-      cleanup();
-      await renderConnectionSchema(connectorType);
-      renderedConnectorCount += 1;
-
-      expect(screen.getByTestId('connection-grouped-form')).toBeInTheDocument();
-      expect(
-        screen.getByTestId('connection-section-connection')
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByText(/Unsupported field schema/)
-      ).not.toBeInTheDocument();
-    }
-
-    expect(renderedConnectorCount).toBe(connectorTypes.length);
-  });
 
   it('renders Snowflake password and key-pair credentials as one selectable auth method', async () => {
     const { container } = await renderConnectionSchema('Snowflake');

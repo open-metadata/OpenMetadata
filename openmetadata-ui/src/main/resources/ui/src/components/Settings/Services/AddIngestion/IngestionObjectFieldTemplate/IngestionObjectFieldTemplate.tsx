@@ -30,6 +30,7 @@ import {
   ADVANCED_PROPERTIES,
   INGESTION_BOOLEAN_CONFIG_FIELDS,
 } from '../../../../../constants/ServiceType.constant';
+import { hasVisibleProperties } from '../../../../../utils/JSONSchemaFormUtils';
 
 const FILTER_PROPERTY_SET = new Set([
   ...SERVICE_FILTER_PATTERN_FIELDS,
@@ -402,7 +403,7 @@ export const IngestionObjectFieldTemplate: FunctionComponent<
   >;
 
   const rawSections: IngestionSectionConfig[] = [
-    ...(primaryProperties.length > 0
+    ...(hasVisibleProperties(primaryProperties)
       ? [
           {
             collapsible: false,
@@ -415,7 +416,7 @@ export const IngestionObjectFieldTemplate: FunctionComponent<
           },
         ]
       : []),
-    ...(filterPatternProperties.length > 0
+    ...(hasVisibleProperties(filterPatternProperties)
       ? [
           {
             collapsible: true,
@@ -428,7 +429,7 @@ export const IngestionObjectFieldTemplate: FunctionComponent<
           },
         ]
       : []),
-    ...(configProperties.length > 0
+    ...(hasVisibleProperties(configProperties)
       ? [
           {
             collapsible: true,
@@ -441,7 +442,7 @@ export const IngestionObjectFieldTemplate: FunctionComponent<
           },
         ]
       : []),
-    ...(advancedProperties.length > 0
+    ...(hasVisibleProperties(advancedProperties)
       ? [
           {
             collapsible: true,

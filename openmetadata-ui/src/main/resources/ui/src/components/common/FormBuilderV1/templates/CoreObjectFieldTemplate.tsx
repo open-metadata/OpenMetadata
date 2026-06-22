@@ -443,7 +443,7 @@ export const CoreObjectFieldTemplate: FunctionComponent<
               className="core-object-field-template-title tw:text-primary"
               id={`${idSchema.$id}__title`}
               size="text-sm"
-              weight="medium">
+              weight="semibold">
               {title}
             </Typography>
             {shouldShowDescription && (
@@ -470,7 +470,7 @@ export const CoreObjectFieldTemplate: FunctionComponent<
             className="core-object-field-template-title tw:text-primary"
             id={`${idSchema.$id}__title`}
             size="text-sm"
-            weight="medium">
+            weight="semibold">
             {title}
           </Typography>
           {addButton}

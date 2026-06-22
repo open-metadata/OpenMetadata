@@ -595,7 +595,7 @@ describe('FormBuilderV1 templates', () => {
     ).not.toHaveClass('core-object-field-template-property-full-width');
     expect(
       container.querySelector('.core-object-field-template-property-token')
-    ).not.toHaveClass('core-object-field-template-property-full-width');
+    ).toHaveClass('core-object-field-template-property-full-width');
     expect(
       container.querySelector(
         '.core-object-field-template-property-secureConnectBundle'

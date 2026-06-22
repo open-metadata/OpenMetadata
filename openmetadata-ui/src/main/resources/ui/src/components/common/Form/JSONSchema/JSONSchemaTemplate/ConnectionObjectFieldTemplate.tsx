@@ -20,7 +20,6 @@ import { ChevronDown, InfoCircle, Key01, Lock01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import {
-  Children,
   cloneElement,
   createElement,
   FocusEvent,
@@ -33,6 +32,10 @@ import {
 import { useTranslation } from 'react-i18next';
 import { ADVANCED_PROPERTIES } from '../../../../../constants/ServiceType.constant';
 import { Transi18next } from '../../../../../utils/i18next/LocalUtil';
+import {
+  hasVisibleProperties,
+  isVisibleProperty,
+} from '../../../../../utils/JSONSchemaFormUtils';
 import { getMissingSchemaRequiredFieldsCountForSelectedBranch } from '../../../../../utils/ServiceConnectionUtils';
 import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import { CoreObjectFieldTemplate } from '../../../FormBuilderV1/templates/CoreObjectFieldTemplate';
@@ -109,6 +112,10 @@ const OPTIONAL_CONNECTION_PROPERTIES = new Set([
   'hostPort',
 ]);
 
+export enum LayoutType {
+  GRID = 'grid',
+  STACK = 'stack',
+}
 interface SectionConfig {
   key: string;
   index?: number;
@@ -118,7 +125,7 @@ interface SectionConfig {
   schemaProperties: Record<string, SchemaProperty>;
   collapsible: boolean;
   defaultOpen: boolean;
-  layout: 'grid' | 'stack';
+  layout: LayoutType;
   badge?: ReactNode;
   wideNames?: Set<string>;
   inlineBooleans?: boolean;
@@ -126,7 +133,7 @@ interface SectionConfig {
   onFocus?: (fieldName: string) => void;
 }
 
-interface SchemaProperty {
+export interface SchemaProperty {
   anyOf?: unknown[];
   format?: string;
   oneOf?: unknown[];
@@ -217,47 +224,6 @@ const SectionHeader = ({
     )}
   </button>
 );
-
-const hasHiddenClassName = (className?: unknown): boolean =>
-  typeof className === 'string' &&
-  /(^|\s)(tw:hidden|hidden)(\s|$)/.test(className);
-
-const hasHiddenContent = (node: ReactNode): boolean => {
-  if (!isValidElement(node)) {
-    return false;
-  }
-
-  const props = node.props as {
-    children?: ReactNode;
-    className?: unknown;
-    hidden?: boolean;
-    style?: {
-      display?: string;
-      visibility?: string;
-    };
-  };
-
-  if (
-    props.hidden ||
-    hasHiddenClassName(props.className) ||
-    props.style?.display === 'none' ||
-    props.style?.visibility === 'hidden'
-  ) {
-    return true;
-  }
-
-  const children = Children.toArray(props.children);
-
-  return children.length > 0 && children.every(hasHiddenContent);
-};
-
-const isVisibleProperty = (
-  property: ObjectFieldTemplatePropertyType
-): boolean => !property.hidden && !hasHiddenContent(property.content);
-
-const hasVisibleProperties = (
-  properties: ObjectFieldTemplatePropertyType[]
-): boolean => properties.some(isVisibleProperty);
 
 const SectionFields = ({
   properties,
@@ -545,7 +511,9 @@ const AuthTabs = ({
         })}
       </div>
       <div className="tw:flex tw:flex-col tw:gap-3">
-        {active.fields.map(renderAuthProperty)}
+        {active.fields.map((element, index) =>
+          renderAuthProperty(element, index)
+        )}
       </div>
       <SingleCredentialNote method={active.label} />
     </div>
@@ -669,7 +637,7 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
       additionalFieldContent,
     } = serviceUtilClassBase.getProperties(properties);
 
-    const requiredKeys = (schema.required ?? []) as string[];
+    const requiredKeys = schema.required ?? [];
     const schemaProperties = (schema.properties ?? {}) as Record<
       string,
       SchemaProperty
@@ -732,7 +700,7 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
     );
     const shouldRenderScopeSection = hasVisibleProperties(scopeProperties);
     const hiddenUnsectionedProperties = [
-      ...(!shouldRenderScopeSection ? scopeProperties : []),
+      ...(shouldRenderScopeSection ? [] : scopeProperties),
     ].filter((property) => !isVisibleProperty(property));
     const rootFormData = formData as Record<string, unknown>;
 
@@ -779,30 +747,37 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
       );
 
     const rawSections: SectionConfig[] = [
-      {
-        key: 'connection',
-        title: t('label.connection'),
-        description: t('message.connection-section-description'),
-        properties: connectionProperties,
-        schemaProperties,
-        collapsible: false,
-        defaultOpen: true,
-        layout: 'grid',
-        wideNames,
-        focusName: getFirstVisibleFieldName(connectionProperties, 'connection'),
-        onFocus: connectionFormContext?.handleFocus,
-        badge:
-          connectionMissingCount > 0 ? (
-            <ReqBadge tone="error">
-              {t('message.field-count-required', {
-                count: connectionMissingCount,
-              })}
-            </ReqBadge>
-          ) : (
-            <ReqBadge>{t('label.optional')}</ReqBadge>
-          ),
-      },
-      ...(authProperties.length
+      ...(hasVisibleProperties(connectionProperties)
+        ? [
+            {
+              key: 'connection',
+              title: t('label.connection'),
+              description: t('message.connection-section-description'),
+              properties: connectionProperties,
+              schemaProperties,
+              collapsible: false,
+              defaultOpen: true,
+              layout: LayoutType.GRID,
+              wideNames,
+              focusName: getFirstVisibleFieldName(
+                connectionProperties,
+                'connection'
+              ),
+              onFocus: connectionFormContext?.handleFocus,
+              badge:
+                connectionMissingCount > 0 ? (
+                  <ReqBadge tone="error">
+                    {t('message.field-count-required', {
+                      count: connectionMissingCount,
+                    })}
+                  </ReqBadge>
+                ) : (
+                  <ReqBadge>{t('label.optional')}</ReqBadge>
+                ),
+            },
+          ]
+        : []),
+      ...(hasVisibleProperties(authProperties)
         ? [
             {
               key: 'authentication',
@@ -812,7 +787,7 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
               schemaProperties,
               collapsible: false,
               defaultOpen: true,
-              layout: 'stack',
+              layout: LayoutType.STACK,
               focusName: authProperties.some(
                 (property) => property.name === AUTH_PROPERTY
               )
@@ -842,7 +817,7 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
               schemaProperties,
               collapsible: true,
               defaultOpen: false,
-              layout: 'grid',
+              layout: LayoutType.GRID,
               wideNames,
               focusName: getFirstVisibleFieldName(
                 scopeProperties,
@@ -853,7 +828,7 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
             } as SectionConfig,
           ]
         : []),
-      ...(advancedProperties.length
+      ...(hasVisibleProperties(advancedProperties)
         ? [
             {
               key: 'advanced',
@@ -863,7 +838,7 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
               schemaProperties,
               collapsible: true,
               defaultOpen: false,
-              layout: 'grid',
+              layout: LayoutType.GRID,
               wideNames,
               inlineBooleans: true,
               focusName: getFirstVisibleFieldName(
@@ -879,7 +854,7 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
     let sectionCounter = 0;
     const sections = rawSections.map((section) => ({
       ...section,
-      index: section.key !== 'advanced' ? ++sectionCounter : undefined,
+      index: section.key === 'advanced' ? undefined : ++sectionCounter,
     }));
 
     rendered = (

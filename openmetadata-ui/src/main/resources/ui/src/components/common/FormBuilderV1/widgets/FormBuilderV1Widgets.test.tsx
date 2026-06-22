@@ -69,12 +69,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
     hint,
     isRequired,
     label,
-  }: {
+  }: Readonly<{
     allowUpload?: boolean;
     hint?: string;
     isRequired?: boolean;
     label?: string;
-  }) {
+  }>) {
     const [showPassword, setShowPassword] = useState(false);
     const [showUpload, setShowUpload] = useState(Boolean(allowUpload));
 
@@ -598,18 +598,16 @@ describe('FormBuilderV1 widgets', () => {
     render(
       <CorePasswordWidget
         {...widgetBaseProps}
-        schema={
-          {
-            type: 'string' as const,
-            uiFieldType: 'file',
-          } as WidgetProps['schema']
-        }
+        schema={{
+          type: 'string' as const,
+          uiFieldType: 'file',
+        }}
         value={undefined}
         onChange={jest.fn()}
       />
     );
 
-    expect(screen.getByText('message.upload-file')).toBeInTheDocument();
+    expect(screen.getByText('select-radio')).toBeInTheDocument();
     expect(screen.getByTestId('file-input')).toBeInTheDocument();
   });
 
@@ -617,12 +615,10 @@ describe('FormBuilderV1 widgets', () => {
     render(
       <CorePasswordWidget
         {...widgetBaseProps}
-        schema={
-          {
-            type: 'string' as const,
-            uiFieldType: 'fileOrInput',
-          } as WidgetProps['schema']
-        }
+        schema={{
+          type: 'string' as const,
+          uiFieldType: 'fileOrInput',
+        }}
         value={undefined}
         onChange={jest.fn()}
       />

@@ -649,7 +649,9 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
               </span>
               <ArrowUpRight size={15} />
             </a>
-            <p>{t('message.openmetadata-docs-description')}</p>
+            <span className="tw:text-xs tw:text-tertiary">
+              {t('message.openmetadata-docs-description')}
+            </span>
           </div>
         </div>
       );
