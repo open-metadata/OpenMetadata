@@ -2803,6 +2803,7 @@
     "discover-your-data-and-unlock-the-value-of-data-assets": "Kodsuz veri kalitesiyle işler kolaylaştı. Test etmek, dağıtmak ve sonuçları toplamak için basit adımlar, anında test hatası bildirimleriyle. Güvenebileceğiniz güvenilir verilerle güncel kalın.",
     "distinct-profile-metric-description": "Sütundaki farklı değerlerin yüzdesi",
     "documents-uploaded-successfully": "Belgeler başarıyla yüklendi",
+    "domain-access-restricted": "You only have access to your assigned domain(s).",
     "domain-change-asset-migration-warning": "Etki alanını değiştirmek, mevcut etki alanından {{domain}} alanına {{count}} varlık taşıyacaktır. Devam etmek istiyor musunuz?",
     "domain-description": "Kuruluşunuzdaki veri alanlarını düzenleyin ve yönetin.",
     "domain-does-not-have-assets": "{{name}} Alan Adının Veri Ürününe eklenecek varlığı yok",

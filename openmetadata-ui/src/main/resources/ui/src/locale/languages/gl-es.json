@@ -2803,6 +2803,7 @@
     "discover-your-data-and-unlock-the-value-of-data-assets": "As cousas simplifícanse co control de calidade de datos sen código. Pasos simples para probar, despregar e reunir resultados, con notificacións instantáneas de fallos de proba. Mantente actualizado con datos fiables nos que podes confiar.",
     "distinct-profile-metric-description": "Porcentaxe de valores distintos na columna",
     "documents-uploaded-successfully": "Documentos cargados con éxito",
+    "domain-access-restricted": "You only have access to your assigned domain(s).",
     "domain-change-asset-migration-warning": "Cambiar o dominio moverá {{count}} activo(s) do dominio actual a {{domain}}. Queres continuar?",
     "domain-description": "Organiza e xestiona os dominios de datos na túa organización.",
     "domain-does-not-have-assets": "O dominio {{name}} non ten activos para engadir ao Produto de Datos",
