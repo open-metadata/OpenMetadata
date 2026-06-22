@@ -358,6 +358,7 @@ describe('ExportUtils', () => {
 
         // White fill must still happen so no transparent fallback
         expect(mockCompositeCtx.fillRect).toHaveBeenCalled();
+
         // Only the nodes image is drawn — no edges canvas
         const drawCalls = (mockCompositeCtx.drawImage as jest.Mock).mock.calls;
 
