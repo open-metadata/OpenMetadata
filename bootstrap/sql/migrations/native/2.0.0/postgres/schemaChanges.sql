@@ -330,15 +330,23 @@ CREATE INDEX IF NOT EXISTS user_session_expiry_idx ON user_session USING btree (
 CREATE INDEX IF NOT EXISTS user_session_idle_expiry_idx ON user_session USING btree (status, idleexpiresat);
 CREATE INDEX IF NOT EXISTS user_session_prune_idx ON user_session USING btree (status, updatedat);
 
--- Per-entity `name` index for entity tables first created in 2.0.0, so the distributed
--- reindex's `... ORDER BY name, id LIMIT 1 OFFSET :n` cursor query
--- (EntityRepository.getCursorAtOffset) runs index-only instead of a sort that can exhaust
--- work_mem on large tables. Added here (not 1.13.1) because these tables are created above
--- in this same 2.0.0 migration. Idempotent via IF NOT EXISTS.
+-- Per-entity `name` indexes used by the distributed reindex's
+-- `... ORDER BY name, id LIMIT 1 OFFSET :n` cursor query
+-- (EntityRepository.getCursorAtOffset). These make cursor queries index-only
+-- instead of a sort that can exhaust work_mem on large tables. Keep this in
+-- 2.0.0 because distributed reindex ships in 2.0.0. Idempotent via IF NOT EXISTS.
+CREATE INDEX IF NOT EXISTS directory_entity_name_index ON directory_entity (name);
+CREATE INDEX IF NOT EXISTS drive_service_entity_name_index ON drive_service_entity (name);
+CREATE INDEX IF NOT EXISTS file_entity_name_index ON file_entity (name);
+CREATE INDEX IF NOT EXISTS spreadsheet_entity_name_index ON spreadsheet_entity (name);
+CREATE INDEX IF NOT EXISTS worksheet_entity_name_index ON worksheet_entity (name);
 CREATE INDEX IF NOT EXISTS task_entity_name_index ON task_entity (name);
 CREATE INDEX IF NOT EXISTS announcement_entity_name_index ON announcement_entity (name);
 CREATE INDEX IF NOT EXISTS drive_folder_name_index ON drive_folder (name);
 CREATE INDEX IF NOT EXISTS asset_entity_name_index ON asset_entity (name);
+-- learning_resource_entity is intentionally omitted: its `name` is varchar(3072), too
+-- wide to fit a btree index row, and the table is small enough that the reindex cursor
+-- sort is not a concern.
 
 -- MCP conversation table for MCP Client message tracking
 CREATE TABLE IF NOT EXISTS mcp_conversation (
