@@ -20,6 +20,10 @@ import { redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   addTermRelation,
+  buildMalformedRdfGraphJson,
+  buildRdfGraphJson,
+  DANGLING_GRAPH_NODE_ID,
+  readGraphEdges,
   readNodePositions,
   waitForGraphLoaded,
 } from '../../utils/ontologyExplorer';
@@ -28,6 +32,20 @@ const adminUser = new AdminClass();
 const rdfGlossary = new Glossary();
 const rdfTerm1 = new GlossaryTerm(rdfGlossary);
 const rdfTerm2 = new GlossaryTerm(rdfGlossary);
+
+const graphJson = () =>
+  buildRdfGraphJson(
+    rdfGlossary.responseData.id,
+    { id: rdfTerm1.responseData.id, name: rdfTerm1.data.name },
+    { id: rdfTerm2.responseData.id, name: rdfTerm2.data.name }
+  );
+
+const malformedGraphJson = () =>
+  buildMalformedRdfGraphJson(
+    rdfGlossary.responseData.id,
+    { id: rdfTerm1.responseData.id, name: rdfTerm1.data.name },
+    { id: rdfTerm2.responseData.id, name: rdfTerm2.data.name }
+  );
 
 test.beforeAll('Seed test data', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -50,31 +68,6 @@ test.afterAll('Cleanup test data', async ({ browser }) => {
   await afterAction();
 });
 
-function buildGraphJson() {
-  return {
-    nodes: [
-      {
-        id: rdfTerm1.responseData.id,
-        label: rdfTerm1.data.name,
-        type: 'glossaryTerm',
-        glossaryId: rdfGlossary.responseData.id,
-      },
-      {
-        id: rdfTerm2.responseData.id,
-        label: rdfTerm2.data.name,
-        type: 'glossaryTerm',
-        glossaryId: rdfGlossary.responseData.id,
-      },
-    ],
-    edges: [
-      {
-        from: rdfTerm1.responseData.id,
-        to: rdfTerm2.responseData.id,
-        relationType: 'relatedTo',
-      },
-    ],
-  };
-}
 
 async function navigateToGlossaryRelationsGraph(
   page: Parameters<typeof waitForGraphLoaded>[0]
@@ -235,7 +228,7 @@ test.describe('Ontology Explorer — RDF graph data loading', () => {
     await page.route('**/api/v1/rdf/glossary/graph**', (route) => {
       graphApiCalled = true;
 
-      return route.fulfill({ json: buildGraphJson() });
+      return route.fulfill({ json: graphJson() });
     });
 
     await redirectToHomePage(page);
@@ -278,7 +271,7 @@ test.describe('Ontology Explorer — RDF graph data loading', () => {
     await page.route('**/api/v1/rdf/glossary/graph**', (route) => {
       graphApiCalled = true;
 
-      return route.fulfill({ json: buildGraphJson() });
+      return route.fulfill({ json: graphJson() });
     });
 
     await navigateToGlossaryRelationsGraph(page);
@@ -297,6 +290,68 @@ test.describe('Ontology Explorer — RDF graph data loading', () => {
       positions[rdfTerm2.responseData.id],
       'rdfTerm2 must appear as a node (from RDF graph response)'
     ).toBeDefined();
+
+    await page.close();
+  });
+
+  test('renders without crashing when /rdf/glossary/graph returns duplicate nodes and dangling edges', async ({
+    browser,
+  }) => {
+    const page = await browser.newPage();
+    await adminUser.login(page);
+
+    const pageErrors: string[] = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message));
+
+    await page.route('**/api/v1/rdf/status**', (route) =>
+      route.fulfill({ json: { enabled: true } })
+    );
+    await page.route('**/api/v1/rdf/glossary/graph**', (route) =>
+      route.fulfill({ json: malformedGraphJson() })
+    );
+
+    await navigateToGlossaryRelationsGraph(page);
+
+    // The graph must render — not the fetch-error / render-error empty states.
+    await expect(page.getByTestId('ontology-graph-error')).toHaveCount(0);
+    await expect(page.getByTestId('ontology-graph-render-error')).toHaveCount(
+      0
+    );
+
+    // Both real terms render despite the duplicate node and dangling edge.
+    const positions = await readNodePositions(page);
+    expect(
+      positions[rdfTerm1.responseData.id],
+      'rdfTerm1 must render even though its id was duplicated in the payload'
+    ).toBeDefined();
+    expect(
+      positions[rdfTerm2.responseData.id],
+      'rdfTerm2 must render'
+    ).toBeDefined();
+
+    // The valid edge is drawn; the dangling edge is dropped, not rendered.
+    const edges = await readGraphEdges(page);
+    expect(
+      edges.some(
+        (e) =>
+          e.from === rdfTerm1.responseData.id &&
+          e.to === rdfTerm2.responseData.id
+      ),
+      'the valid term-to-term edge must be rendered'
+    ).toBe(true);
+    expect(
+      edges.some(
+        (e) =>
+          e.from === DANGLING_GRAPH_NODE_ID || e.to === DANGLING_GRAPH_NODE_ID
+      ),
+      'the dangling edge must be dropped, never handed to G6'
+    ).toBe(false);
+
+    expect(
+      pageErrors.filter(
+        (m) => m.includes('Node already exists') || m.includes('Node not found')
+      )
+    ).toEqual([]);
 
     await page.close();
   });
