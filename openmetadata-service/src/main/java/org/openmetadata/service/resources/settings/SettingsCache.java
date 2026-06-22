@@ -47,6 +47,7 @@ import org.openmetadata.api.configuration.ThemeConfiguration;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
+import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.lineage.LineageLayer;
 import org.openmetadata.schema.api.lineage.LineageSettings;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
@@ -290,14 +291,13 @@ public class SettingsCache {
     Settings storedMcpConfig =
         Entity.getSystemRepository().getConfigWithKey(MCP_CONFIGURATION.toString());
     if (storedMcpConfig == null) {
-      org.openmetadata.schema.api.configuration.MCPConfiguration mcpConfig =
-          applicationConfig.getMcpConfiguration();
-      if (mcpConfig != null) {
-        Settings setting =
-            new Settings().withConfigType(MCP_CONFIGURATION).withConfigValue(mcpConfig);
+      MCPConfiguration mcpConfig = applicationConfig.getMcpConfiguration();
+      Settings setting =
+          new Settings()
+              .withConfigType(MCP_CONFIGURATION)
+              .withConfigValue(mcpConfig != null ? mcpConfig : getDefaultMcpConfiguration());
 
-        Entity.getSystemRepository().createNewSetting(setting);
-      }
+      Entity.getSystemRepository().createNewSetting(setting);
     }
 
     Settings storedScimConfig =
@@ -570,6 +570,11 @@ public class SettingsCache {
         .withTemplates(SmtpSettings.Templates.OPENMETADATA);
   }
 
+  private static MCPConfiguration getDefaultMcpConfiguration() {
+    return JsonUtils.convertValue(
+        new org.openmetadata.service.config.MCPConfiguration(), MCPConfiguration.class);
+  }
+
   @SuppressWarnings("unchecked")
   public static Map<String, Float> getAggregatedSearchFields() {
     try {
@@ -668,6 +673,15 @@ public class SettingsCache {
           LOG.info("Loaded Setting {}", fetchedSettings.getConfigType());
           // When SEARCH_SETTINGS are loaded, invalidate aggregated fields cache
           CACHE.invalidate(SEARCH_SETTINGS_AGGREGATED_FIELDS);
+        }
+        case MCP_CONFIGURATION -> {
+          fetchedSettings = Entity.getSystemRepository().getConfigWithKey(settingsName);
+          if (fetchedSettings == null) {
+            return new Settings()
+                .withConfigType(MCP_CONFIGURATION)
+                .withConfigValue(getDefaultMcpConfiguration());
+          }
+          LOG.info("Loaded Setting {}", fetchedSettings.getConfigType());
         }
         default -> {
           fetchedSettings = Entity.getSystemRepository().getConfigWithKey(settingsName);
