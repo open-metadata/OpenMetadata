@@ -249,7 +249,8 @@ describe('DocumentFolderView', () => {
   });
 
   it('opens the create folder modal when the add button is clicked', async () => {
-    render(<DocumentFolderView files={mockFiles} onSelectFolder={jest.fn()} />);
+    render(<DocumentFolderView canCreate
+        canDelete files={mockFiles} onSelectFolder={jest.fn()} />);
 
     await waitFor(() =>
       expect(screen.getByText('Folder One')).toBeInTheDocument()
@@ -264,6 +265,8 @@ describe('DocumentFolderView', () => {
     const onFoldersLoaded = jest.fn();
     render(
       <DocumentFolderView
+        canCreate
+        canDelete
         files={mockFiles}
         onFoldersLoaded={onFoldersLoaded}
         onSelectFolder={jest.fn()}
@@ -289,7 +292,8 @@ describe('DocumentFolderView', () => {
   });
 
   it('shows delete modal when delete button is clicked', async () => {
-    render(<DocumentFolderView files={mockFiles} onSelectFolder={jest.fn()} />);
+    render(<DocumentFolderView canCreate
+        canDelete files={mockFiles} onSelectFolder={jest.fn()} />);
 
     await waitFor(() =>
       expect(screen.getByText('Folder One')).toBeInTheDocument()
@@ -307,6 +311,8 @@ describe('DocumentFolderView', () => {
 
     render(
       <DocumentFolderView
+      canCreate
+        canDelete
         files={mockFiles}
         onFoldersLoaded={onFoldersLoaded}
         onSelectFolder={jest.fn()}
@@ -335,6 +341,8 @@ describe('DocumentFolderView', () => {
 
     render(
       <DocumentFolderView
+      canCreate
+        canDelete
         files={mockFiles}
         selectedFolderId="folder-1"
         onSelectFolder={onSelectFolder}
@@ -355,7 +363,8 @@ describe('DocumentFolderView', () => {
   });
 
   it('closes delete modal on cancel without deleting', async () => {
-    render(<DocumentFolderView files={mockFiles} onSelectFolder={jest.fn()} />);
+    render(<DocumentFolderView canCreate
+        canDelete files={mockFiles} onSelectFolder={jest.fn()} />);
 
     await waitFor(() =>
       expect(screen.getByText('Folder One')).toBeInTheDocument()
