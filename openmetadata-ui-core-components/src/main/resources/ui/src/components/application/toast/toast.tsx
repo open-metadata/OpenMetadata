@@ -69,6 +69,7 @@ export const Toast = ({ toast }: ToastProps) => {
   const { variant = 'default', message: messageOrNode } = toast.content;
   const config = variantConfig[variant];
   const Icon = config.icon;
+  const showClose = config.showClose || toast.timeout === 0;
 
   return (
     <AriaToast
@@ -91,7 +92,7 @@ export const Toast = ({ toast }: ToastProps) => {
       ) : (
         (messageOrNode as ReactNode)
       )}
-      {config.showClose && state && (
+      {showClose && state && (
         <Button
           aria-label="Close"
           className="tw:-mr-1 tw:ml-1 tw:flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:p-0.5 tw:text-fg-white/60 tw:outline-none tw:transition tw:hover:bg-white/10 tw:hover:text-fg-white"

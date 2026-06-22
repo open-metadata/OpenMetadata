@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { toast } from '@openmetadata/ui-core-components';
+import { ShowToastOptions, toast } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
 import React from 'react';
@@ -100,6 +100,9 @@ export const showNotistackInfo = (message: string | React.ReactNode) => {
  * Display a warning toast.
  * @param message warning message
  */
-export const showNotistackWarning = (message: string | React.ReactNode) => {
-  toast.warning(message);
+export const showNotistackWarning = (
+  message: string | React.ReactNode,
+  options?: ShowToastOptions
+) => {
+  toast.warning(message, options);
 };

@@ -227,13 +227,13 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
 
     // Step 5: Show appropriate notification based on upload status
     if (uploadFailed) {
-      // Entity created but upload failed - show warning
       showNotistackWarning(
         <Typography className="tw:font-bold">
           {t('message.entity-created-but-cover-image-failed', {
             entity: entityLabel,
           })}
-        </Typography>
+        </Typography>,
+        { autoDismiss: false }
       );
     } else {
       // Entity created successfully (with or without cover image)
