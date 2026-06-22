@@ -18,12 +18,14 @@ import { EntityType } from '../enums/entity.enum';
 import { SummaryEntityType } from '../enums/EntitySummary.enum';
 import { Column } from '../generated/entity/data/table';
 import {
-  getEntityChildDetails,
-  getFormattedEntityData,
   getHighlightOfListItem,
   getMapOfListHighlights,
   getSortedTagsWithHighlight,
   getSummaryListItemType,
+} from './EntitySummaryPanelPureUtils';
+import {
+  getEntityChildDetails,
+  getFormattedEntityData,
   getTitle,
 } from './EntitySummaryPanelUtils';
 import {

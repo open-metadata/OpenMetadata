@@ -68,7 +68,7 @@ import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
   getSearchIndexForService,
-} from '../../utils/ServiceUtils';
+} from '../../utils/ServicePureUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TablePureUtils';
 import { createTagObject } from '../../utils/TagsPureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';

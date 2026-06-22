@@ -744,7 +744,7 @@ public class MigrationUtil {
           ? "GlossaryApproval"
           : "RequestApproval";
       case "RequestTestCaseFailureResolution" -> "TestCaseResolution";
-      case "RecognizerFeedbackApproval" -> "DataQualityReview";
+      case "RecognizerFeedbackApproval" -> "RecognizerFeedbackApproval";
       default -> "CustomTask";
     };
   }
