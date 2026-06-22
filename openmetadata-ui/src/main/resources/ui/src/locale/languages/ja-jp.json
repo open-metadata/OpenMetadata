@@ -2805,6 +2805,7 @@
     "discover-your-data-and-unlock-the-value-of-data-assets": "データを発見し、データアセットの価値を引き出しましょう。",
     "distinct-profile-metric-description": "列内の個別の値の割合",
     "documents-uploaded-successfully": "ドキュメントが正常にアップロードされました",
+    "domain-access-restricted": "You only have access to your assigned domain(s).",
     "domain-change-asset-migration-warning": "ドメインを変更すると、_ 0 _ 資産) が現在のドメインから _1 _ に移動されます。続行しますか?",
     "domain-description": "組織内のデータドメインを整理・管理します。",
     "domain-does-not-have-assets": "ドメイン {{name}} に追加できるアセットが存在しません",
