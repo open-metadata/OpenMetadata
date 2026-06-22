@@ -142,6 +142,9 @@ const DomainsWidget = ({
   }, [fetchDomains]);
 
   const handleSortByClick = useCallback((key: string) => {
+    queryClient.invalidateQueries({
+      queryKey: domainWidgetSearchQueryKey(key),
+    });
     setSelectedSortBy(key);
   }, []);
 
