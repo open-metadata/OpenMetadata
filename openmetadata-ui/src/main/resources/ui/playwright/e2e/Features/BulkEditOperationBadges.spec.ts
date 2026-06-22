@@ -20,10 +20,7 @@ import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import {
-  fillTextInputDetails,
-  pressKeyXTimes,
-} from '../../utils/importUtils';
+import { fillTextInputDetails, pressKeyXTimes } from '../../utils/importUtils';
 import { visitServiceDetailsPage } from '../../utils/service';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -68,9 +65,7 @@ test.describe('BulkEditEntity — OperationBadges and Search (all entity types)'
     await expect(
       page.locator('.bulk-edit-operation-badge-no_change').first()
     ).toBeVisible();
-    await expect(
-      page.getByTestId('bulk-edit-operation-summary')
-    ).toBeVisible();
+    await expect(page.getByTestId('bulk-edit-operation-summary')).toBeVisible();
     await expect(
       page.locator('.bulk-edit-operation-summary-count-no_change')
     ).toContainText('1');
@@ -134,9 +129,9 @@ test.describe('BulkEditEntity — OperationBadges and Search (all entity types)'
     // Revert restores all rows to NO_CHANGE
     await page.getByRole('button', { name: 'Revert Changes' }).click();
 
-    await expect(
-      page.locator('.bulk-edit-operation-badge-update')
-    ).toHaveCount(0);
+    await expect(page.locator('.bulk-edit-operation-badge-update')).toHaveCount(
+      0
+    );
     await expect(
       page.locator('.bulk-edit-operation-badge-no_change').first()
     ).toBeVisible();
@@ -176,9 +171,7 @@ test.describe('BulkEditEntity — OperationBadges and Search (all entity types)'
     await waitForAllLoadersToDisappear(page);
     await expect(page.locator('.rdg-header-row')).toBeVisible();
 
-    await expect(
-      page.getByTestId('bulk-edit-operation-summary')
-    ).toBeVisible();
+    await expect(page.getByTestId('bulk-edit-operation-summary')).toBeVisible();
     await expect(
       page.locator('.bulk-edit-operation-badge-no_change').first()
     ).toBeVisible();

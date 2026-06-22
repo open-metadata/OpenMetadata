@@ -41,15 +41,13 @@ const RUNNING_IMPORT_JOB = {
   total: 10,
 };
 
-const fulfillJobsRoute = (
-  route: Route,
-  jobs: Record<string, unknown>[]
-) => route.fulfill({ contentType: 'application/json', json: jobs });
+const fulfillJobsRoute = (route: Route, jobs: Record<string, unknown>[]) =>
+  route.fulfill({ contentType: 'application/json', json: jobs });
 
-const mockJobsApi = (
-  page: Page,
-  jobs: Record<string, unknown>[]
-) => page.route('**/api/v1/csvAsyncJobs**', (route) => fulfillJobsRoute(route, jobs));
+const mockJobsApi = (page: Page, jobs: Record<string, unknown>[]) =>
+  page.route('**/api/v1/csvAsyncJobs**', (route) =>
+    fulfillJobsRoute(route, jobs)
+  );
 
 const triggerJobsRefresh = (page: Page) =>
   page.evaluate(() => window.dispatchEvent(new Event('csv-jobs-refresh')));

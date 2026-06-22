@@ -1406,9 +1406,7 @@ test.describe('Metrics bulk import, export, and edit', () => {
     await expect(
       page.locator('.bulk-edit-operation-badge-no_change').first()
     ).toBeVisible();
-    await expect(
-      page.getByTestId('bulk-edit-operation-summary')
-    ).toBeVisible();
+    await expect(page.getByTestId('bulk-edit-operation-summary')).toBeVisible();
     await expect(
       page.locator('.bulk-edit-operation-summary-count-no_change')
     ).toContainText('1');
@@ -1636,9 +1634,7 @@ test.describe('Metrics bulk import, export, and edit', () => {
     await expect(cancelBtn).toBeEnabled({ timeout: 30_000 });
     await cancelBtn.click();
 
-    await expect
-      .poll(() => cancelApiCalled, { timeout: 15_000 })
-      .toBe(true);
+    await expect.poll(() => cancelApiCalled, { timeout: 15_000 }).toBe(true);
   });
 
   test('MetricListPage header checkbox selects all visible metrics', async ({
@@ -1655,9 +1651,9 @@ test.describe('Metrics bulk import, export, and edit', () => {
     await page.locator('thead label[slot="selection"]').click();
 
     await expect(page.locator('.metric-list-selection-bar')).toBeVisible();
-    await expect(
-      page.locator('.metric-list-selection-count')
-    ).not.toHaveText('0');
+    await expect(page.locator('.metric-list-selection-count')).not.toHaveText(
+      '0'
+    );
   });
 
   test('MetricListPage unchecking header checkbox clears the selection bar', async ({

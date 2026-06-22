@@ -126,7 +126,7 @@ test.describe('Bulk Edit Entity', () => {
     const { apiContext, afterAction } = await getApiContext(page);
     await table.create(apiContext);
 
-     await test.step('create custom properties for extension edit', async () => {
+    await test.step('create custom properties for extension edit', async () => {
       customPropertyRecord = await createCustomPropertiesForEntity(
         page,
         GlobalSettingOptions.DATABASES
@@ -260,7 +260,7 @@ test.describe('Bulk Edit Entity', () => {
 
   test('Database', async ({ page }) => {
     test.slow(true);
-let customPropertyRecord: Record<string, string> = {};
+    let customPropertyRecord: Record<string, string> = {};
     const table = new TableClass();
 
     const { apiContext, afterAction } = await getApiContext(page);
@@ -411,13 +411,13 @@ let customPropertyRecord: Record<string, string> = {};
 
   test('Database Schema', async ({ page }) => {
     test.slow(true);
-let customPropertyRecord: Record<string, string> = {};
+    let customPropertyRecord: Record<string, string> = {};
     const table = new TableClass();
 
     const { apiContext, afterAction } = await getApiContext(page);
     await table.create(apiContext);
 
-     await test.step('create custom properties for extension edit', async () => {
+    await test.step('create custom properties for extension edit', async () => {
       customPropertyRecord = await createCustomPropertiesForEntity(
         page,
         GlobalSettingOptions.TABLES
