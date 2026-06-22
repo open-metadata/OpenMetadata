@@ -3266,6 +3266,7 @@
     "odps-validation-successful": "เอกสาร ODPS ถูกต้อง",
     "odps-yaml-invalid": "การตรวจสอบเอกสาร YAML ของ ODPS ล้มเหลว",
     "odps-yaml-name-mismatch": "ชื่อ '{{yamlName}}' ใน YAML ไม่ตรงกับผลิตภัณฑ์ข้อมูลปัจจุบัน '{{existingName}}' โปรดอัปเดต YAML หรือใช้หน้าผลิตภัณฑ์ข้อมูลของ '{{yamlName}}' เพื่อหลีกเลี่ยงการเขียนทับผลิตภัณฑ์อื่น",
+    "odps-yaml-name-missing": "ไม่สามารถอ่านชื่อผลิตภัณฑ์จาก YAML ได้ (product.details.<language>.name) โปรดเพิ่มชื่อที่ตรงกับผลิตภัณฑ์ข้อมูลปัจจุบัน '{{existingName}}' ก่อนนำเข้า เพื่อหลีกเลี่ยงการเขียนทับผลิตภัณฑ์อื่น",
     "odps-yaml-valid-description": "เอกสาร ODPS v{{version}} ที่ถูกต้องพร้อมภาษา: {{languages}}",
     "om-description": "ที่จัดเก็บข้อมูลเมตาที่รวมศูนย์ เพื่อค้นหา, ร่วมมือ และรับข้อมูลที่ถูกต้อง",
     "om-url-configuration-message": "กำหนดค่าการตั้งค่า URL ของ {{brandName}}",

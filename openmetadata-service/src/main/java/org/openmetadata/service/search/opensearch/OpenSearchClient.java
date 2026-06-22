@@ -391,6 +391,9 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
     if (lineageGraphBuilder == null) {
+      initializeLineageBuilders();
+    }
+    if (lineageGraphBuilder == null) {
       throw new UnsupportedOperationException(
           "Lineage features are not available in this deployment");
     }

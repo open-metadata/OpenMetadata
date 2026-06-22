@@ -3266,6 +3266,7 @@
     "odps-validation-successful": "ODPS belgesi geçerli.",
     "odps-yaml-invalid": "ODPS YAML belgesi doğrulamadan geçemedi.",
     "odps-yaml-name-mismatch": "YAML'deki '{{yamlName}}' adı, mevcut '{{existingName}}' veri ürünüyle eşleşmiyor. Farklı bir ürünün üzerine yazmamak için YAML'yi güncelleyin veya '{{yamlName}}' için veri ürünü sayfasını kullanın.",
+    "odps-yaml-name-missing": "Ürün adı YAML'den okunamadı (product.details.<language>.name). Farklı bir ürünün üzerine yazmamak için içe aktarmadan önce mevcut '{{existingName}}' veri ürünüyle eşleşen bir ad ekleyin.",
     "odps-yaml-valid-description": "Diller içeren geçerli ODPS v{{version}} belgesi: {{languages}}.",
     "om-description": "Merkezi metadata deposu, keşfetmek, işbirliği yapmak ve verilerinizi doğru almak için.",
     "om-url-configuration-message": "{{brandName}} URL Ayarlarını yapılandırın.",
