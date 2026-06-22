@@ -26,7 +26,6 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import CoreInputWidget from 'src/components/common/FormBuilderV1/widgets/CoreInputWidget';
 import {
   EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA,
   INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA,
@@ -44,6 +43,7 @@ import {
 import ProfilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { transformErrors } from '../../../../../utils/formPureUtils';
 import { getSchemaByWorkflowType } from '../../../../../utils/IngestionWorkflowUtils';
+import CoreInputWidget from '../../../../common/FormBuilderV1/widgets/CoreInputWidget';
 import Loader from '../../../../common/Loader/Loader';
 
 const BooleanFieldTemplate = lazy(
