@@ -3242,11 +3242,21 @@ public class TableRepository extends EntityRepository<Table> {
       Include include,
       String sortBy,
       String sortOrder,
+      Set<String> filterTagFQNs,
       Authorizer authorizer,
       SecurityContext securityContext) {
     Table table = get(null, id, getFields(fieldsParam), include, false);
     return searchTableColumnsInternal(
-        table, query, limit, offset, fieldsParam, sortBy, sortOrder, authorizer, securityContext);
+        table,
+        query,
+        limit,
+        offset,
+        fieldsParam,
+        sortBy,
+        sortOrder,
+        filterTagFQNs,
+        authorizer,
+        securityContext);
   }
 
   public ResultList<Column> searchTableColumnsByFQN(
@@ -3280,11 +3290,21 @@ public class TableRepository extends EntityRepository<Table> {
       Include include,
       String sortBy,
       String sortOrder,
+      Set<String> filterTagFQNs,
       Authorizer authorizer,
       SecurityContext securityContext) {
     Table table = getByName(null, fqn, getFields(fieldsParam), include, false);
     return searchTableColumnsInternal(
-        table, query, limit, offset, fieldsParam, sortBy, sortOrder, authorizer, securityContext);
+        table,
+        query,
+        limit,
+        offset,
+        fieldsParam,
+        sortBy,
+        sortOrder,
+        filterTagFQNs,
+        authorizer,
+        securityContext);
   }
 
   private ResultList<Column> searchTableColumnsInternal(
@@ -3295,6 +3315,7 @@ public class TableRepository extends EntityRepository<Table> {
       String fieldsParam,
       String sortBy,
       String sortOrder,
+      Set<String> filterTagFQNs,
       Authorizer authorizer,
       SecurityContext securityContext) {
     List<Column> allColumns = table.getColumns();
@@ -3323,6 +3344,10 @@ public class TableRepository extends EntityRepository<Table> {
                             && column.getDisplayName().toLowerCase().contains(searchTerm);
                       })
                   .toList());
+    }
+
+    if (!nullOrEmpty(filterTagFQNs)) {
+      matchingColumns = filterColumnsByTags(table, matchingColumns, filterTagFQNs);
     }
 
     // Sort matching columns based on sortBy and sortOrder parameters
@@ -3375,6 +3400,24 @@ public class TableRepository extends EntityRepository<Table> {
     String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
     String after = endIndex < total ? String.valueOf(endIndex) : null;
     return new ResultList<>(paginatedResults, before, after, total);
+  }
+
+  private List<Column> filterColumnsByTags(
+      Table table, List<Column> columns, Set<String> filterTagFQNs) {
+    Map<String, List<TagLabel>> tagsByFqnHash =
+        getTagsByPrefix(table.getFullyQualifiedName(), ".%");
+    Map<String, List<TagLabel>> tagsByHash = nullOrDefault(tagsByFqnHash, Map.of());
+    return columns.stream()
+        .filter(column -> columnHasAnyTag(column, filterTagFQNs, tagsByHash))
+        .collect(Collectors.toCollection(ArrayList::new));
+  }
+
+  private boolean columnHasAnyTag(
+      Column column, Set<String> filterTagFQNs, Map<String, List<TagLabel>> tagsByHash) {
+    List<TagLabel> tags =
+        tagsByHash.get(FullyQualifiedName.buildHash(column.getFullyQualifiedName()));
+    return !nullOrEmpty(tags)
+        && tags.stream().anyMatch(tag -> filterTagFQNs.contains(tag.getTagFQN()));
   }
 
   private List<Column> flattenTableColumns(List<Column> columns) {

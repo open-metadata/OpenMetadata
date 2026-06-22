@@ -13,6 +13,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -89,6 +91,7 @@ import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TableType;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TagSource;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -100,6 +103,7 @@ import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.models.TableColumnList;
+import org.openmetadata.sdk.network.HttpMethod;
 
 /**
  * Integration tests for Table entity operations.
@@ -766,6 +770,93 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table updated = patchEntity(table.getId().toString(), table);
 
     assertEquals(2, updated.getColumns().size());
+  }
+
+  @Test
+  void searchColumns_tagFilterReturnsMatchesAcrossPages(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    String classificationName = ns.prefix("ColTagFilter");
+    String tagFqn = createClassificationWithTag(client, classificationName, "Sensitive");
+    TagLabel sensitiveLabel =
+        new TagLabel()
+            .withTagFQN(tagFqn)
+            .withSource(TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+
+    int totalColumns = 60;
+    int taggedColumnIndex = 58;
+    List<Column> columns = new ArrayList<>();
+    for (int i = 0; i < totalColumns; i++) {
+      Column column =
+          new Column()
+              .withName(String.format("col_%02d", i))
+              .withDataType(ColumnDataType.VARCHAR)
+              .withDataLength(100);
+      if (i == taggedColumnIndex) {
+        column.withTags(List.of(sensitiveLabel));
+      }
+      columns.add(column);
+    }
+
+    CreateTable request = new CreateTable();
+    request.setName(ns.prefix("col_tag_filter"));
+    request.setDatabaseSchema(schema.getFullyQualifiedName());
+    request.setColumns(columns);
+    Table table = createEntity(request);
+
+    String encodedFqn = URLEncoder.encode(table.getFullyQualifiedName(), StandardCharsets.UTF_8);
+    String taggedColumnName = String.format("col_%02d", taggedColumnIndex);
+
+    TableColumnList firstPage = searchColumns(client, encodedFqn, "limit=50&offset=0");
+    assertEquals(totalColumns, firstPage.getPaging().getTotal());
+    assertFalse(
+        firstPage.getData().stream().anyMatch(c -> taggedColumnName.equals(c.getName())),
+        "Tagged column should fall on a later page without a filter");
+
+    String encodedTag = URLEncoder.encode(tagFqn, StandardCharsets.UTF_8);
+    TableColumnList filtered =
+        searchColumns(client, encodedFqn, "limit=50&offset=0&fields=tags&tags=" + encodedTag);
+    assertEquals(
+        1,
+        filtered.getPaging().getTotal(),
+        "Tag filter total should count all matches, not a page");
+    assertEquals(1, filtered.getData().size());
+    assertEquals(taggedColumnName, filtered.getData().get(0).getName());
+  }
+
+  private String createClassificationWithTag(
+      OpenMetadataClient client, String classificationName, String tagName) {
+    CreateClassification createClassification =
+        new CreateClassification()
+            .withName(classificationName)
+            .withDescription("Classification for column tag filter test");
+    client
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/classifications", createClassification, Classification.class);
+
+    CreateTag createTag =
+        new CreateTag()
+            .withName(tagName)
+            .withDescription("Tag for column tag filter test")
+            .withClassification(classificationName);
+    client.getHttpClient().execute(HttpMethod.PUT, "/v1/tags", createTag, Tag.class);
+    return classificationName + "." + tagName;
+  }
+
+  private TableColumnList searchColumns(
+      OpenMetadataClient client, String encodedFqn, String queryParams) {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/tables/name/" + encodedFqn + "/columns/search?" + queryParams,
+                null);
+    return JsonUtils.readValue(response, TableColumnList.class);
   }
 
   @Test

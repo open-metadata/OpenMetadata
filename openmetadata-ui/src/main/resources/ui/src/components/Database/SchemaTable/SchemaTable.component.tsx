@@ -18,6 +18,7 @@ import {
   Form,
   Row,
   Select,
+  TableProps,
   Tooltip,
   Typography,
 } from 'antd';
@@ -90,10 +91,7 @@ import {
   pruneEmptyChildren,
   updateColumnInNestedStructure,
 } from '../../../utils/TablePureUtils';
-import {
-  getAllTags,
-  searchTagInData,
-} from '../../../utils/TableTags/TableTags.utils';
+import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import {
   getTableExpandableConfig,
   prepareConstraintIcon,
@@ -132,6 +130,10 @@ const SchemaTable = () => {
   const [editColumn, setEditColumn] = useState<Column>();
   const [sortBy, setSortBy] = useState<'name' | 'ordinalPosition'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [activeTagFilter, setActiveTagFilter] = useState<{
+    tags: string[];
+    glossaryTerms: string[];
+  }>({ tags: [], glossaryTerms: [] });
 
   const {
     currentPage,
@@ -148,6 +150,10 @@ const SchemaTable = () => {
   });
 
   const searchText = filters.columnSearch ?? '';
+
+  const tagsParam = activeTagFilter.tags.join(',');
+  const glossaryTermsParam = activeTagFilter.glossaryTerms.join(',');
+  const hasTagFilter = Boolean(tagsParam || glossaryTermsParam);
 
   // Pagination state for columns
   const [tableColumns, setTableColumns] = useState<Column[]>([]);
@@ -245,6 +251,8 @@ const SchemaTable = () => {
           fields: 'tags,customMetrics,extension',
           sortBy: sortByParam,
           sortOrder: sortOrderParam,
+          ...(tagsParam ? { tags: tagsParam } : {}),
+          ...(glossaryTermsParam ? { glossaryTerms: glossaryTermsParam } : {}),
         });
 
         setTableColumns(pruneEmptyChildren(response.data) || []);
@@ -260,7 +268,15 @@ const SchemaTable = () => {
         setColumnsLoading(false);
       }
     },
-    [tableFqn, pageSize, handlePagingChange, sortBy, sortOrder]
+    [
+      tableFqn,
+      pageSize,
+      handlePagingChange,
+      sortBy,
+      sortOrder,
+      tagsParam,
+      glossaryTermsParam,
+    ]
   );
 
   const fetchTableColumns = useCallback(
@@ -310,6 +326,22 @@ const SchemaTable = () => {
     [handlePageChange]
   );
 
+  const handleColumnFilterChange = useCallback<
+    NonNullable<TableProps<Column>['onChange']>
+  >(
+    (_pagination, tableFilters) => {
+      const tags = (tableFilters?.[TABLE_COLUMNS_KEYS.TAGS] as string[]) ?? [];
+      const glossaryTerms =
+        (tableFilters?.[TABLE_COLUMNS_KEYS.GLOSSARY] as string[]) ?? [];
+      setActiveTagFilter({ tags, glossaryTerms });
+      handlePageChange(INITIAL_PAGING_VALUE, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
+    },
+    [handlePageChange]
+  );
+
   const fetchTestCaseSummary = async () => {
     try {
       const response = await getTestCaseExecutionSummary(table?.testSuite?.id);
@@ -324,13 +356,20 @@ const SchemaTable = () => {
   }, [tableFqn]);
 
   useEffect(() => {
-    if (searchText) {
+    if (searchText || hasTagFilter) {
       searchTableColumns(searchText, currentPage, sortBy, sortOrder);
     }
-  }, [searchText, currentPage, searchTableColumns, sortBy, sortOrder]);
+  }, [
+    searchText,
+    hasTagFilter,
+    currentPage,
+    searchTableColumns,
+    sortBy,
+    sortOrder,
+  ]);
 
   useEffect(() => {
-    if (searchText) {
+    if (searchText || hasTagFilter) {
       return;
     }
     fetchTableColumns(currentPage, sortBy, sortOrder);
@@ -339,6 +378,7 @@ const SchemaTable = () => {
     pageSize,
     currentPage,
     searchText,
+    hasTagFilter,
     fetchTableColumns,
     sortBy,
     sortOrder,
@@ -591,13 +631,13 @@ const SchemaTable = () => {
   };
 
   const tagFilter = useMemo(() => {
-    const tags = getAllTags(tableColumns);
+    const tags = getAllTags((table?.columns as Column[]) ?? tableColumns);
 
     return groupBy(tags, (tag) => tag.source) as Record<
       TagSource,
       TagFilterOptions[]
     >;
-  }, [tableColumns]);
+  }, [table?.columns, tableColumns]);
 
   const handleColumnClick = useCallback(
     (column: Column, event: React.MouseEvent) => {
@@ -812,7 +852,7 @@ const SchemaTable = () => {
         ),
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: activeTagFilter.tags,
       },
       {
         title: t('label.glossary-term-plural'),
@@ -835,7 +875,7 @@ const SchemaTable = () => {
         ),
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: activeTagFilter.glossaryTerms,
       },
       {
         title: t('label.data-quality'),
@@ -856,6 +896,7 @@ const SchemaTable = () => {
       renderDisplayName,
       renderDataQuality,
       tagFilter,
+      activeTagFilter,
       sortBy,
       sortOrder,
       handleColumnHeaderSortToggle,
@@ -987,6 +1028,7 @@ const SchemaTable = () => {
           searchProps={searchProps}
           size="middle"
           staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+          onChange={handleColumnFilterChange}
         />
       </Col>
       {editColumn && (
