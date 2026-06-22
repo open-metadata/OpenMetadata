@@ -40,17 +40,14 @@ import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.job.api.Job;
 import org.flowable.task.api.Task;
-import org.jdbi.v3.core.transaction.TransactionIsolationLevel;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
-import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowTriggerInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
@@ -60,14 +57,10 @@ import org.openmetadata.service.governance.workflows.flowable.sql.UnlockExecutio
 import org.openmetadata.service.governance.workflows.flowable.sql.UnlockJobSql;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.FeedRepository;
-import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
-import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
-import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineMapper;
-import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
 public class WorkflowHandler {
@@ -1455,143 +1448,6 @@ public class WorkflowHandler {
             instance ->
                 runtimeService.deleteProcessInstance(
                     instance.getId(), "Terminating all instances due to user request."));
-  }
-
-  public void terminateDuplicateInstances(
-      String mainWorkflowDefinitionName, String entityLink, String currentProcessInstanceId) {
-    try {
-      WorkflowInstanceRepository workflowInstanceRepository =
-          (WorkflowInstanceRepository)
-              Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
-      WorkflowInstanceStateRepository workflowInstanceStateRepository =
-          (WorkflowInstanceStateRepository)
-              Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE);
-
-      ListFilter filter = new ListFilter(null);
-      filter.addQueryParam("entityLink", entityLink);
-
-      long endTs = System.currentTimeMillis();
-      long startTs = endTs - (7L * 24 * 60 * 60 * 1000);
-
-      ResultList<WorkflowInstance> allInstances =
-          workflowInstanceRepository.list(null, startTs, endTs, 100, filter, false);
-
-      List<WorkflowInstance> candidateInstances =
-          allInstances.getData().stream()
-              .filter(
-                  instance -> WorkflowInstance.WorkflowStatus.RUNNING.equals(instance.getStatus()))
-              .filter(
-                  instance -> {
-                    try {
-                      WorkflowDefinitionRepository repo =
-                          (WorkflowDefinitionRepository)
-                              Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
-                      var def =
-                          repo.get(
-                              null,
-                              instance.getWorkflowDefinitionId(),
-                              EntityUtil.Fields.EMPTY_FIELDS);
-                      return mainWorkflowDefinitionName.equals(def.getName());
-                    } catch (Exception e) {
-                      return false;
-                    }
-                  })
-              .toList();
-
-      RuntimeService runtimeService = getInstance().getRuntimeService();
-      List<ProcessInstance> runningProcessInstances =
-          runtimeService
-              .createProcessInstanceQuery()
-              .processDefinitionKey(mainWorkflowDefinitionName)
-              .list();
-
-      List<WorkflowInstance> conflictingInstances =
-          candidateInstances.stream()
-              .filter(
-                  instance -> {
-                    return runningProcessInstances.stream()
-                        .filter(pi -> !pi.getId().equals(currentProcessInstanceId))
-                        .anyMatch(pi -> pi.getBusinessKey().equals(instance.getId().toString()));
-                  })
-              .toList();
-
-      if (conflictingInstances.isEmpty()) {
-        LOG.debug("No conflicting instances found to terminate for {}", mainWorkflowDefinitionName);
-        return;
-      }
-
-      // Terminate Flowable process instances OUTSIDE any JDBI transaction.
-      // Calling runtimeService.deleteProcessInstance() inside a JDBI transaction causes a race
-      // condition: the uncommitted DELETE on ACT_RU_EXECUTION holds an X-lock, Flowable's async
-      // job executor concurrently tries to INSERT a timer job referencing that execution (FK
-      // S-lock wait), and when the JDBI tx commits the execution is gone, so the timer INSERT
-      // fails with SQLIntegrityConstraintViolationException.
-      for (WorkflowInstance instance : conflictingInstances) {
-        ProcessInstance mainInstance =
-            runningProcessInstances.stream()
-                .filter(
-                    pi ->
-                        pi.getBusinessKey() != null
-                            && pi.getBusinessKey().equals(instance.getId().toString()))
-                .findFirst()
-                .orElse(null);
-
-        if (mainInstance != null) {
-          String processId = mainInstance.getId();
-          long activeUserTasks =
-              processEngine
-                  .getTaskService()
-                  .createTaskQuery()
-                  .processInstanceId(processId)
-                  .active()
-                  .count();
-          if (activeUserTasks == 0) {
-            LOG.debug(
-                "Process instance {} has no active user tasks — it is auto-completing; skipping external deletion",
-                processId);
-            continue;
-          }
-          LOG.info(
-              "Terminating main workflow instance {} for conflicting instance {}",
-              mainInstance.getId(),
-              instance.getId());
-          try {
-            runtimeService.deleteProcessInstance(
-                processId, "Terminated due to conflicting workflow instance");
-          } catch (FlowableObjectNotFoundException e) {
-            LOG.debug(
-                "Process instance {} already completed before termination, skipping", processId);
-          }
-        }
-      }
-
-      Entity.getJdbi()
-          .inTransaction(
-              TransactionIsolationLevel.READ_COMMITTED,
-              handle -> {
-                try {
-                  for (WorkflowInstance instance : conflictingInstances) {
-                    workflowInstanceStateRepository.markInstanceStatesAsFailed(
-                        instance.getId(), "Terminated due to conflicting workflow instance");
-                    workflowInstanceRepository.markInstanceAsFailed(
-                        instance.getId(), "Terminated due to conflicting workflow instance");
-                  }
-                  return null;
-                } catch (Exception e) {
-                  LOG.error("Failed to update instance states in transaction: {}", e.getMessage());
-                  throw e;
-                }
-              });
-
-      LOG.info(
-          "Terminated {} conflicting instances of {} for entity {}",
-          conflictingInstances.size(),
-          mainWorkflowDefinitionName,
-          entityLink);
-
-    } catch (Exception e) {
-      LOG.warn("Failed to terminate conflicting instances: {}", e.getMessage());
-    }
   }
 
   public RuntimeService getRuntimeService() {
