@@ -64,6 +64,11 @@ public class SearchIndexRetryWorker implements Managed {
   private static final long STALE_RECOVERY_INTERVAL_MS = 60_000;
   private static final long STALE_THRESHOLD_MS = 10 * 60 * 1000;
 
+  // Transient (retryable) failures keep retrying up to this ceiling, then dead-letter to FAILED —
+  // a genuinely stuck record (poison doc, persistent 5xx, serialization bug) is abandoned and
+  // visible, not retried forever. High enough that any realistic outage recovers well before it.
+  private static final int MAX_RETRYABLE_ATTEMPTS = 50;
+
   private final CollectionDAO collectionDAO;
   private final SearchRepository searchRepository;
   private final AtomicBoolean running = new AtomicBoolean(false);
@@ -199,14 +204,25 @@ public class SearchIndexRetryWorker implements Managed {
   private void handleProcessingError(SearchIndexRetryRecord record, Exception e) {
     String reason = SearchIndexRetryQueue.failureReason("retryFailed", e);
     if (isRetryable(e)) {
-      String nextStatus = nextRetryStatus(record.getRetryCount());
+      String nextStatus = retryableNextStatus(record.getRetryCount());
       recordRetryFailure(record, reason, nextStatus);
-      LOG.debug(
-          "Retry failed for entityId={} entityFqn={} nextStatus={}: {}",
-          record.getEntityId(),
-          record.getEntityFqn(),
-          nextStatus,
-          e.getMessage());
+      if (STATUS_FAILED.equals(nextStatus)) {
+        Metrics.counter("search.retry.exhausted").increment();
+        LOG.warn(
+            "Retryable failures hit the {}-attempt ceiling for entityId={} entityFqn={}; "
+                + "dead-lettering to FAILED: {}",
+            MAX_RETRYABLE_ATTEMPTS,
+            record.getEntityId(),
+            record.getEntityFqn(),
+            e.getMessage());
+      } else {
+        LOG.debug(
+            "Retry failed for entityId={} entityFqn={} nextStatus={}: {}",
+            record.getEntityId(),
+            record.getEntityFqn(),
+            nextStatus,
+            e.getMessage());
+      }
     } else {
       recordRetryFailure(record, reason, STATUS_FAILED);
       Metrics.counter("search.retry.processed", "result", "non_retryable").increment();
@@ -586,7 +602,7 @@ public class SearchIndexRetryWorker implements Managed {
    *   <li>No status code found → defaults to retryable (conservative)
    * </ul>
    */
-  private boolean isRetryable(Throwable t) {
+  boolean isRetryable(Throwable t) {
     if (t instanceof IOException) {
       return true;
     }
@@ -663,5 +679,24 @@ public class SearchIndexRetryWorker implements Managed {
       case 1 -> STATUS_PENDING_RETRY_2;
       default -> STATUS_FAILED;
     };
+  }
+
+  /**
+   * Next status for a transient (retryable) failure: escalate PENDING → RETRY_1 → RETRY_2 and keep
+   * re-claiming at RETRY_2 until {@link #MAX_RETRYABLE_ATTEMPTS}, then fall through to terminal
+   * FAILED. A real outage recovers long before the ceiling (the worker also backs off entirely while
+   * the client is unreachable), so this survives outages while still abandoning a genuinely stuck
+   * record rather than retrying it forever.
+   */
+  String retryableNextStatus(int retryCount) {
+    String status;
+    if (retryCount == 0) {
+      status = STATUS_PENDING_RETRY_1;
+    } else if (retryCount < MAX_RETRYABLE_ATTEMPTS) {
+      status = STATUS_PENDING_RETRY_2;
+    } else {
+      status = STATUS_FAILED;
+    }
+    return status;
   }
 }
