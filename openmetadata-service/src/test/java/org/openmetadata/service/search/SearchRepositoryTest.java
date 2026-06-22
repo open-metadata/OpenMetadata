@@ -6,12 +6,18 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -22,12 +28,14 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -35,9 +43,13 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 @ExtendWith(MockitoExtension.class)
@@ -132,6 +144,54 @@ class SearchRepositoryTest {
     // Test default implementation returns false
     boolean result = searchRepository.isVectorEmbeddingEnabled();
     assertFalse(result);
+  }
+
+  @Test
+  void updateEntitiesByReference_skipsConcurrentlyDeletedRefAndIndexesSurvivors() {
+    searchRepository.searchIndexFactory = mock(SearchIndexFactory.class);
+    lenient()
+        .when(searchRepository.searchIndexFactory.getReindexFieldsFor(anyString()))
+        .thenReturn(Set.of("name"));
+    doCallRealMethod().when(searchRepository).updateEntitiesByReference(anyList());
+    doNothing().when(searchRepository).updateEntitiesIndex(anyList());
+
+    UUID survivorId = UUID.randomUUID();
+    UUID deletedId = UUID.randomUUID();
+    EntityReference survivorRef = new EntityReference().withId(survivorId).withType(Entity.TABLE);
+    EntityReference deletedRef = new EntityReference().withId(deletedId).withType(Entity.TABLE);
+
+    EntityRepository<?> tableRepository = mock(EntityRepository.class);
+    Fields fields = mock(Fields.class);
+    doReturn(fields).when(tableRepository).getOnlySupportedFields(anyString());
+    EntityInterface survivor = mock(EntityInterface.class);
+    doReturn(survivor).when(tableRepository).get(isNull(), eq(survivorId), eq(fields));
+    doThrow(new EntityNotFoundException("table " + deletedId + " not found"))
+        .when(tableRepository)
+        .get(isNull(), eq(deletedId), eq(fields));
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(tableRepository);
+
+      searchRepository.updateEntitiesByReference(List.of(deletedRef, survivorRef));
+
+      @SuppressWarnings("unchecked")
+      ArgumentCaptor<List<EntityInterface>> indexed = ArgumentCaptor.forClass(List.class);
+      verify(searchRepository).updateEntitiesIndex(indexed.capture());
+      assertEquals(
+          List.of(survivor),
+          indexed.getValue(),
+          "only the survivor is indexed; the concurrently-deleted ref is skipped, not fatal");
+    }
+  }
+
+  @Test
+  void updateEntitiesByReference_isNoOpForNullOrEmptyInput() {
+    doCallRealMethod().when(searchRepository).updateEntitiesByReference(any());
+
+    searchRepository.updateEntitiesByReference(null);
+    searchRepository.updateEntitiesByReference(List.of());
+
+    verify(searchRepository, never()).updateEntitiesIndex(any());
   }
 
   @Test
