@@ -60,6 +60,9 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
   private static final org.slf4j.Logger log =
       org.slf4j.LoggerFactory.getLogger(GlossaryResourceIT.class);
 
+  private static final String GLOSSARY_TERM_CSV_HEADER =
+      "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension\n";
+
   {
     supportsImportExport = true;
     supportsBatchImport = true;
@@ -1117,8 +1120,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
     StringBuilder csv = new StringBuilder();
     // CSV header with all 14 columns as expected by GlossaryCsv.addRecord()
     // Note: 'owner' (singular) NOT 'owners', and 'glossaryStatus' NOT 'status'
-    csv.append(
-        "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension\n");
+    csv.append(GLOSSARY_TERM_CSV_HEADER);
 
     // Add 3 top-level glossary terms with EMPTY parent column
     // Columns: parent, name, displayName, description, synonyms, relatedTerms, references,
@@ -1334,7 +1336,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
 
     // Create a CSV trying to import a new term with the IN_REVIEW term as a related term
     String csv =
-        "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension\n"
+        GLOSSARY_TERM_CSV_HEADER
             + ","
             + ns.prefix("newTerm")
             + ",New Term,Test Term,,\""
@@ -1387,7 +1389,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
 
     // Create a CSV importing a new term with the APPROVED term as a related term
     String csv =
-        "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension\n"
+        GLOSSARY_TERM_CSV_HEADER
             + ","
             + ns.prefix("newTermWithApproved")
             + ",New Term With Approved,Test Term,,\""
@@ -1432,8 +1434,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
     }
 
     StringBuilder csv = new StringBuilder();
-    csv.append(
-        "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension\n");
+    csv.append(GLOSSARY_TERM_CSV_HEADER);
 
     for (Glossary glossary : entities) {
       // Generate sample glossary terms for this glossary
@@ -1459,8 +1460,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
 
   protected String generateInvalidCsvData(TestNamespace ns) {
     StringBuilder csv = new StringBuilder();
-    csv.append(
-        "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension\n");
+    csv.append(GLOSSARY_TERM_CSV_HEADER);
     // Missing required name field
     csv.append(",,Term,Description,,,,,,,,,\n");
     // Invalid glossary status
