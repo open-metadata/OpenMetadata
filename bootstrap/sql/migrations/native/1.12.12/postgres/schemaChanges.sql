@@ -14,3 +14,8 @@ CREATE INDEX IF NOT EXISTS idx_tag_usage_tagfqn_lower_pattern
 CREATE INDEX IF NOT EXISTS idx_tag_usage_tagfqn_prefix_covering
     ON tag_usage (source, tagfqn_lower text_pattern_ops)
     INCLUDE (targetFQNHash, labelType, state);
+
+-- PII recognizer context keyword cleanup: remove overly broad context keywords
+-- (e.g. "code", "security", "address", "name", "call", "check", "save", "social", "number")
+-- that caused false-positive PII classification on non-PII columns.
+-- Handled by Java data migration in v11212.MigrationUtil.removeBroadPiiContextKeywords.
