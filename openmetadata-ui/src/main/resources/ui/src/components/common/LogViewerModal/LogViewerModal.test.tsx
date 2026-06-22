@@ -1,0 +1,103 @@
+import { fireEvent, render, screen } from '@testing-library/react';
+import LogViewerModal from './LogViewerModal.component';
+
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}));
+
+jest.mock('@melloware/react-logviewer', () => ({
+  LazyLog: ({ text, follow }: { text: string; follow?: boolean }) => (
+    <pre data-follow={String(follow)} data-testid="lazy-log">
+      {text}
+    </pre>
+  ),
+}));
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ModalOverlay: ({ children, isOpen }: { children: ReactNode; isOpen: boolean }) =>
+    isOpen ? <div data-testid="modal-overlay">{children}</div> : null,
+  Modal: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  ButtonUtility: ({
+    icon,
+    tooltip,
+    onClick,
+    'data-testid': testId,
+  }: {
+    icon: unknown;
+    tooltip?: string;
+    onClick?: () => void;
+    'data-testid'?: string;
+  }) => (
+    <button aria-label={tooltip} data-testid={testId} onClick={onClick}>
+      icon
+    </button>
+  ),
+  CloseButton: ({
+    onPress,
+    'data-testid': testId,
+  }: {
+    onPress?: () => void;
+    'data-testid'?: string;
+  }) => (
+    <button data-testid={testId} onClick={onPress}>
+      close
+    </button>
+  ),
+}));
+
+jest.mock('react-aria-components', () => ({
+  Dialog: ({ children, className }: { children: ReactNode; className?: string }) => (
+    <div className={className} data-testid="dialog">
+      {children}
+    </div>
+  ),
+}));
+
+jest.mock('../CopyToClipboardButton/CopyToClipboardButton', () => ({
+  __esModule: true,
+  default: ({ copyText }: { copyText: string }) => (
+    <button data-copytext={copyText} data-testid="copy-button">
+      copy
+    </button>
+  ),
+}));
+
+jest.mock('../Loader/Loader', () => ({
+  __esModule: true,
+  default: () => <div data-testid="loader">loading</div>,
+}));
+
+import { ReactNode } from 'react';
+
+const defaultProps = {
+  logs: 'line-one\nline-two',
+  onClose: jest.fn(),
+  open: true,
+  title: 'Auto-document workflow · logs',
+};
+
+describe('LogViewerModal', () => {
+  it('renders the title and logs when open', () => {
+    render(<LogViewerModal {...defaultProps} />);
+
+    expect(screen.getByTestId('log-viewer-title')).toHaveTextContent(
+      'Auto-document workflow · logs'
+    );
+    expect(screen.getByTestId('lazy-log')).toHaveTextContent('line-one');
+  });
+
+  it('renders nothing when closed', () => {
+    render(<LogViewerModal {...defaultProps} open={false} />);
+
+    expect(screen.queryByTestId('lazy-log')).not.toBeInTheDocument();
+  });
+
+  it('calls onClose when the close button is clicked', () => {
+    const onClose = jest.fn();
+    render(<LogViewerModal {...defaultProps} onClose={onClose} />);
+
+    fireEvent.click(screen.getByTestId('log-viewer-close'));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
