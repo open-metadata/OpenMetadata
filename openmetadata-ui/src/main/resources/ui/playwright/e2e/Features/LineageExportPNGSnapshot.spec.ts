@@ -13,6 +13,7 @@
 
 import { expect, test } from '@playwright/test';
 import * as fs from 'fs';
+import { performZoomOut } from '../../utils/lineage';
 
 /**
  * Regression test: exported lineage PNG must include edge lines.
@@ -55,6 +56,15 @@ test.describe('Lineage PNG export — snapshot regression', () => {
 
       return canvas !== null && canvas.width > 0 && canvas.height > 0;
     });
+
+    // perform fit view to ensure all the nodes are in view
+    await page.getByTestId('fit-screen').click();
+    await expect(page.locator('#lineage-view-options-menu')).toBeVisible();
+
+    await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
+
+    // perform zoom out to add breathing space around
+    await performZoomOut(page, 2);
 
     // Open the export modal
     await expect(page.getByTestId('export-button')).toBeEnabled();
