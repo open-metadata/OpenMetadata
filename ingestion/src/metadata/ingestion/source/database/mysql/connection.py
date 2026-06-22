@@ -136,11 +136,11 @@ class MySQLConnection(BaseConnection[MySQLConnectionConfig, Engine]):
 
     def _get_cloudsql_engine(self, connection: MySQLConnectionConfig) -> Engine:
         try:
-            from google.cloud.sql.connectors import Connector
+            from google.cloud.sql.connector import Connector
         except ImportError:
             raise ImportError(
-                "google-cloud-sql-connector is required for GCP CloudSQL connections. "
-                "Install it with: pip install 'cloud-sql-python-connector[pymysql]>=1.0.0'"
+                "cloud-sql-python-connector is required for GCP CloudSQL connections. "
+                "Install it with: pip install 'cloud-sql-python-connector[pymysql]>=1.0.0,<2.0.0'"
             )
 
         if connection.authType.gcpConfig:
