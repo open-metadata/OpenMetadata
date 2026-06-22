@@ -860,6 +860,88 @@
           "entityType"
         ]
       }
+    },
+    {
+      "name": "run_ingestion",
+      "description": "Triggers an OpenMetadata ingestion pipeline to run immediately. Returns the run id and the pipeline's new state. Use this when a user asks to run, execute, start, kick off, or re-run a named ingestion pipeline or connector.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ingestionPipelineFqn": {
+            "type": "string",
+            "description": "Fully qualified name of the ingestion pipeline."
+          }
+        },
+        "required": [
+          "ingestionPipelineFqn"
+        ]
+      }
+    },
+    {
+      "name": "get_ingestion_status",
+      "description": "Returns the most recent ingestion pipeline runs for a named pipeline. Use this when a user asks about status, latest run, did it succeed, recent failures, or history of an ingestion.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ingestionPipelineFqn": {
+            "type": "string",
+            "description": "Fully qualified name of the ingestion pipeline."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Max number of status entries to return. Default 5, max 20.",
+            "minimum": 1,
+            "maximum": 20,
+            "default": 5
+          }
+        },
+        "required": [
+          "ingestionPipelineFqn"
+        ]
+      }
+    },
+    {
+      "name": "create_alert",
+      "description": "Creates an OpenMetadata alert (EventSubscription) that POSTs to a webhook when a specified ingestion pipeline fails. Use this when a user asks to set up monitoring, notify me, alert on failure, watch for changes, or create a rule.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alertName": {
+            "type": "string",
+            "description": "Unique alert name (entity name, no spaces)."
+          },
+          "description": {
+            "type": "string",
+            "description": "Optional short markdown description."
+          },
+          "resourceType": {
+            "type": "string",
+            "enum": ["ingestionPipeline"],
+            "description": "OM resource to watch. v1 supports 'ingestionPipeline' only."
+          },
+          "resourceFqn": {
+            "type": "string",
+            "description": "FQN of the specific resource instance to watch (the ingestion pipeline FQN)."
+          },
+          "eventType": {
+            "type": "string",
+            "enum": ["pipelineFailed"],
+            "description": "Which event triggers the alert. v1 supports 'pipelineFailed'."
+          },
+          "webhookUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "HTTP(S) URL to POST the alert payload to."
+          }
+        },
+        "required": [
+          "alertName",
+          "resourceType",
+          "resourceFqn",
+          "eventType",
+          "webhookUrl"
+        ]
+      }
     }
   ]
 }

@@ -135,6 +135,15 @@ public class DefaultToolContext {
         case "create_data_product":
           result = new CreateDataProductTool().execute(authorizer, limits, securityContext, params);
           break;
+        case "run_ingestion":
+          result = new RunIngestionTool().execute(authorizer, limits, securityContext, params);
+          break;
+        case "get_ingestion_status":
+          result = new GetIngestionStatusTool().execute(authorizer, securityContext, params);
+          break;
+        case "create_alert":
+          result = new CreateAlertTool().execute(authorizer, limits, securityContext, params);
+          break;
         default:
           return new CallToolOutcome(
               McpSchema.CallToolResult.builder()
