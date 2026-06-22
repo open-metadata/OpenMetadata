@@ -216,7 +216,7 @@ class MemoryReconcilerTest {
   }
 
   @Test
-  void createTermWiresRelatedTermsAsRelatedToEdges() {
+  void createTermWiresTypedRelatedTerms() {
     Glossary glossary = new Glossary().withId(UUID.randomUUID()).withName("CustomerValue");
     when(glossaryRepo.findByNameOrNull("CustomerValue", Include.NON_DELETED)).thenReturn(glossary);
     echoTermOnCreate();
@@ -241,7 +241,7 @@ class MemoryReconcilerTest {
             null,
             null,
             null,
-            List.of("CustomerValue.BaseCustomerValue"));
+            List.of(new MemoryRelation("CustomerValue.BaseCustomerValue", "calculatedFrom")));
 
     reconciler().reconcile(memory, new MemoryDerivation(term, skip()), AIDeletionPolicy.CASCADE);
 
@@ -249,7 +249,43 @@ class MemoryReconcilerTest {
     verify(termRepo).addTermRelation(any(UUID.class), relationCaptor.capture());
     TermRelation wired = relationCaptor.getValue();
     assertEquals(related.getId(), wired.getTerm().getId());
-    assertEquals("relatedTo", wired.getRelationType());
+    assertEquals("calculatedFrom", wired.getRelationType());
+  }
+
+  @Test
+  void unknownRelationTypeFallsBackToRelatedTo() {
+    Glossary glossary = new Glossary().withId(UUID.randomUUID()).withName("CustomerValue");
+    when(glossaryRepo.findByNameOrNull("CustomerValue", Include.NON_DELETED)).thenReturn(glossary);
+    echoTermOnCreate();
+    GlossaryTerm related =
+        new GlossaryTerm()
+            .withId(UUID.randomUUID())
+            .withName("BaseCustomerValue")
+            .withFullyQualifiedName("CustomerValue.BaseCustomerValue");
+    when(termRepo.findByNameOrNull("CustomerValue.EngagementWeightedCLV", Include.NON_DELETED))
+        .thenReturn(null);
+    when(termRepo.findByNameOrNull("CustomerValue.BaseCustomerValue", Include.NON_DELETED))
+        .thenReturn(related);
+    MemoryVerdict term =
+        new MemoryVerdict(
+            MemoryAction.CREATE,
+            "CustomerValue",
+            null,
+            null,
+            "EngagementWeightedCLV",
+            "Engagement-Weighted CLV",
+            "CLV adjusted by engagement tier",
+            null,
+            null,
+            null,
+            List.of(
+                new MemoryRelation("CustomerValue.BaseCustomerValue", "isMagicallyDerivedFrom")));
+
+    reconciler().reconcile(memory, new MemoryDerivation(term, skip()), AIDeletionPolicy.CASCADE);
+
+    ArgumentCaptor<TermRelation> relationCaptor = ArgumentCaptor.forClass(TermRelation.class);
+    verify(termRepo).addTermRelation(any(UUID.class), relationCaptor.capture());
+    assertEquals("relatedTo", relationCaptor.getValue().getRelationType());
   }
 
   @Test
@@ -300,7 +336,7 @@ class MemoryReconcilerTest {
             null,
             null,
             null,
-            List.of("Finance.Ghost"));
+            List.of(new MemoryRelation("Finance.Ghost", "synonym")));
 
     reconciler().reconcile(memory, new MemoryDerivation(term, skip()), AIDeletionPolicy.CASCADE);
 

@@ -21,6 +21,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.type.MetricType;
 import org.openmetadata.schema.type.MetricUnitOfMeasurement;
+import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 
 /** Renders a compact user-prompt from a ContextMemory and its grounding candidates. */
 final class MemoryPromptBuilder {
@@ -37,10 +38,18 @@ final class MemoryPromptBuilder {
         + "AVAILABLE GLOSSARIES (reuse one; do not mint near-duplicates)\n"
         + renderCandidates(context.glossaries())
         + "\n"
-        + "SAME-DOCUMENT TERMS (reuse these or set termVerdict.relatedTermFqns to their FQNs)\n"
+        + "SAME-DOCUMENT TERMS (reuse these, or relate to them via termVerdict.relatedTerms)\n"
         + renderCandidates(context.siblingTerms())
         + "\n"
+        + renderRelationTypes()
+        + "\n"
         + renderMetricEnums();
+  }
+
+  private static String renderRelationTypes() {
+    return "ALLOWED RELATION TYPES (relatedTerms[].relationType; direction is \"this term <type> target\")\n"
+        + String.join(", ", GlossaryTermRepository.DEFAULT_RELATION_TYPES)
+        + "\n";
   }
 
   private static String renderMetricEnums() {

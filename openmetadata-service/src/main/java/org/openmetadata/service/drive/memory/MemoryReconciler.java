@@ -198,7 +198,7 @@ public class MemoryReconciler {
         findOwnedByName(memory, Entity.GLOSSARY_TERM, termRepo, verdict.name());
     final String result;
     if (existingOwned != null) {
-      wireRelatedTerms(existingOwned.getId(), verdict.relatedTermFqns());
+      wireRelatedTerms(existingOwned.getId(), verdict.relatedTerms());
       result = verdict.name();
     } else {
       result = createTermWithFqnPrecheck(memory, verdict, ctx, counts);
@@ -219,7 +219,7 @@ public class MemoryReconciler {
     if (existing != null) {
       LOG.info("Term FQN '{}' already exists; reusing instead of creating", termFqn);
       reuseExisting(memory, existing, Entity.GLOSSARY_TERM, termRepo, counts);
-      wireRelatedTerms(existing.getId(), verdict.relatedTermFqns());
+      wireRelatedTerms(existing.getId(), verdict.relatedTerms());
       result = verdict.name();
     } else {
       result = mintTerm(memory, verdict, ctx, counts);
@@ -266,7 +266,7 @@ public class MemoryReconciler {
               .withUpdatedAt(System.currentTimeMillis());
       final GlossaryTerm created = termRepo.createInternal(term);
       addDerivedFromEdge(created.getId(), memory.getId(), Entity.GLOSSARY_TERM, termRepo);
-      wireRelatedTerms(created.getId(), verdict.relatedTermFqns());
+      wireRelatedTerms(created.getId(), verdict.relatedTerms());
       counts.createdTerms++;
       result = verdict.name();
     }
@@ -274,23 +274,42 @@ public class MemoryReconciler {
   }
 
   /**
-   * Connects a term to the other terms the agent named, as {@code relatedTo} edges, so a document's
-   * concepts form a connected ontology instead of disconnected units. Each FQN is resolved against
-   * existing terms (so a hallucinated name is dropped, not minted) and self-links are skipped.
-   * {@link GlossaryTermRepository#addTermRelation} is idempotent, so re-derivation does not duplicate
-   * edges.
+   * Connects a term to the other terms the agent named, with the typed relationship it chose
+   * (SKOS-style: broader/narrower, partOf/hasPart, calculatedFrom/usedToCalculate, synonym, ...), so
+   * a document's concepts form a real ontology instead of disconnected "related to" units. Each FQN
+   * is resolved against existing terms (so a hallucinated name is dropped, not minted) and self-links
+   * are skipped. {@link GlossaryTermRepository#addTermRelation} is idempotent, so re-derivation does
+   * not duplicate edges, and it canonicalizes direction for inverse pairs (e.g. broader/narrower).
    */
-  private void wireRelatedTerms(final UUID termId, final List<String> relatedFqns) {
-    for (final String fqn : listOrEmpty(relatedFqns)) {
-      final EntityInterface related = findByFqn(termRepo, fqn);
+  private void wireRelatedTerms(final UUID termId, final List<MemoryRelation> relations) {
+    for (final MemoryRelation relation : listOrEmpty(relations)) {
+      final EntityInterface related = findByFqn(termRepo, relation.targetFqn());
       if (related != null && !related.getId().equals(termId)) {
         termRepo.addTermRelation(
             termId,
             new TermRelation()
                 .withTerm(related.getEntityReference())
-                .withRelationType(RELATION_TYPE_RELATED_TO));
+                .withRelationType(normalizeRelationType(relation.relationType())));
       }
     }
+  }
+
+  /**
+   * Maps the LLM's raw relation type to the glossary's allowed vocabulary (case-insensitive),
+   * defaulting to {@code relatedTo}. Keeps {@link GlossaryTermRepository#addTermRelation} — which
+   * throws {@code BadRequestException} on an unknown type — from aborting the whole derivation over a
+   * bad LLM string.
+   */
+  private String normalizeRelationType(final String raw) {
+    String result = RELATION_TYPE_RELATED_TO;
+    if (!nullOrEmpty(raw)) {
+      for (final String allowed : GlossaryTermRepository.DEFAULT_RELATION_TYPES) {
+        if (allowed.equalsIgnoreCase(raw.trim())) {
+          result = allowed;
+        }
+      }
+    }
+    return result;
   }
 
   private void reuseTerm(
@@ -300,7 +319,7 @@ public class MemoryReconciler {
       LOG.warn("REUSE verdict for term could not resolve fqn '{}'; skipping", verdict.targetFqn());
     } else {
       reuseExisting(memory, target, Entity.GLOSSARY_TERM, termRepo, counts);
-      wireRelatedTerms(target.getId(), verdict.relatedTermFqns());
+      wireRelatedTerms(target.getId(), verdict.relatedTerms());
     }
   }
 

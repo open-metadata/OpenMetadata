@@ -22,9 +22,10 @@ import java.util.List;
  * Strings for leniency; callers validate and promote to domain types. See {@link MemoryAction}
  * for the expected {@code action} values.
  *
- * <p>{@code relatedTermFqns} lets the agent connect a term to other terms (typically the sibling
- * concepts surfaced from the same source document) so derivation produces a connected ontology
- * rather than disconnected units. It applies only to the term axis; it is ignored for metrics.
+ * <p>{@code relatedTerms} lets the agent connect a term to other terms (typically the sibling
+ * concepts surfaced from the same source document) with a typed relationship, so derivation produces
+ * a real ontology rather than disconnected units. It applies only to the term axis; it is ignored
+ * for metrics.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record MemoryVerdict(
@@ -38,9 +39,9 @@ public record MemoryVerdict(
     @JsonProperty("metricType") String metricType,
     @JsonProperty("unitOfMeasurement") String unitOfMeasurement,
     @JsonProperty("metricExpressionCode") String metricExpressionCode,
-    @JsonProperty("relatedTermFqns") List<String> relatedTermFqns) {
+    @JsonProperty("relatedTerms") List<MemoryRelation> relatedTerms) {
 
-  /** Backward-compatible constructor for call sites that predate {@code relatedTermFqns}. */
+  /** Backward-compatible constructor for call sites that predate {@code relatedTerms}. */
   public MemoryVerdict(
       String action,
       String targetFqn,
