@@ -312,7 +312,7 @@ const Suggestions = ({
         queryFilter: quickFilter,
         pageSize: PAGE_SIZE_BASE,
         includeDeleted: false,
-        excludeSourceFields: ['columns', 'queries', 'columnNames'],
+        excludeSourceFields: ['columns', 'queries', 'columnNames', 'dataModel'],
       });
 
       setOptions(res.hits.hits as unknown as Option[]);
