@@ -16,7 +16,7 @@ import { cloneElement, isValidElement } from 'react';
 import {
   DisableableFieldElement,
   SchemaPropertyLayout,
-} from 'src/components/common/FormBuilderV1/templates/CoreObjectFieldTemplate.interface';
+} from '../components/common/FormBuilderV1/templates/CoreObjectFieldTemplate.interface';
 import {
   ADVANCED_PROPERTIES,
   AWS_S3_STORAGE_CONFIG_TITLE,
@@ -31,7 +31,7 @@ import {
   STATIC_AWS_CREDENTIAL_PROPERTIES,
   STORAGE_CONFIG_ID_SUFFIX,
   STORAGE_CONFIG_PROPERTY_ORDER,
-} from 'src/constants/CoreObjectFieldTemplate.constants';
+} from '../constants/CoreObjectFieldTemplate.constants';
 import { t } from './i18next/LocalUtil';
 
 export const isPlainObject = (
@@ -133,6 +133,7 @@ export const shouldSpanFullWidth = ({
   return (
     hasSchemaType(schemaProperty, 'object') ||
     hasSchemaType(schemaProperty, 'array') ||
+    hasSchemaType(schemaProperty, 'boolean') ||
     Boolean(schemaProperty?.oneOf?.length) ||
     Boolean(schemaProperty?.anyOf?.length) ||
     hasLongValueSignal(name, schemaProperty)

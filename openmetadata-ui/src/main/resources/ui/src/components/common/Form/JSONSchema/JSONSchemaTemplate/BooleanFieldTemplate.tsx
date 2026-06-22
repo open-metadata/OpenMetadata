@@ -18,7 +18,7 @@ const BooleanFieldTemplate = (props: FieldProps) => {
   const title = props.schema.title ?? startCase(props.name);
 
   return (
-    <div className="design-boolean-field tw:flex tw:min-h-[72px] tw:items-start tw:gap-3 tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:p-3">
+    <div className="design-boolean-field tw:flex tw:items-start tw:gap-3 tw:rounded-xl tw:py-1">
       <Toggle
         className="tw:mt-0.5 tw:flex-shrink-0"
         id={props.idSchema.$id}

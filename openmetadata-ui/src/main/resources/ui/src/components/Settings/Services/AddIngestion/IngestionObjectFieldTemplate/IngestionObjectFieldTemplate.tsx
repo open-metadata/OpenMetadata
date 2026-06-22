@@ -260,9 +260,7 @@ const SectionFields = ({
       )}
       {booleanProperties.length > 0 && (
         <>
-          {orderedFieldGroups.length > 0 && (
-            <div className="tw:h-px tw:bg-secondary" />
-          )}
+          {orderedFieldGroups.length > 0 && <Divider />}
           <div className="tw:flex tw:flex-col tw:gap-3">
             {booleanProperties.map((element) => renderProperty(element))}
           </div>

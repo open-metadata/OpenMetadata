@@ -220,6 +220,37 @@
       max-width: 100%;
     }
 
+    .core-object-field-template-sample-data-section {
+      .connection-root-object-root\/sampleDataStorageConfig\/config
+        .core-object-field-template-body,
+      .connection-root-object-root\/sampleDataStorageConfig\/config\/storageConfig {
+        border: 1px solid var(--tw-color-border-secondary);
+        border-radius: var(--tw-radius-lg);
+        padding: 16px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+
+        [data-field-name='overwriteData'] {
+          padding: 16px 0px;
+          border-top: 1px solid var(--tw-color-border-secondary);
+          border-bottom: 1px solid var(--tw-color-border-secondary);
+        }
+
+        background-color: var(--tw-color-bg-secondary);
+      }
+      .connection-root-object-root\/sampleDataStorageConfig\/config\/storageConfig {
+        .core-object-field-template-body {
+          border: none;
+          padding: 0px;
+          background-color: var(--tw-color-bg-primary);
+        }
+        background-color: var(--tw-color-bg-primary);
+        .core-object-field-template-credential-field-grid,
+        .core-object-field-template-advanced-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+    }
+
     .core-one-of-field-select button,
     .core-select-widget button {
       min-height: 40px;
@@ -325,10 +356,6 @@
       font-size: 14px;
       font-weight: 500;
       line-height: 20px;
-    }
-
-    .core-object-field-template-body {
-      gap: 8px;
     }
 
     [data-field-id$='/sampleDataStorageConfig/config/storageConfig']

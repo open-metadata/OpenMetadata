@@ -425,9 +425,7 @@ const SectionFields = ({
       )}
       {booleanProperties.length > 0 && (
         <>
-          {orderedFieldGroups.length > 0 && (
-            <div className="tw:h-px tw:bg-secondary" />
-          )}
+          {orderedFieldGroups.length > 0 && <Divider />}
           <div className="connection-section-boolean-grid tw:grid tw:gap-3 tw:[grid-template-columns:repeat(2,minmax(0,1fr))]">
             {booleanProperties.map((element, index) =>
               renderProperty(element, index)
@@ -646,9 +644,13 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
   if (!isRootConnectionObject(props)) {
     rendered = (
       <div
-        className={classNames('tw:flex tw:flex-col tw:gap-4', {
-          'connection-additional-object tw:pt-0.5': schema.additionalProperties,
-        })}>
+        className={classNames(
+          `tw:flex tw:flex-col tw:gap-4 connection-root-object-${props.idSchema.$id}`,
+          {
+            'connection-additional-object tw:pt-0.5':
+              schema.additionalProperties,
+          }
+        )}>
         <CoreObjectFieldTemplate
           {...props}
           formContext={{

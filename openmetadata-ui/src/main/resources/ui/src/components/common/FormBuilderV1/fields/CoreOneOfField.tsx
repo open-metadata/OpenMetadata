@@ -259,7 +259,7 @@ const CoreOneOfField = (props: FieldProps) => {
       className={classNames(
         'core-one-of-field',
         shouldRenderInlineSelectedBranch
-          ? 'core-one-of-field-inline-selected tw:grid tw:[grid-template-columns:repeat(3,minmax(0,1fr))] tw:[gap:16px] tw:items-start tw:w-full tw:min-w-0'
+          ? 'core-one-of-field-inline-selected tw:grid tw:[grid-template-columns:repeat(2,minmax(0,1fr))] tw:[gap:16px] tw:items-start tw:w-full tw:min-w-0'
           : 'tw:flex tw:flex-col tw:gap-4'
       )}
       data-field-id={idSchema.$id}>
