@@ -28,6 +28,7 @@ import org.apache.felix.http.javaxwrappers.HttpServletResponseWrapper;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.ServiceTokenType;
@@ -566,7 +567,8 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
             isAdmin);
         LOG.info("Admin principals list: {}", getAdminPrincipals());
         User newUser =
-            UserUtil.user(username, email.split("@")[1], username)
+            UserUtil.getUser(
+                    username, new CreateUser().withName(username).withEmail(email).withIsBot(false))
                 .withIsAdmin(isAdmin)
                 .withIsEmailVerified(true);
 

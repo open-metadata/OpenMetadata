@@ -92,6 +92,7 @@ import net.minidev.json.JSONObject;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.teams.Role;
@@ -939,7 +940,10 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       }
 
       User newUser =
-          UserUtil.user(userName, domain, userName).withIsAdmin(isAdmin).withIsEmailVerified(true);
+          UserUtil.getUser(
+                  userName, new CreateUser().withName(userName).withEmail(email).withIsBot(false))
+              .withIsAdmin(isAdmin)
+              .withIsEmailVerified(true);
 
       // Assign default role if configured
       String defaultRoleName = authorizerConfiguration.getDefaultOAuthRole();
