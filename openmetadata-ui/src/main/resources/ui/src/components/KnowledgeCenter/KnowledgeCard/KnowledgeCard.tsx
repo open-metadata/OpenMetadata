@@ -285,7 +285,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
           )}
 
           <Dot className="tw:text-gray-400" size="micro" />
-          <div className="tw:max-w-40">
+          <div className="tw:max-w-40 tw:mb-0.5">
             <Typography
               ellipsis
               className={firstDomain ? 'tw:text-gray-500' : 'tw:text-gray-400'}
