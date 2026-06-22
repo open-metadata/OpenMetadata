@@ -1024,6 +1024,7 @@
     "gcs-config-source": "GCS Yapılandırma Kaynağı",
     "gcs-credential-path": "GCS Kimlik Bilgileri Yolu",
     "gcs-credential-value": "GCS Kimlik Bilgileri Değerleri",
+    "general": "General",
     "generate": "Oluştur",
     "generate-new-token": "Yeni Anahtar Oluştur",
     "generated": "Oluşturuldu",

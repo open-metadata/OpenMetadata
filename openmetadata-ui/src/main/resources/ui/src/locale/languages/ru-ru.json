@@ -1024,6 +1024,7 @@
     "gcs-config-source": "Источник конфигурации GCS",
     "gcs-credential-path": "Путь учетных данных GCS",
     "gcs-credential-value": "Значения учетных данных GCS",
+    "general": "General",
     "generate": "Сгенерировать",
     "generate-new-token": "Сгенерировать новый токен",
     "generated": "Сгенерированный",

@@ -1024,6 +1024,7 @@
     "gcs-config-source": "GCS 설정 소스",
     "gcs-credential-path": "GCS 자격 증명 경로",
     "gcs-credential-value": "GCS 자격 증명 값",
+    "general": "General",
     "generate": "생성",
     "generate-new-token": "새 토큰 생성",
     "generated": "생성됨",

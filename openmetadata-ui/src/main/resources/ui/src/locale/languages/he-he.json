@@ -1024,6 +1024,7 @@
     "gcs-config-source": "מקור הגדרות GCS",
     "gcs-credential-path": "נתיב אישורי GCS",
     "gcs-credential-value": "ערכי אישור GCS",
+    "general": "General",
     "generate": "צור",
     "generate-new-token": "צור טוקן חדש",
     "generated": "מושך",

@@ -1024,6 +1024,7 @@
     "gcs-config-source": "Fonte de configuración de GCS",
     "gcs-credential-path": "Ruta das credenciais de GCS",
     "gcs-credential-value": "Valor das credenciais de GCS",
+    "general": "General",
     "generate": "Xerar",
     "generate-new-token": "Xerar novo token",
     "generated": "Xerado",

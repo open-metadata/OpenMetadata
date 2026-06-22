@@ -1024,6 +1024,7 @@
     "gcs-config-source": "GCS設定ソース",
     "gcs-credential-path": "GCS認証パス",
     "gcs-credential-value": "GCS認証値",
+    "general": "General",
     "generate": "生成",
     "generate-new-token": "新しいトークンを生成",
     "generated": "生成済み",

@@ -1024,6 +1024,7 @@
     "gcs-config-source": "مصدر تكوين GCS",
     "gcs-credential-path": "مسار بيانات اعتماد GCS",
     "gcs-credential-value": "قيم بيانات اعتماد GCS",
+    "general": "General",
     "generate": "توليد",
     "generate-new-token": "توليد رمز جديد",
     "generated": "تم التوليد",

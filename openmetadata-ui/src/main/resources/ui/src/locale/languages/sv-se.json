@@ -1024,6 +1024,7 @@
     "gcs-config-source": "GCS-konfigurationskälla",
     "gcs-credential-path": "GCS-autentiseringssökväg",
     "gcs-credential-value": "GCS-autentiseringsvärden",
+    "general": "General",
     "generate": "Generera",
     "generate-new-token": "Generera ny token",
     "generated": "Genererad",

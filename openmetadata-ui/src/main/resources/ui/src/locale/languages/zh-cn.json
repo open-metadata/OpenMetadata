@@ -1024,6 +1024,7 @@
     "gcs-config-source": "GCS 配置源",
     "gcs-credential-path": "GCS 凭证路径",
     "gcs-credential-value": "GCS 凭证值",
+    "general": "General",
     "generate": "生成",
     "generate-new-token": "生成新令牌",
     "generated": "生成",

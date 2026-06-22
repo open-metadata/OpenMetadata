@@ -1024,6 +1024,7 @@
     "gcs-config-source": "Source de Configuration GCS",
     "gcs-credential-path": "Chemin des Identifiants GCS",
     "gcs-credential-value": "Valeur des Identifiants GCS",
+    "general": "General",
     "generate": "Générer",
     "generate-new-token": "Générer un Nouveau Jeton",
     "generated": "Généré",

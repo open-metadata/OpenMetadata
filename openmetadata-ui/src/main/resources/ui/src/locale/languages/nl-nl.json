@@ -1024,6 +1024,7 @@
     "gcs-config-source": "Bron van GCS-configuratie",
     "gcs-credential-path": "Pad van GCS-verificatiegegevens",
     "gcs-credential-value": "Waarden van GCS-verificatiegegevens",
+    "general": "General",
     "generate": "Genereren",
     "generate-new-token": "Nieuw token genereren",
     "generated": "Gegenereerd",

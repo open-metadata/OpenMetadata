@@ -1024,6 +1024,7 @@
     "gcs-config-source": "แหล่งที่มาของการตั้งค่า GCS",
     "gcs-credential-path": "เส้นทางข้อมูลรับรอง GCS",
     "gcs-credential-value": "ค่าเครดิตเชียล GCS",
+    "general": "General",
     "generate": "สร้าง",
     "generate-new-token": "สร้างโทเค็นใหม่",
     "generated": "สร้างขึ้น",

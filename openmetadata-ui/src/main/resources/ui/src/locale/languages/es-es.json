@@ -1024,6 +1024,7 @@
     "gcs-config-source": "Origen de configuración de GCS",
     "gcs-credential-path": "Ruta de credenciales de GCS",
     "gcs-credential-value": "Valores de credenciales de GCS",
+    "general": "General",
     "generate": "Generar",
     "generate-new-token": "Generar un nuevo token",
     "generated": "Generado",

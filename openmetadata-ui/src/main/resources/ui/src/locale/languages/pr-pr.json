@@ -1024,6 +1024,7 @@
     "gcs-config-source": "منبع پیکربندی GCS",
     "gcs-credential-path": "مسیر اعتبارنامه‌های GCS",
     "gcs-credential-value": "مقادیر اعتبارنامه‌های GCS",
+    "general": "General",
     "generate": "تولید",
     "generate-new-token": "تولید توکن جدید",
     "generated": "تولید شده",
