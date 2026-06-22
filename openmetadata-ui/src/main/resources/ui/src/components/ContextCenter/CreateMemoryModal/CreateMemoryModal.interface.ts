@@ -21,6 +21,8 @@ export interface CreateMemoryModalProps {
   onDeleted?: () => void;
   onEditMemory?: (memory: ContextMemory) => void;
   viewOnly?: boolean;
+  canCreate?: boolean;
+  canEdit?: boolean;
   canDelete?: boolean;
   currentUserName?: string;
 }
