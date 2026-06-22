@@ -191,6 +191,8 @@
     "assume-role-session-name": "Role Session Name for Assume Role",
     "assume-role-source-identity": "Source Identity for Assume Role",
     "attach-file-plural": "Attach Files",
+    "attachment": "Attachment",
+    "attachment-plural": "Attachments",
     "attention": "Attention",
     "audience": "Audience",
     "audio": "Audio",

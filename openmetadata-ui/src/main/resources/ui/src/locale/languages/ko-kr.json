@@ -191,6 +191,8 @@
     "assume-role-session-name": "Assume Role용 세션 이름",
     "assume-role-source-identity": "Assume Role 소스 식별자",
     "attach-file-plural": "파일 첨부",
+    "attachment": "첨부 파일",
+    "attachment-plural": "첨부 파일",
     "attention": "주의",
     "audience": "대상",
     "audio": "오디오",
