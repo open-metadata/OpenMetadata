@@ -504,14 +504,16 @@ export const generateTabItems = (
       label: (
         <div
           className="d-flex items-center justify-between"
-          data-testid={`${lowerCase(tabDetail.label)}-tab`}>
+          data-testid={`${lowerCase(tabDetail.label)}-tab`}
+        >
           <div className="explore-tab-label">
             <span className="explore-icon d-flex m-r-xs">
               <Icon />
             </span>
             <Typography.Text
               className={tabSearchIndex === searchIndex ? 'text-primary' : ''}
-              ellipsis={{ tooltip: true }}>
+              ellipsis={{ tooltip: true }}
+            >
               {tabDetail.label}
             </Typography.Text>
           </div>
@@ -641,7 +643,12 @@ export const fetchEntityData = async ({
           pageNumber: page,
           pageSize: size,
           includeDeleted: showDeleted,
-          excludeSourceFields: ['columns', 'queries', 'columnNames'],
+          excludeSourceFields: [
+            'columns',
+            'queries',
+            'columnNames',
+            'dataModel',
+          ],
         };
 
         try {
@@ -673,7 +680,7 @@ export const fetchEntityData = async ({
         pageNumber: page,
         pageSize: size,
         includeDeleted: showDeleted,
-        excludeSourceFields: ['columns', 'queries', 'columnNames'],
+        excludeSourceFields: ['columns', 'queries', 'columnNames', 'dataModel'],
       };
 
       try {

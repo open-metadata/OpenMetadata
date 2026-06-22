@@ -214,7 +214,8 @@ const Suggestions = ({
       <div
         className="global-search-suggestion-box"
         data-testid="global-search-suggestion-box"
-        role="none">
+        role="none"
+      >
         {[
           { suggestions: tableSuggestions, searchIndex: SearchIndex.TABLE },
           { suggestions: topicSuggestions, searchIndex: SearchIndex.TOPIC },
@@ -314,7 +315,7 @@ const Suggestions = ({
         queryFilter: quickFilter,
         pageSize: PAGE_SIZE_BASE,
         includeDeleted: false,
-        excludeSourceFields: ['columns', 'queries', 'columnNames'],
+        excludeSourceFields: ['columns', 'queries', 'columnNames', 'dataModel'],
       });
 
       setOptions(res.hits.hits as unknown as Option[]);
@@ -371,7 +372,8 @@ const Suggestions = ({
             }
             key={query}
             type="text"
-            onClick={() => onSearchTextUpdate?.(query)}>
+            onClick={() => onSearchTextUpdate?.(query)}
+          >
             {query}
           </Button>
         ))}
