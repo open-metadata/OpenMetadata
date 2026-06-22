@@ -53,7 +53,11 @@ export interface CreateContextMemory {
     sourceAssistantMessage?: string;
     sourceConversation?:     string;
     /**
-     * The Context Center file this memory was extracted from.
+     * The Context Center entity (file or page) this memory was extracted from.
+     */
+    sourceEntity?: EntityReference;
+    /**
+     * Deprecated: use sourceEntity. The Context Center file this memory was extracted from.
      */
     sourceFile?:         EntityReference;
     sourceHumanMessage?: string;
@@ -144,7 +148,9 @@ export enum MemoryType {
  *
  * Principal receiving access. Supported principal types are user, team, and domain.
  *
- * The Context Center file this memory was extracted from.
+ * The Context Center entity (file or page) this memory was extracted from.
+ *
+ * Deprecated: use sourceEntity. The Context Center file this memory was extracted from.
  */
 export interface EntityReference {
     /**
@@ -240,6 +246,7 @@ export enum SourceType {
     ChatPromotion = "ChatPromotion",
     FileExtraction = "FileExtraction",
     Manual = "Manual",
+    PageExtraction = "PageExtraction",
     RememberRequest = "RememberRequest",
 }
 
