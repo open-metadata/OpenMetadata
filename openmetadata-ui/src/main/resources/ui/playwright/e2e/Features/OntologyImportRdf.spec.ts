@@ -46,8 +46,6 @@ hcp:prescribes a owl:ObjectProperty ;
     rdfs:label "prescribes" .
 `;
 
-test.use({ storageState: 'playwright/.auth/admin.json' });
-
 test.describe('Ontology RDF Import', { tag: ['@ontology-rdf'] }, () => {
   const glossary = new Glossary();
   const consumerUser = new UserClass();
@@ -67,10 +65,9 @@ test.describe('Ontology RDF Import', { tag: ['@ontology-rdf'] }, () => {
   });
 
   test('imports an OWL/SKOS ontology from the manage menu and round-trips through the RDF backend', async ({
-    page,
     browser,
   }) => {
-    await redirectToHomePage(page);
+    const { page, apiContext, afterAction } = await performAdminLogin(browser);
     await glossary.visitPage(page);
 
     await page.getByTestId('manage-button').click();
@@ -99,7 +96,6 @@ test.describe('Ontology RDF Import', { tag: ['@ontology-rdf'] }, () => {
 
     // RDF round-trip: with the triplestore enabled, exporting the glossary as an
     // ontology reproduces the canonical concept IRI we imported.
-    const { apiContext, afterAction } = await performAdminLogin(browser);
     const response = await apiContext.get(
       `/api/v1/rdf/glossary/${glossary.responseData.id}/export?format=turtle`
     );
