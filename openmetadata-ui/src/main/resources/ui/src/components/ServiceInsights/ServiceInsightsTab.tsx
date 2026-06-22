@@ -78,8 +78,9 @@ const ServiceInsightsTab = ({
   isIngestionPipelineLoading,
   isCollateAIagentsLoading,
 }: ServiceInsightsTabProps) => {
-  const { serviceCategory } =
-    useRequiredParams<{ serviceCategory: ServiceTypes }>();
+  const { serviceCategory } = useRequiredParams<{
+    serviceCategory: ServiceTypes;
+  }>();
   const { socket } = useWebSocketConnector();
   const [chartsResults, setChartsResults] = useState<ChartsResults>();
   const [agentsInfo, setAgentsInfo] = useState<AgentsInfo[]>([]);
@@ -101,6 +102,9 @@ const ServiceInsightsTab = ({
       const response = await searchQuery({
         queryFilter: getServiceNameQueryFilter(serviceName),
         searchIndex: SearchIndex.ALL,
+        // Aggregation-only query: skip the hit payload entirely (no source, zero hits).
+        pageSize: 0,
+        fetchSource: false,
       });
 
       const assets = getAssetsByServiceType(serviceCategory);
@@ -373,7 +377,8 @@ const ServiceInsightsTab = ({
                 )
                   ? 12
                   : 24
-              }>
+              }
+            >
               <Widget
                 chartsData={getChartsDataFromWidgetName(name, chartsResults)}
                 isLoading={isLoading}

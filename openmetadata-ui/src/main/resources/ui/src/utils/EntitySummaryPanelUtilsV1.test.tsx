@@ -18,7 +18,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { EntityType } from '../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../enums/entity.enum';
 import {
   Container,
   DataType as ContainerDataType,
@@ -36,7 +36,9 @@ import {
 import { Topic } from '../generated/entity/data/topic';
 import { DataType } from '../generated/settings/settings';
 import { DataTypeTopic, Field } from '../generated/type/schema';
+import { getContainerByFQN } from '../rest/storageAPI';
 import { getEntityChildDetailsV1 } from './EntitySummaryPanelUtilsV1';
+import { showErrorToast } from './ToastUtils';
 
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
@@ -70,6 +72,16 @@ jest.mock('../rest/tableAPI', () => ({
 
 jest.mock('../rest/dataModelsAPI', () => ({
   getDataModelColumnsByFQN: jest.fn(),
+}));
+
+jest.mock('../rest/storageAPI', () => ({
+  getContainerByFQN: jest
+    .fn()
+    .mockResolvedValue({ dataModel: { columns: [] } }),
+}));
+
+jest.mock('./ToastUtils', () => ({
+  showErrorToast: jest.fn(),
 }));
 
 jest.mock('../components/common/FieldCard', () => ({
@@ -1114,8 +1126,12 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
 
       render(<div>{result}</div>);
 
-      expect(screen.getByTestId('field-card-top_level_field')).toBeInTheDocument();
-      expect(screen.getByTestId('field-card-parent_record')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('field-card-top_level_field')
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId('field-card-parent_record')
+      ).toBeInTheDocument();
     });
 
     it('should find top-level field by name', () => {
@@ -1129,8 +1145,12 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
 
       render(<div>{result}</div>);
 
-      expect(screen.getByTestId('field-card-top_level_field')).toBeInTheDocument();
-      expect(screen.queryByTestId('field-card-parent_record')).not.toBeInTheDocument();
+      expect(
+        screen.getByTestId('field-card-top_level_field')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('field-card-parent_record')
+      ).not.toBeInTheDocument();
     });
 
     it('should find nested child field when searching by nested name', () => {
@@ -1145,11 +1165,17 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
       render(<div>{result}</div>);
 
       // Parent is shown collapsed; child is behind expand button
-      expect(screen.getByTestId('field-card-parent_record')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('field-card-parent_record')
+      ).toBeInTheDocument();
       expect(screen.getByTestId('expand-icon')).toBeInTheDocument();
-      expect(screen.queryByTestId('field-card-top_level_field')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('field-card-top_level_field')
+      ).not.toBeInTheDocument();
       // Child card is not rendered until user expands
-      expect(screen.queryByTestId('field-card-nested_child_field')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('field-card-nested_child_field')
+      ).not.toBeInTheDocument();
     });
 
     it('should find deeply nested field when searching by its name', () => {
@@ -1164,10 +1190,16 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
       render(<div>{result}</div>);
 
       // Ancestor parent is shown collapsed; deeply nested child is behind expand
-      expect(screen.getByTestId('field-card-parent_record')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('field-card-parent_record')
+      ).toBeInTheDocument();
       expect(screen.getByTestId('expand-icon')).toBeInTheDocument();
-      expect(screen.queryByTestId('field-card-top_level_field')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('field-card-deeply_nested')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('field-card-top_level_field')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('field-card-deeply_nested')
+      ).not.toBeInTheDocument();
     });
 
     it('should show no-data when search text matches nothing', () => {
@@ -1198,7 +1230,9 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
       render(<div>{result}</div>);
 
       expect(screen.getByTestId('field-card-top_column')).toBeInTheDocument();
-      expect(screen.getByTestId('field-card-struct_column')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('field-card-struct_column')
+      ).toBeInTheDocument();
     });
 
     it('should find top-level column by name', () => {
@@ -1213,7 +1247,9 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
       render(<div>{result}</div>);
 
       expect(screen.getByTestId('field-card-top_column')).toBeInTheDocument();
-      expect(screen.queryByTestId('field-card-struct_column')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('field-card-struct_column')
+      ).not.toBeInTheDocument();
     });
 
     it('should find nested child column when searching by nested name', () => {
@@ -1228,10 +1264,16 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
       render(<div>{result}</div>);
 
       // Parent is shown collapsed; child is behind expand button
-      expect(screen.getByTestId('field-card-struct_column')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('field-card-struct_column')
+      ).toBeInTheDocument();
       expect(screen.getByTestId('expand-icon')).toBeInTheDocument();
-      expect(screen.queryByTestId('field-card-top_column')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('field-card-nested_column_child')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('field-card-top_column')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('field-card-nested_column_child')
+      ).not.toBeInTheDocument();
     });
 
     it('should find deeply nested column when searching by its name', () => {
@@ -1246,10 +1288,16 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
       render(<div>{result}</div>);
 
       // Ancestor parent is shown collapsed; deeply nested column is behind expand
-      expect(screen.getByTestId('field-card-struct_column')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('field-card-struct_column')
+      ).toBeInTheDocument();
       expect(screen.getByTestId('expand-icon')).toBeInTheDocument();
-      expect(screen.queryByTestId('field-card-top_column')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('field-card-deeply_nested_column')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('field-card-top_column')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('field-card-deeply_nested_column')
+      ).not.toBeInTheDocument();
     });
 
     it('should show no-data when search text matches nothing', () => {
@@ -1263,9 +1311,7 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
 
       render(<div>{result}</div>);
 
-      expect(
-        screen.getByText('message.no-data-available')
-      ).toBeInTheDocument();
+      expect(screen.getByText('message.no-data-available')).toBeInTheDocument();
     });
   });
 
@@ -1282,7 +1328,9 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
       render(<div>{result}</div>);
 
       expect(screen.getByTestId('field-card-top_si_field')).toBeInTheDocument();
-      expect(screen.getByTestId('field-card-nested_si_parent')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('field-card-nested_si_parent')
+      ).toBeInTheDocument();
     });
 
     it('should find top-level field by name', () => {
@@ -1297,7 +1345,9 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
       render(<div>{result}</div>);
 
       expect(screen.getByTestId('field-card-top_si_field')).toBeInTheDocument();
-      expect(screen.queryByTestId('field-card-nested_si_parent')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('field-card-nested_si_parent')
+      ).not.toBeInTheDocument();
     });
 
     it('should find nested child field when searching by nested name', () => {
@@ -1312,10 +1362,16 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
       render(<div>{result}</div>);
 
       // Parent is shown collapsed; child is behind expand button
-      expect(screen.getByTestId('field-card-nested_si_parent')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('field-card-nested_si_parent')
+      ).toBeInTheDocument();
       expect(screen.getByTestId('expand-icon')).toBeInTheDocument();
-      expect(screen.queryByTestId('field-card-top_si_field')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('field-card-nested_si_child')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('field-card-top_si_field')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('field-card-nested_si_child')
+      ).not.toBeInTheDocument();
     });
 
     it('should find deeply nested field when searching by its name', () => {
@@ -1330,10 +1386,16 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
       render(<div>{result}</div>);
 
       // Ancestor parent is shown collapsed; deeply nested field is behind expand
-      expect(screen.getByTestId('field-card-nested_si_parent')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('field-card-nested_si_parent')
+      ).toBeInTheDocument();
       expect(screen.getByTestId('expand-icon')).toBeInTheDocument();
-      expect(screen.queryByTestId('field-card-top_si_field')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('field-card-deeply_nested_si_field')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('field-card-top_si_field')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('field-card-deeply_nested_si_field')
+      ).not.toBeInTheDocument();
     });
 
     it('should show no-data when search text matches nothing', () => {
@@ -1347,9 +1409,81 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
 
       render(<div>{result}</div>);
 
-      expect(
-        screen.getByText('message.no-data-available')
-      ).toBeInTheDocument();
+      expect(screen.getByText('message.no-data-available')).toBeInTheDocument();
+    });
+  });
+
+  describe('ContainerFieldCardsV1 - on-demand dataModel fetch', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('fetches dataModel on demand when columns are absent from the search hit', async () => {
+      (getContainerByFQN as jest.Mock).mockResolvedValue({
+        dataModel: {
+          columns: [
+            { name: 'fetched_col', dataType: ContainerDataType.String },
+          ],
+        },
+      });
+      const containerWithoutColumns = {
+        id: 'c1',
+        name: 'no-cols',
+        fullyQualifiedName: 's3.no-cols',
+      } as Container;
+
+      const result = getEntityChildDetailsV1(
+        EntityType.CONTAINER,
+        containerWithoutColumns,
+        undefined,
+        false,
+        ''
+      );
+      render(<div>{result}</div>);
+
+      await waitFor(() => {
+        expect(getContainerByFQN).toHaveBeenCalledWith('s3.no-cols', {
+          fields: TabSpecificField.DATAMODEL,
+        });
+      });
+    });
+
+    it('does not fetch when columns are already inline on the search hit', async () => {
+      const result = getEntityChildDetailsV1(
+        EntityType.CONTAINER,
+        mockContainerWithNestedColumns,
+        undefined,
+        false,
+        ''
+      );
+      render(<div>{result}</div>);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('field-card-top_column')).toBeInTheDocument();
+      });
+      expect(getContainerByFQN).not.toHaveBeenCalled();
+    });
+
+    it('surfaces an error toast when the on-demand fetch fails', async () => {
+      (getContainerByFQN as jest.Mock).mockRejectedValue(new Error('boom'));
+      const containerWithoutColumns = {
+        id: 'c2',
+        name: 'err',
+        fullyQualifiedName: 's3.err',
+      } as Container;
+
+      const result = getEntityChildDetailsV1(
+        EntityType.CONTAINER,
+        containerWithoutColumns,
+        undefined,
+        false,
+        ''
+      );
+      render(<div>{result}</div>);
+
+      await waitFor(() => {
+        expect(showErrorToast).toHaveBeenCalled();
+      });
     });
   });
 });

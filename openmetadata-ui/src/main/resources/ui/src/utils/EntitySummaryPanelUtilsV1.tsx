@@ -19,7 +19,8 @@ import {
   Table,
   Typography as AntTypography,
 } from 'antd';
-import { isEmpty } from 'lodash';
+import { AxiosError } from 'axios';
+import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as NestedIcon } from '../assets/svg/nested.svg';
 import { FieldCard } from '../components/common/FieldCard';
@@ -28,7 +29,7 @@ import Loader from '../components/common/Loader/Loader';
 import '../components/Explore/EntitySummaryPanel/entity-summary-panel.less';
 import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
 import { PAGE_SIZE_LARGE } from '../constants/constants';
-import { EntityType } from '../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../enums/entity.enum';
 import { APICollection } from '../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import { Container } from '../generated/entity/data/container';
@@ -46,6 +47,7 @@ import {
   getDataModelColumnsByFQN,
   searchDataModelColumnsByFQN,
 } from '../rest/dataModelsAPI';
+import { getContainerByFQN } from '../rest/storageAPI';
 import {
   getTableColumnsByFQN,
   getTableList,
@@ -54,8 +56,8 @@ import {
 import { GenericNestedField } from './EntitySummaryPanelUtilsV1.interface';
 import { getEntityName } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
-
 import { pruneEmptyChildren } from './TableUtils';
+import { showErrorToast } from './ToastUtils';
 const { Text } = AntTypography;
 
 /**
@@ -104,7 +106,8 @@ const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
         style={{
           paddingLeft: `${level * 24}px`,
           paddingBottom: hasChildren ? '8px' : '0',
-        }}>
+        }}
+      >
         <div className="field-card-no-border">
           <FieldCard
             columnConstraint={column.constraint}
@@ -128,7 +131,8 @@ const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
               data-testid="expand-icon"
               size="small"
               type="link"
-              onClick={() => onToggleExpand(column.fullyQualifiedName ?? '')}>
+              onClick={() => onToggleExpand(column.fullyQualifiedName ?? '')}
+            >
               <Typography color={theme.palette.primary.main} variant="caption">
                 {isExpanded
                   ? t('label.show-less')
@@ -172,72 +176,74 @@ const NestedSchemaFieldCard: React.FC<{
   expandedRowKeys,
   onToggleExpand,
 }) => {
-    const theme = useTheme();
-    const hasChildren = !isEmpty(field.children);
-    const rowKey = field.fullyQualifiedName ?? field.name;
-    const isExpanded = expandedRowKeys.includes(rowKey);
-    const isHighlighted = highlights?.[highlightKey]?.includes(field.name);
-    const childrenCount = field.children?.length ?? 0;
+  const theme = useTheme();
+  const hasChildren = !isEmpty(field.children);
+  const rowKey = field.fullyQualifiedName ?? field.name;
+  const isExpanded = expandedRowKeys.includes(rowKey);
+  const isHighlighted = highlights?.[highlightKey]?.includes(field.name);
+  const childrenCount = field.children?.length ?? 0;
 
-    return (
-      <div>
-        <div
-          className="nested-field-card-wrapper"
-          data-row-key={rowKey}
-          style={{
-            paddingLeft: `${level * 24}px`,
-            paddingBottom: hasChildren ? '8px' : '0',
-          }}>
-          <div className="field-card-no-border">
-            <FieldCard
-              dataType={field.dataType || 'Unknown'}
-              description={field.description}
-              fieldName={getEntityName(field)}
-              glossaryTerms={field.glossaryTerms}
-              isHighlighted={isHighlighted}
-              tags={field.tags}
-            />
-          </div>
-          {hasChildren && (
-            <div className="d-flex align-items-center m-l-md gap-1">
-              {!isExpanded && (
-                <span className="d-flex">
-                  <NestedIcon />
-                </span>
-              )}
-              <Button
-                className="d-flex p-0 h-auto m-b-xs"
-                data-testid="expand-icon"
-                size="small"
-                type="link"
-                onClick={() => onToggleExpand(rowKey)}>
-                <Typography color={theme.palette.primary.main} variant="caption">
-                  {isExpanded
-                    ? t('label.show-less')
-                    : `${t('label.show-nested')} (${childrenCount})`}
-                </Typography>
-              </Button>
-            </div>
-          )}
+  return (
+    <div>
+      <div
+        className="nested-field-card-wrapper"
+        data-row-key={rowKey}
+        style={{
+          paddingLeft: `${level * 24}px`,
+          paddingBottom: hasChildren ? '8px' : '0',
+        }}
+      >
+        <div className="field-card-no-border">
+          <FieldCard
+            dataType={field.dataType || 'Unknown'}
+            description={field.description}
+            fieldName={getEntityName(field)}
+            glossaryTerms={field.glossaryTerms}
+            isHighlighted={isHighlighted}
+            tags={field.tags}
+          />
         </div>
-        {hasChildren && isExpanded && (
-          <div>
-            {field.children?.map((child) => (
-              <NestedSchemaFieldCard
-                expandedRowKeys={expandedRowKeys}
-                field={child}
-                highlightKey={highlightKey}
-                highlights={highlights}
-                key={child.fullyQualifiedName ?? child.name}
-                level={level + 1}
-                onToggleExpand={onToggleExpand}
-              />
-            ))}
+        {hasChildren && (
+          <div className="d-flex align-items-center m-l-md gap-1">
+            {!isExpanded && (
+              <span className="d-flex">
+                <NestedIcon />
+              </span>
+            )}
+            <Button
+              className="d-flex p-0 h-auto m-b-xs"
+              data-testid="expand-icon"
+              size="small"
+              type="link"
+              onClick={() => onToggleExpand(rowKey)}
+            >
+              <Typography color={theme.palette.primary.main} variant="caption">
+                {isExpanded
+                  ? t('label.show-less')
+                  : `${t('label.show-nested')} (${childrenCount})`}
+              </Typography>
+            </Button>
           </div>
         )}
       </div>
-    );
-  };
+      {hasChildren && isExpanded && (
+        <div>
+          {field.children?.map((child) => (
+            <NestedSchemaFieldCard
+              expandedRowKeys={expandedRowKeys}
+              field={child}
+              highlightKey={highlightKey}
+              highlights={highlights}
+              key={child.fullyQualifiedName ?? child.name}
+              level={level + 1}
+              onToggleExpand={onToggleExpand}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 // Shared recursive filter that preserves tree structure (used by Topic, Container, SearchIndex)
 const filterNestedFields = (
@@ -392,7 +398,8 @@ const SchemaFieldCardsV1: React.FC<{
         block
         loading={isLoading && currentPage > 1}
         type="link"
-        onClick={handleLoadMore}>
+        onClick={handleLoadMore}
+      >
         {t('label.show-more')}
       </Button>
     );
@@ -525,7 +532,56 @@ const ContainerFieldCardsV1: React.FC<{
   searchText?: string;
 }> = ({ entityInfo, highlights, loading, searchText }) => {
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
-  const columns = entityInfo.dataModel?.columns || [];
+  const [fetchedColumns, setFetchedColumns] = useState<Column[]>();
+
+  const inlineColumns = entityInfo.dataModel?.columns;
+  const containerFqn = entityInfo.fullyQualifiedName;
+  // Start in the loading state when columns must be fetched on demand, so the first render shows the
+  // loader instead of briefly flashing "No data available".
+  const [isColumnsLoading, setIsColumnsLoading] = useState(
+    () => isUndefined(inlineColumns) && Boolean(containerFqn)
+  );
+
+  useEffect(() => {
+    // dataModel is excluded from Explore search payloads because it can be very large, so when it is
+    // absent on the search hit we fetch it on demand from the entity API.
+    if (!isUndefined(inlineColumns) || !containerFqn) {
+      // No on-demand fetch needed (columns already inline, or no FQN). Clear any loading flag left
+      // set by a now-cancelled in-flight fetch so the loader can't get stuck on.
+      setIsColumnsLoading(false);
+
+      return;
+    }
+    // Drop any previously-fetched columns and show the loader so the prior container's schema isn't
+    // shown while the new one loads; the cancelled guard also ignores a stale in-flight result if
+    // the user switches containers again before it resolves.
+    let cancelled = false;
+    setFetchedColumns(undefined);
+    setIsColumnsLoading(true);
+    getContainerByFQN(containerFqn, { fields: TabSpecificField.DATAMODEL })
+      .then((container) => {
+        if (!cancelled) {
+          setFetchedColumns(container.dataModel?.columns ?? []);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setFetchedColumns([]);
+          showErrorToast(error as AxiosError);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsColumnsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [containerFqn, inlineColumns]);
+
+  const columns = inlineColumns ?? fetchedColumns ?? [];
 
   const filteredColumns = useMemo(
     () =>
@@ -541,7 +597,7 @@ const ContainerFieldCardsV1: React.FC<{
     );
   }, []);
 
-  if (loading) {
+  if (loading || isColumnsLoading) {
     return (
       <div className="flex-center p-lg">
         <Loader size="default" />
@@ -955,8 +1011,8 @@ const APIEndpointSchemaV1: React.FC<{
             children: nameMatch
               ? field.children
               : filteredChildren.length > 0
-                ? filteredChildren
-                : field.children,
+              ? filteredChildren
+              : field.children,
           });
         }
 
