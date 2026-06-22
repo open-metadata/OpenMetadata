@@ -13,7 +13,6 @@
 
 import { Box, Button, IconButton, Typography, useTheme } from '@mui/material';
 import { RefreshCcw01, Trash01, UploadCloud01 } from '@untitledui/icons';
-import { useSnackbar } from 'notistack';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { showNotistackError } from '../../../utils/NotistackUtils';
@@ -49,7 +48,6 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
 }) => {
   const theme = useTheme();
   const { t } = useTranslation();
-  const { enqueueSnackbar } = useSnackbar();
   const imageContainerRef = useRef<HTMLDivElement>(null);
 
   const [imageError, setImageError] = useState(false);
@@ -223,12 +221,7 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
 
   const handleRepositionClick = useCallback(() => {
     if (!isImageRepositionable) {
-      showNotistackError(
-        enqueueSnackbar,
-        t('message.image-too-small-to-reposition'),
-        undefined,
-        { vertical: 'top', horizontal: 'center' }
-      );
+      showNotistackError(t('message.image-too-small-to-reposition'));
 
       return;
     }
@@ -239,7 +232,7 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
       : 0;
     const pixelOffset = (currentPercentage / 100) * scaledHeight;
     setTempOffsetY(pixelOffset);
-  }, [isImageRepositionable, value, enqueueSnackbar, t, getScaledImageHeight]);
+  }, [isImageRepositionable, value, t, getScaledImageHeight]);
 
   const dragStartYRef = useRef(0);
   const dragStartOffsetRef = useRef(0);

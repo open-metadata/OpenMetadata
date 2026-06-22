@@ -79,10 +79,12 @@ export const Toast = ({ toast }: ToastProps) => {
         'tw:shadow-2xl tw:outline-none',
         'tw:animate-in tw:fade-in tw:slide-in-from-bottom-2 tw:duration-150'
       )}
+      data-testid="alert-bar"
       toast={toast}>
       <Icon
         aria-hidden="true"
         className={cx('tw:size-4 tw:shrink-0', config.iconClass)}
+        data-testid="alert-icon"
       />
       {typeof messageOrNode === 'string' ? (
         <span>{messageOrNode}</span>
@@ -93,6 +95,7 @@ export const Toast = ({ toast }: ToastProps) => {
         <Button
           aria-label="Close"
           className="tw:-mr-1 tw:ml-1 tw:flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:p-0.5 tw:text-fg-white/60 tw:outline-none tw:transition tw:hover:bg-white/10 tw:hover:text-fg-white"
+          data-testid="alert-icon-close"
           slot="close"
           onPress={() => state.close(toast.key)}>
           <X aria-hidden="true" className="tw:size-3.5" />

@@ -10,19 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/*
- *  Copyright 2025 Collate.
- *  Copyright 2025 Collate.
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  http://www.apache.org/licenses/LICENSE-2.0
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
 
 import {
   Box,
@@ -33,7 +20,6 @@ import {
 } from '@mui/material';
 import { UploadCloud01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { useSnackbar } from 'notistack';
 import { FC, useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { showNotistackError } from '../../../utils/NotistackUtils';
@@ -62,7 +48,6 @@ const MUIFileUpload: FC<MUIFileUploadProps> = ({
 }) => {
   const theme = useTheme();
   const { t } = useTranslation();
-  const { enqueueSnackbar } = useSnackbar();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounterRef = useRef(0);
 
@@ -102,12 +87,7 @@ const MUIFileUpload: FC<MUIFileUploadProps> = ({
     async (file: File) => {
       const basicValidation = validateFileBasic(file);
       if (!basicValidation.valid) {
-        showNotistackError(
-          enqueueSnackbar,
-          basicValidation.error ?? t('message.invalid-file'),
-          undefined,
-          { vertical: 'top', horizontal: 'center' }
-        );
+        showNotistackError(basicValidation.error ?? t('message.invalid-file'));
 
         return;
       }
@@ -116,10 +96,7 @@ const MUIFileUpload: FC<MUIFileUploadProps> = ({
         const customValidation = await validateFile(file);
         if (!customValidation.valid) {
           showNotistackError(
-            enqueueSnackbar,
-            customValidation.error ?? t('message.invalid-file'),
-            undefined,
-            { vertical: 'top', horizontal: 'center' }
+            customValidation.error ?? t('message.invalid-file')
           );
 
           return;
@@ -137,10 +114,8 @@ const MUIFileUpload: FC<MUIFileUploadProps> = ({
           }
         } catch (error) {
           showNotistackError(
-            enqueueSnackbar,
             error as AxiosError,
-            t('label.failed-to-upload-file'),
-            { vertical: 'top', horizontal: 'center' }
+            t('label.failed-to-upload-file')
           );
         } finally {
           setIsUploading(false);
@@ -151,7 +126,7 @@ const MUIFileUpload: FC<MUIFileUploadProps> = ({
         }
       }
     },
-    [onUpload, onChange, validateFileBasic, validateFile, t, enqueueSnackbar]
+    [onUpload, onChange, validateFileBasic, validateFile, t]
   );
 
   const handleDragEnter = useCallback(
