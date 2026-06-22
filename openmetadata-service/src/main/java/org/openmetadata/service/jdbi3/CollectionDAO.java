@@ -3637,7 +3637,7 @@ public interface CollectionDAO {
                 + "    SELECT te.type, te.taskStatus, te.id "
                 + "    FROM <tableName> te "
                 + "    WHERE MATCH(te.taskAssigneesIds) AGAINST (:userTeamJsonMysql IN BOOLEAN MODE) "
-                + ") AS combined WHERE combined.type is not NULL "
+                + ") AS combined WHERE combined.type is not NULL <domainCondition> "
                 + "GROUP BY combined.type, combined.taskStatus;",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
@@ -3671,7 +3671,7 @@ public interface CollectionDAO {
                 + "    SELECT te.type, te.taskStatus, te.id "
                 + "    FROM <tableName> te "
                 + "    WHERE to_tsvector('simple', taskAssigneesIds) @@ to_tsquery('simple', :userTeamJsonPostgres) "
-                + ") AS combined WHERE combined.type is not NULL "
+                + ") AS combined WHERE combined.type is not NULL <domainCondition> "
                 + "GROUP BY combined.type, combined.taskStatus;",
         connectionType = POSTGRES)
     @RegisterRowMapper(OwnerCountFieldMapper.class)
@@ -3681,7 +3681,8 @@ public interface CollectionDAO {
         @BindList("teamIds") List<String> teamIds,
         @Bind("username") String username,
         @Bind("userTeamJsonMysql") String userTeamJsonMysql,
-        @Bind("userTeamJsonPostgres") String userTeamJsonPostgres);
+        @Bind("userTeamJsonPostgres") String userTeamJsonPostgres,
+        @Define("domainCondition") String domainCondition);
 
     @ConnectionAwareSqlQuery(
         value =
