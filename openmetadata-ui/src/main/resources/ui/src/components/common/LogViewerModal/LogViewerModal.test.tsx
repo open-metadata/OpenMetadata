@@ -19,8 +19,19 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock('@melloware/react-logviewer', () => ({
-  LazyLog: ({ text, follow }: { text: string; follow?: boolean }) => (
-    <pre data-follow={String(follow)} data-testid="lazy-log">
+  LazyLog: ({
+    text,
+    follow,
+    enableSearch,
+  }: {
+    text: string;
+    follow?: boolean;
+    enableSearch?: boolean;
+  }) => (
+    <pre
+      data-follow={String(follow)}
+      data-search={String(enableSearch)}
+      data-testid="lazy-log">
       {text}
     </pre>
   ),
@@ -52,12 +63,14 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ),
   CloseButton: ({
     onPress,
+    theme,
     'data-testid': testId,
   }: {
     onPress?: () => void;
+    theme?: string;
     'data-testid'?: string;
   }) => (
-    <button data-testid={testId} onClick={onPress}>
+    <button data-testid={testId} data-theme={theme} onClick={onPress}>
       close
     </button>
   ),
@@ -169,6 +182,38 @@ describe('LogViewerModal', () => {
     expect(screen.getByTestId('lazy-log')).toHaveAttribute(
       'data-follow',
       'true'
+    );
+  });
+
+  it('passes the enableSearch flag through to the log viewer', () => {
+    const { rerender } = render(<LogViewerModal {...defaultProps} />);
+
+    expect(screen.getByTestId('lazy-log')).toHaveAttribute(
+      'data-search',
+      'true'
+    );
+
+    rerender(<LogViewerModal {...defaultProps} enableSearch={false} />);
+
+    expect(screen.getByTestId('lazy-log')).toHaveAttribute(
+      'data-search',
+      'false'
+    );
+  });
+
+  it('uses the dark close-button theme by default and light when theme is light', () => {
+    const { rerender } = render(<LogViewerModal {...defaultProps} />);
+
+    expect(screen.getByTestId('log-viewer-close')).toHaveAttribute(
+      'data-theme',
+      'dark'
+    );
+
+    rerender(<LogViewerModal {...defaultProps} theme="light" />);
+
+    expect(screen.getByTestId('log-viewer-close')).toHaveAttribute(
+      'data-theme',
+      'light'
     );
   });
 });

@@ -78,6 +78,7 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = ({
                 <CloseButton
                   data-testid="log-viewer-close"
                   size="sm"
+                  theme={theme === 'dark' ? 'dark' : 'light'}
                   onPress={onClose}
                 />
               </div>

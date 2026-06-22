@@ -117,10 +117,12 @@ the existing `CopyToClipboardButton` util on `logs`; download calls `onDownload`
 
 ### Internationalization
 
-All internal labels (Copy, Download, search placeholder, button aria-labels) use
-`useTranslation` and reuse existing keys where available (`label.copy`,
-`label.download`, `label.search`, `label.log-plural`). `title` is a prop. No string
-literals in the component.
+The component itself uses `useTranslation` for a single key: `label.download` (the
+download button tooltip). Copy labeling is handled by the reused
+`CopyToClipboardButton`, which manages its own `message.copy-to-clipboard` keys
+internally. The `LazyLog` search bar renders the library's built-in (untranslated)
+English placeholder — there are no other string literals in the component's own code.
+`title` is always a prop supplied by the caller.
 
 ## Library API confirmation
 
