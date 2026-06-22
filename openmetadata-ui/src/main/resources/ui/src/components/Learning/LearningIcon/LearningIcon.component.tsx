@@ -26,7 +26,8 @@ const LearningDrawer = withSuspenseFallback(
     import('../LearningDrawer/LearningDrawer.component').then((m) => ({
       default: m.LearningDrawer,
     }))
-  )
+  ),
+  null
 );
 
 export const LearningIcon: React.FC<LearningIconProps> = ({
