@@ -8,12 +8,3 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""
-Hex Service Specification
-"""
-
-from metadata.ingestion.source.dashboard.hex.connection import HexConnection
-from metadata.ingestion.source.dashboard.hex.metadata import HexSource
-from metadata.utils.service_spec.service_spec import BaseSpec
-
-ServiceSpec = BaseSpec(metadata_source_class=HexSource, connection_class=HexConnection)  # pyright: ignore[reportArgumentType]
