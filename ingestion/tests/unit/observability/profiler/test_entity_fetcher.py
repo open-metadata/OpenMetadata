@@ -227,6 +227,58 @@ UNTAGGED_TABLE = Table(
     tableType=TableType.Regular,
 )
 
+MULTI_TAG_TABLE = Table(
+    id=uuid.uuid4(),
+    name="transactions",
+    fullyQualifiedName="my_service.prod.finance.transactions",
+    columns=[Column(name="id", dataType=DataType.INT)],
+    database=DB_REF,
+    databaseSchema=FINANCE_SCHEMA_REF,
+    tableType=TableType.Regular,
+    tags=[
+        TagLabel(
+            labelType="Manual",
+            name="PII",
+            tagFQN="PII.Sensitive",
+            state="Confirmed",
+            source="Classification",
+        ),
+        TagLabel(
+            labelType="Manual",
+            name="Revenue",
+            tagFQN="Finance.Revenue",
+            state="Confirmed",
+            source="Classification",
+        ),
+    ],
+)
+
+TIER_REVENUE_TABLE = Table(
+    id=uuid.uuid4(),
+    name="ledger",
+    fullyQualifiedName="my_service.prod.finance.ledger",
+    columns=[Column(name="id", dataType=DataType.INT)],
+    database=DB_REF,
+    databaseSchema=FINANCE_SCHEMA_REF,
+    tableType=TableType.Regular,
+    tags=[
+        TagLabel(
+            labelType="Manual",
+            name="Tier1",
+            tagFQN="Tier.Tier1",
+            state="Confirmed",
+            source="Classification",
+        ),
+        TagLabel(
+            labelType="Manual",
+            name="Revenue",
+            tagFQN="Finance.Revenue",
+            state="Confirmed",
+            source="Classification",
+        ),
+    ],
+)
+
 
 def _make_fetcher(source_config_overrides=None):
     """Build a DatabaseFetcherStrategy with a mocked metadata client"""
@@ -408,6 +460,51 @@ class TestGetTableEntities:
         result = list(fetcher._get_table_entities(PROD_DB))
 
         assert result == [SALARY_TABLE]
+
+    def test_classification_include_keeps_table_with_extra_tags(self):
+        """A table carrying a matching include tag is kept even when it also
+        has other, non-matching tags. A single matching tag is sufficient."""
+        fetcher = _make_fetcher(
+            {
+                "classificationFilterPattern": {"includes": ["PII.*"]},
+            }
+        )
+        fetcher.metadata.list_all_entities.return_value = iter([MULTI_TAG_TABLE, TIER_REVENUE_TABLE])
+
+        result = list(fetcher._get_table_entities(PROD_DB))
+
+        assert result == [MULTI_TAG_TABLE]
+
+    def test_classification_exclude_takes_precedence_over_include(self):
+        """When a table matches both an include and an exclude pattern,
+        exclude wins and the table is filtered out."""
+        fetcher = _make_fetcher(
+            {
+                "classificationFilterPattern": {
+                    "includes": ["Tier.*"],
+                    "excludes": ["Revenue.*"],
+                },
+            }
+        )
+        fetcher.metadata.list_all_entities.return_value = iter([TIER_REVENUE_TABLE])
+
+        result = list(fetcher._get_table_entities(PROD_DB))
+
+        assert result == []
+
+    def test_classification_exclude_keeps_multi_tag_table_without_excluded_tag(self):
+        """A multi-tag table is kept when none of its tags match the exclude
+        pattern, regardless of how many other tags it carries."""
+        fetcher = _make_fetcher(
+            {
+                "classificationFilterPattern": {"excludes": ["PII.*"]},
+            }
+        )
+        fetcher.metadata.list_all_entities.return_value = iter([TIER_REVENUE_TABLE, MULTI_TAG_TABLE])
+
+        result = list(fetcher._get_table_entities(PROD_DB))
+
+        assert result == [TIER_REVENUE_TABLE]
 
     def test_views_and_classifications_combined(self):
         """Both view filtering and classification filtering

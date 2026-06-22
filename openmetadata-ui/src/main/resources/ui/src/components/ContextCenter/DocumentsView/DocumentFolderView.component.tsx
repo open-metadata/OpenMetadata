@@ -110,7 +110,7 @@ const DocumentFolderView = ({
         <div className="tw:flex tw:items-center tw:justify-between tw:mb-5">
           <div className="tw:flex tw:items-center tw:gap-3">
             <div className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0">
-              <FolderIcon className="tw:text-gray-600" height={20} width={20} />
+              <FolderIcon className="tw:text-tertiary" height={20} width={20} />
             </div>
             <div>
               <Typography size="text-md" weight="semibold">
@@ -219,7 +219,7 @@ const DocumentFolderView = ({
                           />
                           <Typography
                             ellipsis
-                            className="tw:truncate tw:text-gray-700 tw:max-w-[70%]"
+                            className="tw:truncate tw:text-secondary tw:max-w-[70%]"
                             size="text-sm"
                             weight="medium">
                             {file.name}

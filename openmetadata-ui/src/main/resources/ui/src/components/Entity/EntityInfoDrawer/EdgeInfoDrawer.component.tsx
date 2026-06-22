@@ -35,7 +35,6 @@ import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import Loader from '../../common/Loader/Loader';
 import './entity-info-drawer.less';
 import { EdgeInfoDrawerInfo } from './EntityInfoDrawer.interface';
-
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
 );
@@ -362,7 +361,7 @@ const EdgeInfoDrawer = ({
     setIsLoading(true);
     getEdgeInfo();
     setMysqlQuery(edge.data.edge?.sqlQuery);
-  }, [edge, visible]);
+  }, [edge, visible, nodes]);
 
   return (
     <>

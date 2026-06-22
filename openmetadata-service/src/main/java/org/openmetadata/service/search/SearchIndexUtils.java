@@ -84,15 +84,17 @@ public final class SearchIndexUtils {
   }
 
   /**
-   * Progressively strips lineage fields from a search document JSON to bring it under maxBytes.
+   * Progressively strips oversized fields from a search document JSON to bring it under maxBytes.
    *
-   * <p>Stripping order: lineageSqlQueries first (retains topology), then upstreamLineage.
-   * Returns the (possibly stripped) JSON — caller must re-check size and handle the still-oversized
-   * case.
+   * <p>Stripping order: lineageSqlQueries first (retains topology), then upstreamLineage, then — if
+   * still oversized — the nested column tree (column {@code children} plus the derived {@code
+   * columnNames}/{@code columnNamesFuzzy}) via {@link #stripColumnTreeForSize}. Returns the
+   * (possibly stripped) JSON — caller must re-check size and handle the still-oversized case.
    */
   public static String stripLineageForSize(
       String json, long maxBytes, String docId, String entityType) {
-    if (json.getBytes(StandardCharsets.UTF_8).length <= maxBytes) {
+    int size = json.getBytes(StandardCharsets.UTF_8).length;
+    if (size <= maxBytes) {
       return json;
     }
     TypeReference<Map<String, Object>> mapType = new TypeReference<>() {};
@@ -100,51 +102,72 @@ public final class SearchIndexUtils {
     if (doc.remove("lineageSqlQueries") != null) {
       stripSqlQueryKeysFromEdges(doc);
       json = JsonUtils.pojoToJson(doc);
-      int sizeAfterStrip = json.getBytes(StandardCharsets.UTF_8).length;
+      size = json.getBytes(StandardCharsets.UTF_8).length;
       LOG.warn(
           "Document {} ({}) too large, stripped lineageSqlQueries (size now {} bytes)",
           docId,
           entityType,
-          sizeAfterStrip);
-      if (sizeAfterStrip <= maxBytes) {
+          size);
+      if (size <= maxBytes) {
         return json;
       }
     }
-    doc.remove("upstreamLineage");
-    json = JsonUtils.pojoToJson(doc);
-    LOG.warn(
-        "Document {} ({}) still too large, stripped upstreamLineage (size now {} bytes)",
-        docId,
-        entityType,
-        json.getBytes(StandardCharsets.UTF_8).length);
+    if (doc.remove("upstreamLineage") != null) {
+      json = JsonUtils.pojoToJson(doc);
+      size = json.getBytes(StandardCharsets.UTF_8).length;
+      LOG.warn(
+          "Document {} ({}) still too large, stripped upstreamLineage (size now {} bytes)",
+          docId,
+          entityType,
+          size);
+    }
+    if (size > maxBytes) {
+      stripColumnTreeForSize(doc);
+      json = JsonUtils.pojoToJson(doc);
+      size = json.getBytes(StandardCharsets.UTF_8).length;
+      LOG.warn(
+          "Document {} ({}) still too large, stripped column children, columnNames and columnNamesFuzzy (size now {} bytes)",
+          docId,
+          entityType,
+          size);
+    }
     return json;
   }
 
   public static Map<String, Object> stripDocMapIfOversized(
       Map<String, Object> doc, long maxBytes, String docId, String entityType) {
-    String json = JsonUtils.pojoToJson(doc);
-    if (json.getBytes(StandardCharsets.UTF_8).length <= maxBytes) {
+    int size = JsonUtils.pojoToJson(doc).getBytes(StandardCharsets.UTF_8).length;
+    if (size <= maxBytes) {
       return doc;
     }
     if (doc.remove("lineageSqlQueries") != null) {
       stripSqlQueryKeysFromEdges(doc);
-      json = JsonUtils.pojoToJson(doc);
-      int strippedSize = json.getBytes(StandardCharsets.UTF_8).length;
+      size = JsonUtils.pojoToJson(doc).getBytes(StandardCharsets.UTF_8).length;
       LOG.warn(
           "Live index doc {} ({}) too large, stripped lineageSqlQueries ({} bytes)",
           docId,
           entityType,
-          strippedSize);
-      if (strippedSize <= maxBytes) {
+          size);
+      if (size <= maxBytes) {
         return doc;
       }
     }
     if (doc.remove("upstreamLineage") != null) {
+      size = JsonUtils.pojoToJson(doc).getBytes(StandardCharsets.UTF_8).length;
       LOG.warn(
           "Live index doc {} ({}) still too large, stripped upstreamLineage ({} bytes)",
           docId,
           entityType,
-          JsonUtils.pojoToJson(doc).getBytes(StandardCharsets.UTF_8).length);
+          size);
+    }
+    if (size > maxBytes) {
+      stripColumnTreeForSize(doc);
+      size = JsonUtils.pojoToJson(doc).getBytes(StandardCharsets.UTF_8).length;
+      LOG.warn(
+          "Live index doc {} ({}) still too large, stripped column children, columnNames and columnNamesFuzzy ({} bytes)",
+          docId,
+          entityType,
+          size);
     }
     return doc;
   }
@@ -156,6 +179,36 @@ public final class SearchIndexUtils {
       for (Object edge : edges) {
         if (edge instanceof Map<?, ?> edgeMap) {
           ((Map<String, Object>) edgeMap).remove("sqlQueryKey");
+        }
+      }
+    }
+  }
+
+  /**
+   * Last-resort size reduction for pathological column schemas. Drops the nested column {@code
+   * children} (mapped {@code enabled:false} — stored in _source but never indexed/searchable) and
+   * the flattened {@code columnNames}/{@code columnNamesFuzzy} derived from them. Reached only after
+   * lineage stripping leaves the doc still over the cap — e.g. a container whose columns each carry
+   * tens of thousands of children, where the column tree dwarfs the rest of the document and would
+   * otherwise OOM the serializer on read. Top-level columns are kept, so column search and the
+   * column grid still work; the full schema remains available via the entity API.
+   */
+  @SuppressWarnings("unchecked")
+  static void stripColumnTreeForSize(Map<String, Object> doc) {
+    stripChildrenFromColumns(doc.get("columns"));
+    if (doc.get("dataModel") instanceof Map<?, ?> dataModel) {
+      stripChildrenFromColumns(((Map<String, Object>) dataModel).get("columns"));
+    }
+    doc.remove("columnNames");
+    doc.remove("columnNamesFuzzy");
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void stripChildrenFromColumns(Object columns) {
+    if (columns instanceof List<?> columnList) {
+      for (Object column : columnList) {
+        if (column instanceof Map<?, ?> columnMap) {
+          ((Map<String, Object>) columnMap).remove("children");
         }
       }
     }
