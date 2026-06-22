@@ -74,7 +74,7 @@ on:
         type: string
         default: ''
       scaleSeeds:
-        description: 'JSON array of scale table cohort sizes (matrix). E.g. [100000] or [100000, 500000].'
+        description: 'JSON array of scale table cohort sizes (matrix). E.g. [100000] or [100000, 250000].'
         required: false
         type: string
         default: '[100000]'
@@ -402,7 +402,7 @@ jobs:
       fail-fast: false
       max-parallel: 1
       matrix:
-        seed: ${{ fromJSON(github.event.inputs.scaleSeeds || '[100000, 500000]') }}
+        seed: ${{ fromJSON(github.event.inputs.scaleSeeds || '[100000]') }}
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
