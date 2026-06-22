@@ -146,7 +146,7 @@ class SimpleReindexTriggerUIIT {
         .atMost(INDEX_COUNT_TIMEOUT)
         .pollInterval(INDEX_COUNT_POLL_INTERVAL)
         .pollDelay(Duration.ZERO)
-        .ignoreNoExceptions()
+        .ignoreExceptions()
         .untilAsserted(
             () -> {
               final long actual = search.countByNamePrefix(index, namePrefix);
@@ -171,7 +171,7 @@ class SimpleReindexTriggerUIIT {
         .atMost(INDEX_COUNT_TIMEOUT)
         .pollInterval(INDEX_COUNT_POLL_INTERVAL)
         .pollDelay(Duration.ZERO)
-        .ignoreNoExceptions()
+        .ignoreExceptions()
         .untilAsserted(
             () -> {
               final ExplorePage explore = ExplorePage.openWithSearch(ui, tab, firstEntityName);

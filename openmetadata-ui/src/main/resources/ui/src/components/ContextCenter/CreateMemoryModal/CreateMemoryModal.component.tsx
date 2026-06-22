@@ -85,10 +85,7 @@ import {
   updateContextMemory,
 } from '../../../rest/contextMemoryAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import {
-  formatDate,
-  getShortRelativeTime,
-} from '../../../utils/date-time/DateTimeUtils';
+import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { getErrorText } from '../../../utils/StringUtils';
@@ -946,41 +943,23 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                           </Typography>
                         </div>
                       )}
-                      {memoryToEdit?.usageCount !== undefined && (
-                        <div className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3">
-                          <div className="tw:basis-[30%]">
-                            <Typography
-                              className="tw:text-gray-500 tw:w-28 tw:shrink-0"
-                              size="text-sm">
-                              {t('label.used-by-ask-collate')}
-                            </Typography>
-                          </div>
-                          <div className="tw:flex tw:items-center tw:gap-1">
-                            <Typography
-                              className="tw:text-tertiary"
-                              size="text-sm"
-                              weight="semibold">
-                              {t('label.n-times', {
-                                count: memoryToEdit.usageCount,
-                              })}
-                            </Typography>
-                            {memoryToEdit.lastUsedAt !== undefined && (
-                              <>
-                                <span className="tw:text-gray-400 tw:select-none tw:mx-1">
-                                  &middot;
-                                </span>
+                      {memoryToEdit &&
+                        contextCenterClassBase
+                          .getMemoryMetadataList(memoryToEdit)
+                          .map(({ key, label, value }) => (
+                            <div
+                              className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3"
+                              key={key}>
+                              <div className="tw:basis-[30%]">
                                 <Typography
-                                  className="tw:text-gray-500"
+                                  className="tw:text-gray-500 tw:w-28 tw:shrink-0"
                                   size="text-sm">
-                                  {`${t('label.last')} ${getShortRelativeTime(
-                                    memoryToEdit.lastUsedAt
-                                  )}`}
+                                  {label}
                                 </Typography>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      )}
+                              </div>
+                              {value}
+                            </div>
+                          ))}
                     </Card>
                   </div>
                   {isViewOnly && memoryToEdit?.id && (
