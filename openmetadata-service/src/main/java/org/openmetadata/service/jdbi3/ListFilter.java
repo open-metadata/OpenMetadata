@@ -24,7 +24,6 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 public class ListFilter extends Filter<ListFilter> {
   public static final String NULL_PARAM = "null";
-  private static final String MCP_EXECUTION_TABLE_NAME = "mcp_execution_entity";
 
   public ListFilter() {
     this(Include.NON_DELETED);
@@ -86,9 +85,10 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTaskAccessTypeCondition());
     conditions.add(getDarSearchCondition());
     conditions.add(getEntityStatusCondition(tableName));
-    conditions.add(getServerIdCondition(tableName));
+    conditions.add(getServerIdCondition());
     conditions.add(getNameFilterCondition());
     conditions.add(getSourceFileCondition());
+    conditions.add(getSourceEntityCondition());
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -139,6 +139,22 @@ public class ListFilter extends Filter<ListFilter> {
               "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
                   + "WHERE entity_relationship.fromEntity = 'contextFile' "
                   + "AND entity_relationship.fromId = :sourceFileIdParam "
+                  + "AND entity_relationship.relation = %d))",
+              Relationship.MENTIONED_IN.ordinal());
+    }
+    return result;
+  }
+
+  /** Filters context memories down to the knowledge pills extracted from any source entity. */
+  private String getSourceEntityCondition() {
+    String sourceEntityId = queryParams.get("sourceEntityId");
+    String result = "";
+    if (!nullOrEmpty(sourceEntityId)) {
+      queryParams.put("sourceEntityIdParam", sourceEntityId);
+      result =
+          String.format(
+              "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
+                  + "WHERE entity_relationship.fromId = :sourceEntityIdParam "
                   + "AND entity_relationship.relation = %d))",
               Relationship.MENTIONED_IN.ordinal());
     }
@@ -611,11 +627,9 @@ public class ListFilter extends Filter<ListFilter> {
         : getFqnPrefixCondition(apiEndpoint, apiCollection, "apiCollection");
   }
 
-  private String getServerIdCondition(String tableName) {
+  private String getServerIdCondition() {
     String serverId = queryParams.get("serverId");
-    return serverId == null || !MCP_EXECUTION_TABLE_NAME.equals(tableName)
-        ? ""
-        : "serverId = :serverId";
+    return serverId == null ? "" : "serverId = :serverId";
   }
 
   private String getEntityFQNHashCondition() {

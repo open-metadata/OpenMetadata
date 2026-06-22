@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -166,13 +167,17 @@ class ODPSConverterTest {
   }
 
   @Test
-  void fromODPS_preservesOriginalDocumentInExtension() {
+  void fromODPS_doesNotWriteUnregisteredOdpsMetadataExtension() {
+    // `odpsMetadata` is not a registered custom property on the dataProduct
+    // entity type, so writing it into the extension would make every API import
+    // fail validation ("Unknown custom field odpsMetadata"). The converter maps
+    // all meaningful ODPS fields onto native attributes instead and leaves the
+    // extension untouched.
     ODPSDataProduct odps = basicODPS();
 
     DataProduct dp = ODPSConverter.fromODPS(odps);
 
-    assertNotNull(dp.getExtension());
-    assertTrue(dp.getExtension().toString().contains("odpsMetadata"));
+    assertNull(dp.getExtension());
   }
 
   @Test
