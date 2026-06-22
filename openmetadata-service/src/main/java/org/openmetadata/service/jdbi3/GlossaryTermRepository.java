@@ -2217,69 +2217,80 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         return;
       }
 
-      if (renameProcessed) {
-        return;
-      }
-      renameProcessed = true;
-
-      if (ProviderType.SYSTEM.equals(original.getProvider())) {
-        throw new IllegalArgumentException(
-            CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
-      }
-
       String[] oldParts = FullyQualifiedName.split(oldFqn);
       String oldTermName = oldParts.length > 0 ? oldParts[oldParts.length - 1] : oldFqn;
       boolean nameChanged = !oldTermName.equals(updated.getName());
 
-      if (nameChanged) {
-        checkDuplicateTermsForUpdate(original, updated);
+      // EntityUpdater.update() runs updateNameAndParent twice — once in the incremental pre-pass
+      // and once in the real pass. The FQN-rewrite cascade (DB FQN update, tag-usage rename,
+      // relationship + asset repointing) must run exactly once, so renameProcessed guards it
+      // against a double-apply. The recordChange calls, however, must run in BOTH passes — without
+      // them in the real pass the persisted changeDescription omits name/parent, and the glossary
+      // approval workflow never re-triggers for a moved/renamed approved term.
+      if (!renameProcessed) {
+        renameProcessed = true;
+
+        if (ProviderType.SYSTEM.equals(original.getProvider())) {
+          throw new IllegalArgumentException(
+              CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
+        }
+
+        if (nameChanged) {
+          checkDuplicateTermsForUpdate(original, updated);
+        }
+
+        LOG.info("Glossary term FQN changed from {} to {}", oldFqn, newFqn);
+        // Drop cache entries for every child term under this renamed term BEFORE the DB rewrite.
+        invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
+        // Drop cached entity JSON / bundle for every entity tagged with this term (or any
+        // descendant). Done BEFORE the DB rename so the search lookup still matches by old FQN.
+        invalidateCacheForTaggedEntitiesAndDescendants(Entity.GLOSSARY_TERM, oldFqn);
+        daoCollection.glossaryTermDAO().updateFqn(oldFqn, newFqn);
+        daoCollection.tagUsageDAO().rename(TagSource.GLOSSARY.ordinal(), oldFqn, newFqn);
+
+        daoCollection.tagUsageDAO().deleteTagsByTarget(oldFqn);
+        List<TagLabel> updatedTags = updated.getTags();
+        updatedTags.sort(compareTagLabel);
+        applyTags(updatedTags, newFqn);
+        daoCollection
+            .tagUsageDAO()
+            .renameByTargetFQNHash(TagSource.CLASSIFICATION.ordinal(), oldFqn, newFqn);
+
+        updateEntityLinks(oldFqn, newFqn, updated);
+
+        PolicyConditionUpdater.updateAllPolicyConditions(
+            condition ->
+                PolicyConditionUpdater.renamePrefixInCondition(
+                    condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
+
+        if (glossaryChanged) {
+          updateGlossaryRelationship(original, updated);
+          updateChildrenGlossaryRelationships(original, updated);
+        }
+
+        if (parentChanged) {
+          updateGlossaryRelationship(original, updated);
+          updateParentRelationship(original, updated);
+        }
+
+        if (parentChanged || glossaryChanged || nameChanged) {
+          invalidateTerm(updated.getId());
+          updateAssetIndexes(oldFqn, newFqn);
+        }
       }
-
-      LOG.info("Glossary term FQN changed from {} to {}", oldFqn, newFqn);
-      // Drop cache entries for every child term under this renamed term BEFORE the DB rewrite.
-      invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
-      // Drop cached entity JSON / bundle for every entity tagged with this term (or any
-      // descendant). Done BEFORE the DB rename so the search lookup still matches by old FQN.
-      invalidateCacheForTaggedEntitiesAndDescendants(Entity.GLOSSARY_TERM, oldFqn);
-      daoCollection.glossaryTermDAO().updateFqn(oldFqn, newFqn);
-      daoCollection.tagUsageDAO().rename(TagSource.GLOSSARY.ordinal(), oldFqn, newFqn);
-
-      daoCollection.tagUsageDAO().deleteTagsByTarget(oldFqn);
-      List<TagLabel> updatedTags = updated.getTags();
-      updatedTags.sort(compareTagLabel);
-      applyTags(updatedTags, newFqn);
-      daoCollection
-          .tagUsageDAO()
-          .renameByTargetFQNHash(TagSource.CLASSIFICATION.ordinal(), oldFqn, newFqn);
-
-      updateEntityLinks(oldFqn, newFqn, updated);
-
-      PolicyConditionUpdater.updateAllPolicyConditions(
-          condition ->
-              PolicyConditionUpdater.renamePrefixInCondition(
-                  condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
 
       if (nameChanged) {
         recordChange("name", oldTermName, updated.getName());
       }
 
       if (glossaryChanged) {
-        updateGlossaryRelationship(original, updated);
-        updateChildrenGlossaryRelationships(original, updated);
         recordChange(
             "glossary", original.getGlossary(), updated.getGlossary(), true, entityReferenceMatch);
       }
 
       if (parentChanged) {
-        updateGlossaryRelationship(original, updated);
-        updateParentRelationship(original, updated);
         recordChange(
             "parent", original.getParent(), updated.getParent(), true, entityReferenceMatch);
-      }
-
-      if (parentChanged || glossaryChanged || nameChanged) {
-        invalidateTerm(updated.getId());
-        updateAssetIndexes(oldFqn, newFqn);
       }
     }
 
