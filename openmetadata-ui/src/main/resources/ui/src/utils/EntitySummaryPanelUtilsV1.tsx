@@ -62,9 +62,9 @@ import {
 } from './EntitySummaryPanelPureUtilsV1';
 import type { GenericNestedField } from './EntitySummaryPanelUtilsV1.interface';
 import { t } from './i18next/LocalUtil';
+import { pruneEmptyChildren } from './TablePureUtils';
 import { showErrorToast } from './ToastUtils';
 
-import { pruneEmptyChildren } from './TablePureUtils';
 const { Text } = AntTypography;
 
 // Recursive component to render nested columns
@@ -486,10 +486,14 @@ const ContainerFieldCardsV1: React.FC<{
 }> = ({ entityInfo, highlights, loading, searchText }) => {
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [fetchedColumns, setFetchedColumns] = useState<Column[]>();
-  const [isColumnsLoading, setIsColumnsLoading] = useState(false);
 
   const inlineColumns = entityInfo.dataModel?.columns;
   const containerFqn = entityInfo.fullyQualifiedName;
+  // Start in the loading state when columns must be fetched on demand, so the first render shows the
+  // loader instead of briefly flashing "No data available".
+  const [isColumnsLoading, setIsColumnsLoading] = useState(
+    () => isUndefined(inlineColumns) && Boolean(containerFqn)
+  );
 
   useEffect(() => {
     // dataModel is excluded from Explore search payloads because it can be very large, so when it is
