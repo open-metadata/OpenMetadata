@@ -13,8 +13,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { EntityType } from '../../../enums/entity.enum';
 import { ChangeSource } from '../../../generated/type/changeSummaryMap';
-import { getEntityFeedLink } from '../../../utils/EntityUtils';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import Description from './Description';
 
@@ -49,7 +49,7 @@ jest.mock('../../../utils/TasksUtils', () => ({
   getUpdateDescriptionPath: jest.fn().mockReturnValue('/update-path'),
 }));
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn(),
 }));
 
