@@ -84,6 +84,9 @@ export const createDescriptionTask = async (
   await toastNotification(page, /Task created successfully./);
 };
 
+export const waitForTaskResolveResponse = (page: Page) =>
+  page.waitForResponse('/api/v1/feed/tasks/*/resolve', { timeout: 30_000 });
+
 export const createTagTask = async (
   page: Page,
   value: TaskDetails,
