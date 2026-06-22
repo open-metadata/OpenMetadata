@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { Domain } from '../../../support/domain/Domain';
 import { TableClass } from '../../../support/entity/TableClass';
 import { UserClass } from '../../../support/user/UserClass';
@@ -20,7 +20,7 @@ import {
   assignDomainOnlyAccess,
   assignDomainToTable,
   safeDelete,
-} from './domainIsolationUtils';
+} from '../../../utils/domainIsolationUtils';
 
 // Issue #24180 — a user holding the seeded DomainOnlyAccessRole must only see tasks about entities
 // in their accessible domains. Task isolation is role-based (EntityUtil.addDomainQueryParam +

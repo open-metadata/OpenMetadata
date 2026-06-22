@@ -10,16 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Domain } from '../../../support/domain/Domain';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage } from '../../../utils/common';
+import {
+  assignDomainOnlyAccess,
+  safeDelete,
+} from '../../../utils/domainIsolationUtils';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { enableDisableSearchRBAC } from '../../../utils/searchRBAC';
 import { sidebarClick } from '../../../utils/sidebar';
-import { assignDomainOnlyAccess, safeDelete } from './domainIsolationUtils';
 
 // Issue #24180 — the Domains listing page is driven by the `index=domain` search query, which is
 // RBAC-gated by the seeded DomainOnlyAccessRole. A restricted user must only see the domain cards

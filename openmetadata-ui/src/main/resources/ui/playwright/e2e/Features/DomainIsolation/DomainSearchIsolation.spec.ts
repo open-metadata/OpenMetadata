@@ -17,15 +17,15 @@ import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage } from '../../../utils/common';
 import {
+  assignDomainOnlyAccess,
+  assignDomainToTable,
+  safeDelete,
+} from '../../../utils/domainIsolationUtils';
+import {
   enableDisableSearchRBAC,
   searchForEntityShouldWork,
   searchForEntityShouldWorkShowNoResult,
 } from '../../../utils/searchRBAC';
-import {
-  assignDomainOnlyAccess,
-  assignDomainToTable,
-  safeDelete,
-} from './domainIsolationUtils';
 
 // Issue #24180 — with the global `enableAccessControl` search setting on, a user holding the
 // seeded DomainOnlyAccessRole can only discover (via navbar search / explore) assets in their
