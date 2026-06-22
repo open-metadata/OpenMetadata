@@ -65,7 +65,7 @@ test.describe('AI Settings', () => {
       await expect(page.getByTestId('mcp-chat-toggle')).toBeVisible();
       await expect(page.getByTestId('mcp-chat-prompt')).toBeVisible();
       await expect(page.getByTestId('mcp-server-toggle')).toBeVisible();
-      await expect(page.getByTestId('mcp-server-path')).toBeVisible();
+      await expect(page.getByTestId('mcp-server-origin-header')).toBeVisible();
       await expect(page.getByTestId('ai-settings-save')).toBeVisible();
       await expect(page.getByTestId('ai-settings-reset')).toBeVisible();
     });
@@ -93,18 +93,20 @@ test.describe('AI Settings', () => {
     test('persists MCP Server configuration after save', async ({ page }) => {
       await visitAISettings(page);
 
-      const path = `/api/v1/mcp-${uuid()}`;
+      const originHeader = `https://mcp-${uuid()}.example.com`;
 
-      await page.getByTestId('mcp-server-path').locator('input').fill(path);
-      await page.getByTestId('mcp-server-origin-validation-toggle').click();
+      await page
+        .getByTestId('mcp-server-origin-header')
+        .locator('input')
+        .fill(originHeader);
       await page.getByTestId('ai-settings-save').click();
       await toastNotification(page, /updated successfully/);
 
       await visitAISettings(page);
 
       await expect(
-        page.getByTestId('mcp-server-path').locator('input')
-      ).toHaveValue(path);
+        page.getByTestId('mcp-server-origin-header').locator('input')
+      ).toHaveValue(originHeader);
     });
 
     test('resets AI settings to defaults', async ({ page }) => {
