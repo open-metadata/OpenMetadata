@@ -146,8 +146,7 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
             <Space className="w-full" direction="vertical" size={32}>
               <Typography.Text
                 className="m-b-0 d-block entity-header-display-name text-lg font-semibold"
-                data-testid="entity-header-display-name"
-                >
+                data-testid="entity-header-display-name">
                 {stringToHTML(displayName || knowledgePage.name)}
               </Typography.Text>
               <Row align="middle" gutter={[16, 16]}>
