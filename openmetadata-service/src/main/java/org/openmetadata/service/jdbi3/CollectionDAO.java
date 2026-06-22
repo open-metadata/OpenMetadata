@@ -9311,18 +9311,14 @@ public interface CollectionDAO {
             "UPDATE workflow_instance_time_series "
                 + "SET json = JSON_SET(json, '$.variables.global_relatedEntity', "
                 + "REPLACE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.variables.global_relatedEntity')), :oldStem, :newStem)) "
-                + "WHERE (entityLink = :oldLink OR entityLink LIKE :oldChildPrefix ESCAPE '!') "
-                + "AND (JSON_UNQUOTE(JSON_EXTRACT(json, '$.variables.global_relatedEntity')) = :oldLink "
-                + "OR JSON_UNQUOTE(JSON_EXTRACT(json, '$.variables.global_relatedEntity')) LIKE :oldChildPrefix ESCAPE '!')",
+                + "WHERE entityLink = :oldLink OR entityLink LIKE :oldChildPrefix ESCAPE '!'",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
             "UPDATE workflow_instance_time_series "
                 + "SET json = jsonb_set(json, '{variables,global_relatedEntity}', "
                 + "to_jsonb(REPLACE(json->'variables'->>'global_relatedEntity', :oldStem, :newStem))) "
-                + "WHERE (entityLink = :oldLink OR entityLink LIKE :oldChildPrefix ESCAPE '!') "
-                + "AND (json->'variables'->>'global_relatedEntity' = :oldLink "
-                + "OR json->'variables'->>'global_relatedEntity' LIKE :oldChildPrefix ESCAPE '!')",
+                + "WHERE entityLink = :oldLink OR entityLink LIKE :oldChildPrefix ESCAPE '!'",
         connectionType = POSTGRES)
     int repointRelatedEntitySubtree(
         @Bind("oldLink") String oldLink,
