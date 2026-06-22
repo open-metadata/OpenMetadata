@@ -67,6 +67,7 @@ import org.openmetadata.schema.type.BulkTaskOperationType;
 import org.openmetadata.schema.type.DataAccessType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TaskCategory;
@@ -1530,7 +1531,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             .withCreatedAt(System.currentTimeMillis());
 
     Task updatedTask = repository.addComment(task, comment);
-    return Response.ok(updatedTask).build();
+    return Response.ok(updatedTask)
+        .header(RestUtil.CHANGE_CUSTOM_HEADER, EventType.ENTITY_UPDATED.value())
+        .build();
   }
 
   @PATCH

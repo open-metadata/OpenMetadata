@@ -166,6 +166,7 @@ jobs:
               --project=DataAssetRulesDisabled \
               --project=Basic \
               --project=SearchRBAC \
+              --project=DomainIsolation \
 
           else
             # Shards 2-6 run common chromium tests equally distributed (5-way sharding)
@@ -260,7 +261,7 @@ jobs:
           sudo rm -rf ${PWD}/docker-volume
 
   playwright-summary:
-    if: ${{ !cancelled() && github.event_name == 'pull_request_target' }}
+    if: ${{ !cancelled() && github.event_name == 'pull_request_target' && (github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
     needs: playwright-ci-postgresql
     runs-on: ubuntu-latest
     steps:

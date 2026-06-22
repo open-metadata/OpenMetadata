@@ -927,6 +927,31 @@ public class FeedRepository {
   }
 
   public List<ThreadCount> getThreadsCount(String link) {
+    return getThreadsCount(link, false, List.of());
+  }
+
+  /**
+   * Builds the {@code <domainCondition>} fragment spliced into the owner thread-count query so a
+   * domain-restricted user's "My Tasks"/conversation counts only include threads in their accessible
+   * domains. Returns an empty string when domain filtering is off, keeping the query unchanged for
+   * everyone else.
+   */
+  private String buildThreadCountDomainCondition(boolean applyDomainFilter, List<UUID> domains) {
+    String condition = "";
+    if (applyDomainFilter) {
+      String innerCondition = FeedFilter.buildDomainCondition("tdom.domains", domains, true);
+      condition =
+          "AND combined.id IN (SELECT tdom.id FROM "
+              + getLegacyThreadTableName()
+              + " tdom WHERE "
+              + innerCondition
+              + ")";
+    }
+    return condition;
+  }
+
+  public List<ThreadCount> getThreadsCount(
+      String link, boolean applyDomainFilter, List<UUID> domains) {
     List<List<String>> result;
     EntityLink entityLink = EntityLink.parse(link);
     List<ThreadCount> threadCounts = new ArrayList<>();
@@ -948,7 +973,8 @@ public class FeedRepository {
                     teamIds,
                     user.getName(),
                     userTeamJsonMysql,
-                    userTeamJsonPostgres);
+                    userTeamJsonPostgres,
+                    buildThreadCountDomainCondition(applyDomainFilter, domains));
         mentions =
             dao.feedDAO()
                 .listCountThreadsByMentions(

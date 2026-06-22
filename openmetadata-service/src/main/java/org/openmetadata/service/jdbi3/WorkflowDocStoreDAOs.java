@@ -626,6 +626,34 @@ public interface WorkflowDocStoreDAOs {
     default String getTimeSeriesTableName() {
       return "workflow_instance_time_series";
     }
+
+    /**
+     * Repoint the workflow-instance {@code relatedEntity} (the {@code entityLink} the history card
+     * filters by) for an entire moved subtree in one set-based statement: the moved term itself
+     * (exact {@code oldLink}) plus every descendant ({@code entityLink LIKE oldChildPrefix}). The
+     * stem swap rewrites {@code <#E::type::oldFqn} to {@code <#E::type::newFqn} for both. The
+     * {@code .}-suffixed prefix is collision-safe (a move of {@code a.b} never touches sibling
+     * {@code a.bc}), matching the existing {@code renameByToFQNPrefix} pattern.
+     */
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE workflow_instance_time_series "
+                + "SET json = JSON_SET(json, '$.variables.global_relatedEntity', "
+                + "REPLACE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.variables.global_relatedEntity')), :oldStem, :newStem)) "
+                + "WHERE entityLink = :oldLink OR entityLink LIKE :oldChildPrefix",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE workflow_instance_time_series "
+                + "SET json = jsonb_set(json, '{variables,global_relatedEntity}', "
+                + "to_jsonb(REPLACE(json->'variables'->>'global_relatedEntity', :oldStem, :newStem))) "
+                + "WHERE entityLink = :oldLink OR entityLink LIKE :oldChildPrefix",
+        connectionType = POSTGRES)
+    int repointRelatedEntitySubtree(
+        @Bind("oldLink") String oldLink,
+        @Bind("oldChildPrefix") String oldChildPrefix,
+        @Bind("oldStem") String oldStem,
+        @Bind("newStem") String newStem);
   }
 
   interface WorkflowInstanceStateTimeSeriesDAO extends EntityTimeSeriesDAO {

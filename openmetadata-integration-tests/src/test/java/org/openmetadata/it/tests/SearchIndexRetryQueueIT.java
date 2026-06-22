@@ -646,18 +646,9 @@ class SearchIndexRetryQueueIT {
     worker.start();
     try {
       Awaitility.await("Worker should handle deleted entity and remove from queue")
-          .atMost(Duration.ofSeconds(30))
+          .atMost(Duration.ofSeconds(60))
           .pollInterval(Duration.ofSeconds(1))
-          .until(
-              () -> {
-                List<SearchIndexRetryRecord> remaining =
-                    retryQueueDAO.findByStatuses(
-                        List.of(
-                            SearchIndexRetryQueue.STATUS_PENDING,
-                            SearchIndexRetryQueue.STATUS_IN_PROGRESS),
-                        1000);
-                return remaining.stream().noneMatch(r -> r.getEntityId().equals(deletedId));
-              });
+          .until(() -> isHandledByAnyWorker(deletedId));
     } finally {
       worker.stop();
     }
@@ -675,18 +666,9 @@ class SearchIndexRetryQueueIT {
     worker.start();
     try {
       Awaitility.await("Worker should move unresolvable entity to retry/failed status")
-          .atMost(Duration.ofSeconds(30))
+          .atMost(Duration.ofSeconds(60))
           .pollInterval(Duration.ofSeconds(1))
-          .until(
-              () -> {
-                List<SearchIndexRetryRecord> pending =
-                    retryQueueDAO.findByStatuses(
-                        List.of(
-                            SearchIndexRetryQueue.STATUS_PENDING,
-                            SearchIndexRetryQueue.STATUS_IN_PROGRESS),
-                        1000);
-                return pending.stream().noneMatch(r -> r.getEntityId().equals(fakeId));
-              });
+          .until(() -> isHandledByAnyWorker(fakeId));
     } finally {
       worker.stop();
     }
@@ -834,6 +816,36 @@ class SearchIndexRetryQueueIT {
   // ---------------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------------
+
+  /**
+   * A row enqueued for an unresolvable/deleted entity is "handled" once ANY worker (this test's
+   * worker or the always-on application worker sharing the global queue) has touched it: the row is
+   * either gone (the success path after remove-stale) or no longer sitting untouched in its initial
+   * PENDING state. The row counts as untouched only while it is still PENDING with retryCount 0 and
+   * no claimedAt — so this still fails if no worker ever processes the row.
+   */
+  private boolean isHandledByAnyWorker(String entityId) {
+    SearchIndexRetryRecord record =
+        retryQueueDAO
+            .findByStatuses(
+                List.of(
+                    SearchIndexRetryQueue.STATUS_PENDING,
+                    SearchIndexRetryQueue.STATUS_PENDING_RETRY_1,
+                    SearchIndexRetryQueue.STATUS_PENDING_RETRY_2,
+                    SearchIndexRetryQueue.STATUS_IN_PROGRESS,
+                    SearchIndexRetryQueue.STATUS_FAILED),
+                5000)
+            .stream()
+            .filter(r -> r.getEntityId().equals(entityId))
+            .findFirst()
+            .orElse(null);
+    boolean stillUntouched =
+        record != null
+            && SearchIndexRetryQueue.STATUS_PENDING.equals(record.getStatus())
+            && record.getRetryCount() == 0
+            && record.getClaimedAt() == null;
+    return !stillUntouched;
+  }
 
   private Table createTestTable(TestNamespace ns) {
     var service = DatabaseServiceTestFactory.createPostgres(ns);

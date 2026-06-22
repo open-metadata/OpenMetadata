@@ -41,7 +41,7 @@ import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
   getFeedCounts,
-} from '../../../utils/FeedUtils';
+} from '../../../utils/FeedUtilsPure';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
@@ -50,7 +50,7 @@ import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import {
   updateCertificationTag,
   updateTierTag,
-} from '../../../utils/TagsUtils';
+} from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
@@ -61,7 +61,6 @@ import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHe
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { ChartDetailsProps } from './ChartDetails.interface';
-
 const ChartDetails = ({
   updateChartDetailsState,
   chartDetails,

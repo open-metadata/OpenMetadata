@@ -619,11 +619,27 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
     List<GlossaryTerm> childTerms = getAllTerms(updated);
 
+    // A glossary rename cascades the FQN to every child term, so their open approval tasks (keyed
+    // by
+    // aboutFqnHash) and workflow-instance relatedEntity must follow the rename exactly as a term
+    // move/rename does — otherwise the tasks become unfindable at the new FQN and the workflow
+    // history card goes stale.
+    Map<String, String> taskFqnHashUpdates = new HashMap<>();
     for (GlossaryTerm child : childTerms) {
-      newAbout = new MessageParser.EntityLink(GLOSSARY_TERM, child.getFullyQualifiedName());
+      String childNewFqn = child.getFullyQualifiedName();
+      newAbout = new MessageParser.EntityLink(GLOSSARY_TERM, childNewFqn);
       Entity.getFeedRepository()
           .updateLegacyThreadsAbout(newAbout.getLinkString(), child.getId().toString());
+      if (!nullOrEmpty(childNewFqn) && childNewFqn.startsWith(newFqn)) {
+        String childOldFqn = oldFqn + childNewFqn.substring(newFqn.length());
+        taskFqnHashUpdates.put(
+            FullyQualifiedName.buildHash(childOldFqn), FullyQualifiedName.buildHash(childNewFqn));
+      }
     }
+    // The glossary FQN is the prefix of every child term's FQN, so one subtree repoint covers them
+    // all; child approval tasks (opaque hash) are rewritten per term.
+    updateTaskAboutFqnHashes(taskFqnHashUpdates);
+    repointWorkflowInstancesForFqnChange(GLOSSARY_TERM, oldFqn, newFqn);
   }
 
   private List<GlossaryTerm> getAllTerms(Glossary glossary) {
@@ -706,7 +722,13 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
               PolicyConditionUpdater.renamePrefixInCondition(
                   condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
 
-      EntityRepository.finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
+      // Cascade rename into the search index — child term FQNs and the embedded glossary denorm
+      // (glossary.name / glossary.fullyQualifiedName) must reflect the new name. This used to be
+      // driven by entityRelationshipReindex, which has no caller since PR #19550, so the call has
+      // to happen inline here (mirroring Domain / Classification / GlossaryTerm renames).
+      updateAssetIndexes(original, updated);
+
+      finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
     }
 
     public void invalidateGlossary(UUID classificationId) {

@@ -15,15 +15,18 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_EXPERTS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNameAlreadyExists;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
+import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.mergedInheritedEntityRefs;
 import static org.openmetadata.service.util.LineageUtil.addDomainLineage;
 import static org.openmetadata.service.util.LineageUtil.removeDomainLineage;
@@ -75,6 +78,8 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.search.QueryFilterBuilder;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -184,6 +189,114 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   public final EntityReference getDomain(Domain domain) {
     return getFromEntityRef(domain.getId(), Relationship.CONTAINS, DOMAIN, false);
+  }
+
+  /**
+   * Detach this data product from a set of domains that are being hard-deleted, while it still
+   * belongs to at least one surviving domain. Removes the containment relationships, then bumps the
+   * version, writes version history and emits an {@code ENTITY_UPDATED} change event using the same
+   * {@code domains} field shape as an explicit domain PATCH, so audit/version history and downstream
+   * consumers (webhooks, alerts) stay consistent with a normal domain change.
+   */
+  public void detachFromDeletingDomains(
+      UUID dataProductId, List<UUID> deletingDomainIds, String updatedBy) {
+    DataProduct original = loadForDomainDetach(dataProductId);
+    List<EntityReference> originalDomains = listOrEmpty(original.getDomains());
+    removeDomainContainment(dataProductId, deletingDomainIds);
+    List<EntityReference> updatedDomains = getDomains(original, ALL);
+    List<EntityReference> removedDomains = subtractById(originalDomains, updatedDomains);
+    if (!removedDomains.isEmpty()) {
+      removeDomainLineageForDetached(dataProductId, removedDomains);
+      persistDomainDetachVersion(original, updatedDomains, removedDomains, updatedBy);
+    }
+  }
+
+  private void removeDomainLineageForDetached(
+      UUID dataProductId, List<EntityReference> removedDomains) {
+    for (EntityReference removedDomain : removedDomains) {
+      removeDomainLineage(dataProductId, DATA_PRODUCT, removedDomain);
+    }
+  }
+
+  private DataProduct loadForDomainDetach(UUID dataProductId) {
+    DataProduct dataProduct = find(dataProductId, ALL, false);
+    setFieldsInternal(dataProduct, getPutFields());
+    setInheritedFields(dataProduct, getPutFields());
+    return dataProduct;
+  }
+
+  private void removeDomainContainment(UUID dataProductId, List<UUID> deletingDomainIds) {
+    for (UUID domainId : listOrEmpty(deletingDomainIds)) {
+      deleteRelationship(domainId, DOMAIN, dataProductId, DATA_PRODUCT, Relationship.CONTAINS);
+      deleteRelationship(domainId, DOMAIN, dataProductId, DATA_PRODUCT, Relationship.HAS);
+    }
+  }
+
+  private List<EntityReference> subtractById(
+      List<EntityReference> from, List<EntityReference> toRemove) {
+    return from.stream()
+        .filter(ref -> toRemove.stream().noneMatch(kept -> kept.getId().equals(ref.getId())))
+        .toList();
+  }
+
+  private void persistDomainDetachVersion(
+      DataProduct original,
+      List<EntityReference> updatedDomains,
+      List<EntityReference> removedDomains,
+      String updatedBy) {
+    DataProduct updated = JsonUtils.deepCopy(original, DataProduct.class);
+    updated.setDomains(updatedDomains);
+    updated.setVersion(EntityUtil.nextVersion(original.getVersion()));
+    updated.setUpdatedAt(System.currentTimeMillis());
+    updated.setUpdatedBy(updatedBy != null ? updatedBy : original.getUpdatedBy());
+
+    ChangeDescription change = new ChangeDescription().withPreviousVersion(original.getVersion());
+    fieldDeleted(change, FIELD_DOMAINS, JsonUtils.pojoToJson(removedDomains));
+    updated.setChangeDescription(change);
+
+    String versionExtension = EntityUtil.getVersionExtension(DATA_PRODUCT, original.getVersion());
+    daoCollection
+        .entityExtensionDAO()
+        .insert(original.getId(), versionExtension, DATA_PRODUCT, JsonUtils.pojoToJson(original));
+    storeEntity(updated, true);
+    invalidate(updated);
+    createAndInsertChangeEvent(original, updated, change, ENTITY_UPDATED);
+  }
+
+  /**
+   * Re-index data products detached during a domain hard-delete cascade. If a post-commit search
+   * deferral scope is active, use it. Otherwise record a durable retry row so the document is rebuilt
+   * from committed DB state instead of mutating Elasticsearch inside the delete transaction.
+   */
+  public void reindexAfterDomainDetach(Set<UUID> dataProductIds) {
+    if (nullOrEmpty(dataProductIds)) {
+      return;
+    }
+    for (UUID dataProductId : dataProductIds) {
+      if (searchRepository != null && SearchRepository.isSearchWriteDeferralActive()) {
+        reindexDetachedProduct(dataProductId);
+      } else {
+        SearchIndexRetryQueue.enqueue(
+            dataProductId.toString(),
+            null,
+            DATA_PRODUCT,
+            "domainDetach: deferred reindex after domain hard-delete");
+      }
+    }
+  }
+
+  private void reindexDetachedProduct(UUID dataProductId) {
+    try {
+      DataProduct dataProduct = find(dataProductId, ALL, false);
+      setFieldsInternal(dataProduct, getPutFields());
+      searchRepository.updateEntityIndex(dataProduct);
+    } catch (EntityNotFoundException e) {
+      // A retained product can still be hard-deleted elsewhere in the same domain cascade.
+      // This loop runs post-commit, so skip the vanished product and keep reindexing the rest.
+      LOG.debug(
+          "Skipping post-detach reindex for data product {} which no longer exists after the domain delete cascade",
+          dataProductId);
+    }
   }
 
   @Override
@@ -835,6 +948,13 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate("name", () -> updateName(updated));
+      // These ODPS-aligned scalar fields are not handled by the base updater;
+      // without recordChange they are reverted by change consolidation and a
+      // PATCH that sets them returns 200 but never persists.
+      recordChange("dataProductType", original.getDataProductType(), updated.getDataProductType());
+      recordChange("visibility", original.getVisibility(), updated.getVisibility());
+      recordChange(
+          "portfolioPriority", original.getPortfolioPriority(), updated.getPortfolioPriority());
       // Ports are managed via dedicated bulk add/remove APIs, not via entity PATCH
       // Handle domain change with asset migration
       // Skip during consolidation to avoid incorrect intermediate migrations.
@@ -866,6 +986,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
           updated.getFullyQualifiedName(),
           origDomains.stream().map(EntityReference::getFullyQualifiedName).toList(),
           updatedDomains.stream().map(EntityReference::getFullyQualifiedName).toList());
+
+      updateDataProductDomainContainment(origDomains, updatedDomains);
 
       List<CollectionDAO.EntityRelationshipRecord> assetRecords =
           daoCollection
@@ -900,6 +1022,33 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
               allRecords.stream().map(CollectionDAO.EntityRelationshipRecord::getId).toList();
           searchRepository.updateAssetDomainsByIds(assetIds, oldDomainFqns, updatedDomains);
         }
+      }
+    }
+
+    private void updateDataProductDomainContainment(
+        List<EntityReference> oldDomains, List<EntityReference> newDomains) {
+      List<EntityReference> addedDomains =
+          diffLists(
+              newDomains,
+              oldDomains,
+              EntityReference::getId,
+              EntityReference::getId,
+              Function.identity());
+      List<EntityReference> removedDomains =
+          diffLists(
+              oldDomains,
+              newDomains,
+              EntityReference::getId,
+              EntityReference::getId,
+              Function.identity());
+
+      for (EntityReference domain : removedDomains) {
+        deleteRelationship(
+            domain.getId(), DOMAIN, updated.getId(), DATA_PRODUCT, Relationship.CONTAINS);
+      }
+      for (EntityReference domain : addedDomains) {
+        addRelationship(
+            domain.getId(), updated.getId(), DOMAIN, DATA_PRODUCT, Relationship.CONTAINS);
       }
     }
 

@@ -32,14 +32,17 @@ import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
+import org.jdbi.v3.sqlobject.statement.BatchChunkSize;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.entity.feed.TaskFormSchema;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
+import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlBatch;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -819,7 +822,7 @@ public interface FeedDAOs {
                 + "    SELECT te.type, te.taskStatus, te.id "
                 + "    FROM <tableName> te "
                 + "    WHERE MATCH(te.taskAssigneesIds) AGAINST (:userTeamJsonMysql IN BOOLEAN MODE) "
-                + ") AS combined WHERE combined.type is not NULL "
+                + ") AS combined WHERE combined.type is not NULL <domainCondition> "
                 + "GROUP BY combined.type, combined.taskStatus;",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
@@ -853,7 +856,7 @@ public interface FeedDAOs {
                 + "    SELECT te.type, te.taskStatus, te.id "
                 + "    FROM <tableName> te "
                 + "    WHERE to_tsvector('simple', taskAssigneesIds) @@ to_tsquery('simple', :userTeamJsonPostgres) "
-                + ") AS combined WHERE combined.type is not NULL "
+                + ") AS combined WHERE combined.type is not NULL <domainCondition> "
                 + "GROUP BY combined.type, combined.taskStatus;",
         connectionType = POSTGRES)
     @RegisterRowMapper(OwnerCountFieldMapper.class)
@@ -863,7 +866,8 @@ public interface FeedDAOs {
         @BindList("teamIds") List<String> teamIds,
         @Bind("username") String username,
         @Bind("userTeamJsonMysql") String userTeamJsonMysql,
-        @Bind("userTeamJsonPostgres") String userTeamJsonPostgres);
+        @Bind("userTeamJsonPostgres") String userTeamJsonPostgres,
+        @Define("domainCondition") String domainCondition);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -1592,6 +1596,35 @@ public interface FeedDAOs {
         connectionType = POSTGRES)
     void updateTask(@Bind("id") String id, @Bind("json") String json);
 
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE task_entity SET json = JSON_SET(json, '$.aboutFqnHash', :newFqnHash) "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.aboutFqnHash')) = :oldFqnHash",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE task_entity SET json = jsonb_set(json, '{aboutFqnHash}', "
+                + "to_jsonb(:newFqnHash::text)) WHERE json->>'aboutFqnHash' = :oldFqnHash",
+        connectionType = POSTGRES)
+    int updateAboutFqnHash(
+        @Bind("oldFqnHash") String oldFqnHash, @Bind("newFqnHash") String newFqnHash);
+
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value =
+            "UPDATE task_entity SET json = JSON_SET(json, '$.aboutFqnHash', :newFqnHash) "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.aboutFqnHash')) = :oldFqnHash",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "UPDATE task_entity SET json = jsonb_set(json, '{aboutFqnHash}', "
+                + "to_jsonb(:newFqnHash::text)) WHERE json->>'aboutFqnHash' = :oldFqnHash",
+        connectionType = POSTGRES)
+    @BatchChunkSize(100)
+    int[] updateAboutFqnHashBatch(
+        @Bind("oldFqnHash") List<String> oldFqnHashes,
+        @Bind("newFqnHash") List<String> newFqnHashes);
+
     @Override
     default void update(UUID id, String fqn, String json) {
       updateTask(id.toString(), json);
@@ -1654,6 +1687,18 @@ public interface FeedDAOs {
         @BindFQN("aboutFqnHash") String aboutFqn,
         @Bind("type") String type,
         @Bind("status") String status);
+
+    @SqlQuery(
+        "SELECT json FROM task_entity "
+            + "WHERE aboutFqnHash = :aboutFqnHash AND type = :type AND createdById = :createdById "
+            + "AND status IN (<activeStatuses>) "
+            + "AND (deleted = false OR deleted IS NULL) "
+            + "ORDER BY createdAt DESC LIMIT 1")
+    String findActiveByAboutTypeAndCreator(
+        @BindFQN("aboutFqnHash") String aboutFqn,
+        @Bind("type") String type,
+        @Bind("createdById") String createdById,
+        @BindList("activeStatuses") List<String> activeStatuses);
 
     @SqlQuery(
         "SELECT json FROM task_entity "

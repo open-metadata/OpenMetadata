@@ -51,6 +51,10 @@ import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
 import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
+import org.openmetadata.schema.configuration.LLMConfiguration;
+import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
+import org.openmetadata.schema.configuration.LLMGoogleConfig;
+import org.openmetadata.schema.configuration.LLMOpenAIConfig;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
@@ -58,10 +62,9 @@ import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
+import org.openmetadata.schema.security.credentials.AWSBaseConfig;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.service.configuration.elasticsearch.Google;
-import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
 import org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
@@ -83,6 +86,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.OrphanedIndexCleaner;
 import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.attachments.NoOpAssetService;
+import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.config.ObjectStorageConfiguration;
 import org.openmetadata.service.events.scheduled.ServicesStatusJobHandler;
 import org.openmetadata.service.exception.CustomExceptionMessage;
@@ -726,7 +730,7 @@ public class SystemRepository {
           .withPassed(false);
     }
 
-    String configMessage = getEmbeddingConfigurationMessage(applicationConfig);
+    String configMessage = getEmbeddingConfigurationMessage();
 
     if (searchRepository.getVectorIndexService() == null) {
       return retryInitAndReportError(
@@ -880,55 +884,23 @@ public class SystemRepository {
         .withPassed(true);
   }
 
-  private String getEmbeddingConfigurationMessage(OpenMetadataApplicationConfig applicationConfig) {
+  private String getEmbeddingConfigurationMessage() {
     try {
-      NaturalLanguageSearchConfiguration nlpConfig =
-          applicationConfig.getElasticSearchConfiguration().getNaturalLanguageSearch();
-      String provider = nlpConfig.getEmbeddingProvider();
+      LLMConfiguration llmConfig = LlmConfigHolder.get();
+      LLMEmbeddingsConfig embeddings = llmConfig != null ? llmConfig.getEmbeddings() : null;
+      String provider =
+          embeddings != null && embeddings.getProvider() != null
+              ? embeddings.getProvider().value()
+              : null;
       if (nullOrEmpty(provider)) {
         return "Required configuration: embeddingProvider";
       }
 
       return switch (provider.toLowerCase()) {
-        case "djl" -> String.format(
-            "DJL configuration: embeddingModel: %s", nlpConfig.getDjl().getEmbeddingModel());
-        case "bedrock" -> String.format(
-            "Bedrock configuration: region: %s, embeddingModelId: %s, embeddingDimension %s",
-            nlpConfig.getBedrock().getAwsConfig() != null
-                ? nlpConfig.getBedrock().getAwsConfig().getRegion()
-                : "not configured",
-            nlpConfig.getBedrock().getEmbeddingModelId(),
-            nlpConfig.getBedrock().getEmbeddingDimension());
-        case "openai" -> {
-          String openaiEndpoint =
-              nullOrEmpty(nlpConfig.getOpenai().getEndpoint())
-                  ? "api.openai.com"
-                  : nlpConfig.getOpenai().getEndpoint();
-          String deploymentInfo =
-              nullOrEmpty(nlpConfig.getOpenai().getDeploymentName())
-                  ? ""
-                  : String.format(
-                      ", deploymentName: %s", nlpConfig.getOpenai().getDeploymentName());
-          yield String.format(
-              "OpenAI configuration: endpoint: %s, embeddingModelId: %s, embeddingDimension: %s%s",
-              openaiEndpoint,
-              nlpConfig.getOpenai().getEmbeddingModelId(),
-              nlpConfig.getOpenai().getEmbeddingDimension(),
-              deploymentInfo);
-        }
-        case "google" -> {
-          Google googleCfg = nlpConfig.getGoogle();
-          if (googleCfg == null) {
-            yield "Google provider selected but google configuration block is missing";
-          }
-          String googleEndpoint =
-              nullOrEmpty(googleCfg.getEndpoint())
-                  ? "generativelanguage.googleapis.com"
-                  : googleCfg.getEndpoint();
-          yield String.format(
-              "Google configuration: endpoint: %s, embeddingModelId: %s, embeddingDimension: %s",
-              googleEndpoint, googleCfg.getEmbeddingModelId(), googleCfg.getEmbeddingDimension());
-        }
+        case "djl" -> getDjlEmbeddingMessage(embeddings);
+        case "bedrock" -> getBedrockEmbeddingMessage(llmConfig, embeddings);
+        case "openai" -> getOpenAiEmbeddingMessage(llmConfig, embeddings);
+        case "google" -> getGoogleEmbeddingMessage(llmConfig, embeddings);
         default -> String.format(
             "Unknown provider '%s'. Supported providers: djl, bedrock, openai, google", provider);
       };
@@ -936,6 +908,77 @@ public class SystemRepository {
       LOG.error("Error getting embedding configuration", e);
       return "Unable to determine embedding configuration";
     }
+  }
+
+  private String getDjlEmbeddingMessage(LLMEmbeddingsConfig embeddings) {
+    String message = "DJL provider selected but djl configuration block is missing";
+    if (embeddings.getDjl() != null) {
+      message =
+          String.format(
+              "DJL configuration: embeddingModel: %s", embeddings.getDjl().getEmbeddingModel());
+    }
+    return message;
+  }
+
+  private String getBedrockEmbeddingMessage(
+      LLMConfiguration llmConfig, LLMEmbeddingsConfig embeddings) {
+    String message = "Bedrock provider selected but bedrock configuration block is missing";
+    if (embeddings.getBedrock() != null) {
+      AWSBaseConfig awsConfig =
+          llmConfig.getBedrock() != null ? llmConfig.getBedrock().getAwsConfig() : null;
+      message =
+          String.format(
+              "Bedrock configuration: region: %s, embeddingModelId: %s, embeddingDimension %s",
+              awsConfig != null && awsConfig.getRegion() != null
+                  ? awsConfig.getRegion()
+                  : "not configured",
+              embeddings.getBedrock().getEmbeddingModelId(),
+              embeddings.getBedrock().getEmbeddingDimension());
+    }
+    return message;
+  }
+
+  private String getOpenAiEmbeddingMessage(
+      LLMConfiguration llmConfig, LLMEmbeddingsConfig embeddings) {
+    String message = "OpenAI provider selected but openai configuration block is missing";
+    if (embeddings.getOpenai() != null) {
+      LLMOpenAIConfig openaiCreds = llmConfig.getOpenai();
+      String openaiEndpoint =
+          openaiCreds == null || nullOrEmpty(openaiCreds.getEndpoint())
+              ? "api.openai.com"
+              : openaiCreds.getEndpoint();
+      String deploymentInfo =
+          openaiCreds == null || nullOrEmpty(openaiCreds.getDeploymentName())
+              ? ""
+              : String.format(", deploymentName: %s", openaiCreds.getDeploymentName());
+      message =
+          String.format(
+              "OpenAI configuration: endpoint: %s, embeddingModelId: %s, embeddingDimension: %s%s",
+              openaiEndpoint,
+              embeddings.getOpenai().getEmbeddingModelId(),
+              embeddings.getOpenai().getEmbeddingDimension(),
+              deploymentInfo);
+    }
+    return message;
+  }
+
+  private String getGoogleEmbeddingMessage(
+      LLMConfiguration llmConfig, LLMEmbeddingsConfig embeddings) {
+    String message = "Google provider selected but google configuration block is missing";
+    if (embeddings.getGoogle() != null) {
+      LLMGoogleConfig googleCreds = llmConfig.getGoogle();
+      String googleEndpoint =
+          googleCreds == null || nullOrEmpty(googleCreds.getEndpoint())
+              ? "generativelanguage.googleapis.com"
+              : googleCreds.getEndpoint();
+      message =
+          String.format(
+              "Google configuration: endpoint: %s, embeddingModelId: %s, embeddingDimension: %s",
+              googleEndpoint,
+              embeddings.getGoogle().getEmbeddingModelId(),
+              embeddings.getGoogle().getEmbeddingDimension());
+    }
+    return message;
   }
 
   private StepValidation getDatabaseValidation(OpenMetadataApplicationConfig applicationConfig) {

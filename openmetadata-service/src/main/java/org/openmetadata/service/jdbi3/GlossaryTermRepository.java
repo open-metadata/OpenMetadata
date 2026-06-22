@@ -1730,6 +1730,26 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       newAbout = new EntityLink(entityType, child.getFullyQualifiedName());
       feedRepository.updateLegacyThreadsAbout(newAbout.getLinkString(), child.getId().toString());
     }
+
+    // Task entities key tasks by aboutFqnHash (the about reference itself is stored as a
+    // relationship, not in the task JSON), and it is computed once at creation. Batch the hash
+    // rewrites for the moved term and every nested descendant.
+    Map<String, String> taskFqnHashUpdates = new HashMap<>();
+    taskFqnHashUpdates.put(
+        FullyQualifiedName.buildHash(oldFqn), FullyQualifiedName.buildHash(newFqn));
+    for (GlossaryTerm descendant : getNestedTerms(updated)) {
+      String descendantNewFqn = descendant.getFullyQualifiedName();
+      if (nullOrEmpty(descendantNewFqn) || !descendantNewFqn.startsWith(newFqn)) {
+        continue;
+      }
+      String descendantOldFqn = oldFqn + descendantNewFqn.substring(newFqn.length());
+      taskFqnHashUpdates.put(
+          FullyQualifiedName.buildHash(descendantOldFqn),
+          FullyQualifiedName.buildHash(descendantNewFqn));
+    }
+    updateTaskAboutFqnHashes(taskFqnHashUpdates);
+
+    repointWorkflowInstancesForFqnChange(GLOSSARY_TERM, oldFqn, newFqn);
   }
 
   private List<GlossaryTerm> getNestedTerms(GlossaryTerm glossaryTerm) {
@@ -2054,14 +2074,21 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     /**
      * Move a glossary term to a new parent or glossary. Only parent or glossary can be changed.
+     *
+     * <p>The FQN cascade rewrite and the entity-row store run inside a single JDBI transaction
+     * (mirroring the standard update flush) so a mid-move failure — e.g. a tag rename that hits a DB
+     * constraint — rolls back completely instead of leaving the term half-moved (FQN rewritten but
+     * relationships/tag usages not). ES + cache writes are deferred and {@code postUpdate} runs
+     * post-commit.
      */
-    @Transaction
     public void moveAndStore() {
-      changeDescription = new ChangeDescription().withPreviousVersion(original.getVersion());
-      // Now updated from previous/original to updated one
       validateParent();
-      updateParent(original, updated); // Only update parent/glossary and FQN/relationships
-      storeUpdate();
+      flushInOneTransaction(
+          () -> {
+            changeDescription = new ChangeDescription().withPreviousVersion(original.getVersion());
+            updateParent(original, updated); // Only update parent/glossary and FQN/relationships
+            storeUpdate();
+          });
       postUpdate(original, updated);
     }
 
