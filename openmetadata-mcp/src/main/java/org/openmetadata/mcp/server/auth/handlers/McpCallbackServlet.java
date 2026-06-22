@@ -72,10 +72,24 @@ import org.pac4j.oidc.credentials.OidcCredentials;
 @Slf4j
 public class McpCallbackServlet extends HttpServlet {
 
+  // Error messages used in sendError() calls — kept as constants so callers that
+  // match on the message text see a stable contract and typos are caught at compile time.
+  static final String ERR_SSO_UNAVAILABLE = "MCP SSO not available. Please restart the server.";
+  static final String ERR_CSRF_ORIGIN_MISMATCH =
+      "CSRF protection: request origin does not match server origin";
+  static final String ERR_MISSING_ID_TOKEN = "Invalid MCP OAuth callback - missing id_token";
+  static final String ERR_CALLBACK_FAILED = "MCP OAuth callback processing failed";
+  static final String ERR_MISSING_STATE = "Invalid MCP OAuth callback - missing state";
+  static final String ERR_STATE_NOT_FOUND =
+      "Invalid MCP OAuth callback - state not found or expired";
+
   private final UserSSOOAuthProvider userSSOProvider;
   private final McpPendingAuthRequestRepository pendingAuthRepository;
   private volatile IdTokenValidator idTokenValidator;
   private volatile AuthenticationCodeFlowHandler validatorBuiltFrom;
+  // Cached server origin for CSRF validation — resolved lazily on first POST and held
+  // for the server lifetime (restart required if the base URL is reconfigured via UI).
+  private volatile String cachedServerOrigin;
 
   public McpCallbackServlet(UserSSOOAuthProvider userSSOProvider) {
     this.userSSOProvider = userSSOProvider;
@@ -232,9 +246,7 @@ public class McpCallbackServlet extends HttpServlet {
     // never appears in a URL, browser history, access logs, or Referer headers.
     AuthenticationCodeFlowHandler ssoHandler = resolveSsoHandler();
     if (ssoHandler == null) {
-      response.sendError(
-          HttpServletResponse.SC_SERVICE_UNAVAILABLE,
-          "MCP SSO not available. Please restart the server.");
+      response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE, ERR_SSO_UNAVAILABLE);
     } else if (!isOriginAllowed(request)) {
       // CSRF protection: the form is always submitted from the same origin as this server.
       // Reject any POST whose Origin header does not match the server's own base URL so a
@@ -243,22 +255,18 @@ public class McpCallbackServlet extends HttpServlet {
       LOG.warn(
           "MCP OAuth doPost rejected: Origin '{}' does not match server origin",
           request.getHeader("Origin"));
-      response.sendError(
-          HttpServletResponse.SC_FORBIDDEN,
-          "CSRF protection: request origin does not match server origin");
+      response.sendError(HttpServletResponse.SC_FORBIDDEN, ERR_CSRF_ORIGIN_MISMATCH);
     } else {
       String idTokenParam = request.getParameter("id_token");
       if (idTokenParam == null || idTokenParam.isEmpty()) {
-        response.sendError(
-            HttpServletResponse.SC_BAD_REQUEST, "Invalid MCP OAuth callback - missing id_token");
+        response.sendError(HttpServletResponse.SC_BAD_REQUEST, ERR_MISSING_ID_TOKEN);
       } else {
         try {
           LOG.info("Handling MCP OAuth fragment POST callback (id_token extracted from hash)");
           handleDirectIdTokenFlow(request, response, idTokenParam, ssoHandler);
         } catch (Exception e) {
           LOG.error("MCP OAuth fragment POST callback failed", e);
-          response.sendError(
-              HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "MCP OAuth callback processing failed");
+          response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, ERR_CALLBACK_FAILED);
         }
       }
     }
@@ -276,14 +284,26 @@ public class McpCallbackServlet extends HttpServlet {
     if (origin == null) {
       return true;
     }
-    String serverOrigin = resolveServerOrigin();
+    String serverOrigin = getServerOrigin();
     if (serverOrigin == null) {
       LOG.warn(
-          "MCP OAuth CSRF check: server origin unknown; " + "rejecting cross-origin POST from '{}'",
+          "MCP OAuth CSRF check: server origin unknown; rejecting cross-origin POST from '{}'",
           origin);
       return false;
     }
     return origin.equals(serverOrigin);
+  }
+
+  private String getServerOrigin() {
+    String cached = cachedServerOrigin;
+    if (cached != null) {
+      return cached;
+    }
+    String resolved = resolveServerOrigin();
+    if (resolved != null) {
+      cachedServerOrigin = resolved;
+    }
+    return resolved;
   }
 
   String resolveServerOrigin() {
@@ -386,9 +406,7 @@ public class McpCallbackServlet extends HttpServlet {
         LOG.warn(
             "No pending auth request found for pac4j state (hash={})",
             Integer.toHexString(pac4jState.hashCode()));
-        response.sendError(
-            HttpServletResponse.SC_BAD_REQUEST,
-            "Invalid MCP OAuth callback - state not found or expired");
+        response.sendError(HttpServletResponse.SC_BAD_REQUEST, ERR_STATE_NOT_FOUND);
         return;
       }
 

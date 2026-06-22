@@ -86,6 +86,56 @@ class McpCallbackServletTest {
     assertThat(html).doesNotContain("innerHTML");
   }
 
+  // ── getServerOrigin: lazy cache ───────────────────────────────────────────
+
+  @Test
+  void getServerOrigin_cachesOnFirstResolution_resolveServerOriginCalledOnce() {
+    // resolveServerOrigin() should be called exactly once; subsequent isOriginAllowed()
+    // calls must use the cached value without hitting DB again.
+    int[] callCount = {0};
+    McpCallbackServlet servlet =
+        new McpCallbackServlet(
+            mock(UserSSOOAuthProvider.class), mock(McpPendingAuthRequestRepository.class)) {
+          @Override
+          String resolveServerOrigin() {
+            callCount[0]++;
+            return "https://example.getcollate.io";
+          }
+        };
+
+    HttpServletRequest req = mock(HttpServletRequest.class);
+    when(req.getHeader("Origin")).thenReturn("https://example.getcollate.io");
+
+    servlet.isOriginAllowed(req);
+    servlet.isOriginAllowed(req);
+    servlet.isOriginAllowed(req);
+
+    assertThat(callCount[0]).isEqualTo(1);
+  }
+
+  @Test
+  void getServerOrigin_doesNotCacheNullResult_retriesOnNextCall() {
+    // If resolveServerOrigin() returns null (transient DB miss), don't cache — retry next time.
+    int[] callCount = {0};
+    McpCallbackServlet servlet =
+        new McpCallbackServlet(
+            mock(UserSSOOAuthProvider.class), mock(McpPendingAuthRequestRepository.class)) {
+          @Override
+          String resolveServerOrigin() {
+            callCount[0]++;
+            return null;
+          }
+        };
+
+    HttpServletRequest req = mock(HttpServletRequest.class);
+    when(req.getHeader("Origin")).thenReturn("https://attacker.com");
+
+    servlet.isOriginAllowed(req);
+    servlet.isOriginAllowed(req);
+
+    assertThat(callCount[0]).isEqualTo(2);
+  }
+
   // ── CSRF: isOriginAllowed ─────────────────────────────────────────────────
 
   @Test
@@ -195,9 +245,7 @@ class McpCallbackServletTest {
     servlet.doPost(request, response);
 
     verify(response)
-        .sendError(
-            HttpServletResponse.SC_FORBIDDEN,
-            "CSRF protection: request origin does not match server origin");
+        .sendError(HttpServletResponse.SC_FORBIDDEN, McpCallbackServlet.ERR_CSRF_ORIGIN_MISMATCH);
   }
 
   // ── doPost: null SSO handler → 503 ───────────────────────────────────────
@@ -212,8 +260,7 @@ class McpCallbackServletTest {
 
     verify(response)
         .sendError(
-            HttpServletResponse.SC_SERVICE_UNAVAILABLE,
-            "MCP SSO not available. Please restart the server.");
+            HttpServletResponse.SC_SERVICE_UNAVAILABLE, McpCallbackServlet.ERR_SSO_UNAVAILABLE);
   }
 
   // ── doPost: missing id_token → 400 ───────────────────────────────────────
@@ -229,8 +276,7 @@ class McpCallbackServletTest {
     servlet.doPost(request, response);
 
     verify(response)
-        .sendError(
-            HttpServletResponse.SC_BAD_REQUEST, "Invalid MCP OAuth callback - missing id_token");
+        .sendError(HttpServletResponse.SC_BAD_REQUEST, McpCallbackServlet.ERR_MISSING_ID_TOKEN);
   }
 
   @Test
@@ -244,8 +290,7 @@ class McpCallbackServletTest {
     servlet.doPost(request, response);
 
     verify(response)
-        .sendError(
-            HttpServletResponse.SC_BAD_REQUEST, "Invalid MCP OAuth callback - missing id_token");
+        .sendError(HttpServletResponse.SC_BAD_REQUEST, McpCallbackServlet.ERR_MISSING_ID_TOKEN);
   }
 
   // ── helpers ──────────────────────────────────────────────────────────────
