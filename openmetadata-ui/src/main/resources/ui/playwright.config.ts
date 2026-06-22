@@ -37,6 +37,13 @@ const defaultBaseURL = isH2Mode
 export default defineConfig({
   testDir: './playwright/e2e',
   outputDir: './playwright/output/test-results',
+  // Omit {projectName} and {platform} from snapshot filenames so a single
+  // reference image works on both macOS dev machines and Linux CI runners.
+  // Edge lines in the lineage PNG are pure bezier geometry (no text/fonts)
+  // and render identically across platforms; the threshold in toMatchSnapshot
+  // absorbs any minor anti-aliasing differences in the node-card text areas.
+  snapshotPathTemplate:
+    '{testDir}/{testFileDir}/__snapshots__/{testFileName}-snapshots/{arg}{ext}',
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
