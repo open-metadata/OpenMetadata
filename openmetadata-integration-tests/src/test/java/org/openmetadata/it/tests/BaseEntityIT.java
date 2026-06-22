@@ -4466,8 +4466,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   void test_bulkAsync_returns202(TestNamespace ns) throws Exception {
     if (!supportsBulkAPI) return;
 
+    String entityName = ns.prefix("bulk_async_perm");
     List<K> createRequests = new ArrayList<>();
-    createRequests.add(createRequest(ns.prefix("bulk_async_perm"), ns));
+    createRequests.add(createRequest(entityName, ns));
 
     HttpResponse<String> response =
         callBulkEndpoint(createRequests, SdkClients.getAdminToken(), true);
@@ -4476,6 +4477,38 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
     BulkOperationResult result = JsonUtils.readValue(response.body(), BulkOperationResult.class);
     assertNotNull(result.getNumberOfRowsProcessed());
+
+    // Block until the async bulk worker commits the new entity. Without this, TestNamespace
+    // cleanup races the worker and the service's recursive hardDelete leaves an orphan, which
+    // later breaks unfiltered list calls in other test classes (dead service reference).
+    if (supportsSearchIndex) {
+      awaitAsyncBulkEntityVisible(entityName);
+    }
+  }
+
+  private void awaitAsyncBulkEntityVisible(String entityName) {
+    final OpenMetadataClient client = SdkClients.adminClient();
+    final String searchIndex = getSearchIndexName();
+    Awaitility.await("Async bulk-created entity " + entityName + " visible in " + searchIndex)
+        .pollDelay(Duration.ofMillis(200))
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(60))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String searchResponse =
+                  client
+                      .search()
+                      .query("name.keyword:\"" + entityName + "\"")
+                      .index(searchIndex)
+                      .size(1)
+                      .execute();
+              assertNotNull(searchResponse);
+              JsonNode hits = MAPPER.readTree(searchResponse).get("hits").get("hits");
+              assertTrue(
+                  hits != null && hits.size() > 0,
+                  "Async bulk-created entity not yet indexed: " + entityName);
+            });
   }
 
   /**
