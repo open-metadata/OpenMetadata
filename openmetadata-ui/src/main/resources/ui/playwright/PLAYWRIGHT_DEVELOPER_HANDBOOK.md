@@ -599,16 +599,17 @@ Use snapshot testing to catch **visual regressions** in rendered output that can
 
 ### File Layout
 
-Reference snapshots live alongside the spec file, in a sibling `__snapshots__` directory that Playwright creates automatically:
+The project's `playwright.config.ts` sets a custom `snapshotPathTemplate` that omits `{projectName}` and `{platform}`, so **one file works on both macOS and Linux**:
 
 ```
 playwright/e2e/Features/
   LineageExportPNGSnapshot.spec.ts
-  LineageExportPNGSnapshot.spec.ts-snapshots/
-    lineage-export-with-edges-chromium-linux.png   ← committed reference
+  __snapshots__/
+    LineageExportPNGSnapshot.spec.ts-snapshots/
+      lineage-export-with-edges.png   ← single committed reference (no platform suffix)
 ```
 
-Playwright appends `<browser>-<platform>` to the filename so macOS and Linux CI references are stored separately and don't conflict.
+This avoids the common CI failure where a macOS-generated `chromium-darwin.png` reference causes "snapshot doesn't exist" on a Linux runner that looks for `chromium-linux.png`.
 
 ### Step 1 — Generate the initial reference snapshot
 
