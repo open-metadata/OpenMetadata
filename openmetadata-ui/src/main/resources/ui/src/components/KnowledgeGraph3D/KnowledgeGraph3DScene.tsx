@@ -49,7 +49,7 @@ import {
   HighlightSet,
 } from './KnowledgeGraph3D.utils';
 import { hexRgba, sizeFor } from './nodeCanvas';
-import { buildNodeObject } from './nodeRendering';
+import { buildNodeObject, disposeTextureCaches } from './nodeRendering';
 import { GraphLink3D, GraphNode3D } from './types';
 
 type SceneNode = NodeObject<GraphNode3D>;
@@ -220,6 +220,8 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
     registerResetView?.(resetView);
     registerExportImage?.(exportImage);
   }, [registerResetView, registerExportImage, resetView, exportImage]);
+
+  useEffect(() => () => disposeTextureCaches(), []);
 
   useLayoutEffect(() => {
     const element = containerRef.current;

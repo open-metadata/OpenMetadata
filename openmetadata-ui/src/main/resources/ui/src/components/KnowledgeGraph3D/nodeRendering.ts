@@ -42,6 +42,20 @@ const glowTextureCache = new Map<string, THREE.CanvasTexture>();
 const iconTextureCache = new Map<string, THREE.CanvasTexture>();
 const avatarTextureCache = new Map<string, THREE.CanvasTexture>();
 
+/**
+ * Release every cached texture's WebGL handle and empty the caches. THREE.js
+ * textures are not garbage-collected, and these caches are module-scoped so
+ * they would otherwise outlive each scene unmount and accumulate GPU memory
+ * across repeated tab opens. The scene calls this on unmount; the caches simply
+ * repopulate lazily the next time a graph renders.
+ */
+export const disposeTextureCaches = (): void => {
+  [glowTextureCache, iconTextureCache, avatarTextureCache].forEach((cache) => {
+    cache.forEach((texture) => texture.dispose());
+    cache.clear();
+  });
+};
+
 const glowColorFor = (node: GraphNode3D): string =>
   node.type === 'user' || node.type === 'team'
     ? personColor(node.name)
