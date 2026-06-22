@@ -155,16 +155,61 @@ describe('ExportUtils', () => {
       scrollHeight: 900,
     };
 
-    beforeEach(() => {
-      // Mock document.querySelector
-      document.querySelector = jest.fn().mockReturnValue(mockElement);
+    let mockCompositeCtx: Record<string, jest.Mock | string | number>;
+    let mockCompositeCanvas: HTMLCanvasElement;
+    let mockImg: HTMLImageElement;
 
-      // Mock toPng
-      (toPng as jest.Mock).mockResolvedValue('data:image/png;base64,test');
+    beforeEach(() => {
+      document.querySelector = jest.fn().mockReturnValue(mockElement);
+      (toPng as jest.Mock).mockResolvedValue('data:image/png;base64,nodes');
+
+      mockCompositeCtx = {
+        fillStyle: '',
+        fillRect: jest.fn(),
+        drawImage: jest.fn(),
+      };
+      mockCompositeCanvas = {
+        width: 0,
+        height: 0,
+        getContext: jest.fn().mockReturnValue(mockCompositeCtx),
+        toDataURL: jest.fn().mockReturnValue('data:image/png;base64,composite'),
+      } as unknown as HTMLCanvasElement;
+
+      mockImg = { onload: null, onerror: null } as unknown as HTMLImageElement;
+      Object.defineProperty(mockImg, 'src', {
+        set(_src: string) {
+          // Fire onload as a microtask — by this point loadImage has already
+          // assigned img.onload = resolve, so the promise resolves correctly.
+          Promise.resolve().then(() => {
+            (mockImg.onload as unknown as (() => void) | null)?.();
+          });
+        },
+        configurable: true,
+      });
+      global.Image = jest
+        .fn()
+        .mockImplementation(() => mockImg) as unknown as typeof Image;
+
+      jest
+        .spyOn(document, 'createElement')
+        .mockImplementation((tag: string) => {
+          if (tag === 'canvas') {
+            return mockCompositeCanvas as unknown as HTMLElement;
+          }
+          if (tag === 'a') {
+            return {
+              setAttribute: jest.fn(),
+              click: jest.fn(),
+            } as unknown as HTMLElement;
+          }
+
+          return document.createElement(tag);
+        });
     });
 
     afterEach(() => {
       jest.clearAllMocks();
+      jest.restoreAllMocks();
     });
 
     it('should successfully export PNG image when element exists', async () => {
@@ -228,6 +273,108 @@ describe('ExportUtils', () => {
         error,
         'message.error-generating-export-type'
       );
+    });
+
+    describe('renderEdgesOverlay composite path', () => {
+      const mockEdgesCanvas = {
+        width: 3720,
+        height: 2820,
+      } as HTMLCanvasElement;
+
+      const exportDataWithEdges: ExportData = {
+        ...mockExportData,
+        renderEdgesOverlay: jest.fn().mockReturnValue(mockEdgesCanvas),
+      };
+
+      it('captures nodes without background color when renderEdgesOverlay is provided', async () => {
+        await exportPNGImageFromElement(exportDataWithEdges);
+
+        expect(toPng).toHaveBeenCalledWith(
+          mockElement,
+          expect.objectContaining({ backgroundColor: undefined })
+        );
+      });
+
+      it('uses white background when no renderEdgesOverlay (non-composite path)', async () => {
+        await exportPNGImageFromElement(mockExportData);
+
+        expect(toPng).toHaveBeenCalledWith(
+          mockElement,
+          expect.objectContaining({ backgroundColor: '#ffffff' })
+        );
+      });
+
+      it('calls renderEdgesOverlay with correct dimensions', async () => {
+        await exportPNGImageFromElement(exportDataWithEdges);
+
+        expect(exportDataWithEdges.renderEdgesOverlay).toHaveBeenCalledWith(
+          1200, // imageWidth
+          900, // imageHeight
+          20, // padding
+          3 // pixelRatio
+        );
+      });
+
+      it('fills composite canvas with white background before drawing', async () => {
+        await exportPNGImageFromElement(exportDataWithEdges);
+
+        expect(mockCompositeCtx.fillStyle).toBe('#ffffff');
+        expect(mockCompositeCtx.fillRect).toHaveBeenCalledWith(
+          0,
+          0,
+          (1200 + 40) * 3,
+          (900 + 40) * 3
+        );
+      });
+
+      it('draws edges before nodes so edges appear behind node cards', async () => {
+        await exportPNGImageFromElement(exportDataWithEdges);
+
+        const drawCalls = (mockCompositeCtx.drawImage as jest.Mock).mock.calls;
+
+        // First drawImage call must be the edges canvas
+        expect(drawCalls[0][0]).toBe(mockEdgesCanvas);
+        // Second drawImage call must be the nodes image
+        expect(drawCalls[1][0]).toBe(mockImg);
+      });
+
+      it('uses the composite toDataURL for download, not the transparent nodes image', async () => {
+        await exportPNGImageFromElement(exportDataWithEdges);
+
+        // composite.toDataURL() must have been called — this is what gets downloaded
+        expect(mockCompositeCanvas.toDataURL).toHaveBeenCalledWith(
+          'image/png',
+          1.0
+        );
+      });
+
+      it('produces a usable white-background image when edgesCanvas is null', async () => {
+        const exportDataNullEdges: ExportData = {
+          ...mockExportData,
+          renderEdgesOverlay: jest.fn().mockReturnValue(null),
+        };
+
+        await exportPNGImageFromElement(exportDataNullEdges);
+
+        // White fill must still happen so no transparent fallback
+        expect(mockCompositeCtx.fillRect).toHaveBeenCalled();
+        // Only the nodes image is drawn — no edges canvas
+        const drawCalls = (mockCompositeCtx.drawImage as jest.Mock).mock.calls;
+
+        expect(drawCalls).toHaveLength(1);
+        expect(drawCalls[0][0]).toBe(mockImg);
+      });
+
+      it('shows error toast when composite canvas 2D context is unavailable', async () => {
+        (mockCompositeCanvas.getContext as jest.Mock).mockReturnValueOnce(null);
+
+        await exportPNGImageFromElement(exportDataWithEdges);
+
+        expect(showErrorToast).toHaveBeenCalledWith(
+          expect.any(Error),
+          'message.error-generating-export-type'
+        );
+      });
     });
   });
 });
