@@ -21,6 +21,9 @@ jest.mock('../../rest/settingConfigAPI', () => ({
     prompts: { memoryExtraction: { systemPrompt: 'p' } },
   }),
   updateSettingsConfig: jest.fn(),
+  restoreSettingsConfig: jest.fn(),
+  getMcpConfiguration: jest.fn().mockResolvedValue({ enabled: false }),
+  updateMcpConfiguration: jest.fn(),
 }));
 
 jest.mock('../../components/common/Loader/Loader', () =>
@@ -54,6 +57,16 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .fn()
     .mockImplementation(({ children, onPress }) => (
       <button onClick={onPress}>{children}</button>
+    )),
+  Input: jest
+    .fn()
+    .mockImplementation(({ label, value, onChange, ...rest }) => (
+      <input
+        aria-label={label}
+        value={value}
+        onChange={(e) => onChange?.(e.target.value)}
+        {...rest}
+      />
     )),
   Select: Object.assign(
     jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
