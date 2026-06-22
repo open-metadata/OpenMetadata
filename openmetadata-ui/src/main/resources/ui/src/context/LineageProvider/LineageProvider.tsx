@@ -94,6 +94,7 @@ import {
   getPlatformLineage,
   updateLineageEdge,
 } from '../../rest/lineageAPI';
+import { drawEdgesForExport } from '../../utils/CanvasUtils';
 import { getCurrentISODate } from '../../utils/date-time/DateTimeUtils';
 import {
   addLineageHandler,
@@ -635,25 +636,51 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       exportTypes: ExportTypes[] = [ExportTypes.CSV, ExportTypes.PNG],
       onExportCallback?: (_: string) => Promise<CSVExportResponse>
     ) => {
-      if (entityFqn || isPlatformLineage) {
-        showModal({
-          ...(isPlatformLineage
-            ? {
-                name: `${t('label.lineage')}_${getCurrentISODate()}`,
-                exportTypes: [ExportTypes.PNG],
-              }
-            : {
-                name: entityFqn,
-                exportTypes: exportTypes,
-              }),
-          title: t('label.lineage'),
-          documentSelector: LINEAGE_EXPORT_SELECTOR,
-          viewport: exportTypes?.includes(ExportTypes.PNG)
-            ? getViewportForLineageExport(nodes, LINEAGE_EXPORT_SELECTOR)
-            : undefined,
-          onExport: onExportCallback ?? exportLineageData,
-        });
+      if (!entityFqn && !isPlatformLineage) {
+        return;
       }
+
+      const effectiveExportTypes = isPlatformLineage
+        ? [ExportTypes.PNG]
+        : exportTypes;
+      const includePNG = effectiveExportTypes.includes(ExportTypes.PNG);
+      const exportViewport = includePNG
+        ? getViewportForLineageExport(nodes, LINEAGE_EXPORT_SELECTOR)
+        : undefined;
+
+      showModal({
+        ...(isPlatformLineage
+          ? {
+              name: `${t('label.lineage')}_${getCurrentISODate()}`,
+              exportTypes: [ExportTypes.PNG],
+            }
+          : {
+              name: entityFqn,
+              exportTypes,
+            }),
+        title: t('label.lineage'),
+        documentSelector: LINEAGE_EXPORT_SELECTOR,
+        viewport: exportViewport,
+        renderEdgesOverlay:
+          includePNG && exportViewport
+            ? (imageWidth, imageHeight, padding, pixelRatio) => {
+                const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+                const { columnsInCurrentPages } = useLineageStore.getState();
+
+                return drawEdgesForExport(
+                  edges,
+                  nodeMap,
+                  exportViewport,
+                  imageWidth,
+                  imageHeight,
+                  padding,
+                  pixelRatio,
+                  columnsInCurrentPages
+                );
+              }
+            : undefined,
+        onExport: onExportCallback ?? exportLineageData,
+      });
     },
     [
       entityType,
@@ -661,6 +688,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       lineageConfig,
       queryFilter,
       nodes,
+      edges,
       isPlatformLineage,
     ]
   );
