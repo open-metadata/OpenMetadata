@@ -369,10 +369,18 @@ public final class SecurityUtil {
         throw new AuthenticationException("Invalid JWT token, 'email' claim is not present");
       }
     } else {
-      String jwtClaim = getFirstMatchJwtClaim(jwtPrincipalClaimsOrder, claims);
-      if (jwtClaim.contains("@")) {
-        domain = jwtClaim.split("@")[1];
-      }
+      // Scan all claims in order until one containing '@' is found.
+      // Stops at the first claim that exists in the token (username extraction),
+      // but for domain extraction a bare-username claim (e.g. preferred_username="asmith")
+      // must not shadow a full-email claim (e.g. email="asmith@company.com").
+      domain =
+          jwtPrincipalClaimsOrder.stream()
+              .filter(claims::containsKey)
+              .map(c -> getClaimOrObject(claims.get(c)))
+              .filter(v -> v.contains("@"))
+              .findFirst()
+              .map(v -> v.split("@")[1])
+              .orElse(StringUtils.EMPTY);
     }
 
     // Validate
