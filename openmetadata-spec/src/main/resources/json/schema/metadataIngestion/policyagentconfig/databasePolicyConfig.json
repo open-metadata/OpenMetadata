@@ -23,7 +23,7 @@
       "description": "Permission level being requested.",
       "type": "string",
       "javaType": "org.openmetadata.schema.metadataIngestion.policyagentconfig.DatabaseRequestedAccess",
-      "enum": ["Read", "Write", "Admin"]
+      "enum": ["Read", "Write", "Admin", "Revoke"]
     }
   },
   "properties": {
