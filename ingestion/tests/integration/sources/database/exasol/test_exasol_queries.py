@@ -60,6 +60,16 @@ def wait_for_system_table(
     )
 
 
+def _enable_auditing(engine: Engine) -> None:
+    """Enable database auditing so the EXA_DBA_AUDIT_* tables are populated.
+
+    A freshly spawned Exasol container ships with AUDITING = OFF, leaving the
+    audit statistics tables empty no matter how long the tests poll them.
+    """
+    with engine.begin() as connection:
+        connection.execute(text("ALTER SYSTEM SET AUDITING = 'ON'"))
+
+
 def _prepare_exasol_objects(engine: Engine) -> None:
     setup_statements = [
         f"CREATE SCHEMA IF NOT EXISTS {SCHEMA_NAME}",
@@ -131,6 +141,7 @@ class TestExasolQueries:
         )
 
         cls.engine = create_engine(f"exa+websocket://sys:exasol@localhost:{DB_PORT}/?SSLCertificate=SSL_VERIFY_NONE")
+        _enable_auditing(cls.engine)
         _prepare_exasol_objects(cls.engine)
 
     @classmethod
@@ -140,7 +151,7 @@ class TestExasolQueries:
 
     def test_connection_test_get_queries(self):
         query = EXASOL_TEST_GET_QUERIES
-        rows = wait_for_system_table(self.engine, query, expected_count=1)
+        rows = wait_for_system_table(self.engine, query, expected_count=1, timeout_seconds=120)
         columns = {column.lower() for column in rows[0]}
 
         assert columns == {
@@ -161,7 +172,7 @@ class TestExasolQueries:
             result_limit=5,
         )
 
-        rows = wait_for_system_table(self.engine, query, expected_count=5)
+        rows = wait_for_system_table(self.engine, query, expected_count=5, timeout_seconds=120)
         columns = {column.lower() for column in rows[0]}
 
         assert columns == {
