@@ -40,7 +40,8 @@
         "SSIS",
         "Snowplow",
         "Mulesoft",
-        "MicrosoftFabricPipeline"
+        "MicrosoftFabricPipeline",
+        "SapBw4HanaPipeline"
       ],
       "javaEnums": [
         {
@@ -114,6 +115,9 @@
         },
         {
           "name": "MicrosoftFabricPipeline"
+        },
+        {
+          "name": "SapBw4HanaPipeline"
         }
       ]
     },
@@ -199,6 +203,9 @@
             },
             {
               "$ref": "./connections/pipeline/microsoftFabricPipelineConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/sapBw4HanaPipelineConnection.json"
             }
           ]
         }

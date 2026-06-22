@@ -42,6 +42,7 @@ const IMPORT_GRID_LOAD_MASK_SELECTOR =
   '.om-rdg .inovua-react-toolkit-load-mask__background-layer';
 const EDITOR_OPEN_TIMEOUT = 1500;
 const TEXT_EDITOR_FILL_TIMEOUT = 2000;
+const IMPORT_STATUS_TIMEOUT = 90000;
 
 const waitForVisibleLocator = async (locator: Locator, timeout = 1500) => {
   try {
@@ -97,6 +98,124 @@ const doubleClickActiveGridCell = async (page: Page) => {
   const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR).first();
   // eslint-disable-next-line playwright/no-force-option -- RDG can leave an overlay above the active cell editor trigger.
   await activeCell.dblclick({ force: true });
+};
+
+const getGridColumnClass = (columnKey: string) =>
+  `rdg-cell-${columnKey.replaceAll(/[^a-zA-Z0-9-_]/g, '')}`;
+
+const scrollGridHorizontally = async (page: Page, scrollLeft: number) => {
+  const grid = page.locator('.om-rdg .rdg').first();
+
+  if (!(await waitForVisibleLocator(grid, EDITOR_OPEN_TIMEOUT))) {
+    return false;
+  }
+
+  await grid.evaluate((element, left) => {
+    element.scrollLeft = left;
+  }, scrollLeft);
+
+  await waitForAllLoadersToDisappear(page);
+
+  return true;
+};
+
+const getGridHorizontalScrollPositions = async (page: Page) => {
+  const grid = page.locator('.om-rdg .rdg').first();
+
+  if (!(await waitForVisibleLocator(grid, EDITOR_OPEN_TIMEOUT))) {
+    return [];
+  }
+
+  const { clientWidth, scrollLeft, scrollWidth } = await grid.evaluate(
+    (element) => ({
+      clientWidth: element.clientWidth,
+      scrollLeft: element.scrollLeft,
+      scrollWidth: element.scrollWidth,
+    })
+  );
+  const maxScrollLeft = Math.max(scrollWidth - clientWidth, 0);
+  const step = Math.max(Math.floor(clientWidth / 2), 240);
+  const positions = new Set([scrollLeft, 0, maxScrollLeft]);
+
+  for (let left = step; left < maxScrollLeft; left += step) {
+    positions.add(left);
+  }
+
+  return [...positions];
+};
+
+const getActiveGridRow = async (page: Page) => {
+  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR).first();
+
+  if (await waitForVisibleLocator(activeCell, EDITOR_OPEN_TIMEOUT)) {
+    const row = activeCell
+      .locator(
+        'xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " rdg-row ")]'
+      )
+      .first();
+
+    if ((await row.count()) > 0) {
+      return row;
+    }
+  }
+
+  return page.locator('.rdg-row').last();
+};
+
+const trySelectRenderedActiveRowCellByColumn = async (
+  page: Page,
+  columnClass: string,
+  timeout = EDITOR_OPEN_TIMEOUT
+) => {
+  const row = await getActiveGridRow(page);
+  const cellByClass = row.locator(`.${columnClass}`).first();
+
+  if (await waitForVisibleLocator(cellByClass, timeout)) {
+    // eslint-disable-next-line playwright/no-force-option -- fixed grid columns and overlays can intercept active-cell clicks.
+    await cellByClass.click({ force: true });
+
+    return true;
+  }
+
+  const headerCell = page.locator(`.rdg-header-row .${columnClass}`).first();
+  const columnIndex = (await waitForVisibleLocator(headerCell, timeout))
+    ? await headerCell.getAttribute('aria-colindex')
+    : undefined;
+
+  if (columnIndex) {
+    const cellByIndex = row
+      .locator(`.rdg-cell[aria-colindex="${columnIndex}"]`)
+      .first();
+
+    if (await waitForVisibleLocator(cellByIndex, timeout)) {
+      // eslint-disable-next-line playwright/no-force-option -- fixed grid columns and overlays can intercept active-cell clicks.
+      await cellByIndex.click({ force: true });
+
+      return true;
+    }
+  }
+
+  return false;
+};
+
+const selectActiveRowCellByColumn = async (page: Page, columnKey: string) => {
+  const columnClass = getGridColumnClass(columnKey);
+
+  if (await trySelectRenderedActiveRowCellByColumn(page, columnClass)) {
+    return;
+  }
+
+  for (const scrollLeft of await getGridHorizontalScrollPositions(page)) {
+    if (!(await scrollGridHorizontally(page, scrollLeft))) {
+      break;
+    }
+
+    if (await trySelectRenderedActiveRowCellByColumn(page, columnClass, 300)) {
+      return;
+    }
+  }
+
+  throw new Error(`Unable to select grid column "${columnKey}"`);
 };
 
 const getTextEditorOpenActions = (page: Page) => {
@@ -460,37 +579,37 @@ export const fillDomainDetails = async (
 export const fillTierDetails = async (
   page: Page,
   tier: string,
-  isBulkEdit?: boolean
+  _isBulkEdit?: boolean
 ) => {
   const tierResponse = page.waitForResponse('/api/v1/tags?parent=Tier*');
+  // eslint-disable-next-line playwright/no-force-option -- grid overlays can intercept active select-cell clicks.
   await page.locator(RDG_ACTIVE_CELL_SELECTOR).click({ force: true });
-  if (!isBulkEdit) {
-    await page.keyboard.press('Enter', { delay: 100 });
-  }
+  await page.keyboard.press('Enter', { delay: 100 });
   await tierResponse;
 
   await page.getByTestId(`radio-btn-${tier}`).click();
   await page.getByTestId('update-tier-card').click();
+  await page.getByTestId('update-tier-card').waitFor({ state: 'detached' });
 };
 
 export const fillCertificationDetails = async (
   page: Page,
   certification: string,
-  isBulkEdit?: boolean
+  _isBulkEdit?: boolean
 ) => {
   const certificationResponse = page.waitForResponse(
     '/api/v1/tags?parent=Certification*'
   );
+  // eslint-disable-next-line playwright/no-force-option -- grid overlays can intercept active select-cell clicks.
   await page.locator(RDG_ACTIVE_CELL_SELECTOR).click({ force: true });
-  if (!isBulkEdit) {
-    await page.keyboard.press('Enter', { delay: 100 });
-  }
+  await page.keyboard.press('Enter', { delay: 100 });
   await certificationResponse;
 
   const certRadioBtn = page.getByTestId(`radio-btn-${certification}`);
   await certRadioBtn.waitFor({ state: 'visible' });
   await certRadioBtn.click();
   await page.getByTestId('update-certification').click();
+  await page.getByTestId('update-certification').waitFor({ state: 'detached' });
 };
 
 export const fillStoredProcedureCode = async (page: Page) => {
@@ -594,7 +713,7 @@ export const fillCustomPropertyDetails = async (
 
   await page
     .getByTestId('custom-property-editor')
-    .waitFor({ state: 'attached' });
+    .waitFor({ state: 'attached', timeout: IMPORT_STATUS_TIMEOUT });
 
   await waitForAllLoadersToDisappear(page);
 
@@ -621,9 +740,17 @@ export const fillExtensionDetails = async (
   propertyListName: Record<string, string>
 ) => {
   await page.keyboard.press('Enter', { delay: 100 });
+  const customPropertyEditor = page.getByTestId('custom-property-editor');
+
+  await customPropertyEditor.waitFor({
+    state: 'attached',
+    timeout: IMPORT_STATUS_TIMEOUT,
+  });
 
   // Verify header text
-  await expect(page.getByTestId('header')).toContainText('Edit CustomProperty');
+  await expect(customPropertyEditor.getByTestId('header')).toContainText(
+    'Edit CustomProperty'
+  );
 
   // Verify save and cancel buttons are visible
   await expect(page.getByTestId('save')).toBeVisible();
@@ -668,8 +795,7 @@ export const fillGlossaryRowDetails = async (
   propertyListName?: Record<string, string>,
   isBulkEdit?: boolean
 ) => {
-  await moveToNextColumnWithVerification(page);
-
+  await selectActiveRowCellByColumn(page, 'name');
   if (isBulkEdit) {
     await expect(
       page.locator('.rdg-cell[aria-selected="true"][aria-readonly="true"]')
@@ -678,65 +804,41 @@ export const fillGlossaryRowDetails = async (
     await fillTextInputDetails(page, row.name);
   }
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'displayName');
   await fillTextInputDetails(page, row.displayName);
 
-  // Navigate to next cell and make cell editable
-  await moveToNextColumnWithVerification(page);
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'description');
   await fillDescriptionDetails(page, row.description);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'synonyms');
   await fillTextInputDetails(page, row.synonyms);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'relatedTerms');
   await fillGlossaryTermDetails(page, row.relatedTerm);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'references');
   await fillTextInputDetails(page, row.references);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'tags');
   await fillTagDetails(page, row.tag);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'reviewers');
   await fillOwnerDetails(page, row.reviewers);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'owner');
   await fillOwnerDetails(page, row.owners);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'color');
   await fillTextInputDetails(page, '#ccc');
-
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   const base64Src =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
 
+  await selectActiveRowCellByColumn(page, 'iconURL');
   await fillTextInputDetails(page, base64Src);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
-  if (propertyListName) {
+  if (propertyListName && Object.keys(propertyListName).length > 0) {
+    await selectActiveRowCellByColumn(page, 'extension');
     await fillExtensionDetails(page, propertyListName);
   }
 };
@@ -745,10 +847,18 @@ export const validateImportStatus = async (
   page: Page,
   status: { passed: string; failed: string; processed: string }
 ) => {
-  await page.getByTestId('processed-row').waitFor();
-  await expect(page.getByTestId('processed-row')).toHaveText(status.processed);
-  await expect(page.getByTestId('passed-row')).toHaveText(status.passed);
-  await expect(page.getByTestId('failed-row')).toHaveText(status.failed);
+  await page
+    .getByTestId('processed-row')
+    .waitFor({ timeout: IMPORT_STATUS_TIMEOUT });
+  await expect(page.getByTestId('processed-row')).toHaveText(status.processed, {
+    timeout: IMPORT_STATUS_TIMEOUT,
+  });
+  await expect(page.getByTestId('passed-row')).toHaveText(status.passed, {
+    timeout: IMPORT_STATUS_TIMEOUT,
+  });
+  await expect(page.getByTestId('failed-row')).toHaveText(status.failed, {
+    timeout: IMPORT_STATUS_TIMEOUT,
+  });
 
   await waitForVisibleLocator(page.locator('.rdg-header-row').first(), 5000);
 };
@@ -757,9 +867,12 @@ export const startCsvPreview = async (page: Page, timeout = 90000) => {
   const nextPreviewButton = page.getByRole('button', {
     name: /Next:\s*Preview/i,
   });
+  const nextButton = (await waitForVisibleLocator(nextPreviewButton, 1000))
+    ? nextPreviewButton
+    : page.getByRole('button', { name: /^Next$/i });
 
-  await expect(nextPreviewButton).toBeEnabled({ timeout });
-  await nextPreviewButton.click();
+  await expect(nextButton).toBeEnabled({ timeout });
+  await nextButton.click();
 };
 
 export const startCsvPreviewAndWaitForGrid = async (
@@ -771,7 +884,14 @@ export const startCsvPreviewAndWaitForGrid = async (
 ) => {
   const timeout = options?.timeout ?? 90000;
 
-  await startCsvPreview(page, timeout);
+  if (
+    !(await waitForVisibleLocator(
+      page.locator('.rdg-header-row').first(),
+      1000
+    ))
+  ) {
+    await startCsvPreview(page, timeout);
+  }
 
   if (options?.csvImportCompletedPromise) {
     await options.csvImportCompletedPromise;
@@ -988,76 +1108,56 @@ export const fillRowDetails = async (
     await page.locator('.rdg-cell-name').last().click();
   }
 
+  await selectActiveRowCellByColumn(page, 'name');
+
   if (isBulkEdit) {
     await expect(
       page.locator('.rdg-cell[aria-selected="true"][aria-readonly="true"]')
     ).toContainText(row.name);
   } else {
-    const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
-    const isActive = await activeCell.isVisible();
-
-    if (isActive) {
-      await fillTextInputDetails(page, row.name);
-    } else {
-      // Click the name cell again
-      await page.locator('.rdg-cell-name').last().click();
-      await fillTextInputDetails(page, row.name);
-    }
+    await fillTextInputDetails(page, row.name);
   }
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'displayName');
   await fillTextInputDetails(page, row.displayName);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'description');
   await fillDescriptionDetails(page, row.description);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'owner');
   await fillOwnerDetails(page, row.owners);
 
   if (row.teamOwners && row.teamOwners.length > 0) {
     await fillTeamOwnerDetails(page, row.teamOwners);
   }
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'tags');
   await fillTagDetails(page, row.tag);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'glossaryTerms');
   await fillGlossaryTermDetails(page, row.glossary);
 
-  await moveToNextColumnWithVerification(page);
+  await selectActiveRowCellByColumn(page, 'tiers');
   await fillTierDetails(page, row.tier, isBulkEdit);
 
-  await moveToNextColumnWithVerification(page);
+  await selectActiveRowCellByColumn(page, 'certification');
   await fillCertificationDetails(page, row.certification, isBulkEdit);
 
-  await moveToNextColumnWithVerification(page);
-
   if (row.retentionPeriod) {
+    await selectActiveRowCellByColumn(page, 'retentionPeriod');
     await fillTextInputDetails(page, row.retentionPeriod);
-
-    await moveToNextColumnWithVerification(page);
   }
+
   if (row.sourceUrl) {
+    await selectActiveRowCellByColumn(page, 'sourceUrl');
     await fillTextInputDetails(page, row.sourceUrl);
-
-    await moveToNextColumnWithVerification(page);
   }
 
+  await selectActiveRowCellByColumn(page, 'domains');
   await fillDomainDetails(page, row.domains);
 
-  await moveToNextColumnWithVerification(page);
-
-  if (customPropertyRecord) {
+  if (customPropertyRecord && Object.keys(customPropertyRecord).length > 0) {
+    await selectActiveRowCellByColumn(page, 'extension');
     await fillCustomPropertyDetails(page, customPropertyRecord);
   }
 };
@@ -1230,14 +1330,10 @@ export const fillRecursiveEntityTypeFQNDetails = async (
   entityType: string,
   page: Page
 ) => {
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'entityType');
   await fillEntityTypeDetails(page, entityType);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'fullyQualifiedName');
   await fillTextInputDetails(page, fullyQualifiedName);
 };
 
@@ -1260,7 +1356,7 @@ export const fillRecursiveColumnDetails = async (
   },
   page: Page
 ) => {
-  await page.locator('.rdg-cell-name').last().click();
+  await selectActiveRowCellByColumn(page, 'name');
 
   const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
   const isActive = await activeCell.isVisible();
@@ -1268,56 +1364,38 @@ export const fillRecursiveColumnDetails = async (
   if (isActive) {
     await fillTextInputDetails(page, row.name);
   } else {
-    // Click the name cell again
-    await page.locator('.rdg-cell-name').last().click();
+    await selectActiveRowCellByColumn(page, 'name');
     await fillTextInputDetails(page, row.name);
   }
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'displayName');
   await fillTextInputDetails(page, row.displayName);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'description');
   await fillDescriptionDetails(page, row.description);
 
-  await pressKeyXTimes(page, 2, 'ArrowRight');
-
+  await selectActiveRowCellByColumn(page, 'tags');
   await fillTagDetails(page, row.tag);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
+  await selectActiveRowCellByColumn(page, 'glossaryTerms');
   await fillGlossaryTermDetails(page, row.glossary);
 
-  await pressKeyXTimes(page, 7, 'ArrowRight');
-
+  await selectActiveRowCellByColumn(page, 'entityType');
   await fillEntityTypeDetails(page, row.entityType);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'fullyQualifiedName');
   await fillTextInputDetails(page, row.fullyQualifiedName);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'column.dataTypeDisplay');
   await fillTextInputDetails(page, row.dataTypeDisplay);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'column.dataType');
   await fillTextInputDetails(page, row.dataType);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'column.arrayDataType');
   await fillTextInputDetails(page, row.arrayDataType);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'column.dataLength');
   await fillTextInputDetails(page, row.dataLength);
 };
 

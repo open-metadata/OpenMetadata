@@ -173,7 +173,9 @@ test.describe('Glossary Bulk Import Export', () => {
         page.getByRole('button', { name: 'Previous' })
       ).toBeVisible();
 
+      const rowCount = await page.locator('.rdg-row').count();
       await page.click('[data-testid="add-row-btn"]');
+      await expect(page.locator('.rdg-row')).toHaveCount(rowCount + 1);
 
       // click on last row first cell
       const lastRow = page.locator('.rdg-row').last();
