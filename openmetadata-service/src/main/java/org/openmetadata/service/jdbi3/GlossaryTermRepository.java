@@ -1014,13 +1014,19 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     EntityLink newAbout = new EntityLink(GLOSSARY_TERM, newFqn);
     daoCollection.feedDAO().updateByEntityId(newAbout.getLinkString(), updated.getId().toString());
 
-    List<EntityReference> childTerms =
-        findTo(updated.getId(), GLOSSARY_TERM, Relationship.CONTAINS, GLOSSARY_TERM);
-
-    for (EntityReference child : childTerms) {
-      newAbout = new EntityLink(entityType, child.getFullyQualifiedName());
+    for (GlossaryTerm child : getNestedTerms(updated)) {
+      String childNewFqn = child.getFullyQualifiedName();
+      if (!childNewFqn.startsWith(newFqn + ".")) {
+        LOG.warn(
+            "Skipping workflow link update for unexpected glossary child FQN {} under {}",
+            childNewFqn,
+            newFqn);
+        continue;
+      }
+      newAbout = new EntityLink(entityType, childNewFqn);
       daoCollection.feedDAO().updateByEntityId(newAbout.getLinkString(), child.getId().toString());
     }
+    repointWorkflowInstancesForFqnChange(GLOSSARY_TERM, oldFqn, newFqn);
   }
 
   private List<GlossaryTerm> getNestedTerms(GlossaryTerm glossaryTerm) {
@@ -1262,16 +1268,21 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
     }
 
-    /**
-     * Move a glossary term to a new parent or glossary. Only parent or glossary can be changed.
-     */
-    @Transaction
+    /** Move a glossary term to a new parent or glossary. Only parent or glossary can be changed. */
     public void moveAndStore() {
-      changeDescription = new ChangeDescription().withPreviousVersion(original.getVersion());
-      // Now updated from previous/original to updated one
-      validateParent();
-      updateParent(original, updated); // Only update parent/glossary and FQN/relationships
-      storeUpdate();
+      DeadlockRetry.execute(
+          () -> {
+            Entity.getJdbi()
+                .useTransaction(
+                    handle -> {
+                      changeDescription =
+                          new ChangeDescription().withPreviousVersion(original.getVersion());
+                      validateParent();
+                      updateParent(original, updated);
+                      storeUpdate();
+                    });
+            return null;
+          });
       postUpdate(original, updated);
     }
 
