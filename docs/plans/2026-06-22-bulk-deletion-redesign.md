@@ -52,8 +52,12 @@ materially narrows the remaining work. Verified against `EntityRepository` on `m
    N-entity subtree that is ~3N satellite round-trips + N search dispatches — which a local 100k
    benchmark showed dominated the wall-clock (see below). Fixed via a capability field
    `descendantsCoveredByAncestorCascade` (declared on `EntityRepository`, default `false`, set in
-   the constructor like `supportsSearch`; enabled for `Database`/`DatabaseSchema`/`Table`/
-   `StoredProcedure`). When set, the bulk path:
+   the constructor like `supportsSearch`; enabled across all service-rooted asset trees —
+   database (`Database`/`DatabaseSchema`/`Table`/`StoredProcedure`), dashboard
+   (`Dashboard`/`Chart`/`DashboardDataModel`), messaging (`Topic`), pipeline (`Pipeline`),
+   mlmodel (`MlModel`), search (`SearchIndex`), storage (`Container`), drive
+   (`Directory`/`File`/`Spreadsheet`/`Worksheet`), and api (`APICollection`/`APIEndpoint`)). When
+   set, the bulk path:
    - **skips per-entity `deleteFromSearch`** — the root's own `deleteFromSearch` already fires
      `SearchRepository.deleteOrUpdateChildren`, which deletes *all* descendant docs in one
      delete-by-query by `service.id` / parent-id;
@@ -62,10 +66,12 @@ materially narrows the remaining work. Verified against `EntityRepository` on `m
    - **batches `usage`** by id-set (`deleteByIds` IN-list per chunk; usage is id-keyed so the root's
      FQN-prefix cleanup doesn't cover descendants).
 
-   Default `false` keeps flat-FQN / non-cascade-covered types (Team, User, Role, Policy, …) on the
-   safe per-entity path. Other service-rooted asset trees (dashboard/pipeline/topic/mlmodel/storage/
-   search/api/drive) are the identical pattern and can opt in the same one-line way after confirming
-   their child docs carry `service.id`.
+   Default `false` keeps flat-FQN / non-cascade-covered types (Team, User, Role, Policy, …) and
+   reference types whose deletion scrubs refs out of surviving docs (Tag, GlossaryTerm, Domain,
+   DataProduct, TestSuite — `deleteOrUpdateChildren` `updateChildren` cases) on the safe per-entity
+   path. Enabling the api tree also required adding `Entity.API_SERVICE` to the `service.id` case in
+   `SearchRepository.deleteOrUpdateChildren` (it had fallen through to the default `apiService.id`
+   branch, a field api docs don't carry — so the cascade had silently skipped api children).
 
 ### Measured result (local Docker, 1 GB heap, MySQL + Elasticsearch)
 

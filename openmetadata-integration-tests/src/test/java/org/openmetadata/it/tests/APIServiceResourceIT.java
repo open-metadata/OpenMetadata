@@ -13,6 +13,8 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.data.CreateAPICollection;
+import org.openmetadata.schema.api.data.CreateAPIEndpoint;
 import org.openmetadata.schema.api.services.CreateApiService;
 import org.openmetadata.schema.api.services.CreateApiService.ApiServiceType;
 import org.openmetadata.schema.entity.services.ApiService;
@@ -33,6 +35,30 @@ public class APIServiceResourceIT extends BaseServiceIT<ApiService, CreateApiSer
 
   {
     supportsListHistoryByTimestamp = true;
+  }
+
+  @Override
+  protected DeletableSubtree createDeletableSubtree(TestNamespace ns) {
+    var service = createEntity(createMinimalRequest(ns));
+    var collection =
+        SdkClients.adminClient()
+            .apiCollections()
+            .create(
+                new CreateAPICollection()
+                    .withName(ns.prefix("del_coll"))
+                    .withService(service.getFullyQualifiedName()));
+    var endpoint =
+        SdkClients.adminClient()
+            .apiEndpoints()
+            .create(
+                new CreateAPIEndpoint()
+                    .withName(ns.prefix("del_ep"))
+                    .withApiCollection(collection.getFullyQualifiedName()));
+    return new DeletableSubtree(
+        service.getId().toString(),
+        java.util.List.of(collection.getId().toString(), endpoint.getId().toString()),
+        "api_endpoint_search_index",
+        endpoint.getId().toString());
   }
 
   @Override
