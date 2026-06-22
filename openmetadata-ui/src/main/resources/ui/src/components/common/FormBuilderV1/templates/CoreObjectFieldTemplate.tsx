@@ -25,6 +25,10 @@ import classNames from 'classnames';
 import { Fragment, FunctionComponent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  GATED_CREDENTIAL_ADVANCED_PROPERTY_ORDER,
+  STATIC_AWS_CREDENTIAL_PROPERTIES,
+} from '../../../../constants/CoreObjectFieldTemplate.constants';
+import {
   getAdvancedHeaderLabel,
   getFormSeperationConfig,
   getOrderedNormalProperties,
@@ -32,11 +36,7 @@ import {
   orderProperties,
   partitionProperties,
   shouldSpanFullWidth,
-} from 'src/utils/CoreObjectFieldTemplateUtils';
-import {
-  GATED_CREDENTIAL_ADVANCED_PROPERTY_ORDER,
-  STATIC_AWS_CREDENTIAL_PROPERTIES,
-} from '../../../../constants/CoreObjectFieldTemplate.constants';
+} from '../../../../utils/CoreObjectFieldTemplateUtils';
 import {
   AdvancedPropertiesSectionProps,
   PropertyItemProps,
