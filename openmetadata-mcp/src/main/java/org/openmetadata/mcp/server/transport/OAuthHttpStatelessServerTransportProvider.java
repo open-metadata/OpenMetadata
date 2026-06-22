@@ -339,11 +339,25 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       throws IOException {
     String tokenWithType = request.getHeader("Authorization");
 
+    if (tokenWithType == null) {
+      LOG.warn("MCP request rejected: no Authorization header present");
+      sendAuthErrorWithChallenge(
+          response, "Invalid or expired token", HttpServletResponse.SC_UNAUTHORIZED);
+      return false;
+    }
+
     try {
       validatePrefixedTokenRequest(jwtFilter, tokenWithType);
       return true;
     } catch (Exception e) {
-      LOG.debug("Bearer token authentication failed", e);
+      // WARN so the rejection reason is visible without enabling DEBUG.
+      // Full stack trace at DEBUG for deeper investigation.
+      LOG.warn(
+          "MCP Bearer token rejected — reason: {}. "
+              + "Check jwtPrincipalClaims order (email must precede preferred_username) "
+              + "and enforcePrincipalDomain setting. Enable DEBUG for full trace.",
+          e.getMessage());
+      LOG.debug("MCP Bearer token authentication failed (full trace)", e);
       sendAuthErrorWithChallenge(
           response, "Invalid or expired token", HttpServletResponse.SC_UNAUTHORIZED);
       return false;

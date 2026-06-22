@@ -226,7 +226,7 @@ public class JWTTokenGenerator {
               .withClaim(IS_BOT_CLAIM, isBot)
               .withClaim(TOKEN_TYPE, tokenType.value())
               .withClaim(USERNAME, userName)
-              .withClaim(PREFERRED_USERNAME, userName)
+              .withClaim(PREFERRED_USERNAME, !nullOrEmpty(email) ? email : userName)
               .withIssuedAt(new Date(System.currentTimeMillis()))
               .withExpiresAt(expires);
 
