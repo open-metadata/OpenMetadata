@@ -82,11 +82,12 @@ export const Toast = ({ toast }: ToastProps) => {
       )}
       data-testid="alert-bar"
       toast={toast}>
-      <Icon
-        aria-hidden="true"
-        className={cx('tw:size-4 tw:shrink-0', config.iconClass)}
-        data-testid="alert-icon"
-      />
+      <span className="tw:flex tw:shrink-0" data-testid="alert-icon">
+        <Icon
+          aria-hidden="true"
+          className={cx('tw:size-4', config.iconClass)}
+        />
+      </span>
       {typeof messageOrNode === 'string' ? (
         <span>{messageOrNode}</span>
       ) : (
