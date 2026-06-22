@@ -21,14 +21,14 @@ import org.openmetadata.sdk.network.HttpMethod;
  * <p><b>Embedded mode</b> talks directly to {@code searchHost:searchPort} via {@link
  * java.net.http.HttpClient}, so the harness has no dependency on a specific ES/OpenSearch client
  * version. <b>External mode</b> (a remote cluster where {@code :9200} isn't reachable) routes the
- * same operations through the server's authenticated, typed {@code /v1/test-support/search}
+ * same operations through the server's authenticated, typed {@code /v1/search/operations}
  * endpoints — there is no raw-path passthrough, so the server only ever runs these read-only ops.
  */
 public final class SearchClient {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final Duration TIMEOUT = Duration.ofSeconds(30);
-  private static final String TEST_SUPPORT = "/v1/test-support/search";
+  private static final String SEARCH_OPS = "/v1/search/operations";
 
   private final ServerHandle server;
   private final HttpClient http;
@@ -51,7 +51,7 @@ public final class SearchClient {
   public JsonNode count(final String index) {
     final JsonNode result;
     if (server.isExternal()) {
-      result = parse(proxyGet(TEST_SUPPORT + "/count?index=" + encode(index)));
+      result = parse(proxyGet(SEARCH_OPS + "/count?index=" + encode(index)));
     } else {
       result = engineGet("/" + index + "/_count");
     }
@@ -62,7 +62,7 @@ public final class SearchClient {
   public JsonNode count(final String index, final String query) {
     final JsonNode result;
     if (server.isExternal()) {
-      result = parse(proxyPost(TEST_SUPPORT + "/count?index=" + encode(index), query));
+      result = parse(proxyPost(SEARCH_OPS + "/count?index=" + encode(index), query));
     } else {
       result = enginePost("/" + index + "/_count", query);
     }
@@ -73,7 +73,7 @@ public final class SearchClient {
   public JsonNode search(final String index, final String query) {
     final JsonNode result;
     if (server.isExternal()) {
-      result = parse(proxyPost(TEST_SUPPORT + "/search?index=" + encode(index), query));
+      result = parse(proxyPost(SEARCH_OPS + "/search?index=" + encode(index), query));
     } else {
       result = enginePost("/" + index + "/_search", query);
     }
@@ -84,7 +84,7 @@ public final class SearchClient {
   public JsonNode alias(final String name) {
     final JsonNode result;
     if (server.isExternal()) {
-      result = parse(proxyGet(TEST_SUPPORT + "/alias?name=" + encode(name)));
+      result = parse(proxyGet(SEARCH_OPS + "/alias?name=" + encode(name)));
     } else {
       result = engineGet("/_alias/" + name);
     }
@@ -95,7 +95,7 @@ public final class SearchClient {
   public JsonNode mapping(final String index) {
     final JsonNode result;
     if (server.isExternal()) {
-      result = parse(proxyGet(TEST_SUPPORT + "/mapping?index=" + encode(index)));
+      result = parse(proxyGet(SEARCH_OPS + "/mapping?index=" + encode(index)));
     } else {
       result = engineGet("/" + index + "/_mapping");
     }
@@ -106,7 +106,7 @@ public final class SearchClient {
   public JsonNode indices(final String pattern) {
     final JsonNode result;
     if (server.isExternal()) {
-      result = parse(proxyGet(TEST_SUPPORT + "/indices?pattern=" + encode(pattern)));
+      result = parse(proxyGet(SEARCH_OPS + "/indices?pattern=" + encode(pattern)));
     } else {
       result = engineGet("/_cat/indices/" + pattern + "?format=json&h=index");
     }
@@ -124,7 +124,7 @@ public final class SearchClient {
   }
 
   private boolean existsViaServer(final String kind, final String name) {
-    return parse(proxyGet(TEST_SUPPORT + "/exists?" + kind + "=" + encode(name)))
+    return parse(proxyGet(SEARCH_OPS + "/exists?" + kind + "=" + encode(name)))
         .path("exists")
         .asBoolean();
   }
@@ -141,7 +141,8 @@ public final class SearchClient {
     try {
       return server.sdk().getHttpClient().executeForString(method, path, body);
     } catch (final RuntimeException e) {
-      throw new SearchClientException(method + " " + path + " via test-support endpoint failed", e);
+      throw new SearchClientException(
+          method + " " + path + " via search-operations endpoint failed", e);
     }
   }
 

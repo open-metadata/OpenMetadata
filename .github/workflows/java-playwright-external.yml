@@ -29,12 +29,10 @@
 #
 # Search engine access: the search/scale ITs would normally talk to OpenSearch directly on :9200,
 # which a remote cluster doesn't expose. In external mode SearchClient routes index introspection
-# through the server's admin-only, typed /v1/test-support/search endpoints (TestSupportSearchResource,
-# auto-registered via @Collection). The deployed image on the target cluster MUST therefore (a) be
-# built from this branch or later, AND (b) set OM_TEST_SUPPORT_SEARCH_ENABLED=true in the SERVER's
-# environment — the resource is disabled by default so it never ships enabled in production, and
-# without the flag every external search assertion fails. The flag belongs on the cluster
-# deployment, not on this CI runner.
+# through the server's admin-only, typed /v1/search/operations endpoints (SearchOperationalResource,
+# auto-registered via @Collection). The deployed image on the target cluster MUST therefore be built
+# from this branch or later so the resource exists; it is a normal always-on admin endpoint, so no
+# special server env flag is required.
 #
 # Auth: the target cluster uses basic auth, so we exchange username/password for a JWT via
 # POST /api/v1/users/login (password base64-encoded) and feed the accessToken as OM_ADMIN_TOKEN.
@@ -102,7 +100,9 @@ permissions:
 
 jobs:
   ui-it-external:
-    if: ${{ github.event.inputs.runUiIt != 'false' }}
+    # External-cluster runs trigger on schedule/workflow_dispatch ONLY — never on PR or push, so a
+    # PR check can never hit (or wipe) the shared external cluster.
+    if: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.event.inputs.runUiIt != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -267,7 +267,7 @@ jobs:
     # serially or they collide with "Job is already running". `needs` enforces ordering; `always()`
     # keeps each job's own toggle independent (so it still runs if ui-it was skipped/failed).
     needs: [ui-it-external]
-    if: ${{ always() && github.event.inputs.runSearchIt != 'false' }}
+    if: ${{ always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.event.inputs.runSearchIt != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -395,7 +395,7 @@ jobs:
     # entries (e.g. 100k then 500k) seed + reindex one at a time — two concurrent reindexes on one
     # cluster collide and the db/es counts would mix cohorts.
     needs: [search-it-external]
-    if: ${{ always() && github.event.inputs.runScaleIt != 'false' }}
+    if: ${{ always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.event.inputs.runScaleIt != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     strategy:

@@ -50,7 +50,7 @@ public final class ServerHandle {
    * Whether this server is reached over the network (external mode) rather than booted in-JVM. In
    * external mode the search engine isn't directly reachable, so {@link
    * org.openmetadata.it.search.SearchClient} routes index introspection through the server's typed
-   * {@code /v1/test-support/search} endpoints instead of {@code searchHost:searchPort}.
+   * {@code /v1/search/operations} endpoints instead of {@code searchHost:searchPort}.
    */
   public boolean isExternal() {
     return external;

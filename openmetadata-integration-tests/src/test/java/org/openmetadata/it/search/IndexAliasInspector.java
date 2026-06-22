@@ -99,7 +99,7 @@ public final class IndexAliasInspector {
   /**
    * Resolves the server's configured cluster alias (the index-name prefix). Embedded mode reads it
    * from the in-JVM {@link SearchRepository}. External mode (where the SearchRepository isn't
-   * initialized in the test JVM) fetches it from the server's {@code /v1/test-support/search}
+   * initialized in the test JVM) fetches it from the server's {@code /v1/search/operations}
    * endpoints, so assertions query the alias that actually exists on the remote cluster rather
    * than a bare name that would 404 under a cluster alias.
    */
@@ -119,7 +119,7 @@ public final class IndexAliasInspector {
         server
             .sdk()
             .getHttpClient()
-            .executeForString(HttpMethod.GET, "/v1/test-support/search/cluster-alias", null);
+            .executeForString(HttpMethod.GET, "/v1/search/operations/cluster-alias", null);
     try {
       return new ObjectMapper().readTree(body).path("clusterAlias").asText("");
     } catch (final IOException e) {

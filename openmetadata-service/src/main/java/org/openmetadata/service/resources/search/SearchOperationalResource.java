@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.openmetadata.service.resources.testsupport;
+package org.openmetadata.service.resources.search;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -37,58 +37,43 @@ import org.openmetadata.service.search.SearchClient.RawSearchResponse;
 import org.openmetadata.service.security.Authorizer;
 
 /**
- * Admin-only, read-only search-engine introspection for integration tests that run against a remote
- * cluster (where {@code :9200} isn't reachable). Auto-registered via {@link Collection}.
+ * Admin-only operational endpoints for inspecting the search cluster (Elasticsearch / OpenSearch).
+ * Auto-registered via {@link Collection}.
  *
- * <p>Exposes a fixed, typed set of read-only operations — {@code count}, {@code search},
- * {@code alias}, {@code mapping}, {@code indices}, {@code exists} — each of which builds the engine
- * request <b>server-side</b> from a validated index/alias name. There is no caller-controlled
+ * <p>Exposes a fixed, typed set of operations — {@code count}, {@code search}, {@code alias},
+ * {@code mapping}, {@code indices}, {@code exists}, {@code cluster-alias} — each of which builds the
+ * engine request <b>server-side</b> from a validated index/alias name. There is no caller-controlled
  * request path or HTTP method, so no mutating engine operation (e.g. {@code _doc}, {@code _bulk},
  * {@code _delete_by_query}) can be reached through this resource. Every method requires admin.
  *
- * <p><b>Disabled by default.</b> This is a test-only surface, so it does not register unless {@code
- * OM_TEST_SUPPORT_SEARCH_ENABLED=true} (env var or system property) — a production deployment never
- * exposes it. The constructor throws when disabled; {@code CollectionRegistry} catches that and
- * simply skips registration. To run the external integration suites against a cluster, set the flag
- * on that <b>server's</b> deployment (not on the CI runner).
+ * <p>The responses are the raw engine payloads so operators — and the integration suites running
+ * against a remote cluster where {@code :9200} isn't reachable — get search-engine ground truth
+ * through the authenticated API instead of talking to the engine directly.
  */
-@Path("/v1/test-support/search")
-@Collection(name = "testSupportSearch")
-@Tag(name = "TestSupport", description = "Admin-only read-only search introspection for tests")
+@Path("/v1/search/operations")
+@Collection(name = "searchOperations")
+@Tag(
+    name = "Search Operations",
+    description = "Admin-only introspection of the search cluster (indices, mappings, counts)")
 @Produces(MediaType.APPLICATION_JSON)
 @Slf4j
-public class TestSupportSearchResource {
+public class SearchOperationalResource {
 
   /** Index/alias names are interpolated into the engine path, so restrict to a safe charset. */
   private static final Pattern SAFE_NAME = Pattern.compile("[a-zA-Z0-9][a-zA-Z0-9._-]*");
 
   private static final Pattern SAFE_PATTERN = Pattern.compile("[a-zA-Z0-9][a-zA-Z0-9._-]*\\*?");
 
-  private static final String ENABLED_FLAG = "OM_TEST_SUPPORT_SEARCH_ENABLED";
-
   private final Authorizer authorizer;
 
-  public TestSupportSearchResource(Authorizer authorizer) {
-    if (!isEnabled()) {
-      throw new IllegalStateException(
-          "TestSupportSearchResource is disabled. Set "
-              + ENABLED_FLAG
-              + "=true (env var or system property) on the server to expose the test-support search"
-              + " introspection endpoints; production deployments must leave it unset.");
-    }
+  public SearchOperationalResource(Authorizer authorizer) {
     this.authorizer = authorizer;
-  }
-
-  private static boolean isEnabled() {
-    final String env = System.getenv(ENABLED_FLAG);
-    final String value = env != null ? env : System.getProperty(ENABLED_FLAG);
-    return Boolean.parseBoolean(value);
   }
 
   @GET
   @Path("/count")
   @Operation(
-      operationId = "testSupportSearchCount",
+      operationId = "searchOpsCount",
       summary = "Document count for an index/alias",
       responses = {@ApiResponse(responseCode = "200", description = "Raw engine count response")})
   public Response count(@Context SecurityContext securityContext, @QueryParam("index") String index)
@@ -100,7 +85,7 @@ public class TestSupportSearchResource {
   @Path("/count")
   @Consumes(MediaType.APPLICATION_JSON)
   @Operation(
-      operationId = "testSupportSearchCountWithQuery",
+      operationId = "searchOpsCountWithQuery",
       summary = "Document count for an index/alias matching a query",
       responses = {@ApiResponse(responseCode = "200", description = "Raw engine count response")})
   public Response countWithQuery(
@@ -113,7 +98,7 @@ public class TestSupportSearchResource {
   @Path("/search")
   @Consumes(MediaType.APPLICATION_JSON)
   @Operation(
-      operationId = "testSupportSearchQuery",
+      operationId = "searchOpsQuery",
       summary = "Search an index/alias with a query body",
       responses = {@ApiResponse(responseCode = "200", description = "Raw engine search response")})
   public Response search(
@@ -125,7 +110,7 @@ public class TestSupportSearchResource {
   @GET
   @Path("/alias")
   @Operation(
-      operationId = "testSupportSearchAlias",
+      operationId = "searchOpsAlias",
       summary = "Backing indices for an alias",
       responses = {@ApiResponse(responseCode = "200", description = "Raw engine alias response")})
   public Response alias(@Context SecurityContext securityContext, @QueryParam("name") String name)
@@ -136,7 +121,7 @@ public class TestSupportSearchResource {
   @GET
   @Path("/mapping")
   @Operation(
-      operationId = "testSupportSearchMapping",
+      operationId = "searchOpsMapping",
       summary = "Mapping for an index/alias",
       responses = {@ApiResponse(responseCode = "200", description = "Raw engine mapping response")})
   public Response mapping(
@@ -148,7 +133,7 @@ public class TestSupportSearchResource {
   @GET
   @Path("/indices")
   @Operation(
-      operationId = "testSupportSearchIndices",
+      operationId = "searchOpsIndices",
       summary = "Index names matching a pattern (_cat/indices)",
       responses = {@ApiResponse(responseCode = "200", description = "Raw engine _cat response")})
   public Response indices(
@@ -161,7 +146,7 @@ public class TestSupportSearchResource {
   @GET
   @Path("/cluster-alias")
   @Operation(
-      operationId = "testSupportClusterAlias",
+      operationId = "searchOpsClusterAlias",
       summary = "The server's configured search cluster alias (index name prefix)",
       responses = {@ApiResponse(responseCode = "200", description = "{\"clusterAlias\": string}")})
   public Response clusterAlias(@Context SecurityContext securityContext) {
@@ -173,7 +158,7 @@ public class TestSupportSearchResource {
   @GET
   @Path("/exists")
   @Operation(
-      operationId = "testSupportSearchExists",
+      operationId = "searchOpsExists",
       summary = "Whether an index or alias exists",
       responses = {@ApiResponse(responseCode = "200", description = "{\"exists\": boolean}")})
   public Response exists(
@@ -192,20 +177,21 @@ public class TestSupportSearchResource {
 
   private Response engineGet(SecurityContext securityContext, String enginePath)
       throws IOException {
-    return forward(securityContext, "GET", enginePath, null);
+    authorizer.authorizeAdmin(securityContext);
+    RawSearchResponse response =
+        Entity.getSearchRepository().getSearchClient().rawSearchRequest("GET", enginePath, null);
+    return engineResponse(response);
   }
 
   private Response enginePost(SecurityContext securityContext, String enginePath, String body)
       throws IOException {
-    return forward(securityContext, "POST", enginePath, body);
-  }
-
-  private Response forward(
-      SecurityContext securityContext, String method, String enginePath, String body)
-      throws IOException {
     authorizer.authorizeAdmin(securityContext);
     RawSearchResponse response =
-        Entity.getSearchRepository().getSearchClient().rawSearchRequest(method, enginePath, body);
+        Entity.getSearchRepository().getSearchClient().rawSearchRequest("POST", enginePath, body);
+    return engineResponse(response);
+  }
+
+  private static Response engineResponse(RawSearchResponse response) {
     return Response.status(response.statusCode())
         .type(MediaType.APPLICATION_JSON)
         .entity(response.body())
