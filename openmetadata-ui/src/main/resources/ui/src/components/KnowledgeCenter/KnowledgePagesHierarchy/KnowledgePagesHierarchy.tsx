@@ -238,7 +238,7 @@ const KnowledgePagesHierarchy = forwardRef<
 
     const fetchKnowledgePagesTotalCount = useCallback(async () => {
       try {
-        const { paging } = await getListKnowledgePages({ limit: 0 });
+        const { paging } = await getListKnowledgePages({ limit: 0, pageType: PageType.ARTICLE });
         setKnowledgePagesTotalCount(paging.total);
       } catch (error) {
         showErrorToast(error as AxiosError);
