@@ -16,9 +16,11 @@ package org.openmetadata.service.apps.bundles.rdf.distributed;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -69,7 +71,15 @@ public class RdfPartitionWorker {
 
         RdfBatchProcessor.BatchProcessingResult batchResult =
             batchProcessor.processEntities(entityType, resultList.getData(), stopped::get);
-        int readerErrors = listOrEmpty(resultList.getErrors()).size();
+        // Reader failures are entities the source could not hydrate (field
+        // resolution / deserialization errors). They count as failed records
+        // below, so attribute each one with its id and reason — otherwise the
+        // failure count climbs with no diagnostic the operator can find, and
+        // the only trace is a DEBUG line under EntityRepository (#29211). This
+        // mirrors the search-index PartitionWorker.recordReaderFailures path.
+        List<EntityError> readerFailures = listOrEmpty(resultList.getErrors());
+        int readerErrors = readerFailures.size();
+        String readerError = logReaderFailures(entityType, readerFailures);
         long batchProcessed = resultList.getData().size() + readerErrors;
 
         processedCount += batchProcessed;
@@ -83,6 +93,8 @@ public class RdfPartitionWorker {
         currentOffset += batchProcessed;
         if (batchResult.lastError() != null) {
           lastError = batchResult.lastError();
+        } else if (readerError != null) {
+          lastError = readerError;
         }
 
         if (processedCount % PROGRESS_UPDATE_INTERVAL < batchProcessed) {
@@ -134,6 +146,49 @@ public class RdfPartitionWorker {
 
   public void stop() {
     stopped.set(true);
+  }
+
+  /**
+   * Log every reader failure in the batch at ERROR with the offending entity's id/FQN and reason,
+   * and return a representative message for the partition's {@code lastError}. Reader failures are
+   * counted as failed records, so without this the failure count rises with no way to identify the
+   * affected entities — the only other trace is a DEBUG line in {@link
+   * org.openmetadata.service.jdbi3.EntityRepository#listAfterKeyset} (#29211).
+   */
+  private String logReaderFailures(String entityType, List<EntityError> readerFailures) {
+    String representativeError = null;
+    for (EntityError failure : readerFailures) {
+      representativeError = failure.getMessage();
+      LOG.error(
+          "RDF reindex could not hydrate {} entity {} (counted as a failed record). Reason: {}",
+          entityType,
+          describeFailedEntity(failure),
+          failure.getMessage());
+    }
+    return representativeError;
+  }
+
+  private static String describeFailedEntity(EntityError failure) {
+    Object rawEntity = failure.getEntity();
+    String descriptor;
+    if (rawEntity instanceof EntityInterface entity) {
+      descriptor = describeEntityReference(entity);
+    } else if (rawEntity != null) {
+      descriptor = rawEntity.toString();
+    } else {
+      descriptor = "<unknown>";
+    }
+    return descriptor;
+  }
+
+  private static String describeEntityReference(EntityInterface entity) {
+    UUID id = entity.getId();
+    String descriptor = id != null ? id.toString() : "<no-id>";
+    String fqn = entity.getFullyQualifiedName();
+    if (fqn != null) {
+      descriptor = descriptor + " (" + fqn + ")";
+    }
+    return descriptor;
   }
 
   private ResultList<? extends EntityInterface> readEntitiesKeyset(

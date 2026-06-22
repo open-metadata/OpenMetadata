@@ -12,6 +12,8 @@ import static org.mockito.Mockito.when;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.rdf.RdfBatchProcessor;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -85,6 +88,71 @@ class RdfPartitionWorkerTest {
                     (long) Integer.MAX_VALUE + 2L));
 
     assertTrue(exception.getMessage().contains("does not support offsets above"));
+  }
+
+  @Test
+  void logReaderFailuresReturnsRepresentativeMessageForNonEmptyBatch() throws Exception {
+    EntityInterface table = mock(EntityInterface.class);
+    UUID id = UUID.randomUUID();
+    when(table.getId()).thenReturn(id);
+    when(table.getFullyQualifiedName()).thenReturn("svc.db.schema.tbl");
+    EntityError withEntity =
+        new EntityError().withMessage("Entity type chart not found").withEntity(table);
+    EntityError withoutEntity = new EntityError().withMessage("Failed to deserialize entity: boom");
+
+    String representative =
+        (String)
+            invokePrivate(
+                worker,
+                "logReaderFailures",
+                new Class<?>[] {String.class, List.class},
+                "table",
+                List.of(withEntity, withoutEntity));
+
+    assertEquals("Failed to deserialize entity: boom", representative);
+  }
+
+  @Test
+  void logReaderFailuresReturnsNullForEmptyBatch() throws Exception {
+    assertNull(
+        invokePrivate(
+            worker,
+            "logReaderFailures",
+            new Class<?>[] {String.class, List.class},
+            "table",
+            List.of()));
+  }
+
+  @Test
+  void describeFailedEntityAttributesIdAndFqn() throws Exception {
+    EntityInterface table = mock(EntityInterface.class);
+    UUID id = UUID.randomUUID();
+    when(table.getId()).thenReturn(id);
+    when(table.getFullyQualifiedName()).thenReturn("svc.db.schema.tbl");
+
+    assertEquals(
+        id + " (svc.db.schema.tbl)",
+        invokeStaticPrivate(
+            "describeFailedEntity",
+            new Class<?>[] {EntityError.class},
+            new EntityError().withMessage("boom").withEntity(table)));
+  }
+
+  @Test
+  void describeFailedEntityHandlesMissingEntity() throws Exception {
+    assertEquals(
+        "<unknown>",
+        invokeStaticPrivate(
+            "describeFailedEntity",
+            new Class<?>[] {EntityError.class},
+            new EntityError().withMessage("Failed to deserialize entity: boom")));
+  }
+
+  private Object invokeStaticPrivate(String methodName, Class<?>[] parameterTypes, Object... args)
+      throws Exception {
+    Method method = RdfPartitionWorker.class.getDeclaredMethod(methodName, parameterTypes);
+    method.setAccessible(true);
+    return method.invoke(null, args);
   }
 
   private Object invokePrivate(
