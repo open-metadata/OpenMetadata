@@ -121,6 +121,7 @@ import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.jobs.JobHandlerRegistry;
 import org.openmetadata.service.limits.DefaultLimits;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.llm.LLMClientHolder;
 import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
 import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
 import org.openmetadata.service.migration.MigrationValidationClient;
@@ -197,7 +198,7 @@ import org.quartz.SchedulerException;
     info =
         @Info(
             title = "OpenMetadata APIs",
-            version = "1.9.8",
+            version = "2.0.0-SNAPSHOT",
             description = "Common types and API definition for OpenMetadata",
             contact =
                 @Contact(
@@ -260,6 +261,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Initialize the IndexMapping class
     IndexMappingLoader.init(catalogConfig.getElasticSearchConfiguration());
 
+    // Initialize the shared LLM completion client from llmConfiguration
+    LLMClientHolder.initialize(catalogConfig.getLlmConfiguration());
     // Publish the platform-wide LLM configuration for features that need completions
     LlmConfigHolder.initialize(catalogConfig.getLlmConfiguration());
 

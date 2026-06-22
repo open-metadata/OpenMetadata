@@ -43,6 +43,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
@@ -127,10 +128,13 @@ public class UserRepository extends EntityRepository<User> {
   static final String ROLES_FIELD = "roles";
   static final String TEAMS_FIELD = "teams";
   public static final String AUTH_MECHANISM_FIELD = "authenticationMechanism";
+  public static final String ALLOW_IMPERSONATION_FIELD = "allowImpersonation";
   static final String USER_PATCH_FIELDS =
       "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,domains,personaPreferences";
   static final String USER_UPDATE_FIELDS =
       "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,domains,personaPreferences";
+  private static final String OWNS_ENTITY_TYPE_PARAM = "ownsEntityType";
+  private static final String DIRECT_OWNS_ONLY_PARAM = "directOwnsOnly";
   private volatile EntityReference organization;
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
@@ -707,6 +711,31 @@ public class UserRepository extends EntityRepository<User> {
     }
   }
 
+  /**
+   * Internal-only mutation of the bot impersonation grant. {@code allowImpersonation} is read-only
+   * on the user APIs (see {@link UserUpdater}); bots receive or lose the grant through {@code
+   * BotResource}, which delegates here.
+   */
+  public void updateBotImpersonation(
+      UUID botUserId, boolean allowImpersonation, EntityReference impersonationRole) {
+    User user = find(botUserId, Include.NON_DELETED, false);
+    user.setAllowImpersonation(allowImpersonation);
+    dao.update(user.getId(), user.getFullyQualifiedName(), JsonUtils.pojoToJson(user));
+    invalidateCacheForEntity(USER, user.getId(), user.getFullyQualifiedName());
+    updateImpersonationRole(user, allowImpersonation, impersonationRole);
+    SubjectCache.invalidateUser(user.getName());
+  }
+
+  private void updateImpersonationRole(
+      User user, boolean allowImpersonation, EntityReference impersonationRole) {
+    if (allowImpersonation) {
+      addRelationship(user.getId(), impersonationRole.getId(), USER, Entity.ROLE, Relationship.HAS);
+    } else {
+      deleteRelationship(
+          user.getId(), USER, impersonationRole.getId(), Entity.ROLE, Relationship.HAS);
+    }
+  }
+
   private void assignTeams(User user, List<EntityReference> teams) {
     teams = listOrEmpty(teams);
     for (EntityReference team : teams) {
@@ -844,58 +873,81 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   private void fetchAndSetOwns(List<User> users, Fields fields) {
+    fetchAndSetOwns(users, fields, null);
+  }
+
+  private void fetchAndSetOwns(List<User> users, Fields fields, ListFilter filter) {
     if (!fields.contains("owns") || users == null || users.isEmpty()) {
       return;
     }
 
     List<String> userIds = users.stream().map(User::getId).map(UUID::toString).distinct().toList();
+    String ownsEntityType = filter == null ? null : filter.getQueryParam(OWNS_ENTITY_TYPE_PARAM);
+    boolean directOwnsOnly =
+        filter != null && Boolean.parseBoolean(filter.getQueryParam(DIRECT_OWNS_ONLY_PARAM));
 
     // Get entities owned by users
     List<CollectionDAO.EntityRelationshipObject> ownsRecords =
-        daoCollection
-            .relationshipDAO()
-            .findToBatchAllTypes(userIds, Relationship.OWNS.ordinal(), Include.ALL);
+        nullOrEmpty(ownsEntityType)
+            ? daoCollection
+                .relationshipDAO()
+                .findToBatchAllTypes(userIds, Relationship.OWNS.ordinal(), Include.ALL)
+            : daoCollection
+                .relationshipDAO()
+                .findToBatch(userIds, Relationship.OWNS.ordinal(), ownsEntityType, Include.ALL);
 
     // Also get entities owned by teams that users belong to
     // First get all teams for all users
     Map<UUID, List<EntityReference>> userTeams = new HashMap<>();
-    if (!fields.contains(TEAMS_FIELD)) {
-      // If teams weren't already fetched, we need to get them
-      List<CollectionDAO.EntityRelationshipObject> teamRecords =
-          daoCollection
-              .relationshipDAO()
-              .findFromBatch(userIds, Relationship.HAS.ordinal(), Entity.TEAM, USER);
-      for (CollectionDAO.EntityRelationshipObject record : teamRecords) {
-        UUID userId = UUID.fromString(record.getToId());
-        EntityReference teamRef =
-            Entity.getEntityReferenceById(
-                Entity.TEAM, UUID.fromString(record.getFromId()), Include.ALL);
-        userTeams.computeIfAbsent(userId, k -> new ArrayList<>()).add(teamRef);
-      }
-    } else {
-      // Use already fetched teams
-      for (User user : users) {
-        if (user.getTeams() != null) {
-          userTeams.put(user.getId(), user.getTeams());
+    if (!directOwnsOnly) {
+      if (!fields.contains(TEAMS_FIELD)) {
+        // If teams weren't already fetched, we need to get them
+        List<CollectionDAO.EntityRelationshipObject> teamRecords =
+            daoCollection
+                .relationshipDAO()
+                .findFromBatch(userIds, Relationship.HAS.ordinal(), Entity.TEAM, USER);
+        for (CollectionDAO.EntityRelationshipObject record : teamRecords) {
+          UUID userId = UUID.fromString(record.getToId());
+          EntityReference teamRef =
+              Entity.getEntityReferenceById(
+                  Entity.TEAM, UUID.fromString(record.getFromId()), Include.ALL);
+          userTeams.computeIfAbsent(userId, k -> new ArrayList<>()).add(teamRef);
+        }
+      } else {
+        // Use already fetched teams
+        for (User user : users) {
+          if (user.getTeams() != null) {
+            userTeams.put(user.getId(), user.getTeams());
+          }
         }
       }
     }
 
     // Get entities owned by teams
     Set<String> allTeamIds =
-        userTeams.values().stream()
-            .flatMap(List::stream)
-            .map(EntityReference::getId)
-            .map(UUID::toString)
-            .collect(Collectors.toSet());
+        directOwnsOnly
+            ? Collections.emptySet()
+            : userTeams.values().stream()
+                .flatMap(List::stream)
+                .map(EntityReference::getId)
+                .map(UUID::toString)
+                .collect(Collectors.toSet());
 
     List<CollectionDAO.EntityRelationshipObject> teamOwnsRecords = new ArrayList<>();
     if (!allTeamIds.isEmpty()) {
       teamOwnsRecords =
-          daoCollection
-              .relationshipDAO()
-              .findToBatchAllTypes(
-                  new ArrayList<>(allTeamIds), Relationship.OWNS.ordinal(), Include.ALL);
+          nullOrEmpty(ownsEntityType)
+              ? daoCollection
+                  .relationshipDAO()
+                  .findToBatchAllTypes(
+                      new ArrayList<>(allTeamIds), Relationship.OWNS.ordinal(), Include.ALL)
+              : daoCollection
+                  .relationshipDAO()
+                  .findToBatch(
+                      new ArrayList<>(allTeamIds),
+                      Relationship.OWNS.ordinal(),
+                      ownsEntityType,
+                      Include.ALL);
     }
 
     // Map user to owned entities
@@ -943,6 +995,23 @@ public class UserRepository extends EntityRepository<User> {
       }
       user.setOwns(ownedEntities);
     }
+  }
+
+  @Override
+  public void setFieldsInBulk(Fields fields, List<User> users, ListFilter filter) {
+    if (fields.contains("owns")
+        && filter != null
+        && (!nullOrEmpty(filter.getQueryParam(OWNS_ENTITY_TYPE_PARAM))
+            || Boolean.parseBoolean(filter.getQueryParam(DIRECT_OWNS_ONLY_PARAM)))) {
+      fetchAndSetFieldsExcept(users, fields, Set.of("owns"));
+      fetchAndSetOwns(users, fields, filter);
+      setInheritedFields(users, fields);
+      for (User user : users) {
+        clearFieldsInternal(user, fields);
+      }
+      return;
+    }
+    super.setFieldsInBulk(fields, users);
   }
 
   private void fetchAndSetFollows(List<User> users, Fields fields) {
@@ -1442,17 +1511,22 @@ public class UserRepository extends EntityRepository<User> {
           () ->
               recordChange(
                   "isEmailVerified", original.getIsEmailVerified(), updated.getIsEmailVerified()));
-      compareAndUpdate(
-          "allowImpersonation",
-          () ->
-              recordChange(
-                  "allowImpersonation",
-                  original.getAllowImpersonation(),
-                  updated.getAllowImpersonation()));
+      compareAndUpdate(ALLOW_IMPERSONATION_FIELD, this::updateAllowImpersonation);
       compareAndUpdate("personaPreferences", () -> updatePersonaPreferences(original, updated));
       compareAndUpdate(
           "authenticationMechanism", () -> updateAuthenticationMechanism(original, updated));
       compareAndUpdateAny(() -> SubjectCache.invalidateUser(updated.getName()), "roles", "teams");
+    }
+
+    private void updateAllowImpersonation() {
+      if (operation.isPut()) {
+        // CreateUser does not carry allowImpersonation; PUT must not wipe the stored grant
+        updated.setAllowImpersonation(original.getAllowImpersonation());
+      } else if (!Objects.equals(
+          original.getAllowImpersonation(), updated.getAllowImpersonation())) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.readOnlyAttribute(USER, ALLOW_IMPERSONATION_FIELD));
+      }
     }
 
     private void updateRoles(User original, User updated) {

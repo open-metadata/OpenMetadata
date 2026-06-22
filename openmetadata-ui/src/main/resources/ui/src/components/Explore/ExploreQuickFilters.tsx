@@ -21,7 +21,7 @@ import { SearchIndex } from '../../enums/search.enum';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useSearchStore } from '../../hooks/useSearchStore';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
-import { getOptionsFromAggregationBucket } from '../../utils/AdvancedSearchUtils';
+import { getOptionsFromAggregationBucket } from '../../utils/AdvancedSearchPureUtils';
 import {
   getCombinedQueryFilterObject,
   getQuickFilterWithDeletedFlag,
@@ -34,7 +34,7 @@ import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface
 import { useAdvanceSearch } from './AdvanceSearchProvider/AdvanceSearchProvider.component';
 import { ExploreSearchIndex } from './ExplorePage.interface';
 import { ExploreQuickFiltersProps } from './ExploreQuickFilters.interface';
-
+import QuickFilterDropdown from './QuickFilterDropdown';
 const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   fields,
   index,
@@ -46,6 +46,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   showSelectedCounts = false,
   optionPageSize,
   additionalActions,
+  untitledDropdown = false,
 }) => {
   const location = useCustomLocation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
@@ -201,14 +202,38 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   };
 
   return (
-    <Space wrap className="explore-quick-filters-container" size={[8, 0]}>
+    <Space wrap className="explore-quick-filters-container" size={[8, 8]}>
       {fields.map((field) => {
         const hasNullOption = fieldsWithNullValues.includes(
           field.key as EntityFields
         );
         const dropdownOptions = field.options ?? options ?? [];
 
-        return (
+        return untitledDropdown ? (
+          <QuickFilterDropdown
+            hasNullOption={hasNullOption}
+            hideCounts={field.hideCounts ?? false}
+            hideSearchBar={field.hideSearchBar ?? false}
+            independent={independent}
+            isSuggestionsLoading={isOptionsLoading}
+            key={field.key}
+            label={translateWithNestedKeys(field.label, field.labelKeyOptions)}
+            options={dropdownOptions}
+            searchKey={field.key}
+            selectedKeys={field.value ?? []}
+            showSelectedCounts={showSelectedCounts}
+            singleSelect={field.singleSelect}
+            onChange={(updatedValues) =>
+              onFieldValueSelect({ ...field, value: updatedValues })
+            }
+            onGetInitialOptions={(key) =>
+              getInitialOptions(key, field.searchIndex, field.searchKey)
+            }
+            onSearch={(value, key) =>
+              getFilterOptions(value, key, field.searchIndex, field.searchKey)
+            }
+          />
+        ) : (
           <SearchDropdown
             highlight
             dropdownClassName={field.dropdownClassName}

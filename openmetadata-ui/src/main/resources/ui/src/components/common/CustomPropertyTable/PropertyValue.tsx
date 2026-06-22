@@ -70,7 +70,7 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { Hyperlink } from '../../../generated/type/customProperties/complexTypes';
 import { Config } from '../../../generated/type/customProperty';
-import { getTextFromHtmlString } from '../../../utils/BlockEditorUtils';
+import { getTextFromHtmlString } from '../../../utils/BlockEditorPureUtils';
 import { getCustomPropertyLuxonFormat } from '../../../utils/CustomProperty.utils';
 import { calculateInterval } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -92,7 +92,6 @@ import {
 import './property-value.less';
 import { PropertyInput } from './PropertyInput';
 import TableTypePropertyView from './TableTypeProperty/TableTypePropertyView';
-
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
 );

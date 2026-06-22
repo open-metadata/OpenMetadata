@@ -352,6 +352,13 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     return lastCreatedTestSuite.getFullyQualifiedName();
   }
 
+  @Override
+  protected String importCsvForEntity(String containerName, String csvData, boolean dryRun) {
+    return SdkClients.adminClient()
+        .testCases()
+        .importCsv(containerName, csvData, dryRun, "testSuite");
+  }
+
   // ===================================================================
   // TEST CASE OVERRIDEN TESTS
   // ===================================================================

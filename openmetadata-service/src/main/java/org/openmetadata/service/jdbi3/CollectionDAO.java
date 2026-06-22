@@ -60,6 +60,7 @@ import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.BindMethods;
 import org.jdbi.v3.sqlobject.customizer.Define;
+import org.jdbi.v3.sqlobject.statement.BatchChunkSize;
 import org.jdbi.v3.sqlobject.statement.SqlBatch;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
@@ -4409,6 +4410,35 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     void updateTask(@Bind("id") String id, @Bind("json") String json);
 
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE task_entity SET json = JSON_SET(json, '$.aboutFqnHash', :newFqnHash) "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.aboutFqnHash')) = :oldFqnHash",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE task_entity SET json = jsonb_set(json, '{aboutFqnHash}', "
+                + "to_jsonb(:newFqnHash::text)) WHERE json->>'aboutFqnHash' = :oldFqnHash",
+        connectionType = POSTGRES)
+    int updateAboutFqnHash(
+        @Bind("oldFqnHash") String oldFqnHash, @Bind("newFqnHash") String newFqnHash);
+
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value =
+            "UPDATE task_entity SET json = JSON_SET(json, '$.aboutFqnHash', :newFqnHash) "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.aboutFqnHash')) = :oldFqnHash",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "UPDATE task_entity SET json = jsonb_set(json, '{aboutFqnHash}', "
+                + "to_jsonb(:newFqnHash::text)) WHERE json->>'aboutFqnHash' = :oldFqnHash",
+        connectionType = POSTGRES)
+    @BatchChunkSize(100)
+    int[] updateAboutFqnHashBatch(
+        @Bind("oldFqnHash") List<String> oldFqnHashes,
+        @Bind("newFqnHash") List<String> newFqnHashes);
+
     @Override
     default void update(UUID id, String fqn, String json) {
       updateTask(id.toString(), json);
@@ -4471,6 +4501,18 @@ public interface CollectionDAO {
         @BindFQN("aboutFqnHash") String aboutFqn,
         @Bind("type") String type,
         @Bind("status") String status);
+
+    @SqlQuery(
+        "SELECT json FROM task_entity "
+            + "WHERE aboutFqnHash = :aboutFqnHash AND type = :type AND createdById = :createdById "
+            + "AND status IN (<activeStatuses>) "
+            + "AND (deleted = false OR deleted IS NULL) "
+            + "ORDER BY createdAt DESC LIMIT 1")
+    String findActiveByAboutTypeAndCreator(
+        @BindFQN("aboutFqnHash") String aboutFqn,
+        @Bind("type") String type,
+        @Bind("createdById") String createdById,
+        @BindList("activeStatuses") List<String> activeStatuses);
 
     @SqlQuery(
         "SELECT json FROM task_entity "
@@ -5333,27 +5375,47 @@ public interface CollectionDAO {
         @Bind("json") String json,
         @Bind("source") String source);
 
-    @ConnectionAwareSqlUpdate(
-        value =
-            "INSERT INTO successful_sent_change_events (change_event_id, event_subscription_id, json, timestamp) "
-                + "VALUES (:change_event_id, :event_subscription_id, :json, :timestamp) "
-                + "ON DUPLICATE KEY UPDATE json = :json, timestamp = :timestamp",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value =
-            "INSERT INTO successful_sent_change_events (change_event_id, event_subscription_id, json, timestamp) "
-                + "VALUES (:change_event_id, :event_subscription_id, CAST(:json AS jsonb), :timestamp) "
-                + "ON CONFLICT (change_event_id, event_subscription_id) "
-                + "DO UPDATE SET json = EXCLUDED.json, timestamp = EXCLUDED.timestamp",
-        connectionType = POSTGRES)
-    void upsertSuccessfulChangeEvent(
-        @Bind("change_event_id") String changeEventId,
-        @Bind("event_subscription_id") String eventSubscriptionId,
-        @Bind("json") String json,
-        @Bind("timestamp") long timestamp);
-
     // Batch insert for successful events - reduces connection pool contention
-    // from N connections to 1 when processing multiple events
+    // from N connections to 1 when processing multiple events.
+    // Deduplicates by (change_event_id, event_subscription_id) first: the primary key has no
+    // destination dimension, and Postgres rejects a rewritten multi-row INSERT whose own rows
+    // conflict on the arbiter key ("ON CONFLICT DO UPDATE command cannot affect row a second
+    // time").
+    default void batchUpsertSuccessfulChangeEvents(
+        List<String> changeEventIds,
+        List<String> eventSubscriptionIds,
+        List<String> jsonList,
+        List<Long> timestamps) {
+      List<Integer> keep = distinctLastIndexes(changeEventIds, eventSubscriptionIds);
+      if (keep.size() == changeEventIds.size()) {
+        batchUpsertSuccessfulChangeEventsInternal(
+            changeEventIds, eventSubscriptionIds, jsonList, timestamps);
+      } else {
+        batchUpsertSuccessfulChangeEventsInternal(
+            pickByIndex(changeEventIds, keep),
+            pickByIndex(eventSubscriptionIds, keep),
+            pickByIndex(jsonList, keep),
+            pickByIndex(timestamps, keep));
+      }
+    }
+
+    static List<Integer> distinctLastIndexes(
+        List<String> changeEventIds, List<String> eventSubscriptionIds) {
+      LinkedHashMap<String, Integer> lastIndexByKey = new LinkedHashMap<>();
+      for (int i = 0; i < changeEventIds.size(); i++) {
+        lastIndexByKey.put(changeEventIds.get(i) + "|" + eventSubscriptionIds.get(i), i);
+      }
+      return new ArrayList<>(lastIndexByKey.values());
+    }
+
+    static <T> List<T> pickByIndex(List<T> source, List<Integer> indexes) {
+      List<T> result = new ArrayList<>(indexes.size());
+      for (int index : indexes) {
+        result.add(source.get(index));
+      }
+      return result;
+    }
+
     @Transaction
     @ConnectionAwareSqlBatch(
         value =
@@ -5368,7 +5430,7 @@ public interface CollectionDAO {
                 + "ON CONFLICT (change_event_id, event_subscription_id) "
                 + "DO UPDATE SET json = EXCLUDED.json, timestamp = EXCLUDED.timestamp",
         connectionType = POSTGRES)
-    void batchUpsertSuccessfulChangeEvents(
+    void batchUpsertSuccessfulChangeEventsInternal(
         @Bind("change_event_id") List<String> changeEventIds,
         @Bind("event_subscription_id") List<String> eventSubscriptionIds,
         @Bind("json") List<String> jsonList,
@@ -11384,6 +11446,34 @@ public interface CollectionDAO {
     default String getTimeSeriesTableName() {
       return "workflow_instance_time_series";
     }
+
+    /**
+     * Repoint the workflow-instance {@code relatedEntity} (the {@code entityLink} the history card
+     * filters by) for an entire moved subtree in one set-based statement: the moved term itself
+     * (exact {@code oldLink}) plus every descendant ({@code entityLink LIKE oldChildPrefix}). The
+     * stem swap rewrites {@code <#E::type::oldFqn} to {@code <#E::type::newFqn} for both. The
+     * {@code .}-suffixed prefix is collision-safe (a move of {@code a.b} never touches sibling
+     * {@code a.bc}), matching the existing {@code renameByToFQNPrefix} pattern.
+     */
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE workflow_instance_time_series "
+                + "SET json = JSON_SET(json, '$.variables.global_relatedEntity', "
+                + "REPLACE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.variables.global_relatedEntity')), :oldStem, :newStem)) "
+                + "WHERE entityLink = :oldLink OR entityLink LIKE :oldChildPrefix",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE workflow_instance_time_series "
+                + "SET json = jsonb_set(json, '{variables,global_relatedEntity}', "
+                + "to_jsonb(REPLACE(json->'variables'->>'global_relatedEntity', :oldStem, :newStem))) "
+                + "WHERE entityLink = :oldLink OR entityLink LIKE :oldChildPrefix",
+        connectionType = POSTGRES)
+    int repointRelatedEntitySubtree(
+        @Bind("oldLink") String oldLink,
+        @Bind("oldChildPrefix") String oldChildPrefix,
+        @Bind("oldStem") String oldStem,
+        @Bind("newStem") String newStem);
   }
 
   interface WorkflowInstanceStateTimeSeriesDAO extends EntityTimeSeriesDAO {

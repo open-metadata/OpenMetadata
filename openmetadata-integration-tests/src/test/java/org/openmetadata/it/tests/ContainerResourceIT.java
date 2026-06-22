@@ -17,7 +17,9 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.api.parallel.Resources;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.StorageServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
@@ -53,6 +55,8 @@ import org.openmetadata.service.jdbi3.ContainerRepository;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer> {
+
+  private String defaultListService;
 
   {
     supportsLifeCycle = true;
@@ -90,7 +94,11 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
 
   @Override
   protected Container createEntity(CreateContainer createRequest) {
-    return SdkClients.adminClient().containers().create(createRequest);
+    Container container = SdkClients.adminClient().containers().create(createRequest);
+    if (defaultListService == null && container.getService() != null) {
+      defaultListService = container.getService().getFullyQualifiedName();
+    }
+    return container;
   }
 
   @Override
@@ -146,6 +154,10 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
 
   @Override
   protected ListResponse<Container> listEntities(ListParams params) {
+    if (!params.getFilters().containsKey("service") && defaultListService != null) {
+      params = params.copy();
+      params.setService(defaultListService);
+    }
     return SdkClients.adminClient().containers().list(params);
   }
 
@@ -1481,6 +1493,7 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
    * non-root descendants when no service prefix narrows the candidate set.
    */
   @Test
+  @ResourceLock(value = Resources.GLOBAL, mode = ResourceAccessMode.READ_WRITE)
   void test_rootListing_withoutServiceFilter_returnsRootsAcrossAllServices(TestNamespace ns) {
     // Two distinct services. Each gets a root container and a child container so we can
     // assert the listing covers both services and excludes children regardless of which
@@ -1506,7 +1519,7 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     params.addFilter("root", "true");
     params.setLimit(1000);
 
-    ListResponse<Container> rootContainers = listEntities(params);
+    ListResponse<Container> rootContainers = SdkClients.adminClient().containers().list(params);
     assertNotNull(rootContainers);
     assertNotNull(rootContainers.getData());
 
