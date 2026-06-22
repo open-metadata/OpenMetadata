@@ -127,7 +127,7 @@ const ContextCenterArchivePage: FC = () => {
         updatedAt: file.updatedAt,
       }));
 
-      const merged = [...articleItems, ...documentItems].sort(
+      const merged = [...documentItems].sort(
         (a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0)
       );
 

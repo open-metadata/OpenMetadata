@@ -17,12 +17,6 @@ import { isArray, isEmpty, isEqual } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import {
-  WidgetCommentButton,
-  WidgetEditButton,
-  WidgetPlusButton,
-  WidgetRequestButton,
-} from 'src/components/common/WidgetActionButton/WidgetActionButton';
 import { LIST_SIZE } from '../../../constants/constants';
 import {
   GLOSSARY_CONSTANT,
@@ -46,6 +40,12 @@ import {
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { SelectOption } from '../../common/AsyncSelectList/AsyncSelectList.interface';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
+import {
+  WidgetCommentButton,
+  WidgetEditButton,
+  WidgetPlusButton,
+  WidgetRequestButton,
+} from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { TableTagsProps } from '../../Database/TableTags/TableTags.interface';

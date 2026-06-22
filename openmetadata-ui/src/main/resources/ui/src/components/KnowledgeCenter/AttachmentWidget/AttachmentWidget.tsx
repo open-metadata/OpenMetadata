@@ -22,6 +22,7 @@ import {
 import { Copy06, Download01 } from '@untitledui/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { WidgetPlusButton } from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import {
   AttachmentItem,
@@ -45,13 +46,7 @@ const AttachmentWidget: FC<AttachmentWidgetProps> = ({ hasPermission }) => {
 
   const content = useMemo(() => {
     if (attachments.length === 0) {
-      return (
-        <Typography className="tw:text-center tw:text-gray-500" size="text-xs">
-          {t('message.no-entity-data-available', {
-            entity: t('label.attachment-plural'),
-          })}
-        </Typography>
-      );
+      return null
     }
 
     return (
@@ -106,6 +101,7 @@ const AttachmentWidget: FC<AttachmentWidgetProps> = ({ hasPermission }) => {
   return (
     <WidgetCard
       dataTestId="attachment-widget"
+      headerExtra={<WidgetPlusButton title="Add Attachment" />}
       isExpandDisabled={attachments.length === 0}
       title={t('label.attachment-plural')}>
       {content}

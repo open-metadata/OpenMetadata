@@ -83,7 +83,9 @@ const WidgetCard = ({
         }
         title={
           <div className="tw:flex tw:items-center tw:gap-2">
-            {titleIcon}
+            <div className='tw:shrink-0'>
+              {titleIcon}
+            </div>
             {title && (
               <Typography
                 as="span"

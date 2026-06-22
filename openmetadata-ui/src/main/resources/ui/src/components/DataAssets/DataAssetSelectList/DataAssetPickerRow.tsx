@@ -13,7 +13,7 @@
 import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
 import { Check } from '@untitledui/icons';
 import { FC } from 'react';
-import { getEntityIconWithBg } from 'src/utils/Assets/AssetsUtils';
+import { getEntityIconWithBg } from '../../../utils/Assets/AssetsUtils';
 import { DataAssetPickerRowProps } from './DataAssetPicker.interface';
 
 const DataAssetPickerRow: FC<DataAssetPickerRowProps> = ({

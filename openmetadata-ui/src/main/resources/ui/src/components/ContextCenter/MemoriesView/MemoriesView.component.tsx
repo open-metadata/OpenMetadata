@@ -272,7 +272,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
                     type="color">
                     <div className="tw:shrink-0">
                       <Dot
-                        className={ENTITY_ICON_MAPPER[entity.type].iconClass}
+                        className={ENTITY_ICON_MAPPER?.[entity.type]?.iconClass}
                         size="sm"
                         style={{ marginRight: '6px' }}
                       />

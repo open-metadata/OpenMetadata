@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Star01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, map } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
-import { ReactComponent as BookMarkIcon } from '../../../assets/svg/ic-bookmark.svg';
 import Loader from '../../../components/common/Loader/Loader';
 import WidgetCard from '../../../components/common/WidgetCard/WidgetCard';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
@@ -58,7 +58,7 @@ const BookMarkWidget = ({
     }
   };
 
-  const titleIcon = useMemo(() => <BookMarkIcon height={16} width={16} />, []);
+  const titleIcon = useMemo(() => <Star01 className='tw:text-secondary' height={16} width={16} />, []);
 
   useEffect(() => {
     fetchBookMarks();
