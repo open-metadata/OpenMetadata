@@ -24,6 +24,7 @@ import static org.openmetadata.service.Entity.FIELD_PARENT;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNameAlreadyExists;
 
+import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -805,12 +806,24 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   public ResultList<EntityHierarchy> buildHierarchy(
       String fieldsParam, int limit, String directChildrenOf, int offset) {
+    return buildHierarchy(fieldsParam, limit, directChildrenOf, offset, null);
+  }
+
+  public ResultList<EntityHierarchy> buildHierarchy(
+      String fieldsParam,
+      int limit,
+      String directChildrenOf,
+      int offset,
+      SecurityContext securityContext) {
     fieldsParam = EntityUtil.addField(fieldsParam, Entity.FIELD_PARENT);
     Fields fields = getFields(fieldsParam);
     ListFilter filter = new ListFilter(null);
     filter.addQueryParam("directChildrenOf", directChildrenOf);
     filter.addQueryParam("offset", String.valueOf(offset));
     filter.addQueryParam("hierarchyFilter", "true"); // Enable hierarchy filtering
+    if (securityContext != null) {
+      EntityUtil.applyDomainSelfRestriction(securityContext, filter);
+    }
     ResultList<Domain> resultList = listAfter(null, fields, filter, limit, null);
     List<Domain> domains = resultList.getData();
 
