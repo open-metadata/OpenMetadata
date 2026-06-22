@@ -72,3 +72,10 @@ def test_network_errors_falls_back_to_generic_unreachable():
     error = NetworkUnreachableError("h:1 is not reachable")
     error.__cause__ = OSError("No route to host")
     assert NETWORK_ERRORS.classify(error).title == "Cannot reach the host"
+
+
+def test_network_errors_ignores_unrelated_oserror_outside_the_preflight():
+    # A later step (e.g. GetTables) failing with a generic OSError must not be
+    # diagnosed as a reachability problem: only preflight failures qualify.
+    assert NETWORK_ERRORS.classify(BrokenPipeError("broken pipe")) is None
+    assert NETWORK_ERRORS.classify(PermissionError("denied")) is None

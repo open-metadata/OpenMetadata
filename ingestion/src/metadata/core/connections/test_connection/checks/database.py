@@ -139,6 +139,11 @@ def ping(client: Engine) -> Evidence:
     driver, TLS, or auth is exercised. Engines without a host:port (file-based
     URLs, connector-tunnelled engines) skip the preflight and go straight to the
     query.
+
+    The preflight assumes the driver connects directly to the URL's host:port. A
+    connector whose transport differs while the URL still carries a host:port
+    (an HTTP gateway, a load balancer, a unix socket) should call ``run_sql``
+    directly instead of ``ping`` to avoid a spurious reachability failure.
     """
     _preflight(client)
     return run_sql(client, "SELECT 1", lambda _: "connection established")

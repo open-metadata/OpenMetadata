@@ -51,8 +51,10 @@ def tcp_probe(host: str, port: int, timeout: float = NETWORK_PROBE_TIMEOUT_SECON
         raise NetworkUnreachableError(f"{host}:{port} is not reachable: {cause}") from cause
 
 
-# Ordered specific-first; the bare ``OSError`` rule is the catch-all beneath the
-# named socket failures (all of which subclass it).
+# Ordered specific-first. The catch-all matches our own ``NetworkUnreachableError``
+# - which only ``tcp_probe`` raises - rather than a bare ``OSError``, so it can
+# never misclassify an unrelated OS error (a dropped pipe, a permission error)
+# from a later step as a reachability problem; those keep their raw errorLog.
 NETWORK_ERRORS = ErrorPack(
     when(Matchers.exception(socket.gaierror)).diagnose(
         "Host could not be resolved",
@@ -68,7 +70,7 @@ NETWORK_ERRORS = ErrorPack(
         fix="The host did not answer in time; check that a firewall, security group, or "
         "network ACL allows access to this host and port.",
     ),
-    when(Matchers.exception(OSError)).diagnose(
+    when(Matchers.exception(NetworkUnreachableError)).diagnose(
         "Cannot reach the host",
         fix="Check hostPort, the network route, and that the host is online and reachable from where ingestion runs.",
     ),
