@@ -503,7 +503,7 @@
       <dependency>
         <groupId>io.prometheus</groupId>
         <artifactId>prometheus-metrics-instrumentation-dropwizard</artifactId>
-        <version>1.3.6</version>
+        <version>1.6.1</version>
       </dependency>
 
 

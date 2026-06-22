@@ -514,7 +514,7 @@
     <dependency>
       <groupId>io.micrometer</groupId>
       <artifactId>micrometer-bom</artifactId>
-      <version>1.14.16</version>
+      <version>1.16.6</version>
       <type>pom</type>
       <scope>import</scope>
     </dependency>
@@ -533,20 +533,20 @@
     <dependency>
       <groupId>io.micrometer</groupId>
       <artifactId>micrometer-observation</artifactId>
-      <version>1.14.16</version>
+      <version>1.16.6</version>
     </dependency>
 
     <!-- Micrometer Prometheus -->
     <dependency>
       <groupId>io.micrometer</groupId>
       <artifactId>micrometer-registry-prometheus</artifactId>
-      <version>1.14.16</version>
+      <version>1.16.6</version>
     </dependency>
 
     <dependency>
       <groupId>io.micrometer</groupId>
       <artifactId>micrometer-core</artifactId>
-      <version>1.14.16</version>
+      <version>1.16.6</version>
     </dependency>
 
 

@@ -45,6 +45,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -72,6 +73,8 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.ReindexContext;
+import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntityTimeSeriesSource;
@@ -88,16 +91,27 @@ class PartitionWorkerTest {
   @Mock private ReindexingConfiguration reindexingConfiguration;
 
   private PartitionWorker worker;
+  private SearchRepository previousSearchRepository;
 
   private static final int BATCH_SIZE = 100;
   private static final String TEST_SERVER_ID = "test-server-1";
 
   @BeforeEach
   void setUp() {
+    previousSearchRepository = Entity.getSearchRepository();
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.getSearchClient()).thenReturn(mock(SearchClient.class));
+    Entity.setSearchRepository(searchRepository);
+
     when(stagedIndexContext.getStagedIndex(any()))
         .thenAnswer(
             invocation -> Optional.of(invocation.getArgument(0, String.class) + "_staging"));
     worker = new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, stagedIndexContext);
+  }
+
+  @AfterEach
+  void tearDown() {
+    Entity.setSearchRepository(previousSearchRepository);
   }
 
   @Test
