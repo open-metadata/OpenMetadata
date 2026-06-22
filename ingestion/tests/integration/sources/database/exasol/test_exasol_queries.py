@@ -45,7 +45,8 @@ def wait_for_system_table(
     last_rows: list[dict[str, object]] = []
 
     while monotonic() < deadline:
-        with engine.connect() as connection:
+        with engine.begin() as connection:
+            connection.execute(text("FLUSH STATISTICS"))
             rows = connection.execute(text(query), params or {}).mappings().all()
 
         last_rows = list(rows)
@@ -58,16 +59,6 @@ def wait_for_system_table(
         f"Timed out after {timeout_seconds}s waiting for {expected_count} rows. "
         f"Last observed row count: {len(last_rows)}"
     )
-
-
-def _enable_auditing(engine: Engine) -> None:
-    """Enable database auditing so the EXA_DBA_AUDIT_* tables are populated.
-
-    A freshly spawned Exasol container ships with AUDITING = OFF, leaving the
-    audit statistics tables empty no matter how long the tests poll them.
-    """
-    with engine.begin() as connection:
-        connection.execute(text("ALTER SYSTEM SET AUDITING = 'ON'"))
 
 
 def _prepare_exasol_objects(engine: Engine) -> None:
@@ -141,7 +132,6 @@ class TestExasolQueries:
         )
 
         cls.engine = create_engine(f"exa+websocket://sys:exasol@localhost:{DB_PORT}/?SSLCertificate=SSL_VERIFY_NONE")
-        _enable_auditing(cls.engine)
         _prepare_exasol_objects(cls.engine)
 
     @classmethod
