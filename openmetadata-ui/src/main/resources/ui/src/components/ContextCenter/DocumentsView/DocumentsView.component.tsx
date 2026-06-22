@@ -132,7 +132,7 @@ const FileActions: FC<FileActionsProps> = ({
       <Tooltip
         title={t('label.manage-entity', { entity: t('label.document') })}>
         <TooltipTrigger>
-          <Dropdown.DotsButton className="tw:flex tw:p-1 tw:rotate-z-90" />
+          <Dropdown.DotsButton className="tw:flex tw:p-1" />
         </TooltipTrigger>
       </Tooltip>
       <Dropdown.Popover className="tw:w-46">
@@ -416,11 +416,6 @@ const FileRow: FC<FileRowProps> = ({
             weight="medium">
             {fileName}
           </Typography>
-          <DocumentStatusBadge
-            error={file.processingError}
-            stats={file.extractionStats}
-            status={file.processingStatus}
-          />
         </Box>
         <Box align="center" gap={2}>
           <Typography
@@ -476,19 +471,27 @@ const FileRow: FC<FileRowProps> = ({
         </Box>
       </Box>
 
-      <div
-        className="tw:flex tw:items-center tw:gap-2 tw:shrink-0"
+      <Box
+        align='center'
+        className="tw:shrink-0"
+        gap={2}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}>
+        <DocumentStatusBadge
+          error={file.processingError}
+          stats={file.extractionStats}
+          status={file.processingStatus}
+        />
         <ButtonUtility
+          className='tw:ml-1.5'
           color="tertiary"
           data-testid="download-btn"
-          icon={<Download01 size={20} />}
+          icon={<Download01 size={19} />}
           tooltip={t('label.download')}
           onClick={() => onDownload?.(file)}
         />
-        <CopyLinkButton className="tw:w-8 tw:h-8" url={rowUrl}>
-          <Copy06 aria-hidden="true" size={20} strokeWidth={1.8} />
+        <CopyLinkButton className="tw:w-7.5 tw:h-7.5" url={rowUrl}>
+          <Copy06 aria-hidden="true" size={19} strokeWidth={1.8} />
         </CopyLinkButton>
         <FileActions
           canDelete={canDelete}
@@ -498,7 +501,7 @@ const FileRow: FC<FileRowProps> = ({
           onDeleteFile={onDeleteFile}
           onFileMoved={onFileMoved}
         />
-      </div>
+      </Box>
     </Box>
   );
 };
