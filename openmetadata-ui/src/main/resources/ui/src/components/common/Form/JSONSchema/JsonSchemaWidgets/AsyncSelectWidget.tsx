@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { WidgetProps } from '@rjsf/utils';
-import { getEntityName } from 'src/utils/EntityNameUtils';
 import { SearchIndex } from '../../../../../enums/search.enum';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import DataAssetAsyncSelectList from '../../../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
 import { DataAssetOption } from '../../../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 
@@ -51,7 +51,7 @@ const AsyncSelectWidget = ({ onChange, schema, ...props }: WidgetProps) => {
       initialOptions={initialOptions}
       placeholder={schema.placeholder ?? ''}
       searchIndex={schema?.autoCompleteType ?? SearchIndex.TABLE}
-      value={entityRef?.fullyQualifiedName ?? undefined}
+      value={resolvedFqn || undefined}
       onChange={handleChange}
     />
   );

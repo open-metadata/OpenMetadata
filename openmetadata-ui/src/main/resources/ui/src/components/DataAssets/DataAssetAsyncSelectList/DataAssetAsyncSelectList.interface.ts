@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { SelectItemType } from '@openmetadata/ui-core-components';
+import type {
+  PopoverProps,
+  SelectItemType,
+} from '@openmetadata/ui-core-components';
 import { CSSProperties } from 'react';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
@@ -35,6 +38,7 @@ export interface DataAssetAsyncSelectListProps {
   className?: string;
   placeholder?: string;
   popoverClassName?: string;
+  popoverProps?: Partial<PopoverProps>;
   value?: DataAssetOption | DataAssetOption[] | string | string[];
   debounceTimeout?: number;
   initialOptions?: DataAssetOption[];
