@@ -2831,6 +2831,7 @@
     "discover-your-data-and-unlock-the-value-of-data-assets": "Découvrez vos données et libérez la valeur de vos actifs de données",
     "distinct-profile-metric-description": "Pourcentage de valeurs distinctes dans la colonne",
     "documents-uploaded-successfully": "Documents téléchargés avec succès",
+    "domain-access-restricted": "You only have access to your assigned domain(s).",
     "domain-change-asset-migration-warning": "La modification du domaine déplacera _ 0 _ actifs) du domaine actuel vers _1 __.Voulez-vous continuer ?",
     "domain-description": "Organisez et gérez les domaines de données dans votre organisation.",
     "domain-does-not-have-assets": "Le domaine {{name}} ne possède aucun actif à ajouter au Data Product",

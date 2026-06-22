@@ -2831,6 +2831,7 @@
     "discover-your-data-and-unlock-the-value-of-data-assets": "Things got easier with no-code data quality. Simple steps to test, deploy, and gather results, with instant test failure notifications. Stay up-to-date with reliable data that you can trust.",
     "distinct-profile-metric-description": "Percentage of distinct values in the column",
     "documents-uploaded-successfully": "Documents uploaded successfully",
+    "domain-access-restricted": "You only have access to your assigned domain(s).",
     "domain-change-asset-migration-warning": "Changing the domain will move {{count}} asset(s) from the current domain to {{domain}}. Do you want to proceed?",
     "domain-description": "Organize and manage data domains in your organization.",
     "domain-does-not-have-assets": "Domain {{name}} doesn't have any assets to add to the Data Product",
