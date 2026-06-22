@@ -195,6 +195,8 @@ export const BETA_SERVICES = [
   DatabaseServiceType.MicrosoftAccess,
   DatabaseServiceType.QuestDB,
   DashboardServiceType.SapS4Hana,
+  DatabaseServiceType.SapBw4Hana,
+  PipelineServiceType.SapBw4HanaPipeline,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =

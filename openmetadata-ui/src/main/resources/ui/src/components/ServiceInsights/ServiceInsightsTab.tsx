@@ -55,11 +55,11 @@ import {
   getPlatformInsightsChartDataFormattingMethod,
 } from '../../utils/ServiceInsightsTabPureUtils';
 import { getFormattedTotalAssetsDataFromSocketData } from '../../utils/ServiceInsightsTabUtils';
-import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
   getEntityTypeFromServiceCategory,
   getServiceNameQueryFilter,
-} from '../../utils/ServiceUtils';
+} from '../../utils/ServicePureUtils';
+import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { getEntityIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -70,7 +70,6 @@ import {
   ServiceInsightsTabProps,
   TotalAssetsCount,
 } from './ServiceInsightsTab.interface';
-
 const ServiceInsightsTab = ({
   serviceDetails,
   workflowStatesData,
@@ -103,6 +102,9 @@ const ServiceInsightsTab = ({
       const response = await searchQuery({
         queryFilter: getServiceNameQueryFilter(serviceName),
         searchIndex: SearchIndex.ALL,
+        // Aggregation-only query: skip the hit payload entirely (no source, zero hits).
+        pageSize: 0,
+        fetchSource: false,
       });
 
       const assets = getAssetsByServiceType(serviceCategory);

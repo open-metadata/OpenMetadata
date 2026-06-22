@@ -52,7 +52,6 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { updateTierTag } from '../../utils/TagsPureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-
 const DATA_MODEL_FIELDS = [
   TabSpecificField.OWNERS,
   TabSpecificField.TAGS,

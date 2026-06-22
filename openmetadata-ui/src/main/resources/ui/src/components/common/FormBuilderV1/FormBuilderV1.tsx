@@ -17,7 +17,7 @@ import { RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { forwardRef, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { transformErrors } from '../../../utils/formUtils';
+import { transformErrors } from '../../../utils/formPureUtils';
 import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
 import CoreArrayField from './fields/CoreArrayField';
 import CoreBooleanField from './fields/CoreBooleanField';
@@ -35,7 +35,6 @@ import CorePasswordWidget from './widgets/CorePasswordWidget';
 import CoreRadioWidget from './widgets/CoreRadioWidget';
 import CoreSelectWidget from './widgets/CoreSelectWidget';
 import CoreTextAreaWidget from './widgets/CoreTextAreaWidget';
-
 const defaultFields = {
   AnyOfField: CoreOneOfField,
   ArrayField: CoreArrayField,

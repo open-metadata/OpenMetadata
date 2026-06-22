@@ -86,9 +86,9 @@ import {
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
 import i18n from '../../../utils/i18next/LocalUtil';
+import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
 import {
   addToKnowledgeCenterRecentViewed,
-  getKnowledgePageName,
   updateKnowledgeCenterRecentViewed,
 } from '../../../utils/KnowledgePageUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -101,7 +101,6 @@ import KnowledgeDetailPageHeader from '../KnowledgeDetailPageHeader/KnowledgeDet
 import KnowledgePageDetailRightPanel from '../KnowledgePageDetailRightPanel/KnowledgePageDetailRightPanel';
 import { TitleComponent } from '../TitleComponent/TitleComponent';
 import KnowledgePageDetailSkeleton from './KnowledgePageDetailSkeleton';
-
 interface KnowledgePageDetailComponentProps {
   onPageChange: (page: Partial<KnowledgeCenterPageProps>) => void;
   fetchKnowledgePageHierarchy?: (forceRefresh?: boolean) => Promise<void>;
@@ -762,6 +761,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         onSave: handleSave,
         onSetThreadLink: setThreadLink,
         onToggleDelete: handleToggleDelete,
+        onUpdate: updatePage,
         onVoteChange: handleVoteChange,
       },
       header: <div className="m-b-box rounded-12">{getHeaderElement()}</div>,

@@ -13,9 +13,11 @@
 # openmetadata-integration-tests under the `ui-it` Maven profile. Runs the
 # external-mode matrix (ES + OS). Tracks EPIC #3731 / tickets #3767, #3792.
 #
-# The schedule trigger is intentionally disabled while the suite stabilises;
-# run on demand via workflow_dispatch (pick the branch to test as the ref).
-# Re-add `schedule: - cron: '0 2 * * *'` once the suite is green on main.
+# The schedule trigger is intentionally disabled while the suite stabilises. Run it
+# on demand via workflow_dispatch (pick the branch to test as the ref); it also runs
+# automatically on any PR that touches search-indexing code (see the pull_request
+# `paths` filter below), exercising this whole suite (both engines + search-it) against
+# the PR head in embedded mode. Re-add `schedule: - cron: '0 2 * * *'` once green on main.
 #
 # Topology:
 #   - build-image: builds the openmetadata-dist tarball and bakes the local
@@ -69,10 +71,40 @@ on:
         required: false
         type: string
         default: '60'
+  # Auto-run on PRs that modify search-indexing code (paths below): the full suite runs against
+  # the PR head in embedded mode (testcontainers), NOT the external cluster — so a change to the
+  # reindex app, search clients, or index mappings is validated before merge without anyone
+  # remembering a label. Uses `pull_request` (NOT pull_request_target) on purpose: fork PRs run
+  # WITHOUT secrets, so untrusted code never executes with credentials; same-repo branch PRs (the
+  # common case here) still get secrets and full check reporting.
+  pull_request:
+    paths:
+      # --- Production search-indexing code (openmetadata-service) ---
+      - "openmetadata-service/src/main/java/org/openmetadata/service/search/**"
+      - "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/searchIndex/**"
+      - "openmetadata-service/src/main/java/org/openmetadata/service/resources/searchindex/**"
+      - "openmetadata-service/src/main/java/org/openmetadata/service/resources/search/**"
+      - "openmetadata-service/src/main/java/org/openmetadata/service/resources/testsupport/**"
+      - "openmetadata-service/src/main/java/org/openmetadata/service/events/lifecycle/handlers/SearchIndexHandler.java"
+      # --- Index mappings + loader (canonical source lives in the spec module) ---
+      - "openmetadata-spec/src/main/resources/elasticsearch/**"
+      - "openmetadata-spec/src/main/java/org/openmetadata/search/**"
+      # --- The search ITs / UIITs, their test harness, and the Maven profiles that run them ---
+      - "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/search/**"
+      - "openmetadata-integration-tests/src/test/java/org/openmetadata/it/search/**"
+      - "openmetadata-integration-tests/src/test/java/org/openmetadata/playwright/scenarios/search/**"
+      - "openmetadata-integration-tests/pom.xml"
+      # --- This workflow itself ---
+      - ".github/workflows/java-playwright-nightly.yml"
 
 permissions:
   contents: read
   checks: write
+
+concurrency:
+  # One run per PR (or per ref for dispatch/cron); a new push cancels the prior in-flight run.
+  group: java-playwright-nightly-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 env:
   SERVER_IMAGE_TAG: openmetadata-server:jpw-snapshot
@@ -99,10 +131,10 @@ jobs:
         id: checkout
         uses: actions/checkout@v4
         with:
-          # Cron always runs against main. workflow_dispatch honours the ref the
-          # workflow was dispatched against so feature branches can validate the
-          # nightly matrix before merge (EPIC #3731 / PR #28008).
-          ref: ${{ github.event_name == 'workflow_dispatch' && github.ref || 'main' }}
+          # On a PR, test the PR head (the changed code). workflow_dispatch honours the
+          # dispatched ref so feature branches can validate the nightly matrix before merge.
+          # Cron/anything else runs against main (EPIC #3731 / PR #28008).
+          ref: ${{ github.event.pull_request.head.sha || (github.event_name == 'workflow_dispatch' && github.ref || 'main') }}
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -190,7 +222,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && github.ref || 'main' }}
+          ref: ${{ github.event.pull_request.head.sha || (github.event_name == 'workflow_dispatch' && github.ref || 'main') }}
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -326,7 +358,7 @@ jobs:
           report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'
 
       - name: Slack notification
-        if: ${{ always() && env.SLACK_JAVA_PLAYWRIGHT_URL != '' }}
+        if: ${{ always() && github.event_name != 'pull_request' && env.SLACK_JAVA_PLAYWRIGHT_URL != '' }}
         uses: slackapi/slack-github-action@v2.0.0
         with:
           webhook: ${{ env.SLACK_JAVA_PLAYWRIGHT_URL }}
@@ -359,7 +391,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && github.ref || 'main' }}
+          ref: ${{ github.event.pull_request.head.sha || (github.event_name == 'workflow_dispatch' && github.ref || 'main') }}
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -412,7 +444,7 @@ jobs:
           report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'
 
       - name: Slack notification
-        if: ${{ always() && env.SLACK_JAVA_PLAYWRIGHT_URL != '' }}
+        if: ${{ always() && github.event_name != 'pull_request' && env.SLACK_JAVA_PLAYWRIGHT_URL != '' }}
         uses: slackapi/slack-github-action@v2.0.0
         with:
           webhook: ${{ env.SLACK_JAVA_PLAYWRIGHT_URL }}

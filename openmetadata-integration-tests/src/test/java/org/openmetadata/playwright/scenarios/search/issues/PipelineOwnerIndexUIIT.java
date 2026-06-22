@@ -76,7 +76,7 @@ class PipelineOwnerIndexUIIT {
         .atMost(INDEX_TIMEOUT)
         .pollInterval(POLL_INTERVAL)
         .pollDelay(Duration.ZERO)
-        .ignoreNoExceptions()
+        .ignoreExceptions()
         .untilAsserted(() -> assertOwnerIndexed(search, index, pipelineId, ownerId));
   }
 

@@ -72,7 +72,8 @@
         "BurstIQ",
         "Informix",
         "Iomete",
-        "QuestDB"
+        "QuestDB",
+        "SapBw4Hana"
       ],
       "javaEnums": [
         {
@@ -248,6 +249,9 @@
         },
         {
           "name": "QuestDB"
+        },
+        {
+          "name": "SapBw4Hana"
         }
       ]
     },
@@ -428,6 +432,9 @@
             },
             {
               "$ref": "./connections/database/questdbConnection.json"
+            },
+            {
+              "$ref": "./connections/database/sapBw4HanaConnection.json"
             }
           ]
         }
