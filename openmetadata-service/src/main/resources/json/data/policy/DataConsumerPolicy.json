@@ -15,13 +15,6 @@
       "effect": "allow"
     },
     {
-      "name": "DataConsumerPolicy-CreateTaskResource-Rule",
-      "description" : "Resource-level grant that keeps the legacy `task.Create` permission so existing UI gates continue to render task-creation affordances (e.g. the Request Data Access button). Real per-entity enforcement happens via the entity-scoped CreateTask/EditTask rule below.",
-      "resources" : ["task"],
-      "operations": ["Create"],
-      "effect": "allow"
-    },
-    {
       "name": "DataConsumerPolicy-TaskRule",
       "description" : "Allow authenticated users to file and edit tasks (data access requests, suggestions, etc.) against any entity. Restrict this rule (e.g. with an isOwner condition) to limit who can file or edit tasks on which entities.",
       "resources" : ["all"],

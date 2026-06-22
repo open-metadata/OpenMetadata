@@ -69,6 +69,8 @@ import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.service.jdbi3.FeedRepository.PaginationType;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PostResourceContext;
@@ -430,24 +432,41 @@ public class FeedResource {
 
   private void authorizeThreadCreate(SecurityContext securityContext, CreateThread create) {
     if (create.getType() == ThreadType.Task) {
-      authorizeAgainstAbout(securityContext, create.getAbout(), MetadataOperation.CREATE_TASK);
+      EntityLink about = EntityLink.parse(create.getAbout());
+      EntityReference aboutRef = EntityUtil.validateEntityLink(about);
+      ResourceContext<?> entityResourceContext =
+          new ResourceContext<>(aboutRef.getType(), aboutRef.getId(), null);
+      OperationContext entityOpContext =
+          new OperationContext(aboutRef.getType(), MetadataOperation.CREATE_TASK);
+      authorizer.authorize(securityContext, entityOpContext, entityResourceContext);
     }
   }
 
+  /**
+   * Authorize an edit on an existing task thread with ANY-of semantics: pass if the caller has
+   * {@code EditTask} on the target entity (per-entity grant, e.g. owner via {@code isOwner}) OR
+   * {@code EditAll} on the existing thread instance (covers the original creator and admin-style
+   * thread-resource grants). Mirrors the TestCase pattern for an EXISTING child entity.
+   */
   private void authorizeThreadEdit(SecurityContext securityContext, Thread thread) {
     if (thread.getType() == ThreadType.Task) {
-      authorizeAgainstAbout(securityContext, thread.getAbout(), MetadataOperation.EDIT_TASK);
+      EntityLink about = EntityLink.parse(thread.getAbout());
+      EntityReference aboutRef = EntityUtil.validateEntityLink(about);
+      ResourceContext<?> entityResourceContext =
+          new ResourceContext<>(aboutRef.getType(), aboutRef.getId(), null);
+      OperationContext entityOpContext =
+          new OperationContext(aboutRef.getType(), MetadataOperation.EDIT_TASK);
+      OperationContext threadOpContext =
+          new OperationContext(Entity.THREAD, MetadataOperation.EDIT_ALL);
+      ResourceContextInterface threadResourceContext =
+          new ThreadResourceContext(thread.getCreatedBy());
+      authorizer.authorizeRequests(
+          securityContext,
+          List.of(
+              new AuthRequest(entityOpContext, entityResourceContext),
+              new AuthRequest(threadOpContext, threadResourceContext)),
+          AuthorizationLogic.ANY);
     }
-  }
-
-  private void authorizeAgainstAbout(
-      SecurityContext securityContext, String aboutLink, MetadataOperation operation) {
-    EntityLink about = EntityLink.parse(aboutLink);
-    EntityReference aboutRef = EntityUtil.validateEntityLink(about);
-    ResourceContext<?> resourceContext =
-        new ResourceContext<>(aboutRef.getType(), aboutRef.getId(), null);
-    OperationContext operationContext = new OperationContext(aboutRef.getType(), operation);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
   }
 
   @POST
