@@ -249,8 +249,14 @@ describe('DocumentFolderView', () => {
   });
 
   it('opens the create folder modal when the add button is clicked', async () => {
-    render(<DocumentFolderView canCreate
-        canDelete files={mockFiles} onSelectFolder={jest.fn()} />);
+    render(
+      <DocumentFolderView
+        canCreate
+        canDelete
+        files={mockFiles}
+        onSelectFolder={jest.fn()}
+      />
+    );
 
     await waitFor(() =>
       expect(screen.getByText('Folder One')).toBeInTheDocument()
@@ -292,8 +298,14 @@ describe('DocumentFolderView', () => {
   });
 
   it('shows delete modal when delete button is clicked', async () => {
-    render(<DocumentFolderView canCreate
-        canDelete files={mockFiles} onSelectFolder={jest.fn()} />);
+    render(
+      <DocumentFolderView
+        canCreate
+        canDelete
+        files={mockFiles}
+        onSelectFolder={jest.fn()}
+      />
+    );
 
     await waitFor(() =>
       expect(screen.getByText('Folder One')).toBeInTheDocument()
@@ -311,7 +323,7 @@ describe('DocumentFolderView', () => {
 
     render(
       <DocumentFolderView
-      canCreate
+        canCreate
         canDelete
         files={mockFiles}
         onFoldersLoaded={onFoldersLoaded}
@@ -341,7 +353,7 @@ describe('DocumentFolderView', () => {
 
     render(
       <DocumentFolderView
-      canCreate
+        canCreate
         canDelete
         files={mockFiles}
         selectedFolderId="folder-1"
@@ -363,8 +375,14 @@ describe('DocumentFolderView', () => {
   });
 
   it('closes delete modal on cancel without deleting', async () => {
-    render(<DocumentFolderView canCreate
-        canDelete files={mockFiles} onSelectFolder={jest.fn()} />);
+    render(
+      <DocumentFolderView
+        canCreate
+        canDelete
+        files={mockFiles}
+        onSelectFolder={jest.fn()}
+      />
+    );
 
     await waitFor(() =>
       expect(screen.getByText('Folder One')).toBeInTheDocument()
