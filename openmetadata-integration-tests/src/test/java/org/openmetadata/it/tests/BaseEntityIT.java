@@ -4466,9 +4466,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   void test_bulkAsync_returns202(TestNamespace ns) throws Exception {
     if (!supportsBulkAPI) return;
 
-    String entityName = ns.prefix("bulk_async_perm");
     List<K> createRequests = new ArrayList<>();
-    createRequests.add(createRequest(entityName, ns));
+    createRequests.add(createRequest(ns.prefix("bulk_async_perm"), ns));
 
     HttpResponse<String> response =
         callBulkEndpoint(createRequests, SdkClients.getAdminToken(), true);
@@ -4479,36 +4478,35 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     assertNotNull(result.getNumberOfRowsProcessed());
 
     // Block until the async bulk worker commits the new entity. Without this, TestNamespace
-    // cleanup races the worker and the service's recursive hardDelete leaves an orphan, which
-    // later breaks unfiltered list calls in other test classes (dead service reference).
-    if (supportsSearchIndex) {
-      awaitAsyncBulkEntityVisible(entityName);
-    }
+    // cleanup races the worker: the service's recursive hardDelete may scan its children before
+    // the worker establishes the parent→child relationship, leaving an orphan whose parent
+    // service no longer exists. That orphan trips unfiltered list calls in concurrent test
+    // classes. The 202 body carries each queued entity's FQN in successRequest; await the row
+    // via getEntityByName so cascade cleanup can find it. Applies to every entity that supports
+    // bulk, independent of search-index support.
+    awaitAsyncBulkEntitiesPersisted(result);
   }
 
-  private void awaitAsyncBulkEntityVisible(String entityName) {
-    final OpenMetadataClient client = SdkClients.adminClient();
-    final String searchIndex = getSearchIndexName();
-    Awaitility.await("Async bulk-created entity " + entityName + " visible in " + searchIndex)
-        .pollDelay(Duration.ofMillis(200))
-        .pollInterval(Duration.ofMillis(500))
-        .atMost(Duration.ofSeconds(60))
-        .ignoreExceptions()
-        .untilAsserted(
-            () -> {
-              String searchResponse =
-                  client
-                      .search()
-                      .query("name.keyword:\"" + entityName + "\"")
-                      .index(searchIndex)
-                      .size(1)
-                      .execute();
-              assertNotNull(searchResponse);
-              JsonNode hits = MAPPER.readTree(searchResponse).get("hits").get("hits");
-              assertTrue(
-                  hits != null && hits.size() > 0,
-                  "Async bulk-created entity not yet indexed: " + entityName);
-            });
+  private void awaitAsyncBulkEntitiesPersisted(BulkOperationResult result) {
+    if (result.getSuccessRequest() == null || result.getSuccessRequest().isEmpty()) {
+      return;
+    }
+    for (BulkResponse accepted : result.getSuccessRequest()) {
+      Object request = accepted.getRequest();
+      if (!(request instanceof String fqn) || fqn.isEmpty()) {
+        continue;
+      }
+      Awaitility.await("Async bulk-created entity " + fqn + " visible by name")
+          .pollDelay(Duration.ofMillis(200))
+          .pollInterval(Duration.ofMillis(500))
+          .atMost(Duration.ofSeconds(60))
+          .ignoreExceptions()
+          .until(
+              () -> {
+                getEntityByName(fqn);
+                return true;
+              });
+    }
   }
 
   /**
