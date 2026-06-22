@@ -452,6 +452,19 @@ class EntityUtilClassBase {
       case EntityType.KNOWLEDGE_PAGE:
         return getKnowledgePagePath(fullyQualifiedName, tab, subTab);
 
+      case EntityType.INGESTION_PIPELINE: {
+        // Ingestion pipelines have no standalone detail page — the right destination
+        // is the owning service's ingestion management tab. The pipeline FQN has the
+        // service name as its first dot-separated segment (e.g. "myService.uuid").
+        // Service category is not derivable from the FQN alone so we default to
+        // databaseServices (the most common case); subclasses can override this method
+        // to provide a more precise route when the category is known.
+        const serviceFqn =
+          fullyQualifiedName.split('.')[0] ?? fullyQualifiedName;
+
+        return getServiceDetailsPath(serviceFqn, 'databaseServices', 'ingestion');
+      }
+
       case SearchIndex.TABLE:
       case EntityType.TABLE:
       default:
