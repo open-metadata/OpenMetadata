@@ -3029,6 +3029,7 @@
         "odps-validation-successful": "ODPS document is valid.",
         "odps-yaml-invalid": "The ODPS YAML document failed validation.",
         "odps-yaml-name-mismatch": "The YAML's name '{{yamlName}}' doesn't match the current data product '{{existingName}}'. Update the YAML or use the data product page for '{{yamlName}}' to avoid overwriting a different product.",
+        "odps-yaml-name-missing": "Could not read a product name from the YAML (product.details.<language>.name). Add a name matching the current data product '{{existingName}}' before importing, to avoid overwriting a different product.",
         "odps-yaml-valid-description": "Valid ODPS v{{version}} document with languages: {{languages}}.",
         "om-description": "데이터를 발견하고, 협업하고, 올바르게 사용하기 위한 중앙 집중식 메타데이터 저장소입니다.",
         "om-url-configuration-message": "사용 가능한 서비스 인사이트 데이터가 없습니다.",
