@@ -79,6 +79,7 @@ export * from './base/tags/base-components/tag-checkbox';
 export * from './base/tags/base-components/tag-close-x';
 export * from './base/tags/tags';
 export * from './base/textarea/textarea';
+export * from './base/time-picker/time-picker';
 export * from './base/toggle/toggle';
 export * from './base/tooltip/tooltip';
 export * from './base/video-player/icons';
