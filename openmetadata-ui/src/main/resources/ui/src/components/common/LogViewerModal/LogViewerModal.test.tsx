@@ -122,4 +122,28 @@ describe('LogViewerModal', () => {
 
     expect(onDownload).toHaveBeenCalledTimes(1);
   });
+
+  it('shows the loader instead of logs when loading', () => {
+    render(<LogViewerModal {...defaultProps} loading />);
+
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
+    expect(screen.queryByTestId('lazy-log')).not.toBeInTheDocument();
+  });
+
+  it('applies the dark theme class by default and the light theme class when requested', () => {
+    const { rerender } = render(<LogViewerModal {...defaultProps} />);
+
+    expect(screen.getByTestId('dialog')).toHaveClass('dark-mode');
+
+    rerender(<LogViewerModal {...defaultProps} theme="light" />);
+
+    expect(screen.getByTestId('dialog')).toHaveClass('theme-light');
+    expect(screen.getByTestId('dialog')).not.toHaveClass('dark-mode');
+  });
+
+  it('passes the follow flag through to the log viewer', () => {
+    render(<LogViewerModal {...defaultProps} follow />);
+
+    expect(screen.getByTestId('lazy-log')).toHaveAttribute('data-follow', 'true');
+  });
 });
