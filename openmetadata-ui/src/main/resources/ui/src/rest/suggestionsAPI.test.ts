@@ -15,6 +15,7 @@ import { SuggestionType } from '../types/taskSuggestion';
 import APIClient from './index';
 import {
   approveRejectAllSuggestions,
+  getSuggestionsByUserId,
   getSuggestionsList,
 } from './suggestionsAPI';
 import { resolveTask, TaskEntityStatus, TaskResolutionType } from './tasksAPI';
@@ -110,7 +111,46 @@ describe('suggestionsAPI', () => {
     });
   });
 
+  describe('getSuggestionsByUserId', () => {
+    it('sends createdById (UUID) not createdBy (FQN) as query param', async () => {
+      (APIClient.get as jest.Mock).mockResolvedValue({
+        data: { data: [], paging: {} },
+      });
+
+      await getSuggestionsByUserId('user-uuid-123', { entityFQN: 'db.schema.my_table' });
+
+      expect(APIClient.get).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          params: expect.objectContaining({ createdById: 'user-uuid-123' }),
+        })
+      );
+    });
+  });
+
   describe('approveRejectAllSuggestions', () => {
+    it('sends createdById (UUID) not createdBy (FQN) as query param', async () => {
+      (APIClient.get as jest.Mock).mockResolvedValue({
+        data: { data: [], paging: {} },
+      });
+
+      (resolveTask as jest.Mock).mockResolvedValue({});
+
+      await approveRejectAllSuggestions(
+        'user-uuid-123',
+        'db.schema.my_table',
+        SuggestionType.SuggestDescription,
+        SuggestionAction.Accept
+      );
+
+      expect(APIClient.get).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          params: expect.objectContaining({ createdById: 'user-uuid-123' }),
+        })
+      );
+    });
+
     it('continues resolving remaining tasks when one resolveTask call fails', async () => {
       (APIClient.get as jest.Mock).mockResolvedValue({
         data: {
