@@ -22,6 +22,7 @@ import javax.sql.DataSource;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.converter.BpmnXMLConverter;
+import org.flowable.common.engine.api.FlowableException;
 import org.flowable.common.engine.api.FlowableObjectNotFoundException;
 import org.flowable.common.engine.api.FlowableWrongDbException;
 import org.flowable.common.engine.impl.el.DefaultExpressionManager;
@@ -74,6 +75,14 @@ public class WorkflowHandler {
   private final boolean isMigrationContext;
 
   private static final String CONNECTION_VALIDATION_QUERY = "SELECT 1";
+
+  /**
+   * Message name used by the Collate Policy Agent node's await event. The batch coordinator delivers
+   * this message (via {@link #signalPolicyAgentResult}) to wake a parked DAR the moment its clubbed
+   * run's per-policy outcomes are written — push, not poll. Shared so the BPMN builder and the
+   * signal agree on the name.
+   */
+  public static final String POLICY_AGENT_RESULT_MESSAGE = "policyAgentResult";
 
   // Validate any pooled connection idle longer than this before reuse. Kept below Flowable's
   // 60s reset-expired-jobs interval so the periodic async-executor threads always re-validate,
@@ -1357,6 +1366,40 @@ public class WorkflowHandler {
       }
     } catch (FlowableObjectNotFoundException ex) {
       LOG.debug("Flowable Task for Task ID {} not found.", customTaskId);
+    }
+  }
+
+  /**
+   * Deliver the Policy Agent "result ready" message to a parked DAR process instance, waking its
+   * PolicyAgent node so it resolves immediately instead of waiting for the safety timer. No-op if the
+   * instance is not currently waiting on that message (already resolved, not yet parked, or the timer
+   * already fired) — the node re-reads the authoritative DB rows on wake, so a missed signal still
+   * self-corrects at the deadline.
+   *
+   * <p>Queries by {@code list()} (not {@code singleResult()}): the message name is shared across all
+   * PolicyAgent nodes, so a single instance could in principle hold more than one parked node — wake
+   * every matching subscription. Each delivery is isolated so one consumed/raced subscription does
+   * not block the others.
+   */
+  public void signalPolicyAgentResult(String processInstanceId) {
+    RuntimeService runtimeService = processEngine.getRuntimeService();
+    List<Execution> executions =
+        runtimeService
+            .createExecutionQuery()
+            .processInstanceId(processInstanceId)
+            .messageEventSubscriptionName(POLICY_AGENT_RESULT_MESSAGE)
+            .list();
+    for (Execution execution : executions) {
+      try {
+        runtimeService.messageEventReceived(POLICY_AGENT_RESULT_MESSAGE, execution.getId());
+      } catch (FlowableException ex) {
+        // Subscription consumed/removed between query and delivery (timer won the race, or a
+        // concurrent signal): safe to ignore — the node resolves from the DB rows regardless.
+        LOG.debug(
+            "PolicyAgent result signal no-op for execution {}: {}",
+            execution.getId(),
+            ex.getMessage());
+      }
     }
   }
 

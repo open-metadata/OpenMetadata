@@ -38,12 +38,6 @@ export interface PolicyAgentTaskDefinition {
 
 export interface Config {
     /**
-     * How often (in seconds) to poll the Policy Agent pipeline run for completion while
-     * waiting. Falls back to the server-wide default
-     * (workflowSettings.policyAgentConfiguration.pollingIntervalSeconds) when unset.
-     */
-    pollingIntervalSeconds?: number;
-    /**
      * Maximum seconds to wait for the Policy Agent pipeline to complete.
      */
     timeoutSeconds: number;
