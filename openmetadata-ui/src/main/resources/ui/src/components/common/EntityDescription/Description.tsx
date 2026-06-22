@@ -267,7 +267,7 @@ const Description = ({
         )}
         data-testid="asset-description-container">
         {header}
-        <div className="tw:[&_.tiptap.ProseMirror]:text-xs tw:[&_.tiptap.ProseMirror]:leading-[18px]">
+        <div>
           {descriptionContent}
         </div>
         {!suggestionData && shouldShowDescriptionMetadata && (
