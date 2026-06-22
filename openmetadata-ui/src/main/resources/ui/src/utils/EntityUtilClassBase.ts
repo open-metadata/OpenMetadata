@@ -455,12 +455,15 @@ class EntityUtilClassBase {
       case EntityType.INGESTION_PIPELINE: {
         // Ingestion pipelines have no standalone detail page — the right destination
         // is the owning service's ingestion management tab. The pipeline FQN has the
-        // service name as its first dot-separated segment (e.g. "myService.uuid").
-        // Service category is not derivable from the FQN alone so we default to
-        // databaseServices (the most common case); subclasses can override this method
-        // to provide a more precise route when the category is known.
-        const serviceFqn =
-          fullyQualifiedName.split('.')[0] ?? fullyQualifiedName;
+        // service name as its first segment (e.g. "myService.uuid" or quoted
+        // '"my.service".uuid' for service names that contain dots). Use Fqn.split
+        // (ANTLR4-backed) rather than a naive String.split('.') so quoted segments
+        // are handled correctly.
+        // Service category defaults to databaseServices because it cannot be derived
+        // from the FQN alone without an async API call; subclasses can override this
+        // method to provide a more precise route when the category is known.
+        const fqnParts = Fqn.split(fullyQualifiedName);
+        const serviceFqn = fqnParts[0] ?? fullyQualifiedName;
 
         return getServiceDetailsPath(serviceFqn, 'databaseServices', 'ingestion');
       }
