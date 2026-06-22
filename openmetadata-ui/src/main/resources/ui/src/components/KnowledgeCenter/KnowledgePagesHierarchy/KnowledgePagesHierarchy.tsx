@@ -67,6 +67,7 @@ import {
 } from '../../../interface/knowledge-center.interface';
 import {
   deleteKnowledgePage,
+  getListKnowledgePages,
   getPageHierarchyFromES,
   patchKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
@@ -134,6 +135,8 @@ const KnowledgePagesHierarchy = forwardRef<
     const [deletePage, setDeletePage] = useState<PageHierarchy>();
     const [isDeleting, setIsDeleting] = useState(false);
     const [isExpandingAll, setIsExpandingAll] = useState(false);
+    const [knowledgePagesTotalCount, setKnowledgePagesTotalCount] =
+      useState<number>(0);
 
     const [movedPage, setMovedPage] = useState<MovedEntity>();
     const [isMovingPage, setIsMovingPage] = useState<boolean>(false);
@@ -232,6 +235,15 @@ const KnowledgePagesHierarchy = forwardRef<
         setIsExpandingAll(false);
       }
     }, [knowledgePageHierarchy]);
+
+    const fetchKnowledgePagesTotalCount = useCallback(async () => {
+      try {
+        const { paging } = await getListKnowledgePages({ limit: 0 });
+        setKnowledgePagesTotalCount(paging.total);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    }, []);
 
     const fetchKnowledgePageHierarchy = async (
       setLoading = true,
@@ -361,6 +373,7 @@ const KnowledgePagesHierarchy = forwardRef<
         onPageDelete?.(deletedPages);
 
         await getResourceLimit('knowledgeCenter', true, true);
+        await fetchKnowledgePagesTotalCount();
 
         updateKnowledgeCenterRecentViewed(
           recentlyViewed.filter(
@@ -382,7 +395,13 @@ const KnowledgePagesHierarchy = forwardRef<
           navigate(homeRoute ?? contextCenterClassBase.getArticlesListPath());
         }
       },
-      [knowledgePageHierarchy, onPageDelete, activeKey, activePage]
+      [
+        knowledgePageHierarchy,
+        onPageDelete,
+        activeKey,
+        activePage,
+        fetchKnowledgePagesTotalCount,
+      ]
     );
 
     const handleMovePage = async (movedPageData: MovedEntity) => {
@@ -604,14 +623,18 @@ const KnowledgePagesHierarchy = forwardRef<
     );
 
     useImperativeHandle(ref, () => ({
-      fetchKnowledgePageHierarchy: (forceRefresh = false) =>
-        fetchKnowledgePageHierarchy(
+      fetchKnowledgePageHierarchy: async (forceRefresh = false) => {
+        await fetchKnowledgePageHierarchy(
           true,
           false,
           0,
           KNOWLEDGE_CENTER_PAGINATION_LIMIT,
           forceRefresh
-        ),
+        );
+        if (forceRefresh) {
+          await fetchKnowledgePagesTotalCount();
+        }
+      },
     }));
 
     useEffect(() => {
@@ -623,6 +646,10 @@ const KnowledgePagesHierarchy = forwardRef<
         lastFetchedFqnRef.current = fqn;
       }
     }, [hash, fqn]);
+
+    useEffect(() => {
+      fetchKnowledgePagesTotalCount();
+    }, [fetchKnowledgePagesTotalCount]);
 
     useEffect(() => {
       if (activeKey) {
@@ -692,7 +719,7 @@ const KnowledgePagesHierarchy = forwardRef<
               <Typography
                 className="tw:text-gray-500 tw:flex tw:items-center tw:gap-2"
                 size="text-xs">
-                {paginationState.paging.total ?? 0} {t('label.article-plural')}
+                {knowledgePagesTotalCount} {t('label.article-plural')}
               </Typography>
             </div>
           </Box>
