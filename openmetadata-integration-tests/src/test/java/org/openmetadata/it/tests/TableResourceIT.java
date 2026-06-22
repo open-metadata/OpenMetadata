@@ -91,7 +91,7 @@ import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TableType;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.TagSource;
+import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;

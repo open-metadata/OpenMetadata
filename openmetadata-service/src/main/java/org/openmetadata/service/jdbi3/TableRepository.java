@@ -3230,7 +3230,17 @@ public class TableRepository extends EntityRepository<Table> {
       Authorizer authorizer,
       SecurityContext securityContext) {
     return searchTableColumnsById(
-        id, query, limit, offset, fieldsParam, include, "name", "asc", authorizer, securityContext);
+        id,
+        query,
+        limit,
+        offset,
+        fieldsParam,
+        include,
+        "name",
+        "asc",
+        null,
+        authorizer,
+        securityContext);
   }
 
   public ResultList<Column> searchTableColumnsById(
@@ -3277,6 +3287,7 @@ public class TableRepository extends EntityRepository<Table> {
         include,
         "name",
         "asc",
+        null,
         authorizer,
         securityContext);
   }
