@@ -2546,7 +2546,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.assertEqual(OpenlineageSource._iter_table_candidates(data), [])
 
 
-class TestKinesisMultiShardPolling:
+class TestKinesisMultiShardPolling(unittest.TestCase):
     @patch(
         "metadata.ingestion.source.pipeline.openlineage.metadata.time.sleep",
         return_value=None,
