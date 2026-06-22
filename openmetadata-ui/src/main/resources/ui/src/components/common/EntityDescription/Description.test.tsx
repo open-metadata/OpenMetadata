@@ -220,21 +220,21 @@ describe('Description', () => {
     );
   });
 
-  it('should open the editor modal when the edit button is clicked', () => {
+  it('should open the editor modal when the edit button is clicked', async () => {
     render(<Description {...defaultProps} />);
 
     expect(screen.queryByTestId('edit-modal')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('edit-description'));
 
-    expect(screen.getByTestId('edit-modal')).toBeInTheDocument();
+    expect(await screen.findByTestId('edit-modal')).toBeInTheDocument();
   });
 
   it('should call onDescriptionUpdate and close the modal on save', async () => {
     render(<Description {...defaultProps} />);
 
     fireEvent.click(screen.getByTestId('edit-description'));
-    fireEvent.click(screen.getByTestId('modal-save'));
+    fireEvent.click(await screen.findByTestId('modal-save'));
 
     await waitFor(() =>
       expect(mockOnDescriptionUpdate).toHaveBeenCalledWith(
@@ -246,11 +246,11 @@ describe('Description', () => {
     );
   });
 
-  it('should close the modal on cancel without calling onDescriptionUpdate', () => {
+  it('should close the modal on cancel without calling onDescriptionUpdate', async () => {
     render(<Description {...defaultProps} />);
 
     fireEvent.click(screen.getByTestId('edit-description'));
-    fireEvent.click(screen.getByTestId('modal-cancel'));
+    fireEvent.click(await screen.findByTestId('modal-cancel'));
 
     expect(screen.queryByTestId('edit-modal')).not.toBeInTheDocument();
     expect(mockOnDescriptionUpdate).not.toHaveBeenCalled();
@@ -278,7 +278,7 @@ describe('Description', () => {
     expect(screen.queryByTestId('request-description')).not.toBeInTheDocument();
   });
 
-  it('should render the suggestion alert instead of the previewer when a suggestion is active', () => {
+  it('should render the suggestion alert instead of the previewer when a suggestion is active', async () => {
     const entityLinkWithoutField = getEntityFeedLink(
       EntityType.TABLE,
       'test.fqn'
@@ -292,7 +292,7 @@ describe('Description', () => {
 
     render(<Description {...defaultProps} />);
 
-    expect(screen.getByTestId('suggestions-alert')).toBeInTheDocument();
+    expect(await screen.findByTestId('suggestions-alert')).toBeInTheDocument();
     expect(screen.queryByTestId('previewer')).not.toBeInTheDocument();
   });
 
