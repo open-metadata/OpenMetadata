@@ -140,48 +140,52 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
 
   return (
     <Row className="knowledge-version-page-container" gutter={[0, 32]}>
-      <Col span={18}>
-        <Space direction="vertical" size={32}>
-          <Typography.Text
-            className="m-b-0 d-block entity-header-display-name text-lg font-semibold"
-            data-testid="entity-header-display-name"
-            ellipsis={{ tooltip: true }}>
-            {stringToHTML(displayName || knowledgePage.name)}
-          </Typography.Text>
-          <Row align="middle" gutter={[16, 16]}>
-            <Col>
-              <Space size={4}>
-                <Space direction="vertical" size={0}>
-                  <OwnerLabel
-                    ownerDisplayName={ownerDisplayName}
-                    owners={knowledgePage?.owners ?? ownerRef}
-                  />
-                  <span
-                    className="self-center text-grey-muted"
-                    data-testid="updated-at">
-                    {formatDate(knowledgePage.updatedAt)}
-                  </span>
-                </Space>
-              </Space>
-            </Col>
-          </Row>
-        </Space>
-      </Col>
-      <Col offset={2} span={2}>
-        <Button
-          className={classNames('', {
-            'text-primary border-primary': version,
-          })}
-          data-testid="version-button"
-          icon={<Icon component={VersionIcon} />}
-          onClick={handleVersionClick}>
-          <Typography.Text
-            className={classNames('', {
-              'text-primary': version,
-            })}>
-            {toString(version)}
-          </Typography.Text>
-        </Button>
+      <Col span={24}>
+        <Row gutter={[16, 16]} justify="space-between" wrap={false}>
+          <Col className="m-r-md knowledge-version-title-col" flex="auto">
+            <Space className="w-full" direction="vertical" size={32}>
+              <Typography.Text
+                className="m-b-0 d-block entity-header-display-name text-lg font-semibold"
+                data-testid="entity-header-display-name"
+                >
+                {stringToHTML(displayName || knowledgePage.name)}
+              </Typography.Text>
+              <Row align="middle" gutter={[16, 16]}>
+                <Col>
+                  <Space size={4}>
+                    <Space direction="vertical" size={0}>
+                      <OwnerLabel
+                        ownerDisplayName={ownerDisplayName}
+                        owners={knowledgePage?.owners ?? ownerRef}
+                      />
+                      <span
+                        className="self-center text-grey-muted"
+                        data-testid="updated-at">
+                        {formatDate(knowledgePage.updatedAt)}
+                      </span>
+                    </Space>
+                  </Space>
+                </Col>
+              </Row>
+            </Space>
+          </Col>
+          <Col flex="none">
+            <Button
+              className={classNames('', {
+                'text-primary border-primary': version,
+              })}
+              data-testid="version-button"
+              icon={<Icon component={VersionIcon} />}
+              onClick={handleVersionClick}>
+              <Typography.Text
+                className={classNames('', {
+                  'text-primary': version,
+                })}>
+                {toString(version)}
+              </Typography.Text>
+            </Button>
+          </Col>
+        </Row>
       </Col>
       <Col span={24}>
         <Row gutter={[0, 16]}>
