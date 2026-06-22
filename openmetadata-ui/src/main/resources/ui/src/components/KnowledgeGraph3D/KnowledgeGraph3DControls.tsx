@@ -75,7 +75,9 @@ const KnowledgeGraph3DControls: FC<KnowledgeGraph3DControlsProps> = ({
   );
 
   return (
-    <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-4 tw:px-6 tw:py-3.5">
+    <div
+      className="tw:flex tw:flex-wrap tw:items-center tw:gap-4 tw:px-6 tw:py-3.5"
+      data-testid="knowledge-graph-3d-controls">
       <div className="tw:flex tw:items-center tw:gap-2.5">
         <span className="tw:text-sm tw:font-medium tw:text-tertiary">
           {t('label.level')}
@@ -112,7 +114,9 @@ const KnowledgeGraph3DControls: FC<KnowledgeGraph3DControlsProps> = ({
         </ButtonGroup>
       </div>
 
-      <div className="tw:flex tw:items-center tw:gap-2.5">
+      <div
+        className="tw:flex tw:items-center tw:gap-2.5"
+        data-testid="kg3d-depth-control">
         <span className="tw:text-sm tw:font-medium tw:text-tertiary">
           {t('label.depth')}
         </span>

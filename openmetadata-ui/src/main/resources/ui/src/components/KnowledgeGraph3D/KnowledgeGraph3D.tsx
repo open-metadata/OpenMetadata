@@ -314,7 +314,9 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
         onShowColumnsChange={setShowColumns}
       />
 
-      <div className="knowledge-graph-3d-caption">
+      <div
+        className="knowledge-graph-3d-caption"
+        data-testid="knowledge-graph-3d-caption">
         <span className="knowledge-graph-3d-scope">
           {t(
             `label.${
@@ -328,11 +330,15 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
           {t('label.level')}
         </span>
         <span className="knowledge-graph-3d-caption-sep">·</span>
-        <span className="knowledge-graph-3d-caption-count">
+        <span
+          className="knowledge-graph-3d-caption-count"
+          data-testid="knowledge-graph-3d-node-count">
           {t('message.knowledge-graph-node-count', { count: caption.total })}
         </span>
         <span className="knowledge-graph-3d-caption-sep">·</span>
-        <span className="knowledge-graph-3d-caption-desc">
+        <span
+          className="knowledge-graph-3d-caption-desc"
+          data-testid="knowledge-graph-3d-caption-desc">
           {caption.description}
         </span>
         {caption.truncated && (
