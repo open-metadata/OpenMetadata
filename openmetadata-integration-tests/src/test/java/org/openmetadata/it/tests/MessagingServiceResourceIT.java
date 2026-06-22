@@ -13,6 +13,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.api.services.CreateMessagingService;
 import org.openmetadata.schema.api.services.CreateMessagingService.MessagingServiceType;
 import org.openmetadata.schema.entity.services.MessagingService;
@@ -37,6 +38,24 @@ public class MessagingServiceResourceIT
 
   {
     supportsListHistoryByTimestamp = true;
+  }
+
+  @Override
+  protected DeletableSubtree createDeletableSubtree(TestNamespace ns) {
+    var service = createEntity(createMinimalRequest(ns));
+    var child =
+        SdkClients.adminClient()
+            .topics()
+            .create(
+                new CreateTopic()
+                    .withName(ns.prefix("del_child"))
+                    .withService(service.getFullyQualifiedName())
+                    .withPartitions(1));
+    return new DeletableSubtree(
+        service.getId().toString(),
+        java.util.List.of(child.getId().toString()),
+        "topic_search_index",
+        child.getId().toString());
   }
 
   @Override

@@ -331,6 +331,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   private static final int BULK_CREATE_TXN_CHUNK_SIZE = 100;
 
+  /**
+   * Max entities hydrated + purged per chunk in {@link #bulkHardDeleteSubtree(List, String)}. The
+   * pre-chunking path loaded an ENTIRE tree level ({@code loadForBulk(ids, ALL)}) into the heap
+   * before deleting — a service with hundreds of thousands of tables would OOM on that single load.
+   * Chunking bounds peak heap to ~{@code CHUNK_SIZE * tree-depth} hydrated entities: each chunk
+   * loads, recurses into its children, then purges its own rows. Larger than the create chunk
+   * because each delete chunk also issues one child-discovery query, so an over-small value
+   * multiplies round-trips on wide levels. (Per-chunk transactional atomicity via
+   * {@code flushInOneTransaction} is a tracked follow-up; the purge stays per-DAO-call autocommit
+   * for now, matching the prior behavior.)
+   */
+  private static final int BULK_HARD_DELETE_TXN_CHUNK_SIZE = 500;
+
   public record EntityHistoryWithOffset(EntityHistory entityHistory, int nextOffset) {}
 
   private record InheritanceCacheKey(String entityType, UUID entityId, String fieldsKey) {}
@@ -619,6 +632,34 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final Fields putFields;
 
   protected boolean supportsSearch = false;
+
+  /**
+   * Whether entities of this type, when hard-deleted as part of a recursive subtree delete, have
+   * both their search documents and their FQN-keyed satellite rows (field_relationship, tag_usage)
+   * removed by an ANCESTOR's delete cascade rather than needing per-entity cleanup:
+   *
+   * <ul>
+   *   <li>search: the root's {@code deleteFromSearch} fires
+   *       {@link SearchRepository#deleteOrUpdateChildren} which deletes every child-index doc by
+   *       {@code service.id} / parent-id in a single delete-by-query;
+   *   <li>satellites: the root's {@code cleanup()} deletes field_relationship / tag_usage for the
+   *       whole subtree by FQN prefix in a single statement (only valid when descendant FQNs are
+   *       nested under the root FQN).
+   * </ul>
+   *
+   * <p>When {@code true}, {@link #bulkHardDeleteSubtree(List, String)} skips the per-entity search
+   * dispatch and the per-entity field_relationship / tag_usage deletes for this type — turning ~N
+   * search dispatches + ~3N satellite round-trips for an N-entity subtree into a single ancestor
+   * cascade. Set in the constructor (like {@link #supportsSearch}) for FQN-nested,
+   * service/container-rooted hierarchies (Database/Schema/Table/StoredProcedure, and analogous
+   * dashboard/pipeline/topic/mlmodel/storage/search/api/drive asset trees). Defaults to {@code
+   * false} so flat-FQN or non-cascade-covered types (Team, User, Role, Policy, …) keep the safe
+   * per-entity path until verified. Note: id-keyed satellites (entity_relationship, entity_extension,
+   * entity_usage, feed) are still batched per chunk by id-set regardless of this flag, since the
+   * root cleanup only covers the root's own id, not descendants'.
+   */
+  protected boolean descendantsCoveredByAncestorCascade = false;
+
   protected final Map<String, BiConsumer<List<T>, Fields>> fieldFetchers = new HashMap<>();
   private final ReadPlanner readPlanner = new ReadPlanner();
 
@@ -6690,6 +6731,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (ids == null || ids.isEmpty()) {
       return;
     }
+    // Process the level in bounded chunks rather than hydrating it whole. Each chunk discovers
+    // and recursively deletes its own children (depth-first) before purging its own rows, so peak
+    // heap stays at ~BULK_HARD_DELETE_TXN_CHUNK_SIZE hydrated entities per tree level and no single
+    // transaction scales with subtree size. See BULK_HARD_DELETE_TXN_CHUNK_SIZE.
+    for (int start = 0; start < ids.size(); start += BULK_HARD_DELETE_TXN_CHUNK_SIZE) {
+      int end = Math.min(start + BULK_HARD_DELETE_TXN_CHUNK_SIZE, ids.size());
+      bulkHardDeleteSubtreeChunk(ids.subList(start, end), updatedBy);
+    }
+  }
+
+  private void bulkHardDeleteSubtreeChunk(List<UUID> ids, String updatedBy) {
     List<T> entities = loadForBulk(ids, ALL, "bulkHardDeleteLoad");
     if (entities.isEmpty()) {
       return;
@@ -6717,19 +6769,29 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // walk HAS relationships to discover linked entities, and bulkCleanupReferences wipes
       // those relationship rows.
       runHardDeleteAdditionalChildren(entities, updatedBy);
+      // Reference wipes (entity_relationship, extensions, tag_usage, usage, field_relationship,
+      // feed) then the entity-row delete, scoped to this chunk only. Children were already deleted
+      // by the recursion above. These remain per-DAO-call autocommits, matching the prior behavior;
+      // wrapping each chunk in a single flushInOneTransaction for per-chunk atomicity is a tracked
+      // follow-up (the deletes are idempotent so it is safe to add).
       bulkCleanupReferences(entities);
       bulkDeleteEntityRows(entities);
       bulkInvalidate(entities);
+      // When an ancestor's deleteFromSearch cascade already removes these docs in a single
+      // delete-by-query (SearchRepository.deleteOrUpdateChildren wipes child indexes by
+      // service.id / parent.id — see the DATABASE_SERVICE / default cases), firing one
+      // onEntityDeleted per descendant is pure overhead: it serializes a snapshot of every
+      // entity and submits a lane task each, which dominated the wall-clock of large recursive
+      // hard deletes (≈ N search dispatches for an N-entity subtree). Repos whose descendants are
+      // covered by that ancestor cascade override descendantsCoveredByAncestorCascade() to
+      // skip the per-entity dispatch; the root entity's own deleteFromSearch (fired by the
+      // top-level delete()) still runs and triggers the covering cascade.
+      boolean skipPerEntitySearch = descendantsCoveredByAncestorCascade;
       for (T entity : entities) {
         postDelete(entity, true);
-        // Fire deleteFromSearch per-entity so cascade-deleted descendants are removed from
-        // Elasticsearch. The legacy per-entity Entity.deleteEntity path invoked this via
-        // delete()'s top-level dispatch — this bulk replacement is the only path that walks
-        // cascaded children now, so a missing call leaves stale ES docs that surface as
-        // duplicate results (e.g. Playwright Domains.spec.ts:533 found two "PW_DataProduct_
-        // Sales" rows after a recursive Domain hard-delete because the DB row was gone but
-        // the search-index doc lingered).
-        deleteFromSearch(entity, true);
+        if (!skipPerEntitySearch) {
+          deleteFromSearch(entity, true);
+        }
       }
     } finally {
       exitHardDeleteCascade.run();
@@ -6795,18 +6857,28 @@ public abstract class EntityRepository<T extends EntityInterface> {
     try (var ignored = phase("bulkHardDeleteExtensions")) {
       daoCollection.entityExtensionDAO().deleteAllBatch(entityIdStrings);
     }
-    try (var ignored = phase("bulkHardDeleteFqnDependents")) {
-      for (T entity : entities) {
-        String fqn = entity.getFullyQualifiedName();
-        daoCollection.fieldRelationshipDAO().deleteAllByPrefix(fqn);
-        daoCollection.tagUsageDAO().deleteTagLabelsByTargetPrefix(fqn);
-        daoCollection.tagUsageDAO().deleteTagLabelsByFqn(fqn);
+    // field_relationship and tag_usage are keyed by FQN hash, so a single prefix delete on an
+    // ancestor's FQN clears the whole subtree. For FQN-nested types the recursive delete root's
+    // cleanup() already issues that prefix delete (deleteAllByPrefix /
+    // deleteTagLabelsByTargetPrefix
+    // on the root FQN covers every descendant), making these per-entity calls redundant — N no-op
+    // round-trips for an N-entity subtree. Skip them for cascade-covered types and rely on the root
+    // cleanup() prefix delete. Types not FQN-nested under their delete root (e.g. flat-FQN teams)
+    // keep the per-entity path.
+    if (!descendantsCoveredByAncestorCascade) {
+      try (var ignored = phase("bulkHardDeleteFqnDependents")) {
+        for (T entity : entities) {
+          String fqn = entity.getFullyQualifiedName();
+          daoCollection.fieldRelationshipDAO().deleteAllByPrefix(fqn);
+          daoCollection.tagUsageDAO().deleteTagLabelsByTargetPrefix(fqn);
+          daoCollection.tagUsageDAO().deleteTagLabelsByFqn(fqn);
+        }
       }
     }
     try (var ignored = phase("bulkHardDeleteUsage")) {
-      for (T entity : entities) {
-        daoCollection.usageDAO().delete(entity.getId());
-      }
+      // entity_usage is keyed by id (not covered by the root's FQN-prefix cleanup), so descendants
+      // must be cleared here — but in one IN-list delete per chunk instead of one per entity.
+      daoCollection.usageDAO().deleteByIds(entityIds);
     }
     try (var ignored = phase("bulkHardDeleteFeedThreads")) {
       Entity.getFeedRepository().deleteByAbout(entityIds);
