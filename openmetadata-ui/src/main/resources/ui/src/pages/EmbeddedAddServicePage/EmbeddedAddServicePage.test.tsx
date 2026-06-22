@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { triggerOnDemandApp } from '../../rest/applicationAPI';
 import { getServiceByFQN, postService } from '../../rest/serviceAPI';
@@ -35,6 +36,7 @@ jest.mock('../../hooks/useApplicationStore', () => ({
 jest.mock('../../utils/ServiceUtilClassBase', () => ({
   getExtraInfo: jest.fn(),
   getServiceConfigData: jest.fn(),
+  getProperties: jest.fn(),
 }));
 
 jest.mock('../../hoc/withPageLayout', () => ({
@@ -116,7 +118,7 @@ jest.mock(
 );
 
 jest.mock(
-  '../../components/Settings/Services/ServiceConfig/EmbeddedConnectionConfigForm',
+  '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm',
   () =>
     jest.fn().mockImplementation(({ onSave, onCancel }) => (
       <div>
@@ -126,6 +128,19 @@ jest.mock(
         <button onClick={onCancel}>Back</button>
       </div>
     ))
+);
+
+jest.mock(
+  '../../components/common/NavigationGuardModal/NavigationGuardModal',
+  () => ({
+    NavigationGuardModal: jest.fn().mockImplementation(({ isOpen, onLeave }) =>
+      isOpen ? (
+        <button data-testid="modal-leave" onClick={onLeave}>
+          Leave
+        </button>
+      ) : null
+    ),
+  })
 );
 
 jest.mock(
@@ -292,9 +307,16 @@ describe('EmbeddedAddServicePage', () => {
     expect(screen.getByTestId('header')).toHaveTextContent(
       'mysql label.service'
     );
+    expect(screen.queryByText('Select MySQL')).not.toBeInTheDocument();
 
+    // Clicking the breadcrumb shows a confirmation modal (activeServiceStep > 1)
     await act(async () => {
       fireEvent.click(screen.getByText('label.add-new-entity'));
+    });
+
+    // Confirm leaving to reset the selected connector
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('modal-leave'));
     });
 
     expect(screen.getByTestId('header')).toHaveTextContent(
@@ -454,14 +476,18 @@ describe('EmbeddedAddServicePage', () => {
       });
     });
 
+    const selectMySQLButton = screen.getByText('Select MySQL');
     await act(async () => {
-      fireEvent.click(screen.getByText('Select MySQL'));
+      fireEvent.click(selectMySQLButton);
     });
 
-    expect(screen.getByText('Save Connection')).toBeInTheDocument();
+    // Footer Back button shows a confirmation modal before going back to step 1
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'label.back' }));
+    });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Back'));
+      fireEvent.click(screen.getByTestId('modal-leave'));
     });
 
     expect(screen.getByText('Select MySQL')).toBeInTheDocument();
@@ -486,8 +512,13 @@ describe('EmbeddedAddServicePage', () => {
       fireEvent.click(screen.getByText('Save Connection'));
     });
 
+    // Footer Back button shows a confirmation modal before going back
     await act(async () => {
-      fireEvent.click(await screen.findByText('Back'));
+      fireEvent.click(screen.getByRole('button', { name: 'label.back' }));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('modal-leave'));
     });
 
     expect(screen.getByText('Save Connection')).toBeInTheDocument();
