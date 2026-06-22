@@ -79,7 +79,7 @@ describe('SparqlPlayground', () => {
     render(<SparqlPlayground />);
 
     expect(screen.getByTestId('heading')).toHaveTextContent(
-      'SPARQL Playground'
+      'label.sparql-playground'
     );
     expect(screen.getByTestId('schema-editor')).toBeInTheDocument();
     expect(screen.getByTestId('sparql-run')).toBeInTheDocument();

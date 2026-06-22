@@ -75,9 +75,8 @@ om:ColumnShape a sh:NodeShape ;
     sh:property [
         sh:path om:dataType ;
         sh:datatype xsd:string ;
-        sh:minCount 1 ;
         sh:maxCount 1 ;
-        sh:message "Column must have exactly one data type"@en ;
+        sh:message "Column data type, when present, must be a single string"@en ;
     ] ;
     sh:property [
         sh:path om:ordinalPosition ;
@@ -90,6 +89,42 @@ om:ColumnShape a sh:NodeShape ;
         sh:datatype xsd:string ;
         sh:in ("NULL" "NOT_NULL" "UNIQUE" "PRIMARY_KEY") ;
         sh:message "Column constraint must be one of the allowed values"@en ;
+    ] .
+
+# Column Lineage Shape
+# A column-lineage edge must reference its endpoints as om:Column URIs, never string
+# literals, so downstream traversal can resolve the actual column entities.
+om:ColumnLineageShape a sh:NodeShape ;
+    sh:targetClass om:ColumnLineage ;
+    sh:property [
+        sh:path om:fromColumn ;
+        sh:class om:Column ;
+        sh:minCount 1 ;
+        sh:message "Column lineage fromColumn must reference an om:Column, not a literal"@en ;
+    ] ;
+    sh:property [
+        sh:path om:toColumn ;
+        sh:class om:Column ;
+        sh:minCount 1 ;
+        sh:message "Column lineage toColumn must reference an om:Column, not a literal"@en ;
+    ] .
+
+# Table Constraint Shape
+# A table constraint must declare its type (PRIMARY_KEY, FOREIGN_KEY, UNIQUE, ...) so the
+# graph can distinguish constraint kinds; the constrained columns reference om:Column URIs.
+om:TableConstraintShape a sh:NodeShape ;
+    sh:targetClass om:TableConstraint ;
+    sh:property [
+        sh:path om:constraintType ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Table constraint must declare exactly one om:constraintType"@en ;
+    ] ;
+    sh:property [
+        sh:path om:hasConstrainedColumn ;
+        sh:class om:Column ;
+        sh:message "Table constraint constrained columns must reference om:Column"@en ;
     ] .
 
 # Database Shape
