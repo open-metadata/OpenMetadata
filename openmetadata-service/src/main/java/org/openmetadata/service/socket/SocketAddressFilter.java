@@ -51,7 +51,9 @@ public class SocketAddressFilter implements Filter {
       throws IOException {
     try {
       HttpServletRequest httpServletRequest = (HttpServletRequest) request;
-      Map<String, String> query = ParseQS.decode(httpServletRequest.getQueryString());
+      String queryString = httpServletRequest.getQueryString();
+      Map<String, String> query =
+          queryString != null && !queryString.isBlank() ? ParseQS.decode(queryString) : Map.of();
 
       HeaderRequestWrapper requestWrapper = new HeaderRequestWrapper(httpServletRequest);
       requestWrapper.addHeader("RemoteAddress", httpServletRequest.getRemoteAddr());
