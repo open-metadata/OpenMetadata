@@ -18,9 +18,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -31,12 +33,16 @@ import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,12 +60,16 @@ import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
+import org.openmetadata.service.util.RestUtil.PutResponse;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -434,5 +444,80 @@ class SamlAuthServletHandlerTest {
 
     String unknownResult = (String) method.invoke(handler, "unknownClaim");
     assertEquals("unknownclaim", unknownResult);
+  }
+
+  @Test
+  void getOrCreateUser_selfSignup_persistsMappedEmailNotDerivedFromUsername() throws Exception {
+    when(authConfig.getEnableSelfSignup()).thenReturn(true);
+    SecurityConfigurationManager.getInstance().setCurrentAuthzConfig(authorizerConfig);
+    when(authorizerConfig.getAdminPrincipals()).thenReturn(Set.of());
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubUserNotFoundAndEchoCreate(mockedEntity);
+
+      User created = invokeGetOrCreateUser("shortid", "firstname.lastname@example.com");
+
+      assertEquals("shortid", created.getName());
+      assertEquals("firstname.lastname@example.com", created.getEmail());
+    }
+  }
+
+  @Test
+  void getOrCreateUser_selfSignup_preservesEmailWhenUsernameMatchesLocalPart() throws Exception {
+    when(authConfig.getEnableSelfSignup()).thenReturn(true);
+    SecurityConfigurationManager.getInstance().setCurrentAuthzConfig(authorizerConfig);
+    when(authorizerConfig.getAdminPrincipals()).thenReturn(Set.of());
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubUserNotFoundAndEchoCreate(mockedEntity);
+
+      User created = invokeGetOrCreateUser("john.doe", "john.doe@example.com");
+
+      assertEquals("john.doe", created.getName());
+      assertEquals("john.doe@example.com", created.getEmail());
+    }
+  }
+
+  private void stubUserNotFoundAndEchoCreate(MockedStatic<Entity> mockedEntity) {
+    UserRepository userRepository = mock(UserRepository.class);
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
+
+    mockedEntity
+        .when(
+            () ->
+                Entity.getEntityByName(
+                    eq(Entity.USER), anyString(), anyString(), any(Include.class)))
+        .thenThrow(new EntityNotFoundException("user not found"));
+    mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
+    mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+
+    when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
+    when(userRepository.findByNameOrNull(any(), any())).thenReturn(null);
+    when(userRepository.createOrUpdate(eq(null), any(User.class), any()))
+        .thenAnswer(
+            invocation ->
+                new PutResponse<>(
+                    Response.Status.CREATED,
+                    invocation.getArgument(1, User.class),
+                    EventType.ENTITY_CREATED));
+  }
+
+  private User invokeGetOrCreateUser(String username, String email) throws Exception {
+    Method method =
+        SamlAuthServletHandler.class.getDeclaredMethod(
+            "getOrCreateUser", String.class, String.class, String.class, List.class);
+    method.setAccessible(true);
+    User result;
+    try {
+      result = (User) method.invoke(handler, username, email, null, List.of());
+    } catch (InvocationTargetException e) {
+      Throwable cause = e.getCause();
+      if (cause instanceof RuntimeException runtimeException) {
+        throw runtimeException;
+      }
+      throw e;
+    }
+    return result;
   }
 }
