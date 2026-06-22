@@ -77,6 +77,7 @@ let articleTagClassification: ClassificationClass;
 let articleTags: TagClass[] = [];
 let viewOnlyUser: UserClass;
 let quickLinkId = '';
+let archivedArticleId = '';
 
 test.describe('Context Center', () => {
   test.slow(true);
@@ -160,6 +161,22 @@ test.describe('Context Center', () => {
       'context-center-view-only'
     );
 
+    // Create and soft-delete an article so the Archive page has data to assert on
+    const archRes = await apiContext.post('/api/v1/contextCenter/pages', {
+      data: {
+        name: `cc_archived_${uuid()}`,
+        displayName: `CC Archived ${uuid()}`,
+        description: 'Article archived for Playwright permission tests',
+        pageType: 'Article',
+        page: { publicationDate: Date.now(), relatedArticles: [] },
+      },
+    });
+    const archData = await archRes.json();
+    archivedArticleId = archData.id;
+    await apiContext.delete(
+      `/api/v1/contextCenter/pages/${archivedArticleId}?recursive=true&hardDelete=false`
+    );
+
     await afterAction();
   });
 
@@ -169,6 +186,11 @@ test.describe('Context Center', () => {
     if (quickLinkId) {
       await apiContext.delete(
         `/api/v1/contextCenter/pages/${quickLinkId}?hardDelete=true&recursive=true`
+      );
+    }
+    if (archivedArticleId) {
+      await apiContext.delete(
+        `/api/v1/contextCenter/pages/${archivedArticleId}?hardDelete=true&recursive=true`
       );
     }
     if (articleTagClassification?.responseData?.id) {
@@ -224,11 +246,15 @@ test.describe('Context Center', () => {
         await expect(header.getByTestId('manage-button')).not.toBeVisible();
       });
 
-      await test.step('documents upload and delete actions are hidden', async () => {
+      await test.step('documents upload, folder and row actions are hidden', async () => {
         await navigateToDocuments(viewOnlyPage);
 
         await expect(
           viewOnlyPage.getByRole('button', { name: /upload file/i })
+        ).not.toBeVisible();
+
+        await expect(
+          viewOnlyPage.getByTestId('add-folder-btn')
         ).not.toBeVisible();
 
         const firstRow = viewOnlyPage
@@ -236,8 +262,77 @@ test.describe('Context Center', () => {
           .locator('[data-testid^="document-row-"]')
           .first();
         await expect(firstRow).toBeVisible();
-        await firstRow.locator('button[aria-label="Open menu"]').click();
-        await expect(viewOnlyPage.getByTestId('delete-btn')).not.toBeVisible();
+
+        // No row actions are available, so the manage menu trigger is not rendered
+        await expect(
+          firstRow.locator('button[aria-label="Open menu"]')
+        ).not.toBeVisible();
+      });
+
+      await test.step('documents bulk delete and move actions are hidden', async () => {
+        const firstRow = viewOnlyPage
+          .getByTestId('documents-view')
+          .locator('[data-testid^="document-row-"]')
+          .first();
+        await firstRow.locator('label').first().click();
+
+        await expect(
+          viewOnlyPage.getByTestId('bulk-download-btn')
+        ).toBeVisible();
+        await expect(
+          viewOnlyPage.getByTestId('bulk-delete-btn')
+        ).not.toBeVisible();
+        await expect(
+          viewOnlyPage.getByTestId('bulk-move-btn')
+        ).not.toBeVisible();
+      });
+
+      await test.step('archive restore and delete actions are hidden', async () => {
+        await viewOnlyPage.goto('/context-center/archive');
+        await viewOnlyPage
+          .getByTestId('context-center-archive-page')
+          .waitFor({ state: 'visible' });
+        await waitForAllLoadersToDisappear(viewOnlyPage);
+
+        const row = viewOnlyPage.getByTestId(
+          `archive-row-${archivedArticleId}`
+        );
+        await row.scrollIntoViewIfNeeded();
+        await expect(row).toBeVisible();
+        await expect(row.getByTestId('restore-btn')).not.toBeVisible();
+        await expect(row.getByTestId('delete-btn')).not.toBeVisible();
+      });
+    });
+
+    test('admin can see folder, bulk and archive actions', async ({ page }) => {
+      await test.step('documents folder and bulk actions are visible', async () => {
+        await navigateToDocuments(page);
+
+        await expect(page.getByTestId('add-folder-btn')).toBeVisible();
+
+        const firstRow = page
+          .getByTestId('documents-view')
+          .locator('[data-testid^="document-row-"]')
+          .first();
+        await expect(firstRow).toBeVisible();
+        await firstRow.locator('label').first().click();
+
+        await expect(page.getByTestId('bulk-delete-btn')).toBeVisible();
+        await expect(page.getByTestId('bulk-move-btn')).toBeVisible();
+      });
+
+      await test.step('archive restore and delete actions are visible', async () => {
+        await page.goto('/context-center/archive');
+        await page
+          .getByTestId('context-center-archive-page')
+          .waitFor({ state: 'visible' });
+        await waitForAllLoadersToDisappear(page);
+
+        const row = page.getByTestId(`archive-row-${archivedArticleId}`);
+        await row.scrollIntoViewIfNeeded();
+        await expect(row).toBeVisible();
+        await expect(row.getByTestId('restore-btn')).toBeVisible();
+        await expect(row.getByTestId('delete-btn')).toBeVisible();
       });
     });
   });

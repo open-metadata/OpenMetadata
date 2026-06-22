@@ -94,6 +94,7 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({ folders, onPick }) => {
 
 const FileActions: FC<FileActionsProps> = ({
   canDelete,
+  canEdit,
   file,
   folders = [],
   onDeleteFile,
@@ -122,6 +123,10 @@ const FileActions: FC<FileActionsProps> = ({
     }
   };
 
+  if (!canEdit && !canDelete) {
+    return null;
+  }
+
   return (
     <Dropdown.Root>
       <Tooltip
@@ -137,34 +142,36 @@ const FileActions: FC<FileActionsProps> = ({
               onDeleteFile?.(file);
             }
           }}>
-          <SubmenuTrigger>
-            <Dropdown.Item
-              data-testid="move-btn"
-              icon={Pin02}
-              isDisabled={isMoving || availableFolders.length === 0}>
-              {() => (
-                <Box align="center" justify="between">
-                  <Typography ellipsis className="tw:grow tw:text-secondary">
-                    {t('label.move-to-folder')}
-                  </Typography>
-                  <ChevronRight
-                    aria-hidden="true"
-                    className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
-                    strokeWidth={2}
-                  />
-                </Box>
-              )}
-            </Dropdown.Item>
-            <Dropdown.Popover
-              className="tw:w-52"
-              offset={-6}
-              placement="right top">
-              <FolderPickerMenu
-                folders={availableFolders}
-                onPick={handleMoveToFolder}
-              />
-            </Dropdown.Popover>
-          </SubmenuTrigger>
+          {canEdit && (
+            <SubmenuTrigger>
+              <Dropdown.Item
+                data-testid="move-btn"
+                icon={Pin02}
+                isDisabled={isMoving || availableFolders.length === 0}>
+                {() => (
+                  <Box align="center" justify="between">
+                    <Typography ellipsis className="tw:grow tw:text-secondary">
+                      {t('label.move-to-folder')}
+                    </Typography>
+                    <ChevronRight
+                      aria-hidden="true"
+                      className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+                      strokeWidth={2}
+                    />
+                  </Box>
+                )}
+              </Dropdown.Item>
+              <Dropdown.Popover
+                className="tw:w-52"
+                offset={-6}
+                placement="right top">
+                <FolderPickerMenu
+                  folders={availableFolders}
+                  onPick={handleMoveToFolder}
+                />
+              </Dropdown.Popover>
+            </SubmenuTrigger>
+          )}
 
           {canDelete && (
             <Dropdown.Item data-testid="delete-btn" id="delete">
@@ -229,6 +236,8 @@ const FileRowSkeleton: FC = () => (
 --------------------------------------------------------------- */
 
 const ListHeader: FC<ListHeaderProps> = ({
+  canDelete,
+  canEdit,
   count,
   folders = [],
   selectedCount,
@@ -273,32 +282,38 @@ const ListHeader: FC<ListHeaderProps> = ({
           {t('label.download')}
         </Button>
 
-        <Dropdown.Root>
+        {canEdit && (
+          <Dropdown.Root>
+            <Button
+              className="tw:py-1.5"
+              color="tertiary"
+              data-testid="bulk-move-btn"
+              iconLeading={
+                <FolderIcon height={18} strokeWidth={2} width={18} />
+              }
+              size="sm">
+              {t('label.move')}
+            </Button>
+            <Dropdown.Popover className="tw:w-52" placement="bottom end">
+              <FolderPickerMenu
+                folders={folders}
+                onPick={(folderId) => onBulkMove?.(folderId)}
+              />
+            </Dropdown.Popover>
+          </Dropdown.Root>
+        )}
+
+        {canDelete && (
           <Button
             className="tw:py-1.5"
-            color="tertiary"
-            data-testid="bulk-move-btn"
-            iconLeading={<FolderIcon height={18} strokeWidth={2} width={18} />}
-            size="sm">
-            {t('label.move')}
+            color="tertiary-destructive"
+            data-testid="bulk-delete-btn"
+            iconLeading={<Trash01 size={16} />}
+            size="sm"
+            onClick={onBulkDelete}>
+            {t('label.delete')}
           </Button>
-          <Dropdown.Popover className="tw:w-52" placement="bottom end">
-            <FolderPickerMenu
-              folders={folders}
-              onPick={(folderId) => onBulkMove?.(folderId)}
-            />
-          </Dropdown.Popover>
-        </Dropdown.Root>
-
-        <Button
-          className="tw:py-1.5"
-          color="tertiary-destructive"
-          data-testid="bulk-delete-btn"
-          iconLeading={<Trash01 size={16} />}
-          size="sm"
-          onClick={onBulkDelete}>
-          {t('label.delete')}
-        </Button>
+        )}
       </Box>
     );
   }
@@ -323,6 +338,7 @@ const ListHeader: FC<ListHeaderProps> = ({
 --------------------------------------------------------------- */
 const FileRow: FC<FileRowProps> = ({
   canDelete,
+  canEdit,
   file,
   folders,
   isActive,
@@ -476,6 +492,7 @@ const FileRow: FC<FileRowProps> = ({
         </CopyLinkButton>
         <FileActions
           canDelete={canDelete}
+          canEdit={canEdit}
           file={file}
           folders={folders}
           onDeleteFile={onDeleteFile}
@@ -497,6 +514,7 @@ const DocumentViewLoading = () =>
 --------------------------------------------------------------- */
 const DocumentsView: FC<DocumentsViewProps> = ({
   canDelete,
+  canEdit,
   data,
   folders,
   isLoading,
@@ -531,6 +549,8 @@ const DocumentsView: FC<DocumentsViewProps> = ({
           direction="col">
           {!isLoading && (
             <ListHeader
+              canDelete={canDelete}
+              canEdit={canEdit}
               count={data.length}
               folders={folders}
               selectedCount={selectedCount}
@@ -549,6 +569,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
               data.map((file) => (
                 <FileRow
                   canDelete={canDelete}
+                  canEdit={canEdit}
                   file={file}
                   folders={folders}
                   isActive={previewFileId === file.id}
