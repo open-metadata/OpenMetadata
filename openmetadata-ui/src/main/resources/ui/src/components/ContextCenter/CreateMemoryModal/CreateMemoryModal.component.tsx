@@ -14,6 +14,7 @@ import {
   Alert,
   Badge,
   BadgeWithButton,
+  Box,
   Button,
   ButtonUtility,
   Card,
@@ -62,7 +63,6 @@ import {
 } from '../../../components/common/MarkdownEditor/markdownComponents';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
-import DataAssetSelectList from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetSelectList';
 import { ROUTES } from '../../../constants/constants';
 import {
   MEMORY_TYPE_OPTIONS,
@@ -84,14 +84,15 @@ import {
   deleteContextMemory,
   updateContextMemory,
 } from '../../../rest/contextMemoryAPI';
+import { getEntityIconWithBg } from '../../../utils/Assets/AssetsUtils';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import searchClassBase from '../../../utils/SearchClassBase';
 import { getErrorText } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showSuccessToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import DataAssetSelectList from '../../DataAssets/DataAssetSelectList/DataAssetSelectList';
 import { CreateMemoryModalProps } from './CreateMemoryModal.interface';
 
 const TagSelectForm = withSuspenseFallback(
@@ -111,26 +112,30 @@ const LinkedAssetCard: FC<{
   const fqn = asset.reference?.fullyQualifiedName ?? String(asset.value ?? '');
 
   return (
-    <Card className="tw:flex tw:items-center tw:gap-3 tw:p-3">
+    <Card className="tw:flex tw:items-center tw:gap-2.5 tw:px-3 tw:py-2.5">
       <div className="tw:shrink-0">
-        {searchClassBase.getEntityIcon(
-          asset.reference?.type ?? '',
-          'tw:w-8 tw:h-8 tw:text-gray-500'
-        )}
+        {getEntityIconWithBg(asset.reference?.type, { className: 'tw:w-8 tw:h-8' }, { size: 18 })}
       </div>
-      <div className="tw:flex tw:flex-1 tw:justify-between tw:items-center tw:min-w-0">
-        <div className="tw:min-w-0 tw:flex-1 tw:pr-2">
-          <Typography ellipsis size="text-sm" weight="medium">
+      <Box align='center' className="tw:flex-1 tw:min-w-0 tw:gap-2.5" justify='between'>
+        <div className="tw:min-w-0 tw:flex-1 tw:pr-2 tw:[&_.prose]:leading-tight">
+          <Typography
+            ellipsis
+            className="tw:leading-tight"
+            size="text-xs"
+            weight="medium">
             {displayName}
           </Typography>
-          <Typography ellipsis className="tw:text-gray-400" size="text-xs">
+          <Typography
+            ellipsis
+            className="tw:text-gray-700 tw:leading-tight"
+            size="text-xs">
             {asset.reference?.fullyQualifiedName ?? ''}
           </Typography>
         </div>
-        <div className="tw:flex tw:items-center tw:gap-2 tw:shrink-0">
+        <div className="tw:flex tw:items-center tw:gap-2.5 tw:shrink-0">
           {asset.reference?.type && (
             <Badge
-              className="tw:uppercase"
+              className="tw:capitalize"
               color="gray"
               size="sm"
               type="modern">
@@ -145,7 +150,7 @@ const LinkedAssetCard: FC<{
             />
           )}
         </div>
-      </div>
+      </Box>
     </Card>
   );
 };

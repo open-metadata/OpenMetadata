@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 import { Operation } from 'fast-json-patch';
+import { HTMLAttributes } from 'react';
 import { MapPatchAPIResponse } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import { ENTITY_ICON_MAPPER } from '../../constants/Assets.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Directory } from '../../generated/entity/data/directory';
 import { File } from '../../generated/entity/data/file';
@@ -312,4 +314,47 @@ export const getEntityFqnQueryFilter = (fqns: string[]) => {
   }
 
   return getTermQuery({ fullyQualifiedName: fqns }, 'should', 1);
+};
+
+export interface EntityIconProps {
+  className?: string;
+  size?: number;
+  strokeWidth?: number;
+}
+
+export const getEntityIconWithBg = (
+  entityType?: string,
+  containerProps?: HTMLAttributes<HTMLSpanElement>,
+  iconProps?: EntityIconProps
+) => {
+  const style = ENTITY_ICON_MAPPER[entityType ?? ''];
+  const Icon = style?.icon;
+  const { className: containerClassName, ...restContainerProps } =
+    containerProps ?? {};
+  const {
+    className: iconClassName,
+    size = 14,
+    strokeWidth = 1.5,
+  } = iconProps ?? {};
+
+  return (
+    <span
+      {...restContainerProps}
+      className={[
+        'tw:flex tw:items-center tw:justify-center tw:h-7 tw:w-7 tw:rounded-md tw:shrink-0 tw:opacity-90',
+        style?.bgClass ?? 'tw:bg-gray-100',
+        containerClassName ?? '',
+      ].join(' ')}>
+      {Icon && (
+        <Icon
+          className={[
+            style?.iconClass ?? 'tw:text-gray-500',
+            iconClassName ?? '',
+          ].join(' ')}
+          size={size}
+          strokeWidth={strokeWidth}
+        />
+      )}
+    </span>
+  );
 };

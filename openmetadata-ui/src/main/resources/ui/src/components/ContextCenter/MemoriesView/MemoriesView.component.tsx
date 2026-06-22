@@ -27,7 +27,11 @@ import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditNewIcon } from '../../../assets/svg/edit-new.svg';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
-import { ContextMemory } from '../../../generated/entity/context/contextMemory';
+import { ENTITY_ICON_MAPPER } from '../../../constants/Assets.constants';
+import {
+  ContextMemory,
+  EntityReference,
+} from '../../../generated/entity/context/contextMemory';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { stripMarkdown } from '../../../utils/StringUtils';
@@ -109,6 +113,8 @@ const PinButton: FC<PinButtonProps> = ({ pinned, animKey, onClick }) => {
 
 const SKELETON_KEYS = Array.from({ length: 8 }, (_, i) => `skeleton-${i}`);
 
+const MAX_VISIBLE_LINKED_ENTITIES = 4;
+
 const MemoryRowSkeleton: FC = () => (
   <Box
     align="start"
@@ -162,6 +168,20 @@ const MemoryRow: FC<MemoryRowProps> = ({
         : window.location.href,
     [memory.name]
   );
+
+  const linkedEntities = useMemo(() => {
+    const entities = [memory.primaryEntity, ...(memory.relatedEntities ?? [])];
+    const seenIds = new Set<string>();
+
+    return entities.filter((entity): entity is EntityReference => {
+      if (!entity || seenIds.has(entity.id)) {
+        return false;
+      }
+      seenIds.add(entity.id);
+
+      return true;
+    });
+  }, [memory.primaryEntity, memory.relatedEntities]);
 
   return (
     <Box
@@ -240,30 +260,41 @@ const MemoryRow: FC<MemoryRowProps> = ({
             {stripMarkdown(memory.summary ?? memory.answer ?? '')}
           </Typography>
 
-          {memory.tags && memory.tags.length > 0 && (
+          {linkedEntities.length > 0 && (
             <Box align="center" className="tw:mt-0.5" gap={2} wrap="wrap">
-              {memory.tags.map((tag) => (
-                <Badge
-                  className="tw:max-w-60 tw:min-w-0"
-                  key={tag.tagFQN}
-                  size="md"
-                  type="color">
-                  {tag.style?.color && (
+              {linkedEntities
+                .slice(0, MAX_VISIBLE_LINKED_ENTITIES)
+                .map((entity) => (
+                  <Badge
+                    className="tw:max-w-60 tw:min-w-0"
+                    key={entity.id}
+                    size="md"
+                    type="color">
                     <div className="tw:shrink-0">
                       <Dot
+                        className={ENTITY_ICON_MAPPER[entity.type].iconClass}
                         size="sm"
-                        style={{ color: tag.style?.color, marginRight: '6px' }}
+                        style={{ marginRight: '6px' }}
                       />
                     </div>
-                  )}
-                  <Typography
-                    ellipsis
-                    className="tw:text-secondary"
-                    size="text-xs">
-                    {getEntityName(tag)}
+                    <Typography
+                      ellipsis
+                      className="tw:text-secondary"
+                      size="text-xs">
+                      {getEntityName(entity)}
+                    </Typography>
+                  </Badge>
+                ))}
+              {linkedEntities.length > MAX_VISIBLE_LINKED_ENTITIES && (
+                <Badge size="md" type="color">
+                  <Typography className="tw:text-secondary" size="text-xs">
+                    {t('label.plus-count', {
+                      count:
+                        linkedEntities.length - MAX_VISIBLE_LINKED_ENTITIES,
+                    })}
                   </Typography>
                 </Badge>
-              ))}
+              )}
             </Box>
           )}
 

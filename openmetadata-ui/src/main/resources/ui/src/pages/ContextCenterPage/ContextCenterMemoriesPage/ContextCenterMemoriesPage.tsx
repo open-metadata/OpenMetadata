@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import {
-  Badge,
   Box,
   Button,
   Card,
@@ -23,11 +22,10 @@ import {
 import {
   ChevronDown,
   ChevronRight,
-  Database01,
   FilterFunnel02,
   Pin01,
   Plus,
-  User03,
+  User03
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -45,6 +43,7 @@ import {
   MemoryFilterTab,
   MemorySortBy,
 } from '../../../components/ContextCenter/MemoriesView/MemoriesView.interface';
+import DataAssetFilterPopover from '../../../components/DataAssets/DataAssetSelectList/DataAssetFilterPopover';
 import {
   ContextMemory,
   MemoryStatus,
@@ -56,7 +55,6 @@ import {
   getListContextMemories,
 } from '../../../rest/contextMemoryAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const MEMORIES_PER_PAGE = 10;
@@ -158,23 +156,15 @@ const ContextCenterMemoriesPage: FC = () => {
       m.relatedEntities?.forEach(addRef);
     });
 
-    return [
-      {
-        id: '',
-        label: t('label.all-entity', { entity: t('label.asset-plural') }),
-        displayName: '',
-        type: '',
-      },
-      ...Array.from(seen.entries())
-        .sort(([, a], [, b]) => a.displayName.localeCompare(b.displayName))
-        .map(([fqn, meta]) => ({
-          id: fqn,
-          label: meta.displayName,
-          displayName: meta.displayName,
-          type: meta.type,
-        })),
-    ];
-  }, [memories, t]);
+    return Array.from(seen.entries())
+      .sort(([, a], [, b]) => a.displayName.localeCompare(b.displayName))
+      .map(([fqn, meta]) => ({
+        id: fqn,
+        label: meta.displayName,
+        displayName: meta.displayName,
+        type: meta.type,
+      }));
+  }, [memories]);
 
   const authorOptions = useMemo(() => {
     const seen = new Map<string, string>();
@@ -186,7 +176,6 @@ const ContextCenterMemoriesPage: FC = () => {
     });
 
     return [
-      { id: '', label: t('label.all-entity', { entity: t('label.author') }) },
       ...Array.from(seen.entries())
         .sort(([, a], [, b]) => a.localeCompare(b))
         .map(([name, displayName]) => ({ id: name, label: displayName })),
@@ -557,96 +546,18 @@ const ContextCenterMemoriesPage: FC = () => {
         </Tabs>
 
         <Box align="center" gap={2}>
-          <Dropdown.Root>
-            <AriaButton
-              className={
-                selectedAsset ? FILTER_BUTTON_ACTIVE_CLS : FILTER_BUTTON_CLS
-              }>
-              <Database01
-                className={classNames('tw:shrink-0', {
-                  'tw:text-brand-secondary': selectedAsset,
-                  'tw:text-secondary': !selectedAsset,
-                })}
-                size={14}
-              />
-              <div className="tw:max-w-50">
-                <Typography
-                  ellipsis
-                  className={
-                    selectedAsset
-                      ? 'tw:text-brand-secondary'
-                      : 'tw:text-secondary'
-                  }
-                  weight="medium">
-                  {assetOptions.find((o) => o.id === selectedAsset)?.label ??
-                    t('label.all-entity', { entity: t('label.asset-plural') })}
-                </Typography>
-              </div>
-              <ChevronDown
-                className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
-                size={16}
-                strokeWidth={2.5}
-              />
-            </AriaButton>
-            <Dropdown.Popover className="tw:w-100">
-              <Dropdown.Menu
-                selectedKeys={selectedAsset ? [selectedAsset] : []}
-                selectionMode="single"
-                onAction={(key) => {
-                  const next = String(key);
-                  const value = next === selectedAsset ? '' : next;
-                  setSelectedAsset(value);
-                  if (activeFilter === 'all') {
-                    setActiveFilter('');
-                  }
-                  setCurrentPage(1);
-                }}>
-                {assetOptions.map((opt) => (
-                  <Dropdown.Item id={opt.id} key={opt.id} textValue={opt.label}>
-                    {opt.type ? (
-                      <Box align="center" className="tw:min-w-0" gap={2}>
-                        <div className="tw:shrink-0">
-                          {searchClassBase.getEntityIcon(
-                            opt.type,
-                            'tw:w-6 tw:h-6 tw:text-gray-500'
-                          )}
-                        </div>
-                        <Box
-                          align="center"
-                          className="tw:flex-1"
-                          justify="between">
-                          <div className="tw:max-w-55">
-                            <Typography
-                              ellipsis
-                              className="tw:truncate tw:text-gray-800"
-                              size="text-sm"
-                              weight="medium">
-                              {opt.displayName}
-                            </Typography>
-                            <Typography
-                              ellipsis
-                              className="tw:text-gray-400 tw:truncate"
-                              size="text-xs">
-                              {opt.id}
-                            </Typography>
-                          </div>
-                          <Badge
-                            className="tw:shrink-0 tw:uppercase"
-                            color="gray"
-                            size="sm"
-                            type="color">
-                            {opt.type}
-                          </Badge>
-                        </Box>
-                      </Box>
-                    ) : (
-                      <span>{opt.label}</span>
-                    )}
-                  </Dropdown.Item>
-                ))}
-              </Dropdown.Menu>
-            </Dropdown.Popover>
-          </Dropdown.Root>
+          <DataAssetFilterPopover
+            allowAllOption
+            options={assetOptions}
+            selectedId={selectedAsset}
+            onChange={(value) => {
+              setSelectedAsset(value);
+              if (activeFilter === 'all') {
+                setActiveFilter('');
+              }
+              setCurrentPage(1);
+            }}
+          />
 
           <Dropdown.Root>
             <AriaButton
@@ -681,6 +592,7 @@ const ContextCenterMemoriesPage: FC = () => {
             </AriaButton>
             <Dropdown.Popover>
               <Dropdown.Menu
+                className="tw:p-1.5"
                 selectedKeys={selectedAuthor ? [selectedAuthor] : []}
                 selectionMode="single"
                 onAction={(key) => {
@@ -692,6 +604,19 @@ const ContextCenterMemoriesPage: FC = () => {
                   }
                   setCurrentPage(1);
                 }}>
+                <Dropdown.Item
+                  id="all-author"
+                  key="all-author"
+                  textValue={t('label.all-entity', {
+                    entity: t('label.author'),
+                  })}>
+                  <Box align="center" gap={2}>
+                    <span>
+                      {t('label.all-entity', { entity: t('label.author') })}
+                    </span>
+                  </Box>
+                </Dropdown.Item>
+                <Dropdown.Separator />
                 {authorOptions.map((opt) => (
                   <Dropdown.Item id={opt.id} key={opt.id} textValue={opt.label}>
                     <Box align="center" gap={2}>
