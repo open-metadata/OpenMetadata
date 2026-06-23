@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.search.Aggregation;
@@ -1033,7 +1034,8 @@ public class OpenSearchSourceBuilderFactory
     Map<String, Float> nonFuzzyFields = new HashMap<>();
 
     classifyFields(assetConfig, fuzzyFields, nonFuzzyFields);
-    FUZZY_FIELDS.forEach(field -> fuzzyFields.putIfAbsent(field, DEFAULT_BOOST));
+    Set.of("service.name", "service.displayName")
+        .forEach(field -> fuzzyFields.putIfAbsent(field, DEFAULT_BOOST));
 
     os.org.opensearch.client.opensearch._types.query_dsl.Query fuzzyQuery =
         OpenSearchQueryBuilder.queryStringQuery(
