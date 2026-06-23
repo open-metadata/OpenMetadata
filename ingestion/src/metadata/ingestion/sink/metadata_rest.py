@@ -24,7 +24,6 @@ from requests.exceptions import HTTPError
 from metadata.config.common import ConfigModel
 from metadata.data_quality.api.models import TestCaseResultResponse, TestCaseResults
 from metadata.generated.schema.analytics.reportData import ReportData
-from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.ai.createMcpServer import CreateMcpServerRequest
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -34,6 +33,7 @@ from metadata.generated.schema.api.data.createDataContract import (
     CreateDataContractRequest,
 )
 from metadata.generated.schema.api.data.createGlossary import CreateGlossaryRequest
+from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.domains.createDataProduct import (
