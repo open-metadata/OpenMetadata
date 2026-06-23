@@ -144,6 +144,11 @@ const fillSLAForm = async (
   await page.locator('#timezone').press('Enter');
 
   await page.getByTestId('refresh-frequency-unit-select').click();
+  await expect(
+    page.locator(
+      `.refresh-frequency-unit-select [title=${slaData.refreshFrequencyUnit}]`
+    )
+  ).toBeVisible();
   await page
     .locator(
       `.refresh-frequency-unit-select [title=${slaData.refreshFrequencyUnit}]`
@@ -151,11 +156,17 @@ const fillSLAForm = async (
     .click();
 
   await page.getByTestId('max-latency-unit-select').click();
+  await expect(
+    page.locator(`.max-latency-unit-select [title=${slaData.maxLatencyUnit}]`)
+  ).toBeVisible();
   await page
     .locator(`.max-latency-unit-select [title=${slaData.maxLatencyUnit}]`)
     .click();
 
   await page.getByTestId('retention-unit-select').click();
+  await expect(
+    page.locator(`.retention-unit-select [title=${slaData.retentionUnit}]`)
+  ).toBeVisible();
   await page
     .locator(`.retention-unit-select [title=${slaData.retentionUnit}]`)
     .click();

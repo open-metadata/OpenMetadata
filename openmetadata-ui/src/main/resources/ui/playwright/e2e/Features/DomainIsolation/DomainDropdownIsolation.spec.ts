@@ -48,7 +48,7 @@ const test = base.extend<{ adminPage: Page; restrictedUserPage: Page }>({
 
 const openDomainDropdown = async (page: Page) => {
   await redirectToHomePage(page);
-  await page.getByTestId('domain-dropdown').click();
+  await page.getByTestId('domain-selector').click();
   await page
     .getByTestId('domain-selectable-tree')
     .waitFor({ state: 'visible' });
