@@ -16,14 +16,14 @@
  */
 export interface LlmConfiguration {
     /**
-     * Fully-qualified class name of the AiProvider implementation that backs memory
-     * extraction and ontology derivation. When unset (or the class is not on the
-     * classpath), the built-in LLM-backed provider is used. Set this to select an
-     * alternate backend (e.g. an agent platform).
+     * Fully-qualified class name of the AiProvider implementation that backs memory extraction
+     * and ontology derivation. When unset (or the class is not on the classpath), the built-in
+     * LLM-backed provider is used. Set this to select an alternate backend (e.g. an agent
+     * platform).
      */
     aiProviderClass?: string;
-    anthropic?: Anthropic;
-    bedrock?:   LlmConfigurationBedrock;
+    anthropic?:       Anthropic;
+    bedrock?:         LlmConfigurationBedrock;
     /**
      * Vector embedding configuration for semantic search. Credentials are reused from the
      * sibling provider blocks (bedrock.awsConfig, openai.apiKey/endpoint,
