@@ -24,6 +24,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import {
@@ -102,7 +103,12 @@ export const EntityExportModalProvider = ({
       return;
     }
     try {
-      setDownloading(true);
+      // Force React to flush the loading state to the DOM before the heavy
+      // toPng work starts — html-to-image does synchronous DOM cloning that
+      // blocks the event loop and would otherwise delay the spinner.
+      flushSync(() => {
+        setDownloading(true);
+      });
 
       if (exportType !== ExportTypes.CSV) {
         await exportUtilClassBase.exportMethodBasedOnType({
