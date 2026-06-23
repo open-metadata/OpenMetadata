@@ -24,6 +24,7 @@ from requests.exceptions import HTTPError
 from metadata.config.common import ConfigModel
 from metadata.data_quality.api.models import TestCaseResultResponse, TestCaseResults
 from metadata.generated.schema.analytics.reportData import ReportData
+from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.ai.createMcpServer import CreateMcpServerRequest
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -255,6 +256,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                     CreateTestDefinitionRequest,
                     CreateMcpServerRequest,
                     CreateGlossaryRequest,
+                    CreateMetricRequest,
                 ),
             )
         ):

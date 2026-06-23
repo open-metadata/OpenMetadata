@@ -230,6 +230,56 @@
       "granularity": {
         "type": "keyword"
       },
+      "dimensions": {
+        "type": "nested",
+        "properties": {
+          "name": {
+            "type": "keyword"
+          },
+          "fullyQualifiedName": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "expression": {
+            "type": "text"
+          }
+        }
+      },
+      "measures": {
+        "type": "nested",
+        "properties": {
+          "name": {
+            "type": "keyword"
+          },
+          "fullyQualifiedName": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "aggregation": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "expression": {
+            "type": "text"
+          }
+        }
+      },
+      "filters": {
+        "type": "nested",
+        "properties": {
+          "where": {
+            "type": "text"
+          }
+        }
+      },
       "owners": {
         "type": "nested",
         "properties": {
