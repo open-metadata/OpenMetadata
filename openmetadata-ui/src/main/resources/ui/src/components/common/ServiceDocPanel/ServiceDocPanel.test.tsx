@@ -36,14 +36,6 @@ jest.mock('@tiptap/react', () => ({
     React.createElement(Tag),
 }));
 
-jest.mock('../../Explore/EntitySummaryPanel/EntitySummaryPanel.component', () =>
-  jest
-    .fn()
-    .mockReturnValue(
-      <div data-testid="entity-summary-panel">Entity Summary</div>
-    )
-);
-
 jest.mock('../../../rest/miscAPI', () => ({
   fetchMarkdownFile: jest.fn(),
 }));
@@ -111,13 +103,6 @@ const createMockElement = () => ({
 
 const defaultProps = {
   serviceName: 'mysql',
-  serviceType: 'DatabaseService',
-};
-
-const mockSelectedEntity = {
-  id: 'entity-1',
-  name: 'test-entity',
-  displayName: 'Test Entity',
   serviceType: 'DatabaseService',
 };
 
@@ -369,47 +354,6 @@ describe('ServiceDocPanel Component', () => {
 
       await waitFor(() => {
         expect(mockQuerySelector).toHaveBeenCalledWith('[data-id="database"]');
-      });
-    });
-  });
-
-  describe('Entity Integration', () => {
-    it('should render EntitySummaryPanel when selectedEntity is provided', async () => {
-      render(
-        <ServiceDocPanel
-          {...defaultProps}
-          selectedEntity={mockSelectedEntity}
-        />
-      );
-
-      await waitFor(() => {
-        expect(screen.getByTestId('entity-summary-panel')).toBeInTheDocument();
-      });
-    });
-
-    it('should handle complete integration with entity and highlighting', async () => {
-      const mockElement = createMockElement();
-      mockQuerySelector.mockReturnValue(mockElement);
-      mockGetActiveFieldNameForAppDocs.mockReturnValue('application.config');
-
-      const { container } = render(
-        <ServiceDocPanel
-          activeField="root/application/config"
-          selectedEntity={mockSelectedEntity}
-          serviceName="custom-app"
-          serviceType="Applications"
-        />
-      );
-
-      await waitFor(() => {
-        expect(screen.getByTestId('entity-summary-panel')).toBeInTheDocument();
-        expect(container.querySelector('.service-doc-content')).not.toBeNull();
-        expect(mockGetActiveFieldNameForAppDocs).toHaveBeenCalledWith(
-          'root/application/config'
-        );
-        expect(mockQuerySelector).toHaveBeenCalledWith(
-          `[data-id="${CSS.escape('application.config')}"]`
-        );
       });
     });
   });
