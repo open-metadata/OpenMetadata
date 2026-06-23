@@ -848,7 +848,11 @@ public class AuditLogResourceIT {
     java.util.List<String> ids = new java.util.ArrayList<>();
     String lastFqn = null;
     for (int i = 0; i < count; i++) {
-      String name = burstToken + "_" + i;
+      // Use '-' instead of '_' so the FQN tokenizes into a standalone `burstToken` lexeme on
+      // both MySQL InnoDB FTS (which keeps '_' inside a token) and Postgres tsvector. A
+      // '_'-separated name would index as a single token on MySQL and prevent q=burstToken from
+      // matching, returning an empty result set and breaking the pagination assertions.
+      String name = burstToken + "-" + i;
       String createJson =
           String.format(
               "{\"name\": \"%s\", \"displayName\": \"Deferred Join Burst\", \"description\": \"Seed audit events for deferred-join pagination test\"}",
