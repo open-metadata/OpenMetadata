@@ -46,6 +46,7 @@ jest.mock('../../../../utils/CuratedAssetsPureUtils', () => ({
 }));
 
 jest.mock('../../../../utils/CustomizeMyDataPageClassBase', () => ({
+  __esModule: true,
   default: {
     curatedAssetsWidgetDefaultValues: {
       x: 0,
@@ -58,6 +59,8 @@ jest.mock('../../../../utils/CustomizeMyDataPageClassBase', () => ({
         queryFilter: '{}',
       },
     },
+    getLandingPageWidgetEntityIconUrl: jest.fn().mockReturnValue(undefined),
+    getLandingPageWidgetServiceIconUrl: jest.fn().mockReturnValue(undefined),
   },
 }));
 
