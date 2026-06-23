@@ -22,9 +22,31 @@ export interface LinkModalProps {
   data: LinkData;
   onSave: (data: LinkData) => void;
   onCancel: () => void;
+  /**
+   * Optional portal container for the modal. When the editor lives inside a
+   * focus-trapping dialog/drawer (e.g. React Aria's SlideoutMenu), the modal
+   * must render *inside* that dialog so the dialog's focus scope and
+   * useInteractOutside do not steal focus from the input or dismiss the drawer
+   * when the modal opens. Falls back to document.body (antd default) otherwise.
+   */
+  getContainer?: () => HTMLElement;
 }
 
-const LinkModal: FC<LinkModalProps> = ({ isOpen, data, onSave, onCancel }) => {
+/**
+ * z-index for the link modal when mounted inside a React Aria dialog. Must
+ * exceed React Aria's useOverlayPosition z-index (100000) so the modal and its
+ * mask paint above the dialog content. Keep in sync with the suggestion popup
+ * z-index used by the handlebars extension.
+ */
+const LINK_MODAL_Z_INDEX = 100001;
+
+const LinkModal: FC<LinkModalProps> = ({
+  isOpen,
+  data,
+  onSave,
+  onCancel,
+  getContainer,
+}) => {
   const handleSubmit: FormProps<LinkData>['onFinish'] = (values) => {
     onSave(values);
   };
@@ -32,6 +54,7 @@ const LinkModal: FC<LinkModalProps> = ({ isOpen, data, onSave, onCancel }) => {
   return (
     <Modal
       className="block-editor-link-modal"
+      getContainer={getContainer}
       maskClosable={false}
       okButtonProps={{
         htmlType: 'submit',
@@ -41,6 +64,7 @@ const LinkModal: FC<LinkModalProps> = ({ isOpen, data, onSave, onCancel }) => {
       okText="Save"
       open={isOpen}
       title={data.href ? 'Edit link' : 'Add link'}
+      zIndex={LINK_MODAL_Z_INDEX}
       onCancel={onCancel}>
       <Form
         data-testid="link-form"
