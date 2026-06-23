@@ -77,7 +77,7 @@ const CuratedAssetsModal = withSuspenseFallback(
   lazy(() => import('./CuratedAssetsModal/CuratedAssetsModal'))
 );
 
-const CuratedAssetsWidget = ({
+const CuratedAssetsWidgetContent = ({
   isEditView,
   handleRemoveWidget,
   widgetKey,
@@ -488,23 +488,27 @@ const CuratedAssetsWidget = ({
   );
 
   return (
-    <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
-      <>
-        <WidgetWrapper
-          dataTestId="KnowledgePanel.CuratedAssets"
-          header={widgetHeader}
-          loading={isLoading}>
-          {widgetContent}
-        </WidgetWrapper>
-        <CuratedAssetsModal
-          curatedAssetsConfig={curatedAssetsConfig}
-          isOpen={createCuratedAssetsModalOpen}
-          onCancel={handleModalClose}
-          onSave={handleSave}
-        />
-      </>
-    </AdvanceSearchProvider>
+    <>
+      <WidgetWrapper
+        dataTestId="KnowledgePanel.CuratedAssets"
+        header={widgetHeader}
+        loading={isLoading}>
+        {widgetContent}
+      </WidgetWrapper>
+      <CuratedAssetsModal
+        curatedAssetsConfig={curatedAssetsConfig}
+        isOpen={createCuratedAssetsModalOpen}
+        onCancel={handleModalClose}
+        onSave={handleSave}
+      />
+    </>
   );
 };
+
+const CuratedAssetsWidget = (props: WidgetCommonProps) => (
+  <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
+    <CuratedAssetsWidgetContent {...props} />
+  </AdvanceSearchProvider>
+);
 
 export default CuratedAssetsWidget;
