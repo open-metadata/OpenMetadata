@@ -21,6 +21,7 @@ import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { TableConstraint } from '../../../generated/api/data/createTable';
 import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 import { Column } from '../../../generated/entity/data/table';
+import { usePaging } from '../../../hooks/paging/usePaging';
 import { getFrequentlyJoinedColumns } from '../../../utils/EntityColumnUtils';
 import { searchInColumns } from '../../../utils/EntitySearchUtils';
 import {
@@ -33,6 +34,7 @@ import {
   prepareConstraintIcon,
 } from '../../../utils/TableUtils';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../common/Table/Table';
@@ -57,6 +59,16 @@ function VersionTable<T extends Column | SearchIndexField>({
   const [searchText, setSearchText] = useState('');
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
+  const {
+    currentPage: internalCurrentPage,
+    pageSize: internalPageSize,
+    paging: internalPaging,
+    showPagination: internalShowPagination,
+    handlePagingChange: internalHandlePagingChange,
+    handlePageChange: internalHandlePageChange,
+    handlePageSizeChange: internalHandlePageSizeChange,
+  } = usePaging();
+
   const data = useMemo(() => {
     if (searchText) {
       const searchCols = searchInColumns<T>(columns, searchText);
@@ -66,6 +78,47 @@ function VersionTable<T extends Column | SearchIndexField>({
       return makeData<T>(columns);
     }
   }, [searchText, columns]);
+
+  useEffect(() => {
+    if (!paginationProps) {
+      internalHandlePagingChange({ total: data.length });
+    }
+  }, [data.length, paginationProps]);
+
+  const displayData = useMemo(() => {
+    if (paginationProps) {
+      return data;
+    }
+    const start = (internalCurrentPage - 1) * internalPageSize;
+
+    return data.slice(start, start + internalPageSize);
+  }, [data, paginationProps, internalCurrentPage, internalPageSize]);
+
+  const effectivePaginationProps = useMemo(() => {
+    if (paginationProps) {
+      return paginationProps;
+    }
+
+    return {
+      currentPage: internalCurrentPage,
+      showPagination: internalShowPagination,
+      isLoading: false,
+      isNumberBased: true,
+      pageSize: internalPageSize,
+      paging: internalPaging,
+      pagingHandler: ({ currentPage: page }: PagingHandlerParams) =>
+        internalHandlePageChange(page, { cursorType: null }),
+      onShowSizeChange: internalHandlePageSizeChange,
+    };
+  }, [
+    paginationProps,
+    internalCurrentPage,
+    internalShowPagination,
+    internalPageSize,
+    internalPaging,
+    internalHandlePageChange,
+    internalHandlePageSizeChange,
+  ]);
 
   const renderColumnName = useCallback(
     (name: T['name'], record: T) => {
@@ -271,9 +324,9 @@ function VersionTable<T extends Column | SearchIndexField>({
     <Table
       columns={versionTableColumns}
       containerClassName="m-b-sm"
-      customPaginationProps={paginationProps}
+      customPaginationProps={effectivePaginationProps}
       data-testid="entity-table"
-      dataSource={data}
+      dataSource={displayData}
       expandable={{
         ...getTableExpandableConfig<T>(),
         rowExpandable: (record) => !isEmpty(record.children),

@@ -336,20 +336,22 @@ test.describe('Entity Version pages', () => {
 
           // v0.1 view must show the original description, not the live value
           await expect(
-            page.locator(
-              `[data-row-key$="${col0Name}"] [data-testid="viewer-container"]`
-            )
+            page
+              .locator(
+                `[data-row-key$="${col0Name}"] [data-testid="viewer-container"]`
+              )
+              .first()
           ).toContainText(col0OriginalDesc);
 
           await expect(
-            page.locator(
-              `[data-row-key$="${col0Name}"] [data-testid="viewer-container"]`
-            )
+            page
+              .locator(
+                `[data-row-key$="${col0Name}"] [data-testid="viewer-container"]`
+              )
+              .first()
           ).not.toContainText(col0UpdatedDesc);
 
-          await apiContext.delete(
-            `/api/v1/${freshTable.endpoint}/${freshTable.entityResponseData.id}?hardDelete=true&recursive=true`
-          );
+          await freshTable.delete(apiContext);
         });
       }
 

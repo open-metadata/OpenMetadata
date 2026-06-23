@@ -158,12 +158,16 @@ describe('TableVersion tests', () => {
     const receivedColumns: Column[] = (VersionTable as jest.Mock).mock
       .calls[0][0].columns;
 
-    const historicalColumnNames = (mockTableData.columns ?? []).map(
-      (col) => col.name
-    );
+    const historicalColumns = mockTableData.columns ?? [];
 
-    historicalColumnNames.forEach((name) => {
+    historicalColumns.forEach(({ name, description }) => {
       expect(receivedColumns.some((col) => col.name === name)).toBe(true);
+
+      if (description) {
+        expect(
+          receivedColumns.some((col) => col.description === description)
+        ).toBe(true);
+      }
     });
   });
 

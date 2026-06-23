@@ -1144,11 +1144,9 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.goto(
         `/table/${PERFORMANCE_TABLE_FQN}/versions/${version}?pageSize=15`
       );
-      await testPaginationNavigation(
+      await testClientSidePaginationNavigation(
         page,
-        '/columns',
-        '[data-testid="entity-table"]',
-        false
+        '[data-testid="entity-table"]'
       );
     });
 
@@ -1164,16 +1162,12 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       });
       await waitForAllLoadersToDisappear(page);
 
-      const searchResponse = page.waitForResponse((response) =>
-        response.url().includes('/columns/search')
-      );
       await page.getByTestId('searchbar').fill('test_col_0001');
-      await searchResponse;
-      await waitForAllLoadersToDisappear(page);
 
+      // Search is client-side with a 500ms debounce — wait for the DOM to reflect
       await expect(
         page.getByTestId('entity-table').getByRole('row')
-      ).toHaveCount(2);
+      ).toHaveCount(2, { timeout: 3000 });
       await expect(
         page.getByTestId('entity-table').getByText('test_col_0001')
       ).toBeVisible();
