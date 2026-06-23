@@ -2647,6 +2647,23 @@ public interface CollectionDAO {
     List<EntityRelationshipObject> getAllRelationshipsPaginated(
         @Bind("offset") long offset, @Bind("limit") int limit);
 
+    // Keyset (seek) pagination over the (fromId, toId, relation) prefix of the primary key. Unlike
+    // OFFSET pagination this stays correct and O(1) per page even when rows are deleted mid-scan,
+    // which lets the relationship cleanup delete orphans batch-by-batch without skipping rows or
+    // paying an ever-growing OFFSET cost. Seed the first page with fromId='', toId='', relation=-1.
+    @SqlQuery(
+        "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
+            + "WHERE fromId > :fromId "
+            + "   OR (fromId = :fromId AND toId > :toId) "
+            + "   OR (fromId = :fromId AND toId = :toId AND relation > :relation) "
+            + "ORDER BY fromId, toId, relation LIMIT :limit")
+    @RegisterRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> getAllRelationshipsAfter(
+        @Bind("fromId") String fromId,
+        @Bind("toId") String toId,
+        @Bind("relation") int relation,
+        @Bind("limit") int limit);
+
     @SqlQuery("SELECT COUNT(*) FROM entity_relationship")
     long getTotalRelationshipCount();
 
