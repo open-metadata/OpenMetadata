@@ -49,7 +49,7 @@ import { getListTestCaseIncidentByStateId } from '../../../../rest/incidentManag
 import { removeTestCaseFromTestSuite } from '../../../../rest/testAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
-import { getEntityFQN } from '../../../../utils/FeedUtils';
+import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
@@ -74,7 +74,6 @@ import {
   TestCasePermission,
 } from '../ProfilerDashboard/profilerDashboard.interface';
 import './data-quality-tab.less';
-
 const DataQualityTab: React.FC<DataQualityTabProps> = ({
   isLoading = false,
   testCases,

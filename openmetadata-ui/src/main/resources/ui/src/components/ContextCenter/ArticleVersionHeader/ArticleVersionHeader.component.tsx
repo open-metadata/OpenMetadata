@@ -17,7 +17,7 @@ import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import { getKnowledgePageName } from '../../../utils/KnowledgePageUtils';
+import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 
 interface ArticleVersionHeaderProps {
@@ -70,7 +70,7 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
 
   return (
     <div
-      className="tw:flex tw:flex-col tw:gap-3 tw:mb-5"
+      className="tw:flex tw:flex-col tw:mb-5"
       data-testid="article-version-header">
       {!breadcrumbInsideCard && breadcrumbEl}
 

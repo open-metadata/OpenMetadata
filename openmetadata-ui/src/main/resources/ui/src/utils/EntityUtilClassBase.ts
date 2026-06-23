@@ -95,7 +95,7 @@ import {
   FormattedStorageServiceType,
 } from './EntityUtils.interface';
 import Fqn from './Fqn';
-import { getKnowledgePagePath } from './KnowledgePageUtils';
+import { getKnowledgePagePath } from './KnowledgePagePureUtils';
 import {
   getApplicationDetailsPath,
   getBotsPath,
@@ -120,7 +120,6 @@ import {
 } from './RouterUtils';
 import { ExtraTableDropdownOptions } from './TableDropdownOptions';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
-
 type PatchAPIFunction = (id: string, patch: Operation[]) => Promise<unknown>;
 
 class EntityUtilClassBase {

@@ -13,11 +13,10 @@
 
 import { ComponentType, FC, lazy } from 'react';
 import { AppType } from '../../../../generated/entity/applications/app';
-import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
+import { getScheduleOptionsFromSchedules } from '../../../../utils/CronExpressionUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import type { ApplicationConfigurationProps } from '../ApplicationConfiguration/ApplicationConfiguration';
 import { AppPlugin } from '../plugins/AppPlugin';
-import { McpChatPlugin } from '../plugins/McpChatPlugin';
 
 const ApplicationConfiguration =
   withSuspenseFallback<ApplicationConfigurationProps>(
@@ -75,9 +74,7 @@ class ApplicationsClassBase {
   public appPluginRegistry: Record<
     string,
     new (name: string, isInstalled: boolean) => AppPlugin
-  > = {
-    McpChatApplication: McpChatPlugin,
-  };
+  > = {};
 
   public getScheduleOptionsForApp(
     app: string,

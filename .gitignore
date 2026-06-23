@@ -188,7 +188,7 @@ claude-flow.bat
 claude-flow.ps1
 hive-mind-prompt-*.txt
 .claude-flow/
-memory
+/memory/
 .claude/agents
 .claude/hooks/
 ingestion/.claude/agents

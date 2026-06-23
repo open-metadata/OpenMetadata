@@ -26,7 +26,6 @@ export interface DocumentsViewProps {
   previewFileId?: string;
   selectedIds?: Set<string>;
   onDownload?: (file: ContextFile) => void;
-  onShareFile?: (file: ContextFile) => void;
   onDeleteFile?: (file: ContextFile) => void;
   onFileMoved?: (file: ContextFile, targetFolderId: string) => void;
   onPreview?: (file: ContextFile | undefined) => void;
@@ -55,7 +54,6 @@ export interface FileActionsProps {
   canDelete?: boolean;
   file: ContextFile;
   folders?: FolderOption[];
-  onShareFile?: (file: ContextFile) => void;
   onDeleteFile?: (file: ContextFile) => void;
   onFileMoved?: (file: ContextFile, targetFolderId: string) => void;
 }
@@ -76,7 +74,6 @@ export interface FileRowProps {
   isActive?: boolean;
   isSelected?: boolean;
   onDownload?: (file: ContextFile) => void;
-  onShareFile?: (file: ContextFile) => void;
   onDeleteFile?: (file: ContextFile) => void;
   onFileMoved?: (file: ContextFile, targetFolderId: string) => void;
   onPreview?: (file: ContextFile) => void;

@@ -1,0 +1,11 @@
+{
+  "name": "memory-bot",
+  "displayName": "MemoryBot",
+  "description": "Bot used by the Memory Agent to derive glossary terms and metrics from memories.",
+  "fullyQualifiedName": "memory-bot",
+  "botUser": {
+    "name" : "memory-bot",
+    "type" : "user"
+  },
+  "provider": "system"
+}

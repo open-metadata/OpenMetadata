@@ -18,7 +18,7 @@
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: @background-primary;
+  background: var(--tw-color-utility-gray-blue-50);
   font-feature-settings: normal !important;
 }
 
@@ -298,7 +298,7 @@ a[href].link-text-grey,
 }
 
 .bg-white {
-  background-color: @white;
+  background-color: var(--tw-color-bg-primary);
 }
 
 .bg-transparent {
@@ -306,7 +306,7 @@ a[href].link-text-grey,
 }
 
 .bg-body-main {
-  background: @background-primary;
+  background: var(--tw-color-utility-gray-blue-50);
 }
 
 .bg-primary-lite {
@@ -507,7 +507,7 @@ a[href].link-text-grey,
 // Row highlight animation for direct URL navigation
 @keyframes highlight-fade {
   0% {
-    background-color: fade(@grey-100, 30%);
+    background-color: color-mix(in srgb, @grey-100 30%, transparent);
   }
   100% {
     background-color: transparent;
@@ -866,7 +866,7 @@ a[href].link-text-grey,
 
 .notification-dropdown-list-btn:hover,
 .notification-dropdown-list-btn:focus {
-  background-color: @background-primary;
+  background-color: var(--tw-color-utility-gray-blue-50);
 }
 
 /* ToastUI Editor style */

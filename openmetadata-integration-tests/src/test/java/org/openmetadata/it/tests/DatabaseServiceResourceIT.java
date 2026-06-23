@@ -377,10 +377,10 @@ public class DatabaseServiceResourceIT
             .orElse(null);
     assertNotNull(listed, "Created service should be present in list response");
     assertNotNull(
-        listed.getPipelines(), "fields=pipelines must populate pipelines on the list endpoint");
+        listed.getPipelines(), "fields=pipelines must populate pipelines on the service endpoint");
     assertTrue(
         listed.getPipelines().stream().anyMatch(p -> p.getId().equals(pipeline.getId())),
-        "List response should include the ingestion pipeline for the service");
+        "Service should include the ingestion pipeline when fields=pipelines");
   }
 
   @Test
@@ -855,11 +855,8 @@ public class DatabaseServiceResourceIT
   void test_csvImportEntityRuleValidation(TestNamespace ns)
       throws IOException, InterruptedException {
 
-    final String MULTI_DOMAIN_RULE = "Multiple Domains are not allowed";
-
     // Check if rule is currently enabled and store original state
-    boolean originalRuleState =
-        EntityRulesUtil.isRuleEnabled(SdkClients.adminClient(), MULTI_DOMAIN_RULE);
+    boolean originalRuleState = EntityRulesUtil.isMultiDomainRuleEnabled(SdkClients.adminClient());
 
     try {
       // Enable the multi-domain rule for testing
