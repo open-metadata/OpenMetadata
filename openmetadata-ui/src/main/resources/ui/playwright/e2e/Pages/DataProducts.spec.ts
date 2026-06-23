@@ -515,4 +515,47 @@ test.describe('Data Products', () => {
       await afterAction();
     });
   });
+
+  test('Data Product — Data Observability tab', async ({ page }) => {
+    const dataProduct = new DataProduct([domain]);
+
+    await test.step('Create test data product', async () => {
+      const { apiContext, afterAction } = await performAdminLogin(
+        page.context().browser()!
+      );
+      await dataProduct.create(apiContext);
+      await afterAction();
+    });
+
+    await test.step('Navigate to data product details', async () => {
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await waitForAllLoadersToDisappear(page);
+      await selectDataProduct(page, dataProduct.data);
+    });
+
+    await test.step('Data Observability tab is visible on data product page', async () => {
+      await expect(
+        page.getByRole('tab', { name: /data observability/i })
+      ).toBeVisible({ timeout: 15000 });
+    });
+
+    await test.step('Clicking Data Observability tab loads DQ dashboard', async () => {
+      const dqReportResponse = page.waitForResponse((r) =>
+        r.url().includes('/api/v1/dataQuality/testSuites/dataQualityReport')
+      );
+      await page.getByRole('tab', { name: /data observability/i }).click();
+      expect((await dqReportResponse).ok()).toBeTruthy();
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page.getByTestId('dq-dashboard-container')).toBeVisible();
+    });
+
+    await test.step('Cleanup test data product', async () => {
+      const { apiContext, afterAction } = await performAdminLogin(
+        page.context().browser()!
+      );
+      await dataProduct.delete(apiContext);
+      await afterAction();
+    });
+  });
 });

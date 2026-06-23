@@ -75,6 +75,8 @@ describe('TestCaseClassBase', () => {
       'owners',
       'incidentId',
       'tags',
+      'dataProducts',
+      'domains',
       'inspectionQuery',
     ];
 

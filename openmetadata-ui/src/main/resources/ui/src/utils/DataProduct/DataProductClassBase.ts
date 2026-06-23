@@ -70,6 +70,7 @@ class DataProductClassBase {
       EntityTabs.INPUT_OUTPUT_PORTS,
       EntityTabs.ASSETS,
       EntityTabs.CONTRACT,
+      EntityTabs.DATA_OBSERVABILITY,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,
