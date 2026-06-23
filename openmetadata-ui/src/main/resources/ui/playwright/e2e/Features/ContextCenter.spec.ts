@@ -11,61 +11,25 @@
  *  limitations under the License.
  */
 
-import { expect, Page } from '@playwright/test';
-import { ResourceEntity } from '../../../src/context/PermissionProvider/PermissionProvider.interface';
-import {
-  Effect,
-  Operation,
-} from '../../../src/generated/entity/policies/accessControl/rule';
-import { VIEW_ONLY_RULE } from '../../constant/permission';
+import { expect } from '@playwright/test';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
-import { UserClass } from '../../support/user/UserClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  MEMORIES_API,
+  navigateToArticles,
+  navigateToDashboard,
+  navigateToDocuments,
+  navigateToMemories,
+} from '../../utils/ContextCenterUtil';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { addTitle } from '../../utils/KnowledgeCenter';
 import { test as base } from '../fixtures/pages';
 
-const test = base.extend<{
-  createOnlyMemoryPage: Page;
-  editOnlyMemoryPage: Page;
-  deleteOnlyMemoryPage: Page;
-  fullPermissionMemoryPage: Page;
-}>({
-  createOnlyMemoryPage: async ({ browser }, use) => {
-    const page = await browser.newPage();
-    await createOnlyUser.login(page);
-    await use(page);
-    await page.close();
-  },
-  editOnlyMemoryPage: async ({ browser }, use) => {
-    const page = await browser.newPage();
-    await editOnlyUser.login(page);
-    await use(page);
-    await page.close();
-  },
-  deleteOnlyMemoryPage: async ({ browser }, use) => {
-    const page = await browser.newPage();
-    await deleteOnlyUser.login(page);
-    await use(page);
-    await page.close();
-  },
-  fullPermissionMemoryPage: async ({ browser }, use) => {
-    const page = await browser.newPage();
-    await fullPermissionUser.login(page);
-    await use(page);
-    await page.close();
-  },
-});
+const test = base;
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-const DASHBOARD_URL = '/context-center/dashboard';
-const ARTICLES_URL = '/context-center/articles';
-const DOCUMENTS_URL = '/context-center/documents';
-const MEMORIES_URL = '/context-center/memories';
-const MEMORIES_API = '/api/v1/contextCenter/memories';
 
 let ARTICLE_TITLE: string;
 const ARTICLE_DESCRIPTION =
@@ -76,43 +40,6 @@ const QUICK_LINK_DESCRIPTION =
   'Playwright quick link description for card detail check';
 let QUICK_LINK_NAME: string;
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-const navigateToDashboard = async (page: Page) => {
-  await page.goto(DASHBOARD_URL);
-  await page
-    .getByTestId('context-center-dashboard-page')
-    .waitFor({ state: 'visible' });
-  await waitForAllLoadersToDisappear(page);
-  // Wait for article section to finish loading (either cards or empty state)
-  const section = page.getByTestId('dashboard-detail-card');
-  await section.waitFor({ state: 'visible' });
-};
-
-const navigateToArticles = async (page: Page) => {
-  await page.goto(ARTICLES_URL);
-  await page
-    .getByTestId('context-center-articles-page')
-    .waitFor({ state: 'visible' });
-  await waitForAllLoadersToDisappear(page);
-};
-
-const navigateToDocuments = async (page: Page) => {
-  await page.goto(DOCUMENTS_URL);
-  await page
-    .getByTestId('context-center-documents-page')
-    .waitFor({ state: 'visible' });
-  await waitForAllLoadersToDisappear(page);
-};
-
-const navigateToMemories = async (page: Page) => {
-  await page.goto(MEMORIES_URL);
-  await page
-    .getByTestId('context-center-memories-page')
-    .waitFor({ state: 'visible' });
-  await waitForAllLoadersToDisappear(page);
-};
-
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -122,67 +49,13 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 let articleEntity: KnowledgeCenterClass = new KnowledgeCenterClass();
 let articleTagClassification: ClassificationClass;
 let articleTags: TagClass[] = [];
-let viewOnlyUser: UserClass;
 let quickLinkId = '';
-let archivedArticleId = '';
 
 // ─── Memories fixtures ──────────────────────────────────────────────────────
 
 let ownerMemoryId = '';
 let ownerMemoryName = '';
 const OWNER_MEMORY_TITLE = `CC Memory ${uuid()}`;
-
-let createOnlyUser: UserClass;
-let editOnlyUser: UserClass;
-let deleteOnlyUser: UserClass;
-let fullPermissionUser: UserClass;
-
-// Memories owned by each permission-scoped user, so modal-level
-// edit/delete/save assertions exercise real ownership + permission gating.
-let editOnlyOwnMemoryId = '';
-let deleteOnlyOwnMemoryId = '';
-let fullPermissionOwnMemoryId = '';
-
-const CREATE_ONLY_MEMORY_RULE = [
-  {
-    name: `memory-create-only-${uuid()}`,
-    resources: [ResourceEntity.CONTEXT_MEMORY],
-    operations: [Operation.Create, Operation.ViewAll],
-    effect: Effect.Allow,
-  },
-];
-
-const EDIT_ONLY_MEMORY_RULE = [
-  {
-    name: `memory-edit-only-${uuid()}`,
-    resources: [ResourceEntity.CONTEXT_MEMORY],
-    operations: [Operation.EditAll, Operation.ViewAll],
-    effect: Effect.Allow,
-  },
-];
-
-const DELETE_ONLY_MEMORY_RULE = [
-  {
-    name: `memory-delete-only-${uuid()}`,
-    resources: [ResourceEntity.CONTEXT_MEMORY],
-    operations: [Operation.Delete, Operation.ViewAll],
-    effect: Effect.Allow,
-  },
-];
-
-const FULL_PERMISSION_MEMORY_RULE = [
-  {
-    name: `memory-full-permission-${uuid()}`,
-    resources: [ResourceEntity.CONTEXT_MEMORY],
-    operations: [
-      Operation.Create,
-      Operation.EditAll,
-      Operation.Delete,
-      Operation.ViewAll,
-    ],
-    effect: Effect.Allow,
-  },
-];
 
 test.describe('Context Center', () => {
   test.slow(true);
@@ -258,30 +131,6 @@ test.describe('Context Center', () => {
       },
     });
 
-    viewOnlyUser = new UserClass();
-    await viewOnlyUser.create(apiContext, false);
-    await viewOnlyUser.setCustomRulePolicy(
-      apiContext,
-      VIEW_ONLY_RULE,
-      'context-center-view-only'
-    );
-
-    // Create and soft-delete an article so the Archive page has data to assert on
-    const archRes = await apiContext.post('/api/v1/contextCenter/pages', {
-      data: {
-        name: `cc_archived_${uuid()}`,
-        displayName: `CC Archived ${uuid()}`,
-        description: 'Article archived for Playwright permission tests',
-        pageType: 'Article',
-        page: { publicationDate: Date.now(), relatedArticles: [] },
-      },
-    });
-    const archData = await archRes.json();
-    archivedArticleId = archData.id;
-    await apiContext.delete(
-      `/api/v1/contextCenter/pages/${archivedArticleId}?recursive=true&hardDelete=false`
-    );
-
     // Create a memory owned by admin for card/edit/delete action tests
     ownerMemoryName = `cc_memory_${uuid()}`;
     const memoryRes = await apiContext.post(MEMORIES_API, {
@@ -296,79 +145,6 @@ test.describe('Context Center', () => {
     const memoryData = await memoryRes.json();
     ownerMemoryId = memoryData.id;
 
-    // Permission-matrix users, each scoped to the contextMemory resource.
-    // View-only coverage reuses the existing viewOnlyUser/viewOnlyPage fixture.
-    createOnlyUser = new UserClass();
-    await createOnlyUser.create(apiContext, false);
-    await createOnlyUser.setCustomRulePolicy(
-      apiContext,
-      CREATE_ONLY_MEMORY_RULE,
-      'context-center-memory-create-only'
-    );
-
-    editOnlyUser = new UserClass();
-    await editOnlyUser.create(apiContext, false);
-    await editOnlyUser.setCustomRulePolicy(
-      apiContext,
-      EDIT_ONLY_MEMORY_RULE,
-      'context-center-memory-edit-only'
-    );
-
-    deleteOnlyUser = new UserClass();
-    await deleteOnlyUser.create(apiContext, false);
-    await deleteOnlyUser.setCustomRulePolicy(
-      apiContext,
-      DELETE_ONLY_MEMORY_RULE,
-      'context-center-memory-delete-only'
-    );
-
-    fullPermissionUser = new UserClass();
-    await fullPermissionUser.create(apiContext, false);
-    await fullPermissionUser.setCustomRulePolicy(
-      apiContext,
-      FULL_PERMISSION_MEMORY_RULE,
-      'context-center-memory-full-permission'
-    );
-
-    // Memories owned by the editable-permission users themselves, so the
-    // modal's isOwner-gated buttons (Save/Edit-switch/Delete) can be
-    // exercised honestly for each permission level.
-    const editOnlyMemoryRes = await apiContext.post(MEMORIES_API, {
-      data: {
-        name: `cc_memory_edit_only_${uuid()}`,
-        title: `CC Memory Edit-Only ${uuid()}`,
-        question: 'Owned by editOnlyUser',
-        answer: 'Owned by editOnlyUser',
-        shareConfig: { visibility: 'Shared' },
-        owners: [{ id: editOnlyUser.responseData.id, type: 'user' }],
-      },
-    });
-    editOnlyOwnMemoryId = (await editOnlyMemoryRes.json()).id;
-
-    const deleteOnlyMemoryRes = await apiContext.post(MEMORIES_API, {
-      data: {
-        name: `cc_memory_delete_only_${uuid()}`,
-        title: `CC Memory Delete-Only ${uuid()}`,
-        question: 'Owned by deleteOnlyUser',
-        answer: 'Owned by deleteOnlyUser',
-        shareConfig: { visibility: 'Shared' },
-        owners: [{ id: deleteOnlyUser.responseData.id, type: 'user' }],
-      },
-    });
-    deleteOnlyOwnMemoryId = (await deleteOnlyMemoryRes.json()).id;
-
-    const fullPermissionMemoryRes = await apiContext.post(MEMORIES_API, {
-      data: {
-        name: `cc_memory_full_permission_${uuid()}`,
-        title: `CC Memory Full-Permission ${uuid()}`,
-        question: 'Owned by fullPermissionUser',
-        answer: 'Owned by fullPermissionUser',
-        shareConfig: { visibility: 'Shared' },
-        owners: [{ id: fullPermissionUser.responseData.id, type: 'user' }],
-      },
-    });
-    fullPermissionOwnMemoryId = (await fullPermissionMemoryRes.json()).id;
-
     await afterAction();
   });
 
@@ -380,147 +156,19 @@ test.describe('Context Center', () => {
         `/api/v1/contextCenter/pages/${quickLinkId}?hardDelete=true&recursive=true`
       );
     }
-    if (archivedArticleId) {
-      await apiContext.delete(
-        `/api/v1/contextCenter/pages/${archivedArticleId}?hardDelete=true&recursive=true`
-      );
-    }
     if (articleTagClassification?.responseData?.id) {
       await articleTagClassification.delete(apiContext);
-    }
-    if (viewOnlyUser.responseData.id) {
-      await viewOnlyUser.delete(apiContext);
     }
     if (ownerMemoryId) {
       await apiContext.delete(
         `${MEMORIES_API}/${ownerMemoryId}?hardDelete=true`
       );
     }
-    for (const memoryId of [
-      editOnlyOwnMemoryId,
-      deleteOnlyOwnMemoryId,
-      fullPermissionOwnMemoryId,
-    ]) {
-      if (memoryId) {
-        await apiContext
-          .delete(`${MEMORIES_API}/${memoryId}?hardDelete=true`)
-          .catch(() => undefined);
-      }
-    }
-    for (const user of [
-      createOnlyUser,
-      editOnlyUser,
-      deleteOnlyUser,
-      fullPermissionUser,
-    ]) {
-      if (user?.responseData?.id) {
-        await user.delete(apiContext);
-      }
-    }
     await afterAction();
   });
 
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
-  });
-
-  // ─── Permissions ────────────────────────────────────────────────────────────
-
-  test.describe('Permissions', () => {
-    test('user with only ViewAll cannot see restricted action buttons', async ({
-      viewOnlyPage,
-    }) => {
-      await test.step('dashboard actions are hidden', async () => {
-        await navigateToDashboard(viewOnlyPage);
-
-        await expect(
-          viewOnlyPage.getByRole('button', { name: /create.*article/i })
-        ).not.toBeVisible();
-        await expect(
-          viewOnlyPage.getByRole('button', { name: /upload file/i })
-        ).not.toBeVisible();
-      });
-
-      await test.step('articles create action is hidden', async () => {
-        await navigateToArticles(viewOnlyPage);
-
-        await expect(
-          viewOnlyPage.getByTestId('create-knowledge-page-btn')
-        ).not.toBeVisible();
-      });
-
-      await test.step('article detail actions are hidden', async () => {
-        await viewOnlyPage.goto(
-          `/context-center/articles/${articleEntity.responseData.fullyQualifiedName}`
-        );
-        await waitForAllLoadersToDisappear(viewOnlyPage);
-
-        const header = viewOnlyPage.getByTestId('article-detail-header');
-        await expect(header).toBeVisible();
-        await expect(header.getByTestId('upvote-btn')).toBeVisible();
-        await expect(header.getByTestId('downvote-btn')).toBeVisible();
-        await expect(header.getByTestId('follow-btn')).toBeVisible();
-        await expect(header.getByTestId('conversation')).toBeVisible();
-        await expect(header.getByTestId('manage-button')).not.toBeVisible();
-      });
-
-      await test.step('documents upload, folder and row actions are hidden', async () => {
-        await navigateToDocuments(viewOnlyPage);
-
-        await expect(
-          viewOnlyPage.getByRole('button', { name: /upload file/i })
-        ).not.toBeVisible();
-
-        await expect(
-          viewOnlyPage.getByTestId('add-folder-btn')
-        ).not.toBeVisible();
-
-        const firstRow = viewOnlyPage
-          .getByTestId('documents-view')
-          .locator('[data-testid^="document-row-"]')
-          .first();
-        await expect(firstRow).toBeVisible();
-
-        // No row actions are available, so the manage menu trigger is not rendered
-        await expect(
-          firstRow.locator('button[aria-label="Open menu"]')
-        ).not.toBeVisible();
-      });
-
-      await test.step('documents bulk delete and move actions are hidden', async () => {
-        const firstRow = viewOnlyPage
-          .getByTestId('documents-view')
-          .locator('[data-testid^="document-row-"]')
-          .first();
-        await firstRow.locator('label').first().click();
-
-        await expect(
-          viewOnlyPage.getByTestId('bulk-download-btn')
-        ).toBeVisible();
-        await expect(
-          viewOnlyPage.getByTestId('bulk-delete-btn')
-        ).not.toBeVisible();
-        await expect(
-          viewOnlyPage.getByTestId('bulk-move-btn')
-        ).not.toBeVisible();
-      });
-
-      await test.step('archive restore and delete actions are hidden', async () => {
-        await viewOnlyPage.goto('/context-center/archive');
-        await viewOnlyPage
-          .getByTestId('context-center-archive-page')
-          .waitFor({ state: 'visible' });
-        await waitForAllLoadersToDisappear(viewOnlyPage);
-
-        const row = viewOnlyPage.getByTestId(
-          `archive-row-${archivedArticleId}`
-        );
-        await row.scrollIntoViewIfNeeded();
-        await expect(row).toBeVisible();
-        await expect(row.getByTestId('restore-btn')).not.toBeVisible();
-        await expect(row.getByTestId('delete-btn')).not.toBeVisible();
-      });
-    });
   });
 
   // ─── Dashboard Page ──────────────────────────────────────────────────────────
@@ -1562,186 +1210,5 @@ test.describe('Context Center', () => {
       });
     });
 
-    // ─── Permission matrix (includes non-owner action behavior) ───────────
-
-    test.describe('Permission matrix', () => {
-      test('non-owner with full permission sees read-only banner and no edit/delete on the row', async ({
-        fullPermissionMemoryPage: page,
-      }) => {
-        await navigateToMemories(page);
-
-        const row = page.getByTestId(`memory-row-${ownerMemoryId}`);
-        await row.scrollIntoViewIfNeeded();
-        await expect(row).toBeVisible();
-        await expect(row.getByTestId('edit-memory-btn')).not.toBeVisible();
-
-        await row.click();
-        const dialog = page.getByRole('dialog');
-        await expect(dialog).toBeVisible();
-        await expect(
-          dialog.getByText(/can.?t edit this memory/i)
-        ).toBeVisible();
-        await expect(
-          dialog.getByRole('button', { name: /^delete$/i })
-        ).not.toBeVisible();
-        await expect(
-          dialog.getByRole('button', { name: /^edit$/i })
-        ).not.toBeVisible();
-        await expect(
-          dialog.getByRole('button', { name: /^cancel$/i })
-        ).toBeVisible();
-      });
-
-      test('user with view-only permission sees no Add Memory button, no row actions, and no modal action buttons', async ({
-        viewOnlyPage: page,
-      }) => {
-        await navigateToMemories(page);
-
-        await expect(page.getByTestId('add-memory-btn')).not.toBeVisible();
-
-        const row = page.getByTestId(`memory-row-${ownerMemoryId}`);
-        await row.scrollIntoViewIfNeeded();
-        await expect(row).toBeVisible();
-        await expect(row.getByTestId('edit-memory-btn')).not.toBeVisible();
-
-        await row.click();
-        const dialog = page.getByRole('dialog');
-        await expect(dialog).toBeVisible();
-        await expect(
-          dialog.getByRole('button', { name: /^delete$/i })
-        ).not.toBeVisible();
-        await expect(
-          dialog.getByRole('button', { name: /^edit$/i })
-        ).not.toBeVisible();
-        await expect(
-          dialog.getByRole('button', { name: /^cancel$/i })
-        ).toBeVisible();
-      });
-
-      test('user with create-only permission sees Add Memory button but no row edit/delete actions or modal action buttons', async ({
-        createOnlyMemoryPage: page,
-      }) => {
-        await navigateToMemories(page);
-
-        await expect(page.getByTestId('add-memory-btn')).toBeVisible();
-
-        const row = page.getByTestId(`memory-row-${ownerMemoryId}`);
-        await row.scrollIntoViewIfNeeded();
-        await expect(row).toBeVisible();
-        await expect(row.getByTestId('edit-memory-btn')).not.toBeVisible();
-
-        await row.click();
-        const dialog = page.getByRole('dialog');
-        await expect(dialog).toBeVisible();
-        await expect(
-          dialog.getByRole('button', { name: /^delete$/i })
-        ).not.toBeVisible();
-        await expect(
-          dialog.getByRole('button', { name: /^edit$/i })
-        ).not.toBeVisible();
-        await expect(
-          dialog.getByRole('button', { name: /^cancel$/i })
-        ).toBeVisible();
-      });
-
-      test('user with edit-only permission sees no row edit action on memories they do not own, but can edit and save their own memory', async ({
-        editOnlyMemoryPage: page,
-      }) => {
-        await navigateToMemories(page);
-
-        await expect(page.getByTestId('add-memory-btn')).not.toBeVisible();
-
-        const foreignRow = page.getByTestId(`memory-row-${ownerMemoryId}`);
-        await foreignRow.scrollIntoViewIfNeeded();
-        await expect(foreignRow).toBeVisible();
-        await expect(
-          foreignRow.getByTestId('edit-memory-btn')
-        ).not.toBeVisible();
-
-        const ownRow = page.getByTestId(`memory-row-${editOnlyOwnMemoryId}`);
-        await ownRow.scrollIntoViewIfNeeded();
-        await expect(ownRow).toBeVisible();
-        await expect(ownRow.getByTestId('edit-memory-btn')).toBeVisible();
-
-        await ownRow.getByTestId('edit-memory-btn').click();
-        const dialog = page.getByRole('dialog');
-        await expect(dialog).toBeVisible();
-        await expect(
-          dialog.getByRole('button', { name: /^delete$/i })
-        ).not.toBeVisible();
-        await expect(
-          dialog.getByRole('button', { name: /^(save|create)/i })
-        ).toBeVisible();
-        await expect(
-          dialog.getByRole('button', { name: /^cancel$/i })
-        ).toBeVisible();
-      });
-
-      test('user with delete-only permission sees no row delete action on memories they do not own, but can delete their own memory from the modal', async ({
-        deleteOnlyMemoryPage: page,
-      }) => {
-        await navigateToMemories(page);
-
-        const foreignRow = page.getByTestId(`memory-row-${ownerMemoryId}`);
-        await foreignRow.scrollIntoViewIfNeeded();
-        await expect(foreignRow).toBeVisible();
-        await expect(
-          foreignRow.getByTestId('edit-memory-btn')
-        ).not.toBeVisible();
-
-        const ownRow = page.getByTestId(`memory-row-${deleteOnlyOwnMemoryId}`);
-        await ownRow.scrollIntoViewIfNeeded();
-        await expect(ownRow).toBeVisible();
-        await expect(ownRow.getByTestId('edit-memory-btn')).not.toBeVisible();
-
-        await ownRow.click();
-        const dialog = page.getByRole('dialog');
-        await expect(dialog).toBeVisible();
-        await expect(
-          dialog.getByRole('button', { name: /^edit$/i })
-        ).not.toBeVisible();
-
-        const deleteResPromise = page.waitForResponse(
-          new RegExp(`${MEMORIES_API}/${deleteOnlyOwnMemoryId}`)
-        );
-        await dialog.getByRole('button', { name: /^delete$/i }).click();
-        const deleteRes = await deleteResPromise;
-        expect(deleteRes.status()).toBe(200);
-        await expect(dialog).not.toBeVisible();
-      });
-
-      test('user with full permission can edit, save and delete their own memory from the modal', async ({
-        fullPermissionMemoryPage: page,
-      }) => {
-        await navigateToMemories(page);
-
-        await expect(page.getByTestId('add-memory-btn')).toBeVisible();
-
-        const ownRow = page.getByTestId(
-          `memory-row-${fullPermissionOwnMemoryId}`
-        );
-        await ownRow.scrollIntoViewIfNeeded();
-        await expect(ownRow).toBeVisible();
-        await expect(ownRow.getByTestId('edit-memory-btn')).toBeVisible();
-
-        await ownRow.getByTestId('edit-memory-btn').click();
-        const dialog = page.getByRole('dialog');
-        await expect(dialog).toBeVisible();
-        await expect(
-          dialog.getByRole('button', { name: /^(save|create)/i })
-        ).toBeVisible();
-        await expect(
-          dialog.getByRole('button', { name: /^cancel$/i })
-        ).toBeVisible();
-
-        const deleteResPromise = page.waitForResponse(
-          new RegExp(`${MEMORIES_API}/${fullPermissionOwnMemoryId}`)
-        );
-        await dialog.getByRole('button', { name: /^delete$/i }).click();
-        const deleteRes = await deleteResPromise;
-        expect(deleteRes.status()).toBe(200);
-        await expect(dialog).not.toBeVisible();
-      });
-    });
   });
 });

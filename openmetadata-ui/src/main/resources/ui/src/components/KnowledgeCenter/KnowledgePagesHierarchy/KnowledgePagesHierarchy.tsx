@@ -479,6 +479,10 @@ const KnowledgePagesHierarchy = forwardRef<
 
     const handleItemMove = useCallback(
       ({ sourceKey, targetKey, dropPosition }: TreeItemMoveEvent) => {
+        if (!permissions.EditAll) {
+          return;
+        }
+
         if (sourceKey === targetKey) {
           return;
         }
@@ -512,7 +516,7 @@ const KnowledgePagesHierarchy = forwardRef<
 
         setMovedPage({ sourceNode, sourceNodeParent, targetNode });
       },
-      [knowledgePageHierarchy]
+      [knowledgePageHierarchy, permissions.EditAll]
     );
 
     const handleScroll: UIEventHandler<HTMLElement> = useCallback(
@@ -664,6 +668,9 @@ const KnowledgePagesHierarchy = forwardRef<
         }}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
+          if (!permissions.EditAll) {
+            return;
+          }
           const sourceKey = e.dataTransfer.getData('text/plain');
           if (!sourceKey) {
             return;
@@ -750,6 +757,9 @@ const KnowledgePagesHierarchy = forwardRef<
             }}
             onItemMove={handleItemMove}
             onItemRootDrop={(sourceKey) => {
+              if (!permissions.EditAll) {
+                return;
+              }
               const { page: sourceNode, parent: sourceNodeParent } =
                 findPageAndParentInTreeData(
                   knowledgePageHierarchy,
