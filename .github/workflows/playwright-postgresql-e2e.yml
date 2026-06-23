@@ -360,8 +360,7 @@ jobs:
           pattern: playwright-results-json-*
           path: results
 
-      - name: Post consolidated PR comment
-        if: ${{ github.event_name == 'pull_request_target' && (github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+      - name: Post consolidated PR comment and gate on results
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -372,7 +371,6 @@ jobs:
             const runId = '${{ github.run_id }}';
             const repo = context.repo;
             const prNumber = context.payload.pull_request?.number;
-            if (!prNumber) return;
 
             const artifactUrl = `https://github.com/${repo.owner}/${repo.repo}/actions/runs/${runId}`;
             const commentMarker = '<!-- playwright-summary -->';
@@ -424,7 +422,7 @@ jobs:
             }
 
             if (shardResults.length === 0) {
-              console.log('No shard results found');
+              core.setFailed('No Playwright results found — shards may have been cancelled or failed to upload artifacts.');
               return;
             }
 
@@ -506,40 +504,40 @@ jobs:
 
             const body = lines.join('\n');
 
-            // Find existing consolidated comment
-            let existingComment = null;
-            for await (const response of github.paginate.iterator(
-              github.rest.issues.listComments, { ...repo, issue_number: prNumber, per_page: 100 }
-            )) {
-              const found = response.data.find(c =>
-                c.user?.login === 'github-actions[bot]' && c.body?.includes(commentMarker)
-              );
-              if (found) { existingComment = found; break; }
-            }
+            // Post PR comment only for pull_request_target events
+            if (prNumber) {
+              let existingComment = null;
+              for await (const response of github.paginate.iterator(
+                github.rest.issues.listComments, { ...repo, issue_number: prNumber, per_page: 100 }
+              )) {
+                const found = response.data.find(c =>
+                  c.user?.login === 'github-actions[bot]' && c.body?.includes(commentMarker)
+                );
+                if (found) { existingComment = found; break; }
+              }
 
-            // Also clean up any old per-shard comments from previous runs
-            for await (const response of github.paginate.iterator(
-              github.rest.issues.listComments, { ...repo, issue_number: prNumber, per_page: 100 }
-            )) {
-              for (const c of response.data) {
-                if (c.user?.login === 'github-actions[bot]' && /Playwright Shard \d/.test(c.body || '') && !c.body?.includes(commentMarker)) {
-                  await github.rest.issues.deleteComment({ ...repo, comment_id: c.id });
-                  console.log(`Deleted old per-shard comment ${c.id}`);
+              // Also clean up any old per-shard comments from previous runs
+              for await (const response of github.paginate.iterator(
+                github.rest.issues.listComments, { ...repo, issue_number: prNumber, per_page: 100 }
+              )) {
+                for (const c of response.data) {
+                  if (c.user?.login === 'github-actions[bot]' && /Playwright Shard \d/.test(c.body || '') && !c.body?.includes(commentMarker)) {
+                    await github.rest.issues.deleteComment({ ...repo, comment_id: c.id });
+                    console.log(`Deleted old per-shard comment ${c.id}`);
+                  }
                 }
+              }
+
+              if (existingComment) {
+                await github.rest.issues.updateComment({ ...repo, comment_id: existingComment.id, body });
+              } else {
+                await github.rest.issues.createComment({ ...repo, issue_number: prNumber, body });
               }
             }
 
-            if (existingComment) {
-              await github.rest.issues.updateComment({ ...repo, comment_id: existingComment.id, body });
-            } else {
-              await github.rest.issues.createComment({ ...repo, issue_number: prNumber, body });
+            // Gate: fail the step (and therefore the job) when genuine test failures exist.
+            // This is the single source of truth — the same parsed results that drive the
+            // PR comment also determine whether playwright-summary passes or fails.
+            if (totalFailed > 0) {
+              core.setFailed(`${totalFailed} Playwright test(s) failed.`);
             }
-
-      - name: Gate on test results
-        run: |
-          RESULT="${{ needs.playwright-ci-postgresql.result }}"
-          if [ "$RESULT" = "failure" ] || [ "$RESULT" = "cancelled" ]; then
-            echo "Playwright shards did not complete successfully (result: ${RESULT})."
-            exit 1
-          fi
-          echo "Playwright result: ${RESULT}"
