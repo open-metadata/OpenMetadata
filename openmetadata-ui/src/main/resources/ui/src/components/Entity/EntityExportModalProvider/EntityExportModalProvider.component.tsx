@@ -103,14 +103,15 @@ export const EntityExportModalProvider = ({
       return;
     }
     try {
-      // Force React to flush the loading state to the DOM before the heavy
-      // toPng work starts — html-to-image does synchronous DOM cloning that
-      // blocks the event loop and would otherwise delay the spinner.
-      flushSync(() => {
-        setDownloading(true);
-      });
-
       if (exportType !== ExportTypes.CSV) {
+        // Force React to flush the loading state to the DOM before the heavy
+        // toPng work starts — html-to-image does synchronous DOM cloning that
+        // blocks the event loop and would otherwise delay the spinner. Only
+        // needed for non-CSV (image) paths; CSV uses async websocket flow.
+        flushSync(() => {
+          setDownloading(true);
+        });
+
         await exportUtilClassBase.exportMethodBasedOnType({
           exportType,
           exportData: {
@@ -124,6 +125,8 @@ export const EntityExportModalProvider = ({
 
         return;
       }
+
+      setDownloading(true);
 
       // assigning the job data to ref here, as exportData.onExport may take time to return the data
       // and websocket connection may be respond before that, so we need to keep the job data in ref

@@ -38,8 +38,10 @@ describe('ExportUtils', () => {
     };
     let mockCreateObjectURL: jest.Mock;
     let mockRevokeObjectURL: jest.Mock;
+    let originalBlob: typeof Blob;
 
     beforeEach(() => {
+      originalBlob = global.Blob;
       mockCreateObjectURL = jest.fn().mockReturnValue('blob:mock-url');
       mockRevokeObjectURL = jest.fn();
       global.URL.createObjectURL = mockCreateObjectURL;
@@ -57,6 +59,7 @@ describe('ExportUtils', () => {
     });
 
     afterEach(() => {
+      global.Blob = originalBlob;
       jest.restoreAllMocks();
     });
 
@@ -114,8 +117,10 @@ describe('ExportUtils', () => {
     };
     let mockCreateObjectURL: jest.Mock;
     let mockRevokeObjectURL: jest.Mock;
+    let originalBlob: typeof Blob;
 
     beforeEach(() => {
+      originalBlob = global.Blob;
       mockCreateObjectURL = jest.fn().mockReturnValue('blob:mock-png-url');
       mockRevokeObjectURL = jest.fn();
       global.URL.createObjectURL = mockCreateObjectURL;
@@ -133,6 +138,7 @@ describe('ExportUtils', () => {
     });
 
     afterEach(() => {
+      global.Blob = originalBlob;
       jest.restoreAllMocks();
     });
 
