@@ -20,6 +20,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -71,10 +72,24 @@ import org.pac4j.oidc.credentials.OidcCredentials;
 @Slf4j
 public class McpCallbackServlet extends HttpServlet {
 
+  // Error messages used in sendError() calls — kept as constants so callers that
+  // match on the message text see a stable contract and typos are caught at compile time.
+  static final String ERR_SSO_UNAVAILABLE = "MCP SSO not available. Please restart the server.";
+  static final String ERR_CSRF_ORIGIN_MISMATCH =
+      "CSRF protection: request origin does not match server origin";
+  static final String ERR_MISSING_ID_TOKEN = "Invalid MCP OAuth callback - missing id_token";
+  static final String ERR_CALLBACK_FAILED = "MCP OAuth callback processing failed";
+  static final String ERR_MISSING_STATE = "Invalid MCP OAuth callback - missing state";
+  static final String ERR_STATE_NOT_FOUND =
+      "Invalid MCP OAuth callback - state not found or expired";
+
   private final UserSSOOAuthProvider userSSOProvider;
   private final McpPendingAuthRequestRepository pendingAuthRepository;
   private volatile IdTokenValidator idTokenValidator;
   private volatile AuthenticationCodeFlowHandler validatorBuiltFrom;
+  // Cached server origin for CSRF validation — resolved lazily on first POST and held
+  // for the server lifetime (restart required if the base URL is reconfigured via UI).
+  private volatile String cachedServerOrigin;
 
   public McpCallbackServlet(UserSSOOAuthProvider userSSOProvider) {
     this.userSSOProvider = userSSOProvider;
@@ -82,7 +97,13 @@ public class McpCallbackServlet extends HttpServlet {
     LOG.info("Initialized McpCallbackServlet (runtime SSO dispatch)");
   }
 
-  private AuthenticationCodeFlowHandler resolveSsoHandler() {
+  McpCallbackServlet(
+      UserSSOOAuthProvider userSSOProvider, McpPendingAuthRequestRepository pendingAuthRepository) {
+    this.userSSOProvider = userSSOProvider;
+    this.pendingAuthRepository = pendingAuthRepository;
+  }
+
+  protected AuthenticationCodeFlowHandler resolveSsoHandler() {
     try {
       var authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
       if (authConfig == null
@@ -218,6 +239,106 @@ public class McpCallbackServlet extends HttpServlet {
   }
 
   @Override
+  protected void doPost(HttpServletRequest request, HttpServletResponse response)
+      throws ServletException, IOException {
+    // Handles the form POST from serveFragmentExtractionPage() — the JS page extracts the
+    // id_token from window.location.hash and submits it here via a hidden form so the token
+    // never appears in a URL, browser history, access logs, or Referer headers.
+    AuthenticationCodeFlowHandler ssoHandler = resolveSsoHandler();
+    if (ssoHandler == null) {
+      response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE, ERR_SSO_UNAVAILABLE);
+    } else if (!isOriginAllowed(request)) {
+      // CSRF protection: the form is always submitted from the same origin as this server.
+      // Reject any POST whose Origin header does not match the server's own base URL so a
+      // malicious cross-origin page cannot submit an attacker-controlled id_token to hijack
+      // a victim's pending MCP auth session.
+      LOG.warn(
+          "MCP OAuth doPost rejected: Origin '{}' does not match server origin",
+          request.getHeader("Origin"));
+      response.sendError(HttpServletResponse.SC_FORBIDDEN, ERR_CSRF_ORIGIN_MISMATCH);
+    } else {
+      String idTokenParam = request.getParameter("id_token");
+      if (idTokenParam == null || idTokenParam.isEmpty()) {
+        response.sendError(HttpServletResponse.SC_BAD_REQUEST, ERR_MISSING_ID_TOKEN);
+      } else {
+        try {
+          LOG.info("Handling MCP OAuth fragment POST callback (id_token extracted from hash)");
+          handleDirectIdTokenFlow(request, response, idTokenParam, ssoHandler);
+        } catch (Exception e) {
+          LOG.error("MCP OAuth fragment POST callback failed", e);
+          response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, ERR_CALLBACK_FAILED);
+        }
+      }
+    }
+  }
+
+  /**
+   * Returns {@code true} when the request {@code Origin} is absent (same-origin, allowed) or
+   * matches this server's own origin. A present, non-matching {@code Origin} is cross-origin and
+   * must be rejected. When the server origin cannot be resolved (misconfiguration, startup race,
+   * DB error) and a non-null {@code Origin} is present, the request is rejected rather than
+   * silently bypassing CSRF protection.
+   */
+  boolean isOriginAllowed(HttpServletRequest request) {
+    String origin = request.getHeader("Origin");
+    if (origin == null) {
+      return true;
+    }
+    String serverOrigin = getServerOrigin();
+    if (serverOrigin == null) {
+      LOG.warn(
+          "MCP OAuth CSRF check: server origin unknown; rejecting cross-origin POST from '{}'",
+          origin);
+      return false;
+    }
+    return origin.equals(serverOrigin);
+  }
+
+  private String getServerOrigin() {
+    String cached = cachedServerOrigin;
+    if (cached != null) {
+      return cached;
+    }
+    String resolved = resolveServerOrigin();
+    if (resolved != null) {
+      cachedServerOrigin = resolved;
+    }
+    return resolved;
+  }
+
+  String resolveServerOrigin() {
+    try {
+      MCPConfiguration mcpConfig = SecurityConfigurationManager.getCurrentMcpConfig();
+      String baseUrl = mcpConfig != null ? mcpConfig.getBaseUrl() : null;
+      if (baseUrl == null) {
+        SystemRepository systemRepo = Entity.getSystemRepository();
+        Settings settings = systemRepo != null ? systemRepo.getOMBaseUrlConfigInternal() : null;
+        if (settings != null) {
+          OpenMetadataBaseUrlConfiguration urlConfig =
+              (OpenMetadataBaseUrlConfiguration) settings.getConfigValue();
+          baseUrl = urlConfig != null ? urlConfig.getOpenMetadataUrl() : null;
+        }
+      }
+      if (baseUrl == null) {
+        return null;
+      }
+      URI uri = URI.create(baseUrl);
+      int port = uri.getPort();
+      // Browsers omit default ports from the Origin header (443 for https, 80 for http).
+      // Strip them from the reconstructed origin so the comparison cannot fail on
+      // a baseUrl written with an explicit default port (e.g. https://example.com:443).
+      boolean isDefaultPort =
+          ("https".equals(uri.getScheme()) && port == 443)
+              || ("http".equals(uri.getScheme()) && port == 80);
+      String portPart = (port != -1 && !isDefaultPort) ? ":" + port : "";
+      return uri.getScheme() + "://" + uri.getHost() + portPart;
+    } catch (Exception e) {
+      LOG.warn("Could not resolve server origin for CSRF check: {}", e.getMessage());
+      return null;
+    }
+  }
+
+  @Override
   protected void doGet(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
     AuthenticationCodeFlowHandler ssoHandler = resolveSsoHandler();
@@ -244,9 +365,22 @@ public class McpCallbackServlet extends HttpServlet {
       String pac4jState = request.getParameter("state");
       String idTokenParam = request.getParameter("id_token");
       LOG.debug(
+          "MCP callback request: method={}, queryString={}, refererPresent={}",
+          request.getMethod(),
+          request.getQueryString() != null
+              ? request.getQueryString().replaceAll("(id_token|code|token)=[^&]*", "$1=[REDACTED]")
+              : "none",
+          request.getHeader("Referer") != null);
+      LOG.debug(
           "Received SSO callback with pac4j state: {}, id_token present: {}",
           pac4jState,
           idTokenParam != null);
+
+      if (pac4jState == null && idTokenParam == null) {
+        LOG.debug(
+            "MCP callback has neither state nor id_token in query params. "
+                + "Likely an implicit-flow redirect with id_token in URL fragment.");
+      }
 
       if ((pac4jState == null || pac4jState.isEmpty()) && idTokenParam != null) {
         LOG.info("Handling direct ID token flow (user already authenticated)");
@@ -255,9 +389,15 @@ public class McpCallbackServlet extends HttpServlet {
       }
 
       if (pac4jState == null || pac4jState.isEmpty()) {
-        LOG.warn("SSO callback without state parameter and no id_token");
-        response.sendError(
-            HttpServletResponse.SC_BAD_REQUEST, "Invalid MCP OAuth callback - missing state");
+        // The id_token may be in the URL fragment (e.g., Google/Azure implicit flow delivers
+        // the token as #id_token=... after an active-session shortcut). Fragments are
+        // client-side only — the server never receives them. Serve a tiny JS page that
+        // reads window.location.hash, extracts the id_token, and retries this endpoint as
+        // a query param so the server can process it via handleDirectIdTokenFlow().
+        LOG.info(
+            "MCP OAuth callback arrived with no state/id_token query params; "
+                + "serving fragment-extraction page to handle implicit-flow redirect");
+        serveFragmentExtractionPage(response);
         return;
       }
 
@@ -266,9 +406,7 @@ public class McpCallbackServlet extends HttpServlet {
         LOG.warn(
             "No pending auth request found for pac4j state (hash={})",
             Integer.toHexString(pac4jState.hashCode()));
-        response.sendError(
-            HttpServletResponse.SC_BAD_REQUEST,
-            "Invalid MCP OAuth callback - state not found or expired");
+        response.sendError(HttpServletResponse.SC_BAD_REQUEST, ERR_STATE_NOT_FOUND);
         return;
       }
 
@@ -460,6 +598,49 @@ public class McpCallbackServlet extends HttpServlet {
                 request, wrappedResponse, userName, email, "mcp:" + authRequestId));
 
     LOG.info("MCP OAuth direct ID token flow completed successfully");
+  }
+
+  /**
+   * Serves a minimal HTML page with JavaScript that extracts the {@code id_token} from the URL
+   * fragment ({@code window.location.hash}) and retries {@code /mcp/callback} with the token as a
+   * real query parameter. This is needed because SSO providers using the implicit or hybrid flow
+   * return the id_token in the URL fragment (e.g., {@code /mcp/callback#id_token=eyJ...}), which
+   * the server never receives — only client-side JavaScript can read {@code window.location.hash}.
+   */
+  private void serveFragmentExtractionPage(HttpServletResponse response) throws IOException {
+    response.setContentType("text/html;charset=UTF-8");
+    response.setStatus(HttpServletResponse.SC_OK);
+    // POST the token in the form body so it never appears in a URL, browser history,
+    // access logs, or Referer headers (cf. RFC 6819 §5.3.5).
+    response
+        .getWriter()
+        .write(
+            "<!DOCTYPE html><html><head>"
+                + "<meta charset=\"UTF-8\">"
+                + "<title>MCP OAuth – Completing authentication...</title>"
+                + "</head><body>"
+                + "<p>Completing authentication, please wait...</p>"
+                + "<script>"
+                + "try {"
+                + "  var hash = window.location.hash.slice(1);"
+                + "  var params = new URLSearchParams(hash);"
+                + "  var idToken = params.get('id_token');"
+                + "  if (idToken) {"
+                + "    var f = document.createElement('form');"
+                + "    f.method = 'POST';"
+                + "    f.action = window.location.pathname;"
+                + "    var i = document.createElement('input');"
+                + "    i.type = 'hidden'; i.name = 'id_token'; i.value = idToken;"
+                + "    f.appendChild(i);"
+                + "    document.body.appendChild(f);"
+                + "    f.submit();"
+                + "  } else {"
+                + "    document.body.textContent = 'MCP OAuth Error: Authentication failed — the SSO provider did not return an id_token. Please close this tab and retry.';"
+                + "  }"
+                + "} catch(e) {"
+                + "  document.body.textContent = 'MCP OAuth Error: Fragment extraction failed. Please retry.';"
+                + "}"
+                + "</script></body></html>");
   }
 
   private void processBufferedCallbackResponse(

@@ -60,6 +60,7 @@ import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.BindMethods;
 import org.jdbi.v3.sqlobject.customizer.Define;
+import org.jdbi.v3.sqlobject.statement.BatchChunkSize;
 import org.jdbi.v3.sqlobject.statement.SqlBatch;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
@@ -83,6 +84,7 @@ import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.auth.collate.SupportToken;
+import org.openmetadata.schema.configuration.AISettings;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
@@ -3636,7 +3638,7 @@ public interface CollectionDAO {
                 + "    SELECT te.type, te.taskStatus, te.id "
                 + "    FROM <tableName> te "
                 + "    WHERE MATCH(te.taskAssigneesIds) AGAINST (:userTeamJsonMysql IN BOOLEAN MODE) "
-                + ") AS combined WHERE combined.type is not NULL "
+                + ") AS combined WHERE combined.type is not NULL <domainCondition> "
                 + "GROUP BY combined.type, combined.taskStatus;",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
@@ -3670,7 +3672,7 @@ public interface CollectionDAO {
                 + "    SELECT te.type, te.taskStatus, te.id "
                 + "    FROM <tableName> te "
                 + "    WHERE to_tsvector('simple', taskAssigneesIds) @@ to_tsquery('simple', :userTeamJsonPostgres) "
-                + ") AS combined WHERE combined.type is not NULL "
+                + ") AS combined WHERE combined.type is not NULL <domainCondition> "
                 + "GROUP BY combined.type, combined.taskStatus;",
         connectionType = POSTGRES)
     @RegisterRowMapper(OwnerCountFieldMapper.class)
@@ -3680,7 +3682,8 @@ public interface CollectionDAO {
         @BindList("teamIds") List<String> teamIds,
         @Bind("username") String username,
         @Bind("userTeamJsonMysql") String userTeamJsonMysql,
-        @Bind("userTeamJsonPostgres") String userTeamJsonPostgres);
+        @Bind("userTeamJsonPostgres") String userTeamJsonPostgres,
+        @Define("domainCondition") String domainCondition);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -4408,6 +4411,35 @@ public interface CollectionDAO {
         value = "UPDATE task_entity SET json = (:json :: jsonb) WHERE id = :id",
         connectionType = POSTGRES)
     void updateTask(@Bind("id") String id, @Bind("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE task_entity SET json = JSON_SET(json, '$.aboutFqnHash', :newFqnHash) "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.aboutFqnHash')) = :oldFqnHash",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE task_entity SET json = jsonb_set(json, '{aboutFqnHash}', "
+                + "to_jsonb(:newFqnHash::text)) WHERE json->>'aboutFqnHash' = :oldFqnHash",
+        connectionType = POSTGRES)
+    int updateAboutFqnHash(
+        @Bind("oldFqnHash") String oldFqnHash, @Bind("newFqnHash") String newFqnHash);
+
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value =
+            "UPDATE task_entity SET json = JSON_SET(json, '$.aboutFqnHash', :newFqnHash) "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.aboutFqnHash')) = :oldFqnHash",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "UPDATE task_entity SET json = jsonb_set(json, '{aboutFqnHash}', "
+                + "to_jsonb(:newFqnHash::text)) WHERE json->>'aboutFqnHash' = :oldFqnHash",
+        connectionType = POSTGRES)
+    @BatchChunkSize(100)
+    int[] updateAboutFqnHashBatch(
+        @Bind("oldFqnHash") List<String> oldFqnHashes,
+        @Bind("newFqnHash") List<String> newFqnHashes);
 
     @Override
     default void update(UUID id, String fqn, String json) {
@@ -10661,6 +10693,7 @@ public interface CollectionDAO {
             case MCP_CONFIGURATION -> JsonUtils.readValue(json, MCPConfiguration.class);
             case GLOSSARY_TERM_RELATION_SETTINGS -> JsonUtils.readValue(
                 json, GlossaryTermRelationSettings.class);
+            case AI_SETTINGS -> JsonUtils.readValue(json, AISettings.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);
@@ -11416,6 +11449,34 @@ public interface CollectionDAO {
     default String getTimeSeriesTableName() {
       return "workflow_instance_time_series";
     }
+
+    /**
+     * Repoint the workflow-instance {@code relatedEntity} (the {@code entityLink} the history card
+     * filters by) for an entire moved subtree in one set-based statement: the moved term itself
+     * (exact {@code oldLink}) plus every descendant ({@code entityLink LIKE oldChildPrefix}). The
+     * stem swap rewrites {@code <#E::type::oldFqn} to {@code <#E::type::newFqn} for both. The
+     * {@code .}-suffixed prefix is collision-safe (a move of {@code a.b} never touches sibling
+     * {@code a.bc}), matching the existing {@code renameByToFQNPrefix} pattern.
+     */
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE workflow_instance_time_series "
+                + "SET json = JSON_SET(json, '$.variables.global_relatedEntity', "
+                + "REPLACE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.variables.global_relatedEntity')), :oldStem, :newStem)) "
+                + "WHERE entityLink = :oldLink OR entityLink LIKE :oldChildPrefix",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE workflow_instance_time_series "
+                + "SET json = jsonb_set(json, '{variables,global_relatedEntity}', "
+                + "to_jsonb(REPLACE(json->'variables'->>'global_relatedEntity', :oldStem, :newStem))) "
+                + "WHERE entityLink = :oldLink OR entityLink LIKE :oldChildPrefix",
+        connectionType = POSTGRES)
+    int repointRelatedEntitySubtree(
+        @Bind("oldLink") String oldLink,
+        @Bind("oldChildPrefix") String oldChildPrefix,
+        @Bind("oldStem") String oldStem,
+        @Bind("newStem") String newStem);
   }
 
   interface WorkflowInstanceStateTimeSeriesDAO extends EntityTimeSeriesDAO {
@@ -14728,13 +14789,16 @@ public interface CollectionDAO {
     int insert(@BindBean AuditLogRecord record);
 
     @SqlQuery(
-        "SELECT id, change_event_id, event_ts, event_type, user_name, "
-            + "actor_type, impersonated_by, service_name, "
-            + "entity_type, entity_id, entity_fqn, entity_fqn_hash, event_json, search_text, created_at "
-            + "FROM audit_log_event <condition> <orderClause> LIMIT :limit")
+        "SELECT a.id, a.change_event_id, a.event_ts, a.event_type, a.user_name, "
+            + "a.actor_type, a.impersonated_by, a.service_name, "
+            + "a.entity_type, a.entity_id, a.entity_fqn, a.entity_fqn_hash, a.event_json, a.search_text, a.created_at "
+            + "FROM audit_log_event a "
+            + "JOIN (SELECT id FROM audit_log_event <condition> <orderClause> LIMIT :limit) k "
+            + "ON a.id = k.id <orderClauseQualified>")
     List<AuditLogRecord> list(
         @Define("condition") String condition,
         @Define("orderClause") String orderClause,
+        @Define("orderClauseQualified") String orderClauseQualified,
         @Bind("userName") String userName,
         @Bind("actorType") String actorType,
         @Bind("serviceName") String serviceName,

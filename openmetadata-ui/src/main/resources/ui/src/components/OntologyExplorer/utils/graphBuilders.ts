@@ -120,7 +120,17 @@ export function convertRdfGraphToOntologyGraph(
     }
   });
 
-  const nodes: OntologyNode[] = rdfData.nodes.map((node) => {
+  // Dedupe by id: the paginated RDF graph endpoint can return the same node on
+  // more than one page (and serializes a node once per relationship it appears
+  // in), so a node id may repeat. G6 throws "Node already exists" when handed a
+  // duplicate id, so keep only the first occurrence — mirrors the edge dedupe
+  // below.
+  const nodesById = new Map<string, OntologyNode>();
+  rdfData.nodes.forEach((node) => {
+    if (nodesById.has(node.id)) {
+      return;
+    }
+
     // Prefer the explicit glossaryId from the RDF endpoint — it survives
     // glossary rename / display-name drift better than the FQN-prefix
     // heuristic. Fall back to looking up the glossary by `group` (display
@@ -152,7 +162,7 @@ export function convertRdfGraphToOntologyGraph(
       }
     }
 
-    return {
+    nodesById.set(node.id, {
       id: node.id,
       label: nodeLabel,
       type: node.type || 'glossaryTerm',
@@ -160,11 +170,20 @@ export function convertRdfGraphToOntologyGraph(
       description: node.description,
       glossaryId,
       group: node.group,
-    };
+    });
   });
+  const nodes: OntologyNode[] = Array.from(nodesById.values());
 
   const edgeMap = new Map<string, OntologyEdge>();
   rdfData.edges.forEach((edge) => {
+    // Drop dangling edges: the RDF graph endpoint can reference nodes that
+    // aren't in this node set (cross-glossary relations, or endpoints not
+    // returned by pagination). G6 throws "Node not found" when an edge points
+    // at a missing node, so keep only edges whose endpoints both exist —
+    // mirrors the validEdges filter in buildGraphFromAllTerms.
+    if (!nodesById.has(edge.from) || !nodesById.has(edge.to)) {
+      return;
+    }
     const relationType = edge.relationType || 'relatedTo';
     const edgeKey = `${[edge.from, edge.to].sort().join('-')}|${relationType}`;
     if (!edgeMap.has(edgeKey)) {

@@ -80,7 +80,7 @@ export const Warning: Story = {
   args: { position: 'bottom-center' },
   render: (args) => {
     useEffect(() => {
-      toast.warning('You have unsaved changes.', { timeout: 0 });
+      toast.warning('You have unsaved changes.', { autoDismiss: false });
     }, []);
 
     return <ToastProvider {...args} />;
@@ -105,7 +105,7 @@ export const Stacked: Story = {
   render: (args) => {
     useEffect(() => {
       toast.success('Dashboard created successfully!', { timeout: 0 });
-      toast.warning('You have unsaved changes.', { timeout: 0 });
+      toast.warning('You have unsaved changes.', { autoDismiss: false });
       toast.error('Failed to connect to the data source.', { timeout: 0 });
     }, []);
 

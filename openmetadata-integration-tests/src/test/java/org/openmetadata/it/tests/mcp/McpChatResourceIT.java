@@ -16,9 +16,6 @@ import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.schema.configuration.LLMBedrockConfig;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LLMProvider;
-import org.openmetadata.schema.entity.app.App;
-import org.openmetadata.schema.entity.app.CreateApp;
-import org.openmetadata.schema.entity.app.internal.McpChatAppConfig;
 import org.openmetadata.schema.entity.chat.McpConversation;
 import org.openmetadata.schema.security.credentials.AWSBaseConfig;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -31,33 +28,30 @@ public class McpChatResourceIT extends McpTestBase {
   @BeforeAll
   static void setUp() throws Exception {
     initAuth();
-    ensureMcpChatAppInstalled();
+    ensureMcpChatEnabled();
   }
 
-  private static void ensureMcpChatAppInstalled() throws Exception {
-    HttpResponse<String> response = getResponse("apps/name/McpChatApplication", authToken);
-    if (response.statusCode() == 200) {
-      return;
-    }
-    Map<String, Object> appConfig = new HashMap<>();
-    appConfig.put("systemPrompt", "Test prompt");
+  private static void ensureMcpChatEnabled() throws Exception {
+    Map<String, Object> mcpChat = new HashMap<>();
+    mcpChat.put("enabled", true);
+    mcpChat.put("systemPrompt", "Test prompt");
+    Map<String, Object> aiSettings = new HashMap<>();
+    aiSettings.put("enabled", true);
+    aiSettings.put("mcpChat", mcpChat);
+    Map<String, Object> settings = new HashMap<>();
+    settings.put("config_type", "aiSettings");
+    settings.put("config_value", aiSettings);
 
-    CreateApp createApp =
-        new CreateApp().withName("McpChatApplication").withAppConfiguration(appConfig);
-    post("apps", createApp, App.class);
+    put("system/settings", settings, Object.class);
   }
 
   @Test
-  void testAppConfigDeserialization() throws Exception {
-    App app = get("apps/name/McpChatApplication", App.class);
+  void testMcpChatEnabledInSettings() throws Exception {
+    JsonNode settings = get("system/settings/aiSettings", JsonNode.class);
+    JsonNode mcpChat = settings.get("config_value").get("mcpChat");
 
-    assertThat(app).isNotNull();
-    assertThat(app.getName()).isEqualTo("McpChatApplication");
-    assertThat(app.getAppConfiguration()).isNotNull();
-
-    McpChatAppConfig config =
-        JsonUtils.convertValue(app.getAppConfiguration(), McpChatAppConfig.class);
-    assertThat(config.getSystemPrompt()).isEqualTo("Test prompt");
+    assertThat(mcpChat.get("enabled").asBoolean()).isTrue();
+    assertThat(mcpChat.get("systemPrompt").asText()).isEqualTo("Test prompt");
   }
 
   @Test

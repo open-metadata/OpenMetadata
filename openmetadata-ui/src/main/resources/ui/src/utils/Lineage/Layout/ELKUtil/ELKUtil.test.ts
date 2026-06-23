@@ -381,16 +381,19 @@ describe('ELKLayout', () => {
     ).toBe('280');
   });
 
-  it('uses crossing-minimized node placement strategy', () => {
+  it('uses brandes-koepf node placement with balanced alignment', () => {
     expect(ELKLayout.layoutOptions['elk.layered.nodePlacement.strategy']).toBe(
       'BRANDES_KOEPF'
     );
     expect(
       ELKLayout.layoutOptions['elk.layered.crossingMinimization.strategy']
     ).toBe('LAYER_SWEEP');
+    expect(
+      ELKLayout.layoutOptions['elk.layered.nodePlacement.bk.fixedAlignment']
+    ).toBe('BALANCED');
   });
 
-  it('keeps partitioning disabled for stable scene spacing', () => {
+  it('does not activate partitioning so ELK derives layers from edges', () => {
     expect(ELKLayout.layoutOptions['elk.partitioning.activate']).toBe('false');
   });
 });
