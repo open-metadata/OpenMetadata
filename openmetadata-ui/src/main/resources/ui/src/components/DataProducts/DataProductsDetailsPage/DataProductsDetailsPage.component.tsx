@@ -18,7 +18,6 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, toLower, toString } from 'lodash';
-import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -142,7 +141,6 @@ const DataProductsDetailsPage = ({
   onUpdateVote,
 }: DataProductsDetailsPageProps) => {
   const { t } = useTranslation();
-  const { enqueueSnackbar } = useSnackbar();
   const navigate = useNavigate();
   const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const location = useLocation();
@@ -230,10 +228,7 @@ const DataProductsDetailsPage = ({
         setActiveAnnouncement(announcements.data[0]);
       }
     } catch (error) {
-      showNotistackError(enqueueSnackbar, error as AxiosError, undefined, {
-        vertical: 'top',
-        horizontal: 'center',
-      });
+      showNotistackError(error as AxiosError);
     }
   };
 
@@ -383,12 +378,10 @@ const DataProductsDetailsPage = ({
       } catch (error) {
         setAssetCount(0);
         showNotistackError(
-          enqueueSnackbar,
           error as AxiosError,
           t('server.entity-fetch-error', {
             entity: t('label.asset-plural-lowercase'),
-          }),
-          { vertical: 'top', horizontal: 'center' }
+          })
         );
       }
     }
@@ -402,12 +395,9 @@ const DataProductsDetailsPage = ({
       );
       setDataProductPermission(response);
     } catch (error) {
-      showNotistackError(enqueueSnackbar, error as AxiosError, undefined, {
-        vertical: 'top',
-        horizontal: 'center',
-      });
+      showNotistackError(error as AxiosError);
     }
-  }, [dataProduct, enqueueSnackbar]);
+  }, [dataProduct]);
 
   const fetchPortCounts = useCallback(async () => {
     try {
@@ -423,12 +413,9 @@ const DataProductsDetailsPage = ({
       setInputPortsCount(data.inputPorts.paging.total);
       setOutputPortsCount(data.outputPorts.paging.total);
     } catch (error) {
-      showNotistackError(enqueueSnackbar, error as AxiosError, undefined, {
-        vertical: 'top',
-        horizontal: 'center',
-      });
+      showNotistackError(error as AxiosError);
     }
-  }, [dataProduct.fullyQualifiedName, enqueueSnackbar]);
+  }, [dataProduct.fullyQualifiedName]);
 
   const manageButtonContent: ItemType[] = [
     ...(editAllPermission
