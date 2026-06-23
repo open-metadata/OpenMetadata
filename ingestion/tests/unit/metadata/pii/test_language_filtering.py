@@ -122,11 +122,8 @@ class TestScoreTagsForColumnServiceLanguage:
             "metadata.pii.algorithms.tag_scoring.TagAnalyzer"
         ) as mock_tag_analyzer_class:
             mock_analyzer_instance = Mock()
-            mock_analyzer_instance.analyze_content.return_value = TagAnalysis(
+            mock_analyzer_instance.analyze.return_value = TagAnalysis(
                 tag=sample_tag, score=0.5, explanation="test"
-            )
-            mock_analyzer_instance.analyze_column.return_value = TagAnalysis(
-                tag=sample_tag, score=0.3, explanation="test"
             )
             mock_analyzer_instance.tag = sample_tag
             mock_tag_analyzer_class.return_value = mock_analyzer_instance
@@ -351,7 +348,9 @@ class TestAnyLanguageRecognizerPassthrough:
             ],
         )
 
-    def test_any_language_recognizer_included_when_agent_is_en(self, any_language_tag, sample_column, mock_nlp_engine):
+    def test_any_language_recognizer_included_when_agent_is_en(
+        self, any_language_tag, sample_column, mock_nlp_engine
+    ):
         analyzer = TagAnalyzer(
             tag=any_language_tag,
             column=sample_column,
@@ -364,7 +363,9 @@ class TestAnyLanguageRecognizerPassthrough:
         assert len(recognizers) == 1
         assert recognizers[0].supported_language == ClassificationLanguage.any.value
 
-    def test_any_language_recognizer_included_when_agent_is_any(self, any_language_tag, sample_column, mock_nlp_engine):
+    def test_any_language_recognizer_included_when_agent_is_any(
+        self, any_language_tag, sample_column, mock_nlp_engine
+    ):
         analyzer = TagAnalyzer(
             tag=any_language_tag,
             column=sample_column,
