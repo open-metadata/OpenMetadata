@@ -65,17 +65,23 @@ public final class OpenAICompletionClient extends LLMCompletionClient {
   }
 
   @Override
-  protected String doComplete(String systemPrompt, String userPrompt) {
-    String result;
+  protected CompletionResult doComplete(
+      String systemPrompt, String userPrompt, CompletionOptions options) {
+    String model = options.modelIdOr(this.modelId);
+    int tokens = options.maxTokensOr(this.maxTokens);
+    double temp = options.temperatureOr(this.temperature);
+    int timeout = options.timeoutSecondsOr(this.timeoutSeconds);
+    CompletionResult result;
     try {
-      HttpRequest request = buildRequest(buildRequestBody(systemPrompt, userPrompt));
+      HttpRequest request =
+          buildRequest(buildRequestBody(systemPrompt, userPrompt, model, tokens, temp), timeout);
       HttpResponse<String> response =
           httpClient.send(request, HttpResponse.BodyHandlers.ofString());
       if (response.statusCode() != 200) {
         throw new LLMCompletionException(
             "OpenAI API returned status " + response.statusCode() + ": " + response.body());
       }
-      result = parseContent(response.body());
+      result = parseResult(response.body());
     } catch (IOException e) {
       throw new LLMCompletionException("OpenAI completion failed due to IO error", e);
     } catch (InterruptedException e) {
@@ -85,7 +91,7 @@ public final class OpenAICompletionClient extends LLMCompletionClient {
     return result;
   }
 
-  private HttpRequest buildRequest(String body) {
+  private HttpRequest buildRequest(String body, int timeoutSeconds) {
     HttpRequest.Builder builder =
         HttpRequest.newBuilder()
             .uri(URI.create(endpoint))
@@ -100,11 +106,12 @@ public final class OpenAICompletionClient extends LLMCompletionClient {
     return builder.build();
   }
 
-  private String buildRequestBody(String systemPrompt, String userPrompt) {
+  static String buildRequestBody(
+      String systemPrompt, String userPrompt, String model, int maxTokens, double temperature) {
     String result;
     try {
       ObjectNode payload = MAPPER.createObjectNode();
-      payload.put("model", modelId);
+      payload.put("model", model);
       payload.put("temperature", temperature);
       payload.put("max_tokens", maxTokens);
       ArrayNode messages = payload.putArray("messages");
@@ -117,15 +124,20 @@ public final class OpenAICompletionClient extends LLMCompletionClient {
     return result;
   }
 
-  static String parseContent(String responseBody) {
-    String result;
+  static CompletionResult parseResult(String responseBody) {
+    CompletionResult result;
     try {
-      JsonNode content =
-          MAPPER.readTree(responseBody).path("choices").path(0).path("message").path("content");
+      JsonNode root = MAPPER.readTree(responseBody);
+      JsonNode content = root.path("choices").path(0).path("message").path("content");
       if (!content.isTextual()) {
         throw new LLMCompletionException("Invalid OpenAI response: no message content returned");
       }
-      result = content.asText();
+      JsonNode usage = root.path("usage");
+      result =
+          new CompletionResult(
+              content.asText(),
+              usage.path("prompt_tokens").asInt(0),
+              usage.path("completion_tokens").asInt(0));
     } catch (IOException e) {
       throw new LLMCompletionException("Failed to parse OpenAI response", e);
     }

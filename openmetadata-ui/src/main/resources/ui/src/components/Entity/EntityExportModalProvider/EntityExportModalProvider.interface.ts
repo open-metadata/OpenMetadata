@@ -58,6 +58,12 @@ export type ExportData = {
   viewport?: ExportViewport;
   exportConfig?: Partial<PDFLayoutConfig>;
   hideExportModal?: boolean;
+  renderEdgesOverlay?: (
+    imageWidth: number,
+    imageHeight: number,
+    padding: number,
+    pixelRatio: number
+  ) => HTMLCanvasElement | null;
   onExport: (
     name: string,
     params?: {

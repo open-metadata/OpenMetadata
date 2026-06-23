@@ -1,0 +1,10 @@
+{
+  "name": "McpApplicationBot",
+  "allowImpersonation": true,
+  "roles": [
+    {
+      "name": "ApplicationBotImpersonationRole",
+      "type": "role"
+    }
+  ]
+}

@@ -164,7 +164,7 @@ jest.mock('../../PageLayoutV1/PageLayoutV1', () => {
 
 jest.mock('../../../utils/TableTags/TableTags.utils', () => ({
   getAllTags: jest.fn().mockReturnValue([]),
-  searchTagInData: jest.fn().mockReturnValue([]),
+  getFilteredTagsData: jest.fn((data) => data),
   getFilterTags: jest.fn().mockReturnValue([]),
 }));
 
@@ -213,9 +213,12 @@ jest.mock(
   })
 );
 
-jest.mock('../../../utils/TableUtils', () => ({
+jest.mock('../../../utils/TablePureUtils', () => ({
   getTagsWithoutTier: jest.fn().mockReturnValue([]),
   getTierTags: jest.fn().mockReturnValue([]),
+}));
+
+jest.mock('../../../utils/TableUtils', () => ({
   getTableExpandableConfig: jest.fn().mockReturnValue({}),
 }));
 

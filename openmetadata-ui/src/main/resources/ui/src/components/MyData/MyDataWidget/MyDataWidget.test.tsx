@@ -123,7 +123,7 @@ describe('MyDataWidget component', () => {
       },
       sortField: 'updatedAt',
       sortOrder: 'desc',
-      searchIndex: SearchIndex.ALL,
+      searchIndex: SearchIndex.DATA_ASSET,
     });
   });
 

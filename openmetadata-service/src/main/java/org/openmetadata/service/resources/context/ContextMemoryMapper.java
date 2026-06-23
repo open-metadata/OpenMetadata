@@ -41,6 +41,7 @@ public class ContextMemoryMapper implements EntityMapper<ContextMemory, CreateCo
         .withRootMemory(create.getRootMemory())
         .withParentMemory(create.getParentMemory())
         .withMachineRepresentation(create.getMachineRepresentation())
-        .withSourceFile(create.getSourceFile());
+        .withSourceFile(create.getSourceFile())
+        .withSourceEntity(create.getSourceEntity());
   }
 }

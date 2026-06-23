@@ -29,14 +29,18 @@ jest.mock('../../../../utils/EntityNameUtils', () => ({
 }));
 jest.mock('../../../../utils/TableTags/TableTags.utils', () => ({
   getAllTags: jest.fn(() => []),
-  searchTagInData: jest.fn(() => true),
+  getFilteredTagsData: jest.fn((data) => data),
 }));
-jest.mock('../../../../utils/TableUtils', () => ({
-  ...jest.requireActual('../../../../utils/TableUtils'),
+jest.mock('../../../../utils/TablePureUtils', () => ({
+  ...jest.requireActual('../../../../utils/TablePureUtils'),
   pruneEmptyChildren: jest.fn().mockImplementation((columns) => columns),
-  prepareConstraintIcon: jest.fn(() => null),
   updateFieldDescription: jest.fn(),
   updateFieldTags: jest.fn(),
+}));
+
+jest.mock('../../../../utils/TableUtils', () => ({
+  ...jest.requireActual('../../../../utils/TableUtils'),
+  prepareConstraintIcon: jest.fn(() => null),
   getTableExpandableConfig: jest.fn(() => ({})),
 }));
 jest.mock(
