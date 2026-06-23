@@ -55,6 +55,10 @@ export interface Page {
      */
     entityStatus?: EntityStatus;
     /**
+     * Statistics from the most recent knowledge-pill extraction run on this page's body.
+     */
+    extractionStats?: ExtractionStats;
+    /**
      * Followers of this Knowledge Page.
      */
     followers?: EntityReference[];
@@ -75,6 +79,10 @@ export interface Page {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * Number of knowledge pills (context memories) extracted from this page.
+     */
+    memoryCount?: number;
+    /**
      * Name of Knowledge Page belongs to
      */
     name: string;
@@ -94,6 +102,14 @@ export interface Page {
      * Parent of this Knowledege Center.
      */
     parent?: EntityReference;
+    /**
+     * Error message from the most recent failed knowledge-pill extraction run, if any.
+     */
+    processingError?: string;
+    /**
+     * Status of the most recent knowledge-pill extraction run on this article's body.
+     */
+    processingStatus?: PageProcessingStatus;
     /**
      * Related Entities for the Knowledge Page
      */
@@ -330,6 +346,35 @@ export enum EntityStatus {
 }
 
 /**
+ * Statistics from the most recent knowledge-pill extraction run on this page's body.
+ *
+ * Statistics from the most recent knowledge-pill extraction run.
+ */
+export interface ExtractionStats {
+    /**
+     * Number of chunks the LLM successfully processed.
+     */
+    chunksProcessed?: number;
+    /**
+     * Number of chunks the document text splits into.
+     */
+    chunksTotal?: number;
+    /**
+     * Time of the last extraction run in Unix epoch time milliseconds.
+     */
+    lastExtractedAt?: number;
+    /**
+     * Number of knowledge pills persisted by the run.
+     */
+    pillsCreated?: number;
+    /**
+     * Hash of the source content used for the most recent extraction. Lets the processing
+     * engine skip re-extraction when the content is unchanged.
+     */
+    sourceHash?: string;
+}
+
+/**
  * Knowledge Page Schema
  *
  * Article Knowledge Page
@@ -357,6 +402,19 @@ export interface Article {
 export enum PageType {
     Article = "Article",
     QuickLink = "QuickLink",
+}
+
+/**
+ * Status of the most recent knowledge-pill extraction run on this article's body.
+ *
+ * Status of the asynchronous knowledge-pill extraction for an article's body. Distinct from
+ * the governance entityStatus.
+ */
+export enum PageProcessingStatus {
+    Failed = "Failed",
+    Processed = "Processed",
+    Processing = "Processing",
+    Queued = "Queued",
 }
 
 /**

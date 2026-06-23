@@ -173,7 +173,7 @@ const CoreOneOfField = (props: FieldProps) => {
           return (
             <RadioButton
               className={(renderProps) =>
-                `tw:flex-1 tw:min-w-[140px] tw:bg-white tw:rounded-xl tw:border tw:px-4 tw:py-3 tw:transition-colors ${
+                `tw:flex-1 tw:min-w-[140px] tw:bg-primary tw:rounded-xl tw:border tw:px-4 tw:py-3 tw:transition-colors ${
                   renderProps.isSelected
                     ? 'tw:border-primary'
                     : 'tw:border-secondary hover:tw:border-brand-300'

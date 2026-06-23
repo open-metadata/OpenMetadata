@@ -1028,5 +1028,55 @@ test.describe(
         await expect(page).toHaveURL(/\/explore/);
       });
     });
+
+    test('Test Cases list filter — Data Product', async ({ page }) => {
+      const dataProductDisplayName =
+        dataProduct.responseData.displayName ?? dataProduct.data.displayName;
+
+      await test.step('Navigate to DQ Test Cases tab', async () => {
+        await page.goto('/data-quality/test-cases');
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Add Data Product advanced filter', async () => {
+        const dataProductOptionsRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataProduct*'
+        );
+        await page.click('[data-testid="advanced-filter"]');
+        await page.click('[value="dataProductFqn"]');
+        await dataProductOptionsRes;
+
+        await expect(
+          page.getByTestId('data-product-select-filter')
+        ).toBeVisible();
+      });
+
+      await test.step('Select data product and verify API carries dataProductFqn', async () => {
+        await page.click('#dataProductFqn');
+        const filterApiRes = page.waitForResponse(
+          (r) =>
+            r.url().includes('/api/v1/dataQuality/testCases/search/list') &&
+            r.url().includes('dataProductFqn')
+        );
+        await page
+          .locator('.ant-select-dropdown:not(.ant-select-dropdown-hidden)')
+          .getByText(dataProductDisplayName)
+          .click();
+        await filterApiRes;
+      });
+
+      await test.step('Remove Data Product filter', async () => {
+        const getTestCases = page.waitForResponse(
+          '/api/v1/dataQuality/testCases/search/list?*'
+        );
+        await page.click('[data-testid="advanced-filter"]');
+        await page.click('[value="dataProductFqn"]');
+        await getTestCases;
+
+        await expect(
+          page.getByTestId('data-product-select-filter')
+        ).not.toBeVisible();
+      });
+    });
   }
 );

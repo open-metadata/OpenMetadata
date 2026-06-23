@@ -45,6 +45,7 @@ export const HOVER_CHART_OPACITY = 0.3;
 export const LOGGED_IN_USER_STORAGE_KEY = 'loggedInUsers';
 export const DOMAIN_STORAGE_KEY = 'om_domains';
 export const DEFAULT_DOMAIN_VALUE = 'All Domains';
+export const DOMAIN_ONLY_ACCESS_ROLE = 'DomainOnlyAccessRole';
 export const REFRESH_TOKEN_KEY = 'refreshToken';
 
 export const USER_DATA_SIZE = 5;

@@ -16,6 +16,7 @@ import { ChevronRight } from '@untitledui/icons';
 import { ReactComponent as ColumnIcon } from '../../assets/svg/ic-column.svg';
 import { ReactComponent as TableIcon } from '../../assets/svg/ic-table-new.svg';
 import { CondensedBreadcrumb } from '../../components/CondensedBreadcrumb/CondensedBreadcrumb.component';
+import { NodeData } from '../../components/Lineage/Lineage.interface';
 import { EImpactLevel } from '../../components/LineageTable/LineageTable.interface';
 import i18n from '../i18next/LocalUtil';
 

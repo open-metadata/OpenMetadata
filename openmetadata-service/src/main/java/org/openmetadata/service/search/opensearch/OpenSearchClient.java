@@ -391,6 +391,9 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
     if (lineageGraphBuilder == null) {
+      initializeLineageBuilders();
+    }
+    if (lineageGraphBuilder == null) {
       throw new UnsupportedOperationException(
           "Lineage features are not available in this deployment");
     }
@@ -470,8 +473,14 @@ public class OpenSearchClient implements SearchClient {
 
   @Override
   public Response searchDataQualityLineage(
-      String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException {
-    return searchManager.searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted);
+      String fqn,
+      int upstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      SubjectContext subjectContext)
+      throws IOException {
+    return searchManager.searchDataQualityLineage(
+        fqn, upstreamDepth, queryFilter, deleted, subjectContext);
   }
 
   @Override

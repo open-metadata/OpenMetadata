@@ -989,6 +989,69 @@
           }
         }
       }
+    },
+    {
+      "name": "create_context_memory",
+      "description": "Creates a reusable Context Center memory in OpenMetadata — a piece of knowledge the assistant should retain across conversations (e.g. a team preference, a recurring instruction, a runbook step, or an answer to a frequently asked question). Memories created here are recorded as an explicit 'remember this' request and, when the Memory Agent is enabled, may be used to derive glossary terms and metrics. Use this when the user explicitly asks you to remember, note, or store something for later reuse.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Stable, unique system name for the memory. Reusing an existing name updates that memory instead of creating a new one."
+          },
+          "question": {
+            "type": "string",
+            "description": "The canonical question or instruction this memory represents (e.g. 'Which warehouse should finance dashboards query?')."
+          },
+          "answer": {
+            "type": "string",
+            "description": "The canonical answer or guidance to retain (e.g. 'Always query the FINANCE_PROD warehouse for finance dashboards')."
+          },
+          "title": {
+            "type": "string",
+            "description": "Short human-readable title shown in the Context Center."
+          },
+          "summary": {
+            "type": "string",
+            "description": "Optional one-line summary of the memory."
+          },
+          "description": {
+            "type": "string",
+            "description": "Optional longer description in Markdown format."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable display name for the memory."
+          },
+          "memoryType": {
+            "type": "string",
+            "description": "Category of the memory. Defaults to 'Note' when omitted.",
+            "enum": ["Preference", "UseCase", "Note", "Runbook", "Faq"]
+          },
+          "memoryScope": {
+            "type": "string",
+            "description": "Scope at which the memory applies. 'UserGlobal' applies broadly; 'EntityScoped' ties it to a specific entity.",
+            "enum": ["UserGlobal", "EntityScoped"]
+          },
+          "owners": {
+            "type": "array",
+            "description": "List of OpenMetadata usernames or team names to set as owners of this memory.",
+            "items": { "type": "string" }
+          },
+          "tags": {
+            "type": "array",
+            "description": "Tag FQNs to apply to this memory (e.g. 'Tier.Tier1', 'PII.Sensitive').",
+            "items": { "type": "string" }
+          },
+          "domains": {
+            "type": "array",
+            "description": "Fully qualified names of the domains this memory belongs to (e.g. 'Finance', 'Marketing').",
+            "items": { "type": "string" }
+          }
+        },
+        "required": ["name", "question", "answer"]
+      }
     }
   ]
 }

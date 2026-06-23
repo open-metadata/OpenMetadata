@@ -94,7 +94,7 @@ export const useDataProductListingData = (): ListingData<DataProduct> => {
               </Typography>
               {showName && (
                 <Typography
-                  className="tw:leading-4 tw:text-gray-700"
+                  className="tw:leading-4 tw:text-secondary"
                   size="text-xs">
                   {entity.name}
                 </Typography>
