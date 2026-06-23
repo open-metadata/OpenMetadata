@@ -496,7 +496,15 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
           authorizationHandler.handle(params).join();
 
       String redirectUrl = authResponse.getRedirectUrl();
-      if (redirectUrl != null) {
+      if (redirectUrl != null && response.isCommitted()) {
+        // The SSO provider (active-session shortcut) already committed the response with a
+        // redirect to /mcp/callback. Any error redirect URL produced by AuthorizationHandler
+        // cannot be sent — the browser is already navigating away. Log and bail out.
+        LOG.warn(
+            "Cannot send MCP OAuth redirect — response already committed by SSO provider. "
+                + "Redirect target (sanitized): {}",
+            sanitizeRedirectUrlForLogging(redirectUrl));
+      } else if (redirectUrl != null) {
         response.setHeader("Location", redirectUrl);
         response.setHeader("Cache-Control", "no-store");
         setCorsHeaders(request, response);
@@ -973,5 +981,13 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     body.put("error", error);
     body.put("error_description", description);
     getObjectMapper().writeValue(response.getOutputStream(), body);
+  }
+
+  private static String sanitizeRedirectUrlForLogging(String url) {
+    if (url == null) {
+      return "null";
+    }
+    int qIdx = url.indexOf('?');
+    return qIdx >= 0 ? url.substring(0, qIdx) + "?[params_redacted]" : url;
   }
 }

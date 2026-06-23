@@ -473,8 +473,14 @@ public class OpenSearchClient implements SearchClient {
 
   @Override
   public Response searchDataQualityLineage(
-      String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException {
-    return searchManager.searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted);
+      String fqn,
+      int upstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      SubjectContext subjectContext)
+      throws IOException {
+    return searchManager.searchDataQualityLineage(
+        fqn, upstreamDepth, queryFilter, deleted, subjectContext);
   }
 
   @Override

@@ -21,6 +21,7 @@ export interface MockOidcConfig {
   refreshTokenEnabled?: boolean;
   forceInteractionRequired?: boolean;
   tokenEndpointError?: { errorCode: string; httpStatus: number } | null;
+  defaultLoginAccount?: string;
 }
 
 export interface MockOidcState {
@@ -29,6 +30,7 @@ export interface MockOidcState {
   forceInteractionRequired: boolean;
   refreshTokenEnabled: boolean;
   tokenEndpointError: { errorCode: string; httpStatus: number } | null;
+  defaultLoginAccount: string;
 }
 
 export interface MockOidcMetrics {
@@ -108,6 +110,13 @@ export const setTokenEndpointError = async (
   });
 };
 
+export const setDefaultLoginAccount = async (
+  request: APIRequestContext,
+  accountId: string
+): Promise<MockOidcState> => {
+  return configureMockOidc(request, { defaultLoginAccount: accountId });
+};
+
 export const getMetrics = async (
   request: APIRequestContext
 ): Promise<MockOidcMetrics> => {
@@ -126,3 +135,10 @@ export const MOCK_OIDC_CLIENT_ID = 'openmetadata-test';
 export const MOCK_OIDC_CLIENT_SECRET = 'openmetadata-test-secret';
 export const MOCK_OIDC_PUBLIC_CLIENT_ID = 'openmetadata-test-public';
 export const MOCK_OIDC_DISCOVERY_URL = `${MOCK_OIDC_BASE_URL}/.well-known/openid-configuration`;
+
+// Seeded mock account whose sub differs from the email local-part — used to
+// verify OIDC self-signup persists the mapped email claim (issue #29189).
+export const MOCK_OIDC_MAPPED_CLAIM_ACCOUNT = {
+  sub: 'claim-user',
+  email: 'claim.user.mapped@open-metadata.org',
+};
