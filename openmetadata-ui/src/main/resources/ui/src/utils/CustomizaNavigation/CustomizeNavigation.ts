@@ -132,36 +132,87 @@ const convertSidebarItemToTreeNode = (
   })),
 });
 
-const mapSidebarItemWithNavigation = (
-  sidebarItem: LeftSidebarItem,
-  navigationMap: Map<string, NavigationItem>
-): TreeDataNode & { isHidden?: boolean } => {
-  const navItem = navigationMap.get(sidebarItem.key);
+const collectNavigationKeys = (
+  navigationItems: NavigationItem[]
+): Set<string> => {
+  const keys = new Set<string>();
 
-  if (!navItem) {
-    return {
-      title: sidebarItem.title,
-      key: sidebarItem.key,
-      icon: sidebarItem.icon as TreeDataNode['icon'],
-      isHidden: true,
-    };
+  navigationItems.forEach((item) => {
+    keys.add(item.id);
+    item.children?.forEach((child) => keys.add(child.id));
+  });
+
+  return keys;
+};
+
+const convertNavigationChildToTreeNode = (
+  navChild: NavigationItem,
+  sidebarMap: Map<string, LeftSidebarItem>
+): TreeDataNode | null => {
+  const sidebarChild = sidebarMap.get(navChild.id);
+
+  return sidebarChild
+    ? {
+        title: navChild.title,
+        key: navChild.id,
+        icon: sidebarChild.icon as TreeDataNode['icon'],
+      }
+    : null;
+};
+
+const buildChildrenForSavedItem = (
+  navItem: NavigationItem,
+  sidebarItem: LeftSidebarItem | undefined,
+  sidebarMap: Map<string, LeftSidebarItem>,
+  savedKeys: Set<string>
+): TreeDataNode[] | undefined => {
+  const defaultChildren = sidebarItem?.children ?? [];
+
+  if (isEmpty(navItem.children) && isEmpty(defaultChildren)) {
+    return undefined;
   }
+
+  const savedChildNodes = (navItem.children ?? [])
+    .map((child) => convertNavigationChildToTreeNode(child, sidebarMap))
+    .filter((node): node is TreeDataNode => node !== null);
+
+  const newDefaultChildNodes = defaultChildren
+    .filter((child) => !savedKeys.has(child.key))
+    .map((child) => ({
+      title: child.title,
+      key: child.key,
+      icon: child.icon as TreeDataNode['icon'],
+    }));
+
+  return [...savedChildNodes, ...newDefaultChildNodes];
+};
+
+const buildTreeNodeFromSavedItem = (
+  navItem: NavigationItem,
+  sidebarMap: Map<string, LeftSidebarItem>,
+  savedKeys: Set<string>
+): TreeDataNode => {
+  const sidebarItem = sidebarMap.get(navItem.id);
 
   return {
     title: navItem.title,
     key: navItem.id,
-    icon: sidebarItem.icon as TreeDataNode['icon'],
-    children: sidebarItem.children?.map((child) => {
-      const navChild = navigationMap.get(child.key);
-
-      return {
-        title: navChild?.title ?? child.title,
-        key: navChild?.id ?? child.key,
-        icon: child.icon as TreeDataNode['icon'],
-      };
-    }),
+    icon: sidebarItem?.icon as TreeDataNode['icon'],
+    children: buildChildrenForSavedItem(
+      navItem,
+      sidebarItem,
+      sidebarMap,
+      savedKeys
+    ),
   };
 };
+
+const convertNewDefaultItemToTreeNode = (
+  sidebarItem: LeftSidebarItem
+): TreeDataNode & { isHidden?: boolean } => ({
+  ...convertSidebarItemToTreeNode(sidebarItem),
+  isHidden: true,
+});
 
 export const getTreeDataForNavigationItems = (
   navigationItems: NavigationItem[] | null,
@@ -173,41 +224,36 @@ export const getTreeDataForNavigationItems = (
     return sidebarItemsWithPlugins.map(convertSidebarItemToTreeNode);
   }
 
-  const navigationMap = createNavigationMap(navigationItems);
+  const sidebarMap = createSidebarMap(sidebarItemsWithPlugins);
+  const savedKeys = collectNavigationKeys(navigationItems);
 
-  return sidebarItemsWithPlugins.map((sidebarItem) =>
-    mapSidebarItemWithNavigation(sidebarItem, navigationMap)
-  );
-};
-
-const collectHiddenKeys = (
-  item: LeftSidebarItem,
-  navigationMap: Map<string, NavigationItem> | null
-): string[] => {
-  const keys: string[] = [];
-  const navItem = navigationMap?.get(item.key);
-
-  if (navigationMap && (!navItem || navItem.isHidden)) {
-    keys.push(item.key);
-
-    return keys;
-  }
-
-  if (navItem && item.children) {
-    const savedChildMap = new Map(
-      navItem.children?.map((c) => [c.id, c]) ?? []
+  const savedNodes = navigationItems
+    .filter((navItem) => sidebarMap.has(navItem.id))
+    .map((navItem) =>
+      buildTreeNodeFromSavedItem(navItem, sidebarMap, savedKeys)
     );
 
-    item.children.forEach((child) => {
-      const navChild = savedChildMap.get(child.key);
+  const newDefaultNodes = sidebarItemsWithPlugins
+    .filter((sidebarItem) => !savedKeys.has(sidebarItem.key))
+    .map(convertNewDefaultItemToTreeNode);
 
-      if (!navChild || navChild.isHidden) {
-        keys.push(child.key);
-      }
-    });
-  }
+  return [...savedNodes, ...newDefaultNodes];
+};
+
+const collectSidebarKeys = (sidebarItem: LeftSidebarItem): string[] => {
+  const keys = [sidebarItem.key];
+  sidebarItem.children?.forEach((child) => keys.push(child.key));
 
   return keys;
+};
+
+const isNavigationItemHidden = (
+  key: string,
+  navigationMap: Map<string, NavigationItem>
+): boolean => {
+  const navItem = navigationMap.get(key);
+
+  return !navItem || Boolean(navItem.isHidden);
 };
 
 export const getHiddenKeysFromNavigationItems = (
@@ -215,14 +261,16 @@ export const getHiddenKeysFromNavigationItems = (
   plugins?: AppPlugin[]
 ): string[] => {
   const sidebarItemsWithPlugins = getSidebarItemsWithPlugins(plugins);
-  const navigationMap =
-    navigationItems && !isEmpty(navigationItems)
-      ? createNavigationMap(navigationItems)
-      : null;
 
-  return sidebarItemsWithPlugins.flatMap((item) =>
-    collectHiddenKeys(item, navigationMap)
-  );
+  if (!navigationItems || isEmpty(navigationItems)) {
+    return [];
+  }
+
+  const navigationMap = createNavigationMap(navigationItems);
+
+  return sidebarItemsWithPlugins
+    .flatMap(collectSidebarKeys)
+    .filter((key) => isNavigationItemHidden(key, navigationMap));
 };
 
 const enhanceNavigationItem = (

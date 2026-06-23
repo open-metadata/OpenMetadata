@@ -332,4 +332,94 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await page.getByTestId('save-button').click();
     await restoreResponse;
   });
+
+  // Regression for issue #28738: navigation ordering customisations used to
+  // revert to the default tree order after saving and reopening the page.
+  test('should persist a reordered sub-item after reload', async ({ page }) => {
+    test.slow();
+
+    await redirectToHomePage(page);
+    await setUserDefaultPersona(page, persona.responseData.displayName);
+    await navigateToPersonaNavigation(page);
+
+    const treeItems = page.locator('.ant-tree-node-content-wrapper');
+
+    await expect(treeItems.first()).toBeVisible();
+
+    // Data Quality and Incident Manager are adjacent children of Observability
+    // near the top of the tree, which keeps the drag reliable.
+    const dataQualityItem = treeItems.getByTitle('label.data-quality');
+    const incidentManagerItem = treeItems.getByTitle('label.incident-manager');
+
+    await expect(dataQualityItem).toBeVisible();
+    await expect(incidentManagerItem).toBeVisible();
+
+    const isDataQualityBelowIncidentManager = async () => {
+      const dataQualityBox = await dataQualityItem.boundingBox();
+      const incidentManagerBox = await incidentManagerItem.boundingBox();
+
+      return (dataQualityBox?.y ?? 0) > (incidentManagerBox?.y ?? 0);
+    };
+
+    // Default order renders Data Quality above Incident Manager
+    expect(await isDataQualityBelowIncidentManager()).toBe(false);
+
+    const dataQualityBox = await dataQualityItem.boundingBox();
+    const incidentManagerBox = await incidentManagerItem.boundingBox();
+
+    expect(dataQualityBox).not.toBeNull();
+    expect(incidentManagerBox).not.toBeNull();
+
+    // Drag Data Quality just below Incident Manager to reorder within the group
+    await dataQualityItem.dragTo(incidentManagerItem, {
+      sourcePosition: {
+        x: (dataQualityBox?.width ?? 0) / 2,
+        y: (dataQualityBox?.height ?? 0) / 2,
+      },
+      targetPosition: {
+        x: (incidentManagerBox?.width ?? 0) / 2,
+        y: (incidentManagerBox?.height ?? 0) / 2 + 10,
+      },
+    });
+
+    await expect.poll(isDataQualityBelowIncidentManager).toBe(true);
+    await expect(page.getByTestId('save-button')).toBeEnabled();
+
+    const saveResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/docStore') &&
+        [200, 201].includes(response.status())
+    );
+    await page.getByTestId('save-button').click();
+    await saveResponse;
+
+    // Reopen the page: the new order must persist, not revert to default
+    await redirectToHomePage(page);
+    await navigateToPersonaNavigation(page);
+
+    await expect(treeItems.first()).toBeVisible();
+    await expect(dataQualityItem).toBeVisible();
+    await expect(incidentManagerItem).toBeVisible();
+
+    await expect.poll(isDataQualityBelowIncidentManager).toBe(true);
+
+    // Cleanup: restore the default navigation layout
+    await page.getByTestId('reset-button').click();
+
+    await expect(page.getByTestId('unsaved-changes-modal-title')).toContainText(
+      'Reset Default Layout'
+    );
+
+    await page.getByTestId('unsaved-changes-modal-save').click();
+
+    await expect(page.getByTestId('save-button')).toBeEnabled();
+
+    const resetResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/docStore') &&
+        [200, 201].includes(response.status())
+    );
+    await page.getByTestId('save-button').click();
+    await resetResponse;
+  });
 });

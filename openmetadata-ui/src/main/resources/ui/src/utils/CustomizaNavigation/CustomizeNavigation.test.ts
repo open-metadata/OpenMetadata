@@ -189,6 +189,182 @@ describe('CustomizeNavigation Utils', () => {
       expect(result[2].key).toBe('plugin-item');
       expect((result[2] as { isHidden?: boolean }).isHidden).toBe(true);
     });
+
+    it('should preserve the saved order of top-level items', () => {
+      (leftSidebarClassBase.getSidebarItems as jest.Mock).mockReturnValueOnce([
+        { key: 'home', title: 'Home', icon: 'home-icon' },
+        { key: 'explore', title: 'Explore', icon: 'explore-icon' },
+        { key: 'lineage', title: 'Lineage', icon: 'lineage-icon' },
+      ]);
+
+      const savedNav: NavigationItem[] = [
+        { id: 'lineage', title: 'Lineage', isHidden: false, pageId: 'lineage' },
+        { id: 'home', title: 'Home', isHidden: false, pageId: 'home' },
+        { id: 'explore', title: 'Explore', isHidden: false, pageId: 'explore' },
+      ];
+
+      const result = getTreeDataForNavigationItems(savedNav);
+
+      expect(result.map((item) => item.key)).toEqual([
+        'lineage',
+        'home',
+        'explore',
+      ]);
+    });
+
+    it('should preserve the saved order of children within a group', () => {
+      (leftSidebarClassBase.getSidebarItems as jest.Mock).mockReturnValueOnce([
+        {
+          key: 'home',
+          title: 'Home',
+          icon: 'home-icon',
+          children: [
+            { key: 'a', title: 'A', icon: 'a-icon' },
+            { key: 'b', title: 'B', icon: 'b-icon' },
+            { key: 'c', title: 'C', icon: 'c-icon' },
+          ],
+        },
+      ]);
+
+      const savedNav: NavigationItem[] = [
+        {
+          id: 'home',
+          title: 'Home',
+          isHidden: false,
+          pageId: 'home',
+          children: [
+            { id: 'c', title: 'C', isHidden: false, pageId: 'c' },
+            { id: 'a', title: 'A', isHidden: false, pageId: 'a' },
+            { id: 'b', title: 'B', isHidden: false, pageId: 'b' },
+          ],
+        },
+      ];
+
+      const result = getTreeDataForNavigationItems(savedNav);
+
+      expect(result[0].children?.map((child) => child.key)).toEqual([
+        'c',
+        'a',
+        'b',
+      ]);
+    });
+
+    it('should keep a child moved to another group under its new parent', () => {
+      (leftSidebarClassBase.getSidebarItems as jest.Mock).mockReturnValueOnce([
+        {
+          key: 'observability',
+          title: 'Observability',
+          icon: 'observability-icon',
+          children: [
+            { key: 'data-quality', title: 'Data Quality', icon: 'dq-icon' },
+            {
+              key: 'incident-manager',
+              title: 'Incident Manager',
+              icon: 'im-icon',
+            },
+          ],
+        },
+        {
+          key: 'governance',
+          title: 'Govern',
+          icon: 'govern-icon',
+          children: [
+            { key: 'glossary', title: 'Glossary', icon: 'glossary-icon' },
+          ],
+        },
+      ]);
+
+      const savedNav: NavigationItem[] = [
+        {
+          id: 'observability',
+          title: 'Observability',
+          isHidden: false,
+          pageId: 'observability',
+          children: [
+            {
+              id: 'data-quality',
+              title: 'Data Quality',
+              isHidden: false,
+              pageId: 'data-quality',
+            },
+          ],
+        },
+        {
+          id: 'governance',
+          title: 'Govern',
+          isHidden: false,
+          pageId: 'governance',
+          children: [
+            {
+              id: 'glossary',
+              title: 'Glossary',
+              isHidden: false,
+              pageId: 'glossary',
+            },
+            {
+              id: 'incident-manager',
+              title: 'Incident Manager',
+              isHidden: false,
+              pageId: 'incident-manager',
+            },
+          ],
+        },
+      ];
+
+      const result = getTreeDataForNavigationItems(savedNav);
+
+      expect(result[0].key).toBe('observability');
+      expect(result[0].children?.map((child) => child.key)).toEqual([
+        'data-quality',
+      ]);
+      expect(result[1].key).toBe('governance');
+      expect(result[1].children?.map((child) => child.key)).toEqual([
+        'glossary',
+        'incident-manager',
+      ]);
+    });
+
+    it('should append new default children after the saved children', () => {
+      (leftSidebarClassBase.getSidebarItems as jest.Mock).mockReturnValueOnce([
+        {
+          key: 'home',
+          title: 'Home',
+          icon: 'home-icon',
+          children: [
+            {
+              key: 'new-feature',
+              title: 'New Feature',
+              icon: 'new-feature-icon',
+            },
+            { key: 'dashboard', title: 'Dashboard', icon: 'dashboard-icon' },
+          ],
+        },
+      ]);
+
+      const savedNav: NavigationItem[] = [
+        {
+          id: 'home',
+          title: 'Home',
+          isHidden: false,
+          pageId: 'home',
+          children: [
+            {
+              id: 'dashboard',
+              title: 'Dashboard',
+              isHidden: false,
+              pageId: 'dashboard',
+            },
+          ],
+        },
+      ];
+
+      const result = getTreeDataForNavigationItems(savedNav);
+
+      expect(result[0].children?.map((child) => child.key)).toEqual([
+        'dashboard',
+        'new-feature',
+      ]);
+    });
   });
 
   describe('getHiddenKeysFromNavigationItems', () => {
@@ -459,6 +635,73 @@ describe('CustomizeNavigation Utils', () => {
       const result = getHiddenKeysFromNavigationItems(savedNav);
 
       expect(result).toContain('new-feature');
+    });
+
+    it('should not mark a moved child as hidden when it is visible under its new parent', () => {
+      (leftSidebarClassBase.getSidebarItems as jest.Mock).mockReturnValueOnce([
+        {
+          key: 'observability',
+          title: 'Observability',
+          icon: 'observability-icon',
+          children: [
+            { key: 'data-quality', title: 'Data Quality', icon: 'dq-icon' },
+            {
+              key: 'incident-manager',
+              title: 'Incident Manager',
+              icon: 'im-icon',
+            },
+          ],
+        },
+        {
+          key: 'governance',
+          title: 'Govern',
+          icon: 'govern-icon',
+          children: [
+            { key: 'glossary', title: 'Glossary', icon: 'glossary-icon' },
+          ],
+        },
+      ]);
+
+      const savedNav: NavigationItem[] = [
+        {
+          id: 'observability',
+          title: 'Observability',
+          isHidden: false,
+          pageId: 'observability',
+          children: [
+            {
+              id: 'data-quality',
+              title: 'Data Quality',
+              isHidden: false,
+              pageId: 'data-quality',
+            },
+          ],
+        },
+        {
+          id: 'governance',
+          title: 'Govern',
+          isHidden: false,
+          pageId: 'governance',
+          children: [
+            {
+              id: 'glossary',
+              title: 'Glossary',
+              isHidden: false,
+              pageId: 'glossary',
+            },
+            {
+              id: 'incident-manager',
+              title: 'Incident Manager',
+              isHidden: false,
+              pageId: 'incident-manager',
+            },
+          ],
+        },
+      ];
+
+      const result = getHiddenKeysFromNavigationItems(savedNav);
+
+      expect(result).not.toContain('incident-manager');
     });
   });
 
