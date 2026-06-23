@@ -61,6 +61,7 @@ import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -120,6 +121,9 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
               .toList());
       // Add or update User Bot
       UserUtil.addOrUpdateBotUser(user);
+      if (Boolean.TRUE.equals(botUser.getAllowImpersonation())) {
+        grantBotImpersonation(userRepository, botUser.getName());
+      }
     }
 
     // Then, load the bots and bind them to the users
@@ -132,6 +136,14 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
               .getEntityReference());
       repository.initializeEntity(bot);
     }
+  }
+
+  private void grantBotImpersonation(UserRepository userRepository, String botName) {
+    User botUser = userRepository.getByName(null, botName, userRepository.getFields("id"));
+    EntityReference impersonationRole =
+        Entity.getEntityReferenceByName(
+            Entity.ROLE, AppRepository.APP_BOT_IMPERSONATION_ROLE, Include.NON_DELETED);
+    userRepository.updateBotImpersonation(botUser.getId(), true, impersonationRole);
   }
 
   @Override

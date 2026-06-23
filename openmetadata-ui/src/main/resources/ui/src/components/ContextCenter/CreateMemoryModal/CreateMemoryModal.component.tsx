@@ -92,6 +92,7 @@ import { getErrorText } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showSuccessToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import DerivedOntologyCard from '../DerivedOntologyCard/DerivedOntologyCard.component';
 import { CreateMemoryModalProps } from './CreateMemoryModal.interface';
 
 const TagSelectForm = withSuspenseFallback(
@@ -961,9 +962,12 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                           ))}
                     </Card>
                   </div>
+                  {isViewOnly && memoryToEdit?.id && (
+                    <DerivedOntologyCard memoryId={memoryToEdit.id} />
+                  )}
                 </div>
 
-                {/* Sticky footer */}
+                {/* Footer */}
                 <div className="tw:flex tw:items-center tw:justify-between tw:gap-3 tw:py-4 tw:border-t tw:border-gray-100 tw:shrink-0 tw:px-6">
                   <div>
                     {(isEditMode || (isViewOnly && canDelete)) && (
