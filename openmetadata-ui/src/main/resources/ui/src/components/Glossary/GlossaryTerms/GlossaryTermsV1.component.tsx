@@ -13,7 +13,8 @@
 import { Col, Row, Tabs } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -38,27 +39,26 @@ import {
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
-import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
   getFeedCounts,
-} from '../../../utils/FeedUtils';
+} from '../../../utils/FeedUtilsPure';
 import glossaryTermClassBase from '../../../utils/Glossary/GlossaryTermClassBase';
-import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
+import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryPureUtils';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import {
   getGlossaryTermDetailsPath,
   getGlossaryTermsVersionsPath,
 } from '../../../utils/RouterUtils';
-import { getTermQuery } from '../../../utils/SearchUtils';
+import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
-import {
-  GenericProvider,
-  useGenericContext,
-} from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
@@ -66,7 +66,6 @@ import { useGlossaryStore } from '../useGlossary.store';
 import { GlossaryTermsV1Props } from './GlossaryTermsV1.interface';
 import { AssetsTabRef } from './tabs/AssetsTabs.component';
 import { AssetsOfEntity } from './tabs/AssetsTabs.interface';
-
 const GlossaryTermsV1 = ({
   glossaryTerm,
   handleGlossaryTermUpdate,
@@ -300,6 +299,23 @@ const GlossaryTermsV1 = ({
             onDelete={handleGlossaryTermDelete}
           />
         </Col>
+
+        {glossaryTerm.derivedFrom && (
+          <Col data-testid="derived-from-link" span={24}>
+            <span className="tw:text-xs tw:text-tertiary">
+              {`${t('label.derived-from-memory')}: `}
+            </span>
+            <Link
+              className="tw:text-xs tw:text-brand-secondary hover:tw:underline"
+              to={`${
+                ROUTES.CONTEXT_CENTER_MEMORIES
+              }?memory=${encodeURIComponent(
+                glossaryTerm.derivedFrom.name ?? ''
+              )}`}>
+              {getEntityName(glossaryTerm.derivedFrom)}
+            </Link>
+          </Col>
+        )}
 
         <Col className="glossary-term-page-tabs" span={24}>
           <Tabs

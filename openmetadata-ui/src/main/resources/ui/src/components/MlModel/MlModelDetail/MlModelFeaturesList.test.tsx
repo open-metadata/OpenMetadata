@@ -142,7 +142,16 @@ jest.mock(
 
 const mockHandleFeaturesUpdate = jest.fn();
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
+  useGenericContext: jest.fn().mockImplementation(() => ({
+    data: mockData,
+    permissions: DEFAULT_ENTITY_PERMISSION,
+    onUpdate: mockHandleFeaturesUpdate,
+    setDisplayedColumns: jest.fn(),
+  })),
+}));
+
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn().mockImplementation(() => ({
     data: mockData,
     permissions: DEFAULT_ENTITY_PERMISSION,

@@ -31,4 +31,5 @@ export interface ExploreQuickFiltersProps {
   showSelectedCounts?: boolean; // flag to show counts instead of labels for selected filters
   optionPageSize?: number;
   additionalActions?: ReactNode;
+  untitledDropdown?: boolean;
 }

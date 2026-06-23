@@ -30,6 +30,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.source.database.mysql.metadata import MysqlSource
 from metadata.ingestion.source.database.mysql.models import MysqlRoutine
+from metadata.ingestion.source.database.mysql.queries import MYSQL_GET_ROUTINES
 
 mock_mysql_config = {
     "source": {
@@ -168,6 +169,35 @@ class MysqlUnitTest(TestCase):
         self.assertIsInstance(stored_procedures[0], MysqlRoutine)
         self.assertEqual(stored_procedures[0].name, "test_procedure")
         self.assertEqual(stored_procedures[0].routine_type, "PROCEDURE")
+
+        executed_clause = mock_conn.execute.call_args[0][0]
+        self.assertEqual(
+            executed_clause.compile().params.get("schema_name"),
+            MOCK_DATABASE_SCHEMA.name.root,
+        )
+
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection")
+    def test_get_stored_procedures_binds_schema_name(self, connection):
+        """A schema name with a quote is bound, never interpolated into the SQL text"""
+        connection.return_value = True
+        malicious_schema = "my'schema"
+
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.all.return_value = []
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        self.mysql_source.engine = mock_engine
+
+        self.mysql_source.source_config.includeStoredProcedures = True
+        self.mysql_source.context.get().__dict__["database_schema"] = malicious_schema
+
+        list(self.mysql_source.get_stored_procedures())
+
+        executed_clause = mock_conn.execute.call_args[0][0]
+        self.assertEqual(executed_clause.compile().params.get("schema_name"), malicious_schema)
+        self.assertIn(":schema_name", MYSQL_GET_ROUTINES)
+        self.assertNotIn(malicious_schema, str(executed_clause))
 
     def _yield_language(self, language: str) -> Language:
         routine = MysqlRoutine(

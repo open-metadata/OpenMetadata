@@ -1,6 +1,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -16,6 +17,7 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.entity.ai.McpServerType;
 import org.openmetadata.schema.entity.ai.McpTransportType;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -223,5 +225,44 @@ class McpServerRepositoryTest {
 
       assertDoesNotThrow(() -> updater.entitySpecificUpdate(false));
     }
+  }
+
+  @Test
+  void testConsolidateChangesSkipsVersionedEntityWithMissingChangeDescription() {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      McpServerRepository repo = createRepo(entityMock);
+      McpServer original = mcpServerForConsolidation().withChangeDescription(null);
+      McpServer updated = mcpServerForConsolidation().withUpdatedAt(original.getUpdatedAt() + 1);
+      McpServerRepository.McpServerUpdater updater =
+          repo.new McpServerUpdater(original, updated, EntityRepository.Operation.PATCH);
+
+      assertFalse(updater.consolidateChanges(original, updated, EntityRepository.Operation.PATCH));
+    }
+  }
+
+  @Test
+  void testConsolidateChangesSkipsVersionedEntityWithMissingPreviousVersion() {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      McpServerRepository repo = createRepo(entityMock);
+      ChangeDescription changeDescription = new ChangeDescription().withPreviousVersion(null);
+      McpServer original = mcpServerForConsolidation().withChangeDescription(changeDescription);
+      McpServer updated = mcpServerForConsolidation().withUpdatedAt(original.getUpdatedAt() + 1);
+      McpServerRepository.McpServerUpdater updater =
+          repo.new McpServerUpdater(original, updated, EntityRepository.Operation.PATCH);
+
+      assertFalse(updater.consolidateChanges(original, updated, EntityRepository.Operation.PATCH));
+    }
+  }
+
+  private static McpServer mcpServerForConsolidation() {
+    long updatedAt = System.currentTimeMillis();
+    return new McpServer()
+        .withId(UUID.randomUUID())
+        .withName("server")
+        .withFullyQualifiedName("server")
+        .withUpdatedBy("admin")
+        .withUpdatedAt(updatedAt)
+        .withVersion(1.1)
+        .withDeleted(false);
   }
 }

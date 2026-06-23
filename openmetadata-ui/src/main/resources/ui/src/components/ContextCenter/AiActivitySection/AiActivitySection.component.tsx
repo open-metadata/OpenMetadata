@@ -140,7 +140,7 @@ const AiActivitySection: FC<AiActivitySectionProps> = ({
             as="div"
             className="tw:text-primary"
             size="text-sm"
-            weight="semibold">
+            weight="medium">
             {t('label.used-by-ai')}
           </Typography>
           <Typography

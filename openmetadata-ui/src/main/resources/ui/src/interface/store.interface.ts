@@ -92,6 +92,8 @@ export interface DomainStore {
   userDomains: EntityReference[];
   activeDomain: string;
   activeDomainEntityRef?: EntityReference;
+  isDomainRestricted: boolean;
   updateActiveDomain: (domain: EntityReference) => void;
   setUserDomains: (userDomainsArr: EntityReference[]) => void;
+  setDomainRestriction: (restricted: boolean) => void;
 }

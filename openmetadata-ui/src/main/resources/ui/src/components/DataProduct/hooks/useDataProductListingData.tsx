@@ -26,7 +26,7 @@ import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import {
   getClassificationTags,
   getGlossaryTags,
-} from '../../../utils/TagsUtils';
+} from '../../../utils/TagsPureUtils';
 import { useListingData } from '../../common/atoms/compositions/useListingData';
 import {
   CellRenderer,
@@ -94,7 +94,7 @@ export const useDataProductListingData = (): ListingData<DataProduct> => {
               </Typography>
               {showName && (
                 <Typography
-                  className="tw:leading-4 tw:text-gray-700"
+                  className="tw:leading-4 tw:text-secondary"
                   size="text-xs">
                   {entity.name}
                 </Typography>

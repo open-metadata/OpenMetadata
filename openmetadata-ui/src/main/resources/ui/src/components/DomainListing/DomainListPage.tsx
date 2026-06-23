@@ -13,7 +13,6 @@
 
 import { Box, Card } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
-import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -63,7 +62,6 @@ const DomainListPage = () => {
     defaultValues: DOMAIN_FORM_DEFAULTS,
   });
   const [isLoading, setIsLoading] = useState(false);
-  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   const [treeRefreshToken, setTreeRefreshToken] = useState(0);
 
   const { quickFilters, defaultFilters } = useDomainFilters({
@@ -97,8 +95,6 @@ const DomainListPage = () => {
           onSuccess: () => {
             form.reset();
           },
-          enqueueSnackbar,
-          closeSnackbar,
           t,
         });
       } finally {
@@ -106,7 +102,7 @@ const DomainListPage = () => {
       }
     },
 
-    [form, enqueueSnackbar, closeSnackbar, t]
+    [form, t]
   );
 
   const { refetch: refetchDomainListing } = domainListing;

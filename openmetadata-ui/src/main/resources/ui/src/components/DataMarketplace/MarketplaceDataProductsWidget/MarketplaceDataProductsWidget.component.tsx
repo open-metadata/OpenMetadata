@@ -13,7 +13,6 @@
 
 import { Avatar, Button, Typography } from '@openmetadata/ui-core-components';
 import { isEmpty, noop } from 'lodash';
-import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -31,7 +30,7 @@ import {
   patchDataProduct,
 } from '../../../rest/dataProductAPI';
 import { searchData } from '../../../rest/miscAPI';
-import { getTextFromHtmlString } from '../../../utils/BlockEditorUtils';
+import { getTextFromHtmlString } from '../../../utils/BlockEditorPureUtils';
 import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
 import dataMarketplaceClassBase from '../../../utils/DataMarketplace/DataMarketplaceClassBase';
 import { submitAndClose } from '../../../utils/FormDrawerUtils';
@@ -58,7 +57,6 @@ const MarketplaceDataProductsWidget = ({
   const navigate = useNavigate();
   const { dataProductBasePath } = useMarketplaceStore();
   const { permissions } = usePermissionProvider();
-  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   const form = useForm<DomainFormValues>({
     defaultValues: DOMAIN_FORM_DEFAULTS,
   });
@@ -119,15 +117,13 @@ const MarketplaceDataProductsWidget = ({
           onSuccess: () => {
             form.reset();
           },
-          enqueueSnackbar,
-          closeSnackbar,
           t,
         });
       } finally {
         setIsFormLoading(false);
       }
     },
-    [form, enqueueSnackbar, closeSnackbar, t]
+    [form, t]
   );
 
   const { formDrawer, openDrawer, closeDrawer } =

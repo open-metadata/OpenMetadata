@@ -87,8 +87,8 @@ describe('DocumentPreviewPanel', () => {
     expect(screen.getByText('What is the VAT rate?')).toBeInTheDocument();
     expect(screen.getByText('Refund window')).toBeInTheDocument();
     expect(mockGetListContextMemories).toHaveBeenCalledWith({
-      sourceFileId: 'file-1',
-      fields: 'owners,sourceFile',
+      sourceEntityId: 'file-1',
+      fields: 'owners,sourceEntity',
       limit: 50,
     });
   });
