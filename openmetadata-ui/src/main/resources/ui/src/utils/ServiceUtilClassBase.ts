@@ -114,6 +114,8 @@ class ServiceUtilClassBase {
     DatabaseServiceType.MicrosoftAccess,
     DashboardServiceType.SapS4Hana,
     DatabaseServiceType.SapSuccessFactors,
+    DatabaseServiceType.SapBw4Hana,
+    PipelineServiceType.SapBw4HanaPipeline,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<

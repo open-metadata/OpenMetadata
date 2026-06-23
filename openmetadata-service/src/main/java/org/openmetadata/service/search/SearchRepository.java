@@ -137,6 +137,7 @@ import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
@@ -3171,17 +3172,36 @@ public class SearchRepository {
   }
 
   public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
-    return searchClient.searchLineage(lineageRequest);
+    return searchLineage(lineageRequest, null);
+  }
+
+  public SearchLineageResult searchLineage(
+      SearchLineageRequest lineageRequest, SubjectContext subjectContext) throws IOException {
+    SearchLineageResult result = searchClient.searchLineage(lineageRequest);
+    return LineageDomainFilter.prune(result, subjectContext, lineageRequest.getFqn());
   }
 
   public SearchLineageResult searchPlatformLineage(
       String alias, String queryFilter, boolean deleted) throws IOException {
-    return searchClient.searchPlatformLineage(alias, queryFilter, deleted);
+    return searchPlatformLineage(alias, queryFilter, deleted, null);
+  }
+
+  public SearchLineageResult searchPlatformLineage(
+      String alias, String queryFilter, boolean deleted, SubjectContext subjectContext)
+      throws IOException {
+    SearchLineageResult result = searchClient.searchPlatformLineage(alias, queryFilter, deleted);
+    return LineageDomainFilter.prune(result, subjectContext, null);
   }
 
   public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
-    return searchClient.searchLineageWithDirection(lineageRequest);
+    return searchLineageWithDirection(lineageRequest, null);
+  }
+
+  public SearchLineageResult searchLineageWithDirection(
+      SearchLineageRequest lineageRequest, SubjectContext subjectContext) throws IOException {
+    SearchLineageResult result = searchClient.searchLineageWithDirection(lineageRequest);
+    return LineageDomainFilter.prune(result, subjectContext, lineageRequest.getFqn());
   }
 
   public LineagePaginationInfo getLineagePaginationInfo(
@@ -3219,7 +3239,13 @@ public class SearchRepository {
 
   public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
       throws IOException {
-    return searchClient.searchLineageByEntityCount(request);
+    return searchLineageByEntityCount(request, null);
+  }
+
+  public SearchLineageResult searchLineageByEntityCount(
+      EntityCountLineageRequest request, SubjectContext subjectContext) throws IOException {
+    SearchLineageResult result = searchClient.searchLineageByEntityCount(request);
+    return LineageDomainFilter.prune(result, subjectContext, request.getFqn());
   }
 
   public Response searchEntityRelationship(
@@ -3231,7 +3257,18 @@ public class SearchRepository {
 
   public Response searchDataQualityLineage(
       String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException {
-    return searchClient.searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted);
+    return searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted, null);
+  }
+
+  public Response searchDataQualityLineage(
+      String fqn,
+      int upstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      SubjectContext subjectContext)
+      throws IOException {
+    return searchClient.searchDataQualityLineage(
+        fqn, upstreamDepth, queryFilter, deleted, subjectContext);
   }
 
   public Response searchSchemaEntityRelationship(
@@ -3249,14 +3286,29 @@ public class SearchRepository {
       boolean deleted,
       String entityType)
       throws IOException {
-    return searchClient.searchLineage(
-        new SearchLineageRequest()
-            .withFqn(fqn)
-            .withUpstreamDepth(upstreamDepth)
-            .withDownstreamDepth(downstreamDepth)
-            .withQueryFilter(queryFilter)
-            .withIncludeDeleted(deleted)
-            .withIsConnectedVia(isConnectedVia(entityType)));
+    return searchLineageForExport(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType, null);
+  }
+
+  public SearchLineageResult searchLineageForExport(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      String entityType,
+      SubjectContext subjectContext)
+      throws IOException {
+    SearchLineageResult result =
+        searchClient.searchLineage(
+            new SearchLineageRequest()
+                .withFqn(fqn)
+                .withUpstreamDepth(upstreamDepth)
+                .withDownstreamDepth(downstreamDepth)
+                .withQueryFilter(queryFilter)
+                .withIncludeDeleted(deleted)
+                .withIsConnectedVia(isConnectedVia(entityType)));
+    return LineageDomainFilter.prune(result, subjectContext, fqn);
   }
 
   public Response searchByField(

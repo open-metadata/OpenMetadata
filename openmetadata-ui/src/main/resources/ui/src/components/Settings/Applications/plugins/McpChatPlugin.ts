@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,6 +15,11 @@ import { ROUTES } from '../../../../constants/constants';
 import { SidebarItem } from '../../../../enums/sidebar.enum';
 import { AppPlugin, LeftSidebarItemExample } from './AppPlugin';
 
+/**
+ * Contributes the MCP Chat entry to the left sidebar. Driven by the
+ * {@code aiSettings.mcpChat.enabled} platform setting (see ApplicationsProvider),
+ * not by an installed application.
+ */
 export class McpChatPlugin implements AppPlugin {
   name: string;
   isInstalled: boolean;
