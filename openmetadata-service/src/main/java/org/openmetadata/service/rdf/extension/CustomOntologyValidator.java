@@ -103,14 +103,18 @@ public final class CustomOntologyValidator {
       errors.add("extension must declare at least one class or property");
     }
 
-    Set<String> classUris = new HashSet<>();
+    // Collect every declared class URI up front so subClassOf parent references resolve
+    // regardless of declaration order (a class may legitimately reference a parent declared
+    // later in the list). The duplicate-URI check uses a separate set populated as we go.
+    Set<String> declaredClassUris = collectClassUris(classes);
+    Set<String> seenClassUris = new HashSet<>();
     for (CustomOntologyClass cls : classes) {
-      validateClass(cls, classUris, errors);
+      validateClass(cls, declaredClassUris, seenClassUris, errors);
     }
 
     Set<String> propertyUris = new HashSet<>();
     for (CustomOntologyProperty prop : properties) {
-      validateProperty(prop, propertyUris, classUris, errors);
+      validateProperty(prop, propertyUris, declaredClassUris, errors);
     }
 
     detectClassHierarchyCycles(classes, errors);
@@ -130,8 +134,21 @@ public final class CustomOntologyValidator {
     return errors.isEmpty();
   }
 
+  private static Set<String> collectClassUris(List<CustomOntologyClass> classes) {
+    Set<String> classUris = new HashSet<>();
+    for (CustomOntologyClass cls : classes) {
+      if (cls != null && cls.getUri() != null && !cls.getUri().isBlank()) {
+        classUris.add(cls.getUri());
+      }
+    }
+    return classUris;
+  }
+
   private static void validateClass(
-      CustomOntologyClass cls, Set<String> seenUris, List<String> errors) {
+      CustomOntologyClass cls,
+      Set<String> declaredClassUris,
+      Set<String> seenUris,
+      List<String> errors) {
     if (cls == null) {
       errors.add("null class entry");
       return;
@@ -155,7 +172,7 @@ public final class CustomOntologyValidator {
       errors.add("class '" + cls.getUri() + "' must declare at least one subClassOf parent");
     } else {
       for (String parent : cls.getSubClassOf()) {
-        if (!isKnownClassReference(parent, seenUris)) {
+        if (!isKnownClassReference(parent, declaredClassUris)) {
           errors.add(
               "class '"
                   + cls.getUri()

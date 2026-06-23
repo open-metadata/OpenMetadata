@@ -8,6 +8,7 @@ import java.util.Locale;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.rdf.RdfIriValidator;
 import org.openmetadata.service.rdf.RdfRepository;
 
 /**
@@ -212,7 +213,12 @@ public final class CommunityComputation {
           .append(partition.modularity())
           .append("\"^^xsd:double");
       for (String member : entry.getValue()) {
-        update.append(" ; om:hasMember <").append(member).append(">");
+        String memberIri = RdfIriValidator.sanitizeStoredIri(member);
+        if (memberIri == null) {
+          LOG.warn("Skipping community member with malformed IRI: {}", member);
+          continue;
+        }
+        update.append(" ; om:hasMember <").append(memberIri).append(">");
       }
       update.append(" .\n");
     }

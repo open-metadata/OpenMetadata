@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.rdf.RdfIriValidator;
 import org.openmetadata.service.rdf.RdfRepository;
 
 /**
@@ -147,9 +148,14 @@ public final class CentralityComputation {
         scores.entrySet().stream()
             .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
             .toList()) {
+      String iri = RdfIriValidator.sanitizeStoredIri(e.getKey());
+      if (iri == null) {
+        LOG.warn("Skipping centrality score for malformed entity IRI: {}", e.getKey());
+        continue;
+      }
       update
           .append("  <")
-          .append(e.getKey())
+          .append(iri)
           .append("> om:centralityScore \"")
           .append(e.getValue())
           .append("\"^^xsd:double ; om:centralityRank \"")

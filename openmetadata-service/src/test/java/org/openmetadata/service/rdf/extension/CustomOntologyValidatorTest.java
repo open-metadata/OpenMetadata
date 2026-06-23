@@ -161,6 +161,17 @@ class CustomOntologyValidatorTest {
     }
 
     @Test
+    @DisplayName("Forward reference to a sibling declared later in the list is accepted")
+    void forwardSiblingReferenceAccepted() {
+      // Child is declared BEFORE Parent — parent-existence must not depend on declaration order.
+      CustomOntology e =
+          ext("forward-ref")
+              .withClasses(List.of(cls("Child", EXT_NS + "Parent"), cls("Parent", "om:Entity")));
+      List<String> errors = CustomOntologyValidator.validate(e);
+      assertTrue(errors.isEmpty(), "Forward references must be accepted; got: " + errors);
+    }
+
+    @Test
     @DisplayName("Cycle in class hierarchy is detected (A → B → A)")
     void hierarchyCycleDetected() {
       CustomOntology e =
