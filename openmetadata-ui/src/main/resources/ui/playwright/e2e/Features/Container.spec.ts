@@ -528,6 +528,7 @@ test.describe('Deeply nested container navigation', () => {
 
       await expect(menu).toContainText(deepContainer1Name);
       await expect(menu).toContainText(deepContainer2Name);
+      await expect(menu).toContainText(deepContainer3Name);
 
       await page.keyboard.press('Escape');
       await expect(menu).toBeHidden();
