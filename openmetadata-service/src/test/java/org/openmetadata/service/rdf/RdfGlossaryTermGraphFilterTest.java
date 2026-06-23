@@ -119,6 +119,24 @@ class RdfGlossaryTermGraphFilterTest {
   }
 
   @Test
+  void isolatedOnlyRdfResponseDoesNotFallBackToDatabaseWhenIsolatedNodesAreExcluded()
+      throws Exception {
+    RdfStorageInterface storage = mock(RdfStorageInterface.class);
+    RdfRepository repository = new RdfRepository(config(), storage, null);
+    UUID selectedId = UUID.randomUUID();
+
+    when(storage.executeSparqlQuery(anyString(), eq("application/sparql-results+json")))
+        .thenReturn(sparqlResponse(selectedId));
+
+    JsonNode graph =
+        JsonUtils.readTree(repository.getGlossaryTermGraph(null, selectedId, null, 500, 0, false));
+
+    assertEquals(0, graph.get("nodes").size());
+    assertEquals(0, graph.get("edges").size());
+    assertFalse(graph.has("error"));
+  }
+
+  @Test
   void glossaryTermFallbackFilterKeepsSelectedTermAndDirectNeighborsAcrossGlossaries() {
     UUID glossaryId = UUID.randomUUID();
     UUID otherGlossaryId = UUID.randomUUID();

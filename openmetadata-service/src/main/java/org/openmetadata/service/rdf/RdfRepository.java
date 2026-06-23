@@ -1773,6 +1773,7 @@ public class RdfRepository {
         }
       }
 
+      boolean rdfReturnedNodes = !nodes.isEmpty();
       if (!includeIsolated) {
         Set<String> includedNodeIds = new HashSet<>();
         com.fasterxml.jackson.databind.node.ArrayNode relatedNodes =
@@ -1799,7 +1800,7 @@ public class RdfRepository {
       }
 
       // If RDF didn't return enough results, fall back to database query
-      if (nodes.isEmpty()) {
+      if (!rdfReturnedNodes) {
         LOG.info("RDF query returned no nodes, falling back to database");
         return getGlossaryTermGraphFromDatabase(
             glossaryId, glossaryTermId, limit, offset, includeIsolated);
@@ -2057,6 +2058,41 @@ public class RdfRepository {
         || glossaryTermId.equals(targetTermId);
   }
 
+  private List<GlossaryTerm> getGlossaryTermAndDirectNeighbors(
+      GlossaryTermRepository glossaryTermRepository, UUID glossaryTermId, UUID glossaryId) {
+    try {
+      var fields = glossaryTermRepository.getFields("relatedTerms,parent,children,glossary");
+      GlossaryTerm selectedTerm =
+          (GlossaryTerm)
+              glossaryTermRepository.get(null, glossaryTermId, fields, Include.NON_DELETED, false);
+      if (!isGlossaryTermInGlossary(selectedTerm, glossaryId)) {
+        return List.of();
+      }
+
+      Set<UUID> visibleTermIds = new LinkedHashSet<>();
+      visibleTermIds.add(glossaryTermId);
+      addDirectGlossaryTermIds(selectedTerm, visibleTermIds);
+
+      List<GlossaryTerm> terms = new ArrayList<>();
+      terms.add(selectedTerm);
+      for (UUID termId : visibleTermIds) {
+        if (glossaryTermId.equals(termId)) {
+          continue;
+        }
+        try {
+          terms.add(
+              (GlossaryTerm)
+                  glossaryTermRepository.get(null, termId, fields, Include.NON_DELETED, false));
+        } catch (EntityNotFoundException e) {
+          LOG.debug("Skipping missing glossary term neighbor {} in DB graph fallback", termId);
+        }
+      }
+      return filterTermsByGlossaryTermId(terms, glossaryTermId, glossaryId);
+    } catch (EntityNotFoundException e) {
+      return List.of();
+    }
+  }
+
   /**
    * Fallback method to get glossary terms from database when RDF store is empty or returns no results.
    */
@@ -2070,35 +2106,37 @@ public class RdfRepository {
         JsonUtils.getObjectMapper().createArrayNode();
 
     try {
-      // Reuse the exact code path the /v1/glossaryTerms?glossary=<id> listing
-      // takes: resolve the glossary's FQN, then drive listAfter with the
-      // `parent` filter. ListFilter.getParentCondition translates that into a
-      // fqnHash LIKE '<glossaryFqnHash>.%' predicate (see
-      // ListFilter.getFqnPrefixCondition) which is an indexed prefix scan
-      // scoped to that glossary — never the full table. The previous
-      // implementation called listAll() and filtered by glossary.id in a Java
-      // loop, which loaded every term in the deployment into memory.
       var glossaryTermRepository =
           (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
-      var listFilter = new ListFilter(null);
-      if (glossaryId != null && glossaryTermId == null) {
-        var glossaryRepo = Entity.getEntityRepository(Entity.GLOSSARY);
-        var glossary =
-            (Glossary)
-                glossaryRepo.get(
-                    null, glossaryId, glossaryRepo.getFields(""), Include.NON_DELETED, false);
-        listFilter.addQueryParam("parent", glossary.getFullyQualifiedName());
-      }
       List<GlossaryTerm> terms = new ArrayList<>();
-      var fetched =
-          glossaryTermRepository.listAll(
-              glossaryTermRepository.getFields("relatedTerms,parent,children,glossary"),
-              listFilter);
-      for (var entity : fetched) {
-        terms.add((GlossaryTerm) entity);
-      }
       if (glossaryTermId != null) {
-        terms = filterTermsByGlossaryTermId(terms, glossaryTermId, glossaryId);
+        terms =
+            getGlossaryTermAndDirectNeighbors(glossaryTermRepository, glossaryTermId, glossaryId);
+      } else {
+        // Reuse the exact code path the /v1/glossaryTerms?glossary=<id> listing
+        // takes: resolve the glossary's FQN, then drive listAfter with the
+        // `parent` filter. ListFilter.getParentCondition translates that into a
+        // fqnHash LIKE '<glossaryFqnHash>.%' predicate (see
+        // ListFilter.getFqnPrefixCondition) which is an indexed prefix scan
+        // scoped to that glossary — never the full table. The previous
+        // implementation called listAll() and filtered by glossary.id in a Java
+        // loop, which loaded every term in the deployment into memory.
+        var listFilter = new ListFilter(null);
+        if (glossaryId != null) {
+          var glossaryRepo = Entity.getEntityRepository(Entity.GLOSSARY);
+          var glossary =
+              (Glossary)
+                  glossaryRepo.get(
+                      null, glossaryId, glossaryRepo.getFields(""), Include.NON_DELETED, false);
+          listFilter.addQueryParam("parent", glossary.getFullyQualifiedName());
+        }
+        var fetched =
+            glossaryTermRepository.listAll(
+                glossaryTermRepository.getFields("relatedTerms,parent,children,glossary"),
+                listFilter);
+        for (var entity : fetched) {
+          terms.add((GlossaryTerm) entity);
+        }
       }
 
       Set<String> addedNodes = new HashSet<>();

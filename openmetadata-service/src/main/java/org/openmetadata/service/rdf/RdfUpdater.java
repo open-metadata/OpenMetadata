@@ -250,16 +250,13 @@ public class RdfUpdater {
               .toArray(CompletableFuture[]::new);
       CompletableFuture<Void> previousWrites =
           CompletableFuture.allOf(previous).handle((ignored, error) -> null);
-      next =
-          previousWrites.thenRunAsync(
-              () -> {
-                try {
-                  task.run();
-                } finally {
-                  pendingWrites.decrementAndGet();
-                }
-              },
-              AsyncService.getInstance().getExecutorService());
+      try {
+        next = previousWrites.thenRunAsync(task, AsyncService.getInstance().getExecutorService());
+      } catch (RuntimeException e) {
+        pendingWrites.decrementAndGet();
+        LOG.error("Failed to submit RDF {} to keyed async executor", description, e);
+        return;
+      }
       for (UUID key : writeKeys) {
         keyedWriteTails.put(key, next);
       }
@@ -272,6 +269,7 @@ public class RdfUpdater {
               keyedWriteTails.remove(key, next);
             }
           }
+          pendingWrites.decrementAndGet();
           if (error != null) {
             LOG.error("RDF {} failed while running in keyed async queue", description, error);
           }
