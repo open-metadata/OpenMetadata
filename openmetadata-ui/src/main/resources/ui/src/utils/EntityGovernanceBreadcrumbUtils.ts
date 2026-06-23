@@ -285,16 +285,26 @@ export const getBreadcrumbForClassification = (entityName: string) => [
   },
 ];
 
-export const getBreadcrumbForMetric = (entityName: string) => [
-  {
-    name: i18n.t('label.metric-plural'),
-    url: ROUTES.METRICS,
-  },
-  {
-    name: entityName,
-    url: '',
-  },
-];
+export const getBreadcrumbForMetric = (
+  entityName: string,
+  includeCurrent = false
+) => {
+  const items = [
+    {
+      name: i18n.t('label.metric-plural'),
+      url: ROUTES.METRICS,
+    },
+  ];
+
+  if (includeCurrent) {
+    items.push({
+      name: entityName,
+      url: '',
+    });
+  }
+
+  return items;
+};
 
 export const getBreadcrumbForKnowledgePage = (
   entityName: string,
