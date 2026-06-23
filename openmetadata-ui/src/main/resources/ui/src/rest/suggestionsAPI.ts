@@ -228,7 +228,9 @@ export const approveRejectAllSuggestions = async (
         : undefined;
 
     // Mirror Promise.allSettled behavior: one failure must not block remaining tasks.
-    await resolveTask(task.id, { resolutionType, newValue }).catch(() => undefined);
+    await resolveTask(task.id, { resolutionType, newValue }).catch(
+      () => undefined
+    );
   }
 
   return { data: {} } as AxiosResponse;

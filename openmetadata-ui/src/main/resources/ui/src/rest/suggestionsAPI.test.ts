@@ -30,7 +30,11 @@ jest.mock('./tasksAPI', () => ({
   resolveTask: jest.fn(),
 }));
 
-const makeTask = (id: string, fieldPath: string, suggestionType = 'Description') => ({
+const makeTask = (
+  id: string,
+  fieldPath: string,
+  suggestionType = 'Description'
+) => ({
   id,
   about: { type: 'table', fullyQualifiedName: 'db.schema.my_table' },
   payload: {
@@ -90,9 +94,7 @@ describe('suggestionsAPI', () => {
 
       const result = await getSuggestionsList();
 
-      expect(result.data[0].entityLink).toBe(
-        '<#E::table::db.schema.my_table>'
-      );
+      expect(result.data[0].entityLink).toBe('<#E::table::db.schema.my_table>');
     });
 
     it('strips .tags suffix and builds correct entity link', async () => {
@@ -117,7 +119,9 @@ describe('suggestionsAPI', () => {
         data: { data: [], paging: {} },
       });
 
-      await getSuggestionsByUserId('user-uuid-123', { entityFQN: 'db.schema.my_table' });
+      await getSuggestionsByUserId('user-uuid-123', {
+        entityFQN: 'db.schema.my_table',
+      });
 
       expect(APIClient.get).toHaveBeenCalledWith(
         expect.any(String),
