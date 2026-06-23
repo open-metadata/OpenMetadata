@@ -37,10 +37,11 @@ import {
   User03,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined, toString, uniqBy } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined, toString, uniqBy } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as EditorIcon } from '../../../assets/svg/ic-editor.svg';
 import { ReactComponent as SidebarCollapsible } from '../../../assets/svg/ic-sidebar-collapsible.svg';
 import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
@@ -54,9 +55,11 @@ import { EntityStatusBadge } from '../../../components/Entity/EntityStatusBadge/
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
+import { EntityReference } from '../../../generated/entity/type';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useClipboard } from '../../../hooks/useClipBoard';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   ContentChangeState,
@@ -68,8 +71,10 @@ import EntityLink from '../../../utils/EntityLink';
 import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
 import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import DomainSelectableList from '../../common/DomainSelectableList/DomainSelectableList.component';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
+import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { ArticleDetailHeaderProps } from './ArticleDetailHeader.interface';
 
 const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
@@ -87,10 +92,12 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   onSave,
   onSetThreadLink,
   fetchKnowledgePageHierarchy,
+  onUpdate,
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { fqn } = useFqn();
+  const { entityRules } = useEntityRules(EntityType.KNOWLEDGE_PAGE);
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
   const [copyTooltip, setCopyTooltip] = useState<string>('');
@@ -117,7 +124,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
         label: getKnowledgePageName(knowledgePage, t),
       },
     ],
-    [knowledgePage?.displayName, t]
+    [knowledgePage?.id, knowledgePage?.name, knowledgePage?.displayName, t]
   );
 
   const voteStatus = useMemo(() => {
@@ -203,6 +210,32 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     await onVoteChange({ updatedVoteType });
     setVoteLoading(null);
   };
+
+  const handleDomainSave = useCallback(
+    async (selectedDomain: EntityReference | EntityReference[]) => {
+      if (!knowledgePage || !onUpdate) {
+        return;
+      }
+      const updated = cloneDeep(knowledgePage);
+      updated.domains = Array.isArray(selectedDomain)
+        ? selectedDomain
+        : [selectedDomain];
+      await onUpdate(updated);
+    },
+    [knowledgePage, onUpdate]
+  );
+
+  const handleOwnerSave = useCallback(
+    async (updatedOwners?: EntityReference[]) => {
+      if (!knowledgePage || !onUpdate) {
+        return;
+      }
+      const updated = cloneDeep(knowledgePage);
+      updated.owners = updatedOwners;
+      await onUpdate(updated);
+    },
+    [knowledgePage, onUpdate]
+  );
 
   const handleOpenConversation = () => {
     onSetThreadLink(
@@ -349,6 +382,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                     className={
                       firstDomain ? 'tw:text-primary-900' : 'tw:text-gray-400'
                     }
+                    data-testid="domain-link"
                     size="text-sm"
                     weight="regular">
                     {firstDomain
@@ -356,9 +390,27 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                       : t('label.no-entity', { entity: t('label.domain') })}
                   </Typography>
                   {extraDomains.length > 0 && (
-                    <span className="tw:inline-flex tw:items-center tw:rounded-full tw:bg-gray-100 tw:px-1.5 tw:py-0.5 tw:text-xs tw:font-medium tw:text-gray-600">
+                    <span className="tw:inline-flex tw:items-center tw:rounded-full tw:bg-gray-100 tw:px-1.5 tw:py-0.5 tw:text-xs tw:font-medium tw:text-tertiary">
                       +{extraDomains.length}
                     </span>
+                  )}
+                  {permissions.EditAll && (
+                    <DomainSelectableList
+                      isClearable
+                      hasPermission={permissions.EditAll}
+                      multiple={entityRules.canAddMultipleDomains}
+                      selectedDomain={knowledgePage?.domains ?? []}
+                      onUpdate={handleDomainSave}>
+                      <ButtonUtility
+                        className="tw:p-1"
+                        color="secondary"
+                        data-testid="edit-domain-btn"
+                        icon={<EditIcon height={11} width={11} />}
+                        tooltip={t('label.edit-entity', {
+                          entity: t('label.domain'),
+                        })}
+                      />
+                    </DomainSelectableList>
                   )}
                 </div>
 
@@ -393,6 +445,28 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                       weight="regular">
                       {t('label.no-entity', { entity: t('label.owner') })}
                     </Typography>
+                  )}
+                  {(permissions.EditAll || permissions.EditOwners) && (
+                    <UserTeamSelectableList
+                      hasPermission={
+                        permissions.EditAll || permissions.EditOwners
+                      }
+                      multiple={{
+                        user: entityRules.canAddMultipleUserOwners,
+                        team: entityRules.canAddMultipleTeamOwner,
+                      }}
+                      owner={knowledgePage?.owners}
+                      onUpdate={handleOwnerSave}>
+                      <ButtonUtility
+                        className="tw:p-1"
+                        color="secondary"
+                        data-testid="edit-owner-btn"
+                        icon={<EditIcon height={11} width={11} />}
+                        tooltip={t('label.edit-entity', {
+                          entity: t('label.owner-plural'),
+                        })}
+                      />
+                    </UserTeamSelectableList>
                   )}
                 </div>
 

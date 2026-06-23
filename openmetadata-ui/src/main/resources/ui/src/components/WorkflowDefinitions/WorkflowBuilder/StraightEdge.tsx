@@ -159,7 +159,7 @@ export const StraightEdge = (props: EdgeProps) => {
               }px, ${label && !isHorizontalEdge ? labelY - 36 : labelY}px)`,
             }}>
             <Button
-              className="tw:rounded-full tw:bg-white tw:shadow-sm"
+              className="tw:rounded-full tw:bg-primary tw:shadow-sm"
               color="tertiary-destructive"
               iconLeading={XClose}
               size="sm"

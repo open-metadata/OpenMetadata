@@ -479,8 +479,8 @@ llmConfiguration:
     maxTokens:     ${LLM_OPENAI_MAX_TOKENS:-4096}
   bedrock:
     awsConfig:
-      awsRegion:       ${AWS_BEDROCK_REGION:-""}
-      # IAM or static keys via AWS_BEDROCK_ACCESS_KEY / _SECRET_KEY / _SESSION_TOKEN
+      awsRegion:       ${AWS_DEFAULT_REGION:-""}
+      # IAM or static keys via AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_SESSION_TOKEN
     modelId:   ${LLM_BEDROCK_MODEL_ID:-"eu.anthropic.claude-haiku-4-5-20251001-v1:0"}
     maxTokens: ${LLM_BEDROCK_MAX_TOKENS:-4096}
   google:
@@ -561,3 +561,60 @@ llmConfiguration:
 
 **Codegen after schema edits:** `make generate`, `mvn spotless:apply`, UI
 checkstyle for generated TS, `npx tsc --noEmit`.
+
+---
+
+## 19. Follow-on: AISettings + Memory Agent (designed)
+
+**Status:** Designed, not yet built. Full design:
+`docs/superpowers/specs/2026-06-18-ai-settings-memory-agent-design.md`. Built on
+branch `pmbrull/ottawa`. Two capabilities layered on top of the pill pipeline above.
+
+### 19.1 AISettings (config plane)
+
+A SearchSettings-style settings entity (`configuration/aiSettings.json`,
+`SettingsType.AI_SETTINGS`, seeded + merged via `SettingsCache` / a new
+`AISettingsHandler`, read/written through the generic `SystemResource`
+GET/PUT/reset, UI page under Preferences → AI). Shape:
+
+- master `enabled` kill-switch (gates extraction **and** the agent)
+- `memoryExtraction.{fromFiles, fromPages}`
+- `memoryAgent.{enabled, deriveGlossaryTerms, deriveMetrics, deletionPolicy}`
+  (`deletionPolicy` ∈ `cascade | orphan | deprecate`, default `cascade`)
+- `prompts.{memoryExtraction, memoryAgent}.systemPrompt`
+
+**Deltas to this doc:**
+- The hardcoded `ContextMemoryExtractor.SYSTEM_PROMPT` ([§8](#8-knowledge-pill-extraction-contextmemoryextractor))
+  moves to `AISettings.prompts.memoryExtraction.systemPrompt` — seed JSON carries
+  the default, the code constant is kept only as the cache-miss fallback, and the
+  extractor reads it at run time. This addresses the un-tunable-prompt gap.
+- File extraction ([§7.2](#72-service-contextfileprocessingservice-was-contextfileextractionservice)
+  `submit`) and page extraction now gate **additionally** on AISettings
+  (`enabled && memoryExtraction.fromFiles` / `fromPages`), not only on
+  `LLMClientHolder.isEnabled()`.
+
+### 19.2 Memory Agent (memory → ontology)
+
+On `ContextMemory` create/update, an async, throttled agent reconciles the memory
+against the **existing** instance ontology and derives Glossary Terms / Metrics —
+reusing what already covers the memory, creating only what is missing.
+
+- New **`DERIVED_FROM`** relationship (appended last in `entityRelationship.json`;
+  `derivedEntity → sourceMemory`).
+- `MemoryExtractor` (pure `derive`) + `MemoryReconciler` (owns writes) +
+  `MemoryProcessingEngine` (orchestrator) in the `drive` package — siblings to
+  this pill pipeline, same hash-gate / throttle / reconcile idioms — triggered
+  from new `ContextMemoryRepository.postCreate` / `postUpdate` hooks.
+- Per memory, two **independent** axes (Term, Metric), each:
+  REUSE (`RELATED_TO` edge to an existing entity, not owned) /
+  CREATE (`provider=automation`, `DERIVED_FROM` edge, agent-owned; mints a
+  glossary when none fits) / SKIP. Grounding is top-K search over the existing
+  term/metric indexes (no full-ontology load).
+- **Ownership lifecycle:** adopt-on-touch flips `automation→user` on a human PATCH
+  (mirrors the pills Manual-guard); `deletionPolicy` governs memory-delete cleanup
+  of owned entities (`cascade` hard-deletes, `orphan` releases, `deprecate` flags).
+  Agent writes as a dedicated `memory-bot`.
+- **Schema:** new `ContextMemory.memoryStats` (hash-gate + derived/reused
+  counts); new `provider` field on `Metric` ([§6.1](#61-schemas)) for uniform
+  ownership across Terms/Metrics/Glossaries.
+- Renders the full **File → Memory → Term/Metric** provenance chain in the UI.

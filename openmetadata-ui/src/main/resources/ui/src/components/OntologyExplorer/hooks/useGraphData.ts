@@ -913,9 +913,30 @@ export function useGraphDataBuilder({
       });
     }
 
+    // Final safety net before data enters G6. G6 throws synchronously (and
+    // takes down the whole canvas via the ErrorBoundary) on a duplicate node id
+    // ("Node already exists") or an edge whose endpoint is missing ("Node not
+    // found"). Many independent builders/derivations feed this memo, so enforce
+    // both invariants once, here, rather than trusting every upstream path.
+    const seenNodeIds = new Set<string>();
+    const safeNodes = g6Nodes.filter((node) => {
+      const id = String(node.id);
+      if (seenNodeIds.has(id)) {
+        return false;
+      }
+      seenNodeIds.add(id);
+
+      return true;
+    });
+    const safeEdges = g6Edges.filter(
+      (edge) =>
+        seenNodeIds.has(String(edge.source)) &&
+        seenNodeIds.has(String(edge.target))
+    );
+
     return {
-      nodes: g6Nodes,
-      edges: g6Edges,
+      nodes: safeNodes,
+      edges: safeEdges,
       combos: combos.length > 0 ? combos : undefined,
     };
   }, [
