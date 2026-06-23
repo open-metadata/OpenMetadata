@@ -14,7 +14,8 @@ import org.openmetadata.it.server.ServerHandle;
  * <p>When {@code OM_URL} + {@code OM_ADMIN_TOKEN} are set, this delegates to {@link
  * UiTestServer#get()} so the {@code tests/search/*IT} and scale suites run against the same
  * external cluster as the UI scenarios (no embedded bootstrap). {@code SearchClient} then routes
- * index introspection through the server's typed {@code /v1/search/operations} endpoints.
+ * index introspection through the server's admin endpoints ({@code /v1/search/stats} and
+ * {@code /v1/system/search/*}).
  */
 public final class OssTestServer {
 

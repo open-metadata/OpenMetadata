@@ -28,11 +28,11 @@
 # browser authenticate with the JWT acquired below.
 #
 # Search engine access: the search/scale ITs would normally talk to OpenSearch directly on :9200,
-# which a remote cluster doesn't expose. In external mode SearchClient routes index introspection
-# through the server's admin-only, typed /v1/search/operations endpoints (SearchOperationalResource,
-# auto-registered via @Collection). The deployed image on the target cluster MUST therefore be built
-# from this branch or later so the resource exists; it is a normal always-on admin endpoint, so no
-# special server env flag is required.
+# which a remote cluster doesn't expose. SearchClient instead routes index introspection through
+# the server's admin-only endpoints — /v1/search/stats for alias/index/count resolution and
+# /v1/system/search/{mapping,count,query} for raw mapping/count/search (SystemResource). These are
+# always-on admin endpoints (no enable flag), so the only requirement is that the deployed image on
+# the target cluster is built from this branch or later.
 #
 # Auth: the target cluster uses basic auth, so we exchange username/password for a JWT via
 # POST /api/v1/users/login (password base64-encoded) and feed the accessToken as OM_ADMIN_TOKEN.

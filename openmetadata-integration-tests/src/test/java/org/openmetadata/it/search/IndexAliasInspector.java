@@ -3,6 +3,8 @@ package org.openmetadata.it.search;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -13,8 +15,6 @@ import org.openmetadata.it.server.ServerHandle;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.SearchRepository;
 
 /**
  * Read-only view over the live search engine for reindex assertions:
@@ -22,19 +22,25 @@ import org.openmetadata.service.search.SearchRepository;
  * index for each alias, fetches the live mapping JSON, and counts mapping
  * fields for field-explosion checks.
  *
- * <p>Backed by {@link IndexMappingLoader} for the canonical list of aliases
- * and by {@link SearchClient} for live engine state. Works against both
- * Elasticsearch and OpenSearch.
+ * <p>Backed by {@link IndexMappingLoader} for the canonical list of aliases. Live engine state is
+ * read through the server's production endpoints — alias/index resolution and the cluster alias
+ * from {@code GET /v1/search/stats} (via {@link SearchStats}), and the live mapping from
+ * {@code GET /v1/system/search/mapping}. Routing through the server (rather than a direct
+ * {@code :9200} connection) means the same code works in both embedded and external mode. Works
+ * against both Elasticsearch and OpenSearch.
  */
 public final class IndexAliasInspector {
 
-  private final SearchClient client;
+  private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final String MAPPING_PATH = "/v1/system/search/mapping";
+
+  private final ServerHandle server;
   private final String clusterAlias;
 
   public IndexAliasInspector(final ServerHandle server) {
-    this.client = new SearchClient(server);
+    this.server = server;
     ensureMappingLoaderInitialized();
-    this.clusterAlias = resolveClusterAlias(server);
+    this.clusterAlias = SearchStats.clusterAlias(SearchStats.fetch(server));
   }
 
   /**
@@ -67,7 +73,7 @@ public final class IndexAliasInspector {
    * Alias name for the given entity type, cluster-alias-aware. When the server runs with a cluster
    * alias (the test stacks use {@code "openmetadata"}), the live read alias is prefixed
    * ({@code "table" -> "openmetadata_table_search_index"}); without one it's the bare
-   * {@code "table_search_index"}. Resolving via {@link SearchRepository#getClusterAlias()} (the same
+   * {@code "table_search_index"}. Resolving via the server's configured cluster alias (the same
    * value the server names indices with) keeps these assertions querying the alias that actually
    * exists in the engine instead of a name that 404s under a cluster alias.
    */
@@ -97,47 +103,18 @@ public final class IndexAliasInspector {
   }
 
   /**
-   * Resolves the server's configured cluster alias (the index-name prefix). Embedded mode reads it
-   * from the in-JVM {@link SearchRepository}. External mode (where the SearchRepository isn't
-   * initialized in the test JVM) fetches it from the server's {@code /v1/search/operations}
-   * endpoints, so assertions query the alias that actually exists on the remote cluster rather
-   * than a bare name that would 404 under a cluster alias.
-   */
-  private static String resolveClusterAlias(final ServerHandle server) {
-    final String result;
-    if (server.isExternal()) {
-      result = fetchClusterAliasFromServer(server);
-    } else {
-      final SearchRepository searchRepository = Entity.getSearchRepository();
-      result = searchRepository != null ? searchRepository.getClusterAlias() : null;
-    }
-    return result;
-  }
-
-  private static String fetchClusterAliasFromServer(final ServerHandle server) {
-    final String body =
-        server
-            .sdk()
-            .getHttpClient()
-            .executeForString(HttpMethod.GET, "/v1/search/operations/cluster-alias", null);
-    try {
-      return new ObjectMapper().readTree(body).path("clusterAlias").asText("");
-    } catch (final IOException e) {
-      throw new IllegalStateException("Failed to resolve cluster alias from server: " + body, e);
-    }
-  }
-
-  /**
    * Live 1:1 alias -> backing index map (alphabetical for stable diffs). Shared grouping aliases
    * that resolve to multiple indices (e.g. {@code testSuite} spans test_case / test_suite /
    * test_case_result) are skipped: they aren't a single entity type's primary read alias, so they
    * don't belong in a 1:1 alias→index snapshot used for swap assertions.
    */
   public Map<String, String> aliasToIndex() {
+    final Map<String, List<String>> inverted =
+        SearchStats.aliasToIndices(SearchStats.fetch(server));
     final Map<String, String> result = new LinkedHashMap<>();
     for (final String entityType : declaredEntityTypes()) {
       final String alias = aliasFor(entityType);
-      final List<String> indices = indicesForAlias(alias);
+      final List<String> indices = inverted.getOrDefault(alias, List.of());
       if (indices.size() == 1) {
         result.put(alias, indices.get(0));
       }
@@ -147,21 +124,13 @@ public final class IndexAliasInspector {
 
   /** List of backing indices for an alias (typically one; empty if the alias does not exist). */
   public List<String> indicesForAlias(final String alias) {
-    final List<String> indices = new ArrayList<>();
-    if (!client.aliasExists(alias)) {
-      return indices;
-    }
-    final JsonNode body = client.alias(alias);
-    final Iterator<Map.Entry<String, JsonNode>> fields = body.fields();
-    while (fields.hasNext()) {
-      indices.add(fields.next().getKey());
-    }
-    return indices;
+    return new ArrayList<>(
+        SearchStats.aliasToIndices(SearchStats.fetch(server)).getOrDefault(alias, List.of()));
   }
 
   /** Live mapping JSON for the alias (the {@code properties} node). */
   public JsonNode mapping(final String alias) {
-    final JsonNode body = client.mapping(alias);
+    final JsonNode body = fetchMapping(alias);
     final Iterator<Map.Entry<String, JsonNode>> fields = body.fields();
     if (!fields.hasNext()) {
       throw new IllegalStateException("No mapping returned for alias: " + alias);
@@ -194,5 +163,22 @@ public final class IndexAliasInspector {
       }
     }
     return total;
+  }
+
+  private JsonNode fetchMapping(final String alias) {
+    final String body =
+        server
+            .sdk()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, MAPPING_PATH + "?index=" + encode(alias), null);
+    try {
+      return MAPPER.readTree(body);
+    } catch (final IOException e) {
+      throw new IllegalStateException("Failed to parse mapping for " + alias + ": " + body, e);
+    }
+  }
+
+  private static String encode(final String value) {
+    return URLEncoder.encode(value, StandardCharsets.UTF_8);
   }
 }

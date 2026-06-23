@@ -733,10 +733,11 @@ public interface SearchClient
 
   /**
    * Executes a low-level request against the search engine and returns the raw response (the body
-   * may be JSON or, for {@code _cat/*}, plain text). Backs the typed {@code /v1/search/operations}
-   * endpoints so operators and integration tests can inspect index internals (counts, aliases,
-   * {@code _cat/indices}) against a remote cluster without a direct {@code :9200} connection. Not
-   * part of the normal query path.
+   * may be JSON or, for {@code _cat/*}, plain text). Backs the admin-only diagnostic endpoints on
+   * {@code SystemResource} ({@code /v1/system/search/{mapping,count,query}}) so operators and
+   * integration tests can inspect index internals (mappings, counts, aggregations) — including
+   * against a remote cluster without a direct {@code :9200} connection. Not part of the normal
+   * query path.
    */
   default RawSearchResponse rawSearchRequest(String method, String endpoint, String jsonBody)
       throws IOException {
