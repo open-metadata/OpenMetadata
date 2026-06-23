@@ -118,18 +118,26 @@ class BedrockEmbeddingClientTest {
   void cohereRejectsDimensionsOtherThanItsFixedSize() {
     assertThrows(
         IllegalArgumentException.class,
-        () -> BedrockEmbeddingClient.validateCohereDimension(BedrockEmbeddingFamily.COHERE, 512));
+        () -> BedrockEmbeddingClient.validateDimension(BedrockEmbeddingFamily.COHERE, 512));
   }
 
   @Test
-  void cohereAcceptsItsFixedDimension() {
-    BedrockEmbeddingClient.validateCohereDimension(BedrockEmbeddingFamily.COHERE, 1024);
+  void titanV1RejectsDimensionsOtherThanItsFixedSize() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> BedrockEmbeddingClient.validateDimension(BedrockEmbeddingFamily.TITAN_V1, 1024));
   }
 
   @Test
-  void titanFamiliesAcceptAnyDimension() {
-    BedrockEmbeddingClient.validateCohereDimension(BedrockEmbeddingFamily.TITAN_V2, 512);
-    BedrockEmbeddingClient.validateCohereDimension(BedrockEmbeddingFamily.TITAN_V1, 256);
+  void fixedDimensionFamiliesAcceptTheirFixedDimension() {
+    BedrockEmbeddingClient.validateDimension(BedrockEmbeddingFamily.COHERE, 1024);
+    BedrockEmbeddingClient.validateDimension(BedrockEmbeddingFamily.TITAN_V1, 1536);
+  }
+
+  @Test
+  void titanV2AcceptsAnyDimension() {
+    BedrockEmbeddingClient.validateDimension(BedrockEmbeddingFamily.TITAN_V2, 512);
+    BedrockEmbeddingClient.validateDimension(BedrockEmbeddingFamily.TITAN_V2, 256);
   }
 
   private static JsonNode buildPayload(

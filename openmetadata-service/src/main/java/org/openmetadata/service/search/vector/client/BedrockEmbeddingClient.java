@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
+import java.util.OptionalInt;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.configuration.LLMBedrockEmbeddingConfig;
 import org.openmetadata.schema.configuration.LLMConfiguration;
@@ -37,6 +38,7 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
   private static final String COHERE_TRUNCATE_END = "END";
 
   private static final int COHERE_FIXED_DIMENSION = 1024;
+  private static final int TITAN_V1_FIXED_DIMENSION = 1536;
 
   private static final BedrockEmbeddingFamily DEFAULT_FAMILY = BedrockEmbeddingFamily.TITAN_V2;
 
@@ -54,7 +56,7 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
    * adding one constant plus a {@link FamilyMatcher} entry.
    */
   enum BedrockEmbeddingFamily {
-    TITAN_V1 {
+    TITAN_V1(OptionalInt.of(TITAN_V1_FIXED_DIMENSION)) {
       @Override
       ObjectNode buildRequest(String text, int dimension, boolean isQuery) {
         ObjectNode payload = MAPPER.createObjectNode();
@@ -67,7 +69,7 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
         return root.get(FIELD_EMBEDDING);
       }
     },
-    TITAN_V2 {
+    TITAN_V2(OptionalInt.empty()) {
       @Override
       ObjectNode buildRequest(String text, int dimension, boolean isQuery) {
         ObjectNode payload = MAPPER.createObjectNode();
@@ -82,7 +84,7 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
         return root.get(FIELD_EMBEDDING);
       }
     },
-    COHERE {
+    COHERE(OptionalInt.of(COHERE_FIXED_DIMENSION)) {
       @Override
       ObjectNode buildRequest(String text, int dimension, boolean isQuery) {
         ObjectNode payload = MAPPER.createObjectNode();
@@ -100,9 +102,19 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
       }
     };
 
+    private final OptionalInt fixedDimension;
+
+    BedrockEmbeddingFamily(OptionalInt fixedDimension) {
+      this.fixedDimension = fixedDimension;
+    }
+
     abstract ObjectNode buildRequest(String text, int dimension, boolean isQuery);
 
     abstract JsonNode extractEmbedding(JsonNode root);
+
+    OptionalInt fixedDimension() {
+      return fixedDimension;
+    }
   }
 
   private final BedrockRuntimeClient bedrockClient;
@@ -135,7 +147,7 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
     this.modelId = bedrockEmbedding.getEmbeddingModelId();
     this.dimension = bedrockEmbedding.getEmbeddingDimension();
     this.family = familyFor(modelId);
-    validateCohereDimension(family, dimension);
+    validateDimension(family, dimension);
 
     this.bedrockClient =
         BedrockRuntimeClient.builder()
@@ -222,14 +234,15 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
     return MAPPER.writeValueAsString(family.buildRequest(text, dimension, isQuery));
   }
 
-  static void validateCohereDimension(BedrockEmbeddingFamily family, int dimension) {
-    if (family == BedrockEmbeddingFamily.COHERE && dimension != COHERE_FIXED_DIMENSION) {
+  static void validateDimension(BedrockEmbeddingFamily family, int dimension) {
+    OptionalInt fixedDimension = family.fixedDimension();
+    if (fixedDimension.isPresent() && fixedDimension.getAsInt() != dimension) {
       throw new IllegalArgumentException(
           String.format(
-              "Cohere Bedrock embedding models produce %d-dimensional vectors; "
+              "%s Bedrock embedding models produce %d-dimensional vectors; "
                   + "configured embedding dimension %d is incompatible. "
                   + "Set the embedding dimension to %d.",
-              COHERE_FIXED_DIMENSION, dimension, COHERE_FIXED_DIMENSION));
+              family, fixedDimension.getAsInt(), dimension, fixedDimension.getAsInt()));
     }
   }
 
