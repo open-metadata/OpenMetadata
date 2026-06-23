@@ -117,17 +117,10 @@ export const getELKLayoutedElements = async (
 
     const nodeHeight = getNodeHeight(node, isColumnOnlyFilterActive, columns);
 
-    const nodeDepth = node.data?.nodeDepth;
-
     return {
       id: node.id,
       width: NODE_WIDTH,
       height: nodeHeight,
-      ...(nodeDepth !== undefined && {
-        layoutOptions: {
-          'elk.partitioning.partition': String(nodeDepth),
-        },
-      }),
     };
   });
 

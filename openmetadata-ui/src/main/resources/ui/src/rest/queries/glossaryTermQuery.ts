@@ -22,15 +22,16 @@ import { getGlossaryTermByFQN } from '../glossaryAPI';
  * {@code fetchGlossaryTermDetails} in {@code GlossaryPage.component.tsx}.
  */
 export const GLOSSARY_TERM_DEFAULT_FIELDS = [
+  TabSpecificField.CHILDREN,
+  TabSpecificField.CHILDREN_COUNT,
+  TabSpecificField.DERIVED_FROM,
+  TabSpecificField.DOMAINS,
+  TabSpecificField.EXTENSION,
+  TabSpecificField.OWNERS,
   TabSpecificField.RELATED_TERMS,
   TabSpecificField.REVIEWERS,
   TabSpecificField.TAGS,
-  TabSpecificField.OWNERS,
-  TabSpecificField.CHILDREN,
   TabSpecificField.VOTES,
-  TabSpecificField.DOMAINS,
-  TabSpecificField.EXTENSION,
-  TabSpecificField.CHILDREN_COUNT,
 ].join(',');
 
 export const glossaryTermQueryKey = (fqn: string, fields: string) =>
