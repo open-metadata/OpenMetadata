@@ -620,16 +620,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
   private void registerMcpServerIfAvailable() {
     try {
-      // ApplicationContext was initialized before seed data loaded, so it missed McpApplication.
-      // Reinitialize to pick up apps created by seed data loading.
+      // Pick up entities (bots, settings) created during seed data loading.
       ApplicationContext.reinitialize();
 
-      if (ApplicationContext.getInstance().getAppIfExists("McpApplication") == null) {
-        LOG.info("McpApplication not found, skipping MCP server registration");
-        return;
-      }
-
-      // registerMCPServer is protected, so we use reflection from the test bootstrap
+      // registerMCPServer self-gates on mcpConfiguration.enabled (seeded enabled by default).
+      // It is protected, so we use reflection from the test bootstrap
       OpenMetadataApplication application = (OpenMetadataApplication) APP.getApplication();
       java.lang.reflect.Method method =
           OpenMetadataApplication.class.getDeclaredMethod(

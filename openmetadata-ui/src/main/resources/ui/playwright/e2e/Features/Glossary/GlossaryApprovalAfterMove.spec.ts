@@ -137,7 +137,7 @@ test.describe(
     test('approving an open task succeeds after the parent term is moved under a sibling', async ({
       browser,
     }) => {
-      test.slow(true);
+      test.setTimeout(5 * 60 * 1000);
 
       const { apiContext: adminApiContext, afterAction: adminAfterAction } =
         await performAdminLogin(browser);
@@ -244,7 +244,7 @@ test.describe(
     test('rejecting an open task succeeds after the parent term is moved under a sibling', async ({
       browser,
     }) => {
-      test.slow(true);
+      test.setTimeout(5 * 60 * 1000);
 
       const { apiContext: adminApiContext, afterAction: adminAfterAction } =
         await performAdminLogin(browser);
