@@ -606,8 +606,6 @@ test.describe('Lineage Filters', () => {
         await page.getByRole('button', { name: 'Update' }).click();
         await lineageRes;
 
-        console.log(entitiesToShow, entitiesToHide);
-
         for (const entity of entitiesToShow) {
           await expect(
             page.locator(
