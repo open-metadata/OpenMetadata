@@ -16,15 +16,15 @@ import { TableClass } from '../../../support/entity/TableClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import {
+  assignDomainOnlyAccess,
+  assignDomainToTable,
+  safeDelete,
+} from '../../../utils/domainIsolationUtils';
+import {
   connectEdgeBetweenNodesViaAPI,
   visitLineageTab,
 } from '../../../utils/lineage';
 import { enableDisableSearchRBAC } from '../../../utils/searchRBAC';
-import {
-  assignDomainOnlyAccess,
-  assignDomainToTable,
-  safeDelete,
-} from './domainIsolationUtils';
 
 // Issue #24180 — lineage search is RBAC-gated by the global `enableAccessControl` setting. With it
 // on, the lineage graph for a user holding the seeded DomainOnlyAccessRole must prune nodes that

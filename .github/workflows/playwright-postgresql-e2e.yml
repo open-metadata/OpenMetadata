@@ -96,10 +96,67 @@ jobs:
           path: openmetadata-dist/target/openmetadata-*.tar.gz
           retention-days: 1
 
-  playwright-ci-postgresql:
-    needs: [build]
+  detect-changes:
     runs-on: ubuntu-latest
-    if: ${{ !cancelled() && needs.build.result == 'success' }}
+    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    outputs:
+      spec_only_mode: ${{ steps.compute.outputs.spec_only_mode }}
+      changed_specs: ${{ steps.compute.outputs.changed_specs }}
+      matrix: ${{ steps.compute.outputs.matrix }}
+    steps:
+      - name: Checkout
+        if: ${{ github.event_name == 'pull_request_target' }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          filter: blob:none
+
+      - name: Get all changed files
+        id: all-changes
+        if: ${{ github.event_name == 'pull_request_target' }}
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
+
+      - name: Get changed runnable spec files
+        id: changed-specs
+        if: ${{ github.event_name == 'pull_request_target' }}
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
+        with:
+          path: openmetadata-ui/src/main/resources/ui
+          files: |
+            playwright/e2e/**/*.spec.ts
+          files_ignore: |
+            playwright/e2e/**/SystemCertificationTags.spec.ts
+            playwright/e2e/**/IntakeForm.spec.ts
+
+      - name: Compute spec-only mode and matrix
+        id: compute
+        env:
+          ALL_FILES: ${{ steps.all-changes.outputs.all_changed_files }}
+          SPEC_FILES: ${{ steps.changed-specs.outputs.all_changed_files }}
+        run: |
+          FULL_MATRIX='{"shardIndex":[1,2,3,4,5,6],"shardTotal":[6]}'
+          SPEC_MATRIX='{"shardIndex":[1],"shardTotal":[1]}'
+
+          ALL_COUNT=$(echo "$ALL_FILES" | wc -w)
+          SPEC_COUNT=$(echo "$SPEC_FILES" | wc -w)
+
+          if [ "$SPEC_COUNT" -gt 0 ] && [ "$ALL_COUNT" -eq "$SPEC_COUNT" ]; then
+            echo "spec_only_mode=true" >> "$GITHUB_OUTPUT"
+            echo "changed_specs=$SPEC_FILES" >> "$GITHUB_OUTPUT"
+            echo "matrix=$SPEC_MATRIX" >> "$GITHUB_OUTPUT"
+            echo "Spec-only mode: ${SPEC_COUNT} spec(s) changed"
+          else
+            echo "spec_only_mode=false" >> "$GITHUB_OUTPUT"
+            echo "changed_specs=" >> "$GITHUB_OUTPUT"
+            echo "matrix=$FULL_MATRIX" >> "$GITHUB_OUTPUT"
+            echo "Full suite mode (total=${ALL_COUNT}, runnable-specs=${SPEC_COUNT})"
+          fi
+
+  playwright-ci-postgresql:
+    needs: [build, detect-changes]
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() && needs.build.result == 'success' && needs.detect-changes.result == 'success' }}
     environment: test
     env:
       # Playwright logs the admin user in many times (performAdminLogin per test, parallel
@@ -109,9 +166,7 @@ jobs:
       AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER: "10000"
     strategy:
       fail-fast: false
-      matrix:
-        shardIndex: [1, 2, 3, 4, 5, 6]
-        shardTotal: [6]
+      matrix: ${{ fromJSON(needs.detect-changes.outputs.matrix) }}
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -156,7 +211,39 @@ jobs:
         id: run-tests
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
-          if [ "${{ matrix.shardIndex }}" -eq "1" ]; then
+          if [ "$SPEC_ONLY" = "true" ]; then
+            echo "🔹 Spec-only mode: running changed specs → ${CHANGED_SPECS}"
+
+            PROJECT_ARGS=""
+
+            # DataAssetRulesEnabled runs standalone; its deps (setup) are resolved automatically
+            if echo "$CHANGED_SPECS" | tr ' ' '\n' | grep -q "DataAssetRulesEnabled\.spec\.ts"; then
+              PROJECT_ARGS="$PROJECT_ARGS --project=DataAssetRulesEnabled"
+            fi
+            # DataAssetRulesDisabled depends on DataAssetRulesEnabled — Playwright resolves this automatically
+            if echo "$CHANGED_SPECS" | tr ' ' '\n' | grep -q "DataAssetRulesDisabled\.spec\.ts"; then
+              PROJECT_ARGS="$PROJECT_ARGS --project=DataAssetRulesDisabled"
+            fi
+            # SearchRBAC depends on the full DataAssetRules chain — Playwright resolves this automatically
+            if echo "$CHANGED_SPECS" | tr ' ' '\n' | grep -q "SearchRBAC\.spec\.ts"; then
+              PROJECT_ARGS="$PROJECT_ARGS --project=SearchRBAC"
+            fi
+            # DomainIsolation uses serial workers and its own testMatch
+            if echo "$CHANGED_SPECS" | tr ' ' '\n' | grep -q "DomainIsolation/"; then
+              PROJECT_ARGS="$PROJECT_ARGS --project=DomainIsolation"
+            fi
+            # Regular chromium specs: anything not in a special-project category.
+            # Also add Basic because chromium has grepInvert:[@basic], so @basic-tagged tests
+            # in the changed files would be silently skipped without it.
+            if echo "$CHANGED_SPECS" | tr ' ' '\n' | grep -qvE "(DataAssetRulesEnabled\.spec\.ts|DataAssetRulesDisabled\.spec\.ts|SearchRBAC\.spec\.ts|DomainIsolation/)"; then
+              PROJECT_ARGS="$PROJECT_ARGS --project=chromium --project=Basic"
+            fi
+
+            [ -z "$PROJECT_ARGS" ] && PROJECT_ARGS="--project=chromium --project=Basic"
+
+            npx playwright test $PROJECT_ARGS $CHANGED_SPECS
+
+          elif [ "${{ matrix.shardIndex }}" -eq "1" ]; then
             echo "🔹 Running DataAssetRules-only tests on shard 1"
 
             # The testMatch pattern ensures only DataAssetRules*.spec.ts files run
@@ -179,6 +266,8 @@ jobs:
           fi
 
         env:
+          SPEC_ONLY: ${{ needs.detect-changes.outputs.spec_only_mode }}
+          CHANGED_SPECS: ${{ needs.detect-changes.outputs.changed_specs }}
           PLAYWRIGHT_IS_OSS: true
           PLAYWRIGHT_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
           PLAYWRIGHT_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}
