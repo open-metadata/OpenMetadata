@@ -82,8 +82,18 @@ const RDF_TYPE_MAP: Record<string, NodeType> = {
   team: 'team',
 };
 
-/** RDF relationship label (normalized) -> {kind, display}. */
-const ONTOLOGY_LABELS: Record<string, string> = {
+/**
+ * Recognised RDF relationship labels (normalized) -> a canonical label.
+ *
+ * These values are NOT shown directly: they are internal, stable identifiers
+ * that every display site localizes through {@link RELATION_LABEL_KEYS} ->
+ * `t(...)` (see the detail panels and the edge tooltip). A relation the user
+ * defines themselves (e.g. a custom glossary relation) won't be in these maps;
+ * it falls through to `humanizeLabel` and is shown as-is, since user-defined
+ * names cannot be pre-translated. The `rdfGraphAdapter.test` suite guards that
+ * every canonical value here has a matching `RELATION_LABEL_KEYS` entry.
+ */
+export const ONTOLOGY_LABELS: Record<string, string> = {
   mappedto: MAPPED_TO_LABEL,
   hasglossaryterm: MAPPED_TO_LABEL,
   glossaryterm: MAPPED_TO_LABEL,
@@ -102,7 +112,7 @@ const ONTOLOGY_LABELS: Record<string, string> = {
   broadernarrower: 'Broader / narrower',
 };
 
-const TECHNICAL_LABELS: Record<string, string> = {
+export const TECHNICAL_LABELS: Record<string, string> = {
   hascolumn: 'Has column',
   haslineage: 'Downstream',
   lineage: 'Downstream',
@@ -253,9 +263,13 @@ export const classifyEdge = (
     result = { kind: 'technical', label: TECHNICAL_LABELS[key] };
   } else if (touchesConcept && !OWNERSHIP_LABELS.has(key)) {
     const bothConcepts = sourceType === 'concept' && targetType === 'concept';
+    // A concept<->concept edge with an unrecognised predicate is a user-defined
+    // glossary relation (e.g. "Regulates"): keep its humanized name rather than
+    // collapsing every custom relation to a generic "Related to". A
+    // concept<->asset edge is an asset-to-business-concept mapping.
     result = {
       kind: 'ontology',
-      label: bothConcepts ? 'Related to' : MAPPED_TO_LABEL,
+      label: bothConcepts ? humanizeLabel(rawLabel) : MAPPED_TO_LABEL,
     };
   } else {
     result = { kind: 'technical', label: humanizeLabel(rawLabel) };

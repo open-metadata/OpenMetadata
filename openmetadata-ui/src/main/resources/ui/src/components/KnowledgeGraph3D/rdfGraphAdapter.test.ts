@@ -17,7 +17,10 @@ import {
   classifyEdge,
   enrichWithEntityFields,
   normalizeNodeType,
+  ONTOLOGY_LABELS,
   relationsOf,
+  RELATION_LABEL_KEYS,
+  TECHNICAL_LABELS,
 } from './rdfGraphAdapter';
 
 const SAMPLE: GraphData = {
@@ -142,11 +145,47 @@ describe('classifyEdge', () => {
     });
   });
 
+  it('should preserve the name of a user-defined concept-to-concept relation', () => {
+    // A custom glossary relation (not in the recognised maps) between two
+    // concepts must keep its own name, not collapse to a generic "Related to".
+    expect(classifyEdge('regulates', 'concept', 'concept')).toEqual({
+      kind: 'ontology',
+      label: 'Regulates',
+    });
+    expect(classifyEdge('is_governed_by', 'concept', 'concept')).toEqual({
+      kind: 'ontology',
+      label: 'Is governed by',
+    });
+  });
+
   it('should humanize unknown labels and default them to technical', () => {
     expect(classifyEdge('someCustomRelation', 'table', 'table')).toEqual({
       kind: 'technical',
       label: 'Some custom relation',
     });
+  });
+});
+
+describe('relation label localization', () => {
+  it('should have a RELATION_LABEL_KEYS i18n entry for every canonical label', () => {
+    // Guards the reviewer concern: the maps below are not shown directly; the
+    // UI localizes each canonical label via RELATION_LABEL_KEYS -> t(). Every
+    // distinct canonical value must therefore have an i18n key, or it would
+    // render untranslated.
+    const canonicalLabels = new Set([
+      ...Object.values(ONTOLOGY_LABELS),
+      ...Object.values(TECHNICAL_LABELS),
+    ]);
+
+    for (const label of canonicalLabels) {
+      expect(RELATION_LABEL_KEYS[label]).toBeDefined();
+    }
+  });
+
+  it('should map every i18n key to a label.* / message.* translation key', () => {
+    for (const key of Object.values(RELATION_LABEL_KEYS)) {
+      expect(key).toMatch(/^(label|message)\./);
+    }
   });
 });
 
