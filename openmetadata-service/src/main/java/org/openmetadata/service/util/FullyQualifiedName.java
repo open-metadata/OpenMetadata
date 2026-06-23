@@ -19,6 +19,7 @@ import static org.openmetadata.service.Entity.METRIC;
 import static org.openmetadata.service.Entity.TABLE;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -353,7 +354,7 @@ public class FullyQualifiedName {
     if (split.length < 3) {
       throw new IllegalArgumentException("Invalid metric child FQN: " + childFQN);
     }
-    return build(split[0]);
+    return build(Arrays.copyOf(split, split.length - 2));
   }
 
   // Get parent entity fqn for a given column fqn

@@ -31,7 +31,6 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.data.MetricDimension;
 import org.openmetadata.schema.api.data.MetricMeasure;
-import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.EntityReference;
@@ -50,8 +49,6 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.MemoryOwnership;
-import org.openmetadata.service.util.RestUtil;
-import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 public class MetricRepository extends EntityRepository<Metric> {
@@ -82,17 +79,21 @@ public class MetricRepository extends EntityRepository<Metric> {
   }
 
   private void setDimensionFQNs(String metricFqn, List<MetricDimension> dimensions) {
-    if (dimensions == null) return;
-    String prefix = FullyQualifiedName.add(metricFqn, "dimension");
-    for (MetricDimension dimension : dimensions) {
+    if (nullOrEmpty(dimensions)) {
+      return;
+    }
+    final String prefix = FullyQualifiedName.add(metricFqn, "dimension");
+    for (final MetricDimension dimension : dimensions) {
       dimension.setFullyQualifiedName(FullyQualifiedName.add(prefix, dimension.getName()));
     }
   }
 
   private void setMeasureFQNs(String metricFqn, List<MetricMeasure> measures) {
-    if (measures == null) return;
-    String prefix = FullyQualifiedName.add(metricFqn, "measure");
-    for (MetricMeasure measure : measures) {
+    if (nullOrEmpty(measures)) {
+      return;
+    }
+    final String prefix = FullyQualifiedName.add(metricFqn, "measure");
+    for (final MetricMeasure measure : measures) {
       measure.setFullyQualifiedName(FullyQualifiedName.add(prefix, measure.getName()));
     }
   }

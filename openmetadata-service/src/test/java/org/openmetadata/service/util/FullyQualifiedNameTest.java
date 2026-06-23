@@ -304,6 +304,9 @@ class FullyQualifiedNameTest {
     // Quoted metric name
     assertEquals(
         "\"my.metric\"", FullyQualifiedName.getMetricFQN("\"my.metric\".dimension.region"));
+    // Multi-part metric FQN (e.g. service-prefixed) keeps everything but the last two segments
+    assertEquals(
+        "service.revenue", FullyQualifiedName.getMetricFQN("service.revenue.measure.total_amount"));
     // Error: too few segments
     assertThrows(
         IllegalArgumentException.class, () -> FullyQualifiedName.getMetricFQN("metric.dimension"));
