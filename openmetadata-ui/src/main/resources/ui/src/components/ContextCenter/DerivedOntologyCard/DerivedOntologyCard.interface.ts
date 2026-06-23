@@ -10,14 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
- * Configuration for the MCP Chat Application. The LLM provider and credentials are
- * configured at the platform level via `llmConfiguration`; this app only governs chat
- * behavior.
- */
-export interface MCPChatAppConfig {
-    /**
-     * The system prompt that guides the assistant behavior.
-     */
-    systemPrompt?: string;
+
+export interface DerivedOntologyCardProps {
+  /**
+   * The UUID of the ContextMemory to inspect for derived / reused ontology
+   * entities. Used to fetch `derivedEntities` and `reusedEntities` via the
+   * contextMemory API.
+   */
+  memoryId: string;
 }
