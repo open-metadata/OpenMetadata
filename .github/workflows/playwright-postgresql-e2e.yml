@@ -350,7 +350,7 @@ jobs:
           sudo rm -rf ${PWD}/docker-volume
 
   playwright-summary:
-    if: ${{ !cancelled() && github.event_name == 'pull_request_target' && (github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    if: ${{ !cancelled() && needs.playwright-ci-postgresql.result != 'skipped' }}
     needs: playwright-ci-postgresql
     runs-on: ubuntu-latest
     steps:
@@ -361,6 +361,7 @@ jobs:
           path: results
 
       - name: Post consolidated PR comment
+        if: ${{ github.event_name == 'pull_request_target' && (github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -533,3 +534,11 @@ jobs:
             } else {
               await github.rest.issues.createComment({ ...repo, issue_number: prNumber, body });
             }
+
+      - name: Gate on test results
+        run: |
+          if [ "${{ needs.playwright-ci-postgresql.result }}" = "failure" ]; then
+            echo "One or more Playwright shards failed — see the report above."
+            exit 1
+          fi
+          echo "Playwright result: ${{ needs.playwright-ci-postgresql.result }}"
