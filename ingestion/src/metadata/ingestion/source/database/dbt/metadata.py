@@ -9,6 +9,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+# pyright: reportCallIssue=false, reportAttributeAccessIssue=false
 """
 DBT source methods.
 """
@@ -29,6 +30,7 @@ from metadata.generated.schema.api.tests.createTestDefinition import (
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.metric import (
+    Language,
     Metric,
     MetricDimension,
     MetricExpression,
@@ -1359,7 +1361,7 @@ class DbtSource(DbtServiceSource):
         measure_ref = getattr(type_params, "measure", None)
         measure_name = getattr(measure_ref, "name", None) if measure_ref else None
         if measure_name:
-            expression = MetricExpression(language="SQL", code=measure_name)
+            expression = MetricExpression(language=Language.SQL, code=measure_name)
         return expression, None
 
     @staticmethod
@@ -1367,7 +1369,7 @@ class DbtSource(DbtServiceSource):
         expression = None
         expr = getattr(type_params, "expr", None)
         if expr:
-            expression = MetricExpression(language="SQL", code=expr)
+            expression = MetricExpression(language=Language.SQL, code=expr)
         sub_metrics = getattr(type_params, "metrics", None) or []
         related = [getattr(m, "name", str(m)) for m in sub_metrics] or None
         return expression, related
@@ -1381,7 +1383,7 @@ class DbtSource(DbtServiceSource):
         den_name = getattr(denominator, "name", str(denominator)) if denominator else ""
         related = [name for name in (num_name, den_name) if name] or None
         if num_name and den_name:
-            expression = MetricExpression(language="SQL", code=f"{num_name} / {den_name}")
+            expression = MetricExpression(language=Language.SQL, code=f"{num_name} / {den_name}")
         return expression, related
 
     @staticmethod
@@ -1403,7 +1405,7 @@ class DbtSource(DbtServiceSource):
         measure_name = getattr(measure_ref, "name", None) if measure_ref else None
         if measure_name:
             window_str = DbtSource._cumulative_window_str(type_params)
-            expression = MetricExpression(language="SQL", code=f"cumulative({measure_name}{window_str})")
+            expression = MetricExpression(language=Language.SQL, code=f"cumulative({measure_name}{window_str})")
         return expression, None
 
     @staticmethod
@@ -1417,7 +1419,7 @@ class DbtSource(DbtServiceSource):
             conv_name = getattr(conversion, "name", "") if conversion else ""
             entity = getattr(conv, "entity", "")
             expression = MetricExpression(
-                language="SQL",
+                language=Language.SQL,
                 code=f"conversion({base_name} -> {conv_name}, entity={entity})",
             )
         return expression, None
@@ -1495,7 +1497,7 @@ class DbtSource(DbtServiceSource):
                 metadata=self.metadata,
                 tags=tags,
                 classification_name=self.tag_classification_name,
-                include_tags=self.source_config.includeTags,
+                include_tags=bool(self.source_config.includeTags),
             )
             or []
         )
