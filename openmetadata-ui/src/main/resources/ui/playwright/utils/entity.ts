@@ -1344,15 +1344,21 @@ export const followEntity = async (
   endpoint: EntityTypeEndpoint,
   verificationText = 'Unfollow'
 ) => {
+  const followButton = page.getByTestId('entity-follow-button');
+
+  await followButton.waitFor({ state: 'visible' });
+
+  if ((await followButton.textContent())?.includes(verificationText)) {
+    return;
+  }
+
   const followResponse = page.waitForResponse(
     `/api/v1/${endpoint}/*/followers`
   );
-  await page.getByTestId('entity-follow-button').click();
+  await followButton.click();
   await followResponse;
 
-  await expect(page.getByTestId('entity-follow-button')).toContainText(
-    verificationText
-  );
+  await expect(followButton).toContainText(verificationText);
 };
 
 export const unFollowEntity = async (
@@ -1445,9 +1451,9 @@ export const validateFollowedEntityToWidget = async (
     .poll(
       async () => {
         followingWidget = await loadFollowingWidget(page);
-        const widgetText = (await followingWidget.textContent()) ?? '';
+        const entityCard = followingWidget.getByTestId(`Following-${entity}`);
 
-        return widgetText.includes(entity);
+        return entityCard.isVisible();
       },
       {
         timeout: 120_000,
