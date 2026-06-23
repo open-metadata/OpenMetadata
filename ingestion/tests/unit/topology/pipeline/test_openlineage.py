@@ -16,6 +16,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
     ConsumerOffsets,
     ConsumerOffsets1,
+    KinesisBrokerConfig,
     SecurityProtocol,
 )
 from metadata.generated.schema.entity.services.databaseService import (
@@ -2543,6 +2544,51 @@ class OpenLineageUnitTest(unittest.TestCase):
         so a single bad dataset never aborts the whole event."""
         data = {"namespace": "trino://host:8080", "name": "invalidname"}
         self.assertEqual(OpenlineageSource._iter_table_candidates(data), [])
+
+
+class TestKinesisMultiShardPolling(unittest.TestCase):
+    @patch(
+        "metadata.ingestion.source.pipeline.openlineage.metadata.time.sleep",
+        return_value=None,
+    )
+    def test_poll_kinesis_reads_events_from_every_shard(self, _mock_sleep):
+        # Two shards, each with one record then no new data. The empty polls make
+        # each shard exit via the inactivity timeout (NextShardIterator stays set,
+        # as live shards do). Before the per-shard reset fix, the timeout accrued
+        # on shard-0 skipped shard-1 entirely, yielding only one event.
+        raw = json.dumps(FULL_OL_KAFKA_EVENT).encode()
+
+        client = MagicMock()
+        paginator = MagicMock()
+        paginator.paginate.return_value = [{"Shards": [{"ShardId": "shard-0"}, {"ShardId": "shard-1"}]}]
+        client.get_paginator.return_value = paginator
+        client.get_shard_iterator.side_effect = lambda **kw: {"ShardIterator": f"{kw['ShardId']}-start"}
+
+        def get_records(ShardIterator, Limit):  # noqa: N803
+            if ShardIterator.endswith("-start"):
+                shard = ShardIterator[: -len("-start")]
+                return {
+                    "Records": [{"Data": raw}],
+                    "NextShardIterator": f"{shard}-empty",
+                }
+            return {"Records": [], "NextShardIterator": ShardIterator}
+
+        client.get_records.side_effect = get_records
+
+        broker = KinesisBrokerConfig(
+            streamName="stream",
+            awsConfig={"awsRegion": "us-east-2"},
+            consumerOffsets=ConsumerOffsets1.TRIM_HORIZON,
+            poolTimeout=1.0,
+            sessionTimeout=1,
+        )
+
+        source = object.__new__(OpenlineageSource)
+        source.client = client
+
+        events = list(source._poll_kinesis(broker))
+
+        assert len(events) == 2
 
 
 if __name__ == "__main__":
