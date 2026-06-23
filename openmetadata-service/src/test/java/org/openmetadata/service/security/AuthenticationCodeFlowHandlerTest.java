@@ -13,6 +13,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
@@ -72,6 +73,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OidcClientConfig;
@@ -1141,7 +1143,7 @@ class AuthenticationCodeFlowHandlerTest {
           .thenThrow(EntityNotFoundException.byName("new-user"));
       User draftUser = new User();
       userUtil
-          .when(() -> UserUtil.user("new-user", "example.com", "new-user"))
+          .when(() -> UserUtil.getUser(eq("new-user"), any(CreateUser.class)))
           .thenReturn(draftUser);
       userUtil.when(() -> UserUtil.assignTeamsFromClaim(draftUser, List.of())).thenReturn(false);
       User persistedUser = new User();
@@ -1260,7 +1262,7 @@ class AuthenticationCodeFlowHandlerTest {
           .thenThrow(EntityNotFoundException.byName("gmail-user"));
       User draftUser = new User();
       userUtil
-          .when(() -> UserUtil.user("gmail-user", "gmail.com", "gmail-user"))
+          .when(() -> UserUtil.getUser(eq("gmail-user"), any(CreateUser.class)))
           .thenReturn(draftUser);
       userUtil.when(() -> UserUtil.assignTeamsFromClaim(draftUser, List.of())).thenReturn(false);
       User persistedUser = new User();
@@ -1334,7 +1336,7 @@ class AuthenticationCodeFlowHandlerTest {
           .thenThrow(EntityNotFoundException.byName("gmail-user"));
       User draftUser = new User();
       userUtil
-          .when(() -> UserUtil.user("gmail-user", "gmail.com", "gmail-user"))
+          .when(() -> UserUtil.getUser(eq("gmail-user"), any(CreateUser.class)))
           .thenReturn(draftUser);
       userUtil.when(() -> UserUtil.assignTeamsFromClaim(draftUser, List.of())).thenReturn(false);
       User persistedUser = new User();
@@ -1484,8 +1486,15 @@ class AuthenticationCodeFlowHandlerTest {
   void getOrCreateOidcUser_selfSignup_rejectsDisallowedEmailDomain() throws Exception {
     AuthenticationCodeFlowHandler handler = createSelfSignupHandler(Set.of("allowed.com"));
 
+    // Domain rejection throws before any user is created, so stub only the lookup that gets us into
+    // the self-signup branch — stubbing user creation here would be flagged as UnnecessaryStubbing.
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
-      stubUserNotFoundAndEchoCreate(mockedEntity);
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      eq(Entity.USER), anyString(), anyString(), any(Include.class)))
+          .thenThrow(new EntityNotFoundException("user not found"));
 
       AuthenticationException thrown =
           assertThrows(
@@ -1505,7 +1514,9 @@ class AuthenticationCodeFlowHandlerTest {
     AuthorizerConfiguration authzConfig = mock(AuthorizerConfiguration.class);
     when(authzConfig.getAdminPrincipals()).thenReturn(Set.of());
     when(authzConfig.getAllowedEmailRegistrationDomains()).thenReturn(allowedDomains);
-    when(authzConfig.getDefaultOAuthRole()).thenReturn(null);
+    // Role assignment runs only after a user passes domain validation; rejection-path tests never
+    // reach it, so keep this lenient to avoid UnnecessaryStubbing.
+    lenient().when(authzConfig.getDefaultOAuthRole()).thenReturn(null);
 
     AuthenticationCodeFlowHandler handler = newHandler();
     setField(handler, "authenticationConfiguration", authConfig);
