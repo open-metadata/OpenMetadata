@@ -555,6 +555,7 @@ public class ElasticSearchSourceBuilderFactory
     Map<String, Float> nonFuzzyFields = new HashMap<>();
 
     classifyFields(assetConfig, fuzzyFields, nonFuzzyFields);
+    FUZZY_FIELDS.forEach(field -> fuzzyFields.putIfAbsent(field, DEFAULT_BOOST));
 
     es.co.elastic.clients.elasticsearch._types.query_dsl.Query fuzzyQuery =
         ElasticQueryBuilder.queryStringQuery(

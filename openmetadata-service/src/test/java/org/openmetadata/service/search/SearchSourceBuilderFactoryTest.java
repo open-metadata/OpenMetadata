@@ -19,14 +19,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import es.co.elastic.clients.util.NamedValue;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.search.Aggregation;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.Condition;
@@ -36,14 +34,11 @@ import org.openmetadata.schema.api.search.GlobalSettings;
 import org.openmetadata.schema.api.search.Range;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.TermBoost;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchRequestBuilder;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchSourceBuilderFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchRequestBuilder;
 import org.openmetadata.service.search.opensearch.OpenSearchSourceBuilderFactory;
-import org.openmetadata.service.util.EntityUtil;
 
 public class SearchSourceBuilderFactoryTest {
 
@@ -389,28 +384,18 @@ public class SearchSourceBuilderFactoryTest {
   }
 
   @Test
-  public void testServiceFieldQuerySyntaxResolvesAgainstRealTableConfiguration() throws Exception {
-    SearchSettings realSearchSettings = loadDefaultSearchSettingsFromFile();
-    AssetTypeConfiguration realTableConfig =
-        realSearchSettings.getAssetTypeConfigurations().stream()
-            .filter(config -> "table".equals(config.getAssetType()))
-            .findFirst()
-            .orElseThrow();
-    Set<String> realTableFieldNames =
-        realTableConfig.getSearchFields().stream()
+  public void testServiceFieldQuerySyntaxResolvesWithoutExplicitSearchFieldConfig() {
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+    ElasticSearchSourceBuilderFactory esFactory =
+        new ElasticSearchSourceBuilderFactory(searchSettings);
+
+    Set<String> tableFields =
+        tableConfig.getSearchFields().stream()
             .map(FieldBoost::getField)
             .collect(Collectors.toSet());
-    assertTrue(
-        realTableFieldNames.contains("service.name"),
-        "searchSettings.json must configure 'service.name' as a searchField for 'table'");
-    assertTrue(
-        realTableFieldNames.contains("service.displayName"),
-        "searchSettings.json must configure 'service.displayName' as a searchField for 'table'");
-
-    OpenSearchSourceBuilderFactory osFactory =
-        new OpenSearchSourceBuilderFactory(realSearchSettings);
-    ElasticSearchSourceBuilderFactory esFactory =
-        new ElasticSearchSourceBuilderFactory(realSearchSettings);
+    assertFalse(
+        tableFields.contains("service.name"),
+        "service.name must NOT be in searchSettings to avoid polluting default free-text ranking");
 
     OpenSearchRequestBuilder osBuilder =
         osFactory.buildDataAssetSearchBuilderV2(
@@ -424,15 +409,6 @@ public class SearchSourceBuilderFactoryTest {
         esBuilder.query(), "ElasticSearch query should resolve service.name:value syntax");
     assertTrue(osBuilder.query().isFunctionScore());
     assertTrue(esBuilder.query().isFunctionScore());
-  }
-
-  private SearchSettings loadDefaultSearchSettingsFromFile() throws IOException {
-    List<String> jsonDataFiles =
-        EntityUtil.getJsonDataResources(".*json/data/settings/searchSettings.json$");
-    String json =
-        CommonUtil.getResourceAsStream(
-            EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
-    return JsonUtils.readValue(json, SearchSettings.class);
   }
 
   @Test

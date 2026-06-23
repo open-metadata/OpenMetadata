@@ -1033,6 +1033,7 @@ public class OpenSearchSourceBuilderFactory
     Map<String, Float> nonFuzzyFields = new HashMap<>();
 
     classifyFields(assetConfig, fuzzyFields, nonFuzzyFields);
+    FUZZY_FIELDS.forEach(field -> fuzzyFields.putIfAbsent(field, DEFAULT_BOOST));
 
     os.org.opensearch.client.opensearch._types.query_dsl.Query fuzzyQuery =
         OpenSearchQueryBuilder.queryStringQuery(
