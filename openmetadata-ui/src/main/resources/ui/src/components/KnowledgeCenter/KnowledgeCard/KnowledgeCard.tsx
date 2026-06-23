@@ -228,8 +228,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
             <Typography
               ellipsis
               data-testid="knowledge-card-title"
-              size="text-lg"
-              weight="semibold">
+              weight="medium">
               {getKnowledgePageName(knowledgePage, t)}
             </Typography>
             {isQuickLink && !readonly && quickLinkActions}
