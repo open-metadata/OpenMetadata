@@ -55,6 +55,9 @@ class DatabaseStep(StepName):
     GetQueries = "GetQueries"
     GetTags = "GetTags"
     GetStreams = "GetStreams"
+    GetColumnMetadata = "GetColumnMetadata"
+    GetTableComments = "GetTableComments"
+    GetInformationSchemaColumns = "GetInformationSchemaColumns"
 
 
 @contextmanager
