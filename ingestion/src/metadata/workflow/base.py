@@ -60,6 +60,7 @@ from metadata.utils.streamable_logger import (
     cleanup_streamable_logging,
     setup_streamable_logging_for_workflow,
 )
+from metadata.workflow.progress_render import render_progress_tree
 from metadata.workflow.workflow_output_handler import WorkflowOutputHandler
 from metadata.workflow.workflow_resource_metrics import WorkflowResourceMetrics
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
@@ -69,7 +70,7 @@ logger = ingestion_logger()
 # Type of service linked to the Ingestion Pipeline
 T = TypeVar("T")
 
-REPORTS_INTERVAL_SECONDS = 60
+REPORTS_INTERVAL_SECONDS = 10
 
 
 class InvalidWorkflowJSONException(Exception):  # noqa: N818
@@ -447,6 +448,10 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                     f"({metrics.memory_usage_percent:.2f}%) | "
                     f"Processes: {metrics.active_processes}"
                 )
+
+            snapshot = self._collect_progress_snapshot()
+            if snapshot:
+                logger.info("Ingestion progress:\n%s", render_progress_tree(snapshot))
 
             # Send progress update to the server for live tracking
             self.send_progress_update()

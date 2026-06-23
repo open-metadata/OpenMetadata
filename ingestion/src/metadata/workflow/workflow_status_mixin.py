@@ -16,7 +16,10 @@ import traceback
 import uuid
 from datetime import datetime
 from enum import Enum
-from typing import Optional, Tuple  # noqa: UP035
+from typing import TYPE_CHECKING, Optional, Tuple  # noqa: UP035
+
+if TYPE_CHECKING:
+    from metadata.utils.progress_registry import ProgressNodeSnapshot
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -39,6 +42,7 @@ from metadata.ingestion.api.step import Step, Summary
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ometa_logger
 from metadata.workflow.context.context_manager import ContextManager
+from metadata.workflow.progress_render import snapshot_to_progress_payload
 
 logger = ometa_logger()
 
@@ -172,21 +176,33 @@ class WorkflowStatusMixin:
             ]
         )
 
+    def _collect_progress_snapshot(self) -> Optional["ProgressNodeSnapshot"]:
+        """Snapshot the first workflow step that owns a progress registry.
+
+        Reads the backing attribute (not the `progress` property) so we never
+        create an empty registry on a step that never ran a topology walk.
+        """
+        snapshot = None
+        for step in self.workflow_steps():
+            registry = getattr(step, "_progress_registry", None)
+            if registry is not None:
+                snapshot_fn = getattr(step, "progress_snapshot", None)
+                snapshot = snapshot_fn() if snapshot_fn is not None else registry.snapshot()
+                break
+        return snapshot
+
     def send_progress_update(self, update_type: ProgressUpdateType = ProgressUpdateType.PROCESSING) -> None:
         """
         Send a progress update to the OpenMetadata server via SSE endpoint.
         Called periodically during workflow execution.
         """
         try:
-            from metadata.utils.progress_tracker import ProgressTrackerState  # noqa: PLC0415
-
             if (
                 self.config.ingestionPipelineFQN
                 and self.ingestion_pipeline
                 and self.ingestion_pipeline.fullyQualifiedName
             ):
-                progress_tracker = ProgressTrackerState()
-                progress_data = progress_tracker.get_progress_as_dict()
+                progress_data = snapshot_to_progress_payload(self._collect_progress_snapshot())
 
                 progress_update = ProgressUpdate(
                     runId=self.run_id,

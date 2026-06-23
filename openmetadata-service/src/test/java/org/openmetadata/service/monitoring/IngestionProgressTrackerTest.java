@@ -17,15 +17,14 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.services.ingestionPipelines.OperationMetric;
 import org.openmetadata.schema.entity.services.ingestionPipelines.OperationMetricsBatch;
+import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressNode;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdate;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdateType;
 
@@ -45,12 +44,14 @@ class IngestionProgressTrackerTest {
     String pipelineFqn = "service.pipeline";
     UUID runId = UUID.randomUUID();
 
-    Map<String, Object> progress = new HashMap<>();
-    Map<String, Object> tableProgress = new HashMap<>();
-    tableProgress.put("total", 100);
-    tableProgress.put("processed", 50);
-    tableProgress.put("estimatedRemainingSeconds", 300);
-    progress.put("Table", tableProgress);
+    ProgressNode progress =
+        new ProgressNode()
+            .withLabel("")
+            .withEntityType("Table")
+            .withProcessed(50)
+            .withExpected(100)
+            .withActive(true)
+            .withOverflow(0);
 
     ProgressUpdate update =
         new ProgressUpdate()
@@ -66,40 +67,7 @@ class IngestionProgressTrackerTest {
     assertNotNull(state.getLatestUpdate());
     assertEquals(runId.toString(), state.getLatestUpdate().getRunId());
     assertEquals(ProgressUpdateType.PROCESSING, state.getLatestUpdate().getUpdateType());
-  }
-
-  @Test
-  void testEntityProgressState() {
-    String pipelineFqn = "service.pipeline";
-    UUID runId = UUID.randomUUID();
-
-    Map<String, Object> progress = new HashMap<>();
-    Map<String, Object> tableProgress = new HashMap<>();
-    tableProgress.put("total", 100);
-    tableProgress.put("processed", 25);
-    tableProgress.put("estimatedRemainingSeconds", 450);
-    progress.put("Table", tableProgress);
-
-    ProgressUpdate update =
-        new ProgressUpdate()
-            .withRunId(runId.toString())
-            .withTimestamp(System.currentTimeMillis())
-            .withUpdateType(ProgressUpdateType.PROCESSING)
-            .withProgress(progress);
-
-    tracker.updateProgress(pipelineFqn, runId, update);
-
-    IngestionProgressTracker.ProgressState state = tracker.getProgressState(pipelineFqn, runId);
-    assertNotNull(state);
-
-    Map<String, IngestionProgressTracker.EntityProgressState> entityProgress =
-        state.getEntityProgress();
-    assertTrue(entityProgress.containsKey("Table"));
-
-    IngestionProgressTracker.EntityProgressState tableState = entityProgress.get("Table");
-    assertEquals(100, tableState.getTotal());
-    assertEquals(25, tableState.getProcessed());
-    assertEquals(450, tableState.getEstimatedRemainingSeconds());
+    assertEquals("Table", state.getLatestUpdate().getProgress().getEntityType());
   }
 
   @Test

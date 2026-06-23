@@ -22,6 +22,8 @@ import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.StreamingOutput;
 import jakarta.ws.rs.core.UriInfo;
+import jakarta.ws.rs.sse.Sse;
+import jakarta.ws.rs.sse.SseEventSink;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -75,6 +77,7 @@ import org.openmetadata.service.logstorage.S3LogStorage.LogStreamListener;
 import org.openmetadata.service.monitoring.IngestionProgressTracker;
 import org.openmetadata.service.monitoring.IngestionProgressTracker.ProgressState;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
+import org.openmetadata.service.resources.services.ingestionpipelines.ProgressSseManager;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil;
@@ -1248,66 +1251,34 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
   }
 
-  public Response streamProgress(String pipelineFQN, UUID runId) {
-    if (progressTracker == null) {
-      return Response.status(Response.Status.SERVICE_UNAVAILABLE)
-          .entity("Progress tracking is not configured")
-          .build();
+  public boolean isProgressTrackingEnabled() {
+    return progressTracker != null;
+  }
+
+  public void streamProgress(String pipelineFQN, UUID runId, SseEventSink eventSink, Sse sse) {
+    sendInitialSnapshot(pipelineFQN, runId, eventSink, sse);
+    Consumer<ProgressUpdate> listener = update -> sendProgressEvent(eventSink, sse, update);
+    progressTracker.registerProgressListener(pipelineFQN, runId, listener);
+    Runnable onClose =
+        () -> progressTracker.unregisterProgressListener(pipelineFQN, runId, listener);
+    if (!ProgressSseManager.getInstance().register(eventSink, sse, onClose)) {
+      onClose.run();
+      eventSink.close();
     }
+  }
 
-    return Response.ok()
-        .type("text/event-stream")
-        .entity(
-            (StreamingOutput)
-                output -> {
-                  try {
-                    output.write("retry: 1000\n\n".getBytes());
-                    output.flush();
+  private void sendInitialSnapshot(
+      String pipelineFQN, UUID runId, SseEventSink eventSink, Sse sse) {
+    ProgressState state = progressTracker.getProgressState(pipelineFQN, runId);
+    if (state != null && state.getLatestUpdate() != null) {
+      sendProgressEvent(eventSink, sse, state.getLatestUpdate());
+    }
+  }
 
-                    ProgressState currentState =
-                        progressTracker.getProgressState(pipelineFQN, runId);
-                    if (currentState != null && currentState.getLatestUpdate() != null) {
-                      String json = JsonUtils.pojoToJson(currentState.getLatestUpdate());
-                      output.write(
-                          String.format("data: %s\n\n", json).getBytes(StandardCharsets.UTF_8));
-                      output.flush();
-                    }
-
-                    Consumer<ProgressUpdate> listener =
-                        update -> {
-                          try {
-                            String json = JsonUtils.pojoToJson(update);
-                            output.write(
-                                String.format("data: %s\n\n", json)
-                                    .getBytes(StandardCharsets.UTF_8));
-                            output.flush();
-                          } catch (IOException e) {
-                            LOG.debug(
-                                "Client disconnected for progress stream {}/{}",
-                                pipelineFQN,
-                                runId);
-                            throw new RuntimeException(e);
-                          }
-                        };
-
-                    progressTracker.registerProgressListener(pipelineFQN, runId, listener);
-
-                    try {
-                      while (!Thread.currentThread().isInterrupted()) {
-                        Thread.sleep(30000);
-                        output.write(": heartbeat\n\n".getBytes());
-                        output.flush();
-                      }
-                    } catch (InterruptedException e) {
-                      Thread.currentThread().interrupt();
-                    } finally {
-                      progressTracker.unregisterProgressListener(pipelineFQN, runId, listener);
-                    }
-                  } catch (Exception e) {
-                    LOG.error("Error streaming progress for {}/{}", pipelineFQN, runId, e);
-                  }
-                })
-        .build();
+  private void sendProgressEvent(SseEventSink eventSink, Sse sse, ProgressUpdate update) {
+    if (!eventSink.isClosed()) {
+      eventSink.send(sse.newEvent(JsonUtils.pojoToJson(update)));
+    }
   }
 
   public RestUtil.PutResponse<?> updateProgress(

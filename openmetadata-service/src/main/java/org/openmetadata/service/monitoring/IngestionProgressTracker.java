@@ -160,64 +160,17 @@ public class IngestionProgressTracker {
 
   public static class ProgressState {
     private volatile ProgressUpdate latestUpdate;
-    private final Map<String, EntityProgressState> entityProgress = new ConcurrentHashMap<>();
 
     public void applyUpdate(ProgressUpdate update) {
       this.latestUpdate = update;
-      if (update.getProgress() != null) {
-        update
-            .getProgress()
-            .forEach(
-                (entityType, progress) ->
-                    entityProgress
-                        .computeIfAbsent(entityType, k -> new EntityProgressState())
-                        .update(progress));
-      }
     }
 
     public ProgressUpdate getLatestUpdate() {
       return latestUpdate;
     }
 
-    public Map<String, EntityProgressState> getEntityProgress() {
-      return entityProgress;
-    }
-
     public ProgressUpdate toProgressUpdate() {
       return latestUpdate;
-    }
-  }
-
-  public static class EntityProgressState {
-    private volatile int total;
-    private volatile int processed;
-    private volatile Integer estimatedRemainingSeconds;
-
-    public void update(Object progress) {
-      if (progress instanceof Map<?, ?> map) {
-        if (map.get("total") != null) {
-          this.total = ((Number) map.get("total")).intValue();
-        }
-        if (map.get("processed") != null) {
-          this.processed = ((Number) map.get("processed")).intValue();
-        }
-        if (map.get("estimatedRemainingSeconds") != null) {
-          this.estimatedRemainingSeconds =
-              ((Number) map.get("estimatedRemainingSeconds")).intValue();
-        }
-      }
-    }
-
-    public int getTotal() {
-      return total;
-    }
-
-    public int getProcessed() {
-      return processed;
-    }
-
-    public Integer getEstimatedRemainingSeconds() {
-      return estimatedRemainingSeconds;
     }
   }
 }

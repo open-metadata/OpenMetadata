@@ -47,6 +47,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.ServiceUnavailableException;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
@@ -54,6 +55,8 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.StreamingOutput;
 import jakarta.ws.rs.core.UriInfo;
+import jakarta.ws.rs.sse.Sse;
+import jakarta.ws.rs.sse.SseEventSink;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
@@ -87,6 +90,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.logstorage.LogStorageFactory;
 import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.monitoring.IngestionProgressTracker;
+import org.openmetadata.service.monitoring.MicrometerBundle;
 import org.openmetadata.service.monitoring.StreamableLogsMetrics;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
@@ -170,10 +174,18 @@ public class IngestionPipelineResource
       }
     }
 
-    // Initialize progress tracker for real-time ingestion progress updates
-    if (progressTracker != null) {
-      repository.setProgressTracker(progressTracker);
+    // Initialize progress tracker for real-time ingestion progress updates.
+    // initialize() runs before HK2 injects @Inject fields, so progressTracker
+    // is typically still null here; fall back to the tracker the
+    // MicrometerBundle created during its run() (executed before resources are
+    // registered) so the repository always receives a live instance.
+    IngestionProgressTracker tracker =
+        progressTracker != null ? progressTracker : MicrometerBundle.getSharedProgressTracker();
+    if (tracker != null) {
+      repository.setProgressTracker(tracker);
       LOG.info("Progress tracker initialized for ingestion pipelines");
+    } else {
+      LOG.warn("Progress tracker unavailable; real-time ingestion progress is disabled");
     }
   }
 
@@ -1670,7 +1682,7 @@ public class IngestionPipelineResource
 
   @GET
   @Path("/progress/{fqn}/stream/{runId}")
-  @Produces("text/event-stream")
+  @Produces(MediaType.SERVER_SENT_EVENTS)
   @Operation(
       operationId = "streamPipelineProgress",
       summary = "Stream progress updates for a pipeline run",
@@ -1680,10 +1692,13 @@ public class IngestionPipelineResource
         @ApiResponse(
             responseCode = "200",
             description = "Progress stream",
-            content = @Content(mediaType = "text/event-stream")),
-        @ApiResponse(responseCode = "404", description = "Pipeline not found")
+            content = @Content(mediaType = MediaType.SERVER_SENT_EVENTS)),
+        @ApiResponse(responseCode = "404", description = "Pipeline not found"),
+        @ApiResponse(responseCode = "503", description = "Progress tracking is not configured")
       })
-  public Response streamPipelineProgress(
+  public void streamPipelineProgress(
+      @Context SseEventSink eventSink,
+      @Context Sse sse,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
@@ -1693,25 +1708,14 @@ public class IngestionPipelineResource
           String fqn,
       @Parameter(description = "Run ID", schema = @Schema(type = "string")) @PathParam("runId")
           UUID runId) {
-    try {
-      // Validate that the pipeline exists first
-      IngestionPipeline pipeline =
-          getByNameInternal(uriInfo, securityContext, fqn, "", Include.NON_DELETED);
-
-      // Authorize the request
-      OperationContext operationContext =
-          new OperationContext(entityType, MetadataOperation.VIEW_ALL);
-      authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-
-      // Stream progress using the repository
-      return repository.streamProgress(fqn, runId);
-    } catch (Exception e) {
-      LOG.error("Failed to stream progress for pipeline: {}, runId: {}", fqn, runId, e);
-      return Response.status(Response.Status.NOT_FOUND)
-          .entity(Map.of("message", e.getMessage()))
-          .type(MediaType.APPLICATION_JSON_TYPE)
-          .build();
+    getByNameInternal(uriInfo, securityContext, fqn, "", Include.NON_DELETED);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+    if (!repository.isProgressTrackingEnabled()) {
+      throw new ServiceUnavailableException("Progress tracking is not configured");
     }
+    repository.streamProgress(fqn, runId, eventSink, sse);
   }
 
   @PUT

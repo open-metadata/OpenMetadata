@@ -15,7 +15,7 @@ Snowflake source module
 import json  # noqa: I001
 import traceback
 from datetime import datetime
-from typing import Iterable, List, Optional, Tuple, cast  # noqa: UP035
+from typing import Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
 
 import sqlalchemy.types as sqltypes
 import sqlparse
@@ -97,6 +97,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_CURRENT_ACCOUNT,
     SNOWFLAKE_GET_DATABASE_COMMENTS,
     SNOWFLAKE_GET_DATABASES,
+    SNOWFLAKE_GET_SCHEMATA,
     SNOWFLAKE_GET_EXTERNAL_LOCATIONS,
     SNOWFLAKE_GET_ORGANIZATION_NAME,
     SNOWFLAKE_GET_SCHEMA_COMMENTS,
@@ -128,7 +129,8 @@ from metadata.ingestion.source.database.snowflake.utils import (
     normalize_names,
 )
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_database
+from metadata.ingestion.ometa.utils import model_str
+from metadata.utils.filters import filter_by_database, filter_by_schema
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
@@ -191,6 +193,18 @@ Inspector.get_stream_definition = get_stream_definition
 SnowflakeDialect._get_schema_foreign_keys = get_schema_foreign_keys
 
 
+def _show_column(row, name: str):
+    """Read a column from a Snowflake ``SHOW`` result row by name,
+    case-insensitively (SHOW exposes lowercase column names)."""
+    mapping = getattr(row, "_mapping", None)
+    if mapping is not None:
+        lowered = {str(key).lower(): value for key, value in mapping.items()}
+        result = lowered.get(name.lower())
+    else:
+        result = getattr(row, name, None)
+    return result
+
+
 # pylint: disable=too-many-public-methods
 class SnowflakeSource(
     ExternalTableLineageMixin,
@@ -203,6 +217,8 @@ class SnowflakeSource(
     """
 
     service_connection: SnowflakeConnection
+
+    progress_tracking_enabled = True
 
     def __init__(
         self,
@@ -393,57 +409,150 @@ class SnowflakeSource(
         logger.debug("Databases visible to the ingestion role: %s", database_names)
         yield from database_names
 
-    def get_database_names(self) -> Iterable[str]:
+    def _compute_filtered_database_names(self) -> List[str]:  # noqa: UP006
+        """Database names that pass the filter pattern. Pure enumeration +
+        filtering with no inspector/session setup, so the same list feeds both
+        the progress denominator and the lazy, stateful producer."""
         configured_db = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
         if configured_db:
-            self.set_inspector(configured_db)
-            self.set_session_query_tag()
-            self.set_partition_details()
-            self.set_schema_description_map()
-            self.set_database_description_map()
-            self.set_external_location_map(configured_db)
-            self.set_schema_tags_map(configured_db)
-            self.set_database_tags_map(configured_db)
-            yield configured_db
-        else:
-            for new_database in self.get_database_names_raw():
-                database_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Database,
-                    service_name=self.context.get().database_service,
-                    database_name=new_database,
-                )
-
-                filter_name: str = (
-                    database_fqn if self.source_config.useFqnForFiltering and database_fqn else new_database
-                )
-                if filter_by_database(
-                    self.source_config.databaseFilterPattern,
+            return [configured_db]
+        names: List[str] = []  # noqa: UP006
+        for new_database in self.get_database_names_raw():
+            database_fqn = fqn.build(
+                self.metadata,
+                entity_type=Database,
+                service_name=self.context.get().database_service,
+                database_name=new_database,
+            )
+            filter_name: str = database_fqn if self.source_config.useFqnForFiltering and database_fqn else new_database
+            if filter_by_database(self.source_config.databaseFilterPattern, filter_name):
+                logger.info(
+                    "Filtering out database '%s': did not pass databaseFilterPattern "
+                    "(matched against '%s', useFqnForFiltering=%s)",
+                    new_database,
                     filter_name,
-                ):
-                    logger.info(
-                        "Filtering out database '%s': did not pass databaseFilterPattern "
-                        "(matched against '%s', useFqnForFiltering=%s)",
-                        new_database,
-                        filter_name,
-                        self.source_config.useFqnForFiltering,
-                    )
-                    self.status.filter(database_fqn, "Database Filtered Out")
-                    continue
+                    self.source_config.useFqnForFiltering,
+                )
+                self.status.filter(database_fqn, "Database Filtered Out")
+                continue
+            names.append(new_database)
+        return names
 
-                try:
-                    self.set_inspector(database_name=new_database)
-                    self.set_session_query_tag()
-                    self.set_partition_details()
-                    self.set_schema_description_map()
-                    self.set_database_description_map()
-                    self.set_external_location_map(new_database)
-                    self.set_schema_tags_map(new_database)
-                    self.set_database_tags_map(new_database)
-                    yield new_database
-                except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(f"Error trying to connect to database {new_database}: {exc}")
+    def _filtered_database_names(self) -> List[str]:  # noqa: UP006
+        """Filtered database names, computed once per run (the filter emits
+        status side effects, so it must not run twice)."""
+        cached = self.__dict__.get("_filtered_database_names_cache")
+        if cached is None:
+            cached = self.__dict__["_filtered_database_names_cache"] = self._compute_filtered_database_names()
+        return cached
+
+    def _is_schema_filtered(self, database_name: str, schema_name: str) -> bool:
+        """Whether a schema fails the schema filter pattern, matched the same way as
+        the lazy producer (FQN or bare name per ``useFqnForFiltering``). Context-free:
+        the FQN is built with the explicit database name, not ``context.database``."""
+        schema_fqn = fqn.build(
+            self.metadata,
+            entity_type=DatabaseSchema,
+            service_name=self.context.get().database_service,
+            database_name=database_name,
+            schema_name=schema_name,
+        )
+        filter_name = schema_fqn if self.source_config.useFqnForFiltering else schema_name
+        return filter_by_schema(self.source_config.schemaFilterPattern, filter_name)
+
+    def _account_schema_names(self) -> "Optional[dict[str, List[str]]]":  # noqa: UP006,UP045
+        """``{database: [schema_names]}`` for every filtered database, from a single
+        account-wide ``SHOW SCHEMAS`` — one round-trip, no per-database reconnect.
+        Returns ``None`` when the account-level SHOW is unavailable (e.g. role
+        privileges) so the caller can fall back to per-database enumeration."""
+        by_database: Dict[str, List[str]] = {db: [] for db in self._filtered_database_names()}  # noqa: UP006
+        try:
+            rows = self.connection.execute(text(SNOWFLAKE_GET_SCHEMATA)).fetchall()
+        except Exception as exc:
+            logger.warning(
+                "SHOW SCHEMAS IN ACCOUNT failed (%s); falling back to slower per-database schema enumeration.",
+                exc,
+            )
+            return None
+        for row in rows:
+            database_name = _show_column(row, "database_name")
+            schema_name = _show_column(row, "name")
+            if database_name in by_database and not self._is_schema_filtered(database_name, schema_name):
+                by_database[database_name].append(schema_name)
+        logger.info(
+            "SHOW SCHEMAS IN ACCOUNT: %d schema(s) across %d filtered database(s)",
+            sum(len(schemas) for schemas in by_database.values()),
+            len(by_database),
+        )
+        return by_database
+
+    def _filtered_schema_names_for_database(self, database_name: str) -> List[str]:  # noqa: UP006
+        """Filtered schema names for one database via a lightweight inspector switch.
+        Used only as the per-database fallback when the account-wide SHOW is
+        unavailable (a connection rebuild per database — slow on large accounts)."""
+        names: List[str] = []  # noqa: UP006
+        try:
+            self.set_inspector(database_name)
+            names = [
+                schema_name
+                for schema_name in self.inspector.get_schema_names()
+                if not self._is_schema_filtered(database_name, schema_name)
+            ]
+        except Exception as exc:
+            logger.warning(f"Error enumerating schemas for database {database_name}: {exc}")
+        return names
+
+    def _per_database_schema_names(self) -> "dict[str, List[str]]":  # noqa: UP006
+        """Fallback enumeration, one database at a time."""
+        return {
+            database: self._filtered_schema_names_for_database(database) for database in self._filtered_database_names()
+        }
+
+    def _schema_names_by_database(self) -> "dict[str, List[str]]":  # noqa: UP006
+        """Per-database filtered schema names, computed once per run. Prefers the
+        single account-wide query; falls back to per-database enumeration."""
+        cache = self.__dict__.get("_schema_names_by_db_cache")
+        if cache is None:
+            cache = self._account_schema_names()
+            if cache is None:
+                cache = self._per_database_schema_names()
+            self.__dict__["_schema_names_by_db_cache"] = cache
+        return cache
+
+    def prefetch_global_totals(self) -> "dict[str, int]":
+        """Global schema total = filtered schemas summed across all filtered
+        databases. Computed up front, before any database is processed."""
+        cache = self._schema_names_by_database()
+        return {DatabaseSchema.__name__: sum(len(schemas) for schemas in cache.values())}
+
+    def container_expected_count(self, entity_type_name: str) -> Optional[int]:  # noqa: UP045
+        """Database denominator from the cheap filtered-name list; schema denominator
+        from the prefetched per-database schema cache. Other levels defer to the base."""
+        if entity_type_name == Database.__name__:
+            return len(self._filtered_database_names())
+        if entity_type_name == DatabaseSchema.__name__:
+            cache = self.__dict__.get("_schema_names_by_db_cache")
+            if cache is not None:
+                current_database = getattr(self.context.get(), "database", None)
+                if current_database is not None and model_str(current_database) in cache:
+                    return len(cache[model_str(current_database)])
+        return super().container_expected_count(entity_type_name)
+
+    def get_database_names(self) -> Iterable[str]:
+        for database_name in self._filtered_database_names():
+            try:
+                self.set_inspector(database_name=database_name)
+                self.set_session_query_tag()
+                self.set_partition_details()
+                self.set_schema_description_map()
+                self.set_database_description_map()
+                self.set_external_location_map(database_name)
+                self.set_schema_tags_map(database_name)
+                self.set_database_tags_map(database_name)
+                yield database_name
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error trying to connect to database {database_name}: {exc}")
 
     def __clean_append(self, token: Token, result_list: List) -> None:  # noqa: UP006
         """
