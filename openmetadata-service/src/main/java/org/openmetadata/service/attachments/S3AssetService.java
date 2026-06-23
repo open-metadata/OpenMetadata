@@ -144,8 +144,9 @@ public class S3AssetService implements AssetService {
             }
 
             PutObjectRequest putRequest = putBuilder.build();
-            s3Client.putObject(
-                putRequest, RequestBody.fromInputStream(content, asset.getSize().longValue()));
+            long contentLength =
+                asset.getSize() == null ? content.available() : asset.getSize().longValue();
+            s3Client.putObject(putRequest, RequestBody.fromInputStream(content, contentLength));
             return "success";
           } catch (Exception e) {
             throw new CompletionException(e);
