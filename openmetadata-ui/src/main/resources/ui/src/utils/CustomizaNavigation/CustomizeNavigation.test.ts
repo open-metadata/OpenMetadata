@@ -365,6 +365,54 @@ describe('CustomizeNavigation Utils', () => {
         'new-feature',
       ]);
     });
+
+    it('should not duplicate a saved child under a new default top-level group', () => {
+      (leftSidebarClassBase.getSidebarItems as jest.Mock).mockReturnValueOnce([
+        { key: 'home', title: 'Home', icon: 'home-icon', children: [] },
+        {
+          key: 'new-group',
+          title: 'New Group',
+          icon: 'new-group-icon',
+          children: [
+            { key: 'shared-child', title: 'Shared Child', icon: 'shared-icon' },
+            {
+              key: 'brand-new-child',
+              title: 'Brand New Child',
+              icon: 'brand-new-icon',
+            },
+          ],
+        },
+      ]);
+
+      // Shared Child was already moved under Home before New Group was added
+      const savedNav: NavigationItem[] = [
+        {
+          id: 'home',
+          title: 'Home',
+          isHidden: false,
+          pageId: 'home',
+          children: [
+            {
+              id: 'shared-child',
+              title: 'Shared Child',
+              isHidden: false,
+              pageId: 'shared-child',
+            },
+          ],
+        },
+      ];
+
+      const result = getTreeDataForNavigationItems(savedNav);
+      const homeNode = result.find((node) => node.key === 'home');
+      const newGroupNode = result.find((node) => node.key === 'new-group');
+
+      expect(homeNode?.children?.map((child) => child.key)).toEqual([
+        'shared-child',
+      ]);
+      expect(newGroupNode?.children?.map((child) => child.key)).toEqual([
+        'brand-new-child',
+      ]);
+    });
   });
 
   describe('getHiddenKeysFromNavigationItems', () => {

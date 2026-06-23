@@ -119,17 +119,29 @@ const createNavigationMap = (
   return map;
 };
 
+const convertSidebarChildToTreeNode = (
+  child: LeftSidebarItem
+): TreeDataNode => ({
+  title: child.title,
+  key: child.key,
+  icon: child.icon as TreeDataNode['icon'],
+});
+
+const collectNewDefaultChildNodes = (
+  defaultChildren: LeftSidebarItem[],
+  savedKeys: Set<string>
+): TreeDataNode[] =>
+  defaultChildren
+    .filter((child) => !savedKeys.has(child.key))
+    .map(convertSidebarChildToTreeNode);
+
 const convertSidebarItemToTreeNode = (
   sidebarItem: LeftSidebarItem
 ): TreeDataNode => ({
   title: sidebarItem.title,
   key: sidebarItem.key,
   icon: sidebarItem.icon as TreeDataNode['icon'],
-  children: sidebarItem.children?.map((child) => ({
-    title: child.title,
-    key: child.key,
-    icon: child.icon as TreeDataNode['icon'],
-  })),
+  children: sidebarItem.children?.map(convertSidebarChildToTreeNode),
 });
 
 const collectNavigationKeys = (
@@ -176,13 +188,10 @@ const buildChildrenForSavedItem = (
     .map((child) => convertNavigationChildToTreeNode(child, sidebarMap))
     .filter((node): node is TreeDataNode => node !== null);
 
-  const newDefaultChildNodes = defaultChildren
-    .filter((child) => !savedKeys.has(child.key))
-    .map((child) => ({
-      title: child.title,
-      key: child.key,
-      icon: child.icon as TreeDataNode['icon'],
-    }));
+  const newDefaultChildNodes = collectNewDefaultChildNodes(
+    defaultChildren,
+    savedKeys
+  );
 
   return [...savedChildNodes, ...newDefaultChildNodes];
 };
@@ -208,9 +217,15 @@ const buildTreeNodeFromSavedItem = (
 };
 
 const convertNewDefaultItemToTreeNode = (
-  sidebarItem: LeftSidebarItem
+  sidebarItem: LeftSidebarItem,
+  savedKeys: Set<string>
 ): TreeDataNode & { isHidden?: boolean } => ({
-  ...convertSidebarItemToTreeNode(sidebarItem),
+  title: sidebarItem.title,
+  key: sidebarItem.key,
+  icon: sidebarItem.icon as TreeDataNode['icon'],
+  children: sidebarItem.children
+    ? collectNewDefaultChildNodes(sidebarItem.children, savedKeys)
+    : undefined,
   isHidden: true,
 });
 
@@ -235,7 +250,9 @@ export const getTreeDataForNavigationItems = (
 
   const newDefaultNodes = sidebarItemsWithPlugins
     .filter((sidebarItem) => !savedKeys.has(sidebarItem.key))
-    .map(convertNewDefaultItemToTreeNode);
+    .map((sidebarItem) =>
+      convertNewDefaultItemToTreeNode(sidebarItem, savedKeys)
+    );
 
   return [...savedNodes, ...newDefaultNodes];
 };
