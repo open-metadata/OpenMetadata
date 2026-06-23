@@ -422,4 +422,108 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await page.getByTestId('save-button').click();
     await resetResponse;
   });
+
+  // Issue #28738 follow-up: the rendered sidebar must reflect a cross-group
+  // move once the persona is applied, not just the editor tree.
+  test('should reflect a sub-item moved to another group in the sidebar after applying the persona', async ({
+    page,
+  }) => {
+    test.slow();
+
+    await redirectToHomePage(page);
+    await setUserDefaultPersona(page, persona.responseData.displayName);
+    await navigateToPersonaNavigation(page);
+
+    const treeItems = page.locator('.ant-tree-node-content-wrapper');
+
+    await expect(treeItems.first()).toBeVisible();
+
+    const testLibraryItem = treeItems.getByTitle('label.test-library');
+    const overviewItem = treeItems.getByTitle('label.overview');
+    const dataMarketplaceItem = treeItems.getByTitle(
+      'label.data-marketplace-section'
+    );
+
+    await expect(testLibraryItem).toBeVisible();
+    await expect(overviewItem).toBeVisible();
+
+    // Move Test Library (an Observability child) into the Data Marketplace
+    // group by dropping it just after Overview (between two of its children).
+    // HTML5 drag-and-drop is occasionally dropped by the browser, so retry the
+    // drag until Test Library actually renders below the Data Marketplace header.
+    await expect(async () => {
+      const testLibraryBox = await testLibraryItem.boundingBox();
+      const overviewBox = await overviewItem.boundingBox();
+
+      expect(testLibraryBox).not.toBeNull();
+      expect(overviewBox).not.toBeNull();
+
+      await testLibraryItem.dragTo(overviewItem, {
+        sourcePosition: {
+          x: (testLibraryBox?.width ?? 0) / 2,
+          y: (testLibraryBox?.height ?? 0) / 2,
+        },
+        targetPosition: {
+          x: (overviewBox?.width ?? 0) / 2,
+          y: (overviewBox?.height ?? 0) / 2 + 10,
+        },
+      });
+
+      const testLibraryY = (await testLibraryItem.boundingBox())?.y ?? 0;
+      const dataMarketplaceY =
+        (await dataMarketplaceItem.boundingBox())?.y ?? 0;
+
+      expect(testLibraryY).toBeGreaterThan(dataMarketplaceY);
+    }).toPass({ timeout: 30000 });
+
+    await expect(page.getByTestId('save-button')).toBeEnabled();
+
+    const saveResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/docStore') &&
+        [200, 201].includes(response.status())
+    );
+    await page.getByTestId('save-button').click();
+    await saveResponse;
+
+    // Apply the persona, then open the Data Marketplace section in the sidebar
+    await redirectToHomePage(page);
+    await page.getByTestId('dropdown-profile').click();
+    await page
+      .locator('[role="menu"].profile-dropdown')
+      .waitFor({ state: 'visible' });
+    await page
+      .getByRole('menuitem', { name: persona.responseData.displayName })
+      .click();
+
+    await page.hover('[data-testid="left-sidebar"]');
+    await page.click('[data-testid="data-marketplace-section"]');
+
+    // The moved item is now rendered under the Data Marketplace section
+    await expect(
+      page.locator('[data-testid="app-bar-item-test-library"]').first()
+    ).toBeVisible();
+
+    await page.click('[data-testid="data-marketplace-section"]');
+
+    // Cleanup: restore the default navigation layout
+    await navigateToPersonaNavigation(page);
+    await page.getByTestId('reset-button').click();
+
+    await expect(page.getByTestId('unsaved-changes-modal-title')).toContainText(
+      'Reset Default Layout'
+    );
+
+    await page.getByTestId('unsaved-changes-modal-save').click();
+
+    await expect(page.getByTestId('save-button')).toBeEnabled();
+
+    const resetResponseAfterMove = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/docStore') &&
+        [200, 201].includes(response.status())
+    );
+    await page.getByTestId('save-button').click();
+    await resetResponseAfterMove;
+  });
 });
