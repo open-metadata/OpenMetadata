@@ -15,6 +15,7 @@ package org.openmetadata.service.apps.bundles.rdf.distributed;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -71,25 +72,40 @@ public class RdfPartitionWorker {
 
         RdfBatchProcessor.BatchProcessingResult batchResult =
             batchProcessor.processEntities(entityType, resultList.getData(), stopped::get);
-        // Reader failures are entities the source could not hydrate (field
-        // resolution / deserialization errors). They count as failed records
-        // below, so attribute each one with its id and reason — otherwise the
-        // failure count climbs with no diagnostic the operator can find, and
-        // the only trace is a DEBUG line under EntityRepository (#29211). This
-        // mirrors the search-index PartitionWorker.recordReaderFailures path.
+
+        // Reader failures are rows the source could not fully hydrate. They were
+        // previously counted as failed records and dropped from the graph with no
+        // diagnostic — operators saw the failure count climb with no way to find
+        // the affected entities (#29211).
+        //
+        // An entity that DESERIALIZED but failed FIELD resolution (e.g. one
+        // relationship the reindex field-set requests can't be resolved) still
+        // carries its core stored data on the EntityError. Re-index it with that
+        // core data so a single unresolvable field does not leave the whole entity
+        // missing from RDF; its relationship edges are still rebuilt from the DB by
+        // processBatchRelationships. Only rows that could not be deserialized at all
+        // (no entity attached) remain hard failures. logReaderFailures attributes
+        // each one (id + reason), mirroring search-index PartitionWorker.
         List<EntityError> readerFailures = listOrEmpty(resultList.getErrors());
-        int readerErrors = readerFailures.size();
         String readerError = logReaderFailures(entityType, readerFailures);
-        long batchProcessed = resultList.getData().size() + readerErrors;
+        List<EntityInterface> recoverable = recoverableEntities(readerFailures);
+        RdfBatchProcessor.BatchProcessingResult recovered =
+            recoverable.isEmpty()
+                ? new RdfBatchProcessor.BatchProcessingResult(0, 0)
+                : batchProcessor.processEntities(entityType, recoverable, stopped::get);
+        int unrecoverable = readerFailures.size() - recoverable.size();
+        long batchProcessed = resultList.getData().size() + readerFailures.size();
 
         processedCount += batchProcessed;
-        successCount += batchResult.successCount();
-        // failedCount tracks entity-level failures only (matches the
-        // failedRecords stat semantics where one record == one entity).
-        // Relationship/lineage edge failures are counted separately and
-        // surfaced through relationshipFailureCount in the result.
-        failedCount += batchResult.failedCount() + readerErrors;
-        relationshipFailureCount += batchResult.relationshipFailureCount();
+        successCount += batchResult.successCount() + recovered.successCount();
+        // failedCount tracks entity-level failures only (matches the failedRecords
+        // stat semantics where one record == one entity). Recovered entities indexed
+        // with core data are NOT failures; only un-deserializable rows and any
+        // core-index failures remain. Relationship/lineage edge failures are counted
+        // separately and surfaced through relationshipFailureCount.
+        failedCount += batchResult.failedCount() + recovered.failedCount() + unrecoverable;
+        relationshipFailureCount +=
+            batchResult.relationshipFailureCount() + recovered.relationshipFailureCount();
         currentOffset += batchProcessed;
         if (batchResult.lastError() != null) {
           lastError = batchResult.lastError();
@@ -149,23 +165,47 @@ public class RdfPartitionWorker {
   }
 
   /**
-   * Log every reader failure in the batch at ERROR with the offending entity's id/FQN and reason,
-   * and return a representative message for the partition's {@code lastError}. Reader failures are
-   * counted as failed records, so without this the failure count rises with no way to identify the
-   * affected entities — the only other trace is a DEBUG line in {@link
+   * Log every reader failure with the offending entity's id/FQN and reason, and return a
+   * representative message for the partition's {@code lastError}. A failure whose entity
+   * deserialized (recoverable) is logged at WARN — it is re-indexed with core data, not dropped.
+   * A row that could not be deserialized at all is logged at ERROR — it is dropped from the graph.
+   * Without this the failure count rose with no way to identify the affected entities; the only
+   * other trace was a DEBUG line in {@link
    * org.openmetadata.service.jdbi3.EntityRepository#listAfterKeyset} (#29211).
    */
   private String logReaderFailures(String entityType, List<EntityError> readerFailures) {
     String representativeError = null;
     for (EntityError failure : readerFailures) {
       representativeError = failure.getMessage();
-      LOG.error(
-          "RDF reindex could not hydrate {} entity {} (counted as a failed record). Reason: {}",
-          entityType,
-          describeFailedEntity(failure),
-          failure.getMessage());
+      if (failure.getEntity() instanceof EntityInterface) {
+        LOG.warn(
+            "RDF reindex could not fully hydrate {} entity {} — indexing core data only. Reason: {}",
+            entityType,
+            describeFailedEntity(failure),
+            failure.getMessage());
+      } else {
+        LOG.error(
+            "RDF reindex could not deserialize a {} row — dropping it from the graph. Reason: {}",
+            entityType,
+            failure.getMessage());
+      }
     }
     return representativeError;
+  }
+
+  /**
+   * Entities that deserialized but failed field resolution still carry their core stored data on
+   * the {@link EntityError}. Return them so the indexer can re-index them with that core data
+   * instead of dropping them from the graph over a single unresolvable field (#29211).
+   */
+  private static List<EntityInterface> recoverableEntities(List<EntityError> readerFailures) {
+    List<EntityInterface> recoverable = new ArrayList<>();
+    for (EntityError failure : readerFailures) {
+      if (failure.getEntity() instanceof EntityInterface entity) {
+        recoverable.add(entity);
+      }
+    }
+    return recoverable;
   }
 
   private static String describeFailedEntity(EntityError failure) {

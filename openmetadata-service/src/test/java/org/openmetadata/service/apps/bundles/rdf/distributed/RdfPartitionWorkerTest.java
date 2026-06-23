@@ -148,6 +148,25 @@ class RdfPartitionWorkerTest {
             new EntityError().withMessage("Failed to deserialize entity: boom")));
   }
 
+  @Test
+  @SuppressWarnings("unchecked")
+  void recoverableEntitiesReturnsOnlyDeserializedEntities() throws Exception {
+    EntityInterface dataModel = mock(EntityInterface.class);
+    EntityError fieldFailure =
+        new EntityError().withMessage("field resolution failed").withEntity(dataModel);
+    EntityError deserFailure = new EntityError().withMessage("Failed to deserialize entity: boom");
+
+    List<EntityInterface> recoverable =
+        (List<EntityInterface>)
+            invokeStaticPrivate(
+                "recoverableEntities",
+                new Class<?>[] {List.class},
+                List.of(fieldFailure, deserFailure));
+
+    assertEquals(1, recoverable.size());
+    assertEquals(dataModel, recoverable.get(0));
+  }
+
   private Object invokeStaticPrivate(String methodName, Class<?>[] parameterTypes, Object... args)
       throws Exception {
     Method method = RdfPartitionWorker.class.getDeclaredMethod(methodName, parameterTypes);
