@@ -93,3 +93,22 @@ export const getFilteredTagsData = <T extends TagsData>(
       ? acc.concat({ ...item, children: filteredChildren })
       : acc;
   }, []);
+
+export const searchTagInData = (
+  tagToSearch: React.Key | boolean,
+  data: TagsData
+) => {
+  if (data.tags && data.tags.some((tag) => tag.tagFQN === tagToSearch)) {
+    return true;
+  }
+
+  if (data.children?.length) {
+    for (const child of data.children) {
+      if (searchTagInData(tagToSearch, child)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+};
