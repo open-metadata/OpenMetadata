@@ -32,7 +32,7 @@ import {
   postAggregateFieldOptions,
 } from '../rest/miscAPI';
 import { nlqSearch, searchQuery } from '../rest/searchAPI';
-import { getCountBadge } from './EntityDisplayUtils';
+import { getCountBadge } from './EntityDisplayPureUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
 import {
   findActiveSearchIndex,

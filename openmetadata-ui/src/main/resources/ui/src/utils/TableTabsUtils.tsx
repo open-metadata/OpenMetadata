@@ -20,13 +20,8 @@ import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
-import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../components/common/Loader/Loader';
-import QueryViewer from '../components/common/QueryViewer/QueryViewer.component';
-import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import type { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
-import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
-import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import type { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
@@ -35,16 +30,40 @@ import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/uiCustomization';
 import { useApplicationStore } from '../hooks/useApplicationStore';
 import type { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import { FrequentlyJoinedTables } from '../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
-import { PartitionedKeys } from '../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component';
 import { t } from './i18next/LocalUtil';
 import type { TableDetailPageTabProps } from './TableClassBase';
+
+const TabsLabel = withSuspenseFallback(
+  lazy(() => import('../components/common/TabsLabel/TabsLabel.component'))
+);
 
 const ActivityFeedTab = withSuspenseFallback(
   lazy(() =>
     import(
       '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component'
     ).then((module) => ({ default: module.ActivityFeedTab }))
+  )
+);
+
+const ErrorPlaceHolder = withSuspenseFallback(
+  lazy(
+    () => import('../components/common/ErrorWithPlaceholder/ErrorPlaceHolder')
+  )
+);
+
+const GenericTab = withSuspenseFallback(
+  lazy(() =>
+    import('../components/Customization/GenericTab/GenericTab').then(
+      (module) => ({ default: module.GenericTab })
+    )
+  )
+);
+
+const CommonWidgets = withSuspenseFallback(
+  lazy(() =>
+    import('../components/DataAssets/CommonWidgets/CommonWidgets').then(
+      (module) => ({ default: module.CommonWidgets })
+    )
   )
 );
 
@@ -107,6 +126,26 @@ const TableConstraints = withSuspenseFallback(
 
 const KnowledgeGraph = withSuspenseFallback(
   lazy(() => import('../components/KnowledgeGraph/KnowledgeGraph'))
+);
+
+const QueryViewer = withSuspenseFallback(
+  lazy(() => import('../components/common/QueryViewer/QueryViewer.component'))
+);
+
+const FrequentlyJoinedTables = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component'
+    ).then((module) => ({ default: module.FrequentlyJoinedTables }))
+  )
+);
+
+const PartitionedKeys = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component'
+    ).then((module) => ({ default: module.PartitionedKeys }))
+  )
 );
 
 export const getTableDetailPageBaseTabs = ({

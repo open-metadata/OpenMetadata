@@ -18,7 +18,7 @@ import {
   TaskEntityStatus,
   TaskStatusGroup,
 } from '../rest/tasksAPI';
-import { isDarApprovalActive } from '../utils/TasksUtils';
+import { isDarApprovalActive } from '../utils/TaskActionUtils';
 import { useApplicationStore } from './useApplicationStore';
 
 interface UseDataAccessRequestParams {
