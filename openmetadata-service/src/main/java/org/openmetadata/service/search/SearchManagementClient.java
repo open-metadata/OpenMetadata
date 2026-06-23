@@ -216,5 +216,10 @@ public interface SearchManagementClient {
    * @throws IOException if search execution fails
    */
   Response searchDataQualityLineage(
-      String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException;
+      String fqn,
+      int upstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      SubjectContext subjectContext)
+      throws IOException;
 }

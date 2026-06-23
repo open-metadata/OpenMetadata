@@ -195,9 +195,8 @@ jest.mock('utils/EntityReferenceUtils', () => ({
     .fn()
     .mockImplementation((entity) => entity),
 }));
-
-jest.mock('utils/TableUtils', () => ({
-  getTagsWithoutTier: jest.fn().mockReturnValue([]),
+jest.mock('utils/TablePureUtils', () => ({
+  getTagsWithoutTier: jest.fn(),
 }));
 
 jest.mock('utils/TableTags/TableTags.utils', () => ({

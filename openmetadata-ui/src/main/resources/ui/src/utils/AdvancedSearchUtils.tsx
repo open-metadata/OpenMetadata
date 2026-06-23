@@ -39,23 +39,6 @@ import { t } from './i18next/LocalUtil';
 import jsonLogicSearchClassBase from './JSONLogicSearchClassBase';
 import searchClassBase from './SearchClassBase';
 
-export {
-  formatQueryValueBasedOnType,
-  getAssetsPageQuickFilters,
-  getChartsOptions,
-  getColumnsOptions,
-  getCustomPropertyAdvanceSearchEnumOptions,
-  getDataModelOptions,
-  getEmptyJsonTree,
-  getEmptyJsonTreeForQueryBuilder,
-  getOptionsFromAggregationBucket,
-  getSchemaFieldOptions,
-  getSearchLabel,
-  getSelectedOptionLabelString,
-  getServiceOptions,
-  getTasksOptions,
-} from './AdvancedSearchPureUtils';
-
 export const getDropDownItems = (index: string): ExploreQuickFilterField[] => {
   return searchClassBase.getDropDownItems(index);
 };

@@ -248,6 +248,10 @@ const RolesListPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/RolesPage/RolesListPage/RolesListPage'))
 );
 
+const AISettingsPage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/AISettingsPage/AISettingsPage'))
+);
+
 const SearchSettingsPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/SearchSettingsPage/SearchSettingsPage'))
 );
@@ -662,6 +666,18 @@ const SettingsRouter = () => {
       {/* Roles route end
        * Do not change the order of these route
        */}
+
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <AISettingsPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.AI_SETTINGS
+        )}
+      />
 
       <Route
         element={

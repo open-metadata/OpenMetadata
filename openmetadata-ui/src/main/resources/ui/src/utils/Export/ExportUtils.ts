@@ -47,8 +47,21 @@ export const downloadImageFromBase64 = (
   a.click();
 };
 
+const loadImage = (src: string): Promise<HTMLImageElement> =>
+  new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+
 export const exportPNGImageFromElement = async (exportData: ExportData) => {
-  const { name, documentSelector = '', viewport } = exportData;
+  const {
+    name,
+    documentSelector = '',
+    viewport,
+    renderEdgesOverlay,
+  } = exportData;
 
   const exportElement = document.querySelector(documentSelector);
 
@@ -64,53 +77,97 @@ export const exportPNGImageFromElement = async (exportData: ExportData) => {
   const minWidth = 1000;
   const minHeight = 800;
   const padding = 20;
+  const pixelRatio = 3;
 
   const imageWidth = Math.max(minWidth, exportElement.scrollWidth);
   const imageHeight = Math.max(minHeight, exportElement.scrollHeight);
 
-  await toPng(exportElement as HTMLElement, {
-    backgroundColor: '#ffffff',
-    width: imageWidth + padding * 2,
-    height: imageHeight + padding * 2,
-    pixelRatio: 3,
-    quality: 1.0,
-    style: {
-      width: imageWidth.toString(),
-      height: imageHeight.toString(),
-      margin: `${padding}px`,
-      minWidth: `${minWidth}px`,
-      minHeight: `${minHeight}px`,
-      ...(!isUndefined(viewport)
-        ? {
-            transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
-          }
-        : {}),
-    },
-  })
-    .then((base64Image: string) => {
-      downloadImageFromBase64(base64Image, name, ExportTypes.PNG);
-    })
-    .catch((error) => {
-      const errorMessage = (error as Error).message ?? '';
-      const isInvalidStringLength = errorMessage.includes(
-        'Invalid string length'
+  try {
+    const toPngOptions = {
+      // When compositing with edges, capture nodes without a background so node
+      // cards remain opaque but gaps between them are transparent — allowing
+      // edges drawn underneath to show through.
+      backgroundColor: renderEdgesOverlay ? undefined : '#ffffff',
+      width: imageWidth + padding * 2,
+      height: imageHeight + padding * 2,
+      pixelRatio,
+      quality: 1.0,
+      style: {
+        width: imageWidth.toString(),
+        height: imageHeight.toString(),
+        margin: `${padding}px`,
+        minWidth: `${minWidth}px`,
+        minHeight: `${minHeight}px`,
+        ...(!isUndefined(viewport)
+          ? {
+              transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
+            }
+          : {}),
+      },
+    };
+
+    const base64Image = await toPng(exportElement as HTMLElement, toPngOptions);
+
+    if (renderEdgesOverlay) {
+      const physicalWidth = (imageWidth + padding * 2) * pixelRatio;
+      const physicalHeight = (imageHeight + padding * 2) * pixelRatio;
+      const composite = document.createElement('canvas');
+      composite.width = physicalWidth;
+      composite.height = physicalHeight;
+      const ctx = composite.getContext('2d');
+
+      if (!ctx) {
+        throw new Error('Failed to get 2D context for composite canvas');
+      }
+
+      const edgesCanvas = renderEdgesOverlay(
+        imageWidth,
+        imageHeight,
+        padding,
+        pixelRatio
       );
 
-      if (isInvalidStringLength) {
-        showErrorToast(
-          error as AxiosError,
-          i18n.t('message.invalid-string-length-error', {
-            exportType: ExportTypes.PNG,
-            entity: exportData.title,
-          })
-        );
-      } else {
-        showErrorToast(
-          error as AxiosError,
-          i18n.t('message.error-generating-export-type', {
-            exportType: ExportTypes.PNG,
-          })
-        );
+      // Layer order: white background → edges (if available) → nodes.
+      // Node cards are opaque so they naturally occlude edges beneath them.
+      // If edgesCanvas is null, we still produce a usable white-background PNG.
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, physicalWidth, physicalHeight);
+      if (edgesCanvas) {
+        ctx.drawImage(edgesCanvas, 0, 0);
       }
-    });
+      const nodesImg = await loadImage(base64Image);
+      ctx.drawImage(nodesImg, 0, 0);
+      downloadImageFromBase64(
+        composite.toDataURL('image/png', 1.0),
+        name,
+        ExportTypes.PNG
+      );
+
+      return;
+    }
+
+    downloadImageFromBase64(base64Image, name, ExportTypes.PNG);
+  } catch (error) {
+    const errorMessage = (error as Error).message ?? '';
+    const isInvalidStringLength = errorMessage.includes(
+      'Invalid string length'
+    );
+
+    if (isInvalidStringLength) {
+      showErrorToast(
+        error as AxiosError,
+        i18n.t('message.invalid-string-length-error', {
+          exportType: ExportTypes.PNG,
+          entity: exportData.title,
+        })
+      );
+    } else {
+      showErrorToast(
+        error as AxiosError,
+        i18n.t('message.error-generating-export-type', {
+          exportType: ExportTypes.PNG,
+        })
+      );
+    }
+  }
 };

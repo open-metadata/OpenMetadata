@@ -46,6 +46,7 @@
         "IncidentResolution",
         "PipelineReview",
         "DataQualityReview",
+        "RecognizerFeedbackApproval",
         "CustomTask"
       ],
       "javaEnums": [
@@ -62,6 +63,7 @@
         {"name": "IncidentResolution"},
         {"name": "PipelineReview"},
         {"name": "DataQualityReview"},
+        {"name": "RecognizerFeedbackApproval"},
         {"name": "CustomTask"}
       ]
     },

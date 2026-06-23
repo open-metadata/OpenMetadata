@@ -72,7 +72,7 @@ jest.mock('../../hooks/useDomainStore', () => ({
   ),
 }));
 
-jest.mock('../../utils/FeedUtils', () => ({
+jest.mock('../../utils/FeedUtilsPure', () => ({
   getEntityFQN: jest.fn().mockReturnValue('entityFQN'),
   getEntityType: jest.fn().mockReturnValue('entityType'),
 }));

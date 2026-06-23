@@ -346,6 +346,7 @@ test.describe.serial('Lineage Settings Tests', () => {
     // Select pipeline from Modal
     await applyPipelineFromModal(dataStewardPage, table, topic, pipeline);
     await editLineageClick(dataStewardPage);
+    await waitForAllLoadersToDisappear(dataStewardPage);
     await verifyPipelineDataInDrawer(
       dataStewardPage,
       table,

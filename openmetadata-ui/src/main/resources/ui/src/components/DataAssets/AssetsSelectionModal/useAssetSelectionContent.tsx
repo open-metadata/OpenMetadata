@@ -28,7 +28,6 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { EntityDetailUnion } from 'Models';
-import { useSnackbar } from 'notistack';
 import VirtualList from 'rc-virtual-list';
 import { UIEventHandler, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -68,14 +67,14 @@ import {
 } from '../../../rest/glossaryAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { addAssetsToTags, getTagByFqn } from '../../../rest/tagAPI';
-import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
+import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchPureUtils';
 import { getDomainDryRunImpacts } from '../../../utils/Domain/DomainDryRunUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import { getCombinedQueryFilterObject } from '../../../utils/ExplorePage/ExplorePageUtils';
 import {
   getAggregations,
   getQuickFilterQuery,
-} from '../../../utils/ExploreUtils';
+} from '../../../utils/ExplorePureUtils';
 import { showNotistackError } from '../../../utils/NotistackUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Banner from '../../common/Banner/Banner';
@@ -120,7 +119,6 @@ export const useAssetSelectionContent = ({
   const { theme } = useApplicationStore();
   const muiTheme = useTheme();
   const { t } = useTranslation();
-  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   const [search, setSearch] = useState('');
   const [items, setItems] = useState<SearchedDataProps['data']>([]);
   const [failedStatus, setFailedStatus] = useState<BulkOperationResult>();
@@ -317,19 +315,16 @@ export const useAssetSelectionContent = ({
     (err: unknown) => {
       if (variant === 'drawer') {
         showNotistackError(
-          enqueueSnackbar,
           err as AxiosError,
           t('server.add-entity-error', {
             entity: t('label.asset-plural').toLowerCase(),
-          }),
-          { vertical: 'top', horizontal: 'center' },
-          closeSnackbar
+          })
         );
       } else {
         showErrorToast(err as AxiosError);
       }
     },
-    [variant, enqueueSnackbar, closeSnackbar, t]
+    [variant, t]
   );
 
   const handleSave = useCallback(async () => {
@@ -717,6 +712,7 @@ export const useAssetSelectionContent = ({
           fields={filters}
           index={SearchIndex.ALL}
           showDeleted={false}
+          untitledDropdown={variant === 'drawer'}
           onFieldValueSelect={handleQuickFiltersValueSelect}
         />
         {quickFilterQuery && (

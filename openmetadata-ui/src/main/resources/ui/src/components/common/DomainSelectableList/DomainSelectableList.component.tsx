@@ -19,7 +19,7 @@ import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
 import { getVisiblePopupContainer } from '../../../utils/LandingPageWidget/WidgetsUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import './domain-select-dropdown.less';
@@ -38,6 +38,7 @@ const DomainSelectableList = ({
   onCancel,
   onUpdate,
   popoverProps,
+  restrictedDomains,
   selectedDomain,
   showAllDomains = false,
   wrapInButton = true,
@@ -107,6 +108,7 @@ const DomainSelectableList = ({
                   initialDomains={initialDomains}
                   isClearable={isClearable}
                   isMultiple={multiple}
+                  restrictedDomains={restrictedDomains}
                   showAllDomains={showAllDomains}
                   value={selectedDomainsList as string[]}
                   visible={popupVisible || Boolean(popoverProps?.open)}
@@ -155,6 +157,7 @@ const DomainSelectableList = ({
     multiple,
     popoverProps,
     popupVisible,
+    restrictedDomains,
     selectedDomainsList,
     selectedDomain,
     isVersionView,

@@ -14,12 +14,13 @@
 import base, { expect, Page } from '@playwright/test';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
-import { AssetReference, DataProduct } from '../../support/domain/DataProduct';
+import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { performAdminLogin } from '../../utils/admin';
+import { runDrawerQuickFilterMatrix } from '../../utils/assetDrawerQuickFilter';
 import {
   getApiContext,
   redirectToHomePage,
@@ -34,19 +35,13 @@ import {
   verifyPortCounts,
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  buildPortDrawerContext,
+  cleanupDrawerFilterAssets,
+  createAssetRef,
+  seedDrawerFilterAssets,
+} from '../../utils/inputOutputPorts';
 import { sidebarClick } from '../../utils/sidebar';
-
-const createAssetRef = (
-  entity: TableClass | TopicClass | DashboardClass,
-  type: string
-): AssetReference => ({
-  id: entity.entityResponseData.id,
-  type,
-  name: entity.entityResponseData.name,
-  displayName: entity.entityResponseData.displayName,
-  fullyQualifiedName: entity.entityResponseData.fullyQualifiedName,
-  description: entity.entityResponseData.description,
-});
 
 const domain = new Domain();
 
@@ -634,50 +629,60 @@ test.describe('Input Output Ports', () => {
       });
     });
 
-    test('Port drawers show Entity Type quick filter', async ({ page }) => {
-      const dataProduct = new DataProduct([domain]);
+    test('Input port drawer quick filter - behaviour matrix', async ({
+      page,
+    }) => {
+      test.setTimeout(180_000);
+      const { apiContext } = await getApiContext(page);
+      const seeded = await seedDrawerFilterAssets(apiContext, domain, false);
 
-      await test.step('Create data product with assets', async () => {
-        const { apiContext } = await getApiContext(page);
-        await dataProduct.create(apiContext);
-        await dataProduct.addAssets(apiContext, [
-          createAssetRef(tables[0], 'table'),
-        ]);
-      });
-
-      await test.step('Navigate to ports tab', async () => {
-        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-        await selectDataProduct(page, dataProduct.data);
-        await navigateToPortsTab(page);
-      });
-
-      await test.step('Verify Entity Type filter in input port drawer', async () => {
-        await page.getByTestId('add-input-port-button').click();
-        await page.getByTestId('asset-selection-modal').waitFor({
-          state: 'visible',
+      try {
+        await test.step('Navigate to ports tab', async () => {
+          await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+          await selectDataProduct(page, seeded.dataProduct.data);
+          await navigateToPortsTab(page);
         });
-        await waitForAllLoadersToDisappear(page);
 
-        await expect(
-          page.getByTestId('search-dropdown-Entity Type')
-        ).toBeVisible();
+        await runDrawerQuickFilterMatrix(
+          page,
+          buildPortDrawerContext(
+            page,
+            'input port',
+            'add-input-port-button',
+            seeded
+          )
+        );
+      } finally {
+        await cleanupDrawerFilterAssets(apiContext, seeded);
+      }
+    });
 
-        await page.getByTestId('cancel-btn').click();
-      });
+    test('Output port drawer quick filter - behaviour matrix', async ({
+      page,
+    }) => {
+      test.setTimeout(180_000);
+      const { apiContext } = await getApiContext(page);
+      const seeded = await seedDrawerFilterAssets(apiContext, domain, true);
 
-      await test.step('Verify Entity Type filter in output port drawer', async () => {
-        await page.getByTestId('add-output-port-button').click();
-        await page.getByTestId('asset-selection-modal').waitFor({
-          state: 'visible',
+      try {
+        await test.step('Navigate to ports tab', async () => {
+          await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+          await selectDataProduct(page, seeded.dataProduct.data);
+          await navigateToPortsTab(page);
         });
-        await waitForAllLoadersToDisappear(page);
 
-        await expect(
-          page.getByTestId('search-dropdown-Entity Type')
-        ).toBeVisible();
-
-        await page.getByTestId('cancel-btn').click();
-      });
+        await runDrawerQuickFilterMatrix(
+          page,
+          buildPortDrawerContext(
+            page,
+            'output port',
+            'add-output-port-button',
+            seeded
+          )
+        );
+      } finally {
+        await cleanupDrawerFilterAssets(apiContext, seeded);
+      }
     });
 
     test('Output port drawer only shows data product assets', async ({
