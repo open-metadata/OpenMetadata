@@ -754,7 +754,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
     const applyEntityTypeFilter = async (entityType: string) => {
       await page.locator('.filters-row button').first().click();
       await page.getByRole('menuitem', { name: /Entity Type/i }).click();
-      await page.click('[data-testid="search-dropdown-Entity Type"]');
+      await page.click('[data-testid="search-dropdown-entityType"]');
       await page.getByTestId('drop-down-menu').waitFor({
         state: 'visible',
       });
