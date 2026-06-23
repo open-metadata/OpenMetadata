@@ -19,6 +19,7 @@ from typing import Iterable, List  # noqa: UP035
 from pydantic import Field
 from typing_extensions import Annotated  # noqa: UP035
 
+from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestDefinition import (
@@ -82,6 +83,7 @@ class DbtServiceTopology(ServiceTopology):
             "process_dbt_entities",
             "process_dbt_tests",
             "process_dbt_exposures",
+            "process_dbt_metrics",
         ],
     )
     process_dbt_data_model: Annotated[TopologyNode, Field(description="Process dbt data models")] = TopologyNode(
@@ -167,6 +169,24 @@ class DbtServiceTopology(ServiceTopology):
             ),
         ],
     )
+    process_dbt_metrics: Annotated[
+        TopologyNode, Field(description="Process dbt semantic layer metrics")
+    ] = TopologyNode(
+        producer="get_dbt_metrics",
+        stages=[
+            NodeStage(
+                type_=CreateMetricRequest,
+                processor="yield_dbt_metrics",
+                consumer=["yield_data_models"],
+                nullable=True,
+            ),
+            NodeStage(
+                type_=AddLineageRequest,
+                processor="create_dbt_metric_lineage",
+                nullable=True,
+            ),
+        ],
+    )
 
 
 class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
@@ -192,7 +212,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         # This step is necessary as the manifest file may not always adhere to the schema definition
         # and the presence of other nodes can hinder the ingestion process from progressing any further.
         # Therefore, we are only retaining the essential data for further processing.
-        required_manifest_keys = {"nodes", "sources", "metadata", "exposures"}
+        required_manifest_keys = {"nodes", "sources", "metadata", "exposures", "metrics", "semantic_models"}
         manifest_dict.update(
             {
                 key: [] if isinstance(manifest_dict[key], list) else {}
@@ -349,6 +369,13 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         for _, exposure in self.context.get().exposures.items():  # noqa: PERF102
             yield exposure
 
+    def get_dbt_metrics(self) -> Iterable[dict]:
+        """
+        Prepare the DBT metrics
+        """
+        for _, metric_entry in self.context.get().dbt_metrics.items():
+            yield metric_entry
+
     @abstractmethod
     def create_dbt_tests_definition(self, dbt_test: dict) -> CreateTestDefinitionRequest:
         """
@@ -377,6 +404,20 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
     def process_dbt_custom_properties(self, data_model_link: DataModelLink):
         """
         Method to process DBT custom properties using patch APIs
+        """
+
+    @abstractmethod
+    def yield_dbt_metrics(self, metric_entry: dict) -> Iterable[Either[CreateMetricRequest]]:
+        """
+        Yield CreateMetric requests from dbt metric definitions
+        """
+
+    @abstractmethod
+    def create_dbt_metric_lineage(
+        self, metric_entry: dict
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Create lineage from source tables to dbt metrics
         """
 
     def is_filtered(self, database_name: str, schema_name: str, table_name: str) -> DbtFilteredModel:
