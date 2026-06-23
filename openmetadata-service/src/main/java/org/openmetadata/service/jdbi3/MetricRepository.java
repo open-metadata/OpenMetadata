@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -44,11 +45,13 @@ import org.openmetadata.service.resources.metrics.MetricResource;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.MemoryOwnership;
 
 @Slf4j
 public class MetricRepository extends EntityRepository<Metric> {
   private static final String UPDATE_FIELDS = "relatedMetrics";
   private static final String PATCH_FIELDS = "relatedMetrics";
+  static final String FIELD_DERIVED_FROM = "derivedFrom";
 
   public MetricRepository() {
     super(
@@ -98,11 +101,27 @@ public class MetricRepository extends EntityRepository<Metric> {
       Metric metric, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     metric.setRelatedMetrics(
         fields.contains("relatedMetrics") ? getRelatedMetrics(metric) : metric.getRelatedMetrics());
+    if (fields.contains(FIELD_DERIVED_FROM)) {
+      metric.setDerivedFrom(getDerivedFrom(metric));
+    }
   }
 
   @Override
   protected void clearFields(Metric entity, EntityUtil.Fields fields) {
     entity.setRelatedMetrics(fields.contains("relatedMetrics") ? entity.getRelatedMetrics() : null);
+    if (!fields.contains(FIELD_DERIVED_FROM)) {
+      entity.setDerivedFrom(null);
+    }
+  }
+
+  /**
+   * Returns the context memory from which the Memory Agent created this metric.
+   * Edge direction: from=metric → to=memory via DERIVED_FROM; findTo resolves the to-side (memory).
+   */
+  private EntityReference getDerivedFrom(Metric metric) {
+    final List<EntityReference> refs =
+        findTo(metric.getId(), Entity.METRIC, Relationship.DERIVED_FROM, Entity.CONTEXT_MEMORY);
+    return nullOrEmpty(refs) ? null : refs.getFirst();
   }
 
   // Individual field fetchers registered in constructor
@@ -219,6 +238,15 @@ public class MetricRepository extends EntityRepository<Metric> {
             }
           });
       compareAndUpdate("relatedMetrics", () -> updateRelatedMetrics(original, updated));
+      MemoryOwnership.releaseIfHumanEdited(updated, operation.isPatch(), managedFieldChanged());
+    }
+
+    private boolean managedFieldChanged() {
+      return !Objects.equals(original.getName(), updated.getName())
+          || !Objects.equals(original.getDisplayName(), updated.getDisplayName())
+          || !Objects.equals(original.getDescription(), updated.getDescription())
+          || !Objects.equals(original.getMetricType(), updated.getMetricType())
+          || !Objects.equals(original.getMetricExpression(), updated.getMetricExpression());
     }
 
     private void updateRelatedMetrics(Metric original, Metric updated) {
