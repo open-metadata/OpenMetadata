@@ -769,13 +769,25 @@ test.describe('Input Output Ports', () => {
       await test.step('Verify input ports list', async () => {
         await expect(page.getByTestId('input-ports-list')).toBeVisible();
 
-        const table1Name = get(tables[0], 'entityResponseData.name');
-        const table2Name = get(tables[1], 'entityResponseData.name');
-        const table3Name = get(tables[2], 'entityResponseData.name');
+        const table1Name = get(
+          tables[0],
+          'entityResponseData.fullyQualifiedName',
+          ''
+        );
+        const table2Name = get(
+          tables[1],
+          'entityResponseData.fullyQualifiedName',
+          ''
+        );
+        const table3Name = get(
+          tables[2],
+          'entityResponseData.fullyQualifiedName',
+          ''
+        );
 
-        await expect(page.locator(`text=${table1Name}`).first()).toBeVisible();
-        await expect(page.locator(`text=${table2Name}`).first()).toBeVisible();
-        await expect(page.locator(`text=${table3Name}`).first()).toBeVisible();
+        await expect(page.getByTestId(table1Name)).toBeVisible();
+        await expect(page.getByTestId(table2Name)).toBeVisible();
+        await expect(page.getByTestId(table3Name)).toBeVisible();
       });
     });
 
@@ -806,20 +818,11 @@ test.describe('Input Output Ports', () => {
       await test.step('Verify output ports list', async () => {
         await expect(page.getByTestId('output-ports-list')).toBeVisible();
 
-        const dashboard1Name = get(
-          dashboards[0],
-          'entityResponseData.displayName'
-        );
-        const dashboard2Name = get(
-          dashboards[1],
-          'entityResponseData.displayName'
-        );
-
         await expect(
-          page.locator(`text=${dashboard1Name}`).first()
+          page.getByTestId(dashboards[0].entityResponseData.fullyQualifiedName)
         ).toBeVisible();
         await expect(
-          page.locator(`text=${dashboard2Name}`).first()
+          page.getByTestId(dashboards[1].entityResponseData.fullyQualifiedName)
         ).toBeVisible();
       });
     });
@@ -1143,29 +1146,24 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify input port nodes are visible', async () => {
-        const table1Name = get(tables[0], 'entityResponseData.name');
-        const table2Name = get(tables[1], 'entityResponseData.name');
+        const table1Name =
+          tables[0].entityResponseData.fullyQualifiedName ?? '';
+        const table2Name =
+          tables[1].entityResponseData.fullyQualifiedName ?? '';
 
-        await expect(page.locator(`text=${table1Name}`).first()).toBeVisible();
-        await expect(page.locator(`text=${table2Name}`).first()).toBeVisible();
+        await expect(page.getByTestId(table1Name)).toBeVisible();
+        await expect(page.getByTestId(table2Name)).toBeVisible();
       });
 
       await test.step('Verify output port nodes are visible', async () => {
-        const dashboard1Name = get(
-          dashboards[0],
-          'entityResponseData.displayName'
-        );
-        const dashboard2Name = get(
-          dashboards[1],
-          'entityResponseData.displayName'
-        );
+        const dashboard1Name =
+          dashboards[0].entityResponseData.fullyQualifiedName ?? '';
 
-        await expect(
-          page.locator(`text=${dashboard1Name}`).first()
-        ).toBeVisible();
-        await expect(
-          page.locator(`text=${dashboard2Name}`).first()
-        ).toBeVisible();
+        const dashboard2Name =
+          dashboards[1].chartsResponseData.fullyQualifiedName;
+
+        await expect(page.getByTestId(dashboard1Name)).toBeVisible();
+        await expect(page.getByTestId(dashboard2Name)).toBeVisible();
       });
     });
 
@@ -1194,8 +1192,8 @@ test.describe('Input Output Ports', () => {
 
       await test.step('Verify only input port is shown', async () => {
         await expect(page.getByTestId('ports-lineage-view')).toBeVisible();
-        const tableName = get(tables[0], 'entityResponseData.name');
-        await expect(page.locator(`text=${tableName}`).first()).toBeVisible();
+        const tableName = tables[0].entityResponseData.fullyQualifiedName ?? '';
+        await expect(page.getByTestId(tableName)).toBeVisible();
       });
     });
 
@@ -1224,13 +1222,9 @@ test.describe('Input Output Ports', () => {
 
       await test.step('Verify only output port is shown', async () => {
         await expect(page.getByTestId('ports-lineage-view')).toBeVisible();
-        const dashboardName = get(
-          dashboards[0],
-          'entityResponseData.displayName'
-        );
-        await expect(
-          page.locator(`text=${dashboardName}`).first()
-        ).toBeVisible();
+        const dashboardName =
+          dashboards[0].entityResponseData.fullyQualifiedName ?? '';
+        await expect(page.getByTestId(dashboardName)).toBeVisible();
       });
     });
 
