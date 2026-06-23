@@ -12,6 +12,8 @@
  */
 package org.openmetadata.service.rdf;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -20,11 +22,17 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.net.URI;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.apache.jena.query.QueryFactory;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 
 class RdfGlossaryTermGraphFilterTest {
@@ -58,8 +66,72 @@ class RdfGlossaryTermGraphFilterTest {
     QueryFactory.create(query);
   }
 
+  @Test
+  void glossaryTermFallbackFilterKeepsSelectedTermAndDirectNeighborsAcrossGlossaries() {
+    UUID glossaryId = UUID.randomUUID();
+    UUID otherGlossaryId = UUID.randomUUID();
+    UUID selectedId = UUID.randomUUID();
+    UUID outgoingId = UUID.randomUUID();
+    UUID incomingId = UUID.randomUUID();
+    UUID parentId = UUID.randomUUID();
+    UUID childId = UUID.randomUUID();
+    UUID unrelatedId = UUID.randomUUID();
+
+    GlossaryTerm selectedTerm =
+        term(selectedId, glossaryId)
+            .withRelatedTerms(List.of(relation(outgoingId)))
+            .withParent(ref(parentId))
+            .withChildren(List.of(ref(childId)));
+    GlossaryTerm incomingTerm =
+        term(incomingId, otherGlossaryId).withRelatedTerms(List.of(relation(selectedId)));
+    GlossaryTerm outgoingTerm = term(outgoingId, otherGlossaryId);
+    GlossaryTerm parentTerm =
+        term(parentId, otherGlossaryId).withChildren(List.of(ref(selectedId)));
+    GlossaryTerm childTerm = term(childId, otherGlossaryId).withParent(ref(selectedId));
+    GlossaryTerm unrelatedTerm =
+        term(unrelatedId, glossaryId).withRelatedTerms(List.of(relation(outgoingId)));
+
+    List<GlossaryTerm> filteredTerms =
+        RdfRepository.filterTermsByGlossaryTermId(
+            List.of(selectedTerm, incomingTerm, outgoingTerm, parentTerm, childTerm, unrelatedTerm),
+            selectedId,
+            glossaryId);
+
+    assertEquals(
+        Set.of(selectedId, outgoingId, incomingId, parentId, childId),
+        filteredTerms.stream().map(GlossaryTerm::getId).collect(Collectors.toSet()));
+    assertTrue(RdfRepository.isIncidentToGlossaryTermId(selectedId, outgoingId, selectedId));
+    assertTrue(RdfRepository.isIncidentToGlossaryTermId(incomingId, selectedId, selectedId));
+    assertFalse(RdfRepository.isIncidentToGlossaryTermId(incomingId, outgoingId, selectedId));
+  }
+
+  @Test
+  void glossaryTermFallbackFilterRequiresSelectedTermInRequestedGlossary() {
+    UUID glossaryId = UUID.randomUUID();
+    UUID otherGlossaryId = UUID.randomUUID();
+    UUID selectedId = UUID.randomUUID();
+
+    List<GlossaryTerm> filteredTerms =
+        RdfRepository.filterTermsByGlossaryTermId(
+            List.of(term(selectedId, otherGlossaryId)), selectedId, glossaryId);
+
+    assertTrue(filteredTerms.isEmpty());
+  }
+
   private static RdfConfiguration config() {
     return new RdfConfiguration().withEnabled(true).withBaseUri(URI.create(BASE_URI));
+  }
+
+  private static GlossaryTerm term(UUID id, UUID glossaryId) {
+    return new GlossaryTerm().withId(id).withName(id.toString()).withGlossary(ref(glossaryId));
+  }
+
+  private static EntityReference ref(UUID id) {
+    return new EntityReference().withId(id);
+  }
+
+  private static TermRelation relation(UUID termId) {
+    return new TermRelation().withTerm(ref(termId)).withRelationType("relatedTo");
   }
 
   private static String sparqlResponse(UUID glossaryTermId) {

@@ -1924,8 +1924,18 @@ public class RdfRepository {
     return uri;
   }
 
-  private List<GlossaryTerm> filterTermsByGlossaryTermId(
-      List<GlossaryTerm> terms, UUID glossaryTermId) {
+  static List<GlossaryTerm> filterTermsByGlossaryTermId(
+      List<GlossaryTerm> terms, UUID glossaryTermId, UUID glossaryId) {
+    if (glossaryTermId == null) {
+      return terms;
+    }
+
+    GlossaryTerm selectedTerm =
+        terms.stream().filter(term -> glossaryTermId.equals(term.getId())).findFirst().orElse(null);
+    if (selectedTerm == null || !isGlossaryTermInGlossary(selectedTerm, glossaryId)) {
+      return List.of();
+    }
+
     Set<UUID> visibleTermIds = new LinkedHashSet<>();
     visibleTermIds.add(glossaryTermId);
 
@@ -1945,7 +1955,14 @@ public class RdfRepository {
     return terms.stream().filter(term -> visibleTermIds.contains(term.getId())).toList();
   }
 
-  private void addDirectGlossaryTermIds(GlossaryTerm term, Set<UUID> visibleTermIds) {
+  private static boolean isGlossaryTermInGlossary(GlossaryTerm term, UUID glossaryId) {
+    if (glossaryId == null) {
+      return true;
+    }
+    return term.getGlossary() != null && glossaryId.equals(term.getGlossary().getId());
+  }
+
+  private static void addDirectGlossaryTermIds(GlossaryTerm term, Set<UUID> visibleTermIds) {
     if (term.getRelatedTerms() != null) {
       for (var relatedTerm : term.getRelatedTerms()) {
         if (relatedTerm.getTerm() != null && relatedTerm.getTerm().getId() != null) {
@@ -1965,7 +1982,7 @@ public class RdfRepository {
     }
   }
 
-  private boolean hasDirectRelationToGlossaryTerm(GlossaryTerm term, UUID glossaryTermId) {
+  private static boolean hasDirectRelationToGlossaryTerm(GlossaryTerm term, UUID glossaryTermId) {
     if (term.getRelatedTerms() != null) {
       for (var relatedTerm : term.getRelatedTerms()) {
         if (relatedTerm.getTerm() != null && glossaryTermId.equals(relatedTerm.getTerm().getId())) {
@@ -1984,6 +2001,13 @@ public class RdfRepository {
       }
     }
     return false;
+  }
+
+  static boolean isIncidentToGlossaryTermId(
+      UUID sourceTermId, UUID targetTermId, UUID glossaryTermId) {
+    return glossaryTermId == null
+        || glossaryTermId.equals(sourceTermId)
+        || glossaryTermId.equals(targetTermId);
   }
 
   /**
@@ -2010,7 +2034,7 @@ public class RdfRepository {
       var glossaryTermRepository =
           (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
       var listFilter = new ListFilter(null);
-      if (glossaryId != null) {
+      if (glossaryId != null && glossaryTermId == null) {
         var glossaryRepo = Entity.getEntityRepository(Entity.GLOSSARY);
         var glossary =
             (Glossary)
@@ -2021,12 +2045,13 @@ public class RdfRepository {
       List<GlossaryTerm> terms = new ArrayList<>();
       var fetched =
           glossaryTermRepository.listAll(
-              glossaryTermRepository.getFields("relatedTerms,parent,children"), listFilter);
+              glossaryTermRepository.getFields("relatedTerms,parent,children,glossary"),
+              listFilter);
       for (var entity : fetched) {
         terms.add((GlossaryTerm) entity);
       }
       if (glossaryTermId != null) {
-        terms = filterTermsByGlossaryTermId(terms, glossaryTermId);
+        terms = filterTermsByGlossaryTermId(terms, glossaryTermId, glossaryId);
       }
 
       Set<String> addedNodes = new HashSet<>();
@@ -2073,9 +2098,8 @@ public class RdfRepository {
               var relatedTermRef = relatedTerm.getTerm();
               if (relatedTermRef == null || relatedTermRef.getId() == null) continue;
 
-              if (glossaryTermId != null
-                  && !term.getId().equals(glossaryTermId)
-                  && !relatedTermRef.getId().equals(glossaryTermId)) {
+              if (!isIncidentToGlossaryTermId(
+                  term.getId(), relatedTermRef.getId(), glossaryTermId)) {
                 continue;
               }
 
@@ -2134,23 +2158,21 @@ public class RdfRepository {
           }
 
           // Add parent edge
-          if (term.getParent() != null) {
-            if (glossaryTermId != null
-                && !term.getId().equals(glossaryTermId)
-                && !glossaryTermId.equals(term.getParent().getId())) {
-              continue;
-            }
-            String parentId = term.getParent().getId().toString();
-            String edgeKey = parentId + "-parent-" + termId;
-            if (!edgeKeys.contains(edgeKey)) {
-              edgeKeys.add(edgeKey);
-              com.fasterxml.jackson.databind.node.ObjectNode edge =
-                  JsonUtils.getObjectMapper().createObjectNode();
-              edge.put("from", parentId);
-              edge.put("to", termId);
-              edge.put("label", "Parent Of");
-              edge.put("relationType", "parentOf");
-              edges.add(edge);
+          if (term.getParent() != null && term.getParent().getId() != null) {
+            UUID parentId = term.getParent().getId();
+            if (isIncidentToGlossaryTermId(term.getId(), parentId, glossaryTermId)) {
+              String parentIdValue = parentId.toString();
+              String edgeKey = parentIdValue + "-parent-" + termId;
+              if (!edgeKeys.contains(edgeKey)) {
+                edgeKeys.add(edgeKey);
+                com.fasterxml.jackson.databind.node.ObjectNode edge =
+                    JsonUtils.getObjectMapper().createObjectNode();
+                edge.put("from", parentIdValue);
+                edge.put("to", termId);
+                edge.put("label", "Parent Of");
+                edge.put("relationType", "parentOf");
+                edges.add(edge);
+              }
             }
           }
         }
