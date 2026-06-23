@@ -37,6 +37,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageBand;
 import org.openmetadata.schema.api.lineage.LineageLens;
@@ -53,6 +54,7 @@ import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.monitoring.RequestLatencyContext;
 
 public class LineageSceneResolver {
   private static final String REQUIRED_FIELDS =
@@ -97,6 +99,18 @@ public class LineageSceneResolver {
   private static final int CONTAINER_TOTAL_LOOKUP_LIMIT = 100;
   private static final int FIELD_ENDPOINTS_PER_NODE = 10;
   private static final int FIELD_EDGE_LIMIT = 120;
+  private static final AtomicInteger LINEAGE_LOOKUP_THREAD_COUNTER = new AtomicInteger();
+  private static final ExecutorService LINEAGE_LOOKUP_EXECUTOR =
+      Executors.newFixedThreadPool(
+          FOCUSED_CHILD_LINEAGE_PARALLELISM,
+          task -> {
+            Thread thread =
+                new Thread(
+                    task,
+                    "lineage-scene-lookup-" + LINEAGE_LOOKUP_THREAD_COUNTER.incrementAndGet());
+            thread.setDaemon(true);
+            return thread;
+          });
 
   public LineageScene getScene(
       String focusFqn,
@@ -530,36 +544,31 @@ public class LineageSceneResolver {
     if (seeds.isEmpty()) {
       return;
     }
-    ExecutorService executor =
-        Executors.newFixedThreadPool(Math.min(FOCUSED_CHILD_LINEAGE_PARALLELISM, seeds.size()));
-    try {
-      List<CompletableFuture<SearchLineageResult>> futures =
-          seeds.stream()
-              .map(
-                  seed ->
-                      CompletableFuture.supplyAsync(
-                          () -> {
-                            try {
-                              return fetchLineage(
-                                  seed.fqn(),
-                                  seed.entityType(),
-                                  lens,
-                                  upstreamDepth,
-                                  downstreamDepth,
-                                  FOCUSED_CHILD_LINEAGE_SIZE,
-                                  queryFilter,
-                                  includeDeleted);
-                            } catch (IOException exception) {
-                              throw new CompletionException(exception);
-                            }
-                          },
-                          executor))
-              .toList();
-      for (CompletableFuture<SearchLineageResult> future : futures) {
-        mergeLineage(lineage, joinLineageFuture(future));
-      }
-    } finally {
-      executor.shutdownNow();
+    List<CompletableFuture<SearchLineageResult>> futures =
+        seeds.stream()
+            .map(
+                seed ->
+                    CompletableFuture.supplyAsync(
+                        RequestLatencyContext.wrapWithContext(
+                            () -> {
+                              try {
+                                return fetchLineage(
+                                    seed.fqn(),
+                                    seed.entityType(),
+                                    lens,
+                                    upstreamDepth,
+                                    downstreamDepth,
+                                    FOCUSED_CHILD_LINEAGE_SIZE,
+                                    queryFilter,
+                                    includeDeleted);
+                              } catch (IOException exception) {
+                                throw new CompletionException(exception);
+                              }
+                            }),
+                        LINEAGE_LOOKUP_EXECUTOR))
+            .toList();
+    for (CompletableFuture<SearchLineageResult> future : futures) {
+      mergeLineage(lineage, joinLineageFuture(future));
     }
   }
 

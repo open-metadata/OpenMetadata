@@ -1002,8 +1002,8 @@ public class LineageResource {
           @PathParam("toFQN")
           String toFQN,
       @Valid LineageDetails lineageDetails) {
-    authorizeLineageReference(securityContext, fromEntity, fromFQN, Include.ALL);
-    authorizeLineageReference(securityContext, toEntity, toFQN, Include.ALL);
+    authorizeLineageReference(securityContext, fromEntity, fromFQN);
+    authorizeLineageReference(securityContext, toEntity, toFQN);
     dao.addLineageByFQN(
         fromEntity,
         fromFQN,
@@ -1294,8 +1294,8 @@ public class LineageResource {
       @Parameter(description = "Entity FQN", required = true, schema = @Schema(type = "string"))
           @PathParam("toFQN")
           String toFQN) {
-    authorizeLineageReference(securityContext, fromEntity, fromFQN);
-    authorizeLineageReference(securityContext, toEntity, toFQN);
+    authorizeLineageReference(securityContext, fromEntity, fromFQN, Include.ALL);
+    authorizeLineageReference(securityContext, toEntity, toFQN, Include.ALL);
     boolean deleted =
         dao.deleteLineageByFQN(
             fromEntity, fromFQN, toEntity, toFQN, securityContext.getUserPrincipal().getName());
