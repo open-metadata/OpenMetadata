@@ -223,9 +223,9 @@ test.describe('Ontology Explorer — RDF graph data loading', () => {
       route.fulfill({ json: { enabled: true } })
     );
 
-    let graphApiCalled = false;
+    let graphApiUrl: URL | undefined;
     await page.route('**/api/v1/rdf/glossary/graph**', (route) => {
-      graphApiCalled = true;
+      graphApiUrl = new URL(route.request().url());
 
       return route.fulfill({ json: graphJson() });
     });
@@ -239,9 +239,12 @@ test.describe('Ontology Explorer — RDF graph data loading', () => {
     await waitForGraphLoaded(page);
 
     expect(
-      graphApiCalled,
+      graphApiUrl,
       'GET /rdf/glossary/graph must be called on the term Relations Graph when RDF is enabled'
-    ).toBe(true);
+    ).toBeDefined();
+    expect(graphApiUrl?.searchParams.get('glossaryTermId')).toBe(
+      rdfTerm1.responseData.id
+    );
 
     const positions = await readNodePositions(page);
     expect(
