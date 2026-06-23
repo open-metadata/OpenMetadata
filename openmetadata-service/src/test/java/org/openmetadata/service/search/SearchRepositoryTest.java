@@ -195,6 +195,40 @@ class SearchRepositoryTest {
   }
 
   @Test
+  void updateEntitiesByReference_dedupesRepeatedRefsAndResolvesEachOnce() {
+    searchRepository.searchIndexFactory = mock(SearchIndexFactory.class);
+    lenient()
+        .when(searchRepository.searchIndexFactory.getReindexFieldsFor(anyString()))
+        .thenReturn(Set.of("name"));
+    doCallRealMethod().when(searchRepository).updateEntitiesByReference(anyList());
+    doNothing().when(searchRepository).updateEntitiesIndex(anyList());
+
+    UUID id = UUID.randomUUID();
+    EntityReference ref = new EntityReference().withId(id).withType(Entity.TABLE);
+
+    EntityRepository<?> tableRepository = mock(EntityRepository.class);
+    Fields fields = mock(Fields.class);
+    doReturn(fields).when(tableRepository).getOnlySupportedFields(anyString());
+    EntityInterface entity = mock(EntityInterface.class);
+    doReturn(entity).when(tableRepository).get(isNull(), eq(id), eq(fields));
+
+    try (MockedStatic<Entity> entityStatic = mockStatic(Entity.class)) {
+      entityStatic.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(tableRepository);
+
+      searchRepository.updateEntitiesByReference(List.of(ref, ref, ref));
+
+      verify(tableRepository, times(1)).get(isNull(), eq(id), eq(fields));
+      @SuppressWarnings("unchecked")
+      ArgumentCaptor<List<EntityInterface>> indexed = ArgumentCaptor.forClass(List.class);
+      verify(searchRepository).updateEntitiesIndex(indexed.capture());
+      assertEquals(
+          List.of(entity),
+          indexed.getValue(),
+          "a repeated reference is resolved and indexed once, not per duplicate");
+    }
+  }
+
+  @Test
   void testCreateBulkSinkParameterValidation() {
     lenient()
         .when(searchRepository.getSearchType())

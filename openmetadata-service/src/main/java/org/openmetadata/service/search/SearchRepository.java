@@ -1562,15 +1562,25 @@ public class SearchRepository {
    * #updateEntity(EntityReference)} uses, then push one bulk index update. Use this in place of a
    * per-entity {@code updateEntity} loop when a cascade (e.g. a glossary rename) must re-index many
    * siblings: it keeps the rebuilt-from-DB correctness but collapses N individual ES round-trips
-   * into a single bulk request. Callers inside a transaction should wrap the call in {@link
-   * #deferIfFlushScopeActive} so the re-reads see committed rows.
+   * into a single bulk request. Duplicate references are resolved only once; chunking of the
+   * resulting docs is left to {@link #updateEntitiesIndex}. Callers inside a transaction should wrap
+   * the call in {@link #deferIfFlushScopeActive} so the re-reads see committed rows.
    */
   public void updateEntitiesByReference(List<EntityReference> references) {
     if (nullOrEmpty(references)) {
       return;
     }
+    Set<String> seen = new HashSet<>();
     List<EntityInterface> entities = new ArrayList<>(references.size());
     for (EntityReference reference : references) {
+      // Resolve each (type, id) once — a duplicate ref would otherwise re-read from the DB and
+      // re-index needlessly. Skip malformed refs too.
+      if (reference == null
+          || reference.getId() == null
+          || reference.getType() == null
+          || !seen.add(reference.getType() + ":" + reference.getId())) {
+        continue;
+      }
       try {
         EntityRepository<?> entityRepository = Entity.getEntityRepository(reference.getType());
         String fields =
