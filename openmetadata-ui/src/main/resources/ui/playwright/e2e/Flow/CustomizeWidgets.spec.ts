@@ -299,7 +299,7 @@ test('My Data Widget', async ({ page }) => {
   await test.step('Test widget filters', async () => {
     await waitForAllLoadersToDisappear(page);
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    await verifyDataFilters(page, widgetKey);
+    await verifyDataFilters(page, widgetKey, 'dataAsset');
   });
 
   await test.step('Test widget displays entities and navigation', async () => {
@@ -512,7 +512,7 @@ test('Following Assets Widget', async ({ page }) => {
   await test.step('Test widget filters', async () => {
     await waitForAllLoadersToDisappear(page);
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    await verifyDataFilters(page, widgetKey);
+    await verifyDataFilters(page, widgetKey, 'all');
   });
 
   await test.step('Test widget displays followed entities', async () => {

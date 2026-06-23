@@ -17,7 +17,6 @@ import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityFieldUtils;
@@ -42,7 +41,7 @@ public class SetEntityAttributeImpl implements JavaDelegate {
       MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(relatedEntityValue);
 
       String entityType = entityLink.getEntityType();
-      EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
+      EntityInterface entity = varHandler.getRelatedEntity(entityLink, "*", Include.ALL);
 
       String fieldName = fieldNameExpr != null ? (String) fieldNameExpr.getValue(execution) : "";
 

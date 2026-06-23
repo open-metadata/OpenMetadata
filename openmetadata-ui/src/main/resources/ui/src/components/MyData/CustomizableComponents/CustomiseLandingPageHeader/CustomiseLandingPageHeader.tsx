@@ -77,8 +77,12 @@ const CustomiseLandingPageHeader = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentUser, applicationConfig } = useApplicationStore();
-  const { activeDomain, activeDomainEntityRef, updateActiveDomain } =
-    useDomainStore();
+  const {
+    activeDomain,
+    activeDomainEntityRef,
+    updateActiveDomain,
+    isDomainRestricted,
+  } = useDomainStore();
   const [showCustomiseHomeModal, setShowCustomiseHomeModal] = useState(false);
   const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
   // Internal fallback state — only used when the parent doesn't pass announcements through.
@@ -230,7 +234,6 @@ const CustomiseLandingPageHeader = ({
               <CustomiseSearchBar disabled={!onHomePage} />
               <DomainSelectableList
                 hasPermission
-                showAllDomains
                 disabled={!onHomePage}
                 popoverProps={{
                   open: isDomainDropdownOpen,
@@ -239,6 +242,7 @@ const CustomiseLandingPageHeader = ({
                   },
                 }}
                 selectedDomain={activeDomainEntityRef}
+                showAllDomains={!isDomainRestricted}
                 wrapInButton={false}
                 onCancel={() => setIsDomainDropdownOpen(false)}
                 onUpdate={handleDomainChange}>
