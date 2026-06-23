@@ -15,7 +15,6 @@ import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { omit } from 'lodash';
 import imageClassBase from '../components/BlockEditor/Extensions/image/ImageClassBase';
-import { CoverImageFileValue } from '../components/common/CoverImageUpload/CoverImageUpload.interface';
 import { ERROR_MESSAGE } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { getIsErrorMatch } from './APIUtils';
@@ -24,6 +23,24 @@ import {
   showNotistackSuccess,
   showNotistackWarning,
 } from './NotistackUtils';
+
+/**
+ * Position offset for cover image using CSS percentage values
+ * @property y - Vertical offset percentage using CSS translateY()
+ */
+export interface CoverImagePosition {
+  y?: string;
+}
+
+/**
+ * Cover image value with File (not uploaded yet)
+ * @property file - The File object to be uploaded later
+ * @property position - Optional positioning offset
+ */
+export interface CoverImageFileValue {
+  file: File;
+  position?: CoverImagePosition;
+}
 
 /**
  * Options for uploading cover image after entity creation
