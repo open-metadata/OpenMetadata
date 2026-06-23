@@ -1,7 +1,6 @@
 package org.openmetadata.service.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -10,7 +9,6 @@ import lombok.Setter;
 public class AzureConfiguration {
 
   @JsonProperty("containerName")
-  @NotBlank(message = "Container name must be provided")
   private String containerName;
 
   /**
