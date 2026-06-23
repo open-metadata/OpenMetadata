@@ -35,6 +35,102 @@
   border: 1px solid @lineage-border;
   border-radius: 10px;
   overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease,
+    opacity 0.15s ease;
+
+  &.lineage-path-highlight {
+    border-color: @primary-color;
+    box-shadow: 0 0 0 3px @primary-1, @box-shadow-base;
+  }
+
+  &.lineage-scene-layer-node {
+    min-height: 66px;
+    border-color: @grey-200;
+    border-radius: 12px;
+    background: @white;
+    box-shadow: 0 1px 3px rgba(16, 24, 40, 0.12);
+
+    &.lineage-path-highlight,
+    &.custom-node-header-active {
+      border-color: @primary-color;
+      box-shadow: 0 0 0 1px @primary-color, 0 2px 8px rgba(16, 24, 40, 0.12);
+    }
+
+    .lineage-node-content {
+      min-height: 66px;
+
+      .lineage-scene-drill-button {
+        top: 50%;
+        right: 14px;
+        width: 22px;
+        height: 22px;
+        border: none;
+        border-radius: 6px;
+        background: @primary-1;
+        box-shadow: none;
+        transform: translateY(-50%);
+        opacity: 1;
+
+        svg {
+          width: 13px;
+          height: 13px;
+        }
+      }
+
+      .label-container {
+        border-radius: 12px;
+      }
+    }
+
+    .custom-node-label-container {
+      .entity-label-container {
+        min-height: 64px;
+        padding: 10px 46px 10px 14px;
+
+        .entity-service-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 22px;
+          height: 22px;
+          margin-right: 10px;
+
+          svg,
+          img {
+            width: 22px;
+            height: 22px;
+            margin-bottom: 0;
+          }
+        }
+
+        .entity-header-display-name {
+          width: auto !important;
+          max-width: 170px;
+          color: @grey-900;
+          font-size: 14px;
+          font-weight: 600;
+          line-height: 18px;
+        }
+
+        .lineage-breadcrumbs {
+          margin-bottom: 0;
+
+          .lineage-breadcrumb-item {
+            max-width: 72px;
+            font-size: 11.5px;
+            line-height: 16px;
+          }
+        }
+
+        .lineage-service-subtitle {
+          display: block;
+          color: @grey-600;
+          font-size: 11.5px;
+          line-height: 16px;
+        }
+      }
+    }
+  }
 
   .lineage-expand-icon {
     width: 12px;
@@ -74,6 +170,47 @@
   }
 
   .lineage-node-content {
+    position: relative;
+
+    .lineage-scene-drill-button {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      z-index: 2;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      border: 1px solid @grey-200;
+      border-radius: 6px;
+      background: @primary-1;
+      color: @primary-color;
+      cursor: pointer;
+      opacity: 0;
+      box-shadow: @box-shadow-base;
+      transition: opacity 0.15s ease, background-color 0.15s ease;
+
+      svg {
+        width: 14px;
+        height: 14px;
+      }
+
+      &:hover,
+      &:focus-visible {
+        background: @white;
+        opacity: 1;
+      }
+    }
+
+    &:hover,
+    &:focus-within {
+      .lineage-scene-drill-button {
+        opacity: 1;
+      }
+    }
+
     .label-container {
       .custom-node-label-container {
         width: 100%;

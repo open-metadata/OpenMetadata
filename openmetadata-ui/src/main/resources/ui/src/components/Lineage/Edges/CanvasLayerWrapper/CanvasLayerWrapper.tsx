@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Edge } from 'reactflow';
+import { Edge, Node } from 'reactflow';
 import { CanvasEdgeRenderer } from '../../../Entity/EntityLineage/CanvasEdgeRenderer.component';
 import { EdgeInteractionOverlay } from '../../../Entity/EntityLineage/EdgeInteractionOverlay.component';
 
@@ -21,6 +21,10 @@ export const CanvasLayerWrapper = ({
   onPipelineClick,
   onEdgeRemove,
   hoverEdge,
+  edges,
+  nodes,
+  pathHighlightedEdgeIds,
+  isPathHighlightActive,
 }: {
   dqHighlightedEdges: Set<string>;
   onEdgeClick?: (edge: Edge, event: MouseEvent) => void;
@@ -28,12 +32,20 @@ export const CanvasLayerWrapper = ({
   onPipelineClick?: () => void;
   onEdgeRemove?: () => void;
   hoverEdge: Edge | null;
+  edges?: Edge[];
+  nodes?: Node[];
+  pathHighlightedEdgeIds?: Set<string>;
+  isPathHighlightActive?: boolean;
 }) => {
   return (
     <>
       <CanvasEdgeRenderer
         dqHighlightedEdges={dqHighlightedEdges}
+        edges={edges}
         hoverEdge={hoverEdge}
+        isPathHighlightActive={isPathHighlightActive}
+        nodes={nodes}
+        pathHighlightedEdgeIds={pathHighlightedEdgeIds}
         onEdgeClick={onEdgeClick}
         onEdgeHover={onEdgeHover}
       />

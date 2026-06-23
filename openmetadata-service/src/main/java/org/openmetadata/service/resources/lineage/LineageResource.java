@@ -60,8 +60,11 @@ import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
 import org.openmetadata.schema.api.lineage.HydrateLineageRequest;
 import org.openmetadata.schema.api.lineage.HydrateLineageResponse;
+import org.openmetadata.schema.api.lineage.LineageBand;
 import org.openmetadata.schema.api.lineage.LineageDirection;
+import org.openmetadata.schema.api.lineage.LineageLens;
 import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
+import org.openmetadata.schema.api.lineage.LineageScene;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.type.EntityLineage;
@@ -73,6 +76,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.lineage.LineageHydrator;
+import org.openmetadata.service.lineage.LineageSceneResolver;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -98,11 +102,13 @@ public class LineageResource {
   private final LineageRepository dao;
   private final Authorizer authorizer;
   private final LineageHydrator hydrator;
+  private final LineageSceneResolver sceneResolver;
 
   public LineageResource(Authorizer authorizer) {
     this.dao = Entity.getLineageRepository();
     this.authorizer = authorizer;
     this.hydrator = new LineageHydrator(authorizer);
+    this.sceneResolver = new LineageSceneResolver();
   }
 
   private static void validateTemporalBounds(Long startTime, Long endTime) {
@@ -122,11 +128,19 @@ public class LineageResource {
 
   private void authorizeLineageReference(
       SecurityContext securityContext, String entityType, String entityFQN) {
-    authorizeLineageReference(securityContext, getLineageReferenceByName(entityType, entityFQN));
+    authorizeLineageReference(
+        securityContext, getLineageReferenceByName(entityType, entityFQN, Include.NON_DELETED));
   }
 
-  private EntityReference getLineageReferenceByName(String entityType, String entityFQN) {
-    return Entity.getEntityReferenceByName(entityType, entityFQN, Include.NON_DELETED);
+  private void authorizeLineageReference(
+      SecurityContext securityContext, String entityType, String entityFQN, Include include) {
+    authorizeLineageReference(
+        securityContext, getLineageReferenceByName(entityType, entityFQN, include));
+  }
+
+  private EntityReference getLineageReferenceByName(
+      String entityType, String entityFQN, Include include) {
+    return Entity.getEntityReferenceByName(entityType, entityFQN, include);
   }
 
   @GET
@@ -226,6 +240,79 @@ public class LineageResource {
         uriInfo,
         dao.getByName(
             entity, fqn, upstreamDepth, downStreamDepth, getSubjectContext(securityContext)));
+  }
+
+  @GET
+  @Path("/scene")
+  @Operation(
+      operationId = "getLineageScene",
+      summary = "Get semantic lineage scene",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Semantic lineage scene",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = LineageScene.class)))
+      })
+  public LineageScene getLineageScene(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Focused entity fully qualified name") @QueryParam("focusFqn")
+          String focusFqn,
+      @Parameter(description = "Focused entity type") @QueryParam("entityType") String entityType,
+      @Parameter(description = "Lineage lens")
+          @QueryParam("lens")
+          @DefaultValue("service")
+          @Pattern(
+              regexp = "service|domain|dataProduct",
+              message = "Invalid lens. Allowed values: service, domain, dataProduct.")
+          String lens,
+      @Parameter(description = "Lineage altitude band")
+          @QueryParam("band")
+          @DefaultValue("ASSET")
+          @Pattern(
+              regexp = "LAYER|ASSET|FIELD",
+              message = "Invalid band. Allowed values: LAYER, ASSET, FIELD.")
+          String band,
+      @Parameter(description = "Upstream depth")
+          @DefaultValue("1")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(3)
+          @QueryParam("upstreamDepth")
+          int upstreamDepth,
+      @Parameter(description = "Downstream depth")
+          @DefaultValue("1")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(3)
+          @QueryParam("downstreamDepth")
+          int downstreamDepth,
+      @Parameter(description = "Maximum scene nodes")
+          @DefaultValue("200")
+          @Min(value = 1, message = "must be greater than or equal to 1")
+          @Max(1000)
+          @QueryParam("size")
+          int size,
+      @Parameter(
+              description =
+                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @QueryParam("includeDeleted")
+          boolean includeDeleted)
+      throws IOException {
+    return sceneResolver.getScene(
+        focusFqn,
+        entityType,
+        LineageLens.fromValue(lens),
+        LineageBand.fromValue(band),
+        upstreamDepth,
+        downstreamDepth,
+        size,
+        queryFilter,
+        includeDeleted,
+        getSubjectContext(securityContext));
   }
 
   @GET
@@ -1209,8 +1296,8 @@ public class LineageResource {
       @Parameter(description = "Entity FQN", required = true, schema = @Schema(type = "string"))
           @PathParam("toFQN")
           String toFQN) {
-    authorizeLineageReference(securityContext, fromEntity, fromFQN);
-    authorizeLineageReference(securityContext, toEntity, toFQN);
+    authorizeLineageReference(securityContext, fromEntity, fromFQN, Include.ALL);
+    authorizeLineageReference(securityContext, toEntity, toFQN, Include.ALL);
     boolean deleted =
         dao.deleteLineageByFQN(
             fromEntity, fromFQN, toEntity, toFQN, securityContext.getUserPrincipal().getName());
@@ -1293,7 +1380,7 @@ public class LineageResource {
               schema = @Schema(type = "string", example = "ViewLineage"))
           @PathParam("lineageSource")
           String lineageSource) {
-    authorizeLineageReference(securityContext, entityType, entityFQN);
+    authorizeLineageReference(securityContext, entityType, entityFQN, Include.ALL);
     dao.deleteLineageBySourceByFQN(
         entityType, entityFQN, lineageSource, securityContext.getUserPrincipal().getName());
     return Response.status(Status.OK).build();

@@ -26,6 +26,11 @@ import { EntityType } from '../enums/entity.enum';
 import { AddLineage } from '../generated/api/lineage/addLineage';
 import { HydrateLineageRequest } from '../generated/api/lineage/hydrateLineageRequest';
 import { HydrateLineageResponse } from '../generated/api/lineage/hydrateLineageResponse';
+import {
+  LineageBand,
+  LineageLens,
+  LineageScene,
+} from '../generated/api/lineage/lineageScene';
 import { LineageDirection } from '../generated/api/lineage/searchLineageRequest';
 import APIClient from './index';
 
@@ -103,6 +108,43 @@ export const getLineageDataByFQN = async ({
       from,
       startTime,
       endTime,
+    },
+  });
+
+  return response.data;
+};
+
+export const getLineageScene = async ({
+  focusFqn,
+  entityType,
+  lens,
+  band,
+  config,
+  queryFilter,
+}: {
+  focusFqn?: string;
+  entityType?: string;
+  lens: LineageLens;
+  band: LineageBand;
+  config?: LineageConfig;
+  queryFilter?: string;
+}) => {
+  const {
+    upstreamDepth = 1,
+    downstreamDepth = 1,
+    nodesPerLayer = 200,
+  } = config ?? {};
+  const response = await APIClient.get<LineageScene>('lineage/scene', {
+    params: {
+      focusFqn,
+      entityType,
+      lens,
+      band,
+      upstreamDepth,
+      downstreamDepth,
+      query_filter: queryFilter,
+      includeDeleted: false,
+      size: nodesPerLayer,
     },
   });
 

@@ -62,6 +62,11 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
     () => getBreadcrumbsFromFqn(node.fullyQualifiedName ?? ''),
     [node.fullyQualifiedName]
   );
+  const serviceSubtitle = useMemo(
+    () => (breadcrumbs.length === 0 ? node.serviceType : undefined),
+    [breadcrumbs.length, node.serviceType]
+  );
+  const subtitle = node.lineageMapSubtitle ?? serviceSubtitle;
 
   const renderBreadcrumbItem = useCallback(
     (item: string) => (
@@ -95,21 +100,35 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
             {getEntityName(node)}
           </Typography.Text>
 
-          <Space
-            className="d-flex items-center m-b-xs lineage-breadcrumbs"
-            data-testid="lineage-breadcrumbs">
-            <Breadcrumbs
-              separator={<span className="lineage-breadcrumb-item-separator" />}
-              sx={{
-                '& ol': {
-                  gap: 0,
-                },
-              }}>
-              {breadcrumbs.map((breadcrumb) =>
-                renderBreadcrumbItem(breadcrumb.name)
-              )}
-            </Breadcrumbs>
-          </Space>
+          {node.lineageMapSubtitle ? (
+            <Typography.Text className="lineage-service-subtitle">
+              {node.lineageMapSubtitle}
+            </Typography.Text>
+          ) : breadcrumbs.length > 0 ? (
+            <Space
+              className="d-flex items-center m-b-xs lineage-breadcrumbs"
+              data-testid="lineage-breadcrumbs">
+              <Breadcrumbs
+                separator={
+                  <span className="lineage-breadcrumb-item-separator" />
+                }
+                sx={{
+                  '& ol': {
+                    gap: 0,
+                  },
+                }}>
+                {breadcrumbs.map((breadcrumb) =>
+                  renderBreadcrumbItem(breadcrumb.name)
+                )}
+              </Breadcrumbs>
+            </Space>
+          ) : (
+            subtitle && (
+              <Typography.Text className="lineage-service-subtitle">
+                {subtitle}
+              </Typography.Text>
+            )
+          )}
         </Space>
         {!showDeletedIcon && showDbtIcon && (
           <div className="m-r-xs" data-testid="dbt-icon">

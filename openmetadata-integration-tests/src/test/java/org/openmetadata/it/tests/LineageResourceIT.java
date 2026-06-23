@@ -14,9 +14,11 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Predicate;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -38,14 +40,21 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateContainer;
 import org.openmetadata.schema.api.data.CreateDashboard;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel;
+import org.openmetadata.schema.api.data.CreateDatabase;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateMlModel;
 import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.api.lineage.AddLineage;
+import org.openmetadata.schema.api.lineage.LineageBand;
+import org.openmetadata.schema.api.lineage.LineageLens;
+import org.openmetadata.schema.api.lineage.LineageLevelKind;
+import org.openmetadata.schema.api.lineage.LineageScene;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
+import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Pipeline;
@@ -74,6 +83,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for Lineage resource operations.
@@ -602,6 +612,116 @@ public class LineageResourceIT {
     cleanupTable(client, targetTable);
   }
 
+  @Test
+  void testLineageSceneFocusedDatabaseProjectsTableEdgesToSchemas() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    DatabaseService service = DatabaseServiceTestFactory.createSnowflake(namespace);
+    Database database = createDatabase(client, namespace, service, "scene_db");
+    DatabaseSchema rawSchema = createSchema(client, namespace, database, "raw_schema");
+    DatabaseSchema martSchema = createSchema(client, namespace, database, "mart_schema");
+    Table rawOrders =
+        createTableInSchema(client, namespace, rawSchema, "raw_orders", columns("order_id"));
+    Table factOrders =
+        createTableInSchema(client, namespace, martSchema, "fact_orders", columns("order_id"));
+
+    addLineage(client, rawOrders, factOrders);
+
+    LineageScene scene =
+        getLineageSceneWithRetry(
+            client,
+            database.getFullyQualifiedName(),
+            Entity.DATABASE,
+            LineageBand.ASSET,
+            lineageScene ->
+                lineageScene.getNodes().stream()
+                        .anyMatch(
+                            node ->
+                                rawSchema
+                                    .getFullyQualifiedName()
+                                    .equals(node.getFullyQualifiedName()))
+                    && lineageScene.getNodes().stream()
+                        .anyMatch(
+                            node ->
+                                martSchema
+                                    .getFullyQualifiedName()
+                                    .equals(node.getFullyQualifiedName()))
+                    && lineageScene.getEdges().size() == 1);
+
+    Map<String, String> nodeIdsByFqn = nodeIdsByFqn(scene);
+    assertEquals(LineageBand.ASSET, scene.getBand());
+    assertTrue(
+        scene.getNodes().stream().allMatch(node -> node.getLevelKind() == LineageLevelKind.SCHEMA));
+    assertEquals(1, scene.getEdges().size());
+    assertEquals(
+        nodeIdsByFqn.get(rawSchema.getFullyQualifiedName()), scene.getEdges().get(0).getFrom());
+    assertEquals(
+        nodeIdsByFqn.get(martSchema.getFullyQualifiedName()), scene.getEdges().get(0).getTo());
+    assertTrue(Boolean.TRUE.equals(scene.getEdges().get(0).getIsRollup()));
+
+    deleteLineage(client, rawOrders.getEntityReference(), factOrders.getEntityReference());
+    cleanupDatabaseService(client, service);
+  }
+
+  @Test
+  void testLineageSceneFieldBandReturnsColumnLineageEndpoints() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    DatabaseService service = DatabaseServiceTestFactory.createSnowflake(namespace);
+    Database database = createDatabase(client, namespace, service, "scene_field_db");
+    DatabaseSchema schema = createSchema(client, namespace, database, "field_schema");
+    Table sourceTable =
+        createTableInSchema(
+            client, namespace, schema, "scene_col_source", columns("order_id", "customer_id"));
+    Table targetTable =
+        createTableInSchema(
+            client, namespace, schema, "scene_col_target", columns("order_id", "customer_id"));
+
+    String sourceColumn = sourceTable.getColumns().get(0).getFullyQualifiedName();
+    String targetColumn = targetTable.getColumns().get(0).getFullyQualifiedName();
+    LineageDetails details = new LineageDetails();
+    details
+        .getColumnsLineage()
+        .add(new ColumnLineage().withFromColumns(List.of(sourceColumn)).withToColumn(targetColumn));
+
+    AddLineage addLineage =
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(sourceTable.getEntityReference())
+                    .withToEntity(targetTable.getEntityReference())
+                    .withLineageDetails(details));
+    executeAddLineage(client, addLineage);
+
+    LineageScene scene =
+        getLineageSceneWithRetry(
+            client,
+            sourceTable.getFullyQualifiedName(),
+            Entity.TABLE,
+            LineageBand.FIELD,
+            lineageScene ->
+                lineageScene.getEdges().stream()
+                    .anyMatch(
+                        edge ->
+                            edge.getFrom().contains(sourceColumn)
+                                && edge.getTo().contains(targetColumn)));
+
+    assertEquals(LineageBand.FIELD, scene.getBand());
+    assertTrue(scene.getNodes().stream().allMatch(node -> !node.getFields().isEmpty()));
+    assertTrue(
+        scene.getEdges().stream()
+            .anyMatch(
+                edge ->
+                    edge.getBand() == LineageBand.FIELD
+                        && edge.getFrom().contains(sourceColumn)
+                        && edge.getTo().contains(targetColumn)));
+
+    deleteLineage(client, sourceTable.getEntityReference(), targetTable.getEntityReference());
+    cleanupDatabaseService(client, service);
+  }
+
   private Table createTable(OpenMetadataClient client, TestNamespace namespace, String tableName)
       throws Exception {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(namespace);
@@ -734,6 +854,103 @@ public class LineageResourceIT {
     return OBJECT_MAPPER.readValue(response, EntityLineage.class);
   }
 
+  private LineageScene getLineageSceneWithRetry(
+      OpenMetadataClient client,
+      String focusFqn,
+      String entityType,
+      LineageBand band,
+      Predicate<LineageScene> predicate) {
+    LineageScene[] holder = {null};
+    Awaitility.await("Lineage scene for " + focusFqn)
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              LineageScene scene = getLineageScene(client, focusFqn, entityType, band);
+              if (predicate.test(scene)) {
+                holder[0] = scene;
+                return true;
+              }
+              return false;
+            });
+    return holder[0];
+  }
+
+  private LineageScene getLineageScene(
+      OpenMetadataClient client, String focusFqn, String entityType, LineageBand band)
+      throws IOException {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("focusFqn", focusFqn)
+            .queryParam("entityType", entityType)
+            .queryParam("lens", LineageLens.SERVICE.value())
+            .queryParam("band", band.value())
+            .queryParam("upstreamDepth", "1")
+            .queryParam("downstreamDepth", "1")
+            .queryParam("size", "200")
+            .queryParam("includeDeleted", "false")
+            .build();
+
+    String response =
+        client.getHttpClient().executeForString(HttpMethod.GET, "/v1/lineage/scene", null, options);
+    return OBJECT_MAPPER.readValue(response, LineageScene.class);
+  }
+
+  private Map<String, String> nodeIdsByFqn(LineageScene scene) {
+    Map<String, String> nodeIdsByFqn = new LinkedHashMap<>();
+    scene.getNodes().forEach(node -> nodeIdsByFqn.put(node.getFullyQualifiedName(), node.getId()));
+    return nodeIdsByFqn;
+  }
+
+  private Database createDatabase(
+      OpenMetadataClient client,
+      TestNamespace namespace,
+      DatabaseService service,
+      String databaseName)
+      throws Exception {
+    return client
+        .databases()
+        .create(
+            new CreateDatabase()
+                .withName(namespace.prefix(databaseName))
+                .withService(service.getFullyQualifiedName()));
+  }
+
+  private DatabaseSchema createSchema(
+      OpenMetadataClient client, TestNamespace namespace, Database database, String schemaName)
+      throws Exception {
+    return client
+        .databaseSchemas()
+        .create(
+            new CreateDatabaseSchema()
+                .withName(namespace.prefix(schemaName))
+                .withDatabase(database.getFullyQualifiedName()));
+  }
+
+  private Table createTableInSchema(
+      OpenMetadataClient client,
+      TestNamespace namespace,
+      DatabaseSchema schema,
+      String tableName,
+      List<Column> columns)
+      throws Exception {
+    CreateTable createTable = new CreateTable();
+    createTable.setName(namespace.prefix(tableName));
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setColumns(columns);
+    return client.tables().create(createTable);
+  }
+
+  private List<Column> columns(String... names) {
+    List<Column> columns = new ArrayList<>();
+    for (String name : names) {
+      columns.add(ColumnBuilder.of(name, "VARCHAR").dataLength(100).build());
+    }
+    return columns;
+  }
+
   private void cleanupTable(OpenMetadataClient client, Table table) throws Exception {
     try {
       client.tables().delete(table.getId().toString());
@@ -745,6 +962,16 @@ public class LineageResourceIT {
   private void cleanupPipeline(OpenMetadataClient client, Pipeline pipeline) throws Exception {
     try {
       client.pipelines().delete(pipeline.getId().toString());
+    } catch (Exception e) {
+      // Ignore cleanup errors
+    }
+  }
+
+  private void cleanupDatabaseService(OpenMetadataClient client, DatabaseService service) {
+    try {
+      client
+          .databaseServices()
+          .delete(service.getId().toString(), Map.of("recursive", "true", "hardDelete", "true"));
     } catch (Exception e) {
       // Ignore cleanup errors
     }
