@@ -785,9 +785,15 @@ test.describe('Input Output Ports', () => {
           ''
         );
 
-        await expect(page.getByTestId(table1Name)).toBeVisible();
-        await expect(page.getByTestId(table2Name)).toBeVisible();
-        await expect(page.getByTestId(table3Name)).toBeVisible();
+        await expect(
+          page.getByTestId(`table-data-card_${table1Name}`)
+        ).toBeVisible();
+        await expect(
+          page.getByTestId(`table-data-card_${table2Name}`)
+        ).toBeVisible();
+        await expect(
+          page.getByTestId(`table-data-card_${table3Name}`)
+        ).toBeVisible();
       });
     });
 
@@ -819,10 +825,14 @@ test.describe('Input Output Ports', () => {
         await expect(page.getByTestId('output-ports-list')).toBeVisible();
 
         await expect(
-          page.getByTestId(dashboards[0].entityResponseData.fullyQualifiedName)
+          page.getByTestId(
+            `table-data-card_${dashboards[0].entityResponseData.fullyQualifiedName}`
+          )
         ).toBeVisible();
         await expect(
-          page.getByTestId(dashboards[1].entityResponseData.fullyQualifiedName)
+          page.getByTestId(
+            `table-data-card_${dashboards[1].entityResponseData.fullyQualifiedName}`
+          )
         ).toBeVisible();
       });
     });
@@ -1151,8 +1161,8 @@ test.describe('Input Output Ports', () => {
         const table2Name =
           tables[1].entityResponseData.fullyQualifiedName ?? '';
 
-        await expect(page.getByTestId(table1Name)).toBeVisible();
-        await expect(page.getByTestId(table2Name)).toBeVisible();
+        await expect(page.getByTestId(`port-node-${table1Name}`)).toBeVisible();
+        await expect(page.getByTestId(`port-node-${table2Name}`)).toBeVisible();
       });
 
       await test.step('Verify output port nodes are visible', async () => {
@@ -1160,10 +1170,14 @@ test.describe('Input Output Ports', () => {
           dashboards[0].entityResponseData.fullyQualifiedName ?? '';
 
         const dashboard2Name =
-          dashboards[1].chartsResponseData.fullyQualifiedName;
+          dashboards[1].entityResponseData.fullyQualifiedName ?? '';
 
-        await expect(page.getByTestId(dashboard1Name)).toBeVisible();
-        await expect(page.getByTestId(dashboard2Name)).toBeVisible();
+        await expect(
+          page.getByTestId(`port-node-${dashboard1Name}`)
+        ).toBeVisible();
+        await expect(
+          page.getByTestId(`port-node-${dashboard2Name}`)
+        ).toBeVisible();
       });
     });
 
@@ -1193,7 +1207,7 @@ test.describe('Input Output Ports', () => {
       await test.step('Verify only input port is shown', async () => {
         await expect(page.getByTestId('ports-lineage-view')).toBeVisible();
         const tableName = tables[0].entityResponseData.fullyQualifiedName ?? '';
-        await expect(page.getByTestId(tableName)).toBeVisible();
+        await expect(page.getByTestId(`port-node-${tableName}`)).toBeVisible();
       });
     });
 
@@ -1224,7 +1238,9 @@ test.describe('Input Output Ports', () => {
         await expect(page.getByTestId('ports-lineage-view')).toBeVisible();
         const dashboardName =
           dashboards[0].entityResponseData.fullyQualifiedName ?? '';
-        await expect(page.getByTestId(dashboardName)).toBeVisible();
+        await expect(
+          page.getByTestId(`port-node-${dashboardName}`)
+        ).toBeVisible();
       });
     });
 
