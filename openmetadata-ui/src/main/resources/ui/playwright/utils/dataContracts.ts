@@ -326,6 +326,11 @@ export const saveSecurityAndSLADetails = async (
   await page.locator('#timezone').press('Enter');
 
   await page.getByTestId('refresh-frequency-unit-select').click();
+  await expect(
+    page.locator(
+      `.refresh-frequency-unit-select [title=${data.refreshFrequencyUnitSelect}]`
+    )
+  ).toBeVisible();
   await page
     .locator(
       `.refresh-frequency-unit-select [title=${data.refreshFrequencyUnitSelect}]`
@@ -333,11 +338,19 @@ export const saveSecurityAndSLADetails = async (
     .click();
 
   await page.getByTestId('max-latency-unit-select').click();
+  await expect(
+    page.locator(
+      `.max-latency-unit-select [title=${data.maxLatencyUnitSelect}]`
+    )
+  ).toBeVisible();
   await page
     .locator(`.max-latency-unit-select [title=${data.maxLatencyUnitSelect}]`)
     .click();
 
   await page.getByTestId('retention-unit-select').click();
+  await expect(
+    page.locator(`.retention-unit-select [title=${data.retentionUnitSelect}]`)
+  ).toBeVisible();
   await page
     .locator(`.retention-unit-select [title=${data.retentionUnitSelect}]`)
     .click();
