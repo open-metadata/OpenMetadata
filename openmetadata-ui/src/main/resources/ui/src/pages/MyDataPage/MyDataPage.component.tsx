@@ -59,7 +59,7 @@ const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
 >;
 
 const getDefaultLandingPageLayout = () =>
-  customizeMyDataPageClassBase.defaultLayout.map((widget) => ({ ...widget }));
+  customizeMyDataPageClassBase.defaultLayout;
 
 const MyDataPage = () => {
   const { t } = useTranslation();
