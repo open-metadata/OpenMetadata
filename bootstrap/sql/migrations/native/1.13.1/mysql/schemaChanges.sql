@@ -29,3 +29,17 @@ CREATE TABLE IF NOT EXISTS intake_form_entity (
   UNIQUE KEY fqnHash (fqnHash),
   UNIQUE KEY intake_form_entity_type_unique (entityType)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Additional pre-1.13.1 entity tables the block above missed. On MySQL these had only a
+-- `(deleted, name, id)` composite — whose leading `deleted` column cannot serve the unfiltered
+-- reindex `ORDER BY name, id` — or no name index at all (their Postgres counterparts were
+-- indexed, but the MySQL migrations diverged). security_service_entity is omitted: it already
+-- has a `UNIQUE (name)` constraint that orders by name.
+CREATE INDEX api_collection_entity_name_index ON api_collection_entity (name);
+CREATE INDEX api_endpoint_entity_name_index ON api_endpoint_entity (name);
+CREATE INDEX api_service_entity_name_index ON api_service_entity (name);
+CREATE INDEX data_product_entity_name_index ON data_product_entity (name);
+CREATE INDEX domain_entity_name_index ON domain_entity (name);
+CREATE INDEX search_index_entity_name_index ON search_index_entity (name);
+CREATE INDEX search_service_entity_name_index ON search_service_entity (name);
+CREATE INDEX stored_procedure_entity_name_index ON stored_procedure_entity (name);

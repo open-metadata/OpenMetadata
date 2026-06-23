@@ -30,3 +30,11 @@ CREATE TABLE IF NOT EXISTS intake_form_entity (
   UNIQUE (fqnHash),
   UNIQUE (entityType)
 );
+
+-- Additional pre-1.13.1 entity tables the block above missed. On Postgres only the api_*
+-- tables lacked a leading-`name` index (they had only a `(deleted, name, id)` composite); the
+-- other reindexed tables of this era already have `idx_name_*`. security_service_entity is
+-- omitted: it already has a `UNIQUE (name)` constraint that orders by name.
+CREATE INDEX IF NOT EXISTS api_collection_entity_name_index ON api_collection_entity (name);
+CREATE INDEX IF NOT EXISTS api_endpoint_entity_name_index ON api_endpoint_entity (name);
+CREATE INDEX IF NOT EXISTS api_service_entity_name_index ON api_service_entity (name);
