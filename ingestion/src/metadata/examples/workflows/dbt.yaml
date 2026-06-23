@@ -1,25 +1,24 @@
 source:
   type: dbt
-  serviceName: aws_redshift
+  serviceName: service_name
   sourceConfig:
     config:
-      includeMetrics: true
       type: DBT
       # For DBT, choose one of Cloud, Local, HTTP, S3 or GCS configurations
       # For cloud
-      # dbtConfigSource:
-      #   dbtConfigType: cloud
-      #   dbtCloudAuthToken: token
-      #   dbtCloudAccountId: ID
-      #   dbtCloudJobId: JOB ID
-      #   dbtCloudProjectId: PROJECT ID
-      #   dbtCloudUrl: https://cloud.getdbt.com
-      # # For Local
       dbtConfigSource:
-        dbtConfigType: local
-        dbtCatalogFilePath: /Users/apple/Downloads/catalog.json
-        dbtManifestFilePath: /Users/apple/Downloads/manifest.json
-        # dbtRunResultsFilePath: path-to-run_results.json
+        dbtConfigType: cloud
+        dbtCloudAuthToken: token
+        dbtCloudAccountId: ID
+        dbtCloudJobId: JOB ID
+        dbtCloudProjectId: PROJECT ID
+        dbtCloudUrl: https://cloud.getdbt.com
+      # # For Local
+      # dbtConfigSource:
+      #   dbtConfigType: local
+      #   dbtCatalogFilePath: path-to-catalog.json
+      #   dbtManifestFilePath: path-to-manifest.json
+      #   dbtRunResultsFilePath: path-to-run_results.json
       # # For HTTP
       # dbtConfigSource:
       #   dbtConfigType: http
@@ -91,7 +90,7 @@ sink:
   type: metadata-rest
   config: {}
 workflowConfig:
-  loggerLevel: DEBUG # DEBUG, INFO, WARN or ERROR
+#  loggerLevel: INFO # DEBUG, INFO, WARN or ERROR
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
     authProvider: openmetadata
