@@ -142,9 +142,32 @@ def test_insufficient_privilege_sqlstate_is_classified():
     assert POSTGRES_ERRORS.classify(error).title == "Insufficient privileges"
 
 
-def test_a_relation_not_found_query_error_is_not_read_as_database_not_found():
-    error = _SqlAlchemyError(_Psycopg2Error('relation "secret_t" does not exist', pgcode="42P01"))
-    assert POSTGRES_ERRORS.classify(error) is None
+# Real GetQueries failure when the source is absent: the error text embeds the
+# probe SQL, which references pg_catalog.pg_database - the case that must NOT be
+# misread as "Database not found". Keyed on SQLSTATE 42P01, so it holds for any
+# configured queryStatementSource, not just the default pg_stat_statements.
+_MISSING_PGSS_MSG = (
+    'relation "pg_stat_statements" does not exist\n[SQL: SELECT u.usename, d.datname '
+    "FROM pg_stat_statements s JOIN pg_catalog.pg_database d ON s.dbid = d.oid LIMIT 1]"
+)
+
+
+def test_missing_query_history_source_is_classified():
+    error = _SqlAlchemyError(_Psycopg2Error(_MISSING_PGSS_MSG, pgcode="42P01"))
+    assert POSTGRES_ERRORS.classify(error).title == "Query history source not found"
+
+
+def test_missing_query_history_source_is_not_read_as_database_not_found():
+    # The probe SQL mentions pg_database; the diagnosis must be query-history, not db.
+    error = _SqlAlchemyError(_Psycopg2Error(_MISSING_PGSS_MSG, pgcode="42P01"))
+    assert POSTGRES_ERRORS.classify(error).title != "Database not found"
+
+
+def test_missing_query_history_source_holds_for_a_custom_source_name():
+    # queryStatementSource is configurable; a custom source missing must still be
+    # diagnosed as a query-history problem, not left unclassified.
+    error = _SqlAlchemyError(_Psycopg2Error('relation "my_query_log" does not exist', pgcode="42P01"))
+    assert POSTGRES_ERRORS.classify(error).title == "Query history source not found"
 
 
 def test_pg_hba_message_is_classified():
@@ -165,7 +188,7 @@ def test_unknown_error_returns_no_diagnosis():
 
 def test_checks_cover_exactly_the_seeded_steps():
     engine = create_engine("sqlite://", poolclass=StaticPool)
-    checks = PostgresChecks(client=engine, queries_statement="SELECT 1")
+    checks = PostgresChecks(client=engine, query_statement_source=None)
     collected = collect_checks(checks)
     assert set(collected.keys()) == {
         DatabaseStep.CheckAccess,
@@ -189,8 +212,22 @@ def test_check_access_reports_unreachable_host_as_network_failure():
     client = MagicMock()
     client.url.host = "127.0.0.1"
     client.url.port = port
-    checks = PostgresChecks(client=client, queries_statement="SELECT 1")
+    checks = PostgresChecks(client=client, query_statement_source=None)
     with pytest.raises(CheckError) as exc:
         checks.check_access()
     assert isinstance(exc.value.cause, NetworkUnreachableError)
     assert POSTGRES_ERRORS.classify(exc.value.cause).title == "Connection refused"
+
+
+def test_query_statement_is_built_lazily_not_at_construction():
+    # Regression: the version-probe query must run inside GetQueries (behind the
+    # CheckAccess gate), never at checks() construction - otherwise an unreachable
+    # host hangs on that eager connect instead of failing fast at the preflight.
+    calls = []
+    with patch(
+        "metadata.ingestion.source.database.postgres.connection.get_postgres_time_column_name",
+        side_effect=lambda engine: calls.append(1) or "total_exec_time",
+    ):
+        engine = create_engine("sqlite://", poolclass=StaticPool)
+        PostgresChecks(client=engine, query_statement_source=None)
+        assert calls == []

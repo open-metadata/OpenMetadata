@@ -86,16 +86,17 @@ def _message(error: BaseException) -> str:
 
 def _database_not_found(error: BaseException) -> bool:
     """psycopg2 reports a missing database at connect time as
-    ``FATAL: database "x" does not exist`` with no SQLSTATE; require both tokens so
-    a later ``relation ... does not exist`` query error is not misread as this."""
+    ``FATAL: database "x" does not exist`` with no SQLSTATE. Match the quoted token
+    ``database "`` so a query error whose embedded SQL mentions ``pg_database`` (or
+    a missing relation) is not misread as a missing database."""
     text = _message(error)
-    return "database" in text and "does not exist" in text
+    return 'database "' in text and "does not exist" in text
 
 
 # Connect-phase failures (auth, missing database) carry no SQLSTATE, so they are
-# matched on message text; query-phase failures (privileges) are matched on the
-# stable SQLSTATE psycopg2 surfaces on ``.pgcode``. Bad host / port raise before
-# the driver and are caught by the TCP preflight in ``ping`` via NETWORK_ERRORS.
+# matched on message text; query-phase failures are matched on the stable SQLSTATE
+# psycopg2 surfaces on ``.pgcode``. Bad host / port raise before the driver and are
+# caught by the TCP preflight in ``ping`` via NETWORK_ERRORS.
 POSTGRES_ERRORS = ErrorPack(
     when(Matchers.contains("password authentication failed")).diagnose(
         "Authentication failed",
@@ -113,6 +114,15 @@ POSTGRES_ERRORS = ErrorPack(
         "Insufficient privileges",
         fix="Grant the user SELECT on the objects the failing step reads.",
     ),
+    # 42P01 (undefined_table) across the test steps can only come from the GetQueries
+    # source probe - every other step reads system catalogs that always exist - so it
+    # means the configured queryStatementSource is missing, whatever it is named.
+    when(_sqlstate("42P01")).diagnose(  # undefined_table
+        "Query history source not found",
+        fix="The query history source (queryStatementSource, default pg_stat_statements) does not "
+        "exist. Install/enable it (e.g. the pg_stat_statements extension) or correct the setting, "
+        "or query usage and lineage won't be collected.",
+    ),
 ).including(NETWORK_ERRORS)
 
 
@@ -124,9 +134,9 @@ class PostgresChecks:
     # System schemas - skipped when auto-selecting a schema to probe.
     SYSTEM_SCHEMAS = frozenset({"information_schema", "pg_catalog", "pg_toast"})
 
-    def __init__(self, client: Engine, queries_statement: str) -> None:
+    def __init__(self, client: Engine, query_statement_source: str | None) -> None:
         self.client = client
-        self.queries_statement = queries_statement
+        self.query_statement_source = query_statement_source
 
     @check(DatabaseStep.CheckAccess)
     def check_access(self) -> Evidence:
@@ -154,7 +164,13 @@ class PostgresChecks:
 
     @check(DatabaseStep.GetQueries)
     def get_queries(self) -> Evidence:
-        return run_sql(self.client, self.queries_statement, lambda _: "query history accessible")
+        # Built here, not at construction, so the version-probe query runs only
+        # after CheckAccess has confirmed reachability - never ahead of the gate.
+        statement = POSTGRES_TEST_GET_QUERIES.format(
+            time_column_name=get_postgres_time_column_name(engine=self.client),
+            query_statement_source=self.query_statement_source or "pg_stat_statements",
+        )
+        return run_sql(self.client, statement, lambda _: "query history accessible")
 
     @check(DatabaseStep.GetColumnMetadata)
     def get_column_metadata(self) -> Evidence:
@@ -179,14 +195,8 @@ class PostgresConnection(BaseConnection[PostgresConnectionConfig, Engine]):
         self._on_close(engine.dispose)
         return engine
 
-    def _test_queries_statement(self) -> str:
-        return POSTGRES_TEST_GET_QUERIES.format(
-            time_column_name=get_postgres_time_column_name(engine=self.client),
-            query_statement_source=self.service_connection.queryStatementSource or "pg_stat_statements",
-        )
-
     def checks(self) -> ChecksProvider:
         return PostgresChecks(
             client=self.client,
-            queries_statement=self._test_queries_statement(),
+            query_statement_source=self.service_connection.queryStatementSource,
         )
