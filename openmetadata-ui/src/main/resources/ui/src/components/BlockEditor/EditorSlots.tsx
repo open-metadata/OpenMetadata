@@ -50,7 +50,27 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
       }
 
       if (op === 'add') {
-        editor?.chain().focus().setLink({ href: values.href }).run();
+        const { from, to } = editor.state.selection;
+        const hasSelectedText = from !== to;
+
+        if (hasSelectedText) {
+          // Wrap the selected text in a link.
+          editor.chain().focus().setLink({ href: values.href }).run();
+        } else {
+          // No text selected: insert the href as the link text. setLink on an
+          // empty selection only sets a stored mark and renders nothing, which
+          // makes the link silently "disappear". Inserting the href as linked
+          // text guarantees a visible, clickable link.
+          editor
+            .chain()
+            .focus()
+            .insertContent({
+              type: 'text',
+              text: values.href,
+              marks: [{ type: 'link', attrs: { href: values.href } }],
+            })
+            .run();
+        }
       }
 
       // move cursor at the end
@@ -59,6 +79,14 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
       // close the modal
       handleLinkToggle();
     };
+
+    // Mount the link modal inside the nearest dialog/drawer (if any) so a
+    // focus-trapping overlay (e.g. React Aria's SlideoutMenu) does not steal
+    // focus from the modal input or dismiss the drawer when the modal opens.
+    // Falls back to document.body when the editor is not inside a dialog.
+    const getLinkModalContainer = (): HTMLElement =>
+      (editor?.view.dom.closest('[role="dialog"]') as HTMLElement) ??
+      document.body;
 
     const handleUnlink = () => {
       if (isNil(editor)) {
@@ -160,6 +188,7 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
         {isLinkModalOpen && (
           <LinkModal
             data={{ href: editor?.getAttributes('link').href }}
+            getContainer={getLinkModalContainer}
             isOpen={isLinkModalOpen}
             onCancel={handleLinkCancel}
             onSave={(values) =>
