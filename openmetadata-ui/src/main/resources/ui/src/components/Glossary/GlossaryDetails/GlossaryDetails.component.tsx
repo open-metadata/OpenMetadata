@@ -13,6 +13,7 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { isEmpty, noop } from 'lodash';
+import type { ComponentType } from 'react';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -35,9 +36,8 @@ import { getGlossaryTermDetailsPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
+import type { IconButtonProps } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
-import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { useGlossaryStore } from '../useGlossary.store';
 import './glossary-details.less';
 import type { GlossaryDetailsProps } from './GlossaryDetails.interface';
@@ -54,6 +54,10 @@ const ActivityFeedTab = withSuspenseFallback(
   )
 );
 
+const TabsLabel = withSuspenseFallback(
+  lazy(() => import('../../common/TabsLabel/TabsLabel.component'))
+);
+
 const GenericTab = withSuspenseFallback(
   lazy(() =>
     import('../../Customization/GenericTab/GenericTab').then((module) => ({
@@ -65,6 +69,14 @@ const GenericTab = withSuspenseFallback(
 const OntologyExplorer = withSuspenseFallback(
   lazy(() => import('../../OntologyExplorer/OntologyExplorer'))
 );
+
+const AlignRightIconButton = withSuspenseFallback(
+  lazy(() =>
+    import('../../common/IconButtons/EditIconButton').then((module) => ({
+      default: module.AlignRightIconButton,
+    }))
+  )
+) as ComponentType<IconButtonProps>;
 
 const GlossaryDetails = ({
   updateVote,
