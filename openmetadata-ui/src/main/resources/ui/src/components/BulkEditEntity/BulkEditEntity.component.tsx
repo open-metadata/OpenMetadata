@@ -241,8 +241,20 @@ const BulkEditEntity = ({
     });
   }, [entityType, fqn, isExportHydrationRequired, triggerExportForBulkEdit]);
 
+  // Re-parses csvExportData into the grid exactly once per value. Without
+  // this guard, onCSVReadComplete's identity churns whenever any of its own
+  // dependencies (e.g. entity rules resolving asynchronously after mount)
+  // gets a new reference, re-running this effect and silently overwriting
+  // any edits the user has already made to the grid.
+  const parsedCsvExportDataRef = useRef<string>();
+
   useEffect(() => {
-    if (isExportHydrationRequired && csvExportData) {
+    if (
+      isExportHydrationRequired &&
+      csvExportData &&
+      parsedCsvExportDataRef.current !== csvExportData
+    ) {
+      parsedCsvExportDataRef.current = csvExportData;
       readString(csvExportData, {
         worker: true,
         skipEmptyLines: true,

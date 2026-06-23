@@ -54,6 +54,18 @@ const waitForVisibleLocator = async (locator: Locator, timeout = 1500) => {
   }
 };
 
+// The background CSV jobs launcher is a fixed bottom-right overlay that can
+// pop in mid-test (e.g. an earlier export job completing) and intercept
+// clicks landing in that corner. Centering the target in the viewport first
+// keeps clicks away from that fixed region without touching the tray itself.
+const scrollIntoViewCenter = async (locator: Locator) => {
+  await locator
+    .evaluate((element) =>
+      element.scrollIntoView({ block: 'center', inline: 'center' })
+    )
+    .catch(() => undefined);
+};
+
 const getTextEditorCandidates = (page: Page) => {
   const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR).first();
 
@@ -90,12 +102,14 @@ const fillVisibleTextEditor = async (page: Page, text: string) => {
 
 const clickActiveGridCell = async (page: Page) => {
   const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR).first();
+  await scrollIntoViewCenter(activeCell);
   // eslint-disable-next-line playwright/no-force-option -- RDG can leave an overlay above the active cell editor trigger.
   await activeCell.click({ force: true });
 };
 
 const doubleClickActiveGridCell = async (page: Page) => {
   const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR).first();
+  await scrollIntoViewCenter(activeCell);
   // eslint-disable-next-line playwright/no-force-option -- RDG can leave an overlay above the active cell editor trigger.
   await activeCell.dblclick({ force: true });
 };
@@ -171,6 +185,7 @@ const trySelectRenderedActiveRowCellByColumn = async (
   const cellByClass = row.locator(`.${columnClass}`).first();
 
   if (await waitForVisibleLocator(cellByClass, timeout)) {
+    await scrollIntoViewCenter(cellByClass);
     // eslint-disable-next-line playwright/no-force-option -- fixed grid columns and overlays can intercept active-cell clicks.
     await cellByClass.click({ force: true });
 
@@ -188,6 +203,7 @@ const trySelectRenderedActiveRowCellByColumn = async (
       .first();
 
     if (await waitForVisibleLocator(cellByIndex, timeout)) {
+      await scrollIntoViewCenter(cellByIndex);
       // eslint-disable-next-line playwright/no-force-option -- fixed grid columns and overlays can intercept active-cell clicks.
       await cellByIndex.click({ force: true });
 
@@ -519,6 +535,11 @@ export const fillEntityTypeDetails = async (page: Page, entityType: string) => {
 export const fillTagDetails = async (page: Page, tag: string) => {
   await page.keyboard.press('Enter', { delay: 100 });
 
+  const tagSelectorInput = page
+    .locator('[data-testid="tag-selector"] input')
+    .first();
+  await tagSelectorInput.waitFor({ state: 'visible' });
+
   const waitForQueryResponse = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
   );
@@ -540,6 +561,12 @@ export const fillGlossaryTermDetails = async (
   await page
     .locator('.async-tree-select-list-dropdown')
     .waitFor({ state: 'visible' });
+
+  const tagSelectorInput = page
+    .locator('[data-testid="tag-selector"] input')
+    .first();
+  await tagSelectorInput.waitFor({ state: 'visible' });
+
   const searchResponse = page.waitForResponse(
     `/api/v1/search/query?q=**&index=glossaryTerm&**`
   );
@@ -576,20 +603,87 @@ export const fillDomainDetails = async (
   await clickAssociatedTagSave(page);
 };
 
+const getActiveCellPopoverOpenActions = (page: Page) => {
+  return [
+    async () => page.keyboard.press('Enter', { delay: 100 }),
+    async () => {
+      await clickActiveGridCell(page);
+      await page.keyboard.press('Enter', { delay: 100 });
+    },
+    async () => page.keyboard.press('F2'),
+    async () => doubleClickActiveGridCell(page),
+  ];
+};
+
+const openActiveCellPopover = async (
+  page: Page,
+  targetLocator: Locator,
+  responseUrlPattern: string | undefined,
+  maxAttempts = 2
+) => {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    for (const openEditor of getActiveCellPopoverOpenActions(page)) {
+      try {
+        const response = responseUrlPattern
+          ? page
+              .waitForResponse(responseUrlPattern, {
+                timeout: EDITOR_OPEN_TIMEOUT,
+              })
+              .catch(() => undefined)
+          : undefined;
+        await openEditor();
+        await response;
+
+        if (await waitForVisibleLocator(targetLocator, EDITOR_OPEN_TIMEOUT)) {
+          return;
+        }
+      } catch (error) {
+        lastError = error;
+      }
+      await page.keyboard.press('Escape').catch(() => undefined);
+    }
+  }
+
+  if (lastError instanceof Error) {
+    throw lastError;
+  }
+
+  throw new Error('Unable to open the active cell popover editor');
+};
+
+const openRadioCardEditor = async (
+  page: Page,
+  radioTestId: string,
+  responseUrlPattern: string,
+  maxAttempts = 2
+) => {
+  await openActiveCellPopover(
+    page,
+    page.getByTestId(radioTestId),
+    responseUrlPattern,
+    maxAttempts
+  );
+};
+
+const clickRadioCardUpdate = async (page: Page, updateButtonTestId: string) => {
+  const updateButton = page.getByTestId(updateButtonTestId);
+
+  await updateButton.click();
+  await updateButton.waitFor({ state: 'detached' });
+};
+
 export const fillTierDetails = async (
   page: Page,
   tier: string,
   _isBulkEdit?: boolean
 ) => {
-  const tierResponse = page.waitForResponse('/api/v1/tags?parent=Tier*');
-  // eslint-disable-next-line playwright/no-force-option -- grid overlays can intercept active select-cell clicks.
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click({ force: true });
-  await page.keyboard.press('Enter', { delay: 100 });
-  await tierResponse;
+  const radioTestId = `radio-btn-${tier}`;
+  await openRadioCardEditor(page, radioTestId, '/api/v1/tags?parent=Tier*');
 
-  await page.getByTestId(`radio-btn-${tier}`).click();
-  await page.getByTestId('update-tier-card').click();
-  await page.getByTestId('update-tier-card').waitFor({ state: 'detached' });
+  await page.getByTestId(radioTestId).click();
+  await clickRadioCardUpdate(page, 'update-tier-card');
 };
 
 export const fillCertificationDetails = async (
@@ -597,19 +691,15 @@ export const fillCertificationDetails = async (
   certification: string,
   _isBulkEdit?: boolean
 ) => {
-  const certificationResponse = page.waitForResponse(
+  const radioTestId = `radio-btn-${certification}`;
+  await openRadioCardEditor(
+    page,
+    radioTestId,
     '/api/v1/tags?parent=Certification*'
   );
-  // eslint-disable-next-line playwright/no-force-option -- grid overlays can intercept active select-cell clicks.
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click({ force: true });
-  await page.keyboard.press('Enter', { delay: 100 });
-  await certificationResponse;
 
-  const certRadioBtn = page.getByTestId(`radio-btn-${certification}`);
-  await certRadioBtn.waitFor({ state: 'visible' });
-  await certRadioBtn.click();
-  await page.getByTestId('update-certification').click();
-  await page.getByTestId('update-certification').waitFor({ state: 'detached' });
+  await page.getByTestId(radioTestId).click();
+  await clickRadioCardUpdate(page, 'update-certification');
 };
 
 export const fillStoredProcedureCode = async (page: Page) => {
@@ -709,7 +799,7 @@ export const fillCustomPropertyDetails = async (
   page: Page,
   propertyListName: Record<string, string>
 ) => {
-  await page.keyboard.press('Enter', { delay: 100 });
+  await doubleClickActiveGridCell(page);
 
   await page
     .getByTestId('custom-property-editor')
@@ -739,7 +829,10 @@ export const fillExtensionDetails = async (
   page: Page,
   propertyListName: Record<string, string>
 ) => {
-  await page.keyboard.press('Enter', { delay: 100 });
+  // Pressing Enter to open this editor can race the previous cell's commit
+  // and revert earlier edits in the row, so open it via double-click instead.
+  await doubleClickActiveGridCell(page);
+
   const customPropertyEditor = page.getByTestId('custom-property-editor');
 
   await customPropertyEditor.waitFor({
