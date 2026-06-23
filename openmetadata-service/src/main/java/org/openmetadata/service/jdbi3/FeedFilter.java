@@ -55,20 +55,41 @@ public class FeedFilter {
     }
 
     // Only Domain Listing based thread can be fetched
+    condition1 =
+        addCondition(condition1, buildDomainCondition("domains", domains, applyDomainFilter));
+
+    return condition1.isEmpty() ? "WHERE TRUE" : "WHERE " + condition1;
+  }
+
+  /**
+   * Builds the SQL fragment that restricts threads to the given domains, applied against the
+   * {@code domainsColumn} expression (e.g. {@code "domains"} for the thread query or
+   * {@code "combined.domains"} for the owner-count subquery). Returns an empty string when domain
+   * filtering is off, so callers can splice it in unconditionally. Mirrors the
+   * {@code RBACConditionEvaluator.hasDomain()} semantics: own-domain threads, or domainless threads
+   * when the user has no domains.
+   */
+  static String buildDomainCondition(
+      String domainsColumn, List<UUID> domains, boolean applyDomainFilter) {
     String domainCondition = "";
     if (applyDomainFilter) {
+      // domainsColumn is spliced directly into SQL; only ever a caller-controlled column reference.
+      // Reject anything that is not a plain (optionally qualified) identifier to close the door on
+      // a future caller passing a request/user-supplied value and opening a SQL injection vector.
+      if (!domainsColumn.matches("[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)?")) {
+        throw new IllegalArgumentException("Invalid domain column reference: " + domainsColumn);
+      }
       if (domains != null && !domains.isEmpty()) {
+        // Domain UUIDs are inlined into JSON/ARRAY literals because bind parameters cannot be used
+        // inside JSON_TABLE('...') or ARRAY[...] syntax. This is safe because `domains` is
+        // List<UUID> — UUID.toString() can only produce hex digits and dashes.
         if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-          // Domain UUIDs are inlined into JSON/ARRAY literals because bind parameters cannot be
-          // used inside JSON_TABLE('...') or ARRAY[...] syntax. This is safe because `domains`
-          // is List<UUID> — UUID.toString() can only produce hex digits and dashes.
           StringBuilder jsonArrayBuilder = new StringBuilder("[");
           for (int i = 0; i < domains.size(); i++) {
             if (i > 0) jsonArrayBuilder.append(",");
             jsonArrayBuilder.append("\"").append(domains.get(i).toString()).append("\"");
           }
           jsonArrayBuilder.append("]");
-
           domainCondition =
               "EXISTS ("
                   + "SELECT 1 FROM JSON_TABLE("
@@ -76,7 +97,9 @@ public class FeedFilter {
                   + jsonArrayBuilder
                   + "', '$[*]' "
                   + "COLUMNS (domainId VARCHAR(64) PATH '$')) d "
-                  + "WHERE JSON_CONTAINS(domains, JSON_QUOTE(d.domainId))"
+                  + "WHERE JSON_CONTAINS("
+                  + domainsColumn
+                  + ", JSON_QUOTE(d.domainId))"
                   + ")";
         } else {
           StringBuilder arrayBuilder = new StringBuilder("ARRAY[");
@@ -85,23 +108,21 @@ public class FeedFilter {
             arrayBuilder.append("'").append(domains.get(i).toString()).append("'");
           }
           arrayBuilder.append("]");
-
           domainCondition =
               "EXISTS ("
                   + "SELECT 1 FROM unnest("
                   + arrayBuilder
                   + ") AS d(domainId) "
-                  + "WHERE domainId = ANY (SELECT jsonb_array_elements_text(domains::jsonb))"
+                  + "WHERE domainId = ANY (SELECT jsonb_array_elements_text("
+                  + domainsColumn
+                  + "::jsonb))"
                   + ")";
         }
-
       } else {
-        domainCondition = "domains IS NULL";
+        domainCondition = domainsColumn + " IS NULL";
       }
     }
-    condition1 = addCondition(condition1, domainCondition);
-
-    return condition1.isEmpty() ? "WHERE TRUE" : "WHERE " + condition1;
+    return domainCondition;
   }
 
   private String addCondition(String condition1, String condition2) {
