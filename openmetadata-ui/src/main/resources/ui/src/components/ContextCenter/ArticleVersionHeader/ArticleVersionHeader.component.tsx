@@ -17,7 +17,7 @@ import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import { getKnowledgePageName } from '../../../utils/KnowledgePageUtils';
+import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 
 interface ArticleVersionHeaderProps {

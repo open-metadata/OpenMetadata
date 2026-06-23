@@ -40,9 +40,9 @@ import {
 } from '../../../interface/knowledge-center.interface';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { t } from '../../../utils/i18next/LocalUtil';
+import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
 import {
   addToKnowledgeCenterRecentViewed,
-  getKnowledgePageName,
   updateKnowledgeCenterRecentViewed,
 } from '../../../utils/KnowledgePageUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -228,8 +228,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
             <Typography
               ellipsis
               data-testid="knowledge-card-title"
-              size="text-lg"
-              weight="semibold">
+              weight="medium">
               {getKnowledgePageName(knowledgePage, t)}
             </Typography>
             {isQuickLink && !readonly && quickLinkActions}
@@ -247,7 +246,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
         {/* Row 3: plain-text description */}
         {description.trim() ? (
           <Typography
-            className="tw:text-gray-600 tw:line-clamp-2 tw:leading-[1.55]"
+            className="tw:text-tertiary tw:line-clamp-2 tw:leading-[1.55]"
             data-testid="knowledge-card-description"
             size="text-sm">
             {stripMarkdown(description)}
@@ -270,7 +269,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
           {owners?.[0] ? (
             <UserPopOverCard
               showUserName
-              className="tw:text-xs tw:font-medium tw:text-gray-700 tw:gap-2 tw:max-w-40"
+              className="tw:text-xs tw:font-medium tw:text-secondary tw:gap-2 tw:max-w-40"
               displayName={getEntityName(owners?.[0])}
               profileWidth={20}
               userName={getEntityName(owners?.[0])}
@@ -308,7 +307,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
               type="modern">
               <Typography
                 ellipsis
-                className="tw:font-mono tw:text-gray-700"
+                className="tw:font-mono tw:text-secondary"
                 size="text-xs">
                 {getEntityName(tag)}
               </Typography>
@@ -317,7 +316,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
           {(knowledgePage.tags ?? []).length > 2 && (
             <Badge size="md" type="modern">
               <Typography
-                className="tw:font-mono tw:text-gray-700"
+                className="tw:font-mono tw:text-secondary"
                 size="text-xs">
                 +{(knowledgePage.tags ?? []).length - 2}
               </Typography>

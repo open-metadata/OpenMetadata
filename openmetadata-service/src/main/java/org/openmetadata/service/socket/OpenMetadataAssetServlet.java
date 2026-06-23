@@ -45,7 +45,6 @@ public class OpenMetadataAssetServlet extends AssetServlet {
       Set.of(
           "js", "css", "map", "json", "txt", "html", "ico", "png", "jpg", "jpeg", "svg", "gif",
           "webp", "woff", "woff2", "ttf", "eot", "otf", "pdf", "md");
-
   // Matches Vite's content-hash filename pattern, e.g. `index-Z3O_FBkA.js`,
   // `MyComponent.component-a1b2c3d4.css`. The hash chunk is base64url and at
   // least 8 chars — long enough to make accidental collisions vanishingly
@@ -54,6 +53,8 @@ public class OpenMetadataAssetServlet extends AssetServlet {
   private static final Pattern HASHED_ASSET =
       Pattern.compile(".*-[A-Za-z0-9_-]{8,}\\.[a-z0-9]+(\\.br|\\.gz)?$");
 
+  private static final String ASSETS_PREFIX = "/assets/";
+  private static final String IMAGES_PREFIX = "/images/";
   private static final String IMMUTABLE_CACHE = "public, max-age=31536000, immutable";
 
   // The HTML shell points at hash-named JS chunks, so it MUST be re-fetched
@@ -198,9 +199,10 @@ public class OpenMetadataAssetServlet extends AssetServlet {
    * Pick a {@code Cache-Control} policy by path shape.
    *
    * <ul>
-   *   <li><b>Hashed assets under {@code /assets/}</b> — names are content-addressed by Vite
-   *       (e.g. {@code index-Z3O_FBkA.js}). The filename changes whenever the body changes, so
-   *       the browser can cache forever and not even ask the server again. Emit
+   *   <li><b>Hashed assets under {@code /assets/} and {@code /images/}</b> — names are
+   *       content-addressed by Vite (e.g. {@code index-Z3O_FBkA.js},
+   *       {@code landing-page-header-bg-DcT5-tmD.svg}). The filename changes whenever the body
+   *       changes, so the browser can cache forever and not even ask the server again. Emit
    *       {@code public, max-age=31536000, immutable}.
    *   <li><b>SPA HTML / fallback routes</b> — the shell that references the hashed asset names.
    *       Must NOT be long-cached, else a fresh deploy lands and clients keep a stale shell
@@ -216,7 +218,8 @@ public class OpenMetadataAssetServlet extends AssetServlet {
   private void applyCacheControl(HttpServletRequest req, HttpServletResponse resp) {
     String requestUri = req.getRequestURI();
     String pathToCheck = stripBasePath(requestUri);
-    if (pathToCheck.startsWith("/assets/") && HASHED_ASSET.matcher(pathToCheck).matches()) {
+    if ((pathToCheck.startsWith(ASSETS_PREFIX) || pathToCheck.startsWith(IMAGES_PREFIX))
+        && HASHED_ASSET.matcher(pathToCheck).matches()) {
       resp.setHeader("Cache-Control", IMMUTABLE_CACHE);
       return;
     }
@@ -433,8 +436,8 @@ public class OpenMetadataAssetServlet extends AssetServlet {
     }
 
     // Known static resource directories should not be rewritten.
-    if (pathToCheck.startsWith("/assets/")
-        || pathToCheck.startsWith("/images/")
+    if (pathToCheck.startsWith(ASSETS_PREFIX)
+        || pathToCheck.startsWith(IMAGES_PREFIX)
         || pathToCheck.startsWith("/favicons/")) {
       return false;
     }

@@ -24,7 +24,7 @@ public final class GoogleCompletionClient extends LLMCompletionClient {
   private final HttpClient httpClient;
   private final String apiKey;
   private final String modelId;
-  private final String endpoint;
+  private final String base;
   private final double temperature;
   private final int maxTokens;
   private final int timeoutSeconds;
@@ -40,27 +40,34 @@ public final class GoogleCompletionClient extends LLMCompletionClient {
     this.temperature = cfg.getTemperature() == null ? 0.0 : cfg.getTemperature();
     this.maxTokens = cfg.getMaxTokens() == null ? 4096 : cfg.getMaxTokens();
     this.timeoutSeconds = cfg.getTimeoutSeconds() == null ? 60 : cfg.getTimeoutSeconds();
-    String base =
+    // API key travels in a header, never the URL, so it can't leak via logged URIs or
+    // exception messages that include the endpoint.
+    this.base =
         cfg.getEndpoint() == null || cfg.getEndpoint().isBlank()
             ? DEFAULT_BASE
             : cfg.getEndpoint().replaceAll("/+$", "");
-    // API key travels in a header, never the URL, so it can't leak via logged URIs or
-    // exception messages that include the endpoint.
-    this.endpoint = String.format("%s/%s:generateContent", base, modelId);
     this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build();
   }
 
   @Override
-  protected String doComplete(String systemPrompt, String userPrompt) {
-    String result;
+  protected CompletionResult doComplete(
+      String systemPrompt, String userPrompt, CompletionOptions options) {
+    String model = options.modelIdOr(this.modelId);
+    int tokens = options.maxTokensOr(this.maxTokens);
+    double temp = options.temperatureOr(this.temperature);
+    int timeout = options.timeoutSecondsOr(this.timeoutSeconds);
+    String url = String.format("%s/%s:generateContent", base, model);
+    CompletionResult result;
     try {
       HttpRequest request =
           HttpRequest.newBuilder()
-              .uri(URI.create(endpoint))
+              .uri(URI.create(url))
               .header("Content-Type", "application/json")
               .header("x-goog-api-key", apiKey)
-              .timeout(Duration.ofSeconds(timeoutSeconds))
-              .POST(HttpRequest.BodyPublishers.ofString(buildRequestBody(systemPrompt, userPrompt)))
+              .timeout(Duration.ofSeconds(timeout))
+              .POST(
+                  HttpRequest.BodyPublishers.ofString(
+                      buildRequestBody(systemPrompt, userPrompt, tokens, temp)))
               .build();
       HttpResponse<String> response =
           httpClient.send(request, HttpResponse.BodyHandlers.ofString());
@@ -68,7 +75,7 @@ public final class GoogleCompletionClient extends LLMCompletionClient {
         throw new LLMCompletionException(
             "Google API returned status " + response.statusCode() + ": " + response.body());
       }
-      result = parseContent(response.body());
+      result = parseResult(response.body());
     } catch (IOException e) {
       throw new LLMCompletionException("Google completion failed due to IO error", e);
     } catch (InterruptedException e) {
@@ -78,7 +85,8 @@ public final class GoogleCompletionClient extends LLMCompletionClient {
     return result;
   }
 
-  private String buildRequestBody(String systemPrompt, String userPrompt) {
+  static String buildRequestBody(
+      String systemPrompt, String userPrompt, int maxTokens, double temperature) {
     String result;
     try {
       ObjectNode payload = MAPPER.createObjectNode();
@@ -98,22 +106,21 @@ public final class GoogleCompletionClient extends LLMCompletionClient {
     return result;
   }
 
-  static String parseContent(String responseBody) {
-    String result;
+  static CompletionResult parseResult(String responseBody) {
+    CompletionResult result;
     try {
+      JsonNode root = MAPPER.readTree(responseBody);
       JsonNode text =
-          MAPPER
-              .readTree(responseBody)
-              .path("candidates")
-              .path(0)
-              .path("content")
-              .path("parts")
-              .path(0)
-              .path("text");
+          root.path("candidates").path(0).path("content").path("parts").path(0).path("text");
       if (!text.isTextual()) {
         throw new LLMCompletionException("Invalid Google response: no text content returned");
       }
-      result = text.asText();
+      JsonNode usage = root.path("usageMetadata");
+      result =
+          new CompletionResult(
+              text.asText(),
+              usage.path("promptTokenCount").asInt(0),
+              usage.path("candidatesTokenCount").asInt(0));
     } catch (IOException e) {
       throw new LLMCompletionException("Failed to parse Google response", e);
     }

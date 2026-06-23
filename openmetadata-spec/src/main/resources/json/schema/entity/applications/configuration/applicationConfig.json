@@ -41,9 +41,6 @@
           "$ref": "internal/autoPilotAppConfig.json"
         },
         {
-          "$ref": "internal/mcpChatAppConfig.json"
-        },
-        {
           "type": "object",
           "additionalProperties": true
         }
