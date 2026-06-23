@@ -18,6 +18,13 @@ import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
 import { getAuthContext, getToken, redirectToHomePage } from '../utils/common';
 import { sidebarClick } from '../utils/sidebar';
 
+export interface GraphTermRef {
+  id: string;
+  name: string;
+}
+
+export const DANGLING_GRAPH_NODE_ID = '00000000-0000-0000-0000-000000000000';
+
 export async function applyGlossaryFilter(page: Page, glossaryId: string) {
   await page.getByTestId('search-dropdown-Glossary').click();
   await page.getByTestId(glossaryId).click();
@@ -118,6 +125,38 @@ export async function readGraphEdges(
       (el: HTMLElement) =>
         JSON.parse(el.dataset.edges ?? '[]') as RenderedEdge[]
     );
+}
+
+export function buildRdfGraphJson(
+  glossaryId: string,
+  term1: GraphTermRef,
+  term2: GraphTermRef
+) {
+  return {
+    nodes: [
+      { id: term1.id, label: term1.name, type: 'glossaryTerm', glossaryId },
+      { id: term2.id, label: term2.name, type: 'glossaryTerm', glossaryId },
+    ],
+    edges: [{ from: term1.id, to: term2.id, relationType: 'relatedTo' }],
+  };
+}
+
+export function buildMalformedRdfGraphJson(
+  glossaryId: string,
+  term1: GraphTermRef,
+  term2: GraphTermRef
+) {
+  return {
+    nodes: [
+      { id: term1.id, label: term1.name, type: 'glossaryTerm', glossaryId },
+      { id: term1.id, label: term1.name, type: 'glossaryTerm', glossaryId },
+      { id: term2.id, label: term2.name, type: 'glossaryTerm', glossaryId },
+    ],
+    edges: [
+      { from: term1.id, to: term2.id, relationType: 'relatedTo' },
+      { from: term1.id, to: DANGLING_GRAPH_NODE_ID, relationType: 'relatedTo' },
+    ],
+  };
 }
 
 export async function createApiContext(browser: Browser) {

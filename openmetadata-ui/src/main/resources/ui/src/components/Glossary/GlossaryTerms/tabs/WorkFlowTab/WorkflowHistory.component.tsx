@@ -38,7 +38,7 @@ import {
 import { createGlossaryTermEntityLink } from '../../../../../utils/GlossaryTerm/GlossaryTermUtil';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import Loader from '../../../../common/Loader/Loader';
-import { useGenericContext } from '../../../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../../Customization/GenericProvider/GenericContext';
 import './workflow-history.less';
 
 const { Text } = Typography;

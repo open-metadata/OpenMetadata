@@ -42,7 +42,7 @@ const CoreCreateErrorPlaceHolder = ({
     <div
       className={classNames(
         className,
-        'tw:h-full tw:flex-center tw:border-default tw:border-radius-sm tw:bg-white tw:w-full tw:p-8 tw:pt-0'
+        'tw:h-full tw:flex-center tw:border-default tw:border-radius-sm tw:bg-primary tw:w-full tw:p-8 tw:pt-0'
       )}
       data-testid="no-data-placeholder">
       <div className="tw:flex tw:flex-col tw:items-center">
@@ -55,7 +55,7 @@ const CoreCreateErrorPlaceHolder = ({
           {heading && (
             <Typography
               as="h5"
-              className="tw:text-gray-900 tw:text-center"
+              className="tw:text-primary tw:text-center"
               size="text-md">
               {heading}
             </Typography>

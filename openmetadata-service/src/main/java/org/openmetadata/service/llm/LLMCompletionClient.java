@@ -27,15 +27,21 @@ public abstract class LLMCompletionClient {
     this.concurrencyLimiter = new Semaphore(maxConcurrentRequests);
   }
 
-  protected abstract String doComplete(String systemPrompt, String userPrompt);
+  protected abstract CompletionResult doComplete(
+      String systemPrompt, String userPrompt, CompletionOptions options);
 
   public abstract String getModelId();
 
-  public final String complete(String systemPrompt, String userPrompt) {
+  public final CompletionResult complete(String systemPrompt, String userPrompt) {
+    return complete(systemPrompt, userPrompt, CompletionOptions.NONE);
+  }
+
+  public final CompletionResult complete(
+      String systemPrompt, String userPrompt, CompletionOptions options) {
     acquirePermit();
-    String result;
+    CompletionResult result;
     try {
-      result = doComplete(systemPrompt, userPrompt);
+      result = doComplete(systemPrompt, userPrompt, options);
     } finally {
       concurrencyLimiter.release();
     }
@@ -46,10 +52,10 @@ public abstract class LLMCompletionClient {
       String systemPrompt, String userPrompt, Class<T> elementType) {
     List<T> parsed;
     try {
-      parsed = parseArray(complete(systemPrompt, userPrompt), elementType);
+      parsed = parseArray(complete(systemPrompt, userPrompt).text(), elementType);
     } catch (LLMCompletionException firstFailure) {
       LOG.warn("LLM returned unparseable JSON; retrying once", firstFailure);
-      parsed = parseArray(complete(systemPrompt, userPrompt), elementType);
+      parsed = parseArray(complete(systemPrompt, userPrompt).text(), elementType);
     }
     return parsed;
   }

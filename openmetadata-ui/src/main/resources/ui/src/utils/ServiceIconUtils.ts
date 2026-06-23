@@ -11,104 +11,104 @@
  *  limitations under the License.
  */
 
-import athena from '../assets/img/service-icon-athena.png';
-import azuresql from '../assets/img/service-icon-azuresql.png';
-import bigtable from '../assets/img/service-icon-bigtable.png';
-import burstiq from '../assets/img/service-icon-burstiq.png';
-import cassandra from '../assets/img/service-icon-cassandra.png';
-import clickhouse from '../assets/img/service-icon-clickhouse.png';
-import cockroach from '../assets/img/service-icon-cockroach.png';
+import athena from '../assets/img/service-icon-athena.webp';
+import azuresql from '../assets/img/service-icon-azuresql.webp';
+import bigtable from '../assets/img/service-icon-bigtable.webp';
+import burstiq from '../assets/img/service-icon-burstiq.webp';
+import cassandra from '../assets/img/service-icon-cassandra.webp';
+import clickhouse from '../assets/img/service-icon-clickhouse.webp';
+import cockroach from '../assets/img/service-icon-cockroach.webp';
 import couchbase from '../assets/img/service-icon-couchbase.svg';
-import databrick from '../assets/img/service-icon-databrick.png';
-import datalake from '../assets/img/service-icon-datalake.png';
-import deltalake from '../assets/img/service-icon-delta-lake.png';
-import doris from '../assets/img/service-icon-doris.png';
-import druid from '../assets/img/service-icon-druid.png';
-import dynamodb from '../assets/img/service-icon-dynamodb.png';
-import exasol from '../assets/img/service-icon-exasol.png';
-import glue from '../assets/img/service-icon-glue.png';
-import greenplum from '../assets/img/service-icon-greenplum.png';
-import hive from '../assets/img/service-icon-hive.png';
-import ibmdb2 from '../assets/img/service-icon-ibmdb2.png';
-import impala from '../assets/img/service-icon-impala.png';
-import iomete from '../assets/img/service-icon-iomete.png';
-import mariadb from '../assets/img/service-icon-mariadb.png';
-import mongodb from '../assets/img/service-icon-mongodb.png';
-import mssql from '../assets/img/service-icon-mssql.png';
-import oracle from '../assets/img/service-icon-oracle.png';
-import pinot from '../assets/img/service-icon-pinot.png';
-import postgres from '../assets/img/service-icon-post.png';
-import presto from '../assets/img/service-icon-presto.png';
-import bigquery from '../assets/img/service-icon-query.png';
-import questdb from '../assets/img/service-icon-questdb.png';
-import redshift from '../assets/img/service-icon-redshift.png';
-import salesforce from '../assets/img/service-icon-salesforce.png';
-import saperp from '../assets/img/service-icon-sap-erp.png';
-import saphana from '../assets/img/service-icon-sap-hana.png';
+import databrick from '../assets/img/service-icon-databrick.webp';
+import datalake from '../assets/img/service-icon-datalake.webp';
+import deltalake from '../assets/img/service-icon-delta-lake.webp';
+import doris from '../assets/img/service-icon-doris.webp';
+import druid from '../assets/img/service-icon-druid.webp';
+import dynamodb from '../assets/img/service-icon-dynamodb.webp';
+import exasol from '../assets/img/service-icon-exasol.webp';
+import glue from '../assets/img/service-icon-glue.webp';
+import greenplum from '../assets/img/service-icon-greenplum.webp';
+import hive from '../assets/img/service-icon-hive.webp';
+import ibmdb2 from '../assets/img/service-icon-ibmdb2.webp';
+import impala from '../assets/img/service-icon-impala.webp';
+import iomete from '../assets/img/service-icon-iomete.webp';
+import mariadb from '../assets/img/service-icon-mariadb.webp';
+import mongodb from '../assets/img/service-icon-mongodb.webp';
+import mssql from '../assets/img/service-icon-mssql.webp';
+import oracle from '../assets/img/service-icon-oracle.webp';
+import pinot from '../assets/img/service-icon-pinot.webp';
+import postgres from '../assets/img/service-icon-post.webp';
+import presto from '../assets/img/service-icon-presto.webp';
+import bigquery from '../assets/img/service-icon-query.webp';
+import questdb from '../assets/img/service-icon-questdb.webp';
+import redshift from '../assets/img/service-icon-redshift.webp';
+import salesforce from '../assets/img/service-icon-salesforce.webp';
+import saperp from '../assets/img/service-icon-sap-erp.webp';
+import saphana from '../assets/img/service-icon-sap-hana.webp';
 import sas from '../assets/img/service-icon-sas.svg';
-import singlestore from '../assets/img/service-icon-singlestore.png';
-import snowflake from '../assets/img/service-icon-snowflakes.png';
-import mysql from '../assets/img/service-icon-sql.png';
-import sqlite from '../assets/img/service-icon-sqlite.png';
-import starrocks from '../assets/img/service-icon-starrocks.png';
-import timescale from '../assets/img/service-icon-timescale.png';
-import trino from '../assets/img/service-icon-trino.png';
+import singlestore from '../assets/img/service-icon-singlestore.webp';
+import snowflake from '../assets/img/service-icon-snowflakes.webp';
+import mysql from '../assets/img/service-icon-sql.webp';
+import sqlite from '../assets/img/service-icon-sqlite.webp';
+import starrocks from '../assets/img/service-icon-starrocks.webp';
+import timescale from '../assets/img/service-icon-timescale.webp';
+import trino from '../assets/img/service-icon-trino.webp';
 import unitycatalog from '../assets/img/service-icon-unitycatalog.svg';
-import vertica from '../assets/img/service-icon-vertica.png';
+import vertica from '../assets/img/service-icon-vertica.webp';
 import teradata from '../assets/svg/teradata.svg';
 
 // Messaging services
-import kafka from '../assets/img/service-icon-kafka.png';
-import kinesis from '../assets/img/service-icon-kinesis.png';
-import redpanda from '../assets/img/service-icon-redpanda.png';
+import kafka from '../assets/img/service-icon-kafka.webp';
+import kinesis from '../assets/img/service-icon-kinesis.webp';
+import redpanda from '../assets/img/service-icon-redpanda.webp';
 import pubsub from '../assets/svg/service-icon-pubsub.svg';
 
 // Dashboard services
-import domo from '../assets/img/service-icon-domo.png';
-import grafana from '../assets/img/service-icon-grafana.png';
-import lightdash from '../assets/img/service-icon-lightdash.png';
-import looker from '../assets/img/service-icon-looker.png';
-import metabase from '../assets/img/service-icon-metabase.png';
+import domo from '../assets/img/service-icon-domo.webp';
+import grafana from '../assets/img/service-icon-grafana.webp';
+import lightdash from '../assets/img/service-icon-lightdash.webp';
+import looker from '../assets/img/service-icon-looker.webp';
+import metabase from '../assets/img/service-icon-metabase.webp';
 import microstrategy from '../assets/img/service-icon-microstrategy.svg';
-import mode from '../assets/img/service-icon-mode.png';
-import powerbi from '../assets/img/service-icon-power-bi.png';
-import qliksense from '../assets/img/service-icon-qlik-sense.png';
-import quicksight from '../assets/img/service-icon-quicksight.png';
-import redash from '../assets/img/service-icon-redash.png';
-import sigma from '../assets/img/service-icon-sigma.png';
-import ssrs from '../assets/img/service-icon-ssrs.png';
-import superset from '../assets/img/service-icon-superset.png';
-import tableau from '../assets/img/service-icon-tableau.png';
+import mode from '../assets/img/service-icon-mode.webp';
+import powerbi from '../assets/img/service-icon-power-bi.webp';
+import qliksense from '../assets/img/service-icon-qlik-sense.webp';
+import quicksight from '../assets/img/service-icon-quicksight.webp';
+import redash from '../assets/img/service-icon-redash.webp';
+import sigma from '../assets/img/service-icon-sigma.webp';
+import ssrs from '../assets/img/service-icon-ssrs.webp';
+import superset from '../assets/img/service-icon-superset.webp';
+import tableau from '../assets/img/service-icon-tableau.webp';
 import hex from '../assets/svg/service-icon-hex.svg';
 
 // Pipeline services
-import airbyte from '../assets/img/Airbyte.png';
-import airflow from '../assets/img/service-icon-airflow.png';
-import dagster from '../assets/img/service-icon-dagster.png';
-import dbt from '../assets/img/service-icon-dbt.png';
-import fivetran from '../assets/img/service-icon-fivetran.png';
-import flink from '../assets/img/service-icon-flink.png';
-import nifi from '../assets/img/service-icon-nifi.png';
+import airbyte from '../assets/img/Airbyte.webp';
+import airflow from '../assets/img/service-icon-airflow.webp';
+import dagster from '../assets/img/service-icon-dagster.webp';
+import dbt from '../assets/img/service-icon-dbt.webp';
+import fivetran from '../assets/img/service-icon-fivetran.webp';
+import flink from '../assets/img/service-icon-flink.webp';
+import nifi from '../assets/img/service-icon-nifi.webp';
 import openlineage from '../assets/img/service-icon-openlineage.svg';
-import spark from '../assets/img/service-icon-spark.png';
-import spline from '../assets/img/service-icon-spline.png';
+import spark from '../assets/img/service-icon-spark.webp';
+import spline from '../assets/img/service-icon-spline.webp';
 
 // ML Model services
-import sagemaker from '../assets/img/service-icon-sagemaker.png';
-import scikit from '../assets/img/service-icon-scikit.png';
+import sagemaker from '../assets/img/service-icon-sagemaker.webp';
+import scikit from '../assets/img/service-icon-scikit.webp';
 import mlflow from '../assets/svg/service-icon-mlflow.svg';
 
 // Storage services
 import amazons3 from '../assets/img/service-icon-amazon-s3.svg';
-import gcs from '../assets/img/service-icon-gcs.png';
+import gcs from '../assets/img/service-icon-gcs.webp';
 
 // Search services
 import elasticsearch from '../assets/svg/elasticsearch.svg';
 import opensearch from '../assets/svg/open-search.svg';
 
 // Metadata services
-import alationsink from '../assets/img/service-icon-alation-sink.png';
-import amundsen from '../assets/img/service-icon-amundsen.png';
+import alationsink from '../assets/img/service-icon-alation-sink.webp';
+import amundsen from '../assets/img/service-icon-amundsen.webp';
 import atlas from '../assets/img/service-icon-atlas.svg';
 
 // Drive services
@@ -116,7 +116,7 @@ import googledrive from '../assets/svg/service-icon-google-drive.svg';
 import sftp from '../assets/svg/service-icon-sftp.svg';
 
 // Default icons
-import synapse from '../assets/img/service-icon-synapse.png';
+import synapse from '../assets/img/service-icon-synapse.webp';
 import dashboarddefault from '../assets/svg/dashboard.svg';
 import defaultservice from '../assets/svg/default-service-icon.svg';
 import databasedefault from '../assets/svg/ic-custom-database.svg';

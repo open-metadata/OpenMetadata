@@ -11,20 +11,6 @@
  *  limitations under the License.
  */
 
-export {
-  ensurePlaceholderAtEnd,
-  getAddWidgetHandler,
-  getConstrainedWidgetWidth,
-  getLandingPageLayoutWithEmptyWidgetPlaceholder,
-  getLayoutUpdateHandler,
-  getLayoutWithEmptyWidgetPlaceholder,
-  getNewWidgetPlacement,
-  getRemoveWidgetHandler,
-  getUniqueFilteredLayout,
-  getWidgetWidthLabelFromKey,
-  separateWidgets,
-} from './CustomizableLandingPagePureUtils';
-
 import Icon from '@ant-design/icons';
 import { isUndefined } from 'lodash';
 import { Suspense, type DOMAttributes } from 'react';

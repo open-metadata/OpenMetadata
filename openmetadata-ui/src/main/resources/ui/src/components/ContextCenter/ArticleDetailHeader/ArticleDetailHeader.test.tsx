@@ -81,6 +81,16 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
+jest.mock('../../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn(() => ({
+    entityRules: {
+      canAddMultipleDomains: true,
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
+  })),
+}));
+
 jest.mock('../../common/HeaderBreadcrumb/HeaderBreadcrumb.component', () =>
   jest.fn(() => <nav data-testid="breadcrumb" />)
 );
