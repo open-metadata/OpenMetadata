@@ -43,7 +43,7 @@ public class ContextFileProcessingService {
   private final Executor executor;
   private final ContextFileTextExtractor textExtractor;
   private final Executor llmExecutor;
-  private final Supplier<ContextMemoryExtractor> memoryExtractorSupplier;
+  private final Supplier<DocumentMemoryExtractor> memoryExtractorSupplier;
   private final Supplier<Boolean> llmEnabledSupplier;
   private final Supplier<FileContextProcessingEngine> fileEngineSupplier;
   private volatile FileContextProcessingEngine fileEngine;
@@ -68,7 +68,7 @@ public class ContextFileProcessingService {
       Executor executor,
       ContextFileTextExtractor textExtractor,
       Executor llmExecutor,
-      Supplier<ContextMemoryExtractor> memoryExtractorSupplier,
+      Supplier<DocumentMemoryExtractor> memoryExtractorSupplier,
       Supplier<Boolean> llmEnabledSupplier,
       Supplier<FileContextProcessingEngine> fileEngineSupplier) {
     this.repository = repository;
@@ -122,8 +122,8 @@ public class ContextFileProcessingService {
         new ThreadPoolExecutor.AbortPolicy());
   }
 
-  private static ContextMemoryExtractor buildDefaultExtractor() {
-    return new ContextMemoryExtractor(LLMClientHolder.get());
+  private static DocumentMemoryExtractor buildDefaultExtractor() {
+    return AiProviderHolder.get().documentExtractor();
   }
 
   public void submit(UUID fileId, UUID contentId) {
