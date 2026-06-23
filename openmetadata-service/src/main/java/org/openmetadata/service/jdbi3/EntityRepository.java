@@ -6385,7 +6385,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           buildBulkUpdaters(deletedEntities, updatedBy, Operation.PUT, "bulkRestoreUpdaters", null);
       List<EntityUpdater> changed = filterChanged(updaters);
       if (!changed.isEmpty()) {
-        persistBulkUpdaters(changed, ENTITY_RESTORED, updatedBy, "bulkRestore");
+        persistBulkUpdaters(changed, "bulkRestore");
         ListCountCache.invalidate(entityType);
       }
     }
@@ -6585,7 +6585,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             e -> e.setDeleted(true));
     List<EntityUpdater> changed = filterChanged(updaters);
     if (!changed.isEmpty()) {
-      persistBulkUpdaters(changed, ENTITY_SOFT_DELETED, updatedBy, "bulkSoftDelete");
+      persistBulkUpdaters(changed, "bulkSoftDelete");
       ListCountCache.invalidate(entityType);
     }
   }
@@ -6874,8 +6874,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * reflects the previous state. {@code SearchIndexHandler.onEntitiesUpdated} batches the
    * writes via {@code updateEntitiesIndex}, so this is still bulk on the ES side.
    */
-  private void persistBulkUpdaters(
-      List<EntityUpdater> changed, EventType eventType, String userName, String phasePrefix) {
+  private void persistBulkUpdaters(List<EntityUpdater> changed, String phasePrefix) {
     writeBulkVersionHistory(changed, phasePrefix);
     List<T> changedEntities = changed.stream().map(EntityUpdater::getUpdated).toList();
     try (var ignored = phase(phasePrefix + "UpdateMany")) {
@@ -6887,7 +6886,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     try (var ignored = phase(phasePrefix + "LifecycleDispatch")) {
       EntityLifecycleEventDispatcher.getInstance().onEntitiesUpdated(changedEntities, null, null);
     }
-    writeBulkChangeEvents(changed, eventType, userName, phasePrefix + "ChangeEvents");
+    // Cascade children of a recursive delete/restore intentionally do NOT emit per-entity change
+    // events. A single change event is recorded for the user-targeted root entity (see the delete
+    // and restore paths in EntityResource). This keeps deleting a service with 100k descendants to
+    // one audit-log entry and avoids 100k change_event inserts on the delete hot path.
   }
 
   private void writeBulkVersionHistory(List<EntityUpdater> changed, String phasePrefix) {
@@ -6908,18 +6910,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .entityExtensionDAO()
             .insertMany(historyIds, historyExtensions, entityType, historyJsons);
       }
-    }
-  }
-
-  private void writeBulkChangeEvents(
-      List<EntityUpdater> changed, EventType eventType, String userName, String phaseName) {
-    try (var ignored = phase(phaseName)) {
-      List<String> changeEventJsons = new ArrayList<>();
-      for (EntityUpdater u : changed) {
-        buildChangeEventJsonForBulkOperation(u.getUpdated(), eventType, userName)
-            .ifPresent(changeEventJsons::add);
-      }
-      insertChangeEventsBatch(changeEventJsons);
     }
   }
 
@@ -12789,21 +12779,41 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return update(uriInfo, original, updated, updatedBy, null);
   }
 
-  private void createChangeEventForBulkOperation(T entity, EventType eventType, String userName) {
-    Optional<String> changeEventJson =
-        buildChangeEventJsonForBulkOperation(entity, eventType, userName);
-    if (changeEventJson.isEmpty()) {
-      return;
+  /**
+   * Records the change event for an async delete/restore whose HTTP 202 response bypasses the
+   * response filter that records change events for synchronous operations. Without this, async
+   * deletes and restores are invisible to audit logs, alerts, and webhooks. Recursive deletes pass
+   * a single root event here; cascaded descendants are intentionally not recorded individually (see
+   * {@link #persistBulkUpdaters}).
+   */
+  public final void storeChangeEventForAsyncOperation(
+      T entity, EventType eventType, boolean recursive, String userName) {
+    if (entity != null && eventType != null) {
+      buildChangeEventJsonForBulkOperation(entity, eventType, userName, recursive)
+          .ifPresent(this::insertChangeEvent);
     }
+  }
+
+  private void createChangeEventForBulkOperation(T entity, EventType eventType, String userName) {
+    buildChangeEventJsonForBulkOperation(entity, eventType, userName)
+        .ifPresent(this::insertChangeEvent);
+  }
+
+  private void insertChangeEvent(String changeEventJson) {
     try {
-      Entity.getCollectionDAO().changeEventDAO().insert(changeEventJson.get());
+      Entity.getCollectionDAO().changeEventDAO().insert(changeEventJson);
     } catch (Exception e) {
-      LOG.error("Failed to create change event for bulk operation", e);
+      LOG.error("Failed to insert change event", e);
     }
   }
 
   private Optional<String> buildChangeEventJsonForBulkOperation(
       T entity, EventType eventType, String userName) {
+    return buildChangeEventJsonForBulkOperation(entity, eventType, userName, false);
+  }
+
+  private Optional<String> buildChangeEventJsonForBulkOperation(
+      T entity, EventType eventType, String userName, boolean recursive) {
     try {
       if (eventType.equals(ENTITY_NO_CHANGE)) {
         return Optional.empty();
@@ -12816,6 +12826,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
         Object entityObject = changeEvent.getEntity();
         changeEvent = copyChangeEvent(changeEvent);
         changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entityObject));
+      }
+
+      if (recursive) {
+        changeEvent.setRecursive(true);
       }
 
       LOG.debug(

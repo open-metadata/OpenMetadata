@@ -16,6 +16,7 @@ import { performAdminLogin } from '../../utils/admin';
 import { clickOutside, redirectToExplorePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
+  clickUpdateButtonIfVisible,
   countCsvResponseRows,
   getExportCountFromModal,
   getExportModalContent,
@@ -263,16 +264,16 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
 
       await page.getByTestId('search-input').fill('sample_data');
       await serviceAggregatePromise;
-      await page.getByTestId('sample_data').click();
-      await expect(page.getByTestId('sample_data-checkbox')).toBeChecked();
-
       const filteredQueryPromise = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
           response.status() === 200
       );
 
-      await page.getByTestId('update-btn').click();
+      await page.getByTestId('sample_data').click();
+      await expect(page.getByTestId('sample_data-checkbox')).toBeChecked();
+
+      await clickUpdateButtonIfVisible(page);
       await filteredQueryPromise;
       await waitForAllLoadersToDisappear(page);
     });
@@ -320,16 +321,19 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
   }) => {
     test.slow();
 
-    const topicsQueryPromise = page.waitForResponse(
+    // Browse mode (no search term) queries the unified `dataAsset` index
+    // regardless of the tab in the URL, so wait for that rather than a
+    // per-entity `index=topic` request (which only fires for a tab search).
+    const browseQueryPromise = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
-        response.url().includes('index=topic') &&
+        response.url().includes('index=dataAsset') &&
         response.status() === 200
     );
 
     await page.goto('/explore/topics');
     await expect(page.getByTestId('explore-page')).toBeVisible();
-    await topicsQueryPromise;
+    await browseQueryPromise;
     await waitForAllLoadersToDisappear(page);
     await expect(
       page.locator('[data-testid^="table-data-card_"]').first()

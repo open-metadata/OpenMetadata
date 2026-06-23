@@ -1008,6 +1008,12 @@ export const uploadCSVAndWaitForGrid = async (
     csvImportCompletedPromise?: Promise<void>;
   }
 ): Promise<{ rowCount: number; tempFilePath?: string }> => {
+  await waitForAllLoadersToDisappear(page);
+  await page.getByTestId('stepper-container').waitFor({ state: 'visible' });
+  await expect(
+    page.getByText('Drag & Drop or Browse CSV file here')
+  ).toBeVisible();
+
   const uploadWidget = page.getByTestId('upload-file-widget');
   await uploadWidget.waitFor({ state: 'attached' });
   let actualFilePath = filePath;

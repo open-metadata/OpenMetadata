@@ -137,11 +137,6 @@ export interface CreateEntityWithCoverImageOptions<TFormData, TEntity> {
   createEntity: (cleanFormData: TFormData) => Promise<TEntity>;
   patchEntity: (entityId: string, patch: Operation[]) => Promise<TEntity>;
   onSuccess: (entity: TEntity) => void | Promise<void>;
-  enqueueSnackbar: (
-    message: React.ReactNode,
-    options?: Record<string, unknown>
-  ) => void;
-  closeSnackbar: () => void;
   t: (key: string, options?: Record<string, unknown>) => string;
 }
 
@@ -171,8 +166,6 @@ export interface CreateEntityWithCoverImageOptions<TFormData, TEntity> {
  *     closeDrawer();
  *     refetch();
  *   },
- *   enqueueSnackbar,
- *   closeSnackbar,
  *   t,
  * });
  * ```
@@ -188,8 +181,6 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
     createEntity,
     patchEntity,
     onSuccess,
-    enqueueSnackbar,
-    closeSnackbar,
     t,
   } = options;
 
@@ -253,24 +244,20 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
 
     // Step 5: Show appropriate notification based on upload status
     if (uploadFailed) {
-      // Entity created but upload failed - show warning
       showNotistackWarning(
-        enqueueSnackbar,
         <Typography className="tw:font-bold">
           {t('message.entity-created-but-cover-image-failed', {
             entity: entityLabel,
           })}
         </Typography>,
-        closeSnackbar
+        { autoDismiss: false }
       );
     } else {
       // Entity created successfully (with or without cover image)
       showNotistackSuccess(
-        enqueueSnackbar,
         <Typography className="tw:font-bold">
           {t('server.create-entity-success', { entity: entityLabel })}
-        </Typography>,
-        closeSnackbar
+        </Typography>
       );
     }
 
@@ -281,7 +268,6 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
   } catch (error) {
     // Error handling
     showNotistackError(
-      enqueueSnackbar,
       getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist) ? (
         <Typography className="tw:font-bold">
           {t('server.entity-already-exist', {
@@ -295,9 +281,7 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
       ),
       t('server.add-entity-error', {
         entity: entityLabel.toLowerCase(),
-      }),
-      { vertical: 'top', horizontal: 'center' },
-      closeSnackbar
+      })
     );
 
     throw error;
