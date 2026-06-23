@@ -45,7 +45,7 @@ RUN dpkg --configure -a \
     # openssh -> 1:9.2p1-2+deb12u10, rsync -> 3.2.7-1+deb12u5).
     # --only-upgrade is a no-op for packages not present in the base image.
     && apt-get -qq install -y --only-upgrade \
-         libgnutls30 libcap2 libcap2-bin openssh-client rsync \
+         libgnutls30 libcap2 libcap2-bin openssh-client rsync sudo \
     && rm -rf /var/lib/apt/lists/*
 
 # Add updated postgres/redshift dependencies based on libq
