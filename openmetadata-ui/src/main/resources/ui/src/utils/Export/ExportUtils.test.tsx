@@ -106,39 +106,125 @@ describe('ExportUtils', () => {
   });
 
   describe('downloadImageFromBase64', () => {
-    let mockCreateElement: jest.SpyInstance;
-    let mockSetAttribute: jest.Mock;
-    let mockClick: jest.Mock;
+    const mockLink = {
+      href: '',
+      download: '',
+      style: { visibility: '' },
+      click: jest.fn(),
+    };
+    let mockCreateObjectURL: jest.Mock;
+    let mockRevokeObjectURL: jest.Mock;
 
     beforeEach(() => {
-      mockSetAttribute = jest.fn();
-      mockClick = jest.fn();
-      mockCreateElement = jest
+      mockCreateObjectURL = jest.fn().mockReturnValue('blob:mock-png-url');
+      mockRevokeObjectURL = jest.fn();
+      global.URL.createObjectURL = mockCreateObjectURL;
+      global.URL.revokeObjectURL = mockRevokeObjectURL;
+
+      jest
         .spyOn(document, 'createElement')
-        .mockReturnValue({
-          setAttribute: mockSetAttribute,
-          click: mockClick,
-        } as unknown as HTMLAnchorElement);
+        .mockReturnValue(mockLink as unknown as HTMLElement);
+      jest.spyOn(document.body, 'appendChild').mockImplementation(jest.fn());
+      jest.spyOn(document.body, 'removeChild').mockImplementation(jest.fn());
+      mockLink.click.mockClear();
+      mockLink.href = '';
+      mockLink.download = '';
+      mockLink.style.visibility = '';
     });
 
     afterEach(() => {
-      mockCreateElement.mockRestore();
+      jest.restoreAllMocks();
     });
 
-    it('should create and trigger download with correct attributes', () => {
-      const dataUrl = 'data:image/png;base64,test';
-      const fileName = 'test-image';
-      const exportType = ExportTypes.PNG;
-
-      downloadImageFromBase64(dataUrl, fileName, exportType);
-
-      expect(mockCreateElement).toHaveBeenCalledWith('a');
-      expect(mockSetAttribute).toHaveBeenCalledWith(
-        'download',
-        'test-image.png'
+    it('creates an anchor element and triggers a click', () => {
+      downloadImageFromBase64(
+        'data:image/png;base64,dGVzdA==',
+        'test-image',
+        ExportTypes.PNG
       );
-      expect(mockSetAttribute).toHaveBeenCalledWith('href', dataUrl);
-      expect(mockClick).toHaveBeenCalled();
+
+      expect(document.createElement).toHaveBeenCalledWith('a');
+      expect(mockLink.click).toHaveBeenCalledTimes(1);
+    });
+
+    it('sets the correct download filename with lowercased extension', () => {
+      downloadImageFromBase64(
+        'data:image/png;base64,dGVzdA==',
+        'my_chart',
+        ExportTypes.PNG
+      );
+
+      expect(mockLink.download).toBe('my_chart.png');
+    });
+
+    it('hides the link element', () => {
+      downloadImageFromBase64(
+        'data:image/png;base64,dGVzdA==',
+        'test-image',
+        ExportTypes.PNG
+      );
+
+      expect(mockLink.style.visibility).toBe('hidden');
+    });
+
+    it('appends and removes the link from the DOM', () => {
+      downloadImageFromBase64(
+        'data:image/png;base64,dGVzdA==',
+        'test-image',
+        ExportTypes.PNG
+      );
+
+      expect(document.body.appendChild).toHaveBeenCalledWith(mockLink);
+      expect(document.body.removeChild).toHaveBeenCalledWith(mockLink);
+    });
+
+    it('creates a blob URL from the decoded base64 data', () => {
+      downloadImageFromBase64(
+        'data:image/png;base64,dGVzdA==',
+        'test-image',
+        ExportTypes.PNG
+      );
+
+      expect(mockCreateObjectURL).toHaveBeenCalledTimes(1);
+      expect(mockLink.href).toBe('blob:mock-png-url');
+    });
+
+    it('revokes the object URL after download', () => {
+      downloadImageFromBase64(
+        'data:image/png;base64,dGVzdA==',
+        'test-image',
+        ExportTypes.PNG
+      );
+
+      expect(mockRevokeObjectURL).toHaveBeenCalledWith('blob:mock-png-url');
+    });
+
+    it('uses the MIME type parsed from the data URL when creating the Blob', () => {
+      const mockBlob = {};
+      const MockBlob = jest.fn().mockReturnValue(mockBlob);
+      global.Blob = MockBlob as unknown as typeof Blob;
+
+      downloadImageFromBase64(
+        'data:image/jpeg;base64,dGVzdA==',
+        'test-image',
+        ExportTypes.PNG
+      );
+
+      expect(MockBlob).toHaveBeenCalledWith(expect.any(Array), {
+        type: 'image/jpeg',
+      });
+    });
+
+    it('falls back to image/png when the data URL has no MIME type', () => {
+      const mockBlob = {};
+      const MockBlob = jest.fn().mockReturnValue(mockBlob);
+      global.Blob = MockBlob as unknown as typeof Blob;
+
+      downloadImageFromBase64('data:,dGVzdA==', 'test-image', ExportTypes.PNG);
+
+      expect(MockBlob).toHaveBeenCalledWith(expect.any(Array), {
+        type: 'image/png',
+      });
     });
   });
 
@@ -198,13 +284,19 @@ describe('ExportUtils', () => {
           }
           if (tag === 'a') {
             return {
-              setAttribute: jest.fn(),
+              href: '',
+              download: '',
+              style: { visibility: '' },
               click: jest.fn(),
             } as unknown as HTMLElement;
           }
 
           return document.createElement(tag);
         });
+      jest.spyOn(document.body, 'appendChild').mockImplementation(jest.fn());
+      jest.spyOn(document.body, 'removeChild').mockImplementation(jest.fn());
+      global.URL.createObjectURL = jest.fn().mockReturnValue('blob:test-url');
+      global.URL.revokeObjectURL = jest.fn();
     });
 
     afterEach(() => {
