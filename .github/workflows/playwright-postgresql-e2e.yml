@@ -210,9 +210,6 @@ jobs:
       - name: Run Playwright tests
         id: run-tests
         working-directory: openmetadata-ui/src/main/resources/ui/
-        env:
-          SPEC_ONLY: ${{ needs.detect-changes.outputs.spec_only_mode }}
-          CHANGED_SPECS: ${{ needs.detect-changes.outputs.changed_specs }}
         run: |
           if [ "$SPEC_ONLY" = "true" ]; then
             echo "🔹 Spec-only mode: running changed specs → ${CHANGED_SPECS}"
@@ -269,6 +266,8 @@ jobs:
           fi
 
         env:
+          SPEC_ONLY: ${{ needs.detect-changes.outputs.spec_only_mode }}
+          CHANGED_SPECS: ${{ needs.detect-changes.outputs.changed_specs }}
           PLAYWRIGHT_IS_OSS: true
           PLAYWRIGHT_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
           PLAYWRIGHT_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}
