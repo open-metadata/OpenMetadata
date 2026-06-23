@@ -394,6 +394,10 @@ CREATE INDEX task_entity_name_index ON task_entity (name);
 CREATE INDEX announcement_entity_name_index ON announcement_entity (name);
 CREATE INDEX drive_folder_name_index ON drive_folder (name);
 CREATE INDEX asset_entity_name_index ON asset_entity (name);
+-- context_file / context_memory are also created above in this migration and are reindexed;
+-- they only had a `nameHash` unique key, so add the leading-`name` index the cursor query needs.
+CREATE INDEX context_file_name_index ON context_file (name);
+CREATE INDEX context_memory_name_index ON context_memory (name);
 
 -- MCP conversation table for MCP Client message tracking
 CREATE TABLE IF NOT EXISTS mcp_conversation (
