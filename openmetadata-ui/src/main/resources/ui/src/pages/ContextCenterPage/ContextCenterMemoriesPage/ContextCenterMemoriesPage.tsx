@@ -774,11 +774,12 @@ const ContextCenterMemoriesPage: FC = () => {
         canCreate={hasCreatePermission}
         canDelete={
           hasDeletePermission &&
-          (memoryToEdit?.owners?.some((o) => o.name === currentUser?.name) ||
+          ((memoryToEdit?.owners?.some((o) => o.name === currentUser?.name) ?? false) ||
             Boolean(currentUser?.isAdmin))
         }
         canEdit={hasEditPermission}
         currentUserName={currentUser?.name}
+        isAdminUser={currentUser?.isAdmin}
         isOpen={isCreateModalOpen}
         memoryToEdit={memoryToEdit}
         onClose={handleModalClose}
