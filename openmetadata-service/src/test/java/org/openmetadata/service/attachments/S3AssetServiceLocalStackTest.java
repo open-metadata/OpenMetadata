@@ -91,6 +91,28 @@ class S3AssetServiceLocalStackTest {
     assertArrayEquals(payload, readBack(asset));
   }
 
+  @Test
+  void uploadWithNullSizeAndUnderreportingStreamRoundTrips() throws Exception {
+    byte[] payload =
+        "a payload longer than any single available() estimate would report"
+            .getBytes(StandardCharsets.UTF_8);
+    Asset asset = newAsset();
+    InputStream underreporting =
+        new ByteArrayInputStream(payload) {
+          @Override
+          public int available() {
+            return 1;
+          }
+        };
+
+    assetService.upload(asset, underreporting).join();
+
+    assertArrayEquals(
+        payload,
+        readBack(asset),
+        "the full stream must be uploaded; available() must not be used as the content length");
+  }
+
   private byte[] readBack(Asset asset) throws Exception {
     byte[] result;
     try (InputStream stream = assetService.read(asset).join()) {
