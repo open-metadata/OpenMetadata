@@ -257,6 +257,7 @@ public class LineageResource {
                     schema = @Schema(implementation = LineageScene.class)))
       })
   public LineageScene getLineageScene(
+      @Context SecurityContext securityContext,
       @Parameter(description = "Focused entity fully qualified name") @QueryParam("focusFqn")
           String focusFqn,
       @Parameter(description = "Focused entity type") @QueryParam("entityType") String entityType,
@@ -310,7 +311,8 @@ public class LineageResource {
         downstreamDepth,
         size,
         queryFilter,
-        includeDeleted);
+        includeDeleted,
+        getSubjectContext(securityContext));
   }
 
   @GET
