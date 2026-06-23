@@ -109,6 +109,8 @@ public class RdfPartitionWorker {
         currentOffset += batchProcessed;
         if (batchResult.lastError() != null) {
           lastError = batchResult.lastError();
+        } else if (recovered.lastError() != null) {
+          lastError = recovered.lastError();
         } else if (readerError != null) {
           lastError = readerError;
         }
@@ -167,30 +169,40 @@ public class RdfPartitionWorker {
   /**
    * Log every reader failure with the offending entity's id/FQN and reason, and return a
    * representative message for the partition's {@code lastError}. A failure whose entity
-   * deserialized (recoverable) is logged at WARN — it is re-indexed with core data, not dropped.
-   * A row that could not be deserialized at all is logged at ERROR — it is dropped from the graph.
-   * Without this the failure count rose with no way to identify the affected entities; the only
-   * other trace was a DEBUG line in {@link
-   * org.openmetadata.service.jdbi3.EntityRepository#listAfterKeyset} (#29211).
+   * deserialized (recoverable) is logged at WARN — its core data is re-indexed afterwards, not
+   * dropped. A row that could not be deserialized at all is logged at ERROR — it is dropped from
+   * the graph. The representative message prefers the first dropped (unrecoverable) failure so
+   * {@code lastError} describes a genuine drop, and otherwise falls back to the first non-null
+   * message so a batch of recoverable failures still surfaces a reason (#29211). Without this the
+   * failure count rose with no way to identify the affected entities; the only other trace was a
+   * DEBUG line in {@link org.openmetadata.service.jdbi3.EntityRepository#listAfterKeyset}.
    */
   private String logReaderFailures(String entityType, List<EntityError> readerFailures) {
-    String representativeError = null;
+    String firstDropped = null;
+    String firstMessage = null;
     for (EntityError failure : readerFailures) {
-      representativeError = failure.getMessage();
+      String message = failure.getMessage();
+      if (firstMessage == null && message != null) {
+        firstMessage = message;
+      }
       if (failure.getEntity() instanceof EntityInterface) {
         LOG.warn(
-            "RDF reindex could not fully hydrate {} entity {} — indexing core data only. Reason: {}",
+            "RDF reindex could not fully hydrate {} entity {} — attempting to index core data only. "
+                + "Reason: {}",
             entityType,
             describeFailedEntity(failure),
-            failure.getMessage());
+            message);
       } else {
+        if (firstDropped == null && message != null) {
+          firstDropped = message;
+        }
         LOG.error(
             "RDF reindex could not deserialize a {} row — dropping it from the graph. Reason: {}",
             entityType,
-            failure.getMessage());
+            message);
       }
     }
-    return representativeError;
+    return firstDropped != null ? firstDropped : firstMessage;
   }
 
   /**

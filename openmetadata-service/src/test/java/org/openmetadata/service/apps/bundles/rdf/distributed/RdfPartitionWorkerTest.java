@@ -91,14 +91,15 @@ class RdfPartitionWorkerTest {
   }
 
   @Test
-  void logReaderFailuresReturnsRepresentativeMessageForNonEmptyBatch() throws Exception {
+  void logReaderFailuresPrefersDroppedFailureOverRecoverable() throws Exception {
     EntityInterface table = mock(EntityInterface.class);
-    UUID id = UUID.randomUUID();
-    when(table.getId()).thenReturn(id);
+    when(table.getId()).thenReturn(UUID.randomUUID());
     when(table.getFullyQualifiedName()).thenReturn("svc.db.schema.tbl");
-    EntityError withEntity =
+    // Recoverable (has entity) listed FIRST, unrecoverable drop listed second: the dropped
+    // message must win so lastError describes a genuine drop, not a re-indexed warning.
+    EntityError recoverable =
         new EntityError().withMessage("Entity type chart not found").withEntity(table);
-    EntityError withoutEntity = new EntityError().withMessage("Failed to deserialize entity: boom");
+    EntityError dropped = new EntityError().withMessage("Failed to deserialize entity: boom");
 
     String representative =
         (String)
@@ -107,9 +108,31 @@ class RdfPartitionWorkerTest {
                 "logReaderFailures",
                 new Class<?>[] {String.class, List.class},
                 "table",
-                List.of(withEntity, withoutEntity));
+                List.of(recoverable, dropped));
 
     assertEquals("Failed to deserialize entity: boom", representative);
+  }
+
+  @Test
+  void logReaderFailuresFallsBackToFirstMessageWhenNoDropAndLastMessageNull() throws Exception {
+    EntityInterface a = mock(EntityInterface.class);
+    EntityInterface b = mock(EntityInterface.class);
+    // Both recoverable (no drops); the LAST one has a null message. The representative must be the
+    // first non-null message, not null — otherwise lastError is blanked out for the whole batch.
+    EntityError withMessage =
+        new EntityError().withMessage("field resolution failed").withEntity(a);
+    EntityError nullMessage = new EntityError().withEntity(b);
+
+    String representative =
+        (String)
+            invokePrivate(
+                worker,
+                "logReaderFailures",
+                new Class<?>[] {String.class, List.class},
+                "table",
+                List.of(withMessage, nullMessage));
+
+    assertEquals("field resolution failed", representative);
   }
 
   @Test
