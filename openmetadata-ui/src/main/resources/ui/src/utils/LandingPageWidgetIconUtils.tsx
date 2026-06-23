@@ -11,29 +11,34 @@
  *  limitations under the License.
  */
 
+import customizeMyDataPageClassBase from './CustomizeMyDataPageClassBase';
 import { DataAssetServiceLogo } from './DataAssetServiceUtils';
 import {
   LANDING_WIDGET_DEFAULT_ICON_URL,
   LANDING_WIDGET_ENTITY_ICON_URL_MAP,
 } from './LandingPageWidgetIconUtils.constants';
-
-interface LandingPageWidgetIconSource {
-  name?: string;
-  entityType?: string;
-  type?: string;
-  serviceType?: string;
-}
+import type { LandingPageWidgetIconSource } from './LandingPageWidgetIconUtils.interface';
 
 export const getEntityIcon = (
   item: LandingPageWidgetIconSource,
   className = 'w-8 h-8'
 ) => {
   const entityType = item.entityType ?? item.type ?? '';
-  const iconUrl =
-    LANDING_WIDGET_ENTITY_ICON_URL_MAP[entityType] ??
-    LANDING_WIDGET_DEFAULT_ICON_URL;
 
   if (item.serviceType) {
+    const serviceIconUrl =
+      customizeMyDataPageClassBase.getLandingPageWidgetServiceIconUrl(item);
+
+    if (serviceIconUrl) {
+      return (
+        <img
+          alt={item.name ?? item.serviceType}
+          className={className}
+          src={serviceIconUrl}
+        />
+      );
+    }
+
     return (
       <DataAssetServiceLogo
         className={className}
@@ -41,6 +46,11 @@ export const getEntityIcon = (
       />
     );
   }
+
+  const iconUrl =
+    customizeMyDataPageClassBase.getLandingPageWidgetEntityIconUrl(item) ??
+    LANDING_WIDGET_ENTITY_ICON_URL_MAP[entityType] ??
+    LANDING_WIDGET_DEFAULT_ICON_URL;
 
   return (
     <img alt={item.name ?? entityType} className={className} src={iconUrl} />

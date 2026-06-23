@@ -34,6 +34,7 @@ import type {
 } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { getMyDataWidgetImageFromKey } from './CustomizeMyDataPageImageUtils';
 import { getMyDataWidgetFromKey } from './CustomizeMyDataPageWidgetUtils';
+import type { LandingPageWidgetIconSource } from './LandingPageWidgetIconUtils.interface';
 
 class CustomizeMyDataPageClassBase {
   defaultWidgetHeight = LANDING_PAGE_DEFAULT_WIDGET_HEIGHT;
@@ -82,6 +83,18 @@ class CustomizeMyDataPageClassBase {
 
   public getSearchIndexPath(searchIndex: SearchIndex | string) {
     return this.searchIndexPathMap[searchIndex as SearchIndex] ?? '';
+  }
+
+  public getLandingPageWidgetEntityIconUrl(
+    _item: LandingPageWidgetIconSource
+  ): string | undefined {
+    return undefined;
+  }
+
+  public getLandingPageWidgetServiceIconUrl(
+    _item: LandingPageWidgetIconSource
+  ): string | undefined {
+    return undefined;
   }
 
   public getWidgetsFromKey(
