@@ -164,6 +164,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
 jest.mock('@untitledui/icons', () => ({
   ChevronDown: () => <span>ChevronDown</span>,
   Download01: () => <span data-testid="download-01-icon" />,
+  FilterFunnel01: () => <span data-testid="filter-funnel-icon" />,
+  Trash01: () => <span data-testid="trash-icon" />,
+  XCircle: () => <span data-testid="x-circle-icon" />,
+  XClose: () => <span data-testid="x-close-icon" />,
 }));
 
 jest.mock('../../rest/searchAPI', () => ({
@@ -443,6 +447,30 @@ describe('ExploreV1', () => {
     render(<ExploreV1 {...props} />, { wrapper: Wrapper });
 
     expect(screen.getByText('ExploreTree')).toBeInTheDocument();
+  });
+
+  it('does not render the toolbar Clear All when no filters are active', () => {
+    render(<ExploreV1 {...props} />, { wrapper: Wrapper });
+
+    expect(screen.queryByTestId('clear-filters')).not.toBeInTheDocument();
+  });
+
+  it('renders the toolbar Clear All (clear-filters) when a browse filter is active', () => {
+    render(
+      <ExploreV1
+        {...props}
+        browseFields={[
+          {
+            key: 'serviceType',
+            label: 'Service Type',
+            value: [{ key: 'Mysql', label: 'Mysql' }],
+          },
+        ]}
+      />,
+      { wrapper: Wrapper }
+    );
+
+    expect(screen.getByTestId('clear-filters')).toBeInTheDocument();
   });
 
   it('changes sort order when sort button is clicked', () => {
