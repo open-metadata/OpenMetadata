@@ -13,6 +13,10 @@
 
 import type { ComponentType } from 'react';
 import {
+  SEARCH_INDEX_PATH_MAP,
+  type SearchIndexPathMap,
+} from '../components/MyData/CustomizableComponents/CustomiseLandingPageHeader/CustomiseSearchBar.constants';
+import {
   CURATED_ASSETS_WIDGET_DEFAULT_VALUES,
   DEFAULT_LANDING_PAGE_LAYOUT,
   DOMAINS_WIDGET_DEFAULT_VALUES,
@@ -23,6 +27,7 @@ import {
   LANDING_PAGE_WIDGET_MARGIN,
   MY_TASK_WIDGET_DEFAULT_VALUES,
 } from '../constants/CustomizeMyDataPage.constants';
+import type { SearchIndex } from '../enums/search.enum';
 import type {
   WidgetCommonProps,
   WidgetConfig,
@@ -59,12 +64,24 @@ class CustomizeMyDataPageClassBase {
     (widget) => ({ ...widget })
   );
 
+  protected searchIndexPathMap: SearchIndexPathMap = {
+    ...SEARCH_INDEX_PATH_MAP,
+  };
+
   protected updateDefaultLayoutLayout(layout: Array<WidgetConfig>) {
     this.defaultLayout = layout;
   }
 
   protected updateLandingPageWidgetDefaultHeights(obj: Record<string, number>) {
     this.landingPageWidgetDefaultHeights = obj;
+  }
+
+  protected updateSearchIndexPathMap(obj: SearchIndexPathMap) {
+    this.searchIndexPathMap = obj;
+  }
+
+  public getSearchIndexPath(searchIndex: SearchIndex | string) {
+    return this.searchIndexPathMap[searchIndex as SearchIndex] ?? '';
   }
 
   public getWidgetsFromKey(

@@ -29,11 +29,11 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconSuggestionsActive } from '../../../../assets/svg/ic-suggestions-active.svg';
 import { ReactComponent as IconSuggestionsBlue } from '../../../../assets/svg/ic-suggestions-blue.svg';
 import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
-import { SearchIndex } from '../../../../enums/search.enum';
 import { CurrentTourPageType } from '../../../../enums/tour.enum';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useSearchStore } from '../../../../hooks/useSearchStore';
+import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { addToRecentSearched } from '../../../../utils/RecentActivityUtils';
 import {
   getExplorePath,
@@ -41,7 +41,6 @@ import {
   isInPageSearchAllowed,
 } from '../../../../utils/RouterUtils';
 import './customise-search-bar.less';
-import { SEARCH_INDEX_PATH_MAP } from './CustomiseSearchBar.constants';
 
 const SearchOptions = lazy(() => import('../../../AppBar/SearchOptions'));
 const Suggestions = lazy(() => import('../../../AppBar/Suggestions'));
@@ -98,7 +97,7 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
 
       const defaultTab =
         searchCriteria !== ''
-          ? SEARCH_INDEX_PATH_MAP[searchCriteria as SearchIndex] ?? ''
+          ? customizeMyDataPageClassBase.getSearchIndexPath(searchCriteria)
           : '';
 
       navigate(

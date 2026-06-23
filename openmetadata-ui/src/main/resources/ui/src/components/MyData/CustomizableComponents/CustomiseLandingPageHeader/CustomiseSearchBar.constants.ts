@@ -14,7 +14,7 @@
 import { ExplorePageTabs } from '../../../../enums/Explore.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 
-type SearchIndexPathMap = Partial<
+export type SearchIndexPathMap = Partial<
   Record<SearchIndex, ExplorePageTabs | string>
 >;
 
