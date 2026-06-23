@@ -32,12 +32,7 @@ on:
       - "openmetadata-ui/src/main/resources/ui/scripts/**"
 
 jobs:
-  playwright-ci-postgresql:
+  playwright-summary:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        shardIndex: [1, 2, 3, 4, 5, 6]
-        shardTotal: [6]
     steps:
-      - run: 'echo "Step is not required"'
+      - run: echo "Playwright E2E tests not required for this PR"
