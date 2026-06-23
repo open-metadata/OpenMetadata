@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { Domain } from '../../../support/domain/Domain';
 import { TableClass } from '../../../support/entity/TableClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
-import { redirectToHomePage } from '../../../utils/common';
+import { getApiContext } from '../../../utils/common';
 import {
   assignDomainOnlyAccess,
   assignDomainToTable,
@@ -71,19 +71,29 @@ const fqnOf = (table: TableClass) =>
   table.entityResponseData?.fullyQualifiedName ?? '';
 
 /**
- * Lands on the home page (which renders the "My Tasks" feed widget), captures the `/api/v1/tasks`
- * list response the widget fires, and returns the FQNs referenced by the returned tasks.
+ * Queries the `/api/v1/tasks` list endpoint as the logged-in user, scoped to a single table via the
+ * `aboutEntity` filter. The endpoint applies role-based domain scoping (TaskResource.listInternal),
+ * so a user only gets the task back when the table's domain is accessible to them — which is exactly
+ * the isolation we assert on. Scoping by `aboutEntity` (each table FQN is unique per run) keeps the
+ * assertion immune to other tasks accumulating on the shared server. We drive it through the user's
+ * own session (instead of the home page) because the redesigned landing page no longer renders a
+ * "My Tasks" widget by default.
  */
-const taskAboutFqns = async (page: Page): Promise<string> => {
-  const responsePromise = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/tasks') &&
-      response.request().method() === 'GET'
-  );
-  await redirectToHomePage(page);
-  const response = await responsePromise;
+const tasksAboutTable = async (
+  page: Page,
+  table: TableClass
+): Promise<string> => {
+  const { apiContext, afterAction } = await getApiContext(page);
 
-  return JSON.stringify(await response.json());
+  try {
+    const response = await apiContext.get('/api/v1/tasks', {
+      params: { aboutEntity: fqnOf(table), fields: 'about', limit: 50 },
+    });
+
+    return JSON.stringify(await response.json());
+  } finally {
+    await afterAction();
+  }
 };
 
 test.describe('Domain isolation - tasks @domain-isolation', () => {
@@ -158,23 +168,21 @@ test.describe('Domain isolation - tasks @domain-isolation', () => {
   });
 
   test('userA sees only their own-domain task', async ({ userAPage }) => {
-    const tasks = await taskAboutFqns(userAPage);
-
-    expect(tasks).toContain(fqnOf(tableA));
-    expect(tasks).not.toContain(fqnOf(tableB));
+    expect(await tasksAboutTable(userAPage, tableA)).toContain(fqnOf(tableA));
+    expect(await tasksAboutTable(userAPage, tableB)).not.toContain(
+      fqnOf(tableB)
+    );
   });
 
   test('userB sees only their own-domain task', async ({ userBPage }) => {
-    const tasks = await taskAboutFqns(userBPage);
-
-    expect(tasks).toContain(fqnOf(tableB));
-    expect(tasks).not.toContain(fqnOf(tableA));
+    expect(await tasksAboutTable(userBPage, tableB)).toContain(fqnOf(tableB));
+    expect(await tasksAboutTable(userBPage, tableA)).not.toContain(
+      fqnOf(tableA)
+    );
   });
 
   test('admin sees tasks from both domains', async ({ adminPage }) => {
-    const tasks = await taskAboutFqns(adminPage);
-
-    expect(tasks).toContain(fqnOf(tableA));
-    expect(tasks).toContain(fqnOf(tableB));
+    expect(await tasksAboutTable(adminPage, tableA)).toContain(fqnOf(tableA));
+    expect(await tasksAboutTable(adminPage, tableB)).toContain(fqnOf(tableB));
   });
 });
