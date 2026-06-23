@@ -11,28 +11,6 @@
  *  limitations under the License.
  */
 
-export {
-  getAlertActionTypeDisplayName,
-  getAlertEventsFilterLabels,
-  getChangeEventDataFromTypedEvent,
-  getConfigHeaderArrayFromObject,
-  getConfigHeaderObjectFromArray,
-  getConfigQueryParamsArrayFromObject,
-  getConfigQueryParamsObjectFromArray,
-  getDiagnosticItems,
-  getDisplayNameForEntities,
-  getFilteredDestinationOptions,
-  getFormattedDestinations,
-  getFunctionDisplayName,
-  getLabelsForEventDetails,
-  getMessageFromArgumentName,
-  getRandomizedAlertName,
-  getSelectOptionsFromEnum,
-  getSubscriptionTypeOptions,
-  listLengthValidator,
-  normalizeDestinationConfig,
-} from './AlertsUtilPure';
-
 import {
   CheckCircleOutlined,
   CloseOutlined,
@@ -98,11 +76,11 @@ import { TestCaseStatus } from '../../generated/tests/testCase';
 import { EventType } from '../../generated/type/changeEvent';
 import { searchQuery } from '../../rest/searchAPI';
 import { ExtraInfoLabel } from '../DataAssetsHeader.utils';
-import { getEntityName, getEntityNameLabel } from '../EntityUtils';
+import { getEntityName, getEntityNameLabel } from '../EntityNameUtils';
 import { t } from '../i18next/LocalUtil';
 import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
 import searchClassBase from '../SearchClassBase';
-import { getTermQuery } from '../SearchUtils';
+import { getTermQuery } from '../SearchPureUtils';
 import { showErrorToast } from '../ToastUtils';
 import './alerts-util.less';
 import {

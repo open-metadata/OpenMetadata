@@ -97,6 +97,8 @@ import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.LLMConfiguration;
+import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Pipeline;
@@ -124,6 +126,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
+import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -134,6 +137,7 @@ import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
@@ -454,7 +458,6 @@ public class SearchRepository {
                   .parentAliases(parentAliases)
                   .build();
           recreateIndexHandler.finalizeReindex(entityReindexContext, true);
-
         } catch (Exception ex) {
           LOG.error("Failed to recreate index for entity {}", entityType, ex);
         }
@@ -553,8 +556,9 @@ public class SearchRepository {
       return;
     }
 
+    LLMConfiguration llmConfig = LlmConfigHolder.get();
     try {
-      this.embeddingClient = createEmbeddingClient(cfg);
+      this.embeddingClient = createEmbeddingClient(llmConfig);
 
       if (cfg.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
         os.org.opensearch.client.opensearch.OpenSearchClient osClient =
@@ -576,7 +580,7 @@ public class SearchRepository {
 
       LOG.info(
           "Vector search service initialized with provider={}, dimension={}",
-          cfg.getNaturalLanguageSearch().getEmbeddingProvider(),
+          resolveEmbeddingProvider(llmConfig),
           embeddingClient.getDimension());
     } catch (Exception e) {
       this.vectorServiceInitError = e.toString();
@@ -3168,17 +3172,36 @@ public class SearchRepository {
   }
 
   public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
-    return searchClient.searchLineage(lineageRequest);
+    return searchLineage(lineageRequest, null);
+  }
+
+  public SearchLineageResult searchLineage(
+      SearchLineageRequest lineageRequest, SubjectContext subjectContext) throws IOException {
+    SearchLineageResult result = searchClient.searchLineage(lineageRequest);
+    return LineageDomainFilter.prune(result, subjectContext, lineageRequest.getFqn());
   }
 
   public SearchLineageResult searchPlatformLineage(
       String alias, String queryFilter, boolean deleted) throws IOException {
-    return searchClient.searchPlatformLineage(alias, queryFilter, deleted);
+    return searchPlatformLineage(alias, queryFilter, deleted, null);
+  }
+
+  public SearchLineageResult searchPlatformLineage(
+      String alias, String queryFilter, boolean deleted, SubjectContext subjectContext)
+      throws IOException {
+    SearchLineageResult result = searchClient.searchPlatformLineage(alias, queryFilter, deleted);
+    return LineageDomainFilter.prune(result, subjectContext, null);
   }
 
   public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
-    return searchClient.searchLineageWithDirection(lineageRequest);
+    return searchLineageWithDirection(lineageRequest, null);
+  }
+
+  public SearchLineageResult searchLineageWithDirection(
+      SearchLineageRequest lineageRequest, SubjectContext subjectContext) throws IOException {
+    SearchLineageResult result = searchClient.searchLineageWithDirection(lineageRequest);
+    return LineageDomainFilter.prune(result, subjectContext, lineageRequest.getFqn());
   }
 
   public LineagePaginationInfo getLineagePaginationInfo(
@@ -3216,7 +3239,13 @@ public class SearchRepository {
 
   public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
       throws IOException {
-    return searchClient.searchLineageByEntityCount(request);
+    return searchLineageByEntityCount(request, null);
+  }
+
+  public SearchLineageResult searchLineageByEntityCount(
+      EntityCountLineageRequest request, SubjectContext subjectContext) throws IOException {
+    SearchLineageResult result = searchClient.searchLineageByEntityCount(request);
+    return LineageDomainFilter.prune(result, subjectContext, request.getFqn());
   }
 
   public Response searchEntityRelationship(
@@ -3228,7 +3257,18 @@ public class SearchRepository {
 
   public Response searchDataQualityLineage(
       String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException {
-    return searchClient.searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted);
+    return searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted, null);
+  }
+
+  public Response searchDataQualityLineage(
+      String fqn,
+      int upstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      SubjectContext subjectContext)
+      throws IOException {
+    return searchClient.searchDataQualityLineage(
+        fqn, upstreamDepth, queryFilter, deleted, subjectContext);
   }
 
   public Response searchSchemaEntityRelationship(
@@ -3246,14 +3286,29 @@ public class SearchRepository {
       boolean deleted,
       String entityType)
       throws IOException {
-    return searchClient.searchLineage(
-        new SearchLineageRequest()
-            .withFqn(fqn)
-            .withUpstreamDepth(upstreamDepth)
-            .withDownstreamDepth(downstreamDepth)
-            .withQueryFilter(queryFilter)
-            .withIncludeDeleted(deleted)
-            .withIsConnectedVia(isConnectedVia(entityType)));
+    return searchLineageForExport(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType, null);
+  }
+
+  public SearchLineageResult searchLineageForExport(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      String entityType,
+      SubjectContext subjectContext)
+      throws IOException {
+    SearchLineageResult result =
+        searchClient.searchLineage(
+            new SearchLineageRequest()
+                .withFqn(fqn)
+                .withUpstreamDepth(upstreamDepth)
+                .withDownstreamDepth(downstreamDepth)
+                .withQueryFilter(queryFilter)
+                .withIncludeDeleted(deleted)
+                .withIsConnectedVia(isConnectedVia(entityType)));
+    return LineageDomainFilter.prune(result, subjectContext, fqn);
   }
 
   public Response searchByField(
@@ -3490,41 +3545,53 @@ public class SearchRepository {
     }
   }
 
-  protected EmbeddingClient createEmbeddingClient(ElasticSearchConfiguration esConfig) {
-    NaturalLanguageSearchConfiguration config = esConfig.getNaturalLanguageSearch();
+  protected EmbeddingClient createEmbeddingClient(LLMConfiguration llmConfig) {
+    LLMEmbeddingsConfig embeddings = llmConfig != null ? llmConfig.getEmbeddings() : null;
     String provider =
-        config.getEmbeddingProvider() != null ? config.getEmbeddingProvider() : "bedrock";
+        embeddings != null && embeddings.getProvider() != null
+            ? embeddings.getProvider().value()
+            : "bedrock";
 
     return switch (provider.toLowerCase()) {
       case "bedrock" -> {
-        if (config.getBedrock() == null) {
+        if (embeddings == null || embeddings.getBedrock() == null) {
           throw new IllegalStateException(
               "Bedrock configuration is required when using bedrock provider");
         }
-        yield new BedrockEmbeddingClient(esConfig);
+        yield new BedrockEmbeddingClient(llmConfig);
       }
       case "openai" -> {
-        if (config.getOpenai() == null) {
+        if (llmConfig.getOpenai() == null || embeddings.getOpenai() == null) {
           throw new IllegalStateException(
               "OpenAI configuration is required when using openai provider");
         }
-        yield new OpenAIEmbeddingClient(esConfig);
+        yield new OpenAIEmbeddingClient(llmConfig);
       }
       case "google" -> {
-        if (config.getGoogle() == null) {
+        if (llmConfig.getGoogle() == null || embeddings.getGoogle() == null) {
           throw new IllegalStateException(
               "Google configuration is required when using google provider");
         }
-        yield new GoogleEmbeddingClient(esConfig);
+        yield new GoogleEmbeddingClient(llmConfig);
       }
       case "djl" -> {
-        if (config.getDjl() == null) {
+        if (embeddings.getDjl() == null) {
           throw new IllegalStateException("DJL configuration is required when using djl provider");
         }
-        yield new DjlEmbeddingClient(esConfig);
+        yield new DjlEmbeddingClient(llmConfig);
       }
       default -> throw new IllegalArgumentException("Unknown embedding provider: " + provider);
     };
+  }
+
+  private static String resolveEmbeddingProvider(LLMConfiguration llmConfig) {
+    String provider = "unknown";
+    if (llmConfig != null
+        && llmConfig.getEmbeddings() != null
+        && llmConfig.getEmbeddings().getProvider() != null) {
+      provider = llmConfig.getEmbeddings().getProvider().value();
+    }
+    return provider;
   }
 
   public String getModelIdentifier() {

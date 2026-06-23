@@ -69,6 +69,9 @@ from metadata.ingestion.source.pipeline.openlineage.models import (
     TopicDetails,
     TopicFQN,
 )
+from metadata.ingestion.source.pipeline.openlineage.ownership_resolver import (
+    OpenLineageOwnerResolver,
+)
 from metadata.ingestion.source.pipeline.openlineage.service_resolver import (
     build_service_name,
     extract_integration_type,
@@ -130,6 +133,11 @@ class OpenlineageSource(PipelineServiceSource):
     def prepare(self):
         self._service_cache = {}
         self._current_pipeline_service = None
+        self._owner_resolver = OpenLineageOwnerResolver(
+            self.metadata,
+            include_owners=self.source_config.includeOwners,
+            ownership_update_mode=self.source_config.ownershipUpdateMode,
+        )
         self._entity_cache: LRUCache = LRUCache(maxsize=10000)
         self._namespace_to_service_cache: LRUCache = LRUCache(maxsize=10000)
         self._resolution_cache: LRUCache = LRUCache(maxsize=RESOLUTION_CACHE_MAXSIZE)
@@ -797,13 +805,24 @@ class OpenlineageSource(PipelineServiceSource):
         pipeline_name = self.get_pipeline_name(pipeline_details)
         self._current_pipeline_service = self._resolve_pipeline_service(pipeline_details)
         try:
+            pipeline_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Pipeline,
+                service_name=self._current_pipeline_service,
+                pipeline_name=pipeline_name,
+            )
+            owners = self._owner_resolver.get_pipeline_job_owners(
+                pipeline_details.job,
+                pipeline_fqn=pipeline_fqn,
+            )
             description = f"""```json
             {json.dumps(pipeline_details.run_facet, indent=4).strip()}```"""
-            request = CreatePipelineRequest(
+            request = CreatePipelineRequest(  # pyright: ignore[reportCallIssue]
                 name=pipeline_name,
                 service=self._current_pipeline_service,
                 description=description,
                 tasks=[],
+                owners=owners,
             )
 
             yield Either(right=request)
@@ -1124,7 +1143,6 @@ class OpenlineageSource(PipelineServiceSource):
             iterator_type = broker.consumerOffsets.value
             pool_timeout = broker.poolTimeout
             session_timeout = broker.sessionTimeout
-            empty_response_time = 0.0
 
             for shard in shards:
                 shard_id = shard["ShardId"]
@@ -1134,6 +1152,9 @@ class OpenlineageSource(PipelineServiceSource):
                     ShardIteratorType=iterator_type,
                 )
                 shard_iterator = iterator_resp["ShardIterator"]
+                # Reset the inactivity timer for each shard; otherwise the timeout
+                # accrued draining the first shard leaves every later shard skipped.
+                empty_response_time = 0.0
 
                 while shard_iterator and empty_response_time <= session_timeout:
                     response = kinesis_client.get_records(

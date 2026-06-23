@@ -22,7 +22,7 @@ import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { fetchDataProductsElasticSearch } from '../../../rest/dataProductAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDataProductDetailsPath } from '../../../utils/RouterUtils';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import {

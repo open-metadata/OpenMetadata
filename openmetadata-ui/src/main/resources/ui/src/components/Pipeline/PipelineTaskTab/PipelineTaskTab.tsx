@@ -46,24 +46,30 @@ import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
-import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
+import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import {
   columnFilterIcon,
   ownerTableObject,
 } from '../../../utils/TableColumn.util';
-import {
-  getAllTags,
-  searchTagInData,
-} from '../../../utils/TableTags/TableTags.utils';
-import { createTagObject } from '../../../utils/TagsUtils';
+import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
+import { createTagObject } from '../../../utils/TagsPureUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../common/Table/Table';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
-import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+const ModalWithMarkdownEditor = withSuspenseFallback(
+  lazy(() =>
+    import('../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor').then(
+      (m) => ({ default: m.ModalWithMarkdownEditor })
+    )
+  )
+);
 
 // TasksDAGView pulls in @xyflow/react via the EntityLineage helpers it shares
 // with the Lineage tab. Eagerly importing it leaks ~90 KB brotli of reactflow
@@ -150,19 +156,22 @@ export const PipelineTaskTab = () => {
     [pipelineDetails.tasks]
   );
 
+  const { tagFilterState, filteredData, handleTableChange } =
+    useTreeTagFilter(allTasksInternal);
+
   useEffect(() => {
-    handlePagingChange({ total: allTasksInternal.length });
-    const maxPage = Math.max(1, Math.ceil(allTasksInternal.length / pageSize));
+    handlePagingChange({ total: filteredData.length });
+    const maxPage = Math.max(1, Math.ceil(filteredData.length / pageSize));
     if (currentPage > maxPage) {
       handlePageChange(maxPage, { cursorType: null, cursorValue: undefined });
     }
-  }, [allTasksInternal.length, pageSize]);
+  }, [filteredData.length, pageSize]);
 
   const tasksInternal = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
 
-    return allTasksInternal.slice(start, start + pageSize);
-  }, [allTasksInternal, currentPage, pageSize]);
+    return filteredData.slice(start, start + pageSize);
+  }, [filteredData, currentPage, pageSize]);
 
   const handleTasksPageChange = useCallback(
     ({ currentPage: page }: PagingHandlerParams) => {
@@ -352,7 +361,7 @@ export const PipelineTaskTab = () => {
         ),
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.TAGS] ?? null,
       },
       {
         title: t('label.glossary-term-plural'),
@@ -362,7 +371,7 @@ export const PipelineTaskTab = () => {
         filterIcon: columnFilterIcon,
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.GLOSSARY] ?? null,
         render: (tags, record, index) => (
           <TableTags<Task>
             entityFqn={pipelineFQN}
@@ -387,6 +396,7 @@ export const PipelineTaskTab = () => {
       editDescriptionPermission,
       currentPage,
       pageSize,
+      tagFilterState,
     ]
   );
 
@@ -421,6 +431,7 @@ export const PipelineTaskTab = () => {
           scroll={{ x: 1200 }}
           size="small"
           staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+          onChange={handleTableChange}
         />
       ) : (
         tasksDAGView

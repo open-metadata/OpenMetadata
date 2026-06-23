@@ -329,3 +329,43 @@ CREATE INDEX IF NOT EXISTS user_session_user_status_idx ON user_session USING bt
 CREATE INDEX IF NOT EXISTS user_session_expiry_idx ON user_session USING btree (status, expiresat);
 CREATE INDEX IF NOT EXISTS user_session_idle_expiry_idx ON user_session USING btree (status, idleexpiresat);
 CREATE INDEX IF NOT EXISTS user_session_prune_idx ON user_session USING btree (status, updatedat);
+
+-- Per-entity `name` index for entity tables first created in 2.0.0, so the distributed
+-- reindex's `... ORDER BY name, id LIMIT 1 OFFSET :n` cursor query
+-- (EntityRepository.getCursorAtOffset) runs index-only instead of a sort that can exhaust
+-- work_mem on large tables. Added here (not 1.13.1) because these tables are created above
+-- in this same 2.0.0 migration. Idempotent via IF NOT EXISTS.
+CREATE INDEX IF NOT EXISTS task_entity_name_index ON task_entity (name);
+CREATE INDEX IF NOT EXISTS announcement_entity_name_index ON announcement_entity (name);
+CREATE INDEX IF NOT EXISTS drive_folder_name_index ON drive_folder (name);
+CREATE INDEX IF NOT EXISTS asset_entity_name_index ON asset_entity (name);
+
+-- MCP conversation table for MCP Client message tracking
+CREATE TABLE IF NOT EXISTS mcp_conversation (
+  id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+  json JSONB NOT NULL,
+  userId VARCHAR(256) GENERATED ALWAYS AS ((json -> 'user') ->> 'id') STORED NOT NULL,
+  createdAt BIGINT GENERATED ALWAYS AS ((json ->> 'createdAt')::bigint) STORED NOT NULL,
+  updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+  createdBy VARCHAR(50) GENERATED ALWAYS AS (json ->> 'createdBy') STORED NOT NULL,
+  updatedBy VARCHAR(50) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+  messageCount INT GENERATED ALWAYS AS ((json ->> 'messageCount')::int) STORED,
+
+  PRIMARY KEY (id)
+);
+CREATE INDEX IF NOT EXISTS idx_mcp_conversation_user_updated ON mcp_conversation (userId, updatedAt DESC);
+
+-- MCP message table for MCP Client message tracking
+CREATE TABLE IF NOT EXISTS mcp_message (
+  id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+  json JSONB NOT NULL,
+  conversationId VARCHAR(36) GENERATED ALWAYS AS (json ->> 'conversationId') STORED NOT NULL,
+  sender VARCHAR(10) GENERATED ALWAYS AS (json ->> 'sender') STORED NOT NULL,
+  messageIndex INT GENERATED ALWAYS AS ((json ->> 'index')::int) STORED,
+  timestamp BIGINT GENERATED ALWAYS AS ((json ->> 'timestamp')::bigint) STORED NOT NULL,
+
+  PRIMARY KEY (id),
+  CONSTRAINT fk_mcp_message_conversation FOREIGN KEY (conversationId) REFERENCES mcp_conversation(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_mcp_message_conversation_index ON mcp_message (conversationId, messageIndex);
+CREATE INDEX IF NOT EXISTS idx_mcp_message_conversation_created ON mcp_message (conversationId, timestamp);

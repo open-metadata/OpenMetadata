@@ -427,6 +427,7 @@ public class AuditLogRepository {
           auditLogDAO.list(
               condition,
               ORDER_ASC,
+              ORDER_ASC_QUALIFIED,
               userName,
               actorType,
               serviceName,
@@ -453,6 +454,7 @@ public class AuditLogRepository {
           auditLogDAO.list(
               condition,
               ORDER_DESC,
+              ORDER_DESC_QUALIFIED,
               userName,
               actorType,
               serviceName,
@@ -752,6 +754,8 @@ public class AuditLogRepository {
 
   private static final String ORDER_DESC = "ORDER BY event_ts DESC, id DESC";
   private static final String ORDER_ASC = "ORDER BY event_ts ASC, id ASC";
+  private static final String ORDER_DESC_QUALIFIED = "ORDER BY a.event_ts DESC, a.id DESC";
+  private static final String ORDER_ASC_QUALIFIED = "ORDER BY a.event_ts ASC, a.id ASC";
 
   private int sanitizeLimit(int requested) {
     int limit = requested <= 0 ? 25 : requested;

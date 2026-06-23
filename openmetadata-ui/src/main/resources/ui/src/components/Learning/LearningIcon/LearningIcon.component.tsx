@@ -14,12 +14,21 @@
 import { Box, Button, useTheme } from '@mui/material';
 import { ArrowRight } from '@untitledui/icons';
 import { Popover } from 'antd';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { lazy, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as LearningIconSvg } from '../../../assets/svg/ic-learning.svg';
 import { getLearningResourcesByContext } from '../../../rest/learningResourceAPI';
-import { LearningDrawer } from '../LearningDrawer/LearningDrawer.component';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { LearningIconProps } from './LearningIcon.interface';
+
+const LearningDrawer = withSuspenseFallback(
+  lazy(() =>
+    import('../LearningDrawer/LearningDrawer.component').then((m) => ({
+      default: m.LearningDrawer,
+    }))
+  ),
+  null
+);
 
 export const LearningIcon: React.FC<LearningIconProps> = ({
   pageId,

@@ -31,32 +31,13 @@ import type { ServicesType } from '../interface/service.interface';
 import { searchService } from '../rest/serviceAPI';
 import { getDashboardURL } from './DashboardServiceUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
-import { MarkdownToHTMLConverter } from './FeedUtils';
+import { MarkdownToHTMLConverter } from './FeedUtilsPure';
 import { t } from './i18next/LocalUtil';
 import { getBrokers } from './MessagingServiceUtils';
 import { getSettingPath } from './RouterUtils';
 import {
   getSearchIndexFromService,
   getServiceRouteFromServiceType,
-} from './ServicePureUtils';
-
-export {
-  getActiveFieldNameForAppDocs,
-  getCountLabel,
-  getEntityTypeFromServiceCategory,
-  getIngestionName,
-  getReadableCountString,
-  getResourceEntityFromServiceCategory,
-  getSearchIndexForService,
-  getSearchIndexFromService,
-  getServiceCategoryFromEntityType,
-  getServiceDisplayNameQueryFilter,
-  getServiceNameQueryFilter,
-  getServiceRouteFromServiceType,
-  getServiceType,
-  getServiceTypesFromServiceCategory,
-  getTestConnectionName,
-  shouldTestConnection,
 } from './ServicePureUtils';
 
 export const getOptionalFields = (

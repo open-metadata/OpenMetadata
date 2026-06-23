@@ -115,6 +115,54 @@ setup('authenticate all users', async ({ browser }) => {
 
     const { apiContext, afterAction } = await getApiContext(adminPage);
 
+    // TODO(collate#4484): Remove this block once the auth-config env reconcile bug is fixed.
+    // AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER is ignored on an existing/upgraded DB
+    // (the authenticationConfiguration settings row is seeded once and never reconciled),
+    // so the per-user session cap stays at the default of 5. That evicts the long-lived
+    // storageState session and causes 401 "Invalid session" on reused bearer tokens.
+    // Raise it at runtime via the security-config endpoint as a temporary workaround.
+    // Uses GET + PUT (not PATCH): PATCH /security/config runs a validator that rejects
+    // the basic-auth provider, whereas PUT persists + reloads without it. The unused
+    // oidc/ldap/saml blocks are nulled before the PUT because PUT's bean validation
+    // rejects their empty stubs (@NotNull ldap host/port/...); nulling them also avoids
+    // re-persisting the OIDC secret / LDAP password that GET returns masked. Basic auth
+    // does not use these blocks. Guarded to provider === 'basic'.
+    // https://github.com/open-metadata/openmetadata-collate/issues/4484
+    const securityConfigResponse = await apiContext.get(
+      '/api/v1/system/security/config'
+    );
+    if (!securityConfigResponse.ok()) {
+      // 404 == older build without the endpoint, tolerate it. Any other non-2xx
+      // (401/403/5xx) is a real failure that would otherwise silently leave the
+      // cap at 5, so surface it instead of skipping.
+      if (securityConfigResponse.status() !== 404) {
+        throw new Error(
+          `collate#4484 workaround: GET security config failed - HTTP ${securityConfigResponse.status()} ${await securityConfigResponse.text()}`
+        );
+      }
+    } else {
+      const securityConfig = await securityConfigResponse.json();
+      const authConfig = securityConfig?.authenticationConfiguration;
+      if (
+        authConfig?.provider === 'basic' &&
+        authConfig?.maxActiveSessionsPerUser !== 1000
+      ) {
+        authConfig.maxActiveSessionsPerUser = 1000;
+        authConfig.oidcConfiguration = null;
+        authConfig.ldapConfiguration = null;
+        authConfig.samlConfiguration = null;
+        const putResponse = await apiContext.put(
+          '/api/v1/system/security/config',
+          { data: securityConfig }
+        );
+        if (!putResponse.ok()) {
+          throw new Error(
+            `collate#4484 workaround: failed to raise maxActiveSessionsPerUser - HTTP ${putResponse.status()} ${await putResponse.text()}`
+          );
+        }
+      }
+    }
+
     // Create all users, Using allSettled to avoid failing the setup if one of the users fails to create
     await Promise.allSettled([
       dataConsumer.create(apiContext, false),

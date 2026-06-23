@@ -38,10 +38,8 @@ import { usePaging } from '../../../../hooks/paging/usePaging';
 import { getBots } from '../../../../rest/botsAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { formatUsersResponse } from '../../../../utils/APIUtils';
-import {
-  getEntityName,
-  highlightSearchText,
-} from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { highlightSearchText } from '../../../../utils/EntitySearchUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
 import { getBotsPath } from '../../../../utils/RouterUtils';
 import {

@@ -11,13 +11,17 @@
  *  limitations under the License.
  */
 
-import React from 'react';
+import React, { lazy } from 'react';
 import ReactMarkdown, { Components } from 'react-markdown';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
-import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import EntityMarkdownLink from './EntityMarkdownLink/EntityMarkdownLink';
 import EntityPill from './EntityPill/EntityPill';
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
+);
 
 /**
  * Preprocesses markdown text to handle entity links that might be wrapped in backticks

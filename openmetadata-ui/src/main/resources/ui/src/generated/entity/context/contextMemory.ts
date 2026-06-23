@@ -27,6 +27,11 @@ export interface ContextMemory {
      */
     deleted?: boolean;
     /**
+     * Derived: glossary terms and metrics created by the Memory Agent from this memory
+     * (DERIVED_FROM edges, agent-owned).
+     */
+    derivedEntities?: EntityReference[];
+    /**
      * Optional markdown description for the memory.
      */
     description?: string;
@@ -60,6 +65,7 @@ export interface ContextMemory {
     lastUsedAt?:            number;
     machineRepresentation?: MachineRepresentation;
     memoryScope?:           MemoryScope;
+    memoryStats?:           MemoryStats;
     memoryType?:            MemoryType;
     /**
      * Stable system name for the memory.
@@ -86,6 +92,11 @@ export interface ContextMemory {
      */
     relatedEntities?: EntityReference[];
     /**
+     * Derived: glossary terms and metrics reused (not created) by the Memory Agent from this
+     * memory (RELATED_TO edges).
+     */
+    reusedEntities?: EntityReference[];
+    /**
      * Root memory in an append-style memory thread.
      */
     rootMemory?:  EntityReference;
@@ -98,6 +109,14 @@ export interface ContextMemory {
      * Conversation identifier that produced this memory.
      */
     sourceConversation?: string;
+    /**
+     * The Context Center entity (file or page) this memory was extracted from.
+     */
+    sourceEntity?: EntityReference;
+    /**
+     * Deprecated: use sourceEntity. The Context Center file this memory was extracted from.
+     */
+    sourceFile?: EntityReference;
     /**
      * Human message identifier used to produce this memory.
      */
@@ -202,7 +221,8 @@ export interface FieldChange {
 }
 
 /**
- * Domains this memory belongs to.
+ * Derived: glossary terms and metrics created by the Memory Agent from this memory
+ * (DERIVED_FROM edges, agent-owned).
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
@@ -221,6 +241,10 @@ export interface FieldChange {
  * Root memory in an append-style memory thread.
  *
  * Principal receiving access. Supported principal types are user, team, and domain.
+ *
+ * The Context Center entity (file or page) this memory was extracted from.
+ *
+ * Deprecated: use sourceEntity. The Context Center file this memory was extracted from.
  */
 export interface EntityReference {
     /**
@@ -311,6 +335,40 @@ export enum MemoryScope {
 }
 
 /**
+ * Telemetry + hash-gate for the Memory Agent derivation of this memory.
+ */
+export interface MemoryStats {
+    derivedMetricCount?: number;
+    derivedTermCount?:   number;
+    /**
+     * Error message from the most recent failed Memory Agent derivation run, if any.
+     */
+    error?:       string;
+    lastRunAt?:   number;
+    reusedCount?: number;
+    /**
+     * Hash of the ontology-relevant content last processed.
+     */
+    sourceHash?: string;
+    /**
+     * Status of the most recent Memory Agent derivation run on this memory.
+     */
+    status?: MemoryProcessingStatus;
+}
+
+/**
+ * Status of the most recent Memory Agent derivation run on this memory.
+ *
+ * Lifecycle status of the asynchronous Memory Agent derivation for a memory.
+ */
+export enum MemoryProcessingStatus {
+    Failed = "Failed",
+    Processed = "Processed",
+    Processing = "Processing",
+    Queued = "Queued",
+}
+
+/**
  * High-level type of reusable memory.
  */
 export enum MemoryType {
@@ -370,7 +428,9 @@ export enum ShareVisibility {
  */
 export enum SourceType {
     ChatPromotion = "ChatPromotion",
+    FileExtraction = "FileExtraction",
     Manual = "Manual",
+    PageExtraction = "PageExtraction",
     RememberRequest = "RememberRequest",
 }
 

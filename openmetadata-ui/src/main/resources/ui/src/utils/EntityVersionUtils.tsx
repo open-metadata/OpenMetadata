@@ -37,7 +37,7 @@ import {
   getRemovedDiffElement,
   getTextDiffElements,
 } from './EntityDiffUtils';
-import { getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
 import * as Pure from './EntityVersionUtilsPure';
 import { t } from './i18next/LocalUtil';
 import { isValidJSONString } from './StringUtils';
@@ -57,59 +57,6 @@ const OwnerLabel = withSuspenseFallback(
     )
   )
 );
-
-// Re-export everything from EntityDiffPureUtils for backward compatibility
-export {
-  getAllChangedEntityNames,
-  getAllDiffByFieldName,
-  getChangeColumnNameFromDiffValue,
-  getChangedEntityName,
-  getChangedEntityNewValue,
-  getChangedEntityOldValue,
-  getDiffByFieldName,
-  isEndsWithField,
-} from './EntityDiffPureUtils';
-// Re-export everything from EntityDiffUtils for backward compatibility
-export {
-  getAddedDiffElement,
-  getDiffDisplayValue,
-  getDiffValue,
-  getNormalDiffElement,
-  getRemovedDiffElement,
-  getTextDiff,
-  getTextDiffCustomProperty,
-  getTextDiffElements,
-  getUpdatedExtensionDiffFields,
-} from './EntityDiffUtils';
-// Re-export everything from EntityVersionUtilsPure for backward compatibility
-export {
-  addDeletedColumnsDiff,
-  getBasicEntityInfoFromVersionData,
-  getChangedEntityStatus,
-  getColumnsDataWithVersionChanges,
-  getColumnsDiff,
-  getCommonDiffsFromVersionData,
-  getCommonExtraInfoForVersionDetails,
-  getConstraintChanges,
-  getDomainDiff,
-  getEntityDescriptionDiff,
-  getEntityReferenceDiffFromFieldName,
-  getEntityTagDiff,
-  getEntityVersionByField,
-  getEntityVersionTags,
-  getGlossaryTermApprovalText,
-  getMutuallyExclusiveDiff,
-  getMutuallyExclusiveDiffLabel,
-  getNewColumnFromColDiff,
-  getOwnerDiff,
-  getParameterValuesDiff,
-  getStringEntityDiff,
-  getSummaryText,
-  getTagsDiff,
-  isMajorVersion,
-  removeDuplicateTags,
-  summaryFormatter,
-} from './EntityVersionUtilsPure';
 
 const getOwnerLabelName = (
   reviewer: EntityReference,

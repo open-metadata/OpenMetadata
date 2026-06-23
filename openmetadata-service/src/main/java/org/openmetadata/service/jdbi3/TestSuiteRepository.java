@@ -200,10 +200,11 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   public void setInheritedFields(TestSuite testSuite, EntityUtil.Fields fields) {
     if (Boolean.TRUE.equals(testSuite.getBasic()) && testSuite.getBasicEntityReference() != null) {
       Table table =
-          Entity.getEntity(
-              TABLE, testSuite.getBasicEntityReference().getId(), "owners,domains", ALL);
-      inheritOwners(testSuite, fields, table);
-      inheritDomains(testSuite, fields, table);
+          Entity.getEntityOrNull(testSuite.getBasicEntityReference(), "owners,domains", ALL);
+      if (table != null) {
+        inheritOwners(testSuite, fields, table);
+        inheritDomains(testSuite, fields, table);
+      }
     }
   }
 
@@ -245,8 +246,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
     return records.stream()
         .filter(r -> TEST_CASE.equals(r.getToEntity()))
+        .filter(rel -> idToRefMap.get(rel.getToId()) != null)
         .map(rel -> Map.entry(UUID.fromString(rel.getFromId()), idToRefMap.get(rel.getToId())))
-        .filter(entry -> entry.getValue() != null)
         .collect(
             Collectors.groupingBy(
                 Map.Entry::getKey, Collectors.mapping(Map.Entry::getValue, Collectors.toList())));

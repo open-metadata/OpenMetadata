@@ -78,6 +78,7 @@ from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.bulkOperationResult import BulkOperationResult
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.steps import Sink
@@ -87,7 +88,10 @@ from metadata.ingestion.models.data_insight import OMetaDataInsightSample
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
+from metadata.ingestion.models.ometa_lineage import (
+    OMetaFQNLineageRequest,
+    OMetaLineageRequest,
+)
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.models.patch_request import (
     ALLOWED_COMMON_PATCH_FIELDS,
@@ -549,6 +553,45 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         return Either(right=created_lineage["entity"]["fullyQualifiedName"])
 
     @_run_dispatch.register
+    def write_fqn_lineage(self, add_lineage: OMetaFQNLineageRequest) -> Either[dict[str, Any]]:
+        created_lineage = self.metadata.add_lineage_by_name(
+            from_entity_fqn=add_lineage.from_entity_fqn,
+            from_entity_type=add_lineage.from_entity_type,
+            to_entity_fqn=add_lineage.to_entity_fqn,
+            to_entity_type=add_lineage.to_entity_type,
+            lineage_details=add_lineage.lineage_details,
+            check_patch=True,
+        )
+        if not created_lineage or created_lineage.get("error"):
+            error = (created_lineage or {}).get("error", "Failed to add lineage - no response")
+            return Either(
+                left=StackTraceError(name="AddLineageRequestError", error=error, stackTrace=None),
+                right=None,
+            )
+
+        return Either(left=None, right=created_lineage["entity"]["fullyQualifiedName"])
+
+    def _delete_lineage_by_source_reference(self, entity_reference: EntityReference, source: str) -> None:
+        if entity_reference.id:
+            self.metadata.delete_lineage_by_source(
+                entity_type=entity_reference.type,
+                entity_id=model_str(entity_reference.id),
+                source=source,
+            )
+            return
+        if entity_reference.fullyQualifiedName:
+            self.metadata.delete_lineage_by_source_by_name(
+                entity_type=entity_reference.type,
+                entity_fqn=model_str(entity_reference.fullyQualifiedName),
+                source=source,
+            )
+            return
+        logger.warning(
+            f"Cannot delete lineage by source: entity reference for type '{entity_reference.type}' "
+            "has neither id nor fullyQualifiedName"
+        )
+
+    @_run_dispatch.register
     def write_override_lineage(self, add_lineage: OMetaLineageRequest) -> Either[dict[str, Any]]:
         """
         Writes the override lineage for the given lineage request.
@@ -559,30 +602,42 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         Returns:
             Either[Dict[str, Any]]: The result of the dispatch operation.
         """
-        if (
-            add_lineage.override_lineage is True
-            and add_lineage.lineage_request.edge.lineageDetails
-            and add_lineage.lineage_request.edge.lineageDetails.source
+        if add_lineage.override_lineage is True and (
+            add_lineage.lineage_request.lineage_details
+            if isinstance(add_lineage.lineage_request, OMetaFQNLineageRequest)
+            else add_lineage.lineage_request.edge.lineageDetails
         ):
-            if (
-                add_lineage.lineage_request.edge.lineageDetails.pipeline
-                and add_lineage.lineage_request.edge.lineageDetails.source
-                in (LineageSource.PipelineLineage, LineageSource.OpenLineage)
+            lineage_request = add_lineage.lineage_request
+            lineage_details = (
+                lineage_request.lineage_details
+                if isinstance(lineage_request, OMetaFQNLineageRequest)
+                else lineage_request.edge.lineageDetails
+            )
+            if not lineage_details or not lineage_details.source:
+                return self._run_dispatch(lineage_request)
+            if lineage_details.pipeline and lineage_details.source in (
+                LineageSource.PipelineLineage,
+                LineageSource.OpenLineage,
             ):
-                self.metadata.delete_lineage_by_source(
-                    entity_type="pipeline",
-                    entity_id=str(add_lineage.lineage_request.edge.lineageDetails.pipeline.id.root),
-                    source=add_lineage.lineage_request.edge.lineageDetails.source.value,
+                self._delete_lineage_by_source_reference(
+                    lineage_details.pipeline,
+                    lineage_details.source.value,
+                )
+            elif isinstance(lineage_request, OMetaFQNLineageRequest):
+                self.metadata.delete_lineage_by_source_by_name(
+                    entity_type=lineage_request.to_entity_type,
+                    entity_fqn=lineage_request.to_entity_fqn,
+                    source=lineage_details.source.value,
                 )
             else:
-                self.metadata.delete_lineage_by_source(
-                    entity_type=add_lineage.lineage_request.edge.toEntity.type,
-                    entity_id=str(add_lineage.lineage_request.edge.toEntity.id.root),
-                    source=add_lineage.lineage_request.edge.lineageDetails.source.value,
+                self._delete_lineage_by_source_reference(
+                    lineage_request.edge.toEntity,
+                    lineage_details.source.value,
                 )
         lineage_response = self._run_dispatch(add_lineage.lineage_request)
         if lineage_response and lineage_response.right is not None and add_lineage.entity_fqn and add_lineage.entity:
             self.metadata.patch_lineage_processed_flag(entity=add_lineage.entity, fqn=add_lineage.entity_fqn)
+        return lineage_response
 
     @_run_dispatch.register
     def write_barrier(self, record: Barrier) -> Either[Entity]:

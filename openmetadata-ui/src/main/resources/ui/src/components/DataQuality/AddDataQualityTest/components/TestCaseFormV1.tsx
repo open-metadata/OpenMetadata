@@ -96,26 +96,26 @@ import {
   getListTestCaseBySearch,
   getListTestDefinitions,
 } from '../../../../rest/testAPI';
+import { getScheduleOptionsFromSchedules } from '../../../../utils/CronExpressionUtils';
 import {
   convertSearchSourceToTable,
   getServiceTypeForTestDefinition,
-} from '../../../../utils/DataQuality/DataQualityUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+} from '../../../../utils/DataQuality/DataQualityPureUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { filterSelectOptions } from '../../../../utils/FilterQueryUtils';
 import {
   createScrollToErrorHandler,
-  generateFormFields,
   getPopupContainer,
-} from '../../../../utils/formUtils';
+} from '../../../../utils/formPureUtils';
+import { generateFormFields } from '../../../../utils/formUtils';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
-import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
-import { getIngestionName } from '../../../../utils/ServiceUtils';
+import { getIngestionName } from '../../../../utils/ServicePureUtils';
 import {
   escapeESReservedCharacters,
   generateUUID,
   replaceAllSpacialCharWith_,
 } from '../../../../utils/StringUtils';
-import { generateEntityLink } from '../../../../utils/TableUtils';
+import { generateEntityLink } from '../../../../utils/TablePureUtils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';
 import SelectionCardGroup from '../../../common/SelectionCardGroup/SelectionCardGroup';
@@ -133,7 +133,6 @@ import {
   TestLevel,
 } from './TestCaseFormV1.interface';
 import './TestCaseFormV1.less';
-
 // =============================================
 // MAIN COMPONENT
 // =============================================

@@ -15,7 +15,8 @@ import {
   FormItemLayout,
   HelperTextType,
 } from '../interface/FormUtils.interface';
-import { createScrollToErrorHandler, getField } from './formUtils';
+import { createScrollToErrorHandler } from './formPureUtils';
+import { getField } from './formUtils';
 
 describe('formUtils', () => {
   describe('getField', () => {

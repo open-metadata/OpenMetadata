@@ -200,6 +200,21 @@ class CreateTaskTest {
     assertFalse(CreateTask.isTerminalTaskStatus(null));
   }
 
+  @Test
+  void testTaskRepositoryActiveStatusesMatchTerminalPredicate() {
+    List<TaskEntityStatus> expected =
+        java.util.Arrays.stream(TaskEntityStatus.values())
+            .filter(s -> !CreateTask.isTerminalTaskStatus(s))
+            .toList();
+    assertEquals(
+        expected,
+        TaskRepository.NON_TERMINAL_TASK_STATUSES,
+        () ->
+            "TaskRepository.NON_TERMINAL_TASK_STATUSES drifted from CreateTask.isTerminalTaskStatus. "
+                + "Add the new non-terminal status to NON_TERMINAL_TASK_STATUSES so the duplicate-DAR "
+                + "guard keeps treating it as active.");
+  }
+
   // ---- resolveEffectiveDueDate ----
 
   @Test
@@ -584,5 +599,114 @@ class CreateTaskTest {
   @Test
   void testParseMillisFromIso8601DurationReturnsFallbackForNullFallback() {
     assertNull(CreateTask.parseMillisFromIso8601Duration("garbage", null));
+  }
+
+  // ---- isSupersedablePriorApprovalTask ----
+
+  @Test
+  void testIsSupersedableWhenPriorBelongsToEarlierRunOfSameWorkflow() {
+    UUID workflowDefinitionId = UUID.randomUUID();
+    Task prior =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withWorkflowDefinitionId(workflowDefinitionId)
+            .withWorkflowInstanceId(UUID.randomUUID());
+
+    assertTrue(
+        CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, UUID.randomUUID()));
+  }
+
+  @Test
+  void testIsNotSupersedableWhenNoPriorTaskExists() {
+    assertFalse(
+        CreateTask.isSupersedablePriorApprovalTask(null, UUID.randomUUID(), UUID.randomUUID()));
+  }
+
+  @Test
+  void testIsNotSupersedableWhenPriorHasNoWorkflowInstance() {
+    UUID workflowDefinitionId = UUID.randomUUID();
+    Task prior =
+        new Task().withId(UUID.randomUUID()).withWorkflowDefinitionId(workflowDefinitionId);
+
+    assertFalse(
+        CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, UUID.randomUUID()));
+  }
+
+  @Test
+  void testIsNotSupersedableWhenPriorIsTheSameRun() {
+    UUID workflowDefinitionId = UUID.randomUUID();
+    UUID workflowInstanceId = UUID.randomUUID();
+    Task prior =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withWorkflowDefinitionId(workflowDefinitionId)
+            .withWorkflowInstanceId(workflowInstanceId);
+
+    assertFalse(
+        CreateTask.isSupersedablePriorApprovalTask(
+            prior, workflowDefinitionId, workflowInstanceId));
+  }
+
+  @Test
+  void testIsNotSupersedableAcrossDifferentWorkflowDefinitions() {
+    Task prior =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withWorkflowDefinitionId(UUID.randomUUID())
+            .withWorkflowInstanceId(UUID.randomUUID());
+
+    assertFalse(
+        CreateTask.isSupersedablePriorApprovalTask(prior, UUID.randomUUID(), UUID.randomUUID()));
+  }
+
+  @Test
+  void testIsNotSupersedableWhenCurrentWorkflowDefinitionUnknown() {
+    Task prior =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withWorkflowDefinitionId(UUID.randomUUID())
+            .withWorkflowInstanceId(UUID.randomUUID());
+
+    assertFalse(CreateTask.isSupersedablePriorApprovalTask(prior, null, UUID.randomUUID()));
+  }
+
+  @Test
+  void testIsNotSupersedableWhenCurrentWorkflowInstanceUnknown() {
+    UUID workflowDefinitionId = UUID.randomUUID();
+    Task prior =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withWorkflowDefinitionId(workflowDefinitionId)
+            .withWorkflowInstanceId(UUID.randomUUID());
+
+    assertFalse(CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, null));
+  }
+
+  @Test
+  void testIsNotSupersedableWhenPriorTaskIsTerminal() {
+    UUID workflowDefinitionId = UUID.randomUUID();
+    Task prior =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withWorkflowDefinitionId(workflowDefinitionId)
+            .withWorkflowInstanceId(UUID.randomUUID())
+            .withStatus(TaskEntityStatus.Cancelled);
+
+    assertFalse(
+        CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, UUID.randomUUID()));
+  }
+
+  @Test
+  void testIsSupersedableWhenPriorTaskIsApprovedButNotYetTerminal() {
+    UUID workflowDefinitionId = UUID.randomUUID();
+    Task prior =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withWorkflowDefinitionId(workflowDefinitionId)
+            .withWorkflowInstanceId(UUID.randomUUID())
+            .withStatus(TaskEntityStatus.Approved);
+
+    assertTrue(
+        CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, UUID.randomUUID()));
   }
 }

@@ -37,7 +37,6 @@ import { CurrentTourPageType } from '../../enums/tour.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useSearchStore } from '../../hooks/useSearchStore';
-import { getNLPEnabledStatus } from '../../rest/searchAPI';
 import { addToRecentSearched } from '../../utils/RecentActivityUtils';
 import {
   getExplorePath,
@@ -59,8 +58,7 @@ export const GlobalSearchBar = () => {
         currentUser: state.currentUser,
       }))
     );
-  const { isNLPEnabled, isNLPActive, setNLPActive, setNLPEnabled } =
-    useSearchStore();
+  const { isNLPEnabled, isNLPActive, setNLPActive, initNLP } = useSearchStore();
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const { t, i18n } = useTranslation();
   const [isSearchBlur, setIsSearchBlur] = useState<boolean>(true);
@@ -186,17 +184,11 @@ export const GlobalSearchBar = () => {
     }
   };
 
-  const fetchNLPEnabledStatus = useCallback(() => {
-    if (!isEmpty(currentUser)) {
-      getNLPEnabledStatus().then((enabled) => {
-        setNLPEnabled(enabled);
-      });
-    }
-  }, [setNLPEnabled, currentUser]);
-
   useEffect(() => {
-    fetchNLPEnabledStatus();
-  }, [fetchNLPEnabledStatus]);
+    if (!isEmpty(currentUser)) {
+      initNLP();
+    }
+  }, [currentUser]);
 
   return (
     <div

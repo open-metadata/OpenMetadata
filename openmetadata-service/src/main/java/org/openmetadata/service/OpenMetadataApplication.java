@@ -76,27 +76,29 @@ import org.hibernate.validator.resourceloading.PlatformResourceBundleLocator;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.jetbrains.annotations.NotNull;
+import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.configuration.AISettings;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
+import org.openmetadata.schema.configuration.McpChatSettings;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.search.IndexMappingLoader;
-import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.McpServerProvider;
 import org.openmetadata.service.apps.bundles.rdf.distributed.RdfDistributedJobParticipant;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.DistributedJobParticipant;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
-import org.openmetadata.service.audit.AuditLogEventPublisher;
 import org.openmetadata.service.audit.AuditLogRepository;
+import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.events.EventFilter;
-import org.openmetadata.service.events.EventPubSub;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.scheduled.ServicesStatusJobHandler;
@@ -120,14 +122,13 @@ import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.jobs.JobHandlerRegistry;
 import org.openmetadata.service.limits.DefaultLimits;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.llm.LLMClientHolder;
 import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
 import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
+import org.openmetadata.service.mcpclient.McpChatServiceHolder;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
-import org.openmetadata.service.monitoring.EventMonitor;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
-import org.openmetadata.service.monitoring.EventMonitorFactory;
-import org.openmetadata.service.monitoring.EventMonitorPublisher;
 import org.openmetadata.service.monitoring.JettyMetricsIntegration;
 import org.openmetadata.service.monitoring.JettyQoSIntegration;
 import org.openmetadata.service.monitoring.UserMetricsServlet;
@@ -196,7 +197,7 @@ import org.quartz.SchedulerException;
     info =
         @Info(
             title = "OpenMetadata APIs",
-            version = "1.9.8",
+            version = "2.0.0-SNAPSHOT",
             description = "Common types and API definition for OpenMetadata",
             contact =
                 @Contact(
@@ -258,6 +259,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Initialize the IndexMapping class
     IndexMappingLoader.init(catalogConfig.getElasticSearchConfiguration());
+
+    // Initialize the shared LLM completion client from llmConfiguration
+    LLMClientHolder.initialize(catalogConfig.getLlmConfiguration());
+    // Publish the platform-wide LLM configuration for features that need completions
+    LlmConfigHolder.initialize(catalogConfig.getLlmConfiguration());
 
     // init for dataSourceFactory
     DatasourceConfig.initialize(catalogConfig.getDataSourceFactory().getDriverClass());
@@ -366,9 +372,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Health Check
     registerHealthCheck(environment);
 
-    // start event hub before registering publishers
-    EventPubSub.start();
-
     ApplicationHandler.initialize(catalogConfig);
     IndexResource.initialize(catalogConfig);
     registerResources(catalogConfig, environment, jdbi);
@@ -405,9 +408,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     registerDistributedJobParticipant(environment, jdbi);
     registerDistributedRdfJobParticipant(environment, jdbi);
 
-    // Register Event publishers
-    registerEventPublisher(catalogConfig);
-
     // start authorizer after event publishers
     // authorizer creates admin/bot users, ES publisher should start before to index users created
     // by authorizer
@@ -428,6 +428,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register MCP (depends on Auth Handlers for SSO)
     registerMCPServer(catalogConfig, environment);
+    initializeMcpChatService();
 
     // Handle Services Jobs
     registerHealthCheckJobs(catalogConfig);
@@ -443,7 +444,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       return;
     }
     try {
-      if (ApplicationContext.getInstance().getAppIfExists("McpApplication") != null) {
+      if (isMcpServerEnabled()) {
         Class<?> mcpServerClass = Class.forName("org.openmetadata.mcp.McpServer");
         McpServerProvider mcpServer =
             (McpServerProvider) mcpServerClass.getDeclaredConstructor().newInstance();
@@ -456,6 +457,20 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     } catch (Exception ex) {
       LOG.error("Error initializing MCP server", ex);
     }
+  }
+
+  private boolean isMcpServerEnabled() {
+    MCPConfiguration mcpConfig =
+        SettingsCache.getSettingOrDefault(
+            SettingsType.MCP_CONFIGURATION, null, MCPConfiguration.class);
+    return mcpConfig != null && Boolean.TRUE.equals(mcpConfig.getEnabled());
+  }
+
+  private void initializeMcpChatService() {
+    AISettings aiSettings =
+        SettingsCache.getSettingOrDefault(SettingsType.AI_SETTINGS, null, AISettings.class);
+    McpChatSettings mcpChat = aiSettings == null ? null : aiSettings.getMcpChat();
+    McpChatServiceHolder.initialize(LlmConfigHolder.get(), mcpChat);
   }
 
   protected @NotNull JobHandlerRegistry getJobHandlerRegistry() {
@@ -1066,22 +1081,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             });
   }
 
-  private void registerEventPublisher(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
-
-    EventPubSub.addEventHandler(new AuditLogEventPublisher(auditLogRepository));
-
-    if (openMetadataApplicationConfig.getEventMonitorConfiguration() != null) {
-      final EventMonitor eventMonitor =
-          EventMonitorFactory.createEventMonitor(
-              openMetadataApplicationConfig.getEventMonitorConfiguration(),
-              openMetadataApplicationConfig.getClusterName());
-      EventMonitorPublisher eventMonitorPublisher =
-          new EventMonitorPublisher(
-              openMetadataApplicationConfig.getEventMonitorConfiguration(), eventMonitor);
-      EventPubSub.addEventHandler(eventMonitorPublisher);
-    }
-  }
-
   private void registerResources(
       OpenMetadataApplicationConfig config, Environment environment, Jdbi jdbi) {
     CollectionRegistry.initialize();
@@ -1232,7 +1231,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     public void stop() throws InterruptedException, SchedulerException {
       LOG.info("Cache with Id Stats {}", EntityRepository.CACHE_WITH_ID.stats());
       LOG.info("Cache with name Stats {}", EntityRepository.CACHE_WITH_NAME.stats());
-      EventPubSub.shutdown();
       EventSubscriptionScheduler.shutDown();
       AsyncService.getInstance().shutdown();
       EntityLifecycleEventDispatcher.getInstance().shutdown();

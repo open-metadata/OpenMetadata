@@ -24,14 +24,14 @@ import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
-} from '../../../../utils/EntityVersionUtils';
+} from '../../../../utils/EntityDiffPureUtils';
 import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
 import {
   EditIconButton,
   PlusIconButton,
 } from '../../../common/IconButtons/EditIconButton';
 import TagButton from '../../../common/TagButton/TagButton.component';
-import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 
 const GlossaryTermSynonyms = () => {
   const [isViewMode, setIsViewMode] = useState<boolean>(true);

@@ -66,7 +66,7 @@ jest.mock('../utils/EdgeStyleUtils', () => ({
   }),
 }));
 
-jest.mock('../utils/EntityLineageUtils', () => ({
+jest.mock('../utils/EntityLineageEdgeUtils', () => ({
   getEdgePathData: jest.fn().mockReturnValue({
     edgePath: 'M 0,0 C 100,0 100,100 200,100',
     edgeCenterX: 100,

@@ -10,16 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Dropdown } from '@/components/base/dropdown/dropdown';
+import { cx, sortCx } from '@/utils/cx';
 import { ChevronRight, DotsHorizontal } from '@untitledui/icons';
-import type { FC, Key, ReactNode } from 'react';
+import type { FC, HTMLAttributes, Key, ReactNode } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useReducer,
+  useRef,
+  useState,
+} from 'react';
 import {
   Breadcrumb as AriaBreadcrumb,
   Breadcrumbs as AriaBreadcrumbs,
   Button as AriaButton,
   Link as AriaLink,
 } from 'react-aria-components';
-import { Dropdown } from '@/components/base/dropdown/dropdown';
-import { cx, sortCx } from '@/utils/cx';
 
 export type BreadcrumbsType = 'text' | 'button-white' | 'button-gray';
 
@@ -32,13 +39,15 @@ export interface BreadcrumbItemType {
   id: Key;
   /** The text shown for the crumb. */
   label: ReactNode;
+  /** Accessible label for icon-only crumbs. */
+  ariaLabel?: string;
   /** Navigation target. Omit on the current (last) page. */
   href?: string;
   /** Optional leading icon, e.g. a home icon on the first crumb. */
   icon?: FC<{ className?: string }>;
 }
 
-export interface BreadcrumbsProps {
+export interface BreadcrumbsProps extends HTMLAttributes<HTMLElement> {
   /** Ordered list of crumbs; the last item is treated as the current page. */
   items: BreadcrumbItemType[];
   /** Visual style of the crumbs. */
@@ -50,13 +59,16 @@ export interface BreadcrumbsProps {
   /**
    * Maximum number of crumbs to render inline. When the list is longer, the
    * middle crumbs collapse into a `…` menu, keeping the first and last crumbs
-   * visible. Omit to always render every crumb.
+   * visible. Omit to always render every crumb. Ignored when `autoCollapse`
+   * is enabled.
    */
   maxItems?: number;
-  /** Accessible label for the navigation landmark. */
-  'aria-label'?: string;
-  /** Class name for the root navigation element. */
-  className?: string;
+  /**
+   * Keep the trail on a single line and automatically collapse the middle
+   * crumbs into a `…` menu when the container is too narrow to fit them all.
+   * Overrides `maxItems`.
+   */
+  autoCollapse?: boolean;
   /**
    * Called with the item id when a non-current crumb is activated. When
    * provided, native `href` navigation is suppressed so the callback alone
@@ -172,7 +184,11 @@ const CrumbLabel = ({
   const Icon = item.icon;
 
   return (
-    <span className={cx('tw:flex tw:items-center', sizes[size].gap)}>
+    <span
+      className={cx(
+        'tw:flex tw:items-center tw:whitespace-nowrap',
+        sizes[size].gap
+      )}>
       {Icon && <Icon className={cx('tw:shrink-0', sizes[size].icon)} />}
       {item.label}
     </span>
@@ -222,26 +238,79 @@ export const Breadcrumbs = ({
   divider = 'chevron',
   size = 'sm',
   maxItems,
+  autoCollapse = false,
   className,
   onAction,
+  'aria-label': ariaLabel = 'Breadcrumb',
   ...props
 }: BreadcrumbsProps) => {
-  const displayItems = collapseItems(items, maxItems);
-  const padding = type === 'text' ? '' : sizes[size].padding;
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [fittedCount, setFittedCount] = useState(items.length);
+  const [measureKey, requestMeasure] = useReducer((key: number) => key + 1, 0);
 
-  return (
+  const padding = type === 'text' ? '' : sizes[size].padding;
+  const displayItems = collapseItems(
+    items,
+    autoCollapse ? fittedCount : maxItems
+  );
+
+  // While the trail overflows its container, drop one more crumb into the `…`
+  // menu. Re-runs as `fittedCount` decreases (the convergence loop) and whenever
+  // a re-measure is requested, so it settles once the trail fits (or only the
+  // first + last remain). The `ol` is the measured element — react-aria renders
+  // a 0-width <template> as the wrapper's first child, so the list must be
+  // queried, not read positionally.
+  useLayoutEffect(() => {
+    const list = containerRef.current?.querySelector('ol');
+    if (
+      autoCollapse &&
+      list &&
+      list.scrollWidth > list.clientWidth + 1 &&
+      fittedCount > 2
+    ) {
+      setFittedCount(fittedCount - 1);
+    }
+  }, [autoCollapse, fittedCount, items, measureKey]);
+
+  // Reset to the full trail and re-measure on mount, on a container resize, and
+  // once web fonts load (label widths can change after the first layout, which
+  // would otherwise leave a stale measurement). The reset lets the trail
+  // re-expand when there is more room.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!autoCollapse || !el) {
+      return undefined;
+    }
+
+    const remeasure = () => {
+      setFittedCount(items.length);
+      requestMeasure();
+    };
+    const observer = new ResizeObserver(remeasure);
+    observer.observe(el);
+    document.fonts?.ready.then(remeasure).catch(() => undefined);
+
+    return () => observer.disconnect();
+  }, [autoCollapse, items.length]);
+
+  const list = (
     <AriaBreadcrumbs
-      aria-label={props['aria-label'] ?? 'Breadcrumb'}
+      aria-label={ariaLabel}
       className={cx(
-        'tw:flex tw:items-center',
+        'tw:flex tw:flex-nowrap tw:items-center',
+        autoCollapse && 'tw:w-full tw:min-w-0 tw:overflow-hidden',
         sizes[size].gap,
         sizes[size].text,
         className
       )}
-      items={displayItems}>
+      items={displayItems}
+      {...props}>
       {(item) => (
         <AriaBreadcrumb
-          className={cx('tw:flex tw:items-center', sizes[size].gap)}>
+          className={cx(
+            'tw:flex tw:shrink-0 tw:items-center',
+            sizes[size].gap
+          )}>
           {({ isCurrent }) => (
             <>
               {isEllipsis(item) ? (
@@ -254,6 +323,7 @@ export const Breadcrumbs = ({
                 />
               ) : !isCurrent && (item.href || onAction) ? (
                 <AriaLink
+                  aria-label={item.ariaLabel}
                   className={cx(linkClassName, styles[type].link, padding)}
                   href={onAction ? undefined : item.href}
                   onPress={() => onAction?.(item.id)}>
@@ -276,5 +346,13 @@ export const Breadcrumbs = ({
         </AriaBreadcrumb>
       )}
     </AriaBreadcrumbs>
+  );
+
+  return autoCollapse ? (
+    <div className="tw:w-full tw:min-w-0 tw:overflow-hidden" ref={containerRef}>
+      {list}
+    </div>
+  ) : (
+    list
   );
 };
