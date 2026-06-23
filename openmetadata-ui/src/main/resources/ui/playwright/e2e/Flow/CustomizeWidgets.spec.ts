@@ -310,7 +310,7 @@ test('My Data Widget', async ({ page }) => {
       entitySelector: '[data-testid^="My-Data-"]',
       urlPattern: '/', // My Data can navigate to various entity types
       apiResponseUrl: '/api/v1/search/query',
-      searchQuery: `index=${SearchIndex.ALL}`,
+      searchQuery: `index=${SearchIndex.DATA_ASSET}`,
     });
   });
 
