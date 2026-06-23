@@ -655,6 +655,7 @@ export const DataAssetsHeader = ({
           <div className="tw:min-w-0 tw:flex-1">
             <TitleBreadcrumbSkeleton loading={isBreadcrumbLoading}>
               <HeaderBreadcrumb
+                autoCollapse
                 className="tw:mb-0"
                 items={[
                   ...breadcrumbs.map((link) => ({

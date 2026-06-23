@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 import { DataType } from '../../../src/generated/entity/data/table';
 import { CONTAINER_CHILDREN } from '../../constant/contianer';
 import { ContainerClass } from '../../support/entity/ContainerClass';
@@ -54,6 +54,50 @@ const S3_SERVICE_CONFIG = {
 };
 
 test.slow(true);
+
+// The DataAssetsHeader breadcrumb auto-collapses: when the trail is too wide for
+// its row, the middle crumbs move into a `…` overflow menu (first + current crumbs
+// always stay inline). These helpers read/navigate ancestors whether a crumb is
+// rendered inline or hidden behind that menu, so the assertions stay valid at any
+// viewport width.
+const openBreadcrumbOverflowMenu = async (page: Page) => {
+  await page
+    .getByTestId('breadcrumb')
+    .getByRole('button', { name: 'Show hidden breadcrumbs' })
+    .click();
+
+  return page.getByRole('menu', { name: 'Hidden breadcrumbs' });
+};
+
+const expectBreadcrumbToContainAncestor = async (page: Page, name: string) => {
+  const breadcrumb = page.getByTestId('breadcrumb');
+  await expect(breadcrumb).toBeVisible();
+
+  const inlineCrumb = breadcrumb.getByText(name);
+
+  if ((await inlineCrumb.count()) > 0) {
+    await expect(inlineCrumb.first()).toBeVisible();
+  } else {
+    const menu = await openBreadcrumbOverflowMenu(page);
+    await expect(menu).toContainText(name);
+    await page.keyboard.press('Escape');
+    await expect(menu).toBeHidden();
+  }
+};
+
+const clickBreadcrumbAncestor = async (page: Page, name: string) => {
+  const breadcrumb = page.getByTestId('breadcrumb');
+  await expect(breadcrumb).toBeVisible();
+
+  const inlineLink = breadcrumb.getByRole('link', { name });
+
+  if ((await inlineLink.count()) > 0) {
+    await inlineLink.click();
+  } else {
+    await openBreadcrumbOverflowMenu(page);
+    await page.getByRole('menuitem', { name }).click();
+  }
+};
 
 test.describe('Container entity specific tests ', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
@@ -406,20 +450,19 @@ test.describe('Deeply nested container navigation', () => {
     await test.step('breadcrumb shows all 4 ancestor levels at L4', async () => {
       const breadcrumb = page.getByTestId('breadcrumb');
 
+      // service is the first crumb — always kept inline even when the middle
+      // ancestors auto-collapse into the `…` overflow menu.
       await expect(breadcrumb).toContainText(serviceName);
-      await expect(breadcrumb).toContainText(deepContainer1Name);
-      await expect(breadcrumb).toContainText(deepContainer2Name);
-      await expect(breadcrumb).toContainText(deepContainer3Name);
+      await expectBreadcrumbToContainAncestor(page, deepContainer1Name);
+      await expectBreadcrumbToContainAncestor(page, deepContainer2Name);
+      await expectBreadcrumbToContainAncestor(page, deepContainer3Name);
     });
 
     await test.step('clicking L3 breadcrumb link navigates to L3 and updates page', async () => {
       const containerResponse = page.waitForResponse(
         '/api/v1/containers/name/*'
       );
-      await page
-        .getByTestId('breadcrumb')
-        .getByRole('link', { name: deepContainer3Name })
-        .click();
+      await clickBreadcrumbAncestor(page, deepContainer3Name);
       await containerResponse;
       await waitForAllLoadersToDisappear(page);
 
@@ -432,8 +475,8 @@ test.describe('Deeply nested container navigation', () => {
 
       const breadcrumb = page.getByTestId('breadcrumb');
       await expect(breadcrumb).toContainText(serviceName);
-      await expect(breadcrumb).toContainText(deepContainer1Name);
-      await expect(breadcrumb).toContainText(deepContainer2Name);
+      await expectBreadcrumbToContainAncestor(page, deepContainer1Name);
+      await expectBreadcrumbToContainAncestor(page, deepContainer2Name);
       await expect(breadcrumb).not.toContainText(deepContainer4Name);
     });
 
@@ -441,10 +484,7 @@ test.describe('Deeply nested container navigation', () => {
       const containerResponse = page.waitForResponse(
         '/api/v1/containers/name/*'
       );
-      await page
-        .getByTestId('breadcrumb')
-        .getByRole('link', { name: deepContainer2Name })
-        .click();
+      await clickBreadcrumbAncestor(page, deepContainer2Name);
       await containerResponse;
       await waitForAllLoadersToDisappear(page);
 
@@ -457,9 +497,53 @@ test.describe('Deeply nested container navigation', () => {
 
       const breadcrumb = page.getByTestId('breadcrumb');
       await expect(breadcrumb).toContainText(serviceName);
-      await expect(breadcrumb).toContainText(deepContainer1Name);
+      await expectBreadcrumbToContainAncestor(page, deepContainer1Name);
       await expect(breadcrumb).not.toContainText(deepContainer3Name);
       await expect(breadcrumb).not.toContainText(deepContainer4Name);
+    });
+  });
+
+  test('auto-collapses the breadcrumb into an overflow menu on a narrow viewport', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 640, height: 900 });
+
+    const initialContainerResponse = page.waitForResponse(
+      '/api/v1/containers/name/*'
+    );
+    await page.goto(`/container/${deepContainer4Fqn}`);
+    await initialContainerResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    const breadcrumb = page.getByTestId('breadcrumb');
+
+    await test.step('first and current crumbs stay inline, middle ones collapse', async () => {
+      await expect(breadcrumb).toContainText(serviceName);
+      await expect(breadcrumb).toContainText(deepContainer4Name);
+      await expect(breadcrumb).not.toContainText(deepContainer1Name);
+    });
+
+    await test.step('overflow menu reveals the hidden ancestors', async () => {
+      const menu = await openBreadcrumbOverflowMenu(page);
+
+      await expect(menu).toContainText(deepContainer1Name);
+      await expect(menu).toContainText(deepContainer2Name);
+
+      await page.keyboard.press('Escape');
+      await expect(menu).toBeHidden();
+    });
+
+    await test.step('navigating from the overflow menu updates the page', async () => {
+      const containerResponse = page.waitForResponse(
+        '/api/v1/containers/name/*'
+      );
+      await clickBreadcrumbAncestor(page, deepContainer1Name);
+      await containerResponse;
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page.getByTestId('entity-header-name')).toContainText(
+        deepContainer1Name
+      );
     });
   });
 });
