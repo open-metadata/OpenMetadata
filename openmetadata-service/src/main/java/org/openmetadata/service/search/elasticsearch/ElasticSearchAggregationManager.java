@@ -151,13 +151,12 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
       int bucketSize = request.getSize();
       String includeValue = request.getFieldValue().toLowerCase();
       boolean isSearchPattern = SearchUtils.isBestMatchSearchPattern(includeValue);
-      boolean hasSourceFields =
-          request.getSourceFields() != null && !request.getSourceFields().isEmpty();
 
       Map<String, Aggregation> aggregations = new HashMap<>();
 
-      if (isSearchPattern && !hasSourceFields) {
-        buildBestMatchAggregations(aggregations, aggregationField, includeValue, bucketSize);
+      if (isSearchPattern) {
+        buildBestMatchAggregations(
+            aggregations, aggregationField, includeValue, bucketSize, request);
       } else {
         aggregations.put(
             aggregationField, buildSingleAgg(aggregationField, includeValue, bucketSize, request));
@@ -178,7 +177,7 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
       }
 
       String responseJson = serializeSearchResponse(searchResponse);
-      if (isSearchPattern && !hasSourceFields) {
+      if (isSearchPattern) {
         responseJson =
             SearchUtils.mergeBestMatchAggregations(
                 responseJson, aggregationField, bucketSize, mapper);
@@ -191,41 +190,17 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
   }
 
   private void buildBestMatchAggregations(
-      Map<String, Aggregation> aggregations, String field, String containsPattern, int size) {
-    String rawValue = SearchUtils.extractRawSearchValue(containsPattern);
-    String escapedRaw = rawValue.replace(".", "\\.");
-    String prefixPattern = escapedRaw + ".*";
-
+      Map<String, Aggregation> aggregations,
+      String field,
+      String containsPattern,
+      int size,
+      AggregationRequest request) {
+    String escapedRaw = SearchUtils.extractRawSearchValue(containsPattern).replace(".", "\\.");
+    aggregations.put(SearchUtils.exactAggKey(field), buildSingleAgg(field, escapedRaw, 1, request));
     aggregations.put(
-        SearchUtils.exactAggKey(field),
-        Aggregation.of(
-            a ->
-                a.terms(
-                    t ->
-                        t.field(field)
-                            .size(1)
-                            .order(Collections.singletonList(NamedValue.of("_key", SortOrder.Asc)))
-                            .include(tb -> tb.regexp(escapedRaw)))));
+        SearchUtils.prefixAggKey(field), buildSingleAgg(field, escapedRaw + ".*", size, request));
     aggregations.put(
-        SearchUtils.prefixAggKey(field),
-        Aggregation.of(
-            a ->
-                a.terms(
-                    t ->
-                        t.field(field)
-                            .size(size)
-                            .order(Collections.singletonList(NamedValue.of("_key", SortOrder.Asc)))
-                            .include(tb -> tb.regexp(prefixPattern)))));
-    aggregations.put(
-        SearchUtils.containsAggKey(field),
-        Aggregation.of(
-            a ->
-                a.terms(
-                    t ->
-                        t.field(field)
-                            .size(size)
-                            .order(Collections.singletonList(NamedValue.of("_key", SortOrder.Asc)))
-                            .include(tb -> tb.regexp(containsPattern)))));
+        SearchUtils.containsAggKey(field), buildSingleAgg(field, containsPattern, size, request));
   }
 
   private Aggregation buildSingleAgg(

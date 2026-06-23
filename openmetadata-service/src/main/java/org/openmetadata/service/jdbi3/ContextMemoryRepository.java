@@ -27,16 +27,24 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.configuration.AIDeletionPolicy;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.context.MemoryProcessingStatus;
+import org.openmetadata.schema.entity.context.MemoryStats;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.drive.memory.MemoryProcessingEngine;
+import org.openmetadata.service.drive.memory.MemoryReconciler;
 import org.openmetadata.service.resources.context.ContextMemoryResource;
 import org.openmetadata.service.search.vector.ContextMemoryBodyTextContributor;
+import org.openmetadata.service.util.AISettingsUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -50,6 +58,8 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   static final String FIELD_RELATED_ENTITIES = "relatedEntities";
   static final String FIELD_SOURCE_FILE = "sourceFile";
   static final String FIELD_SOURCE_ENTITY = "sourceEntity";
+  static final String FIELD_DERIVED_ENTITIES = "derivedEntities";
+  static final String FIELD_REUSED_ENTITIES = "reusedEntities";
   private static final String PATCH_FIELDS =
       FIELD_PRIMARY_ENTITY
           + ","
@@ -99,6 +109,12 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         entity.setSourceFile(asContextFileRef(source));
       }
     }
+    if (fields.contains(FIELD_DERIVED_ENTITIES)) {
+      entity.setDerivedEntities(getDerivedEntities(entity));
+    }
+    if (fields.contains(FIELD_REUSED_ENTITIES)) {
+      entity.setReusedEntities(getReusedEntities(entity));
+    }
   }
 
   @Override
@@ -114,6 +130,12 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     }
     if (!fields.contains(FIELD_SOURCE_FILE)) {
       entity.setSourceFile(null);
+    }
+    if (!fields.contains(FIELD_DERIVED_ENTITIES)) {
+      entity.setDerivedEntities(null);
+    }
+    if (!fields.contains(FIELD_REUSED_ENTITIES)) {
+      entity.setReusedEntities(null);
     }
   }
 
@@ -255,6 +277,36 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     return source != null && Entity.CONTEXT_FILE.equals(source.getType()) ? source : null;
   }
 
+  /**
+   * Returns the glossary terms and metrics created by the Memory Agent from this memory.
+   * Edge direction: from=term/metric → to=memory via DERIVED_FROM; findFrom resolves from-side.
+   */
+  private List<EntityReference> getDerivedEntities(ContextMemory entity) {
+    final List<EntityReference> terms =
+        findFrom(
+            entity.getId(), Entity.CONTEXT_MEMORY, Relationship.DERIVED_FROM, Entity.GLOSSARY_TERM);
+    final List<EntityReference> metrics =
+        findFrom(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.DERIVED_FROM, Entity.METRIC);
+    final List<EntityReference> combined = new ArrayList<>(terms);
+    combined.addAll(metrics);
+    return combined;
+  }
+
+  /**
+   * Returns the glossary terms and metrics reused (not created) by the Memory Agent from this memory.
+   * Edge direction: from=memory → to=term/metric via RELATED_TO; findTo resolves to-side.
+   */
+  private List<EntityReference> getReusedEntities(ContextMemory entity) {
+    final List<EntityReference> terms =
+        findTo(
+            entity.getId(), Entity.CONTEXT_MEMORY, Relationship.RELATED_TO, Entity.GLOSSARY_TERM);
+    final List<EntityReference> metrics =
+        findTo(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.RELATED_TO, Entity.METRIC);
+    final List<EntityReference> combined = new ArrayList<>(terms);
+    combined.addAll(metrics);
+    return combined;
+  }
+
   private void fetchAndSetSources(List<ContextMemory> entities, Fields fields) {
     if (!fields.contains(FIELD_SOURCE_ENTITY) && !fields.contains(FIELD_SOURCE_FILE)) {
       return;
@@ -335,6 +387,21 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     }
     validateSharedPrincipals(entity);
     setCreatorAsDefaultOwner(entity, update);
+
+    // A new memory queues a Memory Agent run (scheduled in postCreate); stamp Queued here so the
+    // pill shows a memory-pending state immediately, until the agent flips it to Processing then
+    // Processed/Failed. Update re-queueing is handled in the updater on a content change.
+    if (!update && AISettingsUtil.isMemoryAgentEnabled(AISettingsUtil.get())) {
+      markMemoryQueued(entity);
+    }
+  }
+
+  /** Sets the memory's ontology status to Queued (preserving prior telemetry) and clears any error. */
+  private void markMemoryQueued(ContextMemory entity) {
+    MemoryStats stats =
+        entity.getMemoryStats() == null ? new MemoryStats() : entity.getMemoryStats();
+    stats.withStatus(MemoryProcessingStatus.Queued).withError(null);
+    entity.setMemoryStats(stats);
   }
 
   private void validateNotSelfReference(ContextMemory entity, UUID referencedId, String field) {
@@ -440,6 +507,70 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
   private static List<EntityReference> asRefList(EntityReference ref) {
     return ref == null ? List.of() : List.of(ref);
+  }
+
+  // ------------------------------------------------------------------
+  // Memory Agent lifecycle hooks
+  // ------------------------------------------------------------------
+
+  @Override
+  protected void postCreate(ContextMemory entity) {
+    super.postCreate(entity);
+    scheduleMemory(entity);
+  }
+
+  @Override
+  protected void postUpdate(ContextMemory original, ContextMemory updated) {
+    super.postUpdate(original, updated);
+    scheduleMemory(updated);
+  }
+
+  private void scheduleMemory(final ContextMemory entity) {
+    if (AISettingsUtil.isMemoryAgentEnabled(AISettingsUtil.get())) {
+      MemoryProcessingEngine.instance().schedule(entity.getId());
+    }
+  }
+
+  // Knowledge-pill cascade hooks fire BEFORE relationshipDAO().deleteAll(id) so the
+  // DERIVED_FROM edges are still queryable when the reconciler runs (see design spec §9).
+  @Override
+  @Transaction
+  protected void softDeleteAdditionalChildren(final UUID memoryId, final String deletedBy) {
+    cancelAndCascadeMemory(memoryId, false);
+  }
+
+  @Override
+  @Transaction
+  protected void hardDeleteAdditionalChildren(final UUID memoryId, final String deletedBy) {
+    cancelAndCascadeMemory(memoryId, true);
+  }
+
+  private void cancelAndCascadeMemory(final UUID memoryId, final boolean hardDelete) {
+    MemoryProcessingEngine.instance().cancel(memoryId);
+    cascadeMemory(memoryId, hardDelete);
+  }
+
+  @Override
+  @Transaction
+  protected void restoreAdditionalChildren(final UUID memoryId, final String restoredBy) {
+    final ContextMemory memory = get(null, memoryId, getFields(""), Include.ALL, false);
+    memoryReconciler().onMemoryRestored(memory);
+  }
+
+  private void cascadeMemory(final UUID memoryId, final boolean hardDelete) {
+    final ContextMemory memory = get(null, memoryId, getFields(""), Include.ALL, false);
+    final AIDeletionPolicy policy = AISettingsUtil.deletionPolicy(AISettingsUtil.get());
+    memoryReconciler().onMemoryDeleted(memory, hardDelete, policy);
+  }
+
+  private MemoryReconciler memoryReconciler() {
+    final GlossaryTermRepository termRepo =
+        (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
+    final MetricRepository metricRepo =
+        (MetricRepository) Entity.getEntityRepository(Entity.METRIC);
+    final GlossaryRepository glossaryRepo =
+        (GlossaryRepository) Entity.getEntityRepository(Entity.GLOSSARY);
+    return new MemoryReconciler(termRepo, metricRepo, glossaryRepo);
   }
 
   // ------------------------------------------------------------------
@@ -564,8 +695,42 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           original.getId());
       updateSourceEntityRelationship();
 
+      maybeRequeueMemory();
+      recordMemoryStats();
+
       // usageCount and lastUsedAt are AI-retrieval telemetry, intentionally excluded from
       // version history so routine retrieval does not churn the entity version.
+    }
+
+    /**
+     * Re-queues ontology derivation when an edit changes the memory's ontology-relevant content, so
+     * the pill shows Queued again until the agent (rescheduled in postUpdate) re-derives. Gated to a
+     * real content change so a machine status stamp (Processing/Processed/Failed) does not reset
+     * itself to Queued. Runs before {@link #recordMemoryStats()} so the new status is recorded.
+     */
+    private void maybeRequeueMemory() {
+      if (extractionManagedFieldChanged()
+          && AISettingsUtil.isMemoryAgentEnabled(AISettingsUtil.get())) {
+        markMemoryQueued(updated);
+      }
+    }
+
+    /**
+     * memoryStats is engine-managed telemetry. Preserve the stored value when an update omits it
+     * so a user PUT never wipes it, and persist a fresh stamp with updateVersion=false so the
+     * Memory Agent does not churn the memory's version history on every derivation run.
+     */
+    private void recordMemoryStats() {
+      if (updated.getMemoryStats() == null) {
+        updated.setMemoryStats(original.getMemoryStats());
+      }
+      recordChange(
+          "memoryStats",
+          original.getMemoryStats(),
+          updated.getMemoryStats(),
+          true,
+          EntityUtil.objectMatch,
+          false);
     }
 
     /**
@@ -595,6 +760,15 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     }
 
     private void updateSourceEntityRelationship() {
+      // Preserve the stored source when an update omits it. sourceEntity is a relationship-derived
+      // field that a partial fetch leaves null (e.g. the ontology hash stamp and re-extraction load
+      // the memory via getFields("")), and a null here would otherwise delete the MENTIONED_IN edge
+      // that links the pill to its source file/page -- orphaning it from memoryCount, the
+      // sourceEntityId listing, and the article's derived ontologies. A genuine re-parent still
+      // works: it supplies a non-null ref, so this guard does not fire.
+      if (updated.getSourceEntity() == null) {
+        updated.setSourceEntity(original.getSourceEntity());
+      }
       // Plural form with single-element lists so the stale edge is removed under its OWN entity
       // type and the new one added under its own. The singular updateFromRelationship took one
       // fromType for both delete and add, which orphaned the old edge when the source changed type
@@ -648,5 +822,21 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     for (EntityReference ref : refs) {
       restoreEntity(Entity.ADMIN_USER_NAME, ref.getId());
     }
+  }
+
+  /**
+   * Persists new {@link MemoryStats} on a memory WITHOUT bumping its version. The engine calls
+   * this after every derivation run. Using {@code updateVersion=false} inside {@link
+   * ContextMemoryUpdater#recordMemoryStats()} means the JSON store is updated but the version
+   * counter stays flat (no history churn). {@code postUpdate} DOES still fire ({@code
+   * entityChanged=true}). The recursion loop is broken solely by the hash-gate in {@link
+   * org.openmetadata.service.drive.memory.MemoryProcessingEngine}: after the stamp, {@code
+   * sourceHash == hashOf(memory)}, so a re-triggered run skips derivation. The hash-gate is
+   * load-bearing — do NOT remove it.
+   */
+  public void stampMemoryStats(final ContextMemory memory, final MemoryStats stats) {
+    final ContextMemory updated = JsonUtils.deepCopy(memory, ContextMemory.class);
+    updated.setMemoryStats(stats);
+    update(null, memory, updated, Entity.ADMIN_USER_NAME);
   }
 }

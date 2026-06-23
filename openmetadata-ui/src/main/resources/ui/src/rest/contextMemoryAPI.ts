@@ -56,3 +56,14 @@ export const updateContextMemory = async (id: string, patch: Operation[]) => {
 export const deleteContextMemory = async (id: string) => {
   await APIClient.delete(`${BASE_URL}/${id}`);
 };
+
+export const getContextMemoryById = async (
+  id: string,
+  fields?: string
+): Promise<ContextMemory> => {
+  const response = await APIClient.get<ContextMemory>(`${BASE_URL}/${id}`, {
+    params: fields ? { fields } : undefined,
+  });
+
+  return response.data;
+};

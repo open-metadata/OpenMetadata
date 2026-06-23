@@ -89,3 +89,23 @@ WHERE configtype = 'workflowSettings'
 UPDATE ingestion_pipeline_entity
 SET json = (json::jsonb #- '{pipelineStatuses}')::json
 WHERE json::jsonb #> '{pipelineStatuses}' IS NOT NULL;
+
+-- MCP Server and MCP Chat are no longer internal Applications; their enablement now lives in
+-- platform settings (mcpConfiguration). The MCP Chat app was never shipped to customers, so
+-- aiSettings.mcpChat keeps its seeded default shape (no config carry-over).
+
+-- MCP Server: keep it disabled if the server app was not installed (mcpConfiguration defaults
+-- to enabled=true, which would otherwise turn it on).
+UPDATE openmetadata_settings
+SET json = jsonb_set(json, '{enabled}', 'false'::jsonb)
+WHERE configtype = 'mcpConfiguration'
+  AND NOT EXISTS (SELECT 1 FROM installed_apps ia WHERE ia.name = 'McpApplication');
+
+-- Retire the MCP apps (their Java classes and marketplace seeds are removed). Keep the bot users
+-- so the MCP server keeps its principal.
+DELETE FROM entity_relationship er USING installed_apps ia
+  WHERE (er.fromId = ia.id OR er.toId = ia.id) AND ia.name IN ('McpApplication', 'McpChatApplication');
+DELETE FROM entity_relationship er USING apps_marketplace ia
+  WHERE (er.fromId = ia.id OR er.toId = ia.id) AND ia.name IN ('McpApplication', 'McpChatApplication');
+DELETE FROM installed_apps WHERE name IN ('McpApplication', 'McpChatApplication');
+DELETE FROM apps_marketplace WHERE name IN ('McpApplication', 'McpChatApplication');

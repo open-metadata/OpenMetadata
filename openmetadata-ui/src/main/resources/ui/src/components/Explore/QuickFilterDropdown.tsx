@@ -151,7 +151,7 @@ const QuickFilterDropdown: FC<QuickFilterDropdownProps> = ({
     <PopoverTrigger isOpen={isOpen} onOpenChange={handleOpenChange}>
       <Button
         color="secondary"
-        data-testid={searchKey}
+        data-testid={`search-dropdown-${searchKey}`}
         iconTrailing={<ChevronDown className="tw:size-4" />}
         size="sm">
         <span data-testid={`search-dropdown-${label}`}>
