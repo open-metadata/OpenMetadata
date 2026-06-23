@@ -14,6 +14,7 @@ import { ReactComponent as TestCaseIcon } from '../../assets/svg/all-activity-v2
 import { ReactComponent as DashboardIcon } from '../../assets/svg/ic-dashboard.svg';
 import { ReactComponent as TestSuiteIcon } from '../../assets/svg/icon-test-suite.svg';
 import DataQualityDashboard from '../../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component';
+import ImpactRanking from '../../components/DataQuality/ImpactRanking/ImpactRanking.component';
 import { TestCases } from '../../components/DataQuality/TestCases/TestCases.component';
 import { TestSuites } from '../../components/DataQuality/TestSuite/TestSuiteList/TestSuites.component';
 import i18n from '../../utils/i18next/LocalUtil';
@@ -70,7 +71,7 @@ class DataQualityClassBase {
     ];
   }
 
-  public getDataQualityTab() {
+public getDataQualityTab() {
     return [
       {
         component: DataQualityDashboard,
@@ -86,6 +87,11 @@ class DataQualityClassBase {
         key: DataQualityPageTabs.TEST_SUITES,
         component: TestSuites,
         label: i18n.t('label.test-suite-plural'),
+      },
+      {
+        key: DataQualityPageTabs.IMPACT,
+        component: ImpactRanking,
+        label: i18n.t('label.impact-ranking'),
       },
     ];
   }

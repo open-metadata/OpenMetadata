@@ -363,13 +363,101 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     return searchRepository.genericAggregation(q, index, searchAggregation, subjectContext);
   }
 
-  public DataQualityReport getDataQualityReport(
+public DataQualityReport getDataQualityReport(
       String q, String aggQuery, String index, String domain, SubjectContext subjectContext)
       throws IOException {
     String queryWithDomain = addDomainFilter(q, domain, index);
     SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggQuery);
     return searchRepository.genericAggregation(
         queryWithDomain, index, searchAggregation, subjectContext);
+  }
+
+  public List<Map<String, Object>> getDataQualityCheckImpact(
+      int limit, String testCaseStatus, SubjectContext subjectContext) throws IOException {
+
+    long thirtyDaysAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000);
+
+    String query = buildTestCaseImpactQuery(testCaseStatus, thirtyDaysAgo);
+
+    List<Map<String, Object>> testCases =
+        searchRepository.searchTestCasesForImpact(query, 0, limit * 2, subjectContext);
+
+    List<Map<String, Object>> rankedResults = new ArrayList<>();
+    Map<String, Integer> maxValues = calculateMaxValues(testCases);
+
+    int downstreamMax = maxValues.getOrDefault("downstreamUsage", 100);
+    int consumerMax = maxValues.getOrDefault("consumerCount", 50);
+    int incidentMax = maxValues.getOrDefault("recentIncidents", 10);
+
+    for (Map<String, Object> testCase : testCases) {
+      int downstreamUsage =
+          ((Number) testCase.getOrDefault("downstreamUsage", 0)).intValue();
+      int consumerCount = ((Number) testCase.getOrDefault("consumerCount", 0)).intValue();
+      int recentIncidents =
+          ((Number) testCase.getOrDefault("recentIncidents", 0)).intValue();
+
+      double normalizedDownstream =
+          downstreamMax > 0 ? Math.min((double) downstreamUsage / downstreamMax, 1.0) : 0;
+      double normalizedConsumer =
+          consumerMax > 0 ? Math.min((double) consumerCount / consumerMax, 1.0) : 0;
+      double incidentFactor =
+          incidentMax > 0 ? Math.min((double) recentIncidents / incidentMax, 1.0) : 0;
+
+      double impactScore =
+          (0.4 * normalizedDownstream) + (0.3 * normalizedConsumer) + (0.3 * incidentFactor);
+      impactScore = Math.round(impactScore * 100.0) / 100.0;
+
+      Map<String, Object> result = new HashMap<>(testCase);
+      result.put("impactScore", impactScore * 100);
+      rankedResults.add(result);
+    }
+
+    rankedResults.sort(
+        (a, b) -> {
+          double scoreA = ((Number) a.getOrDefault("impactScore", 0.0)).doubleValue();
+          double scoreB = ((Number) b.getOrDefault("impactScore", 0.0)).doubleValue();
+          return Double.compare(scoreB, scoreA);
+        });
+
+    return rankedResults.stream().limit(limit).collect(Collectors.toList());
+  }
+
+  private String buildTestCaseImpactQuery(String testCaseStatus, long thirtyDaysAgo) {
+    StringBuilder query = new StringBuilder();
+    query.append("{\"query\": {\"bool\": {\"must\": [");
+
+    if (testCaseStatus != null && !testCaseStatus.isEmpty()) {
+      query.append(String.format("{\"term\": {\"testCaseStatus\": \"%s\"}},", testCaseStatus.toLowerCase()));
+    }
+
+    query.append(
+        String.format(
+            "{\"range\": {\"timestamp\": {\"gte\": %d}}}]}}", thirtyDaysAgo / 1000));
+    return query.toString();
+  }
+
+  private Map<String, Integer> calculateMaxValues(List<Map<String, Object>> testCases) {
+    Map<String, Integer> maxValues = new HashMap<>();
+    int maxDownstream = 0;
+    int maxConsumer = 0;
+    int maxIncident = 0;
+
+    for (Map<String, Object> tc : testCases) {
+      int downstream =
+          ((Number) tc.getOrDefault("downstreamUsage", 0)).intValue();
+      int consumer = ((Number) tc.getOrDefault("consumerCount", 0)).intValue();
+      int incident = ((Number) tc.getOrDefault("recentIncidents", 0)).intValue();
+
+      if (downstream > maxDownstream) maxDownstream = downstream;
+      if (consumer > maxConsumer) maxConsumer = consumer;
+      if (incident > maxIncident) maxIncident = incident;
+    }
+
+    maxValues.put("downstreamUsage", Math.max(maxDownstream, 1));
+    maxValues.put("consumerCount", Math.max(maxConsumer, 1));
+    maxValues.put("recentIncidents", Math.max(maxIncident, 1));
+
+    return maxValues;
   }
 
   private String addDomainFilter(String query, String domain, String index) {
