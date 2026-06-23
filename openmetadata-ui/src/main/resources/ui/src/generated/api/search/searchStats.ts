@@ -15,6 +15,11 @@
  */
 export interface SearchStats {
     /**
+     * The configured search cluster alias used as the index-name prefix. Empty when no cluster
+     * alias is set.
+     */
+    clusterAlias?: string;
+    /**
      * Health status of the search cluster (GREEN, YELLOW, RED).
      */
     clusterHealth?: string;
