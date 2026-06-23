@@ -67,8 +67,8 @@ test.describe('Lineage PNG export — snapshot regression', () => {
     await performZoomOut(page, 2);
 
     // Open the export modal
-    await expect(page.getByTestId('export-button')).toBeEnabled();
-    await page.getByTestId('export-button').click();
+    await expect(page.getByRole('button', { name: 'Export' })).toBeEnabled();
+    await page.getByRole('button', { name: 'Export' }).click();
 
     await page
       .locator('[data-testid="export-entity-modal"] #submit-button')
