@@ -115,7 +115,7 @@
     <org.junit.jupiter.version>5.11.4</org.junit.jupiter.version>
     <org.junit.platform.version>1.11.4</org.junit.platform.version>
     <dropwizard-health.version>5.0.0</dropwizard-health.version>
-    <handlebars.version>4.5.0</handlebars.version>
+    <handlebars.version>4.5.2</handlebars.version>
     <fernet.version>1.5.0</fernet.version>
     <antlr.version>4.13.2</antlr.version>
     <!-- Apache Jena RDF client libraries. Pinned project-wide so
@@ -627,11 +627,6 @@
         <groupId>com.fasterxml.jackson.datatype</groupId>
         <artifactId>jackson-datatype-jsr353</artifactId>
         <version>${jackson.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.lmax</groupId>
-        <artifactId>disruptor</artifactId>
-        <version>3.4.4</version>
       </dependency>
       <dependency>
         <groupId>io.github.resilience4j</groupId>

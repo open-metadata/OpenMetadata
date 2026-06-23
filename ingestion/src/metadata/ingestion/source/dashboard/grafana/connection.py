@@ -18,18 +18,19 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.grafanaConnection import (
-    GrafanaConnection,
+    GrafanaConnection as GrafanaConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.grafana.client import GrafanaApiClient
 from metadata.utils.constants import THREE_MIN
 
 
-def get_connection(connection: GrafanaConnection) -> GrafanaApiClient:
+def get_connection(connection: GrafanaConnectionConfig) -> GrafanaApiClient:
     """
     Create connection to Grafana
     """
@@ -41,27 +42,32 @@ def get_connection(connection: GrafanaConnection) -> GrafanaApiClient:
     )
 
 
-def test_connection(
-    metadata: OpenMetadata,
-    client: GrafanaApiClient,
-    service_connection: GrafanaConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
-) -> TestConnectionResult:
-    """
-    Test connection to Grafana instance
-    """
+class GrafanaConnection(BaseConnection[GrafanaConnectionConfig, GrafanaApiClient]):
+    def _get_client(self) -> GrafanaApiClient:
+        return get_connection(self.service_connection)
 
-    def custom_executor():
-        if not client.test_connection():
-            raise Exception("Failed to connect to Grafana")  # noqa: TRY002
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        """
+        Test connection to Grafana instance
+        """
+        client = self.client
+        service_connection = self.service_connection
 
-    test_fn = {"GetDashboards": custom_executor}
+        def custom_executor():
+            if not client.test_connection():
+                raise Exception("Failed to connect to Grafana")  # noqa: TRY002
 
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
+        test_fn = {"GetDashboards": custom_executor}
+
+        return test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
+            automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
+        )
