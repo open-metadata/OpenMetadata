@@ -41,24 +41,6 @@ import {
 import { escapeESReservedCharacters } from './StringUtils';
 import { showErrorToast } from './ToastUtils';
 
-export {
-  extractTermKeys,
-  findActiveSearchIndex,
-  getAggregations,
-  getExploreQueryFilterMust,
-  getParseValueFromLocation,
-  getQuickFilterObject,
-  getQuickFilterObjectForEntities,
-  getQuickFilterQuery,
-  getSelectedValuesFromQuickFilter,
-  getSubLevelHierarchyKey,
-  isElasticsearchError,
-  parseSearchParams,
-  updateCountsInTreeData,
-  updateTreeData,
-  updateTreeDataWithCounts,
-} from './ExplorePureUtils';
-
 export const getAggregationOptions = async (
   index: SearchIndex | SearchIndex[],
   key: string,
@@ -249,7 +231,12 @@ export const fetchEntityData = async ({
           pageNumber: page,
           pageSize: size,
           includeDeleted: showDeleted,
-          excludeSourceFields: ['columns', 'queries', 'columnNames'],
+          excludeSourceFields: [
+            'columns',
+            'queries',
+            'columnNames',
+            'dataModel',
+          ],
         };
 
         try {
@@ -290,7 +277,7 @@ export const fetchEntityData = async ({
         pageNumber: page,
         pageSize: size,
         includeDeleted: showDeleted,
-        excludeSourceFields: ['columns', 'queries', 'columnNames'],
+        excludeSourceFields: ['columns', 'queries', 'columnNames', 'dataModel'],
       };
 
       try {

@@ -34,6 +34,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { File } from '../../../../generated/entity/data/file';
 import { Column, TagSource } from '../../../../generated/entity/data/table';
 import { TagLabel } from '../../../../generated/type/tagLabel';
+import { useTreeTagFilter } from '../../../../hooks/useTreeTagFilter';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { columnFilterIcon } from '../../../../utils/TableColumn.util';
 import {
@@ -41,10 +42,7 @@ import {
   updateFieldDescription,
   updateFieldTags,
 } from '../../../../utils/TablePureUtils';
-import {
-  getAllTags,
-  searchTagInData,
-} from '../../../../utils/TableTags/TableTags.utils';
+import { getAllTags } from '../../../../utils/TableTags/TableTags.utils';
 import {
   getTableExpandableConfig,
   prepareConstraintIcon,
@@ -53,7 +51,7 @@ import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import { EntityAttachmentProvider } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../../common/Table/Table';
-import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import { ColumnFilter } from '../../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../../Database/TableTags/TableTags.component';
@@ -146,6 +144,9 @@ function FileColumnsTable() {
     >;
   }, [schema]);
 
+  const { tagFilterState, filteredData, handleTableChange } =
+    useTreeTagFilter(prunedChildrenSchema);
+
   const columns: ColumnsType<Column> = useMemo(
     () => [
       {
@@ -237,7 +238,7 @@ function FileColumnsTable() {
         filterIcon: columnFilterIcon,
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.TAGS] ?? null,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={fileDetails?.fullyQualifiedName ?? ''}
@@ -260,7 +261,7 @@ function FileColumnsTable() {
         filterIcon: columnFilterIcon,
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.GLOSSARY] ?? null,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={fileDetails?.fullyQualifiedName ?? ''}
@@ -285,6 +286,7 @@ function FileColumnsTable() {
       editFileColumnDescription,
       getEntityName,
       handleFileColumnTagChange,
+      tagFilterState,
     ]
   );
 
@@ -298,7 +300,7 @@ function FileColumnsTable() {
         className="align-table-filter-left"
         columns={columns}
         data-testid="file-columns-table"
-        dataSource={prunedChildrenSchema}
+        dataSource={filteredData}
         defaultVisibleColumns={DEFAULT_WORKSHEET_DATA_MODEL_VISIBLE_COLUMNS}
         expandable={{
           ...getTableExpandableConfig<Column>(),
@@ -309,6 +311,7 @@ function FileColumnsTable() {
         scroll={TABLE_SCROLL_VALUE}
         size="small"
         staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+        onChange={handleTableChange}
       />
       {editFileColumnDescription && (
         <EntityAttachmentProvider

@@ -32,7 +32,8 @@ import {
   getGlossaryPath,
 } from '../../../utils/RouterUtils';
 import tagClassBase from '../../../utils/TagClassBase';
-import { getTagDisplay, getTagTooltip } from '../../../utils/TagsUtils';
+import { getTagDisplay } from '../../../utils/TagsPureUtils';
+import { getTagTooltip } from '../../../utils/TagsUtils';
 import TagChip from '../../common/atoms/TagChip/TagChip';
 import { HighlightedTagLabel } from '../../Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
 import { TagsV1Props } from './TagsV1.interface';

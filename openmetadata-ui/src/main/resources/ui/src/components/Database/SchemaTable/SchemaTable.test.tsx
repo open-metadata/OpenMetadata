@@ -133,7 +133,7 @@ const mockGenericContextProps = {
   setDisplayedColumns: jest.fn(),
 };
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest
     .fn()
     .mockImplementation(() => mockGenericContextProps),
@@ -308,7 +308,7 @@ jest.mock('../TableTags/TableTags.component', () => {
 
 jest.mock('../../../utils/TableTags/TableTags.utils', () => ({
   getAllTags: jest.fn(),
-  searchTagInData: jest.fn(),
+  getFilteredTagsData: jest.fn((data) => data),
 }));
 
 jest.mock('../TableDescription/TableDescription.component', () => {
@@ -331,7 +331,7 @@ jest.mock('../../../utils/StringUtils', () => ({
   stringToHTML: jest.fn((text) => text),
 }));
 
-jest.mock('../../../utils/FeedUtils', () => ({
+jest.mock('../../../utils/FeedUtilsPure', () => ({
   getEntityColumnFQN: jest.fn(),
 }));
 
