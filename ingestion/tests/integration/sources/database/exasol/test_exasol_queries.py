@@ -45,7 +45,8 @@ def wait_for_system_table(
     last_rows: list[dict[str, object]] = []
 
     while monotonic() < deadline:
-        with engine.connect() as connection:
+        with engine.begin() as connection:
+            connection.execute(text("FLUSH STATISTICS"))
             rows = connection.execute(text(query), params or {}).mappings().all()
 
         last_rows = list(rows)
@@ -140,7 +141,7 @@ class TestExasolQueries:
 
     def test_connection_test_get_queries(self):
         query = EXASOL_TEST_GET_QUERIES
-        rows = wait_for_system_table(self.engine, query, expected_count=1)
+        rows = wait_for_system_table(self.engine, query, expected_count=1, timeout_seconds=120)
         columns = {column.lower() for column in rows[0]}
 
         assert columns == {
@@ -161,7 +162,7 @@ class TestExasolQueries:
             result_limit=5,
         )
 
-        rows = wait_for_system_table(self.engine, query, expected_count=5)
+        rows = wait_for_system_table(self.engine, query, expected_count=5, timeout_seconds=120)
         columns = {column.lower() for column in rows[0]}
 
         assert columns == {

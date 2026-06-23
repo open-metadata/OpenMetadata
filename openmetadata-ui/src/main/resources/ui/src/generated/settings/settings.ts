@@ -28,6 +28,7 @@ export interface Settings {
  * This schema defines all possible filters enum in OpenMetadata.
  */
 export enum SettingType {
+    AISettings = "aiSettings",
     AirflowConfiguration = "airflowConfiguration",
     AssetCertificationSettings = "assetCertificationSettings",
     AuthenticationConfiguration = "authenticationConfiguration",
@@ -108,6 +109,9 @@ export enum SettingType {
  *
  * This schema defines the Glossary Term Relation Settings for configuring typed semantic
  * relations between glossary terms.
+ *
+ * Configuration for AI features: memory extraction, the Memory Agent, and tunable LLM
+ * system prompts.
  */
 export interface PipelineServiceClientConfiguration {
     /**
@@ -630,7 +634,11 @@ export interface PipelineServiceClientConfiguration {
     /**
      * List of configured glossary term relation types.
      */
-    relationTypes?: GlossaryTermRelationType[];
+    relationTypes?:    GlossaryTermRelationType[];
+    mcpChat?:          MCPChat;
+    memoryAgent?:      MemoryAgent;
+    memoryExtraction?: MemoryExtraction;
+    prompts?:          Prompts;
 }
 
 export interface AllowedFieldValueBoostFields {
@@ -2057,6 +2065,33 @@ export enum LogStorageConfigurationType {
 }
 
 /**
+ * MCP Chat assistant. The LLM provider and credentials are configured at the platform level
+ * via llmConfiguration; this only governs chat enablement and behavior.
+ */
+export interface MCPChat {
+    enabled?:      boolean;
+    systemPrompt?: string;
+}
+
+export interface MemoryAgent {
+    deletionPolicy?:      DeletionPolicy;
+    deriveGlossaryTerms?: boolean;
+    deriveMetrics?:       boolean;
+    enabled?:             boolean;
+}
+
+export enum DeletionPolicy {
+    Cascade = "cascade",
+    Deprecate = "deprecate",
+    Orphan = "orphan",
+}
+
+export interface MemoryExtraction {
+    fromFiles?: boolean;
+    fromPages?: boolean;
+}
+
+/**
  * This schema defines the parameters that can be passed for a Test Case.
  */
 export interface MetricConfigurationDefinition {
@@ -2449,6 +2484,15 @@ export enum OwnershipUpdateMode {
 export enum PipelineViewMode {
     Edge = "Edge",
     Node = "Node",
+}
+
+export interface Prompts {
+    memoryAgent?:      PromptConfig;
+    memoryExtraction?: PromptConfig;
+}
+
+export interface PromptConfig {
+    systemPrompt?: string;
 }
 
 /**
