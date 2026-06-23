@@ -213,7 +213,7 @@ test.describe('Ontology Explorer — RDF exports (Turtle and RDF/XML)', () => {
 });
 
 test.describe('Ontology Explorer — RDF graph data loading', () => {
-  test('term Relations Graph calls /rdf/glossary/graph when RDF is enabled and renders nodes from the response', async ({
+  test('term Relations Graph requests /rdf/glossary/graph scoped to the selected term (glossaryTermId) when RDF is enabled', async ({
     browser,
   }) => {
     const page = await browser.newPage();
@@ -222,39 +222,48 @@ test.describe('Ontology Explorer — RDF graph data loading', () => {
     await page.route('**/api/v1/rdf/status**', (route) =>
       route.fulfill({ json: { enabled: true } })
     );
-
-    let graphApiUrl: URL | undefined;
-    await page.route('**/api/v1/rdf/glossary/graph**', (route) => {
-      graphApiUrl = new URL(route.request().url());
-
-      return route.fulfill({ json: graphJson() });
-    });
+    await page.route('**/api/v1/rdf/glossary/graph**', (route) =>
+      route.fulfill({ json: graphJson() })
+    );
 
     await redirectToHomePage(page);
     await rdfTerm1.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
 
+    const graphResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/rdf/glossary/graph') &&
+        new URL(response.url()).searchParams.get('glossaryTermId') ===
+          rdfTerm1.responseData.id
+    );
+
     await page.getByRole('tab', { name: 'Relations Graph' }).click();
+
+    const response = await graphResponse;
+    expect(response.status()).toBe(200);
+    expect(
+      new URL(response.url()).searchParams.get('glossaryId'),
+      'the term view must still pass its parent glossaryId'
+    ).toBe(rdfGlossary.responseData.id);
+
     await expect(page.getByTestId('ontology-explorer')).toBeVisible();
     await waitForGraphLoaded(page);
 
-    expect(
-      graphApiUrl,
-      'GET /rdf/glossary/graph must be called on the term Relations Graph when RDF is enabled'
-    ).toBeDefined();
-    expect(graphApiUrl?.searchParams.get('glossaryTermId')).toBe(
-      rdfTerm1.responseData.id
-    );
-
     const positions = await readNodePositions(page);
+    expect(positions[rdfTerm1.responseData.id]).toBeDefined();
+    expect(positions[rdfTerm2.responseData.id]).toBeDefined();
+
+    const edges = await readGraphEdges(page);
     expect(
-      positions[rdfTerm1.responseData.id],
-      'rdfTerm1 must appear as a node (from RDF graph response)'
-    ).toBeDefined();
-    expect(
-      positions[rdfTerm2.responseData.id],
-      'rdfTerm2 must appear as a node (from RDF graph response)'
-    ).toBeDefined();
+      edges.some(
+        (edge) =>
+          (edge.from === rdfTerm1.responseData.id &&
+            edge.to === rdfTerm2.responseData.id) ||
+          (edge.from === rdfTerm2.responseData.id &&
+            edge.to === rdfTerm1.responseData.id)
+      ),
+      'the related-term edge between the term and its neighbor must render'
+    ).toBe(true);
 
     await page.close();
   });
