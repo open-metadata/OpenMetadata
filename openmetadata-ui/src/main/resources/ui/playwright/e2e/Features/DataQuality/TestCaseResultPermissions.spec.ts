@@ -218,6 +218,59 @@ test.describe(
         }
       });
 
+      test('User with TEST_CASE.VIEW_ALL can view library test SQL expression in UI', async ({
+        viewResultsPage,
+      }) => {
+        const sqlExpression = 'SELECT COUNT(*) FROM {table}';
+        let testDefinitionRequestUrl = '';
+
+        await viewResultsPage.route(
+          '**/api/v1/dataQuality/testDefinitions/*',
+          async (route) => {
+            testDefinitionRequestUrl = route.request().url();
+
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              json: {
+                id: 'test-definition-id',
+                name: 'tableRowCountToBeBetween',
+                parameterDefinition: [],
+                sqlExpression,
+              },
+            });
+          }
+        );
+
+        const testDefinitionResponse = viewResultsPage.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataQuality/testDefinitions/') &&
+            response.request().method() === 'GET' &&
+            response.ok()
+        );
+
+        await visitTestCaseDetailsPage(viewResultsPage);
+        await testDefinitionResponse;
+        await waitForAllLoadersToDisappear(viewResultsPage);
+
+        await expect(
+          viewResultsPage.getByTestId('test-case-result-tab-container')
+        ).toBeVisible();
+        expect(decodeURIComponent(testDefinitionRequestUrl)).toContain(
+          'sqlExpression'
+        );
+        const sqlExpressionContainer = viewResultsPage.getByTestId(
+          'sql-expression-container'
+        );
+        await expect(sqlExpressionContainer).toBeVisible({ timeout: 15000 });
+        await expect(sqlExpressionContainer).toContainText('SQL Expression');
+        await expect(sqlExpressionContainer).toContainText(sqlExpression);
+
+        await viewResultsPage.unroute(
+          '**/api/v1/dataQuality/testDefinitions/*'
+        );
+      });
+
       test('User with TABLE.VIEW_TESTS can view test case and results in UI (alternative)', async ({
         tableEditResultsPage,
       }) => {

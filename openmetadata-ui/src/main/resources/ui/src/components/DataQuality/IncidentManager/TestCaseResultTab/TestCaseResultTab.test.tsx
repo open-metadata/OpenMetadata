@@ -103,11 +103,36 @@ jest.mock('../../../common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <div>DescriptionV1</div>);
 });
 jest.mock('../../../Database/SchemaEditor/SchemaEditor', () => {
-  return jest.fn().mockImplementation(() => <div>SchemaEditor</div>);
+  return jest
+    .fn()
+    .mockImplementation(({ value }) => (
+      <div data-testid="schema-editor">SchemaEditor: {value}</div>
+    ));
 });
 jest.mock('../../../Database/Profiler/TestSummary/TestSummary', () => {
   return jest.fn().mockImplementation(() => <div>TestSummary</div>);
 });
+jest.mock('../../../../utils/EntityVersionUtils', () => ({
+  getComputeRowCountDiffDisplay: jest.fn(),
+  getEntityVersionByField: jest.fn(),
+  getEntityVersionTags: jest.fn().mockReturnValue([]),
+  getParameterValueDiffDisplay: jest.fn(),
+}));
+jest.mock('../../../../utils/TableUtils', () => ({
+  getTagsWithoutTier: jest
+    .fn()
+    .mockImplementation((tags = []) =>
+      tags.filter((tag: TagLabel) => !tag.tagFQN?.startsWith('Tier.'))
+    ),
+  getTierTags: jest
+    .fn()
+    .mockImplementation((tags = []) =>
+      tags.find((tag: TagLabel) => tag.tagFQN?.startsWith('Tier.'))
+    ),
+}));
+jest.mock('../../../../utils/TagsUtils', () => ({
+  createTagObject: jest.fn().mockImplementation((tags) => tags),
+}));
 jest.mock('../../AddDataQualityTest/EditTestCaseModal', () => {
   return jest.fn().mockImplementation(({ onUpdate, testCase, onCancel }) => (
     <div>
@@ -127,10 +152,10 @@ const mockGetTestDefinitionById = jest.fn();
 jest.mock('../../../../rest/testAPI', () => ({
   updateTestCaseById: jest
     .fn()
-    .mockImplementation(() => mockUpdateTestCaseById()),
+    .mockImplementation((...args) => mockUpdateTestCaseById(...args)),
   getTestDefinitionById: jest
     .fn()
-    .mockImplementation(() => mockGetTestDefinitionById()),
+    .mockImplementation((...args) => mockGetTestDefinitionById(...args)),
   TestCaseType: {
     all: 'all',
     table: 'table',
@@ -163,6 +188,8 @@ describe('TestCaseResultTab', () => {
     );
     mockUseTestCaseStore.testCase.useDynamicAssertion = undefined;
     mockUseTestCaseStore.testCase.computePassedFailedRowCount = undefined;
+    mockGetTestDefinitionById.mockReset();
+    mockUpdateTestCaseById.mockReset();
   });
 
   it('Should render component', async () => {
@@ -197,6 +224,67 @@ describe('TestCaseResultTab', () => {
     fireEvent.click(editButton);
 
     expect(await screen.findByText('EditTestCaseModal')).toBeInTheDocument();
+  });
+
+  it('Should fetch test definition with sqlExpression field', async () => {
+    mockGetTestDefinitionById.mockResolvedValue({
+      id: '48063740-ac35-4854-9ab3-b1b542c820fe',
+      name: 'tableColumnCountToEqual',
+    });
+
+    render(<TestCaseResultTab />);
+
+    await screen.findByTestId('test-case-result-tab-container');
+
+    expect(mockGetTestDefinitionById).toHaveBeenCalledWith(
+      '48063740-ac35-4854-9ab3-b1b542c820fe',
+      {
+        fields: ['parameterDefinition', 'sqlExpression'],
+      }
+    );
+  });
+
+  it('Should render SQL expression from test definition for library based test', async () => {
+    mockUseTestCaseStore.testCase.parameterValues = [
+      {
+        name: 'columnCount',
+        value: '10',
+      },
+    ];
+    mockGetTestDefinitionById.mockResolvedValue({
+      id: '48063740-ac35-4854-9ab3-b1b542c820fe',
+      name: 'tableColumnCountToEqual',
+      sqlExpression: 'SELECT COUNT(*) FROM {table}',
+    });
+
+    render(<TestCaseResultTab />);
+
+    expect(await screen.findByText('label.sql-expression')).toBeInTheDocument();
+    expect(
+      await screen.findByText('SchemaEditor: SELECT COUNT(*) FROM {table}')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('edit-sql-param-icon')).not.toBeInTheDocument();
+  });
+
+  it('Should prefer test case SQL expression over test definition SQL expression', async () => {
+    mockUseTestCaseStore.testCase.parameterValues = [
+      { name: 'sqlExpression', value: 'select * from dim_address' },
+    ];
+    mockGetTestDefinitionById.mockResolvedValue({
+      id: '48063740-ac35-4854-9ab3-b1b542c820fe',
+      name: 'tableColumnCountToEqual',
+      sqlExpression: 'SELECT COUNT(*) FROM {table}',
+    });
+
+    render(<TestCaseResultTab />);
+
+    expect(
+      await screen.findByText('SchemaEditor: select * from dim_address')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('SchemaEditor: SELECT COUNT(*) FROM {table}')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('edit-sql-param-icon')).toBeInTheDocument();
   });
 
   it('EditTestCaseModal should be removed on cancel click', async () => {
