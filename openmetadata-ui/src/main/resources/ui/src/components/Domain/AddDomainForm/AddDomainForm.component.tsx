@@ -27,7 +27,6 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Users01 } from '@untitledui/icons';
 import { debounce, omit } from 'lodash';
-import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { RegisterOptions, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -81,9 +80,9 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
 import { showNotistackError } from '../../../utils/NotistackUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
-import { getTermQuery } from '../../../utils/SearchUtils';
+import { getTermQuery } from '../../../utils/SearchPureUtils';
 import tagClassBase from '../../../utils/TagClassBase';
-import { getTagDisplay } from '../../../utils/TagsUtils';
+import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   AVAILABLE_ICONS,
@@ -99,7 +98,6 @@ import {
   DomainFormSelectItem,
   DomainFormValues,
 } from './AddDomainForm.interface';
-
 const COVER_IMAGE_ACCEPTED_TYPES = [
   'image/svg+xml',
   'image/png',
@@ -298,7 +296,6 @@ const AddDomainForm = ({
   parentDomain,
 }: AddDomainFormProps) => {
   const { t } = useTranslation();
-  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   const { permissions } = usePermissionProvider();
   const [tagOptions, setTagOptions] = useState<DomainFormSelectItem[]>([]);
   const [domainOptions, setDomainOptions] = useState<DomainFormSelectItem[]>(
@@ -754,18 +751,9 @@ const AddDomainForm = ({
     type: FieldTypes.TEXT,
   });
 
-  const handleCoverImageValidationError = useCallback(
-    (message: string) => {
-      showNotistackError(
-        enqueueSnackbar,
-        message,
-        undefined,
-        { vertical: 'top', horizontal: 'center' },
-        closeSnackbar
-      );
-    },
-    [enqueueSnackbar, closeSnackbar]
-  );
+  const handleCoverImageValidationError = useCallback((message: string) => {
+    showNotistackError(message);
+  }, []);
 
   const coverImageField: FieldProp = {
     id: 'root/coverImage',

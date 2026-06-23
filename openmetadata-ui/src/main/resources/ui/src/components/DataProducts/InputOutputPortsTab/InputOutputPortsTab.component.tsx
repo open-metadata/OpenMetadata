@@ -36,7 +36,7 @@ import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/ic-no-
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { getDataProductPortsView } from '../../../rest/dataProductAPI';
-import { getQueryFilterForDataProductPorts } from '../../../utils/DataProductUtils';
+import { getQueryFilterForDataProductPorts } from '../../../utils/DataProductPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
@@ -249,7 +249,7 @@ export const InputOutputPortsTab = forwardRef<
                     {isLineageCollapsed && (
                       <Typography
                         as="p"
-                        className="tw:text-xs tw:text-gray-700 tw:font-light">
+                        className="tw:text-xs tw:text-secondary tw:font-light">
                         ({inputPortsCount} {t('label.input').toLowerCase()},{' '}
                         {outputPortsCount} {t('label.output').toLowerCase()})
                       </Typography>
@@ -304,7 +304,7 @@ export const InputOutputPortsTab = forwardRef<
                       </Typography>
                       <Typography
                         as="p"
-                        className="tw:text-xs tw:text-gray-700 tw:font-light"
+                        className="tw:text-xs tw:text-secondary tw:font-light"
                         data-testid="input-port-count">
                         ({inputPortsCount})
                       </Typography>
@@ -394,7 +394,7 @@ export const InputOutputPortsTab = forwardRef<
                       </Typography>
                       <Typography
                         as="p"
-                        className="tw:text-xs tw:text-gray-700 tw:font-light"
+                        className="tw:text-xs tw:text-secondary tw:font-light"
                         data-testid="output-port-count">
                         ({outputPortsCount})
                       </Typography>

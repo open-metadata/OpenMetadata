@@ -36,7 +36,6 @@ import { AsyncSelectListProps } from '../components/common/AsyncSelectList/Async
 import TreeAsyncSelectList from '../components/common/AsyncSelectList/TreeAsyncSelectList';
 import { MUIColorPicker } from '../components/common/ColorPicker';
 import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
-import { MUICoverImageUpload } from '../components/common/CoverImageUpload';
 import DomainSelectableList from '../components/common/DomainSelectableList/DomainSelectableList.component';
 import { DomainSelectableListProps } from '../components/common/DomainSelectableList/DomainSelectableList.interface';
 import FilterPattern from '../components/common/FilterPattern/FilterPattern';
@@ -81,13 +80,6 @@ import AntDTagSuggestion, {
 } from '../pages/TasksPage/shared/TagSuggestion';
 import { t } from './i18next/LocalUtil';
 import { getErrorText } from './StringUtils';
-
-export {
-  createScrollToErrorHandler,
-  getPopupContainer,
-  transformErrors,
-  type ScrollToErrorOptions,
-} from './formPureUtils';
 
 export const getField = (field: FieldProp) => {
   const {
@@ -445,17 +437,6 @@ export const getField = (field: FieldProp) => {
             {...(props as Record<string, unknown>)}
             label={muiLabel as string}
             toolTip={helperText}
-          />
-        </Form.Item>
-      );
-    }
-
-    case FieldTypes.COVER_IMAGE_UPLOAD_MUI: {
-      return (
-        <Form.Item {...formProps}>
-          <MUICoverImageUpload
-            {...(props as Record<string, unknown>)}
-            label={muiLabel as string}
           />
         </Form.Item>
       );

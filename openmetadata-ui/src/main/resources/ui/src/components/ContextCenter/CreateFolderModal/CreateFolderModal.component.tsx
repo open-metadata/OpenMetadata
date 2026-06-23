@@ -89,7 +89,7 @@ const CreateFolderModal: FC<CreateFolderModalProps> = ({
             </Typography>
             <div className="tw:flex tw:flex-col tw:gap-1.5">
               <Typography
-                className="tw:text-gray-700"
+                className="tw:text-secondary"
                 size="text-sm"
                 weight="medium">
                 {t('label.entity-name', { entity: t('label.folder') })}

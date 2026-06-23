@@ -12,13 +12,13 @@
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
 import { Box, Typography as MuiTypography, useTheme } from '@mui/material';
+import { Avatar } from '@openmetadata/ui-core-components';
 import { Button, Dropdown, Space, Tabs, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual, toString } from 'lodash';
-import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -40,6 +40,7 @@ import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { ERROR_MESSAGE, ROUTES } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
+import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -57,6 +58,7 @@ import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
+import { FeedCounts } from '../../../interface/feed.interface';
 import {
   AnnouncementEntity,
   getActiveAnnouncements,
@@ -67,6 +69,7 @@ import {
 } from '../../../rest/dataProductAPI';
 import { addDomains, patchDomains } from '../../../rest/domainAPI';
 import { searchQuery } from '../../../rest/searchAPI';
+import { getIsErrorMatch } from '../../../utils/APIUtils';
 import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
 import {
   checkIfExpandViewSupported,
@@ -78,18 +81,19 @@ import {
   getQueryFilterForDataProducts,
   getQueryFilterForDomain,
   getQueryFilterToExcludeDomainTerms,
-} from '../../../utils/DomainUtils';
+} from '../../../utils/DomainFilterUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
-import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
 import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
   getFeedCounts,
-} from '../../../utils/FeedUtils';
+} from '../../../utils/FeedUtilsPure';
 import { submitAndClose } from '../../../utils/FormDrawerUtils';
 import Fqn from '../../../utils/Fqn';
+import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import { showNotistackError } from '../../../utils/NotistackUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
@@ -100,25 +104,19 @@ import {
   getDomainPath,
   getDomainVersionsPath,
 } from '../../../utils/RouterUtils';
-import { getTermQuery } from '../../../utils/SearchUtils';
+import { getTermQuery } from '../../../utils/SearchPureUtils';
 import {
   escapeESReservedCharacters,
   getDecodedFqn,
   getEncodedFqn,
 } from '../../../utils/StringUtils';
-import { useFormDrawerWithHook } from '../../common/atoms/drawer';
-import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-
-import { Avatar } from '@openmetadata/ui-core-components';
-import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
-import { FeedCounts } from '../../../interface/feed.interface';
-import { getIsErrorMatch } from '../../../utils/APIUtils';
-import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
+import { useFormDrawerWithHook } from '../../common/atoms/drawer';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
+import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
@@ -154,7 +152,6 @@ const DomainDetails = ({
 }: DomainDetailsProps) => {
   const { t } = useTranslation();
   const theme = useTheme();
-  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   const { isMarketplace } = useMarketplaceStore();
   const location = useLocation();
   const fromMarketplace =
@@ -258,12 +255,10 @@ const DomainDetails = ({
       } catch (error) {
         setAssetCount(0);
         showNotistackError(
-          enqueueSnackbar,
           error as AxiosError,
           t('server.entity-fetch-error', {
             entity: t('label.asset-plural-lowercase'),
-          }),
-          { vertical: 'top', horizontal: 'center' }
+          })
         );
       }
     }
@@ -284,16 +279,14 @@ const DomainDetails = ({
       } catch (error) {
         setDataProductsCount(0);
         showNotistackError(
-          enqueueSnackbar,
           error as AxiosError,
           t('server.entity-fetch-error', {
             entity: t('label.data-product-lowercase'),
-          }),
-          { vertical: 'top', horizontal: 'center' }
+          })
         );
       }
     }
-  }, [isVersionsView, domainFqn, enqueueSnackbar, t]);
+  }, [isVersionsView, domainFqn, t]);
 
   const fetchSubDomainsCount = useCallback(async () => {
     if (!isVersionsView) {
@@ -315,12 +308,10 @@ const DomainDetails = ({
       } catch (error) {
         setSubDomainsCount(0);
         showNotistackError(
-          enqueueSnackbar,
           error as AxiosError,
           t('server.entity-fetch-error', {
             entity: t('label.sub-domain-lowercase'),
-          }),
-          { vertical: 'top', horizontal: 'center' }
+          })
         );
       }
     }
@@ -391,15 +382,13 @@ const DomainDetails = ({
           onSuccess: () => {
             dataProductForm.reset();
           },
-          enqueueSnackbar,
-          closeSnackbar,
           t,
         });
       } finally {
         setIsDataProductLoading(false);
       }
     },
-    [domain, dataProductForm, enqueueSnackbar, closeSnackbar, t]
+    [domain, dataProductForm, t]
   );
 
   const onDataProductCreateSuccess = useCallback(() => {
@@ -501,10 +490,7 @@ const DomainDetails = ({
         setActiveAnnouncement(announcements.data[0]);
       }
     } catch (error) {
-      showNotistackError(enqueueSnackbar, error as AxiosError, undefined, {
-        vertical: 'top',
-        horizontal: 'center',
-      });
+      showNotistackError(error as AxiosError);
     }
   };
 
@@ -555,21 +541,13 @@ const DomainDetails = ({
           onSuccess: () => {
             subDomainForm.reset();
           },
-          enqueueSnackbar,
-          closeSnackbar,
           t,
         });
       } finally {
         setIsSubDomainLoading(false);
       }
     },
-    [
-      domain.fullyQualifiedName,
-      subDomainForm,
-      enqueueSnackbar,
-      closeSnackbar,
-      t,
-    ]
+    [domain.fullyQualifiedName, subDomainForm, t]
   );
 
   const onSubDomainCreateSuccess = useCallback(() => {
@@ -674,7 +652,6 @@ const DomainDetails = ({
         fetchSubDomainsCount();
       } catch (error) {
         showNotistackError(
-          enqueueSnackbar,
           getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist) ? (
             <MuiTypography sx={{ fontWeight: 600 }} variant="body2">
               {t('server.entity-already-exist', {
@@ -688,8 +665,7 @@ const DomainDetails = ({
           ),
           t('server.add-entity-error', {
             entity: t('label.sub-domain-lowercase'),
-          }),
-          { vertical: 'top', horizontal: 'center' }
+          })
         );
 
         throw error; // Re-throw to reject the promise
@@ -719,10 +695,7 @@ const DomainDetails = ({
       );
       setDomainPermission(response);
     } catch (error) {
-      showNotistackError(enqueueSnackbar, error as AxiosError, undefined, {
-        vertical: 'top',
-        horizontal: 'center',
-      });
+      showNotistackError(error as AxiosError);
     }
   };
 

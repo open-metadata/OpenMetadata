@@ -141,4 +141,3 @@ export * from './foundations/typography';
 
 // Other components
 export * from './checkbox-icons';
-export * from './SnackbarContent';

@@ -19,7 +19,6 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Globe01 } from '@untitledui/icons';
 import { isEmpty } from 'lodash';
-import { useSnackbar } from 'notistack';
 import { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -38,7 +37,10 @@ import { createEntityWithCoverImage } from '../../utils/CoverImageUploadUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { submitAndClose } from '../../utils/FormDrawerUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
-import { getClassificationTags, getGlossaryTags } from '../../utils/TagsUtils';
+import {
+  getClassificationTags,
+  getGlossaryTags,
+} from '../../utils/TagsPureUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
@@ -69,7 +71,6 @@ const DataProductListPage = () => {
   const dataProductListing = useDataProductListingData();
   const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
-  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   const { permissions } = usePermissionProvider();
   const form = useForm<DomainFormValues>({
     defaultValues: DOMAIN_FORM_DEFAULTS,
@@ -107,15 +108,13 @@ const DataProductListPage = () => {
           onSuccess: () => {
             form.reset();
           },
-          enqueueSnackbar,
-          closeSnackbar,
           t,
         });
       } finally {
         setIsLoading(false);
       }
     },
-    [form, enqueueSnackbar, closeSnackbar, t]
+    [form, t]
   );
 
   const refreshDataProducts = useCallback(() => {
