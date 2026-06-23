@@ -272,7 +272,7 @@ const Description = ({
       <div
         className={classNames(
           wrapInCard
-            ? 'tw:flex tw:flex-col tw:gap-4 tw:rounded-[10px] tw:border tw:border-gray-blue-100 tw:bg-bg-primary tw:p-[18px] tw:shadow-xs'
+            ? 'tw:flex tw:flex-col tw:gap-4 tw:rounded-[10px] tw:border tw:border-secondary tw:bg-bg-primary tw:p-[18px] tw:shadow-xs'
             : 'tw:flex tw:flex-col tw:gap-4',
           className
         )}
