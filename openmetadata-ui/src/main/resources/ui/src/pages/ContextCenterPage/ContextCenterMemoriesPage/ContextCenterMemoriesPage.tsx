@@ -774,7 +774,8 @@ const ContextCenterMemoriesPage: FC = () => {
         canCreate={hasCreatePermission}
         canDelete={
           hasDeletePermission &&
-          ((memoryToEdit?.owners?.some((o) => o.name === currentUser?.name) ?? false) ||
+          ((memoryToEdit?.owners?.some((o) => o.name === currentUser?.name) ??
+            false) ||
             Boolean(currentUser?.isAdmin))
         }
         canEdit={hasEditPermission}

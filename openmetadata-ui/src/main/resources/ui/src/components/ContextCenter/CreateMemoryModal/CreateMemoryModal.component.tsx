@@ -999,7 +999,11 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                           {t('label.edit')}
                         </Button>
                       ) : null
-                    ) : (memoryToEdit ? (isOwner || isAdminUser) && canEdit : canCreate) ? (
+                    ) : (
+                        memoryToEdit
+                          ? (isOwner || isAdminUser) && canEdit
+                          : canCreate
+                      ) ? (
                       <Button
                         color="primary"
                         isDisabled={

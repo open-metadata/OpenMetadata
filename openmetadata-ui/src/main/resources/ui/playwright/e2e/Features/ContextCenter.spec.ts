@@ -1209,6 +1209,5 @@ test.describe('Context Center', () => {
         ).not.toBeVisible();
       });
     });
-
   });
 });
