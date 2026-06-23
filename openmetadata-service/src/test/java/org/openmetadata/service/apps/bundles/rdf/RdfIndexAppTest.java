@@ -85,7 +85,7 @@ class RdfIndexAppTest {
   static void setUpClass() {
     mockRdfRepository = mock(RdfRepository.class);
     rdfRepositoryMockedStatic = mockStatic(RdfRepository.class);
-    rdfRepositoryMockedStatic.when(RdfRepository::getInstance).thenReturn(mockRdfRepository);
+    rdfRepositoryMockedStatic.when(RdfRepository::getInstanceOrNull).thenReturn(mockRdfRepository);
   }
 
   @AfterAll

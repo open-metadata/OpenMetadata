@@ -102,8 +102,14 @@ public class RdfIndexApp extends AbstractNativeApplication {
 
   public RdfIndexApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
-    this.rdfRepository = RdfRepository.getInstance();
-    this.batchProcessor = new RdfBatchProcessor(collectionDAO, rdfRepository);
+    // Use getInstanceOrNull(): this app is a seed/default application installed
+    // on every startup, but RdfRepository is only initialized when RDF is
+    // enabled in configuration (disabled by default). Requiring a live instance
+    // here threw IllegalStateException during default-app install whenever RDF
+    // was off. execute() already fails the job gracefully when RDF is disabled.
+    this.rdfRepository = RdfRepository.getInstanceOrNull();
+    this.batchProcessor =
+        rdfRepository == null ? null : new RdfBatchProcessor(collectionDAO, rdfRepository);
   }
 
   @Override
@@ -131,7 +137,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
       }
     }
 
-    if (!rdfRepository.isEnabled()) {
+    if (rdfRepository == null || !rdfRepository.isEnabled()) {
       LOG.error("RDF Repository is not enabled. Please enable RDF in configuration.");
       updateJobStatus(EventPublisherJob.Status.FAILED);
       jobData.setFailure(
