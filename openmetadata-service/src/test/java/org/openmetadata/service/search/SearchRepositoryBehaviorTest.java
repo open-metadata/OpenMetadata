@@ -1617,8 +1617,11 @@ class SearchRepositoryBehaviorTest {
   @Test
   void getScriptWithParamsBuildsFollowerDescriptionAndQueryUsageUpdates() {
     EntityInterface queryEntity = mockEntity(Entity.QUERY, UUID.randomUUID(), "daily_query");
+    EntityReference firstFollower = new EntityReference().withId(UUID.randomUUID());
+    EntityReference secondFollower = new EntityReference().withId(UUID.randomUUID());
     when(queryEntity.getUpdatedAt()).thenReturn(1234L);
     when(queryEntity.getDescription()).thenReturn("Updated query description");
+    when(queryEntity.getFollowers()).thenReturn(List.of(firstFollower, secondFollower));
 
     Map<String, Object> params = new HashMap<>();
     ChangeDescription changeDescription =
@@ -1626,10 +1629,7 @@ class SearchRepositoryBehaviorTest {
             List.of(
                 new FieldChange()
                     .withName(Entity.FIELD_FOLLOWERS)
-                    .withNewValue(
-                        List.of(
-                            new EntityReference().withId(UUID.randomUUID()),
-                            new EntityReference().withId(UUID.randomUUID()))),
+                    .withNewValue(List.of(firstFollower, secondFollower)),
                 new FieldChange().withName(Entity.FIELD_DESCRIPTION).withNewValue("ignored")),
             List.of(
                 new FieldChange()
@@ -1643,13 +1643,15 @@ class SearchRepositoryBehaviorTest {
     String script = repository.getScriptWithParams(queryEntity, params, changeDescription);
 
     assertTrue(script.contains("ctx._source.updatedAt=params.updatedAt;"));
-    assertTrue(script.contains("ctx._source.followers.addAll(params.followers);"));
+    assertTrue(script.contains("ctx._source.followers = params.followers;"));
     assertTrue(script.contains("ctx._source.description = params.description;"));
     assertTrue(script.contains("ctx._source.usageSummary = params.usageSummary;"));
     assertTrue(script.contains("ctx._source.queryUsedIn = params.queryUsedIn;"));
     assertEquals(1234L, params.get("updatedAt"));
     assertEquals("Updated query description", params.get(Entity.FIELD_DESCRIPTION));
-    assertNotNull(params.get(Entity.FIELD_FOLLOWERS));
+    assertEquals(
+        List.of(firstFollower.getId().toString(), secondFollower.getId().toString()),
+        params.get(Entity.FIELD_FOLLOWERS));
     assertNotNull(params.get(Entity.FIELD_USAGE_SUMMARY));
     assertEquals(List.of(Map.of("name", "dashboard")), params.get("queryUsedIn"));
   }
@@ -2364,6 +2366,8 @@ class SearchRepositoryBehaviorTest {
   void getScriptWithParamsRemovesFollowersAndDescriptions() {
     EntityInterface entity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     EntityReference removedFollower = new EntityReference().withId(UUID.randomUUID());
+    EntityReference remainingFollower = new EntityReference().withId(UUID.randomUUID());
+    when(entity.getFollowers()).thenReturn(List.of(remainingFollower));
     Map<String, Object> params = new HashMap<>();
     ChangeDescription changeDescription =
         changeDescription(
@@ -2379,11 +2383,9 @@ class SearchRepositoryBehaviorTest {
 
     String script = repository.getScriptWithParams(entity, params, changeDescription);
 
-    assertTrue(
-        script.contains(
-            "ctx._source.followers.removeAll(Collections.singleton(params.followers));"));
+    assertTrue(script.contains("ctx._source.followers = params.followers;"));
     assertTrue(script.contains("ctx._source.description = null;"));
-    assertEquals(removedFollower.getId().toString(), params.get(Entity.FIELD_FOLLOWERS));
+    assertEquals(List.of(remainingFollower.getId().toString()), params.get(Entity.FIELD_FOLLOWERS));
   }
 
   @Test

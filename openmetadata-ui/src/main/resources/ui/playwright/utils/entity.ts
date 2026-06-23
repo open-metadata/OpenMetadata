@@ -1381,14 +1381,15 @@ export const validateFollowedEntityToWidget = async (
 ) => {
   await redirectToHomePage(page);
   await waitForAllLoadersToDisappear(page);
+  const followingWidget = page.getByTestId('following-widget');
+  const followedEntity = page.getByTestId(`Following-${entity}`);
+
   if (isFollowing) {
-    await page.getByTestId('following-widget').isVisible();
-
-    await page.getByTestId(`following-${entity}`).isVisible();
+    await expect(followingWidget).toBeVisible();
+    await expect(followedEntity).toBeVisible();
   } else {
-    await page.getByTestId('following-widget').isVisible();
-
-    await expect(page.getByTestId(`following-${entity}`)).not.toBeVisible();
+    await expect(followingWidget).toBeVisible();
+    await expect(followedEntity).not.toBeVisible();
   }
 };
 
