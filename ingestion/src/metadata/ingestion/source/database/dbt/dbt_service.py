@@ -169,23 +169,23 @@ class DbtServiceTopology(ServiceTopology):
             ),
         ],
     )
-    process_dbt_metrics: Annotated[
-        TopologyNode, Field(description="Process dbt semantic layer metrics")
-    ] = TopologyNode(
-        producer="get_dbt_metrics",
-        stages=[
-            NodeStage(
-                type_=CreateMetricRequest,
-                processor="yield_dbt_metrics",
-                consumer=["yield_data_models"],
-                nullable=True,
-            ),
-            NodeStage(
-                type_=AddLineageRequest,
-                processor="create_dbt_metric_lineage",
-                nullable=True,
-            ),
-        ],
+    process_dbt_metrics: Annotated[TopologyNode, Field(description="Process dbt semantic layer metrics")] = (
+        TopologyNode(
+            producer="get_dbt_metrics",
+            stages=[
+                NodeStage(
+                    type_=CreateMetricRequest,
+                    processor="yield_dbt_metrics",
+                    consumer=["yield_data_models"],
+                    nullable=True,
+                ),
+                NodeStage(
+                    type_=AddLineageRequest,
+                    processor="create_dbt_metric_lineage",
+                    nullable=True,
+                ),
+            ],
+        )
     )
 
 
@@ -373,8 +373,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Prepare the DBT metrics
         """
-        for _, metric_entry in self.context.get().dbt_metrics.items():
-            yield metric_entry
+        yield from self.context.get().dbt_metrics.values()
 
     @abstractmethod
     def create_dbt_tests_definition(self, dbt_test: dict) -> CreateTestDefinitionRequest:
@@ -413,9 +412,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
-    def create_dbt_metric_lineage(
-        self, metric_entry: dict
-    ) -> Iterable[Either[AddLineageRequest]]:
+    def create_dbt_metric_lineage(self, metric_entry: dict) -> Iterable[Either[AddLineageRequest]]:
         """
         Create lineage from source tables to dbt metrics
         """
