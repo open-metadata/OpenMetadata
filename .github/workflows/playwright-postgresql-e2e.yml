@@ -537,8 +537,9 @@ jobs:
 
       - name: Gate on test results
         run: |
-          if [ "${{ needs.playwright-ci-postgresql.result }}" = "failure" ]; then
-            echo "One or more Playwright shards failed — see the report above."
+          RESULT="${{ needs.playwright-ci-postgresql.result }}"
+          if [ "$RESULT" = "failure" ] || [ "$RESULT" = "cancelled" ]; then
+            echo "Playwright shards did not complete successfully (result: ${RESULT})."
             exit 1
           fi
-          echo "Playwright result: ${{ needs.playwright-ci-postgresql.result }}"
+          echo "Playwright result: ${RESULT}"
