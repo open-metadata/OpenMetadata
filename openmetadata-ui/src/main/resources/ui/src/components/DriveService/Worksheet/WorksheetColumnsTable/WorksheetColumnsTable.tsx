@@ -39,10 +39,7 @@ import {
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { columnFilterIcon } from '../../../../utils/TableColumn.util';
-import {
-  getAllTags,
-  searchTagInData,
-} from '../../../../utils/TableTags/TableTags.utils';
+import { getAllTags } from '../../../../utils/TableTags/TableTags.utils';
 import {
   getTableExpandableConfig,
   prepareConstraintIcon,
@@ -59,6 +56,7 @@ import { ColumnFilter } from '../../../Database/ColumnFilter/ColumnFilter.compon
 import TableDescription from '../../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../../Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import { useTreeTagFilter } from '../../../../hooks/useTreeTagFilter';
 
 function WorksheetColumnsTable() {
   const { t } = useTranslation();
@@ -149,6 +147,9 @@ function WorksheetColumnsTable() {
       TagFilterOptions[]
     >;
   }, [schema]);
+
+  const { tagFilterState, filteredData, handleTableChange } =
+    useTreeTagFilter(schema);
 
   const columns: ColumnsType<Column> = useMemo(
     () => [
@@ -262,7 +263,7 @@ function WorksheetColumnsTable() {
         filterIcon: columnFilterIcon,
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.TAGS] ?? null,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={worksheetDetails.fullyQualifiedName ?? ''}
@@ -285,7 +286,7 @@ function WorksheetColumnsTable() {
         filterIcon: columnFilterIcon,
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.GLOSSARY] ?? null,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={worksheetDetails.fullyQualifiedName ?? ''}
@@ -310,6 +311,7 @@ function WorksheetColumnsTable() {
       editWorksheetColumnDescription,
       getEntityName,
       handleWorksheetColumnTagChange,
+      tagFilterState,
     ]
   );
 
@@ -323,7 +325,7 @@ function WorksheetColumnsTable() {
         className="align-table-filter-left"
         columns={columns}
         data-testid="worksheet-data-model-table"
-        dataSource={schema}
+        dataSource={filteredData}
         defaultVisibleColumns={DEFAULT_WORKSHEET_DATA_MODEL_VISIBLE_COLUMNS}
         expandable={{
           ...getTableExpandableConfig<Column>(false, 'text-link-color'),
@@ -334,6 +336,7 @@ function WorksheetColumnsTable() {
         scroll={TABLE_SCROLL_VALUE}
         size="small"
         staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+        onChange={handleTableChange}
       />
       {editWorksheetColumnDescription && (
         <EntityAttachmentProvider

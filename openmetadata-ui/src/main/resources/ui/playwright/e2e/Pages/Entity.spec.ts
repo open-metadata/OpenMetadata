@@ -52,10 +52,12 @@ import {
 import { getCurrentMillis } from '../../utils/dateTime';
 import {
   addMultiOwner,
+  assignTagToChildren,
   closeColumnDetailPanel,
   openColumnDetailPanel,
   removeOwner,
   removeOwnersFromList,
+  removeTagsFromChildren,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { clickDataQualityStatCard } from '../../utils/entityPanel';
@@ -1304,6 +1306,121 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           }
         });
       });
+
+      // Entities whose child table exposes the Tags column header filter
+      const TAG_FILTER_ENTITIES = [
+        'ApiEndpoint',
+        'Container',
+        'Dashboard',
+        'DashboardDataModel',
+        'File',
+        'Pipeline',
+        'SearchIndex',
+        'Table',
+        'Topic',
+        'Worksheet',
+      ];
+
+      if (TAG_FILTER_ENTITIES.includes(entity.type)) {
+        /**
+         * Tests the Tags column header filter across every entity whose child
+         * table supports it.
+         * @description Verifies each entity's table wiring prunes non-matching
+         * rows when a tag filter is applied (regression for the bug where every
+         * row stayed visible).
+         */
+        test('Filter columns by tag prunes non-matching rows', async ({
+          page,
+        }) => {
+          test.slow();
+
+          const taggedKey = entity.childrenSelectorId ?? '';
+          const filterTag = 'PersonalData.Personal';
+
+          await page.getByTestId(entity.childrenTabId ?? '').click();
+          await waitForAllLoadersToDisappear(page);
+
+          const taggedRow = page.locator(`[${rowSelector}="${taggedKey}"]`);
+          const childTable = page
+            .locator('.ant-table')
+            .filter({ has: taggedRow });
+          const rows = childTable.locator(`[${rowSelector}]`);
+
+          await test.step('Tag a child row', async () => {
+            await taggedRow.scrollIntoViewIfNeeded();
+            await assignTagToChildren({
+              page,
+              tag: filterTag,
+              rowId: taggedKey,
+              rowSelector,
+              entityEndpoint: entity.endpoint,
+            });
+          });
+
+          const rowKeys = await rows.evaluateAll((elements) =>
+            elements.map((element) => element.getAttribute('data-row-key'))
+          );
+          const nonMatchingKey = rowKeys.find(
+            (key) =>
+              key &&
+              key !== taggedKey &&
+              !key.startsWith(`${taggedKey}.`) &&
+              !taggedKey.startsWith(`${key}.`)
+          );
+
+          const toggleTagFilter = async () => {
+            await page
+              .getByRole('columnheader', { name: 'Tags', exact: true })
+              .getByTestId('filter-icon')
+              .click();
+
+            await expect(
+              page.locator('.ant-table-filter-dropdown:visible')
+            ).toBeVisible();
+
+            await page
+              .locator('.ant-table-filter-dropdown:visible')
+              .locator(`.ant-checkbox-wrapper:has(input[value="${filterTag}"])`)
+              .click();
+
+            await expect(
+              page.locator('.ant-table-filter-dropdown:visible')
+            ).toBeHidden();
+          };
+
+          await test.step('Apply tag filter and verify pruning', async () => {
+            await toggleTagFilter();
+
+            await expect(taggedRow).toBeVisible();
+
+            if (nonMatchingKey) {
+              await expect(
+                page.locator(`[${rowSelector}="${nonMatchingKey}"]`)
+              ).toBeHidden();
+            }
+          });
+
+          await test.step('Clear filter and verify rows return', async () => {
+            await toggleTagFilter();
+
+            if (nonMatchingKey) {
+              await expect(
+                page.locator(`[${rowSelector}="${nonMatchingKey}"]`)
+              ).toBeVisible();
+            }
+          });
+
+          await test.step('Cleanup tag', async () => {
+            await removeTagsFromChildren({
+              page,
+              tags: [filterTag],
+              rowId: taggedKey,
+              rowSelector,
+              entityEndpoint: entity.endpoint,
+            });
+          });
+        });
+      }
     }
 
     /**

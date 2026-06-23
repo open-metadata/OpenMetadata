@@ -32,6 +32,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { TagLabel, TagSource } from '../../../generated/entity/data/chart';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { useTableFilters } from '../../../hooks/useTableFilters';
+import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
 import { ChartType } from '../../../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import { updateChart } from '../../../rest/chartAPI';
 import { fetchCharts } from '../../../utils/DashboardDetailsUtils';
@@ -39,10 +40,7 @@ import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getChartDetailsPath } from '../../../utils/RouterUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
-import {
-  getAllTags,
-  searchTagInData,
-} from '../../../utils/TableTags/TableTags.utils';
+import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import { createTagObject } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
@@ -278,6 +276,9 @@ export const DashboardChartTable = ({
     [setFilters, chartFilters]
   );
 
+  const { tagFilterState, filteredData, handleTableChange } =
+    useTreeTagFilter(charts);
+
   const tableColumn: ColumnsType<ChartType> = useMemo(
     () => [
       {
@@ -362,7 +363,7 @@ export const DashboardChartTable = ({
         },
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.TAGS] ?? null,
       },
       {
         title: t('label.glossary-term-plural'),
@@ -385,7 +386,7 @@ export const DashboardChartTable = ({
         ),
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.GLOSSARY] ?? null,
       },
     ],
     [
@@ -396,6 +397,7 @@ export const DashboardChartTable = ({
       handleUpdateChart,
       handleChartTagSelection,
       charts,
+      tagFilterState,
     ]
   );
 
@@ -426,7 +428,7 @@ export const DashboardChartTable = ({
         className="align-table-filter-left"
         columns={tableColumn}
         data-testid="charts-table"
-        dataSource={charts}
+        dataSource={filteredData}
         defaultVisibleColumns={DEFAULT_DASHBOARD_CHART_VISIBLE_COLUMNS}
         extraTableFilters={
           <span>
@@ -453,6 +455,7 @@ export const DashboardChartTable = ({
         scroll={{ x: 1200 }}
         size="small"
         staticVisibleColumns={[TABLE_COLUMNS_KEYS.CHART_NAME]}
+        onChange={handleTableChange}
       />
       {editChart && (
         <EntityAttachmentProvider

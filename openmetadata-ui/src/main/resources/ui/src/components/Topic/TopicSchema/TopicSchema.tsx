@@ -43,10 +43,7 @@ import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
-import {
-  getAllTags,
-  searchTagInData,
-} from '../../../utils/TableTags/TableTags.utils';
+import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import {
   getAllRowKeysByKeyName,
   getExpandAllKeysToDepth,
@@ -76,6 +73,7 @@ import {
   SchemaViewType,
   TopicSchemaFieldsProps,
 } from './TopicSchema.interface';
+import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
 
 const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   className,
@@ -250,6 +248,12 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     setExpandedRowKeys(keys as string[]);
   };
 
+  const {
+    tagFilterState,
+    filteredData: filteredSchemaFields,
+    handleTableChange,
+  } = useTreeTagFilter<Field>(messageSchema?.schemaFields ?? []);
+
   const renderSchemaName = useCallback(
     (_: unknown, record: Field) => (
       <div
@@ -391,7 +395,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         render: renderClassificationTags,
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.TAGS] ?? null,
       },
       {
         title: t('label.glossary-term-plural'),
@@ -402,7 +406,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         render: renderGlossaryTags,
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.GLOSSARY] ?? null,
       },
     ],
     [
@@ -413,6 +417,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
       renderClassificationTags,
       renderGlossaryTags,
       tagFilter,
+      tagFilterState,
     ]
   );
 
@@ -480,7 +485,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
                 className={classNames('align-table-filter-left', className)}
                 columns={columns}
                 data-testid="topic-schema-fields-table"
-                dataSource={messageSchema?.schemaFields}
+                dataSource={filteredSchemaFields}
                 defaultVisibleColumns={DEFAULT_TOPIC_VISIBLE_COLUMNS}
                 expandable={{
                   ...getTableExpandableConfig<Field>(false, 'text-link-color'),
@@ -501,6 +506,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
                 scroll={TABLE_SCROLL_VALUE}
                 size="small"
                 staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+                onChange={handleTableChange}
               />
             )}
           </Col>

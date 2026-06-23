@@ -44,10 +44,7 @@ import {
   columnFilterIcon,
   ownerTableObject,
 } from '../../../utils/TableColumn.util';
-import {
-  getAllTags,
-  searchTagInData,
-} from '../../../utils/TableTags/TableTags.utils';
+import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import { createTagObject } from '../../../utils/TagsUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
@@ -58,6 +55,7 @@ import TableDescription from '../../Database/TableDescription/TableDescription.c
 import TableTags from '../../Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import TasksDAGView from '../TasksDAGView/TasksDAGView';
+import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
 
 export const PipelineTaskTab = () => {
   const {
@@ -134,19 +132,22 @@ export const PipelineTaskTab = () => {
     [pipelineDetails.tasks]
   );
 
+  const { tagFilterState, filteredData, handleTableChange } =
+    useTreeTagFilter(allTasksInternal);
+
   useEffect(() => {
-    handlePagingChange({ total: allTasksInternal.length });
-    const maxPage = Math.max(1, Math.ceil(allTasksInternal.length / pageSize));
+    handlePagingChange({ total: filteredData.length });
+    const maxPage = Math.max(1, Math.ceil(filteredData.length / pageSize));
     if (currentPage > maxPage) {
       handlePageChange(maxPage, { cursorType: null, cursorValue: undefined });
     }
-  }, [allTasksInternal.length, pageSize]);
+  }, [filteredData.length, pageSize]);
 
   const tasksInternal = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
 
-    return allTasksInternal.slice(start, start + pageSize);
-  }, [allTasksInternal, currentPage, pageSize]);
+    return filteredData.slice(start, start + pageSize);
+  }, [filteredData, currentPage, pageSize]);
 
   const handleTasksPageChange = useCallback(
     ({ currentPage: page }: PagingHandlerParams) => {
@@ -334,7 +335,7 @@ export const PipelineTaskTab = () => {
         ),
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.TAGS] ?? null,
       },
       {
         title: t('label.glossary-term-plural'),
@@ -344,7 +345,7 @@ export const PipelineTaskTab = () => {
         filterIcon: columnFilterIcon,
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.GLOSSARY] ?? null,
         render: (tags, record, index) => (
           <TableTags<Task>
             entityFqn={pipelineFQN}
@@ -369,6 +370,7 @@ export const PipelineTaskTab = () => {
       editDescriptionPermission,
       currentPage,
       pageSize,
+      tagFilterState,
     ]
   );
 
@@ -403,6 +405,7 @@ export const PipelineTaskTab = () => {
           scroll={{ x: 1200 }}
           size="small"
           staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+          onChange={handleTableChange}
         />
       ) : (
         tasksDAGView

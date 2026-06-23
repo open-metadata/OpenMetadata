@@ -31,6 +31,7 @@ import { TagLabel, TagSource } from '../../../../../generated/type/tagLabel';
 import { usePaging } from '../../../../../hooks/paging/usePaging';
 import { useFqn } from '../../../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../../../hooks/useFqnDeepLink';
+import { useTreeTagFilter } from '../../../../../hooks/useTreeTagFilter';
 import {
   getDataModelColumnsByFQN,
   searchDataModelColumnsByFQN,
@@ -41,10 +42,7 @@ import {
   getEntityName,
 } from '../../../../../utils/EntityUtils';
 import { columnFilterIcon } from '../../../../../utils/TableColumn.util';
-import {
-  getAllTags,
-  searchTagInData,
-} from '../../../../../utils/TableTags/TableTags.utils';
+import { getAllTags } from '../../../../../utils/TableTags/TableTags.utils';
 import {
   getHighlightedRowClassName,
   getTableExpandableConfig,
@@ -324,6 +322,9 @@ const ModelTab = () => {
       handlePageSizeChange,
     ]
   );
+  const { tagFilterState, filteredData, handleTableChange } =
+    useTreeTagFilter(data);
+
   const tableColumn: ColumnsType<Column> = useMemo(
     () => [
       {
@@ -394,7 +395,7 @@ const ModelTab = () => {
         filters: tagFilter.Classification,
         filterIcon: columnFilterIcon,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.TAGS] ?? null,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={entityFqn ?? ''}
@@ -417,7 +418,7 @@ const ModelTab = () => {
         filterIcon: columnFilterIcon,
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.GLOSSARY] ?? null,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={entityFqn ?? ''}
@@ -437,6 +438,7 @@ const ModelTab = () => {
       entityFqn,
       isReadOnly,
       tagFilter,
+      tagFilterState,
       hasEditTagsPermission,
       hasEditGlossaryTermPermission,
       editColumnDescription,
@@ -455,7 +457,7 @@ const ModelTab = () => {
         columns={tableColumn}
         customPaginationProps={paginationProps}
         data-testid="data-model-column-table"
-        dataSource={data}
+        dataSource={filteredData}
         defaultVisibleColumns={DEFAULT_DASHBOARD_DATA_MODEL_VISIBLE_COLUMNS}
         expandable={{
           ...getTableExpandableConfig<Column>(false, 'text-link-color'),
@@ -472,6 +474,7 @@ const ModelTab = () => {
         searchProps={searchProps}
         size="small"
         staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+        onChange={handleTableChange}
       />
 
       {editColumnDescription && (

@@ -42,16 +42,14 @@ import { TagSource } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
+import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
 import {
   updateContainerColumnDescription,
   updateContainerColumnTags,
 } from '../../../utils/ContainerDetailUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
-import {
-  getAllTags,
-  searchTagInData,
-} from '../../../utils/TableTags/TableTags.utils';
+import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import {
   getHighlightedRowClassName,
   getTableExpandableConfig,
@@ -171,6 +169,9 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     >;
   }, [schema]);
 
+  const { tagFilterState, filteredData, handleTableChange } =
+    useTreeTagFilter(schema);
+
   const columns: ColumnsType<Column> = useMemo(
     () => [
       {
@@ -258,7 +259,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         filterIcon: columnFilterIcon,
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.TAGS] ?? null,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={entityFqn}
@@ -281,7 +282,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         filterIcon: columnFilterIcon,
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.GLOSSARY] ?? null,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={entityFqn}
@@ -307,6 +308,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       getEntityName,
       handleFieldTagsChange,
       handleColumnClick,
+      tagFilterState,
     ]
   );
 
@@ -320,7 +322,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         className="align-table-filter-left"
         columns={columns}
         data-testid="container-data-model-table"
-        dataSource={schema}
+        dataSource={filteredData}
         defaultVisibleColumns={DEFAULT_CONTAINER_DATA_MODEL_VISIBLE_COLUMNS}
         expandable={{
           ...getTableExpandableConfig<Column>(false, 'text-link-color'),
@@ -334,6 +336,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         scroll={TABLE_SCROLL_VALUE}
         size="small"
         staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+        onChange={handleTableChange}
       />
       {editContainerColumnDescription && (
         <EntityAttachmentProvider
