@@ -67,6 +67,26 @@ class SearchSettingsHandlerTest {
   }
 
   @Test
+  void testDefaultSearchSettingsJsonContainsServiceFieldsForAssetTypesWithServiceRelationship() {
+    List<String> assetTypesWithService =
+        List.of("table", "database", "databaseSchema", "topic", "dashboard", "pipeline");
+
+    for (String assetType : assetTypesWithService) {
+      AssetTypeConfiguration config = findAssetConfig(defaultSearchSettings, assetType);
+      assertNotNull(config, assetType + " must have an assetTypeConfiguration");
+
+      Set<String> fieldNames =
+          config.getSearchFields().stream().map(FieldBoost::getField).collect(Collectors.toSet());
+      assertTrue(
+          fieldNames.contains("service.name"),
+          assetType + " searchFields must include 'service.name' for service:value query syntax");
+      assertTrue(
+          fieldNames.contains("service.displayName"),
+          assetType + " searchFields must include 'service.displayName'");
+    }
+  }
+
+  @Test
   void testDefaultSearchSettingsJsonContainsMetricAllowedFields() {
     assertNotNull(defaultSearchSettings.getAllowedFields());
     AllowedSearchFields metricAllowed =

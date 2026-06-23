@@ -54,7 +54,9 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
           "classification.name",
           "classification.displayName",
           "glossary.name",
-          "glossary.displayName");
+          "glossary.displayName",
+          "service.name",
+          "service.displayName");
 
   // Keyword fields added to fuzzy because Lucene needs keyword fields for wildcard/prefix queries
   // in query_string

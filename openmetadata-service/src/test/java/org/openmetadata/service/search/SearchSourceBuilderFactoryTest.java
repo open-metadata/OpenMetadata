@@ -364,6 +364,48 @@ public class SearchSourceBuilderFactoryTest {
   }
 
   @Test
+  public void testServiceNameAndDisplayNameClassifiedAsFuzzyFields() {
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+    ElasticSearchSourceBuilderFactory esFactory =
+        new ElasticSearchSourceBuilderFactory(searchSettings);
+
+    assertTrue(
+        osFactory.isFuzzyField("service.name"),
+        "service.name must be a fuzzy field for field:value query syntax to work");
+    assertTrue(osFactory.isFuzzyField("service.displayName"));
+    assertTrue(esFactory.isFuzzyField("service.name"));
+    assertTrue(esFactory.isFuzzyField("service.displayName"));
+
+    assertFalse(osFactory.isNonFuzzyField("service.name"));
+    assertFalse(osFactory.isNonFuzzyField("service.displayName"));
+    assertFalse(esFactory.isNonFuzzyField("service.name"));
+    assertFalse(esFactory.isNonFuzzyField("service.displayName"));
+  }
+
+  @Test
+  public void testServiceFieldQuerySyntaxResolvesAgainstTableAssetType() {
+    tableConfig.getSearchFields().add(createFieldBoost("service.name", 7.0, "standard"));
+    tableConfig.getSearchFields().add(createFieldBoost("service.displayName", 7.0, "standard"));
+
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+    ElasticSearchSourceBuilderFactory esFactory =
+        new ElasticSearchSourceBuilderFactory(searchSettings);
+
+    OpenSearchRequestBuilder osBuilder =
+        osFactory.buildDataAssetSearchBuilderV2(
+            "table", "service.name:rds-fulfillment-prod", 0, 10, false, false);
+    ElasticSearchRequestBuilder esBuilder =
+        esFactory.buildDataAssetSearchBuilderV2(
+            "table", "service.name:rds-fulfillment-prod", 0, 10, false, false);
+
+    assertNotNull(osBuilder.query(), "OpenSearch query should resolve service.name:value syntax");
+    assertNotNull(
+        esBuilder.query(), "ElasticSearch query should resolve service.name:value syntax");
+    assertTrue(osBuilder.query().isFunctionScore());
+    assertTrue(esBuilder.query().isFunctionScore());
+  }
+
+  @Test
   public void testDataAssetBuildersUseGlobalHighlightFallbackAndScriptAggregations() {
     searchSettings
         .getGlobalSettings()

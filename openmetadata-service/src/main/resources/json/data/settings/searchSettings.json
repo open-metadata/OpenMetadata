@@ -177,6 +177,16 @@
           "field": "fqnParts",
           "boost": 5.0,
           "matchType": "standard"
+        },
+        {
+          "field": "service.name",
+          "boost": 7.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "service.displayName",
+          "boost": 7.0,
+          "matchType": "standard"
         }
       ],
       "highlightFields": [
@@ -249,6 +259,16 @@
         {
           "field": "fqnParts",
           "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "service.name",
+          "boost": 7.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "service.displayName",
+          "boost": 7.0,
           "matchType": "standard"
         }
       ],
@@ -337,6 +357,16 @@
         {
           "field": "columnNamesFuzzy",
           "boost": 1.5,
+          "matchType": "standard"
+        },
+        {
+          "field": "service.name",
+          "boost": 7.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "service.displayName",
+          "boost": 7.0,
           "matchType": "standard"
         }
       ],
@@ -446,6 +476,16 @@
           "field": "fqnParts",
           "boost": 5.0,
           "matchType": "standard"
+        },
+        {
+          "field": "service.name",
+          "boost": 7.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "service.displayName",
+          "boost": 7.0,
+          "matchType": "standard"
         }
       ],
       "highlightFields": [
@@ -532,6 +572,16 @@
         {
           "field": "fqnParts",
           "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "service.name",
+          "boost": 7.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "service.displayName",
+          "boost": 7.0,
           "matchType": "standard"
         }
       ],
@@ -622,6 +672,16 @@
           "field": "queryText.ngram",
           "boost": 1.0,
           "matchType": "fuzzy"
+        },
+        {
+          "field": "service.name",
+          "boost": 7.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "service.displayName",
+          "boost": 7.0,
+          "matchType": "standard"
         }
       ],
       "aggregations": [
@@ -705,6 +765,16 @@
         {
           "field": "fieldNamesFuzzy",
           "boost": 1.5,
+          "matchType": "standard"
+        },
+        {
+          "field": "service.name",
+          "boost": 7.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "service.displayName",
+          "boost": 7.0,
           "matchType": "standard"
         }
       ],
@@ -799,6 +869,16 @@
         {
           "field": "messageSchema.schemaFields.description",
           "boost": 1.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "service.name",
+          "boost": 7.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "service.displayName",
+          "boost": 7.0,
           "matchType": "standard"
         }
       ],
@@ -925,6 +1005,16 @@
           "field": "columnNamesFuzzy",
           "boost": 1.5,
           "matchType": "standard"
+        },
+        {
+          "field": "service.name",
+          "boost": 7.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "service.displayName",
+          "boost": 7.0,
+          "matchType": "standard"
         }
       ],
       "aggregations": [
@@ -1020,6 +1110,16 @@
           "field": "tasks.description",
           "boost": 1.0,
           "matchType": "standard"
+        },
+        {
+          "field": "service.name",
+          "boost": 7.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "service.displayName",
+          "boost": 7.0,
+          "matchType": "standard"
         }
       ],
       "aggregations": [
@@ -1106,6 +1206,16 @@
           "field": "mlFeatures.description",
           "boost": 1.0,
           "matchType": "standard"
+        },
+        {
+          "field": "service.name",
+          "boost": 7.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "service.displayName",
+          "boost": 7.0,
+          "matchType": "standard"
         }
       ],
       "aggregations": [
@@ -1191,6 +1301,16 @@
         {
           "field": "mlFeatures.description",
           "boost": 1.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "service.name",
+          "boost": 7.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "service.displayName",
+          "boost": 7.0,
           "matchType": "standard"
         }
       ],
@@ -1282,6 +1402,16 @@
         {
           "field": "columnNamesFuzzy",
           "boost": 1.5,
+          "matchType": "standard"
+        },
+        {
+          "field": "service.name",
+          "boost": 7.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "service.displayName",
+          "boost": 7.0,
           "matchType": "standard"
         }
       ],
@@ -1379,6 +1509,16 @@
           "field": "requestSchema.schemaFields.name.keyword",
           "boost": 8.0,
           "matchType": "exact"
+        },
+        {
+          "field": "service.name",
+          "boost": 7.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "service.displayName",
+          "boost": 7.0,
+          "matchType": "standard"
         }
       ],
       "aggregations": [
@@ -1870,6 +2010,16 @@
           "field": "path",
           "boost": 3.0,
           "matchType": "standard"
+        },
+        {
+          "field": "service.name",
+          "boost": 7.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "service.displayName",
+          "boost": 7.0,
+          "matchType": "standard"
         }
       ],
       "aggregations": [
@@ -1910,7 +2060,9 @@
         { "field": "fullyQualifiedName", "boost": 5.0, "matchType": "standard" },
         { "field": "fqnParts", "boost": 5.0, "matchType": "standard" },
         { "field": "extractedText", "boost": 3.0, "matchType": "standard" },
-        { "field": "fileExtension", "boost": 2.0, "matchType": "standard" }
+        { "field": "fileExtension", "boost": 2.0, "matchType": "standard" },
+        { "field": "service.name", "boost": 7.0, "matchType": "standard" },
+        { "field": "service.displayName", "boost": 7.0, "matchType": "standard" }
       ],
       "aggregations": [
         { "name": "fileType", "type": "terms", "field": "fileType" },
@@ -1936,7 +2088,9 @@
         { "field": "displayName.ngram", "boost": 1.0, "matchType": "fuzzy" },
         { "field": "description", "boost": 2.0, "matchType": "standard" },
         { "field": "fullyQualifiedName", "boost": 5.0, "matchType": "standard" },
-        { "field": "fqnParts", "boost": 5.0, "matchType": "standard" }
+        { "field": "fqnParts", "boost": 5.0, "matchType": "standard" },
+        { "field": "service.name", "boost": 7.0, "matchType": "standard" },
+        { "field": "service.displayName", "boost": 7.0, "matchType": "standard" }
       ],
       "aggregations": [],
       "scoreMode": "sum",
@@ -2034,6 +2188,16 @@
           "field": "fileExtension",
           "boost": 2.0,
           "matchType": "standard"
+        },
+        {
+          "field": "service.name",
+          "boost": 7.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "service.displayName",
+          "boost": 7.0,
+          "matchType": "standard"
         }
       ],
       "aggregations": [
@@ -2129,6 +2293,16 @@
           "field": "path",
           "boost": 3.0,
           "matchType": "standard"
+        },
+        {
+          "field": "service.name",
+          "boost": 7.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "service.displayName",
+          "boost": 7.0,
+          "matchType": "standard"
         }
       ],
       "aggregations": [
@@ -2223,6 +2397,16 @@
         {
           "field": "columnNamesFuzzy",
           "boost": 1.5,
+          "matchType": "standard"
+        },
+        {
+          "field": "service.name",
+          "boost": 7.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "service.displayName",
+          "boost": 7.0,
           "matchType": "standard"
         }
       ],
