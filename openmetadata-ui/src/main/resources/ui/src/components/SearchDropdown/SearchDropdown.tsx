@@ -402,6 +402,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
         trigger="hover">
         <Button
           className="quick-filter-dropdown-trigger-btn"
+          data-testid={`search-dropdown-${searchKey}`}
           size={triggerButtonSize}>
           <Space data-testid={`search-dropdown-${label}`} size={4}>
             <Space

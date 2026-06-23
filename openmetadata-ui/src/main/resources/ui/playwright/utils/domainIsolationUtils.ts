@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { APIRequestContext } from '@playwright/test';
-import { Domain } from '../../../support/domain/Domain';
-import { UserClass } from '../../../support/user/UserClass';
+import { Domain } from '../support/domain/Domain';
+import { UserClass } from '../support/user/UserClass';
 
 // Issue #24180 — the seeded DomainOnlyAccessRole isolates a user to their assigned
 // domains (plus sub-domains and domainless entities). These helpers centralise the
