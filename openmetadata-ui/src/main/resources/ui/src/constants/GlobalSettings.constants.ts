@@ -83,6 +83,7 @@ export enum GlobalSettingOptions {
   SEARCH_RBAC = 'search-rbac',
   LINEAGE_CONFIG = 'lineageConfig',
   OM_URL_CONFIG = 'om-url-config',
+  AI_SETTINGS = 'ai-settings',
   SEARCH_SETTINGS = 'search-settings',
   DATA_ASSETS = 'dataAssets',
   QUERY = 'query',

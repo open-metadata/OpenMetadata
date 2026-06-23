@@ -1,0 +1,11 @@
+{
+  "name": "McpApplicationBot",
+  "displayName": "MCP Server",
+  "description": "System bot used by the MCP Server to impersonate users during tool execution.",
+  "fullyQualifiedName": "McpApplicationBot",
+  "botUser": {
+    "name": "McpApplicationBot",
+    "type": "user"
+  },
+  "provider": "system"
+}

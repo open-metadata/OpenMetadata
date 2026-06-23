@@ -1,0 +1,68 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.service.resources.system;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.configuration.AISettings;
+import org.openmetadata.schema.configuration.MemoryAgentSettings;
+import org.openmetadata.schema.configuration.MemoryExtractionSettings;
+
+class AISettingsHandlerTest {
+
+  @Test
+  void incomingNullReturnsDefaults() {
+    AISettings defaults =
+        new AISettings()
+            .withEnabled(true)
+            .withMemoryExtraction(
+                new MemoryExtractionSettings().withFromFiles(true).withFromPages(true));
+
+    AISettings merged = new AISettingsHandler().mergeAISettings(defaults, null);
+
+    assertEquals(Boolean.TRUE, merged.getEnabled());
+    assertEquals(Boolean.TRUE, merged.getMemoryExtraction().getFromFiles());
+  }
+
+  @Test
+  void nullNestedDefaultInheritsIncoming() {
+    AISettings defaults = new AISettings().withEnabled(true).withMemoryExtraction(null);
+    AISettings incoming =
+        new AISettings().withMemoryExtraction(new MemoryExtractionSettings().withFromFiles(true));
+
+    AISettings merged = new AISettingsHandler().mergeAISettings(defaults, incoming);
+
+    assertEquals(Boolean.TRUE, merged.getMemoryExtraction().getFromFiles());
+  }
+
+  @Test
+  void mergePreservesAdminOverridesAndFillsMissingDefaults() {
+    AISettings defaults =
+        new AISettings()
+            .withEnabled(true)
+            .withMemoryExtraction(
+                new MemoryExtractionSettings().withFromFiles(true).withFromPages(true))
+            .withMemoryAgent(new MemoryAgentSettings().withEnabled(true));
+    AISettings incoming =
+        new AISettings().withMemoryExtraction(new MemoryExtractionSettings().withFromPages(false));
+
+    AISettings merged = new AISettingsHandler().mergeAISettings(defaults, incoming);
+
+    assertEquals(Boolean.FALSE, merged.getMemoryExtraction().getFromPages());
+    assertEquals(Boolean.TRUE, merged.getMemoryExtraction().getFromFiles());
+    assertTrue(merged.getMemoryAgent().getEnabled());
+  }
+}
