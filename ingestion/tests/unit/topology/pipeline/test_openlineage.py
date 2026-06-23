@@ -2609,6 +2609,8 @@ class TestKplDeaggregation(unittest.TestCase):
 
         with pytest.raises(ValueError):
             deaggregate_kinesis_record(record)
+
+
 class TestKinesisMultiShardPolling(unittest.TestCase):
     @patch(
         "metadata.ingestion.source.pipeline.openlineage.metadata.time.sleep",
