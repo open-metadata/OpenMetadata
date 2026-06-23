@@ -41,7 +41,7 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
 
   public PageContextProcessingEngine(
       KnowledgePageRepository pageRepository,
-      ContextMemoryExtractor extractor,
+      DocumentMemoryExtractor extractor,
       ContextMemoryReconciler reconciler) {
     this(
         pageRepository,
@@ -53,7 +53,7 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
 
   public PageContextProcessingEngine(
       KnowledgePageRepository pageRepository,
-      ContextMemoryExtractor extractor,
+      DocumentMemoryExtractor extractor,
       ContextMemoryReconciler reconciler,
       long quietPeriodMillis,
       int maxPendingPages) {
@@ -68,7 +68,7 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
 
   PageContextProcessingEngine(
       KnowledgePageRepository pageRepository,
-      ContextMemoryExtractor extractor,
+      DocumentMemoryExtractor extractor,
       ContextMemoryReconciler reconciler,
       long quietPeriodMillis,
       int maxPendingPages,

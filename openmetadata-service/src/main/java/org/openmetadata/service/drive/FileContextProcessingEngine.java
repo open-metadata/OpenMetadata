@@ -20,7 +20,7 @@ public class FileContextProcessingEngine extends ContextProcessingEngine {
 
   public FileContextProcessingEngine(
       ContextFileRepository fileRepository,
-      ContextMemoryExtractor extractor,
+      DocumentMemoryExtractor extractor,
       ContextMemoryReconciler reconciler) {
     super(extractor, reconciler);
     this.fileRepository = fileRepository;
