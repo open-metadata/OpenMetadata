@@ -131,12 +131,13 @@ jobs:
 
       - name: Compute spec-only mode and matrix
         id: compute
+        env:
+          ALL_FILES: ${{ steps.all-changes.outputs.all_changed_files }}
+          SPEC_FILES: ${{ steps.changed-specs.outputs.all_changed_files }}
         run: |
           FULL_MATRIX='{"shardIndex":[1,2,3,4,5,6],"shardTotal":[6]}'
           SPEC_MATRIX='{"shardIndex":[1],"shardTotal":[1]}'
 
-          ALL_FILES="${{ steps.all-changes.outputs.all_changed_files }}"
-          SPEC_FILES="${{ steps.changed-specs.outputs.all_changed_files }}"
           ALL_COUNT=$(echo "$ALL_FILES" | wc -w)
           SPEC_COUNT=$(echo "$SPEC_FILES" | wc -w)
 
@@ -155,7 +156,7 @@ jobs:
   playwright-ci-postgresql:
     needs: [build, detect-changes]
     runs-on: ubuntu-latest
-    if: ${{ !cancelled() && needs.build.result == 'success' }}
+    if: ${{ !cancelled() && needs.build.result == 'success' && needs.detect-changes.result == 'success' }}
     environment: test
     env:
       # Playwright logs the admin user in many times (performAdminLogin per test, parallel
@@ -209,11 +210,11 @@ jobs:
       - name: Run Playwright tests
         id: run-tests
         working-directory: openmetadata-ui/src/main/resources/ui/
+        env:
+          SPEC_ONLY: ${{ needs.detect-changes.outputs.spec_only_mode }}
+          CHANGED_SPECS: ${{ needs.detect-changes.outputs.changed_specs }}
         run: |
-          SPEC_ONLY="${{ needs.detect-changes.outputs.spec_only_mode }}"
-
           if [ "$SPEC_ONLY" = "true" ]; then
-            CHANGED_SPECS="${{ needs.detect-changes.outputs.changed_specs }}"
             echo "🔹 Spec-only mode: running changed specs → ${CHANGED_SPECS}"
 
             PROJECT_ARGS=""
@@ -234,12 +235,14 @@ jobs:
             if echo "$CHANGED_SPECS" | tr ' ' '\n' | grep -q "DomainIsolation/"; then
               PROJECT_ARGS="$PROJECT_ARGS --project=DomainIsolation"
             fi
-            # Regular chromium specs: anything not in a special-project category
+            # Regular chromium specs: anything not in a special-project category.
+            # Also add Basic because chromium has grepInvert:[@basic], so @basic-tagged tests
+            # in the changed files would be silently skipped without it.
             if echo "$CHANGED_SPECS" | tr ' ' '\n' | grep -qvE "(DataAssetRulesEnabled\.spec\.ts|DataAssetRulesDisabled\.spec\.ts|SearchRBAC\.spec\.ts|DomainIsolation/)"; then
-              PROJECT_ARGS="$PROJECT_ARGS --project=chromium"
+              PROJECT_ARGS="$PROJECT_ARGS --project=chromium --project=Basic"
             fi
 
-            [ -z "$PROJECT_ARGS" ] && PROJECT_ARGS="--project=chromium"
+            [ -z "$PROJECT_ARGS" ] && PROJECT_ARGS="--project=chromium --project=Basic"
 
             npx playwright test $PROJECT_ARGS $CHANGED_SPECS
 
