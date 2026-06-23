@@ -66,6 +66,7 @@ jest.mock('../../../utils/TagClassBase', () => ({
 }));
 
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
+  ...jest.requireActual('../../../utils/date-time/DateTimeUtils'),
   formatDate: jest.fn(() => 'Jan 1, 2026'),
 }));
 
@@ -81,6 +82,10 @@ jest.mock(
 jest.mock(
   '../../../components/Tag/TagsSelectForm/TagsSelectForm.component',
   () => jest.fn(() => <div data-testid="tag-select-form" />)
+);
+
+jest.mock('../DerivedOntologyCard/DerivedOntologyCard.component', () =>
+  jest.fn(() => <div data-testid="derived-ontology-card" />)
 );
 
 jest.mock('antd', () => ({
