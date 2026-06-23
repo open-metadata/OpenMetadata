@@ -1441,28 +1441,23 @@ export const validateFollowedEntityToWidget = async (
   entity: string | undefined,
   isFollowing: boolean
 ): Promise<Locator> => {
+  const followingWidget = await loadFollowingWidget(page);
+
   if (!entity) {
-    return loadFollowingWidget(page);
+    return followingWidget;
   }
 
-  let followingWidget: Locator | undefined;
+  if (isFollowing) {
+    await followingWidget.isVisible();
+    await followingWidget.getByTestId(`following-${entity}`).isVisible();
+  } else {
+    await followingWidget.isVisible();
+    await expect(
+      followingWidget.getByTestId(`following-${entity}`)
+    ).not.toBeVisible();
+  }
 
-  await expect
-    .poll(
-      async () => {
-        followingWidget = await loadFollowingWidget(page);
-        const entityCard = followingWidget.getByTestId(`Following-${entity}`);
-
-        return entityCard.isVisible();
-      },
-      {
-        timeout: 120_000,
-        intervals: [1_000, 2_000, 5_000],
-      }
-    )
-    .toBe(isFollowing);
-
-  return followingWidget ?? loadFollowingWidget(page);
+  return followingWidget;
 };
 
 const announcementForm = async (
