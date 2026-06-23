@@ -1620,6 +1620,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
               limits.invalidateCache(entityType);
             }
 
+            repository.storeChangeEventForAsyncOperation(
+                deleteResponse.entity(), deleteResponse.changeType(), recursive, userName);
             WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
                 jobId, securityContext, deleteResponse.entity());
           } catch (Exception e) {

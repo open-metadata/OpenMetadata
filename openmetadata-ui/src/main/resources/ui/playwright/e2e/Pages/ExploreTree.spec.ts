@@ -194,8 +194,12 @@ test.describe('Explore Tree scenarios', () => {
 
     await test.step('Click parent classification breadcrumb from a tag result', async () => {
       await waitForAllLoadersToDisappear(page);
+      // The result-card breadcrumb migrated to the core Breadcrumbs component,
+      // which renders plain anchors (no breadcrumb-link testid). The parent
+      // classification link is the plural /tags/ path (a tag entity is /tag/).
       const classificationBreadcrumb = page
-        .locator('[data-testid="breadcrumb-link"] a[href*="/tags/"]')
+        .getByTestId('search-container')
+        .locator('a[href*="/tags/"]')
         .first();
 
       await expect(classificationBreadcrumb).toBeVisible();
@@ -355,8 +359,13 @@ test.describe('Explore page', () => {
     await expect(page.getByRole('tree')).toContainText('Glossaries');
     await expect(page.getByRole('tree')).toContainText('Tags');
 
+    // The tree fires size=0 count queries on the dataAsset index alongside the
+    // main results query; match the results query (non-zero size) so the hits
+    // assertion sees the actual documents, not an aggregation-only response.
     const res = page.waitForResponse(
-      '/api/v1/search/query?q=&index=dataAsset*'
+      (response) =>
+        response.url().includes('index=dataAsset') &&
+        !response.url().includes('size=0')
     );
     // click on tags
     await page.getByTestId('explore-tree-title-Tags').click();
@@ -627,8 +636,9 @@ test.describe('Explore page', () => {
 
     // Click on filter dropdown
     await page.getByTestId('search-dropdown-Data Assets').click();
-    // assert on dropdown item visibility
-    await page.getByRole('menuitem', { name: 'tablecolumn' }).waitFor();
+    // The option renders a human-readable label ("Column") with the raw type as
+    // a tooltip, so assert on the stable testid instead of the menuitem name.
+    await page.getByTestId('tablecolumn-checkbox').waitFor();
     // assert on checkbox state
     await expect(page.getByTestId('tablecolumn-checkbox')).toBeChecked();
   });
