@@ -21,6 +21,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.net.URI;
 import java.util.List;
 import java.util.Set;
@@ -33,6 +34,7 @@ import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TermRelation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 
 class RdfGlossaryTermGraphFilterTest {
@@ -63,7 +65,57 @@ class RdfGlossaryTermGraphFilterTest {
     assertTrue(query.contains("?term1 ?candidateRelation ?selectedTerm"));
     assertTrue(query.contains("?selectedTerm om:belongsToGlossary <" + glossaryUri + "> ."));
     assertTrue(query.contains("FILTER(?term1 = ?selectedTerm || ?term2 = ?selectedTerm)"));
+    assertTrue(query.contains("<https://open-metadata.org/ontology/seeAlso>"));
     QueryFactory.create(query);
+  }
+
+  @Test
+  void relationTypeFilterIncludesConfiguredAndFallbackPredicateUris() throws Exception {
+    RdfStorageInterface storage = mock(RdfStorageInterface.class);
+    RdfRepository repository = new RdfRepository(config(), storage, null);
+    UUID glossaryTermId = UUID.randomUUID();
+
+    when(storage.executeSparqlQuery(anyString(), eq("application/sparql-results+json")))
+        .thenReturn(sparqlResponse(glossaryTermId));
+
+    repository.getGlossaryTermGraph(null, glossaryTermId, "seeAlso", 500, 0, true);
+
+    ArgumentCaptor<String> queryCaptor = ArgumentCaptor.forClass(String.class);
+    verify(storage)
+        .executeSparqlQuery(queryCaptor.capture(), eq("application/sparql-results+json"));
+    String query = queryCaptor.getValue();
+
+    assertTrue(query.contains("rdfs:seeAlso"));
+    assertTrue(query.contains("<https://open-metadata.org/ontology/seeAlso>"));
+    QueryFactory.create(query);
+  }
+
+  @Test
+  void glossaryTermGraphResponseAppliesTermAndIsolatedFilters() throws Exception {
+    RdfStorageInterface storage = mock(RdfStorageInterface.class);
+    RdfRepository repository = new RdfRepository(config(), storage, null);
+    UUID selectedId = UUID.randomUUID();
+    UUID relatedId = UUID.randomUUID();
+    UUID unrelatedId = UUID.randomUUID();
+    UUID unrelatedTargetId = UUID.randomUUID();
+    UUID isolatedId = UUID.randomUUID();
+
+    when(storage.executeSparqlQuery(anyString(), eq("application/sparql-results+json")))
+        .thenReturn(
+            sparqlGraphResponse(selectedId, relatedId, unrelatedId, unrelatedTargetId, isolatedId));
+
+    JsonNode graph =
+        JsonUtils.readTree(repository.getGlossaryTermGraph(null, selectedId, null, 500, 0, false));
+
+    Set<String> nodeIds =
+        graph.get("nodes").findValues("id").stream()
+            .map(JsonNode::asText)
+            .collect(Collectors.toSet());
+
+    assertEquals(Set.of(selectedId.toString(), relatedId.toString()), nodeIds);
+    assertEquals(1, graph.get("edges").size());
+    assertEquals(selectedId.toString(), graph.get("edges").get(0).get("from").asText());
+    assertEquals(relatedId.toString(), graph.get("edges").get(0).get("to").asText());
   }
 
   @Test
@@ -150,5 +202,51 @@ class RdfGlossaryTermGraphFilterTest {
         }
         """
         .formatted(glossaryTermUri);
+  }
+
+  private static String sparqlGraphResponse(
+      UUID selectedId, UUID relatedId, UUID unrelatedId, UUID unrelatedTargetId, UUID isolatedId) {
+    return """
+        {
+          "head": {"vars": ["term1", "term2", "relationType", "term1Name", "term2Name"]},
+          "results": {
+            "bindings": [
+              {
+                "term1": {"type": "uri", "value": "%s"},
+                "term1Name": {"type": "literal", "value": "Selected"}
+              },
+              {
+                "term1": {"type": "uri", "value": "%s"},
+                "term2": {"type": "uri", "value": "%s"},
+                "relationType": {"type": "uri", "value": "https://open-metadata.org/ontology/relatedTo"},
+                "term1Name": {"type": "literal", "value": "Selected"},
+                "term2Name": {"type": "literal", "value": "Related"}
+              },
+              {
+                "term1": {"type": "uri", "value": "%s"},
+                "term2": {"type": "uri", "value": "%s"},
+                "relationType": {"type": "uri", "value": "https://open-metadata.org/ontology/relatedTo"},
+                "term1Name": {"type": "literal", "value": "Unrelated"},
+                "term2Name": {"type": "literal", "value": "Unrelated Target"}
+              },
+              {
+                "term1": {"type": "uri", "value": "%s"},
+                "term1Name": {"type": "literal", "value": "Isolated"}
+              }
+            ]
+          }
+        }
+        """
+        .formatted(
+            termUri(selectedId),
+            termUri(selectedId),
+            termUri(relatedId),
+            termUri(unrelatedId),
+            termUri(unrelatedTargetId),
+            termUri(isolatedId));
+  }
+
+  private static String termUri(UUID termId) {
+    return BASE_URI + "entity/glossaryTerm/" + termId;
   }
 }

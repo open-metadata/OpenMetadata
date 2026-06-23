@@ -1462,7 +1462,7 @@ public class RdfRepository {
     if (relationTypes != null && !relationTypes.isEmpty()) {
       for (String relType : relationTypes.split(",")) {
         String trimmed = relType.trim().toLowerCase();
-        relationPredicates.add(getRelationPredicate(trimmed));
+        relationPredicates.addAll(getRelationPredicates(trimmed));
       }
       return relationPredicates;
     }
@@ -1490,6 +1490,9 @@ public class RdfRepository {
     // PROV-O predicates (for calculatedFrom, usedToCalculate)
     relationPredicates.add("prov:wasDerivedFrom");
     relationPredicates.add("prov:wasInfluencedBy");
+    for (String predicateUri : DEFAULT_GLOSSARY_TERM_RELATION_PREDICATES) {
+      relationPredicates.add("<" + predicateUri + ">");
+    }
 
     // Append user-configured custom predicates as full IRIs. Built-ins
     // already covered above as CURIEs; custom types use arbitrary URIs that
@@ -1542,6 +1545,13 @@ public class RdfRepository {
     }
 
     return relationPredicates;
+  }
+
+  private List<String> getRelationPredicates(String relationType) {
+    List<String> predicates = new ArrayList<>();
+    predicates.add(getRelationPredicate(relationType));
+    predicates.add("<" + getGlossaryTermRelationPredicateUri(relationType) + ">");
+    return predicates;
   }
 
   private String getRelationPredicate(String relationType) {
@@ -1666,6 +1676,9 @@ public class RdfRepository {
           glossaryName = firstNonBlank(glossaryName, scopedGlossaryName);
 
           if (term1Uri == null) continue;
+          if (!matchesGlossaryTermFilter(term1Uri, term2Uri, glossaryTermId)) {
+            continue;
+          }
 
           // Add term1 node
           if (!addedNodes.contains(term1Uri) && addedNodes.size() < limit) {
@@ -1760,6 +1773,31 @@ public class RdfRepository {
         }
       }
 
+      if (!includeIsolated) {
+        Set<String> includedNodeIds = new HashSet<>();
+        com.fasterxml.jackson.databind.node.ArrayNode relatedNodes =
+            JsonUtils.getObjectMapper().createArrayNode();
+        for (com.fasterxml.jackson.databind.JsonNode node : nodes) {
+          String nodeId = node.path("id").asText();
+          String nodeUri = config.getBaseUri().toString() + "entity/glossaryTerm/" + nodeId;
+          if (termsWithRelations.contains(nodeUri)) {
+            relatedNodes.add(node);
+            includedNodeIds.add(nodeId);
+          }
+        }
+
+        com.fasterxml.jackson.databind.node.ArrayNode relatedEdges =
+            JsonUtils.getObjectMapper().createArrayNode();
+        for (com.fasterxml.jackson.databind.JsonNode edge : edges) {
+          if (includedNodeIds.contains(edge.path("from").asText())
+              && includedNodeIds.contains(edge.path("to").asText())) {
+            relatedEdges.add(edge);
+          }
+        }
+        nodes = relatedNodes;
+        edges = relatedEdges;
+      }
+
       // If RDF didn't return enough results, fall back to database query
       if (nodes.isEmpty()) {
         LOG.info("RDF query returned no nodes, falling back to database");
@@ -1770,13 +1808,22 @@ public class RdfRepository {
 
       graphData.set("nodes", nodes);
       graphData.set("edges", edges);
-      graphData.put("totalNodes", addedNodes.size());
+      graphData.put("totalNodes", nodes.size());
       graphData.put("totalEdges", edges.size());
 
       return JsonUtils.pojoToJson(graphData);
     } finally {
       predicateNameCache.remove();
     }
+  }
+
+  private boolean matchesGlossaryTermFilter(String term1Uri, String term2Uri, UUID glossaryTermId) {
+    if (glossaryTermId == null) {
+      return true;
+    }
+    String selectedTermId = glossaryTermId.toString();
+    return (term1Uri != null && selectedTermId.equals(extractEntityIdFromUri(term1Uri)))
+        || (term2Uri != null && selectedTermId.equals(extractEntityIdFromUri(term2Uri)));
   }
 
   /**
