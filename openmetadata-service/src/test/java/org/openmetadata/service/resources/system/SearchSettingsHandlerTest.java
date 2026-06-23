@@ -69,7 +69,27 @@ class SearchSettingsHandlerTest {
   @Test
   void testDefaultSearchSettingsJsonContainsServiceFieldsForAssetTypesWithServiceRelationship() {
     List<String> assetTypesWithService =
-        List.of("table", "database", "databaseSchema", "topic", "dashboard", "pipeline");
+        List.of(
+            "database",
+            "databaseSchema",
+            "table",
+            "tableColumn",
+            "storedProcedure",
+            "query",
+            "topic",
+            "dashboard",
+            "dashboardDataModel",
+            "pipeline",
+            "mlmodel",
+            "searchIndex",
+            "container",
+            "apiEndpoint",
+            "directory",
+            "contextFile",
+            "folder",
+            "file",
+            "spreadsheet",
+            "worksheet");
 
     for (String assetType : assetTypesWithService) {
       AssetTypeConfiguration config = findAssetConfig(defaultSearchSettings, assetType);

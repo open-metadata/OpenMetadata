@@ -180,12 +180,12 @@
         },
         {
           "field": "service.name",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         },
         {
           "field": "service.displayName",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         }
       ],
@@ -263,12 +263,12 @@
         },
         {
           "field": "service.name",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         },
         {
           "field": "service.displayName",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         }
       ],
@@ -361,12 +361,12 @@
         },
         {
           "field": "service.name",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         },
         {
           "field": "service.displayName",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         }
       ],
@@ -479,12 +479,12 @@
         },
         {
           "field": "service.name",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         },
         {
           "field": "service.displayName",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         }
       ],
@@ -576,12 +576,12 @@
         },
         {
           "field": "service.name",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         },
         {
           "field": "service.displayName",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         }
       ],
@@ -675,12 +675,12 @@
         },
         {
           "field": "service.name",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         },
         {
           "field": "service.displayName",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         }
       ],
@@ -769,12 +769,12 @@
         },
         {
           "field": "service.name",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         },
         {
           "field": "service.displayName",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         }
       ],
@@ -873,12 +873,12 @@
         },
         {
           "field": "service.name",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         },
         {
           "field": "service.displayName",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         }
       ],
@@ -1008,12 +1008,12 @@
         },
         {
           "field": "service.name",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         },
         {
           "field": "service.displayName",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         }
       ],
@@ -1113,12 +1113,12 @@
         },
         {
           "field": "service.name",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         },
         {
           "field": "service.displayName",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         }
       ],
@@ -1209,12 +1209,12 @@
         },
         {
           "field": "service.name",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         },
         {
           "field": "service.displayName",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         }
       ],
@@ -1305,12 +1305,12 @@
         },
         {
           "field": "service.name",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         },
         {
           "field": "service.displayName",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         }
       ],
@@ -1406,12 +1406,12 @@
         },
         {
           "field": "service.name",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         },
         {
           "field": "service.displayName",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         }
       ],
@@ -1512,12 +1512,12 @@
         },
         {
           "field": "service.name",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         },
         {
           "field": "service.displayName",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         }
       ],
@@ -2013,12 +2013,12 @@
         },
         {
           "field": "service.name",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         },
         {
           "field": "service.displayName",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         }
       ],
@@ -2061,8 +2061,8 @@
         { "field": "fqnParts", "boost": 5.0, "matchType": "standard" },
         { "field": "extractedText", "boost": 3.0, "matchType": "standard" },
         { "field": "fileExtension", "boost": 2.0, "matchType": "standard" },
-        { "field": "service.name", "boost": 7.0, "matchType": "standard" },
-        { "field": "service.displayName", "boost": 7.0, "matchType": "standard" }
+        { "field": "service.name", "boost": 5.0, "matchType": "standard" },
+        { "field": "service.displayName", "boost": 5.0, "matchType": "standard" }
       ],
       "aggregations": [
         { "name": "fileType", "type": "terms", "field": "fileType" },
@@ -2089,8 +2089,8 @@
         { "field": "description", "boost": 2.0, "matchType": "standard" },
         { "field": "fullyQualifiedName", "boost": 5.0, "matchType": "standard" },
         { "field": "fqnParts", "boost": 5.0, "matchType": "standard" },
-        { "field": "service.name", "boost": 7.0, "matchType": "standard" },
-        { "field": "service.displayName", "boost": 7.0, "matchType": "standard" }
+        { "field": "service.name", "boost": 5.0, "matchType": "standard" },
+        { "field": "service.displayName", "boost": 5.0, "matchType": "standard" }
       ],
       "aggregations": [],
       "scoreMode": "sum",
@@ -2191,12 +2191,12 @@
         },
         {
           "field": "service.name",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         },
         {
           "field": "service.displayName",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         }
       ],
@@ -2296,12 +2296,12 @@
         },
         {
           "field": "service.name",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         },
         {
           "field": "service.displayName",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         }
       ],
@@ -2401,12 +2401,12 @@
         },
         {
           "field": "service.name",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         },
         {
           "field": "service.displayName",
-          "boost": 7.0,
+          "boost": 5.0,
           "matchType": "standard"
         }
       ],
