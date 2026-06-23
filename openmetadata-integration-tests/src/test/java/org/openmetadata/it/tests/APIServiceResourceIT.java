@@ -54,11 +54,18 @@ public class APIServiceResourceIT extends BaseServiceIT<ApiService, CreateApiSer
                 new CreateAPIEndpoint()
                     .withName(ns.prefix("del_ep"))
                     .withApiCollection(collection.getFullyQualifiedName()));
+    // Assert BOTH descendant docs are removed: apiEndpoint gets its service via ServiceBackedIndex
+    // (DataAssetIndex), but apiCollection's doc carries service only via setFields re-populating
+    // the
+    // stripped reference — a more fragile path. Guarding the collection doc catches a future
+    // regression that would silently orphan api_collection docs while the endpoint assertion
+    // passes.
     return new DeletableSubtree(
         service.getId().toString(),
         java.util.List.of(collection.getId().toString(), endpoint.getId().toString()),
-        "api_endpoint_search_index",
-        endpoint.getId().toString());
+        java.util.List.of(
+            new SearchDoc("api_collection_search_index", collection.getId().toString()),
+            new SearchDoc("api_endpoint_search_index", endpoint.getId().toString())));
   }
 
   @Override

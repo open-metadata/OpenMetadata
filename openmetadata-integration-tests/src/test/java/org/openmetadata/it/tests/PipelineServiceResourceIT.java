@@ -49,8 +49,7 @@ public class PipelineServiceResourceIT
     return new DeletableSubtree(
         service.getId().toString(),
         java.util.List.of(child.getId().toString()),
-        "pipeline_search_index",
-        child.getId().toString());
+        java.util.List.of(new SearchDoc("pipeline_search_index", child.getId().toString())));
   }
 
   @Override

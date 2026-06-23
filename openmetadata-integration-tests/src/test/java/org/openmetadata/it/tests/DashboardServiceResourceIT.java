@@ -51,8 +51,7 @@ public class DashboardServiceResourceIT
     return new DeletableSubtree(
         service.getId().toString(),
         java.util.List.of(child.getId().toString()),
-        "dashboard_search_index",
-        child.getId().toString());
+        java.util.List.of(new SearchDoc("dashboard_search_index", child.getId().toString())));
   }
 
   @Override

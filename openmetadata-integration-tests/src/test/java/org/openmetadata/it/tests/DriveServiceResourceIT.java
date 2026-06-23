@@ -47,8 +47,7 @@ public class DriveServiceResourceIT extends BaseServiceIT<DriveService, CreateDr
     return new DeletableSubtree(
         service.getId().toString(),
         java.util.List.of(child.getId().toString()),
-        "directory_search_index",
-        child.getId().toString());
+        java.util.List.of(new SearchDoc("directory_search_index", child.getId().toString())));
   }
 
   @Override

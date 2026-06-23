@@ -54,8 +54,7 @@ public class SearchServiceResourceIT extends BaseServiceIT<SearchService, Create
     return new DeletableSubtree(
         service.getId().toString(),
         java.util.List.of(child.getId().toString()),
-        null,
-        child.getId().toString());
+        java.util.List.of());
   }
 
   @Override

@@ -54,8 +54,7 @@ public class MlModelServiceResourceIT extends BaseServiceIT<MlModelService, Crea
     return new DeletableSubtree(
         service.getId().toString(),
         java.util.List.of(child.getId().toString()),
-        "mlmodel_search_index",
-        child.getId().toString());
+        java.util.List.of(new SearchDoc("mlmodel_search_index", child.getId().toString())));
   }
 
   @Override

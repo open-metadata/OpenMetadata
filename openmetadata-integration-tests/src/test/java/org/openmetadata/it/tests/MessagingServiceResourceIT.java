@@ -54,8 +54,7 @@ public class MessagingServiceResourceIT
     return new DeletableSubtree(
         service.getId().toString(),
         java.util.List.of(child.getId().toString()),
-        "topic_search_index",
-        child.getId().toString());
+        java.util.List.of(new SearchDoc("topic_search_index", child.getId().toString())));
   }
 
   @Override

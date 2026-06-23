@@ -553,8 +553,7 @@ public class DatabaseServiceResourceIT
     return new DeletableSubtree(
         service.getId().toString(),
         List.of(database.getId().toString(), schema.getId().toString(), table.getId().toString()),
-        "table_search_index",
-        table.getId().toString());
+        List.of(new SearchDoc("table_search_index", table.getId().toString())));
   }
 
   @Test

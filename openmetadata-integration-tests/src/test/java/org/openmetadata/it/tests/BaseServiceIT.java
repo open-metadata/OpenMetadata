@@ -160,17 +160,23 @@ public abstract class BaseServiceIT<T extends EntityInterface, K extends CreateE
   // ===================================================================
 
   /**
+   * A descendant search doc to assert is removed by the ancestor cascade. {@code index} is the
+   * search index alias (e.g. {@code table_search_index}) and {@code id} the doc id.
+   */
+  protected record SearchDoc(String index, String id) {}
+
+  /**
    * A small CONTAINS/PARENT_OF subtree built under a freshly-created service of this type, used by
    * {@link #recursiveHardDelete_serviceSubtree_leavesNoOrphansAndSearchClean(TestNamespace)}.
    *
    * @param serviceId the root service id — deleted recursively
    * @param descendantIds ids of created descendants, checked for orphaned relationship rows
-   * @param leafSearchIndex search index of {@code leafId} (e.g. {@code table_search_index}), or
-   *     {@code null} to skip the search-cleanliness assertion
-   * @param leafId a leaf descendant whose search doc must exist before and be gone after the delete
+   * @param searchDocs descendant docs that must be searchable before and gone after the delete —
+   *     include one per hierarchy level whose cascade coverage you want to guard (e.g. both the
+   *     api_collection and api_endpoint docs); empty list skips the search-cleanliness assertion
    */
   protected record DeletableSubtree(
-      String serviceId, List<String> descendantIds, String leafSearchIndex, String leafId) {}
+      String serviceId, List<String> descendantIds, List<SearchDoc> searchDocs) {}
 
   /**
    * Override in a service IT to build a small subtree (service + descendants) so the recursive
@@ -193,17 +199,16 @@ public abstract class BaseServiceIT<T extends EntityInterface, K extends CreateE
     Assumptions.assumeTrue(
         subtree != null, "service type provides no deletable subtree builder; skipping");
 
-    if (subtree.leafSearchIndex() != null) {
-      Awaitility.await("leaf indexed in search before delete")
+    for (SearchDoc sd : subtree.searchDocs()) {
+      Awaitility.await("descendant indexed in search before delete: " + sd.index())
           .atMost(Duration.ofSeconds(60))
           .pollInterval(Duration.ofSeconds(1))
           .ignoreExceptions()
           .untilAsserted(
               () ->
                   assertTrue(
-                      searchById(subtree.leafSearchIndex(), subtree.leafId())
-                          .contains(subtree.leafId()),
-                      "leaf should be present in search before delete"));
+                      searchById(sd.index(), sd.id()).contains(sd.id()),
+                      sd.index() + " doc should be present in search before delete"));
     }
 
     // Recursive hard delete of the root service (hardDeleteEntity is recursive for services).
@@ -225,19 +230,18 @@ public abstract class BaseServiceIT<T extends EntityInterface, K extends CreateE
         "no CONTAINS entity_relationship rows must survive after recursive service delete — found "
             + orphanRows.size());
 
-    // (3) Descendant search docs are removed by the ancestor service.id cascade (the assertion the
-    // search-skip optimization relies on).
-    if (subtree.leafSearchIndex() != null) {
-      Awaitility.await("descendant search docs removed")
+    // (3) Each descendant search doc is removed by the ancestor service.id cascade (the assertion
+    // the search-skip optimization relies on — one per hierarchy level the subtree opts to guard).
+    for (SearchDoc sd : subtree.searchDocs()) {
+      Awaitility.await("descendant search doc removed: " + sd.index())
           .atMost(Duration.ofSeconds(90))
           .pollInterval(Duration.ofSeconds(1))
           .ignoreExceptions()
           .untilAsserted(
               () ->
                   assertFalse(
-                      searchById(subtree.leafSearchIndex(), subtree.leafId())
-                          .contains(subtree.leafId()),
-                      "leaf search doc must be gone after recursive service hard delete"));
+                      searchById(sd.index(), sd.id()).contains(sd.id()),
+                      sd.index() + " doc must be gone after recursive service hard delete"));
     }
   }
 }
