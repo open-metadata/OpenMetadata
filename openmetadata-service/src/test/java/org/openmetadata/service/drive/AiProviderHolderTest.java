@@ -19,17 +19,20 @@ import static org.mockito.Mockito.mock;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.configuration.LLMConfiguration;
+import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.drive.memory.MemoryDeriver;
 
 class AiProviderHolderTest {
 
   @AfterEach
-  void resetHolder() {
+  void resetHolders() {
     AiProviderHolder.reset();
+    LlmConfigHolder.initialize(null);
   }
 
   @Test
-  void fallsBackToLlmProviderWhenCollateClassAbsent() {
+  void fallsBackToLlmProviderWhenUnconfigured() {
     AiProvider provider = AiProviderHolder.get();
 
     assertInstanceOf(LlmAiProvider.class, provider);
@@ -45,15 +48,21 @@ class AiProviderHolderTest {
   }
 
   @Test
-  void resolvesProviderNamedBySystemProperty() {
-    System.setProperty(AiProviderHolder.PROVIDER_CLASS_PROPERTY, FakeProvider.class.getName());
-    try {
-      AiProviderHolder.reset();
+  void resolvesProviderNamedByLlmConfiguration() {
+    LlmConfigHolder.initialize(
+        new LLMConfiguration().withAiProviderClass(FakeProvider.class.getName()));
+    AiProviderHolder.reset();
 
-      assertInstanceOf(FakeProvider.class, AiProviderHolder.get());
-    } finally {
-      System.clearProperty(AiProviderHolder.PROVIDER_CLASS_PROPERTY);
-    }
+    assertInstanceOf(FakeProvider.class, AiProviderHolder.get());
+  }
+
+  @Test
+  void fallsBackToLlmProviderWhenConfiguredClassMissing() {
+    LlmConfigHolder.initialize(
+        new LLMConfiguration().withAiProviderClass("org.openmetadata.does.NotExist"));
+    AiProviderHolder.reset();
+
+    assertInstanceOf(LlmAiProvider.class, AiProviderHolder.get());
   }
 
   public static final class FakeProvider implements AiProvider {

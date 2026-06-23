@@ -13,22 +13,23 @@
 
 package org.openmetadata.service.drive;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.configuration.LLMConfiguration;
+import org.openmetadata.service.clients.llm.LlmConfigHolder;
 
 /**
- * Process-wide holder of the single {@link AiProvider}. Resolves the implementation once, lazily:
- * the class named by {@code -Dopenmetadata.ai.provider.class} (default {@link
- * #DEFAULT_PROVIDER_CLASS}, a Collate-only class) if it is on the classpath, otherwise the OSS
- * {@link LlmAiProvider}. Mirrors the {@code McpServerProvider} seam in {@code
- * OpenMetadataApplication}: OSS works standalone; Collate ships the alternate class and it is picked
- * up automatically. {@link #setForTesting} / {@link #reset} are the test seams.
+ * Process-wide holder of the single {@link AiProvider}. Resolves the implementation once, lazily,
+ * from {@code llmConfiguration.aiProviderClass} in {@code openmetadata.yaml}: when that names a class
+ * on the classpath it is used, otherwise (unset, blank, or absent) the built-in {@link
+ * LlmAiProvider} is used. This is the config-driven seam (same shape as {@code
+ * pipelineServiceClientConfiguration.className}): the default distribution works standalone, and an
+ * alternate backend is selected purely by setting the class name in config. {@link #setForTesting} /
+ * {@link #reset} are the test seams.
  */
 @Slf4j
 public final class AiProviderHolder {
-  static final String PROVIDER_CLASS_PROPERTY = "openmetadata.ai.provider.class";
-  static final String DEFAULT_PROVIDER_CLASS =
-      "org.openmetadata.service.drive.collate.AiStudioAiProvider";
-
   private static volatile AiProvider instance;
 
   private AiProviderHolder() {}
@@ -43,23 +44,40 @@ public final class AiProviderHolder {
 
   private static synchronized AiProvider build() {
     if (instance == null) {
-      instance = resolve(System.getProperty(PROVIDER_CLASS_PROPERTY, DEFAULT_PROVIDER_CLASS));
+      instance = resolve(configuredProviderClass());
     }
     return instance;
   }
 
+  private static String configuredProviderClass() {
+    final LLMConfiguration config = LlmConfigHolder.get();
+    return config == null ? null : config.getAiProviderClass();
+  }
+
   private static AiProvider resolve(final String className) {
+    AiProvider resolved;
+    if (nullOrEmpty(className)) {
+      resolved = new LlmAiProvider();
+    } else {
+      resolved = resolveConfigured(className);
+    }
+    return resolved;
+  }
+
+  private static AiProvider resolveConfigured(final String className) {
     AiProvider resolved;
     try {
       final Class<?> clazz = Class.forName(className);
       resolved = (AiProvider) clazz.getDeclaredConstructor().newInstance();
       LOG.info("Using AI provider: {}", className);
     } catch (ClassNotFoundException notOnClasspath) {
+      LOG.warn(
+          "Configured aiProviderClass '{}' is not on the classpath; using the built-in LLM provider",
+          className);
       resolved = new LlmAiProvider();
     } catch (ReflectiveOperationException badProvider) {
       LOG.error(
-          "AI provider '{}' is on the classpath but could not be instantiated; "
-              + "falling back to the OSS LLM provider",
+          "Configured aiProviderClass '{}' could not be instantiated; using the built-in LLM provider",
           className,
           badProvider);
       resolved = new LlmAiProvider();
