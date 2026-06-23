@@ -15,6 +15,13 @@
       "effect": "allow"
     },
     {
+      "name": "DataConsumerPolicy-CreateTask-Rule",
+      "description" : "Allow authenticated users to create Task entities (governance approvals, data-access requests, etc.) via the /v1/tasks API.",
+      "resources" : ["task"],
+      "operations": ["Create"],
+      "effect": "allow"
+    },
+    {
       "name": "DataConsumerPolicy-TaskRule",
       "description" : "Allow authenticated users to file and edit tasks (data access requests, suggestions, etc.) against any entity. Restrict this rule (e.g. with an isOwner condition) to limit who can file or edit tasks on which entities.",
       "resources" : ["all"],
