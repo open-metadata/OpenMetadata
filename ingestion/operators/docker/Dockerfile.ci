@@ -46,6 +46,7 @@ RUN apt-get -qq update \
     # --only-upgrade is a no-op for packages not present in the base image.
     && apt-get -qq install -y --only-upgrade \
          libgnutls30 libcap2 libcap2-bin openssh-client rsync sudo \
+         libpam0g libpam-modules libpam-modules-bin libpam-runtime \
     && rm -rf /var/lib/apt/lists/*
 
 # Add updated postgres/redshift dependencies based on libq
