@@ -65,6 +65,7 @@ import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useSub } from '../../../hooks/usePubSub';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { useTableFilters } from '../../../hooks/useTableFilters';
+import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
 import {
   getTableColumnsByFQN,
   searchTableColumnsByFQN,
@@ -90,10 +91,7 @@ import {
   pruneEmptyChildren,
   updateColumnInNestedStructure,
 } from '../../../utils/TablePureUtils';
-import {
-  getAllTags,
-  searchTagInData,
-} from '../../../utils/TableTags/TableTags.utils';
+import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import {
   getTableExpandableConfig,
   prepareConstraintIcon,
@@ -741,6 +739,9 @@ const SchemaTable = () => {
     [testCaseCounts]
   );
 
+  const { tagFilterState, filteredData, handleTableChange } =
+    useTreeTagFilter<Column>(tableColumns);
+
   const columns: ColumnsType<Column> = useMemo(
     () => [
       {
@@ -812,7 +813,7 @@ const SchemaTable = () => {
         ),
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.TAGS] ?? null,
       },
       {
         title: t('label.glossary-term-plural'),
@@ -835,7 +836,7 @@ const SchemaTable = () => {
         ),
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.GLOSSARY] ?? null,
       },
       {
         title: t('label.data-quality'),
@@ -856,6 +857,7 @@ const SchemaTable = () => {
       renderDisplayName,
       renderDataQuality,
       tagFilter,
+      tagFilterState,
       sortBy,
       sortOrder,
       handleColumnHeaderSortToggle,
@@ -953,7 +955,7 @@ const SchemaTable = () => {
           columns={columns}
           customPaginationProps={paginationProps}
           data-testid="entity-table"
-          dataSource={tableColumns}
+          dataSource={filteredData}
           defaultVisibleColumns={DEFAULT_SCHEMA_TABLE_VISIBLE_COLUMNS}
           expandable={expandableConfig}
           extraTableFilters={
@@ -987,6 +989,7 @@ const SchemaTable = () => {
           searchProps={searchProps}
           size="middle"
           staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+          onChange={handleTableChange}
         />
       </Col>
       {editColumn && (

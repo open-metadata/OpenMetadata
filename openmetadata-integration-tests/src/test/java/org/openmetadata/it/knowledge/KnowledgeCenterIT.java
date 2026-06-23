@@ -2,6 +2,7 @@ package org.openmetadata.it.knowledge;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -12,11 +13,16 @@ import java.util.UUID;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.data.CreatePage;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.MemoryStats;
 import org.openmetadata.schema.entity.data.Article;
+import org.openmetadata.schema.entity.data.ExtractionStats;
 import org.openmetadata.schema.entity.data.Page;
+import org.openmetadata.schema.entity.data.PageProcessingStatus;
 import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
@@ -34,6 +40,8 @@ import org.openmetadata.sdk.test.util.RestClient;
 import org.openmetadata.sdk.test.util.SdkClients;
 import org.openmetadata.sdk.test.util.TestNamespace;
 import org.openmetadata.sdk.test.util.TestNamespaceExtension;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 
 @ExtendWith(TestNamespaceExtension.class)
 public class KnowledgeCenterIT {
@@ -67,6 +75,106 @@ public class KnowledgeCenterIT {
     TeamService teamService = new TeamService(adminClient.getHttpClient());
     Team org = teamService.getByName("Organization", null);
     return org.getEntityReference();
+  }
+
+  /**
+   * processingStatus, processingError and extractionStats are machine-managed fields the extraction
+   * engine stamps. They must round-trip through Postgres and the REST layer, and — recorded with
+   * updateVersion=false — must NOT churn the article's version history when stamped.
+   */
+  @Test
+  void articleProcessingStatusRoundTripsWithoutVersionBump(TestNamespace ns)
+      throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+    EntityReference orgRef = getOrganizationRef();
+
+    Page created = createPage(rest, buildCreateRequest(ns.prefix("pageProcessingStatus"), orgRef));
+    Double versionBeforeStamp = created.getVersion();
+
+    Page updated = JsonUtils.deepCopy(created, Page.class);
+    updated.setProcessingStatus(PageProcessingStatus.Failed);
+    updated.setProcessingError("extraction failed: provider timeout");
+    updated.setExtractionStats(new ExtractionStats().withChunksTotal(1).withPillsCreated(0));
+    Page patched = patchPage(rest, created.getId(), JsonUtils.pojoToJson(created), updated);
+
+    assertEquals(PageProcessingStatus.Failed, patched.getProcessingStatus());
+    assertEquals("extraction failed: provider timeout", patched.getProcessingError());
+    assertNotNull(patched.getExtractionStats());
+    assertEquals(
+        versionBeforeStamp,
+        patched.getVersion(),
+        "machine-managed status fields must not churn the article version");
+
+    Page fetched = getPage(rest, created.getId(), "");
+    assertEquals(PageProcessingStatus.Failed, fetched.getProcessingStatus());
+    assertEquals("extraction failed: provider timeout", fetched.getProcessingError());
+  }
+
+  /**
+   * memoryCount is computed from the {@code page --MENTIONED_IN--> contextMemory} relationship a
+   * memory creates from its sourceEntity. Linking a memory to a page via sourceEntity must make the
+   * page's memoryCount reflect it (and the relationship-backed sourceEntityId listing return it),
+   * proving the edge is stored with the page's entity type so the typed {@code findTo} count matches.
+   */
+  @Test
+  void articleMemoryCountReflectsLinkedMemories(TestNamespace ns) throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+    EntityReference orgRef = getOrganizationRef();
+
+    Page page = createPage(rest, buildCreateRequest(ns.prefix("pageMemoryCount"), orgRef));
+
+    CreateContextMemory memoryRequest =
+        new CreateContextMemory()
+            .withName(ns.prefix("memCountPill"))
+            .withQuestion("What does the engagement-weighted CLV metric measure?")
+            .withAnswer("Customer lifetime value adjusted by an engagement-tier multiplier.")
+            .withSourceEntity(new EntityReference().withId(page.getId()).withType("page"));
+    rest.create("v1/contextCenter/memories", memoryRequest, ContextMemory.class);
+
+    Page withCount = getPage(rest, page.getId(), "memoryCount");
+    assertEquals(
+        Integer.valueOf(1),
+        withCount.getMemoryCount(),
+        "memoryCount must reflect the MENTIONED_IN-linked memory");
+  }
+
+  /**
+   * The Memory Agent stamps each memory's memoryStats after deriving, loading it via {@code
+   * getFields("")} (no relationship fields). That machine update must NOT delete the memory's
+   * sourceEntity MENTIONED_IN edge — a regression that orphaned the pill from its page, zeroing
+   * memoryCount and the article's derived ontologies. Reproduces the exact stamp path in-process.
+   */
+  @Test
+  void ontologyStampPreservesMemorySourceLink(TestNamespace ns) throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+    EntityReference orgRef = getOrganizationRef();
+
+    Page page = createPage(rest, buildCreateRequest(ns.prefix("pageOntologyStamp"), orgRef));
+
+    CreateContextMemory memoryRequest =
+        new CreateContextMemory()
+            .withName(ns.prefix("ontologyStampPill"))
+            .withQuestion("What engagement multiplier does the CLV metric apply?")
+            .withAnswer("1.2x engaged, 0.8x occasional, 0.5x dormant.")
+            .withSourceEntity(new EntityReference().withId(page.getId()).withType("page"));
+    ContextMemory memory =
+        rest.create("v1/contextCenter/memories", memoryRequest, ContextMemory.class);
+
+    assertEquals(
+        Integer.valueOf(1),
+        getPage(rest, page.getId(), "memoryCount").getMemoryCount(),
+        "precondition: the memory is linked to its source page");
+
+    ContextMemoryRepository memoryRepo =
+        (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
+    ContextMemory partial = memoryRepo.get(null, memory.getId(), memoryRepo.getFields(""));
+    memoryRepo.stampMemoryStats(
+        partial, new MemoryStats().withSourceHash("test-hash").withLastRunAt(1L));
+
+    assertEquals(
+        Integer.valueOf(1),
+        getPage(rest, page.getId(), "memoryCount").getMemoryCount(),
+        "ontology stamp must preserve the memory's source link (MENTIONED_IN edge)");
   }
 
   @Test
