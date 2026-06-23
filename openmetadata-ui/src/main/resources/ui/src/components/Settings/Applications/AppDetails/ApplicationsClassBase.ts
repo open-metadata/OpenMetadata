@@ -17,7 +17,6 @@ import { getScheduleOptionsFromSchedules } from '../../../../utils/CronExpressio
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import type { ApplicationConfigurationProps } from '../ApplicationConfiguration/ApplicationConfiguration';
 import { AppPlugin } from '../plugins/AppPlugin';
-import { McpChatPlugin } from '../plugins/McpChatPlugin';
 
 const ApplicationConfiguration =
   withSuspenseFallback<ApplicationConfigurationProps>(
@@ -75,9 +74,7 @@ class ApplicationsClassBase {
   public appPluginRegistry: Record<
     string,
     new (name: string, isInstalled: boolean) => AppPlugin
-  > = {
-    McpChatApplication: McpChatPlugin,
-  };
+  > = {};
 
   public getScheduleOptionsForApp(
     app: string,

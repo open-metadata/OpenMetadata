@@ -16,14 +16,13 @@ import { useTranslation } from 'react-i18next';
 import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import { searchQuery } from '../rest/searchAPI';
 import {
-  AlertMessage,
   EMPTY_QUERY_FILTER_STRINGS,
   getExploreURLWithFilters,
   getModifiedQueryFilterWithSelectedAssets,
-  getSelectedResourceCount,
   getTotalResourceCount,
   isValidElasticsearchQuery,
-} from './CuratedAssetsUtils';
+} from './CuratedAssetsPureUtils';
+import { AlertMessage, getSelectedResourceCount } from './CuratedAssetsUtils';
 
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn(),
@@ -65,7 +64,7 @@ jest.mock('@ant-design/icons', () => ({
 describe('CuratedAssetsUtils', () => {
   beforeEach(() => {
     (useTranslation as jest.Mock).mockReturnValue({
-      t: (key: string, params?: any) => {
+      t: (key: string, params?: Record<string, unknown>) => {
         if (key === 'message.search-entity-count') {
           return `${params?.count} entities found`;
         }

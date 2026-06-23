@@ -48,7 +48,7 @@ import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
   getFeedCounts,
-} from '../../../utils/FeedUtils';
+} from '../../../utils/FeedUtilsPure';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
@@ -60,7 +60,7 @@ import {
   createTagObject,
   updateCertificationTag,
   updateTierTag,
-} from '../../../utils/TagsUtils';
+} from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
@@ -74,7 +74,6 @@ import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interfa
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { SpreadsheetDetailsProps } from './SpreadsheetDetails.interface';
-
 const EntityLineageTab = lazy(() =>
   import('../../Lineage/EntityLineageTab/EntityLineageTab').then((module) => ({
     default: module.EntityLineageTab,
