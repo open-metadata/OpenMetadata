@@ -68,6 +68,7 @@ export default defineConfig({
     ],
     ['blob'],
     ['json', { outputFile: './playwright/output/results.json' }],
+    ['@flakiness/playwright', { flakinessProject: 'OpenMetadata/OpenMetadata' }],
   ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
