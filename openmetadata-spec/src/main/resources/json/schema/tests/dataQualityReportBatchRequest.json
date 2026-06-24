@@ -1,0 +1,50 @@
+{
+  "$id": "https://open-metadata.org/schema/tests/dataQualityReportBatchRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DataQualityReportBatchRequest",
+  "description": "Request to run multiple data quality report aggregations in a single call.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.tests.DataQualityReportBatchRequest",
+  "definitions": {
+    "dataQualityReportRequest": {
+      "description": "A single data quality report aggregation to execute as part of a batch.",
+      "javaType": "org.openmetadata.schema.tests.type.DataQualityReportRequest",
+      "type": "object",
+      "properties": {
+        "key": {
+          "description": "Client provided key used to correlate this request with its result in the response.",
+          "type": "string"
+        },
+        "q": {
+          "description": "Search query to filter the aggregation results.",
+          "type": "string"
+        },
+        "index": {
+          "description": "Index to perform the aggregation against.",
+          "type": "string"
+        },
+        "aggregationQuery": {
+          "description": "Aggregation query to perform aggregation on the search results.",
+          "type": "string"
+        },
+        "domain": {
+          "description": "Filter by domain fully qualified name.",
+          "type": "string"
+        }
+      },
+      "required": ["key", "index", "aggregationQuery"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "requests": {
+      "description": "List of data quality report aggregations to execute concurrently.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/dataQualityReportRequest"
+      }
+    }
+  },
+  "required": ["requests"],
+  "additionalProperties": false
+}
