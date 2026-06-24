@@ -12,22 +12,36 @@
  */
 
 import Icon, { SearchOutlined } from '@ant-design/icons';
+import {
+  Atom01,
+  BarChart01,
+  BookOpen01,
+  CodeBrowser,
+  CodeSnippet01,
+  Compass03,
+  Cube01,
+  Database01,
+  File05,
+  Folder,
+  GitBranch01,
+  LayoutAlt01,
+  Rows01,
+  Shield01,
+  Table as TableStrokeIcon,
+} from '@untitledui/icons';
 import { Space, Tooltip, Typography } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
 import { uniqBy } from 'lodash';
-import { Fragment, type CSSProperties } from 'react';
+import { ComponentType, Fragment, type CSSProperties } from 'react';
 import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
 import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-black.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application.svg';
 import { ReactComponent as AutomatorBotIcon } from '../assets/svg/automator-bot.svg';
-import { ReactComponent as GlossaryTermIcon } from '../assets/svg/book.svg';
 import { ReactComponent as BotIcon } from '../assets/svg/bot.svg';
-import { ReactComponent as ChartIcon } from '../assets/svg/chart.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as ConversationIcon } from '../assets/svg/comment.svg';
 import { ReactComponent as QueryIcon } from '../assets/svg/customproperties/sql-query.svg';
-import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
 import { ReactComponent as IconArray } from '../assets/svg/data-type-icon/array.svg';
 import { ReactComponent as IconBinary } from '../assets/svg/data-type-icon/binary.svg';
 import { ReactComponent as IconBitmap } from '../assets/svg/data-type-icon/bitmap.svg';
@@ -62,33 +76,21 @@ import { ReactComponent as IconDrag } from '../assets/svg/drag.svg';
 import { ReactComponent as IconForeignKeyLineThrough } from '../assets/svg/foreign-key-line-through.svg';
 import { ReactComponent as IconForeignKey } from '../assets/svg/foreign-key.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
-import { ReactComponent as APICollectionIcon } from '../assets/svg/ic-api-collection-default.svg';
-import { ReactComponent as APIEndpointIcon } from '../assets/svg/ic-api-endpoint-default.svg';
 import { ReactComponent as APIServiceIcon } from '../assets/svg/ic-api-service-default.svg';
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
 import { ReactComponent as IconTestCase } from '../assets/svg/ic-checklist.svg';
-import { ReactComponent as ColumnIcon } from '../assets/svg/ic-column.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
 import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
-import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
-import { ReactComponent as DirectoryIcon } from '../assets/svg/ic-directory.svg';
-import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as DriveServiceIcon } from '../assets/svg/ic-drive-service.svg';
-import { ReactComponent as FileIcon } from '../assets/svg/ic-file.svg';
 import { ReactComponent as KnowledgePageIcon } from '../assets/svg/ic-knowledge-page.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
 import { ReactComponent as PersonaIcon } from '../assets/svg/ic-personas.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
-import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
-import { ReactComponent as SpreadsheetIcon } from '../assets/svg/ic-spreadsheet.svg';
 import { ReactComponent as ContainerIcon } from '../assets/svg/ic-storage.svg';
-import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
-import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
 import { ReactComponent as TeamIcon } from '../assets/svg/ic-teams.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
-import { ReactComponent as WorksheetIcon } from '../assets/svg/ic-worksheet.svg';
 import { ReactComponent as IconDistLineThrough } from '../assets/svg/icon-dist-line-through.svg';
 import { ReactComponent as IconDistKey } from '../assets/svg/icon-distribution.svg';
 import { ReactComponent as IconKeyLineThrough } from '../assets/svg/icon-key-line-through.svg';
@@ -104,11 +106,9 @@ import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
 import { ReactComponent as KPIIcon } from '../assets/svg/kpi.svg';
 import { ReactComponent as LocationIcon } from '../assets/svg/location.svg';
 import { ReactComponent as MetadataServiceIcon } from '../assets/svg/metadata-service.svg';
-import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
 import { ReactComponent as NotificationIcon } from '../assets/svg/notification.svg';
 import { ReactComponent as PolicyIcon } from '../assets/svg/policies.svg';
 import { ReactComponent as ServicesIcon } from '../assets/svg/services.svg';
-import { ReactComponent as TagIcon } from '../assets/svg/tag.svg';
 import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
 import { ReactComponent as UserIcon } from '../assets/svg/user.svg';
 import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
@@ -284,32 +284,39 @@ export const getColumnDataTypeIcon = ({
   return <Icon alt={dataType} component={icon} style={{ fontSize: width }} />;
 };
 
-const entityIconMapping: Record<string, SvgComponent> = {
-  [SearchIndex.DATABASE]: DatabaseIcon,
+// Data-asset entity types use the Untitled-UI stroke icon set (the explore
+// redesign's design system); services, governance, and admin entities keep
+// their existing branded SVGs. Both component shapes satisfy the permissive
+// className/style signature below.
+const entityIconMapping: Record<
+  string,
+  ComponentType<{ className?: string; style?: CSSProperties }>
+> = {
+  [SearchIndex.DATABASE]: Database01,
   [SearchIndex.DATABASE_SERVICE]: DatabaseIcon,
-  [SearchIndex.DATABASE_SCHEMA]: SchemaIcon,
-  [SearchIndex.TOPIC]: TopicIcon,
+  [SearchIndex.DATABASE_SCHEMA]: Database01,
+  [SearchIndex.TOPIC]: Rows01,
   [EntityType.MESSAGING_SERVICE]: TopicIcon,
-  [SearchIndex.DASHBOARD]: DashboardIcon,
+  [SearchIndex.DASHBOARD]: LayoutAlt01,
   [EntityType.DASHBOARD_SERVICE]: DashboardIcon,
-  [SearchIndex.MLMODEL]: MlModelIcon,
+  [SearchIndex.MLMODEL]: Atom01,
   [EntityType.MLMODEL_SERVICE]: MlModelIcon,
-  [SearchIndex.PIPELINE]: PipelineIcon,
+  [SearchIndex.PIPELINE]: GitBranch01,
   [EntityType.PIPELINE_SERVICE]: PipelineIcon,
-  [SearchIndex.CONTAINER]: ContainerIcon,
+  [SearchIndex.CONTAINER]: Cube01,
   [EntityType.STORAGE_SERVICE]: ContainerIcon,
-  [SearchIndex.DASHBOARD_DATA_MODEL]: IconDataModel,
-  [SearchIndex.STORED_PROCEDURE]: IconStoredProcedure,
+  [SearchIndex.DASHBOARD_DATA_MODEL]: LayoutAlt01,
+  [SearchIndex.STORED_PROCEDURE]: CodeSnippet01,
   [EntityType.CLASSIFICATION]: ClassificationIcon,
-  [SearchIndex.TAG]: TagIcon,
+  [SearchIndex.TAG]: Shield01,
   [SearchIndex.GLOSSARY]: GlossaryIcon,
-  [SearchIndex.GLOSSARY_TERM]: GlossaryTermIcon,
-  [SearchIndex.DOMAIN]: DomainIcon,
-  [SearchIndex.CHART]: ChartIcon,
-  [SearchIndex.TABLE]: TableIcon,
-  [SearchIndex.COLUMN]: ColumnIcon,
+  [SearchIndex.GLOSSARY_TERM]: BookOpen01,
+  [SearchIndex.DOMAIN]: Compass03,
+  [SearchIndex.CHART]: BarChart01,
+  [SearchIndex.TABLE]: TableStrokeIcon,
+  [SearchIndex.COLUMN]: TableStrokeIcon,
   [EntityType.METADATA_SERVICE]: MetadataServiceIcon,
-  [SearchIndex.DATA_PRODUCT]: DataProductIcon,
+  [SearchIndex.DATA_PRODUCT]: Cube01,
   [EntityType.TEST_CASE]: IconTestCase,
   [EntityType.TEST_SUITE]: IconTestSuite,
   [EntityType.DATA_CONTRACT]: DataQualityIcon,
@@ -332,18 +339,18 @@ const entityIconMapping: Record<string, SvgComponent> = {
   ['services']: ServicesIcon,
   ['automator']: AutomatorBotIcon,
   ['notification']: NotificationIcon,
-  [EntityType.API_ENDPOINT]: APIEndpointIcon,
-  [EntityType.METRIC]: MetricIcon,
+  [EntityType.API_ENDPOINT]: CodeBrowser,
+  [EntityType.METRIC]: BarChart01,
   [EntityType.API_SERVICE]: APIServiceIcon,
-  [EntityType.API_COLLECTION]: APICollectionIcon,
+  [EntityType.API_COLLECTION]: CodeBrowser,
   ['location']: LocationIcon,
   [EntityType.QUERY]: QueryIcon,
-  [EntityType.DIRECTORY]: DirectoryIcon,
-  [EntityType.FILE]: FileIcon,
-  [EntityType.SPREADSHEET]: SpreadsheetIcon,
-  [EntityType.WORKSHEET]: WorksheetIcon,
+  [EntityType.DIRECTORY]: Folder,
+  [EntityType.FILE]: File05,
+  [EntityType.SPREADSHEET]: TableStrokeIcon,
+  [EntityType.WORKSHEET]: TableStrokeIcon,
   [EntityType.DRIVE_SERVICE]: DriveServiceIcon,
-  [EntityType.KNOWLEDGE_PAGE]: KnowledgePageIcon,
+  [EntityType.KNOWLEDGE_PAGE]: BookOpen01,
   [EntityType.KNOWLEDGE_CENTER]: KnowledgePageIcon,
   [EntityType.knowledgePanels]: KnowledgePageIcon,
 };

@@ -2708,8 +2708,13 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     request2.setOwners(List.of(shared.USER2_REF));
     client.testCases().create(request2);
 
-    // List all test cases - should include both
-    ListResponse<TestCase> allTestCases = client.testCases().list(new ListParams().setLimit(100));
+    // Scope the list to this table's entityLink. A global list returns test cases attached via
+    // entityLink to tables that have already been hard-deleted by other concurrent tests; the SDK
+    // then tries to hydrate the dead table reference and the call fails with 404. Cascade delete
+    // does not clean up test cases attached via entityLink (no parent→child Relationship row).
+    String entityLink = "<#E::table::" + table.getFullyQualifiedName() + ">";
+    ListResponse<TestCase> allTestCases =
+        client.testCases().list(new ListParams().setLimit(100).addFilter("entityLink", entityLink));
     assertTrue(allTestCases.getData().size() >= 2);
   }
 
