@@ -496,20 +496,25 @@ const collectSharedAssets = (
     if (link.kind !== 'ontology' || link.label !== MAPPED_TO_LABEL) {
       return;
     }
+    // A mapping edge connects a table and a concept in either direction. The
+    // concept endpoint is the one we've expanded; the other endpoint is the
+    // shared asset. Resolving by endpoint (not by source/target position) keeps
+    // this correct for reverse-direction (concept->table) mappings.
     const source = idOf(link.source);
     const target = idOf(link.target);
-    const asset = byId.get(source);
-    if (
-      expanded.has(target) &&
-      asset?.type === 'table' &&
-      source !== selfId &&
-      !seen.has(source)
-    ) {
-      seen.add(source);
+    const conceptId = expanded.has(source)
+      ? source
+      : expanded.has(target)
+      ? target
+      : undefined;
+    const assetId = conceptId === source ? target : source;
+    const asset = conceptId ? byId.get(assetId) : undefined;
+    if (asset?.type === 'table' && assetId !== selfId && !seen.has(assetId)) {
+      seen.add(assetId);
       shared.push({
         asset,
-        via: byId.get(target)?.name ?? target,
-        path: expanded.get(target) ?? '',
+        via: byId.get(conceptId as string)?.name ?? (conceptId as string),
+        path: expanded.get(conceptId as string) ?? '',
       });
     }
   });
@@ -522,7 +527,12 @@ const classifyRelationRow = (
   buckets: NodeRelations
 ): void => {
   if (row.kind === 'ontology') {
-    if (row.label === MAPPED_TO_LABEL && row.direction === 'out') {
+    // A "Mapped to" edge between an asset and a concept counts as a mapped
+    // concept regardless of direction: the RDF store emits it asset->concept
+    // (mappedTo) or concept->asset (hasGlossaryTerm). Key on the other endpoint
+    // being a concept rather than the direction, so reverse-direction mappings
+    // still populate the mapped bucket (and the shared-concept panel).
+    if (row.label === MAPPED_TO_LABEL && row.other.type === 'concept') {
       buckets.mapped.push(row);
     } else {
       buckets.hierarchy.push(row);

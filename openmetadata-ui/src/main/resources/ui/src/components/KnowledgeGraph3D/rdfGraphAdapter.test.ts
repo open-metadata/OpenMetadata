@@ -569,6 +569,37 @@ describe('relationsOf multi-hop shared concept', () => {
   });
 });
 
+describe('relationsOf reverse-direction (concept -> table) mappings', () => {
+  const REVERSE: GraphData = {
+    nodes: [
+      { id: 'TX', label: 'ORDERS', type: 'table' },
+      { id: 'TY', label: 'PAYMENTS', type: 'table' },
+      { id: 'CONX', label: 'PII', type: 'glossaryTerm' },
+    ],
+    edges: [
+      // concept -> table direction (e.g. hasGlossaryTerm), not table -> concept
+      { from: 'CONX', to: 'TX', label: 'hasGlossaryTerm' },
+      { from: 'CONX', to: 'TY', label: 'hasGlossaryTerm' },
+    ],
+  };
+
+  it("should bucket a reverse-direction mapping under the table's mapped concepts", () => {
+    const graph = adaptRdfGraph(REVERSE);
+    const relations = relationsOf(graph, 'TX');
+
+    expect(relations.mapped.map((r) => r.other.id)).toEqual(['CONX']);
+    expect(relations.hierarchy).toHaveLength(0);
+  });
+
+  it('should surface another table sharing the concept via reverse-direction mappings', () => {
+    const graph = adaptRdfGraph(REVERSE);
+    const relations = relationsOf(graph, 'TX');
+
+    expect(relations.shared.map((r) => r.asset.id)).toEqual(['TY']);
+    expect(relations.shared[0].via).toBe('PII');
+  });
+});
+
 describe('humanizeLabel via classifyEdge fallback', () => {
   it('should humanize an unknown raw label that does not touch a concept', () => {
     expect(classifyEdge('some_weird-Label', 'table', 'table')).toEqual({
