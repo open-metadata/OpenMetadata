@@ -38,11 +38,49 @@ jest.mock('../../PopOverCard/EntityPopOverCard', () => ({
   ),
 }));
 
+const mockGetEntityLink = jest.fn(
+  (
+    type: string,
+    fqn: string,
+    _tab?: string,
+    _subTab?: string,
+    _isExecutableTestSuite?: boolean,
+    _isObservabilityAlert?: boolean,
+    serviceCategory?: string,
+    serviceFqn?: string
+  ) => {
+    if (serviceCategory && serviceFqn) {
+      return `/${serviceCategory}/${serviceFqn}/logs`;
+    }
+
+    return `/entity/${type}/${fqn}`;
+  }
+);
+
 // Mock EntityUtilClassBase to control entity link resolution
 jest.mock('../../../../utils/EntityUtilClassBase', () => ({
   __esModule: true,
   default: {
-    getEntityLink: (type: EntityType, fqn: string) => `/entity/${type}/${fqn}`,
+    getEntityLink: (
+      type: string,
+      fqn: string,
+      tab?: string,
+      subTab?: string,
+      isExecutableTestSuite?: boolean,
+      isObservabilityAlert?: boolean,
+      serviceCategory?: string,
+      serviceFqn?: string
+    ) =>
+      mockGetEntityLink(
+        type,
+        fqn,
+        tab,
+        subTab,
+        isExecutableTestSuite,
+        isObservabilityAlert,
+        serviceCategory,
+        serviceFqn
+      ),
   },
 }));
 
@@ -124,5 +162,78 @@ describe('EntityMarkdownLink', () => {
 
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute('href', '#unknowntype/some.entity');
+  });
+
+  describe('ingestionPipeline entity links', () => {
+    beforeEach(() => {
+      mockGetEntityLink.mockClear();
+    });
+
+    it('should parse ingestionPipeline link and pass serviceCategory and serviceFqn', () => {
+      renderWithRouter(
+        <EntityMarkdownLink href="#ingestionPipeline/databaseServices/bigquery-beta/bigquery-beta-1.7047fd1d-f7a0-42d3-b689-33ab54faaccc">
+          Pod Diagnostics
+        </EntityMarkdownLink>
+      );
+
+      expect(mockGetEntityLink).toHaveBeenCalledWith(
+        EntityType.INGESTION_PIPELINE,
+        'bigquery-beta-1.7047fd1d-f7a0-42d3-b689-33ab54faaccc',
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        'databaseServices',
+        'bigquery-beta'
+      );
+    });
+
+    it('should render entity link with correct logs path', () => {
+      renderWithRouter(
+        <EntityMarkdownLink href="#ingestionPipeline/databaseServices/bigquery-beta/bigquery-beta-1.7047fd1d-f7a0-42d3-b689-33ab54faaccc">
+          Pod Diagnostics
+        </EntityMarkdownLink>
+      );
+
+      const link = screen.getByText('Pod Diagnostics');
+
+      expect(link).toBeInTheDocument();
+      expect(link.closest('a')).toHaveAttribute(
+        'href',
+        '/databaseServices/bigquery-beta/logs'
+      );
+    });
+
+    it('should render regular link when ingestionPipeline href is missing serviceFqn segment', () => {
+      renderWithRouter(
+        <EntityMarkdownLink href="#ingestionPipeline/databaseServices">
+          Bad Link
+        </EntityMarkdownLink>
+      );
+
+      const link = screen.getByText('Bad Link');
+
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute('href', '#ingestionPipeline/databaseServices');
+    });
+
+    it('should decode URL-encoded characters in ingestionPipeline FQN', () => {
+      renderWithRouter(
+        <EntityMarkdownLink href="#ingestionPipeline/databaseServices/my%20service/my%20service.pipeline-id">
+          Encoded Pipeline
+        </EntityMarkdownLink>
+      );
+
+      expect(mockGetEntityLink).toHaveBeenCalledWith(
+        EntityType.INGESTION_PIPELINE,
+        'my service.pipeline-id',
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        'databaseServices',
+        'my service'
+      );
+    });
   });
 });

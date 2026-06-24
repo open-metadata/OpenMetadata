@@ -219,7 +219,8 @@ class EntityUtilClassBase {
     tab?: string,
     subTab?: string,
     isExecutableTestSuite?: boolean,
-    isObservabilityAlert?: boolean
+    isObservabilityAlert?: boolean,
+    serviceCategory?: string
   ) {
     switch (indexType) {
       case SearchIndex.TOPIC:
@@ -454,13 +455,8 @@ class EntityUtilClassBase {
         return getKnowledgePagePath(fullyQualifiedName, tab, subTab);
 
       case EntityType.INGESTION_PIPELINE:
-        // Ingestion pipelines have no standalone detail page, and the owning service's
-        // category (databaseServices, messagingServices, …) cannot be derived
-        // synchronously from the pipeline FQN. Route to the category-independent logs
-        // viewer, which resolves the pipeline by its FQN regardless of service type —
-        // avoiding the wrong-category 404 a hard-coded service route would produce.
         return getLogsViewerPath(
-          EntityType.INGESTION_PIPELINE,
+          serviceCategory ?? EntityType.INGESTION_PIPELINE,
           fullyQualifiedName,
           fullyQualifiedName
         );

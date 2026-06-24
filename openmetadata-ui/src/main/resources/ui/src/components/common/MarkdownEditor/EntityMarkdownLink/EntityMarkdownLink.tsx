@@ -31,7 +31,7 @@ const parseEntityLink = (href: string): ParsedEntityLink => {
     return { isEntityLink: false };
   }
 
-  const [, entityTypeStr, fullyQualifiedName] = match;
+  const [, entityTypeStr, rest] = match;
 
   const entityType = Object.values(EntityType).find(
     (type) => type === entityTypeStr
@@ -41,11 +41,26 @@ const parseEntityLink = (href: string): ParsedEntityLink => {
     return { isEntityLink: false };
   }
 
+  if (entityType === EntityType.INGESTION_PIPELINE) {
+    const parts = rest.split('/');
+    if (parts.length < 3) {
+      return { isEntityLink: false };
+    }
+    const [serviceCategory, encodedServiceFqn, ...fqnParts] = parts;
+    const serviceFqn = decodeURIComponent(encodedServiceFqn);
+    const fullyQualifiedName = decodeURIComponent(fqnParts.join('/'));
+
+    return {
+      isEntityLink: true,
+      entityInfo: { entityType, fullyQualifiedName, serviceCategory, serviceFqn },
+    };
+  }
+
   return {
     isEntityLink: true,
     entityInfo: {
       entityType: entityType as EntityType,
-      fullyQualifiedName: decodeURIComponent(fullyQualifiedName),
+      fullyQualifiedName: decodeURIComponent(rest),
     },
   };
 };
@@ -61,7 +76,13 @@ const EntityMarkdownLink: React.FC<EntityMarkdownLinkProps> = ({
       parsed.isEntityLink && parsed.entityInfo
         ? entityUtilClassBase.getEntityLink(
             parsed.entityInfo.entityType,
-            parsed.entityInfo.fullyQualifiedName
+            parsed.entityInfo.fullyQualifiedName,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            parsed.entityInfo.serviceCategory,
+            parsed.entityInfo.serviceFqn
           )
         : '';
 
