@@ -92,18 +92,23 @@ public class EntityRelationshipCleanup {
   }
 
   /**
-   * Keyset (seek) cursor over the (fromId, toId, relation) ordering. Keyset paging keeps the scan
-   * correct and cheap while orphans are deleted batch-by-batch: deletes only ever touch rows behind
-   * the cursor, so no row is skipped and there is no growing OFFSET to scan past.
+   * Keyset (seek) cursor over the full primary key (fromId, toId, relation, relationType). Using the
+   * complete key gives a strict total order, so no row is skipped when a batch boundary lands inside
+   * a group of rows that share (fromId, toId, relation) but differ in relationType. Keyset paging
+   * also keeps the scan cheap while orphans are deleted batch-by-batch: deletes only ever touch rows
+   * behind the cursor, and there is no growing OFFSET to scan past.
    */
-  private record RelationshipCursor(String fromId, String toId, int relation) {
+  private record RelationshipCursor(String fromId, String toId, int relation, String relationType) {
     private static RelationshipCursor start() {
-      return new RelationshipCursor("", "", -1);
+      return new RelationshipCursor("", "", -1, "");
     }
 
     private static RelationshipCursor after(EntityRelationshipObject relationship) {
       return new RelationshipCursor(
-          relationship.getFromId(), relationship.getToId(), relationship.getRelation());
+          relationship.getFromId(),
+          relationship.getToId(),
+          relationship.getRelation(),
+          relationship.getRelationType());
     }
   }
 
@@ -176,7 +181,11 @@ public class EntityRelationshipCleanup {
           collectionDAO
               .relationshipDAO()
               .getAllRelationshipsAfter(
-                  cursor.fromId(), cursor.toId(), cursor.relation(), batchSize);
+                  cursor.fromId(),
+                  cursor.toId(),
+                  cursor.relation(),
+                  cursor.relationType(),
+                  batchSize);
       if (batch.isEmpty()) {
         hasMore = false;
       } else {

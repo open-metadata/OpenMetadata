@@ -37,6 +37,8 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipObject;
 import org.openmetadata.service.util.EntityRelationshipCleanup;
 
 /**
@@ -97,6 +99,40 @@ public class EntityRelationshipCleanupIT {
       assertEquals(SEEDED_ORPHANS, orphanCount(marker), "dry run must leave seeded orphans intact");
     } finally {
       deleteOrphans(marker);
+    }
+  }
+
+  /**
+   * Regression test for the keyset cursor. Two rows share the same (fromId, toId, relation) tuple
+   * and differ only in relationType - exactly how glossary-term RELATED_TO rows carry 'synonym' and
+   * 'seeAlso'. With a batch boundary (limit=1) falling between them, a cursor keyed only on
+   * (fromId, toId, relation) would advance past the tuple and permanently skip the second row. The
+   * full-primary-key cursor must return both.
+   */
+  @Test
+  void keysetPaging_doesNotSkipRowsSharingTupleButDifferentRelationType(TestNamespace ns) {
+    String fromId = UUID.randomUUID().toString();
+    String toId = UUID.randomUUID().toString();
+    int relation = Relationship.RELATED_TO.ordinal();
+    try {
+      insertOrphan(fromId, toId, Entity.GLOSSARY_TERM, Entity.GLOSSARY_TERM, relation, "seeAlso");
+      insertOrphan(fromId, toId, Entity.GLOSSARY_TERM, Entity.GLOSSARY_TERM, relation, "synonym");
+
+      CollectionDAO.EntityRelationshipDAO dao = Entity.getCollectionDAO().relationshipDAO();
+
+      List<EntityRelationshipObject> page1 =
+          dao.getAllRelationshipsAfter(fromId, toId, relation, "", 1);
+      assertEquals(1, page1.size(), "first page must return one row");
+      assertEquals(fromId, page1.getFirst().getFromId());
+      assertEquals("seeAlso", page1.getFirst().getRelationType());
+
+      List<EntityRelationshipObject> page2 =
+          dao.getAllRelationshipsAfter(fromId, toId, relation, "seeAlso", 1);
+      assertTrue(
+          page2.stream().anyMatch(r -> "synonym".equals(r.getRelationType())),
+          "the sibling row sharing the (fromId,toId,relation) tuple must not be skipped");
+    } finally {
+      deleteByFromId(fromId);
     }
   }
 
@@ -165,6 +201,16 @@ public class EntityRelationshipCleanupIT {
                 handle
                     .createUpdate("DELETE FROM entity_relationship WHERE relationType = :m")
                     .bind("m", marker)
+                    .execute());
+  }
+
+  private void deleteByFromId(String fromId) {
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(
+            handle ->
+                handle
+                    .createUpdate("DELETE FROM entity_relationship WHERE fromId = :f")
+                    .bind("f", fromId)
                     .execute());
   }
 

@@ -13,10 +13,11 @@
 
 package org.openmetadata.service.util.relationshipcleanup;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -37,8 +38,8 @@ import org.openmetadata.service.jdbi3.FeedRepository;
  * relationship row, turning a scan of N relationships into up to 2*N hydrated single-row reads on a
  * single thread - the root cause of multi-day DataRetention runs on large catalogs. This resolver
  * instead {@link #prefetch(List) prefetches} a whole batch with a single {@code WHERE id IN (...)}
- * query per entity type and caches the answers (positive and negative) in a bounded LRU, so a
- * relationship endpoint that recurs across batches is resolved once.
+ * query per entity type and caches the answers (positive and negative) in a bounded, thread-safe
+ * Caffeine cache, so a relationship endpoint that recurs across batches is resolved once.
  */
 @Slf4j
 public class BatchEntityExistenceResolver implements RelationshipValidator.EntityExistenceChecker {
@@ -49,7 +50,7 @@ public class BatchEntityExistenceResolver implements RelationshipValidator.Entit
   private final Map<String, EntityRepository<?>> entityRepositories;
   private final Map<String, EntityTimeSeriesRepository<?>> entityTimeSeriesRepositories;
   private final FeedRepository feedRepository;
-  private final Map<String, Boolean> existenceCache;
+  private final Cache<String, Boolean> existenceCache;
 
   public BatchEntityExistenceResolver(
       Map<String, EntityRepository<?>> entityRepositories,
@@ -58,7 +59,7 @@ public class BatchEntityExistenceResolver implements RelationshipValidator.Entit
     this.entityRepositories = entityRepositories;
     this.entityTimeSeriesRepositories = entityTimeSeriesRepositories;
     this.feedRepository = feedRepository;
-    this.existenceCache = boundedCache();
+    this.existenceCache = Caffeine.newBuilder().maximumSize(MAX_CACHE_ENTRIES).build();
   }
 
   /**
@@ -76,7 +77,7 @@ public class BatchEntityExistenceResolver implements RelationshipValidator.Entit
   @Override
   public boolean exists(UUID entityId, String entityType) {
     String key = cacheKey(entityType, entityId);
-    Boolean cached = existenceCache.get(key);
+    Boolean cached = existenceCache.getIfPresent(key);
     boolean result;
     if (cached != null) {
       result = cached;
@@ -102,7 +103,7 @@ public class BatchEntityExistenceResolver implements RelationshipValidator.Entit
     boolean prefetchable =
         entityId != null
             && entityRepositories.containsKey(entityType)
-            && !existenceCache.containsKey(cacheKey(entityType, entityId));
+            && existenceCache.getIfPresent(cacheKey(entityType, entityId)) == null;
     if (prefetchable) {
       idsByType.computeIfAbsent(entityType, type -> new HashSet<>()).add(entityId);
     }
@@ -169,7 +170,7 @@ public class BatchEntityExistenceResolver implements RelationshipValidator.Entit
   private boolean existsInTimeSeriesRepository(UUID entityId, String entityType) {
     boolean result;
     try {
-      result = entityTimeSeriesRepositories.get(entityType).getById(entityId) != null;
+      result = entityTimeSeriesRepositories.get(entityType).existsById(entityId);
     } catch (Exception ex) {
       LOG.debug("Entity {}:{} existence check failed: {}", entityType, entityId, ex.getMessage());
       result = true;
@@ -210,14 +211,5 @@ public class BatchEntityExistenceResolver implements RelationshipValidator.Entit
 
   private String cacheKey(String entityType, UUID entityId) {
     return entityType + ":" + entityId;
-  }
-
-  private Map<String, Boolean> boundedCache() {
-    return new LinkedHashMap<>(1024, 0.75f, true) {
-      @Override
-      protected boolean removeEldestEntry(Map.Entry<String, Boolean> eldest) {
-        return size() > MAX_CACHE_ENTRIES;
-      }
-    };
   }
 }
