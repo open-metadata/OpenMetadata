@@ -1032,6 +1032,7 @@ test.describe(
     test('Test Cases list filter — Data Product', async ({ page }) => {
       const dataProductDisplayName =
         dataProduct.responseData.displayName ?? dataProduct.data.displayName;
+      const dataProductName = dataProduct.data.name;
 
       await test.step('Navigate to DQ Test Cases tab', async () => {
         await page.goto('/data-quality/test-cases');
@@ -1052,7 +1053,17 @@ test.describe(
       });
 
       await test.step('Select data product and verify API carries dataProductFqn', async () => {
-        await page.click('#dataProductFqn');
+        const dataProductInput = page.locator('#dataProductFqn');
+        const dataProductOptionsRes = page.waitForResponse(
+          (r) =>
+            r.url().includes('/api/v1/search/query') &&
+            r.url().includes('index=dataProduct') &&
+            r.url().includes(dataProductName)
+        );
+        await dataProductInput.click();
+        await dataProductInput.fill(dataProductName);
+        await dataProductOptionsRes;
+
         const filterApiRes = page.waitForResponse(
           (r) =>
             r.url().includes('/api/v1/dataQuality/testCases/search/list') &&
