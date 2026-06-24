@@ -11,22 +11,193 @@
  *  limitations under the License.
  */
 
+// This is a bespoke terminal surface (like a code editor / log console). The
+// app's Tailwind utilities (`bg-primary` etc.) do not flip under `.dark-mode`
+// in the consuming build, so the surface is themed from a local palette of CSS
+// custom properties instead. Dark is the default per the design mock; light is
+// a lighter terminal variant.
 .log-viewer-modal {
-  // LazyLog measures the nearest sized container; force it to fill the body.
-  .react-lazylog {
-    height: 100% !important;
-    border-radius: 0;
+  font-family: 'Source Code Pro', Menlo, ui-monospace, 'SFMono-Regular',
+    monospace;
+
+  &.theme-dark {
+    --lvm-bg: #0c1118;
+    --lvm-surface-2: #11171f;
+    --lvm-footer-bg: #0f151d;
+    --lvm-border: #1b2430;
+    --lvm-border-strong: #232e3b;
+    --lvm-text: #d6dee7;
+    --lvm-text-muted: #5e7388;
+    --lvm-chip-bg: #161e28;
+    --lvm-chip-text: #a9b6c4;
   }
 
   &.theme-light {
-    .react-lazylog {
-      background-color: var(--color-bg-primary);
-      color: var(--color-text-primary);
+    --lvm-bg: #ffffff;
+    --lvm-surface-2: #f7f8fa;
+    --lvm-footer-bg: #fafafa;
+    --lvm-border: #e9eaeb;
+    --lvm-border-strong: #d6dee7;
+    --lvm-text: #181d27;
+    --lvm-text-muted: #6b7280;
+    --lvm-chip-bg: #ffffff;
+    --lvm-chip-text: #414651;
+  }
+
+  .lvm-surface {
+    background-color: var(--lvm-bg);
+    color: var(--lvm-text);
+  }
+
+  .lvm-header {
+    border-bottom: 1px solid var(--lvm-border);
+  }
+
+  .lvm-title {
+    color: var(--lvm-text);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .lvm-dots {
+    display: inline-flex;
+    flex-shrink: 0;
+    gap: 6px;
+  }
+
+  .lvm-dot {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    border-radius: 9999px;
+
+    &--red {
+      background-color: #ff5f56;
     }
 
-    .react-lazylog .react-lazylog-searchbar {
-      background-color: var(--color-bg-secondary);
-      border-top: 1px solid var(--color-border-secondary);
+    &--amber {
+      background-color: #ffbd2e;
+    }
+
+    &--green {
+      background-color: #27c93f;
+    }
+  }
+
+  .lvm-file-icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    color: var(--lvm-text-muted);
+  }
+
+  .lvm-search {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--lvm-border-strong);
+    border-radius: 8px;
+    background-color: var(--lvm-surface-2);
+  }
+
+  .lvm-search-icon {
+    flex-shrink: 0;
+    width: 15px;
+    height: 15px;
+    color: var(--lvm-text-muted);
+  }
+
+  .lvm-search-input {
+    width: 180px;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--lvm-text);
+    font-family: inherit;
+    font-size: 12.5px;
+
+    &::placeholder {
+      color: var(--lvm-text-muted);
+    }
+  }
+
+  .lvm-match-count {
+    color: var(--lvm-text-muted);
+    font-size: 12.5px;
+    white-space: nowrap;
+  }
+
+  .lvm-copy-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--lvm-border-strong);
+    border-radius: 8px;
+    background-color: var(--lvm-chip-bg);
+    color: var(--lvm-chip-text);
+    font-family: inherit;
+    font-size: 12.5px;
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--lvm-surface-2);
+    }
+  }
+
+  .lvm-copy-icon {
+    width: 15px;
+    height: 15px;
+  }
+
+  .lvm-icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--lvm-text-muted);
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--lvm-surface-2);
+      color: var(--lvm-text);
+    }
+  }
+
+  .lvm-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .lvm-empty {
+    color: var(--lvm-text-muted);
+    font-size: 13px;
+  }
+
+  .lvm-footer {
+    background-color: var(--lvm-footer-bg);
+    border-top: 1px solid var(--lvm-border);
+    color: var(--lvm-text-muted);
+    font-size: 12px;
+  }
+
+  // LazyLog measures the nearest sized container; force it to fill the body and
+  // adopt the terminal palette (ANSI colors in the log text render on top).
+  .react-lazylog {
+    height: 100% !important;
+    border-radius: 0;
+    background-color: var(--lvm-bg);
+    color: var(--lvm-text);
+
+    .react-lazylog-line-number {
+      color: var(--lvm-text-muted);
     }
   }
 }

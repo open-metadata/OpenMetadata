@@ -1,7 +1,28 @@
 # LogViewer Modal — Pure Component Design
 
 **Date:** 2026-06-22
-**Status:** Approved (design), pending implementation plan
+**Status:** Implemented; revised 2026-06-24 to match the interactive mock.
+
+## Revision (2026-06-24) — mock alignment
+
+After visual review against the live mock (`AI Automations.html` → automation
+details → "View full logs"), the design was refined:
+
+- **Search moved into the header.** `LazyLog`'s built-in search bar (`0 matches`,
+  filter-lines toggle, ↑/↓ navigation) is disabled (`enableSearch={false}` on
+  `LazyLog`). A header "Search logs" input drives a line filter over the `logs`
+  string, shows a live match count, and renders an empty state when nothing
+  matches.
+- **Header restyled to the terminal mock:** macOS traffic-light dots + a file
+  icon + monospace title on the left; the search input, a **labeled** "Copy"
+  button (icon + text, via `useClipboard`), an optional download icon button,
+  and a plain ✕ close on the right. `CopyToClipboardButton` is no longer used.
+- **Footer status bar added** via `footerLeft` / `footerRight` slots
+  (e.g. `● exit 0 · N lines · STATUS` and `run_id · timestamp`).
+- **Explicit terminal palette.** The consuming app's Tailwind utilities
+  (`bg-primary` etc.) do not flip under `.dark-mode`, so the surface is themed
+  from a local CSS-variable palette in the scoped `.less` (dark default + light
+  variant) rather than the app tokens.
 
 ## Summary
 
@@ -59,9 +80,11 @@ interface LogViewerModalProps {
   loading?: boolean;             // show loader while parent fetches; default false
   theme?: 'dark' | 'light';      // default 'dark' (matches screenshot)
   follow?: boolean;              // default false; live-tail auto-scroll to newest line
-  enableSearch?: boolean;        // default true (bottom search bar)
-  enableCopy?: boolean;          // default true (copy-all button in header)
-  onDownload?: () => void;       // download button; rendered only when provided
+  enableSearch?: boolean;        // default true (header "Search logs" input + line filter)
+  enableCopy?: boolean;          // default true (labeled Copy button in header)
+  onDownload?: () => void;       // optional download icon button; rendered only when provided
+  footerLeft?: ReactNode;        // optional left footer content (e.g. status · lines · state)
+  footerRight?: ReactNode;       // optional right footer content (e.g. run id · timestamp)
 }
 ```
 

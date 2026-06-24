@@ -14,24 +14,15 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 import LogViewerModal from './LogViewerModal.component';
 
+const onCopyToClipBoard = jest.fn();
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
 jest.mock('@melloware/react-logviewer', () => ({
-  LazyLog: ({
-    text,
-    follow,
-    enableSearch,
-  }: {
-    text: string;
-    follow?: boolean;
-    enableSearch?: boolean;
-  }) => (
-    <pre
-      data-follow={String(follow)}
-      data-search={String(enableSearch)}
-      data-testid="lazy-log">
+  LazyLog: ({ text, follow }: { text: string; follow?: boolean }) => (
+    <pre data-follow={String(follow)} data-testid="lazy-log">
       {text}
     </pre>
   ),
@@ -46,21 +37,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     isOpen: boolean;
   }) => (isOpen ? <div data-testid="modal-overlay">{children}</div> : null),
   Modal: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  ButtonUtility: ({
-    icon: _icon,
-    tooltip,
-    onClick,
-    'data-testid': testId,
-  }: {
-    icon: unknown;
-    tooltip?: string;
-    onClick?: () => void;
-    'data-testid'?: string;
-  }) => (
-    <button aria-label={tooltip} data-testid={testId} onClick={onClick}>
-      icon
-    </button>
-  ),
   CloseButton: ({
     onPress,
     theme,
@@ -90,13 +66,15 @@ jest.mock('react-aria-components', () => ({
   ),
 }));
 
-jest.mock('../CopyToClipboardButton/CopyToClipboardButton', () => ({
-  __esModule: true,
-  default: ({ copyText }: { copyText: string }) => (
-    <button data-copytext={copyText} data-testid="copy-button">
-      copy
-    </button>
-  ),
+jest.mock('@untitledui/icons', () => ({
+  Copy01: () => <span data-testid="icon-copy" />,
+  Download01: () => <span data-testid="icon-download" />,
+  File02: () => <span data-testid="icon-file" />,
+  SearchMd: () => <span data-testid="icon-search" />,
+}));
+
+jest.mock('../../../hooks/useClipBoard', () => ({
+  useClipboard: () => ({ hasCopied: false, onCopyToClipBoard }),
 }));
 
 jest.mock('../Loader/Loader', () => ({
@@ -105,20 +83,24 @@ jest.mock('../Loader/Loader', () => ({
 }));
 
 const defaultProps = {
-  logs: 'line-one\nline-two',
+  logs: 'alpha INFO one\nbravo WARN two\ncharlie INFO three',
   onClose: jest.fn(),
   open: true,
-  title: 'Auto-document workflow · logs',
+  title: 'Auto-document warehouse · logs',
 };
 
 describe('LogViewerModal', () => {
+  beforeEach(() => {
+    onCopyToClipBoard.mockClear();
+  });
+
   it('renders the title and logs when open', () => {
     render(<LogViewerModal {...defaultProps} />);
 
     expect(screen.getByTestId('log-viewer-title')).toHaveTextContent(
-      'Auto-document workflow · logs'
+      'Auto-document warehouse · logs'
     );
-    expect(screen.getByTestId('lazy-log')).toHaveTextContent('line-one');
+    expect(screen.getByTestId('lazy-log')).toHaveTextContent('alpha INFO one');
   });
 
   it('renders nothing when closed', () => {
@@ -136,14 +118,16 @@ describe('LogViewerModal', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('shows the copy button by default and hides it when enableCopy is false', () => {
+  it('shows the copy button by default, hides it when enableCopy is false, and copies on click', () => {
     const { rerender } = render(<LogViewerModal {...defaultProps} />);
 
-    expect(screen.getByTestId('copy-button')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('log-viewer-copy'));
+
+    expect(onCopyToClipBoard).toHaveBeenCalledWith(defaultProps.logs);
 
     rerender(<LogViewerModal {...defaultProps} enableCopy={false} />);
 
-    expect(screen.queryByTestId('copy-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('log-viewer-copy')).not.toBeInTheDocument();
   });
 
   it('renders the download button only when onDownload is provided and fires it', () => {
@@ -185,22 +169,6 @@ describe('LogViewerModal', () => {
     );
   });
 
-  it('passes the enableSearch flag through to the log viewer', () => {
-    const { rerender } = render(<LogViewerModal {...defaultProps} />);
-
-    expect(screen.getByTestId('lazy-log')).toHaveAttribute(
-      'data-search',
-      'true'
-    );
-
-    rerender(<LogViewerModal {...defaultProps} enableSearch={false} />);
-
-    expect(screen.getByTestId('lazy-log')).toHaveAttribute(
-      'data-search',
-      'false'
-    );
-  });
-
   it('uses the dark close-button theme by default and light when theme is light', () => {
     const { rerender } = render(<LogViewerModal {...defaultProps} />);
 
@@ -215,5 +183,60 @@ describe('LogViewerModal', () => {
       'data-theme',
       'light'
     );
+  });
+
+  it('shows the header search by default and hides it when enableSearch is false', () => {
+    const { rerender } = render(<LogViewerModal {...defaultProps} />);
+
+    expect(screen.getByTestId('log-viewer-search')).toBeInTheDocument();
+
+    rerender(<LogViewerModal {...defaultProps} enableSearch={false} />);
+
+    expect(screen.queryByTestId('log-viewer-search')).not.toBeInTheDocument();
+  });
+
+  it('filters the log lines and reports a match count as the user searches', () => {
+    render(<LogViewerModal {...defaultProps} />);
+
+    fireEvent.change(screen.getByTestId('log-viewer-search'), {
+      target: { value: 'WARN' },
+    });
+
+    const log = screen.getByTestId('lazy-log');
+
+    expect(log).toHaveTextContent('bravo WARN two');
+    expect(log).not.toHaveTextContent('alpha INFO one');
+    expect(screen.getByTestId('log-viewer-match-count')).toHaveTextContent('1');
+  });
+
+  it('shows the empty state when the search matches no lines', () => {
+    render(<LogViewerModal {...defaultProps} />);
+
+    fireEvent.change(screen.getByTestId('log-viewer-search'), {
+      target: { value: 'no-such-line' },
+    });
+
+    expect(screen.getByTestId('log-viewer-empty')).toBeInTheDocument();
+    expect(screen.queryByTestId('lazy-log')).not.toBeInTheDocument();
+    expect(screen.getByTestId('log-viewer-match-count')).toHaveTextContent('0');
+  });
+
+  it('renders the footer only when footer content is provided', () => {
+    const { rerender } = render(<LogViewerModal {...defaultProps} />);
+
+    expect(screen.queryByTestId('log-viewer-footer')).not.toBeInTheDocument();
+
+    rerender(
+      <LogViewerModal
+        {...defaultProps}
+        footerLeft={<span>exit 0</span>}
+        footerRight={<span>run_123</span>}
+      />
+    );
+
+    const footer = screen.getByTestId('log-viewer-footer');
+
+    expect(footer).toHaveTextContent('exit 0');
+    expect(footer).toHaveTextContent('run_123');
   });
 });

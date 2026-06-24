@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ReactNode } from 'react';
+
 export interface LogViewerModalProps {
   open: boolean;
   onClose: () => void;
@@ -21,4 +23,6 @@ export interface LogViewerModalProps {
   enableSearch?: boolean;
   enableCopy?: boolean;
   onDownload?: () => void;
+  footerLeft?: ReactNode;
+  footerRight?: ReactNode;
 }

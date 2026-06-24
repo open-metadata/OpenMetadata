@@ -12,17 +12,16 @@
  */
 import { LazyLog } from '@melloware/react-logviewer';
 import {
-  ButtonUtility,
   CloseButton,
   Modal,
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
-import { Download01 } from '@untitledui/icons';
+import { Copy01, Download01, File02, SearchMd } from '@untitledui/icons';
 import classNames from 'classnames';
-import { FunctionComponent } from 'react';
+import { ChangeEvent, FunctionComponent, useMemo, useState } from 'react';
 import { Dialog as AriaDialog } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import CopyToClipboardButton from '../CopyToClipboardButton/CopyToClipboardButton';
+import { useClipboard } from '../../../hooks/useClipBoard';
 import Loader from '../Loader/Loader';
 import './log-viewer-modal.less';
 import { LogViewerModalProps } from './LogViewerModal.interface';
@@ -38,8 +37,39 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = ({
   enableSearch = true,
   enableCopy = true,
   onDownload,
+  footerLeft,
+  footerRight,
 }: LogViewerModalProps) => {
   const { t } = useTranslation();
+  const [searchText, setSearchText] = useState('');
+  const { hasCopied, onCopyToClipBoard } = useClipboard(logs);
+
+  const query = searchText.trim().toLowerCase();
+
+  const filteredLogs = useMemo(() => {
+    if (!query) {
+      return logs;
+    }
+
+    return logs
+      .split('\n')
+      .filter((line) => line.toLowerCase().includes(query))
+      .join('\n');
+  }, [logs, query]);
+
+  const matchCount = useMemo(() => {
+    if (!query) {
+      return 0;
+    }
+
+    return filteredLogs ? filteredLogs.split('\n').length : 0;
+  }, [filteredLogs, query]);
+
+  const showEmptyState = Boolean(query) && matchCount === 0;
+
+  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setSearchText(event.target.value);
+  };
 
   return (
     <ModalOverlay
@@ -56,26 +86,68 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = ({
           className={classNames('log-viewer-modal', `theme-${theme}`, {
             'dark-mode': theme === 'dark',
           })}>
-          <div className="tw:flex tw:h-[80vh] tw:flex-col tw:overflow-hidden tw:rounded-2xl tw:bg-primary tw:shadow-xl">
-            <div className="tw:flex tw:items-center tw:justify-between tw:gap-3 tw:border-b tw:border-secondary tw:px-4 tw:py-3">
-              <span
-                className="tw:truncate tw:text-sm tw:font-semibold tw:text-primary"
-                data-testid="log-viewer-title">
-                {title}
-              </span>
-              <div className="tw:flex tw:items-center tw:gap-1">
+          <div className="lvm-surface tw:flex tw:h-[80vh] tw:flex-col tw:overflow-hidden tw:rounded-2xl tw:shadow-xl">
+            <div className="lvm-header tw:flex tw:items-center tw:justify-between tw:gap-3 tw:px-4 tw:py-3">
+              <div className="lvm-header-title tw:flex tw:min-w-0 tw:items-center tw:gap-3">
+                <span aria-hidden className="lvm-dots">
+                  <span className="lvm-dot lvm-dot--red" />
+                  <span className="lvm-dot lvm-dot--amber" />
+                  <span className="lvm-dot lvm-dot--green" />
+                </span>
+                <File02 aria-hidden className="lvm-file-icon" />
+                <span
+                  className="lvm-title tw:truncate"
+                  data-testid="log-viewer-title">
+                  {title}
+                </span>
+              </div>
+              <div className="lvm-actions tw:flex tw:items-center tw:gap-2">
+                {enableSearch && (
+                  <div className="lvm-search">
+                    <SearchMd aria-hidden className="lvm-search-icon" />
+                    <input
+                      className="lvm-search-input"
+                      data-testid="log-viewer-search"
+                      placeholder={t('label.search-entity', {
+                        entity: t('label.log-lowercase-plural'),
+                      })}
+                      type="text"
+                      value={searchText}
+                      onChange={handleSearchChange}
+                    />
+                  </div>
+                )}
+                {Boolean(query) && (
+                  <span
+                    className="lvm-match-count"
+                    data-testid="log-viewer-match-count">
+                    {`${matchCount} ${t('label.matches')}`}
+                  </span>
+                )}
                 {enableCopy && (
-                  <CopyToClipboardButton copyText={logs} position="top" />
+                  <button
+                    className="lvm-copy-button"
+                    data-testid="log-viewer-copy"
+                    type="button"
+                    onClick={() => onCopyToClipBoard(logs)}>
+                    <Copy01 aria-hidden className="lvm-copy-icon" />
+                    <span>
+                      {hasCopied ? t('label.copied') : t('label.copy')}
+                    </span>
+                  </button>
                 )}
                 {onDownload && (
-                  <ButtonUtility
+                  <button
+                    aria-label={t('label.download')}
+                    className="lvm-icon-button"
                     data-testid="log-viewer-download"
-                    icon={Download01}
-                    tooltip={t('label.download')}
-                    onClick={onDownload}
-                  />
+                    type="button"
+                    onClick={onDownload}>
+                    <Download01 aria-hidden className="lvm-icon" />
+                  </button>
                 )}
                 <CloseButton
+                  className="lvm-close-button"
                   data-testid="log-viewer-close"
                   size="sm"
                   theme={theme === 'dark' ? 'dark' : 'light'}
@@ -84,24 +156,42 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = ({
               </div>
             </div>
             <div
-              className="tw:relative tw:flex-1 tw:overflow-hidden"
+              className="lvm-body tw:relative tw:flex-1 tw:overflow-hidden"
               data-testid="log-viewer-body">
               {loading ? (
                 <div className="tw:flex tw:h-full tw:items-center tw:justify-center">
                   <Loader />
+                </div>
+              ) : showEmptyState ? (
+                <div
+                  className="lvm-empty tw:flex tw:h-full tw:items-center tw:justify-center"
+                  data-testid="log-viewer-empty">
+                  {t('label.no-result-found')}
                 </div>
               ) : (
                 <LazyLog
                   caseInsensitive
                   enableLineNumbers
                   selectableLines
-                  enableSearch={enableSearch}
+                  enableSearch={false}
                   extraLines={1}
                   follow={follow}
-                  text={logs}
+                  text={filteredLogs}
                 />
               )}
             </div>
+            {(footerLeft || footerRight) && (
+              <div
+                className="lvm-footer tw:flex tw:items-center tw:justify-between tw:gap-3 tw:px-4 tw:py-2"
+                data-testid="log-viewer-footer">
+                <div className="lvm-footer-left tw:flex tw:min-w-0 tw:items-center tw:gap-2 tw:truncate">
+                  {footerLeft}
+                </div>
+                <div className="lvm-footer-right tw:truncate">
+                  {footerRight}
+                </div>
+              </div>
+            )}
           </div>
         </AriaDialog>
       </Modal>
