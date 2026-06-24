@@ -18,6 +18,48 @@ import {
 } from '../constant/logsViewer';
 import { waitForAllLoadersToDisappear } from './entity';
 
+export const navigateToBundleSuiteWithPagination = async (
+  page: Page,
+  bundleSuiteFqn: string,
+  maxPages = 15
+) => {
+  const encodedBundleSuiteFqn = encodeURIComponent(bundleSuiteFqn);
+
+  for (let currentPage = 0; currentPage < maxPages; currentPage++) {
+    await waitForAllLoadersToDisappear(page);
+
+    const bundleSuiteLink = page
+      .getByTestId('test-suite-table')
+      .locator(`a[href*="${encodedBundleSuiteFqn}"]`)
+      .first();
+
+    if (await bundleSuiteLink.isVisible()) {
+      await bundleSuiteLink.click();
+      await waitForAllLoadersToDisappear(page);
+
+      return;
+    }
+
+    const nextBtn = page.locator('[data-testid="next"]');
+
+    if (!(await nextBtn.isVisible()) || !(await nextBtn.isEnabled())) {
+      break;
+    }
+
+    const listResponse = page.waitForResponse(
+      (r) =>
+        r.url().includes('/api/v1/dataQuality/testSuites/search/list') &&
+        r.status() === 200
+    );
+    await nextBtn.click();
+    await listResponse;
+  }
+
+  throw new Error(
+    `Bundle suite ${bundleSuiteFqn} was not found after checking ${maxPages} page(s)`
+  );
+};
+
 export async function waitForFirstPipelineStatusNotQueued(page: Page) {
   await expect(async () => {
     await page.reload();
