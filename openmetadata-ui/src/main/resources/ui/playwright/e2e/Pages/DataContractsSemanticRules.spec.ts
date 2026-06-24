@@ -2478,7 +2478,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await assignDataProduct(page, domain.responseData, [
         createdDataProducts[1].responseData,
-      ]);
+      ], 'Edit');
 
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
