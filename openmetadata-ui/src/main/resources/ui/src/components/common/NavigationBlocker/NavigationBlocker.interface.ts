@@ -14,10 +14,11 @@
 export interface NavigationBlockerProps {
   children: React.ReactNode;
   enabled?: boolean;
-  message?: string;
-  title?: string;
-  confirmText?: string;
-  cancelText?: string;
   onConfirm?: () => Promise<void>;
   onCancel?: () => void;
+  renderModal?: (props: {
+    isOpen: boolean;
+    onLeave: () => void;
+    onStay: () => void;
+  }) => React.ReactNode;
 }
