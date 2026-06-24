@@ -48,11 +48,17 @@ export default defineConfig({
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  /* Retry on CI only. One retry is enough to absorb true flakes; chronic
+   * flakes get caught and fixed faster, and a failing test with the default
+   * 60s timeout can otherwise burn 3 min before reporting (worse for files
+   * using test.setTimeout). */
+  retries: process.env.CI ? 1 : 0,
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 3 : undefined,
-  maxFailures: 500,
+  /* Bail early when a PR is fundamentally broken — full-suite has ~4,400
+   * tests and 50 genuine failures is already far beyond a normal run.
+   * Healthy runs see <10 failures, so this only kicks in on broken PRs. */
+  maxFailures: 50,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['list'],
