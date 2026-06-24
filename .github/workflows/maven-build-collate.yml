@@ -40,8 +40,6 @@ on:
       - "!openmetadata-ui/src/main/resources/ui/src/test/**"
       - "!openmetadata-ui/src/main/resources/ui/src/**/*.test.ts"
       - "!openmetadata-ui/src/main/resources/ui/src/**/*.test.tsx"
-      - "!openmetadata-ui/src/main/resources/ui/src/**/*.spec.ts"
-      - "!openmetadata-ui/src/main/resources/ui/src/**/*.spec.tsx"
       - "openmetadata-spec/src/main/resources/json/schema/**"
       - "openmetadata-integration-tests/**"
       - "openmetadata-mcp/**"
