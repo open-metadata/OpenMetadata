@@ -130,4 +130,22 @@ class RdfResourceTest {
     assertEquals("JSON-LD", RdfRepository.normalizeEntityGraphExportFormat("jsonld"));
     assertEquals("JSON-LD", RdfRepository.normalizeEntityGraphExportFormat("json-ld"));
   }
+
+  @Test
+  void getGlossaryTermGraphPassesGlossaryTermIdFilter() throws Exception {
+    RdfRepository repository = Mockito.mock(RdfRepository.class);
+    UUID glossaryId = UUID.randomUUID();
+    UUID glossaryTermId = UUID.randomUUID();
+    when(repository.isEnabled()).thenReturn(true);
+    when(repository.getGlossaryTermGraph(glossaryId, glossaryTermId, null, 500, 0, true))
+        .thenReturn("{\"nodes\":[],\"edges\":[]}");
+    setRdfRepository(repository);
+
+    Response response =
+        rdfResource.getGlossaryTermGraph(
+            securityContext, glossaryId, glossaryTermId, null, 500, 0, true);
+
+    assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+    verify(repository).getGlossaryTermGraph(glossaryId, glossaryTermId, null, 500, 0, true);
+  }
 }
