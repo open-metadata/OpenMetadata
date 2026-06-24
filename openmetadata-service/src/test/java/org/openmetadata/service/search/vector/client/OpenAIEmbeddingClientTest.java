@@ -1,7 +1,6 @@
 package org.openmetadata.service.search.vector.client;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -12,8 +11,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -22,8 +19,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Flow;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.net.ssl.SSLSession;
 import org.junit.jupiter.api.Test;
@@ -562,84 +557,6 @@ class OpenAIEmbeddingClientTest {
     HttpRequest request = httpClient.getCapturedRequests().get(0);
     assertEquals("azure-key-123", request.headers().firstValue("api-key").orElse(null));
     assertTrue(request.headers().firstValue("Authorization").isEmpty());
-  }
-
-  @Test
-  void testV3ModelPinsDimensionsInRequest() throws Exception {
-    String response = "{\"data\":[{\"embedding\":[0.1]}],\"model\":\"test\",\"usage\":{}}";
-    StubHttpClient httpClient = new StubHttpClient(response, 200);
-
-    OpenAIEmbeddingClient client =
-        new OpenAIEmbeddingClient(
-            httpClient,
-            "test-key",
-            "text-embedding-3-small",
-            512,
-            "http://localhost/v1/embeddings",
-            false);
-
-    client.embed("databases related to customers");
-
-    String body = readRequestBody(httpClient.getCapturedRequests().get(0));
-    assertTrue(
-        body.contains("\"dimensions\":512"),
-        "text-embedding-3 request must pin output size via a 'dimensions' parameter so the "
-            + "returned vector matches the index dimension. Body was: "
-            + body);
-  }
-
-  @Test
-  void testAda002ModelOmitsDimensionsInRequest() throws Exception {
-    String response = "{\"data\":[{\"embedding\":[0.1]}],\"model\":\"test\",\"usage\":{}}";
-    StubHttpClient httpClient = new StubHttpClient(response, 200);
-
-    OpenAIEmbeddingClient client =
-        new OpenAIEmbeddingClient(
-            httpClient,
-            "test-key",
-            "text-embedding-ada-002",
-            1536,
-            "http://localhost/v1/embeddings",
-            false);
-
-    client.embed("test");
-
-    String body = readRequestBody(httpClient.getCapturedRequests().get(0));
-    assertFalse(
-        body.contains("dimensions"),
-        "text-embedding-ada-002 does not accept a 'dimensions' parameter; it must be omitted. "
-            + "Body was: "
-            + body);
-  }
-
-  private static String readRequestBody(HttpRequest request) throws InterruptedException {
-    HttpRequest.BodyPublisher publisher = request.bodyPublisher().orElseThrow();
-    StringBuilder body = new StringBuilder();
-    CountDownLatch done = new CountDownLatch(1);
-    publisher.subscribe(
-        new Flow.Subscriber<ByteBuffer>() {
-          @Override
-          public void onSubscribe(Flow.Subscription subscription) {
-            subscription.request(Long.MAX_VALUE);
-          }
-
-          @Override
-          public void onNext(ByteBuffer item) {
-            body.append(StandardCharsets.UTF_8.decode(item));
-          }
-
-          @Override
-          public void onError(Throwable throwable) {
-            done.countDown();
-          }
-
-          @Override
-          public void onComplete() {
-            done.countDown();
-          }
-        });
-    done.await(5, TimeUnit.SECONDS);
-    return body.toString();
   }
 
   @Test

@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.vector;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -270,6 +271,34 @@ class OpenSearchVectorServiceTest {
 
     long distinctParents = results.hits.stream().map(r -> r.get("parent_id")).distinct().count();
     assertEquals(3, distinctParents, "Should have exactly 3 distinct parents");
+  }
+
+  @Test
+  void copyExistingVectorDocumentsSkipsStaleDimensionVectors() throws IOException {
+    // The entity fingerprint does not change when the embedding dimension changes, so the migration
+    // path can be reached with stale-dimension vectors. copyExistingVectorDocuments must refuse to
+    // copy a vector whose length no longer matches the active client dimension, so the caller
+    // re-embeds instead of carrying an old-dimension vector into an index built for the new
+    // dimension (which the knn field would silently reject).
+    when(mockEmbeddingClient.getDimension()).thenReturn(1536);
+
+    String staleDimensionDoc =
+        """
+        {
+          "hits": {
+            "total": {"value": 1},
+            "hits": [
+              {"_source": {"parent_id": "p1", "chunk_index": 0, "embedding": [0.1, 0.2, 0.3]}}
+            ]
+          }
+        }
+        """;
+    mockOpenSearchResponse(staleDimensionDoc);
+
+    boolean copied =
+        vectorService.copyExistingVectorDocuments("src_index", "tgt_index", "p1", "fp-unchanged");
+
+    assertFalse(copied, "A 3-dim cached vector must not be copied into a 1536-dim index");
   }
 
   private void mockOpenSearchResponse(String responseJson) throws IOException {
