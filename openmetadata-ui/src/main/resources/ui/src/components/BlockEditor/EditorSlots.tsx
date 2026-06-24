@@ -21,6 +21,10 @@ import LinkModal, { LinkData } from './LinkModal/LinkModal';
 import LinkPopup from './LinkPopup/LinkPopup';
 import TableMenu from './TableMenu/TableMenu';
 
+// Must exceed React Aria's overlay z-index (100000) so the link popup paints
+// above the dialog content when mounted inside a focus-trapping dialog.
+const LINK_POPUP_Z_INDEX = 100001;
+
 const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
   ({ editor, menuType }, ref) => {
     const [isLinkModalOpen, setIsLinkModalOpen] = useState<boolean>(false);
@@ -54,13 +58,10 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
         const hasSelectedText = from !== to;
 
         if (hasSelectedText) {
-          // Wrap the selected text in a link.
           editor.chain().focus().setLink({ href: values.href }).run();
         } else {
-          // No text selected: insert the href as the link text. setLink on an
-          // empty selection only sets a stored mark and renders nothing, which
-          // makes the link silently "disappear". Inserting the href as linked
-          // text guarantees a visible, clickable link.
+          // setLink on an empty selection only sets a stored mark and renders
+          // nothing, so insert the href as the link text to get a visible link.
           editor
             .chain()
             .focus()
@@ -80,11 +81,10 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
       handleLinkToggle();
     };
 
-    // Mount the link modal inside the nearest dialog/drawer (if any) so a
-    // focus-trapping overlay (e.g. React Aria's SlideoutMenu) does not steal
-    // focus from the modal input or dismiss the drawer when the modal opens.
-    // Falls back to document.body when the editor is not inside a dialog.
-    const getLinkModalContainer = (): HTMLElement =>
+    // Mount the link modal and link popup inside the editor's dialog (if any)
+    // so a focus-trapping overlay does not steal focus or swallow their clicks.
+    // Falls back to document.body.
+    const getDialogContainer = (): HTMLElement =>
       (editor?.view.dom.closest('[role="dialog"]') as HTMLElement) ??
       document.body;
 
@@ -150,13 +150,14 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
 
         popup = tippy('body', {
           getReferenceClientRect: () => target.getBoundingClientRect(),
-          appendTo: () => document.body,
+          appendTo: () => getDialogContainer(),
           content: component.element,
           showOnCreate: true,
           interactive: true,
           trigger: 'manual',
           placement: 'top',
           hideOnClick: true,
+          zIndex: LINK_POPUP_Z_INDEX,
         });
         hasPopup = !isEmpty(popup);
       } else {
@@ -188,7 +189,7 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
         {isLinkModalOpen && (
           <LinkModal
             data={{ href: editor?.getAttributes('link').href }}
-            getContainer={getLinkModalContainer}
+            getContainer={getDialogContainer}
             isOpen={isLinkModalOpen}
             onCancel={handleLinkCancel}
             onSave={(values) =>

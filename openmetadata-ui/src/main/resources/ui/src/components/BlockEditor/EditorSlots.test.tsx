@@ -24,8 +24,6 @@ import { EditorSlotsRef } from './BlockEditor.interface';
 import EditorSlots from './EditorSlots';
 import { LinkExtension } from './Extensions/link';
 
-// The surrounding menus rely on tippy.js / portals and are irrelevant to the
-// link-handling logic under test.
 jest.mock('./BlockMenu/BlockMenu', () => () => null);
 jest.mock('./BubbleMenu/BubbleMenu', () => () => null);
 jest.mock('./TableMenu/TableMenu', () => () => null);
@@ -66,7 +64,6 @@ describe('EditorSlots link handling', () => {
       const html = editor.getHTML();
 
       expect(html).toContain(`href="${HREF}"`);
-      // No selection -> the href itself becomes the visible, clickable text.
       expect(html).toMatch(/<a[^>]*>https:\/\/example\.com\/view<\/a>/);
     });
 
@@ -77,7 +74,6 @@ describe('EditorSlots link handling', () => {
     const editor = createTestEditor('<p>Hello</p>');
     const ref = createRef<EditorSlotsRef>();
 
-    // Select the word "Hello".
     editor.commands.setTextSelection({ from: 1, to: 6 });
 
     render(<EditorSlots editor={editor} menuType="bar" ref={ref} />);
@@ -92,7 +88,6 @@ describe('EditorSlots link handling', () => {
       const html = editor.getHTML();
 
       expect(html).toContain(`href="${HREF}"`);
-      // The existing selection is preserved as the link text.
       expect(html).toMatch(/<a[^>]*>Hello<\/a>/);
     });
 

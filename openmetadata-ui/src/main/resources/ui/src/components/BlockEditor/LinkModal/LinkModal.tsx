@@ -23,21 +23,14 @@ export interface LinkModalProps {
   onSave: (data: LinkData) => void;
   onCancel: () => void;
   /**
-   * Optional portal container for the modal. When the editor lives inside a
-   * focus-trapping dialog/drawer (e.g. React Aria's SlideoutMenu), the modal
-   * must render *inside* that dialog so the dialog's focus scope and
-   * useInteractOutside do not steal focus from the input or dismiss the drawer
-   * when the modal opens. Falls back to document.body (antd default) otherwise.
+   * Portal container for the modal. Lets it mount inside a focus-trapping
+   * dialog so the dialog does not steal focus from the input.
    */
   getContainer?: () => HTMLElement;
 }
 
-/**
- * z-index for the link modal when mounted inside a React Aria dialog. Must
- * exceed React Aria's useOverlayPosition z-index (100000) so the modal and its
- * mask paint above the dialog content. Keep in sync with the suggestion popup
- * z-index used by the handlebars extension.
- */
+// Must exceed React Aria's overlay z-index (100000) so the modal paints above
+// the dialog content.
 const LINK_MODAL_Z_INDEX = 100001;
 
 const LinkModal: FC<LinkModalProps> = ({
@@ -51,10 +44,8 @@ const LinkModal: FC<LinkModalProps> = ({
     onSave(values);
   };
 
-  // Only elevate the z-index when the modal is actually mounted inside a
-  // focus-trapping dialog (getContainer resolves to a non-body element). In
-  // every other context the antd default is used so the modal does not paint
-  // above unrelated portals (e.g. notifications/messages).
+  // Only elevate the z-index when mounted inside a dialog; otherwise the antd
+  // default avoids painting above unrelated portals.
   const container = getContainer?.();
   const zIndex =
     container && container !== document.body ? LINK_MODAL_Z_INDEX : undefined;

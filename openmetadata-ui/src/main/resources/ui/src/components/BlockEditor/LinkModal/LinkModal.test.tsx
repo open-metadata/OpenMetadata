@@ -64,10 +64,6 @@ describe('LinkModal', () => {
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
-  // Regression: when the editor lives inside a focus-trapping dialog/drawer
-  // (e.g. React Aria's SlideoutMenu), the modal must portal INTO that dialog so
-  // the dialog's focus scope and useInteractOutside do not steal focus from the
-  // input or dismiss the drawer when the modal opens.
   it('should mount the modal inside the container returned by getContainer', () => {
     const host = document.createElement('div');
     host.setAttribute('data-testid', 'dialog-host');
@@ -95,9 +91,6 @@ describe('LinkModal', () => {
     document.body.removeChild(host);
   });
 
-  // The elevated z-index is only needed to paint above React Aria's overlay. It
-  // must not be applied when the modal falls back to document.body, otherwise it
-  // would render above unrelated portals (notifications, messages, etc.).
   it('should not elevate the z-index when no dialog container is provided', () => {
     render(<LinkModal {...defaultProps} />);
 
