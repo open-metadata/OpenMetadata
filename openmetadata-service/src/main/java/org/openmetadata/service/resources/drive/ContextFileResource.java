@@ -29,8 +29,10 @@ import jakarta.ws.rs.core.StreamingOutput;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URI;
 import java.net.URLConnection;
+import java.nio.file.Files;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -44,6 +46,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.openmetadata.schema.api.data.CreateContextFile;
@@ -92,6 +95,7 @@ import org.openmetadata.service.util.RestUtil;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "contextCenterDriveFiles")
+@Slf4j
 public class ContextFileResource extends EntityResource<ContextFile, ContextFileRepository> {
   public static final String COLLECTION_PATH = "v1/contextCenter/drive/files/";
   public static final String FIELDS = "owners,tags,folder,domains,followers,votes";
@@ -131,7 +135,9 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
     public String fileName;
   }
 
-  private record DownloadEntry(ContextFile file, Asset asset) {}
+  private record ResolvedDownloadEntry(ContextFile file, Asset asset) {}
+
+  private record DownloadEntry(ContextFile file, Asset asset, java.nio.file.Path contentPath) {}
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
@@ -540,14 +546,54 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
           .build();
     }
 
-    List<DownloadEntry> entries = new ArrayList<>();
+    List<ResolvedDownloadEntry> resolvedEntries = new ArrayList<>();
     for (UUID id : ids) {
       ContextFile file = getInternal(uriInfo, securityContext, id, "", include);
       Asset asset = resolveAsset(file);
       if (asset == null) {
         throw new EntityNotFoundException("No current content found for file " + id);
       }
-      entries.add(new DownloadEntry(file, asset));
+      resolvedEntries.add(new ResolvedDownloadEntry(file, asset));
+    }
+
+    List<DownloadEntry> entries = new ArrayList<>();
+    for (ResolvedDownloadEntry entry : resolvedEntries) {
+      java.nio.file.Path contentPath = null;
+      try {
+        contentPath = Files.createTempFile("context-file-download-", ".bin");
+        InputStream inputStream = assetService.read(entry.asset()).join();
+        if (inputStream == null) {
+          cleanupDownloadEntries(entries);
+          Files.deleteIfExists(contentPath);
+          return Response.status(Response.Status.NOT_FOUND)
+              .entity(
+                  "{\"message\":\"No current content found for file "
+                      + entry.file().getId()
+                      + "\"}")
+              .type(MediaType.APPLICATION_JSON)
+              .build();
+        }
+        try (InputStream input = inputStream;
+            OutputStream output = Files.newOutputStream(contentPath)) {
+          input.transferTo(output);
+        }
+        entries.add(new DownloadEntry(entry.file(), entry.asset(), contentPath));
+      } catch (IOException | RuntimeException e) {
+        cleanupDownloadEntries(entries);
+        if (contentPath != null) {
+          try {
+            Files.deleteIfExists(contentPath);
+          } catch (IOException cleanupException) {
+            LOG.warn(
+                "Failed to clean up bulk download temp file {}", contentPath, cleanupException);
+          }
+        }
+        LOG.error("Failed to prepare content for bulk drive file download", e);
+        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+            .entity("{\"message\":\"Failed to download file content\"}")
+            .type(MediaType.APPLICATION_JSON)
+            .build();
+      }
     }
 
     StreamingOutput output =
@@ -555,24 +601,21 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
           Map<String, Integer> usedNames = new LinkedHashMap<>();
           try (ZipOutputStream zipOutputStream = new ZipOutputStream(stream)) {
             for (DownloadEntry entry : entries) {
-              try (InputStream inputStream = assetService.read(entry.asset()).join()) {
-                if (inputStream == null) {
-                  throw new WebApplicationException(
-                      "No current content found for file " + entry.file().getId(),
-                      Response.Status.NOT_FOUND);
-                }
+              try (InputStream inputStream = Files.newInputStream(entry.contentPath())) {
                 String fileName = zipEntryName(entry, usedNames);
                 zipOutputStream.putNextEntry(new ZipEntry(fileName));
                 inputStream.transferTo(zipOutputStream);
                 zipOutputStream.closeEntry();
               }
             }
-          } catch (WebApplicationException e) {
-            throw e;
           } catch (IOException e) {
+            LOG.error("Failed to stream bulk drive file download", e);
             throw new WebApplicationException("Failed to stream file content", e);
           } catch (RuntimeException e) {
+            LOG.error("Failed to stream bulk drive file download", e);
             throw new WebApplicationException("Failed to stream file content", e);
+          } finally {
+            cleanupDownloadEntries(entries);
           }
         };
 
@@ -758,6 +801,16 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
       return webApplicationException.getResponse().getStatus();
     }
     return Response.Status.INTERNAL_SERVER_ERROR.getStatusCode();
+  }
+
+  private void cleanupDownloadEntries(List<DownloadEntry> entries) {
+    for (DownloadEntry entry : entries) {
+      try {
+        Files.deleteIfExists(entry.contentPath());
+      } catch (IOException e) {
+        LOG.warn("Failed to clean up bulk download temp file {}", entry.contentPath(), e);
+      }
+    }
   }
 
   private String zipEntryName(DownloadEntry entry, Map<String, Integer> usedNames) {

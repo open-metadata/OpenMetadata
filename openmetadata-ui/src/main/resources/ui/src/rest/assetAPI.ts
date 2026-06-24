@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AxiosResponse } from 'axios';
+import axios, { AxiosError, AxiosResponse } from 'axios';
 import { PagingResponse } from 'Models';
 import { Asset, AssetType } from '../generated/attachments/asset';
 import { ContextFile } from '../generated/entity/data/contextFile';
@@ -23,6 +23,59 @@ export interface CreateFolderRequest {
   name: string;
   displayName?: string;
 }
+
+type ErrorMessageResponse = {
+  message?: string;
+};
+
+const isErrorMessageResponse = (
+  value: unknown
+): value is ErrorMessageResponse =>
+  typeof value === 'object' &&
+  value !== null &&
+  'message' in value &&
+  typeof (value as ErrorMessageResponse).message === 'string';
+
+const getBlobErrorMessage = async (
+  blob: Blob,
+  fallbackMessage: string
+): Promise<string> => {
+  const text = await blob.text();
+
+  if (!text) {
+    return fallbackMessage;
+  }
+
+  try {
+    const parsed = JSON.parse(text) as unknown;
+
+    return isErrorMessageResponse(parsed) && parsed.message
+      ? parsed.message
+      : text;
+  } catch {
+    return text;
+  }
+};
+
+const normalizeBlobError = async (error: unknown): Promise<never> => {
+  if (axios.isAxiosError<Blob, { ids: string[] }>(error) && error.response) {
+    const { data } = error.response;
+
+    if (data instanceof Blob) {
+      const message = await getBlobErrorMessage(data, error.message);
+
+      throw new AxiosError<{ message: string }, { ids: string[] }>(
+        message,
+        error.code,
+        error.config,
+        error.request,
+        { ...error.response, data: { message } }
+      );
+    }
+  }
+
+  throw error;
+};
 
 export const createFolder = async (
   data: CreateFolderRequest
@@ -191,13 +244,20 @@ export const downloadDriveFile = async (id: string): Promise<Blob> => {
 };
 
 export const downloadDriveFiles = async (ids: string[]): Promise<Blob> => {
-  const response = await APIClient.post<{ ids: string[] }, AxiosResponse<Blob>>(
-    '/contextCenter/drive/files/bulk/download',
-    { ids },
-    { responseType: 'blob' }
-  );
+  try {
+    const response = await APIClient.post<
+      { ids: string[] },
+      AxiosResponse<Blob>
+    >(
+      '/contextCenter/drive/files/bulk/download',
+      { ids },
+      { responseType: 'blob' }
+    );
 
-  return response.data;
+    return response.data;
+  } catch (error) {
+    return normalizeBlobError(error);
+  }
 };
 
 export const deleteAsset = async (

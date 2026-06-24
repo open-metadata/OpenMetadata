@@ -15166,33 +15166,40 @@ public interface CollectionDAO {
             "SELECT count(*) FROM context_file cf "
                 + "LEFT JOIN context_file_content cfc "
                 + "ON JSON_UNQUOTE(JSON_EXTRACT(cf.json, '$.headContentId')) = cfc.id "
-                + "JOIN asset_entity ae "
+                + "LEFT JOIN asset_entity ae "
                 + "ON COALESCE(JSON_UNQUOTE(JSON_EXTRACT(cfc.json, '$.assetId')), "
                 + "JSON_UNQUOTE(JSON_EXTRACT(cf.json, '$.assetId'))) = ae.id "
-                + "WHERE LOWER(ae.name) = LOWER(:fileName) "
-                + "AND ((:folderId IS NULL AND JSON_EXTRACT(cf.json, '$.folder.id') IS NULL) "
-                + "OR JSON_UNQUOTE(JSON_EXTRACT(cf.json, '$.folder.id')) = :folderId) "
+                + "AND (ae.deleted = false OR ae.deleted IS NULL) "
+                + "LEFT JOIN entity_relationship er "
+                + "ON er.toId = cf.id AND er.fromEntity = 'folder' "
+                + "AND er.toEntity = 'contextFile' AND er.relation = :containsRelation "
+                + "AND er.deleted = false "
+                + "WHERE LOWER(COALESCE(ae.name, cf.name)) = LOWER(:fileName) "
+                + "AND ((:folderId IS NULL AND er.fromId IS NULL) OR er.fromId = :folderId) "
                 + "AND (:excludeId IS NULL OR cf.id <> :excludeId) "
-                + "AND (cf.deleted = false OR cf.deleted IS NULL) "
-                + "AND (ae.deleted = false OR ae.deleted IS NULL)",
+                + "AND (cf.deleted = false OR cf.deleted IS NULL)",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT count(*) FROM context_file cf "
                 + "LEFT JOIN context_file_content cfc ON cf.json->>'headContentId' = cfc.id "
-                + "JOIN asset_entity ae "
+                + "LEFT JOIN asset_entity ae "
                 + "ON COALESCE(cfc.json->>'assetId', cf.json->>'assetId') = ae.id "
-                + "WHERE LOWER(ae.name) = LOWER(:fileName) "
-                + "AND ((:folderId IS NULL AND cf.json->'folder'->>'id' IS NULL) "
-                + "OR cf.json->'folder'->>'id' = :folderId) "
+                + "AND (ae.deleted = false OR ae.deleted IS NULL) "
+                + "LEFT JOIN entity_relationship er "
+                + "ON er.toId = cf.id AND er.fromEntity = 'folder' "
+                + "AND er.toEntity = 'contextFile' AND er.relation = :containsRelation "
+                + "AND er.deleted = false "
+                + "WHERE LOWER(COALESCE(ae.name, cf.name)) = LOWER(:fileName) "
+                + "AND ((:folderId IS NULL AND er.fromId IS NULL) OR er.fromId = :folderId) "
                 + "AND (:excludeId IS NULL OR cf.id <> :excludeId) "
-                + "AND (cf.deleted = false OR cf.deleted IS NULL) "
-                + "AND (ae.deleted = false OR ae.deleted IS NULL)",
+                + "AND (cf.deleted = false OR cf.deleted IS NULL)",
         connectionType = POSTGRES)
     int countByFileNameInFolder(
         @Bind("fileName") String fileName,
         @Bind("folderId") String folderId,
-        @Bind("excludeId") String excludeId);
+        @Bind("excludeId") String excludeId,
+        @Bind("containsRelation") int containsRelation);
 
     @SqlQuery("SELECT json FROM context_file <cond> ORDER BY updatedAt ASC, id ASC LIMIT :limit")
     List<String> listByUpdatedAtAsc(

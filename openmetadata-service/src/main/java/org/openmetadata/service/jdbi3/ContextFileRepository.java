@@ -322,7 +322,9 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     }
     String folderId = folder == null ? null : folder.getId().toString();
     String excludedId = excludeId == null ? null : excludeId.toString();
-    int count = contextFileDAO.countByFileNameInFolder(fileName.trim(), folderId, excludedId);
+    int count =
+        contextFileDAO.countByFileNameInFolder(
+            fileName.trim(), folderId, excludedId, Relationship.CONTAINS.ordinal());
     if (count > 0) {
       throw new BadRequestException(String.format(DUPLICATE_FILE_NAME_MESSAGE, fileName.trim()));
     }
@@ -330,7 +332,7 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
 
   private String getCurrentFileName(ContextFile file) {
     Asset asset = getCurrentAsset(file);
-    return asset == null ? null : asset.getFileName();
+    return asset == null ? file.getName() : asset.getFileName();
   }
 
   private Asset getCurrentAsset(ContextFile file) {
