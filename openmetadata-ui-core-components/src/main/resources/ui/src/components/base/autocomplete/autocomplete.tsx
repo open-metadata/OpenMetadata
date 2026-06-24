@@ -54,6 +54,8 @@ interface AutocompleteContextValue {
   selectedItems: SelectItemType[];
   onRemove: (keys: Set<Key>) => void;
   onInputChange: (value: string) => void;
+  onCreateItem?: (value: string) => void;
+  allowsCreation: boolean;
   renderTag?: (item: SelectItemType, onRemove: () => void) => ReactNode;
   maxVisibleItems?: number;
   multiple: boolean;
@@ -65,6 +67,8 @@ const AutocompleteContext = createContext<AutocompleteContextValue>({
   selectedItems: [],
   onRemove: () => {},
   onInputChange: () => {},
+  onCreateItem: undefined,
+  allowsCreation: false,
   maxVisibleItems: undefined,
   multiple: true,
 });
@@ -98,6 +102,7 @@ export interface AutocompleteProps
   onSearchChange?: (value: string) => void;
   maxVisibleItems?: number;
   multiple?: boolean;
+  allowsCreation?: boolean;
 }
 
 const renderChipIcon = (item: SelectItemType) => {
@@ -132,11 +137,23 @@ const InnerAutocomplete = ({
   const comboBoxStateContext = useContext(ComboBoxStateContext);
 
   const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    const inputValue = event.currentTarget.value;
     const isCaretAtStart =
       event.currentTarget.selectionStart === 0 &&
       event.currentTarget.selectionEnd === 0;
 
-    if (!isCaretAtStart && event.currentTarget.value !== '') {
+    if (
+      event.key === 'Enter' &&
+      context.allowsCreation &&
+      inputValue.trim() !== ''
+    ) {
+      event.preventDefault();
+      context.onCreateItem?.(inputValue.trim());
+
+      return;
+    }
+
+    if (!isCaretAtStart && inputValue !== '') {
       return;
     }
 
@@ -256,6 +273,12 @@ const InnerAutocomplete = ({
         <AriaInput
           className="tw:w-full tw:flex-[1_0_0] tw:appearance-none tw:bg-transparent tw:text-sm tw:text-ellipsis tw:text-primary tw:caret-alpha-black/90 tw:outline-hidden tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-disabled tw:disabled:placeholder:text-disabled"
           placeholder={placeholder}
+          onBlur={(event) => {
+            const inputValue = event.target.value.trim();
+            if (context.allowsCreation && inputValue !== '') {
+              context.onCreateItem?.(inputValue);
+            }
+          }}
           onKeyDown={handleInputKeyDown}
           onMouseDown={handleInputMouseDown}
         />
@@ -325,6 +348,7 @@ export const AutocompleteBase = ({
   multiple = true,
   onSearchChange,
   maxVisibleItems,
+  allowsCreation = false,
   name: _name,
   className: _className,
   ...props
@@ -404,6 +428,25 @@ export const AutocompleteBase = ({
     [onSearchChange]
   );
 
+  const onCreateItem = useCallback(
+    (value: string) => {
+      const newItem: SelectItemType = { id: value, label: value };
+      setAllItems((prev) => {
+        const exists = prev.some((item) => item.id === value);
+
+        return exists ? prev : [...prev, newItem];
+      });
+      setInternalSelected((prev) => {
+        const exists = prev.some((item) => item.id === value);
+
+        return exists ? prev : [...prev, newItem];
+      });
+      onItemInserted?.(value);
+      setFilterText('');
+    },
+    [onItemInserted]
+  );
+
   const triggerRef = useRef<HTMLDivElement>(null);
   const [popoverWidth, setPopoverWidth] = useState('');
 
@@ -429,6 +472,8 @@ export const AutocompleteBase = ({
       selectedItems: internalSelected,
       onInputChange,
       onRemove,
+      onCreateItem,
+      allowsCreation,
       renderTag,
       maxVisibleItems,
       multiple,
@@ -438,6 +483,8 @@ export const AutocompleteBase = ({
       internalSelected,
       onInputChange,
       onRemove,
+      onCreateItem,
+      allowsCreation,
       renderTag,
       maxVisibleItems,
       multiple,

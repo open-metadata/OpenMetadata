@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import type { SelectItemType } from '@/components/base/select/select';
 import type { FC, FocusEventHandler, ReactNode } from 'react';
 import type { Key } from 'react-aria-components';
 import type { RegisterOptions } from 'react-hook-form';
-import type { SelectItemType } from '@/components/base/select/select';
 import type {
   CoverImageUploadLabels,
   CoverImageUploadRenderPreviewContext,
@@ -26,7 +26,7 @@ export type {
   CoverImageUploadLabels,
   CoverImageUploadRenderPreviewContext,
   CoverImageUploadValidationMessages,
-  CoverImageUploadValue,
+  CoverImageUploadValue
 } from './fields/cover-image-upload-field';
 
 export enum HelperTextType {
@@ -82,6 +82,7 @@ export interface IconPickerFieldLabels {
 export interface FieldPropsMap {
   acceptDirectory?: boolean;
   acceptedFileTypes?: string[];
+  allowsCreation?: boolean;
   allowsMultiple?: boolean;
   allowUrl?: boolean;
   backgroundColor?: string;

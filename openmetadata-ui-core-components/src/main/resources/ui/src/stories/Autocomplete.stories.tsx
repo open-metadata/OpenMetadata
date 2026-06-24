@@ -501,6 +501,90 @@ export const WithLongLabels: StoryObj = {
   },
 };
 
+export const AllowsCreation: StoryObj = {
+  render: () => {
+    const selectedItems = useListData<SelectItemType>({ initialItems: [] });
+
+    return (
+      <div style={{ width: 360 }}>
+        <Autocomplete
+          allowsCreation
+          hint="Type a new tag and press Enter or click away to create it."
+          items={ITEMS_WITH_SUPPORTING_TEXT}
+          label="Tags"
+          placeholder="Search or create tags..."
+          selectedItems={selectedItems}>
+          {(item) => (
+            <Autocomplete.Item
+              id={item.id}
+              key={item.id}
+              label={item.label}
+              supportingText={item.supportingText}
+            />
+          )}
+        </Autocomplete>
+      </div>
+    );
+  },
+};
+
+export const AllowsCreationSingleSelect: StoryObj = {
+  render: () => {
+    const selectedItems = useListData<SelectItemType>({ initialItems: [] });
+
+    return (
+      <div style={{ width: 360 }}>
+        <Autocomplete
+          allowsCreation
+          multiple={false}
+          hint="Type a value and press Enter or click away to set it."
+          items={ITEMS_WITH_SUPPORTING_TEXT}
+          label="Single Tag"
+          placeholder="Search or create a tag..."
+          selectedItems={selectedItems}>
+          {(item) => (
+            <Autocomplete.Item
+              id={item.id}
+              key={item.id}
+              label={item.label}
+              supportingText={item.supportingText}
+            />
+          )}
+        </Autocomplete>
+      </div>
+    );
+  },
+};
+
+export const AllowsCreationWithPreselected: StoryObj = {
+  render: () => {
+    const selectedItems = useListData<SelectItemType>({
+      initialItems: [ITEMS_WITH_SUPPORTING_TEXT[0]],
+    });
+
+    return (
+      <div style={{ width: 360 }}>
+        <Autocomplete
+          allowsCreation
+          hint="Existing tags are pre-selected. Type to add more or create new ones."
+          items={ITEMS_WITH_SUPPORTING_TEXT}
+          label="Tags (with preselected)"
+          placeholder="Search or create tags..."
+          selectedItems={selectedItems}>
+          {(item) => (
+            <Autocomplete.Item
+              id={item.id}
+              key={item.id}
+              label={item.label}
+              supportingText={item.supportingText}
+            />
+          )}
+        </Autocomplete>
+      </div>
+    );
+  },
+};
+
 export const WithLongLabelsAndMaxVisible: StoryObj = {
   render: () => {
     const selectedItems = useListData<SelectItemType>({
