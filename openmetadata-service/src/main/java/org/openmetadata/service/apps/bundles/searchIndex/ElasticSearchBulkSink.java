@@ -177,8 +177,7 @@ public class ElasticSearchBulkSink implements BulkSink {
    * outstanding instead of queueing another that pins a Table. Sized to keep the column pool fed
    * (some queued) while capping retained Tables to a small multiple of the pool.
    */
-  private static final int MAX_INFLIGHT_COLUMN_TASKS =
-      Math.max(8, 2 * DEFAULT_DOC_BUILD_POOL_SIZE);
+  private static final int MAX_INFLIGHT_COLUMN_TASKS = Math.max(8, 2 * DEFAULT_DOC_BUILD_POOL_SIZE);
 
   private final Semaphore columnTaskSemaphore = new Semaphore(MAX_INFLIGHT_COLUMN_TASKS);
 
