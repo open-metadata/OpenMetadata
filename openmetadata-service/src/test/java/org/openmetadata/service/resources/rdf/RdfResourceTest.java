@@ -16,9 +16,12 @@ package org.openmetadata.service.resources.rdf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.lang.reflect.Field;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,6 +41,12 @@ class RdfResourceTest {
     securityContext = Mockito.mock(SecurityContext.class);
     doNothing().when(authorizer).authorizeAdmin(securityContext);
     rdfResource = new RdfResource(authorizer);
+  }
+
+  private void setRdfRepository(RdfRepository repository) throws Exception {
+    Field field = RdfResource.class.getDeclaredField("rdfRepository");
+    field.setAccessible(true);
+    field.set(rdfResource, repository);
   }
 
   @Test
@@ -84,5 +93,23 @@ class RdfResourceTest {
     assertEquals(3, RdfResource.clampGraphDepth(3));
     assertEquals(5, RdfResource.clampGraphDepth(5));
     assertEquals(5, RdfResource.clampGraphDepth(99));
+  }
+
+  @Test
+  void getGlossaryTermGraphPassesGlossaryTermIdFilter() throws Exception {
+    RdfRepository repository = Mockito.mock(RdfRepository.class);
+    UUID glossaryId = UUID.randomUUID();
+    UUID glossaryTermId = UUID.randomUUID();
+    when(repository.isEnabled()).thenReturn(true);
+    when(repository.getGlossaryTermGraph(glossaryId, glossaryTermId, null, 500, 0, true))
+        .thenReturn("{\"nodes\":[],\"edges\":[]}");
+    setRdfRepository(repository);
+
+    Response response =
+        rdfResource.getGlossaryTermGraph(
+            securityContext, glossaryId, glossaryTermId, null, 500, 0, true);
+
+    assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+    verify(repository).getGlossaryTermGraph(glossaryId, glossaryTermId, null, 500, 0, true);
   }
 }
