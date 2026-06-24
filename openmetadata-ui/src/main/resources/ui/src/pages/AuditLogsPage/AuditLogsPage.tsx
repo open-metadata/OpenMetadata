@@ -386,7 +386,7 @@ const AuditLogsPage = () => {
                         className="tw:flex tw:items-center tw:gap-1"
                         data-testid={`filter-chip-${filter.category}`}>
                         <Typography
-                          className="tw:text-gray-600"
+                          className="tw:text-tertiary"
                           weight="medium">
                           {filter.categoryLabel}:{' '}
                         </Typography>

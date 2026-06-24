@@ -44,7 +44,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
 
   return (
     <div
-      className="tw:flex tw:flex-col tw:w-68.5 tw:h-full tw:overflow-hidden tw:bg-white"
+      className="tw:flex tw:flex-col tw:w-68.5 tw:h-full tw:overflow-hidden tw:bg-primary"
       data-testid="mcp-conversation-sidebar">
       <div className="tw:flex tw:flex-col tw:h-full tw:p-4 tw:border-r tw:border-gray-100">
         <header className="tw:flex tw:items-center tw:gap-2 tw:h-6 tw:shrink-0">
