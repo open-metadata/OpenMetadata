@@ -72,10 +72,10 @@ import {
   getPageHierarchyFromES,
   patchKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
-import { Transi18next } from '../../../utils/CommonUtils';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import Fqn from '../../../utils/Fqn';
+import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import {
   extractKnowledgePageParentFQN,
   findPageAndParentInTreeData,
@@ -582,14 +582,14 @@ const KnowledgePagesHierarchy = forwardRef<
           <Box align="center" className="tw:min-w-0 tw:flex-1" gap={2}>
             {isQuickLink ? (
               <QuickLinkIcon
-                className="tw:shrink-0 tw:tw:text-quaternary"
+                className="tw:shrink-0 tw:text-quaternary"
                 data-testid="quick-link-icon"
                 height={14}
                 width={14}
               />
             ) : (
               <File06
-                className="tw:shrink-0 tw:tw:text-quaternary"
+                className="tw:shrink-0 tw:text-quaternary"
                 data-testid="page-icon"
                 height={13}
                 width={13}
