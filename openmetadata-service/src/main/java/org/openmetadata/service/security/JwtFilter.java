@@ -229,14 +229,17 @@ public class JwtFilter implements ContainerRequestFilter {
     // the case where OMD generated the Token for the Client in case OM generated Token
     validateTokenIsNotUsedAfterLogout(tokenFromHeader);
 
-    // Validate Domain
-    validateDomainEnforcement(
-        jwtPrincipalClaimsMapping,
-        jwtPrincipalClaims,
-        claims,
-        principalDomain,
-        allowedDomains,
-        enforcePrincipalDomain);
+    // Domain enforcement gates external identity-provider tokens. Tokens minted by OpenMetadata
+    // itself are already domain-validated at issuance, so the check is skipped for them.
+    if (!isInternallyIssuedToken(claims, tokenFromHeader)) {
+      validateDomainEnforcement(
+          jwtPrincipalClaimsMapping,
+          jwtPrincipalClaims,
+          claims,
+          principalDomain,
+          allowedDomains,
+          enforcePrincipalDomain);
+    }
 
     // Validate Bot token matches what was created in OM
     // Skip validation for impersonation tokens - they are generated dynamically and not stored in
@@ -249,6 +252,22 @@ public class JwtFilter implements ContainerRequestFilter {
     validatePersonalAccessToken(claims, tokenFromHeader, userName);
 
     validateSessionBoundToken(claims, userName);
+  }
+
+  private boolean isInternallyIssuedToken(Map<String, Claim> claims, String tokenFromHeader) {
+    JWTTokenGenerator tokenGenerator = JWTTokenGenerator.getInstance();
+    return SecurityUtil.isOpenMetadataIssuedToken(
+        claims, extractKeyId(tokenFromHeader), tokenGenerator.getIssuer(), tokenGenerator.getKid());
+  }
+
+  private String extractKeyId(String tokenFromHeader) {
+    String keyId = null;
+    try {
+      keyId = JWT.decode(tokenFromHeader).getKeyId();
+    } catch (JWTDecodeException e) {
+      LOG.debug("Unable to read key id from token during OpenMetadata issuer check", e);
+    }
+    return keyId;
   }
 
   private Set<String> getUserRolesFromClaims(Map<String, Claim> claims, boolean isBot) {
