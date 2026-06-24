@@ -9,6 +9,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.core.Response;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -187,6 +189,38 @@ class ContextFileIT {
     assertTrue(olderIndex >= 0, "Expected ordered older file in list response");
     assertTrue(newerIndex >= 0, "Expected ordered newer file in list response");
     assertTrue(newerIndex < olderIndex, "Newer file should be listed before older file");
+  }
+
+  @Test
+  void testListFilesOrderByRejectsDefaultCursor(TestNamespace ns) throws Exception {
+    RestClient rest = RestClient.admin();
+
+    createFile(
+        rest,
+        new CreateContextFile()
+            .withName(ns.prefix("default-cursor-first"))
+            .withProcessingStatus(ProcessingStatus.Uploaded));
+    createFile(
+        rest,
+        new CreateContextFile()
+            .withName(ns.prefix("default-cursor-second"))
+            .withProcessingStatus(ProcessingStatus.Uploaded));
+
+    try (Response response = rest.rawGet(FILE_PATH + "?limit=1")) {
+      assertEquals(200, response.getStatus());
+      JsonNode root = JsonUtils.readTree(response.readEntity(String.class));
+      JsonNode after = root.get("paging").get("after");
+      assertNotNull(after, "Default list response should include an after cursor");
+
+      String encodedCursor = URLEncoder.encode(after.asText(), StandardCharsets.UTF_8);
+      try (Response orderByResponse =
+          rest.rawGet(FILE_PATH + "?limit=1&orderBy=DESC&after=" + encodedCursor)) {
+        String body = orderByResponse.readEntity(String.class);
+        assertEquals(
+            Response.Status.BAD_REQUEST.getStatusCode(), orderByResponse.getStatus(), body);
+        assertTrue(body.contains("Invalid cursor for orderBy pagination"));
+      }
+    }
   }
 
   @Test

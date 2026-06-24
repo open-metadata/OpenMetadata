@@ -15084,17 +15084,11 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT count(*) FROM context_file cf "
-                + "LEFT JOIN context_file_content cfc "
-                + "ON JSON_UNQUOTE(JSON_EXTRACT(cf.json, '$.headContentId')) = cfc.id "
-                + "LEFT JOIN asset_entity ae "
-                + "ON COALESCE(JSON_UNQUOTE(JSON_EXTRACT(cfc.json, '$.assetId')), "
-                + "JSON_UNQUOTE(JSON_EXTRACT(cf.json, '$.assetId'))) = ae.id "
-                + "AND (ae.deleted = false OR ae.deleted IS NULL) "
                 + "LEFT JOIN entity_relationship er "
                 + "ON er.toId = cf.id AND er.fromEntity = 'folder' "
                 + "AND er.toEntity = 'contextFile' AND er.relation = :containsRelation "
                 + "AND er.deleted = false "
-                + "WHERE LOWER(COALESCE(ae.name, cf.name)) = LOWER(:fileName) "
+                + "WHERE LOWER(cf.name) = LOWER(:fileName) "
                 + "AND ((:folderId IS NULL AND er.fromId IS NULL) OR er.fromId = :folderId) "
                 + "AND (:excludeId IS NULL OR cf.id <> :excludeId) "
                 + "AND (cf.deleted = false OR cf.deleted IS NULL)",
@@ -15102,15 +15096,11 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT count(*) FROM context_file cf "
-                + "LEFT JOIN context_file_content cfc ON cf.json->>'headContentId' = cfc.id "
-                + "LEFT JOIN asset_entity ae "
-                + "ON COALESCE(cfc.json->>'assetId', cf.json->>'assetId') = ae.id "
-                + "AND (ae.deleted = false OR ae.deleted IS NULL) "
                 + "LEFT JOIN entity_relationship er "
                 + "ON er.toId = cf.id AND er.fromEntity = 'folder' "
                 + "AND er.toEntity = 'contextFile' AND er.relation = :containsRelation "
                 + "AND er.deleted = false "
-                + "WHERE LOWER(COALESCE(ae.name, cf.name)) = LOWER(:fileName) "
+                + "WHERE LOWER(cf.name) = LOWER(:fileName) "
                 + "AND ((:folderId IS NULL AND er.fromId IS NULL) OR er.fromId = :folderId) "
                 + "AND (:excludeId IS NULL OR cf.id <> :excludeId) "
                 + "AND (cf.deleted = false OR cf.deleted IS NULL)",

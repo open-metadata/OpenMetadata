@@ -37,10 +37,8 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -314,7 +312,7 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
 
     ContextFile file = mapper.createToEntity(createFile, user);
     repository.prepareInternal(file, false);
-    repository.validateNoDuplicateFileName(originalFileName, file.getFolder(), null);
+    repository.validateNoDuplicateFileName(pageName, file.getFolder(), null);
 
     try (ContextFileUploadSupport.BufferedUpload bufferedUpload =
         ContextFileUploadSupport.bufferUpload(fileInputStream, maxFileSize)) {
@@ -598,7 +596,7 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
 
     StreamingOutput output =
         stream -> {
-          Map<String, Integer> usedNames = new LinkedHashMap<>();
+          Set<String> usedNames = new HashSet<>();
           try (ZipOutputStream zipOutputStream = new ZipOutputStream(stream)) {
             for (DownloadEntry entry : entries) {
               try (InputStream inputStream = Files.newInputStream(entry.contentPath())) {
@@ -813,7 +811,7 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
     }
   }
 
-  private String zipEntryName(DownloadEntry entry, Map<String, Integer> usedNames) {
+  private String zipEntryName(DownloadEntry entry, Set<String> usedNames) {
     String sourceName =
         entry.asset().getFileName() != null && !entry.asset().getFileName().isBlank()
             ? entry.asset().getFileName()
@@ -821,10 +819,16 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
                 ? entry.file().getDisplayName()
                 : entry.file().getName();
     String safeName = sanitizeFileName(sourceName).replace('/', '_');
-    int count = usedNames.merge(safeName, 1, Integer::sum);
-    if (count == 1) {
-      return safeName;
+    String candidate = safeName;
+    int count = 2;
+    while (!usedNames.add(candidate)) {
+      candidate = zipEntryNameWithSuffix(safeName, count);
+      count++;
     }
+    return candidate;
+  }
+
+  private String zipEntryNameWithSuffix(String safeName, int count) {
     int dotIndex = safeName.lastIndexOf('.');
     if (dotIndex <= 0) {
       return safeName + " (" + count + ")";

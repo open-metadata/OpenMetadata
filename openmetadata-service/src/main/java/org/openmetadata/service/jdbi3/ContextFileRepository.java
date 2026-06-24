@@ -204,7 +204,7 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
       resolvedFolder = folder.getEntityReference();
     }
     updated.setFolder(resolvedFolder);
-    validateNoDuplicateFileName(getCurrentFileName(original), resolvedFolder, updated.getId());
+    validateNoDuplicateFileName(original.getName(), resolvedFolder, updated.getId());
     setFullyQualifiedName(updated);
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
@@ -330,42 +330,6 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     }
   }
 
-  private String getCurrentFileName(ContextFile file) {
-    Asset asset = getCurrentAsset(file);
-    return asset == null ? file.getName() : asset.getFileName();
-  }
-
-  private Asset getCurrentAsset(ContextFile file) {
-    if (file.getHeadContentId() != null && !file.getHeadContentId().isEmpty()) {
-      ContextFileContent content = getContentById(file.getHeadContentId());
-      Asset asset = content == null ? null : getAssetById(content.getAssetId());
-      if (asset != null) {
-        return asset;
-      }
-    }
-    if (file.getAssetId() != null && !file.getAssetId().isEmpty()) {
-      Asset asset = getAssetById(file.getAssetId());
-      if (asset != null) {
-        return asset;
-      }
-    }
-    return contentRepository.listByContextFileId(file.getId()).stream()
-        .filter(content -> content.getAssetId() != null && !content.getAssetId().isEmpty())
-        .map(content -> getAssetById(content.getAssetId()))
-        .filter(
-            asset -> asset != null && asset.getFileName() != null && !asset.getFileName().isEmpty())
-        .findFirst()
-        .orElse(null);
-  }
-
-  private Asset getAssetById(String assetId) {
-    try {
-      return assetRepository.getById(assetId);
-    } catch (Exception e) {
-      return null;
-    }
-  }
-
   public ResultList<ContextFile> listByUpdatedAt(
       UriInfo uriInfo,
       EntityUtil.Fields fields,
@@ -458,7 +422,16 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
 
   private UpdatedAtCursor parseUpdatedAtCursor(String cursor) {
     Map<String, String> cursorMap = parseCursorMap(RestUtil.decodeCursor(cursor));
-    return new UpdatedAtCursor(Long.parseLong(cursorMap.get("updatedAt")), cursorMap.get("id"));
+    String updatedAt = cursorMap.get("updatedAt");
+    String id = cursorMap.get("id");
+    if (updatedAt == null || updatedAt.isBlank() || id == null || id.isBlank()) {
+      throw new BadRequestException("Invalid cursor for orderBy pagination");
+    }
+    try {
+      return new UpdatedAtCursor(Long.parseLong(updatedAt), id);
+    } catch (NumberFormatException e) {
+      throw new BadRequestException("Invalid cursor for orderBy pagination");
+    }
   }
 
   private String updatedAtCursorValue(ContextFile file) {
