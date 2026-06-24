@@ -11,10 +11,6 @@
  *  limitations under the License.
  */
 
-import {
-  EXPORT_FORMAT_TO_ACCEPT_HEADER,
-  EXPORT_FORMAT_TO_FILE_EXTENSION,
-} from '../components/KnowledgeGraph/KnowledgeGraph.constants';
 import APIClient from './index';
 import {
   EntityGraphExportFormat,
@@ -22,6 +18,20 @@ import {
   GlossaryGraphParams,
   GraphData,
 } from './rdfAPI.interface';
+
+export const EXPORT_FORMAT_TO_ACCEPT_HEADER: Record<string, string> = {
+  jsonld: 'application/ld+json',
+  turtle: 'text/turtle',
+  rdfxml: 'application/rdf+xml',
+  ntriples: 'application/n-triples',
+};
+
+export const EXPORT_FORMAT_TO_FILE_EXTENSION: Record<string, string> = {
+  jsonld: 'jsonld',
+  turtle: 'ttl',
+  rdfxml: 'rdf',
+  ntriples: 'nt',
+};
 
 export const checkRdfEnabled = async (): Promise<boolean> => {
   try {
@@ -40,7 +50,8 @@ export const fetchRdfConfig = async (): Promise<{ enabled: boolean }> => {
 };
 
 export const getEntityGraphData = async (
-  params: EntityGraphParams
+  params: EntityGraphParams,
+  options?: { signal?: AbortSignal }
 ): Promise<GraphData> => {
   const {
     entityId,
@@ -59,6 +70,7 @@ export const getEntityGraphData = async (
         ? relationshipTypes.join(',')
         : undefined,
     },
+    signal: options?.signal,
   });
 
   return response.data;
