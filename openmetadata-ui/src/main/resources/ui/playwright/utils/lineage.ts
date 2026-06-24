@@ -851,7 +851,9 @@ export const verifyExportLineagePNG = async (
   ).toBeVisible();
 
   const [download] = await Promise.all([
-    page.waitForEvent('download'),
+    // Platform lineage renders up to 500 nodes at pixelRatio:3 — give the PNG
+    // render enough headroom before the download event fires.
+    page.waitForEvent('download', { timeout: 120_000 }),
     page.click(
       '[data-testid="export-entity-modal"] button#submit-button:visible'
     ),
