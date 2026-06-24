@@ -648,7 +648,10 @@ public class RdfResource {
       summary = "Get glossary term relationship graph",
       description =
           "Get all glossary terms and their relationships as a graph. "
-              + "Supports filtering by glossary and pagination for large datasets.",
+              + "Supports filtering by glossary, by a glossary term and its direct neighbors, "
+              + "or by both. When both glossaryId and glossaryTermId are provided, the selected "
+              + "term must belong to the glossary and direct cross-glossary neighbors can still "
+              + "be returned.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -658,8 +661,14 @@ public class RdfResource {
       })
   public Response getGlossaryTermGraph(
       @Context SecurityContext securityContext,
-      @Parameter(description = "Filter by glossary ID (UUID)") @QueryParam("glossaryId")
+      @Parameter(description = "Filter primary terms by glossary ID (UUID)")
+          @QueryParam("glossaryId")
           UUID glossaryId,
+      @Parameter(
+              description =
+                  "Filter to a glossary term ID (UUID) and its direct incoming/outgoing neighbors")
+          @QueryParam("glossaryTermId")
+          UUID glossaryTermId,
       @Parameter(description = "Filter by relation types (comma-separated)")
           @QueryParam("relationTypes")
           String relationTypes,
@@ -687,7 +696,8 @@ public class RdfResource {
 
       String graphData =
           getRdfRepository()
-              .getGlossaryTermGraph(glossaryId, relationTypes, limit, offset, includeIsolated);
+              .getGlossaryTermGraph(
+                  glossaryId, glossaryTermId, relationTypes, limit, offset, includeIsolated);
       return Response.ok(graphData, MediaType.APPLICATION_JSON).build();
 
     } catch (Exception e) {
