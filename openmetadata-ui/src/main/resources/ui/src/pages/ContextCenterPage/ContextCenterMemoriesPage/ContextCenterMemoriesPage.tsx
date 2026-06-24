@@ -126,6 +126,21 @@ const ContextCenterMemoriesPage: FC = () => {
       }),
       [permissions.Create, permissions.Delete, permissions.EditAll]
     );
+  
+  const canDeleteMemory = useMemo(() => {
+    const memory = memoryToEdit ?? memoryToView;
+
+    const isOwner =
+      memory?.owners?.some((o) => o.name === currentUser?.name) ?? false;
+
+    return hasDeletePermission && (isOwner || Boolean(currentUser?.isAdmin));
+  }, [
+    hasDeletePermission,
+    memoryToEdit,
+    memoryToView,
+    currentUser?.name,
+    currentUser?.isAdmin,
+  ]);
 
   const fetchMemories = useCallback(async () => {
     setIsMemoriesLoading(true);
@@ -773,10 +788,7 @@ const ContextCenterMemoriesPage: FC = () => {
       <CreateMemoryModal
         canCreate={hasCreatePermission}
         canDelete={
-          hasDeletePermission &&
-          ((memoryToEdit?.owners?.some((o) => o.name === currentUser?.name) ??
-            false) ||
-            Boolean(currentUser?.isAdmin))
+          canDeleteMemory
         }
         canEdit={hasEditPermission}
         currentUserName={currentUser?.name}
@@ -794,13 +806,11 @@ const ContextCenterMemoriesPage: FC = () => {
         <CreateMemoryModal
           viewOnly
           canDelete={
-            hasDeletePermission &&
-            ((memoryToView?.owners?.some((o) => o.name === currentUser?.name) ??
-              false) ||
-              Boolean(currentUser?.isAdmin))
+            canDeleteMemory
           }
           canEdit={hasEditPermission}
           currentUserName={currentUser?.name}
+          isAdminUser={currentUser?.isAdmin}
           isOpen={isViewModalOpen}
           memoryToEdit={memoryToView}
           onClose={handleViewModalClose}

@@ -113,19 +113,3 @@ export const createDisposableArchivedDocument = async (
 
   return { id, name };
 };
-
-export const dragArticleNodeOnto = async (
-  page: Page,
-  sourceFqn: string,
-  targetTestId: string
-) => {
-  const source = page.getByTestId(`page-node-${sourceFqn}`);
-  const target = page.getByTestId(targetTestId);
-  const dataTransfer = await page.evaluateHandle(() => new DataTransfer());
-
-  await source.dispatchEvent('dragstart', { dataTransfer });
-  await target.dispatchEvent('dragenter', { dataTransfer });
-  await target.dispatchEvent('dragover', { dataTransfer });
-  await target.dispatchEvent('drop', { dataTransfer });
-  await source.dispatchEvent('dragend', { dataTransfer });
-};

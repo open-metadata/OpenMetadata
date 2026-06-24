@@ -13,24 +13,24 @@
 
 import {
   APIRequestContext,
+  test as base,
   expect,
   Page,
-  test as base,
 } from '@playwright/test';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
 import { UserClass } from '../../support/user/UserClass';
+import { performAdminLogin } from '../../utils/admin';
 import { getDefaultAdminAPIContext, uuid } from '../../utils/common';
 import {
   buildPermissionRule,
   createDisposableArchivedDocument,
-  dragArticleNodeOnto,
   loginAsUser,
   MEMORIES_API,
   navigateToArticles,
   navigateToDashboard,
   navigateToDocuments,
   navigateToMemories,
-  uploadDisposableDocument,
+  uploadDisposableDocument
 } from '../../utils/ContextCenterUtil';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
@@ -125,6 +125,9 @@ let archivedDocumentId = '';
 
 let ownerMemoryId = '';
 
+let quickLinkId = '';
+let quickLinkDisplayName = '';
+
 let editAllOwnMemoryId = '';
 let deleteAllOwnMemoryId = '';
 let allPermissionOwnMemoryId = '';
@@ -187,6 +190,18 @@ test.describe('Context Center Permissions', () => {
     await apiContext.delete(
       `/api/v1/contextCenter/drive/files/${archivedDocumentId}?hardDelete=false`
     );
+
+    quickLinkDisplayName = `CC Permission QuickLink ${uuid()}`;
+    const qlRes = await apiContext.post('/api/v1/contextCenter/pages', {
+      data: {
+        name: `cc_permission_ql_${uuid()}`,
+        displayName: quickLinkDisplayName,
+        description: 'Quick link for permission matrix tests',
+        pageType: 'QuickLink',
+        page: { url: 'https://example.com' },
+      },
+    });
+    quickLinkId = (await qlRes.json()).id;
 
     const memoryRes = await apiContext.post(MEMORIES_API, {
       data: {
@@ -296,6 +311,13 @@ test.describe('Context Center Permissions', () => {
     );
 
     await articleEntity.delete(apiContext);
+    if (quickLinkId) {
+      await apiContext
+        .delete(
+          `/api/v1/contextCenter/pages/${quickLinkId}?hardDelete=true&recursive=true`
+        )
+        .catch(() => undefined);
+    }
     if (folderId) {
       await apiContext.delete(
         `/api/v1/contextCenter/drive/folders/${folderId}?hardDelete=true`
@@ -501,6 +523,36 @@ test.describe('Context Center Permissions', () => {
         ).not.toBeVisible();
       });
 
+      await test.step('hierarchy tree delete button is hidden for articles', async () => {
+        await navigateToArticles(viewOnlyPage);
+
+        const articleNode = viewOnlyPage.getByTestId(
+          `page-node-${articleEntity.responseData.displayName}`
+        );
+        await expect(articleNode).toBeVisible();
+        await articleNode.hover();
+        await expect(
+          viewOnlyPage.getByTestId(
+            `${articleEntity.responseData.displayName}-delete-page-btn`
+          )
+        ).not.toBeVisible();
+      });
+
+      await test.step('quick link card has no edit or delete buttons', async () => {
+        await navigateToArticles(viewOnlyPage);
+
+        const qlCard = viewOnlyPage.getByTestId(
+          `knowledge-card-${quickLinkDisplayName}`
+        );
+        await expect(qlCard).toBeVisible();
+        await expect(
+          qlCard.getByTestId('edit-quick-link-btn')
+        ).not.toBeVisible();
+        await expect(
+          qlCard.getByTestId('delete-quick-link-btn')
+        ).not.toBeVisible();
+      });
+
       await test.step('article detail manage (delete) and edit-domain/edit-owner actions are hidden', async () => {
         await viewOnlyPage.goto(
           `/context-center/articles/${articleEntity.responseData.fullyQualifiedName}`
@@ -617,6 +669,60 @@ test.describe('Context Center Permissions', () => {
         ).toBeVisible();
       });
 
+      await test.step('hierarchy tree delete button is hidden for articles', async () => {
+        await navigateToArticles(createAllPage);
+
+        const articleNode = createAllPage.getByTestId(
+          `page-node-${articleEntity.responseData.displayName}`
+        );
+        await expect(articleNode).toBeVisible();
+        await articleNode.hover();
+        await expect(
+          createAllPage.getByTestId(
+            `${articleEntity.responseData.displayName}-delete-page-btn`
+          )
+        ).not.toBeVisible();
+      });
+
+      await test.step('can create a quick link', async () => {
+        await navigateToArticles(createAllPage);
+
+        await createAllPage.getByTestId('create-knowledge-page-btn').click();
+        await createAllPage.getByTestId('create-quick-link-btn').click();
+
+        const modal = createAllPage.getByTestId('quick-link-form');
+        await expect(modal).toBeVisible();
+
+        const qlDisplayName = `CC Permission Create QL ${uuid()}`;
+        await createAllPage
+          .getByTestId('displayName')
+          .locator('input')
+          .fill(qlDisplayName);
+        await createAllPage
+          .getByTestId('url')
+          .locator('input')
+          .fill('https://example.com');
+
+        const createResPromise = createAllPage.waitForResponse(
+          '/api/v1/contextCenter/pages'
+        );
+        await createAllPage.getByRole('button', { name: /^save$/i }).click();
+        const createRes = await createResPromise;
+
+        expect(createRes.status()).toBe(201);
+
+        const createdQl = await createRes.json();
+        const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+          browser
+        );
+        await apiContext
+          .delete(
+            `/api/v1/contextCenter/pages/${createdQl.id}?hardDelete=true&recursive=true`
+          )
+          .catch(() => undefined);
+        await afterAction();
+      });
+
       await test.step('article detail manage (delete) action is hidden', async () => {
         await createAllPage.goto(
           `/context-center/articles/${articleEntity.responseData.fullyQualifiedName}`
@@ -663,6 +769,79 @@ test.describe('Context Center Permissions', () => {
         }
         await afterAction();
       });
+      await test.step('cannot be able to move an article under another article', async () => {
+        const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+          browser
+        );
+        const parentName = `cc_permission_move_parent_${uuid()}`;
+        const childName = `cc_permission_move_child_${uuid()}`;
+        const parentRes = await apiContext.post('/api/v1/contextCenter/pages', {
+          data: {
+            name: parentName,
+            displayName: `CC Permission Move Parent ${uuid()}`,
+            description: 'Disposable parent article for editAll move test',
+            pageType: 'Article',
+            page: { publicationDate: Date.now(), relatedArticles: [] },
+          },
+        });
+        const parentArticle = await parentRes.json();
+        const childRes = await apiContext.post('/api/v1/contextCenter/pages', {
+          data: {
+            name: childName,
+            displayName: `CC Permission Move Child ${uuid()}`,
+            description: 'Disposable child article for editAll move test',
+            pageType: 'Article',
+            page: { publicationDate: Date.now(), relatedArticles: [] },
+          },
+        });
+        const childArticle = await childRes.json();
+        await afterAction();
+
+        const childDisplayName = childArticle.displayName;
+        const parentDisplayName = parentArticle.displayName;
+
+        // Poll until ES indexes both new articles into the hierarchy tree
+        await createAllPage.waitForFunction(
+          async ([childDN, parentDN]) => {
+            const res = await fetch(
+              `/api/v1/contextCenter/pages/search/hierarchy?pageType=Article&offset=0&limit=100`
+            );
+            const json = await res.json();
+            const names = new Set(
+              (json.data ?? []).map(
+                (n: { displayName?: string }) => n.displayName
+              )
+            );
+
+            return names.has(childDN) && names.has(parentDN);
+          },
+          [childDisplayName, parentDisplayName],
+          { timeout: 30000, polling: 2000 }
+        );
+
+        await navigateToArticles(createAllPage);
+        await createAllPage
+          .getByTestId(`page-node-${childDisplayName}`)
+          .waitFor({ state: 'visible' });
+        await createAllPage
+          .getByTestId(`page-node-${childDisplayName}`)
+          .dragTo(createAllPage.getByTestId(`page-node-${parentDisplayName}`));
+
+        const confirmationModal = createAllPage.getByTestId('confirmation-modal');
+        await expect(confirmationModal).not.toBeVisible();
+
+        const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
+          await getDefaultAdminAPIContext(browser);
+        await deleteDisposableArticleByFqn(
+          cleanupContext,
+          `${parentArticle.fullyQualifiedName}.${childArticle.name}`
+        );
+        await deleteDisposableArticleByFqn(
+          cleanupContext,
+          parentArticle.fullyQualifiedName
+        );
+        await cleanupAfterAction();
+      });
     });
 
     test('user with editAll permission cannot see create or delete actions, and can move an article under another article', async ({
@@ -674,6 +853,19 @@ test.describe('Context Center Permissions', () => {
 
         await expect(
           editAllPage.getByTestId('create-knowledge-page-btn')
+        ).not.toBeVisible();
+      });
+
+      await test.step('quick link card shows edit button but not delete button', async () => {
+        await navigateToArticles(editAllPage);
+
+        const qlCard = editAllPage.getByTestId(
+          `knowledge-card-${quickLinkDisplayName}`
+        );
+        await expect(qlCard).toBeVisible();
+        await expect(qlCard.getByTestId('edit-quick-link-btn')).toBeVisible();
+        await expect(
+          qlCard.getByTestId('delete-quick-link-btn')
         ).not.toBeVisible();
       });
 
@@ -718,22 +910,46 @@ test.describe('Context Center Permissions', () => {
         const childArticle = await childRes.json();
         await afterAction();
 
+        const childDisplayName = childArticle.displayName;
+        const parentDisplayName = parentArticle.displayName;
+
+        // Poll until ES indexes both new articles into the hierarchy tree
+        await editAllPage.waitForFunction(
+          async ([childDN, parentDN]) => {
+            const res = await fetch(
+              `/api/v1/contextCenter/pages/search/hierarchy?pageType=Article&offset=0&limit=100`
+            );
+            const json = await res.json();
+            const names = new Set(
+              (json.data ?? []).map(
+                (n: { displayName?: string }) => n.displayName
+              )
+            );
+
+            return names.has(childDN) && names.has(parentDN);
+          },
+          [childDisplayName, parentDisplayName],
+          { timeout: 30000, polling: 2000 }
+        );
+
         await navigateToArticles(editAllPage);
         await editAllPage
-          .getByTestId(`page-node-${childArticle.fullyQualifiedName}`)
+          .getByTestId(`page-node-${childDisplayName}`)
           .waitFor({ state: 'visible' });
-
-        await dragArticleNodeOnto(
-          editAllPage,
-          childArticle.fullyQualifiedName,
-          `page-node-${parentArticle.fullyQualifiedName}`
-        );
+        
+        await editAllPage
+          .getByTestId(`page-node-${childDisplayName}`)
+          .dragTo(editAllPage.getByTestId(`page-node-${parentDisplayName}`));
 
         const confirmationModal = editAllPage.getByTestId('confirmation-modal');
         await expect(confirmationModal).toBeVisible();
 
         const moveResPromise = editAllPage.waitForResponse(
-          `/api/v1/contextCenter/pages/${childArticle.id}`
+          (response) =>
+            response.url().includes(
+              '/api/v1/contextCenter/pages/'
+            ) &&
+            response.request().method() === 'PATCH' 
         );
         await confirmationModal
           .getByRole('button', { name: /^confirm$/i })
@@ -743,11 +959,25 @@ test.describe('Context Center Permissions', () => {
         expect(moveRes.status()).toBe(200);
         await expect(confirmationModal).not.toBeVisible();
 
+        await editAllPage
+          .getByTestId(`page-node-${parentDisplayName}`)
+          .waitFor({ state: 'visible' });
+        const parentNode = editAllPage.getByTestId(
+          `page-node-${parentDisplayName}`
+        );
+        await parentNode.click();
+        await editAllPage
+          .getByTestId(`page-node-${childDisplayName}`)
+          .waitFor({ state: 'visible' });
+        await expect(
+          editAllPage.getByTestId(`page-node-${childDisplayName}`)
+        ).toBeVisible();
+
         const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
           await getDefaultAdminAPIContext(browser);
         await deleteDisposableArticleByFqn(
           cleanupContext,
-          childArticle.fullyQualifiedName
+          `${parentArticle.fullyQualifiedName}.${childArticle.name}`
         );
         await deleteDisposableArticleByFqn(
           cleanupContext,
@@ -761,6 +991,53 @@ test.describe('Context Center Permissions', () => {
       deleteAllPage,
       browser,
     }) => {
+      await test.step('quick link card shows delete button but not edit button, and can delete the quick link', async () => {
+        await navigateToArticles(deleteAllPage);
+
+        const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+          browser
+        );
+        const disposableQlDisplayName = `CC Permission Delete QL ${uuid()}`;
+        const qlRes = await apiContext.post('/api/v1/contextCenter/pages', {
+          data: {
+            name: `cc_permission_ql_delete_${uuid()}`,
+            displayName: disposableQlDisplayName,
+            description: 'Disposable quick link for deleteAll permission test',
+            pageType: 'QuickLink',
+            page: { url: 'https://example.com' },
+          },
+        });
+        const disposableQl = await qlRes.json();
+        await afterAction();
+
+        await navigateToArticles(deleteAllPage);
+
+        const qlCard = deleteAllPage.getByTestId(
+          `knowledge-card-${disposableQlDisplayName}`
+        );
+        await expect(qlCard).toBeVisible();
+        await expect(
+          qlCard.getByTestId('edit-quick-link-btn')
+        ).not.toBeVisible();
+        await expect(
+          qlCard.getByTestId('delete-quick-link-btn')
+        ).toBeVisible();
+
+        const deleteResPromise = deleteAllPage.waitForResponse(
+          response =>
+            response.url().includes(
+              `/api/v1/contextCenter/pages/${disposableQl.id}`
+            ) &&
+            response.url().includes('hardDelete=true')
+        );
+        await qlCard.getByTestId('delete-quick-link-btn').click();
+        await deleteAllPage.getByTestId('confirm-button').click();
+        const deleteRes = await deleteResPromise;
+
+        expect(deleteRes.status()).toBe(200);
+        await expect(qlCard).not.toBeVisible();
+      });
+
       await test.step('articles list create action is hidden', async () => {
         await navigateToArticles(deleteAllPage);
 
@@ -865,6 +1142,22 @@ test.describe('Context Center Permissions', () => {
       await expect(
         row.locator('button[aria-label="Open menu"]')
       ).not.toBeVisible();
+
+      await test.step('selecting a document shows only download in bulk bar (no move or delete)', async () => {
+        await row.getByTestId('document-checkbox').click();
+
+        await expect(
+          viewOnlyPage.getByTestId('bulk-download-btn')
+        ).toBeVisible();
+        await expect(
+          viewOnlyPage.getByTestId('bulk-move-btn')
+        ).not.toBeVisible();
+        await expect(
+          viewOnlyPage.getByTestId('bulk-delete-btn')
+        ).not.toBeVisible();
+
+        await viewOnlyPage.getByTestId('clear-selection-btn').click();
+      });
     });
 
     test('user with createAll permission can see upload and folder create actions but no row actions, and can create a folder', async ({
@@ -912,6 +1205,47 @@ test.describe('Context Center Permissions', () => {
           .catch(() => undefined);
         await afterAction();
       });
+
+      await test.step('can upload a document from the documents page', async () => {
+        await navigateToDocuments(createAllPage);
+        await createAllPage
+          .getByRole('button', { name: /upload file/i })
+          .click();
+
+        const modal = createAllPage.getByRole('dialog', {
+          name: /upload documents/i,
+        });
+        await expect(modal).toBeVisible();
+
+        const fileName = `cc-documents-upload-${uuid()}.txt`;
+        const fileInput = createAllPage.getByTestId('file-upload-input');
+        await fileInput.waitFor({ state: 'attached' });
+        await fileInput.setInputFiles({
+          name: fileName,
+          mimeType: 'text/plain',
+          buffer: Buffer.from('Playwright documents page upload test'),
+        });
+
+        const uploadResPromise = createAllPage.waitForResponse(
+          '/api/v1/contextCenter/drive/files/upload'
+        );
+        await modal.getByRole('button', { name: /attach/i }).click();
+        const uploadRes = await uploadResPromise;
+
+        expect(uploadRes.status()).toBe(201);
+        await expect(modal).not.toBeVisible();
+
+        const uploadedData = await uploadRes.json();
+        const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+          browser
+        );
+        await apiContext
+          .delete(
+            `/api/v1/contextCenter/drive/files/${uploadedData.id}?hardDelete=true`
+          )
+          .catch(() => undefined);
+        await afterAction();
+      });
     });
 
     test('user with editAll permission sees row move action but no upload, folder create, or delete actions, and can move a document', async ({
@@ -928,6 +1262,23 @@ test.describe('Context Center Permissions', () => {
       await openRowMenu(editAllPage);
       await expect(editAllPage.getByTestId('move-btn')).toBeVisible();
       await expect(editAllPage.getByTestId('delete-btn')).not.toBeVisible();
+
+      await test.step('selecting a document shows download and move in bulk bar but not delete', async () => {
+        await editAllPage.keyboard.press('Escape');
+        const row = editAllPage.getByTestId(`document-row-${documentId}`);
+        await row.scrollIntoViewIfNeeded();
+        await row.getByTestId('document-checkbox').click();
+
+        await expect(
+          editAllPage.getByTestId('bulk-download-btn')
+        ).toBeVisible();
+        await expect(editAllPage.getByTestId('bulk-move-btn')).toBeVisible();
+        await expect(
+          editAllPage.getByTestId('bulk-delete-btn')
+        ).not.toBeVisible();
+
+        await editAllPage.getByTestId('clear-selection-btn').click();
+      });
 
       await test.step('can move a document into a folder', async () => {
         const { apiContext, afterAction } = await getDefaultAdminAPIContext(
@@ -997,6 +1348,25 @@ test.describe('Context Center Permissions', () => {
       await openRowMenu(deleteAllPage);
       await expect(deleteAllPage.getByTestId('move-btn')).not.toBeVisible();
       await expect(deleteAllPage.getByTestId('delete-btn')).toBeVisible();
+
+      await test.step('selecting a document shows download and delete in bulk bar but not move', async () => {
+        await deleteAllPage.keyboard.press('Escape');
+        const row = deleteAllPage.getByTestId(`document-row-${documentId}`);
+        await row.scrollIntoViewIfNeeded();
+        await row.getByTestId('document-checkbox').click();
+
+        await expect(
+          deleteAllPage.getByTestId('bulk-download-btn')
+        ).toBeVisible();
+        await expect(
+          deleteAllPage.getByTestId('bulk-move-btn')
+        ).not.toBeVisible();
+        await expect(
+          deleteAllPage.getByTestId('bulk-delete-btn')
+        ).toBeVisible();
+
+        await deleteAllPage.getByTestId('clear-selection-btn').click();
+      });
 
       await test.step('can delete a document', async () => {
         const { apiContext, afterAction } = await getDefaultAdminAPIContext(
@@ -1430,6 +1800,55 @@ test.describe('Context Center Permissions', () => {
       await expect(
         dialog.getByRole('button', { name: /^cancel$/i })
       ).toBeVisible();
+    });
+
+    test('admin user can edit and save a memory owned by another user', async ({
+      browser,
+    }) => {
+      const { page: adminPage, afterAction } = await performAdminLogin(browser);
+
+      await navigateToMemories(adminPage);
+
+      const row = adminPage.getByTestId(`memory-row-${editAllOwnMemoryId}`);
+      await row.scrollIntoViewIfNeeded();
+      await expect(row).toBeVisible();
+
+      await test.step('edit button is visible on another user memory row when clicked in view modal', async () => {
+        await row.click();
+        const dialog = adminPage.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+        await expect(
+          dialog.getByRole('button', { name: /^edit$/i })
+        ).toBeVisible();
+        await dialog.getByRole('button', { name: /^cancel$/i }).click();
+        await expect(dialog).not.toBeVisible();
+      });
+
+      await test.step('edit button is visible on row and admin can edit and save the memory', async () => {
+        await expect(row.getByTestId('edit-memory-btn')).toBeVisible();
+        await row.getByTestId('edit-memory-btn').click();
+
+        const editDialog = adminPage.getByRole('dialog');
+        await expect(editDialog).toBeVisible();
+
+        await editDialog
+          .getByTestId('memory-content-input')
+          .locator('textarea')
+          .fill('Updated by admin via Playwright permission test.');
+
+        const saveResPromise = adminPage.waitForResponse(
+          new RegExp(`${MEMORIES_API}/${editAllOwnMemoryId}`)
+        );
+        await editDialog
+          .getByRole('button', { name: /^(save|create)/i })
+          .click();
+        const saveRes = await saveResPromise;
+
+        expect(saveRes.status()).toBe(200);
+        await expect(editDialog).not.toBeVisible();
+      });
+
+      await afterAction();
     });
 
     test('user with all permissions and owner can see Add Memory button and all row/modal actions', async ({

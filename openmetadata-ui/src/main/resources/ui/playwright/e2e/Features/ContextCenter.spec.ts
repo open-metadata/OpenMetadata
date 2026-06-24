@@ -1179,7 +1179,9 @@ test.describe('Context Center', () => {
         const reopenedRow = page.getByTestId(`memory-row-${editableMemoryId}`);
         await reopenedRow.scrollIntoViewIfNeeded();
         await reopenedRow.click();
-        await expect(page.getByRole('dialog')).not.toHaveValue(
+        await expect(dialog
+          .getByTestId('memory-title-input')
+          .locator('input')).not.toHaveValue(
           'This change should be discarded'
         );
       });

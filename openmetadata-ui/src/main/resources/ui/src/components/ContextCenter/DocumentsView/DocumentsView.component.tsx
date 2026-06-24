@@ -386,6 +386,7 @@ const FileRow: FC<FileRowProps> = ({
       }}>
       <Checkbox
         aria-label={fileName}
+        data-testid="document-checkbox"
         isSelected={isSelected}
         onChange={() => onSelectFile?.(file.id)}
         onClick={(e) => (e as React.MouseEvent).stopPropagation()}
