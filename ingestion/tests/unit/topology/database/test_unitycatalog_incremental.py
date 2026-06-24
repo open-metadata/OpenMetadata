@@ -339,7 +339,11 @@ class TestUnityCatalogIncrementalSource:
         source = self._make_source()
         source.incremental.enabled = False
         source.context.get.return_value = SimpleNamespace(database="cat", database_schema="schema1")
-        tables = [SimpleNamespace(name="t1"), SimpleNamespace(name="t2")]
+        source._get_tables_with_constraints.return_value = set()
+        tables = [
+            SimpleNamespace(name="t1", catalog_name="cat", schema_name="schema1"),
+            SimpleNamespace(name="t2", catalog_name="cat", schema_name="schema1"),
+        ]
         source.client.tables.list.return_value = tables
         source._process_table.side_effect = lambda table, catalog, schema: iter([(table.name, TableType.Regular)])
 

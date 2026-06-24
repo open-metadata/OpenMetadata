@@ -364,8 +364,8 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         Build and execute SQL query to fetch table constraints.
         Handles cases where catalog_name and/or schema_name may be None.
         """
-        schema_name = self.context.get().database_schema
-        catalog_name = self.context.get().database
+        schema_name = self.context.get().database_schema  # pyright: ignore[reportAttributeAccessIssue]
+        catalog_name = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
         tables_with_constraints = set()
         if catalog_name is None or schema_name is None:
             return tables_with_constraints
