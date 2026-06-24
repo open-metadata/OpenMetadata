@@ -1828,10 +1828,16 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
   private DataProduct buildDataProductFromODPS(
       ODPSDataProduct odps, String languageCode, String domainFqn) {
     DataProduct dp = ODPSConverter.fromODPS(odps, languageCode);
+    // ODPSConverter builds a bare entity with no id; a create insert needs one
+    // (the standard create path assigns it via EntityMapper.copy). The
+    // merge/replace paths overwrite this with the existing product's id.
+    dp.setId(UUID.randomUUID());
     if (domainFqn != null && !domainFqn.isBlank()) {
-      dp.setDomains(
-          java.util.List.of(
-              new EntityReference().withFullyQualifiedName(domainFqn).withType(Entity.DOMAIN)));
+      // Resolve to a full reference (with id): the create authorization context
+      // and relationship storage need the domain id, not just its FQN.
+      EntityReference domain =
+          Entity.getEntityReferenceByName(Entity.DOMAIN, domainFqn, Include.NON_DELETED);
+      dp.setDomains(java.util.List.of(domain));
     }
     return dp;
   }
@@ -1864,7 +1870,11 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
   private DataProduct findExistingByName(String name) {
     if (nullOrEmpty(name)) return null;
     try {
-      return repository.getByName(null, name, repository.getFields("id,name,version"));
+      // Hydrate the full relationship field set. smartMerge/fullReplace copy
+      // owners/domains/experts/reviewers/certification/tags from the existing
+      // product; these are lazy fields that come back null unless requested, so
+      // a sparse load would wipe them (and drop the required domain) on merge.
+      return repository.getByName(null, name, repository.getFields(EXPORT_FIELDS));
     } catch (EntityNotFoundException ignored) {
       return null;
     }

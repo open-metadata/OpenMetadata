@@ -122,7 +122,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = memo(({ message }) => {
         className={`tw:px-4 tw:py-3 tw:tw:wrap-break-word ${
           isHuman
             ? 'tw:max-w-[60%] tw:rounded-xl human-message'
-            : 'tw:max-w-full tw:rounded-lg tw:bg-white tw:text-primary tw:border tw:border-border-secondary'
+            : 'tw:max-w-full tw:rounded-lg tw:bg-primary tw:text-primary tw:border tw:border-border-secondary'
         }`}>
         {isThinking && (
           <div className="tw:flex tw:items-center tw:gap-2">

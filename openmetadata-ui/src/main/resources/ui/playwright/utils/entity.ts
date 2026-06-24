@@ -82,15 +82,15 @@ export const visitEntityPage = async (data: {
   );
 
   // Adding a failsafe for the operation below to avoid a tooltip overlap issue.
-  // A tooltip over the option can cause Playwright click failures:
-  // 1) Hover over the option to move the mouse away from the tooltip trigger element.
-  // 2) If the tooltip is still present, force-click the option.
-  await page.getByTestId(dataTestId).getByTestId('data-name').hover();
-  await page
-    .getByTestId(dataTestId)
-    .getByTestId('data-name')
-    // eslint-disable-next-line playwright/no-force-option
-    .click({ force: true });
+  // A tooltip over the option can cause Playwright click failures
+  // move the mouse away from the option first to get rid of the tooltip.
+  await page.locator('body').hover({
+    position: {
+      x: 0,
+      y: 0,
+    },
+  });
+  await page.getByTestId(dataTestId).getByTestId('data-name').click();
   await waitForAllLoadersToDisappear(page);
   await page.getByTestId('searchBox').clear();
 };
@@ -1431,7 +1431,8 @@ const announcementForm = async (
 export const createAnnouncement = async (
   page: Page,
   data: { title: string; description: string },
-  hideAlert?: boolean
+  hideAlert?: boolean,
+  announcementContainerTestId = 'entity-header-announcements'
 ) => {
   await page.getByTestId('manage-button').click();
   await page.getByTestId('announcement-button').click();
@@ -1455,16 +1456,22 @@ export const createAnnouncement = async (
   await page.reload();
   await waitForAllLoadersToDisappear(page);
 
-  await expect(page.getByTestId('announcement-card')).toBeVisible();
-  await expect(page.getByTestId('announcement-title')).toHaveText(data.title);
+  await expect(page.getByTestId(announcementContainerTestId)).toBeVisible();
+  await expect(page.getByTestId(announcementContainerTestId)).toContainText(
+    data.title
+  );
 
-  await expect(page.getByTestId('announcement-card')).toContainText(
+  await expect(page.getByTestId(announcementContainerTestId)).toContainText(
     data.description
   );
 };
 
 export const replyAnnouncement = async (page: Page) => {
-  await page.click('[data-testid="announcement-card"]');
+  await page
+    .locator('[data-testid="entity-header-announcements"]')
+    .locator('[data-testid^="announcement-item-"]')
+    .first()
+    .click();
 
   await page.hover(
     '[data-testid="announcement-thread-body"] [data-testid="announcement-card"] [data-testid="main-message"]'
@@ -2033,25 +2040,32 @@ export const softDeleteEntity = async (
   await page.reload();
   await waitForAllLoadersToDisappear(page);
   // Retry mechanism for checking deleted badge
-  let deletedBadge = page.locator('[data-testid="deleted-badge"]');
-  let attempts = 0;
-  const maxAttempts = 5;
+  await expect
+    .poll(
+      async () => {
+        const isVisibleBeforeReload = await page
+          .locator('[data-testid="deleted-badge"]')
+          .isVisible();
+        if (isVisibleBeforeReload) {
+          return true;
+        }
 
-  while (attempts < maxAttempts) {
-    const isVisible = await deletedBadge.isVisible();
-    if (isVisible) {
-      break;
-    }
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await waitForAllLoadersToDisappear(page);
 
-    attempts++;
-    if (attempts < maxAttempts) {
-      await page.reload();
-      await waitForAllLoadersToDisappear(page);
-      deletedBadge = page.locator('[data-testid="deleted-badge"]');
-    }
-  }
+        return await page.locator('[data-testid="deleted-badge"]').isVisible();
+      },
+      {
+        message: 'Waiting for deleted badge to be visible after soft delete',
+        timeout: 120000,
+        intervals: [5000, 10000, 15000],
+      }
+    )
+    .toBeTruthy();
 
-  await expect(deletedBadge).toHaveText('Deleted');
+  await expect(page.locator('[data-testid="deleted-badge"]')).toHaveText(
+    'Deleted'
+  );
 
   await deletedEntityCommonChecks({
     page,
@@ -2251,19 +2265,13 @@ export const checkExploreSearchFilter = async (
     await page.fill('[data-testid="search-input"]', entityTypeId);
     await page.getByTestId(entityTypeId).click();
     await entitySearchResponse;
-    await page.getByTestId('update-btn').click();
+    // Immediate-apply commits on selection; legacy mode needs the Update click
+    const typeUpdateButton = page.getByTestId('update-btn');
+    if (await typeUpdateButton.isVisible().catch(() => false)) {
+      await typeUpdateButton.click();
+    }
+    await page.keyboard.press('Escape');
   }
-  await page.getByTestId(`search-dropdown-${filterLabel}`).click();
-  await searchAndClickOnOption(
-    page,
-    {
-      label: filterLabel,
-      key: filterKey,
-      value: filterValue,
-    },
-    true
-  );
-
   const rawFilterValue = (filterValue ?? '').replaceAll(' ', '+').toLowerCase();
   const escapedValue = JSON.stringify(rawFilterValue).slice(1, -1);
   const filterValueForSearchURL = /["%]/.test(filterValue ?? '')
@@ -2309,7 +2317,23 @@ export const checkExploreSearchFilter = async (
     { timeout: 30_000 }
   );
 
-  await page.click('[data-testid="update-btn"]');
+  // Arm the wait before selecting: immediate-apply fires the query on the
+  // option click; legacy mode fires it on the Update click below.
+  await page.getByTestId(`search-dropdown-${filterLabel}`).click();
+  await searchAndClickOnOption(
+    page,
+    {
+      label: filterLabel,
+      key: filterKey,
+      value: filterValue,
+    },
+    true
+  );
+
+  const filterUpdateButton = page.getByTestId('update-btn');
+  if (await filterUpdateButton.isVisible().catch(() => false)) {
+    await filterUpdateButton.click();
+  }
   await queryRes;
   await waitForAllLoadersToDisappear(page);
 

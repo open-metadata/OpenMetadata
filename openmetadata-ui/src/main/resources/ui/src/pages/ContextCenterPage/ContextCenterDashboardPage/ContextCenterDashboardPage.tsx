@@ -55,7 +55,7 @@ import {
 } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { createArticleKnowledgePage } from '../../../utils/ContextCenterPureUtils';
-import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
+import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -225,7 +225,7 @@ const ContextCenterDashboardPage: FC = () => {
     () =>
       articles.map((article) => {
         const owner = getEntityName(article?.owners?.[0]);
-        const time = getRelativeTime(article.updatedAt);
+        const time = getShortRelativeTime(article.updatedAt);
         const metaParts = [owner, time].filter(Boolean);
 
         return { title: getEntityName(article), meta: metaParts.join(' · ') };
@@ -238,7 +238,7 @@ const ContextCenterDashboardPage: FC = () => {
       documents.map((doc) => {
         const metaParts = [
           doc.updatedBy,
-          getRelativeTime(doc.updatedAt),
+          getShortRelativeTime(doc.updatedAt),
         ].filter(Boolean);
 
         return { title: getEntityName(doc), meta: metaParts.join(' · ') };

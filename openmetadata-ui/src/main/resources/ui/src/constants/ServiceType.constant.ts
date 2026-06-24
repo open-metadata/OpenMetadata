@@ -99,18 +99,12 @@ export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
     step: 1,
   },
   {
-    name: 'label.configure-entity',
-    nameData: { entity: 'label.service' },
+    name: 'label.connect',
     step: 2,
   },
   {
-    name: 'label.connection-entity',
-    nameData: { entity: 'label.detail-plural' },
+    name: 'label.what-to-ingest',
     step: 3,
-  },
-  {
-    name: 'label.set-default-filters',
-    step: 4,
   },
 ];
 
@@ -195,6 +189,8 @@ export const BETA_SERVICES = [
   DatabaseServiceType.MicrosoftAccess,
   DatabaseServiceType.QuestDB,
   DashboardServiceType.SapS4Hana,
+  DatabaseServiceType.SapBw4Hana,
+  PipelineServiceType.SapBw4HanaPipeline,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =
@@ -239,6 +235,26 @@ export const ADVANCED_PROPERTIES = [
   'maxClockSkew',
   'tokenValidity',
   'maxAge',
+];
+
+export const INGESTION_BOOLEAN_CONFIG_FIELDS = [
+  'includeTables',
+  'includeViews',
+  'includeTags',
+  'includeCustomProperties',
+  'includeOwners',
+  'includeStoredProcedures',
+  'includeDDL',
+  'markDeletedTables',
+  'markDeletedStoredProcedures',
+  'markDeletedSchemas',
+  'markDeletedDatabases',
+  'overrideMetadata',
+  'enableDebugLog',
+  'dbtUpdateDescriptions',
+  'dbtUpdateOwners',
+  'overrideLineage',
+  'searchAcrossDatabases',
 ];
 
 export const PIPELINE_SERVICE_PLATFORM = 'Airflow';

@@ -15,7 +15,7 @@ import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
@@ -328,6 +328,22 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
             onVersionClick={onVersionChange}
           />
         </Col>
+        {metricDetails.derivedFrom && (
+          <Col data-testid="derived-from-link" span={24}>
+            <span className="tw:text-xs tw:text-tertiary">
+              {`${t('label.derived-from-memory')}: `}
+            </span>
+            <Link
+              className="tw:text-xs tw:text-brand-secondary hover:tw:underline"
+              to={`${
+                ROUTES.CONTEXT_CENTER_MEMORIES
+              }?memory=${encodeURIComponent(
+                metricDetails.derivedFrom.name ?? ''
+              )}`}>
+              {getEntityName(metricDetails.derivedFrom)}
+            </Link>
+          </Col>
+        )}
         <GenericProvider<Metric>
           customizedPage={customizedPage}
           data={metricDetails}
