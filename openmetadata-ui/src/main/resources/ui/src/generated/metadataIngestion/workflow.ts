@@ -7705,6 +7705,7 @@ export enum AccessType {
     ColumnLevel = "ColumnLevel",
     FullAccess = "FullAccess",
     Masked = "Masked",
+    Revoke = "Revoke",
 }
 
 /**
@@ -7721,7 +7722,6 @@ export enum PrincipalType {
 export enum RequestedAccess {
     Admin = "Admin",
     Read = "Read",
-    Revoke = "Revoke",
     Write = "Write",
 }
 
