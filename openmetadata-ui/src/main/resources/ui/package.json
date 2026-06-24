@@ -187,6 +187,7 @@
     "@babel/preset-react": "^7.10.4",
     "@eslint/js": "^9.18.0",
     "@estruyf/github-actions-reporter": "^1.7.0",
+    "@flakiness/playwright": "^1.13.0",
     "@playwright/test": "1.57.0",
     "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.1.18",
