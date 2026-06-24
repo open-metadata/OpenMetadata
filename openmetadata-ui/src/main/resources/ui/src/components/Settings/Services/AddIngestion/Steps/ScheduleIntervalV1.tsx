@@ -253,12 +253,8 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
       : t('message.pipeline-will-trigger-manually');
 
     return (
-      <Card className="cron-expression-card" size="sm">
-        <div className="cron-expression-card-icon">
-          <span className="cron-expression-card-icon-inner">
-            <Clock />
-          </span>
-        </div>
+      <Card className="cron-expression-card tw:bg-secondary" size="sm">
+        <Clock className="cron-expression-card-icon" />
         <Typography className="expression-text" size="text-sm">
           {cronStringValue}
         </Typography>

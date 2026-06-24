@@ -30,32 +30,16 @@
   }
 
   .cron-expression-card {
-    padding: @padding-sm;
     display: flex;
     align-items: center;
+    gap: @margin-sm;
+    padding: @padding-sm @padding-md;
 
     .cron-expression-card-icon {
-      border: 2px solid color-mix(in srgb, @grey-600, 10%, transparent);
-      border-radius: 50%;
-      padding: @padding-xss;
+      height: 20px;
+      width: 20px;
+      flex-shrink: 0;
       color: @grey-600;
-      font-size: 20px;
-      margin-right: @margin-md;
-
-      .cron-expression-card-icon-inner {
-        height: 32px;
-        width: 32px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        border: 2px solid color-mix(in srgb, @grey-600, 30%, transparent);
-        border-radius: 50%;
-
-        svg {
-          height: 20px;
-          width: 20px;
-        }
-      }
     }
   }
 }

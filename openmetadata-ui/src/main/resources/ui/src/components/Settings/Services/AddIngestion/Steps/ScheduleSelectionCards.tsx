@@ -12,7 +12,7 @@
  */
 
 import { Card } from '@openmetadata/ui-core-components';
-import { Check } from '@untitledui/icons';
+import { CheckCircle } from '@untitledui/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { SelectionOption } from '../../../../common/SelectionCardGroup/SelectionCardGroup.interface';
@@ -65,11 +65,10 @@ const ScheduleSelectionCards: FC<ScheduleSelectionCardsProps> = ({
               </span>
 
               {isSelected ? (
-                <span
-                  className="tw:flex tw:size-5 tw:items-center tw:justify-center tw:rounded-full tw:bg-brand-solid tw:text-white"
-                  data-testid="selected-indicator">
-                  <Check className="tw:size-3.5" />
-                </span>
+                <CheckCircle
+                  className="tw:size-5 tw:text-fg-brand-primary"
+                  data-testid="selected-indicator"
+                />
               ) : (
                 <span
                   className="tw:size-5 tw:rounded-full tw:ring-1 tw:ring-primary tw:ring-inset"
