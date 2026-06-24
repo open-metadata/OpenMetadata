@@ -312,8 +312,19 @@ public class OpenSearchVectorService implements VectorIndexService {
         return false;
       }
 
+      int expectedDimension = embeddingClient != null ? embeddingClient.getDimension() : -1;
       List<Map<String, Object>> docs = new ArrayList<>();
       for (JsonNode hit : hits) {
+        // A dimension change (e.g. switching embedding model/dimension) does not change the entity
+        // fingerprint, so the migration path can be reached with stale-dimension vectors. Copying a
+        // source vector whose length no longer matches the active client dimension into an index
+        // built for the new dimension is silently rejected by the knn field, leaving the entity
+        // unembedded. Bail out so the caller re-embeds at the current dimension.
+        JsonNode embedding = hit.path("_source").path("embedding");
+        if (expectedDimension > 0
+            && (!embedding.isArray() || embedding.size() != expectedDimension)) {
+          return false;
+        }
         Map<String, Object> source = MAPPER.convertValue(hit.path("_source"), Map.class);
         source.put("fingerprint", fingerprint);
         docs.add(source);
