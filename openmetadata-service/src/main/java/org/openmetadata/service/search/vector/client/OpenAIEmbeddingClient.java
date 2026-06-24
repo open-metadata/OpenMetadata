@@ -19,12 +19,6 @@ import org.openmetadata.schema.configuration.LLMOpenAIEmbeddingConfig;
 public final class OpenAIEmbeddingClient extends EmbeddingClient {
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
-  // Only the text-embedding-3 family accepts a "dimensions" request parameter to control the output
-  // vector size. text-embedding-ada-002 (and older models) reject it, so the parameter is sent only
-  // for v3 models. Without it the model returns its native size (1536 for -3-small, 3072 for
-  // -3-large), which silently mismatches an index built for the configured dimension.
-  private static final String EMBEDDING_V3_MODEL_PREFIX = "text-embedding-3";
-
   private final HttpClient httpClient;
   private final String apiKey;
   private final String modelId;
@@ -137,9 +131,6 @@ public final class OpenAIEmbeddingClient extends EmbeddingClient {
       ArrayNode inputArray = payload.putArray("input");
       inputArray.add(text);
       payload.put("model", modelId);
-      if (supportsDimensionsParameter()) {
-        payload.put("dimensions", dimension);
-      }
       String body = MAPPER.writeValueAsString(payload);
 
       HttpRequest.Builder requestBuilder =
@@ -172,10 +163,6 @@ public final class OpenAIEmbeddingClient extends EmbeddingClient {
       Thread.currentThread().interrupt();
       throw new RuntimeException("OpenAI embedding generation was interrupted", e);
     }
-  }
-
-  private boolean supportsDimensionsParameter() {
-    return modelId != null && modelId.startsWith(EMBEDDING_V3_MODEL_PREFIX);
   }
 
   @Override

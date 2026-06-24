@@ -339,7 +339,6 @@
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
-                    <include>**/VectorDimensionMismatchIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -377,7 +376,6 @@
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
-                    <exclude>**/VectorDimensionMismatchIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
@@ -435,7 +433,6 @@
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
-                    <include>**/VectorDimensionMismatchIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                   </includes>
@@ -474,7 +471,6 @@
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
-                    <exclude>**/VectorDimensionMismatchIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
@@ -533,7 +529,6 @@
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
-                    <include>**/VectorDimensionMismatchIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                   </includes>
@@ -573,7 +568,6 @@
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
-                    <exclude>**/VectorDimensionMismatchIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
@@ -632,7 +626,6 @@
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
-                    <include>**/VectorDimensionMismatchIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -670,7 +663,6 @@
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
-                    <exclude>**/VectorDimensionMismatchIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
@@ -727,7 +719,6 @@
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
-                    <include>**/VectorDimensionMismatchIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                   </includes>
@@ -766,7 +757,6 @@
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
-                    <exclude>**/VectorDimensionMismatchIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
@@ -823,7 +813,6 @@
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
-                    <include>**/VectorDimensionMismatchIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -862,7 +851,6 @@
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
-                    <exclude>**/VectorDimensionMismatchIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
@@ -933,7 +921,6 @@
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
-                    <include>**/VectorDimensionMismatchIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                   </includes>
@@ -974,7 +961,6 @@
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
-                    <exclude>**/VectorDimensionMismatchIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
@@ -1034,7 +1020,6 @@
                     <include>**/AppsResourceIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
-                    <include>**/VectorDimensionMismatchIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -1074,7 +1059,6 @@
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
-                    <exclude>**/VectorDimensionMismatchIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
