@@ -42,11 +42,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # shard 7 runs the standalone `stress` project (full multi-entity
-        # CustomProperties + DataAssetLineage coverage that's deferred from
-        # per-PR runs). shardTotal stays 6 because shard 7 doesn't use --shard.
+        # shard 1: DataAssetRules suite
+        # shards 2-6: chromium tests sharded 1/5 .. 5/5 (note: --shard=N/5 is
+        # hardcoded in the run step, shardTotal here is matrix metadata only)
+        # shard 7: standalone `stress` project (full multi-entity
+        # CustomProperties + DataAssetLineage coverage deferred from per-PR runs)
         shardIndex: [1, 2, 3, 4, 5, 6, 7]
-        shardTotal: [6]
+        shardTotal: [7]
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
