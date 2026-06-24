@@ -14,6 +14,7 @@
 
 package org.openmetadata.service.tasks;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +22,7 @@ import org.openmetadata.schema.entity.feed.TaskFormSchema;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TaskCategory;
+import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TaskFormSchemaRepository;
@@ -345,7 +347,17 @@ public final class TaskFormExecutionResolver {
   }
 
   private static boolean hasFeedbackPayload(Task task) {
-    return task.getPayload() != null && JsonUtils.valueToTree(task.getPayload()).has("feedback");
+    if (task.getPayload() == null) {
+      return false;
+    }
+
+    JsonNode payload = JsonUtils.valueToTree(task.getPayload());
+    if (payload.has(RecognizerFeedbackTaskPayloadKeys.FEEDBACK)) {
+      return true;
+    }
+
+    return task.getType() == TaskEntityType.DataQualityReview
+        && payload.has(RecognizerFeedbackTaskPayloadKeys.LEGACY_DATA);
   }
 
   private static String stringValue(Object value) {

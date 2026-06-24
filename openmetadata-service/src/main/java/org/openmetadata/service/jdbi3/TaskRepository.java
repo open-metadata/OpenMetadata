@@ -24,6 +24,8 @@ import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
@@ -75,6 +77,7 @@ import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext
 import org.openmetadata.service.tasks.TaskFieldValidator;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver;
 import org.openmetadata.service.tasks.TaskIdGenerator;
+import org.openmetadata.service.tasks.RecognizerFeedbackTaskPayloadKeys;
 import org.openmetadata.service.tasks.TaskWorkflowHandler;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.util.EntityUtil;
@@ -273,6 +276,7 @@ public class TaskRepository extends EntityRepository<Task> {
 
   @Override
   public void setFields(Task task, Fields fields, RelationIncludes relationIncludes) {
+    normalizeDataQualityReviewPayload(task);
     task.setAssignees(fields.contains(FIELD_ASSIGNEES) ? getAssignees(task) : task.getAssignees());
     task.setReviewers(
         fields.contains(FIELD_REVIEWERS) ? getTaskReviewers(task) : task.getReviewers());
@@ -282,6 +286,49 @@ public class TaskRepository extends EntityRepository<Task> {
     task.setComments(fields.contains(FIELD_COMMENTS) ? getComments(task) : task.getComments());
     task.setCreatedBy(
         fields.contains(FIELD_CREATED_BY) ? getTaskCreatedBy(task) : task.getCreatedBy());
+  }
+
+  private void normalizeDataQualityReviewPayload(Task task) {
+    if (task == null || task.getType() != TaskEntityType.DataQualityReview) {
+      return;
+    }
+
+    Object payload = task.getPayload();
+    if (payload == null) {
+      return;
+    }
+
+    JsonNode payloadNode = JsonUtils.valueToTree(payload);
+    if (!payloadNode.isObject()) {
+      return;
+    }
+
+    ObjectNode normalizedPayload = (ObjectNode) payloadNode;
+    boolean updated = false;
+
+    if (!normalizedPayload.has(RecognizerFeedbackTaskPayloadKeys.FEEDBACK)
+        && normalizedPayload.has(RecognizerFeedbackTaskPayloadKeys.LEGACY_DATA)
+        && !normalizedPayload.get(RecognizerFeedbackTaskPayloadKeys.LEGACY_DATA).isNull()) {
+      normalizedPayload.set(
+          RecognizerFeedbackTaskPayloadKeys.FEEDBACK,
+          normalizedPayload.get(RecognizerFeedbackTaskPayloadKeys.LEGACY_DATA));
+      updated = true;
+    }
+
+    JsonNode metadataNode = normalizedPayload.get(RecognizerFeedbackTaskPayloadKeys.METADATA);
+    if (!normalizedPayload.has(RecognizerFeedbackTaskPayloadKeys.RECOGNIZER)
+        && metadataNode != null
+        && metadataNode.has(RecognizerFeedbackTaskPayloadKeys.RECOGNIZER)
+        && !metadataNode.get(RecognizerFeedbackTaskPayloadKeys.RECOGNIZER).isNull()) {
+      normalizedPayload.set(
+          RecognizerFeedbackTaskPayloadKeys.RECOGNIZER,
+          metadataNode.get(RecognizerFeedbackTaskPayloadKeys.RECOGNIZER));
+      updated = true;
+    }
+
+    if (updated) {
+      task.setPayload(JsonUtils.convertValue(normalizedPayload, Map.class));
+    }
   }
 
   @Override

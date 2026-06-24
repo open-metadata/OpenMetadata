@@ -274,6 +274,64 @@ class TaskFormExecutionResolverTest {
   }
 
   @Test
+  void resolveTreatsLegacyReviewFeedbackPayloadAsFeedbackApproval() {
+    Task task =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withType(TaskEntityType.DataQualityReview)
+            .withCategory(TaskCategory.Review)
+            .withPayload(
+                Map.of(
+                    "data",
+                    Map.of("feedbackType", "FalsePositive"),
+                    "metadata",
+                    Map.of("recognizer", "PII")));
+    TaskFormSchemaRepository repository = mock(TaskFormSchemaRepository.class);
+
+    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.TASK_FORM_SCHEMA))
+          .thenReturn(repository);
+      when(repository.resolve(
+              TaskEntityType.DataQualityReview.value(),
+              TaskCategory.Review.value(),
+              task.getPayload()))
+          .thenReturn(Optional.empty());
+
+      TaskExecutionBinding binding = TaskFormExecutionResolver.resolve(task);
+
+      assertEquals(HandlerType.FEEDBACK_APPROVAL, binding.handlerType());
+      assertEquals(MetadataOperation.EDIT_ALL, binding.permissionOperation());
+      assertNull(binding.fieldPathField());
+    }
+  }
+
+  @Test
+  void resolveDoesNotTreatPipelineReviewDataPayloadAsFeedbackApproval() {
+    Task task =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withType(TaskEntityType.PipelineReview)
+            .withCategory(TaskCategory.Review)
+            .withPayload(Map.of("data", Map.of("status", "pending")));
+    TaskFormSchemaRepository repository = mock(TaskFormSchemaRepository.class);
+
+    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.TASK_FORM_SCHEMA))
+          .thenReturn(repository);
+      when(repository.resolve(
+              TaskEntityType.PipelineReview.value(), TaskCategory.Review.value(), task.getPayload()))
+          .thenReturn(Optional.empty());
+
+      TaskExecutionBinding binding = TaskFormExecutionResolver.resolve(task);
+
+      assertEquals(HandlerType.CUSTOM, binding.handlerType());
+      assertNull(binding.permissionOperation());
+    }
+  }
+
+  @Test
   void resolveDisambiguatesSuggestionSchemasUsingPayloadType() {
     Task task =
         new Task()
