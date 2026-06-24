@@ -95,7 +95,8 @@ from metadata.ingestion.source.database.unitycatalog.queries import (
     UNITY_CATALOG_GET_ALL_TABLE_COLUMNS_TAGS,
     UNITY_CATALOG_GET_ALL_TABLE_TAGS,
     UNITY_CATALOG_GET_CATALOGS_TAGS,
-    UNITY_CATALOG_GET_TABLE_DDL, UNITY_CATALOG_TABLE_CONSTRAINTS,
+    UNITY_CATALOG_GET_TABLE_DDL,
+    UNITY_CATALOG_TABLE_CONSTRAINTS,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
@@ -420,10 +421,11 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                 max_results=0,
             )
             for table in self._iterate_listing(table_listing, f"tables in schema [{catalog_name}.{schema_name}]"):
+                detailed_table = table
                 if (table.catalog_name, table.schema_name, table.name) in table_with_constraints:
                     # Only tables with constraints require full fetch; list() doesn't include constraint details
                     try:
-                        table = self.client.tables.get(table.full_name)
+                        detailed_table = self.client.tables.get(table.full_name)
                     except Exception as exc:
                         msg = (
                             f"Unexpected exception in fetching constraints "
@@ -431,7 +433,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                         )
                         logger.warning(msg)
                         self.status.warning(table.name, msg)
-                yield from self._process_table(table, catalog_name, schema_name)
+                yield from self._process_table(detailed_table, catalog_name, schema_name)
 
     def _get_incremental_tables(self, catalog_name: str, schema_name: str) -> Iterable[Tuple[str, TableType]]:  # noqa: UP006
         """Record deleted tables and yield only the tables changed since the watermark."""

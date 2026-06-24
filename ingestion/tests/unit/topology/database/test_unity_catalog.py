@@ -12,6 +12,7 @@
 """
 Test unitycatalog using the topology
 """
+
 from types import SimpleNamespace
 from typing import List  # noqa: UP035
 from unittest import TestCase
@@ -39,8 +40,10 @@ from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
     Column,
     ColumnName,
+    ConstraintType,
     DataType,
-    TableType, TableConstraint, ConstraintType,
+    TableConstraint,
+    TableType,
 )
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
@@ -594,11 +597,7 @@ class unitycatalogUnitTest(TestCase):  # noqa: N801
     @patch("databricks.sdk.service.catalog.TablesAPI.list")
     @patch("databricks.sdk.service.catalog.TablesAPI.get")
     def test_get_tables_with_constraints(
-            self,
-            mock_dbx_get_table,
-            mock_dbx_list_table,
-            mock_sql_connection,
-            mock_process_table
+        self, mock_dbx_get_table, mock_dbx_list_table, mock_sql_connection, mock_process_table
     ):
         mock_tables_with_constraints = [
             SimpleNamespace(
@@ -621,20 +620,15 @@ class unitycatalogUnitTest(TestCase):  # noqa: N801
                 schema_name="default",
                 name="table_no_constraints",
                 table_type=DatabricksTableType.MANAGED,
-            )
+            ),
         ]
         mock_dbx_get_table.return_value = TableInfo(
-                catalog_name="demo",
-                schema_name="default",
-                name="table_with_constraints",
-                table_type=DatabricksTableType.MANAGED,
-                table_constraints = [
-                    TableConstraint(
-                        constraintType = ConstraintType.PRIMARY_KEY,
-                        referredColumns = ["id"]
-                    )
-                ]
-            )
+            catalog_name="demo",
+            schema_name="default",
+            name="table_with_constraints",
+            table_type=DatabricksTableType.MANAGED,
+            table_constraints=[TableConstraint(constraintType=ConstraintType.PRIMARY_KEY, referredColumns=["id"])],
+        )
         mock_process_table.side_effect = [
             [("table_with_constraints", TableType.Regular)],
             [("table_no_constraints", TableType.Regular)],

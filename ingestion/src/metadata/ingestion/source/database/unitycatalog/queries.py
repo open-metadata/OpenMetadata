@@ -140,7 +140,7 @@ UNITY_CATALOG_TEST_COLUMN_LINEAGE = textwrap.dedent(
 UNITY_CATALOG_TABLE_CONSTRAINTS = textwrap.dedent(
     """
     SELECT DISTINCT table_catalog, table_schema, table_name
-    FROM system.information_schema.table_constraints 
+    FROM system.information_schema.table_constraints
     WHERE 1=1
     """
 )
