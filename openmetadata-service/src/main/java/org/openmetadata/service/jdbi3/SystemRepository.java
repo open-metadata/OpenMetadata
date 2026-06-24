@@ -644,6 +644,7 @@ public class SystemRepository {
     probe.setContentType("text/plain");
     byte[] payload =
         "OpenMetadata object storage validation probe".getBytes(StandardCharsets.UTF_8);
+    probe.setSize(payload.length);
     StepValidation result;
     try {
       assetService

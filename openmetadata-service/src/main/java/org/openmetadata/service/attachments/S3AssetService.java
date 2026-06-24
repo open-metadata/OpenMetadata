@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.IOUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.service.config.S3Configuration;
@@ -144,8 +145,13 @@ public class S3AssetService implements AssetService {
             }
 
             PutObjectRequest putRequest = putBuilder.build();
-            s3Client.putObject(
-                putRequest, RequestBody.fromInputStream(content, asset.getSize().longValue()));
+            if (asset.getSize() == null) {
+              byte[] bytes = IOUtils.toByteArray(content);
+              s3Client.putObject(putRequest, RequestBody.fromBytes(bytes));
+            } else {
+              s3Client.putObject(
+                  putRequest, RequestBody.fromInputStream(content, asset.getSize().longValue()));
+            }
             return "success";
           } catch (Exception e) {
             throw new CompletionException(e);
