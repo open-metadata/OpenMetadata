@@ -25,10 +25,23 @@ export type ExploreTreeNode = {
   totalCount?: number;
   type?: string | null;
   tooltip?: string;
+  disabled?: boolean;
 };
 
 export type ExploreTreeProps = {
+  // Static governance leaves (Glossary/Tag/Metric…) still apply a plain quick
+  // filter through this callback.
   onFieldValueSelect: (field: ExploreQuickFilterField[]) => void;
+  // Hierarchical selections (category/serviceType/service/database/schema)
+  // report the browse location; entity-type leaves additionally report the
+  // type they refine to, so filters and location update in one navigation.
+  onTreeSelect: (payload: {
+    browseFields: ExploreQuickFilterField[];
+    typeField?: ExploreQuickFilterField;
+  }) => void;
+  // Entity types selected in the Data Assets filter. Top-level categories that
+  // cannot contain any of these types are grayed out and non-selectable.
+  selectedEntityTypes?: string[];
 };
 
 export type TreeNodeData = {
