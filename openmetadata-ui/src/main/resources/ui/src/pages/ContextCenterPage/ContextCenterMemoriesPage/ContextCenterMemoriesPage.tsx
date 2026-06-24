@@ -674,6 +674,13 @@ const ContextCenterMemoriesPage: FC = () => {
                   </Dropdown.Item>
                 ))}
               </Dropdown.Menu>
+              {authorOptions.length === 0 && (
+                <Box align="center" className="tw:pb-4 tw:pt-1.5" justify="center">
+                  <Typography className="tw:text-quaternary" size="text-xs">
+                    {t('label.no-data-found')}
+                  </Typography>
+                </Box>
+              )}
             </Dropdown.Popover>
           </Dropdown.Root>
         </Box>
