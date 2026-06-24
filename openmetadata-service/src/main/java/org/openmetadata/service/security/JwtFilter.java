@@ -229,9 +229,14 @@ public class JwtFilter implements ContainerRequestFilter {
     // the case where OMD generated the Token for the Client in case OM generated Token
     validateTokenIsNotUsedAfterLogout(tokenFromHeader);
 
-    // Domain enforcement gates external identity-provider tokens. Tokens minted by OpenMetadata
-    // itself are already domain-validated at issuance, so the check is skipped for them.
-    if (!isInternallyIssuedToken(claims, tokenFromHeader)) {
+    // OM-issued tokens (PATs, session tokens, user tokens) set preferred_username to the bare
+    // username without an @domain suffix, which causes getFirstMatchJwtClaim-based domain
+    // extraction to return an empty domain and fail enforcement. Since OM owns the user identity
+    // these tokens are trusted and domain enforcement is skipped — consistent with how bot tokens
+    // are already handled (validateDomainEnforcement returns early for isBot=true tokens).
+    // The isInternallyIssuedToken check is guarded by enforcePrincipalDomain to avoid the extra
+    // JWT decode + singleton lookup on deployments where enforcement is disabled.
+    if (enforcePrincipalDomain && !isInternallyIssuedToken(claims, tokenFromHeader)) {
       validateDomainEnforcement(
           jwtPrincipalClaimsMapping,
           jwtPrincipalClaims,
