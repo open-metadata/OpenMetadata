@@ -374,7 +374,7 @@ class MetabaseSource(DashboardServiceSource):
         ):
             query = re.sub(r"\[\[.*?\]\]", "", chart_details.dataset_query.native.query, flags=re.DOTALL)
 
-        if query is None:
+        if not query or not query.strip():
             return
 
         database_name = database.details.db if database and database.details else None
