@@ -207,10 +207,6 @@ public class RdfUpdater {
         });
   }
 
-  private static void submitAsync(String description, Runnable task) {
-    submitAsync(description, Set.of(), task);
-  }
-
   // Bounded fire-and-forget submission: request threads never wait for Fuseki,
   // but writes touching the same entity id are chained in submission order.
   // This preserves the old synchronous hook ordering for per-entity RDF state
