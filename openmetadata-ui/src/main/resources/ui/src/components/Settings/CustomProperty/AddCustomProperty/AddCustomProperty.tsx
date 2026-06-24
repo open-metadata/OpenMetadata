@@ -623,7 +623,6 @@ const AddCustomProperty = ({
               className="tw:flex tw:items-center tw:justify-between tw:gap-4 tw:border-b tw:border-secondary tw:pb-4"
               onClose={close}>
               <Typography
-                as="h2"
                 className="tw:text-primary"
                 size="text-lg"
                 weight="semibold">
