@@ -39,10 +39,10 @@ import {
   getUpdatedStateFromFormState,
 } from '../../../../../utils/CronExpressionUtils';
 import { getCurrentLocaleForConstrue } from '../../../../../utils/i18next/i18nextUtil';
-import SelectionCardGroup from '../../../../common/SelectionCardGroup/SelectionCardGroup';
 import { SelectionOption } from '../../../../common/SelectionCardGroup/SelectionCardGroup.interface';
 import './schedule-interval-v1.less';
 import { StateValue } from './ScheduleInterval.interface';
+import ScheduleSelectionCards from './ScheduleSelectionCards';
 
 export interface ScheduleIntervalV1Props {
   value?: string;
@@ -284,11 +284,12 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
     <div className="schedule-interval-v1">
       <Grid gap="4">
         <Grid.Item span={24}>
-          <SelectionCardGroup
+          <ScheduleSelectionCards
+            disabled={disabled}
             options={SCHEDULE_OPTIONS}
             value={selectedSchedular}
             onChange={(value) =>
-              !disabled && handleSelectedSchedular(value as SchedularOptions)
+              handleSelectedSchedular(value as SchedularOptions)
             }
           />
         </Grid.Item>

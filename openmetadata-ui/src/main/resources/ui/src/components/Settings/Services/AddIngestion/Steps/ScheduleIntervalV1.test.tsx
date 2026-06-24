@@ -31,25 +31,28 @@ jest.mock('@untitledui/icons', () => ({
   Clock: () => <span data-testid="clock-icon" />,
 }));
 
-jest.mock('../../../../common/SelectionCardGroup/SelectionCardGroup', () => ({
+jest.mock('./ScheduleSelectionCards', () => ({
   __esModule: true,
   default: ({
     options,
     value,
     onChange,
+    disabled,
   }: {
     options: { value: string; label: string }[];
     value: string;
     onChange: (value: string) => void;
+    disabled?: boolean;
   }) => (
     <div data-testid="selection-card-group">
       {options.map((option) => (
         <button
           data-active={value === option.value}
           data-testid={`schedular-${option.value}`}
+          disabled={disabled}
           key={option.value}
           type="button"
-          onClick={() => onChange(option.value)}>
+          onClick={() => !disabled && onChange(option.value)}>
           {option.label}
         </button>
       ))}
