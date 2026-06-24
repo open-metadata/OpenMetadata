@@ -468,7 +468,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private boolean isMcpServerEnabled() {
     MCPConfiguration mcpConfig =
         SettingsCache.getSettingOrDefault(
-            SettingsType.MCP_CONFIGURATION, null, MCPConfiguration.class);
+            SettingsType.MCP_CONFIGURATION, new MCPConfiguration(), MCPConfiguration.class);
     return mcpConfig != null && Boolean.TRUE.equals(mcpConfig.getEnabled());
   }
 
