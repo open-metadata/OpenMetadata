@@ -3516,6 +3516,7 @@
     "request-update-description": "درخواست به‌روزرسانی توضیحات.",
     "reset-layout-confirmation": "آیا مطمئن هستید که می‌خواهید \"طرح پیش‌فرض\" را اعمال کنید؟",
     "reset-link-has-been-sent": "پیوند بازنشانی به ایمیل شما ارسال شد.",
+    "reset-search-settings-confirmation": "Are you sure you want to reset the search settings to their default values? This will discard all your customizations.",
     "restore-action-description": "بازگرداندن این {{entityType}} متادیتای آن را در {{brandName}} بازگردانی خواهد کرد.",
     "restore-deleted-team": "بازگردانی تیم تمام متادیتا را به {{brandName}} برمی‌گرداند.",
     "restore-entities-error": "خطا در بازگردانی {{entity}}.",

@@ -3516,6 +3516,7 @@
     "request-update-description": "Atualizar descrição da solicitação",
     "reset-layout-confirmation": "Tem certeza de que deseja aplicar o \"Layout Padrão\"?",
     "reset-link-has-been-sent": "O link de redefinição foi enviado para o seu e-mail",
+    "reset-search-settings-confirmation": "Are you sure you want to reset the search settings to their default values? This will discard all your customizations.",
     "restore-action-description": "Restaurar este {{entityType}} restaurará seus metadados no {{brandName}}.",
     "restore-deleted-team": "Restaurar a equipa adicionará todos os metadados de volta ao {{brandName}}",
     "restore-entities-error": "Erro ao restaurar {{entity}}",

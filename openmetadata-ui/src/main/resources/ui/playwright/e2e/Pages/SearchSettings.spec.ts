@@ -203,6 +203,56 @@ test.describe('Search Settings', () => {
 
       await toastNotification(page, /Search Settings restored successfully/);
     });
+
+    test('Reset global search settings to default via confirmation modal', async ({
+      page,
+    }) => {
+      await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+
+      await page
+        .getByTestId('global-setting-edit-icon-Max Aggregate Size')
+        .click();
+      await page.getByTestId('value-input').fill('2000');
+      await page.getByTestId('inline-save-btn').click();
+      await toastNotification(page, /Search Settings updated successfully/);
+
+      await expect(
+        page.getByTestId('global-setting-value-Max Aggregate Size')
+      ).toHaveText('2000');
+
+      // Cancelling the confirmation must leave the customized value intact.
+      await page.getByTestId('reset-search-settings-btn').click();
+
+      await expect(page.getByTestId('confirmation-modal')).toBeVisible();
+
+      await page.getByTestId('cancel').click();
+
+      await expect(page.getByTestId('confirmation-modal')).toBeHidden();
+      await expect(
+        page.getByTestId('global-setting-value-Max Aggregate Size')
+      ).toHaveText('2000');
+
+      // Confirming the reset must restore the default value.
+      await page.getByTestId('reset-search-settings-btn').click();
+
+      await expect(page.getByTestId('confirmation-modal')).toBeVisible();
+
+      const resetResponse = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes('/api/v1/system/settings/reset/searchSettings') &&
+          response.request().method() === 'PUT'
+      );
+      await page.getByTestId('save-button').click();
+      await resetResponse;
+
+      await toastNotification(page, /Search Settings updated successfully/);
+
+      await expect(
+        page.getByTestId('global-setting-value-Max Aggregate Size')
+      ).toHaveText('10000');
+    });
   });
 
   test.describe('Search Preview test', () => {

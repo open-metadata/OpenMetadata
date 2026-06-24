@@ -3516,6 +3516,7 @@
     "request-update-description": "वर्णन अद्यतनित करण्यासाठी विनंती",
     "reset-layout-confirmation": "तुम्हाला खात्री आहे की तुम्ही \"मूलभूत लेआउट\" लागू करू इच्छिता?",
     "reset-link-has-been-sent": "रीसेट लिंक तुमच्या ईमेलवर पाठवली आहे",
+    "reset-search-settings-confirmation": "Are you sure you want to reset the search settings to their default values? This will discard all your customizations.",
     "restore-action-description": "हे {{entityType}} पुनर्संचयित केल्याने त्याचे मेटाडेटा {{brandName}} मध्ये पुनर्संचयित होईल.",
     "restore-deleted-team": "टीम पुनर्संचयित केल्याने सर्व मेटाडेटा {{brandName}} मध्ये परत जोडले जाईल",
     "restore-entities-error": "{{entity}} पुनर्संचयित करताना त्रुटी",

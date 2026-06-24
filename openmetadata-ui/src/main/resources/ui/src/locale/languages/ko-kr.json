@@ -3516,6 +3516,7 @@
     "request-update-description": "설명 업데이트 요청",
     "reset-layout-confirmation": "\"기본 레이아웃\"을 적용하시겠습니까?",
     "reset-link-has-been-sent": "재설정 링크가 이메일로 전송되었습니다",
+    "reset-search-settings-confirmation": "Are you sure you want to reset the search settings to their default values? This will discard all your customizations.",
     "restore-action-description": "이 {{entityType}}을(를) 복원하면 {{brandName}}에서 해당 메타데이터가 복원됩니다.",
     "restore-deleted-team": "팀을 복원하면 모든 메타데이터가 {{brandName}}로 다시 추가됩니다",
     "restore-entities-error": "{{entity}} 복원 중 오류 발생",

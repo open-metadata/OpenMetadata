@@ -3516,6 +3516,7 @@
     "request-update-description": "Verzoek om bij te werken omschrijving",
     "reset-layout-confirmation": "Weet je zeker dat je de \"Standaardindeling\" wilt toepassen?",
     "reset-link-has-been-sent": "Resetlink is verzonden naar je e-mail",
+    "reset-search-settings-confirmation": "Are you sure you want to reset the search settings to their default values? This will discard all your customizations.",
     "restore-action-description": "Door het {{entityType}} te herstellen, wordt de metadata ervan hersteld in {{brandName}}.",
     "restore-deleted-team": " Het herstellen van het team voegt alle metadata opnieuw toe aan {{brandName}}",
     "restore-entities-error": "Fout bij het herstellen van {{entity}}",

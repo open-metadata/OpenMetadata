@@ -3516,6 +3516,7 @@
     "request-update-description": "Begär uppdateringsbeskrivning",
     "reset-layout-confirmation": "Är du säker på att du vill tillämpa \"Standardlayout\"?",
     "reset-link-has-been-sent": "En återställningslänk har skickats till din e-post",
+    "reset-search-settings-confirmation": "Are you sure you want to reset the search settings to their default values? This will discard all your customizations.",
     "restore-action-description": "Att återställa denna {{entityType}} kommer att återställa dess metadata i {{brandName}}.",
     "restore-deleted-team": " Att återställa teamet kommer att lägga tillbaka all metadata i {{brandName}}",
     "restore-entities-error": "Fel vid återställning av {{entity}}",
