@@ -814,8 +814,12 @@ public class OpenSearchBulkSink implements BulkSink {
         return json;
       }
 
+      int expectedDimension =
+          vectorService.getEmbeddingClient() != null
+              ? vectorService.getEmbeddingClient().getDimension()
+              : -1;
       JsonNode cached = existingEmbeddingsById.get(entity.getId().toString());
-      if (canReuseCachedEmbedding(cached)) {
+      if (canReuseCachedEmbedding(cached, expectedDimension)) {
         // Splices chunkIndex/chunkCount/parentId along with embedding — safe because the
         // service-layer pre-filter only admits entries whose state matches (same fingerprint or
         // same updatedAt), and fingerprint covers the body text that determines chunk count.
@@ -844,18 +848,31 @@ public class OpenSearchBulkSink implements BulkSink {
   /**
    * The cached payload from {@code fetchExistingEmbeddings} is pre-filtered by the service layer
    * to entries whose state matches. As defense-in-depth at the splice site we also require the
-   * cached doc to (a) be an object, (b) have a non-empty {@code embedding} array, and (c) have a
-   * textual non-blank {@code fingerprint}. Tree-model access is type-tolerant — a missing or
-   * unexpectedly-typed field returns a safe default rather than throwing — and the fingerprint
-   * check ensures we never splice a vector into the new index without also carrying its
-   * fingerprint, which would silently break future reuse for that entity.
+   * cached doc to (a) be an object, (b) have a non-empty {@code embedding} array, (c) have an
+   * {@code embedding} whose length matches {@code expectedDimension} — the current embedding
+   * client's dimension — and (d) have a textual non-blank {@code fingerprint}.
+   *
+   * <p>The dimension check is essential: the reuse pre-filter keys only on entity content
+   * (fingerprint / {@code updatedAt}), which does not change when the embedding model or dimension
+   * changes. Without this guard, a recreate that switches model/dimension would splice an
+   * old-dimension vector into a staged index built for the new dimension, and the document would be
+   * rejected by the knn field — silently leaving the entity unembedded. When {@code
+   * expectedDimension} is non-positive (no active client) the dimension check is skipped.
+   *
+   * <p>Tree-model access is type-tolerant — a missing or unexpectedly-typed field returns a safe
+   * default rather than throwing — and the fingerprint check ensures we never splice a vector into
+   * the new index without also carrying its fingerprint, which would silently break future reuse
+   * for that entity.
    */
-  private static boolean canReuseCachedEmbedding(JsonNode cached) {
+  private static boolean canReuseCachedEmbedding(JsonNode cached, int expectedDimension) {
     if (cached == null || !cached.isObject()) {
       return false;
     }
     JsonNode embedding = cached.path("embedding");
     if (!embedding.isArray() || embedding.isEmpty()) {
+      return false;
+    }
+    if (expectedDimension > 0 && embedding.size() != expectedDimension) {
       return false;
     }
     JsonNode fingerprint = cached.path("fingerprint");
