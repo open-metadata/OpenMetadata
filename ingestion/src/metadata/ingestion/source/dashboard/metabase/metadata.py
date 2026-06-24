@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Metabase source module"""
 
+import re
 import traceback
 from typing import Any, Dict, Iterable, List, Optional  # noqa: UP035
 
@@ -371,7 +372,7 @@ class MetabaseSource(DashboardServiceSource):
             and chart_details.dataset_query.native
             and chart_details.dataset_query.native.query
         ):
-            query = chart_details.dataset_query.native.query
+            query = re.sub(r"\[\[.*?\]\]", "", chart_details.dataset_query.native.query, flags=re.DOTALL)
 
         if query is None:
             return
