@@ -2324,11 +2324,32 @@ public class RdfRepository {
         target.put(entity.getId().toString(), entity);
       }
     } catch (Exception e) {
+      // Best-effort hydration: a single corrupt/inaccessible entity can fail
+      // field-setting for the whole bulk query. Fall back to per-entity fetches
+      // so only the offending node loses its label, not every node of this type.
       LOG.warn(
-          "Failed to batch-fetch {} graph node(s) of type '{}': {}",
+          "Batch fetch of {} '{}' graph node(s) failed ({}); retrying per entity",
           refs.size(),
           entityType,
           e.getMessage());
+      fetchEntitiesIndividually(entityType, refs, target);
+    }
+  }
+
+  private void fetchEntitiesIndividually(
+      String entityType, List<EntityReference> refs, Map<String, EntityInterface> target) {
+    for (EntityReference ref : refs) {
+      try {
+        EntityInterface entity =
+            Entity.getEntity(entityType, ref.getId(), GRAPH_NODE_FIELDS, Include.ALL);
+        target.put(entity.getId().toString(), entity);
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to fetch graph node {} of type '{}': {}",
+            ref.getId(),
+            entityType,
+            e.getMessage());
+      }
     }
   }
 
