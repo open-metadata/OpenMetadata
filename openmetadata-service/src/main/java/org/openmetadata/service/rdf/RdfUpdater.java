@@ -35,7 +35,9 @@ public class RdfUpdater {
   }
 
   public static void updateEntity(EntityInterface entity) {
-    if (rdfRepository == null || !rdfRepository.isEnabled()) {
+    if (rdfRepository == null
+        || !rdfRepository.isEnabled()
+        || RdfExcludedEntities.isExcluded(Entity.getEntityTypeFromObject(entity))) {
       return;
     }
     submitAsync(
@@ -53,7 +55,9 @@ public class RdfUpdater {
   }
 
   public static void deleteEntity(EntityReference entityReference) {
-    if (rdfRepository == null || !rdfRepository.isEnabled()) {
+    if (rdfRepository == null
+        || !rdfRepository.isEnabled()
+        || RdfExcludedEntities.isExcluded(entityReference.getType())) {
       return;
     }
     submitAsync(
@@ -74,13 +78,15 @@ public class RdfUpdater {
     if (rdfRepository == null || !rdfRepository.isEnabled()) {
       return;
     }
-    if (isGlossaryTermRelatedTo(relationship)) {
+    if (isGlossaryTermRelatedTo(relationship) || involvesExcludedEntity(relationship)) {
       // Glossary term ⇔ glossary term RELATED_TO is owned by the typed path
       // (addGlossaryTermRelation), which writes the precise predicate —
       // skos:exactMatch for synonym, skos:broader for broader, om:relatedTo
       // for relatedTo, etc. The generic addRelationship would unconditionally
       // write om:relatedTo on top of that, so every type change would leak a
-      // residual om:relatedTo triple that nothing later cleans up.
+      // residual om:relatedTo triple that nothing later cleans up. Edges whose
+      // endpoint is an entity type excluded from RDF are skipped so the graph
+      // never holds a dangling reference to a node that was never indexed.
       return;
     }
     submitAsync(
@@ -101,9 +107,10 @@ public class RdfUpdater {
     if (rdfRepository == null || !rdfRepository.isEnabled()) {
       return;
     }
-    if (isGlossaryTermRelatedTo(relationship)) {
+    if (isGlossaryTermRelatedTo(relationship) || involvesExcludedEntity(relationship)) {
       // See addRelationship — the typed removal path
-      // (removeGlossaryTermRelation) owns these deletions.
+      // (removeGlossaryTermRelation) owns these deletions, and edges touching
+      // an RDF-excluded entity type are skipped to match the add path.
       return;
     }
     submitAsync(
@@ -124,6 +131,11 @@ public class RdfUpdater {
     return Entity.GLOSSARY_TERM.equals(relationship.getFromEntity())
         && Entity.GLOSSARY_TERM.equals(relationship.getToEntity())
         && relationship.getRelationshipType() == Relationship.RELATED_TO;
+  }
+
+  private static boolean involvesExcludedEntity(EntityRelationship relationship) {
+    return RdfExcludedEntities.isExcluded(relationship.getFromEntity())
+        || RdfExcludedEntities.isExcluded(relationship.getToEntity());
   }
 
   public static boolean isEnabled() {
