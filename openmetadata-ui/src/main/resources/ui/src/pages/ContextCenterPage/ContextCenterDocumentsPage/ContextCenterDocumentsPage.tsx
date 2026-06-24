@@ -33,10 +33,13 @@ import {
 import { SearchIndex } from '../../../enums/search.enum';
 import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { Folder } from '../../../generated/entity/data/folder';
+import { BulkOperationResult } from '../../../generated/type/bulkOperationResult';
 import {
+  bulkDeleteDriveFiles,
+  bulkMoveFilesToFolder,
   deleteDriveFile,
+  downloadDriveFiles,
   listContextFiles,
-  moveFileToFolder,
 } from '../../../rest/assetAPI';
 import { searchQuery as fetchSearchResults } from '../../../rest/searchAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
@@ -44,6 +47,13 @@ import { handleAssetDownload } from '../../../utils/ContextCenterPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+
+const getSuccessfulIds = (result: BulkOperationResult): Set<string> =>
+  new Set(
+    (result.successRequest ?? [])
+      .map((response) => response.request)
+      .filter((request): request is string => typeof request === 'string')
+  );
 
 const ContextCenterDocumentsPage: FC = () => {
   const { t } = useTranslation();
@@ -270,108 +280,120 @@ const ContextCenterDocumentsPage: FC = () => {
   }, []);
 
   const handleConfirmBulkDelete = useCallback(async () => {
-    const filesToDelete = allDocuments.filter((d) => selectedIds.has(d.id));
-
     setIsBulkDeleting(true);
-    const results = await Promise.allSettled(
-      filesToDelete.map((f) => deleteDriveFile(f.id, false))
-    );
+    try {
+      const result = await bulkDeleteDriveFiles(Array.from(selectedIds), false);
+      const deletedIds = getSuccessfulIds(result);
+      const failedCount = result.numberOfRowsFailed ?? 0;
 
-    const deletedIds = new Set(
-      filesToDelete
-        .filter((_, i) => results[i].status === 'fulfilled')
-        .map((f) => f.id)
-    );
-    const failedCount = results.filter((r) => r.status === 'rejected').length;
-
-    setAllDocuments((prev) => prev.filter((d) => !deletedIds.has(d.id)));
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      deletedIds.forEach((id) => next.delete(id));
-
-      return next;
-    });
-
-    if (deletedIds.size > 0) {
-      showSuccessToast(
-        t('server.entity-deleted-success', {
-          entity: t('label.document-plural'),
-        })
-      );
-    }
-    if (failedCount > 0) {
-      showErrorToast(
-        t('server.delete-entity-error', { entity: t('label.document-plural') })
-      );
-    }
-    if (failedCount === 0) {
-      setIsBulkDeleteModalOpen(false);
-    }
-
-    setIsBulkDeleting(false);
-  }, [selectedIds, allDocuments, t]);
-
-  const handleBulkDownload = useCallback(() => {
-    allDocuments
-      .filter((d) => selectedIds.has(d.id))
-      .forEach((f) => handleAssetDownload(f));
-    setSelectedIds(new Set());
-  }, [allDocuments, selectedIds]);
-
-  const handleBulkMove = useCallback(
-    async (targetFolderId: string) => {
-      const filesToMove = allDocuments.filter((d) => selectedIds.has(d.id));
-
-      const results = await Promise.allSettled(
-        filesToMove.map((f) => moveFileToFolder(f.id, targetFolderId))
-      );
-
-      const movedIds = new Set(
-        filesToMove
-          .filter((_, i) => results[i].status === 'fulfilled')
-          .map((f) => f.id)
-      );
-      const failedCount = results.filter((r) => r.status === 'rejected').length;
-
-      setAllDocuments((prev) =>
-        prev.map((d) => {
-          if (!movedIds.has(d.id)) {
-            return d;
-          }
-
-          return {
-            ...d,
-            folder: {
-              ...d.folder,
-              id: targetFolderId,
-              type: d.folder?.type ?? 'folder',
-            },
-          };
-        })
-      );
+      setAllDocuments((prev) => prev.filter((d) => !deletedIds.has(d.id)));
       setSelectedIds((prev) => {
         const next = new Set(prev);
-        movedIds.forEach((id) => next.delete(id));
+        deletedIds.forEach((id) => next.delete(id));
 
         return next;
       });
 
-      if (movedIds.size > 0) {
+      if (deletedIds.size > 0) {
         showSuccessToast(
-          t('message.entity-moved-successfully', {
+          t('server.entity-deleted-success', {
             entity: t('label.document-plural'),
           })
         );
       }
       if (failedCount > 0) {
         showErrorToast(
-          t('server.move-entity-error', {
+          t('server.delete-entity-error', {
             entity: t('label.document-plural'),
           })
         );
       }
+      if (failedCount === 0) {
+        setIsBulkDeleteModalOpen(false);
+      }
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
+
+    setIsBulkDeleting(false);
+  }, [selectedIds, t]);
+
+  const handleBulkDownload = useCallback(async () => {
+    let url: string | undefined;
+    let element: HTMLAnchorElement | undefined;
+
+    try {
+      const blob = await downloadDriveFiles(Array.from(selectedIds));
+      url = URL.createObjectURL(blob);
+      element = document.createElement('a');
+      element.href = url;
+      element.download = 'context-center-documents.zip';
+      document.body.appendChild(element);
+      element.click();
+      setSelectedIds(new Set());
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      element?.remove();
+
+      if (url) {
+        URL.revokeObjectURL(url);
+      }
+    }
+  }, [selectedIds]);
+
+  const handleBulkMove = useCallback(
+    async (targetFolderId: string) => {
+      try {
+        const result = await bulkMoveFilesToFolder(
+          Array.from(selectedIds),
+          targetFolderId
+        );
+        const movedIds = getSuccessfulIds(result);
+        const failedCount = result.numberOfRowsFailed ?? 0;
+
+        setAllDocuments((prev) =>
+          prev.map((d) => {
+            if (!movedIds.has(d.id)) {
+              return d;
+            }
+
+            return {
+              ...d,
+              folder: {
+                ...d.folder,
+                id: targetFolderId,
+                type: d.folder?.type ?? 'folder',
+              },
+            };
+          })
+        );
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          movedIds.forEach((id) => next.delete(id));
+
+          return next;
+        });
+
+        if (movedIds.size > 0) {
+          showSuccessToast(
+            t('message.entity-moved-successfully', {
+              entity: t('label.document-plural'),
+            })
+          );
+        }
+        if (failedCount > 0) {
+          showErrorToast(
+            t('server.move-entity-error', {
+              entity: t('label.document-plural'),
+            })
+          );
+        }
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      }
     },
-    [allDocuments, selectedIds, t]
+    [selectedIds, t]
   );
 
   return (

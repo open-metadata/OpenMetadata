@@ -32,8 +32,18 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URLConnection;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.openmetadata.schema.api.data.CreateContextFile;
@@ -44,9 +54,12 @@ import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
 import org.openmetadata.schema.entity.data.ContextFileType;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -55,15 +68,22 @@ import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.attachments.AzureAssetService;
 import org.openmetadata.service.attachments.S3AssetService;
 import org.openmetadata.service.drive.ContextFileProcessingService;
+import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
+import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.RestUtil;
 
 @Tag(
     name = "Context Center Drive Files",
@@ -94,6 +114,24 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
   }
 
   public static class ContextFileList extends ResultList<ContextFile> {}
+
+  public static class BulkFileIdsRequest {
+    public List<UUID> ids;
+  }
+
+  public static class BulkDeleteFilesRequest extends BulkFileIdsRequest {
+    public Boolean hardDelete;
+  }
+
+  public static class BulkMoveFilesRequest extends BulkFileIdsRequest {
+    public EntityReference folder;
+  }
+
+  public static class BulkDownloadFilesRequest extends BulkFileIdsRequest {
+    public String fileName;
+  }
+
+  private record DownloadEntry(ContextFile file, Asset asset) {}
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
@@ -127,9 +165,26 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
       @QueryParam("limit") @DefaultValue("10") int limit,
       @QueryParam("before") String before,
       @QueryParam("after") String after,
-      @QueryParam("include") @DefaultValue("non-deleted") Include include) {
-    return super.listInternal(
-        uriInfo, securityContext, fieldsParam, new ListFilter(include), limit, before, after);
+      @QueryParam("include") @DefaultValue("non-deleted") Include include,
+      @Parameter(description = "Sort files by updatedAt. Supported values: ASC, DESC.")
+          @QueryParam("orderBy")
+          String orderBy) {
+    ListFilter filter = new ListFilter(include);
+    if (orderBy == null || orderBy.isBlank()) {
+      return super.listInternal(
+          uriInfo, securityContext, fieldsParam, filter, limit, before, after);
+    }
+
+    RestUtil.validateCursors(before, after);
+    Fields fields = getFields(fieldsParam);
+    OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
+    ResourceContextInterface resourceContext = filter.getResourceContext(entityType);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
+    ResultList<ContextFile> resultList =
+        repository.listByUpdatedAt(
+            uriInfo, fields, filter, limit, before, after, resolveOrderBy(orderBy));
+    return addHref(uriInfo, resultList);
   }
 
   @GET
@@ -251,12 +306,14 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
       createFile.setFolder(folderFqn);
     }
 
+    ContextFile file = mapper.createToEntity(createFile, user);
+    repository.prepareInternal(file, false);
+    repository.validateNoDuplicateFileName(originalFileName, file.getFolder(), null);
+
     try (ContextFileUploadSupport.BufferedUpload bufferedUpload =
         ContextFileUploadSupport.bufferUpload(fileInputStream, maxFileSize)) {
       createFile.setFileSize(Math.toIntExact(bufferedUpload.getSize()));
-
-      ContextFile file = mapper.createToEntity(createFile, user);
-      repository.prepareInternal(file, false);
+      file.setFileSize(createFile.getFileSize());
 
       Asset asset =
           ContextFileUploadSupport.buildAsset(
@@ -379,16 +436,153 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
             }
           };
 
-      return Response.ok(output, asset.getContentType())
-          .header("Content-Disposition", buildContentDisposition(asset.getFileName()))
-          .header("Content-Length", asset.getSize().longValue())
-          .build();
+      Response.ResponseBuilder responseBuilder =
+          Response.ok(output, asset.getContentType())
+              .header("Content-Disposition", buildContentDisposition(asset.getFileName()));
+      if (asset.getSize() != null) {
+        responseBuilder.header("Content-Length", asset.getSize().longValue());
+      }
+      return responseBuilder.build();
     } catch (Exception e) {
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
           .entity("{\"message\":\"Failed to download file content\"}")
           .type(MediaType.APPLICATION_JSON)
           .build();
     }
+  }
+
+  @POST
+  @Path("/bulk/delete")
+  @Operation(
+      operationId = "bulkDeleteDriveFiles",
+      summary = "Delete multiple drive files",
+      description = "Delete multiple drive files in one request.")
+  public Response bulkDeleteFiles(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid BulkDeleteFilesRequest request) {
+    List<UUID> ids = validateBulkIds(request == null ? null : request.ids);
+    limits.enforceBulkSizeLimit(entityType, ids.size());
+    boolean hardDelete = request != null && Boolean.TRUE.equals(request.hardDelete);
+    List<BulkResponse> successful = new ArrayList<>();
+    List<BulkResponse> failed = new ArrayList<>();
+
+    for (UUID id : ids) {
+      try {
+        Response response = delete(uriInfo, securityContext, id, hardDelete);
+        successful.add(bulkResponse(id.toString(), response.getStatus(), null));
+      } catch (Exception e) {
+        failed.add(bulkResponse(id.toString(), statusFromException(e), e.getMessage()));
+      }
+    }
+
+    return buildBulkOperationResponse(buildBulkOperationResult(ids.size(), successful, failed));
+  }
+
+  @PUT
+  @Path("/bulk/move")
+  @Operation(
+      operationId = "bulkMoveDriveFiles",
+      summary = "Move multiple drive files",
+      description =
+          "Move multiple drive files to a new parent folder. When `folder` is omitted or null, "
+              + "files are moved to the drive root.")
+  public Response bulkMoveFiles(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid BulkMoveFilesRequest request) {
+    List<UUID> ids = validateBulkIds(request == null ? null : request.ids);
+    limits.enforceBulkSizeLimit(entityType, ids.size());
+    List<BulkResponse> successful = new ArrayList<>();
+    List<BulkResponse> failed = new ArrayList<>();
+    EntityReference newFolder = request == null ? null : request.folder;
+
+    for (UUID id : ids) {
+      try {
+        OperationContext operationContext =
+            new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+        authorizer.authorize(
+            securityContext,
+            operationContext,
+            getResourceContextById(id, ResourceContextInterface.Operation.PUT));
+        ContextFile moved =
+            repository.moveContextFile(id, newFolder, securityContext.getUserPrincipal().getName());
+        addHref(uriInfo, moved);
+        successful.add(bulkResponse(id.toString(), Response.Status.OK.getStatusCode(), null));
+      } catch (Exception e) {
+        failed.add(bulkResponse(id.toString(), statusFromException(e), e.getMessage()));
+      }
+    }
+
+    return buildBulkOperationResponse(buildBulkOperationResult(ids.size(), successful, failed));
+  }
+
+  @POST
+  @Path("/bulk/download")
+  @Produces("application/zip")
+  @Operation(
+      operationId = "bulkDownloadDriveFiles",
+      summary = "Download multiple drive files",
+      description = "Download multiple drive files as a zip archive.")
+  public Response bulkDownloadFiles(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid BulkDownloadFilesRequest request,
+      @QueryParam("include") @DefaultValue("non-deleted") Include include) {
+    List<UUID> ids = validateBulkIds(request == null ? null : request.ids);
+    limits.enforceBulkSizeLimit(entityType, ids.size());
+
+    AssetService assetService = AssetServiceFactory.getService();
+    if (assetService == null) {
+      return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+          .entity("{\"message\":\"Object storage is not configured\"}")
+          .type(MediaType.APPLICATION_JSON)
+          .build();
+    }
+
+    List<DownloadEntry> entries = new ArrayList<>();
+    for (UUID id : ids) {
+      ContextFile file = getInternal(uriInfo, securityContext, id, "", include);
+      Asset asset = resolveAsset(file);
+      if (asset == null) {
+        throw new EntityNotFoundException("No current content found for file " + id);
+      }
+      entries.add(new DownloadEntry(file, asset));
+    }
+
+    StreamingOutput output =
+        stream -> {
+          Map<String, Integer> usedNames = new LinkedHashMap<>();
+          try (ZipOutputStream zipOutputStream = new ZipOutputStream(stream)) {
+            for (DownloadEntry entry : entries) {
+              try (InputStream inputStream = assetService.read(entry.asset()).join()) {
+                if (inputStream == null) {
+                  throw new WebApplicationException(
+                      "No current content found for file " + entry.file().getId(),
+                      Response.Status.NOT_FOUND);
+                }
+                String fileName = zipEntryName(entry, usedNames);
+                zipOutputStream.putNextEntry(new ZipEntry(fileName));
+                inputStream.transferTo(zipOutputStream);
+                zipOutputStream.closeEntry();
+              }
+            }
+          } catch (WebApplicationException e) {
+            throw e;
+          } catch (IOException e) {
+            throw new WebApplicationException("Failed to stream file content", e);
+          } catch (RuntimeException e) {
+            throw new WebApplicationException("Failed to stream file content", e);
+          }
+        };
+
+    String fileName =
+        request != null && request.fileName != null && !request.fileName.isBlank()
+            ? request.fileName
+            : "context-center-documents.zip";
+    return Response.ok(output, "application/zip")
+        .header("Content-Disposition", buildContentDisposition(fileName))
+        .build();
   }
 
   @DELETE
@@ -462,14 +656,135 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
   private Asset resolveAsset(ContextFile file) {
     if (file.getHeadContentId() != null && !file.getHeadContentId().isEmpty()) {
       ContextFileContent content = repository.getContentById(file.getHeadContentId());
-      if (content != null && content.getAssetId() != null && !content.getAssetId().isEmpty()) {
-        return repository.getAssetRepository().getById(content.getAssetId());
+      Asset asset = resolveAsset(content);
+      if (asset != null) {
+        return asset;
       }
     }
     if (file.getAssetId() != null && !file.getAssetId().isEmpty()) {
-      return repository.getAssetRepository().getById(file.getAssetId());
+      Asset asset = resolveAsset(file.getAssetId());
+      if (asset != null) {
+        return asset;
+      }
     }
-    return null;
+    return repository.getContentRepository().listByContextFileId(file.getId()).stream()
+        .sorted(
+            Comparator.comparing(
+                    (ContextFileContent content) ->
+                        Boolean.TRUE.equals(content.getIsCurrent()) ? 0 : 1)
+                .thenComparing(
+                    content ->
+                        content.getIngestedAt() == null ? Long.MIN_VALUE : content.getIngestedAt(),
+                    Comparator.reverseOrder()))
+        .map(this::resolveAsset)
+        .filter(Objects::nonNull)
+        .findFirst()
+        .orElse(null);
+  }
+
+  private Asset resolveAsset(ContextFileContent content) {
+    if (content == null || content.getAssetId() == null || content.getAssetId().isEmpty()) {
+      return null;
+    }
+    return resolveAsset(content.getAssetId());
+  }
+
+  private Asset resolveAsset(String assetId) {
+    try {
+      return repository.getAssetRepository().getById(assetId);
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private List<UUID> validateBulkIds(List<UUID> ids) {
+    if (ids == null || ids.isEmpty()) {
+      throw new BadRequestException("ids must not be empty");
+    }
+    Set<UUID> uniqueIds = new HashSet<>(ids);
+    if (uniqueIds.size() != ids.size()) {
+      throw new BadRequestException("ids must not contain duplicates");
+    }
+    return ids;
+  }
+
+  private Response buildBulkOperationResponse(BulkOperationResult result) {
+    if (result.getStatus() == ApiStatus.FAILURE) {
+      return Response.status(Response.Status.BAD_REQUEST).entity(result).build();
+    }
+    return Response.ok(result).build();
+  }
+
+  private BulkOperationResult buildBulkOperationResult(
+      int processed, List<BulkResponse> successful, List<BulkResponse> failed) {
+    BulkOperationResult result = new BulkOperationResult();
+    result.setNumberOfRowsProcessed(processed);
+    result.setNumberOfRowsPassed(successful.size());
+    result.setNumberOfRowsFailed(failed.size());
+    result.setSuccessRequest(successful);
+    result.setFailedRequest(failed);
+    if (failed.isEmpty()) {
+      result.setStatus(ApiStatus.SUCCESS);
+    } else if (successful.isEmpty()) {
+      result.setStatus(ApiStatus.FAILURE);
+    } else {
+      result.setStatus(ApiStatus.PARTIAL_SUCCESS);
+    }
+    return result;
+  }
+
+  private BulkResponse bulkResponse(Object request, int status, Object message) {
+    BulkResponse response = new BulkResponse();
+    response.setRequest(request);
+    response.setStatus(status);
+    if (message != null) {
+      response.setMessage(String.valueOf(message));
+    }
+    return response;
+  }
+
+  private int statusFromException(Exception exception) {
+    if (exception instanceof AuthorizationException) {
+      return Response.Status.FORBIDDEN.getStatusCode();
+    }
+    if (exception instanceof EntityNotFoundException) {
+      return Response.Status.NOT_FOUND.getStatusCode();
+    }
+    if (exception instanceof BadRequestException) {
+      return Response.Status.BAD_REQUEST.getStatusCode();
+    }
+    if (exception instanceof WebApplicationException webApplicationException
+        && webApplicationException.getResponse() != null) {
+      return webApplicationException.getResponse().getStatus();
+    }
+    return Response.Status.INTERNAL_SERVER_ERROR.getStatusCode();
+  }
+
+  private String zipEntryName(DownloadEntry entry, Map<String, Integer> usedNames) {
+    String sourceName =
+        entry.asset().getFileName() != null && !entry.asset().getFileName().isBlank()
+            ? entry.asset().getFileName()
+            : entry.file().getDisplayName() != null && !entry.file().getDisplayName().isBlank()
+                ? entry.file().getDisplayName()
+                : entry.file().getName();
+    String safeName = sanitizeFileName(sourceName).replace('/', '_');
+    int count = usedNames.merge(safeName, 1, Integer::sum);
+    if (count == 1) {
+      return safeName;
+    }
+    int dotIndex = safeName.lastIndexOf('.');
+    if (dotIndex <= 0) {
+      return safeName + " (" + count + ")";
+    }
+    return safeName.substring(0, dotIndex) + " (" + count + ")" + safeName.substring(dotIndex);
+  }
+
+  private OrderBy resolveOrderBy(String orderBy) {
+    try {
+      return OrderBy.valueOf(orderBy.trim().toUpperCase(Locale.ROOT));
+    } catch (IllegalArgumentException e) {
+      throw new BadRequestException("orderBy must be one of: ASC, DESC");
+    }
   }
 
   private void cleanupFailedUpload(String user, UUID fileId) {

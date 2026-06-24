@@ -15160,6 +15160,95 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "nameHash";
     }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT count(*) FROM context_file cf "
+                + "LEFT JOIN context_file_content cfc "
+                + "ON JSON_UNQUOTE(JSON_EXTRACT(cf.json, '$.headContentId')) = cfc.id "
+                + "JOIN asset_entity ae "
+                + "ON COALESCE(JSON_UNQUOTE(JSON_EXTRACT(cfc.json, '$.assetId')), "
+                + "JSON_UNQUOTE(JSON_EXTRACT(cf.json, '$.assetId'))) = ae.id "
+                + "WHERE LOWER(ae.name) = LOWER(:fileName) "
+                + "AND ((:folderId IS NULL AND JSON_EXTRACT(cf.json, '$.folder.id') IS NULL) "
+                + "OR JSON_UNQUOTE(JSON_EXTRACT(cf.json, '$.folder.id')) = :folderId) "
+                + "AND (:excludeId IS NULL OR cf.id <> :excludeId) "
+                + "AND (cf.deleted = false OR cf.deleted IS NULL) "
+                + "AND (ae.deleted = false OR ae.deleted IS NULL)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT count(*) FROM context_file cf "
+                + "LEFT JOIN context_file_content cfc ON cf.json->>'headContentId' = cfc.id "
+                + "JOIN asset_entity ae "
+                + "ON COALESCE(cfc.json->>'assetId', cf.json->>'assetId') = ae.id "
+                + "WHERE LOWER(ae.name) = LOWER(:fileName) "
+                + "AND ((:folderId IS NULL AND cf.json->'folder'->>'id' IS NULL) "
+                + "OR cf.json->'folder'->>'id' = :folderId) "
+                + "AND (:excludeId IS NULL OR cf.id <> :excludeId) "
+                + "AND (cf.deleted = false OR cf.deleted IS NULL) "
+                + "AND (ae.deleted = false OR ae.deleted IS NULL)",
+        connectionType = POSTGRES)
+    int countByFileNameInFolder(
+        @Bind("fileName") String fileName,
+        @Bind("folderId") String folderId,
+        @Bind("excludeId") String excludeId);
+
+    @SqlQuery("SELECT json FROM context_file <cond> ORDER BY updatedAt ASC, id ASC LIMIT :limit")
+    List<String> listByUpdatedAtAsc(
+        @BindMap Map<String, ?> params, @Define("cond") String cond, @Bind("limit") int limit);
+
+    @SqlQuery("SELECT json FROM context_file <cond> ORDER BY updatedAt DESC, id DESC LIMIT :limit")
+    List<String> listByUpdatedAtDesc(
+        @BindMap Map<String, ?> params, @Define("cond") String cond, @Bind("limit") int limit);
+
+    @SqlQuery(
+        "SELECT json FROM context_file <cond> "
+            + "AND (updatedAt > :afterUpdatedAt OR (updatedAt = :afterUpdatedAt AND id > :afterId)) "
+            + "ORDER BY updatedAt ASC, id ASC LIMIT :limit")
+    List<String> listAfterByUpdatedAtAsc(
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Bind("limit") int limit,
+        @Bind("afterUpdatedAt") long afterUpdatedAt,
+        @Bind("afterId") String afterId);
+
+    @SqlQuery(
+        "SELECT json FROM context_file <cond> "
+            + "AND (updatedAt < :afterUpdatedAt OR (updatedAt = :afterUpdatedAt AND id < :afterId)) "
+            + "ORDER BY updatedAt DESC, id DESC LIMIT :limit")
+    List<String> listAfterByUpdatedAtDesc(
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Bind("limit") int limit,
+        @Bind("afterUpdatedAt") long afterUpdatedAt,
+        @Bind("afterId") String afterId);
+
+    @SqlQuery(
+        "SELECT json FROM ("
+            + "SELECT updatedAt, id, json FROM context_file <cond> "
+            + "AND (updatedAt < :beforeUpdatedAt OR (updatedAt = :beforeUpdatedAt AND id < :beforeId)) "
+            + "ORDER BY updatedAt DESC, id DESC LIMIT :limit"
+            + ") last_rows_subquery ORDER BY updatedAt ASC, id ASC")
+    List<String> listBeforeByUpdatedAtAsc(
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Bind("limit") int limit,
+        @Bind("beforeUpdatedAt") long beforeUpdatedAt,
+        @Bind("beforeId") String beforeId);
+
+    @SqlQuery(
+        "SELECT json FROM ("
+            + "SELECT updatedAt, id, json FROM context_file <cond> "
+            + "AND (updatedAt > :beforeUpdatedAt OR (updatedAt = :beforeUpdatedAt AND id > :beforeId)) "
+            + "ORDER BY updatedAt ASC, id ASC LIMIT :limit"
+            + ") last_rows_subquery ORDER BY updatedAt DESC, id DESC")
+    List<String> listBeforeByUpdatedAtDesc(
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Bind("limit") int limit,
+        @Bind("beforeUpdatedAt") long beforeUpdatedAt,
+        @Bind("beforeId") String beforeId);
   }
 
   interface ContextFileContentDAO

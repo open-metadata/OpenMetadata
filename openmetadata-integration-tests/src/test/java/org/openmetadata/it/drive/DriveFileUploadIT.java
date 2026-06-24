@@ -33,7 +33,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 import javax.imageio.ImageIO;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -224,6 +229,14 @@ class DriveFileUploadIT {
     } catch (Exception e) {
       throw new AssertionError("Failed to fetch uploaded file " + fileId, e);
     }
+  }
+
+  private Folder createFolder(TestNamespace ns, String name) throws Exception {
+    return RestClient.admin()
+        .create(
+            "v1/contextCenter/drive/folders",
+            new CreateFolder().withName(ns.prefix(name)),
+            Folder.class);
   }
 
   private void assertSearchContainsFile(String query, UUID fileId) {
@@ -549,28 +562,86 @@ class DriveFileUploadIT {
   }
 
   @Test
-  void testUploadMultipleFilesUniqueness(TestNamespace ns) throws Exception {
+  void testUploadRejectsDuplicateFileNameCaseInsensitiveInRoot(TestNamespace ns) throws Exception {
     byte[] content = readFixture("/drive/sample-report.pdf");
 
-    Response resp1 = uploadFile("duplicate.pdf", content, "First Upload", null);
-    Response resp2 = uploadFile("duplicate.pdf", content, "Second Upload", null);
+    try (Response resp1 = uploadFile("Duplicate.PDF", content, "First Title", null);
+        Response resp2 = uploadFile("duplicate.pdf", content, "Different Title", null)) {
+      String body1 = resp1.readEntity(String.class);
+      String body2 = resp2.readEntity(String.class);
 
-    String body1 = resp1.readEntity(String.class);
-    String body2 = resp2.readEntity(String.class);
+      assertEquals(CREATED.getStatusCode(), resp1.getStatus(), "First upload failed: " + body1);
+      ContextFile file = JsonUtils.readValue(body1, ContextFile.class);
+      assertEquals("First Title", file.getDisplayName());
+      assertStoredInMinIO(file.getAssetId(), content);
 
-    assertEquals(CREATED.getStatusCode(), resp1.getStatus(), "First upload failed: " + body1);
-    assertEquals(CREATED.getStatusCode(), resp2.getStatus(), "Second upload failed: " + body2);
+      assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), resp2.getStatus(), body2);
+      assertTrue(body2.contains("duplicate.pdf"));
+    }
+  }
 
-    ContextFile file1 = JsonUtils.readValue(body1, ContextFile.class);
-    ContextFile file2 = JsonUtils.readValue(body2, ContextFile.class);
+  @Test
+  void testUploadRejectsDuplicateFileNameCaseInsensitiveInSameFolder(TestNamespace ns)
+      throws Exception {
+    byte[] content = "nested duplicate content".getBytes(StandardCharsets.UTF_8);
+    Folder folder = createFolder(ns, "duplicate-upload-folder");
 
-    assertTrue(
-        !file1.getId().equals(file2.getId()), "Two uploads of same filename should get unique IDs");
-    assertTrue(
-        !file1.getName().equals(file2.getName()),
-        "Two uploads of same filename should get unique names");
-    assertNotNull(file1.getHeadContentId());
-    assertNotNull(file2.getHeadContentId());
+    try (Response resp1 =
+            uploadFile(
+                "NestedDuplicate.txt", content, "Nested First", folder.getFullyQualifiedName());
+        Response resp2 =
+            uploadFile(
+                "nestedduplicate.TXT",
+                content,
+                "Nested Different",
+                folder.getFullyQualifiedName())) {
+      String body1 = resp1.readEntity(String.class);
+      String body2 = resp2.readEntity(String.class);
+
+      assertEquals(CREATED.getStatusCode(), resp1.getStatus(), "First upload failed: " + body1);
+      ContextFile file = JsonUtils.readValue(body1, ContextFile.class);
+      assertEquals("Nested First", file.getDisplayName());
+      assertEquals(folder.getId(), file.getFolder().getId());
+      assertStoredInMinIO(file.getAssetId(), content);
+
+      assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), resp2.getStatus(), body2);
+      assertTrue(body2.contains("nestedduplicate.TXT"));
+    }
+  }
+
+  @Test
+  void testUploadAllowsSameFileNameInDifferentFolders(TestNamespace ns) throws Exception {
+    byte[] content = "shared name different folders".getBytes(StandardCharsets.UTF_8);
+    Folder firstFolder = createFolder(ns, "shared-name-first-folder");
+    Folder secondFolder = createFolder(ns, "shared-name-second-folder");
+
+    try (Response resp1 =
+            uploadFile(
+                "shared-name.txt",
+                content,
+                "First Folder Title",
+                firstFolder.getFullyQualifiedName());
+        Response resp2 =
+            uploadFile(
+                "SHARED-NAME.txt",
+                content,
+                "Second Folder Different Title",
+                secondFolder.getFullyQualifiedName())) {
+      String body1 = resp1.readEntity(String.class);
+      String body2 = resp2.readEntity(String.class);
+
+      assertEquals(CREATED.getStatusCode(), resp1.getStatus(), "First upload failed: " + body1);
+      assertEquals(CREATED.getStatusCode(), resp2.getStatus(), "Second upload failed: " + body2);
+
+      ContextFile firstFile = JsonUtils.readValue(body1, ContextFile.class);
+      ContextFile secondFile = JsonUtils.readValue(body2, ContextFile.class);
+      assertEquals(firstFolder.getId(), firstFile.getFolder().getId());
+      assertEquals(secondFolder.getId(), secondFile.getFolder().getId());
+      assertEquals("First Folder Title", firstFile.getDisplayName());
+      assertEquals("Second Folder Different Title", secondFile.getDisplayName());
+      assertStoredInMinIO(firstFile.getAssetId(), content);
+      assertStoredInMinIO(secondFile.getAssetId(), content);
+    }
   }
 
   @Test
@@ -635,6 +706,49 @@ class DriveFileUploadIT {
                 assertArrayEquals(content, downloaded.readAllBytes());
               }
             });
+  }
+
+  @Test
+  void testBulkDownloadUploadedFilesAsZip(TestNamespace ns) throws Exception {
+    byte[] firstContent = "first bulk download".getBytes(StandardCharsets.UTF_8);
+    byte[] secondContent = "second bulk download".getBytes(StandardCharsets.UTF_8);
+
+    ContextFile firstFile;
+    try (Response response = uploadFile("bulk-one.txt", firstContent, "Bulk One", null)) {
+      String body = response.readEntity(String.class);
+      assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
+      firstFile = JsonUtils.readValue(body, ContextFile.class);
+    }
+
+    ContextFile secondFile;
+    try (Response response = uploadFile("bulk-two.txt", secondContent, "Bulk Two", null)) {
+      String body = response.readEntity(String.class);
+      assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
+      secondFile = JsonUtils.readValue(body, ContextFile.class);
+    }
+
+    Map<String, Object> request =
+        Map.of("ids", List.of(firstFile.getId().toString(), secondFile.getId().toString()));
+    try (Response downloadResponse =
+            multipartClient
+                .target(serverBaseUrl + "/api/v1/contextCenter/drive/files/bulk/download")
+                .request()
+                .headers(adminAuthHeaders())
+                .post(Entity.entity(JsonUtils.pojoToJson(request), MediaType.APPLICATION_JSON));
+        ZipInputStream zipInputStream =
+            new ZipInputStream(downloadResponse.readEntity(InputStream.class))) {
+      assertEquals(200, downloadResponse.getStatus());
+
+      Map<String, byte[]> entries = new HashMap<>();
+      ZipEntry entry;
+      while ((entry = zipInputStream.getNextEntry()) != null) {
+        entries.put(entry.getName(), zipInputStream.readAllBytes());
+        zipInputStream.closeEntry();
+      }
+
+      assertArrayEquals(firstContent, entries.get("bulk-one.txt"));
+      assertArrayEquals(secondContent, entries.get("bulk-two.txt"));
+    }
   }
 
   @Test
