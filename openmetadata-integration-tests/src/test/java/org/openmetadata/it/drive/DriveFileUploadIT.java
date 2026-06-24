@@ -605,7 +605,29 @@ class DriveFileUploadIT {
       assertStoredInMinIO(file.getAssetId(), content);
 
       assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), resp2.getStatus(), body2);
-      assertTrue(body2.contains("nestedduplicate.TXT"));
+      assertTrue(body2.contains("nestedduplicate.txt"));
+    }
+  }
+
+  @Test
+  void testUploadRejectsDuplicateSanitizedFileName() throws Exception {
+    byte[] content = "duplicate sanitized content".getBytes(StandardCharsets.UTF_8);
+    String fileName = "Quarterly Report (" + UUID.randomUUID() + ").pdf";
+    String expectedName =
+        fileName.replaceAll("[^a-zA-Z0-9._-]", "_").replaceAll("_+", "_").toLowerCase();
+
+    try (Response resp1 = uploadFile(fileName, content, "First Title", null);
+        Response resp2 = uploadFile(fileName, content, "Different Title", null)) {
+      String body1 = resp1.readEntity(String.class);
+      String body2 = resp2.readEntity(String.class);
+
+      assertEquals(CREATED.getStatusCode(), resp1.getStatus(), "First upload failed: " + body1);
+      ContextFile file = JsonUtils.readValue(body1, ContextFile.class);
+      assertEquals(expectedName, file.getName());
+      assertStoredInMinIO(file.getAssetId(), content);
+
+      assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), resp2.getStatus(), body2);
+      assertTrue(body2.contains(expectedName));
     }
   }
 
@@ -748,6 +770,82 @@ class DriveFileUploadIT {
 
       assertArrayEquals(firstContent, entries.get("bulk-one.txt"));
       assertArrayEquals(secondContent, entries.get("bulk-two.txt"));
+    }
+  }
+
+  @Test
+  void testBulkDownloadDisambiguatesGeneratedZipEntryCollisions(TestNamespace ns) throws Exception {
+    byte[] firstContent = "first collision download".getBytes(StandardCharsets.UTF_8);
+    byte[] explicitContent = "explicit collision download".getBytes(StandardCharsets.UTF_8);
+    byte[] secondContent = "second collision download".getBytes(StandardCharsets.UTF_8);
+    Folder firstFolder = createFolder(ns, "zip-collision-first-folder");
+    Folder explicitFolder = createFolder(ns, "zip-collision-explicit-folder");
+    Folder secondFolder = createFolder(ns, "zip-collision-second-folder");
+
+    ContextFile firstFile;
+    try (Response response =
+        uploadFile(
+            "collision.txt",
+            firstContent,
+            "Collision First",
+            firstFolder.getFullyQualifiedName())) {
+      String body = response.readEntity(String.class);
+      assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
+      firstFile = JsonUtils.readValue(body, ContextFile.class);
+    }
+
+    ContextFile explicitFile;
+    try (Response response =
+        uploadFile(
+            "collision (2).txt",
+            explicitContent,
+            "Collision Explicit",
+            explicitFolder.getFullyQualifiedName())) {
+      String body = response.readEntity(String.class);
+      assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
+      explicitFile = JsonUtils.readValue(body, ContextFile.class);
+    }
+
+    ContextFile secondFile;
+    try (Response response =
+        uploadFile(
+            "collision.txt",
+            secondContent,
+            "Collision Second",
+            secondFolder.getFullyQualifiedName())) {
+      String body = response.readEntity(String.class);
+      assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
+      secondFile = JsonUtils.readValue(body, ContextFile.class);
+    }
+
+    Map<String, Object> request =
+        Map.of(
+            "ids",
+            List.of(
+                firstFile.getId().toString(),
+                explicitFile.getId().toString(),
+                secondFile.getId().toString()));
+    try (Response downloadResponse =
+            multipartClient
+                .target(serverBaseUrl + "/api/v1/contextCenter/drive/files/bulk/download")
+                .request()
+                .headers(adminAuthHeaders())
+                .post(Entity.entity(JsonUtils.pojoToJson(request), MediaType.APPLICATION_JSON));
+        ZipInputStream zipInputStream =
+            new ZipInputStream(downloadResponse.readEntity(InputStream.class))) {
+      assertEquals(200, downloadResponse.getStatus());
+
+      Map<String, byte[]> entries = new HashMap<>();
+      ZipEntry entry;
+      while ((entry = zipInputStream.getNextEntry()) != null) {
+        entries.put(entry.getName(), zipInputStream.readAllBytes());
+        zipInputStream.closeEntry();
+      }
+
+      assertEquals(3, entries.size());
+      assertArrayEquals(firstContent, entries.get("collision.txt"));
+      assertArrayEquals(explicitContent, entries.get("collision (2).txt"));
+      assertArrayEquals(secondContent, entries.get("collision (3).txt"));
     }
   }
 
