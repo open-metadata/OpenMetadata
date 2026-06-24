@@ -523,6 +523,58 @@ class LookerUnitTest(TestCase):
         with patch.object(LookerSource, "build_chart_description", side_effect=something_bad):
             self.looker.yield_dashboard_chart(MOCK_LOOKER_DASHBOARD)
 
+    def test_yield_dashboard_chart_skips_dataless_tile(self):
+        """
+        A tile with no query, no result-maker query and no merge result is a
+        data-less tile (these often have title=None and type="text"). It is
+        skipped instead of producing a chart with a dead /merge?mid=None
+        sourceUrl, and the skip is logged.
+        """
+        dashboard = LookerDashboard(
+            id="1",
+            title="title1",
+            dashboard_elements=[DashboardElement(id="4977", type="text")],
+            description="description",
+        )
+
+        with self.assertLogs(level="INFO") as captured:
+            charts = list(self.looker.yield_dashboard_chart(dashboard))
+
+        self.assertEqual(charts, [])
+        self.assertTrue(
+            any(
+                "Skipping data-less Looker tile id=4977" in message and "type=text" in message
+                for message in captured.output
+            )
+        )
+
+    def test_yield_dashboard_chart_merge_tile(self):
+        """
+        A merge-results tile (no query, but a merge_result_id) still produces a
+        chart with the /merge?mid=<id> sourceUrl.
+        """
+        dashboard = LookerDashboard(
+            id="1",
+            title="title1",
+            dashboard_elements=[
+                DashboardElement(id="merge_1", title="Merged", type="table", merge_result_id="abc123")
+            ],
+            description="description",
+        )
+
+        create_chart_request = CreateChartRequest(
+            name="merge_1",
+            displayName="Merged",
+            chartType=ChartType.Table,
+            sourceUrl="https://my-looker.com/merge?mid=abc123",
+            service=self.looker.context.get().dashboard_service,
+        )
+
+        self.assertEqual(
+            next(self.looker.yield_dashboard_chart(dashboard)).right,
+            create_chart_request,
+        )
+
     def test_yield_dashboard_usage(self):
         """
         Validate the logic for existing or new usage
