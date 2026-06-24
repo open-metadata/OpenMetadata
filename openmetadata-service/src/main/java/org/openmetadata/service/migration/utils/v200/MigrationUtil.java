@@ -47,6 +47,7 @@ public class MigrationUtil {
   private static final String DATA_CONSUMER_POLICY = "DataConsumerPolicy";
   private static final String TASK_AUTHOR_POLICY = "TaskAuthorPolicy";
   private static final String CREATE_TASK_RULE_NAME = "DataConsumerPolicy-CreateTask-Rule";
+  private static final String GENERIC_DATA_KEY = "data";
 
   /**
    * Per-migration cache of {@code (entityType, entityId) -> resolved domains}. Many migrated tasks
@@ -856,9 +857,7 @@ public class MigrationUtil {
       case "Generic" -> {
         ObjectNode payload = JsonUtils.getObjectNode();
         if (taskDetails.has("suggestion") && !taskDetails.get("suggestion").isNull()) {
-          payload.put(
-              RecognizerFeedbackTaskPayloadKeys.LEGACY_DATA,
-              taskDetails.get("suggestion").asText());
+          payload.put(GENERIC_DATA_KEY, taskDetails.get("suggestion").asText());
         }
         yield payload;
       }
