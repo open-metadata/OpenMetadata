@@ -264,7 +264,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       !isViewOnly && (memoryToEdit ? canEditMemory : canCreate);
 
     return { showEditButton, showSubmitButton };
-  }, [isViewOnly, isOwner, isAdminUser, canEdit, canCreate]);
+  }, [isViewOnly, isOwner, isAdminUser, canEdit, canCreate, memoryToEdit]);
 
   useEffect(() => {
     setIsViewOnly(viewOnly);
