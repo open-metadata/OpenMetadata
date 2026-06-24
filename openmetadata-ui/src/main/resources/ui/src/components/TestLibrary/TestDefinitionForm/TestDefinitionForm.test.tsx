@@ -17,6 +17,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import type { TestDefinition } from '../../../generated/tests/testDefinition';
 import {
   DataQualityDimensions,
   DataType,
@@ -24,7 +25,6 @@ import {
   TestDataType,
   TestPlatform,
 } from '../../../generated/tests/testDefinition';
-import type { TestDefinition } from '../../../generated/tests/testDefinition';
 import {
   createTestDefinition,
   patchTestDefinition,

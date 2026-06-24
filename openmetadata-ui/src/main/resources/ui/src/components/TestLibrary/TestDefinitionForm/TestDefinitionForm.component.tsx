@@ -12,11 +12,18 @@
  */
 
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Card, Drawer, Form, Input, Select, Space, Switch } from 'antd';
 import type { FormInstance } from 'antd';
+import { Button, Card, Drawer, Form, Input, Select, Space, Switch } from 'antd';
 import type { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { lazy, useCallback, useMemo, useState, type FC, type FocusEvent } from 'react';
+import {
+  lazy,
+  useCallback,
+  useMemo,
+  useState,
+  type FC,
+  type FocusEvent,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
 import {
@@ -26,6 +33,7 @@ import {
 import { CSMode } from '../../../enums/codemirror.enum';
 import type { CreateTestDefinition } from '../../../generated/api/tests/createTestDefinition';
 import { DatabaseServiceType } from '../../../generated/entity/services/databaseService';
+import type { TestDefinition } from '../../../generated/tests/testDefinition';
 import {
   DataQualityDimensions,
   DataType,
@@ -33,7 +41,6 @@ import {
   TestDataType,
   TestPlatform,
 } from '../../../generated/tests/testDefinition';
-import type { TestDefinition } from '../../../generated/tests/testDefinition';
 import {
   createTestDefinition,
   patchTestDefinition,
