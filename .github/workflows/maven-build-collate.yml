@@ -36,6 +36,9 @@ on:
     types: [opened, synchronize, labeled, ready_for_review]
     paths:
       - "openmetadata-service/**"
+      - "openmetadata-ui/**"
+      - "!openmetadata-ui/src/main/resources/ui/playwright/doc-generator/**"
+      - "!openmetadata-ui/src/main/resources/ui/playwright/docs/**"
       - "openmetadata-spec/src/main/resources/json/schema/**"
       - "openmetadata-integration-tests/**"
       - "openmetadata-mcp/**"
