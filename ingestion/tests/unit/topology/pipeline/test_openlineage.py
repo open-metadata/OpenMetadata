@@ -1,11 +1,13 @@
 import contextlib
 import copy
+import hashlib
 import json
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 from uuid import UUID
 
+import pytest
 from cachetools import LRUCache
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -37,8 +39,10 @@ from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.pipeline.openlineage.metadata import (
+    KPL_AGGREGATED_MAGIC,
     RESOLUTION_CACHE_MAXSIZE,
     OpenlineageSource,
+    deaggregate_kinesis_record,
 )
 from metadata.ingestion.source.pipeline.openlineage.models import (
     EntityDetails,
@@ -2479,6 +2483,67 @@ class OpenLineageUnitTest(unittest.TestCase):
         so a single bad dataset never aborts the whole event."""
         data = {"namespace": "trino://host:8080", "name": "invalidname"}
         self.assertEqual(OpenlineageSource._iter_table_candidates(data), [])
+
+
+def _encode_varint(value: int) -> bytes:
+    out = bytearray()
+    while True:
+        byte = value & 0x7F
+        value >>= 7
+        if value:
+            out.append(byte | 0x80)
+        else:
+            out.append(byte)
+            return bytes(out)
+
+
+def _length_delimited(field_number: int, payload: bytes) -> bytes:
+    return _encode_varint((field_number << 3) | 2) + _encode_varint(len(payload)) + payload
+
+
+def kpl_aggregate(payloads: list[bytes]) -> bytes:
+    """Frame payloads as one KPL-aggregated Kinesis record (magic + protobuf + md5)."""
+    protobuf = _length_delimited(1, b"partition-key")
+    for payload in payloads:
+        record = _encode_varint((1 << 3) | 0) + b"\x00" + _length_delimited(3, payload)
+        protobuf += _length_delimited(3, record)
+    return KPL_AGGREGATED_MAGIC + protobuf + hashlib.md5(protobuf).digest()
+
+
+class TestKplDeaggregation(unittest.TestCase):
+    def test_deaggregates_kpl_record_into_individual_events(self):
+        raw = json.dumps(FULL_OL_KAFKA_EVENT).encode()
+        record = kpl_aggregate([raw, raw, raw])
+
+        payloads = deaggregate_kinesis_record(record)
+
+        assert len(payloads) == 3
+        for payload in payloads:
+            assert json.loads(payload)["eventType"] == FULL_OL_KAFKA_EVENT["eventType"]
+
+    def test_plain_json_record_passes_through_unchanged(self):
+        raw = json.dumps(FULL_OL_KAFKA_EVENT).encode()
+
+        payloads = deaggregate_kinesis_record(raw)
+
+        assert payloads == [raw]
+
+    def test_malformed_aggregated_record_raises(self):
+        # Magic header present but the protobuf body uses an invalid wire type (7),
+        # so de-aggregation must raise -- _poll_kinesis catches this per-record.
+        invalid_protobuf = b"\x0f"
+        record = KPL_AGGREGATED_MAGIC + invalid_protobuf + b"\x00" * 16
+
+        with pytest.raises(ValueError):
+            deaggregate_kinesis_record(record)
+
+    def test_truncated_aggregated_record_raises(self):
+        # Magic header present but the record is too short to hold a protobuf body
+        # plus the trailing md5 checksum -- must raise rather than silently drop.
+        record = KPL_AGGREGATED_MAGIC + b"\x1a\x05hello"
+
+        with pytest.raises(ValueError):
+            deaggregate_kinesis_record(record)
 
 
 class TestKinesisMultiShardPolling(unittest.TestCase):
