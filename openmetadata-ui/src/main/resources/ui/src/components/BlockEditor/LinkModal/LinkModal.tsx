@@ -12,7 +12,6 @@
  */
 import { Form, FormProps, Input, Modal } from 'antd';
 import { FC } from 'react';
-import { LINK_OVERLAY_Z_INDEX } from '../../../constants/BlockEditor.constants';
 
 export interface LinkData {
   href: string;
@@ -41,12 +40,6 @@ const LinkModal: FC<LinkModalProps> = ({
     onSave(values);
   };
 
-  // Only elevate the z-index when mounted inside a dialog; otherwise the antd
-  // default avoids painting above unrelated portals.
-  const container = getContainer?.();
-  const zIndex =
-    container && container !== document.body ? LINK_OVERLAY_Z_INDEX : undefined;
-
   return (
     <Modal
       className="block-editor-link-modal"
@@ -60,7 +53,6 @@ const LinkModal: FC<LinkModalProps> = ({
       okText="Save"
       open={isOpen}
       title={data.href ? 'Edit link' : 'Add link'}
-      zIndex={zIndex}
       onCancel={onCancel}>
       <Form
         data-testid="link-form"

@@ -14,7 +14,6 @@ import { ReactRenderer, type Editor } from '@tiptap/react';
 import { isEmpty, isNil } from 'lodash';
 import { forwardRef, useImperativeHandle, useState } from 'react';
 import tippy, { Instance, Props } from 'tippy.js';
-import { LINK_OVERLAY_Z_INDEX } from '../../constants/BlockEditor.constants';
 import { EditorSlotsProps, EditorSlotsRef } from './BlockEditor.interface';
 import BlockMenu from './BlockMenu/BlockMenu';
 import BubbleMenu from './BubbleMenu/BubbleMenu';
@@ -160,7 +159,6 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
           trigger: 'manual',
           placement: 'top',
           hideOnClick: true,
-          zIndex: LINK_OVERLAY_Z_INDEX,
         });
         hasPopup = !isEmpty(popup);
       } else {

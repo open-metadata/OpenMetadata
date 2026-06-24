@@ -122,10 +122,9 @@ describe('EditorSlots link handling', () => {
 
     const options = (tippy as jest.Mock).mock.calls[0][1];
 
-    // The popup must mount inside the dialog (not document.body) and paint above
-    // the React Aria overlay so its actions remain clickable.
+    // The popup must mount inside the dialog (not document.body) so its actions
+    // remain clickable inside a focus-trapping overlay.
     expect(options.appendTo()).toBe(dialog);
-    expect(options.zIndex).toBe(100001);
 
     editor.destroy();
     document.body.removeChild(dialog);

@@ -75,39 +75,4 @@ describe('LinkModal', () => {
 
     document.body.removeChild(host);
   });
-
-  it('should apply a z-index above the React Aria overlay (100000) when mounted inside a dialog container', () => {
-    const host = document.createElement('div');
-    document.body.appendChild(host);
-
-    render(<LinkModal {...defaultProps} getContainer={() => host} />);
-
-    const elementsWithZIndex = Array.from(
-      host.querySelectorAll<HTMLElement>('*')
-    ).filter((element) => element.style.zIndex === '100001');
-
-    expect(elementsWithZIndex.length).toBeGreaterThan(0);
-
-    document.body.removeChild(host);
-  });
-
-  it('should not elevate the z-index when no dialog container is provided', () => {
-    render(<LinkModal {...defaultProps} />);
-
-    const elementsWithElevatedZIndex = Array.from(
-      document.body.querySelectorAll<HTMLElement>('*')
-    ).filter((element) => element.style.zIndex === '100001');
-
-    expect(elementsWithElevatedZIndex).toHaveLength(0);
-  });
-
-  it('should not elevate the z-index when getContainer resolves to document.body', () => {
-    render(<LinkModal {...defaultProps} getContainer={() => document.body} />);
-
-    const elementsWithElevatedZIndex = Array.from(
-      document.body.querySelectorAll<HTMLElement>('*')
-    ).filter((element) => element.style.zIndex === '100001');
-
-    expect(elementsWithElevatedZIndex).toHaveLength(0);
-  });
 });
