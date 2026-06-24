@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box } from '@openmetadata/ui-core-components';
 import { Operation } from 'fast-json-patch';
 import { HTMLAttributes } from 'react';
 import { MapPatchAPIResponse } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
@@ -338,10 +339,12 @@ export const getEntityIconWithBg = (
   } = iconProps ?? {};
 
   return (
-    <span
+    <Box
+      align='center'
+      justify='center'
       {...restContainerProps}
       className={[
-        'tw:flex tw:items-center tw:justify-center tw:h-7 tw:w-7 tw:rounded-md tw:shrink-0 tw:opacity-90',
+        'tw:h-7 tw:w-7 tw:rounded-md tw:shrink-0 tw:opacity-90',
         style?.bgClass ?? 'tw:bg-gray-100',
         containerClassName ?? '',
       ].join(' ')}>
@@ -351,10 +354,11 @@ export const getEntityIconWithBg = (
             style?.iconClass ?? 'tw:text-gray-500',
             iconClassName ?? '',
           ].join(' ')}
-          size={size}
+          height={size}
           strokeWidth={strokeWidth}
+          width={size}
         />
       )}
-    </span>
+    </Box>
   );
 };

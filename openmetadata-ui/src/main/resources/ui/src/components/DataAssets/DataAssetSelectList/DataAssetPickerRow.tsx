@@ -13,12 +13,13 @@
 import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
 import { Check } from '@untitledui/icons';
 import { FC } from 'react';
-import { getEntityIconWithBg } from 'src/utils/Assets/AssetsUtils';
+import { getEntityIconWithBg } from '../../../utils/Assets/AssetsUtils';
 import { DataAssetPickerRowProps } from './DataAssetPicker.interface';
 
 const DataAssetPickerRow: FC<DataAssetPickerRowProps> = ({
   option,
   isSelected,
+  isFocused = false,
   onSelect,
 }) => {
   const { label, displayName, name, type, id } = option;
@@ -31,7 +32,9 @@ const DataAssetPickerRow: FC<DataAssetPickerRowProps> = ({
         'tw:cursor-pointer tw:text-left tw:transition tw:duration-100',
         'tw:hover:bg-utility-gray-blue-50 tw:outline-hidden',
         isSelected ? 'tw:bg-brand-primary' : '',
+        isFocused && !isSelected ? 'tw:bg-utility-gray-blue-50' : '',
       ].join(' ')}
+      data-picker-item="true"
       type="button"
       onClick={() => onSelect(option)}>
       <Box align="center" className="tw:min-w-0 tw:flex-1" gap={2}>

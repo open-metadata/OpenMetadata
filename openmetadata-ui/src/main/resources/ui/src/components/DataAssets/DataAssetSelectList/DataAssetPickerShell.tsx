@@ -24,7 +24,7 @@ import {
   SlashDivider,
 } from '@untitledui/icons';
 import classNames from 'classnames';
-import { FC, useEffect, useRef, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DataAssetPickerOption,
@@ -56,30 +56,66 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
 }) => {
   const { t } = useTranslation();
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
 
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        wrapperRef.current &&
-        !wrapperRef.current.contains(e.target as Node)
-      ) {
-        setIsOpen(false);
+  const open = useCallback(() => setIsOpen(true), []);
+  const close = useCallback(() => {
+    setIsOpen(false);
+    setFocusedIndex(-1);
+  }, []);
+
+  const resolvedTotal = totalCount ?? options.length;
+
+  const handleRowSelect = useCallback(
+    (option: DataAssetPickerOption) => {
+      onToggle(option);
+      if (selectionMode === 'single') {
+        close();
       }
-    };
+    },
+    [onToggle, selectionMode, close]
+  );
 
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+  const handleSelectAll = useCallback(() => {
+    onSelectAll?.();
+    if (selectionMode === 'single') {
+      close();
     }
+  }, [onSelectAll, selectionMode, close]);
 
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen]);
+  // flat list including the virtual "__all__" entry at index 0 when enabled
+  const navigableOptions = useMemo(
+    () =>
+      allowAllOption
+        ? [{ id: '__all__', label: '' } as DataAssetPickerOption, ...options]
+        : options,
+    [allowAllOption, options]
+  );
+
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
-        setIsOpen(false);
+        close();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+         setFocusedIndex((prev) =>
+          prev < navigableOptions.length - 1 ? prev + 1 : prev
+        );
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setFocusedIndex((prev) => (prev > 0 ? prev - 1 : 0));
+      } else if (e.key === 'Enter' && focusedIndex >= 0) {
+        e.preventDefault();
+        const focused = navigableOptions[focusedIndex];
+        if (focused.id === '__all__') {
+          handleSelectAll();
+        } else {
+          handleRowSelect(focused);
+        }
       }
     };
 
@@ -88,34 +124,46 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
     }
 
     return () => document.removeEventListener('keydown', handleKeyDown, true);
-  }, [isOpen]);
+  }, [
+    isOpen,
+    focusedIndex,
+    navigableOptions,
+    close,
+    handleRowSelect,
+    handleSelectAll,
+  ]);
 
   useEffect(() => {
     onOpenChange?.(isOpen);
   }, [isOpen, onOpenChange]);
 
-  const open = () => setIsOpen(true);
-  const close = () => setIsOpen(false);
-
-  const resolvedTotal = totalCount ?? options.length;
-
-  const handleRowSelect = (option: DataAssetPickerOption) => {
-    onToggle(option);
-    if (selectionMode === 'single') {
-      close();
+  useEffect(() => {
+    if (focusedIndex < 0 || !scrollContainerRef.current) {
+      return;
     }
-  };
+    const items = scrollContainerRef.current.querySelectorAll<HTMLElement>(
+      '[data-picker-item]'
+    );
+    items[focusedIndex]?.scrollIntoView({ block: 'nearest' });
+  }, [focusedIndex]);
 
-  const handleSelectAll = () => {
-    onSelectAll?.();
-    if (selectionMode === 'single') {
-      close();
-    }
-  };
+  // offset: if allowAllOption the "All" button occupies index 0
+  const optionIndexOffset = allowAllOption ? 1 : 0;
 
   return (
     <div className="tw:relative" ref={wrapperRef}>
       {renderTrigger({ isOpen, open, close })}
+
+      {isOpen && (
+        <button
+          aria-label="close picker"
+          className="tw:fixed tw:inset-0 tw:z-49 tw:cursor-default tw:bg-transparent tw:border-0 tw:p-0"
+          data-testid="picker-overlay"
+          tabIndex={-1}
+          type="button"
+          onClick={close}
+        />
+      )}
 
       {isOpen && (
         <Box
@@ -158,9 +206,9 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
             </Box>
           )}
 
-          <Box
-            className="tw:overflow-y-auto tw:flex-1 tw:p-1 tw:max-h-80"
-            direction="col"
+          <div
+            className="tw:overflow-y-auto tw:flex-1 tw:p-1 tw:max-h-80 tw:flex tw:flex-col"
+            ref={scrollContainerRef}
             onScroll={onScroll}>
             {isLoading && (
               <Box align="center" className="tw:py-4" justify="center">
@@ -175,7 +223,8 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
                   className={classNames(
                     'tw:w-full tw:flex tw:items-center tw:gap-2 tw:px-2.5 tw:py-2 tw:rounded-md tw:mb-1 tw:justify-between',
                     'tw:cursor-pointer tw:text-left tw:transition tw:duration-100',
-                    'tw:hover:bg-utility-gray-blue-50 tw:outline-hidden'
+                    'tw:hover:bg-utility-gray-blue-50 tw:outline-hidden',
+                    focusedIndex === 0 ? 'tw:bg-utility-gray-blue-50' : ''
                   )}
                   type="button"
                   onClick={handleSelectAll}>
@@ -232,15 +281,16 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
             )}
 
             {!isLoading &&
-              options.map((option) => (
+              options.map((option, idx) => (
                 <DataAssetPickerRow
+                  isFocused={focusedIndex === idx + optionIndexOffset}
                   isSelected={selectedIds.has(option.id)}
                   key={option.id}
                   option={option}
                   onSelect={handleRowSelect}
                 />
               ))}
-          </Box>
+          </div>
 
           {showFooterHints && (
             <Box

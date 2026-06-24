@@ -74,6 +74,7 @@ export interface DataAssetMultiSelectPopoverProps
 export interface DataAssetPickerRowProps {
   option: DataAssetPickerOption;
   isSelected: boolean;
+  isFocused?: boolean;
   onSelect: (option: DataAssetPickerOption) => void;
 }
 
