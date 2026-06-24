@@ -134,9 +134,9 @@ const ConnectionStepCard = ({
             </div>
           )}
           {isSkipped && (
-            <Typography.Text className="skipped-status">{`${t(
-              'label.skipped'
-            )}`}</Typography.Text>
+            <Typography.Text className="skipped-status">
+              {t('label.skipped')}
+            </Typography.Text>
           )}
         </Space>
       </div>
