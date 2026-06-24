@@ -30,6 +30,7 @@ public class JsonPatchProvider implements ContextResolver<ObjectMapper> {
     mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
     mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     mapper.setDateFormat(JsonUtils.DATE_TIME_FORMAT);
+    mapper.registerModule(JsonUtils.lenientDateModule());
     // This feature allows the parser to accept non-numeric numbers such as NaN,
     // Infinity, and -Infinity in JSON input. ref:
     // https://github.com/FasterXML/jackson-core/wiki/JsonReadFeatures

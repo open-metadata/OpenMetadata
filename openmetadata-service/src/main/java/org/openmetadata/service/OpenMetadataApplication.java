@@ -794,7 +794,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     bootstrap
         .getObjectMapper()
         .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-        .setDateFormat(JsonUtils.DATE_TIME_FORMAT);
+        .setDateFormat(JsonUtils.DATE_TIME_FORMAT)
+        .registerModule(JsonUtils.lenientDateModule());
 
     bootstrap.addBundle(
         new SwaggerBundle<>() {
