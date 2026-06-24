@@ -2045,7 +2045,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         """;
 
     CreateTable createRequest = createRequest(ns.prefix("view_schema_def"), ns);
-    createRequest.setTableType(org.openmetadata.schema.type.TableType.View);
+    createRequest.setTableType(TableType.View);
     createRequest.setSchemaDefinition(ddl);
 
     Table table = createEntity(createRequest);
@@ -2057,11 +2057,10 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     // Now patch the table to add a new column — this triggers the entityChanged=true path
     // that previously caused schemaDefinition to be silently overwritten with null
-    List<org.openmetadata.schema.type.Column> updatedColumns =
-        new java.util.ArrayList<>(fetched.getColumns());
-    org.openmetadata.schema.type.Column newCol = new org.openmetadata.schema.type.Column();
+    List<Column> updatedColumns = new ArrayList<>(fetched.getColumns());
+    Column newCol = new Column();
     newCol.setName("extra_col");
-    newCol.setDataType(org.openmetadata.schema.type.ColumnDataType.VARCHAR);
+    newCol.setDataType(ColumnDataType.VARCHAR);
     newCol.setDataLength(100);
     updatedColumns.add(newCol);
     fetched.setColumns(updatedColumns);
@@ -2074,6 +2073,34 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         ddl,
         afterPatch.getSchemaDefinition(),
         "schemaDefinition must not be erased when columns change via PATCH (regression for #29438)");
+  }
+
+  @Test
+  void patch_schemaDefinitionOnlyChange_persists(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create a view table without schemaDefinition
+    CreateTable createRequest = createRequest(ns.prefix("view_ddl_only"), ns);
+    createRequest.setTableType(TableType.View);
+
+    Table table = createEntity(createRequest);
+    assertNotNull(table);
+
+    // PATCH only schemaDefinition — no column changes — to verify DDL-only PATCHes persist
+    String ddl =
+        """
+        create view sales_vw as
+        select id, amount from public.sales;
+        """;
+    table.setSchemaDefinition(ddl);
+    patchEntity(table.getId().toString(), table);
+
+    // schemaDefinition must be stored even though no other field changed
+    Table afterPatch = client.tables().get(table.getId().toString(), "schemaDefinition");
+    assertEquals(
+        ddl,
+        afterPatch.getSchemaDefinition(),
+        "schemaDefinition-only PATCH must persist without requiring a concurrent column change");
   }
 
   // ===================================================================
