@@ -220,7 +220,8 @@ class EntityUtilClassBase {
     subTab?: string,
     isExecutableTestSuite?: boolean,
     isObservabilityAlert?: boolean,
-    serviceCategory?: string
+    serviceCategory?: string,
+    _serviceFqn?: string
   ) {
     switch (indexType) {
       case SearchIndex.TOPIC:
