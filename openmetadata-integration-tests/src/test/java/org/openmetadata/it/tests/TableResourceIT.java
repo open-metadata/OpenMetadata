@@ -2033,6 +2033,49 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     assertEquals(query, fetched.getSchemaDefinition());
   }
 
+  @Test
+  void patch_schemaDefinitionPreservedWhenColumnsChange(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create a view table with schemaDefinition set
+    String ddl =
+        """
+        create view sales_vw as
+        select id, amount from public.sales;
+        """;
+
+    CreateTable createRequest = createRequest(ns.prefix("view_schema_def"), ns);
+    createRequest.setTableType(org.openmetadata.schema.type.TableType.View);
+    createRequest.setSchemaDefinition(ddl);
+
+    Table table = createEntity(createRequest);
+    assertNotNull(table);
+
+    // Fetch confirming schemaDefinition was persisted on create
+    Table fetched = client.tables().get(table.getId().toString(), "schemaDefinition");
+    assertEquals(ddl, fetched.getSchemaDefinition(), "schemaDefinition should be set after create");
+
+    // Now patch the table to add a new column — this triggers the entityChanged=true path
+    // that previously caused schemaDefinition to be silently overwritten with null
+    List<org.openmetadata.schema.type.Column> updatedColumns =
+        new java.util.ArrayList<>(fetched.getColumns());
+    org.openmetadata.schema.type.Column newCol = new org.openmetadata.schema.type.Column();
+    newCol.setName("extra_col");
+    newCol.setDataType(org.openmetadata.schema.type.ColumnDataType.VARCHAR);
+    newCol.setDataLength(100);
+    updatedColumns.add(newCol);
+    fetched.setColumns(updatedColumns);
+
+    patchEntity(fetched.getId().toString(), fetched);
+
+    // Re-fetch and assert schemaDefinition was NOT erased by the column-change PATCH
+    Table afterPatch = client.tables().get(fetched.getId().toString(), "schemaDefinition");
+    assertEquals(
+        ddl,
+        afterPatch.getSchemaDefinition(),
+        "schemaDefinition must not be erased when columns change via PATCH (regression for #29438)");
+  }
+
   // ===================================================================
   // CUSTOM METRICS OPERATIONS TESTS
   // ===================================================================
