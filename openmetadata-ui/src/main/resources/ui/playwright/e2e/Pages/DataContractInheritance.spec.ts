@@ -146,29 +146,41 @@ const fillSLAForm = async (
   await page.getByTestId('refresh-frequency-unit-select').click();
   await expect(
     page.locator(
-      `.refresh-frequency-unit-select [title=${slaData.refreshFrequencyUnit}]`
+      `.refresh-frequency-unit-select [title*='${slaData.refreshFrequencyUnit}']`
     )
   ).toBeVisible();
   await page
     .locator(
-      `.refresh-frequency-unit-select [title=${slaData.refreshFrequencyUnit}]`
+      `.refresh-frequency-unit-select [title*='${slaData.refreshFrequencyUnit}']`
     )
     .click();
+  await expect(
+    page
+      .getByTestId('refresh-frequency-unit-select')
+      .locator('.ant-select-selection-item')
+  ).toContainText(slaData.refreshFrequencyUnit);
 
   await page.getByTestId('max-latency-unit-select').click();
   await expect(
-    page.locator(`.max-latency-unit-select [title=${slaData.maxLatencyUnit}]`)
+    page.locator(
+      `.max-latency-unit-select [title*='${slaData.maxLatencyUnit}']`
+    )
   ).toBeVisible();
   await page
-    .locator(`.max-latency-unit-select [title=${slaData.maxLatencyUnit}]`)
+    .locator(`.max-latency-unit-select [title*='${slaData.maxLatencyUnit}']`)
     .click();
+  await expect(
+    page
+      .getByTestId('max-latency-unit-select')
+      .locator('.ant-select-selection-item')
+  ).toContainText(slaData.maxLatencyUnit);
 
   await page.getByTestId('retention-unit-select').click();
   await expect(
-    page.locator(`.retention-unit-select [title=${slaData.retentionUnit}]`)
+    page.locator(`.retention-unit-select [title*='${slaData.retentionUnit}']`)
   ).toBeVisible();
   await page
-    .locator(`.retention-unit-select [title=${slaData.retentionUnit}]`)
+    .locator(`.retention-unit-select [title*='${slaData.retentionUnit}']`)
     .click();
 
   await page.locator('#columnName-select').fill(columnName);
