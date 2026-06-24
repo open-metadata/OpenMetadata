@@ -2401,16 +2401,18 @@ public class TableRepository extends EntityRepository<Table> {
                   updated.getProcessedLineage()));
       compareAndUpdate(
           "schemaDefinition",
-          () ->
-              recordChange(
-                  "schemaDefinition",
-                  original.getSchemaDefinition(),
-                  updated.getSchemaDefinition()));
+          () -> {
+            updateProcessedLineage(origTable, updatedTable);
+            recordChange(
+                "schemaDefinition",
+                original.getSchemaDefinition(),
+                updated.getSchemaDefinition());
+          });
     }
 
     private void updateProcessedLineage(Table origTable, Table updatedTable) {
       // if schema definition changes make processed lineage false
-      if (origTable.getProcessedLineage().booleanValue()
+      if (Boolean.TRUE.equals(origTable.getProcessedLineage())
           && origTable.getSchemaDefinition() != null
           && !origTable.getSchemaDefinition().equals(updatedTable.getSchemaDefinition())) {
         updatedTable.setProcessedLineage(false);
