@@ -2323,10 +2323,12 @@ public class RdfRepository {
       for (EntityInterface entity : entities) {
         target.put(entity.getId().toString(), entity);
       }
-    } catch (Exception e) {
+    } catch (RuntimeException e) {
       // Best-effort hydration: a single corrupt/inaccessible entity can fail
       // field-setting for the whole bulk query. Fall back to per-entity fetches
       // so only the offending node loses its label, not every node of this type.
+      // getEntities declares no checked exceptions; everything it raises
+      // (EntityNotFoundException, JDBI/field-setting errors) is a RuntimeException.
       LOG.warn(
           "Batch fetch of {} '{}' graph node(s) failed ({}); retrying per entity",
           refs.size(),
@@ -2343,7 +2345,7 @@ public class RdfRepository {
         EntityInterface entity =
             Entity.getEntity(entityType, ref.getId(), GRAPH_NODE_FIELDS, Include.ALL);
         target.put(entity.getId().toString(), entity);
-      } catch (Exception e) {
+      } catch (RuntimeException e) {
         LOG.warn(
             "Failed to fetch graph node {} of type '{}': {}",
             ref.getId(),
