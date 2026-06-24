@@ -17,37 +17,21 @@ import {
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import QueryString from 'qs';
-import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropDownIcon } from '../../../assets/svg/drop-down.svg';
 import DatePickerMenu from '../../../components/common/DatePickerMenu/DatePickerMenu.component';
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import SearchDropdown from '../../../components/SearchDropdown/SearchDropdown';
-import {
-  ABORTED_CHART_COLOR_SCHEME,
-  FAILED_CHART_COLOR_SCHEME,
-  SUCCESS_CHART_COLOR_SCHEME,
-} from '../../../constants/Chart.constants';
-import { DATA_QUALITY_DASHBOARD_HEADER } from '../../../constants/DataQuality.constants';
-import { TestCaseStatus } from '../../../generated/tests/testCase';
-import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
-import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { getSelectedOptionLabelString } from '../../../utils/AdvancedSearchPureUtils';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
-import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
-import DataAssetsCoveragePieChartWidget from '../ChartWidgets/DataAssetsCoveragePieChartWidget/DataAssetsCoveragePieChartWidget.component';
-import EntityHealthStatusPieChartWidget from '../ChartWidgets/EntityHealthStatusPieChartWidget/EntityHealthStatusPieChartWidget.component';
-import IncidentTimeChartWidget from '../ChartWidgets/IncidentTimeChartWidget/IncidentTimeChartWidget.component';
-import IncidentTypeAreaChartWidget from '../ChartWidgets/IncidentTypeAreaChartWidget/IncidentTypeAreaChartWidget.component';
-import StatusByDimensionCardWidget from '../ChartWidgets/StatusByDimensionCardWidget/StatusByDimensionCardWidget.component';
-import TestCaseStatusAreaChartWidget from '../ChartWidgets/TestCaseStatusAreaChartWidget/TestCaseStatusAreaChartWidget.component';
-import TestCaseStatusPieChartWidget from '../ChartWidgets/TestCaseStatusPieChartWidget/TestCaseStatusPieChartWidget.component';
-import { IncidentTimeMetricsType } from '../DataQuality.interface';
 import './data-quality-dashboard.style.less';
 import { DqDashboardChartFilters } from './DataQualityDashboard.interface';
+import DqDashboardSectionContent, {
+  DQ_DASHBOARD_SECTIONS,
+} from './DqDashboardSectionContent.component';
 import { useDataQualityDashboardFilters } from './useDataQualityDashboardFilters';
+
 const DataQualityDashboard = ({
   initialFilters,
   hideFilterBar = false,
@@ -69,31 +53,6 @@ const DataQualityDashboard = ({
   className?: string;
 }) => {
   const { t } = useTranslation();
-
-  const { dataHealth, dataDimensions, testCasesStatus, incidentMetrics } =
-    DATA_QUALITY_DASHBOARD_HEADER;
-
-  const translatedHeaders = useMemo(
-    () => ({
-      dataHealth: {
-        header: t(dataHealth.header),
-        subHeader: t(dataHealth.subHeader),
-      },
-      dataDimensions: {
-        header: t(dataDimensions.header),
-        subHeader: t(dataDimensions.subHeader),
-      },
-      testCasesStatus: {
-        header: t(testCasesStatus.header),
-        subHeader: t(testCasesStatus.subHeader),
-      },
-      incidentMetrics: {
-        header: t(incidentMetrics.header),
-        subHeader: t(incidentMetrics.subHeader),
-      },
-    }),
-    [t, dataHealth, dataDimensions, testCasesStatus, incidentMetrics]
-  );
 
   const {
     chartFilter,
@@ -213,174 +172,25 @@ const DataQualityDashboard = ({
     </div>
   );
 
-  const chartCards = (
-    <>
-      <Grid.Item className="export-pdf-container" span={24}>
-        <Card className={cardClassName}>
-          <div className={cardBodyClass}>
-            <PageHeader data={translatedHeaders.dataHealth} />
-            <Grid colGap="6">
-              <Grid.Item span={8}>
-                <DataAssetsCoveragePieChartWidget
-                  chartFilter={pieChartFilters}
-                  className="data-quality-dashboard-pie-chart"
-                />
-              </Grid.Item>
-              <Grid.Item span={8}>
-                <EntityHealthStatusPieChartWidget
-                  chartFilter={pieChartFilters}
-                  className="data-quality-dashboard-pie-chart"
-                />
-              </Grid.Item>
-              <Grid.Item span={8}>
-                <TestCaseStatusPieChartWidget
-                  chartFilter={pieChartFilters}
-                  className="data-quality-dashboard-pie-chart"
-                />
-              </Grid.Item>
-            </Grid>
-          </div>
-        </Card>
-      </Grid.Item>
-
-      <Grid.Item className="export-pdf-container" span={24}>
-        <Card className={cardClassName}>
-          <div className={cardBodyClass}>
-            <PageHeader data={translatedHeaders.dataDimensions} />
-            <StatusByDimensionCardWidget chartFilter={pieChartFilters} />
-          </div>
-        </Card>
-      </Grid.Item>
-
-      <Grid.Item className="export-pdf-container" span={24}>
-        <Card className={cardClassName}>
-          <div className={cardBodyClass}>
-            <PageHeader data={translatedHeaders.testCasesStatus} />
-            <Grid colGap="6">
-              <Grid.Item span={8}>
-                <TestCaseStatusAreaChartWidget
-                  chartColorScheme={SUCCESS_CHART_COLOR_SCHEME}
-                  chartFilter={defaultFilters}
-                  name="success"
-                  redirectPath={{
-                    pathname:
-                      observabilityRouterClassBase.getDataQualityPagePath(
-                        DataQualityPageTabs.TEST_CASES
-                      ),
-                    search: QueryString.stringify({
-                      testCaseStatus: TestCaseStatus.Success,
-                    }),
-                  }}
-                  testCaseStatus={TestCaseStatus.Success}
-                  title={t('label.success')}
-                />
-              </Grid.Item>
-              <Grid.Item span={8}>
-                <TestCaseStatusAreaChartWidget
-                  chartColorScheme={ABORTED_CHART_COLOR_SCHEME}
-                  chartFilter={defaultFilters}
-                  name="aborted"
-                  redirectPath={{
-                    pathname:
-                      observabilityRouterClassBase.getDataQualityPagePath(
-                        DataQualityPageTabs.TEST_CASES
-                      ),
-                    search: QueryString.stringify({
-                      testCaseStatus: TestCaseStatus.Aborted,
-                    }),
-                  }}
-                  testCaseStatus={TestCaseStatus.Aborted}
-                  title={t('label.aborted')}
-                />
-              </Grid.Item>
-              <Grid.Item span={8}>
-                <TestCaseStatusAreaChartWidget
-                  chartColorScheme={FAILED_CHART_COLOR_SCHEME}
-                  chartFilter={defaultFilters}
-                  name="failed"
-                  redirectPath={{
-                    pathname:
-                      observabilityRouterClassBase.getDataQualityPagePath(
-                        DataQualityPageTabs.TEST_CASES
-                      ),
-                    search: QueryString.stringify({
-                      testCaseStatus: TestCaseStatus.Failed,
-                    }),
-                  }}
-                  testCaseStatus={TestCaseStatus.Failed}
-                  title={t('label.failed')}
-                />
-              </Grid.Item>
-            </Grid>
-          </div>
-        </Card>
-      </Grid.Item>
-
-      <Grid.Item className="export-pdf-container" span={24}>
-        <Card className={cardClassName}>
-          <div className={cardBodyClass}>
-            <PageHeader data={translatedHeaders.incidentMetrics} />
-            <Grid colGap="6">
-              <Grid.Item span={6}>
-                <IncidentTypeAreaChartWidget
-                  chartFilter={defaultFilters}
-                  incidentStatusType={TestCaseResolutionStatusTypes.New}
-                  name="open-incident"
-                  redirectPath={{
-                    pathname:
-                      observabilityRouterClassBase.getIncidentManagerPath(),
-                    search: QueryString.stringify({
-                      testCaseResolutionStatusType:
-                        TestCaseResolutionStatusTypes.New,
-                      startTs: chartFilter.startTs,
-                      endTs: chartFilter.endTs,
-                    }),
-                  }}
-                  title={t('label.open-incident-plural')}
-                />
-              </Grid.Item>
-              <Grid.Item span={6}>
-                <IncidentTypeAreaChartWidget
-                  chartFilter={defaultFilters}
-                  incidentStatusType={TestCaseResolutionStatusTypes.Resolved}
-                  name="resolved-incident"
-                  redirectPath={{
-                    pathname:
-                      observabilityRouterClassBase.getIncidentManagerPath(),
-                    search: QueryString.stringify({
-                      testCaseResolutionStatusType:
-                        TestCaseResolutionStatusTypes.Resolved,
-                      startTs: chartFilter.startTs,
-                      endTs: chartFilter.endTs,
-                    }),
-                  }}
-                  title={t('label.resolved-incident-plural')}
-                />
-              </Grid.Item>
-              <Grid.Item span={6}>
-                <IncidentTimeChartWidget
-                  chartFilter={defaultFilters}
-                  incidentMetricType={IncidentTimeMetricsType.TIME_TO_RESPONSE}
-                  name="response-time"
-                  title={t('label.response-time')}
-                />
-              </Grid.Item>
-              <Grid.Item span={6}>
-                <IncidentTimeChartWidget
-                  chartFilter={defaultFilters}
-                  incidentMetricType={
-                    IncidentTimeMetricsType.TIME_TO_RESOLUTION
-                  }
-                  name="resolution-time"
-                  title={t('label.resolution-time')}
-                />
-              </Grid.Item>
-            </Grid>
-          </div>
-        </Card>
-      </Grid.Item>
-    </>
-  );
+  const chartCards = DQ_DASHBOARD_SECTIONS.map((section) => (
+    <Grid.Item className="export-pdf-container" key={section.key} span={24}>
+      <Card className={cardClassName}>
+        <div className={cardBodyClass}>
+          <PageHeader
+            data={{
+              header: t(section.header.header),
+              subHeader: t(section.header.subHeader),
+            }}
+          />
+          <DqDashboardSectionContent
+            defaultFilters={defaultFilters}
+            pieChartFilters={pieChartFilters}
+            sectionKey={section.key}
+          />
+        </div>
+      </Card>
+    </Grid.Item>
+  ));
 
   if (isGovernanceView) {
     return (
