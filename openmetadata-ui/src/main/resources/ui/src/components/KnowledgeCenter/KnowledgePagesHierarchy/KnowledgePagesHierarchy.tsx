@@ -135,6 +135,7 @@ const KnowledgePagesHierarchy = forwardRef<
 
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
+    const [isUserExpandedAll, setIsUserExpandedAll] = useState(false);
     const [deletePage, setDeletePage] = useState<PageHierarchy>();
     const [isDeleting, setIsDeleting] = useState(false);
     const [isExpandingAll, setIsExpandingAll] = useState(false);
@@ -232,6 +233,7 @@ const KnowledgePagesHierarchy = forwardRef<
         collect(traversalHierarchy);
 
         setExpandedKeys((prev) => uniq([...prev, ...ids]));
+        setIsUserExpandedAll(true);
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
@@ -769,7 +771,18 @@ const KnowledgePagesHierarchy = forwardRef<
               </Typography>
             </div>
           </Box>
-          {isEmpty(expandedKeys) ? (
+          {isUserExpandedAll ? (
+            <ButtonUtility
+              color="tertiary"
+              icon={<CollapseAllIcon className="tw:size-6" />}
+              size="sm"
+              tooltip={t('label.collapse-all')}
+              onClick={() => {
+                setExpandedKeys([]);
+                setIsUserExpandedAll(false);
+              }}
+            />
+          ) : (
             <ButtonUtility
               color="tertiary"
               icon={<ExpandAllIcon className="tw:size-6" />}
@@ -777,14 +790,6 @@ const KnowledgePagesHierarchy = forwardRef<
               size="sm"
               tooltip={t('label.expand-all')}
               onClick={handleExpandAll}
-            />
-          ) : (
-            <ButtonUtility
-              color="tertiary"
-              icon={<CollapseAllIcon className="tw:size-6" />}
-              size="sm"
-              tooltip={t('label.collapse-all')}
-              onClick={() => setExpandedKeys([])}
             />
           )}
         </Box>

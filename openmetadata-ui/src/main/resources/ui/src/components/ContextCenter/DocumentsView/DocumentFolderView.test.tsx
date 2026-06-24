@@ -104,9 +104,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     }: {
       children: React.ReactNode;
       onClick?: (e: React.MouseEvent) => void;
-    }) => (
-      <button onClick={onClick}>{children}</button>
-    )
+    }) => <button onClick={onClick}>{children}</button>
   ),
   ButtonUtility: jest.fn(
     ({
