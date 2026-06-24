@@ -1880,6 +1880,7 @@
     "queued": "En file d'attente",
     "quick-add": "Ajout Rapide",
     "quick-link": "Lien rapide",
+    "quick-link-lowercase": "lien rapide",
     "quick-link-plural": "Liens rapides",
     "radial": "Radial",
     "raise-on-error": "Afficher l'erreur lors de l'exécution",

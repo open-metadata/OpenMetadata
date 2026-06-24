@@ -42,6 +42,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as CollapseAllIcon } from '../../../assets/svg/collapse-new.svg';
 import { ReactComponent as ExpandAllIcon } from '../../../assets/svg/expand-new.svg';
+import { ReactComponent as QuickLinkIcon } from '../../../assets/svg/quick-link.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import CreateErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/CreateErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
@@ -71,10 +72,10 @@ import {
   getPageHierarchyFromES,
   patchKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
+import { Transi18next } from '../../../utils/CommonUtils';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import Fqn from '../../../utils/Fqn';
-import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import {
   extractKnowledgePageParentFQN,
   findPageAndParentInTreeData,
@@ -100,6 +101,7 @@ interface KnowledgePagesHierarchyProps {
   activePage?: KnowledgePage;
   homeRoute?: string;
   onPageDelete?: (id: string | string[]) => void;
+  onQuickLinkClick?: (fqn: string) => void;
 }
 
 const KnowledgePagesHierarchy = forwardRef<
@@ -112,6 +114,7 @@ const KnowledgePagesHierarchy = forwardRef<
       activePage,
       homeRoute,
       onPageDelete,
+      onQuickLinkClick,
       permissions,
       isPageHeaderAvailable,
     },
@@ -240,7 +243,6 @@ const KnowledgePagesHierarchy = forwardRef<
       try {
         const { paging } = await getListKnowledgePages({
           limit: 0,
-          pageType: PageType.ARTICLE,
         });
         setKnowledgePagesTotalCount(paging.total);
       } catch (error) {
@@ -572,8 +574,52 @@ const KnowledgePagesHierarchy = forwardRef<
       (node: PageHierarchy): ReactNode => {
         const isActive = activeKey === node.fullyQualifiedName;
         const displayName = getKnowledgePageName(node);
+        const isQuickLink = node.pageType === PageType.QUICK_LINK;
 
         const hasChildren = node.childrenCount > 0 || !isEmpty(node.children);
+
+        const nodeContent = (
+          <Box align="center" className="tw:min-w-0 tw:flex-1" gap={2}>
+            {isQuickLink ? (
+              <QuickLinkIcon
+                className="tw:shrink-0 tw:tw:text-quaternary"
+                data-testid="quick-link-icon"
+                height={14}
+                width={14}
+              />
+            ) : (
+              <File06
+                className="tw:shrink-0 tw:tw:text-quaternary"
+                data-testid="page-icon"
+                height={13}
+                width={13}
+              />
+            )}
+            <Typography
+              ellipsis
+              className="knowledge-hierarchy-page-title"
+              size="text-sm"
+              weight={isActive ? 'medium' : 'regular'}>
+              {displayName}
+            </Typography>
+          </Box>
+        );
+
+        const deleteButton = permissions.Delete ? (
+          <ButtonUtility
+            className="tw:opacity-0 group-hover-opacity-100 tw:shrink-0 tw:p-0"
+            color="tertiary"
+            data-testid={`${displayName}-delete-page-btn`}
+            icon={Trash01}
+            size="xs"
+            tooltip={t('label.delete')}
+            onClick={(e: React.MouseEvent) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleDeletePage(node.fullyQualifiedName);
+            }}
+          />
+        ) : null;
 
         return (
           <Tree.Item
@@ -581,52 +627,42 @@ const KnowledgePagesHierarchy = forwardRef<
             key={node.fullyQualifiedName}
             textValue={displayName}>
             <Tree.ItemContent showGuideLines hasChildItems={hasChildren}>
-              {() => (
-                <Link
-                  className="tw:flex tw:items-center tw:min-w-0 tw:flex-1 custom-group tw:justify-between tw:gap-2 tw:hover:no-underline"
-                  data-isactive={isActive}
-                  data-testid={`page-node-${displayName}`}
-                  to={contextCenterClassBase.getArticlePath(
-                    node.fullyQualifiedName
-                  )}>
-                  <Box align="center" className="tw:min-w-0 tw:flex-1" gap={2}>
-                    <File06
-                      className="tw:shrink-0 tw:text-utility-gray-500"
-                      data-testid="page-icon"
-                      height={13}
-                      width={13}
-                    />
-                    <Typography
-                      ellipsis
-                      className="knowledge-hierarchy-page-title"
-                      size="text-sm"
-                      weight={isActive ? 'medium' : 'regular'}>
-                      {displayName}
-                    </Typography>
-                  </Box>
-                  {permissions.Delete && (
-                    <ButtonUtility
-                      className="tw:opacity-0 group-hover-opacity-100 tw:shrink-0 tw:p-0"
-                      color="tertiary"
-                      data-testid={`${displayName}-delete-page-btn`}
-                      icon={Trash01}
-                      size="xs"
-                      tooltip={t('label.delete')}
-                      onClick={(e: React.MouseEvent) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleDeletePage(node.fullyQualifiedName);
-                      }}
-                    />
-                  )}
-                </Link>
-              )}
+              {() =>
+                isQuickLink && onQuickLinkClick ? (
+                  <div
+                    className="tw:flex tw:items-center tw:min-w-0 tw:flex-1 custom-group tw:justify-between tw:gap-2 tw:cursor-pointer"
+                    data-isactive={isActive}
+                    data-testid={`page-node-${displayName}`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => onQuickLinkClick(node.fullyQualifiedName)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        onQuickLinkClick(node.fullyQualifiedName);
+                      }
+                    }}>
+                    {nodeContent}
+                    {deleteButton}
+                  </div>
+                ) : (
+                  <Link
+                    className="tw:flex tw:items-center tw:min-w-0 tw:flex-1 custom-group tw:justify-between tw:gap-2 tw:hover:no-underline"
+                    data-isactive={isActive}
+                    data-testid={`page-node-${displayName}`}
+                    to={contextCenterClassBase.getArticlePath(
+                      node.fullyQualifiedName
+                    )}>
+                    {nodeContent}
+                    {deleteButton}
+                  </Link>
+                )
+              }
             </Tree.ItemContent>
             {node.children?.map(renderNode)}
           </Tree.Item>
         );
       },
-      [activeKey, permissions.Delete, handleDeletePage, t]
+      [activeKey, onQuickLinkClick, permissions.Delete, handleDeletePage, t]
     );
 
     useImperativeHandle(ref, () => ({
@@ -814,12 +850,9 @@ const KnowledgePagesHierarchy = forwardRef<
           entityTitle={getKnowledgePageName(deletePage, t)}
           isDeleting={isDeleting}
           message={
-            deletePage?.pageType === PageType.QUICK_LINK
-              ? t('message.delete-entity-permanently', {
-                  entityType: t('label.quick-link'),
-                })
-              : t('message.soft-delete-archive-message', {
-                  entity: t('label.article').toLowerCase(),
+            
+              t('message.delete-entity-permanently', {
+                  entityType: deletePage?.pageType === PageType.QUICK_LINK ? t('label.quick-link-lowercase'): t('label.article-lowercase'),
                 })
           }
           open={!isUndefined(deletePage)}

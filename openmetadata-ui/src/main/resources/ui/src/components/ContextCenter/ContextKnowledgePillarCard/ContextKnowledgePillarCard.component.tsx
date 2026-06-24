@@ -19,9 +19,8 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ArrowNarrowRight, TrendUp01 } from '@untitledui/icons';
+import { ArrowNarrowRight } from '@untitledui/icons';
 import { FC } from 'react';
-import { PILLAR_TONE_TEXT_CLASS } from '../../../constants/ContextCenter.constants';
 import {
   ContextKnowledgePillarCardProps,
   PillarRecentItem,
@@ -36,7 +35,7 @@ function RecentItem({
 }) {
   return (
     <Box align="center" className="tw:py-1.5" gap={2}>
-      <Icon className="tw:size-3 tw:text-quaternary tw:shrink-0" />
+      {item.icon ? item.icon : <Icon className="tw:size-3 tw:text-quaternary tw:shrink-0" />}
       <Box
         align="center"
         className="tw:min-w-0 tw:flex-1"
@@ -114,8 +113,6 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
   stat,
   statSub,
   statSubSecondary,
-  trend,
-  tone,
   recent,
   cta,
   isLoading = false,
@@ -169,20 +166,6 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
           </Typography>
           <Typography as="span" className="tw:text-quaternary" size="text-xs">
             {statSubLabel}
-          </Typography>
-        </Box>
-
-        <Box
-          inline
-          align="center"
-          className={`tw:mb-4 tw:mt-1 ${PILLAR_TONE_TEXT_CLASS[tone]}`}
-          gap={1}>
-          <TrendUp01 className="tw:size-3 tw:stroke-2" />
-          <Typography
-            as="span"
-            className={PILLAR_TONE_TEXT_CLASS[tone]}
-            size="text-xs">
-            {trend}
           </Typography>
         </Box>
 

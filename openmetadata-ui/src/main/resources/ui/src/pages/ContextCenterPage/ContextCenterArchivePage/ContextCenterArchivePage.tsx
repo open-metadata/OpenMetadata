@@ -11,13 +11,11 @@
  *  limitations under the License.
  */
 
-import { Box, Card, Tabs } from '@openmetadata/ui-core-components';
-import { File06 } from '@untitledui/icons';
+import { Card, Tabs } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import ArchiveView from '../../../components/ContextCenter/ArchiveView/ArchiveView.component';
 import { ArchiveItem } from '../../../components/ContextCenter/ArchiveView/ArchiveView.interface';
@@ -27,19 +25,12 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { Include } from '../../../generated/type/include';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { PageType } from '../../../interface/knowledge-center.interface';
 import {
   deleteDriveFile,
   listArchivedContextFiles,
   restoreDriveFile,
 } from '../../../rest/assetAPI';
-import {
-  deleteKnowledgePage,
-  getListKnowledgePages,
-  restoreKnowledgePage,
-} from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -64,24 +55,6 @@ const ContextCenterArchivePage: FC = () => {
     () => [
       { id: 'all', label: t('label.all') },
       { id: 'mine', label: t('label.created-by-me') },
-      {
-        id: 'article',
-        label: (
-          <Box align="center" className="tw:gap-1.5">
-            <File06 size={14} />
-            {t('label.article-plural')}
-          </Box>
-        ),
-      },
-      {
-        id: 'document',
-        label: (
-          <Box align="center" className="tw:gap-1.5">
-            <FolderIcon height={14} width={14} />
-            {t('label.document-plural')}
-          </Box>
-        ),
-      },
     ],
     [t]
   );
@@ -100,25 +73,8 @@ const ContextCenterArchivePage: FC = () => {
   const fetchArchivedItems = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [pagesResponse, files] = await Promise.all([
-        getListKnowledgePages({
-          include: Include.Deleted,
-          limit: 1000,
-          pageType: PageType.ARTICLE,
-        }),
-        listArchivedContextFiles(),
-      ]);
-
-      const articleItems: ArchiveItem[] = (pagesResponse.data ?? []).map(
-        (page) => ({
-          id: page.id,
-          name: getEntityName(page),
-          type: 'article' as const,
-          updatedBy: page.updatedBy,
-          updatedAt: page.updatedAt,
-        })
-      );
-
+      const files = await 
+        listArchivedContextFiles();
       const documentItems: ArchiveItem[] = files.map((file) => ({
         id: file.id,
         name: getEntityName(file),
@@ -127,11 +83,11 @@ const ContextCenterArchivePage: FC = () => {
         updatedAt: file.updatedAt,
       }));
 
-      const merged = [...articleItems, ...documentItems].sort(
+      const documents = documentItems.toSorted(
         (a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0)
       );
 
-      setAllItems(merged);
+      setAllItems(documents);
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
@@ -148,10 +104,6 @@ const ContextCenterArchivePage: FC = () => {
     switch (activeFilter) {
       case 'mine':
         return allItems.filter((item) => item.updatedBy === currentUser?.name);
-      case 'article':
-        return allItems.filter((item) => item.type === 'article');
-      case 'document':
-        return allItems.filter((item) => item.type === 'document');
       default:
         return allItems;
     }
@@ -160,11 +112,7 @@ const ContextCenterArchivePage: FC = () => {
   const handleRestore = useCallback(
     async (item: ArchiveItem) => {
       try {
-        if (item.type === 'article') {
-          await restoreKnowledgePage(item.id);
-        } else {
-          await restoreDriveFile(item.id);
-        }
+        await restoreDriveFile(item.id);
         setAllItems((prev) => prev.filter((i) => i.id !== item.id));
         showSuccessToast(
           t('message.entity-restored-success', { entity: item.name })
@@ -191,11 +139,7 @@ const ContextCenterArchivePage: FC = () => {
 
     try {
       setIsDeleting(true);
-      if (itemToDelete.type === 'article') {
-        await deleteKnowledgePage(itemToDelete.id, false, true);
-      } else {
-        await deleteDriveFile(itemToDelete.id, true);
-      }
+      await deleteDriveFile(itemToDelete.id, true);
       setAllItems((prev) => prev.filter((i) => i.id !== itemToDelete.id));
       showSuccessToast(
         t('server.entity-deleted-successfully', { entity: itemToDelete.name })
@@ -273,9 +217,7 @@ const ContextCenterArchivePage: FC = () => {
           isDeleting={isDeleting}
           message={t('message.are-you-sure-you-want-to-delete-this-entity', {
             entity:
-              itemToDelete.type === 'article'
-                ? t('label.article-lowercase')
-                : t('label.document-lowercase'),
+              t('label.document-lowercase'),
           })}
           open={Boolean(itemToDelete)}
           onCancel={handleCancelDelete}

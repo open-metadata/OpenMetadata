@@ -46,14 +46,16 @@ export const TitleComponent = forwardRef<HTMLTextAreaElement, Props>(
   ) => {
     const [titleValue, setTitleValue] = useState<string>(value);
     const textAreaRef = useRef<HTMLTextAreaElement>(null);
+    const prevValueRef = useRef<string>(value);
 
-    // Re-sync from the prop when it changes externally (e.g. after a save
-    // resolves or the page is refetched) so the input never drifts from the
-    // persisted displayName. Safe to do unconditionally because the parent
-    // only updates `value` once typing has settled (debounced save / fetch),
-    // never on every keystroke.
+    // Only sync from prop when the user has not diverged from the last known
+    // saved value. If titleValue !== prevValueRef.current, the user has typed
+    // ahead of the save and we must not clobber their in-progress edit.
     useEffect(() => {
-      setTitleValue(value);
+      if (titleValue === prevValueRef.current) {
+        setTitleValue(value);
+      }
+      prevValueRef.current = value;
     }, [value]);
 
     useAutoSizeTextArea('title-input', textAreaRef.current, titleValue);

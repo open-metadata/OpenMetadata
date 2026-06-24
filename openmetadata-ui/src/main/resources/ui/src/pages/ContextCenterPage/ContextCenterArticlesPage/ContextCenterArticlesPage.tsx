@@ -47,10 +47,15 @@ import {
   CreateKnowledgePage,
   KnowledgeCenterPageProps,
   KnowledgeCenterPageRef,
+  KnowledgePage,
   KnowledgePagesHierarchyRef,
   PageType,
 } from '../../../interface/knowledge-center.interface';
-import { postKnowledgePage } from '../../../rest/knowledgeCenterAPI';
+import {
+  getKnowledgePageByFqn,
+  postKnowledgePage,
+} from '../../../rest/knowledgeCenterAPI';
+import { getKnowledgePageFields } from '../../../constants/KnowledgeCenter.constant';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { createArticleKnowledgePage } from '../../../utils/ContextCenterPureUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -82,6 +87,7 @@ const ContextCenterArticlesPage = () => {
   });
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
+  const [editingQuickLink, setEditingQuickLink] = useState<KnowledgePage>();
   const [articleSearchQuery, setArticleSearchQuery] = useState('');
 
   const handleFetchKnowledgePageHierarchy = useCallback(
@@ -91,6 +97,17 @@ const ContextCenterArticlesPage = () => {
       ) ?? Promise.resolve(),
     []
   );
+
+  const handleQuickLinkClick = useCallback(async (fqn: string) => {
+    try {
+      const quickLinkPage = await getKnowledgePageByFqn(fqn, {
+        fields: getKnowledgePageFields(),
+      });
+      setEditingQuickLink(quickLinkPage);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, []);
 
   const handlePageChange = useCallback(
     (incoming: Partial<KnowledgeCenterPageProps>) => {
@@ -264,6 +281,7 @@ const ContextCenterArticlesPage = () => {
       permissions={permissions}
       ref={knowledgePagesHierarchyRef}
       onPageDelete={knowledgeCenterPageRef.current?.onPageDelete}
+      onQuickLinkClick={handleQuickLinkClick}
     />
   );
 
@@ -348,6 +366,17 @@ const ContextCenterArticlesPage = () => {
         onSave={(data) => {
           addQuickLinkKnowledgePage(data);
           setShowAddLinkModal(false);
+        }}
+      />
+
+      <QuickLinkFormModal
+        isOpen={Boolean(editingQuickLink)}
+        permissions={permissions}
+        quickLink={editingQuickLink}
+        onCancel={() => setEditingQuickLink(undefined)}
+        onSave={() => {
+          setEditingQuickLink(undefined);
+          knowledgePagesHierarchyRef.current?.fetchKnowledgePageHierarchy(true);
         }}
       />
     </div>
