@@ -2335,6 +2335,9 @@ public class TableRepository extends EntityRepository<Table> {
       if (updatedTable.getDataModel() == null && origTable.getDataModel() != null) {
         updatedTable.withDataModel(origTable.getDataModel());
       }
+      if (updatedTable.getSchemaDefinition() == null && origTable.getSchemaDefinition() != null) {
+        updatedTable.withSchemaDefinition(origTable.getSchemaDefinition());
+      }
 
       compareAndUpdate(
           "schemaDefinition",

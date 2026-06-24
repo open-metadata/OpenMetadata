@@ -2040,8 +2040,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     createRequest.setSchemaDefinition(updatedQuery);
     createEntity(createRequest);
 
-    Table fetchedAfterUpdate =
-        client.tables().get(table.getId().toString(), "schemaDefinition");
+    Table fetchedAfterUpdate = client.tables().get(table.getId().toString(), "schemaDefinition");
     assertEquals(updatedQuery, fetchedAfterUpdate.getSchemaDefinition());
   }
 
