@@ -12,7 +12,13 @@
  */
 
 import { Box, Button, Dropdown } from '@openmetadata/ui-core-components';
-import { ChevronDown, File05, File06, Sun, UploadCloud02 } from '@untitledui/icons';
+import {
+  ChevronDown,
+  File05,
+  File06,
+  Sun,
+  UploadCloud02,
+} from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -226,9 +232,15 @@ const ContextCenterDashboardPage: FC = () => {
         const time = getShortRelativeTime(article.updatedAt);
         const metaParts = [owner, time].filter(Boolean);
         const icon =
-          article.pageType === PageType.QUICK_LINK ? 
-          <QuickLinkIcon className='tw:text-quaternary tw:shrink-0' height={13} width={13} /> 
-          : <File06 className='tw:size-3 tw:text-quaternary tw:shrink-0' />;
+          article.pageType === PageType.QUICK_LINK ? (
+            <QuickLinkIcon
+              className="tw:text-quaternary tw:shrink-0"
+              height={13}
+              width={13}
+            />
+          ) : (
+            <File06 className="tw:size-3 tw:text-quaternary tw:shrink-0" />
+          );
 
         return {
           icon,

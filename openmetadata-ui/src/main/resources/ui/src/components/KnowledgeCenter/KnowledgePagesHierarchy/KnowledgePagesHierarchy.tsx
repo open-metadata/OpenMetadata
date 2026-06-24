@@ -849,12 +849,12 @@ const KnowledgePagesHierarchy = forwardRef<
         <DeleteModal
           entityTitle={getKnowledgePageName(deletePage, t)}
           isDeleting={isDeleting}
-          message={
-            
-              t('message.delete-entity-permanently', {
-                  entityType: deletePage?.pageType === PageType.QUICK_LINK ? t('label.quick-link-lowercase'): t('label.article-lowercase'),
-                })
-          }
+          message={t('message.delete-entity-permanently', {
+            entityType:
+              deletePage?.pageType === PageType.QUICK_LINK
+                ? t('label.quick-link-lowercase')
+                : t('label.article-lowercase'),
+          })}
           open={!isUndefined(deletePage)}
           onCancel={() => setDeletePage(undefined)}
           onDelete={async () => {

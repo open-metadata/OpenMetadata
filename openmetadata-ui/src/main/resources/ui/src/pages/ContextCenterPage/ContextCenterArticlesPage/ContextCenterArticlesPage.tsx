@@ -31,6 +31,7 @@ import {
   QuickLinkFormModal,
   QuickLinkFormModalFormData,
 } from '../../../components/KnowledgeCenter/QuickLinkFormModal/QuickLinkFormModal';
+import { getKnowledgePageFields } from '../../../constants/KnowledgeCenter.constant';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -55,7 +56,6 @@ import {
   getKnowledgePageByFqn,
   postKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
-import { getKnowledgePageFields } from '../../../constants/KnowledgeCenter.constant';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { createArticleKnowledgePage } from '../../../utils/ContextCenterPureUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';

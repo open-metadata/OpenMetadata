@@ -35,7 +35,11 @@ function RecentItem({
 }) {
   return (
     <Box align="center" className="tw:py-1.5" gap={2}>
-      {item.icon ? item.icon : <Icon className="tw:size-3 tw:text-quaternary tw:shrink-0" />}
+      {item.icon ? (
+        item.icon
+      ) : (
+        <Icon className="tw:size-3 tw:text-quaternary tw:shrink-0" />
+      )}
       <Box
         align="center"
         className="tw:min-w-0 tw:flex-1"

@@ -73,8 +73,7 @@ const ContextCenterArchivePage: FC = () => {
   const fetchArchivedItems = useCallback(async () => {
     setIsLoading(true);
     try {
-      const files = await 
-        listArchivedContextFiles();
+      const files = await listArchivedContextFiles();
       const documentItems: ArchiveItem[] = files.map((file) => ({
         id: file.id,
         name: getEntityName(file),
@@ -216,8 +215,7 @@ const ContextCenterArchivePage: FC = () => {
           entityTitle={itemToDelete.name}
           isDeleting={isDeleting}
           message={t('message.are-you-sure-you-want-to-delete-this-entity', {
-            entity:
-              t('label.document-lowercase'),
+            entity: t('label.document-lowercase'),
           })}
           open={Boolean(itemToDelete)}
           onCancel={handleCancelDelete}
