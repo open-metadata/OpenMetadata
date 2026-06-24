@@ -214,7 +214,10 @@ describe('EntityMarkdownLink', () => {
       const link = screen.getByText('Bad Link');
 
       expect(link).toBeInTheDocument();
-      expect(link).toHaveAttribute('href', '#ingestionPipeline/databaseServices');
+      expect(link).toHaveAttribute(
+        'href',
+        '#ingestionPipeline/databaseServices'
+      );
     });
 
     it('should decode URL-encoded characters in ingestionPipeline FQN', () => {

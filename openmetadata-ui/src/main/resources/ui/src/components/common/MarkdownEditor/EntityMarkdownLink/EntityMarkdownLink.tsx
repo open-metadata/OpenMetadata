@@ -52,7 +52,12 @@ const parseEntityLink = (href: string): ParsedEntityLink => {
 
     return {
       isEntityLink: true,
-      entityInfo: { entityType, fullyQualifiedName, serviceCategory, serviceFqn },
+      entityInfo: {
+        entityType,
+        fullyQualifiedName,
+        serviceCategory,
+        serviceFqn,
+      },
     };
   }
 
