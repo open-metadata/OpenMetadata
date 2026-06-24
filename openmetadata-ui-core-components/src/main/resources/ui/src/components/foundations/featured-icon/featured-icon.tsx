@@ -37,15 +37,11 @@ const styles = sortCx({
       xl: 'tw:size-14',
     },
     colors: {
-      brand:
-        'tw:bg-brand-secondary tw:text-featured-icon-light-fg-brand tw:dark:text-fg-white',
-      error:
-        'tw:bg-error-secondary tw:text-featured-icon-light-fg-error tw:dark:text-fg-white',
+      brand: 'tw:bg-brand-secondary tw:text-featured-icon-light-fg-brand',
+      error: 'tw:bg-error-secondary tw:text-featured-icon-light-fg-error',
       gray: 'tw:bg-tertiary tw:text-featured-icon-light-fg-gray',
-      success:
-        'tw:bg-success-secondary tw:text-featured-icon-light-fg-success tw:dark:text-fg-white',
-      warning:
-        'tw:bg-warning-secondary tw:text-featured-icon-light-fg-warning tw:dark:text-fg-white',
+      success: 'tw:bg-success-secondary tw:text-featured-icon-light-fg-success',
+      warning: 'tw:bg-warning-secondary tw:text-featured-icon-light-fg-warning',
     },
   },
 
