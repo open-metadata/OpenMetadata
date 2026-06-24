@@ -17,47 +17,44 @@ import { redirectToHomePage } from '../../utils/common';
 import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
-const APP_NAME = 'McpChatApplication';
-
 test.describe(
   'MCP Chat - Sidebar Navigation',
   { tag: ['@Features', '@Platform'] },
   () => {
-    // Run serially in a single worker. These tests share one globally-named
-    // installed app (McpChatApplication) set up in beforeAll and removed in
-    // afterAll. Under the project's `fullyParallel` mode the tests would be
-    // split across workers, so afterAll (hardDelete) could run while a sibling
-    // test in another worker is still asserting the sidebar item — making the
-    // `app-bar-item-mcp-chat` entry disappear and the test fail.
+    // Run serially in a single worker. These tests share one global platform
+    // setting (aiSettings.mcpChat.enabled) toggled in beforeAll and reset in
+    // afterAll. Under the project's `fullyParallel` mode the reset could run
+    // while a sibling test in another worker is still asserting the
+    // `app-bar-item-mcp-chat` entry — making it disappear and the test fail.
     test.describe.configure({ mode: 'serial' });
 
-    test.beforeAll('Install MCP Chat app', async ({ browser }) => {
+    test.beforeAll('Enable MCP Chat', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
-      const installResponse = await apiContext.post('/api/v1/apps', {
+      const response = await apiContext.put('/api/v1/system/settings', {
         data: {
-          name: APP_NAME,
-          appConfiguration: {
-            systemPrompt: 'Test prompt',
+          config_type: 'aiSettings',
+          config_value: {
+            enabled: true,
+            mcpChat: { enabled: true, systemPrompt: 'Test prompt' },
           },
         },
       });
 
-      // 201 = newly installed, 409 = already installed — both are fine
-      expect([201, 409]).toContain(installResponse.status());
+      expect([200, 201]).toContain(response.status());
 
       await afterAction();
     });
 
-    test.afterAll('Uninstall MCP Chat app', async ({ browser }) => {
+    test.afterAll('Disable MCP Chat', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
-      await apiContext.delete(`/api/v1/apps/name/${APP_NAME}?hardDelete=true`);
+      await apiContext.put('/api/v1/system/settings/reset/aiSettings');
 
       await afterAction();
     });
 
-    test('MCP Chat nav item should appear in sidebar when app is installed', async ({
+    test('MCP Chat nav item should appear in sidebar when enabled', async ({
       page,
     }) => {
       await test.step('Navigate to home page', async () => {

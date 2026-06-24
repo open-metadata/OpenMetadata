@@ -16,10 +16,13 @@ import { Domain } from '../../../support/domain/Domain';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage } from '../../../utils/common';
+import {
+  assignDomainOnlyAccess,
+  safeDelete,
+} from '../../../utils/domainIsolationUtils';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { enableDisableSearchRBAC } from '../../../utils/searchRBAC';
 import { sidebarClick } from '../../../utils/sidebar';
-import { assignDomainOnlyAccess, safeDelete } from './domainIsolationUtils';
 
 // Issue #24180 — the Domains listing page is driven by the `index=domain` search query, which is
 // RBAC-gated by the seeded DomainOnlyAccessRole. A restricted user must only see the domain cards
