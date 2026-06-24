@@ -78,12 +78,18 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
       handleLinkToggle();
     };
 
-    // Mount the link modal and link popup inside the editor's dialog (if any)
-    // so a focus-trapping overlay does not steal focus or swallow their clicks.
-    // Falls back to document.body.
-    const getDialogContainer = (): HTMLElement =>
-      (editor?.view.dom.closest('[role="dialog"]') as HTMLElement) ??
-      document.body;
+    // Mount the link modal and popup inside the editor's nearest focus-trapping
+    // dialog (e.g. React Aria's SlideoutMenu) so it does not steal focus or
+    // swallow their clicks. antd modals/drawers don't trap focus from a
+    // body-portalled modal, and their transforms would misposition it, so fall
+    // back to document.body for those (and when not inside a dialog at all).
+    const getDialogContainer = (): HTMLElement => {
+      const dialog = editor?.view.dom.closest('[role="dialog"]');
+
+      return dialog && !dialog.closest('.ant-modal, .ant-drawer')
+        ? (dialog as HTMLElement)
+        : document.body;
+    };
 
     const handleUnlink = () => {
       if (isNil(editor)) {

@@ -130,4 +130,38 @@ describe('EditorSlots link handling', () => {
     editor.destroy();
     document.body.removeChild(dialog);
   });
+
+  it('falls back to document.body when the editor is inside an antd modal', () => {
+    // antd modals also expose role="dialog" but do not trap focus and would
+    // misposition a nested modal, so the link overlays must stay in body.
+    const dialog = document.createElement('div');
+    dialog.setAttribute('role', 'dialog');
+    dialog.className = 'ant-modal';
+    document.body.appendChild(dialog);
+    const editorElement = document.createElement('div');
+    dialog.appendChild(editorElement);
+
+    const editor = new Editor({
+      element: editorElement,
+      extensions: [StarterKit, LinkExtension],
+      content: '<p><a href="https://example.com">link</a></p>',
+    });
+    const ref = createRef<EditorSlotsRef>();
+
+    render(<EditorSlots editor={editor} menuType="bar" ref={ref} />);
+
+    const anchor = editorElement.querySelector('a') as HTMLElement;
+    act(() => {
+      ref.current?.onMouseDown({
+        target: anchor,
+      } as unknown as Parameters<EditorSlotsRef['onMouseDown']>[0]);
+    });
+
+    const options = (tippy as jest.Mock).mock.calls[0][1];
+
+    expect(options.appendTo()).toBe(document.body);
+
+    editor.destroy();
+    document.body.removeChild(dialog);
+  });
 });
