@@ -107,16 +107,16 @@ class TableauClient:
     def site_id(self) -> str:
         return self.tableau_server.site_id
 
-    def get_tableau_owner(self, owner_id: str, include_owners: bool = True) -> Optional[TableauOwner]:  # noqa: UP045
+    def get_tableau_owner(self, owner_id: Optional[str], include_owners: bool = True) -> Optional[TableauOwner]:  # noqa: UP045
         """
         Get tableau owner with optional include_owners flag
         """
         try:
-            if not include_owners:
+            if not include_owners or not owner_id:
                 return None
             if owner_id in self.owner_cache:
                 return self.owner_cache[owner_id]
-            owner = self.tableau_server.users.get_by_id(owner_id) if owner_id else None
+            owner = self.tableau_server.users.get_by_id(owner_id)
             if owner:
                 owner_obj = TableauOwner(id=str(owner.id), name=owner.name, email=owner.email)
                 self.owner_cache[owner_id] = owner_obj

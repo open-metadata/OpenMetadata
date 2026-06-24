@@ -71,7 +71,9 @@
         "MicrosoftFabric",
         "BurstIQ",
         "Informix",
-        "Iomete"
+        "Iomete",
+        "QuestDB",
+        "SapBw4Hana"
       ],
       "javaEnums": [
         {
@@ -244,6 +246,12 @@
         },
         {
           "name": "Iomete"
+        },
+        {
+          "name": "QuestDB"
+        },
+        {
+          "name": "SapBw4Hana"
         }
       ]
     },
@@ -421,6 +429,12 @@
             },
             {
               "$ref": "./connections/database/iometeConnection.json"
+            },
+            {
+              "$ref": "./connections/database/questdbConnection.json"
+            },
+            {
+              "$ref": "./connections/database/sapBw4HanaConnection.json"
             }
           ]
         }

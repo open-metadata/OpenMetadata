@@ -1147,3 +1147,45 @@ def test_suite_validation_database(  # noqa: C901
                 assert dim.failedRowsPercentage == expected_dim[5]
 
             assert dim.impactScore == expected_dim[6]
+
+
+@pytest.mark.parametrize(
+    "column_count,expected_message",
+    [
+        (1, "Found columnCount=1 column vs. the expected min=2.0 and max=11.0"),
+        (2, "Found columnCount=2 columns vs. the expected min=2.0 and max=11.0"),
+        (5, "Found columnCount=5 columns vs. the expected min=2.0 and max=11.0"),
+        (11, "Found columnCount=11 columns vs. the expected min=2.0 and max=11.0"),
+        (0, "Found columnCount=0 columns vs. the expected min=2.0 and max=11.0"),
+    ],
+)
+def test_table_column_count_to_be_between_result_message(
+    column_count,
+    expected_message,
+    test_case_table_column_count_to_be_between,
+    create_sqlite_table,
+):
+    """Test that tableColumnCountToBeBetween uses correct singular/plural form and exact message format"""
+    test_case = test_case_table_column_count_to_be_between
+
+    with patch(
+        "metadata.data_quality.validations.table.sqlalchemy.tableColumnCountToBeBetween.TableColumnCountToBeBetweenValidator._run_results",
+        return_value=column_count,
+    ):
+        test_handler_obj = import_test_case_class(
+            "TABLE",
+            "sqlalchemy",
+            "tableColumnCountToBeBetween",
+            "TableColumnCountToBeBetweenValidator",
+        )
+
+        test_handler = test_handler_obj(
+            create_sqlite_table,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
+        res = test_handler.run_validation()
+
+        assert isinstance(res, TestCaseResult)
+        assert res.result == expected_message

@@ -291,7 +291,7 @@ class AlationsinkSource(Source):
             )
             create_requests = CreateTableRequestList(root=[])
             for om_table in om_tables:
-                if filter_by_table(self.source_config.tableFilterPattern, model_str(om_table.name)):
+                if filter_by_table(self.source_config.tableFilterPattern, model_str(om_table.name)):  # pyright: ignore[reportAttributeAccessIssue]
                     self.status.filter(model_str(om_table.name), "Table Filtered Out")
                     continue
                 create_table_request = self.create_table_request(
@@ -307,7 +307,7 @@ class AlationsinkSource(Source):
                 if alation_tables:
                     for om_table in om_tables:
                         if filter_by_table(
-                            self.source_config.tableFilterPattern,
+                            self.source_config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
                             model_str(om_table.name),
                         ):
                             self.status.filter(model_str(om_table.name), "Table Filtered Out")
@@ -336,7 +336,7 @@ class AlationsinkSource(Source):
             )
             create_requests = CreateSchemaRequestList(root=[])
             for om_schema in om_schemas or []:
-                if filter_by_schema(self.source_config.schemaFilterPattern, model_str(om_schema.name)):
+                if filter_by_schema(self.source_config.schemaFilterPattern, model_str(om_schema.name)):  # pyright: ignore[reportAttributeAccessIssue]
                     self.status.filter(model_str(om_schema.name), "Schema Filtered Out")
                     continue
                 create_schema_request = self.create_schema_request(alation_datasource_id, om_schema)
@@ -376,7 +376,7 @@ class AlationsinkSource(Source):
             )
             for om_database in om_databases or []:
                 if filter_by_database(
-                    self.source_config.databaseFilterPattern,
+                    self.source_config.databaseFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
                     model_str(om_database.name),
                 ):
                     self.status.filter(model_str(om_database.name), "Database Filtered Out")

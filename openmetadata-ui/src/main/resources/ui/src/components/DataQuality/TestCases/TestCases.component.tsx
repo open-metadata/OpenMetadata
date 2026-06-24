@@ -65,9 +65,9 @@ import {
   getListTestCaseBySearch,
   ListTestCaseParamsBySearch,
 } from '../../../rest/testAPI';
-import { getTestCaseFiltersValue } from '../../../utils/DataQuality/DataQualityUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
-import { getPopupContainer } from '../../../utils/formUtils';
+import { getTestCaseFiltersValue } from '../../../utils/DataQuality/DataQualityPureUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getPopupContainer } from '../../../utils/formPureUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import {
   checkPermission,
@@ -106,6 +106,9 @@ export const TestCases = () => {
   const [tagOptions, setTagOptions] = useState<DefaultOptionType[]>([]);
   const [tierOptions, setTierOptions] = useState<DefaultOptionType[]>([]);
   const [serviceOptions, setServiceOptions] = useState<DefaultOptionType[]>([]);
+  const [dataProductOptions, setDataProductOptions] = useState<
+    DefaultOptionType[]
+  >([]);
   const [sortOptions, setSortOptions] =
     useState<ListTestCaseParamsBySearch>(DEFAULT_SORT_ORDER);
 
@@ -393,6 +396,44 @@ export const TestCases = () => {
     }
   };
 
+  const fetchDataProductOptions = async (search = WILD_CARD_CHAR) => {
+    setIsOptionsLoading(true);
+    try {
+      const response = await searchQuery({
+        query: search === WILD_CARD_CHAR ? search : `*${search}*`,
+        pageNumber: 1,
+        pageSize: PAGE_SIZE_BASE,
+        searchIndex: SearchIndex.DATA_PRODUCT,
+        fetchSource: true,
+        includeFields: ['name', 'fullyQualifiedName', 'displayName'],
+      });
+
+      const options = response.hits.hits.map((hit) => {
+        return {
+          label: (
+            <Space
+              data-testid={hit._source.fullyQualifiedName}
+              direction="vertical"
+              size={0}>
+              <Typography.Text className="text-xs text-grey-muted">
+                {hit._source.fullyQualifiedName}
+              </Typography.Text>
+              <Typography.Text className="text-sm">
+                {getEntityName(hit._source)}
+              </Typography.Text>
+            </Space>
+          ),
+          value: hit._source.fullyQualifiedName,
+        };
+      });
+      setDataProductOptions(options);
+    } catch {
+      setDataProductOptions([]);
+    } finally {
+      setIsOptionsLoading(false);
+    }
+  };
+
   const getInitialOptions = (key: string, isLengthCheck = false) => {
     switch (key) {
       case TEST_CASE_FILTERS.tier:
@@ -409,6 +450,12 @@ export const TestCases = () => {
         break;
       case TEST_CASE_FILTERS.service:
         (isEmpty(serviceOptions) || !isLengthCheck) && fetchServiceOptions();
+
+        break;
+
+      case TEST_CASE_FILTERS.dataProduct:
+        (isEmpty(dataProductOptions) || !isLengthCheck) &&
+          fetchDataProductOptions();
 
         break;
 
@@ -510,6 +557,11 @@ export const TestCases = () => {
   const debounceFetchServiceOptions = useCallback(
     debounce(fetchServiceOptions, 1000),
     [fetchServiceOptions]
+  );
+
+  const debounceFetchDataProductOptions = useCallback(
+    debounce(fetchDataProductOptions, 1000),
+    [fetchDataProductOptions]
   );
 
   const getTestCases = () => {
@@ -720,6 +772,23 @@ export const TestCases = () => {
                   getPopupContainer={getPopupContainer}
                   options={TEST_CASE_DIMENSIONS_OPTION}
                   placeholder={t('label.dimension')}
+                />
+              </Form.Item>
+            )}
+            {selectedFilter.includes(TEST_CASE_FILTERS.dataProduct) && (
+              <Form.Item
+                className="m-0 w-80"
+                label={t('label.data-product-plural')}
+                name="dataProductFqn">
+                <Select
+                  allowClear
+                  showSearch
+                  data-testid="data-product-select-filter"
+                  getPopupContainer={getPopupContainer}
+                  loading={isOptionsLoading}
+                  options={dataProductOptions}
+                  placeholder={t('label.data-product-plural')}
+                  onSearch={debounceFetchDataProductOptions}
                 />
               </Form.Item>
             )}

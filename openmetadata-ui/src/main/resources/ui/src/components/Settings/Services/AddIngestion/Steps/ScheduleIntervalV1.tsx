@@ -13,7 +13,6 @@
 
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Card, Col, Input, Radio, Row, Select, Typography } from 'antd';
-import cronstrue from 'cronstrue/i18n';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,14 +24,14 @@ import {
   PERIOD_OPTIONS,
 } from '../../../../../constants/Schedular.constants';
 import { SchedularOptions } from '../../../../../enums/Schedular.enum';
-import { getPopupContainer } from '../../../../../utils/formUtils';
-import { getCurrentLocaleForConstrue } from '../../../../../utils/i18next/i18nextUtil';
 import {
   getCron,
   getDefaultScheduleValue,
   getStateValue,
   getUpdatedStateFromFormState,
-} from '../../../../../utils/SchedularUtils';
+} from '../../../../../utils/CronExpressionUtils';
+import { getPopupContainer } from '../../../../../utils/formPureUtils';
+import { getCurrentLocaleForConstrue } from '../../../../../utils/i18next/i18nextUtil';
 import SelectionCardGroup from '../../../../common/SelectionCardGroup/SelectionCardGroup';
 import { SelectionOption } from '../../../../common/SelectionCardGroup/SelectionCardGroup.interface';
 import './schedule-interval-v1.less';
@@ -178,16 +177,38 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
     }));
   }, [includePeriodOptions]);
 
-  const cronExpressionCard = useMemo(() => {
-    const cronStringValue = cronString
-      ? t('label.entity-scheduled-to-run-value', {
-          entity: entity ?? t('label.ingestion'),
-          value: cronstrue.toString(cronString, {
+  const [cronHumanText, setCronHumanText] = useState<string>('');
+
+  useEffect(() => {
+    if (!cronString) {
+      setCronHumanText('');
+
+      return;
+    }
+    let cancelled = false;
+    import('cronstrue/i18n').then((m) => {
+      if (!cancelled) {
+        setCronHumanText(
+          m.default.toString(cronString, {
             use24HourTimeFormat: false,
             verbose: true,
             locale: getCurrentLocaleForConstrue(),
             throwExceptionOnParseError: false,
-          }),
+          })
+        );
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cronString]);
+
+  const cronExpressionCard = useMemo(() => {
+    const cronStringValue = cronString
+      ? t('label.entity-scheduled-to-run-value', {
+          entity: entity ?? t('label.ingestion'),
+          value: cronHumanText,
         })
       : t('message.pipeline-will-trigger-manually');
 
@@ -201,7 +222,7 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
         </Typography.Text>
       </Card>
     );
-  }, [cronString, entity]);
+  }, [cronString, cronHumanText, entity, t]);
 
   // Update internal state when external value changes
   useEffect(() => {

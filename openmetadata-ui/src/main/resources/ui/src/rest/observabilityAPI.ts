@@ -21,7 +21,7 @@ import { EventSubscription } from '../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../generated/events/filterResourceDescriptor';
 import { Function } from '../generated/type/function';
 import { ListParams } from '../interface/API.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 
 const BASE_URL = '/events/subscriptions';
 

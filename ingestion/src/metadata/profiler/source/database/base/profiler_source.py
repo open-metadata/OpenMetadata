@@ -31,6 +31,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import ProfilerProcessorConfig, TableConfig
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
@@ -44,9 +45,15 @@ from metadata.sampler.config import (
     get_config_for_table,
     get_exclude_columns,
     get_include_columns,
+    get_profile_sample_config,
+    get_sample_data_count_config,
+    get_sample_query,
 )
-from metadata.sampler.models import ProfileSampleConfig, SampleConfig
+from metadata.sampler.models import SampleConfig
+from metadata.sampler.partition import get_partition_details
+from metadata.sampler.sampler_config import DatabaseSamplerConfig
 from metadata.sampler.sampler_interface import SamplerInterface  # noqa: TC001
+from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.dependency_injector.dependency_injector import (
     DependencyNotFoundError,
     Inject,
@@ -175,17 +182,33 @@ class ProfilerSource(ProfilerSourceInterface):
             source_type=self._interface_type,
         )
 
-        # This is shared between the sampler and profiler interfaces
+        default_sample_config = self._build_default_sample_config()
         sampler_interface: SamplerInterface = sampler_class.create(
             service_connection_config=self.service_conn_config,
             ometa_client=self.ometa_client,
             entity=entity,
-            schema_entity=schema_entity,
-            database_entity=database_entity,
-            table_config=config,
-            default_sample_config=self._build_default_sample_config(),
-            # TODO: Change this when we have the processing engine configuration implemented. Right now it does nothing.
-            processing_engine=self.get_processing_engine(self.source_config),
+            config=DatabaseSamplerConfig(
+                sample_config=get_profile_sample_config(
+                    entity=entity,
+                    schema_entity=schema_entity,
+                    database_entity=database_entity,
+                    entity_config=config,
+                    default_sample_config=default_sample_config,
+                ),
+                sample_data_count=get_sample_data_count_config(
+                    entity=entity,
+                    schema_entity=schema_entity,
+                    database_entity=database_entity,
+                    entity_config=config,
+                    default_sample_data_count=SAMPLE_DATA_DEFAULT_COUNT,
+                ),
+                include_columns=get_include_columns(entity, entity_config=config) or [],
+                exclude_columns=get_exclude_columns(entity, entity_config=config) or [],
+                partition_details=get_partition_details(entity=entity, entity_config=config),
+                sample_query=get_sample_query(entity=entity, entity_config=config),
+                # TODO: Change this when we have the processing engine configuration implemented.
+                processing_engine=self.get_processing_engine(self.source_config),
+            ),
         )
 
         profiler_interface: ProfilerInterface = profiler_class.create(

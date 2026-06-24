@@ -98,6 +98,8 @@ test.describe('Glossary Bulk Import Export', () => {
   });
 
   test('Glossary Bulk Import Export', async ({ page }) => {
+    test.setTimeout(5 * 60 * 1000);
+
     await test.step('create custom properties for extension edit', async () => {
       for (const property of propertiesList) {
         const entity = CUSTOM_PROPERTIES_ENTITIES.entity_glossaryTerm;
@@ -262,14 +264,14 @@ test.describe('Glossary Bulk Import Export', () => {
 
       await expect(
         page.getByTestId('bulk-import-details-modal')
-      ).not.toBeVisible();
-
-      await page.getByRole('dialog').getByRole('img').click();
+      ).not.toBeAttached();
     });
 
     await test.step('delete custom properties', async () => {
       for (const propertyName of Object.values(propertyListName)) {
         await settingClick(page, GlobalSettingOptions.GLOSSARY_TERM, true);
+
+        await page.waitForURL('**/settings/customProperties/glossaryTerm');
 
         await waitForAllLoadersToDisappear(page);
 
@@ -799,6 +801,10 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
 
         await page.getByRole('button', { name: 'Update' }).click();
         await loader.waitFor({ state: 'detached' });
+        await toastNotification(
+          page,
+          `Glossary ${relGlossary.responseData.fullyQualifiedName} details updated successfully`
+        );
       });
 
       await test.step('Verify each relation type via API', async () => {

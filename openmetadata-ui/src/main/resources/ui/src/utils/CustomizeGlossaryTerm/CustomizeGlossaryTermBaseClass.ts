@@ -24,6 +24,7 @@ import {
   CUSTOM_PROPERTIES_WIDGET,
   DESCRIPTION_WIDGET,
   DOMAIN_WIDGET,
+  KNOWLEDGE_ARTICLE_WIDGET,
   OWNER_WIDGET,
   REFERENCES_WIDGET,
   RELATED_TERMS_WIDGET,
@@ -345,6 +346,14 @@ class CustomizeGlossaryTermPageClassBase {
               y: 2,
               static: false,
             },
+            {
+              h: this.detailPageWidgetDefaultHeights.RELATED_TERMS,
+              i: GlossaryTermDetailPageWidgetKeys.RELATED_TERMS,
+              w: 1,
+              x: 0,
+              y: 3,
+              static: false,
+            },
           ],
           static: true,
         },
@@ -388,14 +397,6 @@ class CustomizeGlossaryTermPageClassBase {
           y: 4,
           static: false,
         },
-        {
-          h: this.detailPageWidgetDefaultHeights.RELATED_TERMS,
-          i: GlossaryTermDetailPageWidgetKeys.RELATED_TERMS,
-          w: 6,
-          x: 0,
-          y: 7,
-          static: false,
-        },
       ];
     }
 
@@ -411,6 +412,7 @@ class CustomizeGlossaryTermPageClassBase {
       REVIEWER_WIDGET,
       CUSTOM_PROPERTIES_WIDGET,
       TAGS_WIDGET,
+      KNOWLEDGE_ARTICLE_WIDGET,
     ];
 
     return isGlossary

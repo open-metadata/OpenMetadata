@@ -75,7 +75,7 @@ import {
   getCustomizeColumnDetails,
   getReorderedColumns,
 } from '../../../utils/CustomizeColumnUtils';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import Loader from '../Loader/Loader';
 import NextPrevious from '../NextPrevious/NextPrevious';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
@@ -533,7 +533,11 @@ const TableV2 = <T extends object>(
 
   return (
     <div
-      className={classNames('table-container', rest.containerClassName)}
+      className={classNames(
+        'table-container',
+        'tw:[&_tbody_tr:hover_td]:bg-secondary',
+        rest.containerClassName
+      )}
       ref={ref}>
       <div
         className={classNames('p-x-md', {
@@ -615,7 +619,7 @@ const TableV2 = <T extends object>(
         data-testid={dataTestId}
         style={scrollStyle}>
         {isLoading && (
-          <div className="tw:absolute tw:inset-0 tw:z-10 tw:flex tw:items-center tw:justify-center tw:bg-white/60">
+          <div className="tw:absolute tw:inset-0 tw:z-10 tw:flex tw:items-center tw:justify-center tw:bg-primary/60">
             <Loader />
           </div>
         )}
@@ -849,10 +853,10 @@ const TableV2 = <T extends object>(
                             }}>
                             <div
                               className={classNames(
-                                'tw:flex tw:items-start tw:gap-1 tw:max-w-full'
+                                'tw:flex tw:gap-1 tw:max-w-full'
                               )}>
                               {showExpandInCell && (
-                                <div className="tw:flex-shrink-0">
+                                <div className="tw:flex tw:items-center tw:shrink-0">
                                   {hasChildren ? (
                                     ExpandIcon ? (
                                       <ExpandIcon

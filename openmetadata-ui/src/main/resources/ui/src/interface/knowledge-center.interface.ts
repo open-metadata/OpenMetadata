@@ -1,0 +1,163 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import React, { ReactNode } from 'react';
+import { VotingDataProps } from '../components/Entity/Voting/voting.interface';
+import { EntityStatus } from '../generated/entity/data/glossaryTerm';
+import { PageProcessingStatus } from '../generated/entity/data/page';
+import { ChangeDescription, EntityReference } from '../generated/entity/type';
+import { TagLabel } from '../generated/type/tagLabel';
+import { Votes } from '../generated/type/votes';
+
+export enum PageType {
+  ARTICLE = 'Article',
+  QUICK_LINK = 'QuickLink',
+}
+
+export interface Article {
+  publicationDate: Date;
+  relatedArticles: EntityReference[];
+}
+
+export interface QuickLink {
+  url: string;
+}
+
+export interface KnowledgePage {
+  id: string;
+  name: string;
+  fullyQualifiedName: string;
+  displayName?: string;
+  description?: string;
+  version: number;
+  updatedAt: number;
+  updatedBy: string;
+  href: string;
+  changeDescription?: ChangeDescription;
+  owners?: EntityReference[];
+  reviewers?: EntityReference[];
+  followers?: EntityReference[];
+  votes?: Votes;
+  tags?: TagLabel[];
+  domains?: EntityReference[];
+  dataProducts?: EntityReference[];
+  pageType: PageType;
+  page: Article | QuickLink;
+  relatedEntities?: EntityReference[];
+  editors?: EntityReference[];
+  parent?: EntityReference;
+  children?: EntityReference[];
+  deleted: boolean;
+  entityStatus?: EntityStatus;
+  processingStatus?: PageProcessingStatus;
+  processingError?: string;
+}
+
+export type CreateKnowledgePage = Pick<
+  KnowledgePage,
+  | 'name'
+  | 'displayName'
+  | 'description'
+  | 'owners'
+  | 'tags'
+  | 'pageType'
+  | 'page'
+  | 'relatedEntities'
+  | 'parent'
+>;
+
+export type KnowledgePagePutResponse = {
+  entity: KnowledgePage;
+};
+
+export type RecentViewedKnowledgePage = KnowledgePage & { timestamp: number };
+
+export interface RecentlyViewedQuickLinks {
+  data: RecentViewedKnowledgePage[];
+}
+
+export enum ContentChangeState {
+  SAVED = 'Saved',
+  UN_SAVED = 'Unsaved',
+  SAVING = 'Saving',
+}
+
+export interface PageHierarchy {
+  id: string;
+  name: string;
+  fullyQualifiedName: string;
+  displayName?: string;
+  description?: string;
+  pageType: PageType;
+  children?: PageHierarchy[];
+  childrenCount: number;
+}
+
+export interface PageSearchResult {
+  parent?: PageHierarchy;
+  page?: PageHierarchy;
+}
+
+export interface MovedEntity {
+  sourceNode: PageHierarchy;
+  targetNode?: PageHierarchy;
+  sourceNodeParent?: PageHierarchy;
+}
+
+export interface KnowledgeCenterPageHandlers {
+  onFollowChange: () => Promise<void>;
+  onVoteChange: (data: VotingDataProps) => Promise<void>;
+  onSetThreadLink: (link: string) => void;
+  onToggleDelete: () => void;
+  onSave?: () => void;
+  onUpdate?: (updatedPage: KnowledgePage) => Promise<void>;
+  contentChangeState: ContentChangeState;
+}
+
+export interface ArticleTab {
+  key: string | number;
+  name: string;
+  label: ReactNode;
+  children?: ReactNode;
+}
+
+export interface KnowledgeCenterPageProps {
+  title: string;
+  rightPanel: React.ReactNode;
+  header: React.ReactNode;
+  data?: KnowledgePage;
+  activeTab?: string;
+  feedCount?: number;
+  tabs?: ArticleTab[];
+  onTabChange?: (key: string) => void;
+  isRightPanelOpen?: boolean;
+  onToggleRightPanel?: () => void;
+  handlers?: KnowledgeCenterPageHandlers;
+}
+
+export interface KnowledgeCenterPageRef {
+  onPageDelete: (id: string | string[]) => void;
+  addKnowledgePage: (knowledgePage: KnowledgePage) => void;
+}
+
+export interface KnowledgePagesHierarchyRef {
+  fetchKnowledgePageHierarchy: (forceRefresh?: boolean) => Promise<void>;
+}
+
+export interface KnowledgePageHierarchyResponse {
+  data: PageHierarchy[];
+  paging: {
+    total: number;
+    offset: number;
+    limit: number;
+  };
+}

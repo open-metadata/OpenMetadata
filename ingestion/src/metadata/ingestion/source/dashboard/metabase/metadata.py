@@ -16,7 +16,7 @@ from typing import Any, Dict, Iterable, List, Optional  # noqa: UP035
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.chart import Chart as LineageChart
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as LineageDashboard,
 )
@@ -199,7 +199,7 @@ class MetabaseSource(DashboardServiceSource):
                     FullyQualifiedEntityName(
                         fqn.build(
                             self.metadata,
-                            entity_type=Chart,
+                            entity_type=LineageChart,
                             service_name=self.context.get().dashboard_service,
                             chart_name=chart,
                         )
@@ -335,6 +335,20 @@ class MetabaseSource(DashboardServiceSource):
             return None
         return self.metadata.get_by_name(DatabaseService, db_service_name)
 
+    def _get_chart_entity(self, chart_details: MetabaseChart) -> LineageChart | None:
+        chart_fqn = fqn.build(
+            self.metadata,
+            entity_type=LineageChart,
+            service_name=self.config.serviceName,
+            chart_name=str(chart_details.id),
+        )
+        if not chart_fqn:
+            return None
+        return self.metadata.get_by_name(
+            entity=LineageChart,
+            fqn=chart_fqn,
+        )
+
     # pylint: disable=too-many-locals
     def _yield_lineage_from_query(
         self,
@@ -377,6 +391,22 @@ class MetabaseSource(DashboardServiceSource):
             logger.debug(f"[{query_hash}] Database {database_name} does not match prefix {prefix_database_name}")
             return
 
+        to_fqn = fqn.build(
+            self.metadata,
+            entity_type=LineageDashboard,
+            service_name=self.config.serviceName,
+            dashboard_name=dashboard_name,
+        )
+        to_entity = (
+            self.metadata.get_by_name(
+                entity=LineageDashboard,
+                fqn=to_fqn,
+            )
+            if to_fqn
+            else None
+        )
+        chart_entity = self._get_chart_entity(chart_details)
+
         for table in lineage_parser.source_tables:
             database_schema_name, table = fqn.split(str(table))[-2:]  # noqa: PLW2901
             database_schema_name = self.check_database_schema_name(database_schema_name)
@@ -404,19 +434,20 @@ class MetabaseSource(DashboardServiceSource):
                 fqn_search_string=fqn_search_string,
                 fetch_multiple_entities=True,
             )
-            to_fqn = fqn.build(
-                self.metadata,
-                entity_type=LineageDashboard,
-                service_name=self.config.serviceName,
-                dashboard_name=dashboard_name,
-            )
-            to_entity = self.metadata.get_by_name(
-                entity=LineageDashboard,
-                fqn=to_fqn,
-            )
+            from_tables = [from_entities] if isinstance(from_entities, Table) else from_entities or []
 
-            for from_entity in from_entities or []:
-                yield self._get_add_lineage_request(to_entity=to_entity, from_entity=from_entity)
+            for from_entity in from_tables:
+                if to_entity:
+                    dashboard_lineage = self._get_add_lineage_request(
+                        to_entity=to_entity,
+                        from_entity=from_entity,
+                    )
+                    if dashboard_lineage:
+                        yield dashboard_lineage
+                if chart_entity and isinstance(from_entity, Table):
+                    chart_lineage = self._get_add_lineage_request(to_entity=chart_entity, from_entity=from_entity)
+                    if chart_lineage:
+                        yield chart_lineage
 
     def _yield_lineage_from_api(
         self,
@@ -462,6 +493,7 @@ class MetabaseSource(DashboardServiceSource):
             fqn_search_string=fqn_search_string,
             fetch_multiple_entities=True,
         )
+        from_tables = [from_entities] if isinstance(from_entities, Table) else from_entities or []
         to_fqn = fqn.build(
             self.metadata,
             entity_type=LineageDashboard,
@@ -469,10 +501,25 @@ class MetabaseSource(DashboardServiceSource):
             dashboard_name=dashboard_name,
         )
 
-        to_entity = self.metadata.get_by_name(
-            entity=LineageDashboard,
-            fqn=to_fqn,
+        to_entity = (
+            self.metadata.get_by_name(
+                entity=LineageDashboard,
+                fqn=to_fqn,
+            )
+            if to_fqn
+            else None
         )
+        chart_entity = self._get_chart_entity(chart_details)
 
-        for from_entity in from_entities or []:
-            yield self._get_add_lineage_request(to_entity=to_entity, from_entity=from_entity)
+        for from_entity in from_tables:
+            if to_entity:
+                dashboard_lineage = self._get_add_lineage_request(
+                    to_entity=to_entity,
+                    from_entity=from_entity,
+                )
+                if dashboard_lineage:
+                    yield dashboard_lineage
+            if chart_entity and isinstance(from_entity, Table):
+                chart_lineage = self._get_add_lineage_request(to_entity=chart_entity, from_entity=from_entity)
+                if chart_lineage:
+                    yield chart_lineage

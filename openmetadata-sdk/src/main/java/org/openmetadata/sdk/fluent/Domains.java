@@ -223,6 +223,10 @@ public final class Domains {
     public DomainDeleter delete() {
       return new DomainDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<Domain> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(client.domains(), identifier);
+    }
   }
 
   // ==================== Deleter ====================

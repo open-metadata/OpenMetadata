@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
@@ -25,6 +31,7 @@ import { AssetCertification } from '../../../generated/type/assetCertification';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { MOCK_DATA_CONTRACT } from '../../../mocks/DataContract.mock';
 import { MOCK_TIER_DATA } from '../../../mocks/TableData.mock';
+import { getActiveAnnouncements } from '../../../rest/announcementsAPI';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
@@ -81,7 +88,7 @@ jest.mock('../../../rest/applicationAPI', () => ({
   triggerOnDemandApp: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../../utils/ServiceUtils', () => ({
+jest.mock('../../../utils/ServicePureUtils', () => ({
   getEntityTypeFromServiceCategory: jest
     .fn()
     .mockImplementation(() => EntityType.DATABASE_SERVICE),
@@ -91,9 +98,15 @@ jest.mock('../../../rest/contractAPI', () => ({
   getContractByEntityId: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockImplementation(() => 'name'),
+}));
+
+jest.mock('../../../utils/EntityPureUtils', () => ({
   getEntityFeedLink: jest.fn().mockImplementation(() => 'entityFeedLink'),
+}));
+
+jest.mock('../../../utils/EntityVoteUtils', () => ({
   getEntityVoteStatus: jest.fn().mockImplementation(() => 'unVoted'),
 }));
 
@@ -104,6 +117,9 @@ jest.mock('../../../utils/DataAssetsHeader.utils', () => ({
   })),
   getEntityExtraInfoLength: jest.fn().mockImplementation(() => 0),
   isDataAssetsWithServiceField: jest.fn().mockImplementation(() => true),
+  HeaderDotSeparator: jest
+    .fn()
+    .mockImplementation(() => <span data-testid="header-dot-separator" />),
   ExtraInfoLabel: jest
     .fn()
     .mockImplementation(({ label, value, dataTestId }) => (
@@ -126,13 +142,12 @@ jest.mock('../../common/CertificationTag/CertificationTag', () => {
   return jest.fn().mockImplementation(() => <div>CertificationTag</div>);
 });
 
-jest.mock(
-  '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(() => <div>TitleBreadcrumb.component</div>);
-  }
+jest.mock('../../common/HeaderBreadcrumb/HeaderBreadcrumb.component', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="breadcrumb">HeaderBreadcrumb.component</div>
+    ))
 );
 jest.mock(
   '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component',
@@ -160,10 +175,15 @@ jest.mock(
   () => jest.fn().mockImplementation(() => <div>ManageButton.component</div>)
 );
 jest.mock(
-  '../../../components/common/EntityPageInfos/AnnouncementCard/AnnouncementCard',
+  '../../../components/common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component',
   () =>
-    jest.fn().mockImplementation(() => <div>AnnouncementCard.component</div>)
+    jest
+      .fn()
+      .mockImplementation(() => <div>AnnouncementsWidgetV3Body.component</div>)
 );
+jest.mock('../../../rest/announcementsAPI', () => ({
+  getActiveAnnouncements: jest.fn().mockResolvedValue({ data: [] }),
+}));
 jest.mock(
   '../../../components/common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer',
   () =>
@@ -185,8 +205,14 @@ jest.mock('../../../utils/TableClassBase', () => ({
   getAlertEnableStatus: jest
     .fn()
     .mockImplementation(() => mockIsAlertSupported),
-  getShowRequestDataAccess: jest.fn().mockImplementation(() => false),
-  getRequestDataAccessDrawer: jest.fn().mockImplementation(() => null),
+  getRequestDataAccessBanner: jest.fn().mockImplementation(() => null),
+  getRequestDataAccessButton: jest.fn().mockImplementation(() => null),
+}));
+
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockReturnValue({
+    currentUser: { id: 'user-1', name: 'test.user' },
+  }),
 }));
 
 jest.mock('../../../rest/lineageAPI', () => ({
@@ -222,6 +248,13 @@ jest.mock('../../../hooks/useEntityRules', () => ({
       canAddMultipleUserOwners: true,
       canAddMultipleTeamOwner: true,
     },
+  })),
+}));
+
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockImplementation(() => ({
+    getEntityPermissionByFqn: jest.fn().mockResolvedValue({}),
+    permissions: { task: { Create: true, Delete: false, EditAll: false } },
   })),
 }));
 
@@ -280,6 +313,34 @@ describe('DataAssetsHeader component', () => {
     );
 
     expect(mockGetContainerAncestors).not.toHaveBeenCalled();
+  });
+
+  it('clears stale announcements when navigating to an entity without any', async () => {
+    (getActiveAnnouncements as jest.Mock)
+      .mockResolvedValueOnce({ data: [{ id: 'announcement-1' }] })
+      .mockResolvedValueOnce({ data: [] });
+
+    const { rerender } = render(<DataAssetsHeader {...mockProps} />);
+
+    expect(
+      await screen.findByText('AnnouncementsWidgetV3Body.component')
+    ).toBeInTheDocument();
+
+    rerender(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          fullyQualifiedName: 'other.fully.qualified.name',
+        }}
+      />
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText('AnnouncementsWidgetV3Body.component')
+      ).not.toBeInTheDocument()
+    );
   });
 
   it('should resolve the full ancestor chain in a single API call', async () => {
@@ -417,6 +478,92 @@ describe('DataAssetsHeader component', () => {
     render(<DataAssetsHeader {...mockProps} />);
 
     expect(screen.queryByTestId('source-url-button')).not.toBeInTheDocument();
+  });
+
+  it('should render source URL button from endpointURL for API entities', () => {
+    const mockEndpointUrl = 'https://petstore3.swagger.io/#/pet';
+    const apiEndpointProps = {
+      ...mockProps,
+      dataAsset: {
+        ...mockProps.dataAsset,
+        sourceUrl: undefined,
+        endpointURL: mockEndpointUrl,
+      },
+    } as DataAssetsHeaderProps;
+
+    render(<DataAssetsHeader {...apiEndpointProps} />);
+
+    const sourceUrlButton = screen.getByTestId('source-url-button');
+
+    expect(sourceUrlButton).toBeInTheDocument();
+    expect(screen.getByRole('link')).toHaveAttribute('href', mockEndpointUrl);
+  });
+
+  it('should render the follow button in the stat bar and trigger onFollowClick', () => {
+    const onFollowClick = jest.fn();
+
+    render(<DataAssetsHeader {...mockProps} onFollowClick={onFollowClick} />);
+
+    const followButton = screen.getByTestId('entity-follow-button');
+
+    expect(followButton).toBeInTheDocument();
+    expect(followButton).toHaveTextContent('label.follow');
+
+    fireEvent.click(followButton);
+
+    expect(onFollowClick).toHaveBeenCalled();
+  });
+
+  it('should disable the up-vote button while the vote request is in flight', async () => {
+    let resolveVote: () => void = () => undefined;
+    const onUpdateVote = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveVote = resolve;
+        })
+    );
+
+    render(<DataAssetsHeader {...mockProps} onUpdateVote={onUpdateVote} />);
+
+    const upVoteButton = screen.getByTestId('up-vote-btn');
+
+    fireEvent.click(upVoteButton);
+
+    await waitFor(() => expect(upVoteButton).toBeDisabled());
+
+    fireEvent.click(upVoteButton);
+
+    expect(onUpdateVote).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveVote();
+    });
+  });
+
+  it('should disable the follow button while the follow request is in flight', async () => {
+    let resolveFollow: () => void = () => undefined;
+    const onFollowClick = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveFollow = resolve;
+        })
+    );
+
+    render(<DataAssetsHeader {...mockProps} onFollowClick={onFollowClick} />);
+
+    const followButton = screen.getByTestId('entity-follow-button');
+
+    fireEvent.click(followButton);
+
+    await waitFor(() => expect(followButton).toBeDisabled());
+
+    fireEvent.click(followButton);
+
+    expect(onFollowClick).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveFollow();
+    });
   });
 
   it('should render certification only when serviceCategory is undefined', () => {
@@ -659,7 +806,7 @@ describe('DataAssetsHeader component', () => {
     expect(button).toBeEnabled();
   });
 
-  it('should not render the request data access button on OSS', () => {
+  it('should not render the request data access button by default (OSS)', () => {
     render(<DataAssetsHeader {...mockProps} />);
 
     expect(
@@ -844,7 +991,10 @@ describe('DataAssetsHeader component', () => {
       mockUseCustomPages.mockReturnValue({
         customizedPage: { tabs: [{ id: EntityTabs.CONTRACT }] },
       });
-      mockGetDataContractStatusIcon.mockReturnValue('TestIcon');
+      const TestIcon = (props: { className?: string }) => (
+        <svg {...props} data-testid="contract-status-icon" />
+      );
+      mockGetDataContractStatusIcon.mockReturnValue(TestIcon);
 
       (getContractByEntityId as jest.Mock).mockImplementation(() =>
         Promise.resolve({
@@ -859,7 +1009,7 @@ describe('DataAssetsHeader component', () => {
 
       const button = screen.getByTestId('data-contract-latest-result-btn');
 
-      expect(button.querySelector('.anticon')).toBeInTheDocument();
+      expect(button.querySelector('[data-icon="leading"]')).toBeInTheDocument();
     });
 
     it('should render button without icon when getDataContractStatusIcon returns null', async () => {

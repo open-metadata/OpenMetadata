@@ -14,9 +14,13 @@ REST Auth & Client for Mode
 
 import traceback
 from base64 import b64encode
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
-from requests._internal_utils import to_native_string
+if TYPE_CHECKING:
+
+    def to_native_string(string: str | bytes, encoding: str = "ascii") -> str: ...
+else:
+    from requests._internal_utils import to_native_string
 
 from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.ometa.client import ClientConfig

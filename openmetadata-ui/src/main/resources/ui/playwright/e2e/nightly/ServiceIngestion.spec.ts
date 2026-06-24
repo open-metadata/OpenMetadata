@@ -124,9 +124,14 @@ Object.entries(services).forEach(([key, ServiceClass]) => {
        * Tests database-specific ingestion behaviors
        * @description Runs additional checks for Postgres, Redshift, and MySQL services
        */
-      test(`Service specific tests`, async ({ page }) => {
-        await service.runAdditionalTests(page, test);
-      });
+      test(
+        service.serviceType === MYSQL
+          ? 'Profiler ingestion workflow'
+          : `Service specific tests`,
+        async ({ page }) => {
+          await service.runAdditionalTests(page, test);
+        }
+      );
     }
   });
 });

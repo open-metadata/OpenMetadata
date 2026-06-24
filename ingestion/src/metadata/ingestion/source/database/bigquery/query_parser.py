@@ -62,7 +62,7 @@ class BigqueryQueryParserSource(QueryParserSource, ABC):
             end_time=end_time,
             region=self.service_connection.usageLocation,
             filters=self.get_filters(),
-            result_limit=self.source_config.resultLimit,
+            result_limit=self.source_config.resultLimit,  # pyright: ignore[reportAttributeAccessIssue]
             cost_per_tib=self.service_connection.costPerTB,
         )
 

@@ -17,7 +17,7 @@ import traceback
 from datetime import datetime
 from typing import Any, Iterable, List, Optional, Set  # noqa: UP035
 
-from requests.utils import urlparse
+from requests.utils import urlparse  # pyright: ignore[reportPrivateImportUsage]
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest

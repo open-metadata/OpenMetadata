@@ -47,8 +47,10 @@ const TagFormDrawer: FC<TagFormDrawerProps> = ({
 
   return (
     <SlideoutMenu
+      className="tw:z-999"
       data-testid="tag-form-drawer"
       isOpen={open}
+      width={480}
       onOpenChange={handleOpenChange}>
       {({ close }) => (
         <>

@@ -18,7 +18,7 @@ import {
   screen,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityPureUtils';
 import { mockCommonEntityInfo } from '../mocks/CommonEntitySummaryInfo.mock';
 import CommonEntitySummaryInfo from './CommonEntitySummaryInfo';
 import { CommonEntitySummaryInfoProps } from './CommonEntitySummaryInfo.interface';

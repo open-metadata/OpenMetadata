@@ -14,15 +14,20 @@ import { TabsProps } from 'antd';
 import { EntityTabs } from '../../enums/entity.enum';
 import { PageType, Tab } from '../../generated/system/ui/page';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
+import glossaryTermClassBase from '../Glossary/GlossaryTermClassBase';
+import {
+  getDefaultTabs,
+  getGlossaryDefaultTabs,
+  getGlossaryTermDefaultTabs,
+} from './CustomizePageDispatchUtils';
 import {
   checkIfExpandViewSupported,
-  getDefaultTabs,
   getTabDisplayName,
-  getTabLabelFromId,
   getTabLabelMapFromTabs,
   sortTabs,
-  updateWidgetHeightRecursively,
-} from './CustomizePageUtils';
+} from './CustomizePageEntityTabUtils';
+import { getTabLabelFromId } from './CustomizePagePureUtils';
+import { updateWidgetHeightRecursively } from './CustomizePageWidgetUtils';
 
 describe('CustomizePageUtils', () => {
   describe('getTabDisplayName', () => {
@@ -200,7 +205,31 @@ describe('CustomizePageUtils', () => {
       const result = getDefaultTabs(PageType.Glossary);
 
       expect(result).toBeDefined();
-      expect(result).toHaveLength(2); // Terms and Activity Feed tabs
+      expect(result).toHaveLength(3); // Terms, Relations Graph, Activity Feed tabs
+    });
+
+    it('should include RELATIONS_GRAPH in glossary default tabs', () => {
+      const result = getDefaultTabs(PageType.Glossary);
+
+      expect(
+        result.find((t) => t.id === EntityTabs.RELATIONS_GRAPH)
+      ).toBeDefined();
+    });
+
+    it('should include RELATIONS_GRAPH in glossary term default tabs', () => {
+      const result = getDefaultTabs(PageType.GlossaryTerm);
+
+      expect(
+        result.find((t) => t.id === EntityTabs.RELATIONS_GRAPH)
+      ).toBeDefined();
+    });
+
+    it('should include DATA_OBSERVABILITY in glossary term default tabs', () => {
+      const result = getDefaultTabs(PageType.GlossaryTerm);
+
+      expect(
+        result.find((t) => t.id === EntityTabs.DATA_OBSERVABILITY)
+      ).toBeDefined();
     });
 
     it('should return custom properties tab for unknown page type', () => {
@@ -279,6 +308,34 @@ describe('CustomizePageUtils', () => {
       );
 
       expect(result).toEqual(widgets);
+    });
+  });
+
+  // Registry-consistency invariant: getGlossaryTermDefaultTabs() seeds the
+  // persona customize UI, while glossaryTermClassBase.getGlossaryTermDetailPageTabsIds()
+  // is consulted elsewhere in the customization layer. When they drift, the
+  // saved customization persists an incomplete tab set and the rendered page
+  // silently drops tabs (PR #25886 lost Relations Graph this way).
+  describe('glossary term tab registry consistency', () => {
+    it('getGlossaryTermDefaultTabs IDs match getGlossaryTermDetailPageTabsIds IDs (same set and order)', () => {
+      const defaultIds = getGlossaryTermDefaultTabs().map((t) => t.id);
+      const classBaseIds = glossaryTermClassBase
+        .getGlossaryTermDetailPageTabsIds()
+        .map((t) => t.id);
+
+      expect(defaultIds).toEqual(classBaseIds);
+    });
+
+    it('getGlossaryTermDefaultTabs contains RELATIONS_GRAPH', () => {
+      const ids = getGlossaryTermDefaultTabs().map((t) => t.id);
+
+      expect(ids).toContain(EntityTabs.RELATIONS_GRAPH);
+    });
+
+    it('getGlossaryDefaultTabs contains RELATIONS_GRAPH', () => {
+      const ids = getGlossaryDefaultTabs().map((t) => t.id);
+
+      expect(ids).toContain(EntityTabs.RELATIONS_GRAPH);
     });
   });
 });

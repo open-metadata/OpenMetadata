@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { getDatabaseSchemaDetailsByFQN } from '../../rest/databaseAPI';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
-import { getFeedCounts } from '../../utils/CommonUtils';
+import { renderWithQueryClient } from '../../test/unit/test-utils';
+import { fetchEntityTaskCountsInto } from '../../utils/FeedUtilsPure';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import DatabaseSchemaPageComponent from './DatabaseSchemaPage.component';
 import {
@@ -25,7 +26,6 @@ import {
   mockPatchDatabaseSchemaDetailsData,
   mockPostThreadData,
 } from './mocks/DatabaseSchemaPage.mock';
-
 const mockEntityPermissionByFqn = jest
   .fn()
   .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
@@ -98,7 +98,7 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <p>{children}</p>)
 );
 
-jest.mock('../../utils/StringsUtils', () => ({
+jest.mock('../../utils/StringUtils', () => ({
   getDecodedFqn: jest.fn().mockImplementation((fqn) => fqn),
 }));
 
@@ -118,9 +118,17 @@ jest.mock('../../rest/tableAPI', () => ({
     ),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('../../utils/EntityDisplayUtils', () => ({
   getEntityMissingError: jest.fn().mockImplementation((error) => error),
+}));
+
+jest.mock('../../utils/FeedUtilsPure', () => ({
+  fetchEntityActivityCountInto: jest.fn(),
+  fetchEntityTaskCountsInto: jest.fn(),
   getFeedCounts: jest.fn().mockImplementation(() => FEED_COUNT_INITIAL_DATA),
+}));
+
+jest.mock('../../utils/TagsUtils', () => ({
   sortTagsCaseInsensitive: jest.fn(),
 }));
 
@@ -128,7 +136,7 @@ jest.mock('../../utils/RouterUtils', () => ({
   getDatabaseSchemaVersionPath: jest.fn().mockImplementation((path) => path),
 }));
 
-jest.mock('../../utils/TableUtils', () => ({
+jest.mock('../../utils/TablePureUtils', () => ({
   getTierTags: jest.fn(),
   getTagsWithoutTier: jest.fn(),
   extractColumnsFromData: jest.fn().mockReturnValue([]),
@@ -256,6 +264,14 @@ jest.mock(
         .mockImplementation(({ children }) =>
           React.createElement('div', null, children)
         ),
+    };
+  }
+);
+
+jest.mock(
+  '../../components/Customization/GenericProvider/GenericContext',
+  () => {
+    return {
       useGenericContext: jest.fn().mockReturnValue({
         data: {},
         permissions: DEFAULT_ENTITY_PERMISSION,
@@ -276,7 +292,7 @@ jest.mock(
 
 describe('Tests for DatabaseSchemaPage', () => {
   it('DatabaseSchemaPage should fetch permissions', () => {
-    render(<DatabaseSchemaPageComponent />);
+    renderWithQueryClient(<DatabaseSchemaPageComponent />);
 
     expect(mockEntityPermissionByFqn).toHaveBeenCalledWith(
       'databaseSchema',
@@ -285,7 +301,7 @@ describe('Tests for DatabaseSchemaPage', () => {
   });
 
   it('DatabaseSchemaPage should not fetch details if permission is there', () => {
-    render(<DatabaseSchemaPageComponent />);
+    renderWithQueryClient(<DatabaseSchemaPageComponent />);
 
     expect(getDatabaseSchemaDetailsByFQN).not.toHaveBeenCalled();
     expect(getStoredProceduresList).not.toHaveBeenCalled();
@@ -299,7 +315,7 @@ describe('Tests for DatabaseSchemaPage', () => {
     }));
 
     await act(async () => {
-      render(<DatabaseSchemaPageComponent />);
+      renderWithQueryClient(<DatabaseSchemaPageComponent />);
     });
 
     expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
@@ -313,7 +329,7 @@ describe('Tests for DatabaseSchemaPage', () => {
     }));
 
     await act(async () => {
-      render(<DatabaseSchemaPageComponent />);
+      renderWithQueryClient(<DatabaseSchemaPageComponent />);
     });
 
     expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(mockParams.fqn, {
@@ -330,7 +346,7 @@ describe('Tests for DatabaseSchemaPage', () => {
     }));
 
     await act(async () => {
-      render(<DatabaseSchemaPageComponent />);
+      renderWithQueryClient(<DatabaseSchemaPageComponent />);
     });
 
     expect(getStoredProceduresList).toHaveBeenCalledWith({
@@ -346,7 +362,7 @@ describe('Tests for DatabaseSchemaPage', () => {
       }),
     }));
 
-    render(<DatabaseSchemaPageComponent />);
+    renderWithQueryClient(<DatabaseSchemaPageComponent />);
 
     await waitFor(() => {
       expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
@@ -370,7 +386,7 @@ describe('Tests for DatabaseSchemaPage', () => {
       }),
     }));
 
-    render(<DatabaseSchemaPageComponent />);
+    renderWithQueryClient(<DatabaseSchemaPageComponent />);
 
     await waitFor(() => {
       expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
@@ -398,7 +414,7 @@ describe('Tests for DatabaseSchemaPage', () => {
       }),
     }));
 
-    const { rerender } = render(<DatabaseSchemaPageComponent />);
+    const { rerender } = renderWithQueryClient(<DatabaseSchemaPageComponent />);
 
     // Wait for initial API calls
     await waitFor(() => {
@@ -410,8 +426,7 @@ describe('Tests for DatabaseSchemaPage', () => {
         databaseSchema: 'sample_data.ecommerce_db.shopify',
         limit: 0,
       });
-      expect(getFeedCounts).toHaveBeenCalledWith(
-        'databaseSchema',
+      expect(fetchEntityTaskCountsInto).toHaveBeenCalledWith(
         'sample_data.ecommerce_db.shopify',
         expect.any(Function)
       );
@@ -437,8 +452,7 @@ describe('Tests for DatabaseSchemaPage', () => {
         databaseSchema: 'Glue.default.information_schema',
         limit: 0,
       });
-      expect(getFeedCounts).toHaveBeenCalledWith(
-        'databaseSchema',
+      expect(fetchEntityTaskCountsInto).toHaveBeenCalledWith(
         'Glue.default.information_schema',
         expect.any(Function)
       );
@@ -462,7 +476,7 @@ describe('Tests for DatabaseSchemaPage', () => {
     }));
 
     await act(async () => {
-      render(<DatabaseSchemaPageComponent />);
+      renderWithQueryClient(<DatabaseSchemaPageComponent />);
     });
 
     expect(PageLayoutV1).toHaveBeenCalledWith(

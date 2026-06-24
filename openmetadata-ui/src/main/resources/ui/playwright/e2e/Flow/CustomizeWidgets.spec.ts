@@ -301,7 +301,7 @@ test('My Data Widget', async ({ page }) => {
   await test.step('Test widget filters', async () => {
     await waitForAllLoadersToDisappear(page);
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    await verifyDataFilters(page, widgetKey);
+    await verifyDataFilters(page, widgetKey, 'dataAsset');
   });
 
   await test.step('Test widget displays entities and navigation', async () => {
@@ -519,7 +519,7 @@ test('Following Assets Widget', async ({ page }) => {
   await test.step('Test widget filters', async () => {
     await waitForAllLoadersToDisappear(page);
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    await verifyDataFilters(page, widgetKey);
+    await verifyDataFilters(page, widgetKey, 'all');
   });
 
   await test.step('Test widget displays followed entities', async () => {
@@ -619,8 +619,7 @@ test('My Tasks Widget', async ({ page }) => {
     await apiContext.post('/api/v1/tasks', {
       data: {
         name: `My Tasks Widget Test - ${Date.now()}`,
-        about: glossary1.responseData.fullyQualifiedName,
-        aboutType: 'glossary',
+        about: `<#E::glossary::${glossary1.responseData.fullyQualifiedName}>`,
         type: 'DescriptionUpdate',
         category: 'MetadataUpdate',
         assignees: [adminUser.responseData.name],

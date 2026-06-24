@@ -13,67 +13,63 @@
 Source connection handler
 """
 
-from typing import Optional
-
-from sqlalchemy.engine import Engine
+from typing import Any, Optional
 
 from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.database.glueConnection import (
-    GlueConnection,
+    GlueConnection as GlueConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
 
 
-def get_connection(connection: GlueConnection) -> Engine:
-    """
-    Create connection
-    """
-    return AWSClient(connection.awsConfig).get_glue_client()
+class GlueConnection(BaseConnection[GlueConnectionConfig, Any]):
+    def _get_client(self) -> Any:
+        return AWSClient(self.service_connection.awsConfig).get_glue_client()
 
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        """
+        Test connection. This can be executed either as part
+        of a metadata workflow or during an Automation Workflow
+        """
+        client = self.client
 
-def test_connection(
-    metadata: OpenMetadata,
-    client: AWSClient,
-    service_connection: GlueConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
-) -> TestConnectionResult:
-    """
-    Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
-    """
+        def custom_executor_for_database():
+            paginator = client.get_paginator("get_databases")
+            list(paginator.paginate())
 
-    def custom_executor_for_database():
-        paginator = client.get_paginator("get_databases")
-        list(paginator.paginate())
+        def custom_executor_for_table():
+            paginator = client.get_paginator("get_databases")
+            for page in paginator.paginate():
+                for schema in page["DatabaseList"]:
+                    database_name = schema["Name"]
+                    paginator = client.get_paginator("get_tables")
+                    tables = paginator.paginate(DatabaseName=database_name)
+                    return list(tables)
+            return None
 
-    def custom_executor_for_table():
-        paginator = client.get_paginator("get_databases")
-        for page in paginator.paginate():
-            for schema in page["DatabaseList"]:
-                database_name = schema["Name"]
-                paginator = client.get_paginator("get_tables")
-                tables = paginator.paginate(DatabaseName=database_name)
-                return list(tables)
-        return None
+        test_fn = {
+            "GetDatabases": custom_executor_for_database,
+            "GetTables": custom_executor_for_table,
+        }
 
-    test_fn = {
-        "GetDatabases": custom_executor_for_database,
-        "GetTables": custom_executor_for_table,
-    }
-
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
+        return test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=self.service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
+            automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
+        )

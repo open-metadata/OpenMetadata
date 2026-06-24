@@ -51,6 +51,7 @@ class TaskEntityType(str, Enum):
     IncidentResolution = "IncidentResolution"
     PipelineReview = "PipelineReview"
     DataQualityReview = "DataQualityReview"
+    RecognizerFeedbackApproval = "RecognizerFeedbackApproval"
     CustomTask = "CustomTask"
 
 
@@ -171,8 +172,7 @@ class CreateTaskRequest(BaseModel):
     category: TaskCategory
     type: TaskEntityType
     priority: Optional[TaskPriority] = None  # noqa: UP045
-    about: Optional[str] = None  # noqa: UP045
-    aboutType: Optional[str] = None  # noqa: N815, UP045
+    about: Optional[basic.EntityLink] = None  # noqa: UP045
     domain: Optional[str] = None  # noqa: UP045
     assignees: Optional[List[str]] = None  # noqa: UP006, UP045
     reviewers: Optional[List[str]] = None  # noqa: UP006, UP045

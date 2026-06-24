@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
 import { isEqual, isUndefined } from 'lodash';
-import { FC, Fragment, RefObject, useEffect, useState } from 'react';
+import { FC, Fragment, lazy, RefObject, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { confirmStateInitialValue } from '../../../constants/Feeds.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
@@ -28,11 +28,11 @@ import { Paging } from '../../../generated/type/paging';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { getAllFeeds } from '../../../rest/feedsAPI';
 import { TaskStatusGroup } from '../../../rest/tasksAPI';
-import { getEntityFQN, getEntityType } from '../../../utils/FeedUtils';
+import { getEntityFQN, getEntityType } from '../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
-import { TaskTabNew } from '../../Entity/Task/TaskTab/TaskTabNew.component';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
@@ -42,6 +42,13 @@ import TaskFeedCardFromTask from '../TaskFeedCard/TaskFeedCardFromTask.component
 import ActivityThread from './ActivityThread';
 import ActivityThreadList from './ActivityThreadList';
 import { ActivityThreadPanelBodyProp } from './ActivityThreadPanel.interface';
+const TaskTabNew = withSuspenseFallback(
+  lazy(() =>
+    import('../../Entity/Task/TaskTab/TaskTabNew.component').then((m) => ({
+      default: m.TaskTabNew,
+    }))
+  )
+);
 
 const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   threadLink,
@@ -79,8 +86,9 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
 
   const [isThreadLoading, setIsThreadLoading] = useState(false);
 
-  const [taskStatusGroup, setTaskStatusGroup] =
-    useState<TaskStatusGroup>('open');
+  const [taskStatusGroup, setTaskStatusGroup] = useState<TaskStatusGroup>(
+    TaskStatusGroup.Open
+  );
 
   const isTaskType = view === 'tasks';
 
@@ -222,7 +230,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   };
 
   const onSwitchChange = (checked: boolean) => {
-    setTaskStatusGroup(checked ? 'closed' : 'open');
+    setTaskStatusGroup(checked ? TaskStatusGroup.Closed : TaskStatusGroup.Open);
   };
 
   useEffect(() => {

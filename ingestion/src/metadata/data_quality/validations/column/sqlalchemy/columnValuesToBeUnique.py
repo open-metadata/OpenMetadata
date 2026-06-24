@@ -75,7 +75,7 @@ class ColumnValuesToBeUniqueValidator(
         """
         count = Metrics.valuesCount.value(column).fn()
         grouped_cte = (
-            select(count.label(column.name)).select_from(self.runner.dataset).group_by(column).cte("grouped_cte")
+            select(count.label(column.name)).select_from(self.runner.dataset).group_by(column).cte("grouped_cte")  # type: ignore
         )
         unique_count = Metrics.uniqueCount.value(column).query(
             sample=self.runner.dataset,

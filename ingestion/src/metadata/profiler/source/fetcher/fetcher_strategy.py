@@ -40,7 +40,7 @@ from metadata.profiler.source.fetcher.profiler_source_factory import (
 from metadata.profiler.source.model import ProfilerSourceAndEntity
 from metadata.utils.db_utils import Table
 from metadata.utils.filters import (
-    filter_by_classification,
+    filter_by_classifications,
     filter_by_container,
     filter_by_schema,
     filter_by_table,
@@ -112,25 +112,17 @@ class FetcherStrategy(ABC):
             return False
 
         use_fqn_for_filtering = getattr(self.source_config, "useFqnForFiltering", False)
+        tag_names = [
+            name
+            for name in (tag.tagFQN.root if use_fqn_for_filtering else tag.name for tag in (entity.tags or []))
+            if name
+        ]
 
-        if not entity.tags:
-            # if we are not explicitly including entities with tags we'll add the ones without tags
-            if not classification_filter_pattern.includes:  # noqa: SIM103
-                return False
-            return True
-
-        for tag in entity.tags:
-            tag_name = tag.tagFQN.root if use_fqn_for_filtering else tag.name
-            if not tag_name:
-                continue
-            if filter_by_classification(classification_filter_pattern, tag_name):
-                self.status.filter(
-                    tag_name,
-                    f"Classification pattern not allowed for entity {entity.fullyQualifiedName.root}",
-                )  # type: ignore
-                return True
-
-        return False
+        is_filtered = filter_by_classifications(classification_filter_pattern, tag_names)
+        if is_filtered:
+            entity_fqn = entity.fullyQualifiedName.root if entity.fullyQualifiedName else ""
+            self.status.filter(entity_fqn, "Classification pattern not allowed")
+        return is_filtered
 
     @abstractmethod
     def fetch(self) -> Iterator[Either[ProfilerSourceAndEntity]]:
@@ -392,9 +384,9 @@ class StorageFetcherStrategy(FetcherStrategy):
         containers = [
             container
             for container in containers
-            if (not self.source_config.bucketFilterPattern or not self._filter_buckets(container))
-            and (not self.source_config.containerFilterPattern or not self._filter_containers(container))
-            and (not self.source_config.classificationFilterPattern or not self.filter_classifications(container))
+            if (not self.source_config.bucketFilterPattern or not self._filter_buckets(container))  # pyright: ignore[reportAttributeAccessIssue]
+            and (not self.source_config.containerFilterPattern or not self._filter_containers(container))  # pyright: ignore[reportAttributeAccessIssue]
+            and (not self.source_config.classificationFilterPattern or not self.filter_classifications(container))  # pyright: ignore[reportAttributeAccessIssue]
             and container.dataModel is not None
         ]
 

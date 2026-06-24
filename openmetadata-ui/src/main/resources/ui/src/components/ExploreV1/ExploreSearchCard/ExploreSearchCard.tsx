@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
+import { Breadcrumbs, Card } from '@openmetadata/ui-core-components';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isObject, isString, startCase, uniqueId } from 'lodash';
-import { ExtraInfo } from 'Models';
-import { forwardRef, useMemo } from 'react';
+import type { ExtraInfo } from 'Models';
+import { forwardRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ScoreIcon } from '../../../assets/svg/score.svg';
@@ -28,18 +29,21 @@ import {
 } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
-import { TagLabel } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
 import { TableColumnSearchSource } from '../../../interface/search.interface';
-import { getEntityName, highlightSearchText } from '../../../utils/EntityUtils';
+import { prefetchDashboard } from '../../../rest/queries/dashboardQuery';
+import { prefetchPipeline } from '../../../rest/queries/pipelineQuery';
+import { prefetchTable } from '../../../rest/queries/tableQuery';
+import { prefetchTopic } from '../../../rest/queries/topicQuery';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { highlightEntityNameAndDescription } from '../../../utils/EntitySearchUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
-import { stringToHTML } from '../../../utils/StringsUtils';
-import { getUsagePercentile } from '../../../utils/TableUtils';
+import { stringToHTML } from '../../../utils/StringUtils';
+import { getUsagePercentile } from '../../../utils/TablePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import { DomainDisplay } from '../../common/DomainDisplay/DomainDisplay.component';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
-import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
@@ -55,7 +59,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     {
       id,
       className,
-      source,
+      source: _source,
       matches,
       showEntityIcon,
       handleSummaryPanelDisplay,
@@ -66,8 +70,8 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       showCheckboxes = false,
       checked = false,
       onCheckboxChange,
-      searchValue,
       score,
+      highlight,
       classNameForBreadcrumb,
     },
     ref
@@ -75,6 +79,46 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     const { t } = useTranslation();
     const { tab } = useRequiredParams<{ tab: string }>();
     const { isTourOpen } = useTourProvider();
+    const queryClient = useQueryClient();
+
+    const source = useMemo(() => {
+      return highlight
+        ? highlightEntityNameAndDescription(_source, highlight)
+        : _source;
+    }, [_source, highlight]);
+
+    // Hover/focus on an entity card warms the React Query cache so the click that follows
+    // hits an already-populated slot. Dispatched on entityType because each detail page reads
+    // a slot keyed on its own {@code ['<type>', fqn, fields]} convention; entity types that
+    // haven't migrated to useQuery yet fall through as no-ops. {@code prefetchQuery} is
+    // idempotent within the configured {@code staleTime}, so repeated hovers don't re-fire.
+    const handlePrefetch = useCallback(() => {
+      const fqn = source.fullyQualifiedName;
+      if (!fqn) {
+        return;
+      }
+      switch (source.entityType) {
+        case EntityType.TABLE:
+          prefetchTable(queryClient, fqn);
+
+          break;
+        case EntityType.DASHBOARD:
+          prefetchDashboard(queryClient, fqn);
+
+          break;
+        case EntityType.PIPELINE:
+          prefetchPipeline(queryClient, fqn);
+
+          break;
+        case EntityType.TOPIC:
+          prefetchTopic(queryClient, fqn);
+
+          break;
+        default:
+          break;
+      }
+    }, [queryClient, source.entityType, source.fullyQualifiedName]);
+
     const otherDetails = useMemo(() => {
       if (source?.entityType === EntityType.TABLE_COLUMN) {
         const columnSource = source as TableColumnSearchSource;
@@ -125,7 +169,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             <OwnerLabel
               avatarSize={18}
               isCompactView={false}
-              owners={(columnSource?.owners as EntityReference[]) ?? []}
+              owners={columnSource?.owners ?? []}
               showLabel={false}
             />
           ),
@@ -137,10 +181,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       const tierValue = isString(source.tier)
         ? source.tier
         : source.tier && (
-            <TagsV1
-              startWith={TAG_START_WITH.SOURCE_ICON}
-              tag={source.tier as TagLabel}
-            />
+            <TagsV1 startWith={TAG_START_WITH.SOURCE_ICON} tag={source.tier} />
           );
 
       const shouldShowDomainField = !searchClassBase
@@ -212,7 +253,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         searchClassBase.getEntityBreadcrumbs(
           source,
           source.entityType as EntityType,
-          true
+          false
         ),
       [source]
     );
@@ -267,32 +308,43 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         <Row gutter={[8, 8]}>
           {showCheckboxes && (
             <Col flex="25px">
-              <div onClick={(e) => e.stopPropagation()}>
-                <Checkbox
-                  checked={checked}
-                  className="assets-checkbox"
-                  onChange={(e) => {
-                    onCheckboxChange?.(e.target.checked);
-                  }}
-                />
-              </div>
+              <Checkbox
+                checked={checked}
+                className="assets-checkbox"
+                onChange={(e) => {
+                  onCheckboxChange?.(e.target.checked);
+                  e.stopPropagation();
+                }}
+                onClick={(e) => e.stopPropagation()}
+              />
             </Col>
           )}
           {!hideBreadcrumbs && (
             <Col className="d-flex justify-between items-center" flex="auto">
-              <div className="d-flex gap-2 items-center">
+              <div
+                className={classNames(
+                  'd-flex gap-2 items-center tw:min-w-0',
+                  classNameForBreadcrumb
+                )}>
                 {breadcrumbs.length > 0 && serviceIcon}
-                <div className="entity-breadcrumb" data-testid="category-name">
-                  <TitleBreadcrumb
-                    className={classNameForBreadcrumb}
-                    titleLinks={breadcrumbs}
-                    widthDeductions={780}
-                  />
-                </div>
+                {/* Always collapse the middle crumbs into a clickable "…" menu
+                    (first / … / last) so a deep path stays compact and the
+                    summary side-panel keeps its room; the hidden crumbs expand
+                    on click. autoCollapse only collapses on overflow, so a wide
+                    card would otherwise show the whole trail. */}
+                <Breadcrumbs
+                  items={breadcrumbs.map((b) => ({
+                    id: b.name,
+                    label: getEntityName(b),
+                    href: typeof b.url === 'string' ? b.url : b.url.pathname,
+                  }))}
+                  maxItems={2}
+                />
               </div>
               {score && (
                 <div className="flex items-center gap-1 score-container">
-                  <Icon className="text-xs" component={ScoreIcon} />
+                  <ScoreIcon />
+
                   <Typography.Text className="text-xs score">
                     <span className="font-normal">
                       {t('label.score-label').toUpperCase()}
@@ -313,12 +365,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 <Typography.Text
                   className="text-lg font-medium text-link-color"
                   data-testid="entity-header-display-name">
-                  {stringToHTML(
-                    highlightSearchText(
-                      searchClassBase.getEntityName(source),
-                      searchValue
-                    )
-                  )}
+                  {stringToHTML(searchClassBase.getEntityName(source))}
                 </Typography.Text>
               </Button>
             ) : (
@@ -336,16 +383,13 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                     source,
                     openEntityInNewPage
                   )}
-                  to={isObject(entityLink) ? entityLink.pathname : entityLink}>
+                  to={isObject(entityLink) ? entityLink.pathname : entityLink}
+                  onFocus={handlePrefetch}
+                  onMouseEnter={handlePrefetch}>
                   <Typography.Text
                     className="text-lg font-medium text-link-color break-word whitespace-normal"
                     data-testid="entity-header-display-name">
-                    {stringToHTML(
-                      highlightSearchText(
-                        searchClassBase.getEntityName(source),
-                        searchValue
-                      )
-                    )}
+                    {stringToHTML(searchClassBase.getEntityName(source))}
                   </Typography.Text>
                 </Link>
 
@@ -384,7 +428,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     ]);
 
     return (
-      <div
+      <Card
         className={classNames('explore-search-card', className)}
         data-testid={'table-data-card_' + (source.fullyQualifiedName ?? '')}
         id={id}
@@ -396,10 +440,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
 
         <div className="p-t-sm">
           <TableDataCardBody
-            description={highlightSearchText(
-              source.description ?? '',
-              searchValue
-            )}
+            description={source.description ?? ''}
             extraInfo={otherDetails}
             tags={showTags ? source.tags : []}
           />
@@ -420,7 +461,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         {actionPopoverContent && (
           <Space className="explore-card-actions">{actionPopoverContent}</Space>
         )}
-      </div>
+      </Card>
     );
   }
 );

@@ -15,7 +15,8 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.jdbi3.ListFilter.escape;
-import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
+import static org.openmetadata.service.jdbi3.ListFilter.escapeBackslashAndApostrophe;
+import static org.openmetadata.service.jdbi3.ListFilter.escapeForMySqlRegexReplacement;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
@@ -25,6 +26,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import lombok.SneakyThrows;
 import org.apache.commons.collections4.CollectionUtils;
 import org.jdbi.v3.core.mapper.RowMapper;
@@ -55,6 +58,63 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 public interface EntityDAO<T extends EntityInterface> {
   org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(EntityDAO.class);
+
+  /**
+   * Maximum number of values expanded into a single SQL IN-list. JDBI's {@code @BindList}
+   * produces one bind parameter per element. OpenMetadata supports MySQL and PostgreSQL —
+   * PostgreSQL's protocol caps each statement at 65535 bind parameters
+   * (the {@code int2}-size {@code numParams} field), and MySQL's {@code max_allowed_packet}
+   * caps total statement size. 30k UUID/hash strings stays comfortably under both: each
+   * UUID is ~36 chars, so an IN-list of this size is ~1MB on the wire (well below the 64MB
+   * MySQL default) and still leaves headroom for Postgres's parameter ceiling. Callers that
+   * may exceed this size must chunk their input lists; helpers in this interface
+   * ({@link #findEntitiesByIds}, {@link #findEntityByNames}, {@link #findReferencesByFqns},
+   * {@link #deleteByIds}) already do. (SQL Server isn't a supported connection type here —
+   * its ~2100 sp_executesql cap would require a separate, much smaller constant if it ever
+   * is.)
+   */
+  int MAX_IN_LIST_CHUNK_SIZE = 30_000;
+
+  /**
+   * Run a SQL IN-list query in {@link #MAX_IN_LIST_CHUNK_SIZE}-sized chunks and concatenate the
+   * results, keeping each statement under the database parameter ceiling. For inputs at or below
+   * the chunk size the list is passed straight through, preserving the single-query behavior (and
+   * the caller's empty-list handling) exactly. When chunking is required the ids are de-duplicated
+   * first (encounter order preserved) so a value split across two chunks is not queried twice and
+   * cannot duplicate result rows — matching the semantics of a single {@code IN (...)}, which
+   * ignores duplicate values.
+   */
+  static <I, R> List<R> queryInChunks(List<I> ids, Function<List<I>, List<R>> query) {
+    List<R> result;
+    if (ids != null && ids.size() > MAX_IN_LIST_CHUNK_SIZE) {
+      List<I> distinctIds = ids.stream().distinct().toList();
+      result = new ArrayList<>(distinctIds.size());
+      for (int i = 0; i < distinctIds.size(); i += MAX_IN_LIST_CHUNK_SIZE) {
+        int end = Math.min(i + MAX_IN_LIST_CHUNK_SIZE, distinctIds.size());
+        result.addAll(query.apply(distinctIds.subList(i, end)));
+      }
+    } else {
+      result = query.apply(ids);
+    }
+    return result;
+  }
+
+  /**
+   * Void counterpart of {@link #queryInChunks} for chunked IN-list updates/deletes. De-duplicates
+   * before chunking for the same reason: a value split across chunks would otherwise issue a
+   * redundant statement, whereas a single {@code WHERE id IN (...)} affects each row once.
+   */
+  static <I> void updateInChunks(List<I> ids, Consumer<List<I>> update) {
+    if (ids != null && ids.size() > MAX_IN_LIST_CHUNK_SIZE) {
+      List<I> distinctIds = ids.stream().distinct().toList();
+      for (int i = 0; i < distinctIds.size(); i += MAX_IN_LIST_CHUNK_SIZE) {
+        int end = Math.min(i + MAX_IN_LIST_CHUNK_SIZE, distinctIds.size());
+        update.accept(distinctIds.subList(i, end));
+      }
+    } else {
+      update.accept(ids);
+    }
+  }
 
   /** Methods that need to be overridden by interfaces extending this */
   String getTableName();
@@ -154,6 +214,30 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("version") String version);
 
   /**
+   * Optimistic content-based compare-and-swap. Rewrites the row only when its stored json still
+   * equals {@code expectedJson} (the snapshot last read). Returns the number of rows updated (0
+   * when another writer changed the row in the meantime, 1 on success). Lets background rewrites
+   * detect lost-update races without bumping the entity version or writing version history.
+   */
+  @ConnectionAwareSqlUpdate(
+      value =
+          "UPDATE <table> SET json = :json, <nameHashColumn> = :nameHashColumnValue "
+              + "WHERE id = :id AND json = CAST(:expectedJson AS JSON)",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+      value =
+          "UPDATE <table> SET json = (:json :: jsonb), <nameHashColumn> = :nameHashColumnValue "
+              + "WHERE id = :id AND json = (:expectedJson :: jsonb)",
+      connectionType = POSTGRES)
+  int updateIfMatches(
+      @Define("table") String table,
+      @Define("nameHashColumn") String nameHashColumn,
+      @BindFQN("nameHashColumnValue") String nameHashColumnValue,
+      @Bind("id") String id,
+      @Bind("json") String json,
+      @Bind("expectedJson") String expectedJson);
+
+  /**
    * List (id, fullyQualifiedName) pairs for all rows whose FQN hash begins with {@code
    * oldPrefixHash}. Used by rename cascade flows to enumerate which children need cache
    * invalidation before an {@link #updateFqn} bulk rewrite.
@@ -176,10 +260,47 @@ public interface EntityDAO<T extends EntityInterface> {
 
   default List<EntityIdFqnPair> listDescendantIdFqnByPrefix(String oldPrefix) {
     if (!getNameHashColumn().equals("fqnHash")) {
-      return java.util.Collections.emptyList();
+      return List.of();
     }
     String prefixPattern = FullyQualifiedName.buildHash(oldPrefix) + ".%";
     return listIdFqnByPrefixHash(getTableName(), getNameHashColumn(), prefixPattern);
+  }
+
+  /**
+   * Like {@link #listIdFqnByPrefixHash} but excludes soft-deleted rows. Used by the bulk
+   * stale-deletion path which only considers currently-live entities when deciding what the
+   * connector no longer reports.
+   */
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) AS fqn FROM <table> "
+              + "WHERE <nameHashColumn> LIKE :prefix "
+              + "AND (JSON_EXTRACT(json, '$.deleted') IS NULL "
+              + "OR JSON_UNQUOTE(JSON_EXTRACT(json, '$.deleted')) = 'false')",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, json->>'fullyQualifiedName' AS fqn FROM <table> "
+              + "WHERE <nameHashColumn> LIKE :prefix "
+              + "AND (json->>'deleted' IS NULL OR json->>'deleted' = 'false')",
+      connectionType = POSTGRES)
+  @RegisterRowMapper(EntityIdFqnPairMapper.class)
+  List<EntityIdFqnPair> listIdFqnByPrefixHashNonDeleted(
+      @Define("table") String table,
+      @Define("nameHashColumn") String nameHashColumn,
+      @Bind("prefix") String prefix);
+
+  /**
+   * List (id, fullyQualifiedName) pairs for all non-deleted descendants of {@code scopeFqn}.
+   * Returns an empty list for entity types whose name-hash column is not {@code fqnHash} - those
+   * types do not participate in scope-based stale deletion.
+   */
+  default List<EntityIdFqnPair> listDescendantIdFqnByPrefixNonDeleted(String scopeFqn) {
+    if (!getNameHashColumn().equals("fqnHash")) {
+      return List.of();
+    }
+    String prefixPattern = FullyQualifiedName.buildHash(scopeFqn) + ".%";
+    return listIdFqnByPrefixHashNonDeleted(getTableName(), getNameHashColumn(), prefixPattern);
   }
 
   final class EntityIdFqnPair {
@@ -272,7 +393,7 @@ public interface EntityDAO<T extends EntityInterface> {
     }
     List<String> nameHashes =
         entityFQNs.stream().distinct().map(FullyQualifiedName::buildHash).toList();
-    int maxChunkSize = 30000;
+    int maxChunkSize = MAX_IN_LIST_CHUNK_SIZE;
     if (nameHashes.size() <= maxChunkSize) {
       return findReferenceRows(nameHashes, include).stream()
           .map(row -> row.toEntityReference(Entity.getEntityTypeFromClass(getEntityClass())))
@@ -325,6 +446,16 @@ public interface EntityDAO<T extends EntityInterface> {
     if (!getNameHashColumn().equals("fqnHash")) {
       return;
     }
+    // The regex replacement argument to MySQL's REGEXP_REPLACE has its own escape layer
+    // on top of the SQL string-literal layer — `\1`/`\2` are backreferences, `\\` is a
+    // literal backslash. Using escapeBackslashAndApostrophe here would only escape for the
+    // SQL layer, leaving a stray backslash in newPrefix to be interpreted by the regex
+    // engine. escapeForMySqlRegexReplacement applies both layers (regex-replacement first,
+    // then SQL string-literal) so an input backslash round-trips to a single literal
+    // backslash in the replacement output. The source pattern goes through escape() which
+    // already covers the SQL + LIKE-underscore layers — the regex-pattern layer is
+    // tolerated here because OpenMetadata's name validation forbids the regex metas that
+    // would matter (\ . * ? + ^ $ ( ) [ ] { } |).
     String mySqlUpdate =
         String.format(
             "UPDATE %s SET json = "
@@ -333,11 +464,16 @@ public interface EntityDAO<T extends EntityInterface> {
                 + "WHERE fqnHash LIKE '%s.%%'",
             getTableName(),
             escape(oldPrefix),
-            escapeApostrophe(newPrefix),
+            escapeForMySqlRegexReplacement(newPrefix),
             FullyQualifiedName.buildHash(oldPrefix),
             FullyQualifiedName.buildHash(newPrefix),
             FullyQualifiedName.buildHash(oldPrefix));
 
+    // Postgres path embeds the prefixes inside a double-quoted JSON pattern, so escape
+    // backslashes and apostrophes first (so a literal "\\" or "''" isn't reparsed by the
+    // SQL string-literal layer), then escape double-quotes so the JSON-pattern delimiter
+    // can't be broken out of. Apostrophe escaping is still required because the JSON
+    // pattern itself sits inside a single-quoted SQL string literal.
     String postgresUpdate =
         String.format(
             "UPDATE %s SET json = "
@@ -346,8 +482,8 @@ public interface EntityDAO<T extends EntityInterface> {
                 + ", fqnHash = REPLACE(fqnHash, '%s.', '%s.') "
                 + "WHERE fqnHash LIKE '%s.%%'",
             getTableName(),
-            ReindexingUtil.escapeDoubleQuotes(escapeApostrophe(oldPrefix)),
-            ReindexingUtil.escapeDoubleQuotes(escapeApostrophe(newPrefix)),
+            ReindexingUtil.escapeDoubleQuotes(escapeBackslashAndApostrophe(oldPrefix)),
+            ReindexingUtil.escapeDoubleQuotes(escapeBackslashAndApostrophe(newPrefix)),
             FullyQualifiedName.buildHash(oldPrefix),
             FullyQualifiedName.buildHash(newPrefix),
             FullyQualifiedName.buildHash(oldPrefix));
@@ -361,6 +497,10 @@ public interface EntityDAO<T extends EntityInterface> {
 
   @SqlQuery("SELECT json FROM <table> WHERE id = :id <cond>")
   String findById(
+      @Define("table") String table, @BindUUID("id") UUID id, @Define("cond") String cond);
+
+  @SqlQuery("SELECT json FROM <table> WHERE id = :id <cond> FOR UPDATE")
+  String findByIdForUpdate(
       @Define("table") String table, @BindUUID("id") UUID id, @Define("cond") String cond);
 
   @SqlQuery("SELECT id, json FROM <table> WHERE id IN (<ids>) <cond>")
@@ -596,6 +736,36 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("limit") int limit,
       @Bind("offset") int offset);
 
+  record CursorRow(String name, String id) {}
+
+  class CursorRowMapper implements RowMapper<CursorRow> {
+    @Override
+    public CursorRow map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new CursorRow(rs.getString("name"), rs.getString("id"));
+    }
+  }
+
+  /**
+   * Lightweight cursor lookup at an absolute offset. Selects ONLY {@code name}, {@code id} so the
+   * per-entity {@code (name)} index covers the query and {@code ORDER BY name, id} is served
+   * index-only ({@code EXPLAIN} shows "Using index") with no filesort. Selecting {@code json} is
+   * not covered by that index, so a cost-based optimizer may instead choose a filesort on the
+   * {@code ORDER BY name, id} key — the json-derived {@code name} generated column, whose sort
+   * rows can exhaust sort memory and throw {@code ER_OUT_OF_SORTMEMORY ("Out of sort memory,
+   * consider increasing server sort buffer size")} on large catalogs (the work scales with the
+   * OFFSET). Serving the cursor lookup index-only avoids that sort entirely and never materializes
+   * the {@code json} blob for the skipped rows. The {@code name}/{@code id} columns are generated
+   * from {@code json.$.name}/{@code json.$.id}, so the returned values are identical to
+   * {@code entity.getName()}/{@code entity.getId()}.
+   */
+  @SqlQuery("SELECT name, id FROM <table> <cond> ORDER BY name, id LIMIT 1 OFFSET :offset")
+  @RegisterRowMapper(CursorRowMapper.class)
+  CursorRow getCursorAtOffset(
+      @Define("table") String table,
+      @BindMap Map<String, ?> params,
+      @Define("cond") String cond,
+      @Bind("offset") int offset);
+
   @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE id = :id)")
   boolean exists(@Define("table") String table, @BindUUID("id") UUID id);
 
@@ -607,6 +777,26 @@ public interface EntityDAO<T extends EntityInterface> {
 
   @SqlUpdate("DELETE FROM <table> WHERE id = :id")
   int delete(@Define("table") String table, @BindUUID("id") UUID id);
+
+  @SqlUpdate("DELETE FROM <table> WHERE id IN (<ids>)")
+  int deleteByIds(@Define("table") String table, @BindList("ids") List<String> ids);
+
+  default int deleteByIds(List<UUID> ids) {
+    if (ids == null || ids.isEmpty()) {
+      return 0;
+    }
+    List<String> stringIds = ids.stream().map(UUID::toString).toList();
+    int maxChunkSize = MAX_IN_LIST_CHUNK_SIZE;
+    if (stringIds.size() <= maxChunkSize) {
+      return deleteByIds(getTableName(), stringIds);
+    }
+    int deleted = 0;
+    for (int i = 0; i < stringIds.size(); i += maxChunkSize) {
+      List<String> chunk = stringIds.subList(i, Math.min(i + maxChunkSize, stringIds.size()));
+      deleted += deleteByIds(getTableName(), chunk);
+    }
+    return deleted;
+  }
 
   @ConnectionAwareSqlUpdate(value = "ANALYZE TABLE <table>", connectionType = MYSQL)
   @ConnectionAwareSqlUpdate(value = "ANALYZE <table>", connectionType = POSTGRES)
@@ -669,6 +859,16 @@ public interface EntityDAO<T extends EntityInterface> {
         JsonUtils.pojoToJson(entity));
   }
 
+  default int updateIfMatches(EntityInterface entity, String expectedJson) {
+    return updateIfMatches(
+        getTableName(),
+        getNameHashColumn(),
+        entity.getFullyQualifiedName(),
+        entity.getId().toString(),
+        JsonUtils.pojoToJson(entity),
+        expectedJson);
+  }
+
   default String getCondition(Include include) {
     if (!supportsSoftDelete()) {
       return "";
@@ -678,6 +878,16 @@ public interface EntityDAO<T extends EntityInterface> {
       return "AND deleted = FALSE";
     }
     return include == Include.DELETED ? " AND deleted = TRUE" : "";
+  }
+
+  /**
+   * Fetch the raw json for a row while taking a {@code FOR UPDATE} row lock. Background rewrites use
+   * this so that, inside an enclosing transaction, the re-read sees the latest committed row (a
+   * plain consistent read would return the transaction's stale snapshot under MySQL REPEATABLE
+   * READ) and concurrent writers on the same row are serialized.
+   */
+  default String findJsonByIdForUpdate(UUID id, Include include) {
+    return findByIdForUpdate(getTableName(), id, getCondition(include));
   }
 
   default T findEntityById(UUID id, Include include) {
@@ -694,7 +904,7 @@ public interface EntityDAO<T extends EntityInterface> {
     }
 
     List<String> distinctIds = ids.stream().map(UUID::toString).distinct().toList();
-    int maxChunkSize = 30000;
+    int maxChunkSize = MAX_IN_LIST_CHUNK_SIZE;
 
     if (distinctIds.size() <= maxChunkSize) {
       return findByIds(getTableName(), distinctIds, getCondition(include)).stream()
@@ -739,7 +949,7 @@ public interface EntityDAO<T extends EntityInterface> {
     }
 
     List<String> names = entityFQNs.stream().distinct().map(FullyQualifiedName::buildHash).toList();
-    int maxChunkSize = 30000;
+    int maxChunkSize = MAX_IN_LIST_CHUNK_SIZE;
 
     if (names.size() <= maxChunkSize) {
       return findByNames(getTableName(), getNameHashColumn(), names, getCondition(include)).stream()
@@ -828,6 +1038,11 @@ public interface EntityDAO<T extends EntityInterface> {
 
   default List<String> listAfter(ListFilter filter, int limit, int offset) {
     return listAfter(getTableName(), filter.getQueryParams(), filter.getCondition(), limit, offset);
+  }
+
+  default CursorRow getCursorAtOffset(ListFilter filter, int offset) {
+    return getCursorAtOffset(
+        getTableName(), filter.getQueryParams(), filter.getCondition(), offset);
   }
 
   default void exists(UUID id) {

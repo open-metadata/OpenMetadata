@@ -312,6 +312,10 @@ public final class Tables {
     public TableDeleter delete() {
       return new TableDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<Table> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(client.tables(), identifier);
+    }
   }
 
   // ==================== Table Operations ====================

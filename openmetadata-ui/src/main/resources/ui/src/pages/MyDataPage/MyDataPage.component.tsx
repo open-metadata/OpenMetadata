@@ -17,7 +17,7 @@ import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, { ReactGridLayoutProps, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
-import Loader from '../../components/common/Loader/Loader';
+import DeferredWidget from '../../components/common/DeferredWidget/DeferredWidget.component';
 import { AdvanceSearchProvider } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import CustomiseLandingPageHeader from '../../components/MyData/CustomizableComponents/CustomiseLandingPageHeader/CustomiseLandingPageHeader';
 import WelcomeScreen from '../../components/MyData/WelcomeScreen/WelcomeScreen.component';
@@ -37,15 +37,13 @@ import {
 } from '../../rest/announcementsAPI';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { updateUserDetail } from '../../rest/userAPI';
-import {
-  getConstrainedWidgetWidth,
-  getWidgetFromKey,
-} from '../../utils/CustomizableLandingPageUtils';
+import { getConstrainedWidgetWidth } from '../../utils/CustomizableLandingPagePureUtils';
+import { getWidgetFromKey } from '../../utils/CustomizableLandingPageUtils';
 import customizePageClassBase from '../../utils/CustomizeMyDataPageClassBase';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './my-data.less';
-
+import MyDataPageSkeleton from './MyDataPageSkeleton.component';
 const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
   ReactGridLayoutProps & { children?: React.ReactNode }
 >;
@@ -159,14 +157,40 @@ const MyDataPage = () => {
 
   const widgets = useMemo(
     () =>
-      layout.map((widget) => (
-        <div data-grid={widget} key={widget.i}>
-          {getWidgetFromKey({
-            widgetConfig: widget,
-            currentLayout: layout,
-          })}
-        </div>
-      )),
+      layout.map((widget) => {
+        const widgetNode = getWidgetFromKey({
+          widgetConfig: widget,
+          currentLayout: layout,
+        });
+
+        // P1.3: defer below-fold widgets. The landing-page grid spans three rows on a typical
+        // viewport; rows at y=0 and y=1 are reliably visible on first paint, row y=2 is
+        // typically below the fold on common desktop resolutions. Wrapping only y>=2 widgets
+        // saves their data-fetch effects on initial load while keeping above-fold widgets
+        // eager (no wasted IO callback round-trip).
+        //
+        // {@link DeferredWidget} reserves the widget's pixel height so the page layout
+        // doesn't shift when the real content mounts, exposes a {@code data-testid} so
+        // Playwright can locate the slot before the child tree mounts, and falls back to
+        // immediate mount if {@code IntersectionObserver} isn't available (Jest, SSR).
+        const isBelowFold = widget.y >= 2;
+        const reservedHeight =
+          widget.h * customizePageClassBase.landingPageRowHeight;
+
+        return (
+          <div data-grid={widget} key={widget.i}>
+            {isBelowFold ? (
+              <DeferredWidget
+                data-testid={`deferred-widget-${widget.i}`}
+                minHeight={reservedHeight}>
+                {widgetNode}
+              </DeferredWidget>
+            ) : (
+              widgetNode
+            )}
+          </div>
+        );
+      }),
     [layout, isAnnouncementLoading, announcements]
   );
 
@@ -246,10 +270,6 @@ const MyDataPage = () => {
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection(isLoading);
 
-  if (isLoading) {
-    return <Loader fullScreen />;
-  }
-
   if (showWelcomeScreen) {
     return (
       <PageLayoutV1 pageTitle={t('label.my-data')}>
@@ -266,32 +286,38 @@ const MyDataPage = () => {
         pageTitle={t('label.my-data')}>
         {/* Explicitly set the direction to ltr to avoid issues with react-grid-layout in rtl mode */}
         {/*
-            ReactGridLayout has known issues with RTL layouts, 
+            ReactGridLayout has known issues with RTL layouts,
             setting dir="ltr" on the container ensures correct behavior
             without affecting the overall RTL layout of the page
         */}
         <div className="grid-wrapper" dir="ltr">
           <CustomiseLandingPageHeader
             overlappedContainer
+            announcements={announcements}
             backgroundColor={backgroundColor}
             dataTestId="landing-page-header"
             hideCustomiseButton={!selectedPersona}
+            isAnnouncementLoading={isAnnouncementLoading}
             onHomePage
             onBackgroundColorUpdate={handleBackgroundColorUpdate}
           />
-          <ReactGridLayout
-            className="grid-container p-x-box"
-            cols={customizePageClassBase.landingPageMaxGridSize}
-            containerPadding={[0, 0]}
-            isDraggable={false}
-            isResizable={false}
-            margin={[
-              customizePageClassBase.landingPageWidgetMargin,
-              customizePageClassBase.landingPageWidgetMargin,
-            ]}
-            rowHeight={customizePageClassBase.landingPageRowHeight}>
-            {widgets}
-          </ReactGridLayout>
+          {isLoading ? (
+            <MyDataPageSkeleton />
+          ) : (
+            <ReactGridLayout
+              className="grid-container p-x-box"
+              cols={customizePageClassBase.landingPageMaxGridSize}
+              containerPadding={[0, 0]}
+              isDraggable={false}
+              isResizable={false}
+              margin={[
+                customizePageClassBase.landingPageWidgetMargin,
+                customizePageClassBase.landingPageWidgetMargin,
+              ]}
+              rowHeight={customizePageClassBase.landingPageRowHeight}>
+              {widgets}
+            </ReactGridLayout>
+          )}
         </div>
         <LimitWrapper resource="dataAssets">
           <br />

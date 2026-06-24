@@ -14,6 +14,7 @@ Python API REST wrapper and helpers
 
 import time
 import traceback
+from contextlib import nullcontext
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Union  # noqa: UP035
 
@@ -21,9 +22,12 @@ import requests
 from requests.exceptions import HTTPError, JSONDecodeError
 
 from metadata.config.common import ConfigModel
+from metadata.ingestion import diagnostics
+from metadata.ingestion.diagnostics.collectors.http import get_global_tracker
 from metadata.ingestion.ometa.credentials import URL, get_api_version
+from metadata.ingestion.ometa.http_adapter import mount_resilient_adapter
 from metadata.ingestion.ometa.ttl_cache import TTLCache
-from metadata.utils.execution_time_tracker import calculate_execution_time
+from metadata.ingestion.ometa.utils import sanitize_user_agent
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -39,6 +43,16 @@ class LimitsException(Exception):  # noqa: N818
     """
     API Client Feature Limit exception
     """
+
+
+class RestTransportError(Exception):
+    """Request failed at the transport layer (connection / timeout / retry exhaustion)."""
+
+    def __init__(self, method: str, url: object, cause: BaseException) -> None:
+        super().__init__(f"Transport failure on {method} {url}: {cause}")
+        self.method = method
+        self.url = url
+        self.cause = cause
 
 
 class APIError(Exception):
@@ -112,13 +126,17 @@ class ClientConfig(ConfigModel):
     expires_in: Optional[int] = None  # noqa: UP045
     auth_header: Optional[str] = None  # noqa: UP045
     extra_headers: Optional[dict] = None  # noqa: UP045
+    user_agent: Optional[str] = None  # noqa: UP045
     raw_data: Optional[bool] = False  # noqa: UP045
     allow_redirects: Optional[bool] = False  # noqa: UP045
     auth_token_mode: Optional[str] = "Bearer"  # noqa: UP045
     verify: Optional[Union[bool, str]] = None  # noqa: UP007, UP045
     cookies: Optional[Any] = None  # noqa: UP045
     ttl_cache: int = 60
-    timeout: Optional[int] = None  # noqa: UP045
+    # (connect, read) seconds. Default prevents indefinite hangs when a pooled
+    # socket is silently severed (NAT/LB idle reaping). Override with None to
+    # disable, or pass a single int to use the same value for both.
+    timeout: Optional[int | tuple[int, int]] = (10, 300)  # noqa: UP045
     cert: Optional[Union[str, tuple]] = None  # noqa: UP007, UP045
 
 
@@ -134,6 +152,14 @@ class REST:
         self._base_url: URL = URL(self.config.base_url)
         self._api_version = get_api_version(self.config.api_version)
         self._session = requests.Session()
+        mount_resilient_adapter(self._session)
+        user_agent = sanitize_user_agent(self.config.user_agent)
+        if user_agent:
+            self._session.headers["User-Agent"] = user_agent
+        elif self.config.user_agent:
+            logger.debug(
+                f"Ignoring User-Agent {self.config.user_agent!r}: no header-safe characters remained after sanitization"
+            )
         self._use_raw_data = self.config.raw_data
         self._retry = self.config.retry
         self._retry_wait = self.config.retry_wait
@@ -148,15 +174,17 @@ class REST:
 
         self._limits_reached = TTLCache(config.ttl_cache)
 
-    def _request(  # pylint: disable=too-many-arguments,too-many-branches
+    def _request(  # noqa: C901, pylint: disable=too-many-arguments,too-many-branches
         self,
-        method,
-        path,
-        data=None,
-        json=None,
-        base_url: URL = None,
-        api_version: str = None,  # noqa: RUF013
-        headers: dict = None,  # noqa: RUF013
+        method: str,
+        path: str,
+        data: Any = None,
+        json: Any = None,
+        base_url: Optional[URL] = None,  # noqa: UP045
+        api_version: Optional[str] = None,  # noqa: UP045
+        headers: Optional[dict] = None,  # noqa: UP045
+        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
+        retries: Optional[int] = None,  # noqa: UP045
     ):
         # pylint: disable=too-many-locals
         if path in self._limits_reached:
@@ -218,32 +246,45 @@ class REST:
         if self._cert:
             opts["cert"] = self._cert
 
-        if self._timeout:
-            opts["timeout"] = self._timeout
+        effective_timeout = timeout if timeout is not None else self._timeout
+        if effective_timeout:
+            opts["timeout"] = effective_timeout
 
-        total_retries = self._retry if self._retry > 0 else 0
-        retry = total_retries
-        while retry >= 0:
-            try:
-                return self._one_request(method, url, opts, retry)
-            except LimitsException as exc:
-                logger.error(f"Feature limit exceeded for {url}")
-                self._limits_reached.add(path)
-                raise exc  # noqa: TRY201
-            except RetryException:
-                retry_wait = self._retry_wait * (total_retries - retry + 1)
-                logger.warning(
-                    "sleep %s seconds and retrying %s %s more time(s)...",
-                    retry_wait,
-                    url,
-                    retry,
-                )
-                time.sleep(retry_wait)
-                retry -= 1
-                if retry == 0:
-                    logger.error(f"No more retries left for {url}")
-                    traceback.format_exc()
-        return None
+        # Per-call `retries` override takes precedence over the client
+        # config. `_retry` / `_retry_wait` are Optional in ClientConfig;
+        # narrow to plain ints here so the loop body type-checks cleanly.
+        total_retries: int
+        if retries is not None:
+            total_retries = retries if retries > 0 else 0
+        else:
+            total_retries = self._retry if self._retry and self._retry > 0 else 0
+        retry: int = total_retries
+        retry_wait_base: int = self._retry_wait or 0
+        http_tracker = get_global_tracker()
+        http_cm = http_tracker.request(method, url) if http_tracker is not None else nullcontext()
+        op_cm = diagnostics.operation("ometa.http", method=method, url=str(url))
+        with http_cm, op_cm:
+            while retry >= 0:
+                try:
+                    return self._one_request(method, url, opts, retry)
+                except LimitsException as exc:
+                    logger.error(f"Feature limit exceeded for {url}")
+                    self._limits_reached.add(path)
+                    raise exc  # noqa: TRY201
+                except RetryException:
+                    retry_wait = retry_wait_base * (total_retries - retry + 1)
+                    logger.warning(
+                        "sleep %s seconds and retrying %s %s more time(s)...",
+                        retry_wait,
+                        url,
+                        retry,
+                    )
+                    time.sleep(retry_wait)
+                    retry -= 1
+                    if retry == 0:
+                        logger.error(f"No more retries left for {url}")
+                        traceback.format_exc()
+            return None
 
     def _one_request(self, method: str, url: URL, opts: dict, retry: int):
         """
@@ -285,21 +326,20 @@ class REST:
                     raise APIError(error, http_error) from http_error
             else:
                 raise
-        except requests.ConnectionError as conn:
-            # Trying to solve https://github.com/psf/requests/issues/4664
-            try:
-                return self._session.request(method, url, **opts).json()
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(f"Unexpected error while retrying after a connection error - {exc}")
-                raise conn  # noqa: B904
+        except (
+            requests.exceptions.ConnectionError,
+            requests.exceptions.Timeout,
+            requests.exceptions.RetryError,
+            requests.exceptions.ChunkedEncodingError,
+        ) as exc:
+            logger.warning("Transport failure calling [%s] with method [%s]: %s", url, method, exc)
+            raise RestTransportError(method, url, exc) from exc
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unexpected error calling [{url}] with method [{method}]: {exc}")
 
         return None
 
-    @calculate_execution_time(context="GET")
     def get(self, path, data=None, headers=None):
         """
         GET method
@@ -314,8 +354,15 @@ class REST:
         """
         return self._request("GET", path, data, headers=headers)
 
-    @calculate_execution_time(context="POST")
-    def post(self, path, data=None, json=None, headers=None):
+    def post(
+        self,
+        path: str,
+        data: Any = None,
+        json: Any = None,
+        headers: Optional[dict] = None,  # noqa: UP045
+        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
+        retries: Optional[int] = None,  # noqa: UP045
+    ):
         """
         POST method
 
@@ -324,13 +371,71 @@ class REST:
             data ():
             json ():
             headers (dict): Optional custom headers to override default headers
+            timeout: Per-call timeout that overrides the instance default
+            retries: Per-call retry budget that overrides the instance default.
+                     Pass 0 to disable the retry/sleep loop entirely.
 
         Returns:
             Response
         """
-        return self._request("POST", path, data, json, headers=headers)
+        return self._request(
+            "POST",
+            path,
+            data,
+            json,
+            headers=headers,
+            timeout=timeout,
+            retries=retries,
+        )
 
-    @calculate_execution_time(context="PUT")
+    def post_best_effort(
+        self,
+        path: str,
+        data: Any = None,
+        headers: Optional[dict] = None,  # noqa: UP045
+        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
+    ) -> bool:
+        """Quiet POST: no retries, no sleep, no logging. Returns True on 2xx."""
+        if path in self._limits_reached:
+            return False
+        try:
+            url = URL(self._base_url + "/" + self._api_version + path)
+            req_headers = self._build_request_headers(headers)
+            kwargs = {
+                "data": data,
+                "headers": req_headers,
+                "verify": self._verify,
+                "cookies": self._cookies,
+                "allow_redirects": self.config.allow_redirects,
+            }
+            effective_timeout = timeout if timeout is not None else self._timeout
+            if effective_timeout:
+                kwargs["timeout"] = effective_timeout
+            if self._cert:
+                kwargs["cert"] = self._cert
+            resp = self._session.post(url, **kwargs)
+        except Exception:
+            return False
+        return 200 <= resp.status_code < 300
+
+    def _build_request_headers(self, headers: Optional[dict] = None):  # noqa: UP045
+        """Reader-only headers builder. Does NOT refresh auth token —
+        refresh stays on _request() to avoid concurrent refreshes from
+        post_best_effort callers sharing ClientConfig."""
+        if not headers:
+            headers = {"Content-type": "application/json"}
+        if self.config.auth_header and self.config.access_token:
+            headers[self.config.auth_header] = (
+                f"{self._auth_token_mode} {self.config.access_token}"
+                if self._auth_token_mode
+                else self.config.access_token
+            )
+        if self.config.extra_headers:
+            extra_headers: Dict[str, str] = self.config.extra_headers  # noqa: UP006
+            extra_headers = {k: (v % headers) for k, v in extra_headers.items()}
+            headers = {**headers, **extra_headers}
+        return headers
+
     def put(self, path, data=None, json=None, headers=None):
         """
         PUT method
@@ -346,26 +451,30 @@ class REST:
         """
         return self._request("PUT", path, data, json=json, headers=headers)
 
-    @calculate_execution_time(context="PATCH")
-    def patch(self, path, data=None):
+    def patch(self, path, data=None, headers=None):
         """
         PATCH method
 
         Parameters:
             path (str):
             data ():
+            headers (dict): Optional extra headers (e.g. ``If-Match`` for
+                optimistic-concurrency-safe writes) merged on top of the
+                JSON Patch content type.
 
         Returns:
             Response
         """
+        request_headers = {"Content-type": "application/json-patch+json"}
+        if headers:
+            request_headers.update(headers)
         return self._request(
             method="PATCH",
             path=path,
             data=data,
-            headers={"Content-type": "application/json-patch+json"},
+            headers=request_headers,
         )
 
-    @calculate_execution_time(context="DELETE")
     def delete(self, path, data=None, headers=None):
         """
         DELETE method

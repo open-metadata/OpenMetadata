@@ -85,11 +85,7 @@ export interface SearchIndexingAppConfig {
      */
     queueSize?: number;
     /**
-     * This schema publisher run modes.
-     */
-    recreateIndex?: boolean;
-    /**
-     * Recreate Indexes with updated Language
+     * Search index mapping language.
      */
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
     /**
@@ -107,11 +103,6 @@ export interface SearchIndexingAppConfig {
      * Application Type
      */
     type?: SearchIndexingType;
-    /**
-     * Enable distributed indexing to scale reindexing across multiple servers with fault
-     * tolerance and parallel processing
-     */
-    useDistributedIndexing?: boolean;
 }
 
 /**
@@ -178,7 +169,7 @@ export interface IndexSettings {
 }
 
 /**
- * Recreate Indexes with updated Language
+ * Search index mapping language.
  *
  * This schema defines the language options available for search index mappings.
  */

@@ -60,7 +60,7 @@ class DynamicImportException(Exception):  # noqa: N818
 
 class MissingPluginException(Exception):  # noqa: N818
     """
-    An excpetion that captures a missing openmetadata-ingestion plugin for a specific connector.
+    An exception that captures a missing openmetadata-ingestion plugin for a specific connector.
     """
 
     def __init__(self, plugin: str):

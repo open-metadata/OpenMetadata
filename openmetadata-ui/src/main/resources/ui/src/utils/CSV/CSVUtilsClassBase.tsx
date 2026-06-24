@@ -13,10 +13,12 @@
 
 import Select, { DefaultOptionType } from 'antd/lib/select';
 import { isEmpty, toString } from 'lodash';
-import { ReactNode, useRef } from 'react';
-import { RenderEditCellProps, textEditor } from 'react-data-grid';
+import { lazy, ReactNode, useRef } from 'react';
+import type { RenderEditCellProps } from 'react-data-grid';
+import { withSuspenseFallback } from '../../components/AppRouter/withSuspenseFallback';
 import Certification from '../../components/Certification/Certification.component';
 import TreeAsyncSelectList from '../../components/common/AsyncSelectList/TreeAsyncSelectList';
+import { lazyTextEditor } from '../../components/common/DataGrid/LazyDataGrid';
 import DomainSelectableList from '../../components/common/DomainSelectableList/DomainSelectableList.component';
 import { useMultiContainerFocusTrap } from '../../components/common/FocusTrap/FocusTrapWithContainer';
 import InlineEdit from '../../components/common/InlineEdit/InlineEdit.component';
@@ -25,7 +27,6 @@ import TierCard from '../../components/common/TierCard/TierCard';
 import { UserTeamSelectableList } from '../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { ValueRendererOnEditCell } from '../../components/common/ValueRendererOnEditCell/ValueRendererOnEditCell';
 import { ModalWithCustomPropertyEditor } from '../../components/Modals/ModalWithCustomProperty/ModalWithCustomPropertyEditor.component';
-import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import SchemaModal from '../../components/Modals/SchemaModal/SchemaModal';
 import { ENTITY_TYPE_OPTIONS } from '../../constants/BulkImport.constant';
 import { CSMode } from '../../enums/codemirror.enum';
@@ -34,10 +35,17 @@ import { Tag } from '../../generated/entity/classification/tag';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import TagSuggestion from '../../pages/TasksPage/shared/TagSuggestion';
-import { removeOuterEscapes } from '../CommonUtils';
 import Fqn from '../Fqn';
 import { t } from '../i18next/LocalUtil';
-import { getCustomPropertyEntityType } from './CSV.utils';
+import { removeOuterEscapes } from '../StringUtils';
+import { getCustomPropertyEntityType } from './CSVPureUtils';
+const ModalWithMarkdownEditor = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor'
+    ).then((m) => ({ default: m.ModalWithMarkdownEditor }))
+  )
+);
 
 class CSVUtilsClassBase {
   public hideImportsColumnList() {
@@ -70,7 +78,11 @@ class CSVUtilsClassBase {
       user: boolean;
       team: boolean;
     }
-  ): ((props: RenderEditCellProps<any, any>) => ReactNode) | undefined {
+  ):
+    | ((
+        props: RenderEditCellProps<Record<string, unknown>, unknown>
+      ) => ReactNode)
+    | undefined {
     switch (column) {
       case 'owner':
         return ({
@@ -78,7 +90,7 @@ class CSVUtilsClassBase {
           onRowChange,
           onClose,
           column,
-        }: RenderEditCellProps<any, any>) => {
+        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
           const value = row?.[column.key];
           const owners = value?.split(';') ?? [];
           const ownerEntityRef = owners.map((owner: string) => {
@@ -123,7 +135,7 @@ class CSVUtilsClassBase {
           onRowChange,
           onClose,
           column,
-        }: RenderEditCellProps<any, any>) => {
+        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
           const value = row[column.key];
           const handleSave = async (description: string) => {
             onRowChange({ ...row, [column.key]: description }, true);
@@ -149,7 +161,7 @@ class CSVUtilsClassBase {
           onRowChange,
           onClose,
           column,
-        }: RenderEditCellProps<any, any>) => {
+        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
           const containerRef = useRef<HTMLDivElement | null>(null);
           const dropdownContainerRef = useRef<HTMLDivElement | null>(null);
           useMultiContainerFocusTrap({
@@ -203,7 +215,7 @@ class CSVUtilsClassBase {
           onRowChange,
           onClose,
           column,
-        }: RenderEditCellProps<any, any>) => {
+        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
           const containerRef = useRef<HTMLDivElement | null>(null);
           const dropdownContainerRef = useRef<HTMLDivElement | null>(null);
           useMultiContainerFocusTrap({
@@ -254,7 +266,7 @@ class CSVUtilsClassBase {
           onRowChange,
           onClose,
           column,
-        }: RenderEditCellProps<any, any>) => {
+        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
           const value = row[column.key];
           const handleChange = async (tag?: Tag) => {
             onRowChange(
@@ -283,7 +295,7 @@ class CSVUtilsClassBase {
           onRowChange,
           onClose,
           column,
-        }: RenderEditCellProps<any, any>) => {
+        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
           const value = row[column.key];
           const handleChange = async (tag?: Tag) => {
             onRowChange(
@@ -311,7 +323,7 @@ class CSVUtilsClassBase {
           row,
           onRowChange,
           column,
-        }: RenderEditCellProps<any, any>) => {
+        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
           const value = row[column.key];
           const domains = value
             ? (value?.split(';') ?? []).map((domain: string) => {
@@ -376,7 +388,7 @@ class CSVUtilsClassBase {
           onRowChange,
           onClose,
           column,
-        }: RenderEditCellProps<any, any>) => {
+        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
           const value = row[column.key];
           const reviewers = value?.split(';') ?? [];
           const reviewersEntityRef = reviewers.map((reviewer: string) => {
@@ -436,7 +448,7 @@ class CSVUtilsClassBase {
           onRowChange,
           onClose,
           column,
-        }: RenderEditCellProps<any, any>) => {
+        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
           const value = row[column.key];
           const handleSave = async (extension?: string) => {
             onRowChange({ ...row, [column.key]: extension }, true);
@@ -462,7 +474,7 @@ class CSVUtilsClassBase {
           onRowChange,
           onClose,
           column,
-        }: RenderEditCellProps<any, any>) => {
+        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
           const value = row[column.key];
           const handleChange = (typeValue: string) => {
             onRowChange({ ...row, [column.key]: typeValue });
@@ -499,7 +511,7 @@ class CSVUtilsClassBase {
           onRowChange,
           onClose,
           column,
-        }: RenderEditCellProps<any, any>) => {
+        }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
           const value = row[column.key];
           const handleChange = (value: string) => {
             onRowChange({ ...row, [column.key]: value });
@@ -522,7 +534,7 @@ class CSVUtilsClassBase {
           );
         };
       default:
-        return textEditor;
+        return lazyTextEditor;
     }
   }
 }

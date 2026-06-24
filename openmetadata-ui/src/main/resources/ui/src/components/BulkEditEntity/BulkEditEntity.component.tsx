@@ -13,8 +13,7 @@
 import { Button, Col, Row } from 'antd';
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo } from 'react';
-import DataGrid, { ColumnOrColumnGroup } from 'react-data-grid';
-import 'react-data-grid/lib/styles.css';
+import type { ColumnOrColumnGroup } from 'react-data-grid';
 import { useTranslation } from 'react-i18next';
 import { readString } from 'react-papaparse';
 import { useNavigate } from 'react-router-dom';
@@ -28,6 +27,7 @@ import {
 } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import Banner from '../common/Banner/Banner';
+import { LazyDataGrid } from '../common/DataGrid/LazyDataGrid';
 import { ImportStatus } from '../common/EntityImport/ImportStatus/ImportStatus.component';
 import Loader from '../common/Loader/Loader';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -108,7 +108,7 @@ const BulkEditEntity = ({
   const editDataGrid = useMemo(() => {
     return (
       <div className="om-rdg" ref={setGridContainer}>
-        <DataGrid
+        <LazyDataGrid
           className="rdg-light"
           columns={
             columns as unknown as ColumnOrColumnGroup<
@@ -167,7 +167,7 @@ const BulkEditEntity = ({
                 <Col span={24}>
                   {validateCSVData && (
                     <div className="om-rdg">
-                      <DataGrid
+                      <LazyDataGrid
                         className="rdg-light"
                         columns={validateCSVData.columns}
                         rows={validateCSVData.dataSource}

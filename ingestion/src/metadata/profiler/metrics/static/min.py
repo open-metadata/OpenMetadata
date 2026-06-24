@@ -135,22 +135,24 @@ class Min(StaticMetric):
         with current minimum and returns the smaller value.
         """
         import pandas as pd  # noqa: PLC0415
+        from pandas import Timestamp  # noqa: PLC0415
 
-        chunk_min = None
+        chunk_min: float | None = None
 
         if is_quantifiable(column.type):
-            chunk_min = df[column.name].min()
+            raw = df[column.name].min()
+            chunk_min = float(raw) if not bool(pd.isnull(raw)) else None  # type: ignore[arg-type]
         elif is_date_time(column.type):
             if column.type in {DataType.DATETIME, DataType.DATE}:
                 min_val = pd.to_datetime(df[column.name]).min()
-                if not pd.isnull(min_val):
+                if isinstance(min_val, Timestamp) and not pd.isnull(min_val):
                     chunk_min = int(min_val.timestamp() * 1000)
             elif column.type == DataType.TIME:
                 min_val = pd.to_timedelta(df[column.name]).min()
                 if not pd.isnull(min_val):
                     chunk_min = min_val.seconds
 
-        if chunk_min is None or pd.isnull(chunk_min):
+        if chunk_min is None:
             return current_min
 
         if current_min is None:

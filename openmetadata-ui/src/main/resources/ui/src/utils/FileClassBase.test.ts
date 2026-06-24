@@ -18,6 +18,7 @@ import {
   DATA_PRODUCTS_WIDGET,
   DESCRIPTION_WIDGET,
   GLOSSARY_TERMS_WIDGET,
+  KNOWLEDGE_ARTICLE_WIDGET,
   TAGS_WIDGET,
 } from '../constants/CustomizeWidgets.constants';
 import { FILE_DUMMY_DATA } from '../constants/File.constant';
@@ -27,35 +28,6 @@ import { File } from '../generated/entity/data/file';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import fileClassBase, { FileClassBase } from './FileClassBase';
 import { FileDetailPageTabProps } from './FileDetailsUtils';
-
-// Mock dependencies
-jest.mock('../constants/CustomizeWidgets.constants', () => ({
-  CUSTOM_PROPERTIES_WIDGET: {
-    fullyQualifiedName: 'customProperties',
-    name: 'Custom Properties',
-    data: { gridSizes: ['small', 'medium', 'large'] },
-  },
-  DATA_PRODUCTS_WIDGET: {
-    fullyQualifiedName: 'dataProducts',
-    name: 'Data Products',
-    data: { gridSizes: ['medium', 'large'] },
-  },
-  DESCRIPTION_WIDGET: {
-    fullyQualifiedName: 'description',
-    name: 'Description',
-    data: { gridSizes: ['small', 'medium', 'large'] },
-  },
-  GLOSSARY_TERMS_WIDGET: {
-    fullyQualifiedName: 'glossaryTerms',
-    name: 'Glossary Terms',
-    data: { gridSizes: ['medium', 'large'] },
-  },
-  TAGS_WIDGET: {
-    fullyQualifiedName: 'tags',
-    name: 'Tags',
-    data: { gridSizes: ['medium', 'large'] },
-  },
-}));
 
 jest.mock('../constants/File.constant', () => ({
   FILE_DUMMY_DATA: {
@@ -67,20 +39,6 @@ jest.mock('../constants/File.constant', () => ({
     size: 1024,
     service: { id: 'service-id', name: 'test-service', type: 'DriveService' },
   } as File,
-}));
-
-jest.mock('./CustomizePage/CustomizePageUtils', () => ({
-  getTabLabelFromId: jest.fn((tabId: EntityTabs) => {
-    const labelMap: Partial<Record<EntityTabs, string>> = {
-      [EntityTabs.OVERVIEW]: 'Overview',
-      [EntityTabs.ACTIVITY_FEED]: 'Activity Feed',
-      [EntityTabs.LINEAGE]: 'Lineage',
-      [EntityTabs.CONTRACT]: 'Contract',
-      [EntityTabs.CUSTOM_PROPERTIES]: 'Custom Properties',
-    };
-
-    return labelMap[tabId] || tabId;
-  }),
 }));
 
 jest.mock('./FileDetailsUtils', () => ({
@@ -143,6 +101,7 @@ describe('FileClassBase', () => {
         [DetailPageWidgetKeys.DATA_PRODUCTS]: 2,
         [DetailPageWidgetKeys.TAGS]: 2,
         [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
+        [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]: 2,
         [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
       });
     });
@@ -187,42 +146,42 @@ describe('FileClassBase', () => {
       expect(result[0]).toEqual({
         id: EntityTabs.OVERVIEW,
         name: EntityTabs.OVERVIEW,
-        displayName: 'Overview',
+        displayName: 'label.overview',
         layout: expect.any(Array),
         editable: true,
       });
       expect(result[1]).toEqual({
         id: EntityTabs.SCHEMA,
         name: EntityTabs.SCHEMA,
-        displayName: 'schema',
+        displayName: 'label.schema',
         layout: [],
         editable: false,
       });
       expect(result[2]).toEqual({
         id: EntityTabs.ACTIVITY_FEED,
         name: EntityTabs.ACTIVITY_FEED,
-        displayName: 'Activity Feed',
+        displayName: 'label.activity-feed-and-task-plural',
         layout: [],
         editable: false,
       });
       expect(result[3]).toEqual({
         id: EntityTabs.LINEAGE,
         name: EntityTabs.LINEAGE,
-        displayName: 'Lineage',
+        displayName: 'label.lineage',
         layout: [],
         editable: false,
       });
       expect(result[4]).toEqual({
         id: EntityTabs.CONTRACT,
         name: EntityTabs.CONTRACT,
-        displayName: 'Contract',
+        displayName: 'label.contract',
         layout: [],
         editable: false,
       });
       expect(result[5]).toEqual({
         id: EntityTabs.CUSTOM_PROPERTIES,
         name: EntityTabs.CUSTOM_PROPERTIES,
-        displayName: 'Custom Properties',
+        displayName: 'label.custom-property-plural',
         layout: [],
         editable: false,
       });
@@ -259,7 +218,7 @@ describe('FileClassBase', () => {
     it('should return default layout for OVERVIEW tab', () => {
       const result = fileClass.getDefaultLayout(EntityTabs.OVERVIEW);
 
-      expect(result).toHaveLength(5);
+      expect(result).toHaveLength(6);
 
       // Check left panel
       const leftPanel = result[0];
@@ -279,7 +238,7 @@ describe('FileClassBase', () => {
     it('should return default layout for undefined tab', () => {
       const result = fileClass.getDefaultLayout(undefined);
 
-      expect(result).toHaveLength(5);
+      expect(result).toHaveLength(6);
       expect(result[0].i).toBe(DetailPageWidgetKeys.LEFT_PANEL);
     });
 
@@ -352,12 +311,13 @@ describe('FileClassBase', () => {
     it('should return correct widget list', () => {
       const result = fileClass.getCommonWidgetList();
 
-      expect(result).toHaveLength(5);
+      expect(result).toHaveLength(6);
       expect(result[0]).toBe(DESCRIPTION_WIDGET);
       expect(result[1]).toBe(DATA_PRODUCTS_WIDGET);
       expect(result[2]).toBe(TAGS_WIDGET);
       expect(result[3]).toBe(GLOSSARY_TERMS_WIDGET);
       expect(result[4]).toBe(CUSTOM_PROPERTIES_WIDGET);
+      expect(result[5]).toBe(KNOWLEDGE_ARTICLE_WIDGET);
     });
 
     it('should not include file-specific widgets in common list', () => {

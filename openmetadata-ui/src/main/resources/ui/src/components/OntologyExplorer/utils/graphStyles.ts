@@ -14,11 +14,14 @@ import { Group, Image as GImage, Rect as GRect, Text as GText } from '@antv/g';
 import {
   Circle,
   ExtensionCategory,
+  Line,
+  LineStyleProps,
   RectCombo,
   RectComboStyleProps,
   register,
 } from '@antv/g6';
 import {
+  COLOR_META_BY_HEX,
   COMBO_FILL_DEFAULT,
   COMBO_HEADER_HEIGHT,
   COMBO_INTERIOR_PADDING_SIDES,
@@ -50,7 +53,6 @@ import {
   DATA_MODE_ENTITY_PILL_ICON_PAD_LEFT,
   DATA_MODE_ENTITY_PILL_ICON_SIZE,
   DATA_MODE_ENTITY_PILL_TRIM_RIGHT_PX,
-  DATA_MODE_ENTITY_TYPE_PILL_MAX_TEXT_WIDTH_PX,
   DATA_MODE_LABEL_OFFSET_Y,
   DATA_MODE_TERM_HALO_LINE_WIDTH,
   DATA_MODE_TERM_HALO_SHADOW_BLUR,
@@ -94,8 +96,45 @@ import {
   RELATION_META,
   TERM_LABEL_BG_PADDING,
 } from '../OntologyExplorer.constants';
+import { computeCardinalityLabelAttrs } from './cardinalityLabelUtils';
 import './ontologyComboAwarePolylineEdge';
-import { measureTextWidth, truncateToFit } from './textMeasure';
+import {
+  getCanvasContext,
+  measureTextWidth,
+  truncateToFit,
+} from './textMeasure';
+
+export const CARDINALITY_AWARE_LINE_EDGE_TYPE = 'cardinality-aware-line';
+
+class CardinalityAwareLine extends Line {
+  override render(
+    attributes: Required<LineStyleProps>,
+    container: Group
+  ): void {
+    super.render(attributes, container);
+    this.drawCardinalityLabel(attributes, container, 'start');
+    this.drawCardinalityLabel(attributes, container, 'end');
+  }
+
+  private drawCardinalityLabel(
+    attributes: Required<LineStyleProps>,
+    container: Group,
+    end: 'start' | 'end'
+  ): void {
+    const endpoints = this.getEndpoints(attributes);
+    const attrs = computeCardinalityLabelAttrs(
+      attributes as Record<string, unknown>,
+      [endpoints[0] as [number, number], endpoints[1] as [number, number]],
+      end
+    );
+    this.upsert(`cardinality-${end}`, GText, attrs, container);
+  }
+}
+register(
+  ExtensionCategory.EDGE,
+  CARDINALITY_AWARE_LINE_EDGE_TYPE,
+  CardinalityAwareLine
+);
 
 const cssColorCache = new Map<string, string>();
 const COMBO_LABEL_CHAR_WIDTH = 7;
@@ -240,12 +279,13 @@ export class GlossaryCombo extends RectCombo {
     attributes: Required<RectComboStyleProps>
   ): [number, number, number] {
     const [w, h, d] = super.getExpandedKeySize(attributes);
+    const attrs = attributes as Record<string, unknown>;
     const minW =
-      typeof (attributes as Record<string, unknown>).minWidth === 'number'
-        ? ((attributes as Record<string, unknown>).minWidth as number)
-        : 0;
+      typeof attrs.minWidth === 'number' ? (attrs.minWidth as number) : 0;
+    const minH =
+      typeof attrs.minHeight === 'number' ? (attrs.minHeight as number) : 0;
 
-    return [Math.max(w, minW), h, d];
+    return [Math.max(w, minW), Math.max(h, minH), d];
   }
 
   protected drawLabelShape(
@@ -368,7 +408,7 @@ register(ExtensionCategory.NODE, 'data-mode-asset', DataModeAssetNode);
 
 export function formatRelationLabel(relationType: string): string {
   return relationType
-    .replace(/([A-Z])/g, ' $1')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
     .trim()
     .toUpperCase();
 }
@@ -400,14 +440,32 @@ const EDGE_LABEL_BADGE_PADDING: [number, number, number, number] = [4, 8, 4, 8];
 const EDGE_LABEL_BADGE_RADIUS = 6;
 const EDGE_LABEL_BADGE_FONT_WEIGHT = 700;
 
+export function getEffectiveRelationColor(
+  relationType: string,
+  customRelation: { isSystemDefined?: boolean; color?: string } | undefined
+): string | undefined {
+  if (!customRelation) {
+    return RELATION_META[relationType]?.color;
+  }
+  if (customRelation.isSystemDefined) {
+    return RELATION_META[relationType]?.color ?? customRelation.color;
+  }
+
+  return customRelation.color ?? RELATION_META[relationType]?.color;
+}
+
 export function getEdgeRelationLabelStyle(
   labelText: string,
-  relationType?: string
+  relationType?: string,
+  effectiveColor?: string
 ): Record<string, unknown> {
-  const meta =
+  const builtInMeta =
     relationType != null
       ? RELATION_META[relationType] ?? RELATION_META.default
       : null;
+  const meta = effectiveColor
+    ? COLOR_META_BY_HEX[effectiveColor.toLowerCase()] ?? builtInMeta
+    : builtInMeta;
 
   const edgeLabelPadding = EDGE_LABEL_BADGE_PADDING;
 
@@ -481,8 +539,10 @@ export function buildDefaultRectNodeStyle(
 
 const DATA_MODE_ASSET_LABEL_CHAR_WIDTH_EST = 6.5;
 const DATA_MODE_ENTITY_TYPE_CHAR_WIDTH_EST = 5.5;
-const DATA_MODE_ENTITY_BADGE_H_PAD = 4;
+const DATA_MODE_ENTITY_BADGE_H_PAD = 8;
 const DATA_MODE_ENTITY_BADGE_V_PAD = 2;
+const DATA_MODE_ENTITY_ICON_TEXT_GAP = 2;
+const DATA_MODE_ENTITY_ICON_RIGHT_PAD = DATA_MODE_ENTITY_PILL_ICON_PAD_LEFT;
 
 function getMeasureTextContext2d(): CanvasRenderingContext2D | null {
   return getCanvasContext();
@@ -521,6 +581,34 @@ function measureCanvasTextWidthPx(
   } catch {
     return undefined;
   }
+}
+
+function truncateTextWithEllipsis(
+  text: string,
+  font: string,
+  maxPx: number
+): string {
+  const measured = measureCanvasTextWidthPx(text, font);
+  if (measured === undefined || measured <= maxPx) {
+    return text;
+  }
+  const ellipsis = '...';
+  const ellipsisW = measureCanvasTextWidthPx(ellipsis, font) ?? 12;
+  const target = Math.max(0, maxPx - ellipsisW);
+
+  let lo = 0;
+  let hi = text.length;
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi + 1) / 2);
+    const w = measureCanvasTextWidthPx(text.slice(0, mid), font) ?? 0;
+    if (w <= target) {
+      lo = mid;
+    } else {
+      hi = mid - 1;
+    }
+  }
+
+  return lo === 0 ? ellipsis : text.slice(0, lo) + ellipsis;
 }
 
 export function buildDataModeAssetNodeStyle(
@@ -603,18 +691,19 @@ export function buildDataModeAssetNodeStyle(
   const measuredEntityInner = measureCanvasTextWidthPx(
     entityTypeText,
     entityTypeMeasureFont,
-    'ink'
+    'advance'
   );
   const entityInnerUncapped =
     measuredEntityInner ??
     Math.ceil(entityTypeText.length * DATA_MODE_ENTITY_TYPE_CHAR_WIDTH_EST);
-  const entityInnerW = Math.min(
-    Math.max(1, entityInnerUncapped),
-    DATA_MODE_ENTITY_TYPE_PILL_MAX_TEXT_WIDTH_PX
-  );
-  const entityTextBoxW = entityInnerW + DATA_MODE_ENTITY_BADGE_H_PAD * 2;
+  const entityInnerW = Math.max(1, Math.ceil(entityInnerUncapped * 1.08));
   const iconSectionW = entityIconUrl ? ENTITY_ICON_SECTION_W : 0;
-  const entityBoxW = entityTextBoxW + iconSectionW;
+  const entityBoxW = entityIconUrl
+    ? iconSectionW +
+      DATA_MODE_ENTITY_ICON_TEXT_GAP +
+      entityInnerW +
+      DATA_MODE_ENTITY_ICON_RIGHT_PAD
+    : entityInnerW + DATA_MODE_ENTITY_BADGE_H_PAD * 2;
   const entityBoxH =
     DATA_MODE_ENTITY_BADGE_FONT_SIZE + DATA_MODE_ENTITY_BADGE_V_PAD * 2 + 4;
 
@@ -666,8 +755,15 @@ export function buildDataModeAssetNodeStyle(
     padding: [0, 0, 0, 0],
   };
 
+  const nameTruncateBudget = Math.max(12, nameMaxTextPx);
+  const nameLabel = truncateTextWithEllipsis(
+    label,
+    nameMeasureFont,
+    nameTruncateBudget
+  );
+
   const nameBadge = {
-    text: label,
+    text: nameLabel,
     placement: 'bottom' as const,
     offsetX: nameSlotLeft,
     offsetY: cardOffsetY,
@@ -676,9 +772,8 @@ export function buildDataModeAssetNodeStyle(
     fill: getColor(NODE_LABEL_FILL, NODE_LABEL_FILL_FALLBACK),
     textAlign: 'left' as const,
     wordWrap: false,
-    maxWidth: nameMaxTextPx,
+    maxWidth: nameTruncateBudget,
     maxLines: 1,
-    textOverflow: '...',
     background: false,
     padding: [cardPadV, 0, cardPadV, 0],
   };
@@ -686,7 +781,7 @@ export function buildDataModeAssetNodeStyle(
   if (entityIconUrl) {
     const pillLeftEdge = entityCenterX - entityBoxW / 2;
     const entityTextLeft =
-      pillLeftEdge + iconSectionW + DATA_MODE_ENTITY_BADGE_H_PAD;
+      pillLeftEdge + iconSectionW + DATA_MODE_ENTITY_ICON_TEXT_GAP;
     const pillTrimRight = DATA_MODE_ENTITY_PILL_TRIM_RIGHT_PX;
     const entityPillDrawW = Math.max(1, entityBoxW - pillTrimRight);
     const entityPillCenterX = entityCenterX - pillTrimRight / 2;
@@ -722,7 +817,6 @@ export function buildDataModeAssetNodeStyle(
       background: false,
       maxWidth: entityTextMaxW,
       maxLines: 1,
-      textOverflow: '...',
       wordWrap: false,
       padding: [
         DATA_MODE_ENTITY_BADGE_V_PAD,
@@ -760,6 +854,10 @@ export function buildDataModeAssetNodeStyle(
     fontWeight: DATA_MODE_ASSET_LABEL_FONT_WEIGHT,
     fill: getColor(NODE_LABEL_FILL, NODE_LABEL_FILL_FALLBACK),
     textAlign: 'center' as const,
+    wordWrap: false,
+    maxWidth: entityInnerW,
+    maxLines: 1,
+    textOverflow: '...',
     background: true,
     backgroundFill: EDGE_LABEL_BG_STROKE,
     backgroundStroke: DATA_MODE_ENTITY_BADGE_BORDER_FALLBACK,
@@ -767,12 +865,7 @@ export function buildDataModeAssetNodeStyle(
     backgroundRadius: DATA_MODE_ASSET_LABEL_BOX_RADIUS,
     backgroundWidth: entityBoxW,
     backgroundHeight: entityBoxH,
-    padding: [
-      DATA_MODE_ENTITY_BADGE_V_PAD,
-      DATA_MODE_ENTITY_BADGE_H_PAD,
-      DATA_MODE_ENTITY_BADGE_V_PAD,
-      DATA_MODE_ENTITY_BADGE_H_PAD,
-    ],
+    padding: [0, 0, 0, 0],
   };
 
   return {
@@ -832,7 +925,8 @@ export function buildDataModeTermNodeStyle(
 
 export function buildComboStyle(
   labelText: string,
-  color: string
+  color: string,
+  extraVerticalPadding = 0
 ): Record<string, unknown> {
   const labelPx = measureTextWidth(
     labelText,
@@ -841,17 +935,25 @@ export function buildComboStyle(
   );
   const minWidth = labelPx + COMBO_LABEL_PADDING_LEFT * 2;
 
+  const NODE_ROW_HEIGHT = 36; // 2 × NODE_PADDING_V(9) + 18
+  const minHeight =
+    COMBO_INTERIOR_PADDING_TOP +
+    NODE_ROW_HEIGHT +
+    COMBO_INTERIOR_PADDING_SIDES +
+    extraVerticalPadding * 2;
+
   return {
     fill: COMBO_FILL_DEFAULT,
     stroke: color,
     lineWidth: COMBO_LINE_WIDTH,
     radius: COMBO_RADIUS,
     padding: [
-      COMBO_INTERIOR_PADDING_TOP,
+      COMBO_INTERIOR_PADDING_TOP + extraVerticalPadding,
       COMBO_INTERIOR_PADDING_SIDES,
-      COMBO_INTERIOR_PADDING_SIDES,
+      COMBO_INTERIOR_PADDING_SIDES + extraVerticalPadding,
       COMBO_INTERIOR_PADDING_SIDES,
     ],
+    minHeight,
     label: true,
     labelText,
     labelFill: color,

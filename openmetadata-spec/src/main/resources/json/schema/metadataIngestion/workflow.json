@@ -74,6 +74,9 @@
             },
             {
               "$ref": "mcpServiceMetadataPipeline.json"
+            },
+            {
+              "$ref": "policyAgentPipeline.json"
             }
           ]
         }

@@ -128,8 +128,8 @@ class DeltalakeSource(DatabaseServiceSource):
                 schema_name=schema,
             )
             if filter_by_schema(
-                self.config.sourceConfig.config.schemaFilterPattern,
-                schema_fqn if self.config.sourceConfig.config.useFqnForFiltering else schema,
+                self.config.sourceConfig.config.schemaFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+                schema_fqn if self.config.sourceConfig.config.useFqnForFiltering else schema,  # pyright: ignore[reportAttributeAccessIssue]
             ):
                 self.status.filter(schema_fqn, "Schema Filtered Out")
                 continue

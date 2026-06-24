@@ -20,8 +20,13 @@ import {
   PipelineType,
 } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 
+export interface AddIngestionHandle {
+  submit: () => void;
+}
+
 export interface AddIngestionProps {
   activeIngestionStep: number;
+  hideFooter?: boolean;
   pipelineType: PipelineType;
   heading: string;
   ingestionAction?: string;

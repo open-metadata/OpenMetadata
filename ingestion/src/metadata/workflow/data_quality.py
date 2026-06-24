@@ -79,6 +79,6 @@ class TestSuiteWorkflow(IngestionWorkflow):
             fqn=fqn.build(
                 metadata=None,
                 entity_type=TestSuite,
-                table_fqn=model_str(self.config.source.sourceConfig.config.entityFullyQualifiedName),
+                table_fqn=model_str(self.config.source.sourceConfig.config.entityFullyQualifiedName),  # pyright: ignore[reportAttributeAccessIssue]
             ),
         )

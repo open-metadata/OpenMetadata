@@ -56,6 +56,7 @@ from metadata.profiler.orm.converter.base import build_orm_col
 from metadata.profiler.orm.functions.md5 import MD5
 from metadata.profiler.orm.functions.substr import Substr
 from metadata.profiler.orm.registry import Dialects, PythonDialects
+from metadata.sampler.config import resolve_static_sampling_config
 from metadata.utils.collections import CaseInsensitiveList
 from metadata.utils.credentials import normalize_pem_string
 from metadata.utils.logger import test_suite_logger
@@ -443,9 +444,12 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             return None, None
         profile_sample_config = config.profileSampleConfig if config else None
         sample_config = profile_sample_config.root if profile_sample_config else None
-        static = sample_config.config if sample_config else None
-        profile_sample = getattr(static, "profileSample", None) if static else None
-        profile_sample_type = getattr(static, "profileSampleType", None) if static else None
+        static = resolve_static_sampling_config(
+            sample_config=sample_config,
+            row_count=self.get_total_row_count(),
+        )
+        profile_sample = static.profileSample if static else None
+        profile_sample_type = static.profileSampleType if static else None
         if profile_sample is None or (profile_sample_type == ProfileSampleType.PERCENTAGE and profile_sample == 100):
             return None, None
         if DatabaseServiceType.Mssql in [
@@ -490,16 +494,19 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         config = self.runtime_params.table_profile_config
         profile_sample_config = config.profileSampleConfig if config else None
         sample_config = profile_sample_config.root if profile_sample_config else None
-        static = sample_config.config if sample_config else None
-        profile_sample = getattr(static, "profileSample", 100)
-        profile_sample_type = getattr(static, "profileSampleType", None)
+        row_count = self.get_total_row_count()
+        static = resolve_static_sampling_config(
+            sample_config=sample_config,
+            row_count=row_count,
+        )
+        profile_sample = static.profileSample if static else None
+        profile_sample_type = static.profileSampleType if static else None
         if profile_sample_type == ProfileSampleType.PERCENTAGE:
-            return int(max_nounce * profile_sample / 100)
+            return int(max_nounce * ((profile_sample or 100) / 100))
         if profile_sample_type == ProfileSampleType.ROWS:
-            row_count = self.get_total_row_count()
             if row_count is None:
                 raise ValueError("Row count is required for ROWS profile sample type")
-            return int(max_nounce * (profile_sample / row_count))
+            return int(max_nounce * ((profile_sample or row_count) / row_count))
         raise ValueError("Invalid profile sample type")
 
     def get_row_diff_test_case_result(

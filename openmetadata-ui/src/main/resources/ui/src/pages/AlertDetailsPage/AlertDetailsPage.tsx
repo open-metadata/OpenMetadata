@@ -60,7 +60,7 @@ import {
   updateObservabilityAlert,
 } from '../../rest/observabilityAPI';
 import { getAlertExtraInfo } from '../../utils/Alerts/AlertsUtil';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
@@ -194,7 +194,7 @@ function AlertDetailsPage({
             },
             {
               name: t('label.alert-plural'),
-              url: ROUTES.OBSERVABILITY_ALERTS,
+              url: observabilityRouterClassBase.getObservabilityAlertsListPath(),
             },
             {
               name: getEntityName(alertDetails),
@@ -207,7 +207,7 @@ function AlertDetailsPage({
   const handleAlertDelete = useCallback(async () => {
     isNotificationAlert
       ? navigate(ROUTES.NOTIFICATION_ALERT_LIST)
-      : navigate(ROUTES.OBSERVABILITY_ALERTS);
+      : navigate(observabilityRouterClassBase.getObservabilityAlertsListPath());
   }, [navigate, isNotificationAlert]);
 
   const handleAlertEdit = useCallback(async () => {

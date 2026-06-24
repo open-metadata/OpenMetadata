@@ -76,9 +76,7 @@ export const validateDataContractInsideBundleTestSuites = async (
       response.status() === 200
   );
 
-  await page
-    .locator('label:has([data-testid="bundle-suite-radio-btn"])')
-    .click();
+  await page.getByTestId('bundle-suite-radio-btn').click();
 
   await bundleSuitesResponse;
 
@@ -155,7 +153,7 @@ export const waitForContractExecutionWithFallback = async (
 
     const suiteNameCell = page
       .getByTestId('test-suite-table')
-      .locator('.ant-table-cell')
+      .locator('[role="gridcell"]')
       .filter({ hasText: `Data Contract - ${contractName}` });
 
     await expect(suiteNameCell).toBeVisible();
@@ -328,6 +326,11 @@ export const saveSecurityAndSLADetails = async (
   await page.locator('#timezone').press('Enter');
 
   await page.getByTestId('refresh-frequency-unit-select').click();
+  await expect(
+    page.locator(
+      `.refresh-frequency-unit-select [title=${data.refreshFrequencyUnitSelect}]`
+    )
+  ).toBeVisible();
   await page
     .locator(
       `.refresh-frequency-unit-select [title=${data.refreshFrequencyUnitSelect}]`
@@ -335,11 +338,19 @@ export const saveSecurityAndSLADetails = async (
     .click();
 
   await page.getByTestId('max-latency-unit-select').click();
+  await expect(
+    page.locator(
+      `.max-latency-unit-select [title=${data.maxLatencyUnitSelect}]`
+    )
+  ).toBeVisible();
   await page
     .locator(`.max-latency-unit-select [title=${data.maxLatencyUnitSelect}]`)
     .click();
 
   await page.getByTestId('retention-unit-select').click();
+  await expect(
+    page.locator(`.retention-unit-select [title=${data.retentionUnitSelect}]`)
+  ).toBeVisible();
   await page
     .locator(`.retention-unit-select [title=${data.retentionUnitSelect}]`)
     .click();
@@ -452,7 +463,7 @@ export const navigateToContractTab = async (page: Page) => {
 
 export const openContractActionsDropdown = async (page: Page) => {
   await page.getByTestId('manage-contract-actions').click();
-  await page.locator('.contract-action-dropdown').waitFor({
+  await page.getByTestId('contract-action-dropdown').waitFor({
     state: 'visible',
   });
 };
@@ -484,17 +495,12 @@ export const deleteContract = async (
 
   if (contractName) {
     await expect(
-      page
-        .locator('.ant-modal-title')
-        .getByText(`Delete dataContract "${contractName}"`)
+      page.getByTestId('modal-header').getByText(contractName)
     ).toBeVisible();
   } else {
-    await expect(page.locator('.ant-modal-title')).toBeVisible();
+    await expect(page.getByTestId('modal-header')).toBeVisible();
   }
 
-  await page.getByTestId('confirmation-text-input').click();
-  await page.getByTestId('confirmation-text-input').fill('DELETE');
-  await expect(page.getByTestId('confirm-button')).toBeEnabled();
   await page.getByTestId('confirm-button').click();
   await deleteContractResponse;
 };

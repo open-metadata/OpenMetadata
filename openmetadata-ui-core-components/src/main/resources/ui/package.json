@@ -75,7 +75,8 @@
   "author": "OpenMetadata",
   "license": "Apache-2.0",
   "dependencies": {
-    "@material/material-color-utilities": "^0.3.0"
+    "@material/material-color-utilities": "^0.3.0",
+    "@untitledui/file-icons": "^0.0.9"
   },
   "peerDependencies": {
     "@emotion/react": ">=11.0.0",
@@ -90,12 +91,11 @@
     "@tailwindcss/vite": ">=4.0.0",
     "@untitledui/icons": "^0.0.21",
     "input-otp": "^1.4.2",
-    "notistack": ">=3.0.0",
     "react": ">=18.0.0",
     "react-aria": "^3.47.0",
     "react-aria-components": "^1.16.0",
     "react-dom": ">=18.0.0",
-    "react-hook-form": "^7.71.1",
+    "react-hook-form": "^7.78.0",
     "tailwind-merge": ">=3.0.0",
     "tailwindcss": ">=4.0.0",
     "tailwindcss-animate": ">=1.0.0",
@@ -127,12 +127,11 @@
     "@untitledui/icons": "^0.0.21",
     "@vitejs/plugin-react": "^5.0.1",
     "input-otp": "^1.4.2",
-    "notistack": "^3.0.1",
     "react": "^18.2.0",
     "react-aria": "^3.47.0",
     "react-aria-components": "^1.16.0",
     "react-dom": "^18.2.0",
-    "react-hook-form": "^7.71.1",
+    "react-hook-form": "^7.78.0",
     "storybook": "^8.6.18",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.1.18",
@@ -140,7 +139,7 @@
     "tailwindcss-react-aria-components": "^2.0.1",
     "terser": "^5.0.0",
     "typescript": "^5.0.0",
-    "vite": "^7.3.2",
+    "vite": "^7.3.5",
     "vite-plugin-dts": "^4.5.4",
     "@eslint/js": "^9.18.0",
     "eslint": "^9.18.0",
@@ -152,11 +151,13 @@
     "prettier": "2.8.8"
   },
   "resolutions": {
+    "fast-uri": "3.1.2",
     "lodash": "4.18.1",
     "minimatch": "10.2.3",
     "postcss": "8.5.10",
     "rollup": "4.59.0",
-    "uuid": "^14.0.0"
+    "uuid": "^14.0.0",
+    "esbuild": "^0.28.1"
   },
   "publishConfig": {
     "access": "restricted",

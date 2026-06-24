@@ -29,7 +29,7 @@ jest.mock('../constants/constants', () => ({
   getUserPath: jest.fn(),
 }));
 
-jest.mock('./CommonUtils', () => ({
+jest.mock('./FqnUtils', () => ({
   getTableFQNFromColumnFQN: jest.fn(),
 }));
 
@@ -49,7 +49,7 @@ jest.mock('./TestSuiteUtils', () => ({
   getTestSuiteDetailsPath: jest.fn(),
 }));
 
-jest.mock('./TableUtils', () => ({
+jest.mock('./TableDropdownOptions', () => ({
   ExtraTableDropdownOptions: jest.fn(),
 }));
 

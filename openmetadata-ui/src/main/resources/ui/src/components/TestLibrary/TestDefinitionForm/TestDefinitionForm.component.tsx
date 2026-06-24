@@ -25,7 +25,7 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import React, { useMemo, useState } from 'react';
+import React, { lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
 import { CSMode } from '../../../enums/codemirror.enum';
@@ -43,13 +43,16 @@ import {
   createTestDefinition,
   patchTestDefinition,
 } from '../../../rest/testAPI';
-import { handleSearchFilterOption } from '../../../utils/CommonUtils';
-import { createScrollToErrorHandler } from '../../../utils/formUtils';
+import { handleSearchFilterOption } from '../../../utils/FilterQueryUtils';
+import { createScrollToErrorHandler } from '../../../utils/formPureUtils';
 import { isExternalTestDefinition } from '../../../utils/TestDefinitionUtils';
 import { showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import FormItemLabel from '../../common/Form/FormItemLabel';
-import CodeEditor from '../../Database/SchemaEditor/CodeEditor';
+const CodeEditor = withSuspenseFallback(
+  lazy(() => import('../../Database/SchemaEditor/CodeEditor'))
+);
 
 interface TestDefinitionFormProps {
   initialValues?: TestDefinition;

@@ -214,6 +214,11 @@ public final class LLMServices {
     public LLMServiceDeleter delete() {
       return new LLMServiceDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<LLMService> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.llmServices(), identifier);
+    }
   }
 
   // ==================== Deleter ====================

@@ -53,6 +53,10 @@ import {
   patchGlossaries,
   patchGlossaryTerm,
 } from '../../rest/glossaryAPI';
+import {
+  getKnowledgePageByFqn,
+  patchKnowledgePage,
+} from '../../rest/knowledgeCenterAPI';
 import { getMetricByFqn, patchMetric } from '../../rest/metricsAPI';
 import { getMlModelByFQN, patchMlModelDetails } from '../../rest/mlModelAPI';
 import { getPipelineByFqn, patchPipelineDetails } from '../../rest/pipelineAPI';
@@ -82,9 +86,9 @@ import {
 import { getTeamByName, patchTeamDetail } from '../../rest/teamsAPI';
 import { getTopicByFqn, patchTopicDetails } from '../../rest/topicsAPI';
 import { getUserByName, updateUserDetail } from '../../rest/userAPI';
-import { getServiceCategoryFromEntityType } from '../../utils/ServiceUtils';
+import { getServiceCategoryFromEntityType } from '../../utils/ServicePureUtils';
 import { t } from '../i18next/LocalUtil';
-import { getTermQuery } from '../SearchUtils';
+import { getTermQuery } from '../SearchPureUtils';
 
 export const getAPIfromSource = (
   source: keyof MapPatchAPIResponse
@@ -149,6 +153,8 @@ export const getAPIfromSource = (
     case EntityType.WORKSHEET:
       return (id: string, data: Operation[]) =>
         patchDriveAssetDetails<Worksheet>(id, data, EntityType.WORKSHEET);
+    case EntityType.KNOWLEDGE_PAGE:
+      return patchKnowledgePage;
     case EntityType.MESSAGING_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.PIPELINE_SERVICE:
@@ -250,6 +256,8 @@ export const getEntityAPIfromSource = (
           params?.fields,
           params?.include
         );
+    case EntityType.KNOWLEDGE_PAGE:
+      return getKnowledgePageByFqn;
     case EntityType.MESSAGING_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.PIPELINE_SERVICE:

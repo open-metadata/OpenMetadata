@@ -100,6 +100,10 @@ describe('FormBuilderV1', () => {
     jest.clearAllMocks();
   });
 
+  it('sets a displayName for React DevTools and linting', () => {
+    expect(FormBuilderV1.displayName).toBe('FormBuilderV1');
+  });
+
   it('renders with formatted form data and default actions', () => {
     render(<FormBuilderV1 formData={{ name: 'value' }} schema={schema} />);
 
@@ -207,6 +211,18 @@ describe('FormBuilderV1', () => {
     expect(screen.getByTestId('submit-btn')).toHaveTextContent(
       'label.submitting'
     );
+  });
+
+  it('disables submit when requested', () => {
+    render(
+      <FormBuilderV1
+        isSubmitDisabled
+        formData={{ name: 'value' }}
+        schema={schema}
+      />
+    );
+
+    expect(screen.getByTestId('submit-btn')).toBeDisabled();
   });
 
   it('syncs localFormData when the formData prop changes', async () => {

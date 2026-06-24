@@ -116,6 +116,10 @@ import org.openmetadata.service.jdbi3.TaskRepository;
 @Execution(ExecutionMode.CONCURRENT)
 public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
+  private static String entityLink(String entityType, String entityFqn) {
+    return String.format("<#E::%s::%s>", entityType, entityFqn);
+  }
+
   public TaskResourceIT() {
     supportsFollowers = false;
     supportsTags = true;
@@ -408,8 +412,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                       .withName(ns.prefix("custom-resolution-task"))
                       .withCategory(TaskCategory.Custom)
                       .withType(TaskEntityType.CustomTask)
-                      .withAbout(table.getFullyQualifiedName())
-                      .withAboutType("table")
+                      .withAbout(entityLink("table", table.getFullyQualifiedName()))
                       .withPayload(
                           Map.of(
                               "targetField",
@@ -497,8 +500,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                       .withName(ns.prefix("custom-resolution-invalid"))
                       .withCategory(TaskCategory.Custom)
                       .withType(TaskEntityType.CustomTask)
-                      .withAbout(table.getFullyQualifiedName())
-                      .withAboutType("table")
+                      .withAbout(entityLink("table", table.getFullyQualifiedName()))
                       .withPayload(
                           Map.of(
                               "targetField",
@@ -748,6 +750,240 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
   }
 
   @Test
+  void testFilerCannotResolveOwnTask(TestNamespace ns) {
+    // user2 (non-admin) files a task and tries to approve it themselves.
+    // TaskAuthorPolicy's deny rule (isTaskFiler() && operations=ResolveTask) must reject.
+    SharedEntities shared = SharedEntities.get();
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("filer-no-self-approve"))
+            .withDescription("Filer cannot approve own task")
+            .withCategory(TaskCategory.Approval)
+            .withType(TaskEntityType.GlossaryApproval)
+            .withAssignees(List.of(shared.USER1.getFullyQualifiedName()));
+
+    Task task = SdkClients.user2Client().tasks().create(request);
+    assertEquals(shared.USER2.getName(), task.getCreatedBy().getName());
+
+    ResolveTask resolveRequest =
+        new ResolveTask()
+            .withResolutionType(TaskResolutionType.Approved)
+            .withComment("Should be denied");
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> SdkClients.user2Client().tasks().resolve(task.getId().toString(), resolveRequest));
+  }
+
+  @Test
+  void testFilerCannotRejectOwnTask(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("filer-no-self-reject"))
+            .withCategory(TaskCategory.Approval)
+            .withType(TaskEntityType.GlossaryApproval)
+            .withAssignees(List.of(shared.USER1.getFullyQualifiedName()));
+
+    Task task = SdkClients.user2Client().tasks().create(request);
+
+    ResolveTask rejectRequest =
+        new ResolveTask()
+            .withResolutionType(TaskResolutionType.Rejected)
+            .withComment("Should also be denied");
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> SdkClients.user2Client().tasks().resolve(task.getId().toString(), rejectRequest));
+  }
+
+  @Test
+  void testFilerCanCloseOwnTask(TestNamespace ns) {
+    // user2 (non-admin) files a task and cancels it. CloseTask must be allowed by the filer.
+    SharedEntities shared = SharedEntities.get();
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("filer-close-own"))
+            .withCategory(TaskCategory.Approval)
+            .withType(TaskEntityType.GlossaryApproval)
+            .withAssignees(List.of(shared.USER1.getFullyQualifiedName()));
+
+    Task task = SdkClients.user2Client().tasks().create(request);
+    Task closedTask = SdkClients.user2Client().tasks().close(task.getId().toString());
+
+    assertEquals(TaskEntityStatus.Cancelled, closedTask.getStatus());
+  }
+
+  @Test
+  void testFilerCanDeleteOwnTask(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("filer-delete-own"))
+            .withCategory(TaskCategory.Approval)
+            .withType(TaskEntityType.GlossaryApproval)
+            .withAssignees(List.of(shared.USER1.getFullyQualifiedName()));
+
+    Task task = SdkClients.user2Client().tasks().create(request);
+    SdkClients.user2Client().tasks().delete(task.getId().toString());
+
+    assertThrows(
+        ApiException.class, () -> SdkClients.adminClient().tasks().get(task.getId().toString()));
+  }
+
+  @Test
+  void testCreatorWhoIsAlsoAssigneeCannotApprove(TestNamespace ns) {
+    // The headline self-approval bug: user2 files the task AND is also in the assignees list.
+    // Old behaviour allowed self-approval because assignee check passed. New behaviour: deny rule
+    // on isTaskFiler() short-circuits ResolveTask regardless of assignee status.
+    SharedEntities shared = SharedEntities.get();
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("filer-also-assignee"))
+            .withCategory(TaskCategory.Approval)
+            .withType(TaskEntityType.GlossaryApproval)
+            .withAssignees(
+                List.of(
+                    shared.USER1.getFullyQualifiedName(), shared.USER2.getFullyQualifiedName()));
+
+    Task task = SdkClients.user2Client().tasks().create(request);
+    assertEquals(shared.USER2.getName(), task.getCreatedBy().getName());
+
+    ResolveTask resolveRequest =
+        new ResolveTask()
+            .withResolutionType(TaskResolutionType.Approved)
+            .withComment("Filer-assignee should not be able to approve");
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> SdkClients.user2Client().tasks().resolve(task.getId().toString(), resolveRequest));
+
+    // Sanity check: a *different* assignee (USER1) can still approve the same task.
+    Task approved =
+        SdkClients.user1Client()
+            .tasks()
+            .resolve(
+                task.getId().toString(),
+                new ResolveTask()
+                    .withResolutionType(TaskResolutionType.Approved)
+                    .withComment("Approved by USER1"));
+    assertEquals(TaskEntityStatus.Approved, approved.getStatus());
+  }
+
+  @Test
+  void testFilerCannotBulkApproveOwnTask(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("filer-bulk-no-self-approve"))
+            .withCategory(TaskCategory.Approval)
+            .withType(TaskEntityType.GlossaryApproval)
+            .withAssignees(
+                List.of(
+                    shared.USER1.getFullyQualifiedName(), shared.USER2.getFullyQualifiedName()));
+
+    Task task = SdkClients.user2Client().tasks().create(request);
+
+    BulkTaskOperation bulkOp =
+        new BulkTaskOperation()
+            .withTaskIds(List.of(task.getId().toString()))
+            .withOperation(BulkTaskOperationType.Approve)
+            .withParams(new BulkTaskOperationParams().withComment("Bulk self-approval attempt"));
+
+    BulkTaskOperationResult result =
+        SdkClients.user2Client()
+            .getHttpClient()
+            .execute(HttpMethod.POST, "/v1/tasks/bulk", bulkOp, BulkTaskOperationResult.class);
+
+    assertNotNull(result);
+    assertEquals(0, result.getSuccessful());
+    assertEquals(1, result.getFailed());
+  }
+
+  @Test
+  void testAssigneeCannotDeleteTask(TestNamespace ns) {
+    // user2 is the assignee (and admin filed it). Assignees can resolve but must not delete.
+    SharedEntities shared = SharedEntities.get();
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("assignee-no-delete"))
+            .withCategory(TaskCategory.Approval)
+            .withType(TaskEntityType.GlossaryApproval)
+            .withAssignees(List.of(shared.USER2.getFullyQualifiedName()));
+
+    Task task = SdkClients.adminClient().tasks().create(request);
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> SdkClients.user2Client().tasks().delete(task.getId().toString()));
+  }
+
+  @Test
+  void testFilerCannotReassignOwnTaskViaPatch(TestNamespace ns) {
+    // Regression: PATCH /assignees must require ReassignTask (entity-owner-only), not the default
+    // EditAll. Without the per-entity field mapping, filers could reassign their own task via PATCH
+    // since TaskAuthorPolicy grants them EditAll on the task.
+    SharedEntities shared = SharedEntities.get();
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("filer-patch-assignees"))
+            .withCategory(TaskCategory.Approval)
+            .withType(TaskEntityType.GlossaryApproval)
+            .withAssignees(List.of(shared.USER1.getFullyQualifiedName()));
+
+    Task task = SdkClients.user2Client().tasks().create(request);
+
+    String patch =
+        "[{\"op\":\"add\",\"path\":\"/assignees/-\",\"value\":{\"id\":\""
+            + shared.USER3.getId()
+            + "\",\"type\":\"user\",\"name\":\""
+            + shared.USER3.getName()
+            + "\"}}]";
+
+    assertThrows(
+        ForbiddenException.class,
+        () ->
+            SdkClients.user2Client()
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.PATCH,
+                    "/v1/tasks/" + task.getId(),
+                    patch,
+                    org.openmetadata.sdk.network.RequestOptions.builder()
+                        .header("Content-Type", "application/json-patch+json")
+                        .build()));
+  }
+
+  @Test
+  void testFilerCannotChangePriorityViaPatch(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("filer-patch-priority"))
+            .withCategory(TaskCategory.Approval)
+            .withType(TaskEntityType.GlossaryApproval)
+            .withAssignees(List.of(shared.USER1.getFullyQualifiedName()))
+            .withPriority(TaskPriority.Medium);
+
+    Task task = SdkClients.user2Client().tasks().create(request);
+
+    String patch = "[{\"op\":\"replace\",\"path\":\"/priority\",\"value\":\"High\"}]";
+
+    assertThrows(
+        ForbiddenException.class,
+        () ->
+            SdkClients.user2Client()
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.PATCH,
+                    "/v1/tasks/" + task.getId(),
+                    patch,
+                    org.openmetadata.sdk.network.RequestOptions.builder()
+                        .header("Content-Type", "application/json-patch+json")
+                        .build()));
+  }
+
+  @Test
   void testAssignedEndpointReturnsUserTasks(TestNamespace ns) {
     SharedEntities shared = SharedEntities.get();
 
@@ -768,12 +1004,21 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     Task task1 = SdkClients.adminClient().tasks().create(request1);
     SdkClients.adminClient().tasks().create(request2);
 
-    ListResponse<Task> user1Tasks = SdkClients.user1Client().tasks().listAssigned();
-
-    assertNotNull(user1Tasks);
-    assertTrue(
-        user1Tasks.getData().stream().anyMatch(t -> t.getId().equals(task1.getId())),
-        "User1's assigned tasks should include task1");
+    // listAssigned defaults to limit=10. Under heavy concurrent load (multiple tests sharing
+    // USER1) the just-created task may not appear in the first page, so request a wider page
+    // explicitly. Awaitility rides out any write-visibility race on top.
+    Awaitility.await("User1's assigned tasks include task1")
+        .atMost(Duration.ofSeconds(15))
+        .pollInterval(Duration.ofMillis(500))
+        .untilAsserted(
+            () -> {
+              ListResponse<Task> user1Tasks =
+                  SdkClients.user1Client().tasks().listAssigned(null, null, null, null, 1000);
+              assertNotNull(user1Tasks);
+              assertTrue(
+                  user1Tasks.getData().stream().anyMatch(t -> t.getId().equals(task1.getId())),
+                  "User1's assigned tasks should include task1");
+            });
   }
 
   @Test
@@ -786,12 +1031,22 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
     Task createdTask = SdkClients.user1Client().tasks().create(request);
 
-    ListResponse<Task> user1CreatedTasks = SdkClients.user1Client().tasks().listCreated();
-
-    assertNotNull(user1CreatedTasks);
-    assertTrue(
-        user1CreatedTasks.getData().stream().anyMatch(t -> t.getId().equals(createdTask.getId())),
-        "User1's created tasks should include the task they created");
+    // listCreated defaults to limit=10. Under heavy concurrent load (multiple tests sharing
+    // USER1) the just-created task may not appear in the first page, so request a wider page
+    // explicitly. Awaitility rides out any write-visibility race on top.
+    Awaitility.await("User1's created tasks include the new task")
+        .atMost(Duration.ofSeconds(15))
+        .pollInterval(Duration.ofMillis(500))
+        .untilAsserted(
+            () -> {
+              ListResponse<Task> user1CreatedTasks =
+                  SdkClients.user1Client().tasks().listCreated(null, null, null, null, 1000);
+              assertNotNull(user1CreatedTasks);
+              assertTrue(
+                  user1CreatedTasks.getData().stream()
+                      .anyMatch(t -> t.getId().equals(createdTask.getId())),
+                  "User1's created tasks should include the task they created");
+            });
   }
 
   @Test
@@ -817,26 +1072,39 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
     SdkClients.user1Client().tasks().close(closedTask.getId().toString());
 
-    ListResponse<Task> openTasks =
-        SdkClients.user1Client().tasks().listAssigned(TaskEntityStatus.Open);
-    ListResponse<Task> cancelledTasks =
-        SdkClients.user1Client().tasks().listAssigned(TaskEntityStatus.Cancelled);
+    // Wider page + Awaitility — see testAssignedEndpointReturnsUserTasks for rationale.
+    Awaitility.await("status-filtered listAssigned reflects both tasks")
+        .atMost(Duration.ofSeconds(15))
+        .pollInterval(Duration.ofMillis(500))
+        .untilAsserted(
+            () -> {
+              ListResponse<Task> openTasks =
+                  SdkClients.user1Client()
+                      .tasks()
+                      .listAssigned(TaskEntityStatus.Open, null, null, null, 1000);
+              ListResponse<Task> cancelledTasks =
+                  SdkClients.user1Client()
+                      .tasks()
+                      .listAssigned(TaskEntityStatus.Cancelled, null, null, null, 1000);
 
-    assertNotNull(openTasks);
-    assertTrue(
-        openTasks.getData().stream().anyMatch(t -> t.getId().equals(openTask.getId())),
-        "Open assigned tasks should include open task");
-    assertFalse(
-        openTasks.getData().stream().anyMatch(t -> t.getId().equals(closedTask.getId())),
-        "Open assigned tasks should not include cancelled task");
+              assertNotNull(openTasks);
+              assertTrue(
+                  openTasks.getData().stream().anyMatch(t -> t.getId().equals(openTask.getId())),
+                  "Open assigned tasks should include open task");
+              assertFalse(
+                  openTasks.getData().stream().anyMatch(t -> t.getId().equals(closedTask.getId())),
+                  "Open assigned tasks should not include cancelled task");
 
-    assertNotNull(cancelledTasks);
-    assertTrue(
-        cancelledTasks.getData().stream().anyMatch(t -> t.getId().equals(closedTask.getId())),
-        "Cancelled assigned tasks should include cancelled task");
-    assertFalse(
-        cancelledTasks.getData().stream().anyMatch(t -> t.getId().equals(openTask.getId())),
-        "Cancelled assigned tasks should not include open task");
+              assertNotNull(cancelledTasks);
+              assertTrue(
+                  cancelledTasks.getData().stream()
+                      .anyMatch(t -> t.getId().equals(closedTask.getId())),
+                  "Cancelled assigned tasks should include cancelled task");
+              assertFalse(
+                  cancelledTasks.getData().stream()
+                      .anyMatch(t -> t.getId().equals(openTask.getId())),
+                  "Cancelled assigned tasks should not include open task");
+            });
   }
 
   @Test
@@ -1346,8 +1614,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withDescription("Task with about entity that has owners")
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.DescriptionUpdate)
-            .withAbout(ownedTable.getFullyQualifiedName())
-            .withAboutType("table");
+            .withAbout(entityLink("table", ownedTable.getFullyQualifiedName()));
 
     Task task = SdkClients.adminClient().tasks().create(request);
 
@@ -1439,16 +1706,14 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withName(ns.prefix("count-test-1"))
             .withCategory(TaskCategory.Approval)
             .withType(TaskEntityType.DescriptionUpdate)
-            .withAbout(table.getFullyQualifiedName())
-            .withAboutType("table");
+            .withAbout(entityLink("table", table.getFullyQualifiedName()));
 
     CreateTask request2 =
         new CreateTask()
             .withName(ns.prefix("count-test-2"))
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.DescriptionUpdate)
-            .withAbout(table.getFullyQualifiedName())
-            .withAboutType("table");
+            .withAbout(entityLink("table", table.getFullyQualifiedName()));
 
     createEntity(request1);
     createEntity(request2);
@@ -1480,8 +1745,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withDescription("Task about table")
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.DescriptionUpdate)
-            .withAbout(table.getFullyQualifiedName())
-            .withAboutType("table");
+            .withAbout(entityLink("table", table.getFullyQualifiedName()));
 
     CreateTask request2 =
         new CreateTask()
@@ -1489,8 +1753,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withDescription("Another task about table")
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.OwnershipUpdate)
-            .withAbout(table.getFullyQualifiedName())
-            .withAboutType("table");
+            .withAbout(entityLink("table", table.getFullyQualifiedName()));
 
     Task task1 = createEntity(request1);
     Task task2 = createEntity(request2);
@@ -1520,16 +1783,14 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withName(ns.prefix("resolved-count-1"))
             .withCategory(TaskCategory.Approval)
             .withType(TaskEntityType.GlossaryApproval)
-            .withAbout(table.getFullyQualifiedName())
-            .withAboutType("table");
+            .withAbout(entityLink("table", table.getFullyQualifiedName()));
 
     CreateTask request2 =
         new CreateTask()
             .withName(ns.prefix("resolved-count-2"))
             .withCategory(TaskCategory.Approval)
             .withType(TaskEntityType.GlossaryApproval)
-            .withAbout(table.getFullyQualifiedName())
-            .withAboutType("table");
+            .withAbout(entityLink("table", table.getFullyQualifiedName()));
 
     Task task1 = createEntity(request1);
     Task task2 = createEntity(request2);
@@ -1560,8 +1821,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withDescription("Test aboutFqnHash storage")
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.DescriptionUpdate)
-            .withAbout(table.getFullyQualifiedName())
-            .withAboutType("table");
+            .withAbout(entityLink("table", table.getFullyQualifiedName()));
 
     Task created = createEntity(request);
 
@@ -1601,8 +1861,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withDescription("Ensure task updates keep the target entity linkage")
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.DescriptionUpdate)
-            .withAbout(table.getFullyQualifiedName())
-            .withAboutType("table")
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
             .withAssignees(List.of(shared.USER1.getFullyQualifiedName()));
 
     Task created = createEntity(request);
@@ -1832,8 +2091,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withDescription("Add PersonalData.Personal tag to table")
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.TagUpdate)
-            .withAbout(table.getFullyQualifiedName())
-            .withAboutType("table")
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
@@ -1881,8 +2139,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withDescription("Update table description")
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.DescriptionUpdate)
-            .withAbout(table.getFullyQualifiedName())
-            .withAboutType("table")
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
@@ -1928,8 +2185,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withDescription("Update column description")
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.DescriptionUpdate)
-            .withAbout(table.getFullyQualifiedName())
-            .withAboutType("table")
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
@@ -1983,8 +2239,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withDescription("Update table description - to be rejected")
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.DescriptionUpdate)
-            .withAbout(table.getFullyQualifiedName())
-            .withAboutType("table")
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
@@ -2030,8 +2285,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                     .withDescription("Update table description without materialized transitions")
                     .withCategory(TaskCategory.MetadataUpdate)
                     .withType(TaskEntityType.DescriptionUpdate)
-                    .withAbout(table.getFullyQualifiedName())
-                    .withAboutType("table")
+                    .withAbout(entityLink("table", table.getFullyQualifiedName()))
                     .withPayload(payload));
 
     awaitTaskReadyForWorkflowResolution(task.getId());
@@ -2088,8 +2342,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                     .withDescription("Reject suggestion without materialized transitions")
                     .withCategory(TaskCategory.MetadataUpdate)
                     .withType(TaskEntityType.Suggestion)
-                    .withAbout(table.getFullyQualifiedName())
-                    .withAboutType("table")
+                    .withAbout(entityLink("table", table.getFullyQualifiedName()))
                     .withPayload(rawSuggestionPayload));
 
     awaitTaskReadyForWorkflowResolution(task.getId());
@@ -2146,8 +2399,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withDescription("Tag update to be rejected")
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.TagUpdate)
-            .withAbout(table.getFullyQualifiedName())
-            .withAboutType("table")
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
@@ -2194,8 +2446,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withDescription("Transfer ownership to user2")
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.OwnershipUpdate)
-            .withAbout(table.getFullyQualifiedName())
-            .withAboutType("table")
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
@@ -2242,8 +2493,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withDescription("Ownership update to be rejected")
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.OwnershipUpdate)
-            .withAbout(table.getFullyQualifiedName())
-            .withAboutType("table")
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
@@ -2297,8 +2547,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withDescription("Update table tier to Tier1")
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.TierUpdate)
-            .withAbout(table.getFullyQualifiedName())
-            .withAboutType("table")
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
@@ -2350,8 +2599,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withDescription("Assign table to domain")
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.DomainUpdate)
-            .withAbout(table.getFullyQualifiedName())
-            .withAboutType("table")
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
@@ -2403,8 +2651,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withDescription("Domain update to be rejected")
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.DomainUpdate)
-            .withAbout(table.getFullyQualifiedName())
-            .withAboutType("table")
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
@@ -2464,8 +2711,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withDescription("Update topic description")
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.DescriptionUpdate)
-            .withAbout(topic.getFullyQualifiedName())
-            .withAboutType("topic")
+            .withAbout(entityLink("topic", topic.getFullyQualifiedName()))
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
@@ -2530,8 +2776,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withDescription("Update topic schema field description")
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.DescriptionUpdate)
-            .withAbout(topic.getFullyQualifiedName())
-            .withAboutType("topic")
+            .withAbout(entityLink("topic", topic.getFullyQualifiedName()))
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
@@ -2609,8 +2854,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withDescription("Update nested column description")
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.DescriptionUpdate)
-            .withAbout(table.getFullyQualifiedName())
-            .withAboutType("table")
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
@@ -2673,8 +2917,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withName(ns.prefix("multi-col-task-1"))
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.DescriptionUpdate)
-            .withAbout(table.getFullyQualifiedName())
-            .withAboutType("table")
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
             .withPayload(payload1);
 
     org.openmetadata.schema.type.DescriptionUpdatePayload payload2 =
@@ -2687,8 +2930,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withName(ns.prefix("multi-col-task-2"))
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.DescriptionUpdate)
-            .withAbout(table.getFullyQualifiedName())
-            .withAboutType("table")
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
             .withPayload(payload2);
 
     Task task1 = SdkClients.adminClient().tasks().create(request1);
@@ -2756,8 +2998,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withDescription("Update dashboard description")
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.DescriptionUpdate)
-            .withAbout(dashboard.getFullyQualifiedName())
-            .withAboutType("dashboard")
+            .withAbout(entityLink("dashboard", dashboard.getFullyQualifiedName()))
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
@@ -2811,8 +3052,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withDescription("Add tags to dashboard")
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.TagUpdate)
-            .withAbout(dashboard.getFullyQualifiedName())
-            .withAboutType("dashboard")
+            .withAbout(entityLink("dashboard", dashboard.getFullyQualifiedName()))
             .withPayload(tagPayload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
@@ -2865,8 +3105,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withDescription("Update pipeline description")
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.DescriptionUpdate)
-            .withAbout(pipeline.getFullyQualifiedName())
-            .withAboutType("pipeline")
+            .withAbout(entityLink("pipeline", pipeline.getFullyQualifiedName()))
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
@@ -2921,8 +3160,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withDescription("Update pipeline task description")
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.DescriptionUpdate)
-            .withAbout(pipeline.getFullyQualifiedName())
-            .withAboutType("pipeline")
+            .withAbout(entityLink("pipeline", pipeline.getFullyQualifiedName()))
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
@@ -2982,8 +3220,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withDescription("Update container description")
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.DescriptionUpdate)
-            .withAbout(container.getFullyQualifiedName())
-            .withAboutType("container")
+            .withAbout(entityLink("container", container.getFullyQualifiedName()))
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
@@ -3048,8 +3285,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withDescription("Update container dataModel column description")
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.DescriptionUpdate)
-            .withAbout(container.getFullyQualifiedName())
-            .withAboutType("container")
+            .withAbout(entityLink("container", container.getFullyQualifiedName()))
             .withPayload(payload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
@@ -3109,8 +3345,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withDescription("Add PII tag to table")
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.TagUpdate)
-            .withAbout(table.getFullyQualifiedName())
-            .withAboutType("table")
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
             .withPayload(tagPayload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
@@ -3163,8 +3398,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withDescription("Add tag to topic")
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TaskEntityType.TagUpdate)
-            .withAbout(topic.getFullyQualifiedName())
-            .withAboutType("topic")
+            .withAbout(entityLink("topic", topic.getFullyQualifiedName()))
             .withPayload(tagPayload);
 
     Task task = SdkClients.adminClient().tasks().create(request);
@@ -3254,8 +3488,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                     .withDescription("Add tag to API endpoint request schema field")
                     .withCategory(TaskCategory.MetadataUpdate)
                     .withType(TaskEntityType.TagUpdate)
-                    .withAbout(apiEndpoint.getFullyQualifiedName())
-                    .withAboutType("apiEndpoint")
+                    .withAbout(entityLink("apiEndpoint", apiEndpoint.getFullyQualifiedName()))
                     .withPayload(payload));
 
     Task resolvedTask =
@@ -3347,8 +3580,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         .withDescription("Task for " + table.getFullyQualifiedName())
         .withCategory(TaskCategory.MetadataUpdate)
         .withType(TaskEntityType.DescriptionUpdate)
-        .withAbout(table.getFullyQualifiedName())
-        .withAboutType("table");
+        .withAbout(entityLink("table", table.getFullyQualifiedName()));
   }
 
   private TaskFormSchemaOverrideContext overrideTaskFormSchema(
@@ -3435,8 +3667,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                     "description", "Apply suggestion endpoint should work",
                     "category", TaskCategory.MetadataUpdate.value(),
                     "type", TaskEntityType.Suggestion.value(),
-                    "about", table.getFullyQualifiedName(),
-                    "aboutType", "table",
+                    "about", entityLink("table", table.getFullyQualifiedName()),
                     "payload", rawSuggestionPayload),
                 Task.class);
 
@@ -3487,8 +3718,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                     "description", "Approve suggestion one",
                     "category", TaskCategory.MetadataUpdate.value(),
                     "type", TaskEntityType.Suggestion.value(),
-                    "about", table.getFullyQualifiedName(),
-                    "aboutType", "table",
+                    "about", entityLink("table", table.getFullyQualifiedName()),
                     "payload", taskOnePayload),
                 Task.class);
 
@@ -3503,8 +3733,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                     "description", "Approve suggestion two",
                     "category", TaskCategory.MetadataUpdate.value(),
                     "type", TaskEntityType.Suggestion.value(),
-                    "about", table.getFullyQualifiedName(),
-                    "aboutType", "table",
+                    "about", entityLink("table", table.getFullyQualifiedName()),
                     "payload", taskTwoPayload),
                 Task.class);
 
@@ -3564,8 +3793,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                     "description", "Reject suggestion one",
                     "category", TaskCategory.MetadataUpdate.value(),
                     "type", TaskEntityType.Suggestion.value(),
-                    "about", table.getFullyQualifiedName(),
-                    "aboutType", "table",
+                    "about", entityLink("table", table.getFullyQualifiedName()),
                     "payload", taskOnePayload),
                 Task.class);
 
@@ -3580,8 +3808,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                     "description", "Reject suggestion two",
                     "category", TaskCategory.MetadataUpdate.value(),
                     "type", TaskEntityType.Suggestion.value(),
-                    "about", table.getFullyQualifiedName(),
-                    "aboutType", "table",
+                    "about", entityLink("table", table.getFullyQualifiedName()),
                     "payload", taskTwoPayload),
                 Task.class);
 
