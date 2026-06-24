@@ -12,6 +12,7 @@
 Test looker source
 """
 
+import os
 import uuid
 from datetime import datetime, timedelta
 from unittest import TestCase
@@ -284,6 +285,44 @@ class LookerUnitTest(TestCase):
                 description="description",
                 charts=[],
                 sourceUrl="https://my-looker.com/dashboards/1",
+                service=self.looker.context.get().dashboard_service,
+                owners=None,
+            )
+
+            self.assertEqual(
+                next(self.looker.yield_dashboard(MOCK_LOOKER_DASHBOARD)).right,
+                create_dashboard_request,
+            )
+
+    def test_ui_base_defaults_to_host_port(self):
+        """
+        Without LOOKER_UI_BASE set, _ui_base falls back to hostPort so the
+        source URLs are unchanged.
+        """
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(self.looker._ui_base, "https://my-looker.com")
+
+    def test_ui_base_uses_env_var(self):
+        """
+        When LOOKER_UI_BASE is set, _ui_base uses it (trailing slash trimmed)
+        instead of the API hostPort.
+        """
+        with patch.dict(os.environ, {"LOOKER_UI_BASE": "https://ui.example.com/"}):
+            self.assertEqual(self.looker._ui_base, "https://ui.example.com")
+
+    def test_yield_dashboard_uses_ui_base_env(self):
+        """
+        The dashboard sourceUrl is built from LOOKER_UI_BASE when set.
+        """
+        with patch.object(LookerSource, "get_owner_ref", return_value=None), patch.dict(
+            os.environ, {"LOOKER_UI_BASE": "https://ui.example.com"}
+        ):
+            create_dashboard_request = CreateDashboardRequest(
+                name="1",
+                displayName="title1",
+                description="description",
+                charts=[],
+                sourceUrl="https://ui.example.com/dashboards/1",
                 service=self.looker.context.get().dashboard_service,
                 owners=None,
             )
