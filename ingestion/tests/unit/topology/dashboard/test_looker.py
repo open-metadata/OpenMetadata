@@ -537,7 +537,7 @@ class LookerUnitTest(TestCase):
             description="description",
         )
 
-        with self.assertLogs(level="INFO") as captured:
+        with self.assertLogs("metadata.Ingestion", level="DEBUG") as captured:
             charts = list(self.looker.yield_dashboard_chart(dashboard))
 
         self.assertEqual(charts, [])

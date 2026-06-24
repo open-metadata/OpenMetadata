@@ -1612,7 +1612,7 @@ class LookerSource(DashboardServiceSource):
                     # No query, no result-maker query, and no merge result: this
                     # is a data-less tile (e.g. a text/markdown tile). Skip it
                     # instead of emitting a dead {host}/merge?mid=None sourceUrl.
-                    logger.info(
+                    logger.debug(
                         f"Skipping data-less Looker tile id={chart.id} "
                         f"title={chart.title!r} type={chart.type}: "
                         "no query, no result-maker query, no merge result"
