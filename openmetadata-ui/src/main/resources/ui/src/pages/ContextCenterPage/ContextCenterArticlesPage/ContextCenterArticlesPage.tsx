@@ -121,7 +121,7 @@ const ContextCenterArticlesPage = () => {
     []
   );
 
-  const fetchPermission = async () => {
+  const fetchPermission = useCallback(async () => {
     try {
       const response = await getResourcePermission(
         ResourceEntity.KNOWLEDGE_PAGE
@@ -130,50 +130,79 @@ const ContextCenterArticlesPage = () => {
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
-  };
+  }, [getResourcePermission]);
 
-  const addArticleKnowledgePage = async () => {
+  const addArticleKnowledgePage = useCallback(async () => {
     await createArticleKnowledgePage(USERId, navigate, () =>
       getResourceLimit('knowledgeCenter', true, true)
     );
-  };
+  }, [USERId, navigate, getResourceLimit]);
 
-  const addQuickLinkKnowledgePage = async (
-    formData: QuickLinkFormModalFormData
-  ) => {
-    try {
-      const tags = [
-        ...(formData.tags ?? []),
-        ...(formData.glossaryTerms ?? []),
-      ];
-      const data: CreateKnowledgePage = {
-        description: formData.description,
-        displayName: formData.displayName ?? '',
-        name: `${PageType.QUICK_LINK}_${cryptoRandomString({
-          length: 8,
-          type: 'alphanumeric',
-        })}`,
-        owners: [{ id: USERId, type: 'user' }],
-        page: { url: formData.url },
-        pageType: PageType.QUICK_LINK,
-        relatedEntities: formData?.relatedEntities,
-        tags,
-      };
-      const response = await postKnowledgePage(data);
-      knowledgeCenterPageRef.current?.addKnowledgePage(response);
-      showSuccessToast(
-        t('message.entity-saved-successfully', {
-          entity: t('label.quick-link'),
-        })
-      );
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+  const addQuickLinkKnowledgePage = useCallback(
+    async (formData: QuickLinkFormModalFormData) => {
+      try {
+        const tags = [
+          ...(formData.tags ?? []),
+          ...(formData.glossaryTerms ?? []),
+        ];
+        const data: CreateKnowledgePage = {
+          description: formData.description,
+          displayName: formData.displayName ?? '',
+          name: `${PageType.QUICK_LINK}_${cryptoRandomString({
+            length: 8,
+            type: 'alphanumeric',
+          })}`,
+          owners: [{ id: USERId, type: 'user' }],
+          page: { url: formData.url },
+          pageType: PageType.QUICK_LINK,
+          relatedEntities: formData?.relatedEntities,
+          tags,
+        };
+        const response = await postKnowledgePage(data);
+        knowledgeCenterPageRef.current?.addKnowledgePage(response);
+        showSuccessToast(
+          t('message.entity-saved-successfully', {
+            entity: t('label.quick-link'),
+          })
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [USERId, t]
+  );
+
+  const handleOpenAddLinkModal = useCallback(
+    () => setShowAddLinkModal(true),
+    []
+  );
+
+  const handleCloseAddLinkModal = useCallback(
+    () => setShowAddLinkModal(false),
+    []
+  );
+
+  const handleSaveQuickLink = useCallback(
+    async (data: QuickLinkFormModalFormData) => {
+      await addQuickLinkKnowledgePage(data);
+      setShowAddLinkModal(false);
+    },
+    [addQuickLinkKnowledgePage]
+  );
+
+  const handleCloseEditQuickLink = useCallback(
+    () => setEditingQuickLink(undefined),
+    []
+  );
+
+  const handleSaveEditQuickLink = useCallback(() => {
+    setEditingQuickLink(undefined);
+    knowledgePagesHierarchyRef.current?.fetchKnowledgePageHierarchy(true);
+  }, []);
 
   useEffect(() => {
     fetchPermission();
-  }, []);
+  }, [fetchPermission]);
 
   const renderHeader = () => {
     if (version) {
@@ -230,7 +259,7 @@ const ContextCenterArticlesPage = () => {
                   <Dropdown.Item
                     data-testid="create-quick-link-btn"
                     key={PageType.QUICK_LINK}
-                    onAction={() => setShowAddLinkModal(true)}>
+                    onAction={handleOpenAddLinkModal}>
                     {t('label.quick-link')}
                   </Dropdown.Item>
                 </Dropdown.Menu>
@@ -362,22 +391,16 @@ const ContextCenterArticlesPage = () => {
             EditTags: true,
           } as OperationPermission
         }
-        onCancel={() => setShowAddLinkModal(false)}
-        onSave={(data) => {
-          addQuickLinkKnowledgePage(data);
-          setShowAddLinkModal(false);
-        }}
+        onCancel={handleCloseAddLinkModal}
+        onSave={handleSaveQuickLink}
       />
 
       <QuickLinkFormModal
         isOpen={Boolean(editingQuickLink)}
         permissions={permissions}
         quickLink={editingQuickLink}
-        onCancel={() => setEditingQuickLink(undefined)}
-        onSave={() => {
-          setEditingQuickLink(undefined);
-          knowledgePagesHierarchyRef.current?.fetchKnowledgePageHierarchy(true);
-        }}
+        onCancel={handleCloseEditQuickLink}
+        onSave={handleSaveEditQuickLink}
       />
     </div>
   );

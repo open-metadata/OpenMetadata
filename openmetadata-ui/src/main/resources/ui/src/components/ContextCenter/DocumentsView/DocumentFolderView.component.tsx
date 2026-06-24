@@ -187,7 +187,7 @@ const DocumentFolderView = ({
                             e.stopPropagation();
                             handleFolderItemSelect(folder.id);
                           }}>
-                            {getEntityName(folder)}
+                          {getEntityName(folder)}
                         </Button>
 
                         {canDelete && (
