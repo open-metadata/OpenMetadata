@@ -36,9 +36,12 @@ on:
     types: [opened, synchronize, labeled, ready_for_review]
     paths:
       - "openmetadata-service/**"
-      - "openmetadata-ui/**"
-      - "!openmetadata-ui/src/main/resources/ui/playwright/doc-generator/**"
-      - "!openmetadata-ui/src/main/resources/ui/playwright/docs/**"
+      - "openmetadata-ui/src/main/resources/ui/src/**"
+      - "!openmetadata-ui/src/main/resources/ui/src/test/**"
+      - "!openmetadata-ui/src/main/resources/ui/src/**/*.test.ts"
+      - "!openmetadata-ui/src/main/resources/ui/src/**/*.test.tsx"
+      - "!openmetadata-ui/src/main/resources/ui/src/**/*.spec.ts"
+      - "!openmetadata-ui/src/main/resources/ui/src/**/*.spec.tsx"
       - "openmetadata-spec/src/main/resources/json/schema/**"
       - "openmetadata-integration-tests/**"
       - "openmetadata-mcp/**"
@@ -68,10 +71,10 @@ jobs:
         uses: jesusvasquez333/verify-pr-label-action@v1.4.0
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
-          github-token: '${{ secrets.GITHUB_TOKEN }}'
-          valid-labels: 'safe to test'
-          pull-request-number: '${{ github.event.pull_request.number }}'
-          disable-reviews: true  # To not auto approve changes
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          valid-labels: "safe to test"
+          pull-request-number: "${{ github.event.pull_request.number }}"
+          disable-reviews: true # To not auto approve changes
 
       - name: Checkout
         uses: actions/checkout@v4
