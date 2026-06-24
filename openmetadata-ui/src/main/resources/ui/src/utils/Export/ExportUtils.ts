@@ -41,10 +41,26 @@ export const downloadImageFromBase64 = (
   fileName: string,
   exportType: ExportTypes
 ) => {
+  const [header, base64] = dataUrl.split(',');
+  const mimeMatch = header.match(/:(.*?);/);
+  const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+
+  const blob = new Blob([bytes], { type: mimeType });
   const a = document.createElement('a');
-  a.setAttribute('download', `${fileName}.${lowerCase(exportType)}`);
-  a.setAttribute('href', dataUrl);
+
+  a.href = URL.createObjectURL(blob);
+  a.download = `${fileName}.${lowerCase(exportType)}`;
+  a.style.visibility = 'hidden';
+  document.body.appendChild(a);
   a.click();
+  URL.revokeObjectURL(a.href);
+  document.body.removeChild(a);
 };
 
 const loadImage = (src: string): Promise<HTMLImageElement> =>
