@@ -633,11 +633,13 @@ test.describe('User with different Roles', () => {
         '**/api/v1/search/query*'
       );
 
+      const assetCardText = table.entity.displayName ?? table.entity.name;
+
       await assetsSearchBox.fill(table.entity.name);
 
       await searchResponse;
 
-      const assetCard = adminPage.getByText(table.entity.name).first();
+      const assetCard = adminPage.getByText(assetCardText).first();
 
       await expect(assetCard).toBeVisible();
 
@@ -653,7 +655,7 @@ test.describe('User with different Roles', () => {
 
       await expect(assetsSearchBox).toBeVisible();
 
-      const incorrectAssetCard = adminPage.getByText(table.entity.name);
+      const incorrectAssetCard = adminPage.getByText(assetCardText);
 
       await expect(incorrectAssetCard).not.toBeVisible();
 
