@@ -10,15 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Space, Tooltip } from 'antd';
+import {
+  Alert,
+  AlertVariant,
+  Button,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
+import { AlertTriangle, CheckCircle, XCircle, Zap } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
+import cx from 'classnames';
 import { isEmpty, toNumber } from 'lodash';
-import { FC, useEffect, useMemo, useRef, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FailIcon } from '../../../assets/svg/fail-badge.svg';
-import { ReactComponent as WarningIcon } from '../../../assets/svg/ic-warning.svg';
-import { ReactComponent as SuccessIcon } from '../../../assets/svg/success-badge.svg';
 import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
 import {
   FETCHING_EXPIRY_TIME,
@@ -52,6 +55,7 @@ import {
 } from '../../../rest/workflowAPI';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { formatFormDataForSubmit } from '../../../utils/JSONSchemaFormUtils';
+import { getSnowflakeAccountDisplayHost } from '../../../utils/ServiceConnectionUtils';
 import {
   getServiceType,
   getTestConnectionName,
@@ -59,9 +63,55 @@ import {
 } from '../../../utils/ServicePureUtils';
 import { getErrorText } from '../../../utils/StringUtils';
 import Loader from '../Loader/Loader';
-import './test-connection.style.less';
 import { TestConnectionProps, TestStatus } from './TestConnection.interface';
 import TestConnectionModal from './TestConnectionModal/TestConnectionModal';
+
+const LoaderIcon: FC<{ className?: string }> = () => <Loader size="small" />;
+
+const getAreRequiredStepsPassing = (
+  resultSteps: TestConnectionStepResult[],
+  definitionSteps: TestConnectionStep[]
+) => {
+  const requiredDefinitionSteps = definitionSteps.filter(
+    (step) => step.mandatory
+  );
+
+  if (requiredDefinitionSteps.length > 0) {
+    const resultByName = new Map(
+      resultSteps.map((result) => [result.name, result])
+    );
+
+    return requiredDefinitionSteps.every(
+      (step) => resultByName.get(step.name)?.passed
+    );
+  }
+
+  return (
+    resultSteps.length > 0 &&
+    !resultSteps.some((step) => step.mandatory && !step.passed)
+  );
+};
+
+const getHasOptionalStepsFailing = (
+  resultSteps: TestConnectionStepResult[],
+  definitionSteps: TestConnectionStep[]
+) => {
+  const optionalDefinitionSteps = definitionSteps.filter(
+    (step) => !step.mandatory
+  );
+
+  if (optionalDefinitionSteps.length > 0) {
+    const resultByName = new Map(
+      resultSteps.map((result) => [result.name, result])
+    );
+
+    return optionalDefinitionSteps.some(
+      (step) => resultByName.get(step.name)?.passed === false
+    );
+  }
+
+  return resultSteps.some((step) => !step.mandatory && !step.passed);
+};
 
 const TestConnection: FC<TestConnectionProps> = ({
   isTestingDisabled,
@@ -70,8 +120,10 @@ const TestConnection: FC<TestConnectionProps> = ({
   connectionType,
   serviceName,
   onValidateFormRequiredFields,
+  onTestConnectionStatusChange,
   shouldValidateForm = true,
   showDetails = true,
+  missingRequiredFieldsCount = 0,
   hostIp,
   extraInfo,
 }) => {
@@ -131,6 +183,46 @@ const TestConnection: FC<TestConnectionProps> = ({
     !allowTestConn ||
     !isAirflowAvailable;
 
+  const isReadyToTestCard =
+    !isTestConnectionDisabled &&
+    !testStatus &&
+    missingRequiredFieldsCount === 0;
+
+  const connectionDisplayName = (() => {
+    const formData = getData();
+    const connectionData = (formData ?? {}) as Record<string, unknown>;
+    const account = connectionData.account;
+
+    if (
+      connectionType === 'Snowflake' &&
+      typeof account === 'string' &&
+      account.trim()
+    ) {
+      return getSnowflakeAccountDisplayHost(account);
+    }
+
+    const displayFields = [
+      'hostPort',
+      'host',
+      'hostname',
+      'server',
+      'endpointURL',
+      'brokerEndpoint',
+      'database',
+      'projectId',
+      'account',
+    ];
+
+    for (const field of displayFields) {
+      const value = connectionData[field];
+      if (typeof value === 'string' && value.trim()) {
+        return value.trim();
+      }
+    }
+
+    return serviceName || connectionType;
+  })();
+
   // data fetch handlers
 
   const fetchConnectionDefinition = async () => {
@@ -139,9 +231,12 @@ const TestConnection: FC<TestConnectionProps> = ({
       const response = await getTestConnectionDefinitionByName(
         `${connectionType}.testConnectionDefinition`
       );
+      const steps = response.steps ?? [];
 
-      setTestConnectionStep(response.steps);
+      setTestConnectionStep(steps);
       setDialogOpen(true);
+
+      return steps;
     } catch {
       throw t('message.test-connection-cannot-be-triggered');
     }
@@ -172,6 +267,7 @@ const TestConnection: FC<TestConnectionProps> = ({
     setTestStatus(undefined);
     setIsConnectionTimeout(false);
     setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.ZERO);
+    onTestConnectionStatusChange?.(false);
   };
 
   const handleDeleteWorkflow = async (workflowId: string) => {
@@ -188,28 +284,46 @@ const TestConnection: FC<TestConnectionProps> = ({
   };
 
   const handleCompletionStatus = async (
-    isTestConnectionSuccess: boolean,
-    steps: TestConnectionStepResult[]
+    isWorkflowSuccessful: boolean,
+    steps: TestConnectionStepResult[],
+    definitionSteps: TestConnectionStep[]
   ) => {
     setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
-    if (isTestConnectionSuccess) {
+    const areRequiredStepsPassing = getAreRequiredStepsPassing(
+      steps,
+      definitionSteps
+    );
+    const hasOptionalStepsFailing = getHasOptionalStepsFailing(
+      steps,
+      definitionSteps
+    );
+
+    if (
+      areRequiredStepsPassing &&
+      isWorkflowSuccessful &&
+      !hasOptionalStepsFailing
+    ) {
       setTestStatus(StatusType.Successful);
       setMessage(t(TEST_CONNECTION_SUCCESS_MESSAGE));
+      onTestConnectionStatusChange?.(true);
+    } else if (areRequiredStepsPassing) {
+      setTestStatus('Warning');
+      setMessage(t(TEST_CONNECTION_WARNING_MESSAGE));
+      onTestConnectionStatusChange?.(true);
     } else {
-      const isMandatoryStepsFailing = steps.some(
-        (step) => step.mandatory && !step.passed
-      );
-      setTestStatus(isMandatoryStepsFailing ? StatusType.Failed : 'Warning');
-      setMessage(
-        isMandatoryStepsFailing
-          ? t(TEST_CONNECTION_FAILURE_MESSAGE)
-          : t(TEST_CONNECTION_WARNING_MESSAGE)
-      );
+      setTestStatus(StatusType.Failed);
+      setMessage(t(TEST_CONNECTION_FAILURE_MESSAGE));
+      onTestConnectionStatusChange?.(false);
     }
   };
+  const updateProgress = useCallback(
+    (prev: number) => prev + TEST_CONNECTION_PROGRESS_PERCENTAGE.ONE,
+    []
+  );
 
   const handleWorkflowPolling = async (
     response: Workflow,
+    definitionSteps: TestConnectionStep[],
     intervalObject: {
       intervalId?: number;
       timeoutId?: number;
@@ -223,7 +337,7 @@ const TestConnection: FC<TestConnectionProps> = ({
        */
       intervalObject.intervalId = toNumber(
         setInterval(async () => {
-          setProgress((prev) => prev + TEST_CONNECTION_PROGRESS_PERCENTAGE.ONE);
+          setProgress(updateProgress);
           try {
             const workflowResponse = await getWorkflowData(
               response.id,
@@ -245,7 +359,11 @@ const TestConnection: FC<TestConnectionProps> = ({
             }
 
             // Handle completion status
-            await handleCompletionStatus(isTestConnectionSuccess, steps);
+            await handleCompletionStatus(
+              isTestConnectionSuccess,
+              steps,
+              definitionSteps
+            );
 
             // clear the current interval
             clearInterval(intervalObject.intervalId);
@@ -269,6 +387,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   // handlers
   const testConnection = async () => {
     setIsTestingConnection(true);
+    onTestConnectionStatusChange?.(false);
     setMessage(t(TEST_CONNECTION_TESTING_MESSAGE));
     handleResetState();
 
@@ -302,7 +421,7 @@ const TestConnection: FC<TestConnectionProps> = ({
       };
 
       // fetch the connection steps for current connectionType
-      await fetchConnectionDefinition();
+      const definitionSteps = await fetchConnectionDefinition();
 
       setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.TEN);
 
@@ -322,6 +441,7 @@ const TestConnection: FC<TestConnectionProps> = ({
         setTestStatus(StatusType.Failed);
         setMessage(t(TEST_CONNECTION_FAILURE_MESSAGE));
         setIsTestingConnection(false);
+        onTestConnectionStatusChange?.(false);
 
         // delete the workflow if workflow is not triggered successfully
         await handleDeleteWorkflow(response.id);
@@ -357,18 +477,20 @@ const TestConnection: FC<TestConnectionProps> = ({
 
         setIsTestingConnection(false);
         setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
+        onTestConnectionStatusChange?.(false);
       }, FETCHING_EXPIRY_TIME);
 
       intervalObject.timeoutId = Number(timeoutId);
 
       // Handle workflow polling and completion
-      await handleWorkflowPolling(response, intervalObject);
+      await handleWorkflowPolling(response, definitionSteps, intervalObject);
     } catch (error) {
       setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
       clearInterval(intervalObject.intervalId);
       setIsTestingConnection(false);
       setMessage(t(TEST_CONNECTION_FAILURE_MESSAGE));
       setTestStatus(StatusType.Failed);
+      onTestConnectionStatusChange?.(false);
       if ((error as AxiosError)?.status === 500) {
         setErrorMessage({
           description: t('server.unexpected-response'),
@@ -396,8 +518,7 @@ const TestConnection: FC<TestConnectionProps> = ({
 
   const handleTestConnection = () => {
     if (shouldValidateForm) {
-      const isFormValid =
-        onValidateFormRequiredFields && onValidateFormRequiredFields();
+      const isFormValid = onValidateFormRequiredFields?.();
       handleCloseErrorMessage();
       if (isFormValid) {
         testConnection();
@@ -422,6 +543,133 @@ const TestConnection: FC<TestConnectionProps> = ({
     return title;
   }, [isAirflowAvailable]);
 
+  const connectionCardTitle = useMemo(() => {
+    if (!isAirflowAvailable) {
+      return t('label.platform-service-client-unavailable');
+    }
+
+    if (isTestingConnection) {
+      return t('message.testing-connection');
+    }
+
+    if (isReadyToTestCard) {
+      return t('message.ready-to-test-connection');
+    }
+
+    if (testStatus === StatusType.Successful) {
+      return t('message.test-connection-verified');
+    }
+
+    if (testStatus) {
+      return message;
+    }
+
+    return t('message.test-your-connection-to-continue');
+  }, [
+    isAirflowAvailable,
+    isReadyToTestCard,
+    isTestingConnection,
+    message,
+    t,
+    testStatus,
+  ]);
+
+  const connectionCardDescription = useMemo(() => {
+    if (!isAirflowAvailable) {
+      return (
+        <Transi18next
+          i18nKey="message.configure-airflow"
+          renderElement={
+            <a
+              data-testid="airflow-doc-link"
+              href={AIRFLOW_DOCS}
+              rel="noopener noreferrer"
+              target="_blank"
+            />
+          }
+          values={{
+            text: t('label.documentation-lowercase'),
+          }}
+        />
+      );
+    }
+
+    if (isTestingConnection) {
+      return t(TEST_CONNECTION_TESTING_MESSAGE);
+    }
+
+    if (testStatus === StatusType.Successful) {
+      const passedCount = testConnectionStepResult.filter(
+        (step) => step.passed
+      ).length;
+
+      return t('message.test-connection-ready-count', {
+        count: passedCount,
+      });
+    }
+
+    if (testStatus) {
+      return t('message.test-connection-view-details');
+    }
+
+    if (missingRequiredFieldsCount > 0) {
+      return t(
+        missingRequiredFieldsCount === 1
+          ? 'message.fill-one-required-field-then-test-connection'
+          : 'message.fill-required-fields-then-test-connection',
+        { count: missingRequiredFieldsCount }
+      );
+    }
+
+    return t('message.test-connection-unlocks-next-step');
+  }, [
+    isAirflowAvailable,
+    isTestingConnection,
+    missingRequiredFieldsCount,
+    t,
+    testConnectionStepResult,
+    testStatus,
+  ]);
+
+  const connectionButtonLabel = useMemo(() => {
+    if (testStatus && !isTestingConnection) {
+      return t('label.re-test-connection');
+    }
+
+    return t('label.test-entity', { entity: t('label.connection') });
+  }, [isTestingConnection, t, testStatus]);
+
+  const alertVariant = useMemo((): AlertVariant => {
+    if (testStatus === StatusType.Successful) {
+      return 'success';
+    }
+    if (testStatus === StatusType.Failed) {
+      return 'error';
+    }
+    if (testStatus === 'Warning') {
+      return 'warning';
+    }
+
+    return 'brand';
+  }, [testStatus]);
+
+  const alertIcon = useMemo(() => {
+    if (isTestingConnection) {
+      return LoaderIcon;
+    }
+    if (testStatus === StatusType.Successful) {
+      return CheckCircle;
+    }
+    if (testStatus === StatusType.Failed) {
+      return XCircle;
+    }
+    if (testStatus === 'Warning') {
+      return AlertTriangle;
+    }
+
+    return Zap;
+  }, [isTestingConnection, testStatus]);
+
   useEffect(() => {
     currentWorkflowRef.current = currentWorkflow; // update ref with latest value of currentWorkflow state variable
   }, [currentWorkflow]);
@@ -443,86 +691,56 @@ const TestConnection: FC<TestConnectionProps> = ({
   return (
     <>
       {showDetails ? (
-        <Space className="w-full justify-between bg-white border border-main tw:rounded-lg p-sm mt-4">
-          <Space
-            align={testStatus ? 'start' : 'center'}
-            data-testid="message-container"
-            size={8}>
-            {isTestingConnection && <Loader size="small" />}
-            {testStatus === StatusType.Successful && (
-              <SuccessIcon
-                className="status-icon"
-                data-testid="success-badge"
-              />
+        <Alert
+          iconOutlined
+          className={cx('tw:mt-3.5', {
+            'tw:shadow-[0_0_0_6px_#e8f4ff]': isReadyToTestCard,
+          })}
+          data-testid={`test-connection-card-${testStatus ?? 'ready-to-test'}`}
+          icon={alertIcon}
+          iconBgColor="white"
+          iconRadius="lg"
+          iconShape="square"
+          iconSize="md"
+          rightContent={
+            <Tooltip title={buttonTooltipTitle}>
+              <Button
+                color={isReadyToTestCard ? 'primary' : 'secondary'}
+                data-testid="test-connection-btn"
+                isDisabled={isTestConnectionDisabled}
+                isLoading={isTestingConnection}
+                size="md"
+                onClick={handleTestConnection}>
+                {connectionButtonLabel}
+              </Button>
+            </Tooltip>
+          }
+          title={connectionCardTitle}
+          variant={alertVariant}>
+          <div
+            className="tw:flex tw:flex-wrap tw:items-center tw:gap-1.5"
+            data-testid="message-container">
+            {connectionCardDescription}
+            {(testStatus || isTestingConnection) && (
+              <Button
+                className="p-0 [&>span]:tw:underline"
+                color="link-color"
+                data-testid="test-connection-details-btn"
+                size="sm"
+                onClick={() => setDialogOpen(true)}>
+                {t('label.view')}
+              </Button>
             )}
-            {testStatus === StatusType.Failed && (
-              <FailIcon className="status-icon" data-testid="fail-badge" />
-            )}
-            {testStatus === 'Warning' && (
-              <WarningIcon
-                className="status-icon"
-                data-testid="warning-badge"
-              />
-            )}
-            <div data-testid="messag-text">
-              {isAirflowAvailable ? (
-                message
-              ) : (
-                <Transi18next
-                  i18nKey="message.configure-airflow"
-                  renderElement={
-                    <a
-                      data-testid="airflow-doc-link"
-                      href={AIRFLOW_DOCS}
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    />
-                  }
-                  values={{
-                    text: t('label.documentation-lowercase'),
-                  }}
-                />
-              )}{' '}
-              {(testStatus || isTestingConnection) && (
-                <Transi18next
-                  i18nKey="message.click-text-to-view-details"
-                  renderElement={
-                    <Button
-                      className="p-0 test-connection-message-btn"
-                      data-testid="test-connection-details-btn"
-                      type="link"
-                      onClick={() => setDialogOpen(true)}
-                    />
-                  }
-                  values={{
-                    text: t('label.here-lowercase'),
-                  }}
-                />
-              )}
-            </div>
-          </Space>
-          <Tooltip title={buttonTooltipTitle}>
-            <Button
-              className={classNames({
-                'text-primary': !isTestConnectionDisabled,
-              })}
-              data-testid="test-connection-btn"
-              disabled={isTestConnectionDisabled}
-              loading={isTestingConnection}
-              size="middle"
-              type="default"
-              onClick={handleTestConnection}>
-              {t('label.test-entity', { entity: t('label.connection') })}
-            </Button>
-          </Tooltip>
-        </Space>
+          </div>
+        </Alert>
       ) : (
         <Tooltip title={buttonTooltipTitle}>
           <Button
+            color="primary"
             data-testid="test-connection-button"
-            disabled={isTestConnectionDisabled}
-            loading={isTestingConnection}
-            type="primary"
+            isDisabled={isTestConnectionDisabled}
+            isLoading={isTestingConnection}
+            size="sm"
             onClick={handleTestConnection}>
             {t('label.test-entity', {
               entity: t('label.connection'),
@@ -531,6 +749,8 @@ const TestConnection: FC<TestConnectionProps> = ({
         </Tooltip>
       )}
       <TestConnectionModal
+        connectionDisplayName={connectionDisplayName}
+        connectionType={connectionType}
         errorMessage={errorMessage}
         handleCloseErrorMessage={handleCloseErrorMessage}
         hostIp={hostIp}
