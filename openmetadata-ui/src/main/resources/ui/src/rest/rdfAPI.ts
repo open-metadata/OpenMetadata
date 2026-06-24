@@ -131,6 +131,7 @@ export const getGlossaryTermGraph = async (
 ): Promise<GraphData> => {
   const {
     glossaryId,
+    glossaryTermId,
     relationTypes,
     limit = 500,
     offset = 0,
@@ -140,6 +141,7 @@ export const getGlossaryTermGraph = async (
   const response = await APIClient.get<GraphData>('/rdf/glossary/graph', {
     params: {
       glossaryId,
+      glossaryTermId,
       relationTypes,
       limit,
       offset,
