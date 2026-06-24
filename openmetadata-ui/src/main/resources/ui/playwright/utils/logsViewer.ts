@@ -22,7 +22,7 @@ export const navigateToBundleSuiteWithPagination = async (
   page: Page,
   bundleSuiteFqn: string,
   maxPages = 15
-) => {
+): Promise<void> => {
   const encodedBundleSuiteFqn = encodeURIComponent(bundleSuiteFqn);
 
   for (let currentPage = 0; currentPage < maxPages; currentPage++) {
