@@ -338,7 +338,8 @@ const ContextCenterDocumentsPage: FC = () => {
       element?.remove();
 
       if (url) {
-        URL.revokeObjectURL(url);
+        const objectUrl = url;
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 100);
       }
     }
   }, [selectedIds]);
