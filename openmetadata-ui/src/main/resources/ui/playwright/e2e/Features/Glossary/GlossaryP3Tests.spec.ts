@@ -218,7 +218,7 @@ test.describe('Glossary P3 Tests', () => {
       const tableRows = page.locator('tbody .ant-table-row');
 
       // eslint-disable-next-line playwright/no-wait-for-timeout -- search results need time to render after special character input
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(300);
 
       const isStable =
         (await table.isVisible().catch(() => false)) ||

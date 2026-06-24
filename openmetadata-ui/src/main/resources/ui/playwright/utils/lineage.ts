@@ -200,7 +200,7 @@ export const dragAndDropNode = async (
   destinationSelector: string
 ) => {
   // eslint-disable-next-line playwright/no-wait-for-timeout -- canvas stabilization before drag operation
-  await page.waitForTimeout(1000);
+  await page.waitForTimeout(300);
   const destinationElement = page.locator(destinationSelector);
   await destinationElement.waitFor();
   await page.hover(originSelector);
@@ -1024,7 +1024,7 @@ export const verifyPlatformLineageForEntity = async (
   await page.getByTestId(`node-suggestion-${fromFqn}`).click();
 
   // eslint-disable-next-line playwright/no-wait-for-timeout -- canvas stabilization after node selection
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(200);
 
   const fromNode = page.getByTestId(`lineage-node-${fromFqn}`);
 

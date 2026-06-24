@@ -683,7 +683,7 @@ export const runRuleGroupTestsWithNonExistingValue = async (page: Page) => {
   await expect(dropdownText).toContainText('Loading...');
 
   // eslint-disable-next-line playwright/no-wait-for-timeout -- search debounce delay
-  await page.waitForTimeout(1000);
+  await page.waitForTimeout(300);
 
   await expect(dropdownText).not.toContainText('Loading...');
 };

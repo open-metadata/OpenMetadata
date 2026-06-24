@@ -269,7 +269,7 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
   };
 
   // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
-  await page.waitForTimeout(5000);
+  await page.waitForTimeout(2000);
   const response = await apiContext.post(
     `/api/v1/services/ingestionPipelines/trigger/${pipeline?.['id']}`
   );
@@ -283,7 +283,7 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
     );
 
     // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(2000);
 
     await executePipelineRequest('Pipeline trigger', () =>
       apiContext.post(
@@ -293,7 +293,7 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
   }
 
   // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for pipeline run to complete
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(750);
 
   await expect
     .poll(
