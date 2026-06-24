@@ -5,8 +5,10 @@ import static org.openmetadata.service.jdbi3.FolderRepository.FOLDER_ENTITY;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescription;
 
+import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.RejectedExecutionException;
 import lombok.extern.slf4j.Slf4j;
@@ -23,20 +25,28 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
+import org.openmetadata.service.cache.ListCountCache;
+import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
 import org.openmetadata.service.resources.drive.ContextFileResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 @Repository
 public class ContextFileRepository extends EntityRepository<ContextFile> {
   public static final String CONTEXT_FILE_ENTITY = "contextFile";
+  private static final String DUPLICATE_FILE_NAME_MESSAGE =
+      "A file named '%s' already exists in this folder.";
   private final AssetRepository assetRepository;
   private final ContextFileContentRepository contentRepository;
+  private final CollectionDAO.ContextFileDAO contextFileDAO;
 
   public ContextFileRepository(Jdbi jdbi) {
     super(
@@ -51,6 +61,7 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     CollectionDAO dao = jdbi.onDemand(CollectionDAO.class);
     this.assetRepository = new AssetRepository(dao.assetDAO());
     this.contentRepository = new ContextFileContentRepository(jdbi);
+    this.contextFileDAO = (CollectionDAO.ContextFileDAO) getDao();
   }
 
   public AssetRepository getAssetRepository() {
@@ -193,6 +204,7 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
       resolvedFolder = folder.getEntityReference();
     }
     updated.setFolder(resolvedFolder);
+    validateNoDuplicateFileName(getCurrentFileName(original), resolvedFolder, updated.getId());
     setFullyQualifiedName(updated);
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
@@ -303,6 +315,156 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     UUID contentId = parseUuid(id);
     return contentId == null ? null : contentRepository.getById(contentId);
   }
+
+  public void validateNoDuplicateFileName(String fileName, EntityReference folder, UUID excludeId) {
+    if (fileName == null || fileName.isBlank()) {
+      return;
+    }
+    String folderId = folder == null ? null : folder.getId().toString();
+    String excludedId = excludeId == null ? null : excludeId.toString();
+    int count = contextFileDAO.countByFileNameInFolder(fileName.trim(), folderId, excludedId);
+    if (count > 0) {
+      throw new BadRequestException(String.format(DUPLICATE_FILE_NAME_MESSAGE, fileName.trim()));
+    }
+  }
+
+  private String getCurrentFileName(ContextFile file) {
+    Asset asset = getCurrentAsset(file);
+    return asset == null ? null : asset.getFileName();
+  }
+
+  private Asset getCurrentAsset(ContextFile file) {
+    if (file.getHeadContentId() != null && !file.getHeadContentId().isEmpty()) {
+      ContextFileContent content = getContentById(file.getHeadContentId());
+      Asset asset = content == null ? null : getAssetById(content.getAssetId());
+      if (asset != null) {
+        return asset;
+      }
+    }
+    if (file.getAssetId() != null && !file.getAssetId().isEmpty()) {
+      Asset asset = getAssetById(file.getAssetId());
+      if (asset != null) {
+        return asset;
+      }
+    }
+    return contentRepository.listByContextFileId(file.getId()).stream()
+        .filter(content -> content.getAssetId() != null && !content.getAssetId().isEmpty())
+        .map(content -> getAssetById(content.getAssetId()))
+        .filter(
+            asset -> asset != null && asset.getFileName() != null && !asset.getFileName().isEmpty())
+        .findFirst()
+        .orElse(null);
+  }
+
+  private Asset getAssetById(String assetId) {
+    try {
+      return assetRepository.getById(assetId);
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  public ResultList<ContextFile> listByUpdatedAt(
+      UriInfo uriInfo,
+      EntityUtil.Fields fields,
+      ListFilter filter,
+      int limitParam,
+      String before,
+      String after,
+      OrderBy orderBy) {
+    int total = ListCountCache.getOrCompute(entityType, filter, () -> dao.listCount(filter));
+    List<ContextFile> entities = new ArrayList<>();
+    if (limitParam <= 0) {
+      return getResultList(entities, null, null, total);
+    }
+
+    if (before != null && !before.isEmpty()) {
+      UpdatedAtCursor cursor = parseUpdatedAtCursor(before);
+      List<String> jsons =
+          orderBy == OrderBy.ASC
+              ? contextFileDAO.listBeforeByUpdatedAtAsc(
+                  filter.getQueryParams(),
+                  filter.getCondition(),
+                  limitParam + 1,
+                  cursor.updatedAt(),
+                  cursor.id())
+              : contextFileDAO.listBeforeByUpdatedAtDesc(
+                  filter.getQueryParams(),
+                  filter.getCondition(),
+                  limitParam + 1,
+                  cursor.updatedAt(),
+                  cursor.id());
+      entities = hydrateList(jsons, fields, uriInfo, filter);
+      String beforeCursor = null;
+      String afterCursor = null;
+      if (entities.size() > limitParam) {
+        entities.remove(0);
+        beforeCursor = updatedAtCursorValue(entities.get(0));
+      }
+      if (!entities.isEmpty()) {
+        afterCursor = updatedAtCursorValue(entities.get(entities.size() - 1));
+      }
+      return getResultList(entities, beforeCursor, afterCursor, total);
+    }
+
+    List<String> jsons;
+    if (after == null || after.isEmpty()) {
+      jsons =
+          orderBy == OrderBy.ASC
+              ? contextFileDAO.listByUpdatedAtAsc(
+                  filter.getQueryParams(), filter.getCondition(), limitParam + 1)
+              : contextFileDAO.listByUpdatedAtDesc(
+                  filter.getQueryParams(), filter.getCondition(), limitParam + 1);
+    } else {
+      UpdatedAtCursor cursor = parseUpdatedAtCursor(after);
+      jsons =
+          orderBy == OrderBy.ASC
+              ? contextFileDAO.listAfterByUpdatedAtAsc(
+                  filter.getQueryParams(),
+                  filter.getCondition(),
+                  limitParam + 1,
+                  cursor.updatedAt(),
+                  cursor.id())
+              : contextFileDAO.listAfterByUpdatedAtDesc(
+                  filter.getQueryParams(),
+                  filter.getCondition(),
+                  limitParam + 1,
+                  cursor.updatedAt(),
+                  cursor.id());
+    }
+
+    entities = hydrateList(jsons, fields, uriInfo, filter);
+    String beforeCursor =
+        after == null || after.isEmpty() || entities.isEmpty()
+            ? null
+            : updatedAtCursorValue(entities.get(0));
+    String afterCursor = null;
+    if (entities.size() > limitParam) {
+      entities.remove(limitParam);
+      afterCursor = updatedAtCursorValue(entities.get(limitParam - 1));
+    }
+    return getResultList(entities, beforeCursor, afterCursor, total);
+  }
+
+  private List<ContextFile> hydrateList(
+      List<String> jsons, EntityUtil.Fields fields, UriInfo uriInfo, ListFilter filter) {
+    List<ContextFile> entities = JsonUtils.readObjects(jsons, ContextFile.class);
+    setFieldsInBulk(fields, entities, filter);
+    entities.forEach(entity -> withHref(uriInfo, entity));
+    return entities;
+  }
+
+  private UpdatedAtCursor parseUpdatedAtCursor(String cursor) {
+    Map<String, String> cursorMap = parseCursorMap(RestUtil.decodeCursor(cursor));
+    return new UpdatedAtCursor(Long.parseLong(cursorMap.get("updatedAt")), cursorMap.get("id"));
+  }
+
+  private String updatedAtCursorValue(ContextFile file) {
+    return JsonUtils.pojoToJson(
+        Map.of("updatedAt", String.valueOf(file.getUpdatedAt()), "id", file.getId().toString()));
+  }
+
+  private record UpdatedAtCursor(long updatedAt, String id) {}
 
   private UUID parseUuid(String value) {
     if (value == null || value.isEmpty()) {
