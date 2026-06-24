@@ -596,7 +596,7 @@ const ContextCenterMemoriesPage: FC = () => {
                         <div className="tw:shrink-0">
                           {searchClassBase.getEntityIcon(
                             opt.type,
-                            'tw:w-6 tw:h-6 tw:text-utility-gray-500'
+                            'tw:w-6 tw:h-6 tw:text-quaternary'
                           )}
                         </div>
                         <Box

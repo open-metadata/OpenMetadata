@@ -176,7 +176,7 @@ const DocumentFolderView = ({
                             handleFolderItemSelect(folder.id);
                           }}>
                           <FolderIcon
-                            className="tw:shrink-0 tw:text-utility-gray-500"
+                            className="tw:shrink-0 tw:text-quaternary"
                             height={16}
                             width={16}
                           />

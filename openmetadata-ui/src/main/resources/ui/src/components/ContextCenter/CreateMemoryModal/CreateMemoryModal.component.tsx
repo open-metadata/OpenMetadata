@@ -116,7 +116,7 @@ const LinkedAssetCard: FC<{
       <div className="tw:shrink-0">
         {searchClassBase.getEntityIcon(
           asset.reference?.type ?? '',
-          'tw:w-8 tw:h-8 tw:text-utility-gray-500'
+          'tw:w-8 tw:h-8 tw:text-quaternary'
         )}
       </div>
       <div className="tw:flex tw:flex-1 tw:justify-between tw:items-center tw:min-w-0">
@@ -544,7 +544,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                       memoryToEdit?.updatedBy) && (
                       <div className="tw:flex tw:items-center tw:gap-1">
                         <Typography
-                          className="tw:text-utility-gray-500"
+                          className="tw:text-quaternary"
                           size="text-xs">
                           {t('label.created-by')}
                         </Typography>
@@ -558,7 +558,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                           &middot;
                         </span>
                         <Typography
-                          className="tw:text-utility-gray-500"
+                          className="tw:text-quaternary"
                           size="text-xs">
                           {formatDate(memoryToEdit.updatedAt)}
                         </Typography>
@@ -572,7 +572,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                           strokeWidth={2}
                         />
                         <Typography
-                          className="tw:text-utility-gray-500"
+                          className="tw:text-quaternary"
                           size="text-xs">
                           {t('label.extracted-from')}
                         </Typography>
@@ -773,7 +773,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                       <div className="tw:flex tw:items-start tw:gap-3 tw:px-4 tw:py-3">
                         <div className="tw:basis-[30%] tw:shrink-0">
                           <Typography
-                            className="tw:text-utility-gray-500 tw:w-28 tw:shrink-0"
+                            className="tw:text-quaternary tw:w-28 tw:shrink-0"
                             size="text-sm">
                             {t('label.visibility')}
                           </Typography>
@@ -825,7 +825,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                               </Badge>
                               {visibilityOption && (
                                 <Typography
-                                  className="tw:text-utility-gray-500"
+                                  className="tw:text-quaternary"
                                   size="text-xs">
                                   {t(visibilityOption.descriptionKey)}
                                 </Typography>
@@ -847,7 +847,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                         <div className="tw:flex tw:items-center tw:gap-3">
                           <div className="tw:basis-[30%]">
                             <Typography
-                              className="tw:text-utility-gray-500 tw:w-28 tw:shrink-0"
+                              className="tw:text-quaternary tw:w-28 tw:shrink-0"
                               size="text-sm">
                               {t('label.tag-plural')}
                             </Typography>
@@ -940,7 +940,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                         <div className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3">
                           <div className="tw:basis-[30%]">
                             <Typography
-                              className="tw:text-utility-gray-500 tw:w-28 tw:shrink-0"
+                              className="tw:text-quaternary tw:w-28 tw:shrink-0"
                               size="text-sm">
                               {t('label.updated')}
                             </Typography>
