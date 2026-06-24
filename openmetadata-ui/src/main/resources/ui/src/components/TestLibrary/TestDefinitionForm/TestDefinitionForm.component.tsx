@@ -292,7 +292,7 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
               {isReadOnlyField ? (
                 <Input.TextArea
                   disabled
-                  className="font-monospace text-xs"
+                  className="tw:font-mono tw:text-xs"
                   rows={8}
                   value={initialValues?.sqlExpression}
                 />
