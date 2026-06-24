@@ -676,9 +676,7 @@ export const addCustomPropertiesForEntity = async ({
 
   // Select custom type
   await page.locator('[data-testid="propertyType"]').click();
-  await page
-    .getByRole('option', { name: customType, exact: true })
-    .click();
+  await page.getByRole('option', { name: customType, exact: true }).click();
 
   // Enum configuration
   if (customType === 'Enum' && enumConfig) {
