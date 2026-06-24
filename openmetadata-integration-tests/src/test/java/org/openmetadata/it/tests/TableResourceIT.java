@@ -42,6 +42,8 @@ import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreateGlossary;
+import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -56,6 +58,8 @@ import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
@@ -826,6 +830,108 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         "Tag filter total should count all matches, not a page");
     assertEquals(1, filtered.getData().size());
     assertEquals(taggedColumnName, filtered.getData().get(0).getName());
+
+    TableColumnList filteredById =
+        searchColumnsById(
+            client, table.getId().toString(), "limit=50&offset=0&fields=tags&tags=" + encodedTag);
+    assertEquals(
+        1, filteredById.getPaging().getTotal(), "By-id endpoint should honour the same tag filter");
+    assertEquals(taggedColumnName, filteredById.getData().get(0).getName());
+  }
+
+  @Test
+  void searchColumns_glossaryTermAndDerivedTagFilter(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    String classificationName = ns.prefix("DerivedTagFilter");
+    String classificationTagFqn = createClassificationWithTag(client, classificationName, "Pii");
+
+    String glossaryName = ns.prefix("ColFilterGlossary");
+    String termName = "CustomerData";
+    String glossaryTermFqn =
+        createGlossaryTermWithTag(client, glossaryName, termName, classificationTagFqn);
+
+    TagLabel glossaryLabel =
+        new TagLabel()
+            .withTagFQN(glossaryTermFqn)
+            .withSource(TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+
+    int totalColumns = 60;
+    int taggedColumnIndex = 58;
+    List<Column> columns = new ArrayList<>();
+    for (int i = 0; i < totalColumns; i++) {
+      Column column =
+          new Column()
+              .withName(String.format("col_%02d", i))
+              .withDataType(ColumnDataType.VARCHAR)
+              .withDataLength(100);
+      if (i == taggedColumnIndex) {
+        column.withTags(List.of(glossaryLabel));
+      }
+      columns.add(column);
+    }
+
+    CreateTable request = new CreateTable();
+    request.setName(ns.prefix("col_glossary_filter"));
+    request.setDatabaseSchema(schema.getFullyQualifiedName());
+    request.setColumns(columns);
+    Table table = createEntity(request);
+
+    String encodedFqn = URLEncoder.encode(table.getFullyQualifiedName(), StandardCharsets.UTF_8);
+    String taggedColumnName = String.format("col_%02d", taggedColumnIndex);
+
+    String encodedTerm = URLEncoder.encode(glossaryTermFqn, StandardCharsets.UTF_8);
+    TableColumnList byGlossaryTerm =
+        searchColumns(
+            client, encodedFqn, "limit=50&offset=0&fields=tags&glossaryTerms=" + encodedTerm);
+    assertEquals(
+        1,
+        byGlossaryTerm.getPaging().getTotal(),
+        "glossaryTerms filter should match the column tagged with the term across pages");
+    assertEquals(taggedColumnName, byGlossaryTerm.getData().get(0).getName());
+
+    String encodedDerivedTag = URLEncoder.encode(classificationTagFqn, StandardCharsets.UTF_8);
+    TableColumnList byDerivedTag =
+        searchColumns(
+            client, encodedFqn, "limit=50&offset=0&fields=tags&tags=" + encodedDerivedTag);
+    assertEquals(
+        1,
+        byDerivedTag.getPaging().getTotal(),
+        "tags filter should match the classification tag derived from the applied glossary term");
+    assertEquals(taggedColumnName, byDerivedTag.getData().get(0).getName());
+  }
+
+  private String createGlossaryTermWithTag(
+      OpenMetadataClient client, String glossaryName, String termName, String tagFqn) {
+    CreateGlossary createGlossary =
+        new CreateGlossary()
+            .withName(glossaryName)
+            .withDescription("Glossary for column tag filter test");
+    client
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/glossaries", createGlossary, Glossary.class);
+
+    TagLabel classificationTag =
+        new TagLabel()
+            .withTagFQN(tagFqn)
+            .withSource(TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+    CreateGlossaryTerm createTerm =
+        new CreateGlossaryTerm()
+            .withName(termName)
+            .withGlossary(glossaryName)
+            .withDescription("Term for column tag filter test")
+            .withTags(List.of(classificationTag));
+    GlossaryTerm term =
+        client
+            .getHttpClient()
+            .execute(HttpMethod.PUT, "/v1/glossaryTerms", createTerm, GlossaryTerm.class);
+    return term.getFullyQualifiedName();
   }
 
   private String createClassificationWithTag(
@@ -856,6 +962,16 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
                 HttpMethod.GET,
                 "/v1/tables/name/" + encodedFqn + "/columns/search?" + queryParams,
                 null);
+    return JsonUtils.readValue(response, TableColumnList.class);
+  }
+
+  private TableColumnList searchColumnsById(
+      OpenMetadataClient client, String tableId, String queryParams) {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET, "/v1/tables/" + tableId + "/columns/search?" + queryParams, null);
     return JsonUtils.readValue(response, TableColumnList.class);
   }
 

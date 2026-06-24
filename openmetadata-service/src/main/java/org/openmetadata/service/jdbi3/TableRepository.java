@@ -34,6 +34,8 @@ import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.monitoring.RequestLatencyContext.phase;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsWithPreFetched;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.batchFetchDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.mergeTagsWithIncomingPrecedence;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.util.EntityUtil.getLocalColumnName;
@@ -3415,12 +3417,39 @@ public class TableRepository extends EntityRepository<Table> {
 
   private List<Column> filterColumnsByTags(
       Table table, List<Column> columns, Set<String> filterTagFQNs) {
-    Map<String, List<TagLabel>> tagsByFqnHash =
-        getTagsByPrefix(table.getFullyQualifiedName(), ".%");
-    Map<String, List<TagLabel>> tagsByHash = nullOrDefault(tagsByFqnHash, Map.of());
+    Map<String, List<TagLabel>> tagsByHash = resolveColumnTagsForFilter(table);
     return columns.stream()
         .filter(column -> columnHasAnyTag(column, filterTagFQNs, tagsByHash))
         .collect(Collectors.toCollection(ArrayList::new));
+  }
+
+  /**
+   * Resolve column tags the same way the column list responses (and therefore the UI filter
+   * dropdown) see them: direct tag_usage rows enriched with glossary-derived tags. The raw DAO is
+   * used instead of {@link #getTagsByPrefix} so certification-classification tags are not stripped,
+   * keeping the filter consistent with the tags shown on each column.
+   */
+  private Map<String, List<TagLabel>> resolveColumnTagsForFilter(Table table) {
+    Map<String, List<TagLabel>> directTagsByHash =
+        daoCollection.tagUsageDAO().getTagsByPrefix(table.getFullyQualifiedName(), ".%", true);
+    if (nullOrEmpty(directTagsByHash)) {
+      return Map.of();
+    }
+    List<TagLabel> allDirectTags =
+        directTagsByHash.values().stream().flatMap(List::stream).collect(Collectors.toList());
+    Map<String, List<TagLabel>> derivedTagsMap;
+    try {
+      derivedTagsMap = batchFetchDerivedTags(allDirectTags);
+    } catch (Exception ex) {
+      LOG.warn("Failed to fetch derived tags for column tag filter; matching direct tags only", ex);
+      derivedTagsMap = Map.of();
+    }
+    Map<String, List<TagLabel>> effectiveTagsByHash = new HashMap<>();
+    for (Map.Entry<String, List<TagLabel>> entry : directTagsByHash.entrySet()) {
+      effectiveTagsByHash.put(
+          entry.getKey(), addDerivedTagsWithPreFetched(entry.getValue(), derivedTagsMap));
+    }
+    return effectiveTagsByHash;
   }
 
   private boolean columnHasAnyTag(
