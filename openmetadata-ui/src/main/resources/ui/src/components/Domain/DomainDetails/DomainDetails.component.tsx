@@ -19,7 +19,6 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual, toString } from 'lodash';
-import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -153,7 +152,6 @@ const DomainDetails = ({
 }: DomainDetailsProps) => {
   const { t } = useTranslation();
   const theme = useTheme();
-  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   const { isMarketplace } = useMarketplaceStore();
   const location = useLocation();
   const fromMarketplace =
@@ -257,12 +255,10 @@ const DomainDetails = ({
       } catch (error) {
         setAssetCount(0);
         showNotistackError(
-          enqueueSnackbar,
           error as AxiosError,
           t('server.entity-fetch-error', {
             entity: t('label.asset-plural-lowercase'),
-          }),
-          { vertical: 'top', horizontal: 'center' }
+          })
         );
       }
     }
@@ -283,16 +279,14 @@ const DomainDetails = ({
       } catch (error) {
         setDataProductsCount(0);
         showNotistackError(
-          enqueueSnackbar,
           error as AxiosError,
           t('server.entity-fetch-error', {
             entity: t('label.data-product-lowercase'),
-          }),
-          { vertical: 'top', horizontal: 'center' }
+          })
         );
       }
     }
-  }, [isVersionsView, domainFqn, enqueueSnackbar, t]);
+  }, [isVersionsView, domainFqn, t]);
 
   const fetchSubDomainsCount = useCallback(async () => {
     if (!isVersionsView) {
@@ -314,12 +308,10 @@ const DomainDetails = ({
       } catch (error) {
         setSubDomainsCount(0);
         showNotistackError(
-          enqueueSnackbar,
           error as AxiosError,
           t('server.entity-fetch-error', {
             entity: t('label.sub-domain-lowercase'),
-          }),
-          { vertical: 'top', horizontal: 'center' }
+          })
         );
       }
     }
@@ -390,15 +382,13 @@ const DomainDetails = ({
           onSuccess: () => {
             dataProductForm.reset();
           },
-          enqueueSnackbar,
-          closeSnackbar,
           t,
         });
       } finally {
         setIsDataProductLoading(false);
       }
     },
-    [domain, dataProductForm, enqueueSnackbar, closeSnackbar, t]
+    [domain, dataProductForm, t]
   );
 
   const onDataProductCreateSuccess = useCallback(() => {
@@ -500,10 +490,7 @@ const DomainDetails = ({
         setActiveAnnouncement(announcements.data[0]);
       }
     } catch (error) {
-      showNotistackError(enqueueSnackbar, error as AxiosError, undefined, {
-        vertical: 'top',
-        horizontal: 'center',
-      });
+      showNotistackError(error as AxiosError);
     }
   };
 
@@ -554,21 +541,13 @@ const DomainDetails = ({
           onSuccess: () => {
             subDomainForm.reset();
           },
-          enqueueSnackbar,
-          closeSnackbar,
           t,
         });
       } finally {
         setIsSubDomainLoading(false);
       }
     },
-    [
-      domain.fullyQualifiedName,
-      subDomainForm,
-      enqueueSnackbar,
-      closeSnackbar,
-      t,
-    ]
+    [domain.fullyQualifiedName, subDomainForm, t]
   );
 
   const onSubDomainCreateSuccess = useCallback(() => {
@@ -673,7 +652,6 @@ const DomainDetails = ({
         fetchSubDomainsCount();
       } catch (error) {
         showNotistackError(
-          enqueueSnackbar,
           getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist) ? (
             <MuiTypography sx={{ fontWeight: 600 }} variant="body2">
               {t('server.entity-already-exist', {
@@ -687,8 +665,7 @@ const DomainDetails = ({
           ),
           t('server.add-entity-error', {
             entity: t('label.sub-domain-lowercase'),
-          }),
-          { vertical: 'top', horizontal: 'center' }
+          })
         );
 
         throw error; // Re-throw to reject the promise
@@ -718,10 +695,7 @@ const DomainDetails = ({
       );
       setDomainPermission(response);
     } catch (error) {
-      showNotistackError(enqueueSnackbar, error as AxiosError, undefined, {
-        vertical: 'top',
-        horizontal: 'center',
-      });
+      showNotistackError(error as AxiosError);
     }
   };
 
