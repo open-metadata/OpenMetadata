@@ -27,6 +27,15 @@ jest.mock('rest/assetAPI', () => ({
   deleteFolder: jest.fn(),
 }));
 
+jest.mock('../../../utils/EntityNameUtils', () => ({
+  getEntityName: jest.fn((entity) => entity?.displayName ?? entity?.name ?? ''),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+}));
+
 jest.mock('../../../assets/svg/ic-folder-new.svg', () => ({
   ReactComponent: jest.fn(() => <span data-testid="folder-icon" />),
 }));
@@ -88,6 +97,17 @@ jest.mock('../../../components/common/DeleteModal/DeleteModal', () =>
 );
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: jest.fn(
+    ({
+      children,
+      onClick,
+    }: {
+      children: React.ReactNode;
+      onClick?: (e: React.MouseEvent) => void;
+    }) => (
+      <button onClick={onClick}>{children}</button>
+    )
+  ),
   ButtonUtility: jest.fn(
     ({
       onClick,
