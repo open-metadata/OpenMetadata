@@ -48,6 +48,10 @@ export interface Metric {
      */
     description?: string;
     /**
+     * Dimensions associated with this metric from a semantic layer.
+     */
+    dimensions?: MetricDimension[];
+    /**
      * Display Name that identifies this metric.
      */
     displayName?: string;
@@ -63,6 +67,10 @@ export interface Metric {
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
+    /**
+     * Filters applied to this metric.
+     */
+    filters?: MetricFilter[];
     /**
      * Followers of this API Collection.
      */
@@ -91,6 +99,10 @@ export interface Metric {
      * Change that lead to this version of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
+    /**
+     * Measures associated with this metric from a semantic layer.
+     */
+    measures?: MetricMeasure[];
     /**
      * Expression used to compute the metric.
      */
@@ -485,6 +497,40 @@ export interface EntityReference {
 }
 
 /**
+ * A dimension associated with a metric from a semantic layer.
+ */
+export interface MetricDimension {
+    /**
+     * Description of the dimension.
+     */
+    description?: string;
+    /**
+     * Expression used to compute the dimension.
+     */
+    expression?: string;
+    /**
+     * Fully qualified name of the dimension, in the format 'metricFQN.dimension.<name>'.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Name of the dimension.
+     */
+    name: string;
+    /**
+     * Type of the dimension.
+     */
+    type?: Type;
+}
+
+/**
+ * Type of the dimension.
+ */
+export enum Type {
+    Categorical = "CATEGORICAL",
+    Time = "TIME",
+}
+
+/**
  * Status of the Metric.
  *
  * Status of an entity. It is used for governance and is applied to all the entities in the
@@ -501,6 +547,16 @@ export enum EntityStatus {
 }
 
 /**
+ * A filter applied to a metric.
+ */
+export interface MetricFilter {
+    /**
+     * SQL WHERE clause for the filter.
+     */
+    where: string;
+}
+
+/**
  * Metric's granularity.
  *
  * This schema defines the type of Metric's granularity.
@@ -514,6 +570,32 @@ export enum MetricGranularity {
     Second = "SECOND",
     Week = "WEEK",
     Year = "YEAR",
+}
+
+/**
+ * A measure associated with a metric from a semantic layer.
+ */
+export interface MetricMeasure {
+    /**
+     * Aggregation function for the measure (e.g., sum, count, average).
+     */
+    aggregation?: string;
+    /**
+     * Description of the measure.
+     */
+    description?: string;
+    /**
+     * Expression used to compute the measure.
+     */
+    expression?: string;
+    /**
+     * Fully qualified name of the measure, in the format 'metricFQN.measure.<name>'.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Name of the measure.
+     */
+    name: string;
 }
 
 /**
@@ -548,7 +630,10 @@ export enum Language {
  */
 export enum MetricType {
     Average = "AVERAGE",
+    Conversion = "CONVERSION",
     Count = "COUNT",
+    Cumulative = "CUMULATIVE",
+    Derived = "DERIVED",
     Max = "MAX",
     Median = "MEDIAN",
     Min = "MIN",
@@ -556,6 +641,7 @@ export enum MetricType {
     Other = "OTHER",
     Percentage = "PERCENTAGE",
     Ratio = "RATIO",
+    Simple = "SIMPLE",
     StandardDeviation = "STANDARD_DEVIATION",
     Sum = "SUM",
     Variance = "VARIANCE",

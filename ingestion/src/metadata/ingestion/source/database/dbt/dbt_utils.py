@@ -17,6 +17,7 @@ import traceback
 from datetime import datetime
 from typing import Any, Dict, Optional, Tuple, Union  # noqa: UP035
 
+from metadata.generated.schema.entity.data.metric import MetricType
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.domains.domain import Domain
 from metadata.generated.schema.entity.teams.team import Team
@@ -995,6 +996,146 @@ def format_entity_reference(entity: Any, entity_type: Optional[str] = None) -> D
         "description": description,
         "displayName": display_name,
     }
+
+
+DBT_AGG_TO_METRIC_TYPE = {
+    "sum": MetricType.SUM,
+    "min": MetricType.MIN,
+    "max": MetricType.MAX,
+    "average": MetricType.AVERAGE,
+    "count": MetricType.COUNT,
+    "count_distinct": MetricType.COUNT,
+    "median": MetricType.MEDIAN,
+    "percentile": MetricType.OTHER,
+    "sum_boolean": MetricType.SUM,
+}
+
+DBT_METRIC_TYPE_MAP = {
+    "simple": MetricType.SIMPLE,
+    "ratio": MetricType.RATIO,
+    "cumulative": MetricType.CUMULATIVE,
+    "derived": MetricType.DERIVED,
+    "conversion": MetricType.CONVERSION,
+}
+
+
+def map_dbt_metric_type(dbt_type: str) -> MetricType | None:
+    return DBT_METRIC_TYPE_MAP.get(dbt_type)
+
+
+def map_dbt_agg_to_metric_type(agg: str) -> MetricType | None:
+    return DBT_AGG_TO_METRIC_TYPE.get(agg)
+
+
+def find_semantic_model_for_measure(semantic_models: dict[str, Any], measure_name: str) -> Any | None:
+    for sm in semantic_models.values():
+        for measure in getattr(sm, "measures", None) or []:
+            if measure.name == measure_name:
+                return sm
+    return None
+
+
+def find_semantic_model_by_unique_id(semantic_models: dict[str, Any], unique_id: str) -> Any | None:
+    return semantic_models.get(unique_id)
+
+
+def find_semantic_models_for_metric(metric, semantic_models: dict[str, Any]) -> list[Any]:
+    depends_on = getattr(metric, "depends_on", None)
+    if not depends_on:
+        return []
+    nodes = getattr(depends_on, "nodes", None) or []
+    result = []
+    for node_id in nodes:
+        if node_id.startswith("semantic_model."):
+            sm = find_semantic_model_by_unique_id(semantic_models, node_id)
+            if sm:
+                result.append(sm)
+    return result
+
+
+def find_semantic_models_transitive(
+    metric,
+    semantic_models: dict[str, Any],
+    all_metrics: dict[str, Any],
+    visited_metrics: Optional[set[str]] = None,  # noqa: UP045
+) -> list[Any]:
+    """Resolve semantic models transitively through sub-metric dependencies.
+
+    ``visited_metrics`` tracks already-traversed metric node ids so a circular
+    ``depends_on`` chain in a user-supplied manifest cannot cause unbounded
+    recursion.
+    """
+    direct = find_semantic_models_for_metric(metric, semantic_models)
+    if direct:
+        return direct
+    if visited_metrics is None:
+        visited_metrics = set()
+    metric_id = getattr(metric, "unique_id", None)
+    if metric_id is not None:
+        if metric_id in visited_metrics:
+            return []
+        visited_metrics.add(metric_id)
+    depends_on = getattr(metric, "depends_on", None)
+    if not depends_on:
+        return []
+    nodes = getattr(depends_on, "nodes", None) or []
+    seen = set()
+    result = []
+    for node_id in nodes:
+        if node_id.startswith("metric.") and node_id in all_metrics and node_id not in visited_metrics:
+            sub_metric = all_metrics[node_id]
+            for sm in find_semantic_models_transitive(sub_metric, semantic_models, all_metrics, visited_metrics):
+                sm_id = getattr(sm, "unique_id", id(sm))
+                if sm_id not in seen:
+                    seen.add(sm_id)
+                    result.append(sm)
+    return result
+
+
+def order_metrics_by_dependency(metrics: dict[str, Any]) -> list[str]:
+    """Order metric node ids so a metric is emitted after the metrics it depends on.
+
+    dbt manifests list metrics in arbitrary dict order, so a derived/ratio metric
+    can appear before the metric it references. Emitting in dependency order lets
+    ``relatedMetrics`` resolve against already-created parents. A DFS post-order
+    with a visited guard keeps the traversal safe against circular dependencies.
+    """
+    name_to_key = {}
+    for key, node in metrics.items():
+        name = getattr(node, "name", None)
+        if name:
+            name_to_key[name] = key
+    ordered: list[str] = []
+    visited: set[str] = set()
+
+    def visit(key: str) -> None:
+        if key in visited:
+            return
+        visited.add(key)
+        for dep_name in find_dependent_metric_names(metrics[key]):
+            dep_key = name_to_key.get(dep_name)
+            if dep_key is not None and dep_key != key:
+                visit(dep_key)
+        ordered.append(key)
+
+    for key in metrics:
+        visit(key)
+    return ordered
+
+
+def find_dependent_metric_names(metric) -> list[str]:
+    """Get metric names from depends_on.nodes that are metric references."""
+    depends_on = getattr(metric, "depends_on", None)
+    if not depends_on:
+        return []
+    nodes = getattr(depends_on, "nodes", None) or []
+    result = []
+    for node_id in nodes:
+        if node_id.startswith("metric."):
+            parts = node_id.split(".")
+            if len(parts) >= 3:
+                result.append(parts[-1])
+    return result
 
 
 def find_domain_by_name(metadata: OpenMetadata, domain_name: str) -> Optional[Any]:  # noqa: UP045
