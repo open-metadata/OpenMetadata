@@ -80,7 +80,7 @@ describe('LinkModal', () => {
     document.body.removeChild(host);
   });
 
-  it('should apply a z-index above the React Aria overlay (100000)', () => {
+  it('should apply a z-index above the React Aria overlay (100000) when mounted inside a dialog container', () => {
     const host = document.createElement('div');
     document.body.appendChild(host);
 
@@ -93,5 +93,28 @@ describe('LinkModal', () => {
     expect(elementsWithZIndex.length).toBeGreaterThan(0);
 
     document.body.removeChild(host);
+  });
+
+  // The elevated z-index is only needed to paint above React Aria's overlay. It
+  // must not be applied when the modal falls back to document.body, otherwise it
+  // would render above unrelated portals (notifications, messages, etc.).
+  it('should not elevate the z-index when no dialog container is provided', () => {
+    render(<LinkModal {...defaultProps} />);
+
+    const elementsWithElevatedZIndex = Array.from(
+      document.body.querySelectorAll<HTMLElement>('*')
+    ).filter((element) => element.style.zIndex === '100001');
+
+    expect(elementsWithElevatedZIndex).toHaveLength(0);
+  });
+
+  it('should not elevate the z-index when getContainer resolves to document.body', () => {
+    render(<LinkModal {...defaultProps} getContainer={() => document.body} />);
+
+    const elementsWithElevatedZIndex = Array.from(
+      document.body.querySelectorAll<HTMLElement>('*')
+    ).filter((element) => element.style.zIndex === '100001');
+
+    expect(elementsWithElevatedZIndex).toHaveLength(0);
   });
 });

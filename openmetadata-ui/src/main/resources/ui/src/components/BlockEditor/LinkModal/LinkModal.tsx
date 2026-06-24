@@ -51,6 +51,14 @@ const LinkModal: FC<LinkModalProps> = ({
     onSave(values);
   };
 
+  // Only elevate the z-index when the modal is actually mounted inside a
+  // focus-trapping dialog (getContainer resolves to a non-body element). In
+  // every other context the antd default is used so the modal does not paint
+  // above unrelated portals (e.g. notifications/messages).
+  const container = getContainer?.();
+  const zIndex =
+    container && container !== document.body ? LINK_MODAL_Z_INDEX : undefined;
+
   return (
     <Modal
       className="block-editor-link-modal"
@@ -64,7 +72,7 @@ const LinkModal: FC<LinkModalProps> = ({
       okText="Save"
       open={isOpen}
       title={data.href ? 'Edit link' : 'Add link'}
-      zIndex={LINK_MODAL_Z_INDEX}
+      zIndex={zIndex}
       onCancel={onCancel}>
       <Form
         data-testid="link-form"
