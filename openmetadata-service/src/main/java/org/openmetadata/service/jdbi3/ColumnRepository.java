@@ -340,7 +340,9 @@ public class ColumnRepository {
     return column;
   }
 
-  private void applyColumnUpdates(
+  // Package-private static so it can be unit-tested directly: it derives the updated column purely
+  // from its arguments and holds no repository state.
+  static void applyColumnUpdates(
       Column column,
       UpdateColumn updateColumn,
       String columnEntityType,
@@ -348,8 +350,13 @@ public class ColumnRepository {
     Optional.ofNullable(updateColumn.getDisplayName())
         .ifPresent(name -> column.setDisplayName(name.trim().isEmpty() ? null : name));
 
+    // A blank/whitespace-only description means "no change", not "delete". Treating empty as a
+    // clear previously nulled an existing description whenever a partial column update omitted it
+    // (e.g. editing a single nested column), silently wiping descriptions on sibling/child columns
+    // of a struct. Skip blanks so this endpoint never destroys existing descriptions.
     Optional.ofNullable(updateColumn.getDescription())
-        .ifPresent(desc -> column.setDescription(desc.trim().isEmpty() ? null : desc));
+        .filter(desc -> !desc.trim().isEmpty())
+        .ifPresent(column::setDescription);
 
     Optional.ofNullable(updateColumn.getTags())
         .ifPresent(tags -> column.setTags(addDerivedTags(tags)));
