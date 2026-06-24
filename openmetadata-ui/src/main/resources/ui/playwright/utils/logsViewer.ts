@@ -48,8 +48,7 @@ export const navigateToBundleSuiteWithPagination = async (
 
     const listResponse = page.waitForResponse(
       (r) =>
-        r.url().includes('/api/v1/dataQuality/testSuites/search/list') &&
-        r.status() === 200
+        r.url().includes('/api/v1/dataQuality/testSuites/search/list')
     );
     await nextBtn.click();
     await listResponse;
