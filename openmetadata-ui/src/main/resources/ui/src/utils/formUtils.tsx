@@ -189,6 +189,7 @@ export const getField = (field: FieldProp) => {
           getValueProps={(value) => ({ value: (value as string) ?? '' })}>
           <UTInput
             {...(inputRest as Partial<ComponentProps<typeof UTInput>>)}
+            id={id}
             inputDataTestId={dataTestId as string}
             isRequired={isRequired}
             label={isString(label) ? label : undefined}
@@ -215,6 +216,7 @@ export const getField = (field: FieldProp) => {
           valuePropName="selectedKey">
           <UTSelect
             {...(selectRest as Partial<ComponentProps<typeof UTSelect>>)}
+            id={id}
             isRequired={isRequired}
             items={items}
             label={isString(label) ? label : undefined}
