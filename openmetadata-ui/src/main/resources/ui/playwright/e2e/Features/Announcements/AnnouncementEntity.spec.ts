@@ -88,7 +88,8 @@ test.describe.serial('Announcement Entity Lifecycle', () => {
           title: 'Domain Announcement Test',
           description: 'Domain Announcement Description',
         },
-        false
+        false,
+        'announcement-card'
       );
     } finally {
       await domain.delete(apiContext);

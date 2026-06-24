@@ -12,119 +12,98 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { UnsavedChangesModal } from '../../Modals/UnsavedChangesModal/UnsavedChangesModal.component';
 import { NavigationBlockerProps } from './NavigationBlocker.interface';
 
-/**
- * NavigationBlocker component that wraps content and blocks navigation when enabled
- *
- * Usage:
- * <NavigationBlocker
- *   enabled={hasUnsavedChanges}
- *   message="You have unsaved changes. Are you sure you want to leave?"
- *   title="Unsaved Changes"
- *   confirmText="Leave"
- *   cancelText="Stay"
- * >
- *   <YourContent />
- * </NavigationBlocker>
- */
 export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
   children,
   enabled = false,
-  message = 'Do you want to save or discard changes?',
-  title = 'Unsaved changes',
   onConfirm,
   onCancel,
+  renderModal,
 }) => {
+  const navigate = useNavigate();
   const [isBlocking, setIsBlocking] = useState(enabled);
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [blockingMessage, setBlockingMessage] = useState(message);
   const [loading, setLoading] = useState(false);
   const pendingNavigationRef = useRef<string | null>(null);
   const isNavigatingRef = useRef(false);
 
-  // Update blocking state when enabled/message/title changes
   useEffect(() => {
     setIsBlocking(enabled);
-    setBlockingMessage(message);
-  }, [enabled, message, title]);
+  }, [enabled]);
 
   useEffect(() => {
     if (!isBlocking || isNavigatingRef.current) {
       return;
     }
 
-    // Handle page refresh/close - only show browser dialog for actual tab close
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      // Only show for actual tab close, not for programmatic navigation
-      if (!isNavigatingRef.current) {
-        event.preventDefault();
-        // Modern browsers ignore the custom message and show their own
-        event.returnValue = '';
+    const originalPushState = globalThis.history.pushState.bind(
+      globalThis.history
+    );
+    const originalReplaceState = globalThis.history.replaceState.bind(
+      globalThis.history
+    );
 
-        return '';
-      }
+    // Push a guard entry with the same URL. When the user presses browser back
+    // (or navigate(-1) is called), the browser moves to this guard entry, which
+    // has the identical URL. React Router sees no location change and does NOT
+    // unmount the current page, so our popstate handler fires while the page is
+    // still alive and can show the modal.
+    originalPushState(null, '', globalThis.location.href);
 
-      return undefined;
-    };
-
-    // Store original navigation methods
-    const originalPushState = window.history.pushState;
-    const originalReplaceState = window.history.replaceState;
-
-    // Block programmatic navigation (useNavigate, etc.)
-    window.history.pushState = function (
+    // Intercept programmatic React Router navigate(path) calls.
+    globalThis.history.pushState = function (
       state: unknown,
       title: string,
       url?: string | URL | null
     ) {
-      if (!isNavigatingRef.current && url && url !== window.location.pathname) {
+      if (
+        !isNavigatingRef.current &&
+        url &&
+        url !== globalThis.location.pathname
+      ) {
         setIsModalVisible(true);
         pendingNavigationRef.current = url.toString();
 
-        return; // Block the navigation
+        return;
       }
 
-      return originalPushState.call(
-        window.history,
-        state,
-        title,
-        url as string
-      );
+      return originalPushState(state, title, url);
     };
 
-    window.history.replaceState = function (
+    globalThis.history.replaceState = function (
       state: unknown,
       title: string,
       url?: string | URL | null
     ) {
-      if (!isNavigatingRef.current && url && url !== window.location.pathname) {
+      if (
+        !isNavigatingRef.current &&
+        url &&
+        url !== globalThis.location.pathname
+      ) {
         setIsModalVisible(true);
         pendingNavigationRef.current = url.toString();
 
-        return; // Block the navigation
+        return;
       }
 
-      return originalReplaceState.call(
-        window.history,
-        state,
-        title,
-        url as string
-      );
+      return originalReplaceState(state, title, url);
     };
 
-    // Block browser back/forward
     const handlePopState = () => {
-      if (!isNavigatingRef.current) {
-        // Restore current state to prevent navigation
-        window.history.pushState(null, '', window.location.href);
-        setIsModalVisible(true);
-        pendingNavigationRef.current = 'back';
+      if (isNavigatingRef.current) {
+        return;
       }
+
+      // Re-push a guard entry so that repeated back presses are also intercepted.
+      originalPushState(null, '', globalThis.location.href);
+      setIsModalVisible(true);
+      pendingNavigationRef.current = 'back';
     };
 
-    // Block link clicks
+    // Intercept anchor link clicks (sidebar nav, external links rendered as <a>).
     const handleClick = (event: Event) => {
       if (isNavigatingRef.current) {
         return;
@@ -138,18 +117,13 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
         const linkTarget = link.getAttribute('target');
         const download = link.getAttribute('download');
 
-        // Don't block navigation if:
-        // 1. Link has target="_blank" (opens in new tab/window)
-        // 2. Link has target="_parent" or "_top" (opens in parent/top frame)
-        // 3. Link has download attribute (file download)
-        // 4. Link is external (starts with http and is different origin)
-        const shouldBlockNavigation =
+        const shouldBlock =
           href &&
           (href.startsWith('/') || href.startsWith('http')) &&
           !download &&
           (!linkTarget || linkTarget === '_self');
 
-        if (shouldBlockNavigation) {
+        if (shouldBlock) {
           event.preventDefault();
           event.stopPropagation();
           setIsModalVisible(true);
@@ -158,7 +132,6 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
       }
     };
 
-    // Block keyboard shortcuts (F5, Ctrl+R)
     const handleKeyDown = (event: KeyboardEvent) => {
       if (
         !isNavigatingRef.current &&
@@ -172,107 +145,124 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
       }
     };
 
-    // Add all event listeners
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    window.addEventListener('popstate', handlePopState);
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!isNavigatingRef.current) {
+        event.preventDefault();
+        event.returnValue = '';
+
+        return '';
+      }
+
+      return undefined;
+    };
+
+    globalThis.addEventListener('beforeunload', handleBeforeUnload);
+    globalThis.addEventListener('popstate', handlePopState);
     document.addEventListener('click', handleClick, true);
     document.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      // Clean up
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      window.removeEventListener('popstate', handlePopState);
+      globalThis.removeEventListener('beforeunload', handleBeforeUnload);
+      globalThis.removeEventListener('popstate', handlePopState);
       document.removeEventListener('click', handleClick, true);
       document.removeEventListener('keydown', handleKeyDown);
-
-      // Restore original methods
-      window.history.pushState = originalPushState;
-      window.history.replaceState = originalReplaceState;
+      globalThis.history.pushState = originalPushState;
+      globalThis.history.replaceState = originalReplaceState;
     };
-  }, [isBlocking, blockingMessage]);
+  }, [isBlocking]);
 
   const handleLeave = useCallback(async () => {
     setIsModalVisible(false);
     isNavigatingRef.current = true;
-
-    // Disable blocking to prevent double modals
     setIsBlocking(false);
 
-    if (pendingNavigationRef.current) {
-      const pendingUrl = pendingNavigationRef.current;
-      pendingNavigationRef.current = null;
+    const pendingUrl = pendingNavigationRef.current;
+    pendingNavigationRef.current = null;
 
-      // Handle different navigation types
-      setTimeout(() => {
-        if (pendingUrl === 'back') {
-          window.history.back();
-        } else if (pendingUrl === 'reload') {
-          window.location.reload();
-        } else if (pendingUrl.startsWith('http')) {
-          window.location.href = pendingUrl;
-        } else {
-          // For internal routes, use full URL to ensure proper loading
-          window.location.href = window.location.origin + pendingUrl;
+    setTimeout(() => {
+      if (pendingUrl === 'back') {
+        // go(-2): past the re-pushed guard entry AND past the original page entry.
+        globalThis.history.go(-2);
+      } else if (pendingUrl === 'reload') {
+        globalThis.location.reload();
+      } else if (pendingUrl?.startsWith('http')) {
+        try {
+          const parsed = new URL(pendingUrl);
+          if (parsed.origin === globalThis.location.origin) {
+            navigate(parsed.pathname + parsed.search + parsed.hash);
+          } else {
+            globalThis.location.href = pendingUrl;
+          }
+        } catch {
+          globalThis.location.href = pendingUrl;
         }
-      }, 50);
-    }
-  }, []);
+      } else if (pendingUrl) {
+        navigate(pendingUrl);
+      }
+    }, 50);
+  }, [navigate]);
 
   const handleSaveAndLeave = useCallback(async () => {
     setLoading(true);
-
     try {
-      // Call custom onConfirm if provided (to save changes)
       await onConfirm?.();
 
       setIsModalVisible(false);
       isNavigatingRef.current = true;
-
-      // Disable blocking to prevent double modals
       setIsBlocking(false);
 
-      if (pendingNavigationRef.current) {
-        const pendingUrl = pendingNavigationRef.current;
-        pendingNavigationRef.current = null;
+      const pendingUrl = pendingNavigationRef.current;
+      pendingNavigationRef.current = null;
 
-        // Handle different navigation types
-        setTimeout(() => {
-          if (pendingUrl === 'back') {
-            window.history.back();
-          } else if (pendingUrl === 'reload') {
-            window.location.reload();
-          } else if (pendingUrl.startsWith('http')) {
-            window.location.href = pendingUrl;
-          } else {
-            // For internal routes, use full URL to ensure proper loading
-            window.location.href = window.location.origin + pendingUrl;
+      setTimeout(() => {
+        if (pendingUrl === 'back') {
+          globalThis.history.go(-2);
+        } else if (pendingUrl === 'reload') {
+          globalThis.location.reload();
+        } else if (pendingUrl?.startsWith('http')) {
+          try {
+            const parsed = new URL(pendingUrl);
+            if (parsed.origin === globalThis.location.origin) {
+              navigate(parsed.pathname + parsed.search + parsed.hash);
+            } else {
+              globalThis.location.href = pendingUrl;
+            }
+          } catch {
+            globalThis.location.href = pendingUrl;
           }
-        }, 50);
-      }
-    } catch (error) {
-      // If saving fails, keep the modal open and reset loading state
+        } else if (pendingUrl) {
+          navigate(pendingUrl);
+        }
+      }, 50);
+    } catch {
       setLoading(false);
     }
-  }, [onConfirm]);
+  }, [navigate, onConfirm]);
 
   const handleModalClose = useCallback(() => {
     setIsModalVisible(false);
     pendingNavigationRef.current = null;
-
-    // Call custom onCancel if provided (same as staying)
     onCancel?.();
   }, [onCancel]);
 
   return (
     <>
       {children}
-      <UnsavedChangesModal
-        loading={loading}
-        open={isModalVisible}
-        onCancel={handleModalClose}
-        onDiscard={handleLeave}
-        onSave={handleSaveAndLeave}
-      />
+      {renderModal ? (
+        renderModal({
+          isOpen: isModalVisible,
+          onLeave: handleLeave,
+          onStay: handleModalClose,
+        })
+      ) : (
+        <UnsavedChangesModal
+          loading={loading}
+          open={isModalVisible}
+          onCancel={handleModalClose}
+          onDiscard={handleLeave}
+          onSave={handleSaveAndLeave}
+        />
+      )}
     </>
   );
 };
