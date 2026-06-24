@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.migration.utils.v201;
+package org.openmetadata.service.migration.utils.v200;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -56,7 +56,7 @@ import org.openmetadata.service.jdbi3.TaskFormSchemaRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 
-class MigrationUtilTest {
+class TaskWorkflowMigrationUtilTest {
   private Handle handle;
   private Connection connection;
   private DatabaseMetaData metadata;
@@ -91,7 +91,7 @@ class MigrationUtilTest {
   void getLegacyThreadSourceTablePrefersLegacyTable() throws Exception {
     stubTables(Set.of("thread_entity_legacy", "thread_entity_archived", "thread_entity"));
 
-    MigrationUtil migrationUtil = newMigrationUtil();
+    TaskWorkflowMigrationUtil migrationUtil = newMigrationUtil();
 
     assertEquals("thread_entity_legacy", invokeLegacySourceTable(migrationUtil));
   }
@@ -100,7 +100,7 @@ class MigrationUtilTest {
   void getLegacyThreadSourceTableIgnoresLiveThreadEntityAfterCutover() throws Exception {
     stubTables(Set.of("thread_entity"));
 
-    MigrationUtil migrationUtil = newMigrationUtil();
+    TaskWorkflowMigrationUtil migrationUtil = newMigrationUtil();
 
     assertNull(invokeLegacySourceTable(migrationUtil));
   }
@@ -109,7 +109,7 @@ class MigrationUtilTest {
   void runTaskWorkflowCutoverMigrationSkipsTaskQueryWhenLegacyTableIsAbsent() throws Exception {
     stubTables(Set.of());
 
-    MigrationUtil migrationUtil = newMigrationUtil();
+    TaskWorkflowMigrationUtil migrationUtil = newMigrationUtil();
 
     assertDoesNotThrow(migrationUtil::runTaskWorkflowCutoverMigration);
     verify(handle, never()).createQuery(anyString());
@@ -126,7 +126,7 @@ class MigrationUtilTest {
     when(workflowDefinitionRepository.listAll(any(), any()))
         .thenReturn(List.of(workflowDefinition));
 
-    MigrationUtil migrationUtil = newMigrationUtil();
+    TaskWorkflowMigrationUtil migrationUtil = newMigrationUtil();
 
     migrationUtil.runTaskWorkflowCutoverMigration();
 
@@ -155,7 +155,7 @@ class MigrationUtilTest {
                 recognizerWorkflow,
                 unrelatedWorkflow));
 
-    MigrationUtil migrationUtil = newMigrationUtil();
+    TaskWorkflowMigrationUtil migrationUtil = newMigrationUtil();
 
     migrationUtil.runTaskWorkflowCutoverMigration();
 
@@ -203,7 +203,7 @@ class MigrationUtilTest {
           .thenReturn(workflowDefinitionRepository);
       workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
 
-      MigrationUtil migrationUtil = new MigrationUtil(handle);
+      TaskWorkflowMigrationUtil migrationUtil = new TaskWorkflowMigrationUtil(handle);
       migrationUtil.runTaskWorkflowCutoverMigration();
 
       verify(workflowHandler)
@@ -240,7 +240,7 @@ class MigrationUtilTest {
           .thenReturn(workflowDefinitionRepository);
       workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
 
-      MigrationUtil migrationUtil = new MigrationUtil(handle);
+      TaskWorkflowMigrationUtil migrationUtil = new TaskWorkflowMigrationUtil(handle);
       migrationUtil.runTaskWorkflowCutoverMigration();
 
       assertEquals(TaskEntityType.RecognizerFeedbackApproval, openTask.getType());
@@ -265,7 +265,7 @@ class MigrationUtilTest {
         .when(taskDAO)
         .updateTask(eq(failingTaskId.toString()), anyString());
 
-    MigrationUtil migrationUtil = newMigrationUtil();
+    TaskWorkflowMigrationUtil migrationUtil = newMigrationUtil();
 
     migrationUtil.runRecognizerFeedbackTaskTypeMigration();
 
@@ -290,7 +290,7 @@ class MigrationUtilTest {
         .thenReturn(List.of(dataQualityWorkflow, recognizerWorkflow, unrelatedWorkflow));
     when(taskRepository.listAll(any(), any())).thenReturn(List.of());
 
-    MigrationUtil migrationUtil = newMigrationUtil();
+    TaskWorkflowMigrationUtil migrationUtil = newMigrationUtil();
 
     migrationUtil.runRecognizerFeedbackTaskTypeMigration();
 
@@ -299,7 +299,7 @@ class MigrationUtilTest {
     verify(workflowDefinitionRepository, never()).createOrUpdate(null, unrelatedWorkflow, "admin");
   }
 
-  private MigrationUtil newMigrationUtil() {
+  private TaskWorkflowMigrationUtil newMigrationUtil() {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<WorkflowHandler> workflowMock = mockStatic(WorkflowHandler.class)) {
       entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
@@ -311,12 +311,12 @@ class MigrationUtilTest {
           .thenReturn(workflowDefinitionRepository);
       workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
 
-      return new MigrationUtil(handle);
+      return new TaskWorkflowMigrationUtil(handle);
     }
   }
 
-  private String invokeLegacySourceTable(MigrationUtil migrationUtil) throws Exception {
-    Method method = MigrationUtil.class.getDeclaredMethod("getLegacyThreadSourceTable");
+  private String invokeLegacySourceTable(TaskWorkflowMigrationUtil migrationUtil) throws Exception {
+    Method method = TaskWorkflowMigrationUtil.class.getDeclaredMethod("getLegacyThreadSourceTable");
     method.setAccessible(true);
 
     return (String) method.invoke(migrationUtil);

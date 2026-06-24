@@ -1,4 +1,4 @@
-package org.openmetadata.service.migration.utils.v201;
+package org.openmetadata.service.migration.utils.v200;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
@@ -49,9 +49,9 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.util.EntityUtil;
 
-/** Migration utility for 2.0.1 task workflow cutover. */
+/** Migration utility for 2.0.0 task workflow cutover. */
 @Slf4j
-public class MigrationUtil {
+public class TaskWorkflowMigrationUtil {
   private static final String ADMIN_USER_NAME = "admin";
   private static final String USER_APPROVAL_TASK_SUBTYPE = "userApprovalTask";
   private static final String RECOGNIZER_APPROVAL_TASK_SUBTYPE =
@@ -74,7 +74,7 @@ public class MigrationUtil {
   private final WorkflowDefinitionRepository workflowDefinitionRepository;
   private final WorkflowHandler workflowHandler;
 
-  public MigrationUtil(Handle handle) {
+  public TaskWorkflowMigrationUtil(Handle handle) {
     this.handle = handle;
     this.collectionDAO = handle.attach(CollectionDAO.class);
     this.taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
