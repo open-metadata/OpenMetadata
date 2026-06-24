@@ -35,22 +35,22 @@ const variantStyles: Record<
   }
 > = {
   success: {
-    root: 'tw:border-utility-success-300 tw:bg-success-25',
+    root: 'tw:border-utility-success-300 tw:bg-utility-success-50',
     iconColor: 'success',
     defaultIcon: CheckCircle,
   },
   warning: {
-    root: 'tw:border-utility-warning-300 tw:bg-warning-25',
+    root: 'tw:border-utility-warning-300 tw:bg-utility-warning-50',
     iconColor: 'warning',
     defaultIcon: AlertTriangle,
   },
   error: {
-    root: 'tw:border-utility-error-300 tw:bg-error-25',
+    root: 'tw:border-utility-error-300 tw:bg-utility-error-50',
     iconColor: 'error',
     defaultIcon: AlertCircle,
   },
   brand: {
-    root: 'tw:border-utility-blue-300 tw:bg-blue-25',
+    root: 'tw:border-utility-blue-300 tw:bg-utility-blue-50',
     iconColor: 'brand',
     defaultIcon: InfoCircle,
   },
