@@ -33,7 +33,7 @@ class BrandClassBase {
 
   public getBlogLink(_version: string) {
     // Since medium doens't follow any fixed structure we will just return the blog link
-    return 'https://blog.open-metadata.org/announcing-openmetadata-1-8-948eb14d41c7';
+    return 'https://blog.open-metadata.org/announcing-openmetadata-1-13-123d66609468';
   }
 
   public getWelcomeScreenImg() {
