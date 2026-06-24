@@ -80,6 +80,7 @@ export enum EntityTabs {
   SUBDOMAINS = 'subdomains',
   CONTRACT = 'contract',
   ER_DIAGRAM = 'erDiagram',
+  DATA_OBSERVABILITY = 'data_observability',
 }
 
 export const TABLE_DEFAULT_TABS = [
