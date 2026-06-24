@@ -63,7 +63,7 @@ class WorkflowStatusMixin:
     ingestion_pipeline: Optional[IngestionPipeline]  # noqa: UP045
 
     # All workflows execute a series of steps, aside from the source
-    steps: Tuple[Step]  # noqa: UP006
+    steps: Tuple[Step, ...]  # noqa: UP006
 
     @property
     def run_id(self) -> str:

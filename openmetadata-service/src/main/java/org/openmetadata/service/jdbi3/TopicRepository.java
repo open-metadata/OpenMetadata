@@ -69,6 +69,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class TopicRepository extends EntityRepository<Topic> {
   private static final Set<String> CHANGE_SUMMARY_FIELDS =
       Set.of("messageSchema.schemaFields.description");
+  public static final String TOPIC_SAMPLE_DATA_EXTENSION = "topic.sampleData";
 
   public TopicRepository() {
     super(
@@ -289,18 +290,18 @@ public class TopicRepository extends EntityRepository<Topic> {
 
     TopicSampleData sampleData =
         JsonUtils.readValue(
-            daoCollection.entityExtensionDAO().getExtension(topic.getId(), "topic.sampleData"),
+            daoCollection
+                .entityExtensionDAO()
+                .getExtension(topic.getId(), TOPIC_SAMPLE_DATA_EXTENSION),
             TopicSampleData.class);
     topic.setSampleData(sampleData);
     setFieldsInternal(topic, Fields.EMPTY_FIELDS);
 
     // Set the fields tags. Will be used to mask the sample data
     if (!authorizePII) {
-      populateEntityFieldTags(
-          entityType,
-          topic.getMessageSchema().getSchemaFields(),
-          topic.getFullyQualifiedName(),
-          true);
+      List<Field> schemaFields =
+          topic.getMessageSchema() != null ? topic.getMessageSchema().getSchemaFields() : List.of();
+      populateEntityFieldTags(entityType, schemaFields, topic.getFullyQualifiedName(), true);
       topic.setTags(getTags(topic));
       return PIIMasker.getSampleData(topic);
     }
@@ -308,15 +309,28 @@ public class TopicRepository extends EntityRepository<Topic> {
     return topic;
   }
 
+  @Transaction
   public Topic addSampleData(UUID topicId, TopicSampleData sampleData) {
     // Validate the request content
     Topic topic = daoCollection.topicDAO().findEntityById(topicId);
 
     daoCollection
         .entityExtensionDAO()
-        .insert(topicId, "topic.sampleData", "topicSampleData", JsonUtils.pojoToJson(sampleData));
+        .insert(
+            topicId,
+            TOPIC_SAMPLE_DATA_EXTENSION,
+            "topicSampleData",
+            JsonUtils.pojoToJson(sampleData));
     setFieldsInternal(topic, Fields.EMPTY_FIELDS);
     return topic.withSampleData(sampleData);
+  }
+
+  @Transaction
+  public Topic deleteSampleData(UUID topicId) {
+    Topic topic = find(topicId, NON_DELETED);
+    daoCollection.entityExtensionDAO().delete(topicId, TOPIC_SAMPLE_DATA_EXTENSION);
+    setFieldsInternal(topic, Fields.EMPTY_FIELDS);
+    return topic;
   }
 
   private void setFieldFQN(String parentFQN, List<Field> fields) {

@@ -14,6 +14,7 @@ It picks up the generated Entities and send them
 to the OM API.
 """
 
+import json
 import traceback
 from functools import singledispatchmethod
 from typing import Any, Optional, TypeVar, Union
@@ -62,7 +63,7 @@ from metadata.generated.schema.entity.data.searchIndex import (
     SearchIndexSampleData,
 )
 from metadata.generated.schema.entity.data.table import DataModel, Table, TableData
-from metadata.generated.schema.entity.data.topic import TopicSampleData
+from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
 from metadata.generated.schema.entity.datacontract.dataContractResult import (
     DataContractResult,
 )
@@ -79,7 +80,6 @@ from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.bulkOperationResult import BulkOperationResult
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.steps import Sink
 from metadata.ingestion.models.barrier import Barrier
@@ -159,7 +159,6 @@ class MetadataRestSinkConfig(ConfigModel):
     bulk_sink_batch_size: int = 100
     enable_async_pipeline: bool = True
     async_pipeline_workers: int = 2
-    override_metadata: bool = False
 
 
 class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
@@ -354,11 +353,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             )
 
         try:
-            result = self.metadata.bulk_create_or_update(
-                entities=self.buffer,  # pyright: ignore[reportArgumentType]
-                use_async=False,
-                override_metadata=self.config.override_metadata,
-            )
+            result = self.metadata.bulk_create_or_update(entities=self.buffer, use_async=False)
         except Exception as exc:
             logger.error(f"Failed to flush entities to bulk API: {exc}")
             logger.debug(traceback.format_exc())
@@ -427,7 +422,6 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             result = self.metadata.bulk_create_or_update(
                 entities=self.query_buffer,  # pyright: ignore[reportArgumentType]
                 use_async=False,
-                override_metadata=self.config.override_metadata,
             )
         except Exception as exc:
             logger.error(f"Failed to flush queries to bulk API: {exc}")
@@ -997,6 +991,37 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         container_data = self.metadata.ingest_container_sample_data(container=entity, sample_data=sample_data)
         if container_data:
             logger.debug(f"Successfully ingested sample data for {entity.fullyQualifiedName.root}")
+            return True
+        return False
+
+    @staticmethod
+    def _unflatten_dotted_row(columns, row) -> dict:
+        """
+        Rebuild the original (possibly nested) message structure from the sampler's
+        dotted-path column names so nested RECORD topics keep their real shape.
+        """
+        message = {}
+        for idx, col in enumerate(columns):
+            parts = col.root.split(".")
+            cursor = message
+            for part in parts[:-1]:
+                cursor = cursor.setdefault(part, {})
+            cursor[parts[-1]] = row[idx]
+        return message
+
+    @_ingest_entity_sample_data.register
+    def _(self, entity: Topic, sample_data: TableData) -> bool:
+        """Topic-specific sample data ingestion implementation"""
+        messages = []
+        if sample_data.rows and sample_data.columns:
+            for row in sample_data.rows:
+                row_dict = self._unflatten_dotted_row(sample_data.columns, row)
+                messages.append(json.dumps(row_dict))
+        topic_sample_data = TopicSampleData(messages=messages)
+        result = self.metadata.ingest_topic_sample_data(topic=entity, sample_data=topic_sample_data)
+        if result:
+            fqn = entity.fullyQualifiedName.root if entity.fullyQualifiedName else str(entity)
+            logger.debug(f"Successfully ingested sample data for {fqn}")
             return True
         return False
 

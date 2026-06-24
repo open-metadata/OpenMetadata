@@ -80,7 +80,10 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
-        self.generate_sample_data = self.config.sourceConfig.config.generateSampleData  # pyright: ignore[reportAttributeAccessIssue]
+        source_config = self.config.sourceConfig.config
+        self.generate_sample_data = getattr(source_config, "storeSampleData", None) or getattr(
+            source_config, "generateSampleData", False
+        )  # pyright: ignore[reportAttributeAccessIssue]
         if self.generate_sample_data and self._is_sample_data_storing_globally_disabled():
             self.generate_sample_data = False
         self.service_connection = self.config.serviceConnection.root.config

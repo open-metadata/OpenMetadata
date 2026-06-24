@@ -16,4 +16,7 @@ from metadata.ingestion.source.messaging.pubsub.connection import PubSubConnecti
 from metadata.ingestion.source.messaging.pubsub.metadata import PubsubSource
 from metadata.utils.service_spec import BaseSpec
 
-ServiceSpec = BaseSpec(metadata_source_class=PubsubSource, connection_class=PubSubConnection)  # pyright: ignore[reportArgumentType]
+ServiceSpec = BaseSpec(
+    metadata_source_class=PubsubSource,
+    connection_class=PubSubConnection,
+)  # pyright: ignore[reportArgumentType]

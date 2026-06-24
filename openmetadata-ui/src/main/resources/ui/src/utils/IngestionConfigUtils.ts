@@ -173,7 +173,8 @@ export const getSupportedPipelineTypes = (
 
       if (
         key === 'supportsProfiler' &&
-        serviceCategory === ServiceCategory.STORAGE_SERVICES
+        (serviceCategory === ServiceCategory.STORAGE_SERVICES ||
+          serviceCategory === ServiceCategory.MESSAGING_SERVICES)
       ) {
         types = [PipelineType.AutoClassification];
       }
