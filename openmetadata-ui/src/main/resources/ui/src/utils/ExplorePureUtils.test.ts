@@ -20,6 +20,7 @@ import {
   getCanonicalEntityType,
   getDisabledExploreTreeKeys,
   getQuickFilterMust,
+  hasServiceDrillDownFilter,
   isEntityTypeBucketSelected,
   parseBrowsePathFields,
   truncateBrowsePath,
@@ -235,6 +236,112 @@ describe('getDisabledExploreTreeKeys', () => {
     expect(
       getDisabledExploreTreeKeys(nodes, [EntityType.TABLE]).has('empty_root')
     ).toBe(true);
+  });
+
+  it('disables empty roots only when directional service filtering is active', () => {
+    const nodes = [
+      {
+        ...treeNodes[0],
+        totalCount: 4,
+      },
+      {
+        ...treeNodes[1],
+        totalCount: 0,
+      },
+    ];
+
+    expect(getDisabledExploreTreeKeys(nodes, []).size).toBe(0);
+
+    const disabled = getDisabledExploreTreeKeys(nodes, [], {
+      disableEmptyRoots: true,
+    });
+
+    expect(disabled.has(DATABASE_KEY)).toBe(false);
+    expect(disabled.has(DASHBOARD_KEY)).toBe(true);
+  });
+});
+
+describe('hasServiceDrillDownFilter', () => {
+  it('detects service type and service filters in quick filters', () => {
+    const serviceTypeFilter = JSON.stringify({
+      query: {
+        bool: {
+          must: [
+            { bool: { should: [{ term: { serviceType: 'BigQuery' } }] } },
+          ],
+        },
+      },
+    });
+    const serviceFilter = JSON.stringify({
+      query: {
+        bool: {
+          must: [
+            {
+              bool: {
+                should: [
+                  {
+                    term: {
+                      'service.displayName.keyword': 'bigquery',
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    });
+
+    expect(hasServiceDrillDownFilter(serviceTypeFilter)).toBe(true);
+    expect(hasServiceDrillDownFilter(serviceFilter)).toBe(true);
+  });
+
+  it('detects service browse paths and ignores non-directional filters', () => {
+    const tierFilter = JSON.stringify({
+      query: {
+        bool: {
+          must: [
+            { bool: { should: [{ term: { 'tier.tagFQN': 'Tier.Tier1' } }] } },
+          ],
+        },
+      },
+    });
+    const browsePath = JSON.stringify([
+      {
+        key: 'service.displayName.keyword',
+        label: 'service.displayName.keyword',
+        value: [{ key: 'bigquery', label: 'bigquery' }],
+      },
+    ]);
+
+    expect(hasServiceDrillDownFilter(tierFilter)).toBe(false);
+    expect(hasServiceDrillDownFilter(undefined, browsePath)).toBe(true);
+  });
+
+  it('detects service filters from an additional query filter object', () => {
+    const queryFilter = {
+      query: {
+        bool: {
+          must: [
+            {
+              bool: {
+                should: [
+                  {
+                    term: {
+                      serviceType: 'BigQuery',
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    };
+
+    expect(hasServiceDrillDownFilter(undefined, undefined, queryFilter)).toBe(
+      true
+    );
   });
 });
 

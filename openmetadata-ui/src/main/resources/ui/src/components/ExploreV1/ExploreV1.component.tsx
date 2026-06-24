@@ -27,7 +27,7 @@ import {
   FilterFunnel01,
   Trash01,
 } from '@untitledui/icons';
-import { Card, Col, Menu, Modal, Radio, Row, Skeleton, Typography } from 'antd';
+import { Card, Col, Menu, Modal, Radio, Row, Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isString, isUndefined, noop, omit } from 'lodash';
@@ -476,6 +476,10 @@ const ExploreV1: React.FC<ExploreProps> = ({
     () => selectedQuickFilters.some((field) => !isEmpty(field.value)),
     [selectedQuickFilters]
   );
+  const hasActiveFilterQuery = useMemo(
+    () => hasQuickFilterValues || !isEmpty(browseFields) || Boolean(sqlQuery),
+    [hasQuickFilterValues, browseFields, sqlQuery]
+  );
 
   const selectedEntityTypes = useMemo(() => {
     const entityTypeField = selectedQuickFilters.find(
@@ -526,6 +530,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
     return (
       <ExploreTree
+        additionalQueryFilter={queryFilter as QueryFilterInterface | undefined}
         selectedEntityTypes={selectedEntityTypes}
         onFieldValueSelect={handleQuickFiltersChange}
         onTreeSelect={handleExploreTreeSelect}
@@ -540,6 +545,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
     loading,
     onChangeSearchIndex,
     selectedEntityTypes,
+    queryFilter,
   ]);
 
   useEffect(() => {
@@ -688,17 +694,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
             <Divider className="tw:my-2" orientation="vertical" />
 
-            {(hasQuickFilterValues || !isEmpty(browseFields) || sqlQuery) && (
-              <Typography.Text
-                className="text-primary self-center cursor-pointer font-medium"
-                data-testid="clear-filters"
-                onClick={() => clearFilters()}>
-                {t('label.clear-entity', {
-                  entity: t('label.all'),
-                })}
-              </Typography.Text>
-            )}
-
             <Dropdown.Root>
               <Button
                 className="tw:p-0"
@@ -734,9 +729,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
               </Dropdown.Popover>
             </Dropdown.Root>
           </Col>
-          {(hasQuickFilterValues ||
-            !isEmpty(browseFields) ||
-            !searchQueryParam) && (
+          {(hasActiveFilterQuery || !searchQueryParam) && (
             <Col span={24}>
               <ExploreQueryFilterChips
                 browseFields={browseFields}
@@ -746,6 +739,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                     : t('message.browse-estate-query-placeholder')
                 }
                 fields={selectedQuickFilters}
+                hasAdditionalQuery={Boolean(sqlQuery)}
                 onClearAll={clearFilters}
                 onRemoveBrowseLevel={handleRemoveBrowseLevel}
                 onRemoveValue={handleRemoveQuickFilterValue}

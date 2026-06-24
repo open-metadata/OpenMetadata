@@ -365,10 +365,13 @@ export const updateTreeDataWithCounts = (
  */
 export const getDisabledExploreTreeKeys = (
   treeNodes: ExploreTreeNode[],
-  selectedEntityTypes: string[]
+  selectedEntityTypes: string[],
+  options?: { disableEmptyRoots?: boolean }
 ): Set<string> => {
   const disabledKeys = new Set<string>();
-  if (!isEmpty(selectedEntityTypes)) {
+  const disableEmptyRoots = options?.disableEmptyRoots ?? false;
+  const hasSelectedEntityTypes = !isEmpty(selectedEntityTypes);
+  if (hasSelectedEntityTypes || disableEmptyRoots) {
     // Compare case-insensitively: a few entity types are aggregated in a
     // different case than their EntityType enum value (e.g. tableColumn), and
     // no two entity types differ only by case, so this is safe.
@@ -380,7 +383,15 @@ export const getDisabledExploreTreeKeys = (
       const containsSelectedType = childEntities.some((entityType) =>
         selected.has(entityType.toLowerCase())
       );
-      if (!containsSelectedType) {
+      const hasNoDrillDownMatches =
+        disableEmptyRoots &&
+        typeof node.totalCount === 'number' &&
+        node.totalCount <= 0;
+
+      if (
+        (hasSelectedEntityTypes && !containsSelectedType) ||
+        hasNoDrillDownMatches
+      ) {
         disabledKeys.add(node.key);
       }
     });
@@ -406,6 +417,21 @@ export const isEntityTypeBucketSelected = (
   );
 
 /**
+ * Extract a query_filter object's `must` clauses as an array.
+ */
+export const getQueryFilterMust = (
+  queryFilter?: unknown
+): QueryFieldInterface[] => {
+  const parsedMust = get(queryFilter, 'query.bool.must');
+
+  return Array.isArray(parsedMust)
+    ? parsedMust
+    : parsedMust
+    ? [parsedMust]
+    : [];
+};
+
+/**
  * Parse the active quick-filter URL param into its `must` clauses so the
  * explore tree counts can reflect the same filters the result list does
  * (entity type, tier, owner, …). Returns [] for an absent/invalid param.
@@ -413,21 +439,60 @@ export const isEntityTypeBucketSelected = (
 export const getQuickFilterMust = (
   quickFilter?: unknown
 ): QueryFieldInterface[] => {
-  let must: QueryFieldInterface[] = [];
   if (isString(quickFilter) && !isEmpty(quickFilter)) {
     try {
-      const parsedMust = get(JSON.parse(quickFilter), 'query.bool.must');
-      must = Array.isArray(parsedMust)
-        ? parsedMust
-        : parsedMust
-        ? [parsedMust]
-        : [];
+      return getQueryFilterMust(JSON.parse(quickFilter));
     } catch {
-      must = [];
+      return [];
     }
   }
 
-  return must;
+  return [];
+};
+
+const SERVICE_DRILL_DOWN_KEYS: ReadonlySet<string> = new Set([
+  EntityFields.SERVICE_TYPE,
+  EntityFields.SERVICE,
+]);
+
+const getTermKeysFromQuery = (query: unknown): string[] => {
+  if (Array.isArray(query)) {
+    return query.flatMap(getTermKeysFromQuery);
+  }
+
+  if (typeof query !== 'object' || query === null) {
+    return [];
+  }
+
+  const record = query as Record<string, unknown>;
+  const term = record.term;
+  const termKeys =
+    typeof term === 'object' && term !== null ? Object.keys(term) : [];
+
+  return [
+    ...termKeys,
+    ...Object.values(record).flatMap((value) => getTermKeysFromQuery(value)),
+  ];
+};
+
+export const hasServiceDrillDownFilter = (
+  quickFilter?: unknown,
+  browsePath?: unknown,
+  queryFilter?: unknown
+): boolean => {
+  const quickFilterKeys = getTermKeysFromQuery(
+    getQuickFilterMust(quickFilter)
+  );
+  const queryFilterKeys = getTermKeysFromQuery(
+    getQueryFilterMust(queryFilter)
+  );
+  const browsePathKeys = parseBrowsePathFields(browsePath).map(
+    (field) => field.key
+  );
+
+  return [...quickFilterKeys, ...queryFilterKeys, ...browsePathKeys].some(
+    (key) => SERVICE_DRILL_DOWN_KEYS.has(key)
+  );
 };
 
 /**
@@ -443,11 +508,15 @@ export const buildTreeCountQueryFilter = ({
   isRoot,
   childEntities,
   activeQuickFilter,
+  activeBrowsePath,
+  activeQueryFilter,
 }: {
   baseQueryFilter: { query: { bool: EsBoolQuery } };
   isRoot: boolean;
   childEntities: string[];
   activeQuickFilter?: unknown;
+  activeBrowsePath?: unknown;
+  activeQueryFilter?: unknown;
 }): { query: { bool: { must: QueryFieldInterface[] } } } => {
   const must: QueryFieldInterface[] = [];
   const baseMust = baseQueryFilter?.query?.bool?.must;
@@ -468,6 +537,10 @@ export const buildTreeCountQueryFilter = ({
     });
   }
   must.push(...getQuickFilterMust(activeQuickFilter));
+  must.push(...getQueryFilterMust(activeQueryFilter));
+  must.push(
+    ...getExploreQueryFilterMust(parseBrowsePathFields(activeBrowsePath))
+  );
 
   return { query: { bool: { must } } };
 };

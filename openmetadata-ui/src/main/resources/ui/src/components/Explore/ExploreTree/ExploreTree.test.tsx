@@ -201,6 +201,119 @@ describe('ExploreTree', () => {
     // A category with no matches under the filter (Dashboards has 0 tables) is
     // still rendered, because visibility tracks the unfiltered estate.
     expect(getByText('label.dashboard-plural')).toBeInTheDocument();
+    expect(
+      getByText('label.dashboard-plural').closest('.ant-tree-treenode')
+    ).not.toHaveClass('ant-tree-treenode-disabled');
+  });
+
+  it('grays out non-matching categories when a service browse path is active', async () => {
+    const browsePath = JSON.stringify([
+      {
+        key: 'serviceType',
+        label: 'serviceType',
+        value: [{ key: 'BigQuery', label: 'BigQuery' }],
+      },
+    ]);
+    const filteredBuckets = [
+      { key: 'table', doc_count: 5 },
+      { key: 'tableColumn', doc_count: 4 },
+    ];
+    const unfilteredBuckets = [
+      { key: 'table', doc_count: 50 },
+      { key: 'dashboard', doc_count: 10 },
+      { key: 'topic', doc_count: 3 },
+    ];
+    const searchQuerySpy = jest
+      .spyOn(searchAPI, 'searchQuery')
+      .mockImplementation(({ queryFilter }) =>
+        Promise.resolve(
+          buildAggregationResponse(
+            mustLength({ queryFilter }) > 0
+              ? filteredBuckets
+              : unfilteredBuckets
+          )
+        )
+      );
+
+    window.history.pushState(
+      {},
+      '',
+      `/explore?browsePath=${encodeURIComponent(browsePath)}`
+    );
+
+    const { getByText, queryByTestId } = render(
+      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+    );
+
+    await waitFor(() => {
+      expect(queryByTestId('loader')).not.toBeInTheDocument();
+    });
+
+    const filteredCall = searchQuerySpy.mock.calls.find(
+      ([arg]) =>
+        mustLength(arg) > 0 &&
+        JSON.stringify(arg.queryFilter).includes('serviceType')
+    );
+    const databaseNode = getByText('label.database-plural').closest(
+      '.ant-tree-treenode'
+    );
+    const dashboardNode = getByText('label.dashboard-plural').closest(
+      '.ant-tree-treenode'
+    );
+
+    expect(filteredCall).toBeDefined();
+    expect(databaseNode).not.toHaveClass('ant-tree-treenode-disabled');
+    expect(dashboardNode).toHaveClass('ant-tree-treenode-disabled');
+  });
+
+  it('grays out non-matching categories when an advanced service filter is active', async () => {
+    const queryFilter = {
+      query: {
+        bool: {
+          must: [
+            { bool: { should: [{ term: { serviceType: 'BigQuery' } }] } },
+          ],
+        },
+      },
+    };
+    const searchQuerySpy = jest
+      .spyOn(searchAPI, 'searchQuery')
+      .mockImplementation(({ queryFilter }) =>
+        Promise.resolve(
+          buildAggregationResponse(
+            mustLength({ queryFilter }) > 0
+              ? [{ key: 'table', doc_count: 5 }]
+              : [
+                  { key: 'table', doc_count: 50 },
+                  { key: 'dashboard', doc_count: 10 },
+                ]
+          )
+        )
+      );
+
+    const { getByText, queryByTestId } = render(
+      <ExploreTree
+        additionalQueryFilter={queryFilter}
+        onFieldValueSelect={jest.fn()}
+        onTreeSelect={jest.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(queryByTestId('loader')).not.toBeInTheDocument();
+    });
+
+    const filteredCall = searchQuerySpy.mock.calls.find(
+      ([arg]) =>
+        mustLength(arg) > 0 &&
+        JSON.stringify(arg.queryFilter).includes('serviceType')
+    );
+    const dashboardNode = getByText('label.dashboard-plural').closest(
+      '.ant-tree-treenode'
+    );
+
+    expect(filteredCall).toBeDefined();
+    expect(dashboardNode).toHaveClass('ant-tree-treenode-disabled');
   });
 
   it('reuses the cached unfiltered presence aggregation across filter changes', async () => {
