@@ -10,6 +10,23 @@ const iconsSizes = {
   xl: 'tw:*:data-icon:size-7',
 };
 
+type FeaturedIconColor = 'brand' | 'gray' | 'success' | 'warning' | 'error';
+
+const squareRadii: Record<'sm' | 'md' | 'lg' | 'xl', string> = {
+  sm: 'tw:rounded-sm',
+  md: 'tw:rounded-md',
+  lg: 'tw:rounded-lg',
+  xl: 'tw:rounded-xl',
+};
+
+const outlineBorders: Record<FeaturedIconColor, string> = {
+  brand: 'tw:border tw:border-utility-brand-200',
+  gray: 'tw:border tw:border-utility-gray-200',
+  error: 'tw:border tw:border-utility-error-200',
+  warning: 'tw:border tw:border-utility-warning-200',
+  success: 'tw:border tw:border-utility-success-200',
+};
+
 const styles = sortCx({
   light: {
     base: 'tw:rounded-full',
@@ -21,10 +38,10 @@ const styles = sortCx({
     },
     colors: {
       brand: 'tw:bg-brand-secondary tw:text-featured-icon-light-fg-brand',
-      gray: 'tw:bg-tertiary tw:text-featured-icon-light-fg-gray',
       error: 'tw:bg-error-secondary tw:text-featured-icon-light-fg-error',
-      warning: 'tw:bg-warning-secondary tw:text-featured-icon-light-fg-warning',
+      gray: 'tw:bg-tertiary tw:text-featured-icon-light-fg-gray',
       success: 'tw:bg-success-secondary tw:text-featured-icon-light-fg-success',
+      warning: 'tw:bg-warning-secondary tw:text-featured-icon-light-fg-warning',
     },
   },
 
@@ -131,8 +148,16 @@ interface FeaturedIconProps {
   className?: string;
   icon?: FC<{ className?: string }> | ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
-  color: 'brand' | 'gray' | 'success' | 'warning' | 'error';
+  color: FeaturedIconColor;
   theme?: 'light' | 'gradient' | 'dark' | 'outline' | 'modern' | 'modern-neue';
+  /** 'square' overrides the circular shape of the light theme with a rounded rectangle */
+  shape?: 'circle' | 'square';
+  /** Corner radius applied when shape='square'; ignored for circle */
+  radius?: 'sm' | 'md' | 'lg' | 'xl';
+  /** Adds a variant-coloured border ring around the container */
+  outlined?: boolean;
+  /** 'white' overrides the themed background colour with a plain white background */
+  bgColor?: 'colored' | 'white';
 }
 
 export const FeaturedIcon = (props: FeaturedIconProps) => {
@@ -144,6 +169,10 @@ export const FeaturedIcon = (props: FeaturedIconProps) => {
     theme: variant = 'light',
     color = 'brand',
     icon: Icon,
+    shape = 'circle',
+    radius = 'md',
+    outlined = false,
+    bgColor = 'colored',
     ...otherProps
   } = props;
 
@@ -154,12 +183,13 @@ export const FeaturedIcon = (props: FeaturedIconProps) => {
       data-featured-icon
       className={cx(
         'tw:relative tw:flex tw:shrink-0 tw:items-center tw:justify-center',
-
         iconsSizes[size],
         styles[variant].base,
         styles[variant].sizes[size],
         styles[variant].colors[color],
-
+        shape === 'square' && squareRadii[radius],
+        outlined && outlineBorders[color],
+        bgColor === 'white' && 'tw:bg-white',
         className
       )}>
       {isReactComponent(Icon) && <Icon data-icon className="tw:z-1" />}
