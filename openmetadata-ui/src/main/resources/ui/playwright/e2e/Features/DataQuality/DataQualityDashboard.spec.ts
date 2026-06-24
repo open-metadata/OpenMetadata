@@ -1043,13 +1043,13 @@ test.describe(
 
       await test.step('Select data product and verify API carries dataProductFqn', async () => {
         const dataProductInput = page.locator('#dataProductFqn');
-        await dataProductInput.click();
         const dataProductOptionsRes = page.waitForResponse(
           (r) =>
             r.url().includes('/api/v1/search/query') &&
             r.url().includes('index=dataProduct') &&
             r.url().includes(dataProductName)
         );
+        await dataProductInput.click();
         await dataProductInput.fill(dataProductName);
         await dataProductOptionsRes;
 
