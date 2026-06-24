@@ -42,7 +42,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shardIndex: [1, 2, 3, 4, 5, 6]
+        # shard 7 runs the standalone `stress` project (full multi-entity
+        # CustomProperties + DataAssetLineage coverage that's deferred from
+        # per-PR runs). shardTotal stays 6 because shard 7 doesn't use --shard.
+        shardIndex: [1, 2, 3, 4, 5, 6, 7]
         shardTotal: [6]
     steps:
       - name: Free Disk Space (Ubuntu)
@@ -93,6 +96,10 @@ jobs:
               --project=setup \
               --project=DataAssetRulesEnabled \
               --project=DataAssetRulesDisabled
+
+          elif [ "${{ matrix.shardIndex }}" -eq "7" ]; then
+            echo "🔹 Running stress suite (full multi-entity coverage)"
+            npx playwright test --project=stress
 
           else
             # Shards 2-5 handle chromium tests (5 shards total)

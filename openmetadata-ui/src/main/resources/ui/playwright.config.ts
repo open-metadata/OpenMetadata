@@ -114,6 +114,7 @@ export default defineConfig({
       teardown: 'entity-data-teardown',
       testIgnore: [
         '**/nightly/**',
+        '**/stress/**',
         '**/Search/**',
         '**/Auth/**',
         '**/Http2/**',
@@ -225,6 +226,17 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup', 'chromium'],
       fullyParallel: false,
+    },
+    // Stress suite: full multi-entity coverage (CustomProperties, DataAssetLineage)
+    // that's redundant per-PR. Picks up everything under e2e/stress/**. Run via
+    // postgresql-nightly-e2e.yml workflow_dispatch — NOT included in PR chromium.
+    {
+      name: 'stress',
+      testMatch: '**/stress/**',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup', 'entity-data-setup'],
+      teardown: 'entity-data-teardown',
+      fullyParallel: true,
     },
     {
       name: 'IntakeForm',
