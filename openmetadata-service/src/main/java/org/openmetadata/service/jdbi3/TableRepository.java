@@ -139,7 +139,8 @@ import org.openmetadata.service.util.ValidatorUtil;
 public class TableRepository extends EntityRepository<Table> {
 
   // Table fields that can be patched in a PATCH request
-  public static final String PATCH_FIELDS = "tableConstraints,tablePartition,columns";
+  public static final String PATCH_FIELDS =
+      "tableConstraints,tablePartition,columns,schemaDefinition";
   // Table fields that can be updated in a PUT request
   public static final String UPDATE_FIELDS =
       "tableConstraints,tablePartition,dataModel,sourceUrl,columns";
@@ -2398,6 +2399,13 @@ public class TableRepository extends EntityRepository<Table> {
                   "processedLineage",
                   original.getProcessedLineage(),
                   updated.getProcessedLineage()));
+      compareAndUpdate(
+          "schemaDefinition",
+          () ->
+              recordChange(
+                  "schemaDefinition",
+                  original.getSchemaDefinition(),
+                  updated.getSchemaDefinition()));
     }
 
     private void updateProcessedLineage(Table origTable, Table updatedTable) {
