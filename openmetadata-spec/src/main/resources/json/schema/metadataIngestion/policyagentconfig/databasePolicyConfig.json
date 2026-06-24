@@ -17,13 +17,13 @@
       "description": "Pattern of access being requested.",
       "type": "string",
       "javaType": "org.openmetadata.schema.metadataIngestion.policyagentconfig.DatabaseAccessType",
-      "enum": ["FullAccess", "ColumnLevel", "Masked"]
+      "enum": ["FullAccess", "ColumnLevel", "Masked", "Revoke"]
     },
     "requestedAccess": {
       "description": "Permission level being requested.",
       "type": "string",
       "javaType": "org.openmetadata.schema.metadataIngestion.policyagentconfig.DatabaseRequestedAccess",
-      "enum": ["Read", "Write", "Admin", "Revoke"]
+      "enum": ["Read", "Write", "Admin"]
     }
   },
   "properties": {
